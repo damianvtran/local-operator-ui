@@ -8,25 +8,36 @@
  * taken here and two are deliberately not, and the differences are the
  * interesting part:
  *
- *  - **The cue is the app's ONE resize language, and that is a REVISION.** It
- *    was a short bar centred on the pointer's Y, borrowed from
- *    `deepseek-harness`; the operator's report (issue #848, 2026-10-06) was
- *    that a 72px mark floating in the transcript's empty margin reads as "a
- *    mistake" rather than as the column's boundary. It is now the same
- *    full-height 2px state line the five panel dividers draw
- *    (`shared/components/common/resizable-divider.tsx`): invisible at rest,
- *    `control` on hover after the same `HOVER_INTENT_MS` intent delay (imported,
- *    not restated), `accent` while dragging, using the divider's own class idiom
- *    (`transition-[opacity,background-color] duration-fast ease-out-quart`). One
- *    language for every resize edge in the app is worth more than the bar's
- *    borrowed proportions, and the contract already carries the two roles'
- *    floors (`border-control`/`accent`, 3:1 on every ground).
- *  - **The line does not chase the pointer at all.** A mark that follows the
- *    hand reports the hand; a full-height rule reports the edge at every Y, and
- *    that is what lets it read as a boundary rather than as a cue. So the
- *    pointer-Y publication is gone (`--lo-chat-measure-cue-y` with it) - and
- *    with it the "must not flicker" problem the bar's fixed-on-entry Y existed
- *    to solve: there is nothing left that could twitch.
+ *  - **The cue is a short fade bar on the measure's real edge, and it has been
+ *    through two revisions - this is the second, and the history is the point.**
+ *    It began as `deepseek-harness`'s 72px bar centred on the pointer's Y; the
+ *    operator's report (issue #848, 2026-10-06) was that a mark floating in the
+ *    transcript's empty margin reads as "a mistake" rather than as the column's
+ *    boundary, so the first revision moved it onto that boundary as the divider
+ *    family's full-height 2px state line. A full-height rule reports the EDGE at
+ *    every Y and does read as a boundary - which is what #848 asked for - but it
+ *    also draws a hard rule down the whole transcript for as long as a hover
+ *    lasts, and the operator's follow-up is that this is too much ink for a
+ *    hint. So the cue is the reference's own TEXTURE again -
+ *    `ConversationWidthControls.tsx`'s `.widthHandle::after`: a 2px bar, a solid
+ *    core fading to transparent each side (`CUE_BAR_PX`, the one number the
+ *    operator's "taller" swaps) - placed where the line went, on the measure's
+ *    real edge, rather than where the reference puts its strip. The two roles come with it unchanged -
+ *    `control` while grabbable, `accent` while moving after the same
+ *    `HOVER_INTENT_MS` intent delay (imported, not restated) - which are the
+ *    divider family's own steps, so no new colour enters the system, and the
+ *    contract already carries their floors (3:1 on every ground).
+ *  - **The core follows the hand during a drag, and only during a drag.** The
+ *    reference publishes the pointer's Y for the length of the gesture, so the
+ *    bar's core travels with the reader's own hand and the mark reads as "you
+ *    are moving this". `--lo-chat-measure-cue-y` is that publication, restored
+ *    from the bar's first cut and written as PAINT rather than as React state -
+ *    the discipline the width preview already uses (`preview()`), because a
+ *    `mousemove`-rate render is a cost this component has already decided not to
+ *    pay. The reference's hold-last-drag-Y is deliberately NOT taken: the
+ *    property is REMOVED on release, so the core returns to the measure's own
+ *    middle (the CSS fallback), because a mark left where a previous gesture
+ *    ended would report a hand that is no longer there.
  *  - **Drawn immediately OUTSIDE the measure's edge, not inside it.** The
  *    divider draws its line on the sized panel's leading/trailing edge, and it
  *    can, because every panel it sizes carries its own inset. The chat column
@@ -35,16 +46,18 @@
  *    would cross the text. The 2px line therefore sits with its inner edge ON
  *    the boundary and its whole width in the gutter beside it, which is what
  *    makes the column's edge legible as an edge.
- *  - **The handle is OUTSIDE the column, floating 24px clear of it.** The strip
- *    sits in the gutter the measure already reserves (`p-4` + the 8px scrollbar
- *    gutter = 24px per side in `chat-measure.ts`), 24px out from the content
- *    edge - the reference's own offset - 10px wide, with the cue another 4px in
- *    again (28px from the longest glyph). So it can never swallow a click meant
- *    for the text underneath, because there is never text underneath it - the
- *    guarantee is geometric rather than something a z-index or a hit-test has
- *    to keep true. The flush variant this first shipped with DID swallow one:
- *    design round 1's D2 measured it over the fold-row button's hit box by
- *    8x20px, which is why the offset is part of the design, not decoration.
+ *  - **The handle is OUTSIDE the column, hugging the edge the cue is drawn on.**
+ *    The 10px band occupies the gutter the measure already reserves (`p-4` + the
+ *    8px scrollbar gutter = 24px per side in `chat-measure.ts`), its INNER edge
+ *    on the column's own edge, so a press anywhere on the 2px rule starts the
+ *    drag and the band never reaches inward past the text - the guarantee is
+ *    geometric rather than something a z-index or a hit-test has to keep true.
+ *    The band used to sit 24px out (the reference's own offset for its strip),
+ *    which left a 22px dead zone between the only thing on screen that promised
+ *    adjustability and the only place that responded, and the flush variant this
+ *    first shipped with DID swallow a click: design round 1's D2 measured it
+ *    over the fold-row button's hit box by 8x20px, which is why the band's side
+ *    of the edge is part of the design, not decoration.
  *  - **`deepseek-harness` has no reset, and this one does.** Double-click (or
  *    Enter on the focused handle) goes back to the shipped measure. That is a
  *    deliberate difference: without it, one drag makes the product's own choice
@@ -67,7 +80,11 @@
  *    1's U2), while the strip carries a tooltip naming the drag and the reset
  *    (`TOOLTIP` below). It names the reset for BOTH readers, because focus opens
  *    it too and a double-click is the one thing a keyboard reader cannot do
- *    (design round 1's D1). The parts are the app's own (`ui/tooltip.tsx` exports
+ *    (design round 1's D1). The POINTER's channel is deliberately slow to arrive
+ *    (`MEASURE_PANEL_DWELL_MS`), because a panel that opens under a hand merely
+ *    sweeping past the gutter is the thing the operator complained about; the
+ *    keyboard's is instant and stays the loudest state, because focus is a
+ *    decision a reader has already made. The parts are the app's own (`ui/tooltip.tsx` exports
  *    them for the unusual case, which this is: the first tooltip in the tree
  *    whose anchor would be taller than the pane clipping it), and the OPEN state
  *    is this component's own, driven by the strip's hover and focus - see the
@@ -101,7 +118,6 @@ import {
 } from "@shared/components/common/resizable-divider";
 import { keyboardTarget } from "@shared/components/common/resizable-divider-geometry";
 import {
-	TOOLTIP_DELAY_MS,
 	TooltipContent,
 	TooltipPortal,
 	TooltipProvider,
@@ -144,6 +160,27 @@ import {
 const TOOLTIP = "Drag to resize. Double-click or Enter to reset.";
 
 /**
+ * The panel's dwell on the POINTER's channel, and why it is not `TOOLTIP_DELAY_MS`.
+ *
+ * The operator's complaint is that hovering "parks a box over prose". The box is
+ * the reset's only mouse channel (design round 1's D1, UX round 1's U2), so it
+ * cannot simply go - but it should not arrive during a casual sweep past the
+ * gutter, which is what the app's 400ms tooltip beat does. 1200ms is
+ * `agents-sidebar.tsx`'s `ROW_TOOLTIP_DELAY_MS`, the app's existing answer to
+ * "only once the pointer has decided to stay", so this borrows a dwell the tree
+ * already carries rather than inventing a third one. The property is exported
+ * nowhere: it is this panel's beat, and the family's 400ms is still the right one
+ * for the 200 tooltips that are not standing next to the reader's prose.
+ *
+ * It gates the MOUSE channel only. Keyboard focus still opens the panel at once
+ * (`onFocus` below), which is deliberate and is the one thing not to "simplify":
+ * focus is a decision the reader has already made, and a keyboard reader has no
+ * double-click with which to discover the reset, so their channel is the loudest
+ * state on purpose (design round 1's D1).
+ */
+const MEASURE_PANEL_DWELL_MS = 1200;
+
+/**
  * The panel's anchor: a 16px-tall box at the hand's own Y.
  *
  * A POINT, not the separator, and that is the fix for M1/D3/U3 rather than a
@@ -152,6 +189,109 @@ const TOOLTIP = "Drag to resize. Double-click or Enter to reset.";
  * and reads as "here", not as a second control.
  */
 const ANCHOR_HEIGHT_PX = 16;
+
+/**
+ * The bar's height, as ONE number.
+ *
+ * The reference's texture is a 2px bar whose ink is a solid core with a fade each
+ * side - 16px of core and 28px of fade, 72px in all. The operator's follow-up
+ * asks for that same texture TALLER ("something similar to the previous bar but
+ * just taller so that it's a bit more visible and indicative of the
+ * constraint"), and the settled answer is 160: the whole shape scaled x2.22,
+ * chosen against rendered frames of 72 and 160 side by side rather than by
+ * argument. The operator ruled out the two other registers explicitly - a
+ * full-height rule, and (by "similar to the previous bar") a mark that is not a
+ * bar at all.
+ *
+ * The TOTAL is named on its own and the split is named separately, because "a
+ * longer core" and "longer fades" are different asks at the same height; the
+ * fade is DERIVED so the three numbers cannot disagree, and if the height moves
+ * again it is a one-line swap.
+ *
+ * Whatever this holds, the cue is never a full-height rule: the ink stays a
+ * fraction of the column, and `docs/evidence/chat-measure-hover/`'s README
+ * records the extent the committed pair actually paints.
+ */
+const CUE_BAR_PX = 160;
+/**
+ * The solid core, and the fade each side, of `CUE_BAR_PX`'s total ink.
+ *
+ * THE EXTRA LENGTH GOES INTO BOTH, PROPORTIONALLY. The reference texture is 16px
+ * of core in 72px of ink (a 1:1.75 core-to-fade split); 72 -> 160 is a scale of
+ * 2.22, so the core goes 16 -> 36 and each fade 28 -> 62. Scaling the whole shape
+ * is what keeps this "the previous bar, taller" rather than a different mark: a
+ * fixed 16px core stretched to 160px reads as a long faint smear with a dot in
+ * it (less indicative of the constraint, not more), and growing only the core
+ * reads as a rule with soft ends (the register the operator ruled out). Measured
+ * on the rendered story, and against the committed frames: the gradient declares
+ * 160px and the frames paint 148-156px of it (the outermost stops are fully
+ * transparent), i.e. 17% of a realistic 911px column and 52% of the story's own
+ * 307px one - never a full-height rule.
+ *
+ * THE ONE BOUND WORTH KNOWING: the length is a FIXED px, so the ink is only a
+ * fraction while the column is taller than it. Measured bounds, both ends: 17% of
+ * a realistic 911px column (a full window's transcript), and 52% of this
+ * component's own story column (307px) - which is SHORTER than the app's minimum
+ * pane (a 600px window is a 572px CSS viewport), so the story's share is the
+ * conservative end, not a case a user reaches. The ink is never a full-height
+ * rule in any of them. If a future pane can be shorter than `CUE_BAR_PX`, cap it
+ * against the column height rather than raising this number.
+ */
+const CUE_CORE_PX = 36;
+const CUE_FADE_PX = (CUE_BAR_PX - CUE_CORE_PX) / 2;
+
+/**
+ * The custom property the core is centred on, and the length it rests at.
+ *
+ * `--lo-chat-measure-cue-y` is the FIRST cut of this cue's own property, a
+ * pointer-Y publication on the wrapper that the full-height rule retired along
+ * with the bar. It comes back under the same name on purpose: the mechanism is
+ * the same one, and a second name for it would be a second thing to keep in step.
+ * What differs is the shape it feeds - a gradient stop rather than a mark's `top`
+ * - and the fact that it is written and REMOVED per gesture rather than held.
+ *
+ * The fallback is `50%`: with nothing published the core sits at the measure's
+ * own middle, which is where the bar rests before and after every gesture.
+ */
+const CUE_Y_VAR = "--lo-chat-measure-cue-y";
+const CUE_Y_REST = "50%";
+
+/**
+ * Publish the hand's Y to the wrapper, or take the publication back.
+ *
+ * Written onto the WRAPPER rather than the line element so the value and the
+ * rectangle it is measured against come from the same node: the caller hands in
+ * `pointerY - wrapper.top`, and a second node would be a second frame to keep in
+ * step with the first. This is `preview()`'s discipline - a `mousemove`-rate
+ * React render is a cost this component has already decided not to pay - and it
+ * is why `cueY` is not state.
+ */
+const publishCueY = (el: HTMLElement | null, y: number | null): void => {
+	if (!el) return;
+	if (y === null) el.style.removeProperty(CUE_Y_VAR);
+	else el.style.setProperty(CUE_Y_VAR, `${y}px`);
+};
+
+/**
+ * The bar's paint, as one linear gradient down the line element's own height.
+ *
+ * The ELEMENT keeps the column's full height and 2px width - the geometry the
+ * `data-lo-chat-measure-line` attribute, the placement classes and the band's
+ * containment are all pinned against - and only its INK is 72px. Sizing the
+ * element to 72px instead would animate layout on every state change, which is
+ * the note `resizable-divider.tsx` carries for its own line, so the cue is a
+ * gradient stop and the element's only remaining transition is `opacity`.
+ *
+ * `role` is a CSS value, not a class: the two steps are `control` (grabbable)
+ * and `accent` (moving), read as the theme's own custom properties, so the paint
+ * cannot drift from the token the rest of the family uses.
+ */
+const cuePaint = (role: string): string => {
+	const y = `var(${CUE_Y_VAR}, ${CUE_Y_REST})`;
+	const core = CUE_CORE_PX / 2;
+	const outer = core + CUE_FADE_PX;
+	return `linear-gradient(to bottom, transparent calc(${y} - ${outer}px), ${role} calc(${y} - ${core}px), ${role} calc(${y} + ${core}px), transparent calc(${y} + ${outer}px))`;
+};
 
 export type ChatMeasureHandleProps = {
 	/** Which edge of the column this handle sits on. */
@@ -264,16 +404,18 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	};
 
 	/*
-	 * The panel's dwell, on the app's TOOLTIP constant rather than the divider's:
-	 * it is the same panel as every other tooltip in the app and should arrive on
-	 * the same beat (measured at 409ms before this change, and 400 is the number
-	 * that produced it). Leaving closes it at once, for the reason the divider's
-	 * own comment gives - a panel that lingers after the pointer has gone reads as
-	 * stuck.
+	 * The panel's dwell, on the panel's own beat rather than the app's tooltip
+	 * constant: it is a tooltip, but a slow one - see `MEASURE_PANEL_DWELL_MS` for
+	 * what a 400ms arrival cost beside the reader's prose. Leaving closes it at
+	 * once, for the reason the divider's own comment gives - a panel that lingers
+	 * after the pointer has gone reads as stuck.
 	 */
 	const openPanelSoon = (): void => {
 		if (panelTimer.current) clearTimeout(panelTimer.current);
-		panelTimer.current = setTimeout(() => setPanelOpen(true), TOOLTIP_DELAY_MS);
+		panelTimer.current = setTimeout(
+			() => setPanelOpen(true),
+			MEASURE_PANEL_DWELL_MS,
+		);
 	};
 	const closePanel = (): void => {
 		if (panelTimer.current) clearTimeout(panelTimer.current);
@@ -442,6 +584,19 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 		const onMouseMove = (moveEvent: MouseEvent) => {
 			if (!draggingRef.current) return;
 			lastClientX = moveEvent.clientX;
+			/*
+			 * The core travels with the hand for the length of the gesture. Read
+			 * against the WRAPPER's top, which is the box the gradient's percentage
+			 * resolves against, so "the hand's Y" means the same thing to the source
+			 * and the sink.
+			 */
+			const wrapper = rootRef.current;
+			if (wrapper) {
+				publishCueY(
+					wrapper,
+					Math.round(moveEvent.clientY - wrapper.getBoundingClientRect().top),
+				);
+			}
 			preview(
 				draggedChatMeasureWidth({
 					startWidth,
@@ -456,6 +611,13 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 			draggingRef.current = false;
 			setDragging(false);
 			setHovering(false);
+			/*
+			 * The gesture's publication ends with the gesture: removing the property
+			 * drops the core back to `CUE_Y_REST`. Holding the last Y would leave the
+			 * mark where a hand that has gone was last seen, which is the one reading
+			 * a resting bar must not give.
+			 */
+			publishCueY(rootRef.current, null);
 			document.body.style.userSelect = "";
 			removeResizeCursorOverlay();
 			window.removeEventListener("mousemove", onMouseMove);
@@ -550,11 +712,14 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 			)}
 		>
 			{/*
-			 * The state line: the divider family's drawing, at the measure's real edge.
-			 * Full height, 2px, `opacity-0` at rest, `control` on hover, `accent` while
-			 * dragging. Opacity and colour are the only animated properties - animating
-			 * width would animate layout (the same note is on
-			 * `resizable-divider.tsx`'s line).
+			 * The state line: the reference's fade bar, at the measure's real edge.
+			 * Full height and 2px WIDE, `opacity-0` at rest, `control` on hover,
+			 * `accent` while dragging - but only `CUE_BAR_PX` of INK, a solid core fading
+			 * out each side, which is what makes this a hint rather than the full-height
+			 * rule it replaced. Opacity is the only animated property:
+			 * animating the element's size would animate layout, and a gradient's
+			 * stops are not interpolated, so the core snaps to the hand instead of
+			 * sliding behind it (the same note is on `resizable-divider.tsx`'s line).
 			 *
 			 * IT SITS JUST OUTSIDE THE COLUMN: `-left-0.5` / `-right-0.5` puts the
 			 * line's INNER edge on this wrapper's own edge - the measure's edge - so
@@ -563,17 +728,25 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 			 * own inset; the chat column carries none (its inset is the scroller's
 			 * `p-4` and the 8px gutter), so an inside rule would cross the first glyph.
 			 * See the file comment for why this reads as the boundary.
+			 *
+			 * The element is FULL HEIGHT although the ink is not, because the attribute,
+			 * the placement and the band's containment are all read off this node; a
+			 * bar-sized box would move every one of those readings with the pointer's Y.
 			 */}
 			<div
 				aria-hidden="true"
 				data-lo-chat-measure-line={edge}
 				className={cn(
 					"pointer-events-none absolute top-0 z-12 h-full w-0.5",
-					"transition-[opacity,background-color] duration-fast ease-out-quart",
+					"transition-opacity duration-fast ease-out-quart",
 					edge === "left" ? "-left-0.5" : "-right-0.5",
-					dragging ? "bg-accent" : "bg-control",
 					lit ? "opacity-100" : "opacity-0",
 				)}
+				style={{
+					backgroundImage: cuePaint(
+						dragging ? "var(--color-accent)" : "var(--color-control)",
+					),
+				}}
 			/>
 			{/*
 			 * The widget: a 10px band that HUGS the drawn line from the gutter side.
