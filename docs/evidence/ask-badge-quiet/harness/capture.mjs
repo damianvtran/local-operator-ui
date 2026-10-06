@@ -43,14 +43,15 @@
 import { spawn } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const HERE = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(HERE, "..", "..", "..", "..");
-const { withMockKeychain } = await import(
-	join(ROOT, "scripts", "chrome-keychain.mjs")
-);
+import { join } from "node:path";
+/*
+ * The helper is reached by this exact static specifier, not a computed one:
+ * `scripts/chrome-keychain.test.mjs` resolves it against this file's own
+ * directory (the mesh-tab harness's comment records the same rule), so a
+ * dynamic import of a joined path would leave the launch unregistered to the
+ * gate that exists to catch exactly this.
+ */
+import { withMockKeychain } from "../../../../scripts/chrome-keychain.mjs";
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const DEBUG_PORT = /DevTools listening on (ws:\/\/[^\s]+)/;
