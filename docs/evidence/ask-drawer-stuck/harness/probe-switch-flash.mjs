@@ -14,10 +14,19 @@
  * WHY THE UNREAD WINDOW IS NOT CLOSED ON. The sampler separates the two states that
  * look alike in a coarse probe: a frame painted with the drawer's OWN chrome before
  * the browser has painted anything else (a paint-phase artifact, which a layout effect
- * could remove) and the drawer sitting in its UNREAD state (`frameUnread`, the scope
- * line reads `Not read yet`) while the leaving conversation's frame is still the one in
- * hand. Only the second is reachable here, and it must not be closed on: a switch to a
- * conversation that DOES have asks looks identical until its frame lands.
+ * could remove) and the drawer sitting in its UNREAD state (`frameUnread`: the bar
+ * carries NO clause and the body reads `Reading the asks…`) while the leaving
+ * conversation's frame is still the one in hand. Only the second is reachable here, and
+ * it must not be closed on: a switch to a conversation that DOES have asks looks
+ * identical until its frame lands.
+ *
+ * WHAT A MARK CARRIES, AND WHY THE COMPOSER IS ONE OF THEM (design round 1, D3). The
+ * slot is the thing that claims the 560px column, so while it is up the newly-entered
+ * conversation is painted INSIDE the narrowed pane and re-laid out when the drawer
+ * closes. Presence alone cannot say how big that move is; the composer's own rect can,
+ * which is why each mark records it beside `slot`. The summary reports the first mark on
+ * the new conversation and the settled one, so the reflow's magnitude is a number in the
+ * record rather than something a reader infers from the frames.
  */
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -28,6 +37,8 @@ import { withMockKeychain } from "../../../../scripts/chrome-keychain.mjs";
 const ORIGIN = process.argv[2] ?? "http://localhost:5314";
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+/** Chrome announces its own debug port on stderr; module scope so the listener does not rebuild it per chunk. */
+const DEVTOOLS_URL = /DevTools listening on (ws:\/\/[^\s]+)/;
 
 const dataDir = mkdtempSync(join(tmpdir(), "asks-switch-flash-"));
 const chrome = spawn(
@@ -51,7 +62,7 @@ const wsUrl = await new Promise((resolve, reject) => {
 	const t = setTimeout(() => reject(new Error("no debug port")), 30_000);
 	chrome.stderr.on("data", (d) => {
 		buf += d.toString();
-		const m = buf.match(/DevTools listening on (ws:\/\/[^\s]+)/);
+		const m = buf.match(DEVTOOLS_URL);
 		if (m) {
 			clearTimeout(t);
 			resolve(m[1]);
@@ -165,7 +176,7 @@ try {
 				f.withSurface += 1;
 				if (f.firstWith === null) f.firstWith = performance.now() - t0;
 			}
-			f.marks.push({ t: Math.round(performance.now() - t0), surface: present, hash: location.hash.slice(-12), slot: document.querySelector('[data-tour-tag="ask-drawer-slot"]') !== null, rows: document.querySelectorAll('[data-lo-ask-row]').length, scope: (document.querySelector('[data-ask-scope]') || {}).textContent ?? null });
+			f.marks.push({ t: Math.round(performance.now() - t0), surface: present, hash: location.hash.slice(-12), slot: document.querySelector('[data-tour-tag="ask-drawer-slot"]') !== null, rows: document.querySelectorAll('[data-lo-ask-row]').length, scope: (document.querySelector('[data-ask-scope]') || {}).textContent ?? null, composer: (() => { const el = document.querySelector('textarea[aria-label="Message"], [data-tour-tag="chat-input-textarea"] textarea, [data-tour-tag="chat-input-textarea"]'); if (!el) return null; const r = el.getBoundingClientRect(); return { x: Math.round(r.left), w: Math.round(r.width) }; })() });
 			if (performance.now() - t0 < 1500) requestAnimationFrame(tick);
 		};
 		requestAnimationFrame(tick);
@@ -195,6 +206,7 @@ try {
 	report.flash = await evaluate(`(() => {
 		const f = window.__flash;
 		const onB = f.marks.filter((m) => m.hash.includes('bbbb'));
+		const withComposer = onB.filter((m) => m.composer !== null);
 		return {
 			framesSampled: f.frames,
 			framesWithSurface: f.withSurface,
@@ -202,6 +214,14 @@ try {
 			framesOnB: onB.length,
 			framesOnBWithSurface: onB.filter((m) => m.surface).length,
 			framesOnBWithSlot: onB.filter((m) => m.slot).length,
+			/*
+			 * THE REFLOW, AS A PAIR OF RECTS (D3): the composer the moment the new
+			 * conversation is first painted while the slot still claims the column, and the
+			 * composer once the drawer has gone. The widths' difference is the motion a reader
+			 * would see, and it is what the README's bound section quotes.
+			 */
+			composerOnFirstMarkOnB: withComposer.length > 0 ? withComposer[0].composer : null,
+			composerSettled: (() => { const last = f.marks[f.marks.length - 1]; return last.composer; })(),
 			firstMarksOnB: f.marks.filter((m) => m.hash.includes('bbbb')).slice(0, 14),
 			lastFrames: f.marks.slice(-4),
 		};

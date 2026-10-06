@@ -198,14 +198,142 @@ test("an unresolved frame neither closes the drawer nor draws nothing", async ()
 	);
 	assert.deepEqual(calls, [], "an unread frame is not an emptied queue");
 	assert.ok(
-		document.querySelector("[data-lo-ask-surfaces]") !== null,
+		view.container.querySelector("[data-lo-ask-surfaces]") !== null,
 		"the drawer drew nothing over an unread frame, which is the claimed slot with no close control the whole fix exists to remove",
 	);
 	assert.ok(
-		document.body.textContent.includes("Reading the asks"),
+		view.container.textContent.includes("Reading the asks"),
 		"the unread frame must say what the surface is doing rather than a count it cannot substantiate",
 	);
+	/*
+	 * AND THE BAR NAMES NOTHING ELSE (design round 1, D5). The scope line used to carry
+	 * `Not read yet` while the body said `Reading the asks…` - the same fact twice in the
+	 * same register 30 px apart, which reads as one paragraph rather than as chrome plus
+	 * body. The clause is gone and the body holds the fact.
+	 */
+	const bar = view.container.querySelector("[data-ask-scope]");
+	assert.ok(bar !== null, "the bar is the thing being asserted about");
+	assert.equal(
+		bar.textContent.trim(),
+		"This conversation",
+		"the scope line drops its clause while unresolved, rather than dangling a separator",
+	);
 	await view.unmount();
+});
+
+/*
+ * THE UNREAD FRAME IS NOT AN UNSUPPORTED ONE EITHER (design round 1, D1). Both carry
+ * no rows and neither is publishable, so they used to share their copy - which parked the
+ * in-flight line on a runtime that can never answer, reachable because the header door is
+ * offered at zero asks. `view.unread` is what tells them apart, and the difference is
+ * visible: the bar states the capability it lacks, the body says what that means, and the
+ * word `Reading` is not on the surface at all.
+ */
+test("a runtime that publishes no engine gets its own state, not the in-flight copy", async () => {
+	const view = await mount(
+		h(AskDrawer, {
+			frontend: { asks: null, asks_open: null },
+			scope: "session",
+			onClose: () => {},
+		}),
+	);
+	assert.ok(
+		view.container.querySelector("[data-lo-ask-surfaces]") !== null,
+		"the chrome renders, so the slot it claims always carries a close control",
+	);
+	assert.ok(
+		view.container.textContent.includes("Asks unavailable"),
+		"the bar must state the capability this runtime lacks",
+	);
+	assert.ok(
+		view.container.textContent.includes("doesn't publish queued asks"),
+		"and the body must say what that means, rather than promising a read",
+	);
+	assert.ok(
+		!view.container.textContent.includes("Reading the asks"),
+		"a progress claim that can never complete is not this frame's to wear",
+	);
+	await view.unmount();
+});
+
+/*
+ * THE WIRE BOUND'S FRAME: NO ROWS, A LIVE TALLY (remediation round 1, R1). The runtime
+ * drops the whole row list while deliberately keeping `asks_open`
+ * (`_bound_asks_in_place`), so a mount can arrive over four answerable asks with nothing
+ * to draw. Two things must not happen: the surface must not deny the count, and the
+ * auto-close must not fire - closing over it releases the slot and leaves every one of
+ * those asks unreachable, which is the reported defect with the sign flipped.
+ */
+test("a mount over dropped rows with a live tally keeps the drawer and states the count", async () => {
+	const calls = [];
+	const view = await mount(
+		h(AskDrawer, {
+			frontend: { asks: null, asks_open: 4, asks_truncated: true },
+			scope: "session",
+			onClose: () => calls.push(true),
+		}),
+	);
+	assert.deepEqual(
+		calls,
+		[],
+		"the drawer closed over a rowless frame that stands for four answerable asks",
+	);
+	assert.ok(
+		view.container.textContent.includes("4 outstanding"),
+		"the tally is what this frame carries, so the bar must count it",
+	);
+	assert.ok(
+		!view.container.textContent.includes("No asks outstanding"),
+		"the panel denied a count its own bar states",
+	);
+	assert.ok(
+		view.container.textContent.includes("carries the count, not the rows"),
+		"the panel must say which half of the frame it has, not that the queue is empty",
+	);
+	await view.unmount();
+});
+
+/*
+ * THE RETRY BOUND, BEHAVIOURALLY (agent review round 1, R4). The structural check in
+ * `fleet-asks.test.mjs` pins the source shape of the entry move (no dependency array, the
+ * retry spelled on the frame); this is the same claim executed - a door under focus while
+ * the frame is unread moves NOTHING, and the one-shot resolves on the commit that carries
+ * the rows, once.
+ */
+test("the entry move waits for the frame and moves focus once it lands (R4)", async () => {
+	const door = document.createElement("button");
+	door.setAttribute("data-tour-tag", "ask-pane-trigger");
+	document.body.appendChild(door);
+	door.focus();
+	const view = await mount(
+		h(AskDrawer, { frontend: null, scope: "session", onClose: () => {} }),
+	);
+	const surface = view.container.querySelector("[data-lo-ask-surfaces]");
+	assert.ok(surface !== null, "the chrome is up on the unread commit");
+	assert.equal(
+		document.activeElement,
+		door,
+		"the keyboard stayed on the door while the frame that carries its surface was unread",
+	);
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([radioAsk]),
+			scope: "session",
+			onClose: () => {},
+		}),
+	);
+	const active = document.activeElement;
+	assert.ok(
+		surface.contains(active),
+		"the one-shot never resolved once the rows landed",
+	);
+	assert.equal(
+		active?.getAttribute("data-ask-option"),
+		"staging",
+		"and it landed on the card's first option, as the entry rule says",
+	);
+	await view.unmount();
+	door.remove();
 });
 
 test("the close door fires ONCE per emptying", async () => {

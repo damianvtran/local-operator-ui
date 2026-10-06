@@ -61,6 +61,7 @@ import {
 	ASK_CHANGE_WINDOW_HINT,
 	EMPTY_DRAFT,
 	askAnswerMap,
+	askChipCountClause,
 	askRevisionDraft,
 	askSettledAnswers,
 	askStatusText,
@@ -1132,10 +1133,21 @@ export const AskPanel = ({
 	 * halves PARTITION the rows an empty half means every row is in the other one:
 	 * so each line is true by construction and names the filter holding them, rather
 	 * than claiming a state the other half may not be in.
+	 *
+	 * AND "NO ROWS" IS NOT "NOTHING OUTSTANDING" (remediation round 1, R1). The wire
+	 * bound drops the whole row list while deliberately keeping the tally
+	 * (`_bound_asks_in_place`), so a frame can arrive carrying `asks_open: 4` and no
+	 * rows at all. Gating this sentence on the rows alone printed `No asks
+	 * outstanding. The agent is not waiting on anything.` over four answerable asks -
+	 * the panel denying the count in the bar above it. The tally is the statement of
+	 * record for that frame, so the line states the count and says what the frame does
+	 * not carry, in the chip's own words rather than a second count of its own.
 	 */
 	const emptySlice =
 		view.rows.length === 0
-			? "No asks outstanding. The agent is not waiting on anything."
+			? view.open > 0
+				? `${askChipCountClause(view)}. This frame carries the count, not the rows.`
+				: "No asks outstanding. The agent is not waiting on anything."
 			: filter === "outstanding" && pending.length === 0
 				? "No asks are waiting or moved on. They have all settled — see Settled."
 				: filter === "settled" && settled.length === 0
@@ -1155,7 +1167,20 @@ export const AskPanel = ({
 			 * the queue's own line is then simply the first thing in the panel.
 			 */}
 			{emptySlice === null ? null : (
-				<p className="px-3 py-2 text-ink text-body">{emptySlice}</p>
+				/*
+				 * `data-lo-ask-empty` IS THE MARKER THE EVIDENCE RIG READS (remediation round 1,
+				 * D4): without it the story run's `emptySentence` read `null` for a frame that
+				 * does draw this sentence, so the set's own record asserted the claim with a
+				 * substring of `bodyText` prose instead of with a marker.
+				 *
+				 * AND ITS INK IS THE QUIET RUNG (D2). `text-ink` made the emptier state the
+				 * LOUDER one - measured 11.95:1 on the drawer ground against the scope line's
+				 * 7.08:1 directly above it - so the read landing on `nothing` weight-popped. The
+				 * two "no rows" bodies now read as one family, and `ink` stays for rows.
+				 */
+				<p data-lo-ask-empty="" className="px-3 py-2 text-ink-muted text-body">
+					{emptySlice}
+				</p>
 			)}
 			{showPending ? pending.map(askRow) : null}
 			{showSettledRows && settled.length > 0 ? (
