@@ -395,6 +395,61 @@ test("the state line paints the token-role fade bar inside a full-height element
 		/var\(--color-accent\)/,
 		"a held drag promotes the cue to `accent`",
 	);
+
+	/*
+	 * THE PUBLICATION, AND ITS REMOVAL (agent review round 1's R1-2). The
+	 * component's header singles out the release rule as its one deliberate
+	 * departure from the reference - the core returns to the seat the gesture began
+	 * on rather than holding the last hand position - and it was asserted nowhere:
+	 * the rig recorded the step and every assertion skipped it. jsdom has no layout,
+	 * so the VALUE here is degenerate (the wrapper's `clientHeight` is 0, so the
+	 * clamp answers 0); what is pinned is exactly the part the rule is about, that
+	 * a held gesture publishes and a released one takes the publication back.
+	 */
+	const wrapper = separator.parentElement;
+	await act(async () => {
+		globalThis.window.dispatchEvent(
+			new globalThis.window.MouseEvent("mousemove", {
+				bubbles: true,
+				clientX: 200,
+				clientY: 60,
+			}),
+		);
+	});
+	assert.notEqual(
+		wrapper?.style.getPropertyValue("--lo-chat-measure-cue-y"),
+		"",
+		"a gesture under way publishes the core's Y",
+	);
+
+	/*
+	 * AND THE GESTURE IS RELEASED. The component only detaches its `window`
+	 * listeners and restores `userSelect` on `mouseup`, and this file's `window` is
+	 * shared by every test in it - so a press that is never released leaves a live
+	 * handler behind for the two later tests that dispatch real `mousemove`s
+	 * (agent review round 1's R1-3: benign today because the live handler
+	 * overwrites what the stale one writes, and exactly the cross-test coupling
+	 * this file exists to refuse).
+	 */
+	await act(async () => {
+		separator.dispatchEvent(
+			new globalThis.window.MouseEvent("mouseup", {
+				bubbles: true,
+				detail: 1,
+				clientX: 100,
+			}),
+		);
+	});
+	assert.equal(
+		document.body.style.userSelect,
+		"",
+		"the release gives the page its selection back",
+	);
+	assert.equal(
+		wrapper?.style.getPropertyValue("--lo-chat-measure-cue-y"),
+		"",
+		"the release removes the publication, so the bar returns to its own seat",
+	);
 });
 
 /*

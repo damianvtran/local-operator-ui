@@ -16,7 +16,13 @@ each side (`CUE_BAR_PX` = 160 in the component), drawn on the same measure edge
 the line used - so the frames that carry it were re-taken on that head. SIX of the sixteen frames
 moved (the three cue-carrying states x two palettes); the ten that do not carry
 the cue came back byte-identical, which is the reading that says the
-bar moved the cue and nothing else. The rig's own assertions are unchanged and
+bar moved the cue and nothing else. FOUR MORE FRAMES MOVED IN ROUND 1 (2026-10-06),
+and the reason is worth stating: the resting bar's seat moved from `50%` of the
+column to the hand's own entry Y, and this rig hovers at the handle's CENTRE - so
+the two seats differ by the half-pixel between `50%` of a 306.9px column and that
+value rounded, which is enough to change the encoded bytes of `hover` and
+`hover-left` and nothing else. All 20 readings held unchanged, `dragging` among
+them: the core follows the hand in both revisions. The rig's own assertions are unchanged and
 still hold: they are about the cue's ELEMENT (2px wide, the column's full height,
 inside the band), and this change repaints that element rather than resizing it.
 The before/after pair for this change is `docs/evidence/chat-measure-hover/`;

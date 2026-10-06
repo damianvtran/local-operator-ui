@@ -170,9 +170,24 @@ const PROBE = `(() => {
 	const stops = (el) => {
 		if (!el) return [];
 		const bg = getComputedStyle(el).backgroundImage || "";
-		return [...bg.matchAll(/([+-])\\s*([\\d.]+)px\\s*\\)/g)].map(
+		/*
+		 * TWO SERIALISATIONS, and the second one cost a round. While the seat is a
+		 * percentage the browser keeps the calc(<seat> - Npx) form and the offsets
+		 * are the numbers after each sign; once a px seat is published the whole
+		 * calc() folds to a single length, so the stops come back as plain px
+		 * positions. A parser that only knew the first form read null exactly in the
+		 * states that matter (the pointer's own hover and the drag) - QA's
+		 * "probe artifact" on their round - so both forms are read, and both answer
+		 * the same two lengths: the ink's span and the core's.
+		 */
+		const relative = [...bg.matchAll(/calc\\(.*?([+-])\\s*([\\d.]+)px\\s*\\)/g)].map(
 			(m) => (m[1] === "-" ? -1 : 1) * Number.parseFloat(m[2]),
 		);
+		if (relative.length === 4) return relative;
+		const absolute = [...bg.matchAll(/([\\d.]+)px/g)].map((m) =>
+			Number.parseFloat(m[1]),
+		);
+		return absolute.length === 4 ? absolute : [];
 	};
 	const cueStops = stops(cue);
 	const persisted = (() => {
@@ -272,7 +287,15 @@ const launch = async (profileDir) => {
 
 const closeChrome = async (cdp, chrome) => {
 	try {
-		await cdp.send("Browser.close");
+		/*
+		 * RACED, NOT AWAITED. Chrome usually drops the debugging socket as it goes
+		 * down, so the reply to `Browser.close` may never arrive - and a promise that
+		 * never settles in `main` is not a failed run but a run that exits 13 with an
+		 * "unsettled top-level await" warning and no output at all (measured twice on
+		 * this rig, once mid-round). The exit listener below is what actually decides
+		 * the browser is gone; this call is only the polite request.
+		 */
+		await Promise.race([cdp.send("Browser.close"), sleep(2_000)]);
 	} catch {
 		/* The connection usually drops as the browser goes down with it. */
 	}
@@ -398,6 +421,23 @@ const captureHalf = async (half, origin, record) => {
 	for (const theme of THEMES) {
 		const profile = mkdtempSync(join(tmpdir(), `lo-measure-hover-${half}-`));
 		const { cdp, chrome } = await launch(profile);
+		/**
+		 * Poll the page until an expression is true, then return; throw if it never is.
+		 *
+		 * WHY NOT A SLEEP. Most states below are transitions (a 200ms intent delay
+		 * under a 150ms opacity ease, a panel that mounts on a timer), so a fixed wait
+		 * is a bet on how loaded this host is. The house rule is to wait on the event:
+		 * the beats this rig still spends a fixed time on (`EARLY_MS`,
+		 * `CONTESTED_MS`, `RESTED_MS`) are measuring the DWELL itself, where the beat
+		 * IS the subject; everywhere else waits for the thing it is about to photograph.
+		 */
+		const waitFor = async (expression, label) => {
+			for (let i = 0; i < 80; i++) {
+				if ((await cdp.evaluate(expression)) === true) return;
+				await sleep(50);
+			}
+			throw new Error(`${half}/${origin}: ${label} never settled`);
+		};
 		try {
 			await openStory(cdp, origin, theme);
 
@@ -520,6 +560,72 @@ const captureHalf = async (half, origin, record) => {
 			await sleep(120);
 			record(half, "keyboard-focus", theme, await cdp.evaluate(PROBE));
 			await shoot(cdp, half, "keyboard-focus", theme);
+
+			/*
+			 * THE TALL-CONTENT STATE - the cell round 1's blocker was found in, and the
+			 * one this pair could not show (design D1-2, and the reading both the design
+			 * round and the UX round had to leave the committed frames to make).
+			 *
+			 * The story's own pane never scrolls (`clientHeight == scrollHeight`), so the
+			 * column's middle and the visible middle are the same point and a cue
+			 * resting on either reads identically; the reviewers grew real content past a
+			 * pinned pane to tell them apart. The fix has to be photographed in THAT
+			 * state or the pair only ever shows the case that cannot fail.
+			 *
+			 * The clone is the story's own rendered prose (real markup, not a fixture)
+			 * and the scroller is clipped to 240px - the sibling `chat-measure-line`
+			 * rig's method, for the same reason. `tall-rest` is the diff reference for
+			 * `tall-hover` (same layout, cue at `opacity: 0`), so the ink reading stays a
+			 * pixel reading over committed frames rather than arithmetic on the gradient.
+			 *
+			 * TWO STATES ARE PARKED FIRST, and that is not tidiness. The step above is
+			 * `keyboard-focus`, which leaves the separator FOCUSED and the cue LIT -
+			 * `hovering` is set by focus and only `onBlur` clears it - so the first cut
+			 * of this step photographed a reference frame with the cue already showing and
+			 * the diff came back empty on one tree and panel-contaminated on the other.
+			 * Drop the focus, take the pointer off the band, and WAIT for the cue to
+			 * actually go dark: a fixed sleep here would be a race against a transition,
+			 * which is what the repo's own rule about waiting on the event is about.
+			 */
+			await cdp.evaluate(
+				"document.activeElement instanceof HTMLElement && document.activeElement.blur()",
+			);
+			await cdp.mouse("mouseMoved", 4, 4);
+			await waitFor(
+				`Number(getComputedStyle(document.querySelector('[data-lo-chat-measure-line="right"]')).opacity) === 0`,
+				"the cue to go dark once focus and the pointer are both off it",
+			);
+			await cdp.evaluate(`(() => {
+				const content = document.querySelector("[data-lo-transcript-content]");
+				const block = content && content.querySelector(".lo-markdown");
+				if (!block) return 0;
+				const parent = block.parentElement;
+				for (let i = 0; i < 12; i++) {
+					const clone = block.cloneNode(true);
+					clone.setAttribute("data-probe-clone", String(i));
+					parent.appendChild(clone);
+				}
+				const scroller = document.querySelector("[data-lo-canonical-transcript]");
+				scroller.style.height = "240px";
+				scroller.style.maxHeight = "240px";
+				scroller.style.flex = "none";
+				return document.querySelectorAll("[data-probe-clone]").length;
+			})()`);
+			await sleep(600);
+			const tall = await cdp.evaluate(PROBE);
+			record(half, "tall-rest", theme, tall);
+			await shoot(cdp, half, "tall-rest", theme);
+			await cdp.mouse(
+				"mouseMoved",
+				tall.handle.x,
+				(tall.pane.top + tall.pane.bottom) / 2,
+			);
+			await waitFor(
+				`Number(getComputedStyle(document.querySelector('[data-lo-chat-measure-line="right"]')).opacity) >= 0.99`,
+				"the cue to light on the tall pane",
+			);
+			record(half, "tall-hover", theme, await cdp.evaluate(PROBE));
+			await shoot(cdp, half, "tall-hover", theme);
 		} finally {
 			await closeChrome(cdp, chrome);
 			rmSync(profile, {
@@ -568,6 +674,18 @@ const main = async () => {
 				framePath(half, "hover-right", theme),
 				Math.round(rest.cueRect?.x ?? 0),
 			);
+			/*
+			 * And the same reading in the TALL-content state, where the cue's own
+			 * column extends far past the pane. Its two frames are one layout with the
+			 * cue lit and unlit, so the diff is the cue and nothing else - which is what
+			 * makes this the reading that catches round 1's blocker.
+			 */
+			const tallRest = by(half, "tall-rest", theme);
+			painted[`tall/${half}/${theme}`] = await paintedRows(
+				framePath(half, "tall-rest", theme),
+				framePath(half, "tall-hover", theme),
+				Math.round(tallRest.cueRect?.x ?? 0),
+			);
 		}
 	}
 
@@ -581,7 +699,9 @@ const main = async () => {
 			const dragging = by(half, "dragging", theme);
 			const reset = by(half, "after-reset", theme);
 			const focus = by(half, "keyboard-focus", theme);
+			const tallHover = by(half, "tall-hover", theme);
 			const ink = painted[`${half}/${theme}`];
+			const tallInk = painted[`tall/${half}/${theme}`];
 
 			/* 1. Rest: nothing drawn, nothing opened. */
 			if (Number(rest.cueOpacity) !== 0)
@@ -703,6 +823,48 @@ const main = async () => {
 				);
 
 			/*
+			 * 10. THE TALL-CONTENT STATE - round 1's blocker, as a reading.
+			 *
+			 * The pane is clipped to 240px and the column grown past it, which is the
+			 * ordinary shape of a real conversation and the one this story cannot show.
+			 * Whatever the cue is, it has to be where the reader can see it: the base
+			 * half's rule covers the pane by construction, and this head's bar must be
+			 * INSIDE it. The first cut of this change failed this reading - the bar
+			 * painted at the column's middle, hundreds of pixels above the pane, while
+			 * `opacity` read 1 (design D1-1, UX U1).
+			 *
+			 * It sits here, before the per-half geometry split below, because BOTH halves
+			 * have a claim to make in this state and the `continue` in that split would
+			 * otherwise skip the base half's.
+			 */
+			if (tallInk && tallInk.rows === 0)
+				fail(
+					`${half}/${theme}: the cue paints NOTHING on tall content - the pane is clipped and the column is not`,
+				);
+			else if (!tallHover.pane)
+				fail(`${half}/${theme}: no pane to read the tall-state ink against`);
+			else if (half === "before") {
+				/*
+				 * The retired rule IS the column, so it fills the pane - bounded by the
+				 * COLUMN's visible box rather than by the scroller's own, which is why the
+				 * bar under it reads `2..223` against a pane of `0..240`: the scroller's
+				 * box keeps its padding below the content, and the rule stops with the
+				 * column. `pane.h * 0.8` states "this is the rule" without pretending the
+				 * two boxes are the same, and a bar (62% of this pane) cannot satisfy it.
+				 */
+				if (tallInk.rows < tallHover.pane.h * 0.8)
+					fail(
+						`${half}/${theme}: the rule paints only ${tallInk.rows} rows of the ${Math.round(tallHover.pane.h)}px pane - it is the column's rule and should fill it`,
+					);
+			} else if (
+				tallInk.first < tallHover.pane.top - 1 ||
+				tallInk.last > tallHover.pane.bottom + 1
+			)
+				fail(
+					`${half}/${theme}: on tall content the cue paints at ${tallInk.first}..${tallInk.last}, outside the pane ${Math.round(tallHover.pane.top)}..${Math.round(tallHover.pane.bottom)} - the resting seat is not the pane's`,
+				);
+
+			/*
 			 * 9. THE CUE'S OWN GEOMETRY, per half - the half of the pair that IS the
 			 * change.
 			 *
@@ -745,6 +907,24 @@ const main = async () => {
 						`${half}/${theme}: the core (${rest.cueCore}px) is not inside the ink (${rest.cueInk}px)`,
 					);
 				/*
+				 * The texture does not change with the state: hover and drag move the SEAT,
+				 * not the bar. Read off the gradient in each state - the frame diff can only
+				 * be taken where the layout holds still, and these two states are the ones
+				 * where a `calc()` folding to a single length used to make the reading
+				 * `null`.
+				 */
+				for (const [step, reading] of [
+					["hover-right", hoverRight],
+					["dragging", dragging],
+				])
+					if (
+						reading.cueInk !== rest.cueInk ||
+						reading.cueCore !== rest.cueCore
+					)
+						fail(
+							`${half}/${theme}: at ${step} the cue reads ink ${reading.cueInk} / core ${reading.cueCore}, not ${rest.cueInk} / ${rest.cueCore} - the texture must not change with the seat`,
+						);
+				/*
 				 * The frame's own reading, against the paint's declaration. The outermost
 				 * stops are `transparent`, so the last row that DIFFERS from the rest
 				 * frame sits INSIDE the declared span; the tolerance is that soft edge
@@ -756,17 +936,19 @@ const main = async () => {
 						`${half}/${theme}: the frame paints ${ink.rows} rows of cue against a declared ${rest.cueInk}px - outside the fade's own soft edge`,
 					);
 				/*
-				 * The mid-height rest: the ink is centred on the element, which is
-				 * what "the bar rests in the middle" means as geometry rather than as
-				 * a look. Read off the frame so a hover frame taken while a stale
-				 * publication was still set could not pass.
+				 * WHERE THE RESTING BAR SITS. NOT the element's middle: the seat is the
+				 * one the panel anchors to, which on the pointer's path is the hand's own
+				 * Y. Round 1's blocker was exactly this arithmetic done against the wrong
+				 * box (`50%` of a column taller than the pane is off-screen), and the
+				 * frames' own centre is the reading that says so - not the CSS string.
+				 * Read off the frame, so a hover frame taken while a stale publication was
+				 * still set could not pass.
 				 */
 				if (ink && ink.first !== null) {
 					const inkCentre = (ink.first + ink.last) / 2;
-					const elementCentre = rest.cueRect.top + rest.cueRect.h / 2;
-					if (!near(inkCentre, elementCentre, 6))
+					if (!near(inkCentre, rest.handle.y, 8))
 						fail(
-							`${half}/${theme}: at rest the ink is centred at ${Math.round(inkCentre)} but the element is centred at ${Math.round(elementCentre)} - the bar does not rest at mid-height`,
+							`${half}/${theme}: the resting ink is centred at ${Math.round(inkCentre)} but the hand is at ${rest.handle.y} - the bar does not rest on the panel's own seat`,
 						);
 				}
 			}
