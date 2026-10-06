@@ -490,7 +490,7 @@ test("the sweep resolves a delivered claim nobody visits, and the message leaves
 		};
 	};
 	const outcome = await resolveHeldSendsFromServer();
-	assert.deepEqual(outcome, { visited: 1, resolved: 1 });
+	assert.deepEqual(outcome, { visited: 1, resolved: 1, healed: 0 });
 	const row = store.getState().drafts[HELD_KEY];
 	assert.notEqual(row, undefined, "the row stays - it is the message's home");
 	assert.equal(row.submittedText, undefined, "the claim's text is gone");
@@ -535,7 +535,7 @@ test("a sweep that does not find the message leaves the claim and its retry mate
 	const outcome = await resolveHeldSendsFromServer();
 	assert.deepEqual(
 		outcome,
-		{ visited: 1, resolved: 0 },
+		{ visited: 1, resolved: 0, healed: 0 },
 		"silence off one tail page is not a 'did not land' this reader can stand behind",
 	);
 	const row = store.getState().drafts[HELD_KEY];
@@ -557,7 +557,7 @@ test("a session whose history cannot be read resolves nothing", async () => {
 		throw new Error("the transport is down");
 	};
 	const outcome = await resolveHeldSendsFromServer();
-	assert.deepEqual(outcome, { visited: 1, resolved: 0 });
+	assert.deepEqual(outcome, { visited: 1, resolved: 0, healed: 0 });
 	assert.equal(
 		store.getState().drafts[HELD_KEY].submittedText,
 		"Can you check our google drive",
