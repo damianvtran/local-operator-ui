@@ -584,20 +584,74 @@ function iframeTypePage(frameOrigin) {
 </body></html>`;
 }
 
-const CARD_FRAME_PAGE = `<!doctype html>
+/**
+ * The card frame. The `_top` link is the one navigation a frame can start on the
+ * PAGE: ARCH-1 expected it to pause on the page session as a main-frame hop, so
+ * the origin gate still applies; §5c clicks it through the frame to measure that.
+ * It points at the frame's own origin, which the run never approves.
+ */
+function cardFramePage(frameOrigin) {
+	return `<!doctype html>
 <html><head><meta charset="utf-8"><title>Card frame</title></head>
 <body style="margin:8px;font:14px system-ui">
 <input id="number" type="text" autocomplete="cc-number" placeholder="1234 1234 1234 1234" />
+<a id="escape" href="${frameOrigin}/escaped" target="_top">leave</a>
+</body></html>`;
+}
+
+/** A Stripe-style frame with three fields: aimed at as an element, type must
+ * not guess which one is meant. */
+const MULTI_FRAME_PAGE = `<!doctype html>
+<html><head><meta charset="utf-8"><title>Multi frame</title></head>
+<body style="margin:8px;font:14px system-ui">
+<input id="number" type="text" placeholder="number" />
+<input id="expiry" type="text" placeholder="MM / YY" />
+<input name="cvc" type="text" placeholder="CVC" />
 </body></html>`;
 
-/** The second loopback server the iframe's document comes from. It serves only
- * the card frame; anything else is a 404 so a wrong URL is visible. */
+/** A frame with nothing editable in it: aimed at as an element, type keeps
+ * #851's honest refusal. */
+const BLANK_FRAME_PAGE = `<!doctype html>
+<html><head><meta charset="utf-8"><title>Blank frame</title></head>
+<body style="margin:8px;font:14px system-ui"><p>Nothing to type into here.</p></body></html>`;
+
+/** Served from 127.0.0.1 on the FRAME server's port: a different origin but the
+ * same site as the page, so Chromium keeps it in the page's process and it has
+ * no target of its own (measured, ARCH-1). */
+const SAMESITE_FRAME_PAGE = `<!doctype html>
+<html><head><meta charset="utf-8"><title>Same-site frame</title></head>
+<body style="margin:8px;font:14px system-ui">
+<input id="postcode" type="text" placeholder="Postcode" />
+</body></html>`;
+
+/** The page with the frames type must refuse or reach by other routes. */
+function iframeMorePage(frameOrigin, sameSiteOrigin) {
+	return `<!doctype html>
+<html><head><meta charset="utf-8"><title>Iframe refusal proof page</title>
+<style>body{font:14px system-ui;margin:0;padding:24px}iframe{width:360px;height:80px;border:1px solid #888;display:block;margin:8px 0}</style>
+</head><body>
+<h1>Iframe refusal proof page</h1>
+<iframe id="multi" title="Card details" src="${frameOrigin}/multi-frame"></iframe>
+<iframe id="blank" title="Notice" src="${frameOrigin}/blank-frame"></iframe>
+<iframe id="samesite" title="Postcode" src="${sameSiteOrigin}/samesite-frame"></iframe>
+</body></html>`;
+}
+
+/** The second loopback server the iframes' documents come from. It serves only
+ * the frames; anything else is a 404 so a wrong URL is visible. */
 function startFrameSite() {
 	const server = createServer((req, res) => {
 		const url = new URL(req.url, "http://localhost");
-		if (url.pathname === "/card-frame") {
+		const pages = {
+			"/card-frame": () => cardFramePage(`http://${req.headers.host}`),
+			"/multi-frame": () => MULTI_FRAME_PAGE,
+			"/blank-frame": () => BLANK_FRAME_PAGE,
+			"/samesite-frame": () => SAMESITE_FRAME_PAGE,
+		};
+		const page = pages[url.pathname];
+		if (page) {
 			res.writeHead(200, { "Content-Type": "text/html" });
-			res.end(CARD_FRAME_PAGE);
+			res.end(page());
 			return;
 		}
 		res.writeHead(404, { "Content-Type": "text/plain" });
@@ -666,6 +720,16 @@ function startSite(frameOrigin) {
 		if (url.pathname === "/iframe-type") {
 			res.writeHead(200, { "Content-Type": "text/html" });
 			res.end(iframeTypePage(frameOrigin));
+			return;
+		}
+		if (url.pathname === "/iframe-more") {
+			res.writeHead(200, { "Content-Type": "text/html" });
+			res.end(
+				iframeMorePage(
+					frameOrigin,
+					frameOrigin.replace("//localhost:", "//127.0.0.1:"),
+				),
+			);
 			return;
 		}
 		if (url.pathname === "/popup-target") {
@@ -1023,6 +1087,61 @@ async function cdpOnTarget(target, method, params = {}, id = 1) {
 		throw new Error(`${method}: ${message.error.message}`);
 	}
 	return message.result;
+}
+
+/** Several CDP requests on ONE socket, in order: an isolated world created on a
+ * socket is gone with it, so a read inside a same-process frame (which has no
+ * target of its own) needs its three steps on one connection. */
+async function cdpSequence(target, run) {
+	const socket = new WebSocket(target.webSocketDebuggerUrl);
+	await new Promise((resolve, reject) => {
+		socket.addEventListener("open", resolve, { once: true });
+		socket.addEventListener("error", reject, { once: true });
+	});
+	const pending = new Map();
+	socket.addEventListener("message", (event) => {
+		const incoming = JSON.parse(event.data);
+		const waiter = pending.get(incoming.id);
+		if (!waiter) return;
+		pending.delete(incoming.id);
+		if (incoming.error) waiter.reject(new Error(incoming.error.message));
+		else waiter.resolve(incoming.result);
+	});
+	let next = 0;
+	const send = (method, params = {}) =>
+		new Promise((resolve, reject) => {
+			next += 1;
+			pending.set(next, { resolve, reject });
+			socket.send(JSON.stringify({ id: next, method, params }));
+		});
+	try {
+		return await run(send);
+	} finally {
+		socket.close();
+	}
+}
+
+/** Evaluate inside a child frame of a page target, by the frame's url, from the
+ * PAGE target's own debugging socket — a read that shares nothing with the host
+ * under test. Used for a same-process frame, which has no target to read from. */
+async function frameEvaluate(pageTarget, urlPart, expression) {
+	return cdpSequence(pageTarget, async (send) => {
+		const { frameTree } = await send("Page.getFrameTree");
+		const frame = (frameTree.childFrames ?? []).find((child) =>
+			child.frame.url.includes(urlPart),
+		)?.frame;
+		if (!frame) return { error: `no frame whose url has ${urlPart}` };
+		const world = await send("Page.createIsolatedWorld", {
+			frameId: frame.id,
+			worldName: "proof-readback",
+		});
+		const out = await send("Runtime.evaluate", {
+			expression,
+			contextId: world.executionContextId,
+			returnByValue: true,
+		});
+		return { value: out?.result?.value, url: frame.url };
+	});
 }
 
 /**
@@ -2059,22 +2178,25 @@ async function main() {
 	);
 	await rpcOk(state, "close", { tab: geometryTab.tab });
 
-	// --- 5c. type aimed at a cross-site iframe --------------------------------
+	// --- 5c. type into fields inside iframes ----------------------------------
 	/*
-	 * The refusal, on a real Chromium page: `type` at the iframe ELEMENT must fail
-	 * with `element_not_found` naming the cause, and must leave nothing behind —
-	 * no `value` expando on the frame element, no text in the frame's own field.
-	 * The frame's field is read from the frame's OWN target over CDP, because the
-	 * top document cannot see into a cross-site frame (which is the point).
+	 * ARCH-1: a field inside a frame is reachable through the frame's own CDP
+	 * session. Every claim below is READ BACK from the frame's OWN target over the
+	 * devtools port, never from the host's reply: the host's read-back is the code
+	 * under test. Before this change every one of these answered #851's refusal;
+	 * the honesty that refusal bought is kept by the multi-field and no-field
+	 * frames further down.
 	 */
 	const iframeTab = await rpcOk(state, "open", {
 		url: `${siteOrigin}/iframe-type`,
 		requester: "session:proof",
 	});
-	const frameTargets = async () =>
+	const frameTargets = async (path = "/card-frame") =>
 		(await targets()).filter(
 			(target) =>
-				target.type === "iframe" && target.url.startsWith(frameOrigin),
+				target.type === "iframe" &&
+				target.url.startsWith(frameOrigin) &&
+				target.url.includes(path),
 		);
 	let frameTarget = null;
 	for (let attempt = 0; attempt < 40 && !frameTarget; attempt += 1) {
@@ -2088,58 +2210,191 @@ async function main() {
 			? `iframe target ${frameTarget.url} (page ${siteOrigin}/iframe-type)`
 			: `no iframe target for ${frameOrigin}; targets: ${JSON.stringify((await targets()).map((target) => `${target.type} ${target.url}`))}`,
 	);
-	const cardText = "4242424242424242";
-	const iframeTyped = await rpc(state, "type", {
-		tab: iframeTab.tab,
-		selector: "#card",
-		text: cardText,
-	});
-	check(
-		"type aimed at the iframe is the typed element_not_found refusal naming the cause, not a false 'Value is now'",
-		iframeTyped.json?.ok === false &&
-			iframeTyped.json.error?.code === "element_not_found" &&
-			/not an editable field/.test(iframeTyped.json.error?.message ?? "") &&
-			/iframe/.test(iframeTyped.json.error?.message ?? ""),
-		`type {selector: "#card", text: "${cardText}"} -> ${iframeTyped.text}`,
-	);
 	const pageTarget = await waitForTarget(
 		(target) => target.url === `${siteOrigin}/iframe-type`,
 		"the iframe proof page's target",
+	);
+	const frameNumber = async () => {
+		if (!frameTarget) return { error: "no frame target" };
+		const read = await targetEvaluate(
+			frameTarget,
+			"JSON.stringify({ origin: location.origin, number: document.getElementById('number').value })",
+		);
+		return read.value ? JSON.parse(read.value) : read;
+	};
+	const typedInFrame = async (label, selector, text) => {
+		const typed = await rpc(state, "type", {
+			tab: iframeTab.tab,
+			selector,
+			text,
+		});
+		const field = await frameNumber();
+		check(
+			label,
+			typed.json?.ok === true &&
+				typed.json.result?.frame_origin === frameOrigin &&
+				field.number === text &&
+				field.origin === frameOrigin,
+			`type {selector: ${JSON.stringify(selector)}, text: "${text}"} -> ${typed.text}\nframe target #number (read over devtools) -> ${JSON.stringify(field)}`,
+		);
+	};
+	await typedInFrame(
+		"type aimed at the iframe ELEMENT lands in its one field, read back from the frame's own target",
+		"#card",
+		"4000056655665556",
 	);
 	const expando = await targetEvaluate(
 		pageTarget,
 		"JSON.stringify({ hasOwnValue: Object.prototype.hasOwnProperty.call(document.getElementById('card'), 'value'), value: String(document.getElementById('card').value) })",
 	);
-	const frameField = frameTarget
-		? await targetEvaluate(
-				frameTarget,
-				"JSON.stringify({ origin: location.origin, number: document.getElementById('number').value })",
-			)
-		: { error: "no frame target" };
 	check(
-		"nothing was written: no value expando on the iframe element, and the frame's own field is empty",
+		"nothing was planted on the iframe element itself",
 		expando.value ===
-			JSON.stringify({ hasOwnValue: false, value: "undefined" }) &&
-			typeof frameField.value === "string" &&
-			JSON.parse(frameField.value).number === "",
-		`top document #card -> ${expando.value ?? expando.error}\nframe document #number -> ${frameField.value ?? frameField.error}`,
+			JSON.stringify({ hasOwnValue: false, value: "undefined" }),
+		`top document #card -> ${expando.value ?? expando.error}`,
 	);
+	await typedInFrame(
+		"an explicit hop `iframe#card >>> #number` lands",
+		"iframe#card >>> #number",
+		"5555555555554444",
+	);
+	await typedInFrame(
+		"a selector the page misses (`#number`) is found in the one frame that has it, and lands",
+		"#number",
+		"378282246310005",
+	);
+	const frameSnap = await rpcOk(state, "snapshot", { tab: iframeTab.tab });
+	const frameBlock = frameSnap.snapshot.slice(
+		Math.max(0, frameSnap.snapshot.indexOf("- frame iframe#card")),
+	);
+	const frameRef = /- textbox[^\n]*\[(e\d+)\]/.exec(frameBlock)?.[1] ?? null;
+	check(
+		"snapshot shows the frame's own tree, with a ref for its textbox",
+		frameSnap.snapshot.includes("- frame iframe#card") && frameRef !== null,
+		`snapshot ->\n${frameSnap.snapshot}`,
+	);
+	const cardText = "4242424242424242";
+	if (frameRef) {
+		const typed = await rpc(state, "type", {
+			tab: iframeTab.tab,
+			ref: frameRef,
+			text: cardText,
+		});
+		const field = await frameNumber();
+		check(
+			"type by that ref lands in the frame",
+			typed.json?.ok === true && field.number === cardText,
+			`type {ref: "${frameRef}", text: "${cardText}"} -> ${typed.text}\nframe target #number -> ${JSON.stringify(field)}`,
+		);
+	}
 	const holderTyped = await rpc(state, "type", {
 		tab: iframeTab.tab,
 		selector: "#holder",
 		text: "Ada Lovelace",
 	});
 	check(
-		"the control: type on the same page's top-level field still lands",
+		"the control: type on the same page's top-level field lands exactly as before, with no frame_origin",
 		holderTyped.json?.ok === true &&
-			holderTyped.json.result?.value === "Ada Lovelace",
+			holderTyped.json.result?.value === "Ada Lovelace" &&
+			holderTyped.json.result?.via === "insert_text" &&
+			!("frame_origin" in (holderTyped.json.result ?? {})),
 		`type {selector: "#holder"} -> ${holderTyped.text}`,
 	);
 	const iframeShotPath = join(OUT_DIR, "iframe-type.png");
 	const iframeShot = await rpcOk(state, "screenshot", { tab: iframeTab.tab });
 	writeFileSync(iframeShotPath, Buffer.from(iframeShot.data, "base64"));
 	say(`iframe page frame: ${iframeShotPath}`);
+
+	// A `_top` navigation started INSIDE the frame, toward an origin this run never
+	// approved (the frame's own): it must be gated like any main-frame hop. ARCH-1
+	// left this unmeasured; the page must still be the approved one afterwards.
+	const escapeClick = await rpc(state, "click", {
+		tab: iframeTab.tab,
+		selector: "iframe#card >>> #escape",
+	});
+	await sleep(500);
+	const escapedTo = (await targets()).filter(
+		(target) => target.type === "page" && target.url.includes("/escaped"),
+	);
+	check(
+		"a _top link clicked inside the frame does not carry the tab to an unapproved origin",
+		escapedTo.length === 0 &&
+			(escapeClick.json?.ok === false ||
+				escapeClick.json?.result?.url === `${siteOrigin}/iframe-type`),
+		`click {selector: "iframe#card >>> #escape"} -> ${escapeClick.text}\npage targets at /escaped: ${escapedTo.length}`,
+	);
 	await rpcOk(state, "close", { tab: iframeTab.tab });
+
+	// The refusals that keep #851's honesty, and the same-site frame.
+	const moreTab = await rpcOk(state, "open", {
+		url: `${siteOrigin}/iframe-more`,
+		requester: "session:proof",
+	});
+	let multiTarget = null;
+	for (let attempt = 0; attempt < 40 && !multiTarget; attempt += 1) {
+		multiTarget = (await frameTargets("/multi-frame"))[0] ?? null;
+		if (!multiTarget) await sleep(250);
+	}
+	const blankFrameTarget = (await frameTargets("/blank-frame"))[0] ?? null;
+	const multiTyped = await rpc(state, "type", {
+		tab: moreTab.tab,
+		selector: "#multi",
+		text: "4242424242424242",
+	});
+	const multiFields = multiTarget
+		? await targetEvaluate(
+				multiTarget,
+				"JSON.stringify(Array.from(document.querySelectorAll('input')).map((i) => i.value))",
+			)
+		: { error: "no multi-field frame target" };
+	check(
+		"type at a frame holding several fields refuses, lists each as a >>> path, and types nothing",
+		multiTyped.json?.ok === false &&
+			multiTyped.json.error?.code === "element_not_found" &&
+			/iframe#multi >>> #number/.test(multiTyped.text) &&
+			/iframe#multi >>> #expiry/.test(multiTyped.text) &&
+			/cvc/.test(multiTyped.text) &&
+			multiFields.value === JSON.stringify(["", "", ""]),
+		`type {selector: "#multi"} -> ${multiTyped.text}\nframe target inputs -> ${multiFields.value ?? multiFields.error}`,
+	);
+	const blankTyped = await rpc(state, "type", {
+		tab: moreTab.tab,
+		selector: "#blank",
+		text: "4242424242424242",
+	});
+	const blankText = blankFrameTarget
+		? await targetEvaluate(blankFrameTarget, "document.body.innerText")
+		: { error: "no blank frame target" };
+	check(
+		"type at a frame with no editable field is still #851's refusal, and writes nothing",
+		blankTyped.json?.ok === false &&
+			blankTyped.json.error?.code === "element_not_found" &&
+			/not an editable field/.test(blankTyped.text) &&
+			!String(blankText.value ?? "").includes("4242"),
+		`type {selector: "#blank"} -> ${blankTyped.text}\nframe target text -> ${JSON.stringify(blankText.value ?? blankText.error)}`,
+	);
+	const morePage = await waitForTarget(
+		(target) => target.url === `${siteOrigin}/iframe-more`,
+		"the refusal page's target",
+	);
+	const sameSiteTyped = await rpc(state, "type", {
+		tab: moreTab.tab,
+		selector: "iframe#samesite >>> #postcode",
+		text: "SW1A 1AA",
+	});
+	const postcode = await frameEvaluate(
+		morePage,
+		"/samesite-frame",
+		"document.getElementById('postcode').value",
+	);
+	check(
+		"a same-site frame (in the page's process, no target of its own) is reached through its document, and lands",
+		sameSiteTyped.json?.ok === true &&
+			postcode.value === "SW1A 1AA" &&
+			typeof sameSiteTyped.json.result?.frame_origin === "string",
+		`type {selector: "iframe#samesite >>> #postcode"} -> ${sameSiteTyped.text}\nframe document #postcode (page target, isolated world in that frame) -> ${JSON.stringify(postcode)}`,
+	);
+	await rpcOk(state, "close", { tab: moreTab.tab });
 
 	// --- 5d. the hidden view's page viewport, and what a capture does to it ----
 	/*
