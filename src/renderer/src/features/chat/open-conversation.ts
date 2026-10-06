@@ -7,16 +7,25 @@ import type { NavigateFunction } from "react-router-dom";
  *
  * WHAT "A SWITCH" MEANS, AND WHAT IS OUTSIDE IT. This owns the URL write of the
  * three entrances that MOVE THE VIEW ONTO A CONVERSATION: the sidebar's rows, the
- * command palette and the `/chat` slash rebind. It is not every URL that names a
- * chat - `chat-page.tsx`'s send path re-points the URL once a draft's session has
- * materialised, and `app.tsx`, `agents-sidebar.tsx`, `legacy-agents-page.tsx`,
- * `use-download-agent-mutation.ts` and `onboarding-modal.tsx` write `/chat/<id>`
- * for somewhere the user is being SENT TO. Those are URL-first: they write the
- * route and let the effect open it, so none of them can defer a write behind a
- * read and none carries the defect this file exists for. What is checked by
- * `session-switch.test.mjs` is not "no other file writes a chat URL" - it is that
- * no `/chat/<id>` write in the renderer is a switch the arms have not met, with
- * every site listed and its reason given.
+ * command palette's conversation rows and the `/chat` slash rebind. It is not
+ * every URL that names a chat - `chat-page.tsx`'s send path re-points the URL once
+ * a draft's session has materialised, and the Schedules and Projects rows, plus
+ * the palette's own chat-panel entry, write `/chat/<session id>` for somewhere the
+ * user is being SENT TO. Those are URL-first: they write the route and let the
+ * effect open it, so none of them can defer a write behind a read and none carries
+ * the defect this file exists for. What is checked by `session-switch.test.mjs` is
+ * not "no other file writes a chat URL" - it is that no `/chat/<id>` write in the
+ * renderer is a switch the arms have not met, with every site listed and its reason
+ * given.
+ *
+ * THE AGENT ENTRANCES ARE NOT AMONG THEM ANY MORE (issues #844/#849), and this
+ * paragraph used to name them: `app.tsx`'s create-agent landing, the agents
+ * sidebar's "Chat with agent", the legacy agents page's Chat button, the agent-hub
+ * download landing and the palette's agent row all wrote `/chat/<agent id>`. That
+ * route has no non-session fallback (the store's `sessionByAgent` map had a reader
+ * and no writer), so each of them read as a broken legacy link. They stage a DRAFT
+ * now - `stageDraft({ kind, name })` then `/chat` - which is not a switch onto an
+ * existing conversation and so is deliberately not a caller of this rule.
  *
  * WHY THE URL MOVES WITH THE COMMIT AND NOT BEHIND THE GUARD READ. `openSession`
  * commits `activeSessionId` in the caller's own frame and validates behind that

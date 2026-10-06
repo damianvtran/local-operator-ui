@@ -230,6 +230,14 @@ export function usePaletteItems({
 	const { scope, terms } = parsePaletteQuery(query);
 	const wantsChats = scope === null || scope === "chat";
 	const wantsAgents = scope === null || scope === "agent";
+	/*
+	 * Teams ride the SAME scope the roster does (issue #849): `@` reads "the things
+	 * I can start a chat with", and a team is one of them. A name of its own rather
+	 * than a reuse of `wantsAgents` because the two rows come from two catalogues
+	 * with two gates; the scope each reads is the identical expression, which is
+	 * what keeps them together when the scope table changes.
+	 */
+	const wantsTeams = scope === null || scope === "agent";
 	const wantsSettings = scope === null || scope === "setting";
 
 	const capabilities = useDesktopCapabilities();
@@ -253,14 +261,19 @@ export function usePaletteItems({
 		2,
 	);
 	/*
-	 * The team label lookup for the CHAT ROWS' hint, fetched only when this
-	 * palette can draw chats and the backend advertises the team catalogue - the
-	 * same gate the sidebar's own list carries, so the two surfaces agree about
-	 * how a bound team reads. Absent (gate off, list still landing), the map is
-	 * empty and the slug remains the string, which is the pre-labels pixel.
+	 * The team catalogue, for the CHAT ROWS' hint labels AND for the palette's own
+	 * team rows (issue #849). Widened from `wantsChats` to the roster scope so the
+	 * `@` view can draw teams: before this the call was made only to resolve a
+	 * binding's slug to its label, and a `@team` query would have had nothing to
+	 * draw. The gate is the sidebar's own (`team_catalogue`), so the two surfaces
+	 * agree about which teams exist.
+	 *
+	 * Absent (gate off, list still landing), the map is empty and the slug remains
+	 * the string, which is the pre-labels pixel; the rows simply do not appear.
 	 */
 	const teamNames = useTeams(
-		wantsChats && desktopFeatureEnabled(capabilities.data, "team_catalogue"),
+		(wantsChats || wantsTeams) &&
+			desktopFeatureEnabled(capabilities.data, "team_catalogue"),
 	);
 	const teamLabels = useMemo(
 		() =>
@@ -541,22 +554,43 @@ export function usePaletteItems({
 		 */
 		const items: PaletteItem[] = [];
 		for (const agent of agents) {
-			items.push({
-				id: `agent-chat-${agent.id}`,
-				kind: "agent",
-				group: "agents",
-				name: agent.name,
-				hint: "Open chat",
-				icon: "chat",
-				keywords: agent.tags,
-				target: { type: "path", path: `/chat/${agent.id}` },
-				/*
-				 * In the browse list only the chat row is offered: five agents as ten
-				 * rows is a wall, and the settings row is what a search for the agent
-				 * BY NAME turns up, which is a search rather than a browse.
-				 */
-				featured: terms.length === 0,
-			});
+			/*
+			 * The chat row is the DRAFT DOOR (issue #844). It used to carry a `path`
+			 * target naming the `/chat/<agent id>` route, a route whose only
+			 * non-session fallback (`sessionByAgent`) had a reader and no writer, so
+			 * every press landed on the "legacy link" notice. It now stages the same
+			 * `draft:agent:<name>` row the sidebar's "New chat with <name>" and the agent
+			 * page's own New chat produce, so the palette is a second door to that room
+			 * rather than a second implementation of one.
+			 *
+			 * Gated on `canStageDraft` (the sidebar's own New-chat gate): this row's
+			 * only action is to stage a draft, so a backend that cannot create sessions
+			 * must not be offered it. The settings row below is unaffected - it opens a
+			 * registry-backed page, not a draft.
+			 */
+			if (canStageDraft)
+				items.push({
+					id: `agent-chat-${agent.id}`,
+					kind: "agent",
+					group: "agents",
+					name: agent.name,
+					/*
+					 * The kind is IN the hint (issue #849): the `@` scope draws agents and
+					 * teams together, a team may share an agent's name, and the section
+					 * heading is off-screen the moment the list scrolls. "Agent chat" vs
+					 * "Team chat" is the one word that tells the pair apart.
+					 */
+					hint: "Agent chat",
+					icon: "chat",
+					keywords: agent.tags,
+					target: { type: "draft", kind: "agent", name: agent.name },
+					/*
+					 * In the browse list only the chat row is offered: five agents as ten
+					 * rows is a wall, and the settings row is what a search for the agent
+					 * BY NAME turns up, which is a search rather than a browse.
+					 */
+					featured: terms.length === 0,
+				});
 			items.push({
 				id: `agent-settings-${agent.id}`,
 				kind: "agent",
@@ -571,7 +605,48 @@ export function usePaletteItems({
 		// Definition order is the backend's own (newest first), which is the order
 		// a browse list wants and a stable tie-break a search can rely on.
 		return items.map((item, index) => ({ ...item, order: index }));
-	}, [roster.data, nameFiltered.data, terms.length, wantsAgents]);
+	}, [
+		canStageDraft,
+		roster.data,
+		nameFiltered.data,
+		terms.length,
+		wantsAgents,
+	]);
+
+	/* -------------------------------- teams -------------------------------- */
+
+	const teamItems = useMemo(() => {
+		if (!wantsTeams) return [];
+		/*
+		 * One row per team (issue #849), from the SAME `useTeams` call the chat rows'
+		 * labels come from - one fetch, one answer about which teams exist. The row's
+		 * action is the draft door, so it is gated on `canStageDraft` exactly as the
+		 * sidebar's "New chat with <label>" rows are.
+		 *
+		 * WHAT THE ROW READS vs WHAT IT STAGES: `name` is the team's display label
+		 * (the string a person reads, `teamDisplayName`'s rule), while the draft's key
+		 * is the SLUG (`team.name`) - the string the sidebar's rows, the catalogue
+		 * keys and the wire all address a team by, so the palette and the sidebar
+		 * stage the same `draft:team:<slug>` row rather than two drafts for one team.
+		 */
+		if (!canStageDraft) return [];
+		return (teamNames.data ?? []).map((team, index) => ({
+			id: `team-chat-${team.name}`,
+			kind: "team" as const,
+			group: "teams" as const,
+			name: teamDisplayName(team),
+			hint: "Team chat",
+			icon: "team" as const,
+			keywords: [team.name, ...(team.aliases ?? [])],
+			target: {
+				type: "draft" as const,
+				kind: "team" as const,
+				name: team.name,
+			},
+			featured: terms.length === 0,
+			order: index,
+		}));
+	}, [canStageDraft, teamNames.data, terms.length, wantsTeams]);
 
 	/* ------------------------------- settings ------------------------------- */
 
@@ -756,6 +831,7 @@ export function usePaletteItems({
 			...panelItems,
 			...settingItems,
 			...agentItems,
+			...teamItems,
 			...chatItems,
 		],
 		[
@@ -767,6 +843,7 @@ export function usePaletteItems({
 			panelItems,
 			settingItems,
 			agentItems,
+			teamItems,
 			chatItems,
 		],
 	);

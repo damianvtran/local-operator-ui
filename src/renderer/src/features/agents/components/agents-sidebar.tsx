@@ -37,6 +37,7 @@ import {
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { cn } from "@shared/lib/utils";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Bot } from "lucide-react";
 import type { FC } from "react";
@@ -68,7 +69,12 @@ type AgentsSidebarItemProps = {
 	agent: AgentDetails;
 	isSelected: boolean;
 	onSelectAgent: (agent: AgentDetails) => void;
-	onChatWithAgent: (agentId: string) => void;
+	/*
+	 * The whole row rather than its id, because the chat this opens is a DRAFT
+	 * keyed by the agent's NAME (issue #844): `/chat/<agent id>` had no non-session
+	 * fallback in the store, so the button always landed on the legacy-link notice.
+	 */
+	onChatWithAgent: (agent: AgentDetails) => void;
 	onExportAgent: (agentId: string) => void;
 	onAgentDeleted: (deletedAgentId: string) => void;
 	onUploadAgentToHub: (agent: AgentDetails) => void;
@@ -199,7 +205,7 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 							agentName={agent.name}
 							isAgentsPage={true}
 							onAgentDeleted={() => onAgentDeleted(agent.id)}
-							onChatWithAgent={() => onChatWithAgent(agent.id)}
+							onChatWithAgent={() => onChatWithAgent(agent)}
 							onExportAgent={() => onExportAgent(agent.id)}
 							onUploadAgentToHub={() => onUploadAgentToHub(agent)}
 							buttonSx={{
@@ -413,8 +419,17 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 	);
 
 	const handleChatWithAgent = useCallback(
-		(agentId: string) => {
-			navigate(`/chat/${agentId}`);
+		(agent: AgentDetails) => {
+			/*
+			 * THE DRAFT DOOR (issue #844): the same `stageDraft({ kind: "agent", name })`
+			 * then `/chat` the sidebar's "New chat with <name>" rows and the agent page's
+			 * own New chat use - so this button resumes the agent-keyed draft rather than
+			 * fabricating a route the store cannot resolve.
+			 */
+			useCanonicalSessionsStore
+				.getState()
+				.stageDraft({ kind: "agent", name: agent.name });
+			navigate("/chat");
 		},
 		[navigate],
 	);
