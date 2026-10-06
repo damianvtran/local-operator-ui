@@ -2155,8 +2155,144 @@ export const STORIES = [
 		220,
 		{
 			press: '[data-header-identity="agent"]',
-			expectPresent: '[data-header-identity-menu="agent"]',
+			/*
+			 * THE CONSTRAINED PANEL (issue #861): the team's rule is stated above
+			 * the list (the caption hook), a near-miss row is listed DISABLED
+			 * with its reason, and the accepted seats stay settable beside it.
+			 * Each half fails the run alone - a caption with no disabled rows, a
+			 * disabled row under no caption, or a panel that disabled everything
+			 * - and `expectGone` keeps the cue off the chip, because this story
+			 * has no explicit agent to flag (the implicit manager seat is always
+			 * accepted).
+			 */
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-constraint]",
+				'[data-header-identity-menu="agent"] [role="option"][aria-disabled="true"]',
+				'[data-header-identity-menu="agent"] [role="option"]:not([aria-disabled])',
+			],
+			expectGone: "[data-header-identity-cue]",
 			dir: "agent-menu-open",
+		},
+	],
+	[
+		"chat-header-identity--team-bound",
+		560,
+		640,
+		{
+			press: '[data-header-identity="agent"]',
+			/*
+			 * The constrained roster at a height the whole rule fits in (issue
+			 * #861): the manager (while CURRENT) and the delegating profile settable,
+			 * the two leaves disabled with their reason, the caption above them -
+			 * the frame a reader checks the rule against without scrolling, beside
+			 * the 220px sibling where the bound already binds.
+			 */
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-constraint]",
+				'[data-header-identity-menu="agent"] [role="option"][data-current]:not([aria-disabled])',
+				'[data-header-identity-menu="agent"] [role="option"][aria-disabled="true"]',
+			],
+			dir: "constrained-agent-open",
+		},
+	],
+	/*
+	 * THE AGENT SIDE OF THE PANEL'S TWO HONEST STATES (issue #861). The panel
+	 * is the surface this change marks up, so its empty and refused answers get
+	 * agent-side frames of their own rather than the team half standing in:
+	 * the SAME stories, driven through the agent trigger. Neither state
+	 * renders the constraint caption - there is no list for a rule to be about.
+	 */
+	[
+		"chat-header-identity--team-menu-empty",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: '[data-header-identity-menu="agent"]',
+			dir: "agent-menu-empty",
+		},
+	],
+	[
+		"chat-header-identity--team-menu-refused",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-error]",
+			],
+			dir: "agent-menu-refused",
+		},
+	],
+	/*
+	 * THE PAIR THAT CANNOT STAND (issue #861): `coder` is a leaf - not
+	 * `lopdev`'s manager, and `delegate: false` - so the header must SAY so
+	 * without hiding the persona. Three claims, each falsifiable:
+	 *
+	 * - `conflict-chip`: the cue at rest - the warning mark the unfixed header
+	 *   does not draw, asserted on the chip itself.
+	 * - `conflict-agent-open`: the panel where one pick resolves it - the rule
+	 *   stated, the current refused row listed `disabled` with its reason, and
+	 *   settable rows beside it (the ordering is the resolution path).
+	 * - `conflict-chip-loading` / `agent-menu-loading`: the SAME pair with a
+	 *   roster that never answers - the cue must be GONE (the false cue the
+	 *   brief forbids) and the panel must show its loading line with no
+	 *   caption, because a rule stated before its roster answered would be a
+	 *   claim about a team made from data this app does not have.
+	 */
+	[
+		"chat-header-identity--incompatible-pair",
+		560,
+		84,
+		{
+			expectPresent:
+				'[data-header-identity="agent"] [data-header-identity-cue]',
+			dir: "conflict-chip",
+		},
+	],
+	[
+		"chat-header-identity--incompatible-pair",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-constraint]",
+				'[data-header-identity-menu="agent"] [role="option"][data-current][aria-disabled="true"]',
+				'[data-header-identity-menu="agent"] [role="option"]:not([aria-disabled])',
+				'[data-header-identity="agent"] [data-header-identity-cue]',
+			],
+			dir: "conflict-agent-open",
+		},
+	],
+	[
+		"chat-header-identity--incompatible-pair-loading",
+		560,
+		84,
+		{
+			expectGone: "[data-header-identity-cue]",
+			dir: "conflict-chip-loading",
+		},
+	],
+	[
+		"chat-header-identity--incompatible-pair-loading",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-loading]",
+			],
+			expectGone: [
+				"[data-header-identity-constraint]",
+				"[data-header-identity-cue]",
+			],
+			dir: "agent-menu-loading",
 		},
 	],
 	/*
@@ -2365,7 +2501,20 @@ export const STORIES = [
 			dir: "assign-team-menu",
 		},
 	],
-	["chat-header-identity--agent-and-team", 560, 84],
+	[
+		"chat-header-identity--agent-and-team",
+		560,
+		84,
+		{
+			/*
+			 * The pair is LEGAL - a delegating profile beside `lopdev`'s manager -
+			 * so the cue must NOT be there (issue #861). This is the claim that
+			 * keeps a name-inequality regression from flagging the coordinating
+			 * profiles the rule accepts.
+			 */
+			expectGone: "[data-header-identity-cue]",
+		},
+	],
 	["chat-header-identity--before", 560, 84],
 	/* The operator's own width: the same arrangement the screenshot showed. */
 	["chat-header-identity--wide", 1380, 84],
@@ -2528,6 +2677,15 @@ export const STORIES = [
 			expectPresent: [
 				'[data-header-identity-menu="agent"]',
 				'[data-header-identity-menu="agent"] [role="option"]',
+				/*
+				 * The constraint travels to the 150-name roster (issue #861): the
+				 * caption is up, a leaf row is disabled with its reason, and the
+				 * first settable non-manager row (`architect`, a delegating
+				 * profile) is on screen beside them.
+				 */
+				"[data-header-identity-constraint]",
+				'[data-header-identity-menu="agent"] [role="option"][aria-disabled="true"]',
+				'[data-header-identity-menu="agent"] [role="option"]:not([aria-disabled])',
 			],
 			dir: "long-roster-agent-open",
 		},

@@ -69,9 +69,13 @@ const bundle = await build({
 });
 
 const {
+	IDENTITY_AGENT_NOT_SETTABLE_REASON,
 	IDENTITY_MENU_MAX_HEIGHT,
 	IDENTITY_MENU_MAX_HEIGHT_CLASS,
 	PROFILE_RECENTS_LIMIT,
+	identityAgentConstraint,
+	identityAgentConstraintCaption,
+	identityAgentSettable,
 	identityMenuBands,
 	identityMenuFooter,
 	identityMenuHeadings,
@@ -415,4 +419,108 @@ test("the ring update is pure, so the store action has no arithmetic of its own"
 	const ring = ["a", "b"];
 	pushProfileRecent(ring, "c");
 	assert.deepEqual(ring, ["a", "b"]);
+});
+
+test("the acceptance predicate: the manager always, a delegating profile beside it", () => {
+	/*
+	 * `settable(name) = name === manager || delegate === true` - the rule the
+	 * runtime half (damianvtran/local-operator#2014) enforces and the agent
+	 * slot's one predicate in this tree (issue #861). Pinned on its two edges:
+	 * the manager is settable WHATEVER its flag reads (it runs the team, so it
+	 * can always take its own seat - a `false` flag cannot evict it), and only
+	 * `=== true` delegates - an explicit false, a missing field and a null all
+	 * answer "not settable", which is the `delegate !== true` half of the rule
+	 * stated as one comparison.
+	 */
+	assert.equal(
+		identityAgentSettable({
+			name: "manager",
+			manager: "manager",
+			delegate: false,
+		}),
+		true,
+	);
+	assert.equal(
+		identityAgentSettable({
+			name: "architect",
+			manager: "manager",
+			delegate: true,
+		}),
+		true,
+	);
+	assert.equal(
+		identityAgentSettable({
+			name: "coder",
+			manager: "manager",
+			delegate: false,
+		}),
+		false,
+	);
+	assert.equal(
+		identityAgentSettable({
+			name: "coder",
+			manager: "manager",
+			delegate: undefined,
+		}),
+		false,
+	);
+	assert.equal(
+		identityAgentSettable({
+			name: "coder",
+			manager: "manager",
+			delegate: null,
+		}),
+		false,
+	);
+	// An unknown manager is not a match and not a default: no caller applies
+	// the predicate against one (see `identityAgentConstraint`), and the pure
+	// comparison must not invent the manager it did not get.
+	assert.equal(
+		identityAgentSettable({ name: "coder", manager: null, delegate: false }),
+		false,
+	);
+	assert.equal(
+		identityAgentSettable({ name: "coder", manager: null, delegate: true }),
+		true,
+	);
+});
+
+test("the constraint exists only over a KNOWN manager, and names the team", () => {
+	/*
+	 * A null manager is "not known" (no team bound, or the catalogue has not
+	 * answered), and the panel must not constrain or explain against it:
+	 * disabling the wrong rows is a claim about a team rather than about a
+	 * load. The caption names the team with the string the chip shows, so the
+	 * panel and a flagged chip speak one sentence.
+	 */
+	assert.equal(
+		identityAgentConstraint({ teamLabel: "No team", manager: null }),
+		null,
+	);
+	assert.deepEqual(
+		identityAgentConstraint({
+			teamLabel: "Local Operator Dev",
+			manager: "manager",
+		}),
+		{
+			manager: "manager",
+			caption:
+				"Local Operator Dev is led by its manager; only coordinating profiles can take this seat.",
+		},
+	);
+});
+
+test("the rule's copy is pinned as the design round's candidate", () => {
+	// These strings are the copy candidates the brief lands with; the design
+	// round weighs them against the core half's refusal wording. Pinned so a
+	// JSX edit cannot quietly reword a claim the captured frames are read
+	// against.
+	assert.equal(
+		identityAgentConstraintCaption("lopdev"),
+		"lopdev is led by its manager; only coordinating profiles can take this seat.",
+	);
+	assert.equal(
+		IDENTITY_AGENT_NOT_SETTABLE_REASON,
+		"Only the team's manager and coordinating profiles can take this seat.",
+	);
 });

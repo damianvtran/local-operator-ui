@@ -35,6 +35,7 @@ const {
 	DEFAULT_TEAM_MANAGER,
 	NO_AGENT_LABEL,
 	NO_TEAM_LABEL,
+	headerIdentityAgentFlagged,
 	headerIdentityControlsShown,
 	resolveHeaderIdentity,
 } = await import(
@@ -244,4 +245,87 @@ test("the gate: shown only for a live session on a capable backend", () => {
 	// snapshot never said the session is unattached, so the assign affordance
 	// must not stand over it (the description chip holds the slot instead).
 	assert.equal(shown({}), false);
+});
+
+test("the team's manager is the row's own value, known only while the row is", () => {
+	/*
+	 * `teamManager` is what the agent slot's constraint reads (issue #861), so
+	 * its states are load-bearing: a bound team whose row has answered yields
+	 * the row's manager; a row that carries none yields the runtime's own
+	 * default (`Team.manager` declares `manager: str = "manager"`, the same
+	 * value the label fallback below pins); and a catalogue that has not
+	 * answered AT ALL yields null - never the default. The last one is the
+	 * whole reason this field is not the label's own fallback: a constraint
+	 * stated over an unknown team is a wrong claim about that team, while the
+	 * label only reports what the runtime would run anyway.
+	 */
+	assert.equal(
+		resolveHeaderIdentity({ activeTeam: "minerva", teams: TEAMS }).teamManager,
+		"ops-lead",
+	);
+	assert.equal(
+		resolveHeaderIdentity({
+			activeTeam: "minerva",
+			teams: [{ name: "minerva" }],
+		}).teamManager,
+		DEFAULT_TEAM_MANAGER,
+	);
+	// No row, no manager - loading, refused, or deleted are all this case.
+	assert.equal(
+		resolveHeaderIdentity({ activeTeam: "minerva" }).teamManager,
+		null,
+	);
+	assert.equal(
+		resolveHeaderIdentity({ activeTeam: "gone", teams: TEAMS }).teamManager,
+		null,
+	);
+	// No team: no manager, whatever the catalogue holds.
+	assert.equal(resolveHeaderIdentity({ teams: TEAMS }).teamManager, null);
+});
+
+test("the cue: an explicit leaf on a team is flagged; every accepted seat is not", () => {
+	/*
+	 * The defect's own state (issue #861): an explicit, non-delegating agent
+	 * under a team whose manager is somebody else - the pair one press used to
+	 * assemble with nothing said about it. Beside it, the two seats the rule
+	 * ACCEPTS, and one of them is the case a name-inequality test gets wrong:
+	 * a delegating profile is legal beside the manager, so only the row's
+	 * `delegate` datum (via the one predicate) may say otherwise.
+	 */
+	const flagged = (over = {}) =>
+		headerIdentityAgentFlagged({
+			explicitAgent: "coder",
+			manager: "manager",
+			delegate: false,
+			...over,
+		});
+	assert.equal(flagged(), true);
+	// The manager itself is always accepted, whatever its flag reads.
+	assert.equal(flagged({ explicitAgent: "manager" }), false);
+	// A delegating profile is not a flag - `delegate: true` is the second half
+	// of the acceptance rule, not a near-miss.
+	assert.equal(flagged({ delegate: true }), false);
+});
+
+test("the cue waits for its facts: no agent, no manager, no delegate datum is silent", () => {
+	/*
+	 * Each `null` is a different load or absence, and each must be SILENT
+	 * rather than guessed: the implicit seat (no explicit agent) is the
+	 * manager's own and always accepted; a catalogue that has not answered
+	 * cannot say who the manager is; and the delegate datum is what separates
+	 * a legal delegating profile from a leaf - so a cue computed without it
+	 * would be exactly the name-inequality guess the brief forbids. The cue is
+	 * a statement about the pair, and it may only be made once all three facts
+	 * have arrived.
+	 */
+	const flagged = (over = {}) =>
+		headerIdentityAgentFlagged({
+			explicitAgent: "coder",
+			manager: "manager",
+			delegate: false,
+			...over,
+		});
+	assert.equal(flagged({ explicitAgent: null }), false);
+	assert.equal(flagged({ manager: null }), false);
+	assert.equal(flagged({ delegate: null }), false);
 });

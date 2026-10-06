@@ -74,6 +74,25 @@ type Story = StoryObj;
  * to look tidy. Two thirds are machine-named on purpose: a reader asked to review
  * real-looking names would review the names instead of the bound.
  */
+/**
+ * The profiles whose `delegate` flag is true, by name.
+ *
+ * WHY ONLY THREE (issue #861). The agent slot's constraint accepts the team's
+ * manager and delegating profiles; the frames have to show BOTH accepted
+ * classes and the refused one, so the fixture needs a coordinating profile
+ * that is NOT the manager and that is visible near the top of the open panel -
+ * `architect` is the first name in the roster, so the constrained frame's
+ * first settable non-manager row is a photograph rather than a scroll away.
+ * `manager` is the implicit seat this story's chip already reads, and
+ * `pergamon-orchestrator` keeps the flag from looking like a two-name special
+ * case.
+ */
+const LONG_AGENT_DELEGATES = new Set([
+	"architect",
+	"manager",
+	"pergamon-orchestrator",
+]);
+
 const LONG_AGENTS = [
 	"architect",
 	"coder",
@@ -99,6 +118,7 @@ const LONG_AGENTS = [
 	name,
 	kind: "role",
 	description: `The ${name} profile.`,
+	delegate: LONG_AGENT_DELEGATES.has(name),
 }));
 
 for (let index = 0; index < 131; index += 1) {
@@ -108,6 +128,7 @@ for (let index = 0; index < 131; index += 1) {
 		name,
 		kind: "specialist",
 		description: "A Pergamon enrichment specialist.",
+		delegate: false,
 	});
 }
 
@@ -178,30 +199,48 @@ const AGENTS = [
 		name: "coder",
 		kind: "role",
 		description: "Implements one bounded slice.",
+		/* A leaf: the near-miss row the constraint lists disabled, with the
+		 * reason - and the explicit agent the `IncompatiblePair` stories put in
+		 * the seat (issue #861). */
+		delegate: false,
 	},
 	{
 		value: "manager",
 		name: "manager",
 		kind: "role",
 		description: "Orchestrates a team.",
+		/* The team's manager: always settable, and this story's implicit seat
+		 * (the model's own tests pin the name-over-flag half). */
+		delegate: true,
 	},
 	{
 		value: "ops-lead",
 		name: "ops-lead",
 		kind: "specialist",
 		description: "The Minerva operations lead.",
+		/* A coordinating profile beside the manager: the second accepted class,
+		 * present so a constrained frame shows it settable. */
+		delegate: true,
 	},
 	{
 		value: "reviewer",
 		name: "reviewer",
 		kind: "role",
 		description: "Reviews every diff.",
+		delegate: false,
 	},
 ];
 
 type BridgeOptions = {
-	/** Whether the catalogue answers rows at all, or refuses/empties instead. */
-	entities?: "rows" | "empty" | "refused";
+	/**
+	 * Whether the catalogue answers rows at all, or refuses/empties/pends
+	 * instead. `pending` holds `commands.entities` open FOREVER (a promise that
+	 * never settles): the state a story needs when its claim is about the
+	 * absence of a roster answer - the agent slot's cue must not be computed
+	 * while the rows have not arrived (issue #861), and the panel's loading line
+	 * is a real state - rather than about a refusal or an empty answer.
+	 */
+	entities?: "rows" | "empty" | "refused" | "pending";
 	/**
 	 * The agent roster this story's bridge answers with. Defaults to the small
 	 * fixture; the long-roster stories pass `LONG_AGENTS` so the bound has
@@ -259,6 +298,18 @@ const installBridge = ({
 						status: 503,
 						body: { detail: "The profile registry is unavailable." },
 					};
+				}
+				/*
+				 * The never-answering roster (`pending`): a promise that never settles,
+				 * so "still loading" is a fact of the story rather than of the
+				 * shutter's timing - a hold that expired mid-capture would be the
+				 * design-D1 flake class (a frame filed under a state the run had
+				 * left). The `teams.list` answer above stays real, because the cue's
+				 * silence must come from the MISSING roster and not from a missing
+				 * manager.
+				 */
+				if (entities === "pending") {
+					return new Promise<{ status: number; body: unknown }>(() => {});
 				}
 				return ok({
 					command: request.command ?? "team",
@@ -405,6 +456,70 @@ export const NoTeamNoAgent: Story = {
 export const AgentAndTeam: Story = {
 	render: () => {
 		installBridge();
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="ops-lead · lopdev"
+					identity={identity({ activeAgent: "ops-lead", activeTeam: "lopdev" })}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * The legacy, incompatible pair (issue #861's second half): an explicit agent
+ * the team's constraint does not accept, under a team it does not run.
+ *
+ * WHAT THE FRAMES ARE. `conflict-chip` is the cue at rest - the persona still
+ * visible, because it is in the prompt, with the warning mark that says the
+ * pair needs resolving - and `conflict-agent-open` is the panel where one
+ * normal pick resolves it: the manager and the delegating profiles are
+ * settable, the current (refused) row is listed disabled with its reason, and
+ * the rule is stated above the list.
+ *
+ * WHY `coder`, AND WHY BESIDE `AgentAndTeam`. `coder` is a leaf
+ * (`delegate: false`), which is exactly what makes the pair incompatible; the
+ * delegating profile in the same seat is LEGAL and is the story next door -
+ * the two together are the case a name-inequality test gets wrong, and the
+ * rig's claims on the pair (`agent-and-team` asserts the cue is GONE) keep the
+ * two apart.
+ */
+export const IncompatiblePair: Story = {
+	render: () => {
+		installBridge();
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="coder · lopdev"
+					identity={identity({ activeAgent: "coder", activeTeam: "lopdev" })}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * The same pair with the roster STILL ANSWERING: `commands.entities` never
+ * settles, so no row - and no `delegate` datum - has arrived.
+ *
+ * THE TWO CLAIMS THIS STORY CARRIES ARE BOTH NEGATIVE ONES. The chip must not
+ * grow the cue from the names alone while the data is missing
+ * (`conflict-chip-loading` asserts the cue is GONE), and the open panel must
+ * show its honest `Loading agents…` line with NO constraint caption
+ * (`agent-menu-loading` asserts the loading hook is present and the caption
+ * hook is absent) - a rule stated before its roster has answered would be a
+ * claim about a team made from data this app does not have.
+ */
+export const IncompatiblePairLoading: Story = {
+	render: () => {
+		installBridge({ entities: "pending" });
 		return (
 			<Band>
 				<ChatHeader
@@ -668,7 +783,10 @@ export const LongRoster: Story = {
 				<ChatHeader
 					agentName="Install the pinned uv on Windows"
 					description="manager · lopdev"
-					identity={identity({ activeTeam: "lopdev", activeAgent: "reviewer" })}
+					identity={identity({
+						activeTeam: "lopdev",
+						activeAgent: "architect",
+					})}
 					renameSessionId={SESSION}
 					onOpenOptions={() => undefined}
 				/>
@@ -699,7 +817,7 @@ export const LongRosterAtTheBottom: Story = {
 						description="manager · lopdev"
 						identity={identity({
 							activeTeam: "lopdev",
-							activeAgent: "reviewer",
+							activeAgent: "architect",
 						})}
 						renameSessionId={SESSION}
 						onOpenOptions={() => undefined}
@@ -732,7 +850,7 @@ export const Recents: Story = {
 					description="manager · lopdev"
 					identity={identity({
 						activeTeam: "lopdev",
-						activeAgent: "reviewer",
+						activeAgent: "architect",
 					})}
 					renameSessionId={SESSION}
 					onOpenOptions={() => undefined}
