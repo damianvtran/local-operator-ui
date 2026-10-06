@@ -22,6 +22,7 @@ import {
 	MAX_FRAMES_SEARCHED,
 	MAX_FRAME_DEPTH,
 	enterFrame,
+	isDeniedFrame,
 	sendIn,
 	topScope,
 } from "./frames";
@@ -220,6 +221,10 @@ async function frameSnapshots(
 					const iframeNodeId = pushed?.nodeIds?.[0];
 					if (!iframeNodeId) continue;
 					const scope = await enterFrame(ctx, contents, parent, iframeNodeId);
+					// A frame from an origin the user DENIED contributes nothing: no
+					// line, no ref, no text (review round 1, M1). Its subtree is not
+					// walked either.
+					if (isDeniedFrame(ctx, scope)) continue;
 					const frameNodes = await frameTree(ctx, contents, scope);
 					const { snapshot: inner, refs: innerRefs } = compactAX(
 						frameNodes,
@@ -245,7 +250,14 @@ async function frameSnapshots(
 					);
 					next.push({ scope, nodes: frameNodes });
 				} catch (error) {
-					if (error instanceof BrowserHostError) continue;
+					// One unreadable frame is skipped; a tab DevTools took, or one that
+					// closed, ends the snapshot with its own typed answer (round 1, m2).
+					if (
+						error instanceof BrowserHostError &&
+						error.code !== "debugger_conflict" &&
+						error.code !== "tab_closed"
+					)
+						continue;
 					throw error;
 				}
 			}

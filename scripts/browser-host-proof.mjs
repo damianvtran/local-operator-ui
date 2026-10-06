@@ -2308,6 +2308,27 @@ async function main() {
 	// A `_top` navigation started INSIDE the frame, toward an origin this run never
 	// approved (the frame's own): it must be gated like any main-frame hop. ARCH-1
 	// left this unmeasured; the page must still be the approved one afterwards.
+	//
+	// FIXED PRECONDITION (QA round 1, Q-1): without user activation in the frame,
+	// Chromium blocks a frame's top navigation itself and the gate is never asked,
+	// so a pass would prove nothing about OUR gate. The frame has activation here
+	// because the type calls above dispatched input into it; that is ASSERTED,
+	// read from the frame's own target, and the check then demands the gate's own
+	// refusal - origin_not_allowed naming the frame origin - not just "no escape".
+	const activation = frameTarget
+		? await targetEvaluate(
+				frameTarget,
+				"JSON.stringify({ hasBeenActive: navigator.userActivation.hasBeenActive, isActive: navigator.userActivation.isActive })",
+			)
+		: { error: "no frame target" };
+	const activated =
+		typeof activation.value === "string" &&
+		JSON.parse(activation.value).hasBeenActive === true;
+	check(
+		"precondition: the card frame has user activation, so a _top hop reaches the host's gate rather than Chromium's own block",
+		activated,
+		`frame target navigator.userActivation -> ${activation.value ?? activation.error}`,
+	);
 	const escapeClick = await rpc(state, "click", {
 		tab: iframeTab.tab,
 		selector: "iframe#card >>> #escape",
@@ -2317,10 +2338,12 @@ async function main() {
 		(target) => target.type === "page" && target.url.includes("/escaped"),
 	);
 	check(
-		"a _top link clicked inside the frame does not carry the tab to an unapproved origin",
-		escapedTo.length === 0 &&
-			(escapeClick.json?.ok === false ||
-				escapeClick.json?.result?.url === `${siteOrigin}/iframe-type`),
+		"a _top link clicked inside the frame is refused by the host's origin gate, and the tab stays put",
+		activated &&
+			escapedTo.length === 0 &&
+			escapeClick.json?.ok === false &&
+			escapeClick.json.error?.code === "origin_not_allowed" &&
+			escapeClick.json.error?.data?.origin === frameOrigin,
 		`click {selector: "iframe#card >>> #escape"} -> ${escapeClick.text}\npage targets at /escaped: ${escapedTo.length}`,
 	);
 	await rpcOk(state, "close", { tab: iframeTab.tab });
@@ -2395,6 +2418,104 @@ async function main() {
 		`type {selector: "iframe#samesite >>> #postcode"} -> ${sameSiteTyped.text}\nframe document #postcode (page target, isolated world in that frame) -> ${JSON.stringify(postcode)}`,
 	);
 	await rpcOk(state, "close", { tab: moreTab.tab });
+
+	// #851's top-document refusal, byte-stable (QA round 1, Q-2): a top-level
+	// element that holds no text still gets the original sentence, with the hop
+	// grammar appended as an extra clause rather than replacing it.
+	const plainTab = await rpcOk(state, "open", {
+		url: `${siteOrigin}/iframe-type`,
+		requester: "session:proof",
+	});
+	const headingTyped = await rpc(state, "type", {
+		tab: plainTab.tab,
+		selector: "h1",
+		text: "nope",
+	});
+	check(
+		"type at a non-editable top-level element keeps #851's sentence, with the >>> hint appended",
+		headingTyped.json?.ok === false &&
+			headingTyped.json.error?.code === "element_not_found" &&
+			headingTyped.json.error?.message?.startsWith(
+				"h1 is not an editable field (no value setter, not contenteditable), so nothing was typed; if the field lives inside an iframe, it cannot be targeted from the top document",
+			) &&
+			/>>>/.test(headingTyped.json.error?.message ?? ""),
+		`type {selector: "h1"} -> ${headingTyped.text}`,
+	);
+
+	// A frame from an origin the user DENIED (review round 1, M1): approval stays
+	// per top-level origin, but an explicit deny overrides it everywhere else, so a
+	// denied origin must not become drivable or readable by being embedded. Denied
+	// through the app's own consent path, then every route into the frame refused,
+	// and the frame's field read back EMPTY from its own target. Last in the
+	// section: the deny persists for the rest of the run.
+	const denyRequest = await rpcOk(state, "request_access", {
+		url: frameOrigin,
+		requester: "session:proof",
+	});
+	const denyPending = await rendererEvaluate(
+		"window.api.browser.state().then((s) => JSON.stringify(s.pendingConsent))",
+	);
+	const denyEntry = JSON.parse(denyPending.value ?? "[]").find(
+		(candidate) => candidate.origin === frameOrigin,
+	);
+	if (denyEntry) {
+		await rendererEvaluate(
+			`window.api.browser.respondToConsent(${JSON.stringify(denyEntry.entryId)}, "deny").then((s) => JSON.stringify(s))`,
+		);
+	}
+	const deniedAwait = await rpcOk(state, "await_access", {
+		url: frameOrigin,
+		requester: "session:proof",
+	});
+	check(
+		"precondition: the frame origin is DENIED through the consent path",
+		deniedAwait.state === "denied",
+		`request_access -> ${denyRequest.state}; await_access -> ${JSON.stringify(deniedAwait)}`,
+	);
+	const deniedTab = await rpcOk(state, "open", {
+		url: `${siteOrigin}/iframe-type`,
+		requester: "session:proof",
+	});
+	let deniedFrame = null;
+	for (let attempt = 0; attempt < 40 && !deniedFrame; attempt += 1) {
+		const pageNow = (await targets()).find(
+			(target) =>
+				target.type === "page" && target.url === `${siteOrigin}/iframe-type`,
+		);
+		deniedFrame = pageNow ? ((await frameTargets())[0] ?? null) : null;
+		if (!deniedFrame) await sleep(250);
+	}
+	const deniedRoutes = {};
+	for (const [label, params] of [
+		["hop", { selector: "iframe#card >>> #number" }],
+		["element", { selector: "#card" }],
+		["auto", { selector: "#number" }],
+	]) {
+		deniedRoutes[label] = await rpc(state, "type", {
+			tab: deniedTab.tab,
+			...params,
+			text: "4111111111111111",
+		});
+	}
+	const deniedSnap = await rpcOk(state, "snapshot", { tab: deniedTab.tab });
+	const deniedField = deniedFrame
+		? await targetEvaluate(
+				deniedFrame,
+				"document.getElementById('number').value",
+			)
+		: { error: "no frame target" };
+	check(
+		"a frame from a DENIED origin is refused on every route, absent from snapshot, and its field stays empty",
+		deniedRoutes.hop.json?.error?.code === "origin_not_allowed" &&
+			deniedRoutes.hop.json.error?.data?.reason === "denied" &&
+			deniedRoutes.element.json?.error?.code === "origin_not_allowed" &&
+			deniedRoutes.auto.json?.ok === false &&
+			!deniedSnap.snapshot.includes("- frame") &&
+			deniedField.value === "",
+		`hop -> ${deniedRoutes.hop.text}\nelement -> ${deniedRoutes.element.text}\nauto -> ${deniedRoutes.auto.text}\nsnapshot ->\n${deniedSnap.snapshot}\nframe target #number (read over devtools) -> ${JSON.stringify(deniedField.value ?? deniedField.error)}`,
+	);
+	await rpcOk(state, "close", { tab: deniedTab.tab });
+	await rpcOk(state, "close", { tab: plainTab.tab });
 
 	// --- 5d. the hidden view's page viewport, and what a capture does to it ----
 	/*

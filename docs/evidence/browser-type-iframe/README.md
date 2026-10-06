@@ -57,10 +57,12 @@ typing would be a guess or a lie:
 | `snapshot` | no frame content | a `- frame iframe#card (<origin>):` block with a textbox ref |
 | `type {ref: <that ref>}` | — | lands |
 | `#holder`, the top-level control | lands via `insert_text` | identical result, no `frame_origin` |
-| a `_top` link clicked inside the frame, to an unapproved origin | — | `origin_not_allowed`, page unchanged |
+| a `_top` link clicked inside the frame, to an unapproved origin | — | `origin_not_allowed` from the host's gate, page unchanged; the frame's user activation is asserted first, so Chromium's own block cannot stand in for the gate |
 | `type` at a frame holding three fields | — | refused, lists each as a `>>>` path, nothing typed |
 | `type` at a frame with no editable field | — | #851's refusal, nothing typed |
 | a same-site frame (`127.0.0.1`, other port: in the page's process, no target) | — | lands through the frame's `contentDocument` |
+| `type` at a non-editable top-level element (`h1`) | #851 refusal | #851's sentence unchanged, with the `>>>` hint appended |
+| the frame origin DENIED through the consent path, then hop / element / auto-search `type` and `snapshot` | — | hop and element: `origin_not_allowed` `reason: denied`; auto-search: not searched, says so; snapshot: no frame block; the frame's field reads back empty |
 
 EVERY "lands" is read back from the frame's OWN document over the devtools port,
 not from the host's reply (which is the code under test): the cross-site frame
