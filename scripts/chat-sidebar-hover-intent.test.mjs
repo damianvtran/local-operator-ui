@@ -91,37 +91,108 @@ test("reduced motion is not consulted: the reveal is a display switch, not motio
 	);
 });
 
+/*
+ * EACH ACT IS READ IN ITS OWN WINDOW (agent review round 1, M2). The archive and
+ * the pin carry the SAME reveal class string - one mechanism on two controls - so
+ * a file-wide `sidebar.includes(...)` proved only that ONE of them still carried
+ * it: a half-applied change (one act reverted, its twin left alone) is exactly the
+ * failure this test exists for, and the shared substring was blind to it. The
+ * windows are delimited by the controls' OWN markers, which is a boundary that
+ * moves with the file rather than a character count that rots.
+ */
+const CONTROLS = [
+	{ name: "grip", marker: "data-session-pin-grip" },
+	{ name: "pin", marker: "data-session-pin" },
+	{ name: "archive", marker: "data-session-archive" },
+	{ name: "pair wrapper", marker: "data-session-control-pair" },
+];
+
+/** The marker as the JSX writes it: alone on its own line, never as a prefix. */
+const markerIndex = (marker) => {
+	const match = new RegExp(`\\n\\s*${marker}\\n`).exec(sidebar);
+	assert.ok(match, `${marker} is drawn on its own line`);
+	return match.index;
+};
+
+/** One act's own source: from its marker to the next control's, capped. */
+const ownRegion = (marker, span = Number.POSITIVE_INFINITY) => {
+	const at = markerIndex(marker);
+	const next = CONTROLS.map((entry) => markerIndex(entry.marker))
+		.filter((index) => index > at)
+		.sort((a, b) => a - b)[0];
+	return sidebar.slice(at, Math.min(next ?? at + span, at + span));
+};
+
+/*
+ * THE WINDOWS ARE READ AS CODE (`codeOf`), not as raw source: the pair wrapper is
+ * the file's LAST act, so its window runs on into the rest of the panel, and the
+ * prose in these blocks names the very selectors the negative checks below forbid
+ * - the gate's own note explains what `group-focus-within` cost, in words. Reading
+ * the code is what makes "this control has no such term" a statement about the
+ * control rather than about the comments beside it. The pair's window is capped
+ * because it has no successor marker to stop at, and the drafts row further down
+ * the file legitimately reveals its own control on `group-hover`.
+ */
+const ownCode = (marker, span) => codeOf(ownRegion(marker, span));
+
+const DWELL =
+	'"group-data-[session-hover-intent]:flex group-data-[session-hover-intent]:text-ink-muted"';
+const FOCUS =
+	'"group-has-[:focus-visible]:flex group-has-[:focus-visible]:text-ink-muted"';
+
 test("all four per-row acts reveal on the dwell, and none on a bare hover", () => {
-	/*
-	 * The four the change names. The patterns are deliberately the WHOLE class
-	 * string, because a half-applied change is the failure this test exists for: a
-	 * control left on `group-hover:flex` would still pop under a passing pointer
-	 * while its neighbours waited, which reads as a glitch rather than a dwell.
-	 */
-	const reveals = [
+	const expects = [
 		[
 			"pair wrapper",
-			'"hidden group-data-[session-hover-intent]:flex group-focus-within:flex"',
+			"data-session-control-pair",
+			['"hidden group-data-[session-hover-intent]:flex group-has-[:focus-visible]:flex"'],
+			1500,
 		],
-		[
-			"archive",
-			'"group-data-[session-hover-intent]:flex group-data-[session-hover-intent]:text-ink-muted"',
-		],
+		["archive", "data-session-archive", [DWELL, FOCUS]],
 		[
 			"pin",
-			'"group-data-[session-hover-intent]:flex group-data-[session-hover-intent]:text-ink-muted group-focus-within:flex group-focus-within:text-ink-muted"',
+			"data-session-pin",
+			[
+				'"group-data-[session-hover-intent]:flex group-data-[session-hover-intent]:text-ink-muted group-has-[:focus-visible]:flex group-has-[:focus-visible]:text-ink-muted"',
+			],
 		],
-		[
-			"grip",
-			'"group-data-[session-hover-intent]:flex group-data-[session-hover-intent]:text-ink-muted"',
-		],
+		["grip", "data-session-pin-grip", [DWELL]],
 	];
-	for (const [name, classes] of reveals) {
-		assert.ok(
-			sidebar.includes(classes),
-			`the ${name} reveals on the dwell with this exact class string`,
+	for (const [name, marker, classes, span] of expects) {
+		const own = ownCode(marker, span);
+		for (const cls of classes) {
+			assert.ok(
+				own.includes(cls),
+				`the ${name}'s own class list carries ${cls}`,
+			);
+		}
+	}
+	/*
+	 * THE OLD REVEAL IS GONE FROM EVERY ACT. Scoped to each control's own window
+	 * rather than to the whole file: `chat-sidebar.tsx` legitimately reveals OTHER
+	 * things on `group-hover` (the drafts row's own trash control), and a file-wide
+	 * ban would be a second rule about a different surface.
+	 */
+	for (const { name, marker } of CONTROLS) {
+		assert.equal(
+			/group-hover:/.test(ownCode(marker, 1500)),
+			false,
+			`the ${name} does not also carry the immediate hover reveal`,
 		);
 	}
+	/*
+	 * AND THE GRIP IS THE ONE ACT WITH NO KEYBOARD TERM (design D3): it is
+	 * `aria-hidden` and unfocusable, so revealing it for the keyboard would offer a
+	 * sighted keyboard reader a handle they cannot operate. Its window is the one
+	 * place either focus term would be a regression.
+	 */
+	assert.equal(
+		/group-focus-within|group-has-\[\:focus-visible\]/.test(
+			ownCode("data-session-pin-grip"),
+		),
+		false,
+		"the grip still has no focus term of either spelling",
+	);
 	/*
 	 * AND THE TIME GIVES WAY ON THE SAME CLOCK. The timestamp is the other half of
 	 * the one swap the reveal is: if it still hid on the bare hover it would blank
@@ -129,23 +200,10 @@ test("all four per-row acts reveal on the dwell, and none on a bare hover", () =
 	 */
 	assert.ok(
 		sidebar.includes(
-			'className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-focus-within:hidden group-data-[session-hover-intent]:hidden"',
+			'className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-has-[:focus-visible]:hidden group-data-[session-hover-intent]:hidden"',
 		),
 		"the trailing time leaves on the acts' own clock",
 	);
-	/*
-	 * THE OLD REVEAL IS GONE FROM THE ACTS. Scoped to the four class strings above
-	 * rather than to the whole file: `chat-sidebar.tsx` legitimately reveals OTHER
-	 * things on `group-hover` (the drafts row's own trash control), and a file-wide
-	 * ban would be a second rule about a different surface.
-	 */
-	for (const [name, classes] of reveals) {
-		assert.equal(
-			classes.includes("group-hover:"),
-			false,
-			`the ${name} does not also carry the immediate hover reveal`,
-		);
-	}
 	assert.equal(
 		/class(Name)?=\{?[^}]*group-hover:flex/.test(
 			sidebar.slice(
@@ -158,17 +216,32 @@ test("all four per-row acts reveal on the dwell, and none on a bare hover", () =
 	);
 });
 
-test("the keyboard path is untouched: focus-within stays immediate", () => {
+test("the keyboard's door is focus-visible: immediate for a Tab, closed to a press", () => {
 	/*
-	 * The gate is the POINTER's half only. `group-focus-within` is what makes the
-	 * acts reachable by Tab, and a dwell on it would make the keyboard wait out a
-	 * pointer timer it never asked for.
+	 * THE POINTER'S HALF IS THE DWELL AND THE KEYBOARD'S IS NOT (issue #840), but the
+	 * keyboard's door is `:focus-visible` rather than any focus at all - agent review
+	 * round 1's Q-1, UX's U1: the bare `group-focus-within` is raised for a
+	 * MOUSE-driven focus too, so a press in the row's trailing band focused the row's
+	 * button, revealed the acts inside the gesture, narrowed the button out from under
+	 * the mouseup, and the click that followed was swallowed by the row's wrapper. A
+	 * Tab still reveals the acts immediately; a press no longer re-lays the row out.
 	 */
+	for (const marker of [
+		"data-session-control-pair",
+		"data-session-archive",
+		"data-session-pin",
+	]) {
+		assert.equal(
+			/group-focus-within/.test(ownCode(marker, 1500)),
+			false,
+			`${marker} does not reveal on focus at all - only on a keyboard focus`,
+		);
+	}
 	assert.ok(
-		sidebar.includes(
-			'"hidden group-data-[session-hover-intent]:flex group-focus-within:flex"',
+		ownCode("data-session-control-pair", 1500).includes(
+			"group-has-[:focus-visible]:flex",
 		),
-		"the pair wrapper keeps its focus term",
+		"the pair wrapper keeps an immediate door for the keyboard",
 	);
 	assert.ok(
 		intentCode.includes('"pointerenter"') &&

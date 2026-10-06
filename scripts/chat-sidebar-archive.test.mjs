@@ -143,8 +143,11 @@ test("the archive control is absent from the layout at rest, and named by its ac
 	 * THE POINTER HALF IS THE ROW'S DWELL, NOT A BARE HOVER (issue #840): the attribute
 	 * `chat-row-hover-intent.tsx` writes after the app's hover-intent constant replaces
 	 * `group-hover` on all four per-row controls, so a press on its way to selecting a
-	 * row never meets a control that has just arrived. `group-focus-within` is
-	 * untouched and stays immediate, because the keyboard path has no such hazard.
+	 * row never meets a control that has just arrived. The keyboard's half is
+	 * `group-has-[:focus-visible]` and stays immediate, but it is KEYBOARD-ONLY (agent
+	 * review round 1's Q-1): the bare `group-focus-within` it replaced is raised for a
+	 * mouse-driven focus too, so a press inside the row's trailing band used to reveal
+	 * this control mid-gesture and swallow the click that selected the row.
 	 *
 	 * THE BASE MUST BE `hidden` AND NOT `flex`, and that is the cascade bug this file
 	 * already caught once (agent review round 2, N1): `hidden` and `flex` are two
@@ -157,7 +160,7 @@ test("the archive control is absent from the layout at rest, and named by its ac
 		/"hidden size-6 shrink-0 items-center justify-center rounded-md"/,
 	);
 	assert.match(control, /group-data-\[session-hover-intent\]:flex/);
-	assert.match(control, /group-focus-within:flex/);
+	assert.match(control, /group-has-\[\:focus-visible\]:flex/);
 	/*
 	 * AND THE OLD REVEAL IS GONE, both halves of it: `opacity` and `pointer-events` come
 	 * off, and so do the transition-duration tokens that paired with them - `display` is
@@ -172,13 +175,14 @@ test("the archive control is absent from the layout at rest, and named by its ac
 	assert.equal(/group-hover:[a-z-]*(scale|translate)/.test(control), false);
 	assert.match(control, /group-data-\[session-hover-intent\]:text-ink-muted/);
 	/*
-	 * REACHABLE BY KEYBOARD, which is why `group-focus-within` is here: Tab reaches the
-	 * row's button (the row's only tab stop at rest), which puts focus inside the row,
-	 * which displays the cluster - and the next Tab reaches the pin and then the
-	 * archive. The controls are outside the accessibility tree while hidden, which is
+	 * REACHABLE BY KEYBOARD, which is why the focus term is here: Tab reaches the
+	 * row's button (the row's only tab stop at rest), which puts a KEYBOARD focus
+	 * inside the row, which displays the cluster - and the chords press the two acts
+	 * from there (they are out of the Tab ring by design, §C4). The controls are
+	 * outside the accessibility tree while hidden, which is
 	 * the honest state: on an unpinned row there is no pin control to announce.
 	 */
-	assert.match(control, /group-focus-within:text-ink-muted/);
+	assert.match(control, /group-has-\[\:focus-visible\]:text-ink-muted/);
 	// The action, never the state, and the conversation named - one derivation for the
 	// accessible name and the tooltip, so they cannot disagree.
 	assert.match(
@@ -1224,7 +1228,7 @@ test("the shed is gone, and what replaced it is a display switch with no reserve
 	assert.match(pairWrapper, /"items-center gap-1"/);
 	assert.match(
 		pairWrapper,
-		/(?:pinned \|\| menuOpen)\s*\?\s*"flex"\s*:\s*"hidden group-data-\[session-hover-intent\]:flex group-focus-within:flex"/,
+		/(?:pinned \|\| menuOpen)\s*\?\s*"flex"\s*:\s*"hidden group-data-\[session-hover-intent\]:flex group-has-\[\:focus-visible\]:flex"/,
 	);
 });
 

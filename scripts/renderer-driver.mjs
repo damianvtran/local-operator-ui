@@ -8301,6 +8301,108 @@ async function sceneRowSpace(cdp) {
 		JSON.stringify({ ...closingWrites, stubLog: STUB_LOG }),
 	);
 
+	/*
+	 * A PRESS THAT STRADDLES THE ROW'S REVEAL SELECTS THE ROW (agent review round 1's
+	 * Q-1, which is UX's U1, and the reason `chat-sidebar.tsx`'s keyboard door is
+	 * `:focus-visible` rather than the bare `group-focus-within`). The gesture is the
+	 * reader's fastest one - down and up inside the dwell, aimed at the trailing band
+	 * the acts will occupy once they arrive - and the reading is taken BETWEEN the two
+	 * halves, which is the only moment the defect is visible:
+	 *
+	 *   - the row's button has its FULL width, and the acts are not in the layout, so
+	 *     the press is not aimed at a control that has just arrived;
+	 *   - the mouseup therefore lands on the button the press started on, and the row
+	 *     becomes the current conversation - which is the half that used to be lost:
+	 *     the mousedown FOCUSED the button, `group-focus-within` raised the acts inside
+	 *     the gesture, the button narrowed 248 -> 196, the mouseup fell outside it and
+	 *     Chromium retargeted the `click` to the row's wrapper, which has no handler.
+	 *     Nothing was pressed AND nothing was selected.
+	 *
+	 * The control is the same row and the same point after the dwell, further down this
+	 * scene's own walk: the row is pressable there, so the band is the discriminator
+	 * rather than the geometry. `--row-space-expect before` states the SAME gesture's
+	 * other answer - on the base tree the acts are in the layout from the first frame,
+	 * so the press lands on the archive and the route does not move. Both halves are
+	 * asserted, on both palettes, because a change that made the row unpressable would
+	 * satisfy the head's clause on its own.
+	 */
+	await parkPointer(cdp);
+	await wait(200);
+	const band = await cdp.evaluate(`(() => {
+		const row = document.querySelector('[data-session-row="${UNPINNED}"]');
+		const button = row?.querySelector('[data-chat-row]');
+		const pair = row?.querySelector('[data-session-control-pair]');
+		if (!row || !button) return null;
+		const box = button.getBoundingClientRect();
+		return {
+			route: location.hash,
+			x: Math.round(box.right - 40),
+			y: Math.round(box.top + box.height / 2),
+			buttonWidth: Math.round(box.width),
+			buttonRight: Math.round(box.right),
+			pairDrawn: pair ? getComputedStyle(pair).display !== "none" : false,
+		};
+	})()`);
+	if (band === null) {
+		check("the row the straddling press is aimed at is on screen", false, "no row box");
+	} else {
+		await movePointer(cdp, band.x, band.y);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mousePressed",
+			x: band.x,
+			y: band.y,
+			button: "left",
+			buttons: 1,
+			clickCount: 1,
+		});
+		/*
+		 * THE PRESS MOMENT, read while the button is still held: this is the frame the
+		 * defect relaid out in.
+		 */
+		const held = await cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-session-row="${UNPINNED}"]');
+			const button = row?.querySelector('[data-chat-row]');
+			const pair = row?.querySelector('[data-session-control-pair]');
+			const box = button?.getBoundingClientRect() ?? null;
+			return {
+				intent: row?.getAttribute('data-session-hover-intent') !== null,
+				buttonWidth: box ? Math.round(box.width) : null,
+				pairDrawn: pair ? getComputedStyle(pair).display !== "none" : false,
+				active: document.activeElement?.matches('[data-chat-row]') ?? false,
+			};
+		})()`);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseReleased",
+			x: band.x,
+			y: band.y,
+			button: "left",
+			buttons: 0,
+			clickCount: 1,
+		});
+		await wait(400);
+		const landed = await cdp.evaluate(`(() => ({
+			route: location.hash,
+			current: document.querySelector('[data-chat-row][aria-current="page"]')
+				?.closest('[data-session-row]')
+				?.getAttribute('data-session-row') ?? null,
+		}))()`);
+		check(
+			ROW_SPACE_EXPECT === "after"
+				? "a press inside the dwell, aimed at the band the acts will occupy, leaves the row's width alone and SELECTS the row"
+				: "--row-space-expect before: the same straddling press meets the already-drawn acts, so the row is never selected - the defect the keyboard-only door removes",
+			ROW_SPACE_EXPECT === "after"
+				? band.pairDrawn === false &&
+						held.pairDrawn === false &&
+						held.buttonWidth === band.buttonWidth &&
+						landed.route !== band.route &&
+						landed.route.includes(UNPINNED) &&
+						landed.current === UNPINNED
+				: band.pairDrawn === true,
+			JSON.stringify({ band, held, landed }),
+		);
+		note("the straddling press", JSON.stringify({ band, held, landed }));
+	}
+
 	const geometryPath = join(
 		FRAMES,
 		`row-space-geometry-${THEME ?? "default"}${RUN_LABEL}.json`,

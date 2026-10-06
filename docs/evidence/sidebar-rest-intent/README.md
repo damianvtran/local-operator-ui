@@ -43,14 +43,35 @@ node scripts/renderer-driver.mjs --scene row-space \
 ```
 
 **The scene asserts what it photographs**, so a run that lands these frames is a
-run that read the same state: 57 passing checks per run, including the two this
-change adds —
+run that read the same state: 59 passing checks per run (of 61), including the two
+this change adds —
 
 - `the acts are absent for a pointer passing through and present once it has
   dwelt` (or, with `--row-space-expect before`, the base tree's claim that they
   are in the layout at both moments);
 - `the list's edge cues appear only where content is clipped: none while nothing
   is clipped, none at the top, both mid-list, none at the end`.
+
+  And the one the remediation round added, which is a different question from the
+  two above - whether a press STRADDLING the reveal still reaches the row:
+
+  - `a press inside the dwell, aimed at the band the acts will occupy, leaves the
+  row's width alone and SELECTS the row` (agent review round 1's Q-1, UX's U1).
+  The gesture is the reader's fastest one, at the point the acts will occupy, and
+  the reading is taken with the button still held:
+
+  | reading (dark, then light - identical) | head `bb5bec43e` | the same tree without the fix |
+  | --- | --- | --- |
+  | before the press | `buttonWidth 248`, `pairDrawn false`, route `#/chat/2d5ad5da0025` | same |
+  | **at the press moment** | **`buttonWidth 248`**, **`pairDrawn false`**, `active true` | **`buttonWidth 192`**, **`pairDrawn true`**, `active true` |
+  | after the mouseup | route `#/chat/b3f1a09c7d52`, `current b3f1a09c7d52` | route unchanged, `current 2d5ad5da0025` |
+
+  The control column is the same scene, the same build tree, the fix reverted - and
+  it reproduces the defect exactly: the mousedown focuses the button (`active
+  true`), the bare `group-focus-within` raises the acts INSIDE the gesture
+  (`pairDrawn true`), the button narrows by the pair's own 56px (248 -> 192), the
+  mouseup lands outside it, and the click is retargeted to the row's wrapper, so
+  the press neither pressed a control nor selected the row.
 
 ### Two checks are red on BOTH halves, and they are not this change's
 
@@ -109,17 +130,28 @@ sizing are in the component's own docstring, and the accent's 3:1 graphic floor
 on the three grounds the mark can sit on is a row in
 `scripts/contrast-contract.mjs` (`session row running-subagent mark`).
 
-**THERE IS NO FRAME OF THE DOT IN THIS SET, AND THAT IS A GAP RATHER THAN A
-CLAIM.** The `row-space` stub's rows are a responder with no status codes at all
-(`harness/stub-daemon.mjs`), so no row in any frame here is running a subagent
-and the mark is never drawn. Its rendered evidence belongs to the surfaces that
-DO carry the marks - `docs/evidence/chat-sidebar-subagent-baseline/` and
-`docs/evidence/chat-sidebar-status-feed/`, whose capture path is Storybook rather
-than this scene - and re-capturing them is left to whoever owns those sets this
-window. What this change puts behind the mark instead is the collision check, the
+**THE DOT'S OWN FRAMES ARE IN THE SETS THAT CARRY THE MARK, AND THEY WERE
+RE-TAKEN THIS ROUND (agent review round 1's M3, design's D1 / UX's O2).** The
+`row-space` stub's rows are a responder with no status codes at all
+(`harness/stub-daemon.mjs`), so no row in any frame HERE is running a subagent and
+the mark is never drawn - that is a property of this scene and stays. The rendered
+record lives in `docs/evidence/chat-sidebar-status-feed/`, whose capture path is
+Storybook rather than this scene: its `subagent-rows-running/` and
+`subagent-rows-running-minimum/` cells were re-captured at this head (24 frames,
+twelve palettes each), so a reader tracing the component now lands on frames that
+draw the dot rather than the removed glyph.
+
+The BEFORE half of that pair, `docs/evidence/chat-sidebar-subagent-baseline/`, is
+deliberately NOT re-taken, and the reason is its own provenance: the set is
+defined as unmodified `origin/main`'s rendering, and main still draws `Share2` -
+re-photographing it at this head would make the set describe a tree that is not
+the one it names. The pair's own README records what that leaves: it no longer
+differs by the indicator alone.
+
+What this change puts behind the mark instead is the collision check, the
 contrast row over all fifty-nine palettes, and
-`scripts/chat-sidebar-hover-intent.test.mjs`'s pins; that is stated here so no
-reader takes the absence of a frame for a verified look.
+`scripts/chat-sidebar-hover-intent.test.mjs`'s pins - and the two cell families
+above, which are a real look rather than a described one.
 
 ## 3. The thumb's resting floor (#845)
 
@@ -164,19 +196,44 @@ same state (`measurements/*.json`'s `edges`):
 The base tree, the same four moments: the property does not exist, so every
 reading is `""` — no cue at any scroll position, which is the defect.
 
-**And the pixels agree with the readings.** Differencing the two halves'
-sidebar-region pixels (head minus base) reports a difference ONLY where a cue is
-present, and none where the readings say there is none:
+**And the pixels agree with the readings, within the cue bands.** The claim this
+table makes is deliberately narrower than "the two halves differ only where a cue
+is present" (design round 1's D4 - that sentence was true of the cue bands and
+false of the whole frame, which is what the numbers below show). Two instruments
+over the same pair, the sidebar's regions of the two frames:
 
-| frame | differing band (device px, of 1240) |
-| --- | --- |
-| `edges-none-280` | **none at all** — the control case |
-| `edges-both-280` | `1065–1100` (the list's bottom edge, where the 24px bottom cue is) |
-| `edges-bottom-280` | `670–681` (the list's top edge, where the top cue is 24px) |
+- **layout bands** — rows carrying 24 or more differing pixels at a threshold of
+  8/255. This is the change the frame is evidence FOR: a cue, a thumb, a mask.
+- **residue** — every other differing pixel: glyph-edge antialiasing the two
+  trees' separate renders leave behind (the after and before halves are two
+different builds, so text on the same ground lands on sub-pixel-different
+  rasterisation). Counted, never claimed as zero.
+
+| frame | layout bands (device px) | residue |
+| --- | --- | --- |
+| `edges-none-280` | **none** — the control case | 22041 px of glyph-edge scatter, peak 44 |
+| `edges-top-280` | `640-897` at `x528-543` and `x2744-2759` (the two scrollbars' **resting thumb**, the one difference that is this change's floor and not a cue); `1105-1109` at `x486-505` (peak 196) | 17587 px |
+| `edges-both-280` | `1065-1079` at `x69-367` + `x470-509` (the list's bottom cue fading its content, peak 69); `1094-1100` (peak 9) | 18589 px |
+| `edges-bottom-280` | `670-684` at `x42-131` (the list's top cue fading its content, peak 43) | 13659 px |
 
 The bands are narrow and their magnitude is content-dependent (the mask can only
 fade what is not already uniform ground), which is why the LENGTHS above are the
-instrument and the pixel delta is the confirmation.
+instrument and the pixel delta is the confirmation. The resting thumb is the one
+band that is NOT a cue: it is present in every `after` frame and in no `before`
+frame, because the floor is app-wide (§ 3).
+
+**At `middle` the TOP cue paints nothing, and that is recorded rather than
+smoothed over (design round 1's D2).** The state's own reading is `top 24px`,
+and the declared length is right - but the list's first 24px at `scrollTop 97` is
+a SECTION GAP, so the mask has nothing to fade there: differencing that state's
+two halves finds no layout band at the list's top at all (the only one is the
+bottom cue's, above). A reader whose clipped-off content is a section header
+therefore sees no cue. It is a property of fade-only cues rather than a coding
+error, and the alternative was refused deliberately: an opaque band or a painted
+rule at the top edge would be CHROME - it would show even where no content is
+clipped, which is the thing § 10.1's floor argument and the fade's own contract
+(`docs/design/scrollbars-fade.md`) keep out of this surface. The limitation is
+recorded in `docs/design/scrollbars-fade.md` § 10.2 with this measurement.
 
 **The three clipped states needed a list taller than its pane**, and this
 fixture's list is not (515 against a 515px pane at 1380x900). So the scene
