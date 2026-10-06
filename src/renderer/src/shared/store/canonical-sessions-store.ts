@@ -35,6 +35,7 @@ import {
 	paintPendingSend,
 	peekLocalEcho,
 	replacePendingSendText,
+	retractLocalEcho,
 	settlePendingSend,
 } from "@shared/hooks/use-canonical-session";
 /*
@@ -285,6 +286,17 @@ export type PlacementFact = {
 	/** The sequence this write took, which orders it against every request. */
 	at: number;
 };
+
+/**
+ * One row of the page a held claim is adjudicated against.
+ *
+ * The id is what the claim is matched by; `ts` is the page's own clock and the
+ * half of the verdict `complete` cannot carry — the stamp is epoch SECONDS on
+ * the wire (the reducer reads `entries[0].ts` as the page's `oldestSeconds` for
+ * the same reason), while a claim's `submittedAt` is the press's `Date.now()`
+ * in milliseconds. `resolveHeldFromServer` is where the two are compared.
+ */
+export type HeldClaimPageEntry = { id: string; ts: number };
 
 export type PinFailure = {
 	sessionId: string;
@@ -1593,6 +1605,75 @@ function draftBelongsToSession(draft: ChatDraft, sessionId: string): boolean {
 	);
 }
 
+/**
+ * Whether the page a held claim was adjudicated against REACHES back to the
+ * claim — the half of the verdict `complete` cannot carry on its own.
+ *
+ * WHY IT EXISTS (issue #847). `complete` is the page's CONTINUITY
+ * (`!cursor_missing`): the rows the read DID return are a continuous tail. It says
+ * nothing about how far back the page goes, and a tail page is BOUNDED — so to a
+ * continuity-only reader a delivered message older than that window is a message
+ * the server does not have. Both pane callers (`use-canonical-session.ts`'s
+ * reconnect tail read and its snapshot handler) passed `!cursor_missing` and got
+ * exactly that: `undelivered` recorded for a message that had landed, repainted
+ * at the tail on every mount. `draft-resolution.ts`'s sweep refuses the same
+ * conclusion in its own words with `complete: false`; this is that rule stated
+ * where the verdict is actually drawn, so every caller inherits it.
+ *
+ * THE COMPARISON. The page's oldest row must be at or before the claim's own
+ * attempt time (`submittedAt`, stamped from the press's clock and persisted with
+ * the claim), or the whole page is NEWER than the attempt and its silence proves
+ * nothing about a message that would sit behind it. The page's oldest is
+ * `entries[0]` — the wire's own order, which is also why the reducer reads
+ * `entries[0]?.ts` as the page's `oldestSeconds`.
+ *
+ * EVERY DOUBT HOLDS THE CLAIM, and the asymmetry is the reason: a claim that
+ * stays held is retry material the design already tolerates (the sidebar row, the
+ * launch sweep and the manual clear are its other doors), while a wrong
+ * `undelivered` states a falsehood on screen that nothing retracts. So this
+ * answers `false` — no verdict — when the press anchor is missing (a claim
+ * persisted before the field, or one whose press never stamped), when the page is
+ * empty or its oldest row carries no usable stamp (nothing to compare), and when
+ * the conversation is KNOWN to live on a peer: the anchor is this machine's clock
+ * and the rows are the owner's, so a skew between the two could make a shallow
+ * page look deep. An absent placement fact is not "remote" — absent means this
+ * device, the reading every backend that has served one has.
+ *
+ * TWO SOURCES FOR "THIS CONVERSATION LIVES ELSEWHERE", and they are the pair
+ * `remoteOwnedIds` reads for the same reason (agent review round 1's R1): the
+ * `PlacementFact` a peers-inclusive page settled, AND the session row's own wire
+ * `locality`. Reading only the fact is partial hardening: a claim on an EXISTING
+ * remote conversation carries no `draft.peer`, and a plain listing never settles
+ * a fact (the sidebar's poll deliberately asks for no peers), so the fact is
+ * absent in exactly the window where the arm must hold. Absence of `locality` is
+ * still "no claim", never "local" (`CanonicalSessionRow`) — but a row that
+ * CARRIES `remote` holds the claim without waiting for the catalogue.
+ */
+function pageReachesClaim(
+	entries: readonly HeldClaimPageEntry[],
+	claim: ChatDraft,
+	placement: PlacementFact | undefined,
+	row: CanonicalSessionRow | undefined,
+): boolean {
+	if (
+		claim.peer !== undefined ||
+		placement?.locality === "remote" ||
+		row?.locality === "remote"
+	)
+		return false;
+	const submittedAt = claim.submittedAt;
+	if (submittedAt === undefined || submittedAt <= 0) return false;
+	/*
+	 * The page's oldest row, in the claim's own unit: `ts` is epoch SECONDS on the
+	 * wire and `submittedAt` is the press's `Date.now()`, so the multiplication is
+	 * the whole of the conversion. A row without a usable stamp is the "cannot
+	 * compare" case rather than an infinitely old page.
+	 */
+	const oldest = entries[0]?.ts;
+	if (oldest === undefined || oldest <= 0) return false;
+	return oldest * 1000 <= submittedAt;
+}
+
 export function draftIdentityFor(
 	draftKey: string | null,
 	sessionId: string | null | undefined,
@@ -2120,6 +2201,38 @@ export function resynthesisePendingSend(
 		 * oldest entry is the one every pending reader names (see `settled`).
 		 */
 		if (hasPendingSend(identity, resolved.recordId)) return false;
+		/*
+		 * THE REPAINT GUARD (issue #847). The registry is PROCESS state, so after a
+		 * reload the membership test above is empty whatever the transcript holds,
+		 * and the verdict this row carries is painted again from scratch. When the
+		 * LOADED transcript already holds the record, that paint is a second row for a
+		 * message that is on screen — `appendPendingUser` no-ops for an id the
+		 * transcript has, so nothing doubles, but the row it would mint is held in
+		 * `withTimeOrder`'s TAIL BLOCK while the record already resident keeps its
+		 * canonical place, which is a tail row by another name.
+		 *
+		 * AND THE VERDICT IS THE WRONG FACT in the case that matters, which is the
+		 * half worth a write: an OWNER record under this id (a durable row, or the
+		 * owner's own `message_start`) is proof the message reached the conversation,
+		 * so the `undelivered` record contradicting it is retracted here rather than
+		 * left to repaint on every later mount. A LOCAL record is this app's own echo
+		 * — not proof of anything — so it stops the second paint and nothing else.
+		 * `unseen` is no transcript mounted (or no such record), which is the arm
+		 * that must keep painting: it is the genuinely-undelivered case.
+		 */
+		const held = peekLocalEcho(identity, resolved.recordId);
+		if (held !== "unseen") {
+			if (held === "owner")
+				useCanonicalSessionsStore
+					.getState()
+					/*
+					 * `key`, not `draft.key` (agent review round 1's R5): every neighbouring line
+					 * here targets the parameter, and the parameter is the map key the write
+					 * actually lands on - `draft.key` only equals it by construction today.
+					 */
+					.retractUndelivered(key, resolved.recordId);
+			return false;
+		}
 		paintPendingSend(identity, {
 			id: resolved.recordId,
 			text: resolved.text,
@@ -2156,6 +2269,35 @@ export function resynthesisePendingSend(
 		})),
 	});
 	return true;
+}
+
+/**
+ * Take down the row a retracted `undelivered` verdict painted, so the tail holds
+ * no statement-less bubble (design review round 1's D1).
+ *
+ * WHY THE VERDICT IS NOT THE WHOLE FACT. `resynthesisePendingSend`'s resolved arm
+ * paints the verdict as a row at the tail, as the message's home - correct while
+ * the verdict stands. Retracting the verdict alone (the repaint guard's `owner`
+ * arm, and the launch sweep's walk) takes the SENTENCE off that row and leaves
+ * the bubble behind: on the first mount after an upgrade the pane's resynthesis
+ * is synchronous and the heal is an async read, so the paint always wins the
+ * race and the durable row that would replace it is behind the loaded window. The
+ * reader then sees a user bubble reading as the newest message while the verdict
+ * that explained it has been withdrawn.
+ *
+ * `retractLocalEcho` is the established act for this, and it is safe from both
+ * callers: it removes the record only while it is still this app's own echo (an
+ * `owner` record, the durable row, is left where it is), and it resolves the
+ * registry entry either way - so a later mount's `resynthesisePendingSend` cannot
+ * paint the row back. Nothing mounted means the call is just the entry's removal,
+ * which is exactly right after a reload.
+ */
+function clearPaintedVerdictEcho(
+	draftKey: string,
+	sessionId: string | null | undefined,
+	recordId: string,
+): void {
+	retractLocalEcho(composerIdentityFor(draftKey, sessionId), recordId);
 }
 
 /**
@@ -4333,20 +4475,38 @@ type CanonicalSessionsState = {
 	 * Resolve a held send against the server's own answer (§F2's last bullet,
 	 * UX round 1's U5b).
 	 *
-	 * Called with the ids a RE-SUBSCRIBE returned — the snapshot's history page,
-	 * i.e. the server's statement of what this conversation holds. A held payload
-	 * the answer names LANDED (the claim ends; the durable row coalesces with the
-	 * echo by id). A held payload it does not name provably did NOT land on a
-	 * complete read, so the claim ends AND the row records it as `undelivered` so
-	 * the message keeps its `Not delivered` line. Either way the composer stops
-	 * waiting: §F2 says the state clears from the server's acknowledgement, never
-	 * from the local send, and this is the acknowledgement arriving.
+	 * Called with the PAGE a re-subscribe returned — the snapshot's history page or
+	 * the reconnect's tail read, i.e. the server's statement of what this
+	 * conversation holds. A held payload the answer NAMES landed (the claim ends;
+	 * the durable row coalesces with the echo by id). A held payload it does not
+	 * name proves it did NOT land only when the read can actually see back to it:
+	 * silence is a verdict about REACH as much as about absence, and `complete`
+	 * alone is the page's CONTINUITY (`!cursor_missing`), not how far back it
+	 * goes (issue #847). Either way the composer stops waiting: §F2 says the state
+	 * clears from the server's acknowledgement, never from the local send, and
+	 * this is the acknowledgement arriving.
+	 *
+	 * THE ENTRIES ARE THE PAGE'S OWN ROWS rather than a bare id list, because the
+	 * verdict needs the page's oldest stamp — a caller handing over ids alone
+	 * could not state how far back its read reached, which is what a
+	 * continuity-only signature let both pane callers do.
 	 */
 	resolveHeldFromServer: (
 		sessionId: string,
-		entryIds: readonly string[],
+		entries: readonly HeldClaimPageEntry[],
 		complete: boolean,
 	) => void;
+	/**
+	 * Retract a recorded `undelivered` verdict that a later read DISPROVED.
+	 *
+	 * The repaint guard's one write (issue #847): when the loaded transcript
+	 * already holds the owner's row under the verdict's `recordId`, the message
+	 * reached the conversation and the record is a falsehood about it. Nothing
+	 * else retracts one — the delivery rule above clears it only when a read NAMES
+	 * the id, and the read that WROTE the verdict is exactly the read that could
+	 * not see that far back.
+	 */
+	retractUndelivered: (draftKey: string, recordId: string) => void;
 	bindSession: (legacyAgentId: string, sessionId: string) => void;
 	upsertSession: (row: CanonicalSessionRow) => void;
 	/**
@@ -7123,8 +7283,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						...(activeCleared ? { activeDraftKey: null } : {}),
 					};
 				}),
-			resolveHeldFromServer: (sessionId, entryIds, complete) =>
+			resolveHeldFromServer: (sessionId, entries, complete) =>
 				set((state) => {
+					/*
+					 * The ids the claim is matched by, derived from the page's own rows once:
+					 * the reach test below reads the stamps, every arm below reads the ids.
+					 */
+					const entryIds = entries.map((entry) => entry.id);
 					/*
 					 * THE LATE-LANDING CORRECTION, AND IT RUNS FIRST: a draft already resolved
 					 * as `undelivered` whose message a LATER server answer NAMES did land after
@@ -7144,8 +7309,21 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					if (corrected.length > 0) {
 						drafts = { ...drafts };
 						for (const [key, draft] of corrected) {
+							const recordId = draft.undelivered?.recordId;
 							const { undelivered: _gone, ...kept } = draft;
 							drafts[key] = kept;
+							/*
+							 * AND THE ROW THAT VERDICT PAINTED COMES DOWN WITH IT (design review
+							 * round 1's D1). This is the launch sweep's retraction - the walk finds the
+							 * buried row and hands the page back here - and it lands AFTER the pane has
+							 * synchronously re-painted the verdict as a tail row, so without this the
+							 * reader is left with a bubble whose sentence has just been withdrawn. In
+							 * the update beside the `settlePendingSend` below, for the same reason
+							 * that call is: the echo entry and the row are the resolution's own
+							 * write, not a second pass over it.
+							 */
+							if (recordId !== undefined)
+								clearPaintedVerdictEcho(key, draft.sessionId, recordId);
 						}
 					}
 					/*
@@ -7180,6 +7358,30 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * NAMES the message is proof of delivery however partial the page is.
 					 */
 					if (!delivered && !complete)
+						return corrected.length > 0 ? { drafts } : {};
+					/*
+					 * AND NOTHING IS CONCLUDED FROM A PAGE THAT CANNOT SEE BACK TO THE CLAIM
+					 * (issue #847). `complete` is the page's CONTINUITY, and a tail page is
+					 * bounded: a delivered message older than that window is, to a
+					 * continuity-only reader, a message the server does not have - which is
+					 * how a delivered row came to be recorded `undelivered` and repainted at
+					 * the tail on every mount. The delivery arm above is untouched: an answer
+					 * that NAMES the id is proof of delivery however partial or deep the page
+					 * is. This path - silence - is the one that needs the reach.
+					 *
+					 * A claim left held here is not lost: it is retry material by design (the
+					 * sidebar row and `draft-resolution.ts`'s sweep are its other doors), and
+					 * the next read that does reach it resolves it then.
+					 */
+					if (
+						!delivered &&
+						!pageReachesClaim(
+							entries,
+							draft,
+							state.placementFacts[sessionId],
+							state.sessions.find((row) => row.session_id === sessionId),
+						)
+					)
 						return corrected.length > 0 ? { drafts } : {};
 					/*
 					 * The failure's own copy goes with the claim: `error`/`errorCode` are
@@ -7250,6 +7452,27 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						},
 					};
 				}),
+			retractUndelivered: (draftKey, recordId) => {
+				const draft = get().drafts[draftKey];
+				/*
+				 * The id must match: the guard that calls this hands over the resolution's
+				 * own `recordId`, and a row whose claim has since been answered afresh (a
+				 * retry that landed, a new press) carries a record that is no longer the
+				 * one this call is about.
+				 */
+				if (!draft || draft.undelivered?.recordId !== recordId) return;
+				set((state) => {
+					const { undelivered: _gone, ...kept } = state.drafts[draftKey];
+					return { drafts: { ...state.drafts, [draftKey]: kept } };
+				});
+				/*
+				 * AND THE ROW THE VERDICT ALREADY PAINTED GOES WITH IT (design review
+				 * round 1's D1): the verdict and the row are one fact, so a retraction that
+				 * left the row behind leaves a bubble at the tail with no statement - see
+				 * `clearPaintedVerdictEcho`.
+				 */
+				clearPaintedVerdictEcho(draftKey, draft.sessionId, recordId);
+			},
 			bindSession: (_legacyAgentId, sessionId) =>
 				get().setActiveSession(sessionId),
 			/*
