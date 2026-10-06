@@ -28,7 +28,11 @@
  *    `ghost`/`icon` buttons whose whole box is a hover target.
  *  - `gapTriggerBrowser`, `gapBrowserCanvas`  the two numbers the report is
  *    about, each computed as `next.left - previous.right` (so a negative value
- *    would be an overlap).
+ *    would be an overlap). Both are readings across the six-control cluster
+ *    (menu, run, asks, browser, console, canvas): each spans the controls
+ *    between its pair on top of the two 8px steps, so the contract's values are
+ *    48 at the 8px step and 56 at the 12px one. `clusterGap` below is the step
+ *    itself; a step change moves both of them.
  *  - `clusterGap`  the gap the CLUSTER's own computed style resolves to, which is
  *    the container's decision rather than a child's margin - and the field a
  *    reviewer reads to see that the spacing lives on the container.
@@ -38,9 +42,10 @@
  *  - `badge`, `badgeRingPx`, `badgeOuterRight`, `badgeClearance`  the badge's box,
  *    the width of its ring (read off the painted `box-shadow`, not assumed), the
  *    painted right edge (box + ring) and the distance from that edge to the canvas
- *    button's box. NEGATIVE `badgeClearance` means the ring is painted inside the
- *    neighbour's hover target, which is the case design round 1's D5 exists to
- *    prevent.
+ *    button's box - the field's own reference, though the ring's reach lands on
+ *    the console trigger's left edge first when that trigger is drawn. NEGATIVE
+ *    `badgeClearance` means the ring is painted inside a 32px control's hover
+ *    target, which is the case design round 1's D5 exists to prevent.
  *  - `badgeToGlyph`  the badge's left edge against the browser glyph's right edge.
  *    The badge is right-anchored, so a wider badge grows leftwards and this is the
  *    number that says whether it has started eating the glyph it sits beside.
@@ -69,9 +74,9 @@
  *
  * IT ALSO PRINTS THE CROSS-STATE DELTA - `MOVEMENT`, badge-free against badge
  * drawn, in the same run and the same theme. That is the quantity round 1's prose
- * got wrong (the cluster grows 8px, both gaps widen, the trigger absorbs both and
- * the browser button moves 4px), and it is the number a reviewer should not have to
- * subtract out of two box rows by hand.
+ * got wrong (the cluster grows 20px, all five gaps widen, the controls left of them
+ * absorb the growth and the browser button moves 8px), and it is the number a
+ * reviewer should not have to subtract out of two box rows by hand.
  *
  * `--badge-text=<text>` writes that text into the drawn badge before measuring, so
  * the unreachable three-glyph counterfactual is a command a reader can re-run
@@ -112,55 +117,60 @@ const DEBUG_PORT = /DevTools listening on (ws:\/\/[^\s]+)/;
  *  - `clusterGap`   the value the cluster's own computed `gap` must resolve to, in
  *    CSS pixels. This is the container's decision, and the field that says the
  *    spacing left the component.
- *  - `gaps`         the two box gaps in order (`trigger -> browser`,
- *    `browser -> canvas`), `null` where the neighbour is not rendered.
+ *  - `gaps`         the two box-gap readings in order (`trigger -> browser`,
+ *    `browser -> canvas`), each spanning the controls between its pair (asks;
+ *    console) on top of the two 8px steps, `null` where the neighbour is not
+ *    rendered.
  *  - `badge`        whether a badge must be drawn in that state.
  *  - `clearanceAtLeast`  the minimum room the badge's painted ring must keep before
- *    the canvas button's box. `0` means the ring may MEET the box and never enter
- *    it, which is design round 1's D5 floor; a negative reading is a ring painted
- *    inside a 32px control's hover target and is the one number this contract
- *    exists to refuse.
+ *    the canvas button's box, the box this field reads. `0` means the ring may MEET
+ *    the box and never enter it, which is design round 1's D5 floor; a negative
+ *    reading is a ring painted inside a 32px control's hover target and is the one
+ *    number this contract exists to refuse. In the states it grades the measured
+ *    number is 44: the ring's 12px reach ends 0px on the CONSOLE trigger's left
+ *    edge (468) - the adjacent box - and this field's canvas box sits 44px further.
+ *    Both are 32px hover targets the ring meets without entering.
  *
  * The five states and why each is judged as it is:
  *
  *  - `no-approval` and `trigger-dot` are badge-free, so the cluster owes nothing
- *    and must sit at the ramp's within-a-component step on BOTH sides. The dot
- *    state is the counter-example that proves the rule: an object painting 2px
- *    past its box earns no room, because the ordinary gap still clears it.
+ *    and must sit at the ramp's within-a-component step throughout (five gaps,
+ *    six controls). The dot state is the counter-example that proves the rule: an
+ *    object painting 2px past its box earns no room, because the ordinary gap
+ *    still clears it.
  *  - `one-approval` and `at-cap` are the badge drawn, which is what the 12px is
  *    for. `at-cap` is the widest the app can reach (`9+` is the badge's own
  *    grammar), so these two bound the state.
  *  - `canvas-open-badge` is the badge drawn with the canvas button UNMOUNTED: the
- *    room is owed for that button's box, so with no box there is nothing to clear
- *    and the cluster must fall back to 8px rather than pay 12 for a neighbour that
- *    is not rendered.
+ *    room is owed for that button's box, so with that box gone the cluster must
+ *    fall back to 8px rather than pay 12 for a neighbour that is not rendered.
  */
 const CONTRACT = {
 	"chat-header-cluster--no-approval": {
 		clusterGap: 8,
-		gaps: [8, 8],
+		gaps: [48, 48],
 		badge: false,
 	},
 	"chat-header-cluster--one-approval": {
 		clusterGap: 12,
-		gaps: [12, 12],
+		gaps: [56, 56],
 		badge: true,
 		clearanceAtLeast: 0,
 	},
 	"chat-header-cluster--at-cap": {
 		clusterGap: 12,
-		gaps: [12, 12],
+		gaps: [56, 56],
 		badge: true,
 		clearanceAtLeast: 0,
 	},
 	"chat-header-cluster--trigger-dot": {
 		clusterGap: 8,
-		gaps: [8, 8],
+		gaps: [48, 48],
 		badge: false,
 	},
 	"chat-header-cluster--canvas-open-badge": {
 		clusterGap: 8,
-		gaps: [8, null],
+		gaps: [48, null],
 		badge: true,
 	},
 };
@@ -181,23 +191,25 @@ const MOVEMENT_PAIR = [
  * This is the quantity round 1's prose stated wrongly - "the cluster grows 4px and
  * the run trigger's left edge moves 4px", with the browser button said not to move
  * at all - so the script that produces the numbers is the right place to pin them.
- * Both of the cluster's two gaps ARE the one `gap` property, so an 8 -> 12 change
- * widens each of them by 4px, and the run trigger - which sits left of both -
- * absorbs both. Numbers are deltas from the badge-free state, in CSS pixels.
+ * ALL FIVE of the cluster's gaps ARE the one `gap` property (six controls), so an
+ * 8 -> 12 change widens each of them by 4px, and the growth is absorbed from the
+ * left: the cluster's left edge moves -20px, the run trigger -16px, the browser
+ * button -8px, and the canvas button, pinned by the right edge, does not move.
+ * Numbers are deltas from the badge-free state, in CSS pixels.
  *
- * The browser button's `-4` is not bookkeeping: its right edge moves 504 -> 500,
- * and 500 plus the badge's 12px painted ring ends exactly on the canvas button's
- * box at 512. That is the mechanism that holds design round 1's D5 clearance at the
- * 0px floor while the badge is drawn, so a future change that stops the browser
- * button moving has stopped paying for the badge.
+ * The browser button's `-8` is not bookkeeping: its right edge moves 464 -> 456,
+ * and 456 plus the badge's 12px (10px offset, 2px ring) ends exactly on the
+ * console box's left edge at 468. That is the mechanism that holds design round
+ * 1's D5 clearance at the 0px floor while the badge is drawn, so a future change
+ * that stops the browser button moving has stopped paying for the badge.
  */
 const MOVEMENT_CONTRACT = {
-	clusterWidth: 8,
-	triggerLeft: -8,
-	browserLeft: -4,
+	clusterWidth: 20,
+	triggerLeft: -16,
+	browserLeft: -8,
 	canvasLeft: 0,
-	gapTriggerBrowser: 4,
-	gapBrowserCanvas: 4,
+	gapTriggerBrowser: 8,
+	gapBrowserCanvas: 8,
 };
 
 /**
