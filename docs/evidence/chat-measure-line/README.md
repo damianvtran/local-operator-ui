@@ -2,8 +2,8 @@
 
 Frames for issue #848: the column's resize cue joining the app's one resize
 language. Four states, two palettes, each photographed on **two trees** — `before/`
-is unmodified `origin/main` (`ffe3f33dd3b`, the head this branch was cut from)
-and `after/` is this branch's head.
+is unmodified `origin/main` (`d70f2645599`, this branch's fold point) and `after/`
+is this branch's folded head.
 
 The complaint, verbatim from the issue: the 72px bar floating in the transcript's
 empty margin *"reads as a mistake"* rather than as the column's boundary.
