@@ -11,10 +11,11 @@ npx storybook dev -p 6017 --host 127.0.0.1 --no-open --disable-telemetry
 node scripts/capture-evidence.mjs --only=command-palette http://127.0.0.1:6017
 ```
 
-Five stories: `--default` (the browse layout and the scope legend),
+Eight stories: `--default` (the browse layout and the scope legend),
 `--filtered`, `--settings-scope` (`,theme` finding a row the settings rail calls
-Appearance), `--commands-scope` (`>` narrowed to destinations and actions) and
-`--no-results`.
+Appearance), `--commands-scope` (`>` narrowed to destinations and actions),
+`--no-results`, and the three roster stories — `--agent-roster-row`,
+`--team-roster-row` and `--roster-scope` (the `@` scope drawing both).
 
 **The four panel rows are in no frame here, and cannot be.** `info`, `usage`,
 `analytics` and `session.diagnostics` are presented by the chat pane, a story has
@@ -71,3 +72,12 @@ before halves in `docs/evidence/command-palette-commandpalette-baseline/`).
 The conversation and registry groups, which need a live backend, are not in
 either set. They are covered by the unit tests over the ranking and the join,
 and by the live-app checks recorded in the pull request.
+
+The three ROSTER stories are the exception that proves that rule: they draw
+agents and teams offline because the story installs the desktop bridge over an
+in-memory world (`command-palette.stories.tsx`, the same technique and the same
+reason as `agent-class.stories.tsx`), so a story CAN show a roster the app would
+otherwise need a backend for. The roster stories therefore have **no before
+half** in `command-palette-commandpalette-baseline/`, by the same rule that
+covers the other backend-needing groups: the base tree cannot render one, and a
+placeholder presenting under a real frame's name would be worse than no frame.
