@@ -6,10 +6,7 @@ import tourChatAttachmentsImage from "@assets/images/tour/chat-attachments.png";
 import tourChatFullViewImage from "@assets/images/tour/chat-full-view.png";
 import tourChatInputImage from "@assets/images/tour/chat-input.png";
 import tourInlineEditCanvasImage from "@assets/images/tour/inline-edit-canvas.png";
-import {
-	paletteShortcutLabel,
-	switcherShortcutLabel,
-} from "@features/command-palette/palette-shortcut";
+import { paletteDoorLabel } from "@features/command-palette/palette-shortcut";
 import { useOnboardingStore } from "@shared/store/onboarding-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useContext } from "react";
@@ -206,7 +203,7 @@ const tourSteps: StepOptions[] = [
 			element: '[data-tour-tag="command-palette-dialog"]',
 			on: "right",
 		},
-		text: `Let's quickly look at another powerful feature: the Command Palette. You can open it anywhere in the app by pressing <code>${paletteShortcutLabel(true)}</code> on Mac and <code>${paletteShortcutLabel(false)}</code> on Windows or Linux. This is a helpful window that you can open from anywhere in the app to be able to access your chats, agents, settings, pages and actions, and much more, using your keyboard. It can often be faster to access sections in the app this way instead of clicking through menus. Type a word to search everything at once, or start with a prefix to narrow it: <code>#</code> for chats, <code>@</code> for agents, <code>,</code> for settings, and <code>&gt;</code> for commands and pages.<br /><br />If you usually want a conversation, press <code>${switcherShortcutLabel(true)}</code> on Mac and <code>${switcherShortcutLabel(false)}</code> on Windows or Linux instead: the palette opens already searching your chats, so you can jump straight to one. You can also just click Search in the sidebar to open it.`,
+		text: `Let's quickly look at another powerful feature: the Command Palette. You can open it anywhere in the app by pressing <code>${paletteDoorLabel("everything", true)}</code> on Mac and <code>${paletteDoorLabel("everything", false)}</code> on Windows or Linux. This is a helpful window that you can open from anywhere in the app to be able to access your chats, agents, settings, pages and actions, and much more, using your keyboard. It can often be faster to access sections in the app this way instead of clicking through menus. Type a word to search everything at once, or start with a prefix to narrow it: <code>#</code> for chats, <code>@</code> for agents and teams, <code>,</code> for settings, and <code>&gt;</code> for commands and pages.<br /><br />In a hurry for a conversation? Press <code>${paletteDoorLabel("chats", true)}</code> on Mac and <code>${paletteDoorLabel("chats", false)}</code> on Windows or Linux and the palette opens already searching your chats, so you can jump straight to one — and <code>${paletteDoorLabel("commands", true)}</code> on Mac and <code>${paletteDoorLabel("commands", false)}</code> on Windows or Linux opens it on the app's own commands and pages when that is what you are after. You can also just click Search in the sidebar to open it.`,
 		buttons: [
 			{
 				text: "Back",

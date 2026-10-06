@@ -3471,13 +3471,43 @@ app
 			// Register local shortcuts for focused window
 			mainWindow.webContents.on("before-input-event", (event, input) => {
 				const isCmdOrCtrl = input.control || input.meta;
+				/*
+				 * THE PALETTE BRANCH'S MODIFIER, READ PER PLATFORM (issue #850).
+				 *
+				 * `input.control || input.meta` is this app's usual "Cmd or Ctrl" reading,
+				 * and it is wrong ON macOS for exactly one branch, because the palette's
+				 * own WALK binds Ctrl+P as its "previous row" step (`paletteStepIntent`,
+				 * issue #761): folding Control into Cmd meant a focused macOS window
+				 * swallowed that step before the renderer saw it, so the cap was bound,
+				 * reachable in a rig, and dead in the shipped app (design round 1, D1).
+				 *
+				 * So darwin answers Cmd alone here and lets Control pass through to the
+				 * renderer's step. Windows and Linux keep Ctrl as the modifier (Cmd is
+				 * meaningless there, and neither platform has a renderer gesture on Ctrl+P),
+				 * which is why this is a platform split rather than a straight deletion.
+				 *
+				 * SCOPE: the PALETTE branch only. The zoom and speech-to-text branches below
+				 * keep `isCmdOrCtrl`, because neither collides with a renderer gesture and
+				 * changing them would be a second, unrequested behaviour change.
+				 */
+				const paletteModifier =
+					process.platform === "darwin"
+						? input.meta
+						: input.control || input.meta;
 
 				/*
-				 * The conversation switcher: Cmd/Ctrl + P — the palette's ORIGINAL
-				 * gesture, kept for everyone who learned it from the app's own tour, and
-				 * since issue #659 a job of its own rather than a second door to the
-				 * same list: the renderer opens the palette seeded to its conversations
-				 * source, which is a chat quick switcher.
+				 * The conversation switcher and the command door (issues #659, #850):
+				 * Cmd/Ctrl + P opens the palette on EVERYTHING, Cmd/Ctrl + Shift + P opens
+				 * it on COMMANDS. Both are kept here rather than in the renderer because a
+				 * `before-input-event` hook works wherever the WINDOW has focus, and Cmd+P
+				 * is the palette's original chord — the one the app's own tour taught. What
+				 * each press DOES (open / close / switch) is the renderer's decision
+				 * (`paletteDoorOutcome`); main only says which door was pressed.
+				 *
+				 * SHIFT IS READ NOW (issue #850): before this the branch did not look at it,
+				 * so Cmd+Shift+P took Cmd+P's path and the commands door was unreachable —
+				 * the two chords arrived as one message and nothing downstream could tell
+				 * them apart.
 				 *
 				 * Cmd/Ctrl + K, the gesture the app now teaches, is deliberately NOT here:
 				 * a `before-input-event` hook fires before the renderer sees the key at all,
@@ -3486,17 +3516,21 @@ app
 				 * every editor these users have met). The renderer answers that one, so the
 				 * editor that got there first keeps it — see
 				 * `src/renderer/src/features/command-palette/palette-shortcut.ts`. One
-				 * keystroke, one owner: binding both here would toggle twice per press and
+				 * keystroke, one owner: binding both here would answer one press twice and
 				 * the palette would never open.
 				 */
 				if (
-					isCmdOrCtrl &&
+					paletteModifier &&
 					input.key.toLowerCase() === "p" &&
 					input.type === "keyDown"
 				) {
 					if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
 						event.preventDefault();
-						mainWindow.webContents.send("toggle-command-palette");
+						mainWindow.webContents.send(
+							input.shift
+								? "toggle-command-palette-commands"
+								: "toggle-command-palette",
+						);
 					}
 				}
 

@@ -17,9 +17,8 @@ import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { newChatShortcutCap } from "@features/chat/new-chat-shortcut";
 import { openConversation } from "@features/chat/open-conversation";
 import {
-	paletteShortcutCaps,
-	paletteShortcutLabel,
-	switcherShortcutLabel,
+	paletteDoorCaps,
+	paletteDoorLabel,
 } from "@features/command-palette/palette-shortcut";
 import {
 	useMeshApprovals,
@@ -788,17 +787,21 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 */
 	const newChatLabel = `New chat (${newChatShortcutCap(isMac).replace("+", "")})`;
 	/*
-	 * BOTH DOORS IN THE NAME (design/UX round 2, U3): this row is where the app
-	 * teaches the search chord, and since #659 there are two of them —
-	 * `Cmd/Ctrl+K` for the everything palette and `Cmd/Ctrl+P` for the
-	 * conversation switcher. The visible cap stays K: one cap is the row's
-	 * budget, and two caps beside "Search" would read as a combined chord. The
-	 * second door rides in the accessible name and (for the strip, which draws
-	 * its name as a tooltip) in the tooltip, so a reader who never met the tour
-	 * can still find it.
+	 * BOTH DOORS IN THE NAME (design/UX round 2, U3; re-pointed by issue #850):
+	 * this row is where the app teaches the search chords, and there are two of
+	 * them — `Cmd/Ctrl+P` for the everything palette and `Cmd/Ctrl+K` for the
+	 * conversation switcher. THE TWO SWAPPED in #850 (K used to be the everything
+	 * door), so a name that still paired K with "everything" would be the stale
+	 * copy that change exists to remove. The visible cap follows the CLICK — this
+	 * row opens the everything door, so it prints that door's cap — while the
+	 * second door rides in the accessible name and (for the strip, which draws its
+	 * name as a tooltip) in the tooltip, so a reader who never met the tour can
+	 * still find it. The third door (`Cmd/Ctrl+Shift+P`, commands) is not on this
+	 * row: one cap is the row's budget, and two chords in the name is already the
+	 * most a rail row can carry.
 	 */
-	const searchLabel = `Search (${paletteShortcutLabel(isMac)}) — chats (${switcherShortcutLabel(isMac)})`;
-	const searchTitle = `Search everything (${paletteShortcutLabel(isMac)}) · your chats (${switcherShortcutLabel(isMac)})`;
+	const searchLabel = `Search (${paletteDoorLabel("everything", isMac)}) — chats (${paletteDoorLabel("chats", isMac)})`;
+	const searchTitle = `Search everything (${paletteDoorLabel("everything", isMac)}) · your chats (${paletteDoorLabel("chats", isMac)})`;
 	const primaryRow = (
 		icon: LucideIcon,
 		label: string,
@@ -860,7 +863,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const searchRowExpanded = primaryRow(
 		Search,
 		"Search",
-		paletteShortcutCaps(isMac),
+		paletteDoorCaps("everything", isMac),
 		{
 			onClick: openCommandPalette,
 			ariaLabel: searchLabel,

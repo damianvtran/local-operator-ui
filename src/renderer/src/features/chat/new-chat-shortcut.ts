@@ -107,7 +107,7 @@ export const shouldStartNewChat = (event: NewChatShortcutEvent): boolean => {
  * The cap the sidebar prints, in the platform's own spelling.
  *
  * Takes `isMac` rather than the platform string, which is the shape the palette's
- * own caps use (`paletteShortcutCaps`): the DECISION stays a pure function of one
+ * own caps use (`paletteDoorCaps`): the DECISION stays a pure function of one
  * boolean, so both spellings are assertable without a DOM, and the boolean is
  * derived by the caller. The derivation stays at the call site because that is
  * where this app already does it - `chat-header.tsx`, `sidebar-navigation.tsx` and
