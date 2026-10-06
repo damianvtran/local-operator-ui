@@ -2,7 +2,7 @@ import { BrowserHostError } from "../errors";
 import { drainLogs } from "../log-capture";
 import { SCROLL_DIRECTIONS, sleep } from "../policy/adapter";
 import type { LogEntry, ScrollResult } from "../protocol";
-import type { TabRecord } from "../registry";
+import type { TabRecord, TabRef } from "../registry";
 import { type AXNode, compactAX } from "../vendor/driver/ax-compact";
 import {
 	CDP_DEADLINE_MS,
@@ -16,6 +16,15 @@ import {
 	scrollExpressionFor,
 } from "../vendor/driver/scroll-expressions";
 import { type BrowserActionContext, numberParam, stringParam } from "./context";
+import {
+	FRAME_HOP,
+	type FrameScope,
+	MAX_FRAMES_SEARCHED,
+	MAX_FRAME_DEPTH,
+	enterFrame,
+	sendIn,
+	topScope,
+} from "./frames";
 import { pageOf } from "./gate";
 
 /**
@@ -140,7 +149,18 @@ export async function snapshot(
 		// disable, and a failed disable must not replace the read's outcome.
 		await ctx.cdp.send(contents, "Accessibility.disable", {}).catch(() => {});
 	}
-	const { snapshot: rendered, refs } = compactAX(nodes, record.epoch);
+	const { snapshot: topRendered, refs: topRefs } = compactAX(
+		nodes,
+		record.epoch,
+	);
+	const refs: Record<string, TabRef> = { ...topRefs };
+	let rendered = topRendered;
+	// Frames are walked only when the page's own tree shows one, so a page with no
+	// iframe sends exactly the commands it always sent (ARCH-1).
+	if (nodes.some(isFrameNode)) {
+		const blocks = await frameSnapshots(ctx, record, nodes, refs);
+		if (blocks.length) rendered = [rendered, ...blocks].join("\n");
+	}
 	record.refs = refs;
 	ctx.registry.touch(record);
 	return {
@@ -149,6 +169,122 @@ export async function snapshot(
 		epoch: record.epoch,
 		...pageOf(record.view),
 	};
+}
+
+/** The AX role Chromium gives an `<iframe>`/`<frame>` element. */
+function isFrameNode(node: AXNode): boolean {
+	return node.role?.value === "Iframe" && node.backendDOMNodeId !== undefined;
+}
+
+/** A ref label in a rendered line. Module scope: the top-level-regex rule. */
+const REF_LABEL = /\[e(\d+)\]/g;
+
+/**
+ * One nested block per frame the page's tree names, each from that frame's OWN
+ * AX tree: the page's tree stops at the frame boundary (measured: no textbox for
+ * a field inside a cross-site OR a same-site frame).
+ *
+ * Refs continue the page's counter, so a ref name is still `e<n>` and unique on
+ * the tab; each carries the frame's session target and origin (`TabRef`). An
+ * out-of-process frame's tree comes from its child session; a same-process one
+ * from the session that holds it, by `frameId`. A frame that fails to read is
+ * skipped rather than failing the page's snapshot. Bounded by the same depth and
+ * frame caps as the selector search.
+ */
+async function frameSnapshots(
+	ctx: BrowserActionContext,
+	record: TabRecord,
+	topNodes: AXNode[],
+	refs: Record<string, TabRef>,
+): Promise<string[]> {
+	const contents = record.view.webContents;
+	const blocks: string[] = [];
+	let entered = 0;
+	let level: Array<{ scope: FrameScope; nodes: AXNode[] }> = [
+		{ scope: await topScope(ctx, contents), nodes: topNodes },
+	];
+	for (let depth = 0; depth < MAX_FRAME_DEPTH && level.length; depth += 1) {
+		const next: typeof level = [];
+		for (const { scope: parent, nodes } of level) {
+			for (const frameNode of nodes.filter(isFrameNode)) {
+				if (entered >= MAX_FRAMES_SEARCHED) return blocks;
+				entered += 1;
+				try {
+					const pushed = await sendIn<{ nodeIds?: number[] }>(
+						ctx,
+						contents,
+						parent.sessionId,
+						"DOM.pushNodesByBackendIdsToFrontend",
+						{ backendNodeIds: [frameNode.backendDOMNodeId] },
+					);
+					const iframeNodeId = pushed?.nodeIds?.[0];
+					if (!iframeNodeId) continue;
+					const scope = await enterFrame(ctx, contents, parent, iframeNodeId);
+					const frameNodes = await frameTree(ctx, contents, scope);
+					const { snapshot: inner, refs: innerRefs } = compactAX(
+						frameNodes,
+						record.epoch,
+					);
+					const offset = Object.keys(refs).length;
+					for (const [name, ref] of Object.entries(innerRefs)) {
+						refs[`e${Number(name.slice(1)) + offset}`] = {
+							...ref,
+							...(scope.frameTargetId ? { frameId: scope.frameTargetId } : {}),
+							frameOrigin: scope.origin ?? "",
+						};
+					}
+					const indent = "  ".repeat(depth);
+					const body = inner
+						.replace(REF_LABEL, (_m, n) => `[e${Number(n) + offset}]`)
+						.split("\n")
+						.filter(Boolean)
+						.map((line) => `${indent}  ${line}`);
+					blocks.push(
+						`${indent}- frame ${scope.path.join(` ${FRAME_HOP} `)}${scope.origin ? ` (${scope.origin})` : ""}:`,
+						...body,
+					);
+					next.push({ scope, nodes: frameNodes });
+				} catch (error) {
+					if (error instanceof BrowserHostError) continue;
+					throw error;
+				}
+			}
+		}
+		level = next;
+	}
+	return blocks;
+}
+
+async function frameTree(
+	ctx: BrowserActionContext,
+	contents: TabRecord["view"]["webContents"],
+	scope: FrameScope,
+): Promise<AXNode[]> {
+	// A same-process frame shares its parent's session; `frameId` picks its
+	// document. An out-of-process frame's session IS its document.
+	const params =
+		scope.frameTargetId === scope.frameId || !scope.frameId
+			? {}
+			: { frameId: scope.frameId };
+	await sendIn(ctx, contents, scope.sessionId, "Accessibility.enable", {});
+	try {
+		const tree = await sendIn<{ nodes?: AXNode[] }>(
+			ctx,
+			contents,
+			scope.sessionId,
+			"Accessibility.getFullAXTree",
+			params,
+		);
+		return Array.isArray(tree?.nodes) ? tree.nodes : [];
+	} finally {
+		await sendIn(
+			ctx,
+			contents,
+			scope.sessionId,
+			"Accessibility.disable",
+			{},
+		).catch(() => {});
+	}
 }
 
 /** The scroll-position report, as a fixed expression: `moreBelow`/`moreRight`
