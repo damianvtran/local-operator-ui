@@ -320,6 +320,12 @@ const CHROME_LAUNCH_SITES = [
 		"photographs the chat column's shared measure at the shipped value and at the value it carried before, and reads the line length back from the rendered DOM - the frame pair a sweep cannot take, because the previous value is not in the tree at any later head",
 	),
 	guarded(
+		"scripts/chat-measure-line-evidence.mjs",
+		"spawn",
+		1,
+		"drives the conversation column's resize cue on TWO trees in one run - the base tree's floating bar and this branch's state line - so the before/after pair for issue #848 is a like-for-like comparison, and asserts the geometry of both halves",
+	),
+	guarded(
 		"scripts/composer-readings-geometry.mjs",
 		"spawn",
 		2,
