@@ -3,11 +3,18 @@ import { test } from "node:test";
 import { build } from "esbuild";
 
 /*
- * The palette's keyboard decisions: the DOOR — which keys toggle it, and which
- * keystrokes belong to a surface that got there first — and the WALK — the
- * arrow and Ctrl+N/Ctrl+P presses that move the selection while it is open
- * (issue #761). Pure, so the rules that matter are pinned here rather than
- * inferred from a listener.
+ * The palette's keyboard decisions: the DOORS — which keys open it, which view
+ * each one asks for, and which keystrokes belong to a surface that got there
+ * first — and the WALK — the arrow and Ctrl+N/Ctrl+P presses that move the
+ * selection while it is open (issue #761). Pure, so the rules that matter are
+ * pinned here rather than inferred from a listener.
+ *
+ * SINCE ISSUE #850 THERE ARE THREE DOORS and one rule: K -> chats (`#`),
+ * P -> everything (empty), Shift+P -> commands (`>`). A closed palette opens on
+ * the door's seed; an open palette already in that door's view closes; an open
+ * palette in another view switches. The rule itself (`paletteDoorOutcome`) is
+ * exercised on all three arms below, because the arm that used to be missing —
+ * close — is the one a listener bug would silently reinstate.
  */
 const bundle = await build({
 	stdin: {
@@ -24,14 +31,14 @@ const module = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 const {
+	paletteDoorCaps,
+	paletteDoorLabel,
+	paletteDoorOutcome,
 	paletteReachableStepCaps,
-	paletteShortcutCaps,
 	paletteShortcutIntent,
-	paletteShortcutLabel,
 	paletteStepCaps,
 	paletteStepIndex,
 	paletteStepIntent,
-	switcherShortcutLabel,
 } = module;
 
 /** A keystroke, with everything unset unless the test asks for it. */
@@ -46,14 +53,14 @@ const key = (overrides = {}) => ({
 	...overrides,
 });
 
-test("Cmd+K and Ctrl+K both open the palette", () => {
-	assert.equal(paletteShortcutIntent(key({ metaKey: true })), "toggle");
-	assert.equal(paletteShortcutIntent(key({ ctrlKey: true })), "toggle");
+test("Cmd+K and Ctrl+K are the chats door", () => {
+	assert.equal(paletteShortcutIntent(key({ metaKey: true })), "chats");
+	assert.equal(paletteShortcutIntent(key({ ctrlKey: true })), "chats");
 	// The letter's case depends on the layout and the modifiers, and the rule
 	// reads it case-insensitively.
 	assert.equal(
 		paletteShortcutIntent(key({ metaKey: true, key: "K" })),
-		"toggle",
+		"chats",
 	);
 });
 
@@ -75,6 +82,12 @@ test("a surface that claimed the key keeps it", () => {
 });
 
 test("nothing else about the chord is accepted", () => {
+	/*
+	 * Shift and Alt are refused here even though Cmd+Shift+P is one of the three
+	 * chords: that one is decided in MAIN (`src/main/index.ts`), which is the only
+	 * half that can see a press the window handles before the renderer does. This
+	 * function answers exactly the K door, and a Shift+K is not it.
+	 */
 	assert.equal(
 		paletteShortcutIntent(key({ metaKey: true, shiftKey: true })),
 		null,
@@ -91,31 +104,115 @@ test("nothing else about the chord is accepted", () => {
 
 test("Cmd+P is not this module's gesture", () => {
 	/*
-	 * Deliberately not adopted. Cmd/Ctrl+P is the gesture this palette shipped
-	 * with, and the people who learned it from the app's own tour still have it —
-	 * it is answered by the main process's own hook, which knows nothing about
-	 * what the renderer is doing and therefore cannot be the place Cmd+K is
-	 * decided. Since issue #659 that hook's message opens the palette seeded to
-	 * its conversations source (the quick switcher), while this module keeps
-	 * answering the unseeded toggle: two gestures, two owners, two jobs, and no
-	 * keystroke claimed twice — if this function also answered P, a single press
-	 * would toggle twice and the palette would not open at all.
+	 * Deliberately not adopted. Cmd/Ctrl+P is answered by the main process's own
+	 * hook, which knows nothing about what the renderer is doing and therefore
+	 * cannot be the place Cmd+K is decided. Since issue #850 that hook's message
+	 * asks for the EVERYTHING view; this module answers the K door alone, and if
+	 * this function also answered P a single press would be answered twice.
 	 */
 	assert.equal(paletteShortcutIntent(key({ metaKey: true, key: "p" })), null);
 	assert.equal(paletteShortcutIntent(key({ ctrlKey: true, key: "p" })), null);
 });
 
-test("the copy and the key caps are the same spellings", () => {
-	assert.equal(paletteShortcutLabel(true), "⌘K");
-	assert.equal(paletteShortcutLabel(false), "Ctrl+K");
-	// `KeyboardShortcut` splits prop text on `+`, so the caps keep the modifier
-	// and the letter as two keys.
-	assert.equal(paletteShortcutCaps(true), "⌘+K");
-	assert.equal(paletteShortcutCaps(false), "Ctrl+K");
-	// The switcher door's label (issue #659), for the tour's prose and any
-	// future cap: spelled here so a rebinding cannot leave stale `⌘P` copy.
-	assert.equal(switcherShortcutLabel(true), "⌘P");
-	assert.equal(switcherShortcutLabel(false), "Ctrl+P");
+test("each door's chord is spelled once, in both registers", () => {
+	// Prose (the tour, the rail's accessible name).
+	assert.equal(paletteDoorLabel("chats", true), "⌘K");
+	assert.equal(paletteDoorLabel("chats", false), "Ctrl+K");
+	assert.equal(paletteDoorLabel("everything", true), "⌘P");
+	assert.equal(paletteDoorLabel("everything", false), "Ctrl+P");
+	assert.equal(paletteDoorLabel("commands", true), "⌘⇧P");
+	assert.equal(paletteDoorLabel("commands", false), "Ctrl+Shift+P");
+	// `KeyboardShortcut` prop text, which splits on `+`.
+	assert.equal(paletteDoorCaps("chats", true), "⌘+K");
+	assert.equal(paletteDoorCaps("chats", false), "Ctrl+K");
+	assert.equal(paletteDoorCaps("everything", true), "⌘+P");
+	assert.equal(paletteDoorCaps("everything", false), "Ctrl+P");
+	assert.equal(paletteDoorCaps("commands", true), "⌘+⇧+P");
+	assert.equal(paletteDoorCaps("commands", false), "Ctrl+Shift+P");
+});
+
+/* ------------------------------------------------------------------ *
+ * The doors, as one rule (issue #850)
+ * ------------------------------------------------------------------ */
+
+test("a closed palette opens on the door's own seed", () => {
+	assert.deepEqual(paletteDoorOutcome("chats", { open: false, query: "" }), {
+		action: "open",
+		query: "#",
+	});
+	assert.deepEqual(
+		paletteDoorOutcome("everything", { open: false, query: "" }),
+		{
+			action: "open",
+			query: "",
+		},
+	);
+	assert.deepEqual(paletteDoorOutcome("commands", { open: false, query: "" }), {
+		action: "open",
+		query: ">",
+	});
+});
+
+test("pressing the door whose view is showing closes", () => {
+	/*
+	 * The arm that did not exist before #850: the switcher key could only MOVE an
+	 * open palette, never dismiss it, so a repeat press could not close from any
+	 * door. It is derived from the query's SCOPE rather than from a remembered
+	 * mode, which is what makes a hand-edited field answerable: `>usage` is still
+	 * the commands view, so the commands door closes it.
+	 */
+	assert.deepEqual(paletteDoorOutcome("chats", { open: true, query: "#" }), {
+		action: "close",
+	});
+	assert.deepEqual(
+		paletteDoorOutcome("everything", { open: true, query: "" }),
+		{ action: "close" },
+	);
+	assert.deepEqual(paletteDoorOutcome("commands", { open: true, query: ">" }), {
+		action: "close",
+	});
+	// Terms after the glyph are in the same view.
+	assert.deepEqual(
+		paletteDoorOutcome("commands", { open: true, query: ">usage" }),
+		{ action: "close" },
+	);
+	assert.deepEqual(
+		paletteDoorOutcome("chats", { open: true, query: "#retention" }),
+		{ action: "close" },
+	);
+});
+
+test("a different door switches the view rather than closing", () => {
+	/*
+	 * "Switcher" muscle memory expects the scope to change: K from the commands
+	 * view goes to chats, and the second Shift+P is what closes it. Every ordered
+	 * pair is asserted, because the failure a single example would miss is one
+	 * door answered by another door's view.
+	 */
+	assert.deepEqual(paletteDoorOutcome("chats", { open: true, query: ">" }), {
+		action: "switch",
+		query: "#",
+	});
+	assert.deepEqual(paletteDoorOutcome("chats", { open: true, query: "" }), {
+		action: "switch",
+		query: "#",
+	});
+	assert.deepEqual(paletteDoorOutcome("commands", { open: true, query: "#" }), {
+		action: "switch",
+		query: ">",
+	});
+	assert.deepEqual(
+		paletteDoorOutcome("everything", { open: true, query: "#retention" }),
+		{ action: "switch", query: "" },
+	);
+	/*
+	 * And a query that names no scope IS the everything view, so the other two
+	 * doors switch out of it rather than closing.
+	 */
+	assert.deepEqual(
+		paletteDoorOutcome("commands", { open: true, query: "retention" }),
+		{ action: "switch", query: ">" },
+	);
 });
 
 /* ------------------------------------------------------------------ *
@@ -187,10 +284,11 @@ test("the pair is Control's alone", () => {
 	assert.equal(paletteStepIntent(press({ key: "n" })), null);
 	/*
 	 * Cmd is refused deliberately: on macOS Cmd+N is the app's new-chat chord
-	 * and Cmd+P the switcher's — both with jobs that are not this one — so
-	 * claiming either inside the palette would silently re-bind a press the app
-	 * already means something by. On the pair, refusing meta mirrors the arrows
-	 * refusing ctrl.
+	 * and Cmd+P the palette's everything door — both with jobs that are not this
+	 * one — so claiming either inside the palette would silently re-bind a press
+	 * the app already means something by. On the pair, refusing meta mirrors the
+	 * arrows refusing ctrl. Since #850 this refusal is also what keeps Cmd+P
+	 * (handled in MAIN) from colliding with the walk's Ctrl+P.
 	 */
 	assert.equal(paletteStepIntent(press({ key: "n", metaKey: true })), null);
 	assert.equal(paletteStepIntent(press({ key: "p", metaKey: true })), null);
@@ -240,23 +338,35 @@ test("the caps are the binding's own spellings", () => {
 	assert.equal(paletteStepIntent(fromCap(previousCap)), "previous");
 });
 
-test("the advertised caps are the reachable set - Ctrl+P is bound but unreachable", () => {
-	const advertised = paletteReachableStepCaps();
-	assert.deepEqual(advertised, ["Ctrl+N"]);
-	// Reachable implies bound: every advertised cap steps.
-	for (const cap of advertised)
-		assert.equal(paletteStepIntent(fromCap(cap)), "next");
+test("the advertised caps are the reachable set, which is a platform fact", () => {
 	/*
-	 * The asymmetry, recorded where it can be seen (design round 1, D1). The
-	 * binding keeps Ctrl+P — it steps wherever it arrives, and the UX/QA rigs
-	 * measured that — but the footer must not advertise it: in the packaged
-	 * app main's `before-input-event` owns the press (`src/main/index.ts`
-	 * :3492-3500) and answers it with the `#` switcher seed rather than a move,
-	 * so from a typed search it would discard the query. This case fails if
-	 * Ctrl+P is re-advertised; the bound-set case above fails if it is unbound;
-	 * `scripts/palette-contract.test.mjs` pins the component drawing the
-	 * advertised set.
+	 * ISSUE #850 CHANGED WHY Ctrl+P IS OR IS NOT TAUGHT. It used to be dead
+	 * everywhere, because main folded Control into Cmd and swallowed the press on
+	 * every platform. The palette branch in `src/main/index.ts` now answers Cmd
+	 * alone on darwin, so on macOS Ctrl+P REACHES the renderer and steps — and the
+	 * footer advertises it there. Everywhere else main still preventDefaults it
+	 * and answers with the palette's everything door, so the legend keeps teaching
+	 * Ctrl+N alone (design round 1, D1).
 	 */
+	assert.deepEqual(paletteReachableStepCaps(true), ["Ctrl+N", "Ctrl+P"]);
+	assert.deepEqual(paletteReachableStepCaps(false), ["Ctrl+N"]);
+	/*
+	 * The invariant the two sets share, asserted for both platforms: reachable
+	 * implies bound. A cap the footer draws that the decision would refuse is the
+	 * dead-cap regression wearing the opposite costume.
+	 */
+	for (const isMac of [true, false]) {
+		for (const cap of paletteReachableStepCaps(isMac)) {
+			const step = paletteStepIntent(fromCap(cap));
+			assert.ok(
+				step === "next" || step === "previous",
+				`${cap} is advertised on ${isMac ? "macOS" : "other platforms"} but the walk refuses it`,
+			);
+		}
+	}
+	// Ctrl+P is always BOUND, whatever the platform advertises.
 	assert.ok(paletteStepCaps().includes("Ctrl+P"));
-	assert.ok(!advertised.includes("Ctrl+P"));
+	// And it is advertised on exactly one platform.
+	assert.ok(paletteReachableStepCaps(true).includes("Ctrl+P"));
+	assert.ok(!paletteReachableStepCaps(false).includes("Ctrl+P"));
 });
