@@ -231,8 +231,11 @@ const CUE_BAR_PX = 160;
  * it (less indicative of the constraint, not more), and growing only the core
  * reads as a rule with soft ends (the register the operator ruled out). Measured
  * on the rendered story, and against the committed frames: the gradient declares
- * `CUE_BAR_PX`, and the frames paint 148px of it in the dark palette and 151px
- * in the light (the outermost stops are fully transparent), i.e. 17% of a
+ * `CUE_BAR_PX`, and the frames paint 148px of the mark in the dark palette and
+ * 152px in the light - 148..152 across the two, a figure that survives a
+ * re-shoot, where naming one palette's row count does not (the outermost stops
+ * are fully transparent, so what the camera catches is a couple of rows short of
+ * the declared span). Against those frames it is 17% of a
  * realistic 911px column and 52% of the story's own 307px one - never a
  * full-height rule.
  *
@@ -289,11 +292,66 @@ const CUE_Y_REST = "50%";
  * clipped at the element's edge keeps the bar pinned to the boundary the hand
  * has left, which is the honest reading - rather than sliding it fully inboard,
  * which would detach it from the hand altogether.
+ *
+ * AND IT IS HELD IN THE VISIBLE PART OF THE ELEMENT TOO (agent round 2's R2-5,
+ * which asked for the choice to be made rather than left implicit). The element
+ * is the COLUMN, and on a conversation taller than the pane the column's top is
+ * hundreds of pixels above the scroller - so a core held in the column alone can
+ * still sit behind the clip on a tall transcript, which is R1-4's disappearance
+ * one box further out. The mark is held in the intersection instead: it still
+ * tracks the hand (this is what the fades clipping at a boundary buys), and it
+ * stops at the pane's edge rather than vanishing behind it. A drag is the one
+ * seat the reader is MOVING, so hand-truth is what its clamp protects.
  */
 const clampCueY = (y: number, height: number): number => {
 	const core = CUE_CORE_PX / 2;
 	if (height <= CUE_CORE_PX) return Math.round(height / 2);
 	return Math.round(Math.min(Math.max(y, core), height - core));
+};
+
+/** The wrapper's own coordinates of the part of it a reader can see. */
+type Band = { top: number; bottom: number };
+
+/**
+ * The slice of the wrapper that is actually on screen, in the wrapper's own
+ * coordinates - the intersection of the column's box with the scroller's.
+ *
+ * WHY NOT THE WRAPPER'S OWN BOX (round 1's blocker, design D1-1 / UX U1). The
+ * wrapper IS the column: on a conversation taller than the pane its top is
+ * hundreds of pixels above the scroller (the transcript is bottom-anchored), so a
+ * seat taken from the wrapper alone paints off-screen while the mark's `opacity`
+ * reads 1. Everything that has to land in front of the reader - the panel's
+ * anchor and the mark's seat - is measured against this intersection instead.
+ * `null` (no transcript ancestor, e.g. a story that mounts the handle bare)
+ * leaves the caller in its own coordinate space, which is the pre-existing
+ * behaviour rather than a new failure.
+ */
+const visibleBand = (el: HTMLElement | null): Band | null => {
+	const scroller = el?.closest("[data-lo-canonical-transcript]");
+	if (!el || !scroller) return null;
+	const own = el.getBoundingClientRect();
+	const pane = scroller.getBoundingClientRect();
+	const top = Math.max(own.top, pane.top) - own.top;
+	const bottom = Math.min(own.bottom, pane.bottom) - own.top;
+	return bottom > top ? { top, bottom } : null;
+};
+
+/**
+ * Hold a point `half` px clear of the band's edges, so a mark of that half-size
+ * seated on it fits on screen.
+ *
+ * THE MARK'S HALF, not the core's, for the seat: it is a value the reader did
+ * not steer (design round 2's D2-1 - entering the gutter 6px below the pane's
+ * top painted 80 of the mark's 160 rows, "a bar sliced off at the pane's
+ * boundary with no upper fade"), so it is the whole mark that has to read. A
+ * band too short to hold it centres rather than inverting, which is the answer
+ * `clampCueY` gives for an element shorter than the core.
+ */
+const clampToBand = (y: number, band: Band | null, half: number): number => {
+	if (!band) return y;
+	if (band.bottom - band.top <= half * 2)
+		return Math.round((band.top + band.bottom) / 2);
+	return Math.round(Math.min(Math.max(y, band.top + half), band.bottom - half));
 };
 
 /**
@@ -314,13 +372,23 @@ const clampCueY = (y: number, height: number): number => {
  * `mousemove`'s own `preview()` write has already forced, so it costs no second
  * layout flush.
  */
-const publishCueY = (el: HTMLElement | null, y: number | null): void => {
-	if (!el) return;
+const publishCueY = (
+	el: HTMLElement | null,
+	y: number | null,
+	band: Band | null,
+): number | null => {
+	if (!el) return null;
 	if (y === null) {
 		el.style.removeProperty(CUE_Y_VAR);
-		return;
+		return null;
 	}
-	el.style.setProperty(CUE_Y_VAR, `${clampCueY(y, el.clientHeight)}px`);
+	const seat = clampToBand(
+		clampCueY(y, el.clientHeight),
+		band,
+		CUE_CORE_PX / 2,
+	);
+	el.style.setProperty(CUE_Y_VAR, `${seat}px`);
+	return seat;
 };
 
 /**
@@ -379,12 +447,22 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	const draggingRef = useRef(false);
 	const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	/**
-	 * The Y the tooltip panel is anchored to, in px from the wrapper's top: the
-	 * hand's own Y published once on entry, or the middle of the column's VISIBLE
-	 * slice for the keyboard path, where there is no hand. `null` before either has
-	 * happened, which the render reads as the wrapper's own middle.
+	 * The Y the mark rests on, and the Y the tooltip panel anchors to, in px from
+	 * the wrapper's top: the hand's own Y - published on entry, and ADOPTED at the
+	 * release so the seat never moves while the mark is lit (UX round 2's U6) - or
+	 * the middle of the column's VISIBLE slice for the keyboard path, where there
+	 * is no hand. `null` before either has happened, and again once the hand has
+	 * left, which the render reads as the wrapper's own middle.
 	 */
 	const [anchorY, setAnchorY] = useState<number | null>(null);
+	/**
+	 * The seat this gesture's last `mousemove` published, or `null` if it has not
+	 * published one. The release adopts this rather than recomputing the hand's Y:
+	 * the wrapper's own box can move under the gesture (a width change reflows the
+	 * prose inside it), and a recomputed seat is a second number that can disagree
+	 * with the one the mark was painting when the hand let go.
+	 */
+	const lastSeat = useRef<number | null>(null);
 	/** Whether the panel is open. See `openPanelSoon` and the render block. */
 	const [panelOpen, setPanelOpen] = useState(false);
 	const panelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -423,7 +501,15 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	 * (`publishAnchorY`), the visible band's middle on the keyboard's
 	 * (`visibleAnchorY`) - so a resting bar is inside the pane by construction
 	 * rather than by luck, and a hover that becomes a drag does not jump, because
-	 * both seats come from the same hand.
+	 * both seats come from the same hand. A hand's entry near the band's own edge is
+	 * held `CUE_BAR_PX / 2` clear of it, which is the other half of the same
+	 * guarantee: the seat stayed on screen and the mark's ENDS did not (design round
+	 * 2's D2-1).
+	 *
+	 * THE SEAT IS NAMED BY WHICHEVER HAND LAST CHOSE IT, and a release chooses it too:
+	 * the Y the gesture ended on, adopted rather than handed back to the entry Y, so
+	 * the seat does not move while the mark is lit (UX round 2's U6 - see
+	 * `onMouseUp`). Leaving, and losing focus, are what clear it.
 	 *
 	 * `CUE_Y_REST` survives only as the degenerate fallback: a null `anchorY`
 	 * means neither channel has seated the cue, which in this tree happens only on
@@ -451,7 +537,14 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	const publishAnchorY = (clientY: number): void => {
 		const el = rootRef.current;
 		if (!el) return;
-		setAnchorY(Math.round(clientY - el.getBoundingClientRect().top));
+		const own = el.getBoundingClientRect();
+		setAnchorY(
+			clampToBand(
+				Math.round(clientY - own.top),
+				visibleBand(el),
+				CUE_CORE_PX / 2 + CUE_FADE_PX,
+			),
+		);
 	};
 
 	/**
@@ -466,15 +559,8 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	 * rendered handle cannot be.
 	 */
 	const visibleAnchorY = (): number | null => {
-		const el = rootRef.current;
-		const scroller = el?.closest("[data-lo-canonical-transcript]");
-		if (!el || !scroller) return null;
-		const own = el.getBoundingClientRect();
-		const pane = scroller.getBoundingClientRect();
-		const top = Math.max(own.top, pane.top);
-		const bottom = Math.min(own.bottom, pane.bottom);
-		if (!(bottom > top)) return null;
-		return Math.round((top + bottom) / 2 - own.top);
+		const band = visibleBand(rootRef.current);
+		return band === null ? null : Math.round((band.top + band.bottom) / 2);
 	};
 
 	/*
@@ -654,6 +740,24 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 		 * so what is committed is always what the reader last saw.
 		 */
 		let lastClientX = startX;
+		/*
+		 * This gesture has published no seat yet, so a release after a press that never
+		 * travelled adopts nothing (see `onMouseUp`). Cleared at the PRESS rather than
+		 * after the release so a second gesture cannot inherit the first one's number.
+		 */
+		lastSeat.current = null;
+		/*
+		 * The pane's box, in VIEWPORT coordinates, read once per gesture. It is what the
+		 * publication is held inside (agent round 2's R2-5), and it is stable for the
+		 * length of a drag - the wrapper's own top is NOT, because a width change
+		 * reflows the prose inside the scroller - so the per-move conversion below is
+		 * arithmetic against the wrapper rect this handler already reads, rather than a
+		 * second pair of rect reads on the pointer's path.
+		 */
+		const pane =
+			rootRef.current
+				?.closest("[data-lo-canonical-transcript]")
+				?.getBoundingClientRect() ?? null;
 
 		const onMouseMove = (moveEvent: MouseEvent) => {
 			if (!draggingRef.current) return;
@@ -666,9 +770,13 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 			 */
 			const wrapper = rootRef.current;
 			if (wrapper) {
-				publishCueY(
+				const own = wrapper.getBoundingClientRect();
+				lastSeat.current = publishCueY(
 					wrapper,
-					Math.round(moveEvent.clientY - wrapper.getBoundingClientRect().top),
+					Math.round(moveEvent.clientY - own.top),
+					pane
+						? { top: pane.top - own.top, bottom: pane.bottom - own.top }
+						: null,
 				);
 			}
 			preview(
@@ -686,12 +794,20 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 			setDragging(false);
 			setHovering(false);
 			/*
-			 * The gesture's publication ends with the gesture: removing the property
-			 * drops the core back to `CUE_Y_REST`. Holding the last Y would leave the
-			 * mark where a hand that has gone was last seen, which is the one reading
-			 * a resting bar must not give.
+			 * THE SEAT STAYS UNDER THE HAND AT THE RELEASE; the hand's LEAVE is what sends
+			 * it back to rest (UX round 2's U6).
+			 *
+			 * Taking the gesture's publication back here - which is what this did - hands
+			 * the seat straight back to the Y the hand ENTERED at, and on a drag that
+			 * travelled that is a different Y: for one frame the mark was fully lit at a
+			 * seat the hand had left, and the next frame put it back (measured at 60fps:
+			 * core 282 -> 112 -> 282 inside ~17ms, `opacity` reading 1.000 on the first
+			 * two). The release ADOPTS the seat the gesture ended on instead, so the mark
+			 * never moves while it is lit; `onMouseLeave` and `onBlur` remain what retires
+			 * a seat, so a stationary mark is never left on a hand that has gone.
 			 */
-			publishCueY(rootRef.current, null);
+			if (lastSeat.current !== null) setAnchorY(lastSeat.current);
+			publishCueY(rootRef.current, null, null);
 			document.body.style.userSelect = "";
 			removeResizeCursorOverlay();
 			window.removeEventListener("mousemove", onMouseMove);
@@ -889,20 +1005,28 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 					if (!draggingRef.current) {
 						setHovering(false);
 						/*
-						 * The rest seat belongs to the hand that chose it, so it is cleared
-						 * with the hand: the next entry publishes its own, and a seat left
-						 * behind would be one the next reader did not ask for. A drag is the
-						 * exception - the pointer leaves the band constantly while dragging,
-						 * and the release still has to return to the seat the gesture began
-						 * on (see `onMouseUp`).
+						 * The rest seat belongs to the hand that chose it, so it is cleared with
+						 * the hand and the next entry publishes its own. This is also the event
+						 * that retires a released drag's seat (see `onMouseUp`): the release
+						 * adopts the seat the gesture ended on, and this is what stops a
+						 * stationary mark sitting on a hand that has gone. A drag is the
+						 * exception WHILE IT RUNS - the pointer leaves the band constantly
+						 * mid-gesture, and the publication is the hand's for the length of it.
 						 */
 						setAnchorY(null);
 					}
 				}}
 				onFocus={() => {
 					setHovering(true);
-					/* No hand on this path: anchor to what is visible. */
-					setAnchorY(visibleAnchorY());
+					/*
+					 * No hand on this path, so anchor to what is visible - but only when a hand
+					 * has not already seated the mark. A press focuses this element (it is
+					 * `tabIndex={0}`), and re-seating unconditionally moved the mark out from
+					 * under a POINTER reader on any entry that was not the band's middle: the
+					 * same "the seat moves while the mark is lit" failure as the release flash
+					 * in `onMouseUp`.
+					 */
+					setAnchorY((current) => current ?? visibleAnchorY());
 					/*
 					 * Focus opens it at once, the way Radix opens on focus for every
 					 * other tooltip in the app (measured `instant-open`); the dwell
@@ -912,7 +1036,11 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 				}}
 				onBlur={() => {
 					closePanel();
-					if (!draggingRef.current) setHovering(false);
+					if (!draggingRef.current) {
+						setHovering(false);
+						/* The keyboard's seat is the focus's, and it leaves with it. */
+						setAnchorY(null);
+					}
 				}}
 				onKeyDownCapture={onKeyDown}
 				onMouseDown={(event) => {

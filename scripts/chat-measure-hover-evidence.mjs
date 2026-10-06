@@ -160,6 +160,64 @@ class Cdp {
  * ink falls back to the element's own height, which for a full-height rule is
  * exactly right.
  */
+/**
+ * The cue's gradient stops, read off the element's computed `background-image`, as a
+ * function SOURCE string.
+ *
+ * SHARED BY THE PROBE AND THE RELEASE TRACE, rather than written twice: the release
+ * trace has to read the same four stops sixty times a second, and a second parser
+ * beside this one is a second thing to keep in step with the browser's
+ * serialisation.
+ *
+ * TWO SERIALISATIONS, and the second one cost a round. While the seat is a
+ * percentage the browser keeps the `calc(<seat> - Npx)` form and the offsets are the
+ * numbers after each sign; once a px seat is published the whole `calc()` folds to a
+ * single length, so the stops come back as plain px positions. A parser that only
+ * knew the first form read null exactly in the states that matter (the pointer's own
+ * hover and the drag) - QA's "probe artifact" on their round - so both forms are
+ * read, and both answer the same two lengths: the ink's span and the core's.
+ */
+const CUE_STOPS = `(el) => {
+	if (!el) return [];
+	const bg = getComputedStyle(el).backgroundImage || "";
+	const relative = [...bg.matchAll(/calc\\(.*?([+-])\\s*([\\d.]+)px\\s*\\)/g)].map(
+		(m) => (m[1] === "-" ? -1 : 1) * Number.parseFloat(m[2]),
+	);
+	if (relative.length === 4) return relative;
+	const absolute = [...bg.matchAll(/([\\d.]+)px/g)].map((m) =>
+		Number.parseFloat(m[1]),
+	);
+	return absolute.length === 4 ? absolute : [];
+}`;
+
+/**
+ * One sample per animation frame for ~400ms: the mark's core centre and its opacity.
+ *
+ * The window is deliberately longer than the `duration-fast` fade, so a trace taken
+ * across a release covers the frame the gesture ends on, the fade, and one frame
+ * after it. It is started BEFORE the mouseup and allowed to run past it, which is the
+ * only way to see an intermediate frame at all.
+ */
+const TRACE = `(() => {
+	const el = document.querySelector('[data-lo-chat-measure-line="right"]');
+	const stops = ${CUE_STOPS};
+	const out = [];
+	const start = performance.now();
+	return new Promise((resolve) => {
+		const tick = () => {
+			const s = stops(el);
+			out.push({
+				t: Math.round(performance.now() - start),
+				centre: s.length === 4 ? (s[1] + s[2]) / 2 : null,
+				op: Number(getComputedStyle(el).opacity),
+			});
+			if (performance.now() - start > 400) resolve(out);
+			else requestAnimationFrame(tick);
+		};
+		requestAnimationFrame(tick);
+	});
+})()`;
+
 const PROBE = `(() => {
 	const round = (n) => Math.round(n * 10) / 10;
 	const rect = (el) => {
@@ -176,28 +234,7 @@ const PROBE = `(() => {
 	const scroller = pick("[data-lo-canonical-transcript]");
 	const content = pick("[data-lo-transcript-content]");
 	const panel = pick('[role="tooltip"]');
-	const stops = (el) => {
-		if (!el) return [];
-		const bg = getComputedStyle(el).backgroundImage || "";
-		/*
-		 * TWO SERIALISATIONS, and the second one cost a round. While the seat is a
-		 * percentage the browser keeps the calc(<seat> - Npx) form and the offsets
-		 * are the numbers after each sign; once a px seat is published the whole
-		 * calc() folds to a single length, so the stops come back as plain px
-		 * positions. A parser that only knew the first form read null exactly in the
-		 * states that matter (the pointer's own hover and the drag) - QA's
-		 * "probe artifact" on their round - so both forms are read, and both answer
-		 * the same two lengths: the ink's span and the core's.
-		 */
-		const relative = [...bg.matchAll(/calc\\(.*?([+-])\\s*([\\d.]+)px\\s*\\)/g)].map(
-			(m) => (m[1] === "-" ? -1 : 1) * Number.parseFloat(m[2]),
-		);
-		if (relative.length === 4) return relative;
-		const absolute = [...bg.matchAll(/([\\d.]+)px/g)].map((m) =>
-			Number.parseFloat(m[1]),
-		);
-		return absolute.length === 4 ? absolute : [];
-	};
+	const stops = ${CUE_STOPS};
 	const cueStops = stops(cue);
 	const persisted = (() => {
 		for (let i = 0; i < localStorage.length; i++) {
@@ -418,6 +455,57 @@ const paintedRows = async (restFile, hoverFile, x) => {
 };
 
 /**
+ * How many pixels a frame changes OUTSIDE the cue's own column.
+ *
+ * WHY A FRAME READING RATHER THAN THE PROBE (agent round 2's R2-3). The claim these
+ * frames carry is about the PICTURE - that a state which is supposed to be the cue
+ * alone is not a picture of a panel - and on the base tree the tooltip opens 400ms
+ * after the pointer arrives while the cue lights at ~320ms: an ~80ms window. A
+ * probe taken BEFORE the capture passes while the capture may land after the panel
+ * has opened, and one taken AFTER it fails frames that are clean but old by the
+ * encoder's own latency (measured once on this rig, in the light base half).
+ * Neither reads the frame. This does: the only thing a panel-free state may change
+ * is the cue's 2px column, and a panel changes ~11,000 pixels across a 256x45 box,
+ * so the two are three orders of magnitude apart rather than 80ms apart.
+ *
+ * THE 3000-PIXEL MARGIN IS MEASURED, not guessed: the six panel-free cells of this
+ * set read 114-474 changed pixels outside the cue's column on this host, and the
+ * largest columns in that scatter (713:5, 306:4, 217:4) are single digits spread
+ * down the frame - the encoder's own noise on re-rendered text, which no state
+ * change produced. 3000 is ~6x above that floor and ~4x under a panel.
+ */
+const changedOutside = async (restFile, frameFile, x, margin = 4) => {
+	const read = async (file) => {
+		const { data, info } = await sharp(file)
+			.raw()
+			.toBuffer({ resolveWithObject: true });
+		return { data, info };
+	};
+	const a = await read(restFile);
+	const b = await read(frameFile);
+	if (a.info.width !== b.info.width || a.info.height !== b.info.height) {
+		return null;
+	}
+	const channels = a.info.channels;
+	let changed = 0;
+	for (let py = 0; py < a.info.height; py++) {
+		for (let px = 0; px < a.info.width; px++) {
+			if (px >= x - margin && px <= x + margin) continue;
+			const o = (py * a.info.width + px) * channels;
+			if (
+				Math.abs(a.data[o] - b.data[o]) +
+					Math.abs(a.data[o + 1] - b.data[o + 1]) +
+					Math.abs(a.data[o + 2] - b.data[o + 2]) >
+				24
+			) {
+				changed += 1;
+			}
+		}
+	}
+	return changed;
+};
+
+/**
  * One half's states, in one browser per palette.
  *
  * ONE SCRATCH PROFILE PER (half, palette): the drag below COMMITS a width, and a
@@ -468,14 +556,22 @@ const captureHalf = async (half, origin, record) => {
 			const litLeft = `Number(getComputedStyle(document.querySelector('[data-lo-chat-measure-line="left"]')).opacity) >= 0.999`;
 			await cdp.mouse("mouseMoved", atRest.handleLeft.x, atRest.handleLeft.y);
 			await waitFor(litLeft, "the left cue to light");
-			record(half, "hover-left", theme, await cdp.evaluate(PROBE));
+			/*
+			 * SHOT FIRST, THEN READ (agent round 2's R2-3). The panel assertions below are
+			 * about the PICTURE, and reading before the capture left a window for a panel to
+			 * arrive between the two: the cue lights at ~320ms and the base tree's panel
+			 * opens at `TOOLTIP_DELAY_MS` (400), so a slow `shoot` could have committed a
+			 * panel-bearing "panel-free" frame while the earlier reading passed. Every
+			 * panel-free step is read after its own shot for the same reason.
+			 */
 			await shoot(cdp, half, "hover-left", theme);
+			record(half, "hover-left", theme, await cdp.evaluate(PROBE));
 
 			const arrivedAt = Date.now();
 			await cdp.mouse("mouseMoved", atRest.handle.x, atRest.handle.y);
 			await waitFor(litRight, "the right cue to light");
-			record(half, "hover-right", theme, await cdp.evaluate(PROBE));
 			await shoot(cdp, half, "hover-right", theme);
+			record(half, "hover-right", theme, await cdp.evaluate(PROBE));
 
 			/*
 			 * THE CONTESTED BEAT, as a reading rather than as a frame: at the app's
@@ -517,11 +613,29 @@ const captureHalf = async (half, origin, record) => {
 				handY,
 			});
 			await shoot(cdp, half, "dragging", theme);
+			/*
+			 * THE RELEASE TRACE (UX round 2's U6), started before the mouseup and read
+			 * after it: one sample per animation frame across the release, which is the
+			 * only instrument that can see a single-frame intermediate at all. The
+			 * assertion below is the invariant the finding names - the mark must not move
+			 * between two frames it is LIT for.
+			 */
+			const pendingTrace = cdp.evaluate(TRACE);
+			/*
+			 * A beat before the release, so the trace holds the frames BEFORE it as well as
+			 * the ones the release produces. Without it the first sample lands ~10ms after
+			 * the mouseup, already at `opacity 0.54` - which is past the state the finding is
+			 * about, and the assertion below would then be a reading of the fade rather than
+			 * of the hand-off (the first cut of this trace did exactly that, on four cells).
+			 */
+			await sleep(60);
 			await cdp.mouse("mouseReleased", atRest.handle.x + 2000, handY, {
 				button: "left",
 				buttons: 0,
 				clickCount: 1,
 			});
+			const trace = await pendingTrace;
+			record(half, "release-trace", theme, { samples: trace });
 			await sleep(160);
 			record(half, "released", theme, await cdp.evaluate(PROBE));
 
@@ -562,8 +676,8 @@ const captureHalf = async (half, origin, record) => {
 			const resetAt = await cdp.evaluate(PROBE);
 			await cdp.mouse("mouseMoved", resetAt.handle.x, resetAt.handle.y);
 			await waitFor(litRight, "the cue to light again after the reset");
-			record(half, "after-reset", theme, await cdp.evaluate(PROBE));
 			await shoot(cdp, half, "after-reset", theme);
+			record(half, "after-reset", theme, await cdp.evaluate(PROBE));
 
 			/*
 			 * Keyboard focus, which this change deliberately leaves alone: it opens
@@ -578,8 +692,8 @@ const captureHalf = async (half, origin, record) => {
 				return document.activeElement === handle;
 			})()`);
 			await waitFor(litRight, "the cue to light under focus");
-			record(half, "keyboard-focus", theme, await cdp.evaluate(PROBE));
 			await shoot(cdp, half, "keyboard-focus", theme);
+			record(half, "keyboard-focus", theme, await cdp.evaluate(PROBE));
 
 			/*
 			 * THE TALL-CONTENT STATE - the cell round 1's blocker was found in, and the
@@ -644,8 +758,58 @@ const captureHalf = async (half, origin, record) => {
 				`Number(getComputedStyle(document.querySelector('[data-lo-chat-measure-line="right"]')).opacity) >= 0.99`,
 				"the cue to light on the tall pane",
 			);
-			record(half, "tall-hover", theme, await cdp.evaluate(PROBE));
 			await shoot(cdp, half, "tall-hover", theme);
+			record(half, "tall-hover", theme, await cdp.evaluate(PROBE));
+
+			/*
+			 * THE EDGE-ENTRY CELL (design round 2's D2-1), the cell that shows the seat clamp
+			 * doing something. Entering the gutter 6px below the pane's top is ordinary use -
+			 * it is the edge beside the first message - and it painted 80 of the mark's 160
+			 * rows, "a bar sliced off at the pane's boundary with no upper fade". The seat is
+			 * held `CUE_BAR_PX / 2` clear of the band now, so the whole mark reads.
+			 * `tall-rest` is the diff reference, the same layout with the cue dark.
+			 */
+			await cdp.mouse("mouseMoved", 4, 4);
+			await waitFor(
+				`Number(getComputedStyle(document.querySelector('[data-lo-chat-measure-line="right"]')).opacity) === 0`,
+				"the cue to go dark before the edge entry",
+			);
+			await cdp.mouse("mouseMoved", tall.handle.x, tall.pane.top + 6);
+			await waitFor(litRight, "the cue to light at the pane's top edge");
+			await shoot(cdp, half, "top-entry", theme);
+			record(half, "top-entry", theme, await cdp.evaluate(PROBE));
+
+			/*
+			 * THE DRAG-OUT CELL (agent round 2's R2-5), which is the choice R2-5 asked to be
+			 * made explicit: the publication is held inside the VISIBLE band as well as
+			 * inside the element, so a hand that leaves the pane mid-gesture leaves the mark
+			 * on the pane's edge rather than behind its clip. The travel is VERTICAL only, so
+			 * the gesture previews and commits the width it started with and this frame is
+			 * the same layout as `tall-rest` - the diff is the mark's ink and nothing else.
+			 */
+			const gripY = (tall.pane.top + tall.pane.bottom) / 2;
+			await cdp.mouse("mousePressed", tall.handle.x, gripY, {
+				button: "left",
+				buttons: 1,
+				clickCount: 1,
+			});
+			const outY = Math.round(tall.pane.top - 120);
+			await cdp.mouse("mouseMoved", tall.handle.x, outY, {
+				button: "left",
+				buttons: 1,
+			});
+			await sleep(160);
+			await shoot(cdp, half, "drag-out", theme);
+			record(half, "drag-out", theme, {
+				...((await cdp.evaluate(PROBE)) ?? {}),
+				handY: outY,
+			});
+			await cdp.mouse("mouseReleased", tall.handle.x, outY, {
+				button: "left",
+				buttons: 0,
+				clickCount: 1,
+			});
+			await sleep(200);
 		} finally {
 			await closeChrome(cdp, chrome);
 			rmSync(profile, {
@@ -706,6 +870,20 @@ const main = async () => {
 				framePath(half, "tall-hover", theme),
 				Math.round(tallRest.cueRect?.x ?? 0),
 			);
+			/*
+			 * The two ROUND-2 cells, both diffed against `tall-rest` for the same reason: one
+			 * layout, cue lit against cue dark. `edge` is the entry the seat clamp is about
+			 * (design D2-1) and `out` is the drag that leaves the pane (agent R2-5).
+			 */
+			for (const [key, step] of [
+				["edge", "top-entry"],
+				["out", "drag-out"],
+			])
+				painted[`${key}/${half}/${theme}`] = await paintedRows(
+					framePath(half, "tall-rest", theme),
+					framePath(half, step, theme),
+					Math.round(tallRest.cueRect?.x ?? 0),
+				);
 		}
 	}
 
@@ -719,6 +897,8 @@ const main = async () => {
 			const dragging = by(half, "dragging", theme);
 			const reset = by(half, "after-reset", theme);
 			const focus = by(half, "keyboard-focus", theme);
+			const released = by(half, "released", theme);
+			const releaseTrace = by(half, "release-trace", theme)?.samples ?? [];
 			const tallHover = by(half, "tall-hover", theme);
 			const ink = painted[`${half}/${theme}`];
 			const tallInk = painted[`tall/${half}/${theme}`];
@@ -759,10 +939,28 @@ const main = async () => {
 				fail(`${half}/${theme}: hovering the right edge lit the LEFT cue too`);
 			if (Number(hoverLeft.cueOpacity) !== 0)
 				fail(`${half}/${theme}: hovering the left edge lit the RIGHT cue too`);
-			if (hoverRight.panel || hoverLeft.panel)
-				fail(
-					`${half}/${theme}: a panel opened on a hover frame - it must be the cue's own picture, under both trees' dwell`,
+			/*
+			 * AND THE FRAME IS A PICTURE OF THE CUE ALONE (agent round 2's R2-3, which asked
+			 * for the panel reading to describe the frame rather than a moment before it).
+			 * Read off the pixels: the cue's own column is the only place these states may
+			 * differ from their reference. A panel would put ~11,000 changed pixels where
+			 * the margin below allows 60.
+			 */
+			for (const [step, x] of [
+				["hover-right", hoverRight.cueRect?.x],
+				["hover-left", hoverLeft.cueLeftRect?.x],
+				["after-reset", reset.cueRect?.x],
+			]) {
+				const outside = await changedOutside(
+					framePath(half, "rest", theme),
+					framePath(half, step, theme),
+					Math.round(x ?? 0),
 				);
+				if (outside !== null && outside > 3000)
+					fail(
+						`${half}/${theme}: ${step} changes ${outside} pixels outside the cue's column - the frame is not a picture of the cue alone`,
+					);
+			}
 
 			/*
 			 * 3. THE CONTESTED BEAT. On the base tree the app's 400ms tooltip beat
@@ -813,6 +1011,63 @@ const main = async () => {
 			}
 
 			/*
+			 * 5b. THE RELEASE LETS GO OF ITS PUBLICATION (agent round 2's R2-2). The set's
+			 * README claimed this run asserted it and nothing read the step: the gesture's
+			 * seat is a value for the LENGTH of the gesture, and a mark left on it after the
+			 * hand has gone reports a hand that is not there. The step is read 160ms after
+			 * the mouseup - past the `duration-fast` fade - so this also reads that the mark
+			 * is dark again rather than merely unseated.
+			 */
+			if (released.cueVar !== "")
+				fail(
+					`${half}/${theme}: the release left the gesture's seat published (--lo-chat-measure-cue-y = ${JSON.stringify(released.cueVar)})`,
+				);
+			if (Number(released.cueOpacity) !== 0)
+				fail(
+					`${half}/${theme}: the cue is still ${released.cueOpacity} lit a fade after the release`,
+				);
+			/*
+			 * AND IT DOES NOT MOVE WHILE IT IS LIT (UX round 2's U6). The release used to hand
+			 * the seat back to the ENTRY Y, and on a drag that travelled that is a different
+			 * Y: one frame fully lit at a seat the hand had left, the next frame back at the
+			 * hand's (measured by the UX round at 60fps as core 282 -> 112 -> 282). A seat
+			 * change under a fade is fine; a seat change between two frames above 0.9 is not.
+			 * This half only: the base tree's cue is a solid rule with no gradient to read a
+			 * centre from.
+			 */
+			if (half === "after") {
+				let previous = null;
+				let witnessed = 0;
+				for (const sample of releaseTrace) {
+					if (sample.centre === null) continue;
+					witnessed += 1;
+					if (
+						previous &&
+						previous.op >= 0.9 &&
+						sample.op >= 0.9 &&
+						Math.abs(sample.centre - previous.centre) > 2
+					)
+						fail(
+							`${half}/${theme}: the mark moves ${Math.round(Math.abs(sample.centre - previous.centre))}px between two frames it is lit for (${Math.round(previous.centre)} -> ${Math.round(sample.centre)} at opacity ${sample.op.toFixed(3)})`,
+						);
+					previous = sample;
+				}
+				if (witnessed < 10)
+					fail(
+						`${half}/${theme}: the release trace read only ${witnessed} frames - it did not cover the release`,
+					);
+				/*
+				 * And it has to have seen the mark LIT, or the invariant above was never tested:
+				 * a trace that opens on the fade cannot tell a hand-off from a seat that was
+				 * already there.
+				 */
+				if (!releaseTrace.some((sample) => sample.op >= 0.99))
+					fail(
+						`${half}/${theme}: the release trace never sampled the mark lit - it cannot speak for the hand-off`,
+					);
+			}
+
+			/*
 			 * 6. After the reset. The pointer is back on the handle, so the cue is lit
 			 * again - that is the state the frame is a picture of. The claim here is the
 			 * WIDTH: a gesture that ended anywhere on the column is undone by the
@@ -823,8 +1078,9 @@ const main = async () => {
 				fail(
 					`${half}/${theme}: the cue is not lit with the pointer back on it`,
 				);
-			if (reset.panel)
-				fail(`${half}/${theme}: a panel is open after the reset`);
+			/* The panel reading is recorded, not asserted: it is taken after the shot, so
+			 * on the base half it can see the tree's own 400ms tooltip. What is asserted
+			 * about that frame is its pixels, in the block above. */
 			if (reset.maxWidth !== rest.maxWidth)
 				fail(
 					`${half}/${theme}: the reset left the column at ${reset.maxWidth}, not the shipped ${rest.maxWidth}`,
@@ -895,6 +1151,58 @@ const main = async () => {
 				fail(
 					`${half}/${theme}: on tall content the cue paints at ${tallInk.first}..${tallInk.last}, outside the pane ${Math.round(tallHover.pane.top)}..${Math.round(tallHover.pane.bottom)} - the resting seat is not the pane's`,
 				);
+
+			/*
+			 * 11. THE EDGE ENTRY AND THE DRAG THAT LEAVES THE PANE - round 2's two new
+			 * cells, both read off the frames rather than off arithmetic.
+			 *
+			 * The edge entry is the reading design D2-1 asked for: a reader who enters the
+			 * gutter 6px below the pane's top gets the whole mark, because the seat is held
+			 * `CUE_BAR_PX / 2` clear of the band. The base half's rule fills the pane there
+			 * and always did, so only this head's has a claim about the mark's LENGTH.
+			 *
+			 * The drag-out is the R2-5 clamp, and its failure mode is the one the assertion
+			 * names: the hand is 120px ABOVE the pane, so an unheld publication paints
+			 * nothing at all - the mark sits behind the clip while `dragging` reads 1.
+			 */
+			{
+				const edgeInk = painted[`edge/${half}/${theme}`];
+				const outInk = painted[`out/${half}/${theme}`];
+				const topEntry = by(half, "top-entry", theme);
+				const dragOut = by(half, "drag-out", theme);
+				if (edgeInk && topEntry.pane) {
+					if (
+						edgeInk.first < topEntry.pane.top - 1 ||
+						edgeInk.last > topEntry.pane.bottom + 1
+					)
+						fail(
+							`${half}/${theme}: the edge entry paints at ${edgeInk.first}..${edgeInk.last}, outside the pane ${Math.round(topEntry.pane.top)}..${Math.round(topEntry.pane.bottom)}`,
+						);
+					else if (half === "after" && edgeInk.rows < tallInk.rows - 16)
+						fail(
+							`${half}/${theme}: the edge entry paints ${edgeInk.rows} rows against the mark's own ${tallInk.rows} - the seat is not being held clear of the pane's edge`,
+						);
+				}
+				if (half === "after") {
+					if (!(Number(dragOut.cueOpacity) > 0))
+						fail(
+							`${half}/${theme}: the drag-out frame is not a drag (opacity ${dragOut.cueOpacity})`,
+						);
+					if (outInk && dragOut.pane) {
+						if (outInk.rows === 0)
+							fail(
+								`${half}/${theme}: the drag paints NOTHING with the hand outside the pane - the mark is behind the clip`,
+							);
+						else if (
+							outInk.first < dragOut.pane.top - 1 ||
+							outInk.last > dragOut.pane.bottom + 1
+						)
+							fail(
+								`${half}/${theme}: the drag paints at ${outInk.first}..${outInk.last}, outside the pane ${Math.round(dragOut.pane.top)}..${Math.round(dragOut.pane.bottom)}`,
+							);
+					}
+				}
+			}
 
 			/*
 			 * 9. THE CUE'S OWN GEOMETRY, per half - the half of the pair that IS the
