@@ -513,6 +513,47 @@ const cursorMissingSnapshotFrame = () => {
 	return frame;
 };
 
+/**
+ * A snapshot from a COLD facade (remote-load-hydration): the shape a stored
+ * remote session's first frame carries - `cold: true` with its reason - and the
+ * empty page the wire answers for a peer whose runtime has not been reached.
+ */
+const coldSnapshotFrame = () => {
+	const frame = snapshotFrame([]);
+	frame.payload.cold = true;
+	frame.payload.cold_reason = "no-runtime";
+	frame.payload.attaching = false;
+	return frame;
+};
+
+/**
+ * The bridge's attach-settled flip, as the daemon publishes it: the frame that
+ * says the facade has bound and the session is warm (`cold: false` on a
+ * `frontend.replace`, ordered by the bridge's own outer `seq`).
+ */
+const warmReplaceFrame = (seq) => ({
+	type: "frontend.replace",
+	session_id: SESSION,
+	epoch: "e".repeat(16),
+	seq,
+	payload: {
+		cold: false,
+		frontend: {
+			epoch: "e".repeat(16),
+			sequence: 2,
+			snapshot: {
+				session_id: SESSION,
+				epoch: "e".repeat(16),
+				sequence: 2,
+				streaming: false,
+				attention: undefined,
+				pending_gate: null,
+				live_events: [],
+			},
+		},
+	},
+});
+
 /** A durable user row, in the shape `durableRecord` reads off the wire. */
 const userEntry = (id, text) => ({
 	id,
@@ -1039,6 +1080,83 @@ test("an empty applied page IS a claim the app may make", async () => {
 		"a genuinely empty conversation must still be able to say so - the fix is about proof, not about never being sure",
 	);
 	assert.equal(mounted.view().transcript.records.length, 0);
+});
+
+/*
+ * THE STORED REMOTE SESSION'S COLD EMPTY PAGE, AND THE WARM THAT LANDS LATER
+ * (remote-load-hydration). The operator's shape: a conversation that lives on
+ * another device opens cold, the daemon answers its `/history` reconcile from a
+ * facade with no owner - an empty page byte-identical to a genuinely empty
+ * conversation's - and the pane must (a) refuse to treat that read as proof and
+ * (b) re-run the read once the owner engages and a frame says `cold: false`.
+ * Both halves fail on the base tree this case was added for: the empty read
+ * used to set `hydrated` (the pane then offered the empty-chat greeting over a
+ * conversation nobody had read), and only a snapshot's page ever fired the read
+ * again, so the warm flip re-hydrated nothing and the pane sat empty until a
+ * user action.
+ *
+ * The rule turns on the READ'S OWN cold state rather than on where the rows
+ * live, deliberately: the daemon's local and peer readers answer byte-identical
+ * empty pages, so the read that could not see the conversation - the one taken
+ * while the facade had no owner - is the one that must not prove. The previous
+ * case pins the other side: a warm empty page IS a claim the app may make.
+ */
+test("a cold empty read proves nothing, and the warm re-arms the read", async () => {
+	test_state.streams.length = 0;
+	test_state.historyRequests.length = 0;
+	const reads = [];
+	test_state.network = async (request) => {
+		if (request.op !== "sessions.history")
+			return { entries: [], has_more: false, cursor_missing: false };
+		reads.push(request);
+		/*
+		 * The cold facade answers the first read empty; once the owner has
+		 * answered, the same read serves the durable tail.
+		 */
+		return reads.length === 1
+			? { entries: [], has_more: false, cursor_missing: false }
+			: {
+					entries: [userEntry("m1", "durable")],
+					has_more: false,
+					cursor_missing: false,
+				};
+	};
+
+	const mounted = mountHook(await loadHook("cold-warm"), SESSION);
+	await settle();
+	send(openFrame());
+	await settle();
+	send(coldSnapshotFrame());
+	await settle();
+
+	assert.equal(mounted.view().status, "live", "the stream itself is healthy");
+	assert.equal(
+		mounted.view().hydrated,
+		false,
+		"an empty page from a cold facade proves nothing about the conversation",
+	);
+	assert.equal(
+		reads.length,
+		1,
+		"the cold/empty snapshot is what fires the reconcile read",
+	);
+	assert.equal(mounted.view().transcript.records.length, 0);
+
+	/* The owner engages: the bridge publishes the attach-settled flip. */
+	send(warmReplaceFrame(2));
+	await settle();
+
+	assert.equal(
+		reads.length,
+		2,
+		"the warm transition re-arms the history read with no user action",
+	);
+	assert.equal(
+		mounted.view().hydrated,
+		true,
+		"the warm read's rows are the proof the cold read could not give",
+	);
+	assert.equal(mounted.view().transcript.records.length, 1);
 });
 
 test("Retry during a pending stream retry opens ONE subscription and leaves no orphan (R1-1)", async () => {

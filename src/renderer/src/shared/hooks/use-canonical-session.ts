@@ -482,6 +482,22 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 */
 	retry: () => void;
 	/**
+	 * Ask for the authoritative history read again, now.
+	 *
+	 * The action behind the older-history slot's "Try again" while hydration is
+	 * UNPROVEN (the slot's `unproven` arm): the pane holds rows, `has_more` says
+	 * the end, and no read has proven that end yet, so the reader gets one
+	 * control that re-asks the same read the cold open fired.
+	 *
+	 * Deliberately NOT `retry` (that re-arms the stream as well - a heavier
+	 * repair than this question needs) and not `loadOlder` (that pages back from
+	 * a cursor; an unproven transcript has none). It fires the walk a cold open
+	 * fires - with the same generation guard and the same request budget - and
+	 * does nothing once a page has proven hydration, because then the arm it
+	 * serves is no longer on screen.
+	 */
+	rehydrate: () => void;
+	/**
 	 * Read this session's history TAIL once, apply it, and say whether the page
 	 * carried the outcome of the pass that STARTED at or after `since` (epoch ms).
 	 *
@@ -2252,6 +2268,12 @@ export function useCanonicalSessionStream(
 	 * all.
 	 */
 	const retryRef = useRef<(() => void) | null>(null);
+	/*
+	 * `rehydrate`'s own door, on the same lifetime rule as `retryRef`: non-null
+	 * only while this effect owns the stream, so a click after the session
+	 * changed (or after unmount) cannot re-read the old session.
+	 */
+	const hydrateRef = useRef<(() => void) | null>(null);
 	const generationRef = useRef(0);
 
 	useEffect(() => {
@@ -2595,6 +2617,18 @@ export function useCanonicalSessionStream(
 			/** Whether a fetched page has reached the row this turn opened with. */
 			let reachedTurnStart = false;
 			/*
+			 * WHETHER THE PANE WAS COLD WHEN THIS WALK STARTED, captured here rather
+			 * than read from `state` at commit time (remote-load-hydration). The first
+			 * request goes out a synchronous instant after this line, so this is the
+			 * cold value the ANSWER was given under - and the answer's meaning depends
+			 * on it: a peer's empty page answered while cold proves nothing (see the
+			 * proof rule in the page commit below), while one answered after a warm
+			 * may. Reading `state.cold` at commit instead would let a warm that landed
+			 * WHILE the read was in flight re-classify the stale cold answer as
+			 * authoritative - the exact over-claim this capture exists to keep out.
+			 */
+			const coldAtDispatch = viewRef.current.cold;
+			/*
 			 * THE LABEL GOAL, the half the walk used to lack. It stopped as soon as a
 			 * page CONNECTED to a painted row, but the label gap needs a page that
 			 * reaches back to the OLDEST missing call's assistant row, which on a turn
@@ -2827,11 +2861,45 @@ export function useCanonicalSessionStream(
 					for (const id of named) left.delete(id);
 					return {
 						...state,
-						// A page that RESOLVED is the proof hydration was waiting for,
-						// applied-or-empty alike: the backend answered with this session's
-						// durable tail, so the view may now speak about the conversation at
-						// all - which is what lets the composer offer the greeting.
-						hydrated: true,
+						/*
+						 * A PAGE PROVES HYDRATION WHEN IT COULD SEE THE CONVERSATION
+						 * (remote-load-hydration). A resolved page normally is the proof the
+						 * snapshot could not give - applied-or-empty alike, because the backend
+						 * answered with this session's durable tail. The exception is a read
+						 * answered by a COLD facade: there is no runtime holding this
+						 * conversation, so the empty page it serves is "nothing to paint yet"
+						 * (the wire's own word - an empty page beside `cold: true` is the
+						 * renderer's signal to reconcile through `/history`, which is the read
+						 * that got here), and it is byte-identical to a genuinely empty
+						 * conversation's page (`entries: []`, `has_more: false`,
+						 * `cursor_missing: false`). Marking hydration proven from it let the
+						 * pane claim an empty conversation - and, once rows arrived, the end of
+						 * history - over a conversation nobody had read; a stored remote
+						 * session's first open is where that was measured.
+						 *
+						 * THE RULE TURNS ON THE READ'S COLD STATE, NOT ON WHERE THE ROWS LIVE,
+						 * because the read itself is the only place the two can be told apart -
+						 * and even there only by whether the facade had an owner. This device's
+						 * own journal read answers the same empty page for a missing file as
+						 * for an unwritten one, and the daemon's local and peer readers are
+						 * byte-identical on the wire; "is this conversation a peer's" is a fact
+						 * of the catalogue, which lands seconds later (a federated read) and
+						 * cannot classify the answer that already arrived. So EVERY empty page
+						 * read while cold proves nothing, and the warm transition re-arms the
+						 * read instead (the `warmedUnproven` trigger in `flush`); once warm,
+						 * emptiness is the conversation's own statement and this commits true.
+						 * The cost is stated: a LOCAL empty session holds the placeholder
+						 * until its runtime warms, which in a visible window is the lease's own
+						 * second.
+						 *
+						 * The terms, each one necessary: a NON-EMPTY page is rows, which prove
+						 * themselves wherever they live; `!coldAtDispatch` is "the read went
+						 * out to a session that had an owner" - and it is captured when the
+						 * walk STARTED (see `walkTail`), so a warm that lands while the read
+						 * is in flight cannot re-classify the stale cold answer.
+						 */
+						hydrated:
+							state.hydrated || page.entries.length > 0 || !coldAtDispatch,
 						labelPending: left.size ? left : NO_LABELS_PENDING,
 						/*
 						 * A MARKED ID THIS PAGE NAMED STOPS BEING MARKED (round 4). The mark is a
@@ -3071,6 +3139,35 @@ export function useCanonicalSessionStream(
 					? !paintedAnchor(frame.payload.anchor_id)
 					: frame.type === "snapshot" && !pageIsPaintedTail(frame),
 			);
+			/*
+			 * A WARM THAT LANDS AFTER THE COLD READS RE-ARMS THE HISTORY READ
+			 * (remote-load-hydration). A stored remote session opens cold: the daemon
+			 * serves an empty page from a facade with no owner, and every read it
+			 * answers while cold is blind (see the proof rule in `walkTail`). When the
+			 * owner engages - the pane's watch lease, the first keystroke's `/warm`,
+			 * or a peer-side start - the facade binds and the flip arrives as a frame
+			 * that carries `cold: false` (`frontend.replace`, per the bridge's own
+			 * attach-settled publish, and a fresh `snapshot`). Without this the batch
+			 * fires no read at all: it carries no snapshot whose page could owe a
+			 * reconcile and no labels to retry, so the pane would sit un-hydrated
+			 * until some user action.
+			 *
+			 * EDGE-TRIGGERED, deliberately - the condition is the FLIP (the view was
+			 * cold, and this batch says warm), not "the view is warm": that is what
+			 * re-arms the read on a later cold spell without becoming a poll, and it
+			 * stops the moment a page proves hydration. The walk it fires is the same
+			 * one a cold open fires, under the same request budget.
+			 */
+			const warmedUnproven =
+				viewRef.current.cold &&
+				!viewRef.current.hydrated &&
+				frames.some((frame) =>
+					frame.type === "snapshot"
+						? frame.payload.cold === false
+						: frame.type === "frontend.replace"
+							? frame.payload.cold === false
+							: false,
+				);
 			// The second reason to read back: a snapshot's live seed names calls that
 			// settled before this viewer arrived, and the seed carries no arguments for
 			// them (see `knownArgs`), so those rows render nothing but their output —
@@ -3845,8 +3942,11 @@ export function useCanonicalSessionStream(
 				settleAsk.length > 0 &&
 				seedMissing.length === 0 &&
 				retryLabels.length === 0 &&
-				!needsReconcile;
-			if (needsReconcile || missingLabels.length > 0) {
+				!needsReconcile &&
+				/* The warm's own read is not "happening anyway": it is not the
+				 * settle's debt, so a settle-only batch does not pay for it. */
+				!warmedUnproven;
+			if (needsReconcile || missingLabels.length > 0 || warmedUnproven) {
 				const targets = new Set(missingLabels);
 				const order = labelGapRef.current.order;
 				void reconcileTail(
@@ -4192,6 +4292,21 @@ export function useCanonicalSessionStream(
 		// Non-null only while this effect owns the stream, so a Retry pressed after
 		// the session changed (or after unmount) cannot re-open the old session.
 		retryRef.current = reopen;
+		/*
+		 * `rehydrate` fires the walk `reopen` fires for an unhydrated view, without
+		 * the stream re-arm - the slot's "Try again" is a question about the
+		 * READ, not about the connection. Gated on `!hydrated` for the same reason
+		 * `reopen`'s walk is: a click that lands after a page proved hydration has
+		 * nothing to re-ask.
+		 */
+		hydrateRef.current = () => {
+			if (!viewRef.current.hydrated) {
+				void reconcileTail(
+					generation,
+					new Set(viewRef.current.transcript.index.keys()),
+				);
+			}
+		};
 		// Same lifetime rule for the resync: it is addressable by session id from
 		// another feature, and it must not outlive the pane it re-reads for.
 		const unregisterResync = __registerCanonicalResync(sessionId, resync);
@@ -4199,6 +4314,7 @@ export function useCanonicalSessionStream(
 		return () => {
 			generationRef.current += 1;
 			retryRef.current = null;
+			hydrateRef.current = null;
 			unregisterResync();
 			dispose?.();
 			if (raf) cancelAnimationFrame(raf);
@@ -4814,6 +4930,10 @@ export function useCanonicalSessionStream(
 		retryRef.current?.();
 	}, []);
 
+	const rehydrate = useCallback(() => {
+		hydrateRef.current?.();
+	}, []);
+
 	const addNote = useCallback(
 		(text: string, level: "info" | "warning" | "error" = "info") => {
 			commitView((current) => ({
@@ -4903,6 +5023,7 @@ export function useCanonicalSessionStream(
 			paintPendingModel,
 			clearPendingModel,
 			retry,
+			rehydrate,
 		}),
 		[
 			view,
@@ -4917,6 +5038,7 @@ export function useCanonicalSessionStream(
 			paintPendingModel,
 			clearPendingModel,
 			retry,
+			rehydrate,
 		],
 	);
 }

@@ -161,6 +161,12 @@ function mountHook(options = {}) {
 			sessionKey,
 			hiddenRows,
 			hasMore: options.hasMore ?? true,
+			/*
+			 * The end claim's proof. Defaults true here for the cases written
+			 * before the fact existed (their arms are about paging, not about
+			 * the end statement); the two cases that are about it pass it.
+			 */
+			hydrationProven: options.hydrationProven ?? true,
 			onWiden: () => {
 				widenCalls++;
 			},
@@ -586,6 +592,53 @@ test("the failed row follows olderFailed, and clears the moment it does", () => 
 			hook.slotState,
 			"failed",
 			"a later applied page clears the row without needing new input",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+/*
+ * THE END CLAIM IS GATED ON PROOF (remote-load-hydration). `hasMore: false` is
+ * the cursor's opinion about the conversation, and it is only true ABOUT the
+ * conversation when the read that produced it could see it: a stored remote
+ * session's cold open is served an empty page by a facade with no owner, and
+ * the session hook refuses to count that read as proof (see
+ * `sessionRowsLiveRemotely` and the proof rule in `walkTail`). These two cases
+ * pin the consequence at the slot's own state machine: without proof the
+ * exhausted copy must NOT render - the retry-able "not loaded" arm takes its
+ * place - and with proof the end still states itself.
+ */
+test("an unproven end is not the end: hasMore false without hydration proof", () => {
+	const hook = mountHook({
+		hiddenRows: 0,
+		hasMore: false,
+		hydrationProven: false,
+	});
+	try {
+		hook.flushFrames(2);
+		assert.equal(
+			hook.slotState,
+			"unproven",
+			`hasMore false with no proof claimed exhaustion: ${hook.slotState}`,
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+test("a proven end still states itself once a page has been read", () => {
+	const hook = mountHook({
+		hiddenRows: 0,
+		hasMore: false,
+		hydrationProven: true,
+	});
+	try {
+		hook.flushFrames(2);
+		assert.equal(
+			hook.slotState,
+			"exhausted",
+			"a genuinely hydrated end must keep the start-of-conversation arm",
 		);
 	} finally {
 		hook.close();

@@ -132,11 +132,21 @@ const FAILED_RECOVERABLE = /Could not load earlier messages/;
 const RETRY_CONTROL = />Try again</;
 /** The quiet one, which must carry no action. */
 const FAILED_QUIET = /Earlier messages did not load/;
+/** The end of history — the copy that may only be stated once PROVEN. */
+const START_OF_CONVERSATION = /Start of conversation/;
+/** The unproven end: the fact, in both spellings, and the action beside it. */
+const UNPROVEN_FULL = /Earlier history not loaded/;
+const UNPROVEN_SHORT = /Not loaded yet/;
 
 /** The slot on its own, in one state, with the transport the caller claims. */
-const slot = ({ state, transportDown = false }) =>
+const slot = ({ state, transportDown = false, onRetryHydration }) =>
 	renderToStaticMarkup(
-		h(OlderHistorySlot, { state, transportDown, onLoadOlder: () => {} }),
+		h(OlderHistorySlot, {
+			state,
+			transportDown,
+			onLoadOlder: () => {},
+			onRetryHydration,
+		}),
 	);
 
 /**
@@ -262,4 +272,56 @@ test("the pane's transport reaches the slot, and the parent's status still does 
 	const reconnecting = transcriptRender({ status: "reconnecting" });
 	assert.match(textOf(reconnecting), FAILED_QUIET);
 	assert.equal(reconnecting.includes("Try again"), false);
+});
+
+/*
+ * THE HONEST END (remote-load-hydration). The slot's `unproven` arm exists so
+ * that `has_more: false` from a read that never saw the conversation (a COLD
+ * read's empty page; see the proof rule in `use-canonical-session.ts`'s walk)
+ * can never render as "Start of conversation". These cases hold the two
+ * directions apart at the rendered words — the transcript's own composition,
+ * not a re-statement of the rule: unproven gets the fact and the retry, proven
+ * gets the end copy, and the retry is dropped while a retry cannot succeed.
+ */
+test("an unproven end states not-loaded and offers the read again — never the end copy", () => {
+	const html = transcriptRender({
+		olderFailed: false,
+		hydrationProven: false,
+		onRetryHydration: () => {},
+	});
+	const text = textOf(html);
+	assert.match(text, UNPROVEN_FULL);
+	assert.match(text, UNPROVEN_SHORT);
+	assert.match(html, RETRY_CONTROL, "the retry control must be operable");
+	assert.equal(
+		START_OF_CONVERSATION.test(text),
+		false,
+		`unproven hydration painted the end copy: ${JSON.stringify(text)}`,
+	);
+});
+
+test("a proven end still states the start of the conversation", () => {
+	const html = transcriptRender({ olderFailed: false, hydrationProven: true });
+	const text = textOf(html);
+	assert.match(text, START_OF_CONVERSATION);
+	assert.equal(
+		UNPROVEN_FULL.test(text),
+		false,
+		`a proven end must not paint the not-loaded copy: ${JSON.stringify(text)}`,
+	);
+});
+
+test("the unproven row drops its retry while the transport is down", () => {
+	const html = transcriptRender({
+		olderFailed: false,
+		hydrationProven: false,
+		olderTransportDown: true,
+		onRetryHydration: () => {},
+	});
+	assert.match(textOf(html), UNPROVEN_FULL);
+	assert.equal(
+		html.includes("Try again"),
+		false,
+		"a retry that cannot succeed must not be painted beside the transcript's own notice",
+	);
 });
