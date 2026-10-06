@@ -650,17 +650,28 @@ export type PendingAskQuestion = {
  * which controls are live is the backend's answer, because only the backend
  * knows whether a late answer is still accepted.
  *
- * ## Presence of `asks` IS the capability flag
+ * ## Presence of `asks`/`asks_open` IS the capability flag — and, since the
+ * ask gate, EITHER field answers it
  *
  * The backend publishes `asks`/`asks_open` only while its non-blocking feature
  * flag is on, and omits the fields entirely otherwise — deliberately, so that
  * "the field is absent" means exactly "this backend does not do queued asks".
- * Its own addendum sharpens that: presence means the flag is on AND this frame
- * carries at least one row; an empty list is published as ABSENCE, so a client
- * must never read an absent `asks` as "no asks" in the sense of "render an
- * empty list" — it means "this frame has nothing to say about asks", and the
- * only safe read is `frontend.asks ?? null` (see `sessionAsks` in
- * `ask-queue.ts`, which is the one place that rule is applied).
+ * Its own addendum sharpens that for ROWS: `asks` is present only when this
+ * frame carries at least one row; an empty list is published as ABSENCE, so a
+ * client must never read an absent `asks` as "no asks" in the sense of
+ * "render an empty list" — it means "this frame has nothing to say about
+ * asks", and the only safe rows read is `frontend.asks ?? null` (see
+ * `sessionAsks` in `ask-queue.ts`, which is the one place that rule is
+ * applied).
+ *
+ * THE CAPABILITY read is the one the ask gate widened
+ * (`transcript-reducer.ts`'s `queuedAskEngineLive`): a well-formed `asks`
+ * list, OR the presence of `asks_open`. The pre-gate shapes publish the pair
+ * only beside rows, so on an empty-but-live queue both are absent — the
+ * residual the gate's design records for older cores; the core's coming fix
+ * publishes `asks_open` — 0 included — whenever the queued engine is live,
+ * which is what makes the first-ask case readable. Absence of BOTH still
+ * means "cannot say" and never "the engine is off".
  *
  * The companion `asks_truncated` closes the one dishonest state the rule could
  * otherwise produce: a frame whose byte bound dropped rows would draw a prefix
