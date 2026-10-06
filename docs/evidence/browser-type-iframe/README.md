@@ -38,6 +38,48 @@ The frame's field is not filled — the fix makes the failure honest, it does no
 make the frame reachable. No selector, ref or snapshot reaches into a cross-site
 frame from the top document today; that is the follow-up named in the PR.
 
+That follow-up is `feat(browser): type and click into iframe fields through the
+frame's own CDP session` (ARCH-1) — next section.
+
+## Reaching the frame (ARCH-1): the second before/after
+
+`type`, `click` and `snapshot` refs now reach a field inside a frame, through a
+child CDP session on the view's own debugger (`Target.attachToTarget
+{flatten: true}`, attached on demand). Section 5c of the harness changed from the
+refusal proof into a success proof, and kept a refusal for every case where
+typing would be a guess or a lie:
+
+| check | before (`46fd032ed`) | after (this branch) |
+| --- | --- | --- |
+| `type {selector: "#card"}`, the iframe ELEMENT, one field inside | #851 refusal | lands; `frame_origin` set |
+| `type {selector: "iframe#card >>> #number"}` | (not a selector) | lands |
+| `type {selector: "#number"}` — the page misses, one frame has it | `matched nothing` | lands |
+| `snapshot` | no frame content | a `- frame iframe#card (<origin>):` block with a textbox ref |
+| `type {ref: <that ref>}` | — | lands |
+| `#holder`, the top-level control | lands via `insert_text` | identical result, no `frame_origin` |
+| a `_top` link clicked inside the frame, to an unapproved origin | — | `origin_not_allowed`, page unchanged |
+| `type` at a frame holding three fields | — | refused, lists each as a `>>>` path, nothing typed |
+| `type` at a frame with no editable field | — | #851's refusal, nothing typed |
+| a same-site frame (`127.0.0.1`, other port: in the page's process, no target) | — | lands through the frame's `contentDocument` |
+
+EVERY "lands" is read back from the frame's OWN document over the devtools port,
+not from the host's reply (which is the code under test): the cross-site frame
+from its own `iframe` target, the same-site one from an isolated world in that
+frame on the page target.
+
+| file | what it is |
+| --- | --- |
+| `transcript-frames-before.md` | The harness at `46fd032ed` (origin/main this branch was cut from), built with `pnpm build:npm`: the #851 refusal holds, the frame's field is empty. |
+| `transcript-frames-after.md` | The extended harness at this branch's head: every row above. |
+| `card-frame-refused-before.png` | The proof page's capture at `46fd032ed`, after the run's `type` calls: the card field in the frame shows its placeholder. |
+| `card-frame-typed-after.png` | The same capture at this branch's head: the card field shows `4242424242424242`, typed by `ref`. |
+
+Both PNGs are the host's own `screenshot` of a driven tab — a page, not the app's
+themed chrome — so they name no theme and are counted in the manifest's
+`unjudgedFrames`, like this set's other evidence.
+
+Both runs carry the same two cookie `[FAIL]`s described below, and nothing else.
+
 ## The two `[FAIL]`s present on both sides
 
 `the persistent cookie is in Chromium's own store, with the flags to match` and
