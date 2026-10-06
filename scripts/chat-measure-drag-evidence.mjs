@@ -106,9 +106,10 @@ class Cdp {
  * assertions.
  *
  * `line`/`lineLeft` are the state line's two edges, read as RECTS rather than as
- * colours: the set's claim is geometric (the line sits ON the measure's edge),
- * so the rig compares each line's rect against `content`'s on the same reading
- * instead of trusting a screenshot to look right.
+ * colours: the set's claim is geometric (the line sits ON the measure's edge, and
+ * inside the band that grabs), so the rig compares each line's rect against
+ * `content`'s and against the band's on the same reading instead of trusting a
+ * screenshot to look right.
  */
 const PROBE = `(() => {
 	const round = (n) => Math.round(n * 10) / 10;
@@ -522,13 +523,24 @@ const main = async () => {
 				`${theme}: the line is ${rest.line.h}px tall, the column ${rest.content.h}`,
 			);
 		/*
-		 * The strip is still the CLICK-SAFE offset the design round demanded (D2):
-		 * its inner edge 24px out from the column, so it never sits over the text it
-		 * would otherwise swallow a click from.
+		 * THE BAND HUGS THE MARK (UX round 1's U1). Its inner edge is the column's own
+		 * edge - 0px out, not the 24px the offset used to put between the drawn rule
+		 * and the only place that responded - and the line sits INSIDE the band, so a
+		 * press on the thing that promises adjustability starts the drag the way every
+		 * family divider's does.
 		 */
-		if (rest.handle && Math.abs(rest.handle.left - rest.content.right - 24) > 1)
+		if (rest.handle && Math.abs(rest.handle.left - rest.content.right) > 1)
 			failures.push(
-				`${theme}: the right strip's inner edge is ${Math.round((rest.handle.left - rest.content.right) * 10) / 10}px out, not 24`,
+				`${theme}: the band's inner edge is ${Math.round((rest.handle.left - rest.content.right) * 10) / 10}px out from the column's edge, not on it`,
+			);
+		if (
+			rest.line &&
+			rest.handle &&
+			(rest.line.left < rest.handle.left - 1 ||
+				rest.line.right > rest.handle.right + 1)
+		)
+			failures.push(
+				`${theme}: the line ${rest.line.left}..${rest.line.right} is not inside the band ${rest.handle.left}..${rest.handle.right}`,
 			);
 		if (!(Number(dragging.lineOpacity) > 0))
 			failures.push(

@@ -44,7 +44,7 @@ missed both.
 | Frame | What it shows |
 | --- | --- |
 | `rest/` | The column at the shipped measure with the pointer elsewhere: **no cue at all**. The strip is there and hit-testable, but nothing is drawn - this is the frame that makes "subtle" checkable rather than asserted. |
-| `hover/` | The pointer resting on the RIGHT edge. The full-height 2px state line in the resting `control` tint, its inner edge on the column's right edge, plus the strip's tooltip (`Drag to resize · double-click to reset`). It REPLACED a 72px bar centred on the Y the pointer entered at and floating 24px clear of the content edge (design round 1's D2); the bar's geometry, and the before/after pair, are in `docs/evidence/chat-measure-line/`. |
+| `hover/` | The pointer resting on the RIGHT edge. The full-height 2px state line in the resting `control` tint, its inner edge on the column's right edge, plus the tooltip (`Drag to resize · double-click or Enter to reset`). It REPLACED a 72px bar centred on the Y the pointer entered at and floating 24px clear of the content edge (design round 1's D2); the bar's geometry, and the before/after pair, are in `docs/evidence/chat-measure-line/`. |
 | `hover-left/` | The same hover on the LEFT edge, at the same 450ms wait: the two handles move one symmetric measure, so the mirror is read rather than assumed. |
 | `dragging/` | Mid-gesture, **button still held**. The line has promoted to the accent tint (the divider's own two-state convention: control means "grabbable", accent means "moving"), the column is already at the new width, and the store has NOT been written yet - `stored` reads `null` in the same reading. |
 | `at-ceiling/` | After releasing at the far end of an outward drag. The store holds **1100** (the clamp); the column renders 992px because the pane in this story is 1024px. That gap is not a defect, it is the resize rule in one frame: a stored width wider than the pane renders at the pane, and the stored value is untouched. |
@@ -70,6 +70,13 @@ missed both.
 (Opacities are the post-transition values; the rig reads a few `1e-06`-scale
 residues on the `at-ceiling`/`at-floor` rows and asserts the sizes that matter
 rather than those digits.)
+
+Two geometry readings ride on the same run and are asserted rather than tabulated
+(UX round 1's U1, with agent review round 1's reading of it): the band's inner
+edge is **on the column's own edge** - `917` against `content.right 917` here,
+not the old 24px out - and the drawn line is **inside that band** (`917..919`
+within `917..927`), so a press on the rule starts the drag the way it does on
+every family divider.
 
 `press-only` is the reading that matters most and the one no frame can carry: a
 press with no travel stores **nothing**, so a double-click cannot replace a wide

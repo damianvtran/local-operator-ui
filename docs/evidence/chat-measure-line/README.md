@@ -1,9 +1,9 @@
 # The conversation column's resize cue, before and after
 
 Frames for issue #848: the column's resize cue joining the app's one resize
-language. Four states, two palettes, each photographed on **two trees** — `before/`
+language. Five states, two palettes, each photographed on **two trees** — `before/`
 is unmodified `origin/main` (`d70f2645599`, this branch's fold point) and `after/`
-is this branch's folded head.
+is this branch's head.
 
 The complaint, verbatim from the issue: the 72px bar floating in the transcript's
 empty margin *"reads as a mistake"* rather than as the column's boundary.
@@ -11,9 +11,9 @@ empty margin *"reads as a mistake"* rather than as the column's boundary.
 ## How to reproduce
 
 ```sh
-# The base tree's Storybook, from a worktree at origin/main
-git worktree add --detach /tmp/lo-ui-base origin/main
-(cd /tmp/lo-ui-base && ./node_modules/.bin/storybook dev -p 6392 --ci)
+# The base tree's Storybook, from a worktree at origin/main (any session-unique path)
+git worktree add --detach ~/local-operator-ui-worktrees/measure-handle-848-base origin/main
+(cd ~/local-operator-ui-worktrees/measure-handle-848-base && ./node_modules/.bin/storybook dev -p 6392 --ci)
 # This branch's Storybook
 ./node_modules/.bin/storybook dev -p 6391 --ci
 # One run drives both, writes every frame and asserts every reading
@@ -39,15 +39,24 @@ now records.
 | Frame | `before/` (origin/main) | `after/` (this branch) |
 | --- | --- | --- |
 | `rest/` | No cue at all. The strip is hit-testable; nothing is drawn. | No cue at all — the line is `opacity-0`, not absent. |
-| `hover-right/` | The 72px bar, 2px wide, centred on the Y the pointer entered at, floating **28px past** the column's right edge in the empty margin. | The divider family's full-height 2px line, its inner edge **on** the column's right edge, in the resting `control` tint — and the strip's tooltip, `Drag to resize · double-click to reset`. |
-| `hover-left/` | The same bar past the column's left edge. | The same full-height line on the column's left edge, tooltip beside it. |
-| `dragging/` | The bar promoted to `accent`, button still held, the column already at the new width. | The line promoted to `accent`, full height, on the moved column's edge. |
+| `hover-right/` | The 72px bar, 2px wide, centred on the Y the pointer entered at, floating **28px past** the column's right edge in the empty margin. | The divider family's full-height 2px line, its inner edge **on** the column's right edge, in the resting `control` tint — and the tooltip, `Drag to resize · double-click or Enter to reset`, just above the hand. |
+| `hover-left/` | The same bar past the column's left edge. | The same full-height line on the column's left edge, tooltip just above the hand. |
+| `dragging/` | The bar promoted to `accent`, button still held, the column already at the new width. | The line promoted to `accent`, full height, on the moved column's edge, tooltip closed. |
+| `hover-scrolled/` | The bar on the scrolled pane (its own Y is the pointer's, so it stays visible). | The line on the scrolled pane, with the tooltip **inside the pane** — the state agent review round 1's M1 was about. |
 
 The right edge is the state the issue's report is about; the left edge is
 photographed because the two handles move **one symmetric measure**, so a
 right-edge-only frame could not say whether the left one reads the same way. It
 does (see `hover-left/` in both halves) — both edges stay, and that is stated
 here rather than left for the design round to discover from a single frame.
+
+**`hover-scrolled` is a rig-shaped transcript, and it says so.** The story's own
+transcript fits its pane, which is the one shape where a content-height tooltip
+anchor still lands somewhere visible; the rig clones the rendered prose block
+inside the content column and clips the scroller to 240px, which is what makes
+the column taller than the pane. The markup is real rendered output, not a
+fixture — the pane height and the transcript length are the rig's, and the
+subject (where the panel lands) is the component's.
 
 ## The readings the run asserts, in both palettes
 
@@ -59,23 +68,39 @@ here rather than left for the design round to discover from a single frame.
 | cue height | `72px` | the column's own height (306.9px here) |
 | cue width | `2px` | `2px` |
 | cue's inner edge against the column's edge | **28px past it** (in the margin) | **on it** (within 1px) |
-| the strip's inner edge against the column's edge | 24px out | 24px out (unchanged) |
+| the drawn mark against the grab band (`elementFromPoint` at the mark's centre) | **inside the band** — the bar is grabbable | **inside the band** — the line is grabbable |
+| the band's inner edge against the column's edge | 24px out | **on it** (within 1px) |
+| the tooltip panel vs the pane, at the top / middle / bottom scroll position | no panel on this tree | inside the pane at all three (measured `61..106` in the 240px pane) |
 
-The strip offset is asserted in BOTH halves because it is the geometric reason
-the control cannot swallow a click meant for the text (design round 1's D2), and
-this change moved the line without moving the target. `chat-measure-drag`'s rig
-asserts the same number from the other direction.
+Two of these are the round-1 findings stated as geometry. The mark-in-band
+reading is UX round 1's U1: the previous head drew the line on the column's edge
+and left the band 24px out, so a press on the rule hit the transcript `DIV` and
+moved no width, where the shipped bar was grabbable — *the mark IS the target* is
+now an assertion on both halves rather than a claim. The panel-vs-pane reading is
+agent review round 1's M1, whose arithmetic said the panel goes off-screen on a
+scrolling transcript; with the anchor on the separator's content-height rect it
+did (measured in a browser: `1473..1500` mid-scroll and `-49..-22` at the bottom
+of a 620px viewport).
+
+The band reads the same in both halves because the base tree's strip already
+contained its bar; the head's band now contains the line. The band's own offset
+moved (24px → 0px, i.e. onto the column's edge, hugging the line from the gutter
+side) and is asserted separately per half, because it is the geometric reason the
+control cannot swallow a click meant for the text (design round 1's D2).
 
 ## What this set is evidence for
 
 - **The cue is now the app's one resize language.** `before` vs `after`, same
   records, same pane, same palettes: the mark in the margin becomes the state
   line the five panel dividers draw, on the column's real edge.
+- **The mark and the grab target are one place again.** Every family divider puts
+  its band over its line; so does this now, without reaching inward past the
+  column's edge.
+- **The tooltip stays with the reader.** Anchored at the hand, it is inside the
+  pane at the top, the middle and the bottom of a scrolling transcript.
 - **Nothing was lost with the bar.** `rest` is still empty in both halves, and
   the drag state still promotes to `accent` — the divider family's two states,
   `control` for grabbable and `accent` for moving.
-- **The pointer target did not move.** The strip is 24px out in both halves, so
-  the click-safety property the geometry exists for is unchanged, not re-argued.
 
 ## What this set does NOT prove, stated rather than implied
 
@@ -93,3 +118,9 @@ asserts the same number from the other direction.
 - **The tooltip's own copy is not asserted here.** Radix's panel is the app's
   shared `ui/tooltip.tsx`; its string is in the component and visible in the
   frames.
+- **The panel now sits over the prose it is beside.** Anchored to the hand and
+  `side="top"`, its 256px box crosses the column's edge — measured
+  `794..1050` with the column ending at `917`. That is the trade the
+  hand-anchoring buys: it is a tooltip (the app's other 200 do the same), it is
+  `pointer-events-none` so it cannot swallow a click, and the alternative was
+  the panel that leaves the pane entirely.
