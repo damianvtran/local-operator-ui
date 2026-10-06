@@ -26,6 +26,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { hubDisplayName } from "../display-name";
 import { useOrgTeamsQuery } from "../hooks/use-org-teams-query";
 import { useTeamPullMutation } from "../hooks/use-team-pull-mutation";
 import { orgRefusalFromError } from "../org-access";
@@ -423,7 +424,12 @@ export const OrgTeamsList: React.FC<{
 											size="sm"
 											onClick={() => handlePull(team)}
 											disabled={pull.isPending}
-											aria-label={`Pull team ${team.name}`}
+											/*
+											 * The accessible name is a sentence this surface writes about the team, so
+											 * it paints the derived form like every other one (agent review round 1,
+											 * m4); the node's IDENTITY stays the hub's id.
+											 */
+											aria-label={`Pull team ${hubDisplayName(team.name)}`}
 										>
 											{pullingTeamId === team.id ? "Pulling…" : "Pull"}
 										</Button>
@@ -446,7 +452,7 @@ export const OrgTeamsList: React.FC<{
 									<output className="text-meta text-danger">
 										{pullTreatment?.body ??
 											pull.error?.message ??
-											`"${team.name}" could not be pulled.`}
+											`"${hubDisplayName(team.name)}" could not be pulled.`}
 									</output>
 									{pullTreatment?.actions
 										.filter((action) => ROSTER_ACTIONS.includes(action))
@@ -628,7 +634,13 @@ const TeamSummary = ({
 		<span className="flex min-w-0 flex-col">
 			<span className="flex min-w-0 items-baseline">
 				<span className="truncate font-medium text-body text-ink">
-					{team.name}
+					{/*
+					 * The display name rule, shared with the public catalogue and the agent
+					 * cards: a published team's `name` is a lowercase KEY, and painting the
+					 * raw key here while the public view paints its display form would let
+					 * one team read two ways a tab apart.
+					 */}
+					{hubDisplayName(team.name)}
 				</span>
 				{version ? (
 					<span className="ml-2 shrink-0 text-ink-dim text-meta">

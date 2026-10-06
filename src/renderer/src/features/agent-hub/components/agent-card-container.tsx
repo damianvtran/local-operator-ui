@@ -3,6 +3,7 @@ import type { Agent, AgentViewerStatus } from "@shared/api/radient/types";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import type React from "react";
 import { useState } from "react";
+import { hubDisplayName } from "../display-name";
 import { useAgentFavouriteMutation } from "../hooks/use-agent-favourite-mutation";
 import { useAgentLikeMutation } from "../hooks/use-agent-like-mutation";
 import { useDownloadAgentMutation } from "../hooks/use-download-agent-mutation";
@@ -132,7 +133,13 @@ export const AgentCardContainer: React.FC<AgentCardContainerProps> = ({
 			orgName={orgName}
 			actionError={
 				failure
-					? agentActionFailureMessage(failure.action, failure.error, agent.name)
+					? agentActionFailureMessage(
+							failure.action,
+							failure.error,
+							// The derived name, as the card's title paints it: an alert that names
+							// the agent is prose, not an address (agent review round 1, m4).
+							hubDisplayName(agent.name),
+						)
 					: null
 			}
 			onRetryAction={failure?.retry}
