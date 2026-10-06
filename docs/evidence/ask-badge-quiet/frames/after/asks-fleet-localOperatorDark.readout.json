@@ -12,17 +12,17 @@
     "height": 40
   },
   "triggerBox": {
-    "left": 392,
+    "left": 380,
     "top": 4,
-    "right": 424,
+    "right": 412,
     "bottom": 36,
     "width": 32,
     "height": 32
   },
   "badgeBox": {
-    "left": 412,
+    "left": 400,
     "top": 2,
-    "right": 434,
+    "right": 422,
     "bottom": 18,
     "width": 22,
     "height": 16

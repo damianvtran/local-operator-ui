@@ -3985,9 +3985,10 @@ const BRANCH_RECORDS = [
 	"foldCitationRepointNote",
 	/*
 	 * And by the badge-quiet lane's squash repair (2026-10-06): the two
-	 * citations the mesh lane's own sweep left recorded-but-unrepaired, which a
-	 * squash-merge had left dangling on `origin/main` and which red the
-	 * evidence gate for every docs/evidence-touching PR (`head` cites the
+	 * citations a squash-merge had left dangling on `origin/main` - two
+	 * #809-era members of the class the list's `meshApprovalsCitationRepointNote`
+	 * names, found still unrepaired by this lane's run of the gate - which red
+	 * the evidence gate for every docs/evidence-touching PR (`head` cites the
 	 * approvals round's refreshed capture head; `mesh-tab/approvals-before`'s
 	 * `capturedAtHead` the branch's fold commit). Both are re-pointed at
 	 * `38068e36b1a`, the #809 squash whose diff carried that round's content,
