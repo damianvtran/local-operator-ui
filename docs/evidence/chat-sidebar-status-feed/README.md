@@ -428,10 +428,17 @@ through this set's own capture path at the head, and the narrowing is recorded i
 
 **The other four cells, and the whole baseline half, are untouched, and that is a
 provenance decision rather than an omission.** The baseline is defined as
-unmodified `origin/main`'s rendering; main still draws `Share2`, so re-taking it at
-this head would make the set describe a tree other than the one it names. The
-resting, selected and archived cells carry no running mark - they were checked
-against the re-taken pair and left.
+unmodified `origin/main`'s rendering **at the revision its entry pins,
+`073164505e`** — a Share2-era tree — so re-taking it at this head would make the
+set describe a tree other than the one it names. It is deliberately two marks
+behind, not one: main has since moved Share2 → the disc → the trio, so the
+baseline is the pair's before-half for the SHAPE, and the dot-era half of that
+pair is the two `subagent-rows-running*` cells in this set, which are before/after
+at the dot and the trio themselves. The resting, selected and archived cells were
+left at their own 2026-09-29 captures, and the trio pass re-took them (they do
+carry the mark — see the section below); that later re-capture supersedes the "left
+untouched" decision recorded here, and this paragraph is kept so the change of
+mind is visible rather than silent.
 
 **WHAT THE RE-TAKEN PAIR IS, AND IS NOT (design round 2's D-r2-1).** It is an
 INDICATIVE picture of the mark as the head draws it, not a controlled before/after
@@ -498,9 +505,11 @@ the module graph did not invalidate, not that the app moved.
 **The two before/after pairs are not equally clean, and this note says which is
 which rather than leaving a reader to difference them.** `subagent-rows-running/`
 and `subagent-rows-running-minimum/` were re-taken at issue #840 and wore the DOT
-the operator rejected: those two differ by the mark and nothing else — six
+the operator rejected: those two differ by the mark — six
 ~16x16px boxes per palette, three in the leading slot and three in the trailing
-one. The other seven cells carried older captures (`delegating-row-default/`,
+one — plus sub-threshold rasterisation variation in the right-hand prose panel
+(~650 px, per-channel |Δ| of 8–13 of 255), which no file this change touches
+renders. The other seven cells carried older captures (`delegating-row-default/`,
 `delegating-row-minimum/` and `chat-session-status--neighbours/` from 2026-09-22;
 the resting, selected and archived cells from 2026-09-29), and all of them still
 drew `Share2` in the accent — neither the dot nor the trio — over a sidebar that
@@ -511,7 +520,11 @@ component they photograph, and because those cells ARE the arm's own surface: th
 `delegating` rung is what `delegating-row-*` exists to photograph, and the
 neighbours matrix is the one place a delegating row is read against `busy`. The
 baseline half (`chat-sidebar-subagent-baseline/`) was **not** re-taken, for the
-reason its own entry gives: it is defined as unmodified `origin/main`'s rendering.
+reason its own entry gives: it is pinned at `073164505e`, a `Share2`-era tree, and
+its whole point is being unmodified `origin/main` **at that revision** — so it is
+two marks behind rather than one, and the dot-era half of the comparison is the two
+`subagent-rows-running*` cells above, which are before/after at the dot and the trio
+themselves.
 
 **The readings, taken on these frames** with the design round's own instrument
 (coverage by projection onto the ground→accent axis) rather than quoted from its
