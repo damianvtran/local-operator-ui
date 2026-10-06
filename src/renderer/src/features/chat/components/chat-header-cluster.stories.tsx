@@ -289,6 +289,26 @@ export const AsksOpen: Story = {
 	),
 };
 
+/**
+ * BOTH MARKS AT ONCE (design round 1, D2's fix): the bordered browser count and
+ * the quiet ask count in one frame. The register change's central claim - "the
+ * cluster wears one spelling of each, on purpose" - is a claim about a
+ * SIDE-BY-SIDE, and the before/after pair structurally cannot carry it (the same
+ * control at two times is not two registers side by side). Here the two marks
+ * sit on neighbouring controls in one strip, so a reader can check the claim in a
+ * frame rather than take the header's comment for it.
+ */
+export const BothMarks: Story = {
+	render: () => (
+		<Cluster
+			count={1}
+			details={deriveRunDetails(fixtures.idle())}
+			asksCount={3}
+			asksScope="session"
+		/>
+	),
+};
+
 /** The same dot after its pulse: `inkMuted` rather than `accent`, so an unread mark
  * that has been waiting does not animate for ever (design 12.2's second state). */
 export const ConsoleBlipResting: Story = {

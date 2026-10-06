@@ -1,0 +1,41 @@
+{
+  "viewport": {
+    "w": 560,
+    "h": 84
+  },
+  "headerBox": {
+    "left": 0,
+    "top": 0,
+    "right": 560,
+    "bottom": 40,
+    "width": 560,
+    "height": 40
+  },
+  "triggerBox": {
+    "left": 392,
+    "top": 4,
+    "right": 424,
+    "bottom": 36,
+    "width": 32,
+    "height": 32
+  },
+  "badgeBox": {
+    "left": 408.5,
+    "top": -2.3,
+    "right": 434,
+    "bottom": 13.7,
+    "width": 25.5,
+    "height": 16
+  },
+  "badgeText": "9+",
+  "badgeClass": "inline-flex w-fit shrink-0 items-center gap-1 border py-0.5 whitespace-nowrap font-medium text-meta [&_svg]:pointer-events-none [&_svg]:size-3 [&_svg]:shrink-0 border-ink-muted bg-warning-wash text-ink rounded-full h-4 min-w-4 justify-center px-1 tabular-nums ring-2 ring-canvas",
+  "badgeFontSize": "12px",
+  "badgeLineHeight": "17.4px",
+  "badgeCssHeight": "16px",
+  "badgeOverflow": "visible",
+  "ringPx": 2,
+  "badgeTopVsHeader": -2.3,
+  "badgeTopVsViewport": -2.3,
+  "badgeOverhangAboveTrigger": 6.3,
+  "triggerTopVsHeader": 4
+}
