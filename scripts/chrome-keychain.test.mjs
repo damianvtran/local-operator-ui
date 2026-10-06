@@ -487,6 +487,18 @@ const CHROME_LAUNCH_SITES = [
 		1,
 		"the ask-count badge's clip pair - the quiet register after, the clipped band before, one private headless Chrome per run through the same helper (registered by its PR's remediation: the harness launched Chrome while unregistered, which failed Desktop Tests in CI)",
 	),
+	guarded(
+		"docs/evidence/ask-drawer-stuck/harness/drive-asks.mjs",
+		"spawn",
+		1,
+		"the asks drawer stuck-open pair - the reported switch on the unfixed tree beside the same path fixed, photographed in the running renderer - one private headless Chrome per run through the same helper (registered by its PR's remediation: the harness launched Chrome while unregistered, which failed Desktop Tests in CI)",
+	),
+	guarded(
+		"docs/evidence/ask-drawer-stuck/harness/shoot-stories.mjs",
+		"spawn",
+		1,
+		"the three drawer states no switch reaches on demand - the published-empty queue, an unresolved frame, and a runtime with no queued engine - shot from the shipped stories in both brand palettes, one private headless Chrome per run through the same helper",
+	),
 ];
 
 const key = (row) => `${row.file}#${row.name}#${row.index}`;
