@@ -24,13 +24,20 @@ mechanical record beside the pixels.
 | --- | --- | --- |
 | `frames/before-base/` | base build, `origin/main` at `46fd032ed59` | the defect, end to end: `base-turn-user-tool-correct.png` is the order the viewer watched during the turn (user, then tool); `base-turn-flip-answer-above.png` is the flip — the answer row admitted ABOVE the held echo; `base-turn-settled-inverted.png` is the settled state the operator photographed (answer → stamp → user → action group). `rows-83253.jsonl` carries the sequence (`g-11` correct → `g-12` flipped → `final` still inverted). |
 | `frames/after-local/` | this branch's build | the local path, user → tool → answer, and its remount stability: `fixed-user-tool-running.png` mid-turn, `fixed-user-tool-answer.png` settled, `fixed-reopen-stable.png` / `fixed-reload-stable.png` the same order after a switch away-and-back and after a full reload. `rows-82092.jsonl` and `rows-88367.jsonl` are their row logs. |
-| `frames/after-remote/` | this branch's build | **PENDING.** cloud-node-1's relay was down from ~10:18 local on 2026-10-06 (nothing listening on 4097; every mesh handshake refused), so the remote after half could not be re-captured in this pass. The re-capture is one command (below); until it lands, the flip and its fix are pinned mechanically — `scripts/transcript-reducer.test.mjs`'s closure-rule pins reproduce the exact inversion on the base reducer (`[ans-1, req-1, tool:call-1]`) and the fixed order after (`[req-1, tool:call-1, ans-1]`). |
+| `frames/after-remote/` | this branch's build | the remote flow re-taken on the fix against the peer that produced the base flip (same `cloud-node-1`, same `What's your current OS?` turn): `fixed-remote-user-tool-running.png` mid-turn (user, then the running call below it), `fixed-remote-user-tool-answer.png` the answer admitted BELOW the call, `fixed-remote-settled.png` settled. `rows-70390.jsonl` is the DOM-order log and `sse2-880d42ac4018.txt` the daemon's SSE log the app consumed: every frame of the turn streamed live (`message_start` user → composer → tool → answer), no merge door was needed, and the watch saw no inversion in 188 samples. |
 
 The base half was captured by the lane manager's session (2197cee0a558) with
 the same flow `plan-remote.json` reproduces — nav `/chat`, pick `cloud-node-1`
 on the device chip, send `What's your current OS?` — against the base build.
 The after halves were captured by this branch's session
-(assignment `turn-order coder`), against a build of this branch's tree.
+(assignment `turn-order coder`), against a build of this branch's tree:
+the remote half on 2026-10-06 ~13:37 local, once cloud-node-1's relay
+returned (a second remote run of an engineered `sleep` turn also came back
+order-correct; its artifacts stay in the session scratch), and the local half
+with its remount checks. The flip and its fix are also pinned mechanically —
+`scripts/transcript-reducer.test.mjs`'s closure-rule pins reproduce the exact
+inversion on the base reducer (`[ans-1, req-1, tool:call-1]`) and the fixed
+order after (`[req-1, tool:call-1, ans-1]`).
 
 ## The commands
 
