@@ -326,6 +326,12 @@ const CHROME_LAUNCH_SITES = [
 		"drives the conversation column's resize cue on TWO trees in one run - the base tree's floating bar and this branch's state line - so the before/after pair for issue #848 is a like-for-like comparison, and asserts the geometry of both halves",
 	),
 	guarded(
+		"scripts/chat-measure-hover-evidence.mjs",
+		"spawn",
+		1,
+		"drives the conversation column's resize cue on TWO trees in one run for the hover-cue pass - the base tree's full-height rule and this head's fade bar - and reads the cue's ink back twice, off the painted gradient and off the committed frames themselves; it also holds the pointer past each tree's tooltip dwell, so the panel's arrival is compared rather than described",
+	),
+	guarded(
 		"scripts/composer-readings-geometry.mjs",
 		"spawn",
 		2,
