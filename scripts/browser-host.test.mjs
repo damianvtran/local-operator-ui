@@ -7049,3 +7049,736 @@ test("type still lands through the value setter on a real form field", async () 
 	assert.equal(result.via, "value_setter");
 	assert.equal(input.value, "hello");
 });
+
+// ---- frames: reaching fields inside iframes (ARCH-1) -------------------------
+
+/**
+ * A page with frames, behind a REAL `CdpPool`: the fake is the debugger, so the
+ * pool's own session routing, cache and stale-session handling are what run.
+ *
+ * Sessions: `""` is the page; each out-of-process frame gets a session id from
+ * `Target.attachToTarget`. Every `sendCommand` is recorded with its ARGUMENT
+ * COUNT, because the top-frame contract is "the two-argument call, unchanged".
+ *
+ * `docs` maps a session to its document: `nodes` by nodeId, each with
+ * `selectors` it matches, an optional `frame` (an iframe: `{ oopif: targetId }`
+ * or `{ inProcess: docNodeId }`), and an `element` the injected functions run
+ * against.
+ */
+class FramePage {
+	constructor() {
+		this.calls = [];
+		this.sessions = new Map(); // sessionId -> targetId
+		this.attachCount = 0;
+		this.staleOnce = new Set();
+		this.docs = new Map();
+		this.objects = new Map();
+		this.nextObject = 1;
+	}
+
+	addDoc(sessionKey, rootId, nodes) {
+		this.docs.set(sessionKey, { rootId, nodes: new Map(nodes) });
+	}
+
+	docFor(sessionId) {
+		const key = sessionId ? this.sessions.get(sessionId) : "";
+		return this.docs.get(key);
+	}
+
+	/** The node table to search: a same-process frame's nodes live in its
+	 * parent's session, so every doc for that session is consulted. */
+	nodeIn(sessionId, nodeId) {
+		const key = sessionId ? this.sessions.get(sessionId) : "";
+		for (const [docKey, doc] of this.docs) {
+			if (
+				(docKey === key || docKey.startsWith(`${key}/`)) &&
+				doc.nodes.has(nodeId)
+			)
+				return doc.nodes.get(nodeId);
+		}
+		return undefined;
+	}
+
+	childrenOf(sessionId, rootId) {
+		const key = sessionId ? this.sessions.get(sessionId) : "";
+		for (const [docKey, doc] of this.docs) {
+			if (
+				(docKey === key || docKey.startsWith(`${key}/`)) &&
+				doc.rootId === rootId
+			)
+				return doc.nodes;
+		}
+		return new Map();
+	}
+
+	debuggerFor(contents) {
+		const emitter = new EventEmitter();
+		emitter.attached = false;
+		emitter.attach = () => {
+			emitter.attached = true;
+		};
+		emitter.detach = () => {
+			emitter.attached = false;
+		};
+		emitter.isAttached = () => emitter.attached;
+		emitter.sendCommand = async (...args) => {
+			const [method, params = {}, sessionId] = args;
+			this.calls.push({ method, arity: args.length, sessionId, params });
+			return this.answer(method, params, sessionId, contents);
+		};
+		return emitter;
+	}
+
+	answer(method, params, sessionId) {
+		if (sessionId && this.staleOnce.has(sessionId)) {
+			this.staleOnce.delete(sessionId);
+			this.sessions.delete(sessionId);
+			throw new Error("No session with given id");
+		}
+		if (sessionId && !this.sessions.has(sessionId)) {
+			throw new Error("No session with given id");
+		}
+		switch (method) {
+			case "Target.attachToTarget": {
+				this.attachCount += 1;
+				const sid = `S${this.attachCount}`;
+				this.sessions.set(sid, params.targetId);
+				return { sessionId: sid };
+			}
+			case "DOM.getDocument": {
+				const doc = this.docFor(sessionId);
+				return { root: { nodeId: doc.rootId, documentURL: doc.url } };
+			}
+			case "DOM.querySelector": {
+				for (const [id, node] of this.childrenOf(sessionId, params.nodeId)) {
+					if (node.selectors?.includes(params.selector)) return { nodeId: id };
+				}
+				return { nodeId: 0 };
+			}
+			case "DOM.querySelectorAll": {
+				const ids = [];
+				for (const [id, node] of this.childrenOf(sessionId, params.nodeId)) {
+					if (node.frame) ids.push(id);
+				}
+				return { nodeIds: ids };
+			}
+			case "DOM.describeNode": {
+				const node = this.nodeIn(sessionId, params.nodeId);
+				if (!node?.frame)
+					return { node: { nodeName: node?.nodeName ?? "INPUT" } };
+				if (node.frame.inProcess) {
+					return {
+						node: {
+							nodeName: "IFRAME",
+							frameId: node.frame.frameId,
+							attributes: node.attributes ?? [],
+							contentDocument: {
+								backendNodeId: node.frame.inProcess,
+								documentURL: node.frame.url,
+							},
+						},
+					};
+				}
+				return {
+					node: {
+						nodeName: "IFRAME",
+						frameId: node.frame.oopif,
+						attributes: node.attributes ?? [],
+					},
+				};
+			}
+			case "DOM.pushNodesByBackendIdsToFrontend":
+				return { nodeIds: params.backendNodeIds };
+			case "DOM.resolveNode": {
+				const node = this.nodeIn(sessionId, params.nodeId);
+				const objectId = `obj-${this.nextObject++}`;
+				this.objects.set(objectId, {
+					node,
+					sessionId,
+					rootNodeId: params.nodeId,
+				});
+				return { object: { objectId } };
+			}
+			case "DOM.requestNode": {
+				const held = this.objects.get(params.objectId);
+				return { nodeId: held?.nodeId ?? 0 };
+			}
+			case "Runtime.callFunctionOn": {
+				const held = this.objects.get(params.objectId);
+				const target = held?.node?.element ?? held?.node?.documentElement;
+				const fn = new Function(`return (${params.functionDeclaration})`)();
+				const args = (params.arguments ?? []).map((arg) => arg.value);
+				const value = fn.apply(target, args);
+				if (
+					value &&
+					typeof value === "object" &&
+					!Array.isArray(value) &&
+					params.returnByValue === false
+				) {
+					const objectId = `obj-${this.nextObject++}`;
+					this.objects.set(objectId, {
+						node: { element: value },
+						sessionId,
+						nodeId: value.nodeId,
+					});
+					return { result: { objectId } };
+				}
+				return { result: { value } };
+			}
+			case "Input.insertText": {
+				const focused = this.focused?.get(sessionId ?? "");
+				if (focused) focused.value = params.text;
+				return {};
+			}
+			case "Accessibility.getFullAXTree": {
+				const doc = this.docFor(sessionId);
+				return { nodes: doc?.ax ?? [] };
+			}
+			default:
+				return {};
+		}
+	}
+}
+
+/** An `<input>` whose focus is tracked per session, so `insertText` lands only
+ * where focus was given — the property a wrong-session call would break. */
+function frameInput(page, sessionKey, nodeId, id) {
+	const element = new FakeInputElement();
+	element.id = id;
+	element.nodeId = nodeId;
+	element.getAttribute = () => null;
+	element.focus = () => {
+		page.focused ??= new Map();
+		page.focused.set(sessionKey, element);
+	};
+	return element;
+}
+
+/** A document object whose `querySelectorAll`/`activeElement` read the inputs. */
+function frameDocument(inputs) {
+	return {
+		activeElement: null,
+		querySelectorAll: () => inputs,
+	};
+}
+
+async function framePool(page) {
+	// The pool from the SAME bundle as the actions: the main bundle does not export
+	// it, and one copy of the error class keeps `instanceof` meaningful.
+	const { CdpPool: FramesCdpPool } = await frameActions();
+	const pool = new FramesCdpPool();
+	const contents = new FakeWebContents(950 + Math.floor(Math.random() * 1000));
+	contents.url = "https://approved.example/";
+	contents.debugger = page.debuggerFor(contents);
+	await pool.attach(contents);
+	page.calls.length = 0;
+	return { pool, contents };
+}
+
+/** One page: `#holder` on top, `iframe#card` (out-of-process, target `F1`) whose
+ * document holds `#number`. */
+function cardPage({ frameInputs = 1 } = {}) {
+	const page = new FramePage();
+	const holder = frameInput(page, "", 11, "holder");
+	page.addDoc("", 1, [
+		[11, { selectors: ["#holder"], element: holder }],
+		[
+			12,
+			{
+				selectors: ["#card", "iframe#card", "iframe"],
+				attributes: ["id", "card"],
+				frame: { oopif: "F1" },
+				element: new FakeFrameElement(),
+			},
+		],
+	]);
+	const inputs = [];
+	const nodes = [];
+	for (let i = 0; i < frameInputs; i += 1) {
+		const id = ["number", "expiry", "cvc"][i];
+		const input = frameInput(page, "S1", 21 + i, id);
+		inputs.push(input);
+		nodes.push([21 + i, { selectors: [`#${id}`], element: input }]);
+	}
+	nodes.push([20, { documentElement: frameDocument(inputs) }]);
+	page.addDoc("F1", 20, nodes);
+	page.docs.get("F1").url = "https://pay.example/card";
+	// The document node resolves to the document object the editable search runs on.
+	return { page, holder, inputs };
+}
+
+function frameCtx(pool, contents) {
+	return {
+		cdp: pool,
+		registry: {
+			requireSurface: () => ({
+				view: { webContents: contents },
+				refs: {},
+				epoch: 1,
+			}),
+			touch: () => {},
+		},
+	};
+}
+
+test("frames 1: a top selector match sends the exact pre-change commands, all two-argument", async () => {
+	const { page, holder } = cardPage();
+	const { pool, contents } = await framePool(page);
+	const { FRAMES_ACTIONS } = await frameActions();
+	const result = await FRAMES_ACTIONS.type(frameCtx(pool, contents), {
+		tab: "t",
+		selector: "#holder",
+		text: "Ada",
+	});
+	assert.equal(result.value, "Ada");
+	assert.equal(holder.value, "Ada");
+	assert.equal("frame_origin" in result, false);
+	assert.deepEqual(
+		page.calls.map((call) => [call.method, call.arity]),
+		[
+			["DOM.getDocument", 2],
+			["DOM.querySelector", 2],
+			["DOM.scrollIntoViewIfNeeded", 2],
+			["DOM.resolveNode", 2],
+			["Runtime.callFunctionOn", 2],
+			["Input.insertText", 2],
+			["Runtime.callFunctionOn", 2],
+		],
+		"the top path is command-for-command what it was before frames existed",
+	);
+});
+
+/** The input actions, bundled with the real pool so `instanceof` matches. */
+let frameActionsCache = null;
+async function frameActions() {
+	if (frameActionsCache) return frameActionsCache;
+	const out = await build({
+		stdin: {
+			contents: [
+				'import * as input from "./src/main/browser/actions/input";',
+				'import * as frames from "./src/main/browser/actions/frames";',
+				'import * as page from "./src/main/browser/actions/page";',
+				'import * as upload from "./src/main/browser/actions/upload";',
+				'export { CdpPool } from "./src/main/browser/cdp";',
+				"export const FRAMES_ACTIONS = { ...input, ...frames, snapshot: page.snapshot, upload: upload.upload };",
+			].join("\n"),
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+		alias: {
+			electron: join(process.cwd(), "scripts/browser-electron-stub.ts"),
+		},
+	});
+	frameActionsCache = await import(
+		`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString("base64")}`
+	);
+	return frameActionsCache;
+}
+
+test("frames 2: `>>>` hops chain, cap their depth, and refuse a hop that is not an iframe", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	assert.deepEqual(
+		FRAMES_ACTIONS.parseFrameHops("iframe#a >>> iframe#b >>> #x"),
+		["iframe#a", "iframe#b", "#x"],
+	);
+	assert.equal(FRAMES_ACTIONS.parseFrameHops("#plain"), null);
+	assert.throws(
+		() => FRAMES_ACTIONS.parseFrameHops("a >>> b >>> c >>> d >>> #x"),
+		(error) =>
+			error.code === "element_not_found" && /at most 3/.test(error.message),
+	);
+	assert.throws(
+		() => FRAMES_ACTIONS.parseFrameHops("iframe >>> "),
+		(error) =>
+			error.code === "element_not_found" && /empty side/.test(error.message),
+	);
+
+	const { page, inputs } = cardPage();
+	const { pool, contents } = await framePool(page);
+	const ctx = frameCtx(pool, contents);
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.type(ctx, {
+				tab: "t",
+				selector: "#holder >>> #number",
+				text: "1",
+			}),
+		(error) =>
+			error.code === "element_not_found" &&
+			/#holder is not an iframe/.test(error.message),
+	);
+	const typed = await FRAMES_ACTIONS.type(ctx, {
+		tab: "t",
+		selector: "iframe#card >>> #number",
+		text: "4242",
+	});
+	assert.equal(inputs[0].value, "4242");
+	assert.equal(typed.frame_origin, "https://pay.example");
+});
+
+test("frames 3: a top miss with one frame hit carries the session; two hits refuse with candidates", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const { page, inputs } = cardPage();
+	const { pool, contents } = await framePool(page);
+	const ctx = frameCtx(pool, contents);
+	const typed = await FRAMES_ACTIONS.type(ctx, {
+		tab: "t",
+		selector: "#number",
+		text: "4242",
+	});
+	assert.equal(typed.via, "insert_text");
+	assert.equal(inputs[0].value, "4242");
+	const afterAttach = page.calls.slice(
+		page.calls.findIndex((call) => call.method === "Target.attachToTarget") + 1,
+	);
+	for (const call of afterAttach.filter((c) =>
+		["Input.insertText", "Runtime.callFunctionOn", "DOM.resolveNode"].includes(
+			c.method,
+		),
+	)) {
+		assert.equal(
+			call.sessionId,
+			"S1",
+			`${call.method} went to the frame's session`,
+		);
+		assert.equal(call.arity, 3);
+	}
+
+	// A second frame holding the same selector: the search must not pick one.
+	const { page: two } = cardPage();
+	two.docs.get("").nodes.set(13, {
+		selectors: ["iframe#other"],
+		attributes: ["id", "other"],
+		frame: { oopif: "F2" },
+		element: new FakeFrameElement(),
+	});
+	const other = frameInput(two, "S2", 31, "number");
+	two.addDoc("F2", 30, [
+		[31, { selectors: ["#number"], element: other }],
+		[30, { documentElement: frameDocument([other]) }],
+	]);
+	const second = await framePool(two);
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.type(frameCtx(second.pool, second.contents), {
+				tab: "t",
+				selector: "#number",
+				text: "4242",
+			}),
+		(error) =>
+			error.code === "element_not_found" &&
+			/iframe#card >>> #number/.test(error.message) &&
+			/iframe#other >>> #number/.test(error.message) &&
+			error.data.candidates.length === 2,
+	);
+	assert.equal(
+		two.calls.some((call) => call.method === "Input.insertText"),
+		false,
+		"nothing was typed on an ambiguous match",
+	);
+});
+
+test("frames 4: type at an iframe element descends to one field, refuses zero (#851) and several", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	for (const [count, expect] of [
+		[1, "typed"],
+		[0, /not an editable field/],
+		[
+			2,
+			/holding 2 editable fields.*iframe#card >>> #number, iframe#card >>> #expiry/,
+		],
+	]) {
+		const { page, inputs } = cardPage({ frameInputs: count });
+		const { pool, contents } = await framePool(page);
+		const ctx = frameCtx(pool, contents);
+		const call = () =>
+			FRAMES_ACTIONS.type(ctx, { tab: "t", selector: "#card", text: "4242" });
+		if (expect === "typed") {
+			const result = await call();
+			assert.equal(inputs[0].value, "4242");
+			assert.equal(result.frame_origin, "https://pay.example");
+			const readBack = page.calls.findLast(
+				(c) => c.method === "Runtime.callFunctionOn",
+			);
+			assert.equal(
+				readBack.sessionId,
+				"S1",
+				"the read-back came from the frame",
+			);
+			continue;
+		}
+		await assert.rejects(call, (error) => {
+			assert.equal(error.code, "element_not_found");
+			assert.match(error.message, expect);
+			return true;
+		});
+		for (const input of inputs) assert.equal(input.value, "", "nothing typed");
+	}
+
+	// The read-back is the authority: a frame field that ignores insertText AND
+	// has no value setter is not reported typed.
+	const { page, inputs } = cardPage();
+	inputs[0].focus = () => {};
+	Object.defineProperty(inputs[0], "value", {
+		get: () => "",
+		configurable: true,
+	});
+	Object.setPrototypeOf(inputs[0], EventTarget.prototype);
+	inputs[0].tagName = "INPUT";
+	const { pool, contents } = await framePool(page);
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.type(frameCtx(pool, contents), {
+				tab: "t",
+				selector: "#card",
+				text: "4242",
+			}),
+		(error) => error.code === "element_not_found",
+	);
+});
+
+test("frames 5: detachedFromTarget drops the cached session; a stale one re-attaches exactly once", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const { page, inputs } = cardPage();
+	const { pool, contents } = await framePool(page);
+	const ctx = frameCtx(pool, contents);
+	await FRAMES_ACTIONS.type(ctx, { tab: "t", selector: "#number", text: "1" });
+	assert.equal(page.attachCount, 1);
+	await FRAMES_ACTIONS.type(ctx, { tab: "t", selector: "#number", text: "2" });
+	assert.equal(page.attachCount, 1, "a live session is reused");
+
+	contents.debugger.emit(
+		"message",
+		{},
+		"Target.detachedFromTarget",
+		{
+			sessionId: "S1",
+		},
+		"",
+	);
+	page.sessions.delete("S1");
+	// Focus is tracked per session key; the re-attached session is S2.
+	inputs[0].focus = () => {
+		page.focused ??= new Map();
+		page.focused.set("S2", inputs[0]);
+	};
+	page.docs.get("F1").nodes.get(21).element = inputs[0];
+	await FRAMES_ACTIONS.type(ctx, { tab: "t", selector: "#number", text: "3" });
+	assert.equal(page.attachCount, 2, "the dropped session was re-attached");
+	assert.equal(inputs[0].value, "3");
+
+	// Stale without an event: the first command errors, the pool drops the entry,
+	// and exactly one re-attach follows.
+	page.staleOnce.add("S2");
+	inputs[0].focus = () => {
+		page.focused ??= new Map();
+		page.focused.set("S3", inputs[0]);
+	};
+	await FRAMES_ACTIONS.type(ctx, { tab: "t", selector: "#number", text: "4" });
+	assert.equal(page.attachCount, 3, "one re-attach, not a loop");
+	assert.equal(inputs[0].value, "4");
+
+	// Stale on the re-attach too: an honest refusal, not a third attach.
+	const always = page.answer.bind(page);
+	page.answer = (method, params, sessionId) => {
+		if (sessionId) throw new Error("No session with given id");
+		return always(method, params, sessionId);
+	};
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.type(ctx, { tab: "t", selector: "#number", text: "5" }),
+		(error) => error.code === "element_not_found",
+	);
+	assert.ok(
+		page.attachCount <= 5,
+		`attaches stay bounded (${page.attachCount})`,
+	);
+});
+
+test("frames 6: a child session's events never reach gate or log subscribers", async () => {
+	const page = new FramePage();
+	page.addDoc("", 1, []);
+	const { pool, contents } = await framePool(page);
+	const seen = [];
+	pool.subscribe(contents.id, (method, params) => seen.push([method, params]));
+	contents.debugger.emit(
+		"message",
+		{},
+		"Fetch.requestPaused",
+		{ requestId: "child" },
+		"S9",
+	);
+	contents.debugger.emit(
+		"message",
+		{},
+		"Runtime.consoleAPICalled",
+		{ type: "log", args: [] },
+		"S9",
+	);
+	contents.debugger.emit(
+		"message",
+		{},
+		"Fetch.requestPaused",
+		{ requestId: "top" },
+		"",
+	);
+	assert.deepEqual(
+		seen.map(([method, params]) => `${method}:${params.requestId ?? ""}`),
+		["Fetch.requestPaused:top"],
+	);
+});
+
+test("frames 7: a ref with frameId routes to its session; the epoch rule is unchanged", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const { page, inputs } = cardPage();
+	page.docs.get("").ax = [
+		{
+			nodeId: "1",
+			role: { value: "RootWebArea" },
+			name: { value: "Top" },
+			childIds: ["2", "3"],
+		},
+		{
+			nodeId: "2",
+			role: { value: "textbox" },
+			name: { value: "Cardholder" },
+			backendDOMNodeId: 11,
+		},
+		{
+			nodeId: "3",
+			role: { value: "Iframe" },
+			name: { value: "Card" },
+			backendDOMNodeId: 12,
+		},
+	];
+	page.docs.get("F1").ax = [
+		{
+			nodeId: "a",
+			role: { value: "RootWebArea" },
+			name: { value: "Card frame" },
+			childIds: ["b"],
+		},
+		{
+			nodeId: "b",
+			role: { value: "textbox" },
+			name: { value: "Number" },
+			backendDOMNodeId: 21,
+		},
+	];
+	const { pool, contents } = await framePool(page);
+	const record = { view: { webContents: contents }, refs: {}, epoch: 4 };
+	const ctx = {
+		cdp: pool,
+		registry: { requireSurface: () => record, touch: () => {} },
+	};
+	const snap = await FRAMES_ACTIONS.snapshot(ctx, { tab: "t" });
+	assert.match(
+		snap.snapshot,
+		/- frame iframe#card \(https:\/\/pay\.example\):/,
+	);
+	const frameRef = Object.entries(record.refs).find(
+		([, ref]) => ref.frameId === "F1",
+	);
+	assert.ok(frameRef, `a frame ref exists: ${JSON.stringify(record.refs)}`);
+	assert.match(
+		snap.snapshot,
+		new RegExp(`textbox "Number" \\[${frameRef[0]}\\]`),
+	);
+	assert.equal(record.refs.e1.frameId, undefined, "a top ref carries no frame");
+
+	page.calls.length = 0;
+	const typed = await FRAMES_ACTIONS.type(ctx, {
+		tab: "t",
+		ref: frameRef[0],
+		text: "4242",
+	});
+	assert.equal(inputs[0].value, "4242");
+	assert.equal(typed.frame_origin, "https://pay.example");
+	const pushed = page.calls.find(
+		(c) => c.method === "DOM.pushNodesByBackendIdsToFrontend",
+	);
+	assert.equal(
+		pushed.sessionId,
+		"S1",
+		"the backend id is pushed in the frame's session",
+	);
+
+	record.epoch = 5;
+	await assert.rejects(
+		() => FRAMES_ACTIONS.type(ctx, { tab: "t", ref: frameRef[0], text: "x" }),
+		(error) => /the page navigated since that snapshot/.test(error.message),
+	);
+	// A frame gone since the snapshot is the stale-ref answer, not a crash.
+	record.epoch = 4;
+	const always = page.answer.bind(page);
+	page.answer = (method, params, sessionId) => {
+		if (sessionId || method === "Target.attachToTarget")
+			throw new Error("No target with given id found");
+		return always(method, params, sessionId);
+	};
+	pool.forget(contents.id);
+	await pool.attach(contents);
+	await assert.rejects(
+		() => FRAMES_ACTIONS.type(ctx, { tab: "t", ref: frameRef[0], text: "x" }),
+		(error) =>
+			error.code === "element_not_found" && /stale/.test(error.message),
+	);
+});
+
+test("frames 7b: a page with no iframe snapshots with exactly the pre-change commands", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const page = new FramePage();
+	page.addDoc("", 1, []);
+	page.docs.get("").ax = [
+		{
+			nodeId: "1",
+			role: { value: "button" },
+			name: { value: "Go" },
+			backendDOMNodeId: 5,
+		},
+	];
+	const { pool, contents } = await framePool(page);
+	const record = { view: { webContents: contents }, refs: {}, epoch: 1 };
+	await FRAMES_ACTIONS.snapshot(
+		{ cdp: pool, registry: { requireSurface: () => record, touch: () => {} } },
+		{ tab: "t" },
+	);
+	assert.deepEqual(
+		page.calls.map((call) => [call.method, call.arity]),
+		[
+			["Accessibility.enable", 2],
+			["Accessibility.getFullAXTree", 2],
+			["Accessibility.disable", 2],
+		],
+	);
+});
+
+test("frames 8: upload refuses a node that resolved inside a frame", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const { page } = cardPage();
+	const { pool, contents } = await framePool(page);
+	const dir = tempDir("upload-frame");
+	const file = join(dir, "deck.pdf");
+	writeFileSync(file, "x");
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.upload(frameCtx(pool, contents), {
+				tab: "t",
+				selector: "iframe#card >>> #number",
+				paths: [file],
+			}),
+		(error) =>
+			error.code === "element_not_found" &&
+			/upload into a frame is not supported/.test(error.message) &&
+			error.data.frame_origin === "https://pay.example",
+	);
+	assert.equal(
+		page.calls.some((call) => call.method === "DOM.setFileInputFiles"),
+		false,
+		"nothing was attached",
+	);
+	rmSync(dir, { recursive: true, force: true });
+});
