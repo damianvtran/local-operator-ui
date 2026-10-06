@@ -300,8 +300,15 @@ export const useTeams = () => ({ data: [], error: null, isLoading: false, refetc
 	 */
 	"@shared/hooks/use-connectivity-status":
 		"export const useServerHealth = () => ({ data: { online: true, snapshot: null } });",
+	/*
+	 * `backendLoadErrorMessage` joined this list with the sidebar's remote rows:
+	 * their hover sentence resolves the network name through
+	 * `features/mesh/mesh-store`, whose error path composes with the real
+	 * helper - and a stub missing an export fails the BUNDLE, not an assertion
+	 * (the same shape the R2-1 note above records).
+	 */
 	"@shared/api/local-operator/backend-error":
-		"export const compatibilityBannerShown = () => false;\nexport const retryDesktopQuery = () => false;",
+		"export const compatibilityBannerShown = () => false;\nexport const retryDesktopQuery = () => false;\nexport const backendLoadErrorMessage = (lead) => lead;",
 	// `Link` as well as `useNavigate`: the hub mark draws the sign-in sentence as a
 	// link, and a stub that exports only the hook fails the BUNDLE rather than an
 	// assertion (agent review round 2, R2-1). `useLocation` for the same reason:

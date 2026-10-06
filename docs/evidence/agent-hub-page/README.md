@@ -108,6 +108,57 @@ off a picture of the unfiltered grid.
 **unmodified `origin/main`** — see that directory's own README for what was
 patched to make it photograph the hub rather than its load error.
 
+## The public teams library (2026-10-05)
+
+**RE-TAKEN IN REVIEW ROUND 3** (the same three states, head `ca870bc08`, and this
+is the run the manifest's `head` names): the round-2 frames were captured on a
+DIRTY tree, which makes the head they claim a claim about nothing (reviewer round
+3, R3-3). These are the same states from a clean one.
+
+**RE-TAKEN IN REVIEW ROUND 2** (head `ca870bc08` at the round-3 re-capture):
+the reflowed header at 920 (design round 2, D8) and the hub's TRANSPORT arm (QA
+round 2, Q3 — a rejected `fetch`, whose copy no longer carries the browser's own
+`Failed to fetch`). Twelve themes each.
+
+**RE-TAKEN IN REVIEW ROUND 1** (`--only=agent-hub-page --allow-backend --dirs=<the
+nine>`, head `bb2b90c70`, `dirtyWorkingTree: false`) for three of the round's
+findings: the hub-failure copy now names the HUB rather than the local server
+(D1/Q1 — `teams-public-unavailable` is the frame), the search-miss states it once
+(D3), and `teams-public-pull-failed` is NEW: the pull's failure renders beside
+the control that produced it, with the brief open, which is exactly the state the
+round-1 frame could not show (D2/M1). The rows and their provenance are otherwise
+unchanged from the pass below.
+
+**Twelve states of this set have been re-taken across the two review rounds, and
+six are new** (`teams-public-search-miss`, `teams-public-brief` and its 920
+narrow, `teams-public-pull-failed` and its 920 narrow, `teams-public-unreachable`). The public Teams view
+used to be a notice ("The public hub lists agents only"), so its six frames
+photographed a sentence; it is now the catalogue itself, read anonymously from
+`GET /v1/teams`, with a client-side search, a brief behind each row's disclosure
+and the pull the surface owns. `teams-public-search-miss`,
+`teams-public-brief` and `teams-public-pull-failed` are the three states no frame
+had rendered before (a search that matches nothing; one team's brief opened — a
+`getPublicTeam`, because the LIST form omits it; and a refused pull, added by
+review round 1's D2), and `teams-public-unreadable` was DELETED: its premise was
+the memberships read, and the public view no longer makes one.
+
+The passes are narrowed rather than swept — `--only=agent-hub-page --allow-backend
+--dirs=<the states>` — because the other twenty-four states of this set are
+untouched by the change. The rows the frames carry are the NINE TEAMS THE
+LIVE HUB SERVES, copied from the public endpoint on the day of the pass, so the
+names, descriptions, managers, rosters and authors in these frames are the
+catalogue's own rather than invented ones; the brief shown by
+`teams-public-brief` is the live `support-desk` document's. Display names are
+rendered through the runtime's own rule (`data-quality` reads "Data Quality",
+`support-desk` reads "Support Desk", `content` reads "Content"), which is what
+the kebab keys in those rows are the picture of. There is no raw-key arm on this
+surface: the hub carries no label field, so the derived form IS the display.
+
+**What these frames do NOT prove**, beyond the list below: that the hub is
+reachable from a signed-out machine's app (it is read anonymously, and the
+`fetch` stub is what the story answers with), or that a pull succeeds — the pull
+against the live hub is `docs/evidence/agent-hub-public-teams/`'s own record.
+
 ## The reading, and why it is the point
 
 `scripts/hub-round-trips.mjs` reads a ledger the story's own bridge fills with
@@ -135,10 +186,13 @@ moment has arrived.
 ## What these frames do NOT prove
 
 - **Not that Radient answers any of it.** The transport below the hooks is
-  stubbed at `window.api.desktop.request` — the preload bridge every Radient
-  call goes through — and the payloads are fixtures shaped like
-  `GET /v1/agents` and `agents.statuses`. Their FIELD NAMES are the wire's,
-  checked against the live public endpoint; their values are invented.
+  stubbed at `window.api.desktop.request` — the preload bridge every
+  AUTHENTICATED Radient call goes through — and the payloads are fixtures shaped
+  like `GET /v1/agents` and `agents.statuses`. Their FIELD NAMES are the wire's,
+  checked against the live public endpoint; their values are invented. The
+  PUBLIC TEAM reads are the one exception to that transport: they are anonymous,
+  so they ride `fetch` and the story stubs that too (the rows in those frames are
+  the live catalogue's own, as the section above says).
 - **Not that the real backend serves the batched op.** `agents.statuses` is
   additive, and the status an older backend answers is **422, not 404**: an op
   the server does not know fails `RadientRequest`'s `Literal` at validation, and

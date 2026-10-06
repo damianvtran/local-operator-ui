@@ -7,6 +7,7 @@ import { Download, Heart, Star } from "lucide-react";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { hubDisplayName } from "../display-name";
 import { AgentTagsAndCategories } from "./agent-tags-and-categories";
 import { OrgOriginBadge } from "./org-origin-badge";
 
@@ -170,6 +171,14 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 	 * value the wire never sends, and every row would read as public.
 	 */
 	const isOrgRow = agent.visibility === "org";
+	/*
+	 * The name the card PAINTS (see the helper's docstring): a hub key is a
+	 * lowercase slug and carries no label field at all, so the derived form IS
+	 * the display — `content-writer` reads `Content Writer`, `mathematician`
+	 * reads `Mathematician`, and no row sits lowercase between Title-Case
+	 * siblings.
+	 */
+	const displayName = hubDisplayName(agent.name);
 
 	return (
 		<div className="flex h-full flex-col overflow-hidden rounded-md bg-surface transition-colors duration-fast ease-out-quart hover:bg-elevated">
@@ -177,10 +186,10 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 				type="button"
 				onClick={() => navigate(`/agent-hub/${agent.id}`)}
 				className="flex min-h-0 flex-1 cursor-pointer flex-col gap-2 p-4 text-left"
-				aria-label={`View details for ${agent.name}`}
+				aria-label={`View details for ${displayName}`}
 			>
 				<h3 className="truncate font-medium text-heading text-ink">
-					{agent.name}
+					{displayName}
 				</h3>
 				{/*
 				 * The org origin badge, inline with the name rather than on a row of its own.
@@ -388,7 +397,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 							size="sm"
 							onClick={() => onDownload(agent)}
 							disabled={isDownloading}
-							aria-label={`Download ${agent.name}`}
+							aria-label={`Download ${displayName}`}
 							data-tour-tag="agent-hub-download-button"
 						>
 							<Download data-testid="agent-download" />

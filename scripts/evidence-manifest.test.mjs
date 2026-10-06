@@ -3975,6 +3975,15 @@ const BRANCH_RECORDS = [
 	 */
 	"meshApprovalsCitationRepointNote",
 	/*
+	 * Grown by the fold onto `25561e029f3` (#842's merge): the fold's own
+	 * guard surfaced two more members of the mesh-approvals class (`.head`
+	 * and the `mesh-tab/approvals-before` set's `capturedAtHead`), and this
+	 * record is their carrier re-point. Registered for the list's own reason
+	 * - a fold that started from main's manifest would drop it, and with it
+	 * the only statement of why those fields read the way they do.
+	 */
+	"foldCitationRepointNote",
+	/*
 	 * And by the badge-quiet lane's squash repair (2026-10-06): the two
 	 * citations the mesh lane's own sweep left recorded-but-unrepaired, which a
 	 * squash-merge had left dangling on `origin/main` and which red the
@@ -3982,11 +3991,14 @@ const BRANCH_RECORDS = [
 	 * approvals round's refreshed capture head; `mesh-tab/approvals-before`'s
 	 * `capturedAtHead` the branch's fold commit). Both are re-pointed at
 	 * `38068e36b1a`, the #809 squash whose diff carried that round's content,
-	 * frames included, onto main. It is listed for the reason the list exists:
-	 * a fold that started from main's manifest would drop it, and with it the
-	 * only statement of why those fields read the way they do. It quotes bare
-	 * commit SHAs and never the retired tree pair, so it joins this list and
-	 * not `STAMP_BINDING_NOTES`.
+	 * frames included, onto main. Main's `foldCitationRepointNote` landed the
+	 * same repair first (same carrier, independently derived); this record is
+	 * kept as the branch's own pass spelling - no key may be lost across a
+	 * fold. Registered for the list's own reason: a fold that started from
+	 * main's manifest would drop it, and with it the only statement of why
+	 * those fields read the way they do. It quotes bare commit SHAs and never
+	 * the retired tree pair, so it joins this list and not
+	 * `STAMP_BINDING_NOTES`.
 	 */
 	"meshSquashDanglingRepairNote",
 ];

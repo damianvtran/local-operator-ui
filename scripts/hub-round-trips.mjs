@@ -58,8 +58,9 @@ export const HUB_STORIES = [
 	 * The Teams composition (the hub UX revamp). The three stories pin the reads
 	 * the tab and the scope chips must NOT multiply: entering an org scope costs
 	 * ONE `org_teams.list` (the tab's count and the roster share it) and a tab
-	 * switch costs none; the public scope's Teams view costs ZERO team reads,
-	 * because teams are organization-only and there is no public team read.
+	 * switch costs none. The public scope's Teams view is a DIFFERENT read on a
+	 * different transport — the hub's anonymous public listing, once — and costs
+	 * no `org_teams.list` at all.
 	 */
 	[
 		"agent-hub-page--org-scope-selected",
@@ -86,7 +87,7 @@ export const HUB_STORIES = [
 	],
 	[
 		"agent-hub-page--teams-public-scope",
-		"public scope, Teams tab opened: no team read at all (ZERO org_teams.list)",
+		"public scope, Teams tab opened: ONE public_teams.list (the hub's anonymous catalogue) and ZERO org_teams.list",
 	],
 ];
 

@@ -13,12 +13,16 @@
  *   only thing that may move a chip (`mesh-types.transferReceipt`);
  * - the PICKER's rows are the mesh's own reads (`peers.list`, `networks.list`).
  *
- * NO NEW FEDERATED READ ON THE CHAT SURFACE. `sessions.list?include_peers` is the
- * Mesh tab's read and only its own - it dials every peer's relay under a 12 s
- * budget and the sidebar's poll must never carry it - so this control asks for the
- * two cheap mesh reads (`poll: false`: one read per window, riding whatever the
- * rail or the tab already fetched), with `Check again` as the one explicit re-read.
- * That is the whole cost of having a device control on every conversation.
+ * NO NEW FEDERATED READ ON THE CHAT SURFACE, and the ONE federated read the app
+ * does make is neither this control's nor the sidebar's: `sessions.list?include_peers`
+ * dials every peer's relay under a 12 s budget and the sidebar's poll must never
+ * carry it, so it is asked by ONE ambient observer
+ * (`features/mesh/peers-catalogue.tsx`) on its own 30 s cadence, whose remote rows
+ * land in the canonical store for every surface to read. This control asks only
+ * for the two cheap mesh reads (`poll: false`: one read per window, riding
+ * whatever the rail or the tab already fetched), with `Check again` as the one
+ * explicit re-read. That is the whole cost of having a device control on every
+ * conversation.
  *
  * GATING FOLLOWS THE APP'S OWN RULE. `features.peers` is what makes the control
  * exist at all: a control rendered for a capability the backend cannot serve
@@ -45,6 +49,7 @@ import {
 	type DeviceRow,
 	deviceName,
 	devicePickerModel,
+	localConversationCount,
 	movePair,
 	panePlacement,
 } from "./chat-device-model";
@@ -120,8 +125,16 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	const draft = useCanonicalSessionsStore((state) =>
 		draftKey ? state.drafts[draftKey] : undefined,
 	);
-	const localCount = useCanonicalSessionsStore(
-		(state) => state.sessions.length,
+	/*
+	 * THIS DEVICE'S OWN CONVERSATIONS, with the federated rows excluded: the self
+	 * row says how many conversations THIS device holds, and since the ambient
+	 * federated read lands remote rows in this same store (the shared convention),
+	 * counting `sessions.length` would credit this device with another one's
+	 * conversations. The rule itself is a value now (`localConversationCount`,
+	 * tested with the rest of the model - agent review round 1, N1).
+	 */
+	const localCount = useCanonicalSessionsStore((state) =>
+		localConversationCount(state.sessions),
 	);
 	const move = useChatDeviceStore((state) =>
 		sessionId ? state.moves[sessionId] : undefined,
