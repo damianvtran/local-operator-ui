@@ -185,6 +185,17 @@ export const resolvePendingSend = (identity, id) => {
 	entries.delete(id);
 	if (entries.size === 0) registry.delete(identity);
 };
+/*
+ * THE REPAINT GUARD'S OTHER HALF (design review round 1's D1): the real
+ * retractLocalEcho resolves the entry AND takes down a LOCAL record. No
+ * transcript is mounted in this fixture, so the record half is a no-op and the
+ * answer is "queued" - the module's own answer for exactly that state.
+ */
+export const retractLocalEcho = (sessionId, id) => {
+	globalThis.__canonicalEcho({ kind: "retractLocal", sessionId, id });
+	resolvePendingSend(sessionId, id);
+	return "queued";
+};
 export const discardPendingSends = (sessionId) => {
 	globalThis.__canonicalEcho({ kind: "discard", sessionId });
 	registry.delete(sessionId);
