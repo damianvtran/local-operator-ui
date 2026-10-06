@@ -3,6 +3,13 @@
 Frames and readings for the affordance that lets the reader widen or narrow the
 chat column, and for the rule that decides what a gesture is allowed to store.
 
+RE-CAPTURED FOR ISSUE #848 (2026-10-06): the cue is now the app's one resize
+language - a full-height 2px state line on the measure's real edge, the same line
+the five panel dividers draw - instead of the 72px bar that used to float in the
+transcript's margin. Every frame here was re-taken on that head, and the rig's
+readings now assert the line's geometry. The before/after pair for that change
+is its own set, `docs/evidence/chat-measure-line/`.
+
 ## How to reproduce
 
 ```sh
@@ -37,8 +44,9 @@ missed both.
 | Frame | What it shows |
 | --- | --- |
 | `rest/` | The column at the shipped measure with the pointer elsewhere: **no cue at all**. The strip is there and hit-testable, but nothing is drawn - this is the frame that makes "subtle" checkable rather than asserted. |
-| `hover/` | The pointer resting on the right edge. A 2px bar in the resting control tint, 72px tall with a solid 16px core fading over 28px each side, centred on the Y the pointer entered at. It floats 24px clear of the content edge - 28px from the longest glyph - so it is entirely outside the text, clamped flush only where the pane's own side space cannot give it the offset (design round 1's D2; an earlier revision of this note said "at the column's edge", which described the pre-D2 geometry). |
-| `dragging/` | Mid-gesture, **button still held**. The bar has promoted to the accent tint (the divider's own two-state convention: control means "grabbable", accent means "moving"), the column is already at the new width, and the store has NOT been written yet - `stored` reads `null` in the same reading. |
+| `hover/` | The pointer resting on the RIGHT edge. The full-height 2px state line in the resting `control` tint, its inner edge on the column's right edge, plus the tooltip (`Drag to resize. Double-click or Enter to reset.`). It REPLACED a 72px bar centred on the Y the pointer entered at and floating 24px clear of the content edge (design round 1's D2); the bar's geometry, and the before/after pair, are in `docs/evidence/chat-measure-line/`. |
+| `hover-left/` | The same hover on the LEFT edge, at the same 450ms wait: the two handles move one symmetric measure, so the mirror is read rather than assumed. |
+| `dragging/` | Mid-gesture, **button still held**. The line has promoted to the accent tint (the divider's own two-state convention: control means "grabbable", accent means "moving"), the column is already at the new width, and the store has NOT been written yet - `stored` reads `null` in the same reading. |
 | `at-ceiling/` | After releasing at the far end of an outward drag. The store holds **1100** (the clamp); the column renders 992px because the pane in this story is 1024px. That gap is not a defect, it is the resize rule in one frame: a stored width wider than the pane renders at the pane, and the stored value is untouched. |
 | `at-floor/` | Released at the other end: the store holds **520**, the column renders 520, and the sample runs 14 lines at **75.6 characters a line** - the floor lands just above the 45-75 guidance, which is what it was chosen for. |
 | `after-reset/` | After a double-click on the handle. The property is removed (not set to a number), the store reads `null`, and the column is back at the shipped measure. `deepseek-harness`, which this affordance follows, has no reset at all. |
@@ -46,17 +54,29 @@ missed both.
 
 ## The readings the run asserts, in both themes
 
-| Step | stored | rendered max-width | cue opacity |
+| Step | stored | rendered max-width | line opacity (right / left) |
 | --- | --- | --- | --- |
-| `rest` | `null` | 810px | 0 |
-| `hover` | `null` | 810px | 1 |
-| `dragging` (mid-gesture) | `null` | 1100px | 1 |
-| `at-ceiling` | `1100` | 1100px | 0 |
-| `at-floor` | `520` | 520px | 0 |
-| `press-only` (a click) | `520` - **unchanged** | 520px | 0 |
-| `after-reset` (double-click) | `null` | 810px | 0 |
-| `before-restart` | `930` | 930px | 0 |
-| `after-restart` | `930` | 930px | 0 |
+| `rest` | `null` | 810px | 0 / 0 |
+| `hover` | `null` | 810px | 1 / 0 |
+| `hover-left` | `null` | 810px | 0 / 1 |
+| `dragging` (mid-gesture) | `null` | 1100px | 1 / 0 |
+| `at-ceiling` | `1100` | 1100px | 0 / 0 |
+| `at-floor` | `520` | 520px | 0 / 0 |
+| `press-only` (a click) | `520` - **unchanged** | 520px | 0 / 0 |
+| `after-reset` (double-click) | `null` | 810px | 0 / 0 |
+| `before-restart` | `930` | 930px | 0 / 0 |
+| `after-restart` | `930` | 930px | 0 / 0 |
+
+(Opacities are the post-transition values; the rig reads a few `1e-06`-scale
+residues on the `at-ceiling`/`at-floor` rows and asserts the sizes that matter
+rather than those digits.)
+
+Two geometry readings ride on the same run and are asserted rather than tabulated
+(UX round 1's U1, with agent review round 1's reading of it): the band's inner
+edge is **on the column's own edge** - `917` against `content.right 917` here,
+not the old 24px out - and the drawn line is **inside that band** (`917..919`
+within `917..927`), so a press on the rule starts the drag the way it does on
+every family divider.
 
 `press-only` is the reading that matters most and the one no frame can carry: a
 press with no travel stores **nothing**, so a double-click cannot replace a wide
@@ -75,7 +95,7 @@ driven through a real pointer in a real browser.
   `press-only` shows the refusal.
 - **Reset is a deliberate addition.** `deepseek-harness` has none, and its
   absence makes the product's own measure unreachable after one drag.
-- **No cue at rest, and the cue is not a full-height rule.** `rest` vs `hover`.
+- **No cue at rest, and the cue is the app's one resize language.** `rest` vs `hover`: invisible until asked for, and then a full-height rule on the column's edge rather than a mark in the margin (issue #848).
 
 ## What this set does NOT prove, stated rather than implied
 
