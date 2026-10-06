@@ -34,10 +34,7 @@ import { AgentCategoriesSidebar } from "./components/agent-categories-sidebar";
 import { categoryEntry } from "./components/agent-tags-and-categories";
 import { HubPager } from "./components/hub-pager";
 import { OrgTeamsList } from "./components/org-teams-list";
-import {
-	PublicTeamsNotice,
-	type PublicTeamsReason,
-} from "./components/public-teams-notice";
+import { PublicTeamsLibrary } from "./components/public-teams-library";
 import {
 	isAgentStatusKnown,
 	useAgentStatusesQuery,
@@ -120,12 +117,14 @@ const SEARCH_DEBOUNCE_MS = 300;
 const PUBLIC_SCOPE = "public";
 
 /**
- * What the hub is showing OF: agents, or the teams shared inside an organization.
+ * What the hub is showing OF: agents, or teams.
  *
  * A VIEW of one page rather than a second route (design §8.4: "no new top-level
  * navigation"), and the reason it is a control at all: teams used to be a roster
  * below the agent grid and its pager, so a reader learned they existed by
- * scrolling past twelve cards. The tab is on screen from the first paint.
+ * scrolling past twelve cards. The tab is on screen from the first paint, and it
+ * is one view for BOTH places teams come from — the public catalogue and the
+ * organization the scope selector names.
  */
 type HubView = "agents" | "teams";
 
@@ -286,13 +285,7 @@ export const AgentHubPage: React.FC = () => {
 	 * asks for nothing and says which remedy applies instead — see
 	 * `org-surface-gate.ts`.
 	 */
-	const {
-		memberships,
-		isError: membershipsFailed,
-		isPending: membershipsPending,
-		isFetching: membershipsFetching,
-		refetch: refetchMemberships,
-	} = useMembershipsQuery({
+	const { memberships } = useMembershipsQuery({
 		enabled: orgSurfaceReady(orgState),
 	});
 	const selectableOrgs = useMemo(() => usableOrgs(memberships), [memberships]);
@@ -335,9 +328,12 @@ export const AgentHubPage: React.FC = () => {
 	 * with the same key, so the two observers share ONE request; a tab switch
 	 * re-issues neither list (`staleTime` five minutes, focus refetch off), and a
 	 * refused read is not re-issued by the roster mounting either
-	 * (`retryOnMount: false` in the hook - QA round 1, Q1). The public
-	 * scope passes no tenant, so the query is disabled and issues ZERO team
-	 * reads - there is no public team read to make (§11 O-7).
+	 * (`retryOnMount: false` in the hook - QA round 1, Q1). The public scope passes
+	 * no tenant, so THIS query is disabled and issues zero reads: the public
+	 * catalogue has a query of its own (`usePublicTeamsQuery`, read by the library
+	 * the public Teams view mounts), which the tab's count deliberately does not
+	 * observe - its total is already on the library's own line, and a second
+	 * observer here would re-issue the read every time the library pages.
 	 *
 	 * The count is the number of rows LOADED: `org_teams.list` returns the whole
 	 * unpaginated roster and reports no total, so no other number exists to show.
@@ -577,32 +573,17 @@ export const AgentHubPage: React.FC = () => {
 	};
 
 	/*
-	 * A scope press, from the chips or from the public Teams view's organization
-	 * buttons. The page resets to 1 because page 3 of one list is not a place in
-	 * another, and the view is KEPT: a reader on Teams who picks an organization
-	 * wants that organization's teams, not the agents they had left.
+	 * A scope press, from the chip group in the browse bar. The page resets to 1
+	 * because page 3 of one list is not a place in another, and the view is KEPT: a
+	 * reader on Teams who picks an organization wants that organization's teams,
+	 * not the agents they had left.
 	 */
 	const handleHubScopeChange = (value: string) => {
 		setScope(value);
 		setPage(1);
 	};
 
-	/*
-	 * FOCUS AFTER PICKING AN ORGANIZATION FROM THE PUBLIC TEAMS NOTICE (UX round 1,
-	 * U4). The button that was pressed unmounts with the notice, and the browser
-	 * drops focus on `<body>`, stranding a keyboard user on the far side of the
-	 * page. The org's own scope chip exists once the scope changes and is the same
-	 * choice, so it takes focus: Tab then continues from the browse bar into the
-	 * Teams list. Read AFTER the re-render, like every hand-off in this file.
-	 */
 	const scopeChips = useRef(new Map<string, HTMLButtonElement>());
-	const focusScopeChip = useRef<string | null>(null);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `scope` is the trigger - the chip is read after the scope that pressed it has rendered.
-	useEffect(() => {
-		if (focusScopeChip.current === null) return;
-		scopeChips.current.get(focusScopeChip.current)?.focus();
-		focusScopeChip.current = null;
-	}, [scope]);
 
 	const handleScopeChange = (value: string) => {
 		setSearchScope(value as (typeof SEARCH_SCOPES)[number]["value"]);
@@ -627,30 +608,6 @@ export const AgentHubPage: React.FC = () => {
 		pagination && !hasFilters ? pagination.totalRecords : null;
 
 	/*
-	 * Why the public Teams view has no list, chosen from facts this page already
-	 * holds - see `PublicTeamsNotice` for what each reason offers.
-	 */
-	const publicTeamsReason: PublicTeamsReason =
-		selectableOrgs.length > 0
-			? "orgs"
-			: !isAuthenticated
-				? "signed-out"
-				: orgNotice
-					? "unavailable"
-					: membershipsFailed
-						? "unreadable"
-						: /*
-							 * NOT SETTLED IS NOT "NONE" (agent review round 1, M1). The memberships
-							 * query is disabled until the capability answer says `enabled`, so while
-							 * that answer is `unknown` the query sits in `pending` having never
-							 * started, and while it runs it is `pending` too. Both mean "we do not
-							 * know yet"; only a settled, empty read licenses the negative sentence.
-							 */
-							orgState === "unknown" || membershipsPending
-							? "loading"
-							: "none";
-
-	/*
 	 * The one status sentence, for both views and every scope (see the element).
 	 * `agent`/`team` pluralise on the number, the scope phrase is "in the public
 	 * hub" or "shared with <org>", and a state with no number yet says what it is
@@ -665,9 +622,10 @@ export const AgentHubPage: React.FC = () => {
 	let statusSentence: string;
 	if (view === "teams") {
 		/*
-		 * The public Teams view says nothing here: its panel's heading is the
-		 * sentence, and a status line over it restated it (design round 1, D4).
-		 * A non-breaking space, not "", so the line keeps its box (D1).
+		 * The PUBLIC Teams view says nothing here: the catalogue's own line names
+		 * what it loaded and how much of it the search covers, and a second count
+		 * over the same rows restated it (design round 1, D4, on the panel this
+		 * replaced). A non-breaking space, not "", so the line keeps its box (D1).
 		 */
 		if (!orgScopeId) statusSentence = "\u00a0";
 		else if (teamsQuery.isLoading) statusSentence = "Loading teams…";
@@ -1458,17 +1416,14 @@ export const AgentHubPage: React.FC = () => {
 							 *
 							 * It used to be a roster BELOW the agent grid and its pager, so a reader
 							 * learned teams existed by scrolling past twelve cards. It is a view of
-							 * the hub now, one press from the top, with its count on the tab before
-							 * it is opened.
+							 * the hub now, one press from the top.
 							 *
-							 * ONE MOUNT: the roster renders here and nowhere else. In an org scope it
-							 * reads `org_teams.list`; in the public scope there is no team read to
-							 * make (§11 O-7), so the view is the explanatory state and issues none.
-							 *
-							 * The roster stays mounted on the REFUSAL arms deliberately:
-							 * `org_teams.list` needs the same membership and plan `org_agents.list`
-							 * does, so its own error treatment is where a refusal is said, once,
-							 * instead of this page pretending the org has no teams.
+							 * ONE MOUNT, and it serves BOTH scopes: an organization's published
+							 * teams read `org_teams.list` (whose refusals are the membership and plan
+							 * codes, so the roster stays mounted on its own refusal arms rather than
+							 * this page pretending the org has no teams), and the public catalogue
+							 * reads the hub's anonymous public listing, which the old explanatory
+							 * notice said did not exist (§11 O-7's premise).
 							 */}
 							{view === "teams" &&
 								(activeOrg ? (
@@ -1477,16 +1432,9 @@ export const AgentHubPage: React.FC = () => {
 										orgName={orgName}
 									/>
 								) : (
-									<PublicTeamsNotice
-										reason={publicTeamsReason}
-										orgs={selectableOrgs}
-										onPickOrg={(tenantId) => {
-											focusScopeChip.current = tenantId;
-											handleHubScopeChange(tenantId);
-										}}
+									<PublicTeamsLibrary
+										signedIn={isAuthenticated}
 										onOpenSettings={() => navigate("/settings")}
-										onRetry={() => void refetchMemberships()}
-										retrying={membershipsFetching}
 									/>
 								))}
 						</div>
