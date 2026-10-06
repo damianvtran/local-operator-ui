@@ -941,3 +941,25 @@ export function movePair(input: {
 		],
 	};
 }
+
+/* ----------------------------------- this device's own conversations, counted */
+
+/**
+ * The self row's count: THIS device's own conversations.
+ *
+ * WHY ONE FUNCTION FOR ONE `reduce`. The ambient federated read lands other
+ * devices' rows in the SAME canonical store (the shared convention), and a
+ * plain catalogue page's rows carry no `locality` at all - so the test is "not
+ * remote", not "local", and the naive `sessions.length` would credit this
+ * device with another one's conversations. The rule was inline in the slot's
+ * selector, where no test could reach it (agent review round 1, N1); extracted
+ * so the reading is a value with its own test, like every other claim in this
+ * module.
+ */
+export function localConversationCount(
+	rows: readonly { locality?: unknown }[],
+): number {
+	let count = 0;
+	for (const row of rows) if (row.locality !== "remote") count += 1;
+	return count;
+}
