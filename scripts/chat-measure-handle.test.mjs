@@ -342,6 +342,62 @@ test("the band and the line are placed from the same edge, the band outboard", a
 });
 
 /*
+ * THE CUE'S PAINT (this pass). The line's ink is a linear gradient rather than a
+ * background-colour class, because the bar is a SHORT run of ink inside a
+ * full-height element - and the roles it is built from are the theme's own
+ * custom properties, so the paint cannot drift from the token the divider family
+ * uses. The element's geometry is pinned with it: the attribute, the placement
+ * classes and the band's containment are all read off THIS node, so a
+ * bar-sized element would move every one of those readings with the pointer's Y.
+ *
+ * The accent half is exercised by a synthetic press rather than read out of the
+ * source: `onMouseDown` sets the dragging state before any pointer travel, which
+ * is the state the drag frame photographs.
+ */
+test("the state line paints the token-role fade bar inside a full-height element", async () => {
+	const { separator } = await renderHandle({});
+	const line = separator.parentElement?.querySelector(
+		'[data-lo-chat-measure-line="right"]',
+	);
+	assert.ok(line, "the handle renders its state line");
+	assert.match(line.className, /h-full/);
+	assert.match(line.className, /w-0\.5/);
+	assert.match(line.className, /transition-opacity/);
+	assert.doesNotMatch(
+		line.className,
+		/bg-control|bg-accent/,
+		"the roles are gradient stops now, not background classes",
+	);
+	const atRest = line.getAttribute("style") ?? "";
+	assert.match(atRest, /linear-gradient\(to bottom/);
+	assert.match(atRest, /var\(--color-control\)/);
+	assert.doesNotMatch(
+		atRest,
+		/var\(--color-accent\)/,
+		"the resting role is `control`, the divider family's grabbable step",
+	);
+
+	await act(async () => {
+		separator.dispatchEvent(
+			new globalThis.window.MouseEvent("mousedown", {
+				bubbles: true,
+				detail: 1,
+				clientX: 100,
+			}),
+		);
+	});
+	const whileDragging =
+		separator.parentElement
+			?.querySelector('[data-lo-chat-measure-line="right"]')
+			?.getAttribute("style") ?? "";
+	assert.match(
+		whileDragging,
+		/var\(--color-accent\)/,
+		"a held drag promotes the cue to `accent`",
+	);
+});
+
+/*
  * THE TOOLTIP'S ANCHOR (agent review round 1's M1): a bounded 16px box at the
  * hand's Y, a sibling of the widget rather than the widget itself - anchored to
  * the separator, the panel is placed against the content column's own height and
