@@ -1,0 +1,128 @@
+{
+  "probe": "docs/evidence/ask-drawer-stuck/harness/probe-switch-flash.mjs",
+  "what": "How long the drawer's chrome can be on screen after a conversation switch, sampled on every animation frame. The close waits for the NEW conversation's frame; while that frame is in flight the drawer reads UNREAD (`Not read yet`) and must not close, because a switch to a conversation that DOES have asks is indistinguishable for exactly that interval.",
+  "viewport": {
+    "width": 1380,
+    "height": 900
+  },
+  "framesSampled": 91,
+  "framesWithSurface": 5,
+  "framesOnNewConversationWithSurface": 4,
+  "framesOnNewConversationWithSlot": 4,
+  "firstMarksOnTheNewConversation": [
+    {
+      "t": 47,
+      "surface": true,
+      "hash": "bbbb11112222",
+      "slot": true,
+      "rows": 0,
+      "scope": "This conversation \u00b7 Not read yet"
+    },
+    {
+      "t": 58,
+      "surface": true,
+      "hash": "bbbb11112222",
+      "slot": true,
+      "rows": 0,
+      "scope": "This conversation \u00b7 Not read yet"
+    },
+    {
+      "t": 62,
+      "surface": true,
+      "hash": "bbbb11112222",
+      "slot": true,
+      "rows": 0,
+      "scope": "This conversation \u00b7 Not read yet"
+    },
+    {
+      "t": 81,
+      "surface": true,
+      "hash": "bbbb11112222",
+      "slot": true,
+      "rows": 0,
+      "scope": "This conversation \u00b7 Not read yet"
+    },
+    {
+      "t": 109,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": null
+    },
+    {
+      "t": 116,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": null
+    },
+    {
+      "t": 131,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": null
+    },
+    {
+      "t": 146,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": null
+    },
+    {
+      "t": 163,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": null
+    },
+    {
+      "t": 178,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": null
+    },
+    {
+      "t": 196,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": null
+    },
+    {
+      "t": 213,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": null
+    },
+    {
+      "t": 229,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": null
+    },
+    {
+      "t": 246,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": null
+    }
+  ],
+  "reading": "Every painted frame on the new conversation carries the UNREAD scope line, never a populated or empty verdict about it; the surface is gone inside ~110 ms (four frames at 60 Hz).",
+  "note": "PATHS AND IDS ARE THE PROBE'S OWN, spelled abstractly: no machine's absolute path is committed."
+}
