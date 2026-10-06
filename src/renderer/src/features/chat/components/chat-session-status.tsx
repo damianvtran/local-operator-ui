@@ -14,7 +14,6 @@ import {
 	MessageCircleQuestion,
 	MessageSquare,
 	Pause,
-	Share2,
 } from "lucide-react";
 import { asksOutstandingLabel } from "../ask-queue";
 
@@ -141,8 +140,99 @@ export function ChatAsksOutstanding({
 	);
 }
 
+/**
+ * THE RUNNING-SUBAGENT MARK: a filled dot in the liveness ink (issue #840).
+ *
+ * WHY IT MOVED OFF THE GLYPH. It used to be `Share2` in `text-accent`, at BOTH
+ * this component's `delegating` rung and the sidebar row's own running mark, so
+ * one glyph meant "delegated work" on two surfaces. The operator's report is
+ * that it does not read as a state where it is drawn: a share glyph in the row
+ * beside the row's OWN act buttons reads as AN ACTION, and a reader can click a
+ * control they think exists and get nothing. The fix is to leave the icon
+ * vocabulary entirely - the mark is a SHAPE now, not a glyph, so there is no
+ * control for it to be mistaken for.
+ *
+ * IT IS A DOT, IN THE APP'S OWN DOT IDIOM: a `rounded-full` span at `size-2` in
+ * the ink it inherits (`bg-current`). The 8px DOT is the constant - it is drawn
+ * at the same absolute size on both surfaces - while the BOX around it is the
+ * caller's: the sidebar row passes `size-3.5` (the icon ramp's `sm` step the mark
+ * already occupied, so the row's footprint and the mark's NOTICEABILITY - the
+ * 2026-09-29 fix that made running subagents visible at all - are both
+ * unchanged), and the `delegating` rung passes `size-4` because it fills the
+ * status slot every other code's glyph occupies (agent review round 1, N2: this
+ * note used to claim the `size-3.5` box unconditionally, which is true of one
+ * call site and not the other). The idiom is the one `chat-status-strip.tsx`,
+ * `chat-header-device.tsx` (its `StateDot`), `settings-group-header.tsx` and
+ * `audio-recording-indicator.tsx` already spend on "a small round fact"; this
+ * one differs only in taking its colour from the caller's text ink rather than
+ * naming a `bg-*` role, so the liveness ink stays the caller's to state.
+ *
+ * THE TWO SLOTS, AND WHY THEY DIFFER (design round 1's D7). The same dot is the
+ * `delegating` rung's PRIMARY mark, drawn in the LEADING status slot where every
+ * status code's glyph goes, and the sidebar row's running mark, drawn in the
+ * TRAILING slot after the title. That is deliberate and the frames show it
+ * working: in the rung the dot says what the PARENT's own turn is doing
+ * (delegated work, none of it the row's), and in the row it says what the row's
+ * CHILDREN are doing beside the row's own act buttons. One vocabulary, two
+ * meanings that a reader never has to tell apart, because a row is in one state
+ * or the other. The position is the only thing separating them, so the local
+ * text is the caller's `sr-only` name (`delegating`, or the count sentence) -
+ * recorded here so the next reader does not re-litigate the slot.
+ *
+ * THE COLLISION CHECK, against the status family this slot draws (SC 1.4.11 - the
+ * mark is an 8px disc inside the sidebar row's 14px box, the reading the
+ * contract's GRAPHICS row is derived from, against
+ * `surface`/`row-hover`/`row-selected`):
+ *
+ *  - `Circle` (the resting ring) and `LoaderCircle` (`busy`) are RINGS - outlined,
+ *    1.5px of `ink-dim`/`accent` with an interior the ground shows through. A
+ *    SOLID disc shares no silhouette with either, at 8px or at 14px.
+ *  - `Check`, `Clock`, `MessageSquare`, `Hourglass`, `Pause` and
+ *    `EqualApproximately` are all angular or stroke-built; none is a disc.
+ *  - the amber class (`CircleAlert`, `Clock`) is where the module's own
+ *    `wedged` note already forbids a second RING; a dot is not one.
+ *
+ * IT IS DIGIT-FREE. The count lives in `status.label` (the backend's
+ * "2 subagents running - 1 queued"), which this component renders into its
+ * `sr-only` name and the row's button reads for its tooltip; a numeral beside
+ * the dot would be read text on a 12px step that `accent` cannot carry on every
+ * ground the row can sit on (see `ChatAsksOutstanding`'s D1 note).
+ *
+ * KEEPING IT STRUCTURED. Both call sites render THIS component, so the design
+ * round can iterate one place and the two surfaces cannot drift apart again.
+ */
+export function SubagentRunningMark({
+	className,
+	mark,
+}: {
+	className?: string;
+	/** The rig/test hook (`data-subagent-mark`). Passed only where the mark stands for the ROW's own running subagents - the `delegating` rung shares the component but not the hook. */
+	mark?: string;
+}) {
+	return (
+		<span
+			aria-hidden="true"
+			data-subagent-mark={mark}
+			className={cn("flex shrink-0 items-center justify-center", className)}
+		>
+			{/*
+			 * `bg-current`, not a `bg-*` role: the dot wears the INK its caller states
+			 * (`text-accent` - the liveness ink, the one `busy` uses), so the ink chain
+			 * above stays the single place a code's colour is decided.
+			 */}
+			<span className="size-2 rounded-full bg-current" />
+		</span>
+	);
+}
+
 export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 	const code = row.status?.code;
+	/*
+	 * `delegating`'s mark is the RUNNING MARK below rather than a Lucide icon:
+	 * the glyph slot renders one or the other, and the chain underneath is not
+	 * asked for an icon on this code (see `SubagentRunningMark`).
+	 */
+	const delegating = code === "delegating";
 	/*
 	 * WHAT THIS ROW IS DRAWING, asked of the ONE predicate (`unreadMarkKind`) the
 	 * accessible name below, the sidebar row's tooltip and the bulk control's
@@ -200,44 +290,13 @@ export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 								? Clock
 								: code === "attached"
 									? MessageSquare
-									: // `delegating` is the arm for a session whose OWN turn is not
-										// running but which still owns subagents: running ones, queued
-										// ones, or both. It sits beside `attached` because the backend
-										// inserts the code at that rung - below an attached session, a
-										// gate, a stop, a live turn and an unseen receipt, and above an
-										// armed wake - so the glyph cannot name a state the backend
-										// outranks.
-										//
-										// `Share2` because it is the app's OWN "Delegated work" mark
-										// (`trace-labels.ts`'s `DELEGATE` action), so the sidebar and
-										// the transcript spend one glyph on one fact.
-										//
-										// The COUNT is not drawn here and needs no arm of its own: the
-										// backend puts it inside `status.label` ("2 subagents running ·
-										// 1 queued"), which this component renders into its `sr-only`
-										// name below and the row's own button reads for the tooltip
-										// over this mark. That is deliberate rather than lazy - the
-										// count changes on the same clock as the code, so a count riding
-										// a separate field would be read from a slower projection and
-										// could contradict the glyph beside it.
-										//
-										// Deliberately NOT in `KNOWN_RESTING` below: this is a state of
-										// its own with its own mark, and a build older than the code
-										// renders it as the unknown `HelpCircle` rather than as a
-										// resting ring, which is why this arm has to ship before or with
-										// the runtime that emits it.
-										code === "delegating"
-										? Share2
-										: // `idle`/`recent` are ordinary resting states and keep the plain
-											// ring. Anything else is a code this build does not know, so it
-											// must not be normalised into looking like "Recent" — a backend
-											// newer than the UI would silently misreport state. An ABSENT
-											// status is a different case: a locally created row carries none
-											// until the next fetch, and the label already reads "Recent", so
-											// treating it as unknown made the icon contradict the label.
-											KNOWN_RESTING.has(code ?? "recent")
-											? Circle
-											: HelpCircle;
+									: // A `delegating` row never reads this chain: its glyph slot draws
+										// the RUNNING MARK instead (`SubagentRunningMark` below), because the
+										// share glyph read as an action on a row whose mark is a state
+										// (issue #840).
+										KNOWN_RESTING.has(code ?? "recent")
+										? Circle
+										: HelpCircle;
 	const ink =
 		code === "busy"
 			? // LIVENESS IS `accent` (or motion). It was `info` here and the accent
@@ -292,7 +351,11 @@ export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 		 * same words to the accessibility tree.
 		 */
 		<span className="flex size-4 shrink-0">
-			<Icon className={cn("size-4", ink)} aria-hidden="true" />
+			{delegating ? (
+				<SubagentRunningMark className={cn("size-4", ink)} />
+			) : (
+				<Icon className={cn("size-4", ink)} aria-hidden="true" />
+			)}
 			<span className="sr-only">
 				{row.status?.label ?? "Recent"}
 				{/*

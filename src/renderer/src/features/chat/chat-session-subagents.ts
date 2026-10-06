@@ -95,17 +95,17 @@ const speaksForItself = (code: string | undefined): boolean =>
  * ```
  *
  * THE SUPPRESSION, and it is the only interaction between the two. `delegating`'s
- * primary mark IS the running mark - `Share2`, the app's own "delegated work"
- * glyph (`trace-labels.ts`'s `DELEGATE`), static, in the accent - so drawing this
- * module's running mark beside it would put the same glyph, twice, in one row to
- * say one thing. The row is not made silent by that: the presence is on it, in
- * the primary mark.
+ * primary mark IS the running mark - a filled dot in the accent
+ * (`SubagentRunningMark`, the app's own "a thing is at work" shape), static - so
+ * drawing this module's running mark beside it would put the same mark, twice,
+ * in one row to say one thing. The row is not made silent by that: the presence
+ * is on it, in the primary mark.
  *
  * The QUEUED mark is NOT suppressed there, and that is a decision rather than an
- * oversight: `Share2` carries "subagents are at work", not "none of them has
+ * oversight: the dot carries "subagents are at work", not "none of them has
  * started", so a delegating row whose whole queue is still waiting is the one
  * case where the primary mark cannot speak for the second fact. It is also the
- * one case a row legitimately shows two glyphs.
+ * one case a row legitimately shows two marks.
  *
  * A code this build does not know still draws: the indicator is an independent
  * channel, not an arm of the status switch.
