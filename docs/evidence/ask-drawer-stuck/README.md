@@ -88,11 +88,54 @@ node_modules/.bin/storybook dev -p 5313 --no-open --ci --quiet &
 node docs/evidence/ask-drawer-stuck/harness/shoot-stories.mjs http://localhost:5313 <out-dir>
 ```
 
+And the bound on the close, off the same rig (see the section below):
+
+```
+node docs/evidence/ask-drawer-stuck/harness/probe-switch-flash.mjs http://localhost:5314
+```
+
 Both drivers launch ONE private headless Chrome through `scripts/chrome-keychain.mjs`
 (so it never reaches Keychain Services under a scratch profile), drive it over raw
 CDP, and reap it by exact pid. The rig never addresses the operator's own backend:
 the owner processes get their own config root, their own bearer and OS-assigned
 ports, and the provider stream is never called.
+
+## The bound on the auto-close, measured frame by frame
+
+The close CANNOT be instantaneous, and the number matters because the obvious way to
+read a stuck drawer is to assume any chrome over the wrong conversation is the bug
+returning. `harness/probe-switch-flash.mjs` samples on EVERY animation frame from the
+switch until 1.5 s have passed and records, per frame, whether the ask surface and
+its slot are present and what the bar says (the run's own record is
+`switch-close-bound.json`, beside this README):
+
+```
+framesSampled            91
+framesOnBWithSurface      4     // painted frames on the new conversation that still carry the drawer
+first marks on B:
+  t=47 ms   surface=True  rows=0  scope='This conversation · Not read yet'
+  t=58 ms   surface=True  rows=0  scope='This conversation · Not read yet'
+  t=62 ms   surface=True  rows=0  scope='This conversation · Not read yet'
+  t=81 ms   surface=True  rows=0  scope='This conversation · Not read yet'
+  t=109 ms  surface=False ...     // closed
+```
+
+So the drawer is on screen for FOUR frames (on this 1380x900 window), gone within
+~110 ms, and every one of those frames is the **unread** state, never a populated or
+empty verdict about the conversation being entered.
+
+THAT WINDOW IS NOT CLOSED ON, DELIBERATELY, and the sampler is what told us a layout
+effect could not close it: the wait is for the READ, not for the paint. When the
+drawer mounts over the new conversation, that conversation's frame has not landed yet
+(`frontend === null`), and an unresolved frame must close nothing - because a switch
+to a conversation that DOES have asks looks identical for exactly that interval, and
+there the surface has to stay up and show them. Closing on the unread state would fix
+the flash by breaking the case the drawer exists for. It was tried the other way as
+well: as a `useLayoutEffect` the close does land before paint, and the measurement
+showed the same window (the bound is the read), while the change introduced a real
+hazard - a layout close declared above the entry effect reads the door latch before
+that effect sets it, so it shuts the surface the user had just pressed a door to open.
+The passive effect, in its original place, is what ships.
 
 ## What these frames do NOT claim
 

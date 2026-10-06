@@ -499,6 +499,12 @@ const CHROME_LAUNCH_SITES = [
 		1,
 		"the three drawer states no switch reaches on demand - the published-empty queue, an unresolved frame, and a runtime with no queued engine - shot from the shipped stories in both brand palettes, one private headless Chrome per run through the same helper",
 	),
+	guarded(
+		"docs/evidence/ask-drawer-stuck/harness/probe-switch-flash.mjs",
+		"spawn",
+		1,
+		"the frame-level bound on the drawer's auto-close - sampling on every animation frame across a conversation switch to separate a paint-phase artifact from the unread window the close has to wait for - one private headless Chrome per run through the same helper",
+	),
 ];
 
 const key = (row) => `${row.file}#${row.name}#${row.index}`;

@@ -302,6 +302,37 @@ export const AskDrawer = ({
 	 * per-emptying rule.
 	 */
 	const closedOnce = useRef(false);
+	/*
+	 * A LAYOUT EFFECT, NOT A PASSIVE ONE, AND THE FLASH IS WHY (measured, not
+	 * assumed). A passive effect runs AFTER the browser has painted the commit, so
+	 * the drawer's chrome was painted over the conversation it was leaving before the
+	 * close landed: sampling on every animation frame from the switch shows SIX
+	 * painted frames carrying the ask surface and the slot (first at ~16 ms), which a
+	 * reader sees as the drawer flickering in and out as they change conversation -
+	 * the very motion the frame pair is supposed to rule out. `useLayoutEffect` runs
+	 * synchronously as part of the commit and before paint, so the close lands in the
+	 * same frame the mount does and no frame of the surface is ever shown over the
+	 * conversation that has nothing to show. This is the idiom the lane already uses
+	 * for "a state that must not be seen" (`use-scroll-paging.ts`, `mini-composer.tsx`).
+	 *
+	 * IT IS DELIBERATELY A PASSIVE EFFECT RATHER THAN A LAYOUT ONE, and the measurement is
+	 * why. A layout effect would land the close before paint; what this effect can
+	 * actually act on is bounded somewhere else - by the frame it has to wait for. A
+	 * switch to a conversation whose frame has not landed yet reads as UNREAD
+	 * (`frameUnread`), and that state must close NOTHING: the same shape is a switch to
+	 * a conversation that DOES have asks, where the surface must stay up and show them.
+	 * So the chrome is on screen for as long as the read takes (measured on the rig:
+	 * FOUR painted frames, gone within ~110 ms, `docs/evidence/ask-drawer-stuck/README.md`),
+	 * and no paint-phase
+	 * change moves that. A layout effect would only have traded that for a declaration
+	 * ORDER dependency against the entry effect's door latch - the entry effect sets
+	 * `openedByDoor` and React runs a component's effects in declaration order, so a
+	 * layout close declared above it reads the latch as false and shuts the surface the
+	 * user had just pressed a door to open (measured while this was a layout effect).
+	 * IT DOES NOT WEAKEN EITHER OF THE OTHER GUARDS: the door latch and the unread
+	 * frame are read the same way, and the effect is still offered every commit until
+	 * the latch is spent.
+	 */
 	useEffect(() => {
 		if (closedOnce.current) return;
 		if (view.rows.length > 0) {
@@ -356,9 +387,11 @@ export const AskDrawer = ({
 				? active
 				: null;
 		/*
-		 * THE DOOR IS LATCHED AS SOON AS IT IS SEEN, before the wait below can return: it is
-		 * consumed by the auto-close effect up the file, which runs in the passive phase of
-		 * THIS commit and would otherwise see the wait's early return as "no door".
+		 * THE DOOR IS LATCHED AS SOON AS IT IS SEEN, before the wait below can return: the
+		 * auto-close effect reads it, and although that effect is declared ABOVE this one,
+		 * it is a PASSIVE effect while this one is a layout effect - so it always runs
+		 * after this, and the latch is set by the time it asks. (That ordering is why the
+		 * close can stay where it is rather than moving below this effect.)
 		 */
 		if (door !== null) openedByDoor.current = true;
 		const root = rootRef.current;
