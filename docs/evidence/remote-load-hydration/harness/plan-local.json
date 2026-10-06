@@ -1,0 +1,55 @@
+{
+  "comments": [
+    "The local regression cell: a NEW local conversation (draft send on this",
+    "device), short enough that its whole transcript fits the pane, so the top",
+    "slot is on screen - the fix must leave a local conversation's true end",
+    "saying \"Start of conversation\"."
+  ],
+  "steps": [
+    {
+      "op": "nav",
+      "path": "/chat"
+    },
+    {
+      "op": "waitFor",
+      "selector": "[data-tour-tag=\"chat-input-textarea\"] textarea",
+      "timeoutMs": 90000
+    },
+    {
+      "op": "wait",
+      "ms": 1500
+    },
+    {
+      "op": "send",
+      "text": "Evidence cell for the remote-load-hydration set: reply with just: ready"
+    },
+    {
+      "op": "waitRows",
+      "min": 2,
+      "timeoutMs": 120000
+    },
+    {
+      "op": "wait",
+      "ms": 3000
+    },
+    {
+      "op": "framesUntilQuiet",
+      "prefix": "local",
+      "everyMs": 2000,
+      "totalMs": 60000,
+      "quietMs": 8000
+    },
+    {
+      "op": "rows",
+      "note": "local-end"
+    },
+    {
+      "op": "eval",
+      "js": "(() => { const t = document.body.innerText || \"\"; const q = (re) => re.test(t) ? \"yes\" : \"no\"; return { hash: location.hash, rows: document.querySelectorAll(\"[data-record-id]\").length, placeholder: q(/Loading conversation/), greeting: q(/What can I help you with today/), startCopy: q(/Start of conversation/), notLoaded: q(/Earlier history not loaded|Not loaded yet/), chip: (document.querySelector(\"[data-device-chip]\")?.innerText || \"\").replace(/\\s+/g, \" \").trim().slice(0, 60) }; })()"
+    },
+    {
+      "op": "shot",
+      "name": "local-true-end"
+    }
+  ]
+}
