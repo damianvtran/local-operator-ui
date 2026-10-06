@@ -2123,28 +2123,39 @@ const isHarnessInjected = (payload: unknown): boolean => {
  * Whether this session's owner runs the queued-ask engine — the mode every
  * ask-gate settle-only seam keys on (design `docs/design/ask-gate.md` §3).
  *
- * THE DESKTOP'S READ OF THE CAPABILITY PROXY, and deliberately the same fact
- * the core's `queued_ask_engine_live` viewer arm reads: an owner publishes
- * `asks` on its frontend state only while queued asks are live in its process
- * (`FrontendSessionState.asks`, `local_operator/session/frontend_state.py`;
- * the serializer omits the field otherwise), so the field's PRESENCE is "this
- * runtime runs the queued engine". Absence is "cannot say" — no ask has
- * arrived in this frame yet, or the core predates the field — and every caller
- * keeps today's mount for it, with the settle marker still dropping a divert
- * (the flash residual the design records, §5). Never read absence as "the
- * engine is off".
+ * THE DESKTOP'S READ OF THE CAPABILITY PROXY, reading the presence of `asks`
+ * OR `asks_open` on the frontend state:
  *
- * Spelled against the field directly rather than through `sessionAsks`
+ * - a core that predates the R1 fix publishes `asks` only while the queue holds
+ *   at least one row and never publishes `asks_open`; presence means "engine
+ *   live, at least one outstanding ask", so an empty queue reads false and a
+ *   divert's running row shows for the gate — the residual the design's §5
+ *   records, on OLD CORES only;
+ * - a core at the fix publishes `asks_open` (value ≥ 0, 0 included) whenever
+ *   the queued engine is live, `asks` staying absent-on-empty so clients that
+ *   read that field alone are untouched; presence of either field then IS the
+ *   capability, and the first-ask case — a gate running on an empty queue —
+ *   reads true.
+ *
+ * The core's own `queued_ask_engine_live` viewer arm reads the same two fields
+ * for the same reason (one function, one answer on both arms; the R1 exchange
+ * is in this PR's thread). Absence of BOTH is "cannot say" — a core that
+ * predates the fields, or a frame whose byte bound dropped the last field —
+ * and every caller keeps today's mount for it, with the settle marker still
+ * dropping a divert. Never read absence as "the engine is off".
+ *
+ * Spelled against the fields directly rather than through `sessionAsks`
  * (`ask-queue.ts`): that module carries the desktop API surface, and this one
- * bundles standalone in `scripts/transcript-reducer.test.mjs`. The two reads
- * agree by construction — both answer null/false unless `asks` is an array —
- * and both follow the same rule: the field is only ever a non-empty list when
- * present, and presence is the capability.
+ * bundles standalone in `scripts/transcript-reducer.test.mjs`. `asks_open` is
+ * deliberately NOT read for its count — presence is the whole fact here, and a
+ * zero is as capable as a three.
  */
 export function queuedAskEngineLive(
 	frontend: CanonicalFrontendState | null | undefined,
 ): boolean {
-	return Array.isArray(frontend?.asks);
+	return (
+		frontend != null && (frontend.asks != null || frontend.asks_open != null)
+	);
 }
 
 /**

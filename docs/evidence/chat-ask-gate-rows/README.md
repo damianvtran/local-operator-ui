@@ -3,11 +3,12 @@
 Seventy-two frames — six states, one pane per state per theme — of the desktop
 transcript folding the ask gate's frames through the **production** reducer.
 The gate is a core-repo feature in flight (design `docs/design/ask-gate.md`,
-`local-operator` commit `9e5f8268`; the core implementation PR is named in this
-set's PR thread): when the agent reaches for `ask`, a hidden, forked clearance
-check runs first, and when the recommended option is plainly best (or the
-answer is the agent's own to resolve) the ask is **diverted** — never queued,
-never put to anyone.
+`local-operator` commit `9e5f8268`; the implementation PR is
+[`local-operator` #2012](https://github.com/damianvtran/local-operator/pull/2012),
+whose round-1 review is the R1 exchange summarized below): when the agent
+reaches for `ask`, a hidden, forked clearance check runs first, and when the
+recommended option is plainly best (or the answer is the agent's own to
+resolve) the ask is **diverted** — never queued, never put to anyone.
 
 ## Why the client carries a rule at all
 
@@ -18,7 +19,14 @@ a diverted ask must leave NO trace in the one surface the server does not
 filter for the client:
 
 - no in-flight `ask` row while the session's queued engine is live (the row is
-  created at settle), and
+  created at settle). The mode read is the presence of `asks` OR `asks_open` on
+  the session's frontend state — the same two fields the core's own
+  `queued_ask_engine_live` viewer arm reads (review round 1's R1: the fields'
+  old shapes published neither on an empty-but-live queue, so the first gated
+  ask read as an unknown mode; the core fixes its side by publishing `asks_open`
+  — 0 included — whenever the engine is live, and this client already reads
+  either field, so it is correct against old and fixed cores alike). Absence of
+  both is "cannot say" — the fallback below — and
 - at settle, a result carrying `details.ask_gate.hidden: true` paints nothing —
   any row an earlier mode-less frame painted is removed.
 
@@ -37,11 +45,12 @@ filter for the client:
   the row is created AT settle with the queue's receipt (`asks/render.py`'s
   reachable form) and the arguments the suppressed start still learned. The
   expanded frame is the row's body as a reader opens it.
-- `unreadable-live` / `unreadable-settled` — the mixed-build fallback the
-  design records (§5, "a brief trace, not persistent"): where the mode cannot
-  be read (a core that predates the `asks` field, or a frame that cannot say),
-  today's mounting stands — the running row is the flash residual — and the
-  settle marker still drops it. Both halves are here because both are claims.
+- `unreadable-live` / `unreadable-settled` — the fallback the design records
+  (§5, "a brief trace, not persistent"): where BOTH capability fields are absent
+  (a core that predates the queued engine's wire field, or a frame whose byte
+  bound dropped the last field), today's mounting stands — the running row is
+  the flash residual — and the settle marker still drops it. Both halves are
+  here because both are claims.
 
 ## Provenance — and why the fixtures are wire-shaped
 
