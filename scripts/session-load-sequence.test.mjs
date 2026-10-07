@@ -296,6 +296,13 @@ const bundle = await build({
 					status: canonical.status,
 					failure: canonical.failure,
 					awaitingHydration: canonical.awaitingHydration,
+					/*
+					 * The end claim's proof and its retry, read off the same handle the
+					 * chat page reads (remote-load-hydration): passed here so this rig's
+					 * composition stays the call site's own.
+					 */
+					hydrationProven: canonical.hydrated,
+					onRetryHydration: canonical.rehydrate,
 					conversationId: sessionId,
 					labelPending: canonical.labelPending,
 					labelHoldLate: canonical.labelHoldLate,
