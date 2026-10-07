@@ -1,0 +1,46 @@
+{
+	"steps": [
+		{ "op": "nav", "path": "/chat" },
+		{
+			"op": "waitFor",
+			"selector": "[data-tour-tag=\"chat-input-textarea\"] textarea",
+			"timeoutMs": 90000
+		},
+		{ "op": "wait", "ms": 3000 },
+		{ "op": "shot", "name": "00-newdraft" },
+		{
+			"op": "eval",
+			"js": "JSON.stringify({chip: !!document.querySelector('[data-device-chip]'), chipText: document.querySelector('[data-device-chip]')?.innerText})"
+		},
+		{ "op": "click", "selector": "[data-device-chip]" },
+		{ "op": "wait", "ms": 1500 },
+		{
+			"op": "eval",
+			"js": "JSON.stringify([...document.querySelectorAll('[data-device-row]')].map(r => ({state: r.getAttribute('data-device-row'), text: (r.innerText||'').replace(/\\n/g,' | ').slice(0,100)})))"
+		},
+		{ "op": "shot", "name": "01-picker" },
+		{
+			"op": "eval",
+			"js": "(() => { const rows = [...document.querySelectorAll('[data-device-row]')]; const r = rows.find(x => (x.innerText||'').includes('cloud-node-1')); if (!r) return 'no row'; r.click(); return 'clicked:' + r.innerText.replace(/\\n/g,' | ').slice(0,80); })()"
+		},
+		{ "op": "wait", "ms": 1500 },
+		{ "op": "shot", "name": "02-picked" },
+		{
+			"op": "eval",
+			"js": "JSON.stringify({chipText: document.querySelector('[data-device-chip]')?.innerText})"
+		},
+		{
+			"op": "send",
+			"text": "Run `sleep 15` in a bash tool call first, then tell me your current OS and kernel version."
+		},
+		{
+			"op": "watch",
+			"prefix": "g",
+			"everyMs": 300,
+			"shotEveryMs": 2000,
+			"totalMs": 75000
+		},
+		{ "op": "rows", "note": "final" },
+		{ "op": "shot", "name": "99-final" }
+	]
+}
