@@ -154,6 +154,12 @@ function mountHook(options = {}) {
 		: undefined;
 	let handle = null;
 	let olderFailed = options.olderFailed ?? false;
+	/*
+	 * The read-out fact (remote-load-hydration, UX round 1 U1). Defaults false
+	 * for the cases written before it existed — their arms are about paging, not
+	 * about the retry's acknowledgement; the case that is about it passes it.
+	 */
+	let historyReadPending = options.historyReadPending ?? false;
 	let sessionKey = options.sessionKey ?? "synthetic-session";
 	function Harness() {
 		handle = useScrollPaging({
@@ -161,6 +167,13 @@ function mountHook(options = {}) {
 			sessionKey,
 			hiddenRows,
 			hasMore: options.hasMore ?? true,
+			/*
+			 * The end claim's proof. Defaults true here for the cases written
+			 * before the fact existed (their arms are about paging, not about
+			 * the end statement); the two cases that are about it pass it.
+			 */
+			hydrationProven: options.hydrationProven ?? true,
+			historyReadPending,
 			onWiden: () => {
 				widenCalls++;
 			},
@@ -299,6 +312,10 @@ function mountHook(options = {}) {
 		},
 		setOlderFailed: (value) => {
 			olderFailed = value;
+			render();
+		},
+		setHistoryReadPending: (value) => {
+			historyReadPending = value;
 			render();
 		},
 		setHiddenRows: (value) => {
@@ -586,6 +603,91 @@ test("the failed row follows olderFailed, and clears the moment it does", () => 
 			hook.slotState,
 			"failed",
 			"a later applied page clears the row without needing new input",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+/*
+ * THE END CLAIM IS GATED ON PROOF (remote-load-hydration). `hasMore: false` is
+ * the cursor's opinion about the conversation, and it is only true ABOUT the
+ * conversation when the read that produced it could see it: a stored remote
+ * session's cold open is served an empty page by a facade with no owner, and
+ * the session hook refuses to count that read as proof (see
+ * `sessionRowsLiveRemotely` and the proof rule in `walkTail`). These two cases
+ * pin the consequence at the slot's own state machine: without proof the
+ * exhausted copy must NOT render - the retry-able "not loaded" arm takes its
+ * place - and with proof the end still states itself.
+ */
+test("an unproven end is not the end: hasMore false without hydration proof", () => {
+	const hook = mountHook({
+		hiddenRows: 0,
+		hasMore: false,
+		hydrationProven: false,
+	});
+	try {
+		hook.flushFrames(2);
+		assert.equal(
+			hook.slotState,
+			"unproven",
+			`hasMore false with no proof claimed exhaustion: ${hook.slotState}`,
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+/*
+ * AND THE PRESS ON THAT ARM IS ACKNOWLEDGED (remote-load-hydration, UX round 1
+ * U1 == reviewer F4). The retry fires the same read the cold open fires, and
+ * with no paint for the read's duration the row repainted byte-identical -
+ * same words, same enabled control - so the one moment this change exists to
+ * serve looked like a dead button. While the read is out the unproven arm
+ * paints the sibling `loading` row; when it settles still unproven the arm
+ * states the fact again (a proven read moves it to the end copy instead, which
+ * is the case above). The session hook's own half - the walk raising and
+ * clearing `historyReadPending`, and refusing to stack a second walk - is
+ * pinned in `session-load-recovery.test.mjs`.
+ */
+test("the unproven end paints the read while it is out, then states itself again", () => {
+	const hook = mountHook({
+		hiddenRows: 0,
+		hasMore: false,
+		hydrationProven: false,
+		historyReadPending: true,
+	});
+	try {
+		hook.flushFrames(2);
+		assert.equal(
+			hook.slotState,
+			"loading",
+			`a read out for an unproven end must paint the pending row, painted: ${hook.slotState}`,
+		);
+		hook.setHistoryReadPending(false);
+		hook.flushFrames(2);
+		assert.equal(
+			hook.slotState,
+			"unproven",
+			`a settled-unproven read must state the fact again, painted: ${hook.slotState}`,
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+test("a proven end still states itself once a page has been read", () => {
+	const hook = mountHook({
+		hiddenRows: 0,
+		hasMore: false,
+		hydrationProven: true,
+	});
+	try {
+		hook.flushFrames(2);
+		assert.equal(
+			hook.slotState,
+			"exhausted",
+			"a genuinely hydrated end must keep the start-of-conversation arm",
 		);
 	} finally {
 		hook.close();

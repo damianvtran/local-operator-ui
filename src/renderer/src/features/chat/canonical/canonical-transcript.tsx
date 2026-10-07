@@ -412,6 +412,13 @@ export type CanonicalTranscriptProps = {
 	/** The session hook's single statement that the last ask failed. */
 	olderFailed?: boolean;
 	/**
+	 * Re-ask the conversation's authoritative history read. Optional; see
+	 * `OlderHistorySlot`'s prop of the same name — it is the control on the
+	 * slot's `unproven` arm, and without it that arm states the fact and drops
+	 * the control.
+	 */
+	onRetryHydration?: () => void;
+	/**
 	 * The older-history row's transport truth, where the caller knows it better
 	 * than `status` does.
 	 *
@@ -454,6 +461,43 @@ export type CanonicalTranscriptProps = {
 	 * its failing shapes live in `transcriptPaneHoldsPlaceholder`.
 	 */
 	awaitingHydration: boolean;
+	/**
+	 * Has the conversation's history been PROVEN read (the session view's
+	 * `hydrated`)?
+	 *
+	 * This is the older-history slot's end-claim gate, and deliberately a
+	 * separate fact from `awaitingHydration`: `has_more: false` may come from a
+	 * read that could not see the conversation at all (a stored remote session's
+	 * cold open answers from a facade with no owner), and only proof makes "Start
+	 * of conversation" honest. `awaitingHydration` says whether a page is still
+	 * OWED; this says whether one has been READ — both false/true while owed, and
+	 * the pair is what lets the slot hold "not loaded" rather than claiming an
+	 * end nobody established (remote-load-hydration).
+	 *
+	 * OPTIONAL, DEFAULTING TRUE, and the default is a stated claim rather than a
+	 * convenience: a caller that does not pass it asserts its rows are read whole
+	 * — the child reader's page (a direct read of the child's own transcript), a
+	 * story fixture, and the legacy callers all are. The chat pane, the one
+	 * caller that can be owed a page, passes the session view's `hydrated`; a
+	 * future caller that can be owed one must pass it too, or its slot can claim
+	 * an end nobody has established.
+	 */
+	hydrationProven?: boolean;
+	/**
+	 * Whether a history read is OUT for this session — the session view's
+	 * `historyReadPending` (`use-canonical-session`), true while a
+	 * `reconcileTail` walk is in flight.
+	 *
+	 * What it does: the `unproven` end's "Try again" is a control whose press
+	 * must be answerable, so while the read it fired is out the slot paints the
+	 * pending row instead of repainting the identical "not loaded" row
+	 * (UX round 1, U1; the session hook also refuses to stack a second walk
+	 * while one is out). Optional, defaulting false — the conservative
+	 * direction: a caller that omits it paints no pending state, which is a
+	 * missed acknowledgement rather than a claim nobody made. The chat pane,
+	 * the one caller with a walk to track, passes the view's own fact.
+	 */
+	historyReadPending?: boolean;
 	/**
 	 * True while the rows below came from the local paint cache rather than from
 	 * the owner (M2).
@@ -2458,12 +2502,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	onLoadOlder,
 	onLoadOlderOutcome,
 	olderFailed,
+	onRetryHydration,
 	olderTransportDown,
 	containerRef,
 	isSmallView,
 	status,
 	failure,
 	awaitingHydration,
+	hydrationProven = true,
+	historyReadPending = false,
 	stale = false,
 	missing = false,
 	attachmentScope,
@@ -3313,6 +3360,13 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		sessionKey: sessionId,
 		hiddenRows: hidden,
 		hasMore: Boolean(transcript.hasMore),
+		/*
+		 * The end claim's proof, from the one place that holds it — see the prop's
+		 * docblock. The default true belongs to callers with no owed page; this
+		 * call site passes the value itself.
+		 */
+		hydrationProven,
+		historyReadPending,
 		onWiden: widen,
 		paintedRows: readPaintedRows,
 		onLoadOlder,
@@ -4608,7 +4662,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    message unmounted the slot, moving every row below it up by 44px
 				    at that moment. Keeping it mounted is what makes the end of
 				    history a statement instead of an absence, and costs nothing: the
-				    slot is one fixed-height row either way. */}
+				    slot is one fixed-height row either way. The statement itself is
+				    gated on proof (`hydrationProven`): an unproven end says "not
+				    loaded" and offers the read again, never the end copy
+				    (remote-load-hydration). */}
 						{/* NOT while the paint is cached: a cache entry carries no paging
 				    cursor (its rows are trimmed), which the slot reads as `exhausted`
 				    and says "Start of conversation" over a transcript that may be a
@@ -4627,6 +4684,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								// live one by default.
 								transportDown={olderTransportDown ?? status !== "live"}
 								onLoadOlder={requestOlder}
+								/* The `unproven` arm's control: the same read the cold
+								 * open fires, re-asked by the reader's own hand. */
+								onRetryHydration={onRetryHydration}
 							/>
 						)}
 

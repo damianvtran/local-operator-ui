@@ -513,6 +513,72 @@ const cursorMissingSnapshotFrame = () => {
 	return frame;
 };
 
+/**
+ * A snapshot from a COLD facade (remote-load-hydration): the shape a stored
+ * remote session's first frame carries - `cold: true` with its reason - and the
+ * empty page the wire answers for a peer whose runtime has not been reached.
+ */
+const coldSnapshotFrame = () => {
+	const frame = snapshotFrame([]);
+	frame.payload.cold = true;
+	frame.payload.cold_reason = "no-runtime";
+	frame.payload.attaching = false;
+	return frame;
+};
+
+/**
+ * The bridge's attach-settled flip, as the daemon publishes it: the frame that
+ * says the facade has bound and the session is warm (`cold: false` on a
+ * `frontend.replace`, ordered by the bridge's own outer `seq`).
+ */
+const warmReplaceFrame = (seq) => ({
+	type: "frontend.replace",
+	session_id: SESSION,
+	epoch: "e".repeat(16),
+	seq,
+	payload: {
+		cold: false,
+		frontend: {
+			epoch: "e".repeat(16),
+			sequence: 2,
+			snapshot: {
+				session_id: SESSION,
+				epoch: "e".repeat(16),
+				sequence: 2,
+				streaming: false,
+				attention: undefined,
+				pending_gate: null,
+				live_events: [],
+			},
+		},
+	},
+});
+
+/**
+ * The daemon's OTHER flip shape, and the one measured LIVE on the warm route
+ * (QA round 1, Q1): the retained-dial late sync publishes the warm transition
+ * as a `frontend.update` carrying `cold: false` on the frame's own ENVELOPE -
+ * no snapshot and no replace anywhere in the batch. The daemon's own test
+ * (`test_a_rollover_reaches_the_stream_after_a_late_sync`) asserts this
+ * frame's `payload["cold"] is False`; its `changes` carry the new epoch's
+ * field set, modelled minimally here as the epoch/sequence the fold's
+ * rollover branch reads.
+ */
+const warmUpdateFrame = (seq) => ({
+	type: "frontend.update",
+	session_id: SESSION,
+	epoch: "f".repeat(16),
+	seq,
+	payload: {
+		epoch: "f".repeat(16),
+		sequence: 2,
+		changes: { epoch: "f".repeat(16), sequence: 2 },
+		cold: false,
+		cold_reason: null,
+		attaching: false,
+	},
+});
+
 /** A durable user row, in the shape `durableRecord` reads off the wire. */
 const userEntry = (id, text) => ({
 	id,
@@ -1039,6 +1105,305 @@ test("an empty applied page IS a claim the app may make", async () => {
 		"a genuinely empty conversation must still be able to say so - the fix is about proof, not about never being sure",
 	);
 	assert.equal(mounted.view().transcript.records.length, 0);
+});
+
+/*
+ * THE STORED REMOTE SESSION'S COLD EMPTY PAGE, AND THE WARM THAT LANDS LATER
+ * (remote-load-hydration). The operator's shape: a conversation that lives on
+ * another device opens cold, the daemon answers its `/history` reconcile from a
+ * facade with no owner - an empty page byte-identical to a genuinely empty
+ * conversation's - and the pane must (a) refuse to treat that read as proof and
+ * (b) re-run the read once the owner engages and a frame says `cold: false`.
+ * Both halves fail on the base tree this case was added for: the empty read
+ * used to set `hydrated` (the pane then offered the empty-chat greeting over a
+ * conversation nobody had read), and only a snapshot's page ever fired the read
+ * again, so the warm flip re-hydrated nothing and the pane sat empty until a
+ * user action.
+ *
+ * The rule turns on the READ'S OWN cold state rather than on where the rows
+ * live, deliberately: the daemon's local and peer readers answer byte-identical
+ * empty pages, so the read that could not see the conversation - the one taken
+ * while the facade had no owner - is the one that must not prove. The previous
+ * case pins the other side: a warm empty page IS a claim the app may make.
+ */
+test("a cold empty read proves nothing, and the warm re-arms the read", async () => {
+	test_state.streams.length = 0;
+	test_state.historyRequests.length = 0;
+	const reads = [];
+	test_state.network = async (request) => {
+		if (request.op !== "sessions.history")
+			return { entries: [], has_more: false, cursor_missing: false };
+		reads.push(request);
+		/*
+		 * The cold facade answers the first read empty; once the owner has
+		 * answered, the same read serves the durable tail.
+		 */
+		return reads.length === 1
+			? { entries: [], has_more: false, cursor_missing: false }
+			: {
+					entries: [userEntry("m1", "durable")],
+					has_more: false,
+					cursor_missing: false,
+				};
+	};
+
+	const mounted = mountHook(await loadHook("cold-warm"), SESSION);
+	await settle();
+	send(openFrame());
+	await settle();
+	send(coldSnapshotFrame());
+	await settle();
+
+	assert.equal(mounted.view().status, "live", "the stream itself is healthy");
+	assert.equal(
+		mounted.view().hydrated,
+		false,
+		"an empty page from a cold facade proves nothing about the conversation",
+	);
+	assert.equal(
+		reads.length,
+		1,
+		"the cold/empty snapshot is what fires the reconcile read",
+	);
+	assert.equal(mounted.view().transcript.records.length, 0);
+
+	/* The owner engages: the bridge publishes the attach-settled flip. */
+	send(warmReplaceFrame(2));
+	await settle();
+
+	assert.equal(
+		reads.length,
+		2,
+		"the warm transition re-arms the history read with no user action",
+	);
+	assert.equal(
+		mounted.view().hydrated,
+		true,
+		"the warm read's rows are the proof the cold read could not give",
+	);
+	assert.equal(mounted.view().transcript.records.length, 1);
+});
+
+/*
+ * THE FLIP SHAPE THE LIVE DAEMON ACTUALLY PUBLISHES ON THE WARM ROUTE (QA
+ * round 1, Q1 == agent review round 1, F1). The test above fabricates the flip
+ * as a `frontend.replace`; the measured warm route sent neither a snapshot nor
+ * a replace across the transition - it sent a `frontend.update` carrying
+ * `cold: false` on the frame's envelope, and the pane sat on "Loading
+ * conversation..." for thirty seconds because nothing read it. Both halves are
+ * pinned here: the fold must carry the envelope's cold onto the view, and the
+ * re-arm must fire on the update arm exactly as it does on the other two.
+ */
+test("a warm that lands as a frontend.update re-arms the read and folds its envelope", async () => {
+	test_state.streams.length = 0;
+	test_state.historyRequests.length = 0;
+	const reads = [];
+	test_state.network = async (request) => {
+		if (request.op !== "sessions.history")
+			return { entries: [], has_more: false, cursor_missing: false };
+		reads.push(request);
+		return reads.length === 1
+			? { entries: [], has_more: false, cursor_missing: false }
+			: {
+					entries: [userEntry("m1", "durable")],
+					has_more: false,
+					cursor_missing: false,
+				};
+	};
+
+	const mounted = mountHook(await loadHook("cold-warm-update"), SESSION);
+	await settle();
+	send(openFrame());
+	await settle();
+	send(coldSnapshotFrame());
+	await settle();
+
+	assert.equal(
+		mounted.view().cold,
+		true,
+		"the cold facade's snapshot leaves the view cold",
+	);
+	assert.equal(
+		mounted.view().hydrated,
+		false,
+		"an empty page from a cold facade proves nothing about the conversation",
+	);
+	assert.equal(reads.length, 1);
+
+	/* The owner engages; the retained-dial late sync publishes the flip as an
+	   UPDATE (no snapshot, no replace anywhere in the batch). */
+	send(warmUpdateFrame(2));
+	await settle();
+
+	assert.equal(
+		mounted.view().cold,
+		false,
+		"the fold must carry the update envelope's cold onto the view",
+	);
+	assert.equal(
+		reads.length,
+		2,
+		"the update-shaped flip re-arms the history read with no user action",
+	);
+	assert.equal(
+		mounted.view().hydrated,
+		true,
+		"the warm read's rows are the proof the cold read could not give",
+	);
+	assert.equal(mounted.view().transcript.records.length, 1);
+});
+
+/*
+ * AND THE RACE `coldAtDispatch` EXISTS FOR (agent review round 1, F2), which no
+ * case exercised: a warm that lands WHILE the cold read is in flight must not
+ * let that read's stale answer - judged by the state it was dispatched under -
+ * prove hydration. The read's promise is held open, the warm lands, the stale
+ * answer arrives, and `hydrated` must still be false for it; the warm's own
+ * read, dispatched after the flip, is the one whose empty answer may prove.
+ */
+test("a warm landing while the cold read is in flight cannot prove the stale page", async () => {
+	test_state.streams.length = 0;
+	test_state.historyRequests.length = 0;
+	const reads = [];
+	const release = [];
+	test_state.network = (request) => {
+		if (request.op !== "sessions.history")
+			return { entries: [], has_more: false, cursor_missing: false };
+		reads.push(request);
+		return new Promise((resolve) => {
+			release.push(() =>
+				resolve({ entries: [], has_more: false, cursor_missing: false }),
+			);
+		});
+	};
+
+	const mounted = mountHook(await loadHook("cold-warm-race"), SESSION);
+	await settle();
+	send(openFrame());
+	await settle();
+	send(coldSnapshotFrame());
+	await settle();
+
+	assert.equal(reads.length, 1, "the cold snapshot fires the first read");
+	assert.equal(release.length, 1, "and this test holds that read open");
+
+	send(warmUpdateFrame(2));
+	await settle();
+
+	assert.equal(
+		reads.length,
+		2,
+		"the warm must re-arm even with a read still in flight",
+	);
+	assert.equal(
+		release.length,
+		2,
+		"the warm's read is held too, so the order is ours",
+	);
+	assert.equal(
+		mounted.view().historyReadPending,
+		true,
+		"the warm's read is out, so the pane is still reading",
+	);
+
+	release[0]();
+	await settle();
+
+	assert.equal(
+		mounted.view().hydrated,
+		false,
+		"an empty page read WHILE COLD must not prove, even though the view warmed before it answered",
+	);
+	assert.equal(mounted.view().transcript.records.length, 0);
+
+	release[1]();
+	await settle();
+
+	assert.equal(
+		mounted.view().hydrated,
+		true,
+		"the warm-dispatched empty read IS the conversation's own statement",
+	);
+	assert.equal(
+		mounted.view().historyReadPending,
+		false,
+		"the last walk out clears the paint",
+	);
+});
+
+/*
+ * THE PRESS ON THE UNPROVEN ARM IS ACKNOWLEDGED (UX round 1, U1 == agent review
+ * round 1, F4). The slot's pending paint reads `historyReadPending`, so the walk
+ * a press fires must raise it while it is out and lower it when it settles - and
+ * a second press while the first read is still out must NOT stack a second walk
+ * for the same question.
+ */
+test("the retry's read is painted while it is out, and a second press does not stack", async () => {
+	test_state.streams.length = 0;
+	test_state.historyRequests.length = 0;
+	const reads = [];
+	const release = [];
+	test_state.network = (request) => {
+		if (request.op !== "sessions.history")
+			return { entries: [], has_more: false, cursor_missing: false };
+		reads.push(request);
+		return new Promise((resolve) => {
+			release.push(() =>
+				resolve({ entries: [], has_more: false, cursor_missing: false }),
+			);
+		});
+	};
+
+	const mounted = mountHook(await loadHook("cold-warm-press"), SESSION);
+	await settle();
+	send(openFrame());
+	await settle();
+	send(coldSnapshotFrame());
+	await settle();
+
+	assert.equal(reads.length, 1, "the cold snapshot fired the reconcile read");
+	assert.equal(
+		mounted.view().historyReadPending,
+		true,
+		"the walk in flight is painted (the slot's pending arm reads this)",
+	);
+
+	/* The reader presses while the cold-open read is still out: the read in
+	   flight already answers the question. */
+	mounted.view().rehydrate();
+	await settle();
+	assert.equal(reads.length, 1, "a press while a read is out does not stack");
+
+	release[0]();
+	await settle();
+	assert.equal(
+		mounted.view().historyReadPending,
+		false,
+		"the settled walk clears the paint",
+	);
+	assert.equal(
+		mounted.view().hydrated,
+		false,
+		"the cold empty read still proves nothing",
+	);
+
+	/* A press once nothing is out fires exactly one read - and that read is
+	   painted too. */
+	mounted.view().rehydrate();
+	await settle();
+	assert.equal(
+		reads.length,
+		2,
+		"the press fires one read when the pane is not already reading",
+	);
+	assert.equal(
+		mounted.view().historyReadPending,
+		true,
+		"and the press's own read raises the paint",
+	);
+	release[1]();
+	await settle();
+	assert.equal(mounted.view().historyReadPending, false);
 });
 
 test("Retry during a pending stream retry opens ONE subscription and leaves no orphan (R1-1)", async () => {

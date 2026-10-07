@@ -5,15 +5,16 @@ import type { FC } from "react";
 /**
  * The one row above the transcript that says what is happening to its history.
  *
- * Five states share it — an affordance, a load in progress, a failure with its
- * retry, a local window still opening, and the start of the conversation — and
- * they share it at ONE HEIGHT. That is the whole reason this is a component
- * rather than a conditional inline in `canonical-transcript`. The row sits
- * directly above the oldest rendered row, so every pixel it changes height by is
- * a pixel the entire conversation below it moves. With paging driven by a click
- * that was a shrug; with paging driven by scrolling it would be a jump, landing
- * at the exact moment the reader is looking at the top of the screen and the
- * transcript is already growing under them.
+ * Six states share it — an affordance, a load in progress, a failure with its
+ * retry, a local window still opening, an unproven end with its own retry, and
+ * the start of the conversation — and they share it at ONE HEIGHT. That is the
+ * whole reason this is a component rather than a conditional inline in
+ * `canonical-transcript`. The row sits directly above the oldest rendered row,
+ * so every pixel it changes height by is a pixel the entire conversation below
+ * it moves. With paging driven by a click that was a shrug; with paging driven
+ * by scrolling it would be a jump, landing at the exact moment the reader is
+ * looking at the top of the screen and the transcript is already growing under
+ * them.
  *
  * ## Why the height is a floor with a clamp, not a bare fixed height
  *
@@ -45,17 +46,20 @@ import type { FC } from "react";
  *
  * ## Which arms are a control and which are a statement
  *
- * The row is an operable control in TWO of its arms and a statement in the
+ * The row is an operable control in THREE of its arms and a statement in the
  * other two, and that split is deliberate rather than an oversight to be
  * closed:
  *
- * - `idle` ("Load earlier messages") and `failed` ("Try again") render a real
+ * - `idle` ("Load earlier messages"), `failed` ("Try again") and `unproven`
+ *   ("Try again" — remote-load-hydration's arm: `has_more` says the end, no
+ *   read has proven it, and the control re-asks the read) render a real
  *   `Button`: focusable, `Enter`-operable, a visible focus ring. These are the
  *   states where the row is the only way forward — nothing is coming on its
- *   own, or the last attempt failed — so a keyboard reader, and a reader who
- *   has learned to click it, keeps a control to act on. The click is also the
- *   deliberate act the scroll-paging latch re-arms on (see `scroll-paging.ts`,
- *   rule 4). `loading` is the same `Button`, `aria-disabled` so it keeps focus.
+ *   own, the last attempt failed, or the last answer proved nothing — so a
+ *   keyboard reader, and a reader who has learned to click it, keeps a control
+ *   to act on. The click is also the deliberate act the scroll-paging latch
+ *   re-arms on (see `scroll-paging.ts`, rule 4). `loading` is the same
+ *   `Button`, `aria-disabled` so it keeps focus.
  * - `windowed` and `exhausted` render a plain statement (`<span>`), not a
  *   control. In `windowed` the gesture IS the payload: the row appears while
  *   the reader is already scrolling and the pump still owes them the local
@@ -84,7 +88,17 @@ export type OlderHistoryState =
 	/** Rows are held back by the render window only; no round trip is needed. */
 	| "windowed"
 	/** Every row this conversation has is mounted. */
-	| "exhausted";
+	| "exhausted"
+	/**
+	 * The end claim is UNPROVEN (remote-load-hydration): `has_more` says the
+	 * conversation stops here, but no read has proven it — a stored remote
+	 * session's cold open answers from a facade with no owner, and the session
+	 * hook refuses to count that answer as proof. Neither arm around this one may
+	 * paint: "Start of conversation" is a claim nobody established, "Could not
+	 * load" a failure nobody observed. The row states the fact and offers the one
+	 * act that can change it: the read again.
+	 */
+	| "unproven";
 
 export type OlderHistorySlotProps = {
 	state: OlderHistoryState;
@@ -95,6 +109,14 @@ export type OlderHistorySlotProps = {
 	 */
 	transportDown?: boolean;
 	onLoadOlder: () => void;
+	/**
+	 * Re-ask the conversation's authoritative history read (the `unproven` arm's
+	 * control — `CanonicalSessionHandle.rehydrate`). Optional so fixtures that
+	 * build these props keep type-checking; without it the arm states the fact
+	 * and drops the control, which is the same degradation `transportDown` asks
+	 * for on the arms that have a gesture to drop.
+	 */
+	onRetryHydration?: () => void;
 };
 
 /**
@@ -153,6 +175,7 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 	state,
 	transportDown = false,
 	onLoadOlder,
+	onRetryHydration,
 }) => {
 	// What assistive technology is told, and ONLY what the visible row does not
 	// already say. The visible button and text are in the accessibility tree
@@ -172,7 +195,9 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 				? transportDown
 					? "Earlier messages did not load"
 					: "Could not load earlier messages"
-				: null;
+				: state === "unproven"
+					? "Earlier history not loaded"
+					: null;
 
 	const busy = state === "loading";
 
@@ -321,6 +346,45 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 						{transportDown ? "" : " — scroll up to load"}
 					</span>
 				</span>
+			) : state === "unproven" ? (
+				/*
+				 * NOT THE END, AND NOT AN ERROR EITHER (remote-load-hydration). The
+				 * transcript holds rows and `has_more` says the end, but no read has
+				 * proven what lies behind them (see `OlderHistoryState.unproven`), so
+				 * the row may state neither "Start of conversation" — a claim nobody
+				 * has established — nor "Could not load" — a failure nobody has
+				 * observed. What it can say is the fact itself, with the one act that
+				 * can change it: retry the read. The control is dropped while the
+				 * transport is down, on the same rule the failed arm's quiet branch
+				 * follows: a retry that cannot succeed must not be painted beside the
+				 * transcript's own notice.
+				 */
+				<>
+					<span
+						className="min-w-0 truncate text-ink-dim text-meta"
+						title="Earlier history not loaded"
+					>
+						{/* The short spelling keeps its SUBJECT (design review round 1, D3):
+						    four characters away the transport-down fault line renders "Not
+						    loaded", and the two rows' remedies differ — wait for the connection
+						    versus press the retry — so the dim pair must not read as one
+						    sentence. "Earlier not loaded" is 18 characters and fits the
+						    252px box with room to spare (measured in the narrow renders beside
+						    the arm's own spelling). */}
+						<span className={SHORT_COPY}>Earlier not loaded</span>
+						<span className={FULL_COPY}>Earlier history not loaded</span>
+					</span>
+					{!transportDown && onRetryHydration && (
+						<Button
+							variant="ghost"
+							size="sm"
+							className="shrink-0"
+							onClick={onRetryHydration}
+						>
+							Try again
+						</Button>
+					)}
+				</>
 			) : (
 				// The start of the conversation, stated rather than left to absence.
 				// The slot stays mounted here on purpose: removing the first row

@@ -7759,8 +7759,8 @@ export const STORIES = [
 	   is captured because the wide board is what let a wrapping failure state
 	   ship: the failure copy fits at 512px and wraps at the 252px the content box
 	   measures at the app's own 800px minimum window. Sized to the boards. */
-	["chat-older-history-slot--every-state", 900, 460],
-	["chat-older-history-slot--app-minimum-width", 900, 720],
+	["chat-older-history-slot--every-state", 900, 520],
+	["chat-older-history-slot--app-minimum-width", 900, 780],
 	["chat-older-history-slot--windowed-sentence", 900, 260],
 	/* The transport-down branch: a failure the reader cannot answer is not
 	   painted as one. Paired rows at both widths, so the comparison is in the
@@ -7777,6 +7777,16 @@ export const STORIES = [
 	   window is contended by four other lanes. Sized to the story's own
 	   `h-[520px]` frame, whose content it fills. */
 	["chat-older-history-slot--in-transcript-failed", 900, 520],
+	/* The honest end (remote-load-hydration): the transcript above real rows with
+	   `has_more: false` and NO proof the read ever saw the conversation - the
+	   state a stored remote session's cold open lands in, where "Start of
+	   conversation" would be a claim nobody established. The gate lives in the
+	   HOOK (`use-scroll-paging.ts`'s `slotState`, on the transcript's
+	   `hydrationProven`), so no board built from `OlderHistorySlot` alone can
+	   show it; registered with the story (`older-history-slot.stories.tsx`,
+	   `InTranscriptUnproven`). Sized to the story's own `h-[520px]` frame, whose
+	   content it fills. */
+	["chat-older-history-slot--in-transcript-unproven", 900, 520],
 
 	/* The other half of the transcript's completeness: a reader who returns from
 	   another conversation, in the two states the fix is about. The claim is a
