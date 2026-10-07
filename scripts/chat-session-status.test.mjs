@@ -123,9 +123,10 @@ for (const [code, icon, ink] of [
 	["attached", "message-square", "ink-dim"],
 	/*
 	 * `delegating` IS THE ONE CODE WHOSE MARK IS NOT A LUCID GLYPH (issue #840): it is
-	 * `SubagentRunningMark`, the shared filled dot, so its icon slot is `null` and the
-	 * assertion below reads the dot's own classes instead. The ink column is unchanged -
-	 * `accent` is the liveness ink, which the dot inherits through `bg-current`.
+	 * `SubagentRunningMark`, the shared three-bead mark, so its icon slot is `null` and
+	 * the assertion below reads the mark's own markup instead. The ink column is
+	 * unchanged - `accent` is the liveness ink, which the beads inherit through
+	 * `currentColor`.
 	 */
 	["delegating", null, "accent"],
 	["idle", "circle", "ink-dim"],
@@ -138,7 +139,12 @@ for (const [code, icon, ink] of [
 		assert.equal(after, before);
 		assert.match(after, new RegExp(`text-${ink}`));
 		if (icon === null) {
-			assert.match(after, /rounded-full bg-current/);
+			assert.match(after, /viewBox="0 0 24 24"/);
+			assert.equal(
+				(after.match(/fill="currentColor"/g) ?? []).length,
+				3,
+				"the mark is the three-bead trio",
+			);
 			assert.doesNotMatch(after, /lucide-/);
 		} else {
 			assert.match(after, new RegExp(`lucide-${icon}`));
@@ -161,11 +167,52 @@ test("delegating draws the delegated-work mark and names its counts", () => {
 	const markup = render("delegating", false, label);
 	// Its own mark, in the accent role, and NOT the unknown-code fallback: a
 	// build that had the backend's code but not this arm would draw HelpCircle.
-	// The mark is the shared filled dot, not a glyph, since issue #840.
-	assert.match(markup, /rounded-full bg-current/);
+	// The mark is the shared three-bead trio, not a glyph, since issue #840.
+	assert.match(markup, /viewBox="0 0 24 24"/);
 	assert.doesNotMatch(markup, /lucide-/);
 	assert.match(markup, /text-accent/);
 	assert.doesNotMatch(markup, /lucide-circle-help|lucide-circle /);
+	/*
+	 * THE ACKED GEOMETRY, pinned so a future edit cannot quietly re-break it. These
+	 * three circles ARE the design: three EQUAL beads (no larger apex - that is the
+	 * `Users` figure the design round refused), and centres far enough apart that
+	 * the children never fuse. Round 1 fused: an apex-plus-pair whose lower centres
+	 * sat 4.43px apart against radii summing to 4.32px overlapped by 0.12px at 14px,
+	 * and its component count flipped between 1 and 2 with the box's sub-pixel
+	 * phase. So the radii are asserted equal and each centre distance is asserted
+	 * to exceed the radii sum, which is the property the frames measure as n=3 at
+	 * every phase and every real x.
+	 */
+	const beads = [
+		...markup.matchAll(/<circle cx="([\d.]+)" cy="([\d.]+)" r="([\d.]+)"/g),
+	].map(([, x, y, r]) => ({ x: Number(x), y: Number(y), r: Number(r) }));
+	assert.equal(
+		beads.length,
+		3,
+		"the triad is three beads, not a badge or a pair",
+	);
+	assert.deepEqual(
+		beads.map((b) => b.r),
+		[3.9, 3.9, 3.9],
+		"equal radii: a larger apex is the head-and-shoulders figure",
+	);
+	for (let i = 0; i < beads.length; i++)
+		for (let j = i + 1; j < beads.length; j++) {
+			const d = Math.hypot(beads[i].x - beads[j].x, beads[i].y - beads[j].y);
+			assert.ok(
+				d > beads[i].r + beads[j].r,
+				`beads ${i} and ${j} clear each other (${d.toFixed(2)}px apart, radii sum ${(beads[i].r + beads[j].r).toFixed(2)}px) - fusion is the round-1 defect`,
+			);
+		}
+	assert.deepEqual(
+		beads.map((b) => [b.x, b.y]),
+		[
+			[12, 6.8],
+			[7, 17.4],
+			[17, 17.4],
+		],
+		"the operator-ACKed trio geometry",
+	);
 	// STATIC: `busy` owns the spinner in this slot, and two animated marks would
 	// make two different states read as one.
 	assert.doesNotMatch(markup, /animate-spin/);

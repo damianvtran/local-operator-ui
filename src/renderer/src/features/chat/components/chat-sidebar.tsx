@@ -4526,18 +4526,20 @@ export function ChatSidebar({
 				 * away, and the title's clip is the only thing that pays.
 				 *
 				 * TWO MARKS, INDEPENDENTLY DRAWN, because they are two facts: a child at
-				 * work (the shared `SubagentRunningMark` - a filled dot in the accent, the
+				 * work (the shared `SubagentRunningMark` - three equal beads in the accent, the
 				 * app's own "a thing is at work" shape, and the same mark the `delegating`
 				 * rung's primary slot wears) and a child waiting for capacity (`Hourglass`,
 				 * muted). The delegating row is the one place they interact: its primary
 				 * mark already IS the running mark, so `subagentMarks` suppresses the
-				 * running half there and the queued glyph still draws - the dot carries
+				 * running half there and the queued glyph still draws - the trio carries
 				 * "subagents are at work", not "none of them has started".
 				 *
-				 * THE DOT REPLACED `Share2` (issue #840): a share glyph beside the row's own
-				 * act buttons read as an action, so the running mark moved out of the icon
-				 * vocabulary into the app's round-mark one. `SubagentRunningMark` carries
-				 * the collision check and the sizing.
+				 * THE SHAPE REPLACED `Share2` (issue #840), AND THE DISC IN TURN REPLACED
+				 * ITSELF (2026-10-06): a share glyph beside the row's own act buttons read as
+				 * an action, so the running mark moved out of the icon vocabulary into the
+				 * app's round-mark one; the disc that landed then read as a generic "record"
+				 * dot rather than as CHILDREN, so it is the operator-ACKed trio now.
+				 * `SubagentRunningMark` carries the geometry, the fusion check and the sizing.
 				 *
 				 * 14px (`size-3.5`, the icon ramp's `sm` step beside `body-sm` text),
 				 * STATIC, and `aria-hidden`: they are ink. The words arrive through the
