@@ -92,7 +92,7 @@ function splitArguments(text) {
 /**
  * The directories whose `.mjs`/`.js`/`.cjs` files are scanned, and how deeply.
  *
- * The NINE `docs/evidence/<surface>/harness/` rigs are scanned recursively, to
+ * The TWELVE `docs/evidence/<surface>/harness/` rigs are scanned recursively, to
  * any depth under `harness/`, because their docstrings say they drive Chrome
  * "exactly the way `scripts/capture-evidence.mjs` does - same private
  * `--headless=new` profile under the system temp dir, same DevTools websocket",
@@ -232,7 +232,7 @@ function findSpawnSites() {
  * per-file grep cannot show: the point is that the argv handed to THIS launch
  * came through `withMockKeychain`, not that the file mentions the helper
  * somewhere. The import is resolved against the file's own directory, because
- * nine of the forty-one rigs live under `docs/evidence/<surface>/harness/` and
+ * twelve of the forty-four rigs live under `docs/evidence/<surface>/harness/` and
  * reach the helper by a relative path of their own - a typo in one of those
  * would otherwise be found by nobody until the rig ran.
  */
@@ -492,6 +492,24 @@ const CHROME_LAUNCH_SITES = [
 		"spawn",
 		1,
 		"photographs the older-history slot's rendered states from a running Storybook - the honest unproven-end arm over real rows and the six-state board - for the remote-load-hydration set's copy change; one private headless Chrome through the same helper",
+	),
+	guarded(
+		"docs/evidence/ask-drawer-stuck/harness/drive-asks.mjs",
+		"spawn",
+		1,
+		"the asks drawer stuck-open pair - the reported switch on the unfixed tree beside the same path fixed, photographed in the running renderer - one private headless Chrome per run through the same helper (registered by its PR's remediation: the harness launched Chrome while unregistered, which failed Desktop Tests in CI)",
+	),
+	guarded(
+		"docs/evidence/ask-drawer-stuck/harness/shoot-stories.mjs",
+		"spawn",
+		1,
+		"the three drawer states no switch reaches on demand - the published-empty queue, an unresolved frame, and a runtime with no queued engine - shot from the shipped stories in both brand palettes, one private headless Chrome per run through the same helper",
+	),
+	guarded(
+		"docs/evidence/ask-drawer-stuck/harness/probe-switch-flash.mjs",
+		"spawn",
+		1,
+		"the frame-level bound on the drawer's auto-close - sampling on every animation frame across a conversation switch to separate a paint-phase artifact from the unread window the close has to wait for - one private headless Chrome per run through the same helper",
 	),
 ];
 
