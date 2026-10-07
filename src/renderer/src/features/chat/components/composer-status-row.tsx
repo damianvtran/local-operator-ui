@@ -141,7 +141,6 @@ import {
 	askChipDeadlineText,
 	askChipLabel,
 	askQueueView,
-	sessionAsks,
 } from "../ask-queue";
 import { CAPPED_BLOCK, CHAT_MEASURE } from "../chat-measure";
 import {
@@ -1511,20 +1510,31 @@ export const ComposerStatusRow = ({
 	 * missing dismiss door), so the item renders only where `onAskToggle` is supplied:
 	 * that prop is what says the drawer exists in this document.
 	 *
-	 * The remaining two clauses are this row's own rules: `sessionAsks(frontend) !==
-	 * null` is presence-vs-emptiness (`asks` is absent on a backend that does not do
-	 * queued asks, and an affordance such a backend can never satisfy must not be
-	 * drawn), and `rows.length > 0` is the app's zero rule (`All to-dos resolved`
-	 * keeps a finished plan; an empty queue keeps nothing). SETTLED asks DO render:
-	 * like a resolved plan, a finished queue is worth keeping on screen, and the panel
-	 * is where its history lives.
+	 * The remaining clause is this row's own rule: `rows.length > 0` is the app's
+	 * zero rule (`All to-dos resolved` keeps a finished plan; an empty queue keeps
+	 * nothing). SETTLED asks DO render: like a resolved plan, a finished queue is worth
+	 * keeping on screen, and the panel is where its history lives.
+	 *
+	 * THE PRESENCE CLAUSE THAT USED TO SIT BESIDE IT IS GONE (remediation round 1,
+	 * R3/Q1). It read `sessionAsks(frontend) !== null` - the retired wire rule - and it
+	 * was DEAD here besides: rows exist only when `asks` is an array, so the row test
+	 * already implies it, and the item's offer at zero is unchanged by dropping it.
+	 * The lane's one capability read is `askQueuePublished` (`AskQueueView.published`);
+	 * this control deliberately does not use it, because its zero-state offer is
+	 * "item absent at zero" by design.
+	 *
+	 * AND A ROWLESS FRAME WITH A LIVE TALLY IS NOT ZERO (agent review round 2, N1). The
+	 * wire bound may drop the whole row list while keeping `asks_open` (see R1), and this
+	 * was the last sibling reader that took the missing rows for an empty queue: the drawer's
+	 * bar, its panel and the header badge all said `4 outstanding` while the composer chip
+	 * said nothing at all. The gate is therefore "something to show OR a count to stand
+	 * for", and the zero rule is untouched - at zero rows and a zero tally the item is still
+	 * absent, which is the designed state and the one `composer-tabs.test.mjs` pins.
 	 */
 	const askView = askQueueView(frontend, askOutcomes);
 	const askNow = useAskClock(askView.waiting > 0, nowMs);
 	const showAsks =
-		onAskToggle !== undefined &&
-		sessionAsks(frontend) !== null &&
-		askView.rows.length > 0;
+		onAskToggle !== undefined && (askView.rows.length > 0 || askView.open > 0);
 	/*
 	 * The one state that carries urgency emphasis. NOT `open` - the backend's
 	 * outstanding set folds `timed_out` in - because a moved-on ask's window has

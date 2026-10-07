@@ -293,6 +293,225 @@ test("a view over an absent field is empty AND unsupported", () => {
 	assert.equal(view.rows.length, 0);
 	assert.equal(view.head, null);
 	assert.equal(view.open, 0);
+	// An absent FRAME is not a capable one: the surface must be able to tell "nobody
+	// has answered yet" from "this runtime has no queued engine" (see the predicate's
+	// own test below).
+	assert.equal(view.published, false);
+	// And the frame itself is UNREAD, which is a third fact again (remediation round
+	// 1, D1): the resolved frame that publishes no engine carries `unread: false`,
+	// and only this one is a progress state that will resolve.
+	assert.equal(view.unread, true);
+	const resolved = queue.askQueueView({ asks: null, asks_open: null });
+	assert.equal(resolved.published, false);
+	assert.equal(
+		resolved.unread,
+		false,
+		"a runtime that answered with `no engine` is not a frame nobody has read",
+	);
+});
+
+/*
+ * THE WIRE FIX'S CAPABILITY READ, pinned where the whole lane reads it.
+ *
+ * Why this test exists: the drawer, the panel and the drawer's own auto-close all key
+ * on this predicate now, and the rule it replaces (`sessionAsks(...) !== null`) is the
+ * one that looked obviously correct - it WAS correct until the runtime started
+ * publishing a live-but-empty queue as `asks` ABSENT with `asks_open: 0` present. A
+ * regression to that reading is invisible in every populated test and turns a live,
+ * empty engine into a dead one, which is the stuck-slot defect itself.
+ */
+test("the capability read is the presence of `asks` OR `asks_open`", () => {
+	// A row list, however short.
+	assert.equal(
+		queue.askQueuePublished({ asks: [ask({ ask_id: "a-1" })] }),
+		true,
+	);
+	// THE case the fix exists for: rows absent, tally present - and zero is a VALUE.
+	assert.equal(queue.askQueuePublished({ asks: null, asks_open: 0 }), true);
+	assert.equal(queue.askQueuePublished({ asks: null, asks_open: 3 }), true);
+	// A frame that says neither: this runtime cannot answer at all.
+	assert.equal(queue.askQueuePublished({ asks: null, asks_open: null }), false);
+	// An unread frame cannot be a capable one either.
+	assert.equal(queue.askQueuePublished(null), false);
+	assert.equal(queue.askQueuePublished(undefined), false);
+	/*
+	 * A MALFORMED `asks` IS NOT A CAPABILITY, and the array check is what keeps the
+	 * old read's conservatism: a frame that carried a string where rows belong must
+	 * not be able to turn an unreadable frame into an affordance.
+	 */
+	assert.equal(queue.askQueuePublished({ asks: "nope" }), false);
+});
+
+/*
+ * AND THE VIEW CARRIES IT, because the drawer's chrome reads the VIEW rather than the
+ * frame: the count clause must not compose `All asks settled` over a queue nobody has
+ * read, and the empty-but-live queue must fall through to it because for it the
+ * verdict is true.
+ */
+test("a live-but-empty queue is a published zero, not an unread frame", () => {
+	const live = queue.askQueueView({
+		asks: null,
+		asks_open: 0,
+		asks_truncated: false,
+	});
+	assert.equal(
+		live.published,
+		true,
+		"asks absent + asks_open present is a live engine",
+	);
+	assert.equal(
+		live.asks,
+		null,
+		"the rows stay absent: there is nothing in the queue",
+	);
+	assert.equal(live.rows.length, 0);
+	assert.equal(live.head, null);
+	assert.equal(live.open, 0);
+	assert.equal(queue.askDrawerCountClause(live), "All asks settled");
+
+	// A published tally with no rows still states the backend's own count - the
+	// lagging-frame case the chip's clause was fixed for, readable now that the
+	// absent-asks branch no longer hard-codes zero.
+	const lagging = queue.askQueueView({ asks: null, asks_open: 4 });
+	assert.equal(lagging.published, true);
+	assert.equal(lagging.open, 4);
+
+	// And an unread frame is neither: no count, no verdict.
+	const unread = queue.askQueueView(null);
+	assert.equal(unread.unread, true);
+	assert.equal(
+		queue.askDrawerCountClause(unread),
+		"",
+		"the bar drops its clause while unresolved: the body names that fact once (D5)",
+	);
+	assert.equal(
+		queue.askScopeLine("session", unread),
+		"This conversation",
+		"and the separator goes with the clause rather than dangling",
+	);
+});
+
+/*
+ * THE ROLLESS FRAME WITH A SURVIVING TALLY (remediation round 1, R1).
+ *
+ * `{asks: null, asks_open: N > 0}` is reachable and the runtime documents it as
+ * deliberate: `_bound_asks_in_place` pops the whole row list (`asks` and
+ * `asks_truncated`) and keeps `asks_open`, "the rows are absent, the capability signal
+ * rides", on both the snapshot and the delta route. Every reader in the lane had to be
+ * checked against it, because the frame is not empty and must not be treated as one:
+ * the old code hard-coded `truncated: false` in this branch, rendered `No asks
+ * outstanding` over the count, and CLOSED the drawer over answerable asks.
+ */
+test("a rowless frame with a surviving tally is neither empty nor truncated-free (R1)", () => {
+	const clipped = queue.askQueueView({
+		asks: null,
+		asks_open: 4,
+		asks_truncated: true,
+	});
+	assert.equal(
+		clipped.published,
+		true,
+		"the tally is the capability, and it is here",
+	);
+	assert.equal(
+		clipped.unread,
+		false,
+		"the runtime answered; this is not a pending read",
+	);
+	assert.equal(
+		clipped.rows.length,
+		0,
+		"the rows are what the wire bound dropped",
+	);
+	assert.equal(
+		clipped.open,
+		4,
+		"the tally is the statement of record for this frame",
+	);
+	assert.equal(
+		clipped.truncated,
+		true,
+		"the frame's own truncation flag must survive the null branch, not be hard-coded false",
+	);
+	/*
+	 * AND THE CLAUSE IS THE COUNT. `askChipCountClause` states the backend's tally when
+	 * the split is unknowable - which it is here, there are no rows to split - so the bar
+	 * and the panel's line cannot contradict one another about how many asks are out.
+	 */
+	assert.equal(queue.askDrawerCountClause(clipped), "4 outstanding");
+	assert.equal(
+		queue.askScopeLine("session", clipped),
+		"This conversation · 4 outstanding",
+	);
+
+	// The same frame WITHOUT the flag is a different fact about the wire, and the flag
+	// is carried rather than inferred.
+	const untruncated = queue.askQueueView({ asks: null, asks_open: 4 });
+	assert.equal(untruncated.truncated, false);
+
+	// A live-but-EMPTY queue beside it: tally zero, nothing outstanding, and the settled
+	// verdict IS this frame's to wear.
+	const empty = queue.askQueueView({ asks: null, asks_open: 0 });
+	assert.equal(queue.askDrawerCountClause(empty), "All asks settled");
+
+	/*
+	 * AND THE FLAG'S ONE LIVE EFFECT IS HERE (agent review round 2, R6). For a rowless
+	 * frame with a NONZERO tally, `askSplitIsKnowable` is false whichever way this flag
+	 * reads (`open` exceeds `waiting + movedOn` by the whole count), so the clause is `N
+	 * outstanding` either way - the flag cannot change it. What it does change is a
+	 * rowless frame with a ZERO tally: `0 outstanding` says the count is what this frame
+	 * carries and its list is not, where `All asks settled` would claim the queue was
+	 * read. Both are consistent with the untruncated frame above; this is the pair the
+	 * comment in `askQueueView` now names.
+	 */
+	const clippedEmpty = queue.askQueueView({
+		asks: null,
+		asks_open: 0,
+		asks_truncated: true,
+	});
+	assert.equal(clippedEmpty.truncated, true);
+	assert.equal(
+		queue.askDrawerCountClause(clippedEmpty),
+		"0 outstanding",
+		"a truncated zero-tally frame states its count rather than the settled verdict",
+	);
+	assert.equal(queue.askDrawerCountClause(empty), "All asks settled");
+});
+
+/*
+ * THE THREE UNRESOLVED-LOOKING STATES ARE THREE FACTS (design round 1, D1).
+ *
+ * They share "no rows", and before this round two of them shared their COPY: a runtime
+ * that publishes no queued engine rendered byte-for-byte as the in-flight read, so it
+ * wore a progress claim that could never complete. (The path to that state is an OPEN
+ * FLAG INHERITED from a runtime that does publish asks - agent review round 2, R7: the
+ * header door's gate is `published`, which is false here, so no door in the app offers
+ * it; an earlier version of this comment said the door was offered, which described the
+ * live-but-EMPTY frame instead.) The copy is pinned here rather than in a frame because
+ * this is the only instrument in CI that can hold the three side by side.
+ */
+test("unread, unavailable and empty are named apart, and none borrows another's clause", () => {
+	const unread = queue.askQueueView(null);
+	const unavailable = queue.askQueueView({ asks: null, asks_open: null });
+	const empty = queue.askQueueView({ asks: null, asks_open: 0 });
+
+	assert.equal(queue.askDrawerCountClause(unread), "");
+	assert.equal(
+		queue.askDrawerCountClause(unavailable),
+		queue.ASK_DRAWER_UNAVAILABLE_CLAUSE,
+	);
+	assert.equal(queue.askDrawerCountClause(empty), "All asks settled");
+
+	// The two unpublishable frames must not share a word: the first is a read in flight,
+	// the second is a terminal answer about the runtime.
+	assert.notEqual(
+		queue.ASK_DRAWER_UNAVAILABLE_LINE,
+		queue.ASK_DRAWER_UNREAD_LINE,
+	);
+	assert.equal(
+		queue.askScopeLine("fleet", unavailable),
+		"All conversations · Asks unavailable",
+	);
 });
 
 /* --------------------------------------------------------- the answer ---- */
@@ -509,6 +728,43 @@ test("the item's clause never claims a split the frame cannot know", () => {
 	assert.equal(
 		queue.askChipLabel(exact, false, TS),
 		"Expand this conversation's asks — 1 question waiting · expires in 1h · 1 moved on",
+	);
+});
+
+/*
+ * THE HEADER DOOR'S OWN NAME (QA round 2, Q2-1). It was composed inline in
+ * `chat-header.tsx`, so the promise this lane makes about it - no two asks controls can
+ * be one string (UX round 1, U3) - had no CI instrument; the only `Open asks` under
+ * `scripts/` was a stand-in's `textContent`. The four shapes below are the contract now,
+ * including the one the promise is about: the quiet state still carries its scope, which
+ * is what keeps it distinct from the drawer's own dismiss.
+ */
+test("the header door's name carries its verb, its scope and the count it stands for", () => {
+	assert.equal(
+		queue.askHeaderToggleLabel({ open: false, scope: "session", count: 1 }),
+		"Open asks \u2014 This conversation, 1 waiting or moved on",
+	);
+	assert.equal(
+		queue.askHeaderToggleLabel({ open: true, scope: "fleet", count: 2 }),
+		"Close asks \u2014 All conversations, 2 waiting or moved on",
+	);
+	/*
+	 * AT ZERO IT STILL NAMES ITS SCOPE, which is the U3 remediation stated as a string:
+	 * the bare `Close asks` it used to fall back to is the drawer's own dismiss' name,
+	 * two controls for two different acts.
+	 */
+	assert.equal(
+		queue.askHeaderToggleLabel({ open: false, scope: "session", count: 0 }),
+		"Open asks \u2014 This conversation",
+	);
+	assert.equal(
+		queue.askHeaderToggleLabel({ open: true, scope: "fleet", count: 0 }),
+		"Close asks \u2014 All conversations",
+	);
+	assert.notEqual(
+		queue.askHeaderToggleLabel({ open: true, scope: "session", count: 0 }),
+		"Close asks",
+		"the header door must never be the same string as the pane's own dismiss",
 	);
 });
 
