@@ -2730,8 +2730,17 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		what: "picker option row pointer tint",
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
-		must: 'isHovered && !isActive && "bg-accent-wash"',
-		why: "the pointer's mark is deliberately a different ground from the selection's, so the two states are distinguishable and a highlight left by the pointer cannot read as the keyboard's; cleared by the listbox's own onMouseLeave (design D2)",
+		/*
+		 * `!option.disabled` joined the condition in review round 1 (U2): a refused
+		 * row keeps its `cursor: not-allowed` and its reason but NOT the wash -
+		 * the wash is this picker's "you may click this" signal, and painting it on
+		 * a row that cannot be picked gave the pointer two contradictory answers.
+		 * The pin follows the expression rather than the old spelling: the ROLE the
+		 * entry exists for is that a SETTABLE row paints this ground, and the
+		 * disabled gate is exactly what the round asked for.
+		 */
+		must: 'isHovered && !isActive && !option.disabled && "bg-accent-wash"',
+		why: "the pointer's mark is deliberately a different ground from the selection's, so the two states are distinguishable and a highlight left by the pointer cannot read as the keyboard's; cleared by the listbox's own onMouseLeave (design D2), and withheld from a refused row (review round 1, U2)",
 	},
 	{
 		/*
@@ -2750,8 +2759,10 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "picker option row structural mark",
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
-		must: 'isPicked || (isHovered && !isActive)) &&\n\t\t\t\t\t"outline-solid outline-1 -outline-offset-1 outline-control"',
-		why: "the pointer's mark and the in-flight mark must be perceivable in every theme, which a wash-based mark is not: the role it needs is asserted as `picker row pointer mark` above, and this pin is what proves the row renders it (design D12)",
+		/* `!option.disabled` joined this arm in review round 1 too (U2); see the
+		 * tint entry above for why the gate is the point rather than a drift. */
+		must: 'isPicked || (isHovered && !isActive && !option.disabled)) &&\n\t\t\t\t\t"outline-solid outline-1 -outline-offset-1 outline-control"',
+		why: "the pointer's mark and the in-flight mark must be perceivable in every theme, which a wash-based mark is not: the role it needs is asserted as `picker row pointer mark` above, and this pin is what proves the row renders it (design D12) - for settable rows; a refused row carries neither half (review round 1, U2)",
 	},
 	{
 		what: "turn answer rail role",
