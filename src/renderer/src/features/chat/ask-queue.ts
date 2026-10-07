@@ -17,12 +17,25 @@
  *
  * ## The two rules a reader of the wire owes
  *
- * 1. **Absence is not emptiness.** The backend publishes `asks` only while its
- *    non-blocking flag is on AND the frame actually carries a row; an empty list
- *    is published as absence. So `sessionAsks` returns `null` for "this backend
- *    does not do queued asks" and `[]` only when a frame really said so - and no
- *    caller may collapse the two, because an old backend must not grow an asks
- *    affordance that can never be satisfied.
+ * 1. **Absence is not emptiness - and, since the WIRE FIX, not incapability
+ *    either.** The backend publishes `asks` only while the non-blocking flag is
+ *    on AND the frame actually carries a row; an empty LIST is published as
+ *    absence. So `sessionAsks` returns `null` for "this frame carried no rows"
+ *    and `[]` only when a frame really said so - and no caller may collapse the
+ *    two.
+ *
+ *    WHAT CHANGED, AND WHY THE OLD READING IS NOW AMBIGUOUS. `sessionAsks`
+ *    returning `null` used to BE the capability answer: an old core published
+ *    `asks` exactly while a queue had rows, so "no `asks` array" and "no queued
+ *    engine" were the same fact and a mount could read one as the other. The
+ *    WIRE FIX separated them - a live-but-EMPTY queue is now legitimately
+ *    published as `asks` ABSENT with `asks_open: 0` present, because a client
+ *    deciding whether to paint an ask affordance must be able to tell a live
+ *    engine from a blocking one even when there is nothing in it. The engine
+ *    signal is therefore the presence of `asks` OR `asks_open` (`ask-queue.ts`'s
+ *    `askQueuePublished`, the core's `ask_wire` docblock's own sentence), and a
+ *    surface that reads `sessionAsks(...) !== null` as "no capability" turns a
+ *    live, empty engine into a dead one.
  *
  * 2. **Presence of `asks` retires the legacy mirror.** For one release the
  *    backend also projects the head open ask through the OLD single slot
@@ -104,6 +117,44 @@ export const sessionAsks = (
 	if (!Array.isArray(asks)) return null;
 	return asks;
 };
+
+/**
+ * Whether this frame's runtime runs the queued-ask engine at all - the WIRE FIX's
+ * capability contract: the presence of `asks` OR `asks_open`.
+ *
+ * WHY IT IS A PREDICATE AND NOT THE OBVIOUS `sessionAsks(frontend) !== null`.
+ * That read was CORRECT until the runtime's wire fix changed what absence means,
+ * and it is the rule the whole lane was written against - an older rule reading a
+ * changed contract, not a mistake. Before the fix a core published `asks` exactly
+ * while its queue had rows, so an absent array was the same fact as "no queued
+ * engine"; the fix made a live-but-EMPTY queue publish as `asks` absent with
+ * `asks_open: 0`, so absence now means EITHER "nothing outstanding right now" OR
+ * "this runtime cannot answer", and only the second is a capability. A surface
+ * that keeps the old read therefore treats a live, empty engine as a dead one -
+ * which is exactly how the asks drawer rendered nothing (and kept its slot) when
+ * a conversation was switched to one with no outstanding asks.
+ *
+ * THE CORE'S OWN WORD FOR THE CONTRACT is `ask_wire`'s docblock
+ * (`local_operator/session/frontend_state.py`, v0.68): "The capability proxy is
+ * the presence of `asks` OR `asks_open`" - written for exactly this, the cross-
+ * repo companion in `local-operator-ui` deciding how to paint an ask row. The
+ * expression below is deliberate: `asks` keeps an array check (a malformed value
+ * must not read as capable), while `asks_open` is read for PRESENCE because zero
+ * is a value and 0 is the empty-but-live queue.
+ *
+ * `transcript-reducer.ts`'s `queuedAskEngineLive` spells the same read, and the
+ * duplication is on purpose rather than an oversight: that module bundles
+ * standalone in `scripts/transcript-reducer.test.mjs` and carries no desktop-API
+ * import, which is why its own note refuses to reach in here.
+ */
+export const askQueuePublished = (
+	frontend:
+		| Pick<CanonicalFrontendState, "asks" | "asks_open">
+		| null
+		| undefined,
+): boolean =>
+	frontend != null &&
+	(Array.isArray(frontend.asks) || frontend.asks_open != null);
 
 /**
  * Whether a backend that publishes `asks` would ALSO be mirroring the head ask
@@ -278,6 +329,49 @@ export const askScopeSubject = (scope: AskScope): string =>
 	scope === "fleet" ? "All conversations" : "This conversation";
 
 /**
+ * WHAT THE DRAWER SAYS WHEN THE FRAME THAT DECIDES ITS CONTENTS HAS NOT BEEN READ.
+ *
+ * ONE SPELLING, NOT TWO (design round 1, D5). The bar's clause and the body under it
+ * used to state the same fact in the same register 30 px apart (`Not read yet` above
+ * `Reading the asks…`), which reads as one two-line paragraph rather than as chrome
+ * plus body. The BODY carries the fact and the bar drops its clause while the frame
+ * is unresolved - `askScopeLine` omits the separator when there is no clause - so the
+ * surface names what it is doing exactly once.
+ */
+export const ASK_DRAWER_UNREAD_LINE = "Reading the asks…";
+
+/**
+ * THE OTHER UNRESOLVED-LOOKING FRAME, WHICH IS NOT THE SAME FACT (design round 1, D1).
+ *
+ * `{asks: null, asks_open: null}` is a RESOLVED frame (`unread` false): the runtime
+ * answered, and its answer is that it publishes no queued asks at all. It can never
+ * resolve into a queue - nothing will publish for it - so giving it the in-flight
+ * copy parked a permanent `Reading the asks…` on a surface that never resolves.
+ *
+ * HOW IT IS REACHED, CORRECTED IN ROUND 2 (agent review R7). This docblock used to
+ * justify the state as "reachable: the header door is offered at zero asks, and a
+ * door-opened mount is deliberately never auto-closed" - which is the wrong door.
+ * The header door's gate is `published` (`chat-content.tsx`), and `published` is
+ * FALSE for this frame, so no door in the app offers it; that sentence described the
+ * live-but-EMPTY frame (`asks_open: 0`), a different state. The true path is the one
+ * the `UnsupportedBackend` story's own block states: an OPEN FLAG INHERITED from a
+ * runtime that does publish asks (or a store flag left open across a restart onto an
+ * older runtime), which mounts this surface over a frame it cannot serve. That mount
+ * is exactly why the state needs honest copy at all - a claimed slot must never wear
+ * a claim the frame cannot back. The lane's copy rule is that every claim is
+ * checkable or cut (§8): a progress claim that can never complete is not one.
+ *
+ * SO IT GETS ITS OWN STATE. The bar states the capability it lacks and the body says
+ * what that means, in the drawer's own voice; the pair is the drawer's, and the chip
+ * and the header trigger keep their designed zero-state offers unchanged.
+ */
+export const ASK_DRAWER_UNAVAILABLE_CLAUSE = "Asks unavailable";
+
+/** The body under that clause: what is true, rather than what the surface hopes. */
+export const ASK_DRAWER_UNAVAILABLE_LINE =
+	"This runtime doesn't support queued asks.";
+
+/**
  * The DRAWER's count clause: what the surface shows, not only what the agent waits on.
  *
  * WHY THE DRAWER DIFFERS FROM THE CHIP (UX round 1, U5). `askChipCountClause`
@@ -294,8 +388,18 @@ export const askScopeSubject = (scope: AskScope): string =>
  * outstanding tally on a truncated frame, `N questions moved on`). The two surfaces
  * cannot disagree about a single-state queue, which is the shared-clause rule the
  * functions below still keep.
+ *
+ * AND ALL THREE UNRESOLVED STATES ARE TOLD APART HERE (remediation round 1: D1, D5,
+ * R1). `unread` is the frame nobody has read; `published: false` on a RESOLVED frame
+ * is a runtime that cannot answer; a published tally with no rows is the wire bound
+ * dropping the list while the count survives (`_bound_asks_in_place`), and for that
+ * one the clause is the COUNT - never `All asks settled`, which is a verdict its own
+ * nonzero tally contradicts.
  */
 export const askDrawerCountClause = (view: AskQueueView): string => {
+	/* No clause at all while unresolved: the body names that fact once (D5). */
+	if (view.unread) return "";
+	if (!view.published) return ASK_DRAWER_UNAVAILABLE_CLAUSE;
 	if (askSplitIsKnowable(view) && view.waiting > 0 && view.movedOn > 0) {
 		return `${view.waiting} waiting, ${view.movedOn} moved on`;
 	}
@@ -310,9 +414,53 @@ export const askDrawerCountClause = (view: AskQueueView): string => {
  * chip's counts are. It is no longer the chip's clause verbatim: the two surfaces
  * count different things on purpose, and U5 is that difference stated rather than
  * hidden.
+ *
+ * AN EMPTY CLAUSE TAKES THE SEPARATOR WITH IT (design round 1, D5): the unresolved
+ * state has no count and names itself in the body, so the bar reads `This
+ * conversation` alone rather than `This conversation ·` with a dangling seam.
  */
-export const askScopeLine = (scope: AskScope, view: AskQueueView): string =>
-	`${askScopeSubject(scope)} · ${askDrawerCountClause(view)}`;
+export const askScopeLine = (scope: AskScope, view: AskQueueView): string => {
+	const clause = askDrawerCountClause(view);
+	return clause === ""
+		? askScopeSubject(scope)
+		: `${askScopeSubject(scope)} · ${clause}`;
+};
+
+/**
+ * THE HEADER DOOR'S OWN NAME: its verb, its scope, and - while a badge is drawn - the
+ * count it stands for. The tooltip and the control's `aria-label` print this one string,
+ * so the hover text and what a screen reader hears cannot disagree about any of the
+ * three.
+ *
+ * WHY IT LIVES HERE (QA round 2, Q2-1). It was composed inline in `chat-header.tsx`, so
+ * the one string this lane makes a promise about - "the two controls can never be one
+ * string" (UX round 1, U3) - had no CI instrument: the only `Open asks` under `scripts/`
+ * was a stand-in's `textContent`, and a regression would have needed a rig run. Every
+ * other sentence of the lane's copy is in this module where a DOM-free rig can read it,
+ * so this one is too.
+ *
+ * THE SCOPE WORD STAYS AT ZERO (UX round 1's U3, as remediated). Folded in only while a
+ * badge is drawn, the quiet state read the bare `Close asks` - the SAME announced name as
+ * the drawer's own dismiss, two controls for two different acts (one toggles this scope,
+ * one closes the pane). The subject is what keeps the two controls from ever being one
+ * string, and the scope glyph carries the same distinction visually.
+ *
+ * "WAITING OR MOVED ON" RATHER THAN "WAITING" (agent review round 1, M1 = UX round 1,
+ * U1). The number this sentence qualifies is the OUTSTANDING set, which folds a moved-on
+ * ask in, so `waiting` - reserved for the subset that excludes it - would be the wrong
+ * word for it. See `asksAttentionCount` for the decision to count outstanding.
+ */
+export const askHeaderToggleLabel = (args: {
+	open: boolean;
+	scope: AskScope;
+	count: number;
+}): string => {
+	const verb = args.open ? "Close" : "Open";
+	const subject = askScopeSubject(args.scope);
+	return args.count > 0
+		? `${verb} asks \u2014 ${subject}, ${args.count} waiting or moved on`
+		: `${verb} asks \u2014 ${subject}`;
+};
 
 /**
  * The chip's COUNTDOWN, with no subject: `expires in 12m`, or `null` when this
@@ -525,9 +673,9 @@ export const askComposerHoldsSecret = (view: AskQueueView): boolean => {
  * answered "yes" over a CLOSED panel (the chip matched it), so an assertion that the
  * panel is open passed while nothing was. The row item carries
  * `ASK_ITEM_SELECTOR` instead, and there is no surface at all while the flag is
- * false (`chat-content` mounts no drawer; `AskDrawer` also returns `null` for a
- * backend that publishes no `asks`), so this selector answers exactly the question
- * it looks like it answers.
+ * false (`chat-content` mounts no drawer; the drawer's own body draws the unread
+ * line rather than a panel for a frame that publishes no queued asks), so this
+ * selector answers exactly the question it looks like it answers.
  */
 export const ASK_SURFACE_SELECTOR = "[data-lo-ask-surfaces]";
 
@@ -904,8 +1052,41 @@ export const presentAsk = (ask: PendingAsk): AskPresentation => {
  * question during the skew window.
  */
 export type AskQueueView = {
+	/**
+	 * Whether this frame has not been READ yet (`frontend == null`): the fleet pane's
+	 * first commits before its route answers, or a session frame that has not landed.
+	 *
+	 * ITS OWN FIELD BECAUSE IT IS NOT `published: false`. Both carry no rows and both
+	 * are unpublishable-looking, but they are different facts with different honest
+	 * copy: an unread frame is a progress state that WILL resolve, while a resolved
+	 * frame that publishes no engine is a terminal answer about the runtime (design
+	 * round 1, D1 - the two rendered byte-identically, and the second can never
+	 * resolve into anything). It is also the state the auto-close must not act on, for
+	 * the same reason it must not act on a switch to a conversation whose queue has
+	 * not landed yet: until the read answers, nothing may be closed over.
+	 *
+	 * DOM-FREE, like the rest of this module: derived from the frame the caller hands
+	 * in, so a rig can assert the three states without a browser.
+	 */
+	unread: boolean;
 	/** `null` when the backend does not publish asks at all. */
 	asks: PendingAsk[] | null;
+	/**
+	 * Whether this frame's runtime runs the queued-ask engine AT ALL - the WIRE
+	 * FIX's capability contract, read through `askQueuePublished`.
+	 *
+	 * ITS OWN FIELD BECAUSE `tasks === null` CANNOT ANSWER IT ANY MORE. A
+	 * live-but-EMPTY queue legitimately publishes `asks` absent, so `asks === null`
+	 * now covers two different facts - "nothing outstanding" and "this runtime
+	 * cannot answer" - and a surface that needs the second one (the drawer, whose
+	 * chrome must not wear the `All asks settled` verdict over a queue nobody has
+	 * read) has to be able to ask for it without re-deriving the rule.
+	 *
+	 * `false` on an unresolved frame too (`frontend` null): an absent frame is not
+	 * a capable one, which is why the drawer renders its chrome rather than a count
+	 * while the read is in flight.
+	 */
+	published: boolean;
 	rows: AskPresentation[];
 	/** Open asks, from the backend's own count when it published one. */
 	open: number;
@@ -987,15 +1168,53 @@ export const askQueueView = (
 	outcomes?: Readonly<Record<string, AskOutcome | undefined>>,
 ): AskQueueView => {
 	const asks = sessionAsks(frontend);
+	const published = askQueuePublished(frontend);
+	const unread = frontend == null;
 	if (asks === null)
 		return {
 			asks: null,
+			published,
+			unread,
 			rows: [],
-			open: 0,
+			/*
+			 * THE TALLY IS STILL READ, and this is the frame that made the field
+			 * necessary: with `asks` absent the rows say nothing, but a live queue
+			 * states its own count (`asks_open: 0` for the empty-but-live case), and a
+			 * count of zero read as a VALUE is what lets the drawer's chrome say
+			 * `All asks settled` truthfully - while a frame that published no tally at
+			 * all (`published` false) must not be given that verdict (see
+			 * `askDrawerCountClause`).
+			 *
+			 * AND A NONZERO TALLY HERE IS THE WIRE BOUND'S OWN FRAME (remediation round
+			 * 1, R1): `_bound_asks_in_place` drops the row list while deliberately
+			 * keeping `asks_open`, so the count is the ONLY thing this frame carries and
+			 * every reader below has to take it as the statement of record - it must not
+			 * be rendered as empty, and it must not be closed over.
+			 */
+			open: typeof frontend?.asks_open === "number" ? frontend.asks_open : 0,
 			waiting: 0,
 			movedOn: 0,
 			total: 0,
-			truncated: false,
+			/*
+			 * THE FRAME'S OWN FACT, NOT A LITERAL (R1). Hard-coding `false` here discarded the
+			 * one field that says the LIST is incomplete, which is exactly the frame above
+			 * whose rows were dropped.
+			 *
+			 * WHAT IT ACTUALLY MOVES, CORRECTED IN ROUND 2 (agent review R6). The claim used
+			 * to be that the flag-less version left the surfaces that read `truncated` with
+			 * "no way to say so" - but for `{asks: null, asks_open: N > 0}` they had nothing to
+			 * say either way: `askSplitIsKnowable` is `!truncated && open <= waiting + movedOn`,
+			 * and a rowless frame has `waiting = movedOn = 0` against `open = N`, so the clause
+			 * is `N outstanding` whichever way this flag reads. THE ONE SHAPE THE FLAG MOVES
+			 * IS A ROWLESS FRAME WITH A ZERO TALLY: there `0 outstanding` and `All asks settled`
+			 * are both arithmetically available, and the frame's own truncation is what says the
+			 * list - not the queue - is what is missing, so the tally is the honest clause.
+			 * (The untruncated zero-tally frame keeps `All asks settled`, which is the state the
+			 * wire "made": a live queue with nothing outstanding.) Fidelity is the other half
+			 * of the reason, and it is why this is a fix at all: a frame's own field should not
+			 * be hard-coded to a fact, and the published branch below reads the same field.
+			 */
+			truncated: frontend?.asks_truncated === true,
 			urgent: false,
 			delivering: 0,
 			soonestExpiryMs: null,
@@ -1028,6 +1247,9 @@ export const askQueueView = (
 		.filter((at) => Number.isFinite(at) && at > 0);
 	return {
 		asks,
+		/* An array IS the capability, so this is `published` and not a second read. */
+		published,
+		unread,
 		rows,
 		/*
 		 * The backend's published count wins over the derived one, and the reason

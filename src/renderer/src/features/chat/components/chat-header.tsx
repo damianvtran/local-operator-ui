@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
 import type { AskScope } from "../ask-queue";
-import { askScopeSubject } from "../ask-queue";
+import { askHeaderToggleLabel } from "../ask-queue";
 import { canvasToggleCap, isCanvasTogglePress } from "../canvas-shortcut";
 import { archiveControlLabel } from "../chat-archived";
 import { useSessionCommand } from "../pickers/use-picker-backend";
@@ -510,13 +510,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const asksBadgeDrawn = asksAttentionCount > 0;
 	const asksBadgeText = countLabel(asksAttentionCount, 9);
 	/*
-	 * WHICH SET THE NUMBER DESCRIBES, in the surface's own words (`askScopeSubject`)
-	 * rather than a second spelling: the drawer's chrome bar prints the same noun
-	 * over the rows, so the tooltip that promised "this conversation" and the bar
-	 * that says "This conversation" cannot drift into two names for one queue.
-	 */
-	const asksSubject = askScopeSubject(asksScope);
-	/*
 	 * THE SCOPE IS LEGIBLE ON THE CONTROL, not only under the pointer (UX round 1,
 	 * U3). Two controls that open two different queues used to render identical
 	 * chrome - one glyph, one number - so which queue the badge described could only
@@ -531,20 +524,23 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const AsksScopeIcon =
 		asksScope === "fleet" ? MessagesSquare : MessageCircleQuestion;
 	/* ONE DERIVATION, TWO READERS: the tooltip and the announced name print the same
-	 * sentence, so the hover text and what a screen reader hears cannot disagree
-	 * about the verb, the scope or the number. `asksSubject` is folded in only while
-	 * a badge is drawn - a quiet control must not spend the scope word on an empty
-	 * set, which is the same rule the row it replaces kept.
+	 * sentence, so the hover text and what a screen reader hears cannot disagree about
+	 * the verb, the scope or the number.
 	 *
-	 * "WAITING OR MOVED ON" RATHER THAN "WAITING" (agent review round 1, M1 = UX
-	 * round 1, U1). The number this sentence qualifies is the OUTSTANDING set, which
-	 * folds a moved-on ask in; "waiting" is reserved here for the subset that
-	 * excludes it. See `asksAttentionCount` for the decision to count outstanding.
+	 * THE SENTENCE ITSELF IS THE CONTRACT MODULE'S (QA round 2, Q2-1). It used to be
+	 * composed here, which left the one string this lane makes a promise about - "the
+	 * two controls can never be one string" - with no CI instrument (the only `Open
+	 * asks` under `scripts/` was a stand-in's `textContent`). `askHeaderToggleLabel`
+	 * is now that composition beside every other sentence of the lane's copy, and
+	 * `scripts/ask-queue.test.mjs` pins its four shapes; this block keeps only the
+	 * reason the two readers share it. The `\u2014` and the subject's own words are the
+	 * function's, so the tooltip and the bar cannot drift into two names for one queue.
 	 */
-	const asksLabel =
-		asksAttentionCount > 0
-			? `${asksOpen ? "Close" : "Open"} asks \u2014 ${asksSubject}, ${asksAttentionCount} waiting or moved on`
-			: `${asksOpen ? "Close" : "Open"} asks`;
+	const asksLabel = askHeaderToggleLabel({
+		open: asksOpen,
+		scope: asksScope,
+		count: asksAttentionCount,
+	});
 
 	/*
 	 * Closing the canvas put focus back on `<body>`, which is the top of the
