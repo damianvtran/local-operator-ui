@@ -192,7 +192,20 @@ export function identityMenuBands(input: {
 
 	const remembered = recents
 		.map((name) => rows.find((row) => row.value === name))
-		.filter((row): row is PickerOption => row !== undefined);
+		.filter((row): row is PickerOption => row !== undefined)
+		/*
+		 * THE RECENTS BAND IS A SHORTCUT, NOT THE ROSTER (review round 1, U6).
+		 * A remembered row the team's rule refuses is dropped HERE, and only
+		 * here: All agents keeps every row with its reason on it, because the
+		 * roster's completeness is the contract there. The band's own contract is
+		 * one-pick speed, and on a team-led chat the ring is full of leaves, so
+		 * unfiltered the band is a wall of refusals the user must read past to
+		 * reach anything - the measured `recents-agent-open` frame, where every
+		 * band row was refused and `coder` appeared twice. Collapsing the band
+		 * entirely when nothing settable remains (the empty case below) is the
+		 * same judgment: an empty `Recent agents` heading reads as a fault.
+		 */
+		.filter((row) => !row.disabled);
 
 	if (remembered.length === 0 || remembered.length === rows.length) {
 		return {
@@ -215,6 +228,52 @@ export function identityMenuBands(input: {
 }
 
 /**
+ * Where the highlight starts, and where a filter re-places it (review round 1,
+ * D2/U1).
+ *
+ * `picker-host` seeds row zero and walks from there; on this panel row zero is
+ * routinely a row the team's rule refuses, so the panel opened on the one row
+ * Enter cannot act on - and a filter keystroke re-placed it there again ("type
+ * rev, one refused hit, Enter does nothing"). The rule here: the CURRENT row
+ * when it is settable (the identity is where the eye already is), else the
+ * first settable row, and only when NOTHING settable exists does the highlight
+ * fall back to the top - which is exactly when the footer carries the way out
+ * (see `identityMenuFooter`).
+ */
+export function identityMenuSeedActive(rows: readonly PickerOption[]): number {
+	const current = rows.findIndex((row) => row.current && !row.disabled);
+	if (current !== -1) return current;
+	const settable = rows.findIndex((row) => !row.disabled);
+	return settable === -1 ? 0 : settable;
+}
+
+/**
+ * What the panel SAYS when Enter lands on a row the rule refuses (review
+ * round 1, D2/U1). The sentence is deliberately short: the row's own reason is
+ * already in its accessible name (the description slot), and the way out is
+ * the footer's sentence whenever no settable row is in view - so the
+ * announcement adds the one fact neither of those carries, that the refusal
+ * just happened to a specific row.
+ */
+export function identityMenuRefusalAnnouncement(label: string): string {
+	return `${label} cannot take the seat.`;
+}
+
+/*
+ * The footer's two resolutions, for a list where nothing is settable (review
+ * round 1, D1). Candidates for the design round's copy pass, like the caption:
+ * what must survive review is that each sentence NAMES an exit that exists -
+ * the search is editable, and the team picker is one control over - and that
+ * neither promises the `No team` detach, which is the core half's verb and not
+ * this app's yet. The untyped variant is an edge (a roster carrying no manager
+ * row at all), but it is reachable, so it states the one exit that remains.
+ */
+export const IDENTITY_MENU_NO_SETTABLE_TYPED =
+	"No profile here can take the seat — clear the search, or switch the team.";
+export const IDENTITY_MENU_NO_SETTABLE =
+	"No profile can take the seat — switch the team.";
+
+/**
  * What the panel's footer says, or `null` for a list that fits.
  *
  * It is shown when there is something to say: the list overflows the bound
@@ -231,17 +290,149 @@ export function identityMenuFooter(input: {
 	kind: ProfileRecencyKind;
 	query: string;
 	overflowing: boolean;
+	/** Whether any row in the visible list is settable (issue #861's rule). */
+	hasSettable: boolean;
 }): string | null {
-	const { view, kind, query, overflowing } = input;
+	const { view, kind, query, overflowing, hasSettable } = input;
 	const noun = kind === "team" ? "teams" : "agents";
 	const typed = query.trim();
 
 	if (typed !== "") {
 		if (view.matches === 0) return null;
+		/*
+		 * A FILTERED VIEW WITH NO WAY OUT SAYS SO, INSTEAD OF THE COUNT (review
+		 * round 1, D1): "4 of 150 agents match" is a count over a list where
+		 * nothing can be picked, and the count is not the answer the user needs.
+		 * The resolution names the exits that exist; see the constants above.
+		 */
+		if (!hasSettable) return IDENTITY_MENU_NO_SETTABLE_TYPED;
 		return view.matches === view.total
 			? `${view.total} ${noun} match`
 			: `${view.matches} of ${view.total} ${noun} match`;
 	}
 	if (!overflowing) return null;
+	/* The untyped edge: the whole visible roster is refused. See above. */
+	if (!hasSettable) return IDENTITY_MENU_NO_SETTABLE;
 	return `${view.total} ${noun} in all — scroll, or type to filter`;
+}
+
+/*
+ * ---------------------------------------------------------- the team's
+ * constraint on the agent slot (issue #861)
+ *
+ * A team-bound chat is run by the team's MANAGER, so the agent slot is not
+ * free: it may hold the team's manager, or a profile that can delegate
+ * (`delegate === true`). Anything else is a persona the manager brief
+ * contradicts. The rule is the runtime's own acceptance predicate, which the
+ * core half (damianvtran/local-operator#2014) enforces on its side: it refuses
+ * an incompatible pick, and normalises an incompatible pairing at attach time.
+ * The UI mirrors the predicate - it does not get a second opinion about it,
+ * and both the panel's per-row marks and the header's cue come through the
+ * functions below so the two surfaces cannot drift.
+ *
+ * WHY THE PREDICATE IS ONE FUNCTION. `settable(name) = name === teamRow.manager
+ * || row.delegate === true`, in one place, because two copies of it would
+ * eventually disagree in exactly the case the rule exists for (the delegating
+ * profile - legal to hold the seat, and the case a name-inequality test gets
+ * wrong).
+ *
+ * WHAT THE COPY IS A CANDIDATE FOR. The caption and the per-row reason are
+ * written to be self-explaining and are marked as copy for the design round to
+ * weigh against the core half's refusal wording - the predicate is frozen here,
+ * not the prose.
+ */
+
+/**
+ * The acceptance predicate: whether `name` may hold the agent seat of a chat
+ * whose team is run by `manager`.
+ *
+ * The team's manager is ALWAYS settable, whatever its own flag reads - the
+ * manager runs the team, so the manager can always take its own seat. A
+ * `delegate === true` profile is settable beside it. Everything else - an
+ * explicit `false`, or a row whose catalogue did not carry the field at all -
+ * is not, which is the `delegate !== true` half of the rule stated as one
+ * comparison.
+ *
+ * `manager` is a plain string comparison and is deliberately NOT defaulted
+ * here: a caller that does not know the team's manager must not constrain at
+ * all (see `identityAgentConstraint`), rather than compare against an invented
+ * default. A null/undefined manager therefore yields "delegate-only", which no
+ * caller in this tree applies without knowing the manager first.
+ */
+export function identityAgentSettable(input: {
+	name: string;
+	manager: string | null | undefined;
+	delegate: boolean | null | undefined;
+}): boolean {
+	return input.name === input.manager || input.delegate === true;
+}
+
+/**
+ * The bound team's acceptance rule, as the panel states and applies it.
+ *
+ * `manager` is the row's own manager (or the runtime's documented default,
+ * `DEFAULT_TEAM_MANAGER`, when the row carries none) and `caption` is the
+ * sentence the agent panel shows above its list. `null` when the manager is
+ * not KNOWN - no team bound, or a catalogue that has not answered yet - which
+ * is what keeps a constraint from being applied (or explained) against data
+ * this app does not have; a wrong "only these profiles" mark is worse than a
+ * missing one, because it is a claim about a team rather than about a load.
+ */
+export type IdentityAgentConstraint = {
+	/** The profile the team's manager owns: always settable. */
+	manager: string;
+	/** The rule, in the register the panel's own sentences use. */
+	caption: string;
+};
+
+/**
+ * The rule sentence, with the team's own NAME (its label when it has one,
+ * the slug otherwise - the same string the chip shows).
+ *
+ * Copy is a candidate for the design round (see the section note); the shape
+ * to keep is that the sentence NAMES the team and states both halves of the
+ * rule - led by the manager, and the manager and delegating profiles may also
+ * take the seat. The vocabulary is `profiles that can delegate` rather than
+ * the first draft's `coordinating profiles` (review round 1, U5/N2): the
+ * product labels rows `role`/`specialist` and the field behind the rule is
+ * `delegate`, and nothing in this app says "coordinating".
+ */
+export function identityAgentConstraintCaption(teamLabel: string): string {
+	return `${teamLabel} is led by its manager; only the manager and profiles that can delegate may take this seat.`;
+}
+
+/**
+ * The per-row reason a constrained row is not settable, shown in the row's
+ * description slot so the disable is never silent (`PickerOption.disabled`'s
+ * own contract: "still listed so the reason is visible").
+ *
+ * A candidate for the design round, like the caption - and SHORT on purpose
+ * (review round 1, D4/U3): the first draft repeated the caption verbatim and
+ * the row's description slot clips at ~43 characters, so the rendered line cut
+ * off exactly the half that says who can take the seat, and it also displaced
+ * the row's own description. This sentence survives the clip and adds what the
+ * caption does not - what THIS row would need - while the rule itself keeps
+ * one home, the caption.
+ */
+export const IDENTITY_AGENT_NOT_SETTABLE_REASON =
+	"Needs a delegating profile here.";
+
+/**
+ * The constraint a bound team puts on the agent panel, or `null` when there is
+ * nothing to apply: no team, or a manager that is not known yet.
+ *
+ * `manager` arrives as the team row's own value; a row that carries none is
+ * normalised by the caller (the view resolves it to the runtime's default
+ * before this). `teamLabel` is the name the sentence uses - `No team` never
+ * reaches the caption because a null manager short-circuits first.
+ */
+export function identityAgentConstraint(input: {
+	teamLabel: string;
+	manager: string | null;
+}): IdentityAgentConstraint | null {
+	if (input.manager === null) return null;
+	return {
+		manager: input.manager,
+		caption: identityAgentConstraintCaption(input.teamLabel),
+	};
 }
