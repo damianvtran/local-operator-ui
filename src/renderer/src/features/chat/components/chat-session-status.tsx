@@ -141,7 +141,8 @@ export function ChatAsksOutstanding({
 }
 
 /**
- * THE RUNNING-SUBAGENT MARK: a filled dot in the liveness ink (issue #840).
+ * THE RUNNING-SUBAGENT MARK: three equal beads in the liveness ink - the
+ * "trio" (issue #840; the trio itself operator-ACKed 2026-10-06).
  *
  * WHY IT MOVED OFF THE GLYPH. It used to be `Share2` in `text-accent`, at BOTH
  * this component's `delegating` rung and the sidebar row's own running mark, so
@@ -152,51 +153,97 @@ export function ChatAsksOutstanding({
  * vocabulary entirely - the mark is a SHAPE now, not a glyph, so there is no
  * control for it to be mistaken for.
  *
- * IT IS A DOT, IN THE APP'S OWN DOT IDIOM: a `rounded-full` span at `size-2` in
- * the ink it inherits (`bg-current`). The 8px DOT is the constant - it is drawn
- * at the same absolute size on both surfaces - while the BOX around it is the
- * caller's: the sidebar row passes `size-3.5` (the icon ramp's `sm` step the mark
- * already occupied, so the row's footprint and the mark's NOTICEABILITY - the
- * 2026-09-29 fix that made running subagents visible at all - are both
- * unchanged), and the `delegating` rung passes `size-4` because it fills the
- * status slot every other code's glyph occupies (agent review round 1, N2: this
- * note used to claim the `size-3.5` box unconditionally, which is true of one
- * call site and not the other). The idiom is the one `chat-status-strip.tsx`,
- * `chat-header-device.tsx` (its `StateDot`), `settings-group-header.tsx` and
- * `audio-recording-indicator.tsx` already spend on "a small round fact"; this
- * one differs only in taking its colour from the caller's text ink rather than
- * naming a `bg-*` role, so the liveness ink stays the caller's to state.
+ * WHY IT IS A TRIO AND NOT A DOT. The shape shipped as a single filled disc
+ * (`size-2 rounded-full bg-current`) and the operator's report on THAT is the
+ * change this docstring now records: one disc at 8px states "something is here"
+ * and not "CHILDREN are here", and it sits in a family the app already spends
+ * on unrelated facts (unread, device presence, recording). Three equal beads
+ * state plurality - the mark is about the row's subagents - without inventing a
+ * parent figure: the ROW is the parent, so a centred larger apex over a pair
+ * (the head-and-shoulders read) would draw a parent that is already on screen as
+ * the row itself. `Users`, the collision the design round named, is exactly that
+ * figure, and three equal beads share no silhouette with it.
  *
- * THE TWO SLOTS, AND WHY THEY DIFFER (design round 1's D7). The same dot is the
+ * THE GEOMETRY, AND THE LESSON THAT FIXED IT. Three equal filled circles on the
+ * 24-unit grid - `c(12,6.8) r3.9`, `c(7,17.4) r3.9`, `c(17,17.4) r3.9` - in the
+ * ink they inherit (`currentColor`), inside an `svg viewBox="0 0 24 24"` that
+ * fills the caller's box. THE SPACING IS THE DESIGN, NOT A DETAIL: the round-1
+ * candidate was the same beads with a larger apex and 4.43px between the lower
+ * centres against radii summing to 4.32px, so the children OVERLAPPED by 0.12px
+ * at 14px - they fused into one mass whose component count flipped between 1 and
+ * 2 with the box's sub-pixel phase, which is not a property a shipped indicator
+ * can carry. These three measure n=3 at every one of the 25 phases and at every
+ * real x the app can place the box (measured on captured frames: x159 at the
+ * 240px floor, x177, x199 and x36 in the leading slot). Count stability across
+ * phases is the acceptance property; closing the gap to buy mass breaks it.
+ *
+ * THE INK IS `currentColor`, the way the disc took `bg-current`: the caller
+ * states `text-accent` (the liveness ink `busy` uses), so the ink chain above
+ * stays the single place a code's colour is decided, and the mark wears whatever
+ * the family of codes paints there. THE SILHOUETTE IS WHAT SEPARATES IT FROM THE
+ * UNREAD MARK, not the colour: `accent` and `success` are ΔE00 0.00 in three
+ * palettes (`monokai`, `everforest`, `everforestLight` - re-derived over all
+ * fifty-nine), so on those grounds a three-bead cluster and the `Check` beside
+ * it are told apart by shape alone, which they are.
+ *
+ * THE BOX IS THE CALLER'S; THE MARK FILLS IT. `size-full` on the svg against the
+ * caller's box gives ink of about 10x10px in the sidebar row's `size-3.5` (the
+ * icon ramp's `sm` step the mark already occupied, so the row's footprint and
+ * the mark's NOTICEABILITY - the 2026-09-29 fix that made running subagents
+ * visible at all - are both unchanged), and about 12x12px in the `delegating`
+ * rung's `size-4`, which fills the status slot every other code's glyph occupies
+ * (agent review round 1, N2: this note used to claim the `size-3.5` box
+ * unconditionally, which is true of one call site and not the other). Coverage
+ * mass is 91-94% of the discarded dot's on the same ground, so noticeability is
+ * held rather than traded.
+ *
+ * THE TWO SLOTS, AND WHY THEY DIFFER (design round 1's D7). The same mark is the
  * `delegating` rung's PRIMARY mark, drawn in the LEADING status slot where every
  * status code's glyph goes, and the sidebar row's running mark, drawn in the
  * TRAILING slot after the title. That is deliberate and the frames show it
- * working: in the rung the dot says what the PARENT's own turn is doing
- * (delegated work, none of it the row's), and in the row it says what the row's
- * CHILDREN are doing beside the row's own act buttons. One vocabulary, two
- * meanings that a reader never has to tell apart, because a row is in one state
- * or the other. The position is the only thing separating them, so the local
- * text is the caller's `sr-only` name (`delegating`, or the count sentence) -
- * recorded here so the next reader does not re-litigate the slot.
+ * working: in the rung it says what the PARENT's own turn is doing (delegated
+ * work, none of it the row's), and in the row it says what the row's CHILDREN
+ * are doing beside the row's own act buttons. One vocabulary, two meanings that
+ * a reader never has to tell apart, because a row is in one state or the other.
+ * The position is the only thing separating them, so the local text is the
+ * caller's `sr-only` name (`delegating`, or the count sentence) - recorded here
+ * so the next reader does not re-litigate the slot.
+ *
+ * IT IS STATIC, and that is a rule rather than an omission: `busy` owns the
+ * spinner in the leading slot, and two animated marks in one column would make
+ * two different states read as one motion. A running child is a fact, not a
+ * progress bar.
  *
  * THE COLLISION CHECK, against the status family this slot draws (SC 1.4.11 - the
- * mark is an 8px disc inside the sidebar row's 14px box, the reading the
- * contract's GRAPHICS row is derived from, against
- * `surface`/`row-hover`/`row-selected`):
+ * mark's ink is `accent` inside the sidebar row's 14px box, on
+ * `surface`/`row-hover`/`row-selected`, which is the pair the contract's
+ * GRAPHICS row is derived from; worst case 4.24:1, `tokyoNight` on
+ * `row-selected`, clearing the 3:1 graphic floor):
  *
  *  - `Circle` (the resting ring) and `LoaderCircle` (`busy`) are RINGS - outlined,
- *    1.5px of `ink-dim`/`accent` with an interior the ground shows through. A
- *    SOLID disc shares no silhouette with either, at 8px or at 14px.
+ *    1.5px of `ink-dim`/`accent` with an interior the ground shows through. Three
+ *    SOLID beads share no silhouette with either, at 14px or at 16px.
  *  - `Check`, `Clock`, `MessageSquare`, `Hourglass`, `Pause` and
- *    `EqualApproximately` are all angular or stroke-built; none is a disc.
+ *    `EqualApproximately` are all angular or stroke-built; none is a cluster of
+ *    discs.
+ *  - `Users` is stroked, muted and a two-figure glyph, and the trio is three
+ *    equal solid beads with no apex - the figure read the design round refused.
  *  - the amber class (`CircleAlert`, `Clock`) is where the module's own
- *    `wedged` note already forbids a second RING; a dot is not one.
+ *    `wedged` note already forbids a second RING; the trio is not one.
+ *
+ * THE ONE RESIDUAL PUT ON THE RECORD, not argued away: three accent beads is also
+ * the arrangement of a decorative cluster (a sparkle, a "∴"). It does not appear
+ * at 1x in the two frames where the read is actually made (the list, and the
+ * status matrix), and no motif in this family escapes it; it is accepted given
+ * the brief's "subtle".
  *
  * IT IS DIGIT-FREE. The count lives in `status.label` (the backend's
  * "2 subagents running - 1 queued"), which this component renders into its
  * `sr-only` name and the row's button reads for its tooltip; a numeral beside
- * the dot would be read text on a 12px step that `accent` cannot carry on every
- * ground the row can sit on (see `ChatAsksOutstanding`'s D1 note).
+ * the mark would be read text on a 12px step that `accent` cannot carry on every
+ * ground the row can sit on, and it would reflow the row as children start and
+ * finish (see `ChatAsksOutstanding`'s D1 note). The count's home is the tooltip
+ * and the `sr-only` sentence, where the exact numbers already are.
  *
  * KEEPING IT STRUCTURED. Both call sites render THIS component, so the design
  * round can iterate one place and the two surfaces cannot drift apart again.
@@ -205,7 +252,14 @@ export function SubagentRunningMark({
 	className,
 	mark,
 }: {
-	className?: string;
+	/**
+	 * REQUIRED, because the box is load-bearing rather than decorative (agent review round 1, NIT 1). The
+	 * mark is an `size-full` svg now, so `width/height: 100%` needs a definite box to resolve against -
+	 * the disc it replaced was `size-2` and sized itself. Both call sites pass one (the sidebar row's
+	 * `size-3.5`, the `delegating` rung's `size-4`), and `cn` keeps the caller's class authoritative; the
+	 * type says so rather than leaving the next call site to discover an invisible mark at runtime.
+	 */
+	className: string;
 	/** The rig/test hook (`data-subagent-mark`). Passed only where the mark stands for the ROW's own running subagents - the `delegating` rung shares the component but not the hook. */
 	mark?: string;
 }) {
@@ -216,11 +270,24 @@ export function SubagentRunningMark({
 			className={cn("flex shrink-0 items-center justify-center", className)}
 		>
 			{/*
-			 * `bg-current`, not a `bg-*` role: the dot wears the INK its caller states
-			 * (`text-accent` - the liveness ink, the one `busy` uses), so the ink chain
-			 * above stays the single place a code's colour is decided.
+			 * `currentColor`, not a `bg-*`/`fill-*` role: the beads wear the INK their
+			 * caller states (`text-accent` - the liveness ink, the one `busy` uses), so
+			 * the ink chain above stays the single place a code's colour is decided.
+			 * `size-full` hands the box's size straight to the viewBox, so the caller's
+			 * class alone decides how big the mark is drawn (see the docstring).
 			 */}
-			<span className="size-2 rounded-full bg-current" />
+			<svg aria-hidden="true" viewBox="0 0 24 24" className="size-full">
+				{/*
+				 * THE THREE BEADS, AND THE SPACING IS THE DESIGN: equal radii, 24-grid
+				 * units, centre distances kept above the radii sum so the children never
+				 * fuse (the round-1 defect - see the docstring). Do not close the gap to
+				 * make the mark heavier, and do not give the apex a larger radius: the
+				 * equal triad IS the statement that these are the children.
+				 */}
+				<circle cx="12" cy="6.8" r="3.9" fill="currentColor" />
+				<circle cx="7" cy="17.4" r="3.9" fill="currentColor" />
+				<circle cx="17" cy="17.4" r="3.9" fill="currentColor" />
+			</svg>
 		</span>
 	);
 }

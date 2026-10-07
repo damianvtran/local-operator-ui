@@ -1,0 +1,193 @@
+{
+  "probe": "docs/evidence/ask-drawer-stuck/harness/probe-switch-flash.mjs",
+  "what": "How many painted frames the drawer's chrome can occupy on the conversation being entered, and how much the layout moves while it is there. ONE READING, NOT A CONSTANT (design/QA round 1, Q4): the close waits for the NEW conversation's frame to land, so the count is a function of how fast that read answers on the machine and under the load it ran on - 4 frames at fleet load ~30, 8 at load ~58. While that frame is in flight the drawer reads UNREAD (the bar carries NO clause; the body reads `Reading the asks\u2026`) and must not close, because a switch to a conversation that DOES have asks is indistinguishable for exactly that interval.",
+  "viewport": {
+    "width": 1380,
+    "height": 900
+  },
+  "framesSampled": 92,
+  "framesWithSurface": 8,
+  "framesOnNewConversationWithSurface": 6,
+  "framesOnNewConversationWithSlot": 6,
+  "theReflowWhileTheSlotIsClaimed": {
+    "why": "design round 1, D3: the slot is what claims the 560px column, so the entered conversation is painted inside the narrowed pane for as long as the drawer is up and re-laid out when it closes. Presence alone could not say how big that move is; the composer's own rect does, which is why every mark records it.",
+    "composerWhileSlotClaimed": {
+      "x": 284,
+      "w": 432
+    },
+    "composerSettled": {
+      "x": 415,
+      "w": 810
+    }
+  },
+  "firstMarksOnTheNewConversation": [
+    {
+      "t": 50,
+      "surface": true,
+      "hash": "bbbb11112222",
+      "slot": true,
+      "rows": 0,
+      "scope": "This conversation",
+      "composer": {
+        "x": 284,
+        "w": 432
+      }
+    },
+    {
+      "t": 62,
+      "surface": true,
+      "hash": "bbbb11112222",
+      "slot": true,
+      "rows": 0,
+      "scope": "This conversation",
+      "composer": {
+        "x": 284,
+        "w": 432
+      }
+    },
+    {
+      "t": 66,
+      "surface": true,
+      "hash": "bbbb11112222",
+      "slot": true,
+      "rows": 0,
+      "scope": "This conversation",
+      "composer": {
+        "x": 284,
+        "w": 432
+      }
+    },
+    {
+      "t": 79,
+      "surface": true,
+      "hash": "bbbb11112222",
+      "slot": true,
+      "rows": 0,
+      "scope": "This conversation",
+      "composer": {
+        "x": 284,
+        "w": 432
+      }
+    },
+    {
+      "t": 98,
+      "surface": true,
+      "hash": "bbbb11112222",
+      "slot": true,
+      "rows": 0,
+      "scope": "This conversation",
+      "composer": {
+        "x": 284,
+        "w": 448
+      }
+    },
+    {
+      "t": 117,
+      "surface": true,
+      "hash": "bbbb11112222",
+      "slot": true,
+      "rows": 0,
+      "scope": "This conversation",
+      "composer": {
+        "x": 284,
+        "w": 474
+      }
+    },
+    {
+      "t": 145,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": "",
+      "composer": {
+        "x": 415,
+        "w": 810
+      }
+    },
+    {
+      "t": 152,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": "",
+      "composer": {
+        "x": 415,
+        "w": 810
+      }
+    },
+    {
+      "t": 164,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": "",
+      "composer": {
+        "x": 415,
+        "w": 810
+      }
+    },
+    {
+      "t": 181,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": "",
+      "composer": {
+        "x": 415,
+        "w": 810
+      }
+    },
+    {
+      "t": 197,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": "",
+      "composer": {
+        "x": 415,
+        "w": 810
+      }
+    },
+    {
+      "t": 214,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": "",
+      "composer": {
+        "x": 415,
+        "w": 810
+      }
+    },
+    {
+      "t": 231,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": "",
+      "composer": {
+        "x": 415,
+        "w": 810
+      }
+    },
+    {
+      "t": 248,
+      "surface": false,
+      "hash": "bbbb11112222",
+      "slot": false,
+      "rows": 0,
+      "scope": "",
+      "composer": {
+        "x": 415,
+        "w": 810
+      }
+    }
+  ]
+}
