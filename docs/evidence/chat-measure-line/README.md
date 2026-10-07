@@ -8,6 +8,16 @@ remediation) and `after/` is this branch's head.
 The complaint, verbatim from the issue: the 72px bar floating in the transcript's
 empty margin *"reads as a mistake"* rather than as the column's boundary.
 
+**THIS SET IS NOW A HISTORICAL RECORD, and it says so rather than going quietly
+stale.** It is the before/after evidence for #848's bar-to-line step, and it is
+kept as that: the `after/` half shows the full-height 2px rule those commits
+shipped, which the hover-cue pass later replaced with the reference's fade-bar
+texture (`docs/evidence/chat-measure-hover/` is that change's pair, and its
+`before/` half is the rule this set's `after/` half shows). Nothing in this set is
+wrong and nothing was re-captured: a comparison between two trees is evidence
+about the step it was taken for, and re-shooting it against a head that no longer
+carries either of those cues would destroy the record it exists to be.
+
 ## How to reproduce
 
 ```sh

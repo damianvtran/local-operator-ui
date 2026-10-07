@@ -342,6 +342,117 @@ test("the band and the line are placed from the same edge, the band outboard", a
 });
 
 /*
+ * THE CUE'S PAINT (this pass). The line's ink is a linear gradient rather than a
+ * background-colour class, because the bar is a SHORT run of ink inside a
+ * full-height element - and the roles it is built from are the theme's own
+ * custom properties, so the paint cannot drift from the token the divider family
+ * uses. The element's geometry is pinned with it: the attribute, the placement
+ * classes and the band's containment are all read off THIS node, so a
+ * bar-sized element would move every one of those readings with the pointer's Y.
+ *
+ * The accent half is exercised by a synthetic press rather than read out of the
+ * source: `onMouseDown` sets the dragging state before any pointer travel, which
+ * is the state the drag frame photographs.
+ */
+test("the state line paints the token-role fade bar inside a full-height element", async () => {
+	const { separator } = await renderHandle({});
+	const line = separator.parentElement?.querySelector(
+		'[data-lo-chat-measure-line="right"]',
+	);
+	assert.ok(line, "the handle renders its state line");
+	assert.match(line.className, /h-full/);
+	assert.match(line.className, /w-0\.5/);
+	assert.match(line.className, /transition-opacity/);
+	assert.doesNotMatch(
+		line.className,
+		/bg-control|bg-accent/,
+		"the roles are gradient stops now, not background classes",
+	);
+	const atRest = line.getAttribute("style") ?? "";
+	assert.match(atRest, /linear-gradient\(to bottom/);
+	assert.match(atRest, /var\(--color-control\)/);
+	assert.doesNotMatch(
+		atRest,
+		/var\(--color-accent\)/,
+		"the resting role is `control`, the divider family's grabbable step",
+	);
+
+	await act(async () => {
+		separator.dispatchEvent(
+			new globalThis.window.MouseEvent("mousedown", {
+				bubbles: true,
+				detail: 1,
+				clientX: 100,
+			}),
+		);
+	});
+	const whileDragging =
+		separator.parentElement
+			?.querySelector('[data-lo-chat-measure-line="right"]')
+			?.getAttribute("style") ?? "";
+	assert.match(
+		whileDragging,
+		/var\(--color-accent\)/,
+		"a held drag promotes the cue to `accent`",
+	);
+
+	/*
+	 * THE PUBLICATION, AND ITS REMOVAL (agent review round 1's R1-2). The
+	 * component's header singles out the release rule as its one deliberate
+	 * departure from the reference - the core returns to the seat the gesture began
+	 * on rather than holding the last hand position - and it was asserted nowhere:
+	 * the rig recorded the step and every assertion skipped it. jsdom has no layout,
+	 * so the VALUE here is degenerate (the wrapper's `clientHeight` is 0, so the
+	 * clamp answers 0); what is pinned is exactly the part the rule is about, that
+	 * a held gesture publishes and a released one takes the publication back.
+	 */
+	const wrapper = separator.parentElement;
+	await act(async () => {
+		globalThis.window.dispatchEvent(
+			new globalThis.window.MouseEvent("mousemove", {
+				bubbles: true,
+				clientX: 200,
+				clientY: 60,
+			}),
+		);
+	});
+	assert.notEqual(
+		wrapper?.style.getPropertyValue("--lo-chat-measure-cue-y"),
+		"",
+		"a gesture under way publishes the core's Y",
+	);
+
+	/*
+	 * AND THE GESTURE IS RELEASED. The component only detaches its `window`
+	 * listeners and restores `userSelect` on `mouseup`, and this file's `window` is
+	 * shared by every test in it - so a press that is never released leaves a live
+	 * handler behind for the two later tests that dispatch real `mousemove`s
+	 * (agent review round 1's R1-3: benign today because the live handler
+	 * overwrites what the stale one writes, and exactly the cross-test coupling
+	 * this file exists to refuse).
+	 */
+	await act(async () => {
+		separator.dispatchEvent(
+			new globalThis.window.MouseEvent("mouseup", {
+				bubbles: true,
+				detail: 1,
+				clientX: 100,
+			}),
+		);
+	});
+	assert.equal(
+		document.body.style.userSelect,
+		"",
+		"the release gives the page its selection back",
+	);
+	assert.equal(
+		wrapper?.style.getPropertyValue("--lo-chat-measure-cue-y"),
+		"",
+		"the release removes the publication, so the bar returns to its own seat",
+	);
+});
+
+/*
  * THE TOOLTIP'S ANCHOR (agent review round 1's M1): a bounded 16px box at the
  * hand's Y, a sibling of the widget rather than the widget itself - anchored to
  * the separator, the panel is placed against the content column's own height and

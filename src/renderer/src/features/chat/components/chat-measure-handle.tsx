@@ -8,25 +8,44 @@
  * taken here and two are deliberately not, and the differences are the
  * interesting part:
  *
- *  - **The cue is the app's ONE resize language, and that is a REVISION.** It
- *    was a short bar centred on the pointer's Y, borrowed from
- *    `deepseek-harness`; the operator's report (issue #848, 2026-10-06) was
- *    that a 72px mark floating in the transcript's empty margin reads as "a
- *    mistake" rather than as the column's boundary. It is now the same
- *    full-height 2px state line the five panel dividers draw
- *    (`shared/components/common/resizable-divider.tsx`): invisible at rest,
- *    `control` on hover after the same `HOVER_INTENT_MS` intent delay (imported,
- *    not restated), `accent` while dragging, using the divider's own class idiom
- *    (`transition-[opacity,background-color] duration-fast ease-out-quart`). One
- *    language for every resize edge in the app is worth more than the bar's
- *    borrowed proportions, and the contract already carries the two roles'
- *    floors (`border-control`/`accent`, 3:1 on every ground).
- *  - **The line does not chase the pointer at all.** A mark that follows the
- *    hand reports the hand; a full-height rule reports the edge at every Y, and
- *    that is what lets it read as a boundary rather than as a cue. So the
- *    pointer-Y publication is gone (`--lo-chat-measure-cue-y` with it) - and
- *    with it the "must not flicker" problem the bar's fixed-on-entry Y existed
- *    to solve: there is nothing left that could twitch.
+ *  - **The cue is a short fade bar on the measure's real edge, and it has been
+ *    through two revisions - this is the second, and the history is the point.**
+ *    It began as `deepseek-harness`'s 72px bar centred on the pointer's Y; the
+ *    operator's report (issue #848, 2026-10-06) was that a mark floating in the
+ *    transcript's empty margin reads as "a mistake" rather than as the column's
+ *    boundary, so the first revision moved it onto that boundary as the divider
+ *    family's full-height 2px state line. A full-height rule reports the EDGE at
+ *    every Y and does read as a boundary - which is what #848 asked for - but it
+ *    also draws a hard rule down the whole transcript for as long as a hover
+ *    lasts, and the operator's follow-up is that this is too much ink for a
+ *    hint. So the cue is the reference's own TEXTURE again -
+ *    `ConversationWidthControls.tsx`'s `.widthHandle::after`: a 2px bar, a solid
+ *    core fading to transparent each side (`CUE_BAR_PX`, the one number the
+ *    operator's "taller" swaps) - placed where the line went, on the measure's
+ *    real edge, rather than where the reference puts its strip. The two roles come with it unchanged -
+ *    `control` while grabbable, `accent` while moving after the same
+ *    `HOVER_INTENT_MS` intent delay (imported, not restated) - which are the
+ *    divider family's own steps, so no new colour enters the system, and the
+ *    contract already carries their floors (3:1 on every ground).
+ *  - **The core follows the hand during a drag, and the mark rests where the
+ *    hand last was.** The reference publishes the pointer's Y for the length of
+ *    the gesture, so the bar's core travels with the reader's own hand and the
+ *    mark reads as "you are moving this". `--lo-chat-measure-cue-y` is that
+ *    publication, restored from the bar's first cut and written as PAINT rather
+ *    than as React state - the discipline the width preview already uses
+ *    (`preview()`), because a `mousemove`-rate render is a cost this component
+ *    has already decided not to pay. The property is REMOVED on release, but the
+ *    seat is NOT handed back: the release ADOPTS the Y the gesture ended on, and
+ *    the hand's leave is what retires it, so the mark never moves between two
+ *    frames it is lit for (UX round 2's U6 - `onMouseUp` carries the measurement).
+ *    The reference's hold-last-drag-Y is still not taken: a seat left behind by a
+ *    hand that has gone is what the leave retires, and the mark is dark by then.
+ *    That seat is also what keeps the resting bar inside the pane - resting it on
+ *    the COLUMN's own middle put it hundreds of pixels off-screen on any
+ *    transcript taller than the pane (round 1's blocker), where the panel's seat,
+ *    the hand's or the visible band's, cannot - and it is held `CUE_BAR_PX / 2`
+ *    clear of the visible band's edges, so an entry beside the pane's top seats
+ *    the whole mark rather than a sliced one (design round 2's D2-1).
  *  - **Drawn immediately OUTSIDE the measure's edge, not inside it.** The
  *    divider draws its line on the sized panel's leading/trailing edge, and it
  *    can, because every panel it sizes carries its own inset. The chat column
@@ -35,16 +54,18 @@
  *    would cross the text. The 2px line therefore sits with its inner edge ON
  *    the boundary and its whole width in the gutter beside it, which is what
  *    makes the column's edge legible as an edge.
- *  - **The handle is OUTSIDE the column, floating 24px clear of it.** The strip
- *    sits in the gutter the measure already reserves (`p-4` + the 8px scrollbar
- *    gutter = 24px per side in `chat-measure.ts`), 24px out from the content
- *    edge - the reference's own offset - 10px wide, with the cue another 4px in
- *    again (28px from the longest glyph). So it can never swallow a click meant
- *    for the text underneath, because there is never text underneath it - the
- *    guarantee is geometric rather than something a z-index or a hit-test has
- *    to keep true. The flush variant this first shipped with DID swallow one:
- *    design round 1's D2 measured it over the fold-row button's hit box by
- *    8x20px, which is why the offset is part of the design, not decoration.
+ *  - **The handle is OUTSIDE the column, hugging the edge the cue is drawn on.**
+ *    The 10px band occupies the gutter the measure already reserves (`p-4` + the
+ *    8px scrollbar gutter = 24px per side in `chat-measure.ts`), its INNER edge
+ *    on the column's own edge, so a press anywhere on the 2px rule starts the
+ *    drag and the band never reaches inward past the text - the guarantee is
+ *    geometric rather than something a z-index or a hit-test has to keep true.
+ *    The band used to sit 24px out (the reference's own offset for its strip),
+ *    which left a 22px dead zone between the only thing on screen that promised
+ *    adjustability and the only place that responded, and the flush variant this
+ *    first shipped with DID swallow a click: design round 1's D2 measured it
+ *    over the fold-row button's hit box by 8x20px, which is why the band's side
+ *    of the edge is part of the design, not decoration.
  *  - **`deepseek-harness` has no reset, and this one does.** Double-click (or
  *    Enter on the focused handle) goes back to the shipped measure. That is a
  *    deliberate difference: without it, one drag makes the product's own choice
@@ -67,7 +88,11 @@
  *    1's U2), while the strip carries a tooltip naming the drag and the reset
  *    (`TOOLTIP` below). It names the reset for BOTH readers, because focus opens
  *    it too and a double-click is the one thing a keyboard reader cannot do
- *    (design round 1's D1). The parts are the app's own (`ui/tooltip.tsx` exports
+ *    (design round 1's D1). The POINTER's channel is deliberately slow to arrive
+ *    (`MEASURE_PANEL_DWELL_MS`), because a panel that opens under a hand merely
+ *    sweeping past the gutter is the thing the operator complained about; the
+ *    keyboard's is instant and stays the loudest state, because focus is a
+ *    decision a reader has already made. The parts are the app's own (`ui/tooltip.tsx` exports
  *    them for the unusual case, which this is: the first tooltip in the tree
  *    whose anchor would be taller than the pane clipping it), and the OPEN state
  *    is this component's own, driven by the strip's hover and focus - see the
@@ -101,7 +126,6 @@ import {
 } from "@shared/components/common/resizable-divider";
 import { keyboardTarget } from "@shared/components/common/resizable-divider-geometry";
 import {
-	TOOLTIP_DELAY_MS,
 	TooltipContent,
 	TooltipPortal,
 	TooltipProvider,
@@ -144,6 +168,27 @@ import {
 const TOOLTIP = "Drag to resize. Double-click or Enter to reset.";
 
 /**
+ * The panel's dwell on the POINTER's channel, and why it is not `TOOLTIP_DELAY_MS`.
+ *
+ * The operator's complaint is that hovering "parks a box over prose". The box is
+ * the reset's only mouse channel (design round 1's D1, UX round 1's U2), so it
+ * cannot simply go - but it should not arrive during a casual sweep past the
+ * gutter, which is what the app's 400ms tooltip beat does. 1200ms is
+ * `agents-sidebar.tsx`'s `ROW_TOOLTIP_DELAY_MS`, the app's existing answer to
+ * "only once the pointer has decided to stay", so this borrows a dwell the tree
+ * already carries rather than inventing a third one. The property is exported
+ * nowhere: it is this panel's beat, and the family's 400ms is still the right one
+ * for the 200 tooltips that are not standing next to the reader's prose.
+ *
+ * It gates the MOUSE channel only. Keyboard focus still opens the panel at once
+ * (`onFocus` below), which is deliberate and is the one thing not to "simplify":
+ * focus is a decision the reader has already made, and a keyboard reader has no
+ * double-click with which to discover the reset, so their channel is the loudest
+ * state on purpose (design round 1's D1).
+ */
+const MEASURE_PANEL_DWELL_MS = 1200;
+
+/**
  * The panel's anchor: a 16px-tall box at the hand's own Y.
  *
  * A POINT, not the separator, and that is the fix for M1/D3/U3 rather than a
@@ -152,6 +197,228 @@ const TOOLTIP = "Drag to resize. Double-click or Enter to reset.";
  * and reads as "here", not as a second control.
  */
 const ANCHOR_HEIGHT_PX = 16;
+
+/**
+ * The bar's height, as ONE number.
+ *
+ * The reference's texture is a 2px bar whose ink is a solid core with a fade each
+ * side - 16px of core and 28px of fade, 72px in all. The operator's follow-up
+ * asks for that same texture TALLER ("something similar to the previous bar but
+ * just taller so that it's a bit more visible and indicative of the
+ * constraint"), and the settled answer is 160: the whole shape scaled x2.22,
+ * chosen against rendered frames of 72 and 160 side by side rather than by
+ * argument. The operator ruled out the two other registers explicitly - a
+ * full-height rule, and (by "similar to the previous bar") a mark that is not a
+ * bar at all.
+ *
+ * The TOTAL is named on its own and the split is named separately, because "a
+ * longer core" and "longer fades" are different asks at the same height; the
+ * fade is DERIVED so the three numbers cannot disagree, and moving the height
+ * again is a TWO-number swap (`CUE_BAR_PX` and `CUE_CORE_PX` together; the fade
+ * follows), because a longer bar at the reference's proportions scales the core
+ * as well - see the block below.
+ *
+ * Whatever this holds, the cue is never a full-height rule: the ink stays a
+ * fraction of the column, and `docs/evidence/chat-measure-hover/`'s README
+ * records the extent the committed pair actually paints.
+ */
+const CUE_BAR_PX = 160;
+/**
+ * The solid core, and the fade each side, of `CUE_BAR_PX`'s total ink.
+ *
+ * THE EXTRA LENGTH GOES INTO BOTH, PROPORTIONALLY. The reference texture is 16px
+ * of core in 72px of ink (a 1:1.75 core-to-fade split); 72 -> 160 is a scale of
+ * 2.22, so the core goes 16 -> 36 and each fade 28 -> 62. Scaling the whole shape
+ * is what keeps this "the previous bar, taller" rather than a different mark: a
+ * fixed 16px core stretched to 160px reads as a long faint smear with a dot in
+ * it (less indicative of the constraint, not more), and growing only the core
+ * reads as a rule with soft ends (the register the operator ruled out). Measured
+ * on the rendered story, and against the committed frames: the gradient declares
+ * `CUE_BAR_PX`, and the frames paint 148px of the mark in the dark palette and
+ * 152px in the light - 148..152 across the two, a figure that survives a
+ * re-shoot, where naming one palette's row count does not (the outermost stops
+ * are fully transparent, so what the camera catches is a couple of rows short of
+ * the declared span). Against those frames it is 17% of a
+ * realistic 911px column and 52% of the story's own 307px one - never a
+ * full-height rule.
+ *
+ * THE ONE BOUND WORTH KNOWING: the length is a FIXED px, so the ink is only a
+ * fraction while the column is taller than it. Measured bounds, both ends: 17% of
+ * a realistic 911px column (a full window's transcript), and 52% of this
+ * component's own story column (307px) - which is SHORTER than the app's minimum
+ * pane (a 600px window is a 572px CSS viewport), so the story's share is the
+ * conservative end, not a case a user reaches. The ink is never a full-height
+ * rule in any of them. If a future pane can be shorter than `CUE_BAR_PX`, cap it
+ * against the column height rather than raising this number.
+ */
+const CUE_CORE_PX = 36;
+const CUE_FADE_PX = (CUE_BAR_PX - CUE_CORE_PX) / 2;
+
+/**
+ * The custom property the core is centred on DURING A GESTURE, and the length
+ * it falls back to when nothing has seated it.
+ *
+ * `--lo-chat-measure-cue-y` is the FIRST cut of this cue's own property, a
+ * pointer-Y publication on the wrapper that the full-height rule retired along
+ * with the bar. It comes back under the same name on purpose: the mechanism is
+ * the same one, and a second name for it would be a second thing to keep in step.
+ * What differs is the shape it feeds - a gradient stop rather than a mark's `top`
+ * - and the fact that it is written and REMOVED per gesture rather than held.
+ *
+ * THE FALLBACK IS NOT `50%`, and that is the fix for round 1's blocker (design
+ * D1-1, UX U1). `50%` is the middle of the COLUMN, and the column is the whole
+ * transcript: on any conversation taller than the pane it is hundreds of pixels
+ * outside the visible band, so the cue painted off-screen while its `opacity`
+ * read 1. The rest seat is the SAME Y the tooltip panel anchors to (`anchorY` -
+ * the hand's entry Y on the pointer's path, `visibleAnchorY()` on the keyboard's)
+ * and the render hands that in as this fallback, so the resting bar is inside
+ * the pane by construction rather than by luck. `50%` survives only as the
+ * degenerate fallback for a handle that is not inside a transcript at all.
+ */
+const CUE_Y_VAR = "--lo-chat-measure-cue-y";
+const CUE_Y_REST = "50%";
+
+/**
+ * Keep the core's own span inside the element it is painted on.
+ *
+ * THE GESTURE IS THE ONLY SEAT THAT NEEDS THIS (agent review round 1's R1-4,
+ * reproduced in the story rather than taken as derived). The stops are `y ± 80`
+ * and `y ± 18`; once the published Y is more than `CUE_BAR_PX / 2` outside the
+ * box, every stop clamps past the end of the gradient line and - because the
+ * first and last stops are `transparent` - the element paints NOTHING while
+ * `dragging` is still true and the cue's `opacity` is still 1. The hand only has
+ * to leave the column by more than half the bar (e.g. up toward the title bar,
+ * or below a short pane) for the "you are moving this" mark to disappear.
+ *
+ * The CORE is what is held in, not the whole bar: the core is the part that has
+ * to stay visible for the mark to read as a mark, and letting the fades be
+ * clipped at the element's edge keeps the bar pinned to the boundary the hand
+ * has left, which is the honest reading - rather than sliding it fully inboard,
+ * which would detach it from the hand altogether.
+ *
+ * AND IT IS HELD IN THE VISIBLE PART OF THE ELEMENT TOO (agent round 2's R2-5,
+ * which asked for the choice to be made rather than left implicit). The element
+ * is the COLUMN, and on a conversation taller than the pane the column's top is
+ * hundreds of pixels above the scroller - so a core held in the column alone can
+ * still sit behind the clip on a tall transcript, which is R1-4's disappearance
+ * one box further out. The mark is held in the intersection instead: it still
+ * tracks the hand (this is what the fades clipping at a boundary buys), and it
+ * stops at the pane's edge rather than vanishing behind it. A drag is the one
+ * seat the reader is MOVING, so hand-truth is what its clamp protects.
+ */
+const clampCueY = (y: number, height: number): number => {
+	const core = CUE_CORE_PX / 2;
+	if (height <= CUE_CORE_PX) return Math.round(height / 2);
+	return Math.round(Math.min(Math.max(y, core), height - core));
+};
+
+/** The wrapper's own coordinates of the part of it a reader can see. */
+type Band = { top: number; bottom: number };
+
+/**
+ * The slice of the wrapper that is actually on screen, in the wrapper's own
+ * coordinates - the intersection of the column's box with the scroller's.
+ *
+ * WHY NOT THE WRAPPER'S OWN BOX (round 1's blocker, design D1-1 / UX U1). The
+ * wrapper IS the column: on a conversation taller than the pane its top is
+ * hundreds of pixels above the scroller (the transcript is bottom-anchored), so a
+ * seat taken from the wrapper alone paints off-screen while the mark's `opacity`
+ * reads 1. Everything that has to land in front of the reader - the panel's
+ * anchor and the mark's seat - is measured against this intersection instead.
+ * `null` (no transcript ancestor, e.g. a story that mounts the handle bare)
+ * leaves the caller in its own coordinate space, which is the pre-existing
+ * behaviour rather than a new failure.
+ */
+const visibleBand = (el: HTMLElement | null): Band | null => {
+	const scroller = el?.closest("[data-lo-canonical-transcript]");
+	if (!el || !scroller) return null;
+	const own = el.getBoundingClientRect();
+	const pane = scroller.getBoundingClientRect();
+	const top = Math.max(own.top, pane.top) - own.top;
+	const bottom = Math.min(own.bottom, pane.bottom) - own.top;
+	return bottom > top ? { top, bottom } : null;
+};
+
+/**
+ * Hold a point `half` px clear of the band's edges, so a mark of that half-size
+ * seated on it fits on screen.
+ *
+ * THE MARK'S HALF, not the core's, for the seat: it is a value the reader did
+ * not steer (design round 2's D2-1 - entering the gutter 6px below the pane's
+ * top painted 80 of the mark's 160 rows, "a bar sliced off at the pane's
+ * boundary with no upper fade"), so it is the whole mark that has to read. A
+ * band too short to hold it centres rather than inverting, which is the answer
+ * `clampCueY` gives for an element shorter than the core.
+ */
+const clampToBand = (y: number, band: Band | null, half: number): number => {
+	if (!band) return y;
+	if (band.bottom - band.top <= half * 2)
+		return Math.round((band.top + band.bottom) / 2);
+	return Math.round(Math.min(Math.max(y, band.top + half), band.bottom - half));
+};
+
+/**
+ * Publish the hand's Y to the wrapper, or take the publication back.
+ *
+ * Written onto the WRAPPER rather than the line element so the value and the
+ * rectangle it is measured against come from the same node: the caller hands in
+ * `pointerY - wrapper.top`, and a second node would be a second frame to keep in
+ * step with the first. This is `preview()`'s discipline - a `mousemove`-rate
+ * React render is a cost this component has already decided not to pay - and it
+ * is why `cueY` is not state.
+ *
+ * `clientHeight` is read here rather than cached at the press because the
+ * wrapper's box is the COLUMN's, and a horizontal drag reflows the prose inside
+ * it: both the top the callers measure against and the height this clamps to can
+ * move for the length of one gesture (the scroller is `flex-col-reverse`, so
+ * growing content moves the column's top). The read is on a node the previous
+ * `mousemove`'s own `preview()` write has already forced, so it costs no second
+ * layout flush.
+ */
+const publishCueY = (
+	el: HTMLElement | null,
+	y: number | null,
+	band: Band | null,
+): number | null => {
+	if (!el) return null;
+	if (y === null) {
+		el.style.removeProperty(CUE_Y_VAR);
+		return null;
+	}
+	const seat = clampToBand(
+		clampCueY(y, el.clientHeight),
+		band,
+		CUE_CORE_PX / 2,
+	);
+	el.style.setProperty(CUE_Y_VAR, `${seat}px`);
+	return seat;
+};
+
+/**
+ * The bar's paint, as one linear gradient down the line element's own height.
+ *
+ * The ELEMENT keeps the column's full height and 2px width - the geometry the
+ * `data-lo-chat-measure-line` attribute, the placement classes and the band's
+ * containment are all pinned against - and only its INK is `CUE_BAR_PX`. Sizing
+ * the element to `CUE_BAR_PX` instead would animate layout on every state
+ * change, which is the note `resizable-divider.tsx` carries for its own line, so
+ * the cue is a gradient stop and the element's only remaining transition is
+ * `opacity`.
+ *
+ * `role` is a CSS value, not a class: the two steps are `control` (grabbable)
+ * and `accent` (moving), read as the theme's own custom properties, so the paint
+ * cannot drift from the token the rest of the family uses.
+ *
+ * `restY` is a CSS length the core sits on when no gesture is publishing one -
+ * the anchor seat the component hands in, and the reason a resting bar is inside
+ * the pane on a scrolled transcript (see `CUE_Y_VAR`).
+ */
+const cuePaint = (role: string, restY: string): string => {
+	const y = `var(${CUE_Y_VAR}, ${restY})`;
+	const core = CUE_CORE_PX / 2;
+	const outer = core + CUE_FADE_PX;
+	return `linear-gradient(to bottom, transparent calc(${y} - ${outer}px), ${role} calc(${y} - ${core}px), ${role} calc(${y} + ${core}px), transparent calc(${y} + ${outer}px))`;
+};
 
 export type ChatMeasureHandleProps = {
 	/** Which edge of the column this handle sits on. */
@@ -183,12 +450,28 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	const draggingRef = useRef(false);
 	const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	/**
-	 * The Y the tooltip panel is anchored to, in px from the wrapper's top: the
-	 * hand's own Y published once on entry, or the middle of the column's VISIBLE
-	 * slice for the keyboard path, where there is no hand. `null` before either has
-	 * happened, which the render reads as the wrapper's own middle.
+	 * The Y the mark rests on, and the Y the tooltip panel anchors to, in px from
+	 * the wrapper's top: the hand's own Y - published on entry, and ADOPTED at the
+	 * release so the seat never moves while the mark is lit (UX round 2's U6) - or
+	 * the middle of the column's VISIBLE slice for the keyboard path, where there
+	 * is no hand. `null` before either has happened, and again once the hand has
+	 * left, which the render reads as the wrapper's own middle.
 	 */
 	const [anchorY, setAnchorY] = useState<number | null>(null);
+	/**
+	 * The seat this gesture's last `mousemove` published, or `null` if it has not
+	 * published one. The release adopts this rather than recomputing the hand's Y:
+	 * the wrapper's own box can move under the gesture (a width change reflows the
+	 * prose inside it), and a recomputed seat is a second number that can disagree
+	 * with the one the mark was painting when the hand let go.
+	 */
+	const lastSeat = useRef<number | null>(null);
+	/**
+	 * The seat the mark last RESIDED on - the render's fallback once `anchorY` is
+	 * retired (see `cueSeat`), so a leave or a blur fades the mark where it stands
+	 * rather than moving it to `50%` for the first frame of the fade (UX round 3's U7).
+	 */
+	const lastRestedSeat = useRef<number | null>(null);
 	/** Whether the panel is open. See `openPanelSoon` and the render block. */
 	const [panelOpen, setPanelOpen] = useState(false);
 	const panelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -217,6 +500,57 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	 */
 	const lit = hovering || dragging;
 
+	/*
+	 * WHERE THE BAR RESTS - and why it is not `50%`. `50%` is the middle of the
+	 * COLUMN, and the column is the whole transcript: on a conversation taller
+	 * than the pane it is hundreds of pixels off-screen, so the cue painted
+	 * nothing while its `opacity` read `1` (round 1's blocker - design D1-1, UX
+	 * U1, reproduced independently by both). The seat is the SAME Y the tooltip
+	 * panel anchors to - the hand's entry Y on the pointer's path
+	 * (`publishAnchorY`), the visible band's middle on the keyboard's
+	 * (`visibleAnchorY`) - so a resting bar is inside the pane by construction
+	 * rather than by luck, and a hover that becomes a drag does not jump, because
+	 * both seats come from the same hand. A hand's entry near the band's own edge is
+	 * held `CUE_BAR_PX / 2` clear of it, which is the other half of the same
+	 * guarantee: the seat stayed on screen and the mark's ENDS did not (design round
+	 * 2's D2-1).
+	 *
+	 * AND THE SEAT IS NAMED BY WHICHEVER HAND LAST CHOSE IT - an entry, the keyboard's
+	 * focus, or a release, which ADOPTS the Y the gesture ended on rather than handing
+	 * the seat back to the entry Y (UX round 2's U6 - see `onMouseUp`). Leaving, and
+	 * losing focus, are what retire it.
+	 *
+	 * SO THE RENDER HAS THREE RUNGS, not two, and the middle one is UX round 3's U7.
+	 * Clearing the seat at the leave with `50%` underneath it painted that fallback
+	 * for the first frame of the fade - on a tall conversation, a frame of the whole
+	 * mark a hundred pixels above the pane and then nothing, i.e. the exit animation
+	 * playing off-screen. The fallback is therefore the seat the mark last RESIDED on
+	 * (`lastRestedSeat`), so retiring the seat on a leave or a blur does not move the
+	 * mark: it fades where the hand left it, and the seat is only ever chosen again -
+	 * by an entry, by a focus, or by a gesture - never inherited silently. `50%`
+	 * survives only as the degenerate third rung: a handle that has never been seated
+	 * and is not inside a transcript at all.
+	 */
+	const cueSeat =
+		anchorY !== null
+			? `${anchorY}px`
+			: lastRestedSeat.current !== null
+				? `${lastRestedSeat.current}px`
+				: CUE_Y_REST;
+
+	/**
+	 * Seat the mark, remembering where - or `null` to retire the seat.
+	 *
+	 * ONE DOOR, because the render needs the last seat as well as the current one
+	 * (see `cueSeat`) and two writers of one number drift. The ref is written before
+	 * the state so the render that clears `anchorY` already sees the seat it is
+	 * falling back to - which is what makes U7's fix invisible rather than a frame late.
+	 */
+	const seatAt = (y: number | null): void => {
+		if (y !== null) lastRestedSeat.current = y;
+		setAnchorY(y);
+	};
+
 	/**
 	 * Publish the hand's Y, ONCE, as the tooltip panel's anchor.
 	 *
@@ -237,7 +571,14 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	const publishAnchorY = (clientY: number): void => {
 		const el = rootRef.current;
 		if (!el) return;
-		setAnchorY(Math.round(clientY - el.getBoundingClientRect().top));
+		const own = el.getBoundingClientRect();
+		seatAt(
+			clampToBand(
+				Math.round(clientY - own.top),
+				visibleBand(el),
+				CUE_CORE_PX / 2 + CUE_FADE_PX,
+			),
+		);
 	};
 
 	/**
@@ -252,28 +593,23 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	 * rendered handle cannot be.
 	 */
 	const visibleAnchorY = (): number | null => {
-		const el = rootRef.current;
-		const scroller = el?.closest("[data-lo-canonical-transcript]");
-		if (!el || !scroller) return null;
-		const own = el.getBoundingClientRect();
-		const pane = scroller.getBoundingClientRect();
-		const top = Math.max(own.top, pane.top);
-		const bottom = Math.min(own.bottom, pane.bottom);
-		if (!(bottom > top)) return null;
-		return Math.round((top + bottom) / 2 - own.top);
+		const band = visibleBand(rootRef.current);
+		return band === null ? null : Math.round((band.top + band.bottom) / 2);
 	};
 
 	/*
-	 * The panel's dwell, on the app's TOOLTIP constant rather than the divider's:
-	 * it is the same panel as every other tooltip in the app and should arrive on
-	 * the same beat (measured at 409ms before this change, and 400 is the number
-	 * that produced it). Leaving closes it at once, for the reason the divider's
-	 * own comment gives - a panel that lingers after the pointer has gone reads as
-	 * stuck.
+	 * The panel's dwell, on the panel's own beat rather than the app's tooltip
+	 * constant: it is a tooltip, but a slow one - see `MEASURE_PANEL_DWELL_MS` for
+	 * what a 400ms arrival cost beside the reader's prose. Leaving closes it at
+	 * once, for the reason the divider's own comment gives - a panel that lingers
+	 * after the pointer has gone reads as stuck.
 	 */
 	const openPanelSoon = (): void => {
 		if (panelTimer.current) clearTimeout(panelTimer.current);
-		panelTimer.current = setTimeout(() => setPanelOpen(true), TOOLTIP_DELAY_MS);
+		panelTimer.current = setTimeout(
+			() => setPanelOpen(true),
+			MEASURE_PANEL_DWELL_MS,
+		);
 	};
 	const closePanel = (): void => {
 		if (panelTimer.current) clearTimeout(panelTimer.current);
@@ -438,10 +774,45 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 		 * so what is committed is always what the reader last saw.
 		 */
 		let lastClientX = startX;
+		/*
+		 * This gesture has published no seat yet, so a release after a press that never
+		 * travelled adopts nothing (see `onMouseUp`). Cleared at the PRESS rather than
+		 * after the release so a second gesture cannot inherit the first one's number.
+		 */
+		lastSeat.current = null;
+		/*
+		 * The pane's box, in VIEWPORT coordinates, read once per gesture. It is what the
+		 * publication is held inside (agent round 2's R2-5), and it is stable for the
+		 * length of a drag - the wrapper's own top is NOT, because a width change
+		 * reflows the prose inside the scroller - so the per-move conversion below is
+		 * arithmetic against the wrapper rect this handler already reads, rather than a
+		 * second pair of rect reads on the pointer's path.
+		 */
+		const pane =
+			rootRef.current
+				?.closest("[data-lo-canonical-transcript]")
+				?.getBoundingClientRect() ?? null;
 
 		const onMouseMove = (moveEvent: MouseEvent) => {
 			if (!draggingRef.current) return;
 			lastClientX = moveEvent.clientX;
+			/*
+			 * The core travels with the hand for the length of the gesture. Read
+			 * against the WRAPPER's top, which is the box the gradient's percentage
+			 * resolves against, so "the hand's Y" means the same thing to the source
+			 * and the sink.
+			 */
+			const wrapper = rootRef.current;
+			if (wrapper) {
+				const own = wrapper.getBoundingClientRect();
+				lastSeat.current = publishCueY(
+					wrapper,
+					Math.round(moveEvent.clientY - own.top),
+					pane
+						? { top: pane.top - own.top, bottom: pane.bottom - own.top }
+						: null,
+				);
+			}
 			preview(
 				draggedChatMeasureWidth({
 					startWidth,
@@ -456,6 +827,32 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 			draggingRef.current = false;
 			setDragging(false);
 			setHovering(false);
+			/*
+			 * THE SEAT STAYS UNDER THE HAND AT THE RELEASE; the hand's LEAVE is what sends
+			 * it back to rest (UX round 2's U6).
+			 *
+			 * Taking the gesture's publication back here - which is what this did - hands
+			 * the seat straight back to the Y the hand ENTERED at, and on a drag that
+			 * travelled that is a different Y: for one frame the mark was fully lit at a
+			 * seat the hand had left, and the next frame put it back (measured at 60fps:
+			 * core 282 -> 112 -> 282 inside ~17ms, `opacity` reading 1.000 on the first
+			 * two). The release ADOPTS the seat the gesture ended on instead, so the mark
+			 * never moves while it is lit; `onMouseLeave` and `onBlur` remain what retires
+			 * a seat, so a stationary mark is never left on a hand that has gone.
+			 *
+			 * "WHILE IT IS LIT" IS THE WHOLE CLAIM, and the two clamps are deliberately not
+			 * the same size (agent R3-4's neighbour, QA round 3's Q3-1). The drag holds the
+			 * mark's CORE inside the band, because the reader is steering it and hand-truth
+			 * is what a drag buys; the entry path holds the WHOLE MARK inside it, because
+			 * there the reader did not steer (D2-1). So a gesture that ends within
+			 * `CUE_FADE_PX` of the band's edge hands over to a seat up to 56px away - and
+			 * that settle lands mid-fade, at `opacity 0.54`, so no frame a reader sees as
+			 * lit moves. Aligning the two would mean either a drag whose core can vanish or
+			 * an entry that paints a sliced mark, which are the two things each clamp
+			 * exists to prevent.
+			 */
+			if (lastSeat.current !== null) seatAt(lastSeat.current);
+			publishCueY(rootRef.current, null, null);
 			document.body.style.userSelect = "";
 			removeResizeCursorOverlay();
 			window.removeEventListener("mousemove", onMouseMove);
@@ -550,11 +947,14 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 			)}
 		>
 			{/*
-			 * The state line: the divider family's drawing, at the measure's real edge.
-			 * Full height, 2px, `opacity-0` at rest, `control` on hover, `accent` while
-			 * dragging. Opacity and colour are the only animated properties - animating
-			 * width would animate layout (the same note is on
-			 * `resizable-divider.tsx`'s line).
+			 * The state line: the reference's fade bar, at the measure's real edge.
+			 * Full height and 2px WIDE, `opacity-0` at rest, `control` on hover,
+			 * `accent` while dragging - but only `CUE_BAR_PX` of INK, a solid core fading
+			 * out each side, which is what makes this a hint rather than the full-height
+			 * rule it replaced. Opacity is the only animated property:
+			 * animating the element's size would animate layout, and a gradient's
+			 * stops are not interpolated, so the core snaps to the hand instead of
+			 * sliding behind it (the same note is on `resizable-divider.tsx`'s line).
 			 *
 			 * IT SITS JUST OUTSIDE THE COLUMN: `-left-0.5` / `-right-0.5` puts the
 			 * line's INNER edge on this wrapper's own edge - the measure's edge - so
@@ -563,17 +963,26 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 			 * own inset; the chat column carries none (its inset is the scroller's
 			 * `p-4` and the 8px gutter), so an inside rule would cross the first glyph.
 			 * See the file comment for why this reads as the boundary.
+			 *
+			 * The element is FULL HEIGHT although the ink is not, because the attribute,
+			 * the placement and the band's containment are all read off this node; a
+			 * bar-sized box would move every one of those readings with the pointer's Y.
 			 */}
 			<div
 				aria-hidden="true"
 				data-lo-chat-measure-line={edge}
 				className={cn(
 					"pointer-events-none absolute top-0 z-12 h-full w-0.5",
-					"transition-[opacity,background-color] duration-fast ease-out-quart",
+					"transition-opacity duration-fast ease-out-quart",
 					edge === "left" ? "-left-0.5" : "-right-0.5",
-					dragging ? "bg-accent" : "bg-control",
 					lit ? "opacity-100" : "opacity-0",
 				)}
+				style={{
+					backgroundImage: cuePaint(
+						dragging ? "var(--color-accent)" : "var(--color-control)",
+						cueSeat,
+					),
+				}}
 			/>
 			{/*
 			 * The widget: a 10px band that HUGS the drawn line from the gutter side.
@@ -638,12 +1047,51 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 				onMouseLeave={() => {
 					if (hoverTimer.current) clearTimeout(hoverTimer.current);
 					closePanel();
-					if (!draggingRef.current) setHovering(false);
+					if (!draggingRef.current) {
+						setHovering(false);
+						/*
+						 * The rest seat belongs to the hand that chose it, so it is cleared with
+						 * the hand. This is also the event that retires a released drag's seat
+						 * (see `onMouseUp`): the release adopts the seat the gesture ended on, and
+						 * this is what stops a stationary mark sitting on a hand that has gone. It
+						 * retires the SEAT, not the position the mark is painted at - `cueSeat`
+						 * falls back to the seat it last rested on - so the mark fades where the
+						 * hand left it instead of hopping to `50%` for a frame (UX round 3's U7).
+						 * A drag is the exception WHILE IT RUNS - the pointer leaves the band
+						 * constantly mid-gesture, and the publication is the hand's for the length
+						 * of it.
+						 */
+						seatAt(null);
+					}
 				}}
 				onFocus={() => {
 					setHovering(true);
-					/* No hand on this path: anchor to what is visible. */
-					setAnchorY(visibleAnchorY());
+					/*
+					 * No hand on this path, so anchor to what is visible - but only when a hand
+					 * has not already seated the mark. A press focuses this element (it is
+					 * `tabIndex={0}`), and re-seating unconditionally moved the mark out from
+					 * under a POINTER reader on any entry that was not the band's middle: the
+					 * same "the seat moves while the mark is lit" failure as the release flash
+					 * in `onMouseUp`.
+					 *
+					 * THE ONE SEQUENCE THAT KEEPS A HAND'S SEAT is a gesture whose hand already
+					 * left the band: `onMouseLeave` was ignored while the drag ran and never
+					 * fires again, so the Y the release adopted is still here - and a Tab to
+					 * this element then lights the mark and opens the panel there rather than
+					 * at the visible band's middle (agent round 3's R3-3). RECORDED, NOT FIXED:
+					 * clearing it at the release would re-break U6's invariant, which the
+					 * animation-frame trace now asserts, and clearing it once the fade has
+					 * finished needs a transition end that a leave which never lit the mark does
+					 * not produce. It is a mixed-input sequence (drag out, release, then Tab)
+					 * rather than a common one, the next pointer entry and the next blur both
+					 * clear it, and the seat it keeps is the hand's own Y - a truthful place for
+					 * the mark to be.
+					 */
+					if (anchorY === null) {
+						const seat = visibleAnchorY();
+						if (seat !== null) lastRestedSeat.current = seat;
+						setAnchorY(seat);
+					}
 					/*
 					 * Focus opens it at once, the way Radix opens on focus for every
 					 * other tooltip in the app (measured `instant-open`); the dwell
@@ -653,7 +1101,11 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 				}}
 				onBlur={() => {
 					closePanel();
-					if (!draggingRef.current) setHovering(false);
+					if (!draggingRef.current) {
+						setHovering(false);
+						/* The keyboard's seat is the focus's, and it leaves with it. */
+						seatAt(null);
+					}
 				}}
 				onKeyDownCapture={onKeyDown}
 				onMouseDown={(event) => {
