@@ -69,7 +69,7 @@ import { Popover, PopoverTrigger } from "@shared/components/ui/popover";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast, showWarningToast } from "@shared/utils/toast-manager";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, TriangleAlert } from "lucide-react";
 import {
 	type FC,
 	type MutableRefObject,
@@ -82,8 +82,17 @@ import { useEntities } from "../pickers/destination-pickers";
 import type { PickerOption } from "../pickers/picker-host";
 import { errorText, useSessionCommand } from "../pickers/use-picker-backend";
 import { IdentityMenu } from "./chat-header-identity-menu";
-import { identityMenuShowsList } from "./chat-header-identity-menu-model";
-import { resolveHeaderIdentity } from "./chat-header-identity-model";
+import {
+	IDENTITY_AGENT_NOT_SETTABLE_REASON,
+	type IdentityAgentConstraint,
+	identityAgentConstraint,
+	identityAgentSettable,
+	identityMenuShowsList,
+} from "./chat-header-identity-menu-model";
+import {
+	headerIdentityAgentFlagged,
+	resolveHeaderIdentity,
+} from "./chat-header-identity-model";
 import { TeamAvatarBubble } from "./team-avatar-bubble";
 
 /** The identity fields the header passes through; all optional but the session. */
@@ -114,6 +123,17 @@ type HeaderEntityRow = {
 	description?: string;
 	/** A team's free-text display name, when the row carries one. */
 	label?: string;
+	/**
+	 * An agent profile's `delegate` flag - whether it may coordinate further
+	 * work - exactly as the profile catalogue publishes it (the shipped
+	 * runtime's own `profile_detail`; `may_delegate` in `agent_profiles.py`).
+	 * The agent slot's constraint (issue #861) reads THIS field and nothing
+	 * else to decide whether a profile can hold the seat of a team-led chat:
+	 * absent reads as "not delegating" for the slot's marks (the predicate is
+	 * `=== true`), while the header's cue refuses to reason about an absent
+	 * field at all (see `headerIdentityAgentFlagged`).
+	 */
+	delegate?: boolean | null;
 };
 
 /**
@@ -178,6 +198,20 @@ type IdentityControlProps = {
 	enabled: boolean;
 	triggerLabel: string;
 	/**
+	 * The bound team's acceptance rule for THIS control's slot, or `null` when
+	 * there is none (always, for the team control; for the agent control until a
+	 * team's manager is known). While present, rows the rule does not accept
+	 * are `disabled` with the reason in their description - still listed, never
+	 * hidden - and the panel states the rule in a caption above the list.
+	 */
+	constraint: IdentityAgentConstraint | null;
+	/**
+	 * The bound pair needs resolving: the chip carries the cue (issue #861).
+	 * Only the agent control can be flagged - a team is never outside its own
+	 * rule.
+	 */
+	flagged: boolean;
+	/**
 	 * Names this app has switched to before, most recent first - the panel's
 	 * `Recent` band. Read from the store by `ChatHeaderIdentity` and passed
 	 * down, because both controls read their own ring and neither owns it.
@@ -212,6 +246,8 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	sessionId,
 	enabled,
 	triggerLabel,
+	constraint,
+	flagged,
 	recents,
 	swapRef,
 	markSwap,
@@ -294,6 +330,21 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					name: row.name ?? row.value,
 					label: row.label,
 				});
+				/*
+				 * THE TEAM'S RULE, per row (issue #861): one predicate
+				 * (`identityAgentSettable` - the runtime's own acceptance rule), so a
+				 * profile this panel marks settable is exactly one the backend will
+				 * accept. `constraint` is null on the team control and while no manager
+				 * is known, and a null constraint blocks nothing - an unknown manager
+				 * must not constrain (see `identityAgentConstraint`).
+				 */
+				const blocked =
+					constraint !== null &&
+					!identityAgentSettable({
+						name: row.value,
+						manager: constraint.manager,
+						delegate: row.delegate,
+					});
 				return {
 					value: row.value,
 					/*
@@ -303,14 +354,20 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					 */
 					label: shown,
 					/*
-					 * The slug rides the DESCRIPTION line when the label took the name
-					 * slot (design round 1, D2): the menu is where a switch is CHOSEN,
-					 * and the string every other surface addresses the team by
-					 * (`/team <slug>`) must be readable at the moment of choosing
-					 * rather than discovered after the composer fills.
+					 * A BLOCKED ROW SPENDS ITS DESCRIPTION SLOT ON THE REASON, so the
+					 * disable is self-explaining and never silent. The row's own prose
+					 * would answer a question nobody can act on while the reason is the
+					 * one fact a blocked row has to give.
+					 *
+					 * Not blocked, the slug rides the DESCRIPTION line when the label took
+					 * the name slot (design round 1, D2): the menu is where a switch is
+					 * CHOSEN, and the string every other surface addresses the team by
+					 * (`/team <slug>`) must be readable at the moment of choosing rather
+					 * than discovered after the composer fills.
 					 */
-					description:
-						shown !== row.value
+					description: blocked
+						? IDENTITY_AGENT_NOT_SETTABLE_REASON
+						: shown !== row.value
 							? row.description
 								? `${row.value} · ${row.description}`
 								: row.value
@@ -318,12 +375,30 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					meta: row.kind,
 					current: row.value === menuValue(current),
 					/* While a switch is in flight every row is inert: a second switch would
-					 * be a second command against a session already answering one. */
-					disabled: busy,
+					 * be a second command against a session already answering one. A row the
+					 * team's rule refuses is inert for the same reason - picking it would be
+					 * a command the runtime refuses. */
+					disabled: busy || blocked,
+					/* BUSY IS NOT REFUSED (review round 2, MINOR-2): `disabled` folds the
+					 * in-flight switch and the team's rule together, and the panel's
+					 * refusal messages must only describe the LATTER - a chip re-opened
+					 * while a switch settles must not be told a row "cannot take the
+					 * seat". `blocked` carries the rule's half alone; the busy half is
+					 * the switch already running. */
+					blocked,
 				};
 			}),
-		[items, current, busy],
+		[items, current, busy, constraint],
 	);
+
+	/*
+	 * The cue sentence a flagged chip carries (issue #861): the SAME sentence
+	 * the panel states above its list (`constraint.caption`), so the chip and
+	 * the panel explain the bound pair in one voice rather than two
+	 * paraphrases. `null` unless a constraint is in force, which a flagged chip
+	 * always implies - the flag itself requires a known manager.
+	 */
+	const cueSentence = constraint?.caption ?? null;
 
 	return (
 		/*
@@ -365,6 +440,9 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					 * CONTAINS the visible label (the team's name or label, `No team`),
 					 * so voice control keeps working and the ellipsised glyph never
 					 * stands alone. The visible strings stay sentence-case and quiet.
+					 * The cue's sentence is a SEPARATE CLAUSE after a period (review
+					 * round 1, D6/NIT-1): read aloud, "Switch agent Local Operator Dev
+					 * is led by..." ran the action into the rule as one noun phrase.
 					 */
 					aria-label={`${triggerLabel}: ${label}. ${
 						assigned
@@ -372,20 +450,29 @@ const IdentityControl: FC<IdentityControlProps> = ({
 							: kind === "team"
 								? "Assign a team"
 								: "Assign an agent"
-					}`}
+					}${flagged && cueSentence ? `. ${cueSentence}` : ""}`}
 					title={
-						assigned
+						flagged && cueSentence
 							? /*
-								 * The identity in the tooltip, `Label (slug)` when the two differ
-								 * (design round 1, D2) — the one plain-text home for the slug
-								 * beside the sidebar row's tooltip, and the full label for a
-								 * capped chip too (D1). The ACTION words stay in the
-								 * `aria-label` above rather than repeating here.
+								 * The flagged chip's tooltip states the rule the pair breaks
+								 * (issue #861) - the label leads so the hover still says which
+								 * profile it is about, and the sentence is the panel's own
+								 * (`constraint.caption`), not a second paraphrase. The em dash
+								 * makes the two clauses read as two (review round 1, D6).
 								 */
-								`${label}${labelWon ? ` (${current})` : ""}`
-							: kind === "team"
-								? "Assign a team"
-								: "Assign an agent"
+								`${label} — ${cueSentence}`
+							: assigned
+								? /*
+									 * The identity in the tooltip, `Label (slug)` when the two differ
+									 * (design round 1, D2) — the one plain-text home for the slug
+									 * beside the sidebar row's tooltip, and the full label for a
+									 * capped chip too (D1). The ACTION words stay in the
+									 * `aria-label` above rather than repeating here.
+									 */
+									`${label}${labelWon ? ` (${current})` : ""}`
+								: kind === "team"
+									? "Assign a team"
+									: "Assign an agent"
 					}
 				>
 					{kind === "team" && assigned && (
@@ -413,6 +500,29 @@ const IdentityControl: FC<IdentityControlProps> = ({
 							name={label}
 							slug={current ?? undefined}
 							showTooltip={false}
+						/>
+					)}
+					{/*
+					 * THE CUE (issue #861). A team-bound chat's agent slot accepts the
+					 * team's manager or a profile that can delegate; when an EXPLICIT
+					 * agent the rule refuses is in the seat, the persona stays VISIBLE -
+					 * it is in the prompt, and the header never hides what the runtime is
+					 * running - and this mark says the pair needs resolving. Hue + glyph +
+					 * copy (the alert grammar, § 3): the warning ink and the warning
+					 * triangle are the visible half, the title and `aria-label` above
+					 * carry the sentence, and the panel the chip opens is where the
+					 * one-pick resolution lives.
+					 *
+					 * `aria-hidden` because the words already ride the chip's own
+					 * `aria-label`; the `data-` hook is the capture rig's claim anchor
+					 * (the conflict frames assert its presence, and its absence while
+					 * the roster is still answering).
+					 */}
+					{flagged && (
+						<TriangleAlert
+							data-header-identity-cue=""
+							aria-hidden="true"
+							className="size-3 shrink-0 text-warning"
 						/>
 					)}
 					<span
@@ -471,7 +581,13 @@ const IdentityControl: FC<IdentityControlProps> = ({
 						? "No teams are registered."
 						: "No agents are registered."
 				}
-				busy={busy}
+				/*
+				 * The rule the rows were marked by, stated once above the list (issue
+				 * #861) - the reason a near-miss row is disabled is visible on the row
+				 * itself, and the rule it belongs to is visible before the reading
+				 * starts. `null` for the team control and while no manager is known.
+				 */
+				caption={constraint?.caption ?? null}
 				onPick={(value) => {
 					/* A pick is a decision, so the panel closes on it - the chip's own
 					 * busy spinner is what says the switch is in flight, and the label
@@ -550,6 +666,69 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 		boundTeam,
 		teams: teams.data,
 	});
+	/*
+	 * THE EXPLICIT SEAT (issue #861): the agent the session was actually told
+	 * to run (`/agent`, live or bound) - never the manager the label falls back
+	 * to, because that implicit seat is the manager's own and the rule accepts
+	 * it by definition.
+	 */
+	const explicitAgent = activeAgent || boundAgent || null;
+	/*
+	 * The roster query that answers "may this profile coordinate?" for the
+	 * chip's cue. GATED TO THE AMBIGUOUS CASE ONLY - a team leads AND an
+	 * explicit agent sits in the seat - because that is the only state whose
+	 * claim needs the flag: no team means the rule does not apply, and no
+	 * explicit agent means the seat holds the manager and the question cannot
+	 * be asked. The agent PANEL opens the same query from its own control
+	 * (`useEntities` keys it by session, command and name), so an open menu and
+	 * this watch are one request rather than two.
+	 */
+	const watchedRows = useEntities<HeaderEntityRow>(
+		sessionId,
+		"agent",
+		undefined,
+		Boolean(rawTeam && explicitAgent),
+	);
+	const watchedDelegate = useMemo(() => {
+		if (!explicitAgent) return null;
+		const row = watchedRows.data?.entities.find(
+			(entry) => entry.value === explicitAgent,
+		);
+		/*
+		 * `?? null`: a row the roster does not carry, or one that did not carry
+		 * the field, answers "not known" rather than "cannot delegate" - the cue
+		 * must not reason from a row that is not there (see
+		 * `headerIdentityAgentFlagged`, which holds the same line about absent
+		 * facts).
+		 */
+		return row?.delegate ?? null;
+	}, [explicitAgent, watchedRows.data]);
+	/*
+	 * The pair's cue and the agent slot's rule, both from the view's own facts:
+	 * `flagged` needs the manager AND the delegate datum; `constraint` needs
+	 * the manager alone - and carries the caption the panel and a flagged
+	 * chip's tooltip share (see `IdentityControl`'s `cueSentence`).
+	 */
+	const flagged = headerIdentityAgentFlagged({
+		explicitAgent,
+		manager: view.teamManager,
+		delegate: watchedDelegate,
+	});
+	/*
+	 * The constraint is MEMOIZED (review round 1, MINOR-1): built inline it was a
+	 * fresh object every render, and it is a dep of the panel's options memo -
+	 * so every header render (a busy flip, a store tick, the cue's own query
+	 * landing) rebuilt all 150 options and re-rendered every mounted row, the
+	 * stability the panel was built around lost to one object identity.
+	 */
+	const constraint = useMemo(
+		() =>
+			identityAgentConstraint({
+				teamLabel: view.teamLabel,
+				manager: view.teamManager,
+			}),
+		[view.teamLabel, view.teamManager],
+	);
 	/*
 	 * One open menu at a time, by hand: two independent Radix roots cannot see
 	 * each other, and two menus up from one row is a state with no meaning.
@@ -663,6 +842,8 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 				label={view.agentLabel}
 				current={view.agentValue}
 				busy={agentCommand.busy}
+				constraint={constraint}
+				flagged={flagged}
 				swapRef={swapRef}
 				markSwap={markSwap}
 				open={open === "agent"}
@@ -678,6 +859,13 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 				label={view.teamLabel}
 				current={view.teamValue}
 				busy={teamCommand.busy}
+				/*
+				 * The constraint is the AGENT slot's rule: a team is never outside
+				 * its own acceptance, so this control carries none - and can never
+				 * be flagged.
+				 */
+				constraint={null}
+				flagged={false}
 				swapRef={swapRef}
 				markSwap={markSwap}
 				open={open === "team"}

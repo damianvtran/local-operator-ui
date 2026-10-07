@@ -69,12 +69,20 @@ const bundle = await build({
 });
 
 const {
+	IDENTITY_AGENT_NOT_SETTABLE_REASON,
 	IDENTITY_MENU_MAX_HEIGHT,
 	IDENTITY_MENU_MAX_HEIGHT_CLASS,
+	IDENTITY_MENU_NO_SETTABLE,
+	IDENTITY_MENU_NO_SETTABLE_TYPED,
 	PROFILE_RECENTS_LIMIT,
+	identityAgentConstraint,
+	identityAgentConstraintCaption,
+	identityAgentSettable,
 	identityMenuBands,
 	identityMenuFooter,
 	identityMenuHeadings,
+	identityMenuRefusalAnnouncement,
+	identityMenuSeedActive,
 	identityMenuShowsList,
 	pushProfileRecent,
 	store,
@@ -295,6 +303,7 @@ test("the footer names the roster only when there is something to say", () => {
 			kind: "agent",
 			query: "",
 			overflowing: false,
+			hasSettable: true,
 		}),
 		null,
 	);
@@ -305,6 +314,7 @@ test("the footer names the roster only when there is something to say", () => {
 			kind: "agent",
 			query: "",
 			overflowing: true,
+			hasSettable: true,
 		}),
 		"6 agents in all — scroll, or type to filter",
 	);
@@ -317,6 +327,7 @@ test("the footer names the roster only when there is something to say", () => {
 			kind: "agent",
 			query: "rev",
 			overflowing: false,
+			hasSettable: true,
 		}),
 		"1 of 6 agents match",
 	);
@@ -328,6 +339,7 @@ test("the footer names the roster only when there is something to say", () => {
 			kind: "team",
 			query: "zzz",
 			overflowing: false,
+			hasSettable: true,
 		}),
 		null,
 	);
@@ -338,9 +350,182 @@ test("the footer names the roster only when there is something to say", () => {
 			kind: "team",
 			query: "",
 			overflowing: true,
+			hasSettable: true,
 		}),
 		"6 teams in all — scroll, or type to filter",
 	);
+});
+
+test("a view with no settable row trades its count for the way out (D1)", () => {
+	/*
+	 * Review round 1, D1: `search-results`' shape - four matches, every one of
+	 * them refused - and the first draft printed "4 of 150 agents match" over a
+	 * list where nothing could be picked. The resolution must name exits that
+	 * EXIST: clearing the search reaches the manager and the delegating
+	 * profiles, the team picker beside this one changes the team, and no
+	 * sentence may promise the `No team` detach (core #2014's verb, not this
+	 * app's yet).
+	 */
+	const view = {
+		bands: [{ heading: null, rows: ROWS }],
+		matches: 4,
+		total: 150,
+		noMatches: false,
+	};
+	assert.equal(
+		identityMenuFooter({
+			view,
+			kind: "agent",
+			query: "rev",
+			overflowing: true,
+			hasSettable: false,
+		}),
+		IDENTITY_MENU_NO_SETTABLE_TYPED,
+	);
+	// One settable row in view brings the count back - the resolution is about
+	// `view.matches`, not about the roster (the recents frame's case).
+	assert.equal(
+		identityMenuFooter({
+			view,
+			kind: "agent",
+			query: "rev",
+			overflowing: true,
+			hasSettable: true,
+		}),
+		"4 of 150 agents match",
+	);
+	// The untyped edge: a visible roster with no manager row at all. The one
+	// exit that remains is the team.
+	assert.equal(
+		identityMenuFooter({
+			view,
+			kind: "agent",
+			query: "",
+			overflowing: true,
+			hasSettable: false,
+		}),
+		IDENTITY_MENU_NO_SETTABLE,
+	);
+	// The no-match state keeps its own sentence: the footer stays silent.
+	assert.equal(
+		identityMenuFooter({
+			view: { ...view, matches: 0 },
+			kind: "agent",
+			query: "zzz",
+			overflowing: true,
+			hasSettable: false,
+		}),
+		null,
+	);
+});
+
+test("the highlight seeds on the current or first settable row (D2/U1)", () => {
+	/*
+	 * Review round 1's MAJOR pair: the panel opened - and every filter
+	 * keystroke re-placed - the highlight on row zero, which on a team-led chat
+	 * is routinely a row the rule refuses, so the first Enter did nothing. The
+	 * seed prefers the CURRENT row when it is settable (the identity is where
+	 * the eye already is), then the first settable row, and only falls back to
+	 * row zero when nothing can be picked - which is exactly when the footer
+	 * carries the way out.
+	 */
+	const row = (value, extra = {}) => ({ value, label: value, ...extra });
+	assert.equal(
+		identityMenuSeedActive([
+			row("coder", { disabled: true }),
+			row("manager", { current: true }),
+			row("ops-lead"),
+		]),
+		1,
+	);
+	assert.equal(
+		identityMenuSeedActive([
+			row("coder", { disabled: true }),
+			row("manager"),
+			row("ops-lead"),
+		]),
+		1,
+	);
+	// A settable CURRENT row still wins over a settable earlier row.
+	assert.equal(
+		identityMenuSeedActive([
+			row("ops-lead"),
+			row("manager", { current: true }),
+		]),
+		1,
+	);
+	// Nothing settable: row zero, which the footer's resolution now explains.
+	assert.equal(
+		identityMenuSeedActive([
+			row("coder", { disabled: true }),
+			row("reviewer", { disabled: true }),
+		]),
+		0,
+	);
+	assert.equal(identityMenuSeedActive([]), 0);
+});
+
+test("the refused-row announcement names the row and nothing more", () => {
+	// Review round 1, D2/U1: the sentence the footer's live region carries when
+	// Enter lands on a row the rule refuses. Short on purpose - the row's own
+	// reason is already in its accessible name and the exits are the footer's
+	// subject - so this pins that it does not grow a second explanation.
+	assert.equal(
+		identityMenuRefusalAnnouncement("reviewer"),
+		"reviewer cannot take the seat.",
+	);
+});
+
+test("the recents band drops refused rows and collapses when none remain (U6)", () => {
+	/*
+	 * Review round 1, U6: on a team-led chat the ring is full of leaves, so the
+	 * band that exists for one-pick speed was a wall of refusals (and `coder`
+	 * appeared twice). The band is a SHORTCUT, not the roster - refused rows
+	 * stay in All agents with their reason - so they are dropped here, and a
+	 * band filtered to nothing disappears with its heading rather than
+	 * rendering an empty `Recent agents`.
+	 */
+	const withFlags = ROWS.map((r) => ({
+		...r,
+		disabled: r.value === "reviewer" || r.value === "coder",
+	}));
+	const mixed = identityMenuBands({
+		rows: withFlags,
+		matches: withFlags,
+		recents: ["reviewer", "architect"],
+		kind: "agent",
+		query: "",
+	});
+	assert.deepEqual(
+		mixed.bands.map((band) => band.heading),
+		["Recent agents", "All agents"],
+	);
+	assert.deepEqual(values(mixed.bands[0].rows), ["architect"]);
+	// The roster band keeps every row, refused ones included.
+	assert.deepEqual(values(mixed.bands[1].rows), values(withFlags));
+
+	const allRefused = identityMenuBands({
+		rows: withFlags,
+		matches: withFlags,
+		recents: ["reviewer", "coder"],
+		kind: "agent",
+		query: "",
+	});
+	assert.equal(allRefused.bands.length, 1);
+	assert.equal(allRefused.bands[0].heading, null);
+	assert.deepEqual(values(allRefused.bands[0].rows), values(withFlags));
+
+	// A FILTER is not the band: with a query on, refused rows must stay listed
+	// with their reason (that is D4's frame, `search-results`).
+	const filtered = identityMenuBands({
+		rows: withFlags,
+		matches: withFlags.filter((r) => r.value === "reviewer"),
+		recents: ["reviewer"],
+		kind: "agent",
+		query: "rev",
+	});
+	assert.equal(filtered.bands.length, 1);
+	assert.deepEqual(values(filtered.bands[0].rows), ["reviewer"]);
 });
 
 test("the headings are one rule per menu, so the two panels read alike", () => {
@@ -415,4 +600,108 @@ test("the ring update is pure, so the store action has no arithmetic of its own"
 	const ring = ["a", "b"];
 	pushProfileRecent(ring, "c");
 	assert.deepEqual(ring, ["a", "b"]);
+});
+
+test("the acceptance predicate: the manager always, a delegating profile beside it", () => {
+	/*
+	 * `settable(name) = name === manager || delegate === true` - the rule the
+	 * runtime half (damianvtran/local-operator#2014) enforces and the agent
+	 * slot's one predicate in this tree (issue #861). Pinned on its two edges:
+	 * the manager is settable WHATEVER its flag reads (it runs the team, so it
+	 * can always take its own seat - a `false` flag cannot evict it), and only
+	 * `=== true` delegates - an explicit false, a missing field and a null all
+	 * answer "not settable", which is the `delegate !== true` half of the rule
+	 * stated as one comparison.
+	 */
+	assert.equal(
+		identityAgentSettable({
+			name: "manager",
+			manager: "manager",
+			delegate: false,
+		}),
+		true,
+	);
+	assert.equal(
+		identityAgentSettable({
+			name: "architect",
+			manager: "manager",
+			delegate: true,
+		}),
+		true,
+	);
+	assert.equal(
+		identityAgentSettable({
+			name: "coder",
+			manager: "manager",
+			delegate: false,
+		}),
+		false,
+	);
+	assert.equal(
+		identityAgentSettable({
+			name: "coder",
+			manager: "manager",
+			delegate: undefined,
+		}),
+		false,
+	);
+	assert.equal(
+		identityAgentSettable({
+			name: "coder",
+			manager: "manager",
+			delegate: null,
+		}),
+		false,
+	);
+	// An unknown manager is not a match and not a default: no caller applies
+	// the predicate against one (see `identityAgentConstraint`), and the pure
+	// comparison must not invent the manager it did not get.
+	assert.equal(
+		identityAgentSettable({ name: "coder", manager: null, delegate: false }),
+		false,
+	);
+	assert.equal(
+		identityAgentSettable({ name: "coder", manager: null, delegate: true }),
+		true,
+	);
+});
+
+test("the constraint exists only over a KNOWN manager, and names the team", () => {
+	/*
+	 * A null manager is "not known" (no team bound, or the catalogue has not
+	 * answered), and the panel must not constrain or explain against it:
+	 * disabling the wrong rows is a claim about a team rather than about a
+	 * load. The caption names the team with the string the chip shows, so the
+	 * panel and a flagged chip speak one sentence.
+	 */
+	assert.equal(
+		identityAgentConstraint({ teamLabel: "No team", manager: null }),
+		null,
+	);
+	assert.deepEqual(
+		identityAgentConstraint({
+			teamLabel: "Local Operator Dev",
+			manager: "manager",
+		}),
+		{
+			manager: "manager",
+			caption:
+				"Local Operator Dev is led by its manager; only the manager and profiles that can delegate may take this seat.",
+		},
+	);
+});
+
+test("the rule's copy is pinned as the design round's candidate", () => {
+	// These strings are the copy candidates the brief lands with; the design
+	// round weighs them against the core half's refusal wording. Pinned so a
+	// JSX edit cannot quietly reword a claim the captured frames are read
+	// against.
+	assert.equal(
+		identityAgentConstraintCaption("lopdev"),
+		"lopdev is led by its manager; only the manager and profiles that can delegate may take this seat.",
+	);
+	assert.equal(
+		IDENTITY_AGENT_NOT_SETTABLE_REASON,
+		"Needs a delegating profile here.",
+	);
 });
