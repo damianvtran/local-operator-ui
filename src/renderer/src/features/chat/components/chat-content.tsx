@@ -1801,6 +1801,35 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 */
 										awaitingHydration={canonical.view.awaitingHydration}
 										/*
+										 * The end claim's PROOF, the sibling fact to the one above and
+										 * needed beside it (remote-load-hydration): `awaitingHydration`
+										 * ends the pane's wait, but `has_more: false` still needs a read
+										 * that could SEE the conversation before "Start of conversation"
+										 * is honest — a stored remote session's cold open answers from
+										 * a facade with no owner, and the session hook refuses to count
+										 * that answer as proof. `hydrated` is exactly that proof (a page
+										 * has been applied) and stays false until one is; without it
+										 * the slot renders "not loaded" and the retry below instead
+										 * of the end copy.
+										 */
+										hydrationProven={canonical.view.hydrated}
+										/*
+										 * And whether a read is OUT right now (remote-load-hydration, UX
+										 * round 1 U1): the retry arm's press must be acknowledged, so
+										 * while the walk it fired is in flight the slot paints the
+										 * pending row instead of repainting the identical "not loaded"
+										 * row — and the session hook refuses a second walk while one
+										 * is out, so a held press cannot stack reads either.
+										 */
+										historyReadPending={canonical.view.historyReadPending}
+										/*
+										 * And the retry that arm offers: the same history read the cold
+										 * open fires, re-asked on the session handle — deliberately
+										 * NOT the stream's `retry`, a heavier repair than this
+										 * question needs (see `CanonicalSessionHandle.rehydrate`).
+										 */
+										onRetryHydration={canonical.view.rehydrate}
+										/*
 										 * The identity the composer BELOW is given as its
 										 * `conversationId`, and deliberately the same local
 										 * const rather than a second spelling of it: the
