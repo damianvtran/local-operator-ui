@@ -2894,7 +2894,7 @@ const subagentRunningRoster = (): WireRow[] => [
 		undefined,
 		{ subagents_running: 1, subagents_queued: 0 },
 	),
-	// S8 - no double draw: the primary running mark (the filled dot,
+	// S8 - no double draw: the primary running mark (the three-bead trio,
 	// `SubagentRunningMark`) plus the queued glyph, and NOTHING of the running
 	// half.
 	wireRow(
@@ -2909,11 +2909,12 @@ const subagentRunningRoster = (): WireRow[] => [
 	),
 	// S9 - THE REGRESSION CELL: a delegating row with nothing queued must render
 	// exactly as it does today. Compare against the committed
-	// `delegating-row-default/` frames: one filled dot in the accent, 8px inside
-	// the slot's 16px box, no second glyph and no added clause. (Those committed
-	// frames pre-date issue #840 and still draw the removed `Share2`; the story's
-	// claim is about the SHAPE of the state, and the frames were re-captured in
-	// the same round that changed the mark - see `subagent-rows-running/`.)
+	// `delegating-row-default/` frames: the three-bead trio in the accent, 12x12
+	// inside the slot's 16px box, no second glyph and no added clause. Those
+	// frames were re-taken by the trio pass (2026-10-06) - this story's own cell
+	// is one of the nine it re-shot - so they draw the mark this build draws
+	// rather than a glyph three revisions back, and the story's claim about the
+	// SHAPE of the state now has a frame beside it that agrees.
 	wireRow(
 		CELL_DELEG_RUNNING,
 		"Reconcile the supplier ledger",
