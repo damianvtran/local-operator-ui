@@ -41,7 +41,22 @@
  * per-ask "no dismiss door" note in `ask-panel.tsx` is about DISMISSING ONE ASK (no
  * backend route) - a different act from closing the surface, which is why the two
  * are not in tension. The drawer also closes itself when the queue empties, so the
- * chip and the surface cannot disagree about whether there is anything to show.
+ * chip and the surface cannot disagree about whether there is anything to show, and
+ * - the half this surface was missing - when it comes up over a queue with nothing
+ * to show at all (a conversation switch).
+ *
+ * ## The chrome always renders (the stuck-slot fix)
+ *
+ * The bar is drawn on EVERY frame this component is mounted with, and only the body
+ * varies: rows, the panel's designed empty sentence, or the quiet unread line. There
+ * is deliberately no frame that draws nothing, because the component is mounted by a
+ * STORE flag rather than by the frame - `isAskDrawerOpen` survives a conversation
+ * switch and `SessionPanel` is keyed by conversation - while its slot is claimed by
+ * the mount rather than by anything the drawer draws. A frame the drawer declined to
+ * render therefore did not release the slot: it parked a 560px empty column on the
+ * right of the window with no bar, no dismiss and no control of any kind, which is
+ * the defect this container's first rule now forbids by construction rather than by
+ * enumerating the frames (see the gate in the render below).
  *
  * ## Focus
  *
@@ -74,13 +89,14 @@ import type {
 	AskScope,
 } from "../../ask-queue";
 import {
+	ASK_DRAWER_UNAVAILABLE_LINE,
+	ASK_DRAWER_UNREAD_LINE,
 	ASK_HEADER_ITEM_SELECTOR,
 	ASK_ITEM_SELECTOR,
 	EMPTY_DRAFTS,
 	askQueueView,
 	askScopeLine,
 	noopDraftChange,
-	sessionAsks,
 } from "../../ask-queue";
 import { useAskClock } from "../../use-ask-clock";
 import { AskPanel } from "./ask-panel";
@@ -219,30 +235,131 @@ export const AskDrawer = ({
 	const view = askQueueView(frontend, outcomes);
 	const now = useAskClock(view.open > 0, nowMs);
 	const rootRef = useRef<HTMLElement | null>(null);
+	/*
+	 * THE UNREAD FRAME IS THE VIEW'S OWN FACT, not a second read of `frontend` here
+	 * (remediation round 1, D1 keeps it separate from `published`, and R1 needs it in
+	 * the close gate). `AskQueueView.unread` is `frontend == null` derived once, so the
+	 * bar's copy, the body's copy, the entry move and the auto-close cannot drift about
+	 * which of the three unresolved-looking states this is.
+	 */
+	const frameUnread = view.unread;
+
+	/*
+	 * THE DOOR THAT OPENED THIS MOUNT, remembered so the auto-close below can tell
+	 * the user's own press from a mount that merely inherited the open flag.
+	 *
+	 * WHY THE DISTINCTION IS THE WHOLE FINE PRINT. `isAskDrawerOpen` is a STORE flag
+	 * and deliberately survives a conversation switch - the drawer follows the user
+	 * into whatever conversation is opened next - and the FLEET trigger is offered at
+	 * ZERO outstanding asks, so a press on it opens this surface over a queue with
+	 * nothing in it ON PURPOSE. Auto-closing THAT mount would be a control that
+	 * refuses its own door. The signal is the lane's existing one, latched where it
+	 * is computed: the entry effect's `ASK_ITEM_SELECTOR` / `ASK_HEADER_ITEM_SELECTOR`
+	 * read of the element that held focus. It is a LATCH, never cleared, because the
+	 * entry effect runs on every commit until its one-shot is spent and a later
+	 * commit could find focus back on the trigger with no press behind it.
+	 */
+	const openedByDoor = useRef(false);
 
 	/*
 	 * The drawer closes itself when the queue empties: an open drawer over nothing is
 	 * a surface the user has to dismiss, and the lane's own rule is that the
 	 * affordance disappears at zero asks.
 	 *
-	 * `hadRows.current === null` is "not yet observed", so a MOUNT into an
-	 * empty-but-published queue is not an emptying - the drawer is opened by the
-	 * user, who may open it on a settled-only queue to read the history, and closing
-	 * it the instant it arrived would be a control that refuses its own door. This
-	 * guard is the one the surface this container replaces had, kept because the
-	 * reason has not changed.
+	 * TWO TRANSITIONS, TWO DIFFERENT FACTS, AND ONLY ONE OF THEM WAS HERE.
+	 *
+	 *  - THE SAME-INSTANCE EMPTYING (`hadRows.current === true`, kept exactly as it
+	 *    was): the ask under the open drawer settled - answered from the phone,
+	 *    declined, timed out - and the drawer closes rather than sitting over the
+	 *    nothing it now shows.
+	 *  - THE SWITCH (new, and the defect this file carries): the drawer mounts over a
+	 *    DIFFERENT conversation's frame, and that frame has nothing to show. Nothing
+	 *    emptied here; the surface simply came up over an empty queue. It used to
+	 *    stay up drawing nothing at all - no bar, no dismiss - while its slot kept
+	 *    the right side of the window, because the open flag is the store's and
+	 *    `SessionPanel` is keyed by conversation, so the mount happens on every
+	 *    switch with no door behind it.
+	 *
+	 * WHICH IS WHY THE DOOR GUARD IS THE SECOND HALF OF THE RULE, not a nicety: the
+	 * switch case is EXACTLY the case the user's own press never opens (see
+	 * `openedByDoor` above), and the door case is exactly the one the switch rule must
+	 * not touch. And `frameUnread` bounds the third state: an unresolved frame closes
+	 * nothing (the read has not answered, so there is no fact to act on) and - since
+	 * the chrome below now renders unconditionally - traps nothing either.
 	 */
 	const hadRows = useRef<boolean | null>(null);
+	/*
+	 * One close per mount, whatever the caller's `onClose` identity does. The effect
+	 * re-runs whenever a dependency's identity changes, and one caller passes an inline
+	 * arrow (`chat-layout.tsx` mounts the fleet drawer with
+	 * `onClose={() => setAskDrawerOpen(false, "fleet")}`), so a rule that only compares
+	 * deps would re-close on every render it happened to see. The drawer unmounts on a
+	 * close, so a per-mount latch is exactly "fire once" rather than a weakening of the
+	 * per-emptying rule.
+	 */
+	const closedOnce = useRef(false);
+	/*
+	 * WHY A LAYOUT EFFECT LOOKS RIGHT HERE, AND WHY IT WAS REJECTED. A passive effect
+	 * runs AFTER the browser has painted the commit, which invites the guess that the
+	 * chrome is painted over the conversation being left; the counter-measure would be
+	 * `useLayoutEffect`, which lands the close before paint. It was tried and measured,
+	 * and it buys nothing: what this effect can act on is bounded by the FRAME it has to
+	 * wait for, not by the paint phase. A switch to a conversation whose frame has not
+	 * landed yet reads as UNREAD, and that state must close NOTHING - a switch to a
+	 * conversation that DOES have asks is indistinguishable from it for exactly that
+	 * interval, and there the surface must stay up and show them. The chrome is
+	 * therefore on screen for as long as the read takes (the rig reads four painted
+	 * frames, gone within ~110 ms on this host; `docs/evidence/ask-drawer-stuck/README.md`
+	 * states the reading rather than a constant), and no paint-phase change moves it.
+	 *
+	 * A LAYOUT EFFECT WOULD ALSO HAVE COST SOMETHING REAL: a declaration-order
+	 * dependency against the entry effect's door latch. React runs a component's
+	 * effects in declaration order, so a layout close declared above the entry effect
+	 * reads `openedByDoor` before that effect sets it and shuts the surface the user had
+	 * just pressed a door to open (measured while this was a layout effect, and pinned
+	 * by the door arm of `scripts/ask-draft-swap.test.mjs`).
+	 *
+	 * IT DOES NOT WEAKEN EITHER OF THE OTHER GUARDS: the door latch and the unread
+	 * frame are read the same way, and the effect is still offered every commit until
+	 * the latch is spent.
+	 */
 	useEffect(() => {
-		if (view.rows.length > 0) {
+		if (closedOnce.current) return;
+		/*
+		 * NOTHING TO SHOW IS `open === 0` AND NO ROWS, NOT ROWS ALONE (remediation round
+		 * 1, R1). A frame whose LIST the wire bound dropped but whose TALLY survived
+		 * (`{asks: null, asks_open: 4}`, `_bound_asks_in_place`) has no rows and four
+		 * outstanding asks: closing over it would release the slot and leave every one of
+		 * them unreachable, which is the reported defect with the sign flipped.
+		 */
+		if (view.rows.length > 0 || view.open > 0) {
 			hadRows.current = true;
 			return;
 		}
 		const wasPopulated = hadRows.current === true;
 		hadRows.current = false;
-		if (!wasPopulated) return;
+		if (wasPopulated) {
+			closedOnce.current = true;
+			onClose();
+			return;
+		}
+		/*
+		 * A MOUNT over a queue with nothing to show: the switch case. Never a judgement about the
+		 * read - an unread frame is not an empty one, and the map it would close on is
+		 * exactly the read's own pending state.
+		 */
+		if (frameUnread) return;
+		if (openedByDoor.current) return;
+		closedOnce.current = true;
 		onClose();
-	}, [view.rows.length, onClose]);
+		/*
+		 * `view.open` IS A DEPENDENCY BECAUSE THE GATE READS IT (R1). The gate is
+		 * `rows > 0 || open > 0`, and a frame whose ROWS were dropped while its TALLY
+		 * survived changes `open` without changing `rows.length` - so without this the
+		 * effect could sit on a stale close verdict for exactly the frame the guard was
+		 * added for.
+		 */
+	}, [view.rows.length, view.open, frameUnread, onClose]);
 
 	/*
 	 * INTO THE DRAWER, and only for the user's own press: the mount must find focus
@@ -273,15 +390,31 @@ export const AskDrawer = ({
 			active.matches(ASK_HEADER_ITEM_SELECTOR)
 				? active
 				: null;
+		/*
+		 * THE DOOR IS LATCHED AS SOON AS IT IS SEEN, before the wait below can return: the
+		 * auto-close effect reads it, and although that effect is declared ABOVE this one,
+		 * it is a PASSIVE effect while this one is a layout effect - so it always runs
+		 * after this, and the latch is set by the time it asks. (That ordering is why the
+		 * close can stay where it is rather than moving below this effect.)
+		 */
+		if (door !== null) openedByDoor.current = true;
 		const root = rootRef.current;
+		/* No container yet: nothing to move focus into, and the one-shot is not spent. */
+		if (root === null) return;
 		/*
 		 * THE ONE-SHOT IS CONSUMED ON THE FIRST COMMIT THAT IS NOT THE AWAITING READ,
 		 * and that bound is the whole of this lane's no-focus-steal promise. The only
-		 * thing there is to wait for is the fleet pane's read: its first commits carry
-		 * `frontend === null`, so the container draws nothing and `rootRef.current` is
-		 * null while the door that opened it is still under the keyboard. `door !==
-		 * null && root === null` is exactly that state, and it is the ONLY state that
-		 * retries.
+		 * thing there is to wait for is the read behind the pane: the fleet pane's first
+		 * commits carry `frontend === null`, and so does a session frame that has not
+		 * landed. `door !== null && frameUnread` is exactly that state, and it is the
+		 * ONLY state that retries.
+		 *
+		 * IT USED TO BE SPELLED `root === null`, WHICH NO LONGER NAMES IT: the container
+		 * draws its chrome on every frame now (see the gate below), so a root exists from
+		 * the first commit and the wait was silently spent while the frame was still
+		 * unread - moving the keyboard to the drawer's own section rather than into the
+		 * LIST the door was pressed for. What the wait is waiting for is the FRAME, so the
+		 * frame is what it reads.
 		 *
 		 * EVERY OTHER COMMIT RESOLVES THE MOVE, and it resolves it whether or not a
 		 * door is under focus. Spending the flag only on a commit that found BOTH a door
@@ -293,9 +426,9 @@ export const AskDrawer = ({
 		 * a commit that has both a door and a surface, so the bounded wait cannot move
 		 * anything either.
 		 */
-		if (door !== null && root === null) return;
+		if (door !== null && frameUnread) return;
 		wasBootstrapped.current = true;
-		if (door === null || root === null) return;
+		if (door === null) return;
 		doorRef.current = door;
 		/*
 		 * THE LIST'S FIRST CONTROL, not the bar's and not the filter's (UX round 1, U4;
@@ -305,8 +438,9 @@ export const AskDrawer = ({
 		 * landing is therefore the first thing in the LIST: the head card's first live
 		 * option (`input`, an option row, or the free-text field) when a pending card is
 		 * drawn, and otherwise the first settled row's own trigger. The fallbacks below
-		 * stay for a panel with neither (`tabIndex={-1}` on the panel root is the
-		 * deliberate landing) and then for the drawer itself.
+		 * stay for a panel with neither, and the LAST of them is the drawer itself
+		 * (`tabIndex={-1}` on its own section, which is the stop the keyboard is meant to
+		 * land on when the pane has no controls at all).
 		 */
 		const panel = root.querySelector<HTMLElement>(ASK_PANEL_SELECTOR);
 		/*
@@ -318,11 +452,29 @@ export const AskDrawer = ({
 		 * them.
 		 */
 		const landingRoot = panel?.querySelector<HTMLElement>(ASK_LANDING_TARGET);
+		/*
+		 * A NODE THAT CANNOT TAKE FOCUS IS NEVER THE LANDING (UX round 2, U2-1). The
+		 * chain used to fall through to the bare `panel`, and `AskPanel`'s root is a plain
+		 * `<div>` with no `tabIndex` - so `panel.focus()` was inert and the `?? root` term
+		 * below it was dead code. On a pane with no rows (the state R3/Q1's widened door
+		 * made reachable: a live-but-EMPTY queue) the entry move therefore moved nothing,
+		 * and the cost was not cosmetic: the lane's Escape claim is the pane, the chip and
+		 * the composer box, while focus stayed on the HEADER DOOR - which is not in that
+		 * set - so Escape did nothing on a fully mounted pane (`panel.focus()` left
+		 * `document.activeElement` unchanged; `root.focus()` lands; both measured).
+		 *
+		 * SO THE CHAIN SKIPS THE PANEL ROOT AND KEEPS THE SURFACE as its last resort, which
+		 * is the stop this component already documents for itself. Giving the panel root a
+		 * `tabIndex` was the alternative, and it was rejected: it would add a content `<div>`
+		 * to the reading order for the sake of a fallback, and the surface's own section is
+		 * inside `ASK_SURFACE_SELECTOR` with an `aria-label` naming the queue - a better
+		 * landing than an unlabelled panel would be. `ASK_DRAWER_FOCUSABLE` excludes
+		 * `[tabindex="-1"]`, so the root can never be picked as the "first control" above.
+		 */
 		const landing =
 			landingRoot?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ??
 			landingRoot ??
 			panel?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ??
-			panel ??
 			root;
 		landing.focus();
 		/*
@@ -368,12 +520,33 @@ export const AskDrawer = ({
 	}, []);
 
 	/*
-	 * An absent queue is not an empty one: `sessionAsks` returns null when this
-	 * backend does not publish queued asks, and nothing mounts at all - the same
-	 * capability rule the chip and the panel follow, read from the same function.
+	 * THE CHROME RENDERS ON EVERY FRAME - there is no early return here any more, and that
+	 * absence is the fix.
+	 *
+	 * WHAT USED TO BE HERE, AND WHY IT WAS RIGHT WHEN IT WAS WRITTEN. The gate was
+	 * `sessionAsks(frontend) === null` -> draw nothing: "an absent queue is not an empty
+	 * one, and this backend does not publish queued asks". That was the lane's capability
+	 * rule, and it was CORRECT while the core published `asks` exactly while its queue had
+	 * rows - the array's absence and the engine's absence were one fact. The WIRE FIX
+	 * separated them (`ask-queue.ts`'s `askQueuePublished`, the core's `ask_wire`
+	 * docblock): a live-but-EMPTY queue is now published as `asks` ABSENT with
+	 * `asks_open: 0`, so this read turned a live, empty engine into a dead one. An older
+	 * rule reading a changed contract, not a mistake - and the cost of the collision was
+	 * a claimed slot: the drawer mounted (the open flag is the store's and survives a
+	 * conversation switch, and `SessionPanel` is keyed by conversation, so the mount
+	 * happens on every switch), drew nothing at all - no bar, no dismiss, no way out -
+	 * while its 560px `PaneSlot` kept holding the right side of the window.
+	 *
+	 * THE RULE THAT REPLACES IT IS STRUCTURAL: while this component is mounted, its
+	 * chrome (scope line + dismiss) is drawn, and only the BODY varies with the frame.
+	 * That is what makes "no state may hold a claimed slot without a close control" true
+	 * by construction rather than by enumerating the frames, which is the enumeration
+	 * that produced the defect. The body has three readings: the rows, the panel's own
+	 * designed empty sentence (a published queue with nothing in it), and - for a frame
+	 * that has not been read, or one that publishes no queued engine at all - the quiet
+	 * unread line, which states what the surface is doing rather than a count it cannot
+	 * substantiate.
 	 */
-	if (sessionAsks(frontend) === null) return null;
-
 	return (
 		/*
 		 * `data-lo-ask-surfaces` is the lane's own marker, read by `askClaimsEscape`:
@@ -452,29 +625,51 @@ export const AskDrawer = ({
 			 * (without it the drawer grows and the page scroller returns - the D1 defect).
 			 */}
 			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2">
-				<AskPanel
-					view={view}
-					nowMs={now}
-					answering={answering}
-					outcomes={outcomes}
-					drafts={drafts ?? EMPTY_DRAFTS}
-					onDraftChange={onDraftChange ?? noopDraftChange}
-					onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
-					onDecline={(task) => onDecline?.(task.ask_id)}
-					onRevise={
-						onRevise === undefined
-							? undefined
-							: (task, answers) => onRevise(task.ask_id, answers)
-					}
+				{/*
+				 * THE BODY, AND WHY THERE ARE THREE READINGS RATHER THAN TWO (remediation round
+				 * 1, D1). `AskPanel` draws the queue, its designed empty sentence and - R1 - the
+				 * clipped-list statement for a PUBLISHED frame (`asks` OR `asks_open` present),
+				 * including the live-but-empty one the drawer used to render as nothing. The
+				 * two unpublishable frames are NOT one state: an UNREAD frame is a progress
+				 * state that will resolve, and a RESOLVED frame that publishes no engine is a
+				 * terminal answer about the runtime - the same words over both parked a
+				 * permanent `Reading the asks…` on a runtime that will never read anything.
+				 * So each gets its own honest line, and the second is not a claim that can
+				 * never complete.
+				 */}
+				{view.published ? (
+					<AskPanel
+						view={view}
+						nowMs={now}
+						answering={answering}
+						outcomes={outcomes}
+						drafts={drafts ?? EMPTY_DRAFTS}
+						onDraftChange={onDraftChange ?? noopDraftChange}
+						onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
+						onDecline={(task) => onDecline?.(task.ask_id)}
+						onRevise={
+							onRevise === undefined
+								? undefined
+								: (task, answers) => onRevise(task.ask_id, answers)
+						}
+						/*
+						 * THE CONVERSATION LINE IS THE FLEET'S OWN, and the CALLER supplies it (see
+						 * `AskDrawerProps.conversationOf`): a session drawer's rows are all about the
+						 * conversation the user is in, so naming it on every card would be the same word
+						 * N times. The panel stays scope-agnostic, which is what lets one list serve
+						 * both contexts.
+						 */
+						conversationOf={conversationOf}
+					/>
+				) : (
 					/*
-					 * THE CONVERSATION LINE IS THE FLEET'S OWN, and the CALLER supplies it (see
-					 * `AskDrawerProps.conversationOf`): a session drawer's rows are all about the
-					 * conversation the user is in, so naming it on every card would be the same word
-					 * N times. The panel stays scope-agnostic, which is what lets one list serve
-					 * both contexts.
+					 * `frameUnread` is `view.unread`, so this is the unresolved frame; the other
+					 * falsy-`published` case is the resolved-but-unsupported one below it.
 					 */
-					conversationOf={conversationOf}
-				/>
+					<p className="text-ink-muted text-body">
+						{frameUnread ? ASK_DRAWER_UNREAD_LINE : ASK_DRAWER_UNAVAILABLE_LINE}
+					</p>
+				)}
 			</div>
 		</section>
 	);

@@ -1120,7 +1120,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * drawer can ever be on screen, by construction rather than by a guard.
 		 */
 		const askDrawerScope = useUiPreferencesStore((s) => s.askDrawerScope);
-		const sessionAsksOpen = isAskDrawerOpen && askDrawerScope === "session";
+		/*
+		 * `sessionId` IS PART OF THE MOUNT, NOT ONLY OF THE SCOPE (remediation round 1,
+		 * U1). This mount is the CONVERSATION's own, and a draft has no conversation: with
+		 * the store flag alone the session pane followed the user onto `New chat` (\u2318N)
+		 * and parked there, painting a 560px slot over a page with no subject, naming a
+		 * scope it is not in and reading `Not read yet` forever - there is no frame on a
+		 * draft to resolve, so nothing ever clears it. The flag is deliberately left
+		 * alone: the drawer still follows the user back INTO a conversation, which is the
+		 * behaviour the lane claims. A route with no session simply has no session pane to
+		 * paint, and the shell's fleet mount is what a draft can show - which is the scope
+		 * the draft's own door already opens.
+		 */
+		const sessionAsksOpen =
+			isAskDrawerOpen && askDrawerScope === "session" && Boolean(sessionId);
 		const setAskDrawerOpen = useUiPreferencesStore((s) => s.setAskDrawerOpen);
 		/*
 		 * Whether a right-slot pane occupies the window's right edge, which is what
@@ -1158,11 +1171,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * THE SESSION COUNT IS THE DRAWER'S OWN VIEW (`askQueueView`), not a second
 		 * tally: a badge counting one set over a pane drawing another is the
 		 * two-numbers-for-one-payload class the chip and the drawer already had to fix.
-		 * `asks === null` is "this backend publishes no asks" - the same fail-closed gate
-		 * the composer chip keeps. The fleet half gates on `fleetAsks.answered`, the
-		 * capability-by-answer rule the removed row used, so a backend that does not
-		 * answer the aggregate route grows no control rather than one whose every read
-		 * 404s.
+		 * `published` IS THE DOOR'S GATE, AND `asks !== null` IS NOT (remediation round 1,
+		 * R3/Q1). The old read is the one the WIRE FIX retired: `askQueuePublished` says
+		 * the capability is the presence of `asks` OR `asks_open`, so a live-but-EMPTY
+		 * queue (`asks` absent, `asks_open: 0`) is an engine this runtime runs and its door
+		 * must be offered - without it, the very frame the drawer's empty state documents
+		 * had no entry point at all, and the two scopes disagreed about whether an empty
+		 * queue gets a door (the fleet half beside it is offered at zero by design).
+		 * Reading this lane's own field here, rather than re-deriving the rule, is what
+		 * makes `askQueuePublished` the ONE vocabulary point it claims to be.
 		 */
 		const sessionAsksView = useMemo(
 			() => askQueueView(canonical?.view.frontend ?? null),
@@ -1176,7 +1193,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const headerAsksSession = Boolean(sessionId);
 		const headerAsksScope: AskScope = headerAsksSession ? "session" : "fleet";
 		const headerAsksOffered = headerAsksSession
-			? sessionAsksView.asks !== null
+			? sessionAsksView.published
 			: fleetAsks.answered;
 		const headerAsksCount = headerAsksSession
 			? sessionAsksView.open

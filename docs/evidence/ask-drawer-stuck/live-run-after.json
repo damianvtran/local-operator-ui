@@ -1,0 +1,235 @@
+{
+  "frames": {
+    "aPopulated": "<out-dir>/01-a-populated.png",
+    "drawerOpen": "<out-dir>/02-drawer-open.png",
+    "switchStuck": "<out-dir>/03-switch-stuck.png",
+    "afterVoidClickEscape": "<out-dir>/04-after-void-click-escape.png",
+    "afterComposerEscape": "<out-dir>/05-after-composer-escape.png",
+    "afterNewChatDraft": "<out-dir>/06-after-new-chat-draft.png"
+  },
+  "probes": {
+    "afterSwitch": {
+      "url": "#/chat/bbbb11112222",
+      "headerTitle": null,
+      "drawers": 0,
+      "closeAsks": 0,
+      "askSurfaces": 0,
+      "slotPresent": false,
+      "slotBox": null,
+      "slotText": null,
+      "chip": 0,
+      "headerTrigger": 1,
+      "drawerScopeLine": null
+    },
+    "afterVoidClickEscape": {
+      "url": "#/chat/bbbb11112222",
+      "headerTitle": null,
+      "drawers": 0,
+      "closeAsks": 0,
+      "askSurfaces": 0,
+      "slotPresent": false,
+      "slotBox": null,
+      "slotText": null,
+      "chip": 0,
+      "headerTrigger": 1,
+      "drawerScopeLine": null
+    },
+    "afterComposerEscape": {
+      "url": "#/chat/bbbb11112222",
+      "headerTitle": null,
+      "drawers": 0,
+      "closeAsks": 0,
+      "askSurfaces": 0,
+      "slotPresent": false,
+      "slotBox": null,
+      "slotText": null,
+      "chip": 0,
+      "headerTrigger": 1,
+      "drawerScopeLine": null
+    },
+    "onDraft": {
+      "url": "#/chat",
+      "headerTitle": null,
+      "drawers": 0,
+      "closeAsks": 0,
+      "askSurfaces": 0,
+      "slotPresent": false,
+      "slotBox": null,
+      "slotText": null,
+      "chip": 0,
+      "headerTrigger": 1,
+      "drawerScopeLine": null
+    },
+    "onEmptyPane": {
+      "rows": 0,
+      "surfacePresent": true,
+      "activeTag": "SECTION",
+      "activeLabel": "This conversation's asks",
+      "activeInsideSurface": true,
+      "activeIsSurface": true,
+      "activeIsTheDoor": false
+    },
+    "afterEmptyPaneEscape": {
+      "url": "#/chat/bbbb11112222",
+      "headerTitle": null,
+      "drawers": 0,
+      "closeAsks": 0,
+      "askSurfaces": 0,
+      "slotPresent": false,
+      "slotBox": null,
+      "slotText": null,
+      "chip": 0,
+      "headerTrigger": 1,
+      "drawerScopeLine": null
+    }
+  },
+  "chip": {
+    "x": 540,
+    "y": 754,
+    "w": 229,
+    "h": 24,
+    "top": 742,
+    "left": 425
+  },
+  "closeButton": {
+    "x": 1358,
+    "y": 20,
+    "w": 28,
+    "h": 28,
+    "top": 6,
+    "left": 1344
+  },
+  "notesRow": {
+    "x": 126,
+    "y": 824,
+    "text": "Ready Notes now , last active just now",
+    "hitInsideRow": true,
+    "hitText": "Notes"
+  },
+  "activeElementAfterSwitch": {
+    "tag": "TEXTAREA",
+    "label": "Message",
+    "text": ""
+  },
+  "timeline": [
+    {
+      "t": "0.5s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "1s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "1.5s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "2s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "2.5s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "3s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "3.5s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "4s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "4.5s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "5s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "5.5s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "6s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    }
+  ],
+  "activeAfterVoidClick": {
+    "tag": "TEXTAREA",
+    "label": "Message"
+  },
+  "composerRect": {
+    "x": 820,
+    "y": 829,
+    "w": 810,
+    "h": 110,
+    "top": 774,
+    "left": 415
+  },
+  "backRow": {
+    "x": 126,
+    "y": 758,
+    "hitInsideRow": true
+  },
+  "chipAgain": {
+    "x": 540,
+    "y": 754,
+    "w": 229,
+    "h": 24,
+    "top": 742,
+    "left": 425
+  },
+  "chipExpandedAfterPress": "true",
+  "newChatRow": {
+    "x": 130,
+    "y": 55,
+    "text": "New chat \u2318 N",
+    "hitInsideRow": true
+  },
+  "bRow": {
+    "x": 126,
+    "y": 790,
+    "hitInsideRow": true
+  },
+  "emptyPaneDoor": {
+    "x": 1216,
+    "y": 20,
+    "w": 32,
+    "h": 32,
+    "top": 4,
+    "left": 1200
+  },
+  "ok": true,
+  "note": "PATHS ARE THE RUN'S OWN OUT-DIR, spelled abstractly: the frames a run writes land in the directory its invocation names, and no machine's absolute path is committed. FOUR DELTAS AGAINST `live-run-before.json`, all of them the remediation rounds': the slot is still released (`slotPresent: false`); conversation B - a live-but-EMPTY queue - is offered its door (`headerTrigger: 1`, was 0), the capability read aligned to the wire contract (R3/Q1); `onDraft` (step 7) shows that a session-scoped drawer does not follow onto a route with no conversation (UX U1); and `onEmptyPane`/`afterEmptyPaneEscape` (step 8) are the zero-row pane's own readings - the keyboard lands ON the surface (`activeTag: SECTION`, `activeLabel: \"This conversation's asks\"`, `activeIsTheDoor: false`) and an Escape from there closes it (`drawers: 0`). Before round 2's landing fix every one of those four readings was the opposite. The live frames are re-taken at this head; their visible content differs from the round-1 pass only in the live clock text they carry (relative times, a countdown)."
+}

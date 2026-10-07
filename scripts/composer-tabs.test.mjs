@@ -1199,6 +1199,34 @@ test("the ask item is gated on the WIRE and on a non-empty queue", () => {
 	});
 	assert.match(settled, /data-status-asks/);
 	assert.match(settled, /All asks settled/);
+	/*
+	 * AND A ROWLESS FRAME WITH A LIVE TALLY IS NOT ZERO (agent review round 2, N1).
+	 * The wire bound may drop the whole row list while keeping `asks_open`
+	 * (`_bound_asks_in_place`; the drawer's own R1 fix), and this was the last sibling
+	 * reader that took the missing rows for an empty queue: the drawer's bar, its panel
+	 * and the header badge all said `4 outstanding` while the composer chip said nothing
+	 * at all. The gate is now "has rows OR has a count to stand for", which leaves the
+	 * zero rule above exactly where it was - at zero rows and a zero tally the item is
+	 * still absent.
+	 */
+	const clipped = renderWiredRow({
+		frontend: askFrontend(null, { asks_open: 4, asks_truncated: true }),
+		runDetails: NO_DETAILS,
+	});
+	assert.match(clipped, /data-status-asks/);
+	assert.match(
+		clipped,
+		/4 outstanding/,
+		"a rowless frame's chip states the tally the bar and the badge already state",
+	);
+	assert.equal(
+		renderWiredRow({
+			frontend: askFrontend(null, { asks_open: 0 }),
+			runDetails: NO_DETAILS,
+		}),
+		"",
+		"a live-but-empty queue still keeps the item off at zero",
+	);
 });
 
 test("the ask item states the queue's own reading, in two registers", () => {
