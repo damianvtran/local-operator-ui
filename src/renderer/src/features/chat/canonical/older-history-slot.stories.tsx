@@ -40,6 +40,10 @@ const STATES: { state: OlderHistoryState; caption: string }[] = [
 	{ state: "loading", caption: "a durable page is in flight" },
 	{ state: "failed", caption: "the page failed; the action still works" },
 	{ state: "windowed", caption: "rows held back by the render window only" },
+	{
+		state: "unproven",
+		caption: "`has_more` says the end; no read has proven it",
+	},
 	{ state: "exhausted", caption: "every row this conversation has" },
 ];
 
@@ -70,13 +74,14 @@ const Ruled = ({
 				state={state}
 				transportDown={transportDown}
 				onLoadOlder={() => undefined}
+				onRetryHydration={() => undefined}
 			/>
 		</div>
 	</div>
 );
 
 /**
- * The fixed-height claim, falsifiable at a glance: five states between two
+ * The fixed-height claim, falsifiable at a glance: six states between two
  * rules. Any state that is taller than the others pushes its lower rule down.
  */
 export const EveryState: Story = {
@@ -90,7 +95,7 @@ export const EveryState: Story = {
 };
 
 /**
- * The same five states at the app's OWN minimum content width.
+ * The same six states at the app's OWN minimum content width.
  *
  * This board exists because `EveryState` renders at a single 32rem column, and
  * that is why a wrapping failure state shipped: the failure copy has an
@@ -126,7 +131,10 @@ export const AppMinimumWidth: Story = {
 				it was drawn, 480px since §I.
 			</p>
 			{STATES.filter(
-				(entry) => entry.state === "failed" || entry.state === "loading",
+				(entry) =>
+					entry.state === "failed" ||
+					entry.state === "loading" ||
+					entry.state === "unproven",
 			).map(({ state, caption }) => (
 				<Ruled
 					key={`narrow-${state}`}
@@ -236,7 +244,14 @@ const InTranscript = ({
 	hasMore,
 	loadingOlder,
 	olderFailed = false,
-}: { hasMore: boolean; loadingOlder: boolean; olderFailed?: boolean }) => {
+	hydrationProven = true,
+}: {
+	hasMore: boolean;
+	loadingOlder: boolean;
+	olderFailed?: boolean;
+	/** The end claim's proof; false is the unproven-end cell below. */
+	hydrationProven?: boolean;
+}) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
 		<div className="flex h-[520px] flex-col bg-canvas" ref={containerRef}>
@@ -257,6 +272,8 @@ const InTranscript = ({
 				starting={false}
 				loadingOlder={loadingOlder}
 				olderFailed={olderFailed}
+				hydrationProven={hydrationProven}
+				onRetryHydration={() => undefined}
 				onLoadOlder={async () => true}
 				containerRef={containerRef}
 				isSmallView={false}
@@ -265,7 +282,9 @@ const InTranscript = ({
 				/*
 				 * A fixture of a conversation that has been read: the rows are handed in
 				 * rather than fetched, so no page is still owed. The hold cannot fire here
-				 * (it needs zero records) and nothing here is a claim about the read.
+				 * (it needs zero records) and nothing is a claim about the read — except
+				 * in the unproven cell below, which claims precisely that no read has
+				 * proven one (`hydrationProven={false}`).
 				 */
 				awaitingHydration={false}
 				onReconnect={() => {}}
@@ -329,4 +348,30 @@ export const InTranscriptLoading: Story = {
  */
 export const InTranscriptFailed: Story = {
 	render: () => <InTranscript hasMore loadingOlder={false} olderFailed />,
+};
+
+/**
+ * THE HONEST END (remote-load-hydration): the transcript above real rows with
+ * `has_more: false` and NO proof the read ever saw the conversation - the state
+ * a stored remote session's cold open lands in (the wire's answer for a peer
+ * whose runtime has not been reached is the same empty page a genuinely empty
+ * conversation serves). The row may state neither "Start of conversation" (a
+ * claim nobody established) nor "Could not load" (a failure nobody observed):
+ * it says the fact and offers the read again.
+ *
+ * WHY A CELL OF ITS OWN. The state is a fact about the READ, decided upstream
+ * (`use-scroll-paging.ts`'s `slotState`, gated on the transcript's
+ * `hydrationProven`), so no board built from `OlderHistorySlot` alone can show
+ * the gate - `EveryState` renders the six arms and the rule that chooses them
+ * lives in the hook. What this board does is put the resulting row where the
+ * claim is made for: above real rows, through the production transcript.
+ */
+export const InTranscriptUnproven: Story = {
+	render: () => (
+		<InTranscript
+			hasMore={false}
+			loadingOlder={false}
+			hydrationProven={false}
+		/>
+	),
 };

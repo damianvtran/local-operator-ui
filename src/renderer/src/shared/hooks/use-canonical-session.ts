@@ -238,6 +238,18 @@ export type CanonicalSessionView = {
 	 * - including a stream that failed, because a failure is not an answer.
 	 */
 	hydrated: boolean;
+	/**
+	 * Whether a history read FOR THIS SESSION is in flight (remote-load-hydration).
+	 *
+	 * The retry-able "not loaded" arm's own press must be answerable: the walk a
+	 * press (or the warm re-arm) fires reads `/history`, and while it is out the
+	 * slot paints the pending arm rather than repainting the identical row the
+	 * reader just pressed (UX round 1, U1). It is also the press's own guard:
+	 * `rehydrate` is a no-op while a read is already out, so N presses can never
+	 * stack N walks - the read in flight is already the question being asked.
+	 * True for exactly the span some `reconcileTail` walk of this view is out.
+	 */
+	historyReadPending: boolean;
 	/** Owner frontend epoch — answers to pending gates are addressed by it. */
 	ownerEpoch: string | null;
 	/** HTTP receipt cursor for reconnects (epoch + after_seq). */
@@ -481,6 +493,22 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 * opened, or this one unmounted).
 	 */
 	retry: () => void;
+	/**
+	 * Ask for the authoritative history read again, now.
+	 *
+	 * The action behind the older-history slot's "Try again" while hydration is
+	 * UNPROVEN (the slot's `unproven` arm): the pane holds rows, `has_more` says
+	 * the end, and no read has proven that end yet, so the reader gets one
+	 * control that re-asks the same read the cold open fired.
+	 *
+	 * Deliberately NOT `retry` (that re-arms the stream as well - a heavier
+	 * repair than this question needs) and not `loadOlder` (that pages back from
+	 * a cursor; an unproven transcript has none). It fires the walk a cold open
+	 * fires - with the same generation guard and the same request budget - and
+	 * does nothing once a page has proven hydration, because then the arm it
+	 * serves is no longer on screen.
+	 */
+	rehydrate: () => void;
 	/**
 	 * Read this session's history TAIL once, apply it, and say whether the page
 	 * carried the outcome of the pass that STARTED at or after `since` (epoch ms).
@@ -2109,6 +2137,9 @@ export function useCanonicalSessionStream(
 			 * frame, which is what suppresses the greeting and paints the message.)
 			 */
 			hydrated: false,
+			// No walk of this mount has been dispatched yet; the first read raises
+			// this, and its exit lowers it again.
+			historyReadPending: false,
 		};
 	});
 
@@ -2252,6 +2283,19 @@ export function useCanonicalSessionStream(
 	 * all.
 	 */
 	const retryRef = useRef<(() => void) | null>(null);
+	/*
+	 * `rehydrate`'s own door, on the same lifetime rule as `retryRef`: non-null
+	 * only while this effect owns the stream, so a click after the session
+	 * changed (or after unmount) cannot re-read the old session.
+	 */
+	const hydrateRef = useRef<(() => void) | null>(null);
+	/*
+	 * How many `reconcileTail` walks are out for this view, so the pending paint
+	 * and the no-stack guard read one number. A count rather than a flag because
+	 * the walks OVERLAP - a label walk and the warm re-arm's walk can be in
+	 * flight for one conversation - and only the last exit may clear the paint.
+	 */
+	const historyReadsRef = useRef(0);
 	const generationRef = useRef(0);
 
 	useEffect(() => {
@@ -2505,6 +2549,22 @@ export function useCanonicalSessionStream(
 			onSpend?: (rows: number) => void,
 		) => {
 			/*
+			 * THIS WALK IS A READ THE PANE CAN PAINT (remote-load-hydration, U1): the
+			 * count is raised here and lowered in the finally below, so the slot's
+			 * `historyReadPending` is true for exactly the span a `/history` read is
+			 * out - including between this walk's own pages. The view write is
+			 * skipped for a superseded generation; the COUNT is kept balanced either
+			 * way, because a leaked count would block every later press.
+			 */
+			historyReadsRef.current += 1;
+			if (generationRef.current === generation) {
+				commitView((current) =>
+					current.historyReadPending
+						? current
+						: { ...current, historyReadPending: true },
+				);
+			}
+			/*
 			 * `labelPending` is released on EVERY exit of this walk except the one that
 			 * hands the same walk to a timer (the nothing-painted backoff below), which
 			 * carries the ids with it. A walk that ends by label, by bound, by failure
@@ -2557,6 +2617,22 @@ export function useCanonicalSessionStream(
 				 * conversation, and a wholesale clear let whichever finished first wipe the
 				 * other's pending ids - a release on a read that was still running.
 				 */
+				/*
+				 * The read is over - or a timer owns it, and the backoff gap until it
+				 * re-enters is not painted (the row's own words are true across that
+				 * gap, and the alternative is a count nobody can lower if the timer is
+				 * torn down before it fires). Only the LAST walk out clears the paint;
+				 * the write is unconditional because false on a view that is already
+				 * false is free, and a live walk's count keeps it true.
+				 */
+				historyReadsRef.current = Math.max(0, historyReadsRef.current - 1);
+				if (historyReadsRef.current === 0) {
+					commitView((current) =>
+						current.historyReadPending
+							? { ...current, historyReadPending: false }
+							: current,
+					);
+				}
 				if (!handedOff) {
 					for (const id of labels.targets)
 						labelGapRef.current.inFlight.delete(id);
@@ -2594,6 +2670,18 @@ export function useCanonicalSessionStream(
 			let joined = false;
 			/** Whether a fetched page has reached the row this turn opened with. */
 			let reachedTurnStart = false;
+			/*
+			 * WHETHER THE PANE WAS COLD WHEN THIS WALK STARTED, captured here rather
+			 * than read from `state` at commit time (remote-load-hydration). The first
+			 * request goes out a synchronous instant after this line, so this is the
+			 * cold value the ANSWER was given under - and the answer's meaning depends
+			 * on it: a peer's empty page answered while cold proves nothing (see the
+			 * proof rule in the page commit below), while one answered after a warm
+			 * may. Reading `state.cold` at commit instead would let a warm that landed
+			 * WHILE the read was in flight re-classify the stale cold answer as
+			 * authoritative - the exact over-claim this capture exists to keep out.
+			 */
+			const coldAtDispatch = viewRef.current.cold;
 			/*
 			 * THE LABEL GOAL, the half the walk used to lack. It stopped as soon as a
 			 * page CONNECTED to a painted row, but the label gap needs a page that
@@ -2827,11 +2915,45 @@ export function useCanonicalSessionStream(
 					for (const id of named) left.delete(id);
 					return {
 						...state,
-						// A page that RESOLVED is the proof hydration was waiting for,
-						// applied-or-empty alike: the backend answered with this session's
-						// durable tail, so the view may now speak about the conversation at
-						// all - which is what lets the composer offer the greeting.
-						hydrated: true,
+						/*
+						 * A PAGE PROVES HYDRATION WHEN IT COULD SEE THE CONVERSATION
+						 * (remote-load-hydration). A resolved page normally is the proof the
+						 * snapshot could not give - applied-or-empty alike, because the backend
+						 * answered with this session's durable tail. The exception is a read
+						 * answered by a COLD facade: there is no runtime holding this
+						 * conversation, so the empty page it serves is "nothing to paint yet"
+						 * (the wire's own word - an empty page beside `cold: true` is the
+						 * renderer's signal to reconcile through `/history`, which is the read
+						 * that got here), and it is byte-identical to a genuinely empty
+						 * conversation's page (`entries: []`, `has_more: false`,
+						 * `cursor_missing: false`). Marking hydration proven from it let the
+						 * pane claim an empty conversation - and, once rows arrived, the end of
+						 * history - over a conversation nobody had read; a stored remote
+						 * session's first open is where that was measured.
+						 *
+						 * THE RULE TURNS ON THE READ'S COLD STATE, NOT ON WHERE THE ROWS LIVE,
+						 * because the read itself is the only place the two can be told apart -
+						 * and even there only by whether the facade had an owner. This device's
+						 * own journal read answers the same empty page for a missing file as
+						 * for an unwritten one, and the daemon's local and peer readers are
+						 * byte-identical on the wire; "is this conversation a peer's" is a fact
+						 * of the catalogue, which lands seconds later (a federated read) and
+						 * cannot classify the answer that already arrived. So EVERY empty page
+						 * read while cold proves nothing, and the warm transition re-arms the
+						 * read instead (the `warmedUnproven` trigger in `flush`); once warm,
+						 * emptiness is the conversation's own statement and this commits true.
+						 * The cost is stated: a LOCAL empty session holds the placeholder
+						 * until its runtime warms, which in a visible window is the lease's own
+						 * second.
+						 *
+						 * The terms, each one necessary: a NON-EMPTY page is rows, which prove
+						 * themselves wherever they live; `!coldAtDispatch` is "the read went
+						 * out to a session that had an owner" - and it is captured when the
+						 * walk STARTED (see `walkTail`), so a warm that lands while the read
+						 * is in flight cannot re-classify the stale cold answer.
+						 */
+						hydrated:
+							state.hydrated || page.entries.length > 0 || !coldAtDispatch,
 						labelPending: left.size ? left : NO_LABELS_PENDING,
 						/*
 						 * A MARKED ID THIS PAGE NAMED STOPS BEING MARKED (round 4). The mark is a
@@ -3071,6 +3193,41 @@ export function useCanonicalSessionStream(
 					? !paintedAnchor(frame.payload.anchor_id)
 					: frame.type === "snapshot" && !pageIsPaintedTail(frame),
 			);
+			/*
+			 * A WARM THAT LANDS AFTER THE COLD READS RE-ARMS THE HISTORY READ
+			 * (remote-load-hydration). A stored remote session opens cold: the daemon
+			 * serves an empty page from a facade with no owner, and every read it
+			 * answers while cold is blind (see the proof rule in `walkTail`). When the
+			 * owner engages - the pane's watch lease, the first keystroke's `/warm`,
+			 * or a peer-side start - the facade binds and the flip arrives as a frame
+			 * that carries `cold: false`. The daemon publishes that flip in THREE
+			 * shapes, and all three are matched here: a fresh `snapshot`; the
+			 * attach-settled `frontend.replace`; and the retained-dial late sync,
+			 * which - measured live on the `/warm` route (QA round 1, Q1) - publishes
+			 * the flip as a `frontend.update` carrying `cold: false` on the frame's
+			 * own envelope, with NO snapshot and NO replace anywhere in the batch.
+			 * Without the update arm this batch fires no read at all: it carries no
+			 * snapshot whose page could owe a reconcile and no labels to retry, so
+			 * the pane would sit un-hydrated until some user action.
+			 *
+			 * EDGE-TRIGGERED, deliberately - the condition is the FLIP (the view was
+			 * cold, and this batch says warm), not "the view is warm": that is what
+			 * re-arms the read on a later cold spell without becoming a poll, and it
+			 * stops the moment a page proves hydration. The walk it fires is the same
+			 * one a cold open fires, under the same request budget.
+			 */
+			const warmedUnproven =
+				viewRef.current.cold &&
+				!viewRef.current.hydrated &&
+				frames.some((frame) =>
+					frame.type === "snapshot"
+						? frame.payload.cold === false
+						: frame.type === "frontend.replace"
+							? frame.payload.cold === false
+							: frame.type === "frontend.update"
+								? frame.payload.cold === false
+								: false,
+				);
 			// The second reason to read back: a snapshot's live seed names calls that
 			// settled before this viewer arrived, and the seed carries no arguments for
 			// them (see `knownArgs`), so those rows render nothing but their output —
@@ -3604,6 +3761,20 @@ export function useCanonicalSessionStream(
 									),
 									sequence: update.sequence,
 								},
+								/*
+								 * AND THE COLD PAIR RIDES THIS FRAME TOO (remote-load-hydration, QA round 1
+								 * Q1). The daemon merges the same fields the snapshot carries onto every
+								 * update it publishes, because the frame that tells a retained-dial cold
+								 * viewer its owner came back is exactly this one (a rollover update: new
+								 * epoch, full changes, `cold: false` - see `_frontend` in the daemon). The
+								 * fold spread `changes` only, so the flip used to be dropped on the floor
+								 * here: the view stayed `cold: true` and the warm re-arm could never see
+								 * it. Written only when the envelope states it - the field is ADDITIVE,
+								 * and an absent one must not un-state what a snapshot established.
+								 */
+								...(typeof update.cold === "boolean"
+									? { cold: update.cold }
+									: {}),
 							};
 						}
 						continue;
@@ -3845,8 +4016,11 @@ export function useCanonicalSessionStream(
 				settleAsk.length > 0 &&
 				seedMissing.length === 0 &&
 				retryLabels.length === 0 &&
-				!needsReconcile;
-			if (needsReconcile || missingLabels.length > 0) {
+				!needsReconcile &&
+				/* The warm's own read is not "happening anyway": it is not the
+				 * settle's debt, so a settle-only batch does not pay for it. */
+				!warmedUnproven;
+			if (needsReconcile || missingLabels.length > 0 || warmedUnproven) {
 				const targets = new Set(missingLabels);
 				const order = labelGapRef.current.order;
 				void reconcileTail(
@@ -4192,6 +4366,27 @@ export function useCanonicalSessionStream(
 		// Non-null only while this effect owns the stream, so a Retry pressed after
 		// the session changed (or after unmount) cannot re-open the old session.
 		retryRef.current = reopen;
+		/*
+		 * `rehydrate` fires the walk `reopen` fires for an unhydrated view, without
+		 * the stream re-arm - the slot's "Try again" is a question about the
+		 * READ, not about the connection. Gated on `!hydrated` for the same reason
+		 * `reopen`'s walk is: a click that lands after a page proved hydration has
+		 * nothing to re-ask.
+		 */
+		hydrateRef.current = () => {
+			/*
+			 * AND A PRESS WHILE A READ IS ALREADY OUT IS ANSWERED BY THAT READ (UX
+			 * round 1, U1): N presses must not stack N walks for one question - the
+			 * read in flight is already asking it, and the pending paint is the
+			 * view's half of the same acknowledgement.
+			 */
+			if (!viewRef.current.hydrated && historyReadsRef.current === 0) {
+				void reconcileTail(
+					generation,
+					new Set(viewRef.current.transcript.index.keys()),
+				);
+			}
+		};
 		// Same lifetime rule for the resync: it is addressable by session id from
 		// another feature, and it must not outlive the pane it re-reads for.
 		const unregisterResync = __registerCanonicalResync(sessionId, resync);
@@ -4199,6 +4394,7 @@ export function useCanonicalSessionStream(
 		return () => {
 			generationRef.current += 1;
 			retryRef.current = null;
+			hydrateRef.current = null;
 			unregisterResync();
 			dispose?.();
 			if (raf) cancelAnimationFrame(raf);
@@ -4312,6 +4508,9 @@ export function useCanonicalSessionStream(
 			// Belt to the early return's braces: whatever a superseded page in
 			// flight does, a freshly opened session is not loading older rows.
 			loadingOlder: false,
+			// And no read of ITS history is out: a superseded walk's paint must not
+			// follow the reader to the next conversation.
+			historyReadPending: false,
 			// A failure belongs to the journal it happened on; a new session has not
 			// failed to load anything yet.
 			olderFailed: false,
@@ -4814,6 +5013,10 @@ export function useCanonicalSessionStream(
 		retryRef.current?.();
 	}, []);
 
+	const rehydrate = useCallback(() => {
+		hydrateRef.current?.();
+	}, []);
+
 	const addNote = useCallback(
 		(text: string, level: "info" | "warning" | "error" = "info") => {
 			commitView((current) => ({
@@ -4903,6 +5106,7 @@ export function useCanonicalSessionStream(
 			paintPendingModel,
 			clearPendingModel,
 			retry,
+			rehydrate,
 		}),
 		[
 			view,
@@ -4917,6 +5121,7 @@ export function useCanonicalSessionStream(
 			paintPendingModel,
 			clearPendingModel,
 			retry,
+			rehydrate,
 		],
 	);
 }
