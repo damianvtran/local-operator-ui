@@ -2727,7 +2727,7 @@ test("a locally stamped echo cannot be displaced by a page that lands after the 
 	);
 });
 
-test("a locally stamped echo cannot be displaced by a snapshot seed that lands after the send", () => {
+test("a snapshot seed's raw start joins the block under a held send", () => {
 	const requestId = "0c9f1e2a-6d4b-4a7e-8f3c-2b5d9e1a4c70";
 	let state = appendPendingUser(
 		state0(),
@@ -2736,8 +2736,14 @@ test("a locally stamped echo cannot be displaced by a snapshot seed that lands a
 		[],
 		CLIENT_NOW,
 	);
-	// The snapshot's seed lands after the echo and states a clock for a call
-	// the turn in flight had already made — stamped on the owner's ahead clock.
+	/*
+	 * The snapshot's seed lands after the echo and dates a call the turn in
+	 * flight had already made — stamped on the owner's ahead clock. Under the
+	 * closure rule a RAW start cannot claim which side of the held send it is
+	 * on: its own instant is not a row the echo follows, so it is admitted at
+	 * that instant and JOINS THE BLOCK — the echo leads, and the call sits under
+	 * it until a page states it.
+	 */
 	state = applyLiveSeed(
 		state,
 		{
@@ -2754,10 +2760,10 @@ test("a locally stamped echo cannot be displaced by a snapshot seed that lands a
 		CLIENT_NOW + 10_000,
 	);
 	const ids = state.records.map((r) => r.id);
-	assert.equal(
-		ids.at(-1),
-		requestId,
-		"the echo is the last row, not placed above content the seed dates ahead of it",
+	assert.deepEqual(
+		ids,
+		[requestId, "tool:c-seed"],
+		"the echo leads; the raw start joins the block instead of claiming a time",
 	);
 	assert.equal(
 		ids.filter((id) => id === "tool:c-seed").length,
@@ -2935,7 +2941,7 @@ test("an echo admitted over a painted cache is held against the owed page (+40s)
 	);
 });
 
-test("a seed that dates a call cannot displace an echo admitted over a painted cache", () => {
+test("a seed's raw start cannot cross a held send; the page that states it returns it to its time", () => {
 	let state = applyHistoryPage(state0(), {
 		entries: [aheadEntry("c1", CLIENT_NOW - 300_000, "cached")],
 		has_more: false,
@@ -2959,8 +2965,31 @@ test("a seed that dates a call cannot displace an echo admitted over a painted c
 	);
 	assert.deepEqual(
 		state.records.map((r) => r.id),
+		["c1", "req-cache3", "tool:c-seed"],
+		"a raw start joins the block under the echo — the same compromise a replay frame takes",
+	);
+	/*
+	 * THE HOLD'S END RETURNS IT TO ITS STATED TIME. The durable row for the
+	 * send ends the hold (carriage), the block dissolves, and the call's own
+	 * instant — journaled BEFORE the send, as F1's original read had it — sorts
+	 * it back above the echo. The under-echo stay was the block being honest
+	 * about an unprovable position, not a re-dating.
+	 */
+	state = applyHistoryPage(state, {
+		entries: [
+			aheadUserEntry(
+				"req-cache3",
+				CLIENT_NOW + OWNER_AHEAD_MS + 5_000,
+				"hello",
+			),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
 		["c1", "tool:c-seed", "req-cache3"],
-		"the seeded call was journaled before the send; it holds above the echo",
+		"the send's own row ends the hold and the call returns to its stated time",
 	);
 });
 
@@ -3068,6 +3097,248 @@ test("a page that carries the echo's own row settles it into the canonical order
 	const settled = state.records.find((r) => r.id === "req-9");
 	assert.equal(settled.local, undefined);
 	assert.equal(settled.provisional, undefined);
+});
+
+/*
+ * THE CLOSURE RULE (operator report, 2026-10-06). A merge may place a row on
+ * the owner's side of a held send only when the merge itself is closed over
+ * the send: it carries the echo's own durable row (CARRIAGE), or it is a
+ * CONTIGUOUS owner window (a page read). A `history_delta` is neither — it is
+ * a set FILTERED by "rows that were never streamed here", so it can carry the
+ * answer of the send's own turn while the send's row (streamed live, and so
+ * excluded from the filter) is absent. Before the rule its rows were lifted
+ * above the echo and the whole answer rendered above its question, live-only,
+ * healed by a remount. These pin the block, the carriage path that ends it,
+ * the convergence, and the seed's anchor split.
+ */
+
+test("a history_delta's answer cannot stand above the held send that prompted it", () => {
+	/*
+	 * THE OPERATOR'S OWN SHAPE, as the reducer sees it: a remote create/attach
+	 * joins the peer's turn MID-FLIGHT, so the send was streamed live (a
+	 * `message_start`) and the answer was not — and when the delta arrives, the
+	 * FILTER excludes the send's row and carries the answer. Base lifted the
+	 * delta's rows above the echo (`ownerIds`), rendering [answer, user,
+	 * tool] — the photographed inversion. The closure rule forfeits the lift,
+	 * so the answer joins the block and the order is the arrival the viewer
+	 * watched: user, tool, answer.
+	 */
+	let state = appendPendingUser(
+		state0(),
+		"req-1",
+		"what is your OS?",
+		[],
+		CLIENT_NOW,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: user("req-1", "what is your OS?") },
+		CLIENT_NOW + 1_000,
+	);
+	state = applyEvent(
+		state,
+		startedFrame("call-1", { started_at_epoch: (CLIENT_NOW + 2_000) / 1000 }),
+		CLIENT_NOW + 2_000,
+	);
+	state = applyEvent(
+		state,
+		{ type: "history_delta", messages: [assistant("ans-1", "Amazon Linux")] },
+		CLIENT_NOW + 8_000,
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["req-1", "tool:call-1", "ans-1"],
+		"the answer stays under the question it answers",
+	);
+});
+
+test("a delta that names the echo's own id ends the hold in the same merge", () => {
+	let state = appendPendingUser(state0(), "req-2", "sent now", [], CLIENT_NOW);
+	state = applyEvent(
+		state,
+		{
+			type: "history_delta",
+			messages: [user("req-2", "sent now"), assistant("ans-2", "the answer")],
+		},
+		CLIENT_NOW + 8_000,
+	);
+	const held = state.records.find((r) => r.id === "req-2");
+	assert.equal(
+		held.provisional,
+		undefined,
+		"the durable row ended the hold in the merge that carried it (carriage)",
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["req-2", "ans-2"],
+		"and the rows keep the order the reader first admitted them in",
+	);
+});
+
+test("the page that states the send converges a blocked answer to the owner's order", () => {
+	let state = appendPendingUser(state0(), "req-3", "sent now", [], CLIENT_NOW);
+	state = applyEvent(
+		state,
+		{ type: "history_delta", messages: [assistant("ans-3", "the answer")] },
+		CLIENT_NOW + 8_000,
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["req-3", "ans-3"],
+		"the answer is blocked under the echo, not lifted above it",
+	);
+	/*
+	 * The contiguous window that carries the send — the snapshot's history, a
+	 * tail or reconcile read — states both rows at one serve instant, which
+	 * ends the hold and sorts them by the order the reader first admitted
+	 * them.
+	 */
+	state = applyHistoryPage(state, {
+		entries: [
+			aheadUserEntry("req-3", CLIENT_NOW + 9_000, "sent now"),
+			aheadEntry("ans-3", CLIENT_NOW + 9_000, "the answer"),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.equal(
+		state.records.find((r) => r.id === "req-3").provisional,
+		undefined,
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["req-3", "ans-3"],
+		"the window restores the order the filter could not state",
+	);
+});
+
+test("a seeded settle anchored to a pre-echo composing row holds above a held send", () => {
+	const composer = assistant("composer-A", "");
+	composer.tool_calls = [
+		{ id: "call-A", name: "bash", arguments: { command: "uname" } },
+	];
+	let state = applyHistoryPage(state0(), {
+		entries: [
+			messageEntry("composer-A", (CLIENT_NOW + OWNER_AHEAD_MS) / 1000, {
+				kind: "message",
+				...composer,
+			}),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	state = appendPendingUser(state, "req-A", "sent now", [], CLIENT_NOW + 1_000);
+	state = applyLiveSeed(
+		state,
+		{
+			streaming: true,
+			generation: 1,
+			live_events: [
+				{
+					type: "tool_execution_end",
+					tool_call_id: "call-A",
+					tool_name: "bash",
+					result: {
+						content: [{ type: "text", text: "Linux" }],
+						is_error: false,
+					},
+					is_error: false,
+					duration_s: 1.2,
+				},
+			],
+		},
+		CLIENT_NOW + 5_000,
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["composer-A", "tool:call-A", "req-A"],
+		"the anchor sits in the journal in front of the send, so the settle keeps the owner's side",
+	);
+});
+
+test("a seeded settle whose composing row sits past the frontier joins the block", () => {
+	const composer = assistant("composer-B", "");
+	composer.tool_calls = [
+		{ id: "call-B", name: "bash", arguments: { command: "uname" } },
+	];
+	let state = appendPendingUser(state0(), "req-B", "sent now", [], CLIENT_NOW);
+	state = applyEvent(
+		state,
+		// The composing row arrives through the FILTERED door, so it stands
+		// inside the block while the echo holds.
+		{ type: "history_delta", messages: [composer] },
+		CLIENT_NOW + 3_000,
+	);
+	state = applyLiveSeed(
+		state,
+		{
+			streaming: true,
+			generation: 1,
+			live_events: [
+				{
+					type: "tool_execution_end",
+					tool_call_id: "call-B",
+					tool_name: "bash",
+					result: {
+						content: [{ type: "text", text: "Linux" }],
+						is_error: false,
+					},
+					is_error: false,
+					duration_s: 1.2,
+				},
+			],
+		},
+		CLIENT_NOW + 5_000,
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["req-B", "composer-B", "tool:call-B"],
+		"a settle may not stand on a claim its anchor cannot make",
+	);
+});
+
+test("re-applying any closure merge changes no order", () => {
+	let state = appendPendingUser(state0(), "req-5", "sent now", [], CLIENT_NOW);
+	const delta = {
+		type: "history_delta",
+		messages: [assistant("ans-5", "the answer")],
+	};
+	state = applyEvent(state, delta, CLIENT_NOW + 8_000);
+	const once = state.records.map((r) => r.id);
+	state = applyEvent(state, delta, CLIENT_NOW + 8_100);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		once,
+		"the same delta twice is the same order",
+	);
+	const page = {
+		entries: [aheadEntry("a-5", CLIENT_NOW - 100_000, "older")],
+		has_more: false,
+		cursor_missing: false,
+	};
+	state = applyHistoryPage(state, page);
+	const twice = state.records.map((r) => r.id);
+	state = applyHistoryPage(state, page);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		twice,
+		"the same page twice is the same order",
+	);
+	const seed = {
+		streaming: true,
+		generation: 1,
+		live_events: [
+			startedFrame("call-5", { started_at_epoch: (CLIENT_NOW + 1_000) / 1000 }),
+		],
+	};
+	state = applyLiveSeed(state, seed, CLIENT_NOW + 2_000);
+	const thrice = state.records.map((r) => r.id);
+	state = applyLiveSeed(state, seed, CLIENT_NOW + 2_100);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		thrice,
+		"the same seed twice is the same order",
+	);
 });
 
 /* ------------------------------------------------------- receipt rows */
