@@ -963,7 +963,18 @@ export const AskPanel = ({
 	conversationOf,
 	className,
 }: AskPanelProps) => {
-	if (view.asks === null) return null;
+	/*
+	 * AN UNREAD FRAME DRAWS NOTHING; AN EMPTY ONE STATES ITS EMPTINESS.
+	 *
+	 * The gate was `view.asks === null`, which was the same fact as "this backend does
+	 * not publish queued asks" until the runtime's wire fix - a live-but-empty queue is
+	 * now published as `asks` ABSENT with `asks_open: 0` present, so the old read drew
+	 * nothing over a live engine, which is the state the drawer now renders as its
+	 * designed empty sentence instead. `view.published` is the capability read (asks OR
+	 * asks_open present, `ask-queue.ts`'s `askQueuePublished`); the rows and the counts
+	 * below are unaffected by it, because an absent list is still zero rows.
+	 */
+	if (!view.published) return null;
 	/*
 	 * PENDING FIRST, THEN SETTLED, IN ONE LIST - NO LONGER ONE COLLAPSED SECTION
 	 * (operator ask, 2026-10-05).
@@ -1121,10 +1132,30 @@ export const AskPanel = ({
 	 * halves PARTITION the rows an empty half means every row is in the other one:
 	 * so each line is true by construction and names the filter holding them, rather
 	 * than claiming a state the other half may not be in.
+	 *
+	 * AND "NO ROWS" IS NOT "NOTHING OUTSTANDING" (remediation round 1, R1). The wire
+	 * bound drops the whole row list while deliberately keeping the tally
+	 * (`_bound_asks_in_place`), so a frame can arrive carrying `asks_open: 4` and no
+	 * rows at all. Gating this sentence on the rows alone printed `No asks
+	 * outstanding. The agent is not waiting on anything.` over four answerable asks -
+	 * the panel denying the count in the bar above it. So a nonzero tally states what
+	 * is missing instead.
+	 *
+	 * IN THE USER'S WORDS, AND WITHOUT REPEATING THE BAR (design round 2, D2-1 = UX
+	 * round 2, U2-2). The first spelling was `${askChipCountClause(view)}. This frame
+	 * carries the count, not the rows.` - "frame" is the wire's word for the payload
+	 * and the reader has none to act on, and the count it opened with was the count the
+	 * bar had already given 30px above it, in the same ink rung (the shape D5 corrected
+	 * in the unread pair). The body now says only what the bar cannot: the rows behind
+	 * that count are the half that is missing. `asks_open` is still NOT translated into
+	 * the lane's `waiting` (see `askChipClause`), because that word means "inside its own
+	 * window", which a rowless frame cannot know.
 	 */
 	const emptySlice =
 		view.rows.length === 0
-			? "No asks outstanding. The agent is not waiting on anything."
+			? view.open > 0
+				? "The details for these asks could not be loaded."
+				: "No asks outstanding. The agent is not waiting on anything."
 			: filter === "outstanding" && pending.length === 0
 				? "No asks are waiting or moved on. They have all settled — see Settled."
 				: filter === "settled" && settled.length === 0
@@ -1144,7 +1175,20 @@ export const AskPanel = ({
 			 * the queue's own line is then simply the first thing in the panel.
 			 */}
 			{emptySlice === null ? null : (
-				<p className="px-3 py-2 text-ink text-body">{emptySlice}</p>
+				/*
+				 * `data-lo-ask-empty` IS THE MARKER THE EVIDENCE RIG READS (remediation round 1,
+				 * D4): without it the story run's `emptySentence` read `null` for a frame that
+				 * does draw this sentence, so the set's own record asserted the claim with a
+				 * substring of `bodyText` prose instead of with a marker.
+				 *
+				 * AND ITS INK IS THE QUIET RUNG (D2). `text-ink` made the emptier state the
+				 * LOUDER one - measured 11.95:1 on the drawer ground against the scope line's
+				 * 7.08:1 directly above it - so the read landing on `nothing` weight-popped. The
+				 * two "no rows" bodies now read as one family, and `ink` stays for rows.
+				 */
+				<p data-lo-ask-empty="" className="px-3 py-2 text-ink-muted text-body">
+					{emptySlice}
+				</p>
 			)}
 			{showPending ? pending.map(askRow) : null}
 			{showSettledRows && settled.length > 0 ? (
