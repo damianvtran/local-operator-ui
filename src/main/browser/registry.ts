@@ -112,13 +112,26 @@ export interface TabRecord {
 	/** Mirrors what `applyLayout` last told the view. The capture path branches on
 	 * this because Electron's `View` has no visibility getter to read back. */
 	presented: boolean;
-	refs: Record<string, SnapshotRef>;
+	refs: Record<string, TabRef>;
 	/** Ownership-journal linkage for the `owner_*` methods, empty for a tab
 	 * opened without an allocation. */
 	allocationId: string;
 	/** A close that could not complete is a retryable obligation, never proof
 	 * the view is gone. */
 	cleanupPending?: boolean;
+}
+
+/** A snapshot ref as this host stores it: the vendored `SnapshotRef` plus where
+ * the node lives when it came from a frame's own AX tree. Extended HERE rather
+ * than in `vendor/driver/ax-compact.ts`, which is hash-pinned to the extension's
+ * copy (scripts/check-vendored.mjs); the ref NAME stays `e<n>`, so the wire and
+ * the extension's contract are unchanged. Both fields optional: a ref without
+ * them is a top-document ref, exactly as before. */
+export interface TabRef extends SnapshotRef {
+	/** The frame's target id when its document is out of process (ARCH-1). */
+	frameId?: string;
+	/** The frame document's origin, reported back as `frame_origin`. */
+	frameOrigin?: string;
 }
 
 /** Hard ceiling on concurrently-driven AGENT tabs, mirroring the extension's

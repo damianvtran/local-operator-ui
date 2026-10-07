@@ -163,6 +163,16 @@ export async function upload(
 	const paths = uploadPaths(params);
 	const contents = record.view.webContents;
 	const node = await resolveNode(ctx, record, selector);
+	if (node.frame) {
+		// Deferred by ARCH-1 D3, and refused rather than attempted: the attach and
+		// its read-back below run on the PAGE session, which cannot reach a node in
+		// a frame's document, so trying would answer for a different node.
+		throw new BrowserHostError(
+			"element_not_found",
+			`${selector} resolved to an element inside a frame${node.frame.origin ? ` (${node.frame.origin})` : ""}; upload into a frame is not supported yet, so nothing was attached`,
+			{ selector, frame_origin: node.frame.origin ?? "" },
+		);
+	}
 
 	// Reported, never obeyed (§9.3): a site's `accept` does not protect the user's
 	// files, and honouring it would let a PAGE steer which files the agent tries to
