@@ -54,13 +54,24 @@ export interface DebuggerLike {
 	attach(protocolVersion?: string): void;
 	detach(): void;
 	isAttached(): boolean;
+	/** `sessionId` addresses a flattened child session (an out-of-process
+	 * iframe). Electron's own signature (electron.d.ts `sendCommand(method,
+	 * commandParams?, sessionId?)`); the pool passes it ONLY for a frame. */
 	sendCommand(
 		method: string,
 		commandParams?: Record<string, unknown>,
+		sessionId?: string,
 	): Promise<unknown>;
+	/** `sessionId` is `""` for the page's own session and the child's id for an
+	 * event from an attached frame (measured on Electron 44, ARCH-1). */
 	on(
 		event: "message",
-		listener: (event: unknown, method: string, params?: object) => void,
+		listener: (
+			event: unknown,
+			method: string,
+			params?: object,
+			sessionId?: string,
+		) => void,
 	): void;
 	on(event: "detach", listener: (event: unknown, reason: string) => void): void;
 	removeListener?(event: string, listener: (...args: never[]) => void): void;
@@ -85,7 +96,12 @@ export interface CdpContents {
  * `CdpPool.subscribe` consumer — the origin gate's `Fetch.requestPaused`
  * handler included — was invoked once per stale listener (R2). */
 interface AttachmentListeners {
-	message: (event: unknown, method: string, params?: object) => void;
+	message: (
+		event: unknown,
+		method: string,
+		params?: object,
+		sessionId?: string,
+	) => void;
 	detach: (event: unknown, reason: string) => void;
 }
 
@@ -106,6 +122,24 @@ const PROTOCOL_VERSION = "1.3";
  * because that is the only signal the API gives. */
 const ALREADY_ATTACHED = /another debugger|already attached/i;
 
+/** Chromium's answer to a command on a child session that no longer exists: the
+ * frame navigated to a new process, was removed, or the page's own session went
+ * (measured: "No target available" after a top detach). Matched by string for
+ * the same reason as `ALREADY_ATTACHED`. */
+const STALE_SESSION =
+	/no session|session with given id|no target|target closed/i;
+
+/** The `data.reason` a frame command carries when its session went stale. The
+ * frame resolver re-attaches ONCE on it (frames.ts); anything else surfaces it. */
+export const FRAME_DETACHED = "frame_detached";
+
+export interface CdpSendOptions {
+	deadlineMs?: number;
+	/** A child frame's flattened session (`attachFrame`). Absent for the page's
+	 * own session, which keeps the two-argument `sendCommand` form. */
+	sessionId?: string;
+}
+
 export interface CdpPoolOptions {
 	/** Called for anything worth putting in the app log. */
 	log?: (message: string) => void;
@@ -125,6 +159,21 @@ export class CdpPool {
 		number,
 		Set<(method: string, params: Record<string, unknown>) => void>
 	>();
+
+	/**
+	 * Child-frame sessions, by webContents id then frameId (an out-of-process
+	 * iframe's frameId IS its targetId — measured, ARCH-1). Attached on demand and
+	 * cached rather than auto-attached: a standing `Target.setAutoAttach` attaches
+	 * to every ad frame on every driven page and, with `waitForDebuggerOnStart`,
+	 * can hang a page whose resume is missed. Dropped on `detachedFromTarget`, on
+	 * a stale-session error, and with the page's own attachment — a child session
+	 * never outlives its parent.
+	 */
+	private readonly frames = new Map<number, Map<string, string>>();
+
+	/** Attaches in flight, by `<webContentsId>:<frameId>`, shared by concurrent
+	 * callers (see `attachFrame`). */
+	private readonly frameAttaches = new Map<string, Promise<string>>();
 
 	constructor(private readonly options: CdpPoolOptions = {}) {}
 
@@ -189,6 +238,7 @@ export class CdpPool {
 		// A detached record is being replaced: its listeners are still registered on
 		// this same `Debugger`, so they go first (see `AttachmentListeners`).
 		if (existing) this.releaseListeners(existing);
+		this.frames.delete(contents.id);
 
 		// Give the view a document BEFORE attaching.
 		//
@@ -235,7 +285,19 @@ export class CdpPool {
 			_event,
 			method,
 			params,
+			sessionId,
 		) => {
+			// A child frame's events never reach the log buffer or a subscriber: the
+			// navigation gate continues `Fetch.requestPaused` by frameId on the PAGE
+			// session (an OOPIF's document request still pauses there — measured), and
+			// a child event reaching it would be answered on the wrong session.
+			if (sessionId) return;
+			if (method === "Target.detachedFromTarget") {
+				this.dropFrameSession(
+					contents.id,
+					String((params as { sessionId?: unknown })?.sessionId ?? ""),
+				);
+			}
 			this.routeEvent(
 				contents.id,
 				method,
@@ -247,6 +309,8 @@ export class CdpPool {
 			// later command explain itself ("DevTools took the target") instead of
 			// reporting a generic stall. It is removed by `detach`/`forget`.
 			attachment.detachedReason = reason || "detached";
+			// Child sessions die with the page's (measured: "No target available").
+			this.frames.delete(contents.id);
 			this.options.log?.(
 				`[browser] debugger detached from view ${contents.id}: ${reason}`,
 			);
@@ -318,7 +382,7 @@ export class CdpPool {
 		contents: CdpContents,
 		method: string,
 		params: Record<string, unknown> = {},
-		options: { deadlineMs?: number } = {},
+		options: CdpSendOptions = {},
 	): Promise<T> {
 		if (contents.isDestroyed()) {
 			this.forget(contents.id);
@@ -332,7 +396,103 @@ export class CdpPool {
 			method,
 			params,
 			options.deadlineMs ?? CDP_DEADLINE_MS,
+			options.sessionId,
 		);
+	}
+
+	/**
+	 * The flattened session for one child frame, attached on first use.
+	 *
+	 * Attached from the PAGE session even for a grandchild (measured: the top
+	 * session reaches any frame target by id). Focus emulation goes to the child
+	 * for the reason `attach` gives it to the page: `Input.insertText` on an
+	 * unfocused target delivers but never replies. `Fetch` is NEVER enabled on a
+	 * child: a pause nobody continues would hang the frame.
+	 */
+	async attachFrame(contents: CdpContents, frameId: string): Promise<string> {
+		const cached = this.frames.get(contents.id)?.get(frameId);
+		if (cached) return cached;
+		// Concurrent callers for the same frame share ONE attach: two independent
+		// attaches would both open a session and only the last would be cached,
+		// leaking the other for the life of the page (review round 1, m3).
+		const key = `${contents.id}:${frameId}`;
+		const pending = this.frameAttaches.get(key);
+		if (pending) return pending;
+		const attaching = this.openFrameSession(contents, frameId).finally(() => {
+			this.frameAttaches.delete(key);
+		});
+		this.frameAttaches.set(key, attaching);
+		return attaching;
+	}
+
+	private async openFrameSession(
+		contents: CdpContents,
+		frameId: string,
+	): Promise<string> {
+		let attached: { sessionId?: string } | undefined;
+		try {
+			attached = await this.send<{ sessionId?: string }>(
+				contents,
+				"Target.attachToTarget",
+				{ targetId: frameId, flatten: true },
+			);
+		} catch (error) {
+			// A conflict or a closed tab keeps its own typed answer; Chromium's own
+			// "No target with given id" means the frame went between the DOM read
+			// and the attach, which is the frame's state, not a host fault.
+			if (error instanceof BrowserHostError) throw error;
+			throw new BrowserHostError(
+				"element_not_found",
+				"that frame is gone or still loading; take a new snapshot and retry",
+				{ reason: FRAME_DETACHED },
+			);
+		}
+		const sessionId = attached?.sessionId;
+		if (!sessionId) {
+			throw new BrowserHostError(
+				"element_not_found",
+				"that frame could not be attached to; take a new snapshot and retry",
+				{ reason: FRAME_DETACHED },
+			);
+		}
+		try {
+			await this.send(
+				contents,
+				"Emulation.setFocusEmulationEnabled",
+				{ enabled: true },
+				{ sessionId },
+			);
+		} catch (error) {
+			// The session exists but is not usable for input: release it rather than
+			// leave an uncached session open on a frame that may still be alive. A
+			// stale session needs no release (Chromium already dropped it).
+			if (
+				!(
+					error instanceof BrowserHostError &&
+					error.data?.reason === FRAME_DETACHED
+				)
+			) {
+				await this.send(contents, "Target.detachFromTarget", {
+					sessionId,
+				}).catch(() => undefined);
+			}
+			throw error;
+		}
+		let sessions = this.frames.get(contents.id);
+		if (!sessions) {
+			sessions = new Map();
+			this.frames.set(contents.id, sessions);
+		}
+		sessions.set(frameId, sessionId);
+		return sessionId;
+	}
+
+	private dropFrameSession(webContentsId: number, sessionId: string): void {
+		const sessions = this.frames.get(webContentsId);
+		if (!sessions || !sessionId) return;
+		for (const [frameId, cached] of sessions) {
+			if (cached === sessionId) sessions.delete(frameId);
+		}
 	}
 
 	private async sendTo<T>(
@@ -340,6 +500,7 @@ export class CdpPool {
 		method: string,
 		params: Record<string, unknown>,
 		deadlineMs: number,
+		sessionId?: string,
 	): Promise<T> {
 		const attachment = this.attachments.get(contents.id);
 		if (!attachment) {
@@ -356,11 +517,29 @@ export class CdpPool {
 				{ reason: attachment.detachedReason },
 			);
 		}
-		return deadline(
-			contents.debugger.sendCommand(method, params) as Promise<T>,
-			deadlineMs,
-			method,
-		);
+		if (!sessionId) {
+			return deadline(
+				contents.debugger.sendCommand(method, params) as Promise<T>,
+				deadlineMs,
+				method,
+			);
+		}
+		try {
+			return await deadline(
+				contents.debugger.sendCommand(method, params, sessionId) as Promise<T>,
+				deadlineMs,
+				method,
+			);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			if (!STALE_SESSION.test(message)) throw error;
+			this.dropFrameSession(contents.id, sessionId);
+			throw new BrowserHostError(
+				"element_not_found",
+				"that frame navigated or closed while it was being driven; retry",
+				{ reason: FRAME_DETACHED },
+			);
+		}
 	}
 
 	/** Remove this attachment's debugger listeners. Called before the record is
@@ -387,6 +566,7 @@ export class CdpPool {
 		if (attachment) this.releaseListeners(attachment);
 		this.attachments.delete(webContentsId);
 		this.subscribers.delete(webContentsId);
+		this.frames.delete(webContentsId);
 		stopLogCapture(webContentsId);
 	}
 
@@ -396,6 +576,7 @@ export class CdpPool {
 		if (attachment) this.releaseListeners(attachment);
 		this.attachments.delete(webContentsId);
 		this.subscribers.delete(webContentsId);
+		this.frames.delete(webContentsId);
 		stopLogCapture(webContentsId);
 		if (!attachment) return;
 		try {
