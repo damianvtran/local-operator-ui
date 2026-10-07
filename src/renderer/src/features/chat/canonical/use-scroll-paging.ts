@@ -137,6 +137,47 @@ export type ScrollPagingOptions = {
 	hiddenRows: number;
 	/** Durable pages remain on the backend. */
 	hasMore: boolean;
+	/**
+	 * Whether the conversation's history has been READ — `use-canonical-session`'s
+	 * `hydrated`, the proof that the transcript can speak about this
+	 * conversation at all.
+	 *
+	 * WHAT IT GATES (remote-load-hydration): the `exhausted` arm, i.e. the "Start
+	 * of conversation" statement. `hasMore: false` on its own is the cursor's
+	 * opinion, and it is wrong exactly when the read that produced it could not
+	 * see the conversation — a stored remote session's cold open gets an empty
+	 * page from a facade with no owner, which the session hook refuses to count
+	 * as proof. Rendering that as the conversation's end is the defect this input
+	 * exists to remove: unproven hydration gets the loading paint while a read is
+	 * out and the retry-able "not loaded" arm otherwise, never the end copy. A
+	 * genuinely hydrated end still states itself.
+	 *
+	 * REQUIRED rather than defaulted, unlike `olderFailed`: a silent default here
+	 * would decide the one claim this fact exists to police. The callers with no
+	 * hydration concept pass their own answer (the transcript passes the session
+	 * view's `hydrated`; direct mounts state theirs).
+	 */
+	hydrationProven: boolean;
+	/**
+	 * Whether a history read is OUT for this session — the session view's
+	 * `historyReadPending`, true for exactly the span a `reconcileTail` walk is
+	 * in flight (remote-load-hydration, UX round 1 U1).
+	 *
+	 * WHAT IT GATES: the `unproven` arm's own press. The arm's "Try again" fires
+	 * the same read the cold open fires, and without this it repainted a
+	 * byte-identical row for the read's whole duration — a press that costs the
+	 * reader nothing to repeat and tells them nothing, which is the one moment
+	 * this whole change exists to serve. While the read is out the unproven arm
+	 * paints the sibling `loading` row ("Loading earlier messages"), which is
+	 * also the double-press guard's visible half (the session hook refuses to
+	 * fire a second walk while one is out). When the read settles still unproven
+	 * the arm states the fact again; a proven read moves it to the end copy.
+	 *
+	 * REQUIRED, like `hydrationProven` and for the same reason: a default would
+	 * decide the one acknowledgment this input exists to carry. Callers with no
+	 * owed page pass `false` (nothing is ever loading for them).
+	 */
+	historyReadPending: boolean;
 	/** Reveal the next batch of already-fetched rows. Synchronous and free. */
 	onWiden: () => void;
 	/**
@@ -300,6 +341,8 @@ export function useScrollPaging({
 	sessionKey,
 	hiddenRows,
 	hasMore,
+	hydrationProven,
+	historyReadPending,
 	onWiden,
 	onLoadOlder,
 	onLoadOlderOutcome,
@@ -1403,6 +1446,19 @@ export function useScrollPaging({
 	 * (`failureSuperseded`, agent review round 1, M3), because then the row's
 	 * advice is true again and a past blip must not keep claiming the reader has
 	 * no way forward.
+	 *
+	 * AND THE END CLAIM IS GATED ON PROOF (remote-load-hydration). "Start of
+	 * conversation" is a statement about the CONVERSATION, and `hasMore: false`
+	 * alone cannot carry it: a read that never saw the conversation reports the
+	 * same false `has_more` as a conversation with nothing behind it (the stored
+	 * remote session's cold open — an empty page from a facade with no owner).
+	 * `hydrationProven` is the transcript's own proof that a page has been read
+	 * for this session, so the exhausted arm requires it and an unproven
+	 * transcript gets the retry-able "not loaded" arm instead — never the end
+	 * copy, and never a dead end. AND THE PRESS ON THAT ARM IS ACKNOWLEDGED:
+	 * `historyReadPending` paints the sibling `loading` row while the read the
+	 * press fired is out, because a control whose press repaints an identical
+	 * row is a control that reads as dead (UX round 1, U1).
 	 */
 	const slotState: OlderHistoryState =
 		loadingOlder || revealInFlight
@@ -1413,7 +1469,11 @@ export function useScrollPaging({
 					? "windowed"
 					: hasMore
 						? "idle"
-						: "exhausted";
+						: hydrationProven
+							? "exhausted"
+							: historyReadPending
+								? "loading"
+								: "unproven";
 
 	/*
 	 * The completion walk's authorisation, in the module's own terms. See the
