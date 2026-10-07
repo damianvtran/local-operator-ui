@@ -12,6 +12,7 @@
  */
 
 import { teamDisplayName } from "../../../shared/api/local-operator/team-display";
+import { identityAgentSettable } from "./chat-header-identity-menu-model";
 
 /**
  * One team as the label resolver needs it: the name the binding uses, the
@@ -53,6 +54,25 @@ export type HeaderIdentityView = {
 	/** The agent the control's label reports; `null` renders the assign affordance. */
 	agentValue: string | null;
 	agentLabel: string;
+	/**
+	 * The bound team's manager - the profile that runs it, and the one the agent
+	 * slot's constraint always accepts (issue #861). `null` when the manager is
+	 * not KNOWN: no team is bound, or the catalogue has not answered with the
+	 * team's row (or has answered without it).
+	 *
+	 * THE MANAGER VALUE IS THE ROW'S, WITH THE RUNTIME'S DEFAULT ONLY FOR A ROW
+	 * THAT CARRIES NONE - `Team.manager` declares `manager: str = "manager"`, so
+	 * a row without the field means the default rather than an unknown. But a
+	 * row that is NOT THERE leaves this `null`, unlike the LABEL fallback down
+	 * in `resolveHeaderIdentity`, which keeps answering with the default for a
+	 * catalogue that has not loaded. The two differ because they make different
+	 * claims: the label describes what the runtime would run anyway (its own
+	 * documented default), while this value gates a CONSTRAINT - marks and copy
+	 * that say "only these profiles" about a specific team - and a constraint
+	 * stated over data this app does not have is a wrong claim, not a fallback.
+	 * See `chat-header-identity-menu-model.ts`'s `identityAgentConstraint`.
+	 */
+	teamManager: string | null;
 };
 
 /**
@@ -132,6 +152,16 @@ export function resolveHeaderIdentity(
 			: NO_TEAM_LABEL,
 		agentValue,
 		agentLabel: agentValue ?? NO_AGENT_LABEL,
+		/*
+		 * The manager value the CONSTRAINT reads (see the field's own docblock for
+		 * why it is quieter than the label fallback above: a row that is not there
+		 * answers `null`, never the default).
+		 */
+		teamManager: teamValue
+			? teamRow
+				? teamRow.manager || DEFAULT_TEAM_MANAGER
+				: null
+			: null,
 	};
 }
 
@@ -164,4 +194,52 @@ export function headerIdentityControlsShown(input: {
 }): boolean {
 	if (!input.hasSession || input.pending || !input.teamCatalogue) return false;
 	return input.identityKnown || input.streamLive;
+}
+
+/**
+ * Whether the pair BOUND TO THIS CHAT cannot stand: a team leads it, an
+ * EXPLICIT agent sits in the agent slot, and that agent is not one the team's
+ * constraint accepts (issue #861's second half).
+ *
+ * WHY THIS IS NOT "THE LABEL'S VALUE". The header must not hide a persona that
+ * is in the prompt: with no explicit `/agent`, the agent slot's label IS the
+ * team's manager (the implicit seat), which is always accepted - there is
+ * nothing to flag. The flag is about a pair: an explicit agent that the
+ * constraint does not accept while a team leads.
+ *
+ * WHAT MAKES IT QUIET. Every clause is a fact this function refuses to guess:
+ *
+ * - no explicit agent, no team, or no manager from the catalogue row (see
+ *   `teamManager`'s docblock) - nothing to compare against;
+ * - `delegate` `null` - the roster's answer for the agent either has not
+ *   arrived (`commands.entities` still in flight) or does not carry the field,
+ *   and a warning computed from the NAME alone would be exactly the false cue
+ *   this guard exists to prevent: a delegating profile is legal in this seat,
+ *   and nothing but the row can tell the two apart.
+ *
+ * The one predicate that remains once the facts are in is
+ * `identityAgentSettable`, from the menu model - one rule, two surfaces (this
+ * cue and the panel's per-row marks) that cannot disagree about who may take
+ * the seat.
+ */
+export function headerIdentityAgentFlagged(input: {
+	/** The EXPLICIT agent in force (`active_agent || bound_agent`), never the implicit manager. */
+	explicitAgent: string | null;
+	/** The bound team's manager, `null` while the catalogue has not answered. */
+	manager: string | null;
+	/** The explicit agent's `delegate` flag; `null` while it is not known. */
+	delegate: boolean | null;
+}): boolean {
+	if (
+		input.explicitAgent === null ||
+		input.manager === null ||
+		input.delegate === null
+	) {
+		return false;
+	}
+	return !identityAgentSettable({
+		name: input.explicitAgent,
+		manager: input.manager,
+		delegate: input.delegate,
+	});
 }

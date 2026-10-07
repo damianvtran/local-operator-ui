@@ -2155,8 +2155,160 @@ export const STORIES = [
 		220,
 		{
 			press: '[data-header-identity="agent"]',
-			expectPresent: '[data-header-identity-menu="agent"]',
+			/*
+			 * THE CONSTRAINED PANEL (issue #861): the team's rule is stated above
+			 * the list (the caption hook), a near-miss row is listed DISABLED
+			 * with its reason, and the accepted seats stay settable beside it.
+			 * Each half fails the run alone - a caption with no disabled rows, a
+			 * disabled row under no caption, or a panel that disabled everything
+			 * - and `expectGone` keeps the cue off the chip, because this story
+			 * has no explicit agent to flag (the implicit manager seat is always
+			 * accepted).
+			 */
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-constraint]",
+				'[data-header-identity-menu="agent"] [role="option"][aria-disabled="true"]',
+				'[data-header-identity-menu="agent"] [role="option"]:not([aria-disabled])',
+				/*
+				 * THE HIGHLIGHT OPENS ON A SETTABLE ROW (review round 1, D2/U1): with
+				 * the seed rule the ACTIVE row is the current settable row or the
+				 * first settable one, never the refused row zero the first draft
+				 * landed on - so the frame's first Enter is not inert. `aria-selected`
+				 * is the active-row mark; the `:not` half is the claim.
+				 */
+				'[data-header-identity-menu="agent"] [role="option"][aria-selected="true"]:not([aria-disabled])',
+			],
+			expectGone: "[data-header-identity-cue]",
 			dir: "agent-menu-open",
+		},
+	],
+	[
+		"chat-header-identity--team-bound",
+		560,
+		640,
+		{
+			press: '[data-header-identity="agent"]',
+			/*
+			 * The constrained roster at a height the whole rule fits in (issue
+			 * #861): the manager (while CURRENT) and the delegating profile settable,
+			 * the two leaves disabled with their reason, the caption above them -
+			 * the frame a reader checks the rule against without scrolling, beside
+			 * the 220px sibling where the bound already binds.
+			 */
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-constraint]",
+				'[data-header-identity-menu="agent"] [role="option"][data-current]:not([aria-disabled])',
+				'[data-header-identity-menu="agent"] [role="option"][aria-disabled="true"]',
+				// The seeded highlight sits on the current settable row (D2/U1).
+				'[data-header-identity-menu="agent"] [role="option"][aria-selected="true"]:not([aria-disabled])',
+			],
+			dir: "constrained-agent-open",
+		},
+	],
+	/*
+	 * THE AGENT SIDE OF THE PANEL'S TWO HONEST STATES (issue #861). The panel
+	 * is the surface this change marks up, so its empty and refused answers get
+	 * agent-side frames of their own rather than the team half standing in:
+	 * the SAME stories, driven through the agent trigger. Neither state
+	 * renders the constraint caption - there is no list for a rule to be about.
+	 */
+	[
+		"chat-header-identity--team-menu-empty",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: '[data-header-identity-menu="agent"]',
+			dir: "agent-menu-empty",
+		},
+	],
+	[
+		"chat-header-identity--team-menu-refused",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-error]",
+			],
+			dir: "agent-menu-refused",
+		},
+	],
+	/*
+	 * THE PAIR THAT CANNOT STAND (issue #861): `coder` is a leaf - not
+	 * `lopdev`'s manager, and `delegate: false` - so the header must SAY so
+	 * without hiding the persona. Three claims, each falsifiable:
+	 *
+	 * - `conflict-chip`: the cue at rest - the warning mark the unfixed header
+	 *   does not draw, asserted on the chip itself.
+	 * - `conflict-agent-open`: the panel where one pick resolves it - the rule
+	 *   stated, the current refused row listed `disabled` with its reason, and
+	 *   settable rows beside it (the ordering is the resolution path).
+	 * - `conflict-chip-loading` / `agent-menu-loading`: the SAME pair with a
+	 *   roster that never answers - the cue must be GONE (the false cue the
+	 *   brief forbids) and the panel must show its loading line with no
+	 *   caption, because a rule stated before its roster answered would be a
+	 *   claim about a team made from data this app does not have.
+	 */
+	[
+		"chat-header-identity--incompatible-pair",
+		560,
+		84,
+		{
+			expectPresent:
+				'[data-header-identity="agent"] [data-header-identity-cue]',
+			dir: "conflict-chip",
+		},
+	],
+	[
+		"chat-header-identity--incompatible-pair",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-constraint]",
+				'[data-header-identity-menu="agent"] [role="option"][data-current][aria-disabled="true"]',
+				'[data-header-identity-menu="agent"] [role="option"]:not([aria-disabled])',
+				'[data-header-identity="agent"] [data-header-identity-cue]',
+				/*
+				 * The refused pair's highlight lands on the first SETTABLE row (the
+				 * manager) rather than on the refused current row (review round 1,
+				 * D2/U1) - one Enter resolves the pair rather than two.
+				 */
+				'[data-header-identity-menu="agent"] [role="option"][aria-selected="true"]:not([aria-disabled])',
+			],
+			dir: "conflict-agent-open",
+		},
+	],
+	[
+		"chat-header-identity--incompatible-pair-loading",
+		560,
+		84,
+		{
+			expectGone: "[data-header-identity-cue]",
+			dir: "conflict-chip-loading",
+		},
+	],
+	[
+		"chat-header-identity--incompatible-pair-loading",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-loading]",
+			],
+			expectGone: [
+				"[data-header-identity-constraint]",
+				"[data-header-identity-cue]",
+			],
+			dir: "agent-menu-loading",
 		},
 	],
 	/*
@@ -2365,7 +2517,20 @@ export const STORIES = [
 			dir: "assign-team-menu",
 		},
 	],
-	["chat-header-identity--agent-and-team", 560, 84],
+	[
+		"chat-header-identity--agent-and-team",
+		560,
+		84,
+		{
+			/*
+			 * The pair is LEGAL - a delegating profile beside `lopdev`'s manager -
+			 * so the cue must NOT be there (issue #861). This is the claim that
+			 * keeps a name-inequality regression from flagging the coordinating
+			 * profiles the rule accepts.
+			 */
+			expectGone: "[data-header-identity-cue]",
+		},
+	],
 	["chat-header-identity--before", 560, 84],
 	/* The operator's own width: the same arrangement the screenshot showed. */
 	["chat-header-identity--wide", 1380, 84],
@@ -2528,6 +2693,25 @@ export const STORIES = [
 			expectPresent: [
 				'[data-header-identity-menu="agent"]',
 				'[data-header-identity-menu="agent"] [role="option"]',
+				/*
+				 * The constraint travels to the 150-name roster (issue #861): the
+				 * caption is up, a leaf row is disabled with its reason, and the
+				 * first settable non-manager row (`architect`, a delegating
+				 * profile) is on screen beside them.
+				 */
+				"[data-header-identity-constraint]",
+				'[data-header-identity-menu="agent"] [role="option"][aria-disabled="true"]',
+				'[data-header-identity-menu="agent"] [role="option"]:not([aria-disabled])',
+				'[data-header-identity-menu="agent"] [role="option"][aria-selected="true"]:not([aria-disabled])',
+				/*
+				 * THE FOOTER IS BACK (review round 1, Q-1): the measure effect used to
+				 * read a ref that was still null on its only open-time run, so an
+				 * overflowing list silently lost its count line - this frame's own
+				 * subject. The effect now runs on the NODE appearing (the scroller is
+				 * mirrored into state), and the hook makes the footer a claim rather
+				 * than something this frame hopes shows.
+				 */
+				"[data-header-identity-footer]",
 			],
 			dir: "long-roster-agent-open",
 		},
@@ -2568,8 +2752,51 @@ export const STORIES = [
 			expectPresent: [
 				'[data-header-identity-menu="agent"]',
 				'[data-header-identity-menu="agent"] [role="option"][aria-selected="true"]',
+				/*
+				 * EVERY MATCH IS REFUSED HERE, SO THE FOOTER CARRIES THE WAY OUT
+				 * (review round 1, D1): four `rev` matches, none settable - the
+				 * frame's claim is the resolution sentence, not the count the first
+				 * draft printed over a list nothing could be picked from.
+				 */
+				"[data-header-identity-resolution]",
 			],
 			dir: "search-results",
+		},
+	],
+	/*
+	 * THE CONFIRM KEY ON A REFUSED ROW ANSWERS (review round 1, D2/U1): the
+	 * sharpest form of the reported defect was "type rev, one refused hit,
+	 * Enter, nothing" - no dismissal, no state change, an empty live region.
+	 * The seeded highlight cannot save THIS list (no settable row matches `rev`
+	 * at all), so this frame is the other half of the fix: the footer's live
+	 * region says which row cannot take the seat. The sentence is asserted
+	 * rather than photographed - its presence IS the state.
+	 */
+	[
+		"chat-header-identity--long-roster",
+		560,
+		640,
+		{
+			press: '[data-header-identity="agent"]',
+			type: "rev",
+			thenKeys: [{ key: "Enter" }],
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-constraint]",
+				/*
+				 * THE EXITS LINE SURVIVES THE ANSWER (review round 2, D7(a)):
+				 * this state is all-refused, so the resolution is what the footer
+				 * was saying before Enter; the claim holds the shutter to it STILL
+				 * being rendered under the announcement - the first cut swapped
+				 * it out, deleting the way out with the key pressed hoping to pick.
+				 */
+				"[data-header-identity-resolution]",
+			],
+			expectSentence: {
+				selector: "[data-header-identity-footer]",
+				includes: "cannot take the seat.",
+			},
+			dir: "refused-enter",
 		},
 	],
 	[
@@ -2595,8 +2822,65 @@ export const STORIES = [
 			expectPresent: [
 				'[data-header-identity-menu="agent"]',
 				'[data-header-identity-menu="agent"] [role="option"]',
+				"[data-header-identity-constraint]",
+				// The highlight landed on a settable row (D2/U1) and the band
+				// filtered to nothing is GONE rather than empty (U6).
+				'[data-header-identity-menu="agent"] [role="option"][aria-selected="true"]:not([aria-disabled])',
 			],
+			expectGone:
+				'[data-header-identity-menu="agent"] [data-header-identity-band="Recent agents"]',
 			dir: "recents-agent-open",
+		},
+	],
+	[
+		"chat-header-identity--recents-mixed",
+		560,
+		640,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-constraint]",
+				/*
+				 * THE BAND IS UP AND FILTERED (review round 2, D8): `manager`
+				 * (settable, remembered) survives inside it, `coder` (refused,
+				 * remembered) is absent from it and still listed below with its
+				 * reason - both halves asserted here, membership pinned in
+				 * `header-identity-menu.test.mjs`. This is the frame the
+				 * all-refused ring's collapse cannot show: a FILTER, not a fault.
+				 */
+				'[data-header-identity-menu="agent"] [data-header-identity-band="Recent agents"]',
+				'[data-header-identity-menu="agent"] [role="option"][aria-disabled="true"]',
+				'[data-header-identity-menu="agent"] [role="option"]:not([aria-disabled])',
+				'[data-header-identity-menu="agent"] [role="option"][aria-selected="true"]:not([aria-disabled])',
+			],
+			dir: "recents-agent-mixed-open",
+		},
+	],
+	[
+		"chat-header-identity--no-settable-agent",
+		560,
+		640,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-constraint]",
+				/*
+				 * THE UNTYPED RESOLUTION, RENDERED (review round 2, D9): no row
+				 * is settable (the roster carries no manager row and every flag
+				 * is false) and the list overflows, so the footer states the one
+				 * exit that remains. The sentence is asserted as well as the
+				 * hook, because the sentence IS the state; the typed variant is
+				 * measured on `search-results`.
+				 */
+				"[data-header-identity-resolution]",
+			],
+			expectSentence: {
+				selector: "[data-header-identity-footer]",
+				includes: "No profile can take the seat",
+			},
+			dir: "no-settable-agent",
 		},
 	],
 	[
@@ -12796,8 +13080,8 @@ const main = async () => {
 			 * KEYS through the input pipeline, for the claims that are a KEYBOARD
 			 * interaction rather than a visual state - `keys: [{ key: "Escape" }]`.
 			 */
-			if (options?.keys) {
-				for (const spec of options.keys) {
+			const sendKeys = async (specs) => {
+				for (const spec of specs) {
 					const codes = KEY_CODES[spec.key];
 					if (!codes) {
 						throw new Error(`${story} @ ${theme}: no keyCode for ${spec.key}`);
@@ -12828,6 +13112,9 @@ const main = async () => {
 					}
 					await sleep(spec.settleMs ?? 120);
 				}
+			};
+			if (options?.keys) {
+				await sendKeys(options.keys);
 			}
 			/*
 			 * TYPED TEXT, for a claim that is about a FILTER rather than about a state:
@@ -12845,6 +13132,16 @@ const main = async () => {
 			if (options?.type) {
 				await cdp.send("Input.insertText", { text: options.type });
 				await sleep(options.typeSettleMs ?? 250);
+			}
+			/*
+			 * KEYS AFTER THE TYPED TEXT: the one order `keys` cannot express, because
+			 * `keys` runs before `type` by its own callers' needs. The refused-row
+			 * answer (review round 1, D2/U1) IS type-then-Enter - a filter that
+			 * leaves only refused rows, then the confirm key on the highlighted one -
+			 * so this second position dispatches through the same loop.
+			 */
+			if (options?.thenKeys) {
+				await sendKeys(options.thenKeys);
 			}
 			/*
 			 * WHAT THE GESTURES ABOVE MUST HAVE PRODUCED, asserted rather than
