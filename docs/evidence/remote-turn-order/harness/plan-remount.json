@@ -1,0 +1,28 @@
+{
+	"steps": [
+		{ "op": "nav", "path": "/chat/bf9c91758373" },
+		{
+			"op": "waitFor",
+			"selector": "[data-tour-tag=\"chat-input-textarea\"] textarea",
+			"timeoutMs": 90000
+		},
+		{ "op": "wait", "ms": 5000 },
+		{ "op": "rows", "note": "reopen-1" },
+		{ "op": "shot", "name": "r1-open" },
+		{ "op": "nav", "path": "/chat" },
+		{ "op": "wait", "ms": 2500 },
+		{ "op": "nav", "path": "/chat/bf9c91758373" },
+		{ "op": "wait", "ms": 5000 },
+		{ "op": "rows", "note": "reopen-2-after-switch" },
+		{ "op": "shot", "name": "r2-switch" },
+		{ "op": "eval", "js": "location.reload(); 'reloading'" },
+		{
+			"op": "waitFor",
+			"selector": "[data-tour-tag=\"chat-input-textarea\"] textarea",
+			"timeoutMs": 90000
+		},
+		{ "op": "wait", "ms": 8000 },
+		{ "op": "rows", "note": "reload-1" },
+		{ "op": "shot", "name": "r3-reload" }
+	]
+}
