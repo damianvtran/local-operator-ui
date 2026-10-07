@@ -156,10 +156,11 @@ test("null and absent are NOT zero, and zero draws nothing", () => {
 test("a delegating row suppresses the running mark and keeps the queued one", () => {
 	/*
 	 * §3 of the spec, and the reason it is a suppression rather than an addition:
-	 * `delegating`'s PRIMARY mark is the running mark - `Share2`, accent, static -
-	 * so drawing this module's running mark beside it would put the same glyph
-	 * twice on one row to say one thing. The queued glyph is NOT suppressed:
-	 * `Share2` says "subagents are at work", not "none of them has started".
+	 * `delegating`'s PRIMARY mark is the running mark - the three-bead trio,
+	 * accent, static - so drawing this module's running mark beside it would put
+	 * the same mark twice on one row to say one thing. The queued glyph is NOT
+	 * suppressed: the trio says "subagents are at work", not "none of them has
+	 * started".
 	 */
 	assert.deepEqual(subagentMarks(row("delegating", 1, 0)), {
 		running: false,

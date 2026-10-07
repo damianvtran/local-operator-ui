@@ -4002,6 +4002,18 @@ const BRANCH_RECORDS = [
 	 * `STAMP_BINDING_NOTES`.
 	 */
 	"meshSquashDanglingRepairNote",
+	/*
+	 * And THIS change's: the running-subagent trio
+	 * (`feat/sidebar-subagent-motif-1006`), whose record is the only statement
+	 * of which nine cells and 108 frames were re-taken, that the pass ran twice
+	 * with byte-identical output on the committed tree, and that seven of the
+	 * nine carried `Share2` frames older than the mark itself - so their
+	 * before/after is the mark AND the tree moving under it. Registered for the
+	 * list's own reason: a fold that started from main's manifest would drop it.
+	 * Its only commit SHAs are bare, so it joins this list and not
+	 * `STAMP_BINDING_NOTES`.
+	 */
+	"sidebarSubagentTrioPass",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
