@@ -3238,6 +3238,12 @@ test("the line, the hint and every control read the one pair", () => {
 			"utf8",
 		),
 	);
+	const transcriptSource = strip(
+		readFileSync(
+			"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+			"utf8",
+		),
+	);
 	assert.match(
 		page,
 		/const turnAlive =\s*\n\s*\(canonical\.frontend \?\? canonical\.heldFrontend\)\?\.streaming === true;/,
@@ -3297,6 +3303,13 @@ test("the line, the hint and every control read the one pair", () => {
 		content,
 		/idleDisputed=\{canonical\.idleDisputed === true\}/,
 		"the rung is handed the disputed-idle withhold",
+	);
+	// And the transcript forwards it into the SAME derivation the rung reads
+	// (the prop is inert if the pane's own memo drops it).
+	assert.match(
+		transcriptSource,
+		/idleDisputed: idleDisputed === true,/,
+		"the transcript's pane memo carries the disputed-idle withhold",
 	);
 	assert.match(
 		content,
