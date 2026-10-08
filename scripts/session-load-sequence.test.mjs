@@ -241,8 +241,10 @@ const bundle = await build({
 			 * ARE THE CALL SITE'S AND WHICH ARE A NO-SEND LOAD'S OWN, stated
 			 * rather than implied (agent review round 1, nit 3): read straight off
 			 * the handle are frontend, transcript, gate, waiting (the call site's
-			 * canonical.busy and the same expression, canonical.frontend?.streaming
-			 * === true), loadingOlder, onLoadOlder, onLoadOlderOutcome, olderFailed,
+			 * turnAlive and the same expression, (canonical.frontend ??
+			 * canonical.heldFrontend)?.streaming === true - the pair, because the
+			 * claim surfaces read through the hold; operator incident, 2026-10-07),
+			 * loadingOlder, onLoadOlder, onLoadOlderOutcome, olderFailed,
 			 * status, failure, awaitingHydration, conversationId, the three label
 			 * sets, onReconnect, stale and containerRef (the rig's own div). NOT an
 			 * exhaustive prop list - only the ones this rig's fidelity question is
@@ -282,7 +284,7 @@ const bundle = await build({
 					transcript: canonical.transcript,
 					undelivered: null,
 					gate: canonical.frontend?.pending_gate ?? null,
-					waiting: canonical.frontend?.streaming === true,
+					waiting: (canonical.frontend ?? canonical.heldFrontend)?.streaming === true,
 					starting: false,
 					startingAfterId: null,
 					startingSession: false,

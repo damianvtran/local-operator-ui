@@ -309,6 +309,15 @@ export const COMPOSER_PLACEHOLDER = {
 	 */
 	aside: "Ask off the record — Esc closes the aside",
 	sending: "Sending your message",
+	/*
+	 * THE PRESS GETS ITS ANSWER WHERE THE FINGER IS (design round 1, D6): during
+	 * the press's own window the stop square is pixel-identical and the rung is
+	 * 420 px above the control (measured), so the box's own sentence carries the
+	 * press while it is in flight. Sentence case, no ellipsis, no spinner - the
+	 * composer's existing idiom, with the transcript's line still the turn's one
+	 * liveness element (`waiting`'s sibling rule).
+	 */
+	stopping: "Stopping the turn",
 	/**
 	 * WHILE A TAKE IS LIVE, THE BOX'S OWN KEYS ARE THE RECORDING'S (UX round 1,
 	 * U1). Enter confirms the take and Esc cancels it - rung 4 of the interrupt
@@ -344,8 +353,9 @@ export const COMPOSER_PLACEHOLDER = {
  * about a turn nobody is running - design round 2, D3); then a gate that takes a
  * SECRET, whose sentence names the dock's field because the box refuses input for
  * it and pointing is all this slot can usefully do; then the box's own refusal;
- * then a gate that is waiting to be answered; then an attached aside; then THIS
- * pane's send; then the agent; then the invitation.
+ * then a gate that is waiting to be answered; then an attached aside; then the
+ * press's own window (a Stop in flight - its own note above carries the read
+ * order); then THIS pane's send; then the agent; then the invitation.
  *
  * THE ASIDE TERM SITS AFTER THE REFUSALS AND AFTER THE GATE, and both sides
  * of that position are load-bearing. After the refusals, because a box that takes
@@ -380,6 +390,19 @@ export const composerPlaceholder = (state: {
 	asideAttached: boolean;
 	/** A send this pane issued has not settled. */
 	sendingUnsettled: boolean;
+	/**
+	 * A Stop press is in flight - `canonicalStop.stopping`, forwarded from the
+	 * page's press machine. Changes the PLACEHOLDER only, like `awaitingReply`:
+	 * the press gates no send, so pressing Stop then typing a new message still
+	 * steers the turn the press is winding down.
+	 *
+	 * Read AHEAD of `sendingUnsettled` because the press is the NEWER act, and
+	 * the sequence it exists for is exactly a send going out while the user
+	 * stops the turn its answer is coming from (the operator's incident).
+	 *
+	 * Absent means every caller that predates it derives what it derived before.
+	 */
+	stopping?: boolean;
 	/** A send has been issued and the agent has not painted anything yet. */
 	awaitingReply: boolean;
 	/**
@@ -438,6 +461,7 @@ export const composerPlaceholder = (state: {
 	if (state.askMode) return state.askMode;
 	if (state.awaitingAnswer) return COMPOSER_PLACEHOLDER.answer;
 	if (state.asideAttached) return COMPOSER_PLACEHOLDER.aside;
+	if (state.stopping) return COMPOSER_PLACEHOLDER.stopping;
 	if (state.sendingUnsettled) return COMPOSER_PLACEHOLDER.sending;
 	if (state.awaitingReply) return COMPOSER_PLACEHOLDER.waiting;
 	if (state.noProvider) return COMPOSER_PLACEHOLDER.noProvider;

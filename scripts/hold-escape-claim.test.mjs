@@ -169,7 +169,7 @@ const engage = () => {
 const interruptWouldFire = (event) =>
 	interruptEscapeApplies(event, {
 		sessionId: "session-under-test",
-		busy: true,
+		turnAlive: true,
 		available: true,
 		// Deliberately false: the presence reader has already been cleared by the
 		// settle's re-render on this door, which is the flip that let the old code
