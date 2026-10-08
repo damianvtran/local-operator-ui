@@ -120,7 +120,7 @@ const bundle = await build({
 		contents: `
 			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor } from "./src/renderer/src/shared/store/canonical-sessions-store";
-			export { EMPTY_TRANSCRIPT, appendPendingUser, applyEvent, applyHistoryPage, sealDisjointBlock } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { EMPTY_TRANSCRIPT, appendPendingUser, applyEvent, applyHistoryPage, oldestDurableOutside, sealDisjointBlock } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { paintPendingSend } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
 			export { __resetPendingSends } from "./src/renderer/src/shared/hooks/use-canonical-session";
@@ -179,6 +179,7 @@ const {
 	applyEvent,
 	applyHistoryPage,
 	sealDisjointBlock,
+	oldestDurableOutside,
 	paintPendingSend,
 } = hook;
 
@@ -1847,6 +1848,127 @@ test("a label walk that reaches its floor keeps reading until it reaches the hel
 		"the floor zeroed the label debt, not the connection to the cached block",
 	);
 	assert.ok(reads >= 2, `the walk read past its first page (${reads} reads)`);
+});
+
+/*
+ * #876, CI REGRESSION OF REVIEW ROUND 1: A ROW THAT CHANGES STATE IN A FLUSH IS
+ * NOT A ROW THE WALK FAILED TO REACH. The pane holds durable rows and a tool
+ * that is still RUNNING (a live row, so not in the connection set). The next
+ * flush settles it and asks for its label; the walk's page is empty (or the read
+ * fails), so there is no fetched chain to seal AT. The seal then falls back to
+ * "the oldest durable row not on the pane before this flush" - and the
+ * just-settled tool, durable NOW, was on the pane before as a running row. Cut
+ * there, it dropped every durable row older than itself: the whole held block.
+ * `session-load-sequence.test.mjs` is the same shape from the DOM (93 rows -> 2).
+ */
+for (const [name, historyFaults, emptyPage] of [
+	["the label walk's page is empty", [], true],
+	["the label walk's read fails", [0, 1, 2], false],
+]) {
+	test(`a running tool that settles mid-flush does not become the edge of a seal (${name})`, async () => {
+		// A call id per variant: the label read's attempt budget is module state
+		// keyed by call id, so a second variant reusing one would spend no read.
+		const callId = `c-live-${historyFaults.length}`;
+		const base = longConversation({ awayRows: 0, total: 130 });
+		const transcript = makeTranscript(base.rows);
+		reset({ transcript, historyFaults });
+		if (emptyPage)
+			globalThis.__gapTail = () => ({
+				entries: [],
+				has_more: false,
+				cursor_missing: false,
+			});
+		const panel = await mount();
+		const running = {
+			type: "tool_execution_start",
+			tool_call_id: callId,
+			tool_name: "bash",
+			started_at_epoch: 100 + 130 + 1,
+		};
+		deliver(openFrame(1, true));
+		deliver(
+			snapshotFrame(2, {
+				cursor: "r130",
+				entries: transcript.tail(REOPEN_PAGE).entries,
+				liveEvents: [running],
+				coldReason: null,
+			}),
+		);
+		await pump();
+		const held = panel.ids().filter((id) => id !== `tool:${callId}`);
+		assert.equal(held.length, REOPEN_PAGE, "the page is painted");
+		assert.equal(panel.row(`tool:${callId}`)?.phase, "running");
+
+		deliver(
+			eventFrame(3, {
+				type: "tool_execution_end",
+				tool_call_id: callId,
+				tool_name: "bash",
+				duration_s: 1,
+				result: { content: [{ text: "ok" }], details: null },
+				is_error: false,
+				started_at_epoch: 100 + 130 + 1,
+			}),
+		);
+		await pump();
+		assert.equal(
+			panel.row(`tool:${callId}`)?.phase,
+			"done",
+			"the tool settled",
+		);
+		assert.ok(
+			historyReads() >= 1,
+			"the settle asked for its label, so a walk ran",
+		);
+		const after = panel.ids();
+		for (const id of held)
+			assert.ok(after.includes(id), `${id} is still painted after the walk`);
+		assert.equal(after.length, held.length + 1, "nothing else was dropped");
+	});
+}
+
+/*
+ * `oldestDurableOutside`, pure: the pre-flush set is what is "inside". A row that
+ * is a durable owner row NOW but was on the pane before as something else (a
+ * running tool, a streaming answer, an unconfirmed echo) is not an edge when the
+ * set names it - and is one when it does not, which is the bug the set closes.
+ */
+test("oldestDurableOutside never offers a row that was on the pane before as its edge", () => {
+	let state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			assistantRow("r10", 110, "held"),
+			assistantRow("r11", 111, "held"),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	// A row that was live on the pane and is durable now (settled mid-flush).
+	state = applyHistoryPage(state, {
+		entries: [toolRow("t20", 120, "c20", "bash", "done now")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	state = applyHistoryPage(state, {
+		entries: [assistantRow("r30", 130, "arrived with this batch")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const before = new Set(["r10", "r11", "tool:c20"]);
+	assert.deepEqual(
+		oldestDurableOutside(state, before),
+		{ id: "r30", ts: 130_000 },
+		"only the row that arrived with the batch is outside",
+	);
+	assert.deepEqual(
+		oldestDurableOutside(state, new Set(["r10", "r11"])),
+		{ id: "tool:c20", ts: 120_000 },
+		"left out of the set, the settled row becomes the edge: the regression",
+	);
+	assert.equal(
+		oldestDurableOutside(state, new Set(state.records.map((r) => r.id))),
+		null,
+		"a pane that held everything has nothing outside",
+	);
 });
 
 test("replayed events paint even when the snapshot lands in a later batch", async () => {
