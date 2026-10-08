@@ -8,9 +8,27 @@
  * Radient-vs-bring-your-own gate: Radient is one card among the registry rows,
  * and a stored Radient credential in the backend AuthStore is what counts as
  * connected — not a renderer-held OAuth session.
+ *
+ * SETUP ENDS IN A CONVERSATION WITH AIDA (first-run onboarding, U1/A2). The
+ * operator's rule: after setup the user lands INSIDE her conversation and SHE
+ * speaks first. The last step's primary button is "Meet <her name>", and its
+ * press is the attended request (`greet`) that ensures her session and arms her
+ * hidden greeting - the only place the desktop asks for it, so a background
+ * launch never does. Every other way out (Skip, Escape, the close button, a
+ * backend without her) lands in the chat as before.
  */
 
-import { useDesktopProviders } from "@shared/api/local-operator/desktop-hooks";
+import {
+	aidaGreetFailure,
+	aidaGreetHeldNotice,
+} from "@features/aida/aida-control";
+import { useAidaControl, useAidaTarget } from "@features/aida/use-aida-target";
+import { openConversation } from "@features/chat/open-conversation";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+	useDesktopProviders,
+} from "@shared/api/local-operator/desktop-hooks";
 import { Button, Tooltip } from "@shared/components/ui";
 import { hasConnectedProvider } from "@shared/hooks/first-time-user";
 import { cn } from "@shared/lib/utils";
@@ -18,6 +36,7 @@ import {
 	OnboardingStep,
 	useOnboardingStore,
 } from "@shared/store/onboarding-store";
+import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -34,9 +53,14 @@ import { ExtrasStep } from "./steps/extras-step";
  * survive being read on their own, out of order.
  */
 const stepTitles: Record<OnboardingStep, string> = {
-	[OnboardingStep.CONNECT_PROVIDER]: "Connect a model provider",
+	/*
+	 * "AI account", not "model provider" (first-run onboarding, D11/U7): the
+	 * heading the TUI's setup splash and `/login` picker share, in the words a
+	 * first-time user already has.
+	 */
+	[OnboardingStep.CONNECT_PROVIDER]: "Connect an AI account",
 	[OnboardingStep.DEFAULT_MODEL]: "Your default model",
-	[OnboardingStep.EXTRAS]: "A few optional extras",
+	[OnboardingStep.EXTRAS]: "Web search (optional)",
 };
 
 /**
@@ -97,6 +121,20 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 */
 	const providers = useDesktopProviders(open);
 	const connected = hasConnectedProvider(providers.data ?? []);
+	/*
+	 * Whether setup can end in her conversation: the capability gate the rail's
+	 * row uses (`features.aida`, fail-closed - the UI must not call her route on
+	 * a backend without it) AND the install's own switch, read from the status
+	 * document, so a backend with her switched off finishes into the chat with
+	 * no button promising someone who will never answer.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const aidaCapable = desktopFeatureEnabled(capabilities.data, "aida", 1);
+	const aida = useAidaTarget(open && aidaCapable);
+	const aidaAvailable = aidaCapable && aida.data?.enabled === true;
+	const aidaName = aida.data?.name ?? "Aida";
+	const aidaControl = useAidaControl();
+	const [meeting, setMeeting] = useState(false);
 	/** Step 2 registers the write a PROPOSED default needs on Continue. */
 	const beforeContinue = useRef<(() => Promise<void>) | null>(null);
 	/*
@@ -109,7 +147,13 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const registerStepBlock = useCallback((reason: string | null) => {
 		setStepBlock(reason);
 	}, []);
-	const [continuing, setContinuing] = useState(false);
+	const [stepContinuing, setContinuing] = useState(false);
+	/*
+	 * Busy is either half: step 2's config write, or "Meet <name>" waiting on
+	 * `greet`. One flag, because the footer's rule is the same for both - the
+	 * primary is disabled while its own press is in flight.
+	 */
+	const continuing = stepContinuing || meeting;
 	const registerBeforeContinue = useCallback(
 		(run: (() => Promise<void>) | null) => {
 			beforeContinue.current = run;
@@ -154,6 +198,46 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		navigate("/chat");
 	}, [completeModalOnboarding, navigate]);
 
+	/**
+	 * "Meet <name>": ask her to say hello, then open her conversation.
+	 *
+	 * ORDER: `greet` first, then the switch. The answer carries her session id
+	 * (`greet` ensures it, so one call is enough), and opening before it answers
+	 * would land on a conversation that may not exist yet. Setup is completed in
+	 * the same press either way, so the modal closes onto wherever we land.
+	 *
+	 * THE GREETING ITSELF IS NOT AWAITED: it is a hidden wake whose reply streams
+	 * into the conversation on its own, and the trigger never paints
+	 * (`wakeIsHidden` in the transcript reducer). What the user sees is her
+	 * conversation opening, then her first message arriving in it.
+	 *
+	 * A REFUSAL NEVER STRANDS THE USER: every failure lands in the chat with the
+	 * sentence `aidaGreetFailure` composes for it (see there for the three cases).
+	 */
+	const meetAida = useCallback(async () => {
+		setMeeting(true);
+		try {
+			const state = await aidaControl("greet");
+			completeModalOnboarding();
+			if (!state.session_id) {
+				// Unreachable by the contract (`greet` ensures); stated rather than
+				// navigated on, because `/chat/null` is a pane showing nothing.
+				throw new Error(`${aidaName}'s conversation could not be opened.`);
+			}
+			void openConversation(navigate, state.session_id);
+			const held = aidaGreetHeldNotice(state, aidaName);
+			if (held) showInfoToast(held);
+		} catch (error) {
+			completeModalOnboarding();
+			navigate("/chat");
+			const failure = aidaGreetFailure(error, aidaName);
+			if (failure?.kind === "info") showInfoToast(failure.text);
+			else if (failure) showErrorToast(failure.text);
+		} finally {
+			setMeeting(false);
+		}
+	}, [aidaControl, aidaName, completeModalOnboarding, navigate]);
+
 	const handleNext = useCallback(async () => {
 		const index = STEP_SEQUENCE.indexOf(currentStep);
 		if (
@@ -172,10 +256,12 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		}
 		if (index >= 0 && index < STEP_SEQUENCE.length - 1) {
 			setCurrentStep(STEP_SEQUENCE[index + 1]);
+		} else if (aidaAvailable) {
+			await meetAida();
 		} else {
 			finish();
 		}
-	}, [currentStep, setCurrentStep, finish]);
+	}, [currentStep, setCurrentStep, finish, aidaAvailable, meetAida]);
 
 	const handleBack = useCallback(() => {
 		const index = STEP_SEQUENCE.indexOf(currentStep);
@@ -198,11 +284,18 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 					/>
 				);
 			case OnboardingStep.EXTRAS:
-				return <ExtrasStep />;
+				return <ExtrasStep aidaName={aidaAvailable ? aidaName : null} />;
 			default:
 				return null;
 		}
-	}, [currentStep, setCurrentStep, registerBeforeContinue, registerStepBlock]);
+	}, [
+		currentStep,
+		setCurrentStep,
+		registerBeforeContinue,
+		registerStepBlock,
+		aidaAvailable,
+		aidaName,
+	]);
 
 	const isFirst = currentStep === OnboardingStep.CONNECT_PROVIDER;
 	const isLast = currentStep === OnboardingStep.EXTRAS;
@@ -213,7 +306,11 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 *   then primary "Continue" on the right -- never an enabled Next over
 	 *   nothing;
 	 * - step 2: Back, then primary "Continue";
-	 * - step 3: Back, then ghost "Skip" and primary "Finish".
+	 * - step 3: Back, then ghost "Skip" and primary "Finish" - or, when she is
+	 *   available, ghost "Skip to chat" and primary "Meet <name>" (first-run
+	 *   onboarding, U1/D12). The ghost names where it goes because "Skip" beside
+	 *   "Meet Aida" reads as skipping her, which it is, and the reader should
+	 *   know that before pressing it.
 	 */
 	const footer = onboardingFooter(currentStep, stepBlock, continuing);
 	const dialogActions = (
@@ -235,8 +332,13 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				</div>
 				<div className="flex items-center gap-3">
 					{isLast ? (
-						<Button variant="ghost" size="lg" onClick={finish}>
-							Skip
+						<Button
+							variant="ghost"
+							size="lg"
+							onClick={finish}
+							disabled={meeting}
+						>
+							{aidaAvailable ? "Skip to chat" : "Skip"}
 						</Button>
 					) : null}
 					{!isFirst || connected ? (
@@ -246,7 +348,11 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 							onClick={() => void handleNext()}
 							disabled={footer.primaryDisabled}
 						>
-							{isLast ? "Finish" : "Continue"}
+							{isLast
+								? aidaAvailable
+									? `Meet ${aidaName}`
+									: "Finish"
+								: "Continue"}
 						</Button>
 					) : null}
 				</div>

@@ -43,6 +43,7 @@ const bundle = await build({
 			export { ONBOARDING_PANEL_WIDTHS } from "./src/renderer/src/features/onboarding/components/onboarding-dialog";
 			export { OnboardingStep } from "./src/renderer/src/shared/store/onboarding-store";
 			export { recommendedProvider, showsRecommendedCue, visibleProviders };
+			export { moreProvidersSummary } from "./src/renderer/src/features/providers/provider-catalog";
 
 			export const renderProviderGrid = (client) =>
 				renderToStaticMarkup(
@@ -143,6 +144,7 @@ const {
 	recommendedProvider,
 	showsRecommendedCue,
 	visibleProviders,
+	moreProvidersSummary,
 	STEP_PANEL_WIDTH,
 	ONBOARDING_PANEL_WIDTHS,
 	OnboardingStep,
@@ -691,5 +693,55 @@ test("the settled view's verdict reaches the API-key route too, and its sentence
 		detail,
 		/This app could not confirm the sign-in stored on this machine for \$\{brand\}/,
 		"and the neutral register says the app could not confirm it",
+	);
+});
+
+/*
+ * "More providers" NAMES what is behind it (first-run onboarding, D11/U7), and
+ * the name is derived from the rows - so it cannot promise a provider that is
+ * not there or miscount the rest. Run against the SHIPPED first-run census
+ * (`scripts/fixtures/auth-providers-first-run.json`, 18 rows), the same rows a
+ * fresh install's dialog groups.
+ */
+test("the 'More providers' summary names the hidden rows and counts the rest exactly", async () => {
+	const fixture = JSON.parse(
+		readFileSync("scripts/fixtures/auth-providers-first-run.json", "utf8"),
+	).providers;
+	const featured = new Set(["radient", "anthropic", "openai", "google"]);
+	const rest = { subscription: [], key: [], local: [] };
+	for (const provider of fixture) {
+		if (featured.has(provider.id)) continue;
+		if (provider.local) rest.local.push(provider);
+		else if (
+			provider.auth_methods.some(
+				(m) => m.kind === "browser" || m.kind === "device",
+			)
+		)
+			rest.subscription.push(provider);
+		else rest.key.push(provider);
+	}
+	const cloud = rest.subscription.length + rest.key.length;
+	const summary = moreProvidersSummary(rest);
+	// xAI and OpenRouter lead: the operator named them as must-stay-findable.
+	assert.match(
+		summary,
+		/^More providers: xAI, OpenRouter, DeepSeek, local models and \d+ more$/,
+	);
+	assert.equal(Number(summary.match(/and (\d+) more$/)[1]), cloud - 3);
+	// No local rows, no "local models"; nothing to name, the bare label.
+	assert.doesNotMatch(
+		moreProvidersSummary({ ...rest, local: [] }),
+		/local models/,
+	);
+	assert.equal(
+		moreProvidersSummary({ subscription: [], key: [], local: [] }),
+		"More providers",
+	);
+	// The featured rows render on the step and the disclosure carries the summary.
+	const html = renderFeatured(fixture);
+	for (const id of featured) assert.equal(rowCount(html, id), 1);
+	assert.ok(
+		html.includes(summary),
+		"the disclosure's trigger carries the summary",
 	);
 });

@@ -14,7 +14,10 @@
  */
 
 import type { DesktopAidaControlResult } from "../../../../shared/desktop-control-contract";
-import { userFacingMessage } from "../../shared/api/local-operator/desktop-api";
+import {
+	DesktopControlError,
+	userFacingMessage,
+} from "../../shared/api/local-operator/desktop-api";
 
 /** The route's own op vocabulary, mirrored (`aida.control`, `design.md` § 4). */
 export type AidaControlAction =
@@ -138,3 +141,56 @@ export function aidaControlFailureCopy(error: unknown): string {
  */
 export const AIDA_DISABLED_SENTENCE =
 	"The chief of staff is switched off on this install.";
+
+/**
+ * Where first-run setup lands, and what it says, when `greet` did not open her
+ * conversation (first-run onboarding, U1/A2).
+ *
+ * THE SETUP NEVER STRANDS THE USER: every refusal lands in the chat, because the
+ * provider the user just connected works there whatever happened to her. What
+ * differs is the sentence:
+ *
+ * - `aida_no_provider` (409): the backend could not resolve a provider to greet
+ *   with - a key that has not propagated yet, or setup finished on a census that
+ *   was stale. Said as a fact with its remedy, at `info`, because nothing broke.
+ * - `aida_disabled` (409): the install switched her off. Silence is correct -
+ *   setup is not the place to advertise a feature the operator turned off.
+ * - anything else: the transport's own authored copy, at `error`.
+ *
+ * The code is read off `DesktopControlError.code`, the vetted category the
+ * transport attached from the refusal body's `detail.code` - never matched in
+ * the sentence, which is the backend's to reword.
+ */
+export const AIDA_NO_PROVIDER_CODE = "aida_no_provider";
+export const AIDA_DISABLED_CODE = "aida_disabled";
+
+export function aidaGreetFailure(
+	error: unknown,
+	name: string,
+): { kind: "info" | "error"; text: string } | null {
+	const code = error instanceof DesktopControlError ? error.code : undefined;
+	if (code === AIDA_DISABLED_CODE) return null;
+	if (code === AIDA_NO_PROVIDER_CODE)
+		return {
+			kind: "info",
+			text: `${name} will say hello once an AI account is connected. Connect one from the chat to start.`,
+		};
+	return {
+		kind: "error",
+		text: `${name}'s conversation could not be opened, so you are in a new chat instead. ${aidaControlFailureCopy(error)}`,
+	};
+}
+
+/**
+ * The one extra sentence a SUCCESSFUL first-run landing may owe: she is paused,
+ * so her conversation opens but the greeting is held (the backend keeps it
+ * owed and `resume` delivers it). Null when there is nothing to say.
+ */
+export function aidaGreetHeldNotice(
+	state: Pick<DesktopAidaControlResult, "paused" | "greeted">,
+	name: string,
+): string | null {
+	if (state.paused && !state.greeted)
+		return `${name} is paused, so she will say hello when you resume her: type /aida resume.`;
+	return null;
+}
