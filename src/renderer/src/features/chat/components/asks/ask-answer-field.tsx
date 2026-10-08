@@ -9,11 +9,14 @@
  * on 2026-10-07: nobody could tell that typing there was how an "other" answer was
  * given) and asked for an explicit `Other` answer inside the card instead. The end
  * state he named is the shared composer's field - multi-line, paste, attachments,
- * dictation. THIS FIELD IS TEXT-ONLY, and says so, because an ask answer cannot carry
- * an attachment on the wire yet (`answers` is `Record<string, string[]>`); attachments
- * follow in a later change that adds the wire half, and this component is the seam it
- * extends: the leaves it will compose (the attachment strip, the image-paste branch,
- * the encode/bound helpers) already exist in `shared/components/composer/`.
+ * dictation. THIS FIELD IS TEXT-ONLY, and says so, because no RELEASED runtime accepts
+ * an attachment on an ask answer (`answers` is `Record<string, string[]>`; core's
+ * `images` key on the answer body, core #2058, is merged to core's main but unreleased
+ * as of v0.68.7, and is gated on the owner capability `features.ask_attachments`,
+ * which this renderer does not read yet). Attachments follow in a later change that
+ * reads that capability, and this component is the seam it extends: the leaves it will
+ * compose (the attachment strip, the image-paste branch, the encode/bound helpers)
+ * already exist in `shared/components/composer/`.
  *
  * It is a textarea of its own and NOT a mount of `MessageInput`, for reasons that are
  * about co-mounting a second composer inside the chat page rather than about taste:
