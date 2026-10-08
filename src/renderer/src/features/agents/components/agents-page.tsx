@@ -224,15 +224,6 @@ export function AgentsPage() {
 	 */
 	const [pendingNav, setPendingNav] = useState<NavIntent | null>(null);
 	const [dirtyIdentity, setDirtyIdentity] = useState<string | null>(null);
-	/*
-	 * HOW MUCH OF THE SCROLLER THE DOCKED STRIP IS COVERING (D12, design review
-	 * round 2). The strip floats above the composer so it cannot resize the pane
-	 * (D4) — which means the pane has to reserve that room itself, or the last
-	 * block of a long definition sits under the overlay where no scroll reaches
-	 * it. The composer reports its own measured height; this is the scroller's
-	 * answer, and `16` is the dock's own `p-4`, which the overlay also spans.
-	 */
-	const [stripHeight, setStripHeight] = useState(0);
 	const run = useConfigRun();
 	const marks = useConfigRunStore((state) => state.marks);
 	const clearMark = useConfigRunStore((state) => state.clearMark);
@@ -736,9 +727,6 @@ export function AgentsPage() {
 					 */
 					data-agents-pane
 					className="min-h-0 flex-1 overflow-auto p-6 pb-0"
-					style={
-						stripHeight > 0 ? { paddingBottom: stripHeight + 16 } : undefined
-					}
 				>
 					{!catalogueEnabled ? (
 						/*
@@ -971,12 +959,20 @@ export function AgentsPage() {
 				 * state change twice. One composer, one placement.
 				 */}
 				{showsEmptyPane ? null : (
-					<div className="shrink-0 border-hairline border-t bg-canvas p-4">
+					/*
+					 * THE DOCK ADDS NOTHING: no rule, no padding, no frame. The band inside
+					 * `MessageInput` already carries the 24 px side inset and the 8 / 16 px
+					 * vertical padding, and the box's step of lightness on `canvas` is the
+					 * separation a `border-t` used to draw (design spec D1: this wrapper was
+					 * the first of three nested frames). The status row sits in flow above
+					 * the box at a fixed 28 px, so there is no overlay to reserve room for -
+					 * which is what the old `stripHeight` padding on the scroller did.
+					 */
+					<div className="shrink-0 bg-canvas">
 						<ConfigComposer
 							run={run}
 							about={run.about}
 							onClearAbout={() => run.setAbout(null)}
-							onStripHeightChange={setStripHeight}
 							blockedReason={
 								editDirty ? "Finish or cancel your edit first." : null
 							}
