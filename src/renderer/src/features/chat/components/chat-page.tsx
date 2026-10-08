@@ -3149,6 +3149,13 @@ function SessionPanel({
 					activeTeam: canonical.frontend?.active_team ?? null,
 					boundAgent: boundRow?.binding?.agent ?? null,
 					boundTeam: boundRow?.binding?.team ?? null,
+					/*
+					 * The host's own statement of who is speaking, passed through
+					 * untouched: whether it counts as PUBLISHED (a non-empty object)
+					 * is the model's one predicate, not this site's, so an older
+					 * host's absent field and `{}` both reach it as they arrived.
+					 */
+					effectiveIdentity: canonical.frontend?.effective_identity ?? null,
 				} satisfies HeaderIdentityData)
 			: undefined;
 	/*
