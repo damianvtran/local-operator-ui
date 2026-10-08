@@ -176,7 +176,7 @@ import {
 import { shareInFlight } from "./transcript-loader";
 import {
 	type CanonicalTranscriptStatus,
-	canonicalTranscriptSpeaks,
+	canonicalTranscriptTerminal,
 	transcriptPaneCollapses,
 	transcriptPaneHoldsPlaceholder,
 } from "./transcript-pane";
@@ -365,6 +365,24 @@ export type CanonicalTranscriptProps = {
 	 * `WorkingLineInput.startingSince`.
 	 */
 	startingSince?: number | null;
+	/**
+	 * A Stop press is in flight for this conversation (the page's own fact):
+	 * the working line relabels to the cancel-in-progress rung while it holds.
+	 *
+	 * Passed through to `workingLineInputFor` untouched - see
+	 * `WorkingLineInput.stopping` for why the rung exists and why it carries no
+	 * clock.
+	 */
+	stopping?: boolean;
+	/**
+	 * The disputed idle is standing (the page's own fact): an `idle` receipt
+	 * arrived while the pane still claimed a live turn.
+	 *
+	 * Passed through to `workingLineInputFor` untouched - see
+	 * `WorkingLineInput.idleDisputed` for why the claim stays and only the
+	 * clock is withheld (UX round 2, U9).
+	 */
+	idleDisputed?: boolean;
 	/**
 	 * The working line to paint, for a surface whose line does NOT come from this
 	 * pane's own live session — today the run panel's child reader.
@@ -2497,6 +2515,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	startingAfterId,
 	startingSession,
 	startingSince,
+	stopping,
+	idleDisputed,
 	workingLine,
 	loadingOlder,
 	onLoadOlder,
@@ -2856,17 +2876,28 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					startingAfterId,
 					startingSession,
 					startingSince,
+					stopping: stopping === true,
+					// The disputed idle's clock-withhold (U9): one fact with the
+					// composer's sentence, folded from the notice's kind in the page
+					// and handed to the SAME derivation both surfaces read, so the
+					// rung's number and the sentence cannot disagree about whether
+					// the pane can vouch for a duration.
+					idleDisputed: idleDisputed === true,
 					gate,
-					// One definition of "this pane is speaking for itself", shared with the
-					// band's own greeting decision rather than a second copy of "the
-					// transport is down": the failure notice and the reconnecting line are
-					// the only things on screen that say what happened, so the rung must
-					// not claim progress beside them.
+					// The rung yields to a TERMINAL statement and not to a reconnect
+					// (operator incident, 2026-10-07): a receipt gap drops the
+					// authoritative frontend and the pane says "Reconnecting", but the
+					// last reading still says the turn is running - and that is exactly
+					// the window in which the reader must not lose the in-flight claim.
+					// The predicate is the pane's own (`canonicalTranscriptTerminal`),
+					// so the rung and the composer's hint cannot disagree about which
+					// statements end a claim; see its doc for the full rule and
+					// `reconnect-gap.stories.tsx`'s `RestoredRunning` for the frame.
 					//
 					// The four fields are spelled out rather than handed over as
 					// `paneView`: this is a memo, and a fresh object would make its deps
 					// depend on the view's identity instead of on the facts it reads.
-					unavailable: canonicalTranscriptSpeaks({
+					unavailable: canonicalTranscriptTerminal({
 						status,
 						failure,
 						missing,
@@ -2892,6 +2923,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			startingAfterId,
 			startingSession,
 			startingSince,
+			stopping,
+			// Read by the builder above (U9): a disputed idle arriving or retiring
+			// moves the rung's clock cell, so it is a dep of this memo by the same
+			// rule as `stopping`.
+			idleDisputed,
 			gate,
 			status,
 			failure,

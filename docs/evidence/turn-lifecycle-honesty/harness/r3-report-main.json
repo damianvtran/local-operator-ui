@@ -1,0 +1,4450 @@
+{
+  "label": "r3",
+  "build": "/Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007",
+  "steps": [
+    {
+      "at": 1627,
+      "step": "daemon",
+      "status": 200,
+      "interrupt": 1
+    },
+    {
+      "at": 3219,
+      "step": "windowMode",
+      "lines": [
+        "[window-mode] window mode headless: 1380x900, window created and never shown, page throttling off, no Dock tile",
+        "00:43:09.013 › [window-mode] headless run launched by pid 56128; it quits when that process goes"
+      ]
+    },
+    {
+      "at": 7234,
+      "step": "uiCapabilities",
+      "session_interrupt": "1"
+    },
+    {
+      "at": 9084,
+      "step": "turn.admit",
+      "sid": "0f3a4eedcc81",
+      "status": 200
+    },
+    {
+      "at": 12847,
+      "step": "r3-gapesc-0-gap",
+      "note": "in a gap, before Escape",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣯ running bash 3s",
+      "workingLineRect": {
+        "x": 415,
+        "y": 306,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Steer the agent. Enter sends now · Esc stops",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": true,
+      "failureText": null
+    },
+    {
+      "at": 14142,
+      "step": "r3-gapesc-1-escape+1.2s",
+      "note": "Escape pressed during the gap",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣯ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 306,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": true,
+      "failureText": null
+    },
+    {
+      "at": 15713,
+      "step": "r3-gapesc-2-escape x3 +1.5s",
+      "note": "Escape x3 during the gap",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣽ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 306,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": true,
+      "failureText": null
+    },
+    {
+      "at": 15783,
+      "step": "gapesc.interruptRequests",
+      "before": 0,
+      "after": 1
+    },
+    {
+      "at": 17786,
+      "step": "r3-gapesc-3-restored",
+      "note": "stream restored",
+      "styles": {
+        "line": null,
+        "band": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "system-ui"
+        },
+        "output": null,
+        "alert": null
+      },
+      "workingLine": null,
+      "workingLineRect": null,
+      "band": "Stopped · Retry",
+      "bandRect": {
+        "x": 415,
+        "y": 749,
+        "w": 810,
+        "h": 17
+      },
+      "placeholder": "Ask anything. @ adds files, / runs commands",
+      "stopControl": false,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 22213,
+      "step": "turn.admit",
+      "sid": "a7d3b636e7f9",
+      "status": 200
+    },
+    {
+      "at": 25681,
+      "step": "r3-recvgap-1-pending-in-gap",
+      "note": "press pending, gap open, receipt not yet in",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⢿ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 306,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": true,
+      "failureText": null
+    },
+    {
+      "at": 27259,
+      "step": "r3-recvgap-2-receipt-in-gap+2.7s",
+      "note": "receipt delivered (interrupted); stream still in the gap",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣯ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 306,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": true,
+      "failureText": null
+    },
+    {
+      "at": 29834,
+      "step": "r3-recvgap-3-gap+5.2s",
+      "note": "stream still in the gap",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣯ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 306,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": true,
+      "failureText": null
+    },
+    {
+      "at": 31710,
+      "step": "r3-recvgap-4-restored",
+      "note": "stream restored",
+      "styles": {
+        "line": null,
+        "band": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "system-ui"
+        },
+        "output": null,
+        "alert": null
+      },
+      "workingLine": null,
+      "workingLineRect": null,
+      "band": "Stopped · Retry",
+      "bandRect": {
+        "x": 415,
+        "y": 749,
+        "w": 810,
+        "h": 17
+      },
+      "placeholder": "Ask anything. @ adds files, / runs commands",
+      "stopControl": false,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 36143,
+      "step": "turn.admit",
+      "sid": "b7429059f627",
+      "status": 200
+    },
+    {
+      "at": 39106,
+      "step": "r3-recvfreeze-1-+0.7s",
+      "note": "receipt in, stream frozen",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⡿ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 41677,
+      "step": "r3-recvfreeze-2-+3.2s",
+      "note": "still frozen",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⡿ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 43251,
+      "step": "r3-recvfreeze-3-unfrozen",
+      "note": "stream caught up",
+      "styles": {
+        "line": null,
+        "band": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "system-ui"
+        },
+        "output": null,
+        "alert": null
+      },
+      "workingLine": null,
+      "workingLineRect": null,
+      "band": "Stopped · Retry",
+      "bandRect": {
+        "x": 415,
+        "y": 749,
+        "w": 810,
+        "h": 17
+      },
+      "placeholder": "Ask anything. @ adds files, / runs commands",
+      "stopControl": false,
+      "outputs": [
+        "Turn condensed: took 2s, 1 action."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 47682,
+      "step": "turn.admit",
+      "sid": "98d673ca84a2",
+      "status": 200
+    },
+    {
+      "at": 49441,
+      "step": "r3-lostlate-0a-before-press-ref",
+      "note": "ref",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣟ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 52439,
+      "step": "r3-lostlate-clock+3",
+      "line": "⣻ stopping the turn",
+      "rowClock": "Running sleep 60 4s"
+    },
+    {
+      "at": 58441,
+      "step": "r3-lostlate-clock+9",
+      "line": "⣟ stopping the turn",
+      "rowClock": "Running sleep 60 10s"
+    },
+    {
+      "at": 63437,
+      "step": "r3-lostlate-clock+14",
+      "line": "⢿ stopping the turn",
+      "rowClock": "Running sleep 60 15s"
+    },
+    {
+      "at": 64639,
+      "step": "r3-lostlate-clock+15.2",
+      "line": "⣻ running bash 16s",
+      "rowClock": "Running sleep 60 16s"
+    },
+    {
+      "at": 65238,
+      "step": "r3-lostlate-1-bound-fired+15.8s",
+      "note": "bound fired; stop not yet delivered",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": {
+          "color": "rgb(241, 238, 230)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "13px",
+          "family": "system-ui"
+        }
+      },
+      "workingLine": "⣽ running bash 16s",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Steer the agent. Enter sends now · Esc stops",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [
+        "Stop could not be confirmed. The turn may still be running.\n\nClear"
+      ],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 68938,
+      "step": "r3-lostlate-2-stop-landed+19.5s",
+      "note": "stop landed on the server at ~17s; the app never got the receipt",
+      "styles": {
+        "line": null,
+        "band": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "system-ui"
+        },
+        "output": null,
+        "alert": null
+      },
+      "workingLine": null,
+      "workingLineRect": null,
+      "band": "Stopped · Retry",
+      "bandRect": {
+        "x": 415,
+        "y": 749,
+        "w": 810,
+        "h": 17
+      },
+      "placeholder": "Ask anything. @ adds files, / runs commands",
+      "stopControl": false,
+      "outputs": [
+        "Turn condensed: took 18s, 1 action."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 75003,
+      "step": "r3-lostlate-3-+25.5s",
+      "note": "settled",
+      "styles": {
+        "line": null,
+        "band": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "system-ui"
+        },
+        "output": null,
+        "alert": null
+      },
+      "workingLine": null,
+      "workingLineRect": null,
+      "band": "Stopped · Retry",
+      "bandRect": {
+        "x": 415,
+        "y": 749,
+        "w": 810,
+        "h": 17
+      },
+      "placeholder": "Ask anything. @ adds files, / runs commands",
+      "stopControl": false,
+      "outputs": [
+        "Turn condensed: took 18s, 1 action."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 79457,
+      "step": "turn.admit",
+      "sid": "03a892e598ea",
+      "status": 200
+    },
+    {
+      "at": 79868,
+      "step": "sq.rest.unhovered",
+      "bg": "rgba(0, 0, 0, 0)",
+      "border": "rgb(172, 103, 93)",
+      "color": "rgb(239, 128, 120)",
+      "stopping": null,
+      "busy": null,
+      "hovered": false,
+      "disabled": false,
+      "opacity": "1",
+      "name": "Stop"
+    },
+    {
+      "at": 79868,
+      "step": "r3-sqhold-0-rest-unhovered",
+      "note": "square at rest, pointer away",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⡿ running bash 0s",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Steer the agent. Enter sends now · Esc stops",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 80248,
+      "step": "sq.rest.hovered",
+      "bg": "rgb(46, 27, 24)",
+      "border": "rgb(172, 103, 93)",
+      "color": "rgb(239, 128, 120)",
+      "stopping": null,
+      "busy": null,
+      "hovered": true,
+      "disabled": false,
+      "opacity": "1",
+      "name": "Stop"
+    },
+    {
+      "at": 80248,
+      "step": "r3-sqhold-1-rest-hovered",
+      "note": "square at rest, hovered",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣽ running bash 0s",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Steer the agent. Enter sends now · Esc stops",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 81721,
+      "step": "sq.pending.unhovered",
+      "bg": "oklab(0.341255 0.0465493 0.023953)",
+      "border": "rgb(239, 128, 120)",
+      "color": "rgb(241, 238, 230)",
+      "stopping": "true",
+      "busy": "true",
+      "hovered": false,
+      "disabled": false,
+      "opacity": "1",
+      "name": "Stop"
+    },
+    {
+      "at": 81722,
+      "step": "r3-sqhold-2-pending-unhovered",
+      "note": "Escape pressed, pointer away, receipt held",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⡿ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 82100,
+      "step": "sq.pending.hovered",
+      "bg": "oklab(0.341255 0.0465493 0.023953)",
+      "border": "rgb(239, 128, 120)",
+      "color": "rgb(241, 238, 230)",
+      "stopping": "true",
+      "busy": "true",
+      "hovered": true,
+      "disabled": false,
+      "opacity": "1",
+      "name": "Stop"
+    },
+    {
+      "at": 82100,
+      "step": "r3-sqhold-3-pending-hovered",
+      "note": "same, pointer on it",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣾ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 88165,
+      "step": "sq.after"
+    },
+    {
+      "at": 88166,
+      "step": "r3-sqhold-4-after-receipt",
+      "note": "receipt in",
+      "styles": {
+        "line": null,
+        "band": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "system-ui"
+        },
+        "output": null,
+        "alert": null
+      },
+      "workingLine": null,
+      "workingLineRect": null,
+      "band": "Stopped · Retry",
+      "bandRect": {
+        "x": 415,
+        "y": 749,
+        "w": 810,
+        "h": 17
+      },
+      "placeholder": "Ask anything. @ adds files, / runs commands",
+      "stopControl": false,
+      "outputs": [
+        "Turn condensed: took 7s, 1 action."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 92594,
+      "step": "turn.admit",
+      "sid": "d8eea1a31927",
+      "status": 200
+    },
+    {
+      "at": 95054,
+      "step": "r3-strand-1-+0.7s",
+      "note": "feed has shown the end; receipt still held",
+      "styles": {
+        "line": null,
+        "band": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "system-ui"
+        },
+        "output": null,
+        "alert": null
+      },
+      "workingLine": null,
+      "workingLineRect": null,
+      "band": "Stopped · Retry",
+      "bandRect": {
+        "x": 415,
+        "y": 749,
+        "w": 810,
+        "h": 17
+      },
+      "placeholder": "Ask anything. @ adds files, / runs commands",
+      "stopControl": false,
+      "outputs": [
+        "Turn condensed: took 1s, 1 action."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 95720,
+      "step": "r3-strand-2-+1.3s",
+      "note": "receipt landed",
+      "styles": {
+        "line": null,
+        "band": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "system-ui"
+        },
+        "output": null,
+        "alert": null
+      },
+      "workingLine": null,
+      "workingLineRect": null,
+      "band": "Stopped · Retry",
+      "bandRect": {
+        "x": 415,
+        "y": 749,
+        "w": 810,
+        "h": 17
+      },
+      "placeholder": "Ask anything. @ adds files, / runs commands",
+      "stopControl": false,
+      "outputs": [
+        "Turn condensed: took 1s, 1 action."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 99783,
+      "step": "r3-strand-3-+5.3s",
+      "note": "settled",
+      "styles": {
+        "line": null,
+        "band": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "system-ui"
+        },
+        "output": null,
+        "alert": null
+      },
+      "workingLine": null,
+      "workingLineRect": null,
+      "band": "Stopped · Retry",
+      "bandRect": {
+        "x": 415,
+        "y": 749,
+        "w": 810,
+        "h": 17
+      },
+      "placeholder": "Ask anything. @ adds files, / runs commands",
+      "stopControl": false,
+      "outputs": [
+        "Turn condensed: took 1s, 1 action."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 105860,
+      "step": "r3-strand-4-+11.3s",
+      "note": "later",
+      "styles": {
+        "line": null,
+        "band": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "system-ui"
+        },
+        "output": null,
+        "alert": null
+      },
+      "workingLine": null,
+      "workingLineRect": null,
+      "band": "Stopped · Retry",
+      "bandRect": {
+        "x": 415,
+        "y": 749,
+        "w": 810,
+        "h": 17
+      },
+      "placeholder": "Ask anything. @ adds files, / runs commands",
+      "stopControl": false,
+      "outputs": [
+        "Turn condensed: took 1s, 1 action."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 110284,
+      "step": "turn.admit",
+      "sid": "79b5d35b8ca1",
+      "status": 200
+    },
+    {
+      "at": 114050,
+      "step": "r3-u10-0-pressed+2s",
+      "note": "pressed, answer swallowed",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣯ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 114626,
+      "step": "r3-u10-1-end+0.5s",
+      "note": "turn ended server-side, feed shows it",
+      "styles": {
+        "line": null,
+        "band": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "system-ui"
+        },
+        "output": null,
+        "alert": null
+      },
+      "workingLine": null,
+      "workingLineRect": null,
+      "band": "Stopped · Retry",
+      "bandRect": {
+        "x": 415,
+        "y": 749,
+        "w": 810,
+        "h": 17
+      },
+      "placeholder": "Ask anything. @ adds files, / runs commands",
+      "stopControl": false,
+      "outputs": [
+        "Turn condensed: took 3s, 1 action."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 117182,
+      "step": "r3-u10-2-end+3s",
+      "note": "later",
+      "styles": {
+        "line": null,
+        "band": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "system-ui"
+        },
+        "output": null,
+        "alert": null
+      },
+      "workingLine": null,
+      "workingLineRect": null,
+      "band": "Stopped · Retry",
+      "bandRect": {
+        "x": 415,
+        "y": 749,
+        "w": 810,
+        "h": 17
+      },
+      "placeholder": "Ask anything. @ adds files, / runs commands",
+      "stopControl": false,
+      "outputs": [
+        "Turn condensed: took 3s, 1 action."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 123256,
+      "step": "r3-u10-3-end+9s",
+      "note": "later still",
+      "styles": {
+        "line": null,
+        "band": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "system-ui"
+        },
+        "output": null,
+        "alert": null
+      },
+      "workingLine": null,
+      "workingLineRect": null,
+      "band": "Stopped · Retry",
+      "bandRect": {
+        "x": 415,
+        "y": 749,
+        "w": 810,
+        "h": 17
+      },
+      "placeholder": "Ask anything. @ adds files, / runs commands",
+      "stopControl": false,
+      "outputs": [
+        "Turn condensed: took 3s, 1 action."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 127698,
+      "step": "turn.admit",
+      "sid": "55ae0973026d",
+      "status": 200
+    },
+    {
+      "at": 134422,
+      "step": "r3-idleclock-0-before",
+      "note": "server idle, pane stale",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⢿ running bash 6s",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Steer the agent. Enter sends now · Esc stops",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 135410,
+      "step": "r3-idleclock-1-+0.9s",
+      "note": "Escape; idle receipt; sentence up",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣷ running bash",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Steer the agent. Enter sends now · Esc stops",
+      "stopControl": true,
+      "outputs": [
+        "The runtime says no turn is running, so nothing was stopped. This view may be out of date."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 138499,
+      "step": "r3-idleclock-2-+3.9s",
+      "note": "still",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣟ running bash",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Steer the agent. Enter sends now · Esc stops",
+      "stopControl": true,
+      "outputs": [
+        "The runtime says no turn is running, so nothing was stopped. This view may be out of date."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 144594,
+      "step": "r3-idleclock-3-+9.9s",
+      "note": "still",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣻ running bash",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Steer the agent. Enter sends now · Esc stops",
+      "stopControl": true,
+      "outputs": [
+        "The runtime says no turn is running, so nothing was stopped. This view may be out of date."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 146184,
+      "step": "r3-idleclock-4-unfrozen",
+      "note": "stream resumed",
+      "styles": {
+        "line": null,
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": null,
+      "workingLineRect": null,
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Ask anything. @ adds files, / runs commands",
+      "stopControl": false,
+      "outputs": [
+        "Turn condensed: took 6s, 1 action."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 150625,
+      "step": "turn.admit",
+      "sid": "94ce2ed26b72",
+      "status": 200
+    },
+    {
+      "at": 153691,
+      "step": "r3-dblesc-1-first+0.8s",
+      "note": "first Escape, receipt in, stream frozen",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣯ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 154660,
+      "step": "r3-dblesc-2-second+0.9s",
+      "note": "second Escape (double-tap)",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣻ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 157231,
+      "step": "r3-dblesc-3-+3.4s",
+      "note": "still frozen",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣻ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 158798,
+      "step": "r3-dblesc-4-unfrozen",
+      "note": "stream caught up",
+      "styles": {
+        "line": null,
+        "band": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "system-ui"
+        },
+        "output": null,
+        "alert": null
+      },
+      "workingLine": null,
+      "workingLineRect": null,
+      "band": "Stopped · Retry",
+      "bandRect": {
+        "x": 415,
+        "y": 749,
+        "w": 810,
+        "h": 17
+      },
+      "placeholder": "Ask anything. @ adds files, / runs commands",
+      "stopControl": false,
+      "outputs": [
+        "Turn condensed: took 2s, 1 action."
+      ],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 163252,
+      "step": "turn.admit",
+      "sid": "a6137497d05a",
+      "status": 200
+    },
+    {
+      "at": 166515,
+      "step": "r3-rungflap-0-pressed+1s",
+      "note": "pressed, answer never comes",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣷ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 168089,
+      "step": "r3-rungflap-1-gap+1.5s",
+      "note": "gap open",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⢿ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 306,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": true,
+      "failureText": null
+    },
+    {
+      "at": 171160,
+      "step": "r3-rungflap-2-gap+4.5s",
+      "note": "gap still open",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣽ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 306,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": true,
+      "failureText": null
+    },
+    {
+      "at": 172229,
+      "step": "r3-rungflap-3-restored+1s",
+      "note": "stream restored, press unanswered",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣯ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    },
+    {
+      "at": 175298,
+      "step": "r3-rungflap-4-restored+4s",
+      "note": "still unanswered",
+      "styles": {
+        "line": {
+          "color": "rgb(166, 160, 145)",
+          "bg": "rgba(0, 0, 0, 0)",
+          "size": "12px",
+          "family": "\"Geist Mono\""
+        },
+        "band": null,
+        "output": null,
+        "alert": null
+      },
+      "workingLine": "⣟ stopping the turn",
+      "workingLineRect": {
+        "x": 415,
+        "y": 270,
+        "w": 810,
+        "h": 17
+      },
+      "band": null,
+      "bandRect": null,
+      "placeholder": "Stopping the turn",
+      "stopControl": true,
+      "outputs": [],
+      "alerts": [],
+      "reconnecting": false,
+      "failureText": null
+    }
+  ],
+  "proxyLog": [
+    [
+      2700,
+      "GET",
+      "/health",
+      "pass",
+      0
+    ],
+    [
+      2754,
+      "GET",
+      "/health",
+      "pass",
+      0
+    ],
+    [
+      2761,
+      "GET",
+      "/v1/desktop/sessions?limit=1",
+      "pass",
+      0
+    ],
+    [
+      2963,
+      "GET",
+      "/v1/capabilities",
+      "pass",
+      0
+    ],
+    [
+      2977,
+      "GET",
+      "/v1/capabilities",
+      "pass",
+      0
+    ],
+    [
+      2977,
+      "GET",
+      "/v1/capabilities",
+      "pass",
+      0
+    ],
+    [
+      2988,
+      "GET",
+      "/v1/desktop/events",
+      "pass",
+      0
+    ],
+    {
+      "at": 2988,
+      "m": "GET",
+      "p": "/v1/desktop/events",
+      "held": false
+    },
+    [
+      2998,
+      "POST",
+      "/v1/desktop/presence",
+      "pass",
+      1
+    ],
+    [
+      3445,
+      "GET",
+      "/v1/config",
+      "pass",
+      1
+    ],
+    [
+      3446,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      1
+    ],
+    [
+      3446,
+      "POST",
+      "/v1/desktop/radient",
+      "pass",
+      1
+    ],
+    [
+      3446,
+      "GET",
+      "/v1/capabilities",
+      "pass",
+      1
+    ],
+    [
+      3496,
+      "GET",
+      "/v1/desktop/networks",
+      "pass",
+      1
+    ],
+    [
+      3496,
+      "GET",
+      "/v1/desktop/profiles",
+      "pass",
+      1
+    ],
+    [
+      3497,
+      "GET",
+      "/v1/desktop/hub/updates",
+      "pass",
+      1
+    ],
+    [
+      3497,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      1
+    ],
+    [
+      3498,
+      "POST",
+      "/v1/desktop/radient",
+      "pass",
+      1
+    ],
+    [
+      3498,
+      "GET",
+      "/v1/desktop/aida",
+      "pass",
+      1
+    ],
+    [
+      3498,
+      "GET",
+      "/v1/desktop/peers",
+      "pass",
+      1
+    ],
+    [
+      3498,
+      "GET",
+      "/v1/desktop/teams",
+      "pass",
+      1
+    ],
+    [
+      3498,
+      "GET",
+      "/v1/settings",
+      "pass",
+      1
+    ],
+    [
+      3498,
+      "GET",
+      "/v1/desktop/commands",
+      "pass",
+      1
+    ],
+    [
+      3500,
+      "GET",
+      "/v1/settings",
+      "pass",
+      1
+    ],
+    [
+      3501,
+      "GET",
+      "/v1/auth/status",
+      "pass",
+      1
+    ],
+    [
+      3501,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      1
+    ],
+    [
+      3501,
+      "GET",
+      "/v1/auth/providers",
+      "pass",
+      1
+    ],
+    [
+      3501,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      1
+    ],
+    [
+      3502,
+      "POST",
+      "/v1/desktop/sessions/preview",
+      "pass",
+      1
+    ],
+    [
+      3502,
+      "GET",
+      "/v1/agents?page=1&per_page=1",
+      "pass",
+      1
+    ],
+    [
+      3523,
+      "GET",
+      "/v1/desktop/skills?cwd=%7E",
+      "pass",
+      1
+    ],
+    [
+      7232,
+      "GET",
+      "/v1/capabilities",
+      "pass",
+      1
+    ],
+    [
+      7256,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      1
+    ],
+    [
+      7257,
+      "GET",
+      "/v1/desktop/sessions/0f3a4eedcc81/events?frontend_replace=1",
+      "pass",
+      1
+    ],
+    {
+      "at": 7257,
+      "m": "GET",
+      "p": "/v1/desktop/sessions/0f3a4eedcc81/events",
+      "held": false
+    },
+    [
+      7257,
+      "GET",
+      "/v1/desktop/sessions/0f3a4eedcc81/command-entities?command=effort",
+      "pass",
+      1
+    ],
+    [
+      7257,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      1
+    ],
+    [
+      7257,
+      "GET",
+      "/v1/settings",
+      "pass",
+      1
+    ],
+    [
+      7296,
+      "POST",
+      "/v1/desktop/sessions/0f3a4eedcc81/watch",
+      "pass",
+      2
+    ],
+    [
+      7297,
+      "GET",
+      "/v1/desktop/sessions/0f3a4eedcc81/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      7302,
+      "GET",
+      "/v1/desktop/sessions/0f3a4eedcc81/checkpoints",
+      "pass",
+      2
+    ],
+    [
+      7303,
+      "GET",
+      "/v1/desktop/skills?cwd=%2FUsers%2Fdamian%2F.local-operator%2Fsessions%2F844903b621a4%2Fscr",
+      "pass",
+      2
+    ],
+    [
+      7303,
+      "GET",
+      "/v1/desktop/sessions/0f3a4eedcc81/mcp",
+      "pass",
+      2
+    ],
+    [
+      7303,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      7305,
+      "GET",
+      "/v1/desktop/sessions/0f3a4eedcc81/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      7465,
+      "GET",
+      "/v1/desktop/sessions/0f3a4eedcc81/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      7498,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      7503,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      8107,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      9088,
+      "GET",
+      "/v1/config",
+      "pass",
+      2
+    ],
+    [
+      9088,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      2
+    ],
+    [
+      9096,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      9139,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      9146,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      11360,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "HELD",
+      0
+    ],
+    [
+      11849,
+      "GET",
+      "/v1/desktop/sessions/0f3a4eedcc81/events?epoch=a0e3503157cf424b90f9d99be4ae1d37&after_seq=",
+      "HELD",
+      0
+    ],
+    {
+      "at": 11849,
+      "m": "GET",
+      "p": "/v1/desktop/sessions/0f3a4eedcc81/events",
+      "held": true
+    },
+    [
+      12346,
+      "GET",
+      "/v1/desktop/events",
+      "HELD",
+      0
+    ],
+    {
+      "at": 12346,
+      "m": "GET",
+      "p": "/v1/desktop/events",
+      "held": true
+    },
+    [
+      12777,
+      "GET",
+      "/health",
+      "HELD",
+      0
+    ],
+    [
+      12938,
+      "POST",
+      "/v1/desktop/sessions/0f3a4eedcc81/interrupt",
+      "HELD",
+      0
+    ],
+    {
+      "at": 12938,
+      "m": "POST",
+      "p": "/v1/desktop/sessions/0f3a4eedcc81/interrupt",
+      "held": false,
+      "interrupt": "pass"
+    },
+    [
+      15807,
+      "GET",
+      "/v1/desktop/sessions/0f3a4eedcc81/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      15808,
+      "POST",
+      "/v1/desktop/presence",
+      "pass",
+      2
+    ],
+    [
+      15811,
+      "POST",
+      "/v1/desktop/sessions/0f3a4eedcc81/watch",
+      "pass",
+      2
+    ],
+    [
+      15811,
+      "GET",
+      "/v1/desktop/sessions/0f3a4eedcc81/checkpoints",
+      "pass",
+      2
+    ],
+    [
+      15812,
+      "GET",
+      "/v1/desktop/sessions/0f3a4eedcc81/mcp",
+      "pass",
+      2
+    ],
+    [
+      15812,
+      "GET",
+      "/v1/desktop/sessions/0f3a4eedcc81/mcp",
+      "pass",
+      2
+    ],
+    [
+      15812,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      15820,
+      "GET",
+      "/v1/desktop/profiles",
+      "pass",
+      2
+    ],
+    [
+      15820,
+      "GET",
+      "/v1/desktop/teams",
+      "pass",
+      2
+    ],
+    [
+      15820,
+      "GET",
+      "/v1/desktop/teams",
+      "pass",
+      2
+    ],
+    [
+      17269,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      20382,
+      "GET",
+      "/v1/config",
+      "pass",
+      2
+    ],
+    [
+      20382,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      20382,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      20383,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      2
+    ],
+    [
+      20383,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      20383,
+      "GET",
+      "/v1/desktop/sessions/a7d3b636e7f9/events?frontend_replace=1",
+      "pass",
+      2
+    ],
+    {
+      "at": 20383,
+      "m": "GET",
+      "p": "/v1/desktop/sessions/a7d3b636e7f9/events",
+      "held": false
+    },
+    [
+      20383,
+      "GET",
+      "/v1/desktop/sessions/a7d3b636e7f9/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      20384,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      20414,
+      "GET",
+      "/v1/desktop/sessions/a7d3b636e7f9/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      20418,
+      "GET",
+      "/v1/desktop/sessions/a7d3b636e7f9/checkpoints",
+      "pass",
+      2
+    ],
+    [
+      20420,
+      "POST",
+      "/v1/desktop/sessions/a7d3b636e7f9/watch",
+      "pass",
+      2
+    ],
+    [
+      20420,
+      "GET",
+      "/v1/desktop/sessions/a7d3b636e7f9/mcp",
+      "pass",
+      2
+    ],
+    [
+      20420,
+      "GET",
+      "/v1/desktop/sessions/a7d3b636e7f9/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      20420,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      20612,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      20622,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      20916,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      21565,
+      "GET",
+      "/v1/desktop/sessions/a7d3b636e7f9/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      22220,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      22245,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      22252,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      22779,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      24475,
+      "POST",
+      "/v1/desktop/sessions/a7d3b636e7f9/interrupt",
+      "pass",
+      2
+    ],
+    {
+      "at": 24475,
+      "m": "POST",
+      "p": "/v1/desktop/sessions/a7d3b636e7f9/interrupt",
+      "held": false,
+      "interrupt": 1500
+    },
+    [
+      24792,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "HELD",
+      0
+    ],
+    [
+      25285,
+      "GET",
+      "/v1/desktop/sessions/a7d3b636e7f9/events?epoch=05541bdecc7f4cb48a59bf47fbb4d953&after_seq=",
+      "HELD",
+      0
+    ],
+    {
+      "at": 25285,
+      "m": "GET",
+      "p": "/v1/desktop/sessions/a7d3b636e7f9/events",
+      "held": true
+    },
+    [
+      25781,
+      "GET",
+      "/v1/desktop/events",
+      "HELD",
+      0
+    ],
+    {
+      "at": 25781,
+      "m": "GET",
+      "p": "/v1/desktop/events",
+      "held": true
+    },
+    [
+      29919,
+      "POST",
+      "/v1/desktop/presence",
+      "pass",
+      2
+    ],
+    [
+      29922,
+      "GET",
+      "/v1/desktop/profiles",
+      "pass",
+      2
+    ],
+    [
+      29922,
+      "GET",
+      "/v1/desktop/teams",
+      "pass",
+      2
+    ],
+    [
+      29922,
+      "GET",
+      "/v1/desktop/teams",
+      "pass",
+      2
+    ],
+    [
+      29925,
+      "GET",
+      "/v1/desktop/sessions/a7d3b636e7f9/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      29930,
+      "GET",
+      "/v1/desktop/sessions/a7d3b636e7f9/checkpoints",
+      "pass",
+      2
+    ],
+    [
+      29930,
+      "POST",
+      "/v1/desktop/sessions/a7d3b636e7f9/watch",
+      "pass",
+      2
+    ],
+    [
+      29930,
+      "GET",
+      "/v1/desktop/sessions/a7d3b636e7f9/mcp",
+      "pass",
+      2
+    ],
+    [
+      29930,
+      "GET",
+      "/v1/desktop/sessions/a7d3b636e7f9/mcp",
+      "pass",
+      2
+    ],
+    [
+      29931,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      30402,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      32780,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      33471,
+      "GET",
+      "/v1/capabilities",
+      "pass",
+      2
+    ],
+    [
+      34308,
+      "GET",
+      "/v1/config",
+      "pass",
+      2
+    ],
+    [
+      34308,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      34309,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      34309,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      2
+    ],
+    [
+      34309,
+      "POST",
+      "/v1/desktop/radient",
+      "pass",
+      2
+    ],
+    [
+      34309,
+      "GET",
+      "/v1/auth/providers",
+      "pass",
+      2
+    ],
+    [
+      34309,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      34310,
+      "GET",
+      "/v1/desktop/sessions/b7429059f627/events?frontend_replace=1",
+      "pass",
+      2
+    ],
+    {
+      "at": 34310,
+      "m": "GET",
+      "p": "/v1/desktop/sessions/b7429059f627/events",
+      "held": false
+    },
+    [
+      34310,
+      "GET",
+      "/v1/desktop/sessions/b7429059f627/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      34310,
+      "GET",
+      "/v1/desktop/aida",
+      "pass",
+      2
+    ],
+    [
+      34310,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      34340,
+      "GET",
+      "/v1/desktop/sessions/b7429059f627/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      34343,
+      "GET",
+      "/v1/desktop/sessions/b7429059f627/checkpoints",
+      "pass",
+      2
+    ],
+    [
+      34345,
+      "POST",
+      "/v1/desktop/sessions/b7429059f627/watch",
+      "pass",
+      2
+    ],
+    [
+      34345,
+      "GET",
+      "/v1/desktop/sessions/b7429059f627/mcp",
+      "pass",
+      2
+    ],
+    [
+      34346,
+      "GET",
+      "/v1/desktop/sessions/b7429059f627/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      34348,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      34500,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      34511,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      35001,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      35491,
+      "GET",
+      "/v1/desktop/sessions/b7429059f627/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      36150,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      36217,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      36227,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      38403,
+      "POST",
+      "/v1/desktop/sessions/b7429059f627/interrupt",
+      "pass",
+      2
+    ],
+    {
+      "at": 38403,
+      "m": "POST",
+      "p": "/v1/desktop/sessions/b7429059f627/interrupt",
+      "held": false,
+      "interrupt": "pass"
+    },
+    [
+      41759,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      41760,
+      "GET",
+      "/v1/desktop/sessions/b7429059f627/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      41773,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      42782,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      44334,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      44922,
+      "POST",
+      "/v1/desktop/presence",
+      "pass",
+      2
+    ],
+    [
+      45852,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      45853,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      45854,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      2
+    ],
+    [
+      45854,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      45854,
+      "GET",
+      "/v1/config",
+      "pass",
+      2
+    ],
+    [
+      45855,
+      "GET",
+      "/v1/desktop/sessions/98d673ca84a2/events?frontend_replace=1",
+      "pass",
+      2
+    ],
+    {
+      "at": 45855,
+      "m": "GET",
+      "p": "/v1/desktop/sessions/98d673ca84a2/events",
+      "held": false
+    },
+    [
+      45855,
+      "GET",
+      "/v1/desktop/sessions/98d673ca84a2/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      45855,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      45897,
+      "GET",
+      "/v1/desktop/sessions/98d673ca84a2/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      45900,
+      "GET",
+      "/v1/desktop/sessions/98d673ca84a2/checkpoints",
+      "pass",
+      2
+    ],
+    [
+      45900,
+      "GET",
+      "/v1/desktop/skills?cwd=%2FUsers%2Fdamian%2F.local-operator%2Fsessions%2F844903b621a4%2Fscr",
+      "pass",
+      2
+    ],
+    [
+      45900,
+      "POST",
+      "/v1/desktop/sessions/98d673ca84a2/watch",
+      "pass",
+      2
+    ],
+    [
+      45901,
+      "GET",
+      "/v1/desktop/sessions/98d673ca84a2/mcp",
+      "pass",
+      2
+    ],
+    [
+      45902,
+      "GET",
+      "/v1/desktop/sessions/98d673ca84a2/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      45902,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      46102,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      46118,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      46197,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      47068,
+      "GET",
+      "/v1/desktop/sessions/98d673ca84a2/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      47691,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      47730,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      47742,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      49439,
+      "POST",
+      "/v1/desktop/sessions/98d673ca84a2/interrupt",
+      "pass",
+      2
+    ],
+    {
+      "at": 49439,
+      "m": "POST",
+      "p": "/v1/desktop/sessions/98d673ca84a2/interrupt",
+      "held": false,
+      "interrupt": 17000
+    },
+    [
+      52782,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      55878,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      59923,
+      "POST",
+      "/v1/desktop/presence",
+      "pass",
+      2
+    ],
+    [
+      60902,
+      "POST",
+      "/v1/desktop/sessions/98d673ca84a2/watch",
+      "pass",
+      2
+    ],
+    [
+      60912,
+      "GET",
+      "/v1/desktop/sessions/98d673ca84a2/mcp",
+      "pass",
+      2
+    ],
+    [
+      62785,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      63476,
+      "GET",
+      "/v1/capabilities",
+      "pass",
+      2
+    ],
+    [
+      63561,
+      "GET",
+      "/v1/desktop/hub/updates",
+      "pass",
+      2
+    ],
+    [
+      65884,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      66469,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      66521,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      66531,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      66949,
+      "GET",
+      "/v1/desktop/sessions/98d673ca84a2/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      66952,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      72786,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      74926,
+      "POST",
+      "/v1/desktop/presence",
+      "pass",
+      2
+    ],
+    [
+      75889,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      75904,
+      "POST",
+      "/v1/desktop/sessions/98d673ca84a2/watch",
+      "pass",
+      2
+    ],
+    [
+      75923,
+      "GET",
+      "/v1/desktop/sessions/98d673ca84a2/mcp",
+      "pass",
+      2
+    ],
+    [
+      77610,
+      "GET",
+      "/v1/config",
+      "pass",
+      2
+    ],
+    [
+      77610,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      77610,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      77610,
+      "GET",
+      "/v1/auth/status",
+      "pass",
+      2
+    ],
+    [
+      77611,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      2
+    ],
+    [
+      77612,
+      "POST",
+      "/v1/desktop/radient",
+      "pass",
+      2
+    ],
+    [
+      77612,
+      "GET",
+      "/v1/auth/providers",
+      "pass",
+      2
+    ],
+    [
+      77612,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      77612,
+      "GET",
+      "/v1/desktop/sessions/03a892e598ea/events?frontend_replace=1",
+      "pass",
+      2
+    ],
+    {
+      "at": 77612,
+      "m": "GET",
+      "p": "/v1/desktop/sessions/03a892e598ea/events",
+      "held": false
+    },
+    [
+      77612,
+      "GET",
+      "/v1/desktop/sessions/03a892e598ea/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      77612,
+      "GET",
+      "/v1/desktop/aida",
+      "pass",
+      2
+    ],
+    [
+      77612,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      77657,
+      "GET",
+      "/v1/desktop/sessions/03a892e598ea/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      77660,
+      "GET",
+      "/v1/desktop/sessions/03a892e598ea/checkpoints",
+      "pass",
+      2
+    ],
+    [
+      77661,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      77662,
+      "GET",
+      "/v1/desktop/skills?cwd=%2FUsers%2Fdamian%2F.local-operator%2Fsessions%2F844903b621a4%2Fscr",
+      "pass",
+      2
+    ],
+    [
+      77663,
+      "POST",
+      "/v1/desktop/sessions/03a892e598ea/watch",
+      "pass",
+      2
+    ],
+    [
+      77663,
+      "GET",
+      "/v1/desktop/sessions/03a892e598ea/mcp",
+      "pass",
+      2
+    ],
+    [
+      77663,
+      "GET",
+      "/v1/desktop/sessions/03a892e598ea/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      77798,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      77903,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      77913,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      78832,
+      "GET",
+      "/v1/desktop/sessions/03a892e598ea/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      79461,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      79524,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      79539,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      80518,
+      "POST",
+      "/v1/desktop/sessions/03a892e598ea/interrupt",
+      "pass",
+      2
+    ],
+    {
+      "at": 80518,
+      "m": "POST",
+      "p": "/v1/desktop/sessions/03a892e598ea/interrupt",
+      "held": false,
+      "interrupt": 6000
+    },
+    [
+      82786,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      86543,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      86559,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      86567,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      86682,
+      "GET",
+      "/v1/desktop/sessions/03a892e598ea/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      86684,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      87645,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      89927,
+      "POST",
+      "/v1/desktop/presence",
+      "pass",
+      2
+    ],
+    [
+      90764,
+      "GET",
+      "/v1/config",
+      "pass",
+      2
+    ],
+    [
+      90764,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      90765,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      90765,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      2
+    ],
+    [
+      90765,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      90765,
+      "GET",
+      "/v1/desktop/sessions/d8eea1a31927/events?frontend_replace=1",
+      "pass",
+      2
+    ],
+    {
+      "at": 90765,
+      "m": "GET",
+      "p": "/v1/desktop/sessions/d8eea1a31927/events",
+      "held": false
+    },
+    [
+      90765,
+      "GET",
+      "/v1/desktop/sessions/d8eea1a31927/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      90765,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      90801,
+      "GET",
+      "/v1/desktop/sessions/d8eea1a31927/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      90804,
+      "GET",
+      "/v1/desktop/sessions/d8eea1a31927/checkpoints",
+      "pass",
+      2
+    ],
+    [
+      90806,
+      "POST",
+      "/v1/desktop/sessions/d8eea1a31927/watch",
+      "pass",
+      2
+    ],
+    [
+      90806,
+      "GET",
+      "/v1/desktop/sessions/d8eea1a31927/mcp",
+      "pass",
+      2
+    ],
+    [
+      90806,
+      "GET",
+      "/v1/desktop/sessions/d8eea1a31927/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      90806,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      91051,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      91063,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      91964,
+      "GET",
+      "/v1/desktop/sessions/d8eea1a31927/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      92603,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      92686,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      92698,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      92789,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      93482,
+      "GET",
+      "/v1/capabilities",
+      "pass",
+      2
+    ],
+    [
+      94352,
+      "POST",
+      "/v1/desktop/sessions/d8eea1a31927/interrupt",
+      "pass",
+      2
+    ],
+    {
+      "at": 94352,
+      "m": "POST",
+      "p": "/v1/desktop/sessions/d8eea1a31927/interrupt",
+      "held": false,
+      "interrupt": "holdresp"
+    },
+    [
+      94376,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      94424,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      94433,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      94808,
+      "GET",
+      "/v1/desktop/sessions/d8eea1a31927/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      94810,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      100788,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      102790,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      104930,
+      "POST",
+      "/v1/desktop/presence",
+      "pass",
+      2
+    ],
+    [
+      105805,
+      "POST",
+      "/v1/desktop/sessions/d8eea1a31927/watch",
+      "pass",
+      2
+    ],
+    [
+      105820,
+      "GET",
+      "/v1/desktop/sessions/d8eea1a31927/mcp",
+      "pass",
+      2
+    ],
+    [
+      108458,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      108458,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      108459,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      2
+    ],
+    [
+      108459,
+      "POST",
+      "/v1/desktop/radient",
+      "pass",
+      2
+    ],
+    [
+      108459,
+      "GET",
+      "/v1/config",
+      "pass",
+      2
+    ],
+    [
+      108459,
+      "GET",
+      "/v1/auth/providers",
+      "pass",
+      2
+    ],
+    [
+      108459,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      108459,
+      "GET",
+      "/v1/desktop/sessions/79b5d35b8ca1/events?frontend_replace=1",
+      "pass",
+      2
+    ],
+    {
+      "at": 108459,
+      "m": "GET",
+      "p": "/v1/desktop/sessions/79b5d35b8ca1/events",
+      "held": false
+    },
+    [
+      108460,
+      "GET",
+      "/v1/desktop/sessions/79b5d35b8ca1/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      108460,
+      "GET",
+      "/v1/desktop/aida",
+      "pass",
+      2
+    ],
+    [
+      108460,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      108489,
+      "GET",
+      "/v1/desktop/sessions/79b5d35b8ca1/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      108491,
+      "GET",
+      "/v1/desktop/sessions/79b5d35b8ca1/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      108491,
+      "GET",
+      "/v1/desktop/sessions/79b5d35b8ca1/checkpoints",
+      "pass",
+      2
+    ],
+    [
+      108492,
+      "GET",
+      "/v1/desktop/skills?cwd=%2FUsers%2Fdamian%2F.local-operator%2Fsessions%2F844903b621a4%2Fscr",
+      "pass",
+      2
+    ],
+    [
+      108493,
+      "POST",
+      "/v1/desktop/sessions/79b5d35b8ca1/watch",
+      "pass",
+      2
+    ],
+    [
+      108493,
+      "GET",
+      "/v1/desktop/sessions/79b5d35b8ca1/mcp",
+      "pass",
+      2
+    ],
+    [
+      108494,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      108717,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      108727,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      109424,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      109624,
+      "GET",
+      "/v1/desktop/sessions/79b5d35b8ca1/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      110294,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      110339,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      110348,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      112045,
+      "POST",
+      "/v1/desktop/sessions/79b5d35b8ca1/interrupt",
+      "pass",
+      2
+    ],
+    {
+      "at": 112045,
+      "m": "POST",
+      "p": "/v1/desktop/sessions/79b5d35b8ca1/interrupt",
+      "held": false,
+      "interrupt": "swallow"
+    },
+    [
+      112790,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      114142,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      114200,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      114213,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      114508,
+      "GET",
+      "/v1/desktop/sessions/79b5d35b8ca1/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      114510,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      118481,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      119933,
+      "POST",
+      "/v1/desktop/presence",
+      "pass",
+      2
+    ],
+    [
+      122794,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      123490,
+      "GET",
+      "/v1/capabilities",
+      "pass",
+      2
+    ],
+    [
+      123493,
+      "POST",
+      "/v1/desktop/sessions/79b5d35b8ca1/watch",
+      "pass",
+      2
+    ],
+    [
+      123500,
+      "GET",
+      "/v1/desktop/sessions/79b5d35b8ca1/mcp",
+      "pass",
+      2
+    ],
+    [
+      123569,
+      "GET",
+      "/v1/desktop/hub/updates",
+      "pass",
+      2
+    ],
+    [
+      125851,
+      "GET",
+      "/v1/config",
+      "pass",
+      2
+    ],
+    [
+      125851,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      125851,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      125852,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      2
+    ],
+    [
+      125852,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      125852,
+      "GET",
+      "/v1/desktop/sessions/55ae0973026d/events?frontend_replace=1",
+      "pass",
+      2
+    ],
+    {
+      "at": 125852,
+      "m": "GET",
+      "p": "/v1/desktop/sessions/55ae0973026d/events",
+      "held": false
+    },
+    [
+      125852,
+      "GET",
+      "/v1/desktop/sessions/55ae0973026d/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      125853,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      125900,
+      "GET",
+      "/v1/desktop/sessions/55ae0973026d/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      125909,
+      "GET",
+      "/v1/desktop/sessions/55ae0973026d/checkpoints",
+      "pass",
+      2
+    ],
+    [
+      125910,
+      "POST",
+      "/v1/desktop/sessions/55ae0973026d/watch",
+      "pass",
+      2
+    ],
+    [
+      125911,
+      "GET",
+      "/v1/desktop/sessions/55ae0973026d/mcp",
+      "pass",
+      2
+    ],
+    [
+      125911,
+      "GET",
+      "/v1/desktop/sessions/55ae0973026d/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      125911,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      126275,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      126299,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      126785,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      127190,
+      "GET",
+      "/v1/desktop/sessions/55ae0973026d/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      127713,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      127756,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      132794,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      134504,
+      "POST",
+      "/v1/desktop/sessions/55ae0973026d/interrupt",
+      "pass",
+      2
+    ],
+    {
+      "at": 134504,
+      "m": "POST",
+      "p": "/v1/desktop/sessions/55ae0973026d/interrupt",
+      "held": false,
+      "interrupt": "pass"
+    },
+    [
+      134934,
+      "POST",
+      "/v1/desktop/presence",
+      "pass",
+      2
+    ],
+    [
+      135875,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      140904,
+      "POST",
+      "/v1/desktop/sessions/55ae0973026d/watch",
+      "pass",
+      2
+    ],
+    [
+      140945,
+      "GET",
+      "/v1/desktop/sessions/55ae0973026d/mcp",
+      "pass",
+      2
+    ],
+    [
+      142799,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      144689,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      144695,
+      "GET",
+      "/v1/desktop/sessions/55ae0973026d/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      144705,
+      "POST",
+      "/v1/desktop/radient",
+      "pass",
+      2
+    ],
+    [
+      144706,
+      "GET",
+      "/v1/config",
+      "pass",
+      2
+    ],
+    [
+      144706,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      2
+    ],
+    [
+      144713,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      145881,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      148793,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      148794,
+      "GET",
+      "/v1/auth/status",
+      "pass",
+      2
+    ],
+    [
+      148794,
+      "GET",
+      "/v1/auth/providers",
+      "pass",
+      2
+    ],
+    [
+      148794,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      148794,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      148794,
+      "GET",
+      "/v1/desktop/sessions/94ce2ed26b72/events?frontend_replace=1",
+      "pass",
+      2
+    ],
+    {
+      "at": 148794,
+      "m": "GET",
+      "p": "/v1/desktop/sessions/94ce2ed26b72/events",
+      "held": false
+    },
+    [
+      148794,
+      "GET",
+      "/v1/desktop/sessions/94ce2ed26b72/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      148795,
+      "GET",
+      "/v1/desktop/aida",
+      "pass",
+      2
+    ],
+    [
+      148795,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      148862,
+      "GET",
+      "/v1/desktop/sessions/94ce2ed26b72/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      148865,
+      "GET",
+      "/v1/desktop/sessions/94ce2ed26b72/checkpoints",
+      "pass",
+      2
+    ],
+    [
+      148865,
+      "GET",
+      "/v1/desktop/skills?cwd=%2FUsers%2Fdamian%2F.local-operator%2Fsessions%2F844903b621a4%2Fscr",
+      "pass",
+      2
+    ],
+    [
+      148865,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      148866,
+      "POST",
+      "/v1/desktop/sessions/94ce2ed26b72/watch",
+      "pass",
+      2
+    ],
+    [
+      148866,
+      "GET",
+      "/v1/desktop/sessions/94ce2ed26b72/mcp",
+      "pass",
+      2
+    ],
+    [
+      148866,
+      "GET",
+      "/v1/desktop/sessions/94ce2ed26b72/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      149061,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      149075,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      149465,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      149937,
+      "POST",
+      "/v1/desktop/presence",
+      "pass",
+      2
+    ],
+    [
+      150045,
+      "GET",
+      "/v1/desktop/sessions/94ce2ed26b72/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      150625,
+      "GET",
+      "/v1/config",
+      "pass",
+      2
+    ],
+    [
+      150625,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      2
+    ],
+    [
+      150634,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      150688,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      150704,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      152800,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      152885,
+      "POST",
+      "/v1/desktop/sessions/94ce2ed26b72/interrupt",
+      "pass",
+      2
+    ],
+    {
+      "at": 152885,
+      "m": "POST",
+      "p": "/v1/desktop/sessions/94ce2ed26b72/interrupt",
+      "held": false,
+      "interrupt": "pass"
+    },
+    [
+      153495,
+      "GET",
+      "/v1/capabilities",
+      "pass",
+      2
+    ],
+    [
+      157304,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      157306,
+      "GET",
+      "/v1/desktop/sessions/94ce2ed26b72/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      157320,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      158866,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      161410,
+      "GET",
+      "/v1/config",
+      "pass",
+      2
+    ],
+    [
+      161410,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      161411,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      161411,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      2
+    ],
+    [
+      161411,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      161411,
+      "GET",
+      "/v1/desktop/sessions/a6137497d05a/events?frontend_replace=1",
+      "pass",
+      2
+    ],
+    {
+      "at": 161411,
+      "m": "GET",
+      "p": "/v1/desktop/sessions/a6137497d05a/events",
+      "held": false
+    },
+    [
+      161411,
+      "GET",
+      "/v1/desktop/sessions/a6137497d05a/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      161412,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      161446,
+      "GET",
+      "/v1/desktop/sessions/a6137497d05a/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      161448,
+      "GET",
+      "/v1/desktop/sessions/a6137497d05a/checkpoints",
+      "pass",
+      2
+    ],
+    [
+      161448,
+      "POST",
+      "/v1/desktop/sessions/a6137497d05a/watch",
+      "pass",
+      2
+    ],
+    [
+      161449,
+      "GET",
+      "/v1/desktop/sessions/a6137497d05a/mcp",
+      "pass",
+      2
+    ],
+    [
+      161449,
+      "GET",
+      "/v1/desktop/sessions/a6137497d05a/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      161450,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      161707,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      161720,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      162616,
+      "GET",
+      "/v1/desktop/sessions/a6137497d05a/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      162803,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      163259,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      163340,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      163385,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      164938,
+      "POST",
+      "/v1/desktop/presence",
+      "pass",
+      2
+    ],
+    [
+      165512,
+      "POST",
+      "/v1/desktop/sessions/a6137497d05a/interrupt",
+      "pass",
+      2
+    ],
+    {
+      "at": 165512,
+      "m": "POST",
+      "p": "/v1/desktop/sessions/a6137497d05a/interrupt",
+      "held": false,
+      "interrupt": "swallow"
+    },
+    [
+      166594,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "HELD",
+      0
+    ],
+    [
+      167092,
+      "GET",
+      "/v1/desktop/sessions/a6137497d05a/events?epoch=a469af16b419450289f0669d794f45b6&after_seq=",
+      "HELD",
+      0
+    ],
+    {
+      "at": 167092,
+      "m": "GET",
+      "p": "/v1/desktop/sessions/a6137497d05a/events",
+      "held": true
+    },
+    [
+      167589,
+      "GET",
+      "/v1/desktop/events",
+      "HELD",
+      0
+    ],
+    {
+      "at": 167589,
+      "m": "GET",
+      "p": "/v1/desktop/events",
+      "held": true
+    },
+    [
+      171241,
+      "POST",
+      "/v1/desktop/presence",
+      "pass",
+      2
+    ],
+    [
+      171243,
+      "GET",
+      "/v1/desktop/sessions/a6137497d05a/checkpoints",
+      "pass",
+      2
+    ],
+    [
+      171245,
+      "GET",
+      "/v1/desktop/sessions/a6137497d05a/mcp",
+      "pass",
+      2
+    ],
+    [
+      171245,
+      "GET",
+      "/v1/desktop/sessions/a6137497d05a/mcp",
+      "pass",
+      2
+    ],
+    [
+      171246,
+      "POST",
+      "/v1/desktop/sessions/a6137497d05a/watch",
+      "pass",
+      2
+    ],
+    [
+      171246,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      171253,
+      "GET",
+      "/v1/desktop/teams",
+      "pass",
+      2
+    ],
+    [
+      171253,
+      "GET",
+      "/v1/desktop/teams",
+      "pass",
+      2
+    ],
+    [
+      171255,
+      "GET",
+      "/v1/desktop/profiles",
+      "pass",
+      2
+    ],
+    [
+      171431,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      2
+    ],
+    [
+      172803,
+      "GET",
+      "/health",
+      "pass",
+      2
+    ],
+    [
+      175397,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      175425,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      175435,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      175497,
+      "GET",
+      "/v1/desktop/sessions/a6137497d05a/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      175499,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ]
+  ],
+  "appLogTail": "erator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25851:31\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25881:21\n    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\n    at Session.emit (node:events:514:28)\nError occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25851:31\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25881:21\n    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\n    at Session.emit (node:events:514:28)\n(node:56158) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 start-speech-to-text listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit\n00:45:49.156 › Backend health check response status: 200\n00:45:59.149 › Backend health check response status: 200\nError occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25851:31\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25881:21\n    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\n    at Session.emit (node:events:514:28)\n",
+  "daemonLogTail": "1/desktop/profiles HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:52879 - \"GET /v1/desktop/asks HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:52879 - \"GET /health HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:52918 - \"POST /v1/desktop/sessions/a6137497d05a/interrupt HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:52879 - \"GET /v1/desktop/sessions?limit=50&include_archived=true HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:52879 - \"GET /v1/desktop/sessions?limit=50&include_archived=true&with_counts=true HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:52879 - \"GET /v1/desktop/sessions?limit=50&include_archived=true&with_counts=true HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:52879 - \"GET /v1/desktop/sessions/a6137497d05a/history?limit=100 HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:52875 - \"GET /v1/desktop/sessions?limit=50&include_archived=true HTTP/1.1\" 200 OK\n"
+}

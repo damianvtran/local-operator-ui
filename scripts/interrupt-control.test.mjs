@@ -35,7 +35,11 @@ const bundle = await build({
 				interruptTurn,
 				interruptUnavailableNotice,
 				sessionInterruptEnabled,
+				IDLE_STOP_NOTICE,
+				IDLE_STOP_DISPUTED_NOTICE,
+				INTERRUPT_ACK_TIMEOUT_MS,
 			} from "./src/renderer/src/features/chat/interrupt-turn";
+			import { userFacingMessage } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 			import {
 				dispatchInterruptOnEscape,
 				ESCAPE_OWNING_FIELDS,
@@ -52,6 +56,10 @@ const bundle = await build({
 				interruptTurn,
 				interruptUnavailableNotice,
 				sessionInterruptEnabled,
+				IDLE_STOP_NOTICE,
+				IDLE_STOP_DISPUTED_NOTICE,
+				INTERRUPT_ACK_TIMEOUT_MS,
+				userFacingMessage,
 				dispatchInterruptOnEscape,
 				ESCAPE_OWNING_FIELDS,
 				interruptEscapeApplies,
@@ -111,6 +119,10 @@ const {
 	interruptTurn,
 	interruptUnavailableNotice,
 	sessionInterruptEnabled,
+	IDLE_STOP_NOTICE,
+	IDLE_STOP_DISPUTED_NOTICE,
+	INTERRUPT_ACK_TIMEOUT_MS,
+	userFacingMessage,
 	dispatchInterruptOnEscape,
 	ESCAPE_OWNING_FIELDS,
 	interruptEscapeApplies,
@@ -1105,18 +1117,89 @@ test("the common case says nothing at all", () => {
 		}),
 		null,
 	);
-	// `idle` is a SUCCESS - no turn was running, or the session was cold and was
-	// never engaged to answer this - and a sentence would invent an outcome.
+});
+
+test("a press that found nothing gets an answer, not silence (operator incident, 2026-10-07)", () => {
+	/*
+	 * `idle` used to answer with nothing, on the reasoning that "nothing was
+	 * running" is not an outcome to report. The operator's incident falsified
+	 * that premise: four presses, zero feedback, while HIS pane believed a turn
+	 * was up - so the silence read as "the press did nothing" rather than "there
+	 * was nothing to stop". The sentence is the press's answer, and there are TWO
+	 * of them: a pane that agrees nothing ran gets the flat state sentence, and a
+	 * pane whose held claim still says a turn is alive gets the ATTRIBUTED one
+	 * instead (design round 1's U1 - the receipt can contradict the view, and the
+	 * app must not assert the half it cannot vouch for). Both are pinned here,
+	 * where the user meets them (provisional, pending the design round).
+	 */
+	const idleReceipt = {
+		status: "idle",
+		receipt: "no turn running",
+		children_running: 3,
+		background_jobs: 2,
+		replayed: false,
+	};
+	// The pane agrees: the plain state sentence.
+	assert.equal(interruptNotice(idleReceipt), IDLE_STOP_NOTICE);
 	assert.equal(
-		interruptNotice({
-			status: "idle",
-			receipt: "no turn running",
-			children_running: 3,
-			background_jobs: 2,
-			replayed: false,
-		}),
-		null,
+		interruptNotice(idleReceipt, { turnClaimed: false }),
+		IDLE_STOP_NOTICE,
 	);
+	// The pane still claims a live turn: the attributed sentence, not the flat one.
+	assert.equal(
+		interruptNotice(idleReceipt, { turnClaimed: true }),
+		IDLE_STOP_DISPUTED_NOTICE,
+	);
+	assert.notEqual(IDLE_STOP_NOTICE, IDLE_STOP_DISPUTED_NOTICE);
+	assert.equal(
+		IDLE_STOP_NOTICE,
+		"No turn was running, so there was nothing to stop.",
+		"the copy is the provisional sentence the PR body flags for the design round",
+	);
+	assert.equal(
+		IDLE_STOP_DISPUTED_NOTICE,
+		"The runtime says no turn is running, so nothing was stopped. This view may be out of date.",
+		"the disputed copy is attributed to the runtime and admits the view may be the stale half",
+	);
+});
+
+test("a lost answer rejects at the bound, so the caller's catch can answer the press", async () => {
+	/*
+	 * The incident's other half: on a half-dead socket the request used to sit
+	 * on the transport's generic control deadline - up to 25 s, and unbounded on
+	 * the development proxy path - so the catch that owes the user a sentence
+	 * could be a quarter-minute away, with the stopped-turn claim latched the
+	 * whole time. `INTERRUPT_ACK_TIMEOUT_MS` bounds the promise to the runtime's
+	 * own 15 s answer envelope (the attach client's `ACK_TIMEOUT_S`), and a
+	 * never-settling transport must reject AT the bound with the standard abort
+	 * shape, because that is what routes the loss to the caller's existing catch
+	 * and its authored fallback sentence.
+	 */
+	const settled = globalThis.__interruptRequest;
+	globalThis.__interruptRequest = () => new Promise(() => {});
+	try {
+		const started = Date.now();
+		await assert.rejects(
+			interruptTurn(SESSION, REQUEST, 50),
+			/abort|Abort/i,
+			"a never-settling transport rejects rather than hanging",
+		);
+		assert.ok(
+			Date.now() - started < 2_000,
+			"and it rejects at the bound, not whenever the transport gives up",
+		);
+		// The sentence the chat page's catch renders for this rejection: the
+		// abort is not a `UserFacingError`, so `userFacingMessage` falls back to
+		// the authored copy the press has always owed a lost answer.
+		const error = await interruptTurn(SESSION, REQUEST, 50).catch((e) => e);
+		assert.equal(error.name, "AbortError");
+		assert.equal(
+			userFacingMessage(error, "Stop could not be confirmed."),
+			"Stop could not be confirmed.",
+		);
+	} finally {
+		globalThis.__interruptRequest = settled;
+	}
 });
 
 test("the notice names the number AND the lever that is still available", () => {
@@ -1202,7 +1285,7 @@ test("a text field that is not the composer keeps Escape", () => {
 				isComposing: false,
 				target: otherFieldTarget,
 			},
-			{ sessionId: SESSION, busy: true, available: true },
+			{ sessionId: SESSION, turnAlive: true, available: true },
 		),
 		false,
 	);
@@ -1214,7 +1297,7 @@ test("a text field that is not the composer keeps Escape", () => {
 				isComposing: false,
 				target: composerTarget,
 			},
-			{ sessionId: SESSION, busy: true, available: true },
+			{ sessionId: SESSION, turnAlive: true, available: true },
 		),
 		true,
 	);
@@ -1225,7 +1308,7 @@ test("a text field that is not the composer keeps Escape", () => {
 });
 
 test("the predicate is exactly Escape, unclaimed, not composing, and a running turn", () => {
-	const state = { sessionId: SESSION, busy: true, available: true };
+	const state = { sessionId: SESSION, turnAlive: true, available: true };
 	const event = (over = {}) => ({
 		key: "Escape",
 		defaultPrevented: false,
@@ -1248,9 +1331,12 @@ test("the predicate is exactly Escape, unclaimed, not composing, and a running t
 		interruptEscapeApplies(event({ isComposing: true }), state),
 		false,
 	);
-	// Nothing running: do nothing. Specifically, do not clear the composer.
+	// Nothing running: do nothing. Specifically, do not clear the composer. (The
+	// field is the turn-alive PAIR since round 1's D2 - the same reading the Stop
+	// control uses - so this arm is "the pair says no turn", not "the raw feed
+	// says idle through a gap".)
 	for (const idle of [
-		{ ...state, busy: false },
+		{ ...state, turnAlive: false },
 		{ ...state, sessionId: null },
 		{ ...state, available: false },
 	])
@@ -1268,7 +1354,7 @@ test("the decision waits for every layer that binds after it", async () => {
 	 * would be measurably wrong: Escape during a recording would stop the turn
 	 * instead of the recording.
 	 */
-	const state = { sessionId: SESSION, busy: true, available: true };
+	const state = { sessionId: SESSION, turnAlive: true, available: true };
 	const press = () => ({
 		key: "Escape",
 		defaultPrevented: false,
@@ -1302,7 +1388,7 @@ test("the decision waits for every layer that binds after it", async () => {
 	// A press the predicate refused schedules nothing at all - not even a
 	// microtask that could fire later against a state that has since moved.
 	assert.equal(
-		dispatchInterruptOnEscape(free, { ...state, busy: false }, () => {
+		dispatchInterruptOnEscape(free, { ...state, turnAlive: false }, () => {
 			fired += 1;
 		}),
 		false,
