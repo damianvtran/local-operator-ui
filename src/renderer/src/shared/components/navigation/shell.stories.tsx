@@ -3,6 +3,12 @@ import "../../../styles/index.css";
 import "@features/chat/components/story-electron-shim";
 import { AgentsPage } from "@features/agents/components/agents-page";
 import { BrowserPane } from "@features/browser/components/browser-pane";
+import { CanonicalTranscript } from "@features/chat/canonical/canonical-transcript";
+import {
+	EMPTY_TRANSCRIPT,
+	type TranscriptRecord,
+	type TranscriptState,
+} from "@features/chat/canonical/transcript-reducer";
 import { AskDrawer } from "@features/chat/components/asks/ask-drawer";
 import { Canvas } from "@features/chat/components/canvas";
 import { ChatHeader } from "@features/chat/components/chat-header";
@@ -22,6 +28,7 @@ import { SettingsPage } from "@features/settings/components/settings-page";
 import type { ReusableProfile } from "@shared/api/local-operator/profile-hooks";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { PaneSlot } from "@shared/components/common/pane-slot";
+import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { apiConfig } from "@shared/config/api-config";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
@@ -36,6 +43,7 @@ import {
 	type FC,
 	type ReactNode,
 	useLayoutEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -45,6 +53,7 @@ import {
 } from "../../../../../main/update-check-verdict";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
 import type { PendingAsk } from "../../../../../shared/desktop-session-contract";
+import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
 import { ShellStoryRail } from "./shell-story-rail";
 
 /**
@@ -818,6 +827,7 @@ const ConversationStandIn = ({
 	details,
 	railProps = {},
 	asksCount = 0,
+	body,
 }: {
 	/** Null on a draft: the app's draft has no run details, so no trigger. */
 	details: ReturnType<typeof deriveRunDetails> | null;
@@ -828,6 +838,12 @@ const ConversationStandIn = ({
 	};
 	/** The Asks trigger's count, for the Windows/Linux simulation's header. */
 	asksCount?: number;
+	/**
+	 * What the column holds under the header, in place of the one-paragraph
+	 * stand-in. The #895 arms pass the REAL `CanonicalTranscript` here, because
+	 * the question they photograph is what the column's edges are made of.
+	 */
+	body?: ReactNode;
 }) => {
 	/*
 	 * The header's trailing reservation, derived from the store exactly as
@@ -870,12 +886,18 @@ const ConversationStandIn = ({
 				runDetails={details}
 				{...legacyHeaderProps}
 			/>
-			<div className="flex min-h-0 grow flex-col gap-4 overflow-hidden bg-canvas p-6">
-				<p className="text-body text-ink">
-					Three customers are outstanding: Northwind, Contoso and Fabrikam, for
-					$6,290 in total. The write-up is open in the canvas.
-				</p>
-			</div>
+			{body ? (
+				<div className="flex min-h-0 grow flex-col overflow-hidden bg-canvas">
+					{body}
+				</div>
+			) : (
+				<div className="flex min-h-0 grow flex-col gap-4 overflow-hidden bg-canvas p-6">
+					<p className="text-body text-ink">
+						Three customers are outstanding: Northwind, Contoso and Fabrikam,
+						for $6,290 in total. The write-up is open in the canvas.
+					</p>
+				</div>
+			)}
 		</div>
 	);
 };
@@ -1035,7 +1057,16 @@ const ChatShellFrame: FC<{
 	asksCount?: number;
 	/** Render the Windows caption-button layout instead of macOS's (simulated). */
 	windows?: boolean;
-}> = ({ pane, details, railProps = {}, asksCount = 0, windows = false }) => {
+	/** The conversation column's content; see `ConversationStandIn`'s `body`. */
+	body?: ReactNode;
+}> = ({
+	pane,
+	details,
+	railProps = {},
+	asksCount = 0,
+	windows = false,
+	body,
+}) => {
 	useFixtureFetch();
 	useMacChrome(!windows);
 	useWindowsChromeSimulation(windows);
@@ -1084,6 +1115,7 @@ const ChatShellFrame: FC<{
 								details={details}
 								railProps={railProps}
 								asksCount={asksCount}
+								body={body}
 							/>
 							{pane?.(slotWidth)}
 						</div>
@@ -1309,6 +1341,194 @@ export const ChatDockRunPanel: Story = {
 							onClose={() => undefined}
 						/>
 					</PaneSlot>
+				)}
+			/>
+		);
+	},
+};
+
+/*
+ * THE CONVERSATION COLUMN'S EDGES, IN THE SHELL (#895).
+ *
+ * WHY IT EXISTS. The question #895 asks is not about the transcript alone: it is
+ * what sits at the column's edges when the column shares a row with the sidebar
+ * divider and, with a panel open, the panel divider. The two arms mount the REAL
+ * `CanonicalTranscript` inside the REAL `ChatLayout` (so the sidebar's divider is
+ * the app's own) and, for the panel arm, the same `ResizableDivider` + `PaneSlot`
+ * pair `chat-content.tsx` mounts for the run panel. The rows are the ordinary
+ * mix (an answer, three tool rows), so the column is the width the measure
+ * allows rather than the width of a short line.
+ *
+ * THE SAME STORY SERVES BOTH TREES. `measureHandle` is the prop the chat page passes
+ * so the transcript mounts its resize handles; it exists on `origin/main` and is
+ * the thing #895 removes, so the before half of the evidence reads this scene
+ * with the handles the app shipped and the after half reads it without them. The
+ * pair is one scene under two readers.
+ */
+const MEASURE_SEED_AT = 1_760_000_000_000;
+const MEASURE_SAMPLE =
+	"The constraint is a single number, so the first thing to settle is what it is for. A reading measure exists to stop a line of prose from running wider than the eye can carry, and the guidance most typographers quote for that is between forty-five and seventy-five characters. This surface is not a reading pane, though, and the difference is not a quibble: it is a ledger.";
+
+const measureStoryTranscript = (): TranscriptState => {
+	const tool = (
+		id: string,
+		toolName: string,
+		args: Record<string, unknown>,
+	): TranscriptRecord => ({
+		kind: "tool",
+		id,
+		ts: MEASURE_SEED_AT,
+		toolCallId: id,
+		toolName,
+		intent: null,
+		args,
+		phase: "done",
+		argumentBytes: 0,
+		output: "ok",
+		isError: false,
+		notRunReason: null,
+		notRunKind: null,
+		neverSent: false,
+		durationS: 0.4,
+		startedAt: null,
+		endedAt: null,
+		images: [],
+		added: 0,
+		removed: 0,
+		diff: null,
+		stopped: false,
+	});
+	const records: TranscriptRecord[] = [
+		{
+			kind: "assistant",
+			id: "m1",
+			ts: MEASURE_SEED_AT,
+			text: MEASURE_SAMPLE,
+			streaming: false,
+			complete: true,
+			stopReason: null,
+			error: false,
+		},
+		tool("t1", "read", { path: "src/renderer/src/styles/index.css" }),
+		tool("t2", "bash", { command: "pnpm check-types" }),
+		tool("t3", "edit", {
+			path: "src/renderer/src/features/chat/chat-measure.ts",
+		}),
+	];
+	return {
+		...EMPTY_TRANSCRIPT,
+		records,
+		index: new Map(records.map((record, position) => [record.id, position])),
+		generation: 1,
+	};
+};
+
+const MeasureTranscriptBody: FC = () => {
+	const containerRef = useRef<HTMLDivElement>(null);
+	const transcript = useMemo(measureStoryTranscript, []);
+	return (
+		<CanonicalTranscript
+			transcript={transcript}
+			gate={null}
+			waiting={false}
+			starting={false}
+			startingAfterId={null}
+			loadingOlder={false}
+			onLoadOlder={async () => true}
+			containerRef={containerRef}
+			isSmallView={false}
+			status={"live" as const}
+			failure={null as SessionFailureNotice | null}
+			awaitingHydration={false}
+			onReconnect={() => undefined}
+			measureHandle
+		/>
+	);
+};
+
+/**
+ * The conversation alone: the column's left strip sat beside the sidebar divider.
+ *
+ * It carries run details (a saved conversation, not a draft) so the panel rail
+ * is on screen and takes its 44px from the row, as it does in the app - the
+ * transcript container is then 876px wide at a 1180px window, the number the
+ * issue's geometry is stated at.
+ */
+export const ChatMeasureEdges: Story = {
+	render: () => {
+		/*
+		 * The rail is reserved only while a chat surface is mounted, and these arms
+		 * mount the dock directly rather than through `chat-content` (the app's one
+		 * publisher of that fact), so the story states it - with no pane open.
+		 */
+		useLayoutEffect(() => {
+			useUiPreferencesStore.setState({ rightSlotRoute: DRAWABLE_ROUTE });
+			return () => {
+				useUiPreferencesStore.setState({ rightSlotRoute: EMPTY_ROUTE });
+			};
+		}, []);
+		return (
+			<ChatShellFrame
+				details={deriveRunDetails(runFixtures.bothInFlight())}
+				body={<MeasureTranscriptBody />}
+			/>
+		);
+	},
+};
+
+/**
+ * The run panel open at its default width: the column's right strip sat beside the
+ * panel's own divider, 8px from it.
+ */
+export const ChatMeasureEdgesRunPanel: Story = {
+	render: () => {
+		useLayoutEffect(() => {
+			useUiPreferencesStore.setState({
+				isRunPanelOpen: true,
+				rightSlotWidth: 0,
+				rightSlotRoute: DRAWABLE_ROUTE,
+			});
+			return () => {
+				useUiPreferencesStore.setState({
+					isRunPanelOpen: false,
+					rightSlotRoute: EMPTY_ROUTE,
+				});
+			};
+		}, []);
+		return (
+			<ChatShellFrame
+				details={deriveRunDetails(runFixtures.bothInFlight())}
+				body={<MeasureTranscriptBody />}
+				pane={(slotWidth) => (
+					<>
+						{/* The pair chat-content.tsx mounts: the divider, then the slot. */}
+						<ResizableDivider
+							sidebarWidth={slotWidth}
+							onSidebarWidthChange={() => undefined}
+							minWidth={420}
+							maxWidth={640}
+							side="left"
+							label="Resize run details. Double-click resets the shared pane width."
+						/>
+						<PaneSlot width={slotWidth} minWidth={420} tourTag="run-panel-dock">
+							<RunPanel
+								details={deriveRunDetails(runFixtures.bothInFlight())}
+								mcpServers={deriveMcpServers([], {}, [])}
+								mcpGrantRunning={mcpGrantInFlight([])}
+								mcpRemedy={INERT_REMEDY}
+								monitorControls={INERT_MONITOR_CONTROLS}
+								sessionId="a1b2c3d4e5f6"
+								pulses={{}}
+								childrenOpenable
+								olderTransportDown={false}
+								paneWidth={slotWidth}
+								readerChildId={null}
+								previewPage={null}
+								onReaderChildChange={() => undefined}
+								onClose={() => undefined}
+							/>
+						</PaneSlot>
+					</>
 				)}
 			/>
 		);
