@@ -83,8 +83,18 @@ function draftOf(team?: ReusableTeam): Draft {
 	return {
 		description: team?.description ?? "",
 		manager: team?.manager ?? "manager",
+		/*
+		 * THE COUNT IS NORMALISED HERE, once, for everything the edit form does with
+		 * it (agent review round 2 #2): the stepper prints it, disables on it, and does
+		 * +/-1 arithmetic on it, and a member the wire sent without a count rendered an
+		 * empty number and NaN. `memberCountOf` is the one helper the table, the header
+		 * and the roster already read, so the form takes the same view of the same row.
+		 * Base and draft are both built here, so a count-less row is not "changed" by
+		 * being normalised; a SAVE that touches members writes the normalised count.
+		 */
 		members: (team?.members ?? []).map((member) => ({
 			...member,
+			count: memberCountOf(member),
 			key: crypto.randomUUID(),
 		})),
 		instructions: team?.instructions ?? "",
@@ -232,6 +242,17 @@ export function TeamDetail({
 	 * operator's eye and hand.
 	 */
 	const teamNameRef = useRef<HTMLInputElement>(null);
+	/**
+	 * "Add member" and the flag that a press just added a row, so the button is kept
+	 * on screen afterwards (UX review round 2, U1b). Pressing it inserts a row ABOVE
+	 * it, which moves the button down by a row's height; the browser scrolls a
+	 * focused control into view when focus MOVES, not when the focused control is
+	 * pushed, so the 4th press at 1024x725 left it wholly under the sticky footer with
+	 * `scrollTop` unchanged - the operator kept adding rows they could not see, with
+	 * the focus ring off screen.
+	 */
+	const addMemberRef = useRef<HTMLButtonElement>(null);
+	const justAddedMember = useRef(false);
 
 	/* A pane opened by a Create takes the caret itself (QA Q7) — see the note on
 	 * the handoff in `detail-parts`.
@@ -263,6 +284,20 @@ export function TeamDetail({
 		setBase(next);
 		setDraft(next);
 	}, [team, editing, dirty]);
+
+	useEffect(() => {
+		if (!justAddedMember.current) return;
+		justAddedMember.current = false;
+		/*
+		 * `nearest` moves the scroller only if the button is outside it, and the pane's
+		 * `scroll-padding-bottom` (the footer's published height) counts the sticky
+		 * footer as outside - which is the whole point: the button lands just above the
+		 * bar, not under it. It does not need focus, so a pointer press is covered too.
+		 */
+		addMemberRef.current?.scrollIntoView({ block: "nearest" });
+		// No dependency array: the flag, not a value, says a row was just added, and the
+		// effect runs after the commit that made the button move.
+	});
 
 	const cancel = () => {
 		if (creating) {
@@ -696,8 +731,10 @@ export function TeamDetail({
 									);
 								})}
 								<Button
+									ref={addMemberRef}
 									variant="secondary"
-									onClick={() =>
+									onClick={() => {
+										justAddedMember.current = true;
 										setDraft((current) => ({
 											...current,
 											members: [
@@ -709,8 +746,8 @@ export function TeamDetail({
 													key: crypto.randomUUID(),
 												},
 											],
-										}))
-									}
+										}));
+									}}
 								>
 									Add member
 								</Button>
