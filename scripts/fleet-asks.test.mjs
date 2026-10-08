@@ -450,15 +450,23 @@ test("the scope travels with the flag and is never persisted", () => {
 
 test("the drawer wears the canvas family's width in either scope", () => {
 	const base = useUiPreferencesStore.getState();
+	/*
+	 * A conversation route: the facts the slot's resolver reads since #868. The
+	 * session-scope arm needs them (a session drawer has no home without a
+	 * conversation); the fleet arm's home is the shell whatever the route.
+	 */
+	const drawable = { mounted: true, runDetails: true, session: true };
 	const fleet = resolveRightSlotWidth(1400, {
 		...base,
 		isAskDrawerOpen: true,
 		askDrawerScope: "fleet",
+		rightSlotRoute: drawable,
 	});
 	const session = resolveRightSlotWidth(1400, {
 		...base,
 		isAskDrawerOpen: true,
 		askDrawerScope: "session",
+		rightSlotRoute: drawable,
 	});
 	assert.equal(fleet, session);
 	assert.equal(fleet, 560);

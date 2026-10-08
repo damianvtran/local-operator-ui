@@ -24,6 +24,7 @@ import { Sheet, SheetContent, SheetTitle } from "@shared/components/ui/sheet";
 import { cn } from "@shared/lib/utils";
 import {
 	resolveRightSlotWidth,
+	resolveRightSlotYieldsSidebar,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import {
@@ -351,9 +352,9 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 * §I's order gives up the SIDEBAR first - so the canvas docks beside the chat
 	 * instead of covering it with the pane's whole width. Read from the store the
 	 * canvas's own toggle writes, so the choice of pane and the shape of the
-	 * sidebar are one decision and not two that can disagree.
+	 * sidebar are one decision and not two that can disagree. (The boolean is
+	 * `slotYieldsSidebar` below, which reads the same claim through the route.)
 	 */
-	const canvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
 	/*
 	 * THE FLEET ASKS PANE, which the SHELL owns where the ask drawer's other scope
 	 * is owned by the chat route.
@@ -384,6 +385,17 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 		(s) => s.restoreDefaultRightSlotWidth,
 	);
 	const fleetAsksOpen = askDrawerOpen && askDrawerScope === "fleet";
+	/*
+	 * WHETHER A CANVAS-FAMILY PANE IS ACTUALLY DRAWN, not whether its flag is up
+	 * (#868, agent review round 1 R2): the flags outlive the route that can draw
+	 * them, and the bare `isCanvasOpen || isAskDrawerOpen` this used to be handed
+	 * to the sidebar still collapsed it to the strip at 1024-1139px for a pane
+	 * that was not on screen. The store answers from the claim AND the route facts
+	 * `chat-content` publishes, the same two inputs the width and the header read.
+	 */
+	const slotYieldsSidebar = useUiPreferencesStore(
+		resolveRightSlotYieldsSidebar,
+	);
 
 	const layout: SidebarLayout = resolveSidebarLayout(
 		viewportWidth,
@@ -398,7 +410,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 		 * one surface lay the window out differently, which is precisely the "which one
 		 * am I looking at" confusion this feature removes.
 		 */
-		canvasOpen || askDrawerOpen,
+		slotYieldsSidebar,
 	);
 
 	/*

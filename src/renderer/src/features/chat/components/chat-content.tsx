@@ -36,7 +36,9 @@ import {
 	DEFAULT_BROWSER_PANEL_WIDTH,
 	DEFAULT_CONSOLE_PANEL_WIDTH,
 	DEFAULT_RUN_PANEL_WIDTH,
+	EMPTY_RIGHT_SLOT_ROUTE,
 	RUN_PANEL_MIN_PX,
+	resolveRightSlotOccupied,
 	resolveRightSlotWidth,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
@@ -1255,22 +1257,73 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		/*
 		 * Whether a right-slot pane occupies the window's right edge, which is what
 		 * decides whether the CHAT HEADER has to reserve the OS controls' corner (chat
-		 * redesign §J4). The four panes are exclusive through `claimRightSlot`, so this is
-		 * a disjunction of flags the store already keeps rather than a fifth piece of
-		 * state - and it is read HERE, after all four, because a `const` computed above
-		 * one of the store reads it names is in that read's temporal dead zone. A fifth
-		 * pane is one more term in one place.
+		 * redesign §J4).
+		 *
+		 * IT READS THE STORE'S ONE DERIVATION rather than restating the flags (#868):
+		 * the disjunction that used to live here was a second copy of
+		 * `activeRightSlotPane`, and it disagreed with the resolver exactly when a
+		 * flag outlived the route that could draw it - the header then reserved a
+		 * corner for a pane that was not on screen, and the lane and the column
+		 * followed the same stale answer. `resolveRightSlotOccupied` is the
+		 * drawable-aware sibling of the width resolver, and the two read the same
+		 * claim and the same route facts, so the header, the lane and the column
+		 * cannot disagree.
 		 *
 		 * The header is the only candidate this component renders for that corner: a
 		 * pane's own toolbar reserves it in its own row, which is why the truth of this
 		 * expression is passed as the NEGATION above.
 		 */
-		const rightSlotOccupied =
-			isCanvasOpen ||
-			isRunPanelOpen ||
-			isBrowserPaneOpen ||
-			isConsolePaneOpen ||
-			isAskDrawerOpen;
+		const rightSlotOccupied = useUiPreferencesStore(resolveRightSlotOccupied);
+
+		/*
+		 * THE ROUTE'S HALF OF THE SLOT'S TRUTH (#868): every gate this component
+		 * mounts a right-slot pane behind, published once so the store's derivation
+		 * (the lane's stop, the column's width, the header's reservation) answers
+		 * from what THIS route can actually draw rather than from a flag that
+		 * outlived its route.
+		 *
+		 * `mounted` is this effect's own act of being here; `runDetails` and
+		 * `session` are read from the same values the panes' own mount conditions
+		 * read (the run panel's `runDetails` term, the session drawer's
+		 * `Boolean(sessionId)` term), so the facts and the mounts cannot drift.
+		 *
+		 * IT IS A LAYOUT EFFECT because the readers are in OTHER components (the
+		 * chrome lane belongs to the SHELL, above this one): a passive effect would
+		 * paint one frame of the previous route's answer - the stale band this issue
+		 * is about - before correcting it, and a layout effect's synchronous
+		 * re-render lands before the frame.
+		 */
+		const setRightSlotRoute = useUiPreferencesStore((s) => s.setRightSlotRoute);
+		/*
+		 * THE BOOLEANS, NOT THE OBJECT, ARE THE EFFECT'S KEYS (agent review round 1,
+		 * R1): `runDetails` is a `useMemo` over the canonical frame and takes a new
+		 * identity on every `frontend.update`, so keying on it re-published
+		 * identical facts on every frame of a live run. The facts are two booleans,
+		 * and a boolean only changes when the answer does.
+		 */
+		const hasRunDetails = Boolean(runDetails);
+		const hasSession = Boolean(sessionId);
+		useLayoutEffect(() => {
+			setRightSlotRoute({
+				mounted: true,
+				runDetails: hasRunDetails,
+				session: hasSession,
+			});
+		}, [setRightSlotRoute, hasRunDetails, hasSession]);
+		/*
+		 * The unmount reset: a route with no chat surface draws none of the five.
+		 *
+		 * IT RESETS UNCONDITIONALLY, which assumes ONE ChatContent per window
+		 * (`SessionPanel key={identity}` is the only mount, and React runs the old
+		 * tree's layout cleanup before the new tree's publish, so a swap ends
+		 * published). A second concurrent instance would have to compare the store's
+		 * facts with its own before resetting, or its unmount would release the slot
+		 * under the other one.
+		 */
+		useLayoutEffect(
+			() => () => setRightSlotRoute(EMPTY_RIGHT_SLOT_ROUTE),
+			[setRightSlotRoute],
+		);
 		/*
 		 * THE HEADER'S ASKS DOOR (operator ask, 2026-10-05): the entry point the
 		 * sidebar's `All asks` row used to be, moved into this conversation's header
