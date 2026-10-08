@@ -2288,11 +2288,17 @@ export const STORIES = [
 				'[data-header-identity-menu="agent"] input',
 				"[data-header-identity-cue]",
 			],
-			expectSentence: {
-				selector: "[data-header-identity-constraint]",
-				includes:
-					"team lopdev owns this session: manager is the speaker, so /agent is closed. Run /team clear to detach the team first.",
-			},
+			expectSentence: [
+				{
+					selector: '[data-header-identity-menu="agent"]',
+					includes: "Agent seat closed by Local Operator Dev",
+				},
+				{
+					selector: "[data-header-identity-constraint]",
+					includes:
+						"team lopdev owns this session: manager is the speaker, so /agent is closed. Run /team clear to detach the team first.",
+				},
+			],
 			dir: "strict-team-open",
 		},
 	],
@@ -2354,9 +2360,101 @@ export const STORIES = [
 			expectGone: ["[data-header-identity-cue]"],
 			expectSentence: {
 				selector: "[data-header-identity-constraint]",
-				includes: "its manager is the speaker, so /agent is closed.",
+				includes:
+					"team field-ops owns this session: its manager is the speaker, so /agent is closed.",
 			},
 			dir: "strict-team-no-speaker-open",
+		},
+	],
+	/*
+	 * Round-1 remediation arms: the closed chip with KEYBOARD FOCUS, a 47-character
+	 * speaker at the 560 band, the closed seat with `teams.list` still pending, and
+	 * the cold frame on a host that has published before (review R1 / QA Q1).
+	 */
+	[
+		"chat-header-identity--strict-team",
+		560,
+		84,
+		{
+			tabTo: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity="agent"][data-header-identity-closed]',
+			],
+			dir: "strict-team-focus",
+		},
+	],
+	[
+		"chat-header-identity--strict-team-long-speaker",
+		560,
+		84,
+		{
+			expectPresent: [
+				'[data-header-identity="agent"][data-header-identity-closed]',
+			],
+			expectSentence: {
+				selector: '[data-header-identity="agent"]',
+				includes: "regulatory-and-sanctions",
+			},
+			dir: "strict-team-long-speaker",
+		},
+	],
+	[
+		"chat-header-identity--strict-team-catalogue-loading",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity-menu="agent"][data-header-identity-closed]',
+			],
+			expectGone: ["[data-header-identity-cue]"],
+			expectSentence: {
+				selector: "[data-header-identity-constraint]",
+				includes: "team lopdev owns this session: manager is the speaker",
+			},
+			dir: "strict-team-catalogue-loading",
+		},
+	],
+	[
+		"chat-header-identity--strict-team-cold-frame",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity="agent"][data-header-identity-closed]',
+				'[data-header-identity-menu="agent"][data-header-identity-closed]',
+			],
+			expectGone: [
+				'[data-header-identity-menu="agent"] [role="option"]',
+				"[data-header-identity-cue]",
+			],
+			expectSentence: {
+				selector: "[data-header-identity-constraint]",
+				includes: "team lopdev owns this session: manager is the speaker",
+			},
+			dir: "strict-team-cold-frame-open",
+		},
+	],
+	[
+		"chat-header-identity--strict-team-promoted-while-open",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			pressSettleMs: 1600,
+			expectPresent: [
+				'[data-header-identity-menu="agent"][data-header-identity-closed]',
+			],
+			expectGone: ['[data-header-identity-menu="agent"] input'],
+			/* THE CLAIM: focus did not fall to <body> when the list became a note. */
+			expect: {
+				expression:
+					"document.activeElement?.matches('[data-header-identity=\"agent\"]') === true",
+				message:
+					"focus is not on the agent chip after the open list was replaced by the closed note",
+			},
+			dir: "strict-team-promoted-while-open",
 		},
 	],
 	[

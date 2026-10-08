@@ -417,6 +417,8 @@ export type IdentityAgentConstraint = {
 	 * SPEAKER and no row can take the seat; `caption` carries the same sentence.
 	 */
 	closed?: string;
+	/** The closed note's lead line (`identityAgentClosedTitle`); present with `closed`. */
+	closedTitle?: string;
 };
 
 /**
@@ -461,16 +463,33 @@ export function identityAgentConstraintCaption(teamLabel: string): string {
  * sentence does not promise a button.
  *
  * DELIBERATELY ABSENT: any sentence about the profile a team's attach
- * silently REPLACED (`/team X` over an earlier `/agent`). Core PR #2050 emits
- * no notice for it and whether it will is still open, so a line here would
- * promise a message the runtime never sends. Add it only when core ships it,
- * quoting core's words.
+ * silently REPLACES (`/team X` over an earlier `/agent`). Core WILL add a
+ * short notice for it (a clause naming the dropped profile and the new
+ * speaker, only when one was dropped), but its wording is not final, and a
+ * line written here now would be a paraphrase of words that do not exist yet.
+ * Add it only when core's wording lands, quoting core's words, never ours.
  */
 export function identityAgentClosedCaption(
 	team: string,
 	speaker: string | null,
 ): string {
 	return `team ${team} owns this session: ${speaker ?? "its manager"} is the speaker, so /agent is closed. Run /team clear to detach the team first.`;
+}
+
+/**
+ * The closed note's LEAD line: names the team the way the chip beside it does
+ * (its label when it has one) so the screen says what the screen says.
+ *
+ * WHY A LEAD LINE AND NOT A DIFFERENT SENTENCE (design D2/D3). The sentence
+ * under it is the runtime's refusal byte for byte and names the team by SLUG,
+ * which appears nowhere else on screen; the lead supplies the label (and the
+ * sentence-case statement a caption needs above it) without touching the
+ * runtime's words. `closed` is the runtime's own word for the state (`/agent is
+ * closed`). It also names the dialog (`aria-labelledby`), which Radix would
+ * otherwise announce with no name.
+ */
+export function identityAgentClosedTitle(teamLabel: string): string {
+	return `Agent seat closed by ${teamLabel}`;
 }
 
 /**
@@ -508,13 +527,14 @@ export function identityAgentConstraint(input: {
 	 * for a query it does not need would leave the seat looking open while the
 	 * team list loads.
 	 */
-	closure?: { speaker: string; sentence: string } | null;
+	closure?: { speaker: string; sentence: string; title: string } | null;
 }): IdentityAgentConstraint | null {
 	if (input.closure) {
 		return {
 			manager: input.closure.speaker,
 			caption: input.closure.sentence,
 			closed: input.closure.sentence,
+			closedTitle: input.closure.title,
 		};
 	}
 	if (input.manager === null) return null;
