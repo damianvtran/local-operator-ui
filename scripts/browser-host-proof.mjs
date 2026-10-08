@@ -650,6 +650,11 @@ function iframeMorePage(frameOrigin, sameSiteOrigin) {
  *     path's read-back disagrees and the setter fallback is the code that runs) and
  *     restores the empty value one macrotask after any `input` event, which is what
  *     the setter fallback dispatches. Nothing can make it keep text.
+ *   - `late-revert`: the same, but gives the write back 40 ms later, which an
+ *     immediate re-read cannot see and the host's short settle window can.
+ *   - `mask`: groups digits in fours on every `input` (a card-number field). It
+ *     REALLY holds what was typed, in another spelling, so it must LAND; a fix
+ *     that compared bytes would refuse it. A regression guard, not a flip.
  *   - `setter-only`: refuses `insertText` the same way but KEEPS a setter write.
  *     The fallback must still land here, with `via: value_setter`, or the fix has
  *     broken the path it guards.
@@ -662,10 +667,12 @@ function iframeMorePage(frameOrigin, sameSiteOrigin) {
  */
 const REVERT_FIELDS = `
 <input id="REVERT_ID" type="text" />
+<input id="LATE_ID" type="text" />
 <input id="SETTER_ID" type="text" />
+<input id="MASK_ID" type="text" />
 <input id="KEEP_ID" type="text" />
 <script>
-for (const id of ["REVERT_ID", "SETTER_ID"]) {
+for (const id of ["REVERT_ID", "LATE_ID", "SETTER_ID"]) {
   document.getElementById(id).addEventListener("beforeinput", (event) => {
     if (event.inputType === "insertText") event.preventDefault();
   });
@@ -674,6 +681,15 @@ const reverting = document.getElementById("REVERT_ID");
 reverting.addEventListener("input", () => {
   setTimeout(() => { reverting.value = ""; }, 0);
 });
+const late = document.getElementById("LATE_ID");
+late.addEventListener("input", () => {
+  setTimeout(() => { late.value = ""; }, 40);
+});
+const masked = document.getElementById("MASK_ID");
+masked.addEventListener("input", () => {
+  const grouped = masked.value.replace(/\\s+/g, "").replace(/(.{4})(?=.)/g, "$1 ");
+  if (grouped !== masked.value) masked.value = grouped;
+});
 </script>`;
 
 const DOES_NOT_HOLD_TEXT = /does not hold the text/;
@@ -681,7 +697,9 @@ const NOTHING_REPORTED_TYPED = /nothing was reported typed/;
 
 function revertFields(prefix) {
 	return REVERT_FIELDS.replaceAll("REVERT_ID", `${prefix}revert`)
+		.replaceAll("LATE_ID", `${prefix}late-revert`)
 		.replaceAll("SETTER_ID", `${prefix}setter-only`)
+		.replaceAll("MASK_ID", `${prefix}mask`)
 		.replaceAll("KEEP_ID", `${prefix}keep`);
 }
 
@@ -2599,22 +2617,56 @@ async function main() {
 		refusedAsNotHolding(frameRevert) && frameRevertField === "",
 		`type {selector: "iframe#rv >>> #frame-revert"} -> ${frameRevert.text}\nframe target #frame-revert (read over devtools) -> ${JSON.stringify(frameRevertField)}`,
 	);
-	// By the iframe ELEMENT: the descent picks the frame's field, and its setter
-	// fallback is verified inside the frame too. This frame holds three fields, so
-	// the host asks which one is meant - a refusal that types nothing - and the
-	// field stays empty either way.
+	// By the iframe ELEMENT. Focusing an <iframe> element hands focus back to the
+	// field the frame last focused (here the reverting one), and the descent prefers
+	// the focused field, so this call is EITHER the candidates refusal (three or more
+	// fields, none focused) OR a type at the reverting field. Which one is the page's
+	// focus state, and varies, so the row asserts the invariant that holds for both:
+	// the host never answers ok for text no field in the frame holds. It must fail on
+	// the base code whenever the descent lands on the reverting field.
 	const frameElementRevert = await rpc(state, "type", {
 		tab: revertTab.tab,
 		selector: "#rv",
 		text: REVERT_TEXT,
 	});
+	const frameFieldsAfterElementType = {
+		revert: await fieldValue(revertFrame, "frame-revert"),
+		lateRevert: await fieldValue(revertFrame, "frame-late-revert"),
+		setterOnly: await fieldValue(revertFrame, "frame-setter-only"),
+		mask: await fieldValue(revertFrame, "frame-mask"),
+		keep: await fieldValue(revertFrame, "frame-keep"),
+	};
 	check(
-		"type aimed at the multi-field iframe ELEMENT types nothing, and the reverting field stays empty",
+		"type aimed at the multi-field iframe ELEMENT is refused, never answered ok for text no frame field holds",
 		frameElementRevert.json?.ok === false &&
-			(await fieldValue(revertFrame, "frame-revert")) === "" &&
-			(await fieldValue(revertFrame, "frame-setter-only")) === "" &&
-			(await fieldValue(revertFrame, "frame-keep")) === "",
-		`type {selector: "#rv"} -> ${frameElementRevert.text}`,
+			Object.values(frameFieldsAfterElementType).every((value) => value === ""),
+		`type {selector: "#rv"} -> ${frameElementRevert.text}\nframe fields (read over devtools) -> ${JSON.stringify(frameFieldsAfterElementType)}`,
+	);
+
+	const lateRevert = await rpc(state, "type", {
+		tab: revertTab.tab,
+		selector: "#top-late-revert",
+		text: REVERT_TEXT,
+	});
+	const lateRevertField = await fieldValue(revertPage, "top-late-revert");
+	check(
+		"type at a top-document field that reverts the write 40 ms later is REFUSED, and the field reads back empty",
+		refusedAsNotHolding(lateRevert) && lateRevertField === "",
+		`type {selector: "#top-late-revert"} -> ${lateRevert.text}\ntop document #top-late-revert (read over devtools) -> ${JSON.stringify(lateRevertField)}`,
+	);
+	const frameLateRevert = await rpc(state, "type", {
+		tab: revertTab.tab,
+		selector: "iframe#rv >>> #frame-late-revert",
+		text: REVERT_TEXT,
+	});
+	const frameLateRevertField = await fieldValue(
+		revertFrame,
+		"frame-late-revert",
+	);
+	check(
+		"type at a cross-site frame field that reverts the write 40 ms later is REFUSED, and the field reads back empty from the frame's own target",
+		refusedAsNotHolding(frameLateRevert) && frameLateRevertField === "",
+		`type {selector: "iframe#rv >>> #frame-late-revert"} -> ${frameLateRevert.text}\nframe target #frame-late-revert (read over devtools) -> ${JSON.stringify(frameLateRevertField)}`,
 	);
 
 	// Controls: the same fallback must still LAND where the field keeps the write,
@@ -2659,6 +2711,34 @@ async function main() {
 			topKeep.json.result?.via === "insert_text" &&
 			(await fieldValue(revertPage, "top-keep")) === REVERT_TEXT,
 		`type {selector: "#top-keep"} -> ${topKeep.text}`,
+	);
+	const MASKED_TEXT = "4242 4242 4242 4242";
+	const topMask = await rpc(state, "type", {
+		tab: revertTab.tab,
+		selector: "#top-mask",
+		text: "4242424242424242",
+	});
+	const topMaskField = await fieldValue(revertPage, "top-mask");
+	check(
+		"the control: a masking field in the top document (digits grouped in fours) LANDS and reports the field's own formatted value",
+		topMask.json?.ok === true &&
+			topMask.json.result?.value === MASKED_TEXT &&
+			topMaskField === MASKED_TEXT,
+		`type {selector: "#top-mask", text: "4242424242424242"} -> ${topMask.text}\ntop document #top-mask (read over devtools) -> ${JSON.stringify(topMaskField)}`,
+	);
+	const frameMask = await rpc(state, "type", {
+		tab: revertTab.tab,
+		selector: "iframe#rv >>> #frame-mask",
+		text: "4242424242424242",
+	});
+	const frameMaskField = await fieldValue(revertFrame, "frame-mask");
+	check(
+		"the control: a masking field in the cross-site frame LANDS and reports the field's own formatted value, read back from the frame's own target",
+		frameMask.json?.ok === true &&
+			frameMask.json.result?.value === MASKED_TEXT &&
+			frameMask.json.result?.frame_origin === frameOrigin &&
+			frameMaskField === MASKED_TEXT,
+		`type {selector: "iframe#rv >>> #frame-mask", text: "4242424242424242"} -> ${frameMask.text}\nframe target #frame-mask (read over devtools) -> ${JSON.stringify(frameMaskField)}`,
 	);
 	await rpcOk(state, "close", { tab: revertTab.tab });
 
