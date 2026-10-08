@@ -444,6 +444,22 @@ export function installDevDriver(): string[] {
 				 */
 				browserPaneOpen: preferences.isBrowserPaneOpen,
 				rightSlotWidth: preferences.rightSlotWidth,
+				/*
+				 * WHICH CONVERSATION THE SLOT IS BOUND TO, AND WHAT IT REMEMBERS
+				 * (issue #894). The four flags above are that conversation's projection, so a
+				 * scene that needs to tell "this conversation has a panel" from "this
+				 * conversation has an entry" reads the memory: `rightSlotKey` is the bound
+				 * identity (null for a bound route with no conversation, and the field is
+				 * absent-to-null when nothing binds the store at all), and
+				 * `rightSlotMemory` is the `[key, pane]` pairs newest last, so an entry count
+				 * and a per-conversation pane are both readable without inferring them from
+				 * the frame.
+				 */
+				rightSlotKey: preferences.rightSlotKey ?? null,
+				rightSlotMemory: preferences.rightSlotMemory.map(([key, pane]) => [
+					key,
+					pane,
+				]),
 				activeSessionId: sessions.activeSessionId,
 				/*
 				 * WHERE THE ROW LIVES, for the scenes that come back to a conversation
