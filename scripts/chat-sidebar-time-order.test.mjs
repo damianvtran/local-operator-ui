@@ -90,6 +90,7 @@ const bundle = await build({
 
 const {
 	CHAT_LIST_SECTIONS,
+	STOPPED_ON_READER_CODES,
 	entityRows,
 	groupRows,
 	mergeRemoteRowsByActivity,
@@ -97,6 +98,7 @@ const {
 	pageOrder,
 	pageRows,
 	relativeTime,
+	runningOrderMs,
 	sectionOf,
 	sectionRows,
 	unpinnedRows,
@@ -779,20 +781,61 @@ test("T2 with no last_user_at the running order is birth order, ties by catalogu
 
 /* ---------------------------------------------- T3: show-more stability */
 
-test("T3 pressing the ladder reveals rows: every rung's page is a prefix of the next", () => {
+test("T3 pressing the ladder reveals rows: drawn rows keep their order and are never dropped", () => {
+	/*
+	 * NARROWED BY A1's EXEMPTION (agent review round 1). The old claim was a
+	 * strict PREFIX: rung k's page was a prefix of rung k+1's. With running rows
+	 * drawn in place wherever they sit, a newly revealed non-running row can land
+	 * ABOVE an already-drawn running row that sits later in the list - so the
+	 * claim splits into the three that are still exactly true, and the first two
+	 * are the ones the reader feels: nothing already on screen disappears, and
+	 * the drawn rows keep their relative order (rung k's sequence is a
+	 * subsequence of rung k+1's). What the strict prefix used to add on top is
+	 * that no row could appear ABOVE a drawn one, which the exemption
+	 * deliberately gives up (hiding live work is the worse failure - see A1).
+	 */
 	const rows = catalogue();
 	for (const arrangeAs of ["active", "created"]) {
-		for (const orderBy of ["active-first", "recent"]) {
+		for (const orderBy of ORDERS) {
 			const arranged = pageOrder(rows, orderBy, arrangeAs);
+			const runningIds = arranged
+				.filter((row) => isRunning(row))
+				.map((row) => row.session_id);
 			let previous = [];
 			for (const loads of RUNGS) {
 				const page = pageRows(arranged, { limit: pageLimit(loads) });
+				const drawn = page.rows.map((row) => row.session_id);
+				const label = `${arrangeAs}/${orderBy}: rung ${pageLimit(loads)}`;
+				// (i) every live turn is drawn, at every rung.
+				for (const id of runningIds) {
+					assert.ok(
+						drawn.includes(id),
+						`${label} withheld the live turn ${id}`,
+					);
+				}
+				// (ii) nothing already on screen disappears...
+				for (const id of previous) {
+					assert.ok(drawn.includes(id), `${label} dropped the drawn row ${id}`);
+				}
+				// (iii) ...and the drawn rows keep their relative order.
 				assert.deepEqual(
-					page.rows.map((row) => row.session_id).slice(0, previous.length),
-					previous.map((row) => row.session_id),
-					`${arrangeAs}/${orderBy}: rung ${pageLimit(loads)} displaced a visible row`,
+					drawn.filter((id) => previous.includes(id)),
+					previous,
+					`${label} re-ordered the rows already on screen`,
 				);
-				previous = page.rows;
+				// (iv) the quota bounds the non-running rows as one prefix.
+				const mundane = page.rows
+					.filter((row) => !isRunning(row))
+					.map((row) => row.session_id);
+				assert.deepEqual(
+					mundane,
+					arranged
+						.filter((row) => !isRunning(row))
+						.slice(0, mundane.length)
+						.map((row) => row.session_id),
+					`${label} drew a non-running row out of the ladder's order`,
+				);
+				previous = drawn;
 			}
 		}
 	}
@@ -952,4 +995,185 @@ test("T5 a nested running row older than the cut is exempt, drawn in the arrange
 	// that ordering is.
 	const lifted = pageOrder(rows, "active-first", "active");
 	assert.equal(lifted[0].session_id, "old-running");
+});
+
+/* ---------------------------- T6: the page never hides live work (A1) */
+
+/*
+ * AGENT REVIEW ROUND 1, A1 (MAJOR): `Most recent` could hide live work behind
+ * `Show more`. With no running exemption in `pageRows`, a running row whose key
+ * sorts past the rung was simply not drawn under `recent` - rung 10, 2 busy + 40
+ * completed, 0 busy drawn - while `origin/main` had drawn it because the
+ * catalogue's tier happened to put it top. The fix is the rule `entityRows`
+ * already uses: running rows cost no quota, so they are drawn IN PLACE and the
+ * limit bounds only the rows that are not live. These two tests are the repro,
+ * for both orders (and the second for the case the reviewer named: more running
+ * rows than the limit).
+ */
+const A1_BUSY = (id, over = {}) => ({
+	session_id: id,
+	title: `busy ${id}`,
+	status: { code: "busy", label: "Working" },
+	// OLD birth, no user message: the key that sorts it LAST under `recent`.
+	created_at: (NOW - 40 * 86_400) / 1000,
+	updated_at: (NOW - 60) / 1000,
+	...over,
+});
+const A1_DONE = (id, index) => ({
+	session_id: id,
+	title: `done ${index}`,
+	status: { code: "complete", label: "Done" },
+	created_at: (NOW - (index + 1) * 3600) / 1000,
+	updated_at: (NOW - (index + 1) * 1800) / 1000,
+});
+
+test("T6 a live turn is never behind the page cut, in both orders", () => {
+	const done = Array.from({ length: 40 }, (_, index) =>
+		A1_DONE(`done-${String(index).padStart(2, "0")}`, index),
+	);
+	// Interleaved: one busy row early, one at the very end, so the strays are
+	// tested at both edges of the page.
+	const rows = [
+		done[0],
+		A1_BUSY("busy-early"),
+		...done.slice(1),
+		A1_BUSY("busy-late"),
+	];
+	/*
+	 * THE REVIEWER'S REPRO FIRST, for both orders, before any other assertion can
+	 * fire: under `recent` the busy rows sort past the cut (old birth, no user
+	 * message) and under the pre-fix page NOTHING live was drawn at rung 10.
+	 */
+	for (const orderBy of ORDERS) {
+		const drawn = pageRows(pageOrder(rows, orderBy, "active"), {
+			limit: 10,
+		}).rows.map((row) => row.session_id);
+		assert.ok(
+			drawn.includes("busy-early") && drawn.includes("busy-late"),
+			`${orderBy}: a live turn fell behind the cut (drawn ${drawn.length} of ${rows.length}: [${drawn.join(", ")}])`,
+		);
+	}
+	/*
+	 * THE CLOSED FORM the page now IS, asserted directly: the first ten rows of
+	 * the arrangement, plus every running row the window did not reach - drawn in
+	 * place, so the drawn set is a subsequence of the arranged list. (The
+	 * entityRows-shaped alternative - running rows costing no quota - was
+	 * implemented and MEASURED: it makes the page size a function of the live
+	 * set, evicting the tail row on every completion; the geometry rig turned
+	 * three cells red on the one-row clamps. `chat-sidebar-view.ts`'s `pageRows`
+	 * carries that measurement.)
+	 */
+	for (const orderBy of ORDERS) {
+		const arranged = pageOrder(rows, orderBy, "active");
+		const page = pageRows(arranged, { limit: 10 });
+		const drawn = page.rows.map((row) => row.session_id);
+		assert.deepEqual(
+			drawn,
+			arranged
+				.filter((row, index) => index < 10 || isRunning(row))
+				.map((row) => row.session_id),
+			`${orderBy}: the page is not the window plus the live rows beyond it`,
+		);
+		assert.deepEqual(
+			drawn,
+			arranged
+				.filter((row) => drawn.includes(row.session_id))
+				.map((row) => row.session_id),
+			`${orderBy}: a drawn row is out of the arranged order`,
+		);
+		// And the foot's own number agrees with what is actually drawn.
+		assert.equal(
+			page.remaining,
+			rows.length - drawn.length,
+			`${orderBy}: remaining does not count what is withheld`,
+		);
+	}
+});
+
+test("T6 more live rows than the window: every one draws, and the window grows cleanly", () => {
+	const running = Array.from({ length: 12 }, (_, index) =>
+		A1_BUSY(`run-${String(index).padStart(2, "0")}`, {
+			created_at: (NOW - (index + 1) * 86_400) / 1000,
+		}),
+	);
+	const done = Array.from({ length: 30 }, (_, index) =>
+		A1_DONE(`done-${String(index).padStart(2, "0")}`, index),
+	);
+	const rows = [...done.slice(0, 5), ...running, ...done.slice(5)];
+	for (const orderBy of ORDERS) {
+		const arranged = pageOrder(rows, orderBy, "active");
+		const page = pageRows(arranged, { limit: 10 });
+		// Every live row draws...
+		assert.equal(
+			page.rows.filter((row) => isRunning(row)).length,
+			12,
+			`${orderBy}: a live turn was dropped when the band outnumbers the page`,
+		);
+		// ...in place, as the window plus strays (under `active-first` the twelve
+		// running rows fill the whole window and no completed row is drawn yet).
+		assert.deepEqual(
+			page.rows.map((row) => row.session_id),
+			arranged
+				.filter((row, index) => index < 10 || isRunning(row))
+				.map((row) => row.session_id),
+			`${orderBy}: the window-plus-strays shape does not hold past the window`,
+		);
+		// Pressing once: the window reaches past the running band.
+		const more = pageRows(arranged, { limit: pageLimit(1) });
+		assert.ok(
+			more.rows.filter((row) => !isRunning(row)).length > 0,
+			`${orderBy}: the first press still reveals no completed row`,
+		);
+	}
+});
+
+/* ------------------- the guards round 1 found unguarded (A6) */
+
+test("runningOrderMs refuses a zero, negative or NaN last-user stamp", () => {
+	const born = (NOW - 3 * 3600) / 1000;
+	const base = { session_id: "x", status: { code: "busy" }, created_at: born };
+	/*
+	 * THE GUARD THE REVIEW FOUND UNTESTED: removing `lastUser > 0` left the file
+	 * green, and the failure mode is the `56y` class one layer down - a zero is
+	 * the wire's "no claim" and must fall through to the birth, never key the row
+	 * at 1970 and never make it sort as if it were exactly that old.
+	 */
+	assert.equal(runningOrderMs({ ...base }), born * 1000);
+	assert.equal(
+		runningOrderMs({ ...base, last_user_at: 0 }),
+		born * 1000,
+		"zero is no claim",
+	);
+	assert.equal(
+		runningOrderMs({ ...base, last_user_at: -60 }),
+		born * 1000,
+		"negative is no claim",
+	);
+	assert.equal(
+		runningOrderMs({ ...base, last_user_at: Number.NaN }),
+		born * 1000,
+		"NaN is no claim",
+	);
+	assert.equal(
+		runningOrderMs({ ...base, last_user_at: born + 60 }),
+		(born + 60) * 1000,
+		"a real user-message stamp is the key",
+	);
+});
+
+test("the needs-you band is a subset of the running codes", () => {
+	/*
+	 * WHY THIS IS ITS OWN TEST: `pageOrder` reads the two sets in order -
+	 * `isStoppedOnReader` first, then `isRunningRow` - so a code that stopped on
+	 * the reader but dropped out of the running set would be lifted to lane 0
+	 * while every OTHER rule (the page cut's exemption, the Running section's
+	 * membership) treated it as an ordinary row. That split is the bug this
+	 * pins: the band and the set must agree about which rows are live.
+	 */
+	for (const code of STOPPED_ON_READER_CODES) {
+		assert.ok(
+			RUNNING.has(code),
+			`${code} stops on the reader but is not a running code`,
+		);
+	}
 });
