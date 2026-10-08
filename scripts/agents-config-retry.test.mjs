@@ -19,7 +19,7 @@ import React, { act } from "react";
  * frame cannot hold that distinction and a still cannot tell the states apart,
  * so the rule is pinned here against the REAL composer.
  *
- * WHAT IS REAL: the shipped `ConfigComposer`, `RunStrip` and `RunSummary`, the
+ * WHAT IS REAL: the shipped `ConfigComposer`, its status row and `RunSummary`, the
  * `Button`/`Badge`/`Textarea` primitives and `cn`. What is faked, and only that:
  * the run handle itself, which is a plain object in every case — the states
  * under test are decisions about a value, not about a hook.

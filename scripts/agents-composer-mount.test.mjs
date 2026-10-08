@@ -312,7 +312,7 @@ const mountBlocked = async (run, blockedReason) => {
 	return { host, root };
 };
 
-const mount = async (run) => {
+const mount = async (run, { hero = false } = {}) => {
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = createRoot(host);
@@ -331,6 +331,7 @@ const mount = async (run) => {
 				{ client: queryClient },
 				React.createElement(ConfigComposer, {
 					run,
+					hero,
 					about: null,
 					onClearAbout: () => undefined,
 				}),
@@ -568,23 +569,44 @@ test("the disabled gate's box never claims an agent is busy", async () => {
 	}
 });
 
-test("the invitation names no object, so neither pane contradicts itself", async () => {
+test("the invitation is true on both tabs: object-free in the hero, both objects when docked", async () => {
 	/*
 	 * U2 (UX review round 3): the heading above the box is per-pane ("Ask for an
 	 * agent" / "Ask for a team") while the box serves both, so an invitation that
-	 * names either object first makes the Teams pane's focal control ask for an
-	 * AGENT. A wording that names no object is true on both; this pins it, and
-	 * pins that it is the object-neutral one rather than a re-order.
+	 * names ONE object first makes the Teams pane's focal control ask for an AGENT.
+	 *
+	 * UX review round 1 (this PR), U2 narrows what that pinned. The HERO arm keeps
+	 * the object-free words (its heading and chips stand beside it). The DOCKED arm
+	 * lost both, so under an open team "Describe what you want" read like messaging
+	 * that team; it now names the job. The round-3 rule survives as: it never names
+	 * ONE object, so it cannot contradict whichever tab is open - it must name
+	 * both, or neither.
 	 */
+	const hero = await mount(handle().run, { hero: true });
+	try {
+		const placeholder =
+			hero.host.querySelector("textarea")?.getAttribute("placeholder") ?? "";
+		assert.doesNotMatch(
+			placeholder,
+			/agent|team/i,
+			`the hero invitation names no object (got ${placeholder})`,
+		);
+	} finally {
+		await act(async () => hero.root.unmount());
+	}
 	const { run } = handle();
 	const { host, root } = await mount(run);
 	try {
 		const placeholder =
 			host.querySelector("textarea")?.getAttribute("placeholder") ?? "";
-		assert.doesNotMatch(
+		assert.match(
 			placeholder,
-			/agent|team/i,
-			`the invitation names no object (got ${placeholder})`,
+			/change/i,
+			`the docked box names the job, a change (got ${placeholder})`,
+		);
+		assert.ok(
+			/agent/i.test(placeholder) === /team/i.test(placeholder),
+			`and names both objects or neither, never one (got ${placeholder})`,
 		);
 	} finally {
 		await act(async () => root.unmount());
@@ -713,12 +735,20 @@ test("a live run cannot be sent a second request from the box", async () => {
 test("a blocked box that already holds a draft still says why", async () => {
 	/*
 	 * F4: the reason can only be read off a PLACEHOLDER while the box is EMPTY,
-	 * and a draft now survives leaving the page (constant key, U2) — so a reader
+	 * and a draft now survives leaving the page (constant key, U2) - so a reader
 	 * can arrive with text in the box and then open an Edit, which leaves them
 	 * holding a readOnly box with their own words in it and no explanation on
-	 * screen. The sentence moves into the band for that state, exactly once:
-	 * the placeholder is not painted on a non-empty control, so the two can
+	 * screen. The sentence moves out of the placeholder for that state, exactly
+	 * once: the placeholder is not painted on a non-empty control, so the two can
 	 * never both show.
+	 *
+	 * UX review round 1 (this PR), U3 MOVED WHERE IT GOES. The band used to print
+	 * it as its own meta line (`#composer-host-blocked-reason`) ABOVE the status
+	 * row, which stacked it on the row's standing promise and made the dock a line
+	 * taller than an empty box's. The status row's sentence slot now carries it
+	 * (`#config-composer-note`, already the box's description), so "exactly once"
+	 * and "the box is described by it" are asserted against that node, and the old
+	 * band node is asserted ABSENT - a second copy returning is the regression.
 	 */
 	const { run } = handle();
 	const { host, root, render } = await mountToggle(run);
@@ -729,17 +759,28 @@ test("a blocked box that already holds a draft still says why", async () => {
 		const text = host.textContent ?? "";
 		const shown = text.match(/Finish or cancel your edit first\./g) ?? [];
 		assert.equal(shown.length, 1, "the reason is said exactly once");
-		/*
-		 * NIT-1: the sentence a reader with a draft meets must also be PROGRAMMATIC,
-		 * because the placeholder is not announced on a control that has a value.
-		 */
-		const named = host.querySelectorAll("#composer-host-blocked-reason");
-		assert.equal(named.length, 1, "the reason's node is named exactly once");
+		const note = host.querySelector("#config-composer-note");
+		assert.match(
+			note?.textContent ?? "",
+			/Finish or cancel your edit first\./,
+			"and it is said by the status row's sentence",
+		);
+		assert.equal(
+			host.querySelectorAll("#composer-host-blocked-reason").length,
+			0,
+			"the band does not print a second copy above the row",
+		);
 		assert.ok(
 			(box.getAttribute("aria-describedby") ?? "").includes(
-				"composer-host-blocked-reason",
+				"config-composer-note",
 			),
 			`the box is described by it (got ${box.getAttribute("aria-describedby")})`,
+		);
+		assert.ok(
+			!(box.getAttribute("aria-describedby") ?? "").includes(
+				"composer-host-blocked-reason",
+			),
+			"and not by an id whose node is not rendered",
 		);
 	} finally {
 		await act(async () => root.unmount());
