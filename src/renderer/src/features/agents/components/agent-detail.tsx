@@ -150,8 +150,10 @@ function changedFields(base: Draft, draft: Draft): Record<string, unknown> {
  *
  * It was a row of bordered badges (source, Modified, Specialist, Delegates, N
  * tools), which put four or five boxes under the title that looked like controls
- * and cost a second line of height. The facts are the same; they are now
- * dot-separated text in the muted ink, and only a state that needs attention
+ * and cost a second line of height. The facts are the same, minus the tool
+ * count (the Tools section directly below lists the tools, so a number here said
+ * the same thing in a worse place); they are now dot-separated text in the muted
+ * ink, and only a state that needs attention
  * keeps a badge - `Modified` (the definition has diverged from its packaged
  * copy, which is what a hub pull would overwrite) is the one such state here.
  *
@@ -164,11 +166,6 @@ function AgentMeta({ profile }: { profile: ReusableProfile }) {
 		classOf(profile) === "proactive" ? CLASS_LABEL.proactive : null,
 		profile.delegate ? "Delegates" : null,
 		profile.kind === "specialist" ? "Specialist" : null,
-		profile.tools && profile.tools.length > 0
-			? profile.tools.length === 1
-				? "1 tool"
-				: `${profile.tools.length} tools`
-			: null,
 	].filter(Boolean);
 	return (
 		<div className="flex flex-wrap items-center gap-x-2 gap-y-1">

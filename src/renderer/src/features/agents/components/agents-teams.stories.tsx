@@ -317,16 +317,22 @@ const LIVE_CAPABILITIES = {
  * was a picture of the rig rather than the page. Over the catalogue above. Built once per mount for the same reason theirs is: a
  * capture sweep re-renders the story once per theme.
  */
-const Scene: FC<{ at: string; children?: ReactNode }> = ({ at, children }) => {
+const Scene: FC<{
+	at: string;
+	children?: ReactNode;
+	/** Teams appended to the shared catalogue for ONE story, so the other frames'
+	 *  rosters stay exactly what the before frames photographed. */
+	extraTeams?: ReusableTeam[];
+}> = ({ at, children, extraTeams = [] }) => {
 	const rows = useRef<WorldProfile[] | null>(null);
 	rows.current ??= AGENTS.map((row) => ({ ...row }));
 	// A LAYOUT effect so the bridge exists before any query effect reads it.
 	useLayoutEffect(() => {
 		installBridge(rows.current as WorldProfile[], {
-			teams: TEAMS,
+			teams: [...TEAMS, ...extraTeams],
 			capabilities: LIVE_CAPABILITIES,
 		});
-	}, []);
+	}, [extraTeams]);
 	return (
 		<div className="flex h-screen flex-col overflow-hidden bg-canvas">
 			{/*
@@ -671,6 +677,38 @@ export const TeamStopRefused: Story = {
 					Boolean(document.querySelector('[data-testid="config-stop-refused"]'))
 				}
 			/>
+		</Scene>
+	),
+};
+
+/**
+ * A team that exercises what the others do not: a member counted twice (the
+ * roster and the detail must print the same number, 4 not 3), a member and a
+ * manager that resolve to nothing on this machine (the two "Not found" marks), and
+ * a name long enough to need truncating beside the header actions.
+ */
+const AWKWARD_TEAM = team(
+	"release-crew-for-the-quarterly-platform-migration-programme-office",
+	"Ships the quarterly migration.",
+	"former-manager",
+	["coder", "reviewer", "no-such-agent"],
+	{ instructions: "Ship it carefully." },
+);
+AWKWARD_TEAM.members = [
+	{ role: "coder", count: 2, kind: "agent" },
+	{ role: "reviewer", count: 1, kind: "agent" },
+	{ role: "no-such-agent", count: 1, kind: "agent" },
+];
+const AWKWARD_EXTRA = [AWKWARD_TEAM];
+
+/** COUNT AGREEMENT, NOT FOUND, LONG NAME: see `AWKWARD_TEAM`. */
+export const TeamAwkward: Story = {
+	render: () => (
+		<Scene
+			at={`/agents?kind=team&name=${AWKWARD_TEAM.name}`}
+			extraTeams={AWKWARD_EXTRA}
+		>
+			<HoldShutterUntil done={paneSays("Ship it carefully")} />
 		</Scene>
 	),
 };
