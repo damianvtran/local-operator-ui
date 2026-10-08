@@ -807,9 +807,13 @@ liveness model would each exist twice and drift.
   `isBrowserPaneOpen` (`ui-preferences-store.ts:250-271` — the comment there
   already anticipates a third term). Width: a new `browserPanelWidth`, default
   `640`, clamped by the divider (`minWidth={480}`), because a page at 420px is
-  not a page. The pane persists open across conversation switches, exactly as the
-  canvas does and for the reason the store already records (`:63-70`): the slot
-  belongs to the window, the content follows the conversation.
+  not a page. The pane is remembered **per conversation** (issue #894): the slot's
+  occupant is restored when the user returns to a conversation, and a conversation
+  that never opened the pane shows none. That **inverts** the rule this section
+  first recorded — "the slot belongs to the window, the content follows the
+  conversation", so the pane persisted open across switches — because a session
+  with no browser of its own was being handed one it had never opened. What stays
+  the window's is the shared **width** (#677).
 - **The rail's Browser item stays** (`sidebar-navigation.tsx:134-142`) and keeps
   navigating to `/browser`.
 - **A consent banner click keeps navigating to `/browser`** (`app.tsx:185-188`,
