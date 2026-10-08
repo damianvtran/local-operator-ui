@@ -712,11 +712,17 @@ export { COMPOSER_TEXTAREA_SELECTOR };
 /**
  * Whether a press landed somewhere the ask lane speaks for.
  *
- * `true` for the ask PANEL, for the composer's own textarea (the box this lane
- * answers from, via `composer-field.ts` - the same module
- * `use-interrupt-on-escape.ts` asks), for the row item that expands the panel, and
- * for a target with no element (the body, a synthetic event, an already-unmounted
- * source).
+ * `true` for the ask PANEL, for the composer's own textarea (via
+ * `composer-field.ts` - the same module `use-interrupt-on-escape.ts` asks), for the
+ * row item that expands the panel, and for a target with no element (the body, a
+ * synthetic event, an already-unmounted source).
+ *
+ * THE COMPOSER IS HERE BECAUSE OF THE INTERRUPT LADDER, NOT BECAUSE IT ANSWERS: the
+ * composer used to be this lane's answer box (design 5.0's R7, retired 2026-10-07)
+ * and no longer is, but the ladder still EXEMPTS its textarea from
+ * `ownsEscapeOutsideComposer`, so an Escape pressed there with the drawer open would
+ * stop the running turn while the drawer stayed open. A queued ask exists while a
+ * turn is live, so claiming the press for the collapse is still the right reading.
  *
  * THE TRIGGER IS ITS OWN CLAUSE rather than a second mark on the panel: an Escape
  * with the keyboard on the chip must still collapse what the chip opened, and the
