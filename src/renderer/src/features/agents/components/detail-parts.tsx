@@ -176,18 +176,30 @@ export function SourceChip({
 	source: "builtin" | "installed" | "custom";
 	appearance?: "chip" | "text";
 }) {
-	const label =
-		source === "builtin"
-			? "Built-in"
-			: source === "installed"
-				? "Installed"
-				: "Custom";
+	const label = sourceLabel(source);
 	if (appearance === "text") {
 		return <span className="shrink-0 text-meta text-ink-dim">{label}</span>;
 	}
 	// `neutral` for every source on purpose: this is a statement of fact, not a
 	// warning, and a colour step per source would rank three equally valid states.
 	return <Badge variant="neutral">{label}</Badge>;
+}
+
+/**
+ * The word for a definition's source, spelled once.
+ *
+ * It has three readers - the roster's right edge, the chip, and the detail
+ * header's meta line - and three spellings of "Built-in" would be the kind of
+ * drift the shared roster / detail vocabulary exists to prevent.
+ */
+export function sourceLabel(
+	source: "builtin" | "installed" | "custom",
+): string {
+	return source === "builtin"
+		? "Built-in"
+		: source === "installed"
+			? "Installed"
+			: "Custom";
 }
 
 /**
@@ -315,12 +327,23 @@ export function EditFooter({
 	}, [dirty, isControlled, onConfirmingChange]);
 
 	return (
-		// `-mx-6` cancels the scroller's SIDE padding so the bar spans the pane's
-		// full width; the scroller carries no bottom padding (see the page's own
-		// note), which is what keeps content from showing in a band under the bar.
+		/*
+		 * THE FOOTER LIVES INSIDE THE COLUMN (design spec s4, D12). It used to cancel
+		 * the scroller's side padding with `-mx-6` so its rule ran the pane's full
+		 * width, which made it the one object in the pane with a different left edge
+		 * from everything above it: Save sat 24 px left of the Name field at 1440.
+		 * Inside the measure wrapper the rule, Save and the fields share one edge, and
+		 * the scroller carries no bottom padding (see the page's note), which is what
+		 * keeps content from showing in a band under the bar.
+		 *
+		 * `data-lo-pane-footer` is how the pane's bottom edge fade stands down: the
+		 * footer is `sticky` INSIDE the scroller, so a mask on the scroller would dim
+		 * the Save button itself (`index.css`).
+		 */
 		<div
 			data-testid="edit-footer"
-			className="sticky bottom-0 z-10 -mx-6 mt-6 flex flex-wrap items-center gap-2 border-hairline border-t bg-canvas px-6 py-3"
+			data-lo-pane-footer
+			className="sticky bottom-0 z-10 flex flex-wrap items-center gap-2 border-hairline border-t bg-canvas py-3"
 		>
 			<Button
 				ref={primaryRef}
@@ -365,7 +388,7 @@ export function EditFooter({
 				</Button>
 			)}
 			{dirty && !isConfirming ? (
-				<span className="text-meta text-ink-muted">Unsaved changes</span>
+				<span className="ml-auto text-meta text-ink-dim">Unsaved changes</span>
 			) : null}
 		</div>
 	);
@@ -409,7 +432,7 @@ export function RosterSkeleton({ rows = 6 }: { rows?: number }) {
 	return (
 		<div className="space-y-1" aria-hidden="true">
 			{SKELETON_ROWS.slice(0, rows).map((key) => (
-				<Skeleton key={key} className="h-11 w-full" />
+				<Skeleton key={key} className="h-12 w-full" />
 			))}
 		</div>
 	);

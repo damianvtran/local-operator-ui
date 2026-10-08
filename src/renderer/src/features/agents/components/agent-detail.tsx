@@ -36,6 +36,12 @@ import {
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@shared/components/ui/dropdown-menu";
 import { Input } from "@shared/components/ui/input";
 import { SearchableSelect } from "@shared/components/ui/searchable-select";
 import {
@@ -50,7 +56,7 @@ import { Textarea } from "@shared/components/ui/textarea";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
-import { LogIn } from "lucide-react";
+import { LogIn, MoreHorizontal } from "lucide-react";
 import {
 	type FormEvent,
 	type Ref,
@@ -63,6 +69,7 @@ import { useNavigate } from "react-router-dom";
 import {
 	type ActionClass,
 	BUILTIN_SWITCH_DISCLOSURE,
+	CLASS_LABEL,
 	CLASS_MEANING,
 	CLASS_SWITCH_EFFECT,
 	ClassSwitchError,
@@ -80,9 +87,9 @@ import {
 	FieldLabel,
 	ReadBlock,
 	Section,
-	SourceChip,
 	consumeHeadingFocus,
 	requestHeadingFocus,
+	sourceLabel,
 	useEscapeToCancel,
 } from "./detail-parts";
 
@@ -138,24 +145,36 @@ function changedFields(base: Draft, draft: Draft): Record<string, unknown> {
 	return changed;
 }
 
-/** Chips for a profile, only where a value is worth saying (design D3). */
-function AgentChips({ profile }: { profile: ReusableProfile }) {
+/**
+ * The agent's one meta line: facts, as words (design spec s4, D8).
+ *
+ * It was a row of bordered badges (source, Modified, Specialist, Delegates, N
+ * tools), which put four or five boxes under the title that looked like controls
+ * and cost a second line of height. The facts are the same; they are now
+ * dot-separated text in the muted ink, and only a state that needs attention
+ * keeps a badge - `Modified` (the definition has diverged from its packaged
+ * copy, which is what a hub pull would overwrite) is the one such state here.
+ *
+ * "Proactive" is the roster's word for the class (`CLASS_LABEL`), not a second
+ * spelling; reactive is the default and is not said.
+ */
+function AgentMeta({ profile }: { profile: ReusableProfile }) {
+	const facts = [
+		sourceLabel(profile.source),
+		classOf(profile) === "proactive" ? CLASS_LABEL.proactive : null,
+		profile.delegate ? "Delegates" : null,
+		profile.kind === "specialist" ? "Specialist" : null,
+		profile.tools && profile.tools.length > 0
+			? profile.tools.length === 1
+				? "1 tool"
+				: `${profile.tools.length} tools`
+			: null,
+	].filter(Boolean);
 	return (
-		<div className="flex flex-wrap items-center gap-1.5">
-			<SourceChip source={profile.source} />
+		<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+			<p className="text-body-sm text-ink-muted">{facts.join(" · ")}</p>
 			{profile.divergent_fields?.length ? (
 				<Badge variant="warning">Modified</Badge>
-			) : null}
-			{profile.kind === "specialist" ? (
-				<Badge variant="neutral">Specialist</Badge>
-			) : null}
-			{profile.delegate ? <Badge variant="neutral">Delegates</Badge> : null}
-			{profile.tools && profile.tools.length > 0 ? (
-				<Badge variant="neutral">
-					{profile.tools.length === 1
-						? "1 tool"
-						: `${profile.tools.length} tools`}
-				</Badge>
 			) : null}
 		</div>
 	);
@@ -776,16 +795,23 @@ export function AgentDetail({
 	const readOnly = profile.source === "builtin";
 
 	return (
-		<div className="max-w-3xl space-y-6">
+		/*
+		 * NO WIDTH OR PADDING HERE: the page wraps every pane in the chat column's
+		 * container and measure (see the team pane), so this pane's edges ARE the
+		 * docked box's.
+		 */
+		<div className="space-y-8">
 			<header className="space-y-3">
 				<div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-					<div className="min-w-0 space-y-2">
+					<div className="min-w-0 flex-[1_1_16rem] space-y-1">
 						{/* The page's only h1 is the page title; a definition's name is a
 						    second-level heading (design D9). */}
 						<h2
 							ref={headingRef}
 							tabIndex={-1}
-							className="text-title focus:outline-none"
+							// A long name truncates instead of wrapping under the actions.
+							title={displayedName}
+							className="truncate text-title focus:outline-none"
 						>
 							{displayedName}
 						</h2>
@@ -795,62 +821,81 @@ export function AgentDetail({
 						 * (design review round 1, D10). The box keeps it, because the box is
 						 * titled by the question the sentence answers.
 						 */}
-						<AgentChips profile={profile} />
+						<AgentMeta profile={profile} />
 					</div>
 					{/*
-					 * ONE PRIMARY ACTION ABOVE THE FOLD (design D5). Every control here
-					 * used to carry the same outline weight and Save sat at y=942 in an
-					 * 868px viewport, so nothing said what the page was for.
+					 * ONE PRIMARY, ONE SECONDARY, ONE QUIET - and none while the form is open
+					 * (design D5; spec D8). The primary while editing is Save changes in the
+					 * footer, and a second accent fill in the same frame split the decision.
+					 * `h-6.5` is the title's own line box, so the 32 px buttons centre on the
+					 * TITLE line and not on the title-plus-meta block.
 					 */}
-					<div className="flex flex-wrap items-center gap-2">
-						<Button
-							variant="primary"
-							onClick={() => {
-								useCanonicalSessionsStore
-									.getState()
-									.stageDraft({ kind: "agent", name: profile.name });
-								navigate("/chat");
-							}}
-						>
-							New chat
-						</Button>
-						{readOnly ? (
-							<Button variant="secondary" onClick={install} disabled={pending}>
-								<LogIn className="size-4" />
-								{pending ? "Installing…" : "Install to edit"}
-							</Button>
-						) : (
+					{editing ? null : (
+						<div className="flex h-6.5 shrink-0 items-center gap-2">
 							<Button
-								variant="secondary"
+								variant="primary"
 								onClick={() => {
-									setEditing(true);
-									setError(null);
-									setErrorField(null);
+									useCanonicalSessionsStore
+										.getState()
+										.stageDraft({ kind: "agent", name: profile.name });
+									navigate("/chat");
 								}}
 							>
-								Edit
+								New chat
 							</Button>
-						)}
-						{/*
-						 * Duplicate, named for what it does. "Extend" did not say it made a
-						 * copy (UX NIT 1) and, worse, it carried the on-screen draft's
-						 * invalid values and stale error into the new record (U9) while
-						 * keeping the original's name (U10), so it silently shadowed a
-						 * built-in. This takes the FETCHED record, and the create pane
-						 * suggests a name that cannot collide.
-						 */}
-						<Button variant="ghost" onClick={() => onDuplicate(profile)}>
-							Duplicate as new agent
-						</Button>
-						{askEnabled ? (
-							<Button
-								variant="ghost"
-								onClick={() => onAskAgent(`Change the agent ${profile.name}: `)}
-							>
-								Ask for a change
-							</Button>
-						) : null}
-					</div>
+							{readOnly ? (
+								<Button
+									variant="secondary"
+									onClick={install}
+									disabled={pending}
+								>
+									<LogIn className="size-4" />
+									{pending ? "Installing…" : "Install to edit"}
+								</Button>
+							) : (
+								<Button
+									variant="secondary"
+									onClick={() => {
+										setEditing(true);
+										setError(null);
+										setErrorField(null);
+									}}
+								>
+									Edit
+								</Button>
+							)}
+							{askEnabled ? (
+								<Button
+									variant="ghost"
+									onClick={() =>
+										onAskAgent(`Change the agent ${profile.name}: `)
+									}
+								>
+									Ask for a change
+								</Button>
+							) : null}
+							{/*
+							 * DUPLICATE MOVED INTO AN OVERFLOW MENU (spec s4): four text
+							 * buttons spanned 452 px of a 688 px column, and the fourth is the
+							 * rarest. Named for what it does, not "Extend" (UX NIT 1): it makes
+							 * a copy, takes the FETCHED record (U9), and the create pane
+							 * suggests a name that cannot collide (U10), so it never silently
+							 * shadows a built-in.
+							 */}
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button variant="ghost" size="icon" aria-label="More actions">
+										<MoreHorizontal aria-hidden="true" />
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end">
+									<DropdownMenuItem onSelect={() => onDuplicate(profile)}>
+										Duplicate as new agent
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						</div>
+					)}
 				</div>
 				{readOnly ? (
 					<Alert variant="info">
@@ -905,7 +950,7 @@ export function AgentDetail({
 					event.preventDefault();
 					void save(event);
 				}}
-				className="space-y-6"
+				className="space-y-8"
 			>
 				{editing ? (
 					<>
@@ -955,7 +1000,7 @@ export function AgentDetail({
 									/>
 									<span>May delegate to subagents</span>
 								</div>
-								<div className="max-w-sm space-y-1">
+								<div className="space-y-1">
 									<FieldLabel
 										label="Effort tier"
 										htmlFor="agent-effort"
@@ -1354,7 +1399,7 @@ export function AgentCreate({
 	const title = initial ? "Duplicate as a new agent" : "New agent";
 
 	return (
-		<div className="max-w-3xl space-y-6">
+		<div className="space-y-8">
 			<header className="space-y-2">
 				<h2 className="text-title">{title}</h2>
 				<p className="text-body-sm text-ink-muted">
@@ -1385,7 +1430,7 @@ export function AgentCreate({
 					event.preventDefault();
 					void save(event);
 				}}
-				className="space-y-6"
+				className="space-y-8"
 			>
 				<Section title="Name and role">
 					<div className="grid gap-4 sm:grid-cols-2">
@@ -1469,7 +1514,7 @@ export function AgentCreate({
 							/>
 							<span>May delegate to subagents</span>
 						</div>
-						<div className="max-w-sm space-y-1">
+						<div className="space-y-1">
 							<FieldLabel label="Effort tier" htmlFor="agent-create-effort" />
 							<SearchableSelect
 								ariaLabel="Effort tier"
