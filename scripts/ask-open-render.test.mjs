@@ -670,6 +670,34 @@ test("E2/E3 - the same, when the pane mounts with the frame already resolved", a
 	assert.ok(view.drawer() !== null);
 });
 
+test("E2/E3 - settling the record at mount means the carried drawer is never closed and re-opened", async (t) => {
+	const view = await rig(t);
+	const waved = await dismissThenCarry(view);
+	/*
+	 * THE END STATE CANNOT TELL THESE TWO PATHS APART, which is why the case before this one
+	 * passes either way: without the mount-time settle the layout effect closes the carried
+	 * drawer (the record still reads as held), and the passive effect then opens it again for
+	 * the new batch - the same open drawer, one close-and-reopen later. That beat is a frame
+	 * of the asks vanishing and returning on the one conversation that is supposed to get a
+	 * fresh look, so the observable is the flag's WRITES: from the moment the pane mounts, the
+	 * drawer flag must never read `false`.
+	 */
+	const seen = [];
+	const stop = useUiPreferencesStore.subscribe((state) => {
+		seen.push(state.isAskDrawerOpen);
+	});
+	t.after(stop);
+	await view.show("c-a", withRows([answered(waved), ask("open")]));
+	stop();
+	assert.equal(
+		seen.includes(false),
+		false,
+		`the carried drawer was closed on the way to being opened again (writes: ${JSON.stringify(seen)})`,
+	);
+	assert.equal(view.flag(), true);
+	assert.ok(view.drawer() !== null);
+});
+
 test("U2 - a truncated frame cannot prove a record stale, so a refill beside it stays shut", async (t) => {
 	const view = await rig(t);
 	const a = ask("open");
