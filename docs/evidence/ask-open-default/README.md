@@ -163,12 +163,13 @@ committed frames show. Both suites are registered in `test:desktop`;
 `scripts/test-inventory.test.mjs` refuses an unregistered suite.
 
 `harness/mutate.py` is the fail-on-old reading, per rule. M0 is the old tree in one line (the
-hook returns before doing anything); M1-M19 are one exact-text replacement each in shipped
+hook returns before doing anything); M1-M21 are one exact-text replacement each in shipped
 source, asserted to match exactly once, restored byte-for-byte, and run against both suites.
-`harness/mutation-results.json` is its output at `288eae9727a`, the last commit to touch `src/` or
-`scripts/`: the control passes 70 of 70, and every one of the 20 mutants fails at least one
-test, with no survivor. The old tree
-(M0) fails 20 of the 70, among them:
+`harness/mutation-results.json` is its output at `800bb23a075` (the commit that added M20 and M21;
+its `src/`, `scripts/` and `package.json` are identical to `288eae9727a`, the last commit to touch
+them, which `git diff 288eae9727a 800bb23a075 -- src scripts package.json` shows as empty): the
+control passes 70 of 70, and every one of the 22 mutants fails at least one test, with no survivor.
+The old tree (M0) fails 20 of the 70, among them:
 
 ```
 state 2 - pending on open: the drawer opens by itself, once
@@ -184,6 +185,8 @@ that could not fail for the thing it was named after: the two survivors of the f
 `1cb3ef3` exists), and the render suite's own `state 1`, which asserted the flag's end value and
 so passed under M1 because the drawer closes itself over an empty queue, writing `true` then
 `false` (`288eae9`: it now requires that no write ever reads `true`).
+Rule 2's "once" latch has two halves and a mutant for each (M20 never reads the decision, M21 never
+records it); they were added by hand-probing and not from a survivor, and fail 10 and 9 tests.
 
 ## Re-deriving the frames
 

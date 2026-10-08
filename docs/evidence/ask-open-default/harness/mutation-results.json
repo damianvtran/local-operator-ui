@@ -1,5 +1,5 @@
 {
- "head": "288eae9727a97c08fee9afff4616ca8cc5c4c4ff",
+ "head": "800bb23a075dd3053a74d1ad40b8c105d9c5c88e",
  "treeClean": true,
  "results": [
   {
@@ -383,6 +383,49 @@
    },
    "fails": [
     "a close over nothing refused nothing: only a close over asks, named or not, is a record"
+   ]
+  },
+  {
+   "id": "M20",
+   "title": "the view never reads its own decision, so every later frame decides again (rule 2: once)",
+   "rc": 1,
+   "tally": {
+    "tests": 70,
+    "pass": 60,
+    "fail": 10
+   },
+   "fails": [
+    "state 1 - no asks on open: closed, and an ask that arrives later does not open it",
+    "state 2 - pending on open: opens, once, and then lets go",
+    "state 3 - all addressed on open: closed, and settling never re-opens",
+    "opening never takes the user's keyboard: a held draft and a focused door both keep it shut",
+    "a close before the queue answered spends the decision and records nothing",
+    "the reason a verdict names is the first thing that kept the drawer shut",
+    "an ask that arrives on the view's first resolved frame is an arrival, not pending on open",
+    "a late view stays decided: a long wait does not reopen the question",
+    "the composer holding text keeps the drawer shut, and sending/clearing later does not open it",
+    "StrictMode's second effect pass is not a second 'once'"
+   ]
+  },
+  {
+   "id": "M21",
+   "title": "the view never records that it decided, so the latch is never set (the other half of 'once')",
+   "rc": 1,
+   "tally": {
+    "tests": 70,
+    "pass": 61,
+    "fail": 9
+   },
+   "fails": [
+    "state 1 - no asks on open: closed, and an ask that arrives later does not open it",
+    "state 2 - pending on open: opens, once, and then lets go",
+    "state 3 - all addressed on open: closed, and settling never re-opens",
+    "state 4 - dismissed while pending: stays closed, including after switching away and back",
+    "opening never takes the user's keyboard: a held draft and a focused door both keep it shut",
+    "an ask that arrives on the view's first resolved frame is an arrival, not pending on open",
+    "a late view stays decided: a long wait does not reopen the question",
+    "the composer holding text keeps the drawer shut, and sending/clearing later does not open it",
+    "StrictMode's second effect pass is not a second 'once'"
    ]
   }
  ]
