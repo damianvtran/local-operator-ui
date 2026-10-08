@@ -7206,8 +7206,9 @@ export const STORIES = [
 	 * The ORDER pair is one control over two frames on purpose: `Most recent`
 	 * and `Active first` must produce different lists, not merely different
 	 * ticks, so the two captions' row orders are read against each other (the
-	 * live turn is the oldest conversation in the fixture and so sits past the
-	 * ten-row page under one order and leads the list under the other).
+	 * live turn carries no key clock in the fixture and so draws past the
+	 * ten-row page under one order - in place, as the window rule draws every
+	 * live row - and in the running band under the other; round 2's U3/D1).
 	 * ------------------------------------------------------------------ */
 	/*
 	 * EACH ENTRY CLAIMS ITS OUTCOME, and the rig checks it against the live DOM
