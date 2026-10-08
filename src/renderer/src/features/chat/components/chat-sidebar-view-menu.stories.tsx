@@ -1032,7 +1032,8 @@ export const PopoverBasisCreated: Story = {
  * round 1, B2 - the prose quoted columns no section drew). Before
  * (`origin/main`): TODAY `2h 12h 1h 3h`, THIS WEEK `1d 6d 4d 5d` - the arrival
  * order under activity labels - and OLDER `5w 7w 56y`, the zero-stamp remote
- * row printing 1970; the running triple reads heartbeat, message, stopped.
+ * row printing `56y` (1970 is the CAUSE, the label is what the frame carries);
+ * the running triple reads heartbeat, message, stopped.
  * After: TODAY `1h 2h 3h 12h`, THIS WEEK `1d 4d 5d 6d`, OLDER `5w 7w` and the
  * zero-stamp row unlabelled at the end; the stopped row leads the running trio,
  * then the ten-minute message, then the heartbeat. The frames are
@@ -2369,9 +2370,16 @@ export const AuditGroupFlat: Story = {
 /**
  * `Order by: Most recent`, over the flat list so the order is directly readable.
  *
- * The catalogue's own order, untouched - and the audited row (`audit-busy-old`,
- * the live turn that is also the oldest conversation) sits past the ten-row
- * page, so it is NOT drawn.
+ * The live turn (`audit-busy-old`, also the oldest conversation) sorts LAST
+ * here: `Most recent` keys it by the time of its last USER message - absent, so
+ * its birth - and every other row has a newer clock. So it sits past the
+ * ten-row page's cut, and IT IS DRAWN ANYWAY, at that position, as the list's
+ * last row: since agent review round 1 the page is a window of the arrangement
+ * PLUS every live row beyond it, and a disclosure must not hide live work. The
+ * pair with `AuditOrderActiveFirst` is the point - both frames DRAW the turn
+ * and differ by its POSITION (lifted into the band there, in place at the end
+ * here), not by its presence; the round-2 re-shoot replaced the old
+ * `expectGone`/`!rowDrawn` claim, which this head can never settle.
  */
 export const AuditOrderMostRecent: Story = {
 	render: () => {
@@ -2386,10 +2394,11 @@ export const AuditOrderMostRecent: Story = {
 		 * THE SHUTTER IS HELD (the repository's own latch): the rig's readiness
 		 * probe is satisfied by the story's ELEMENTS, and this state is reached
 		 * through four real presses - so without the latch the frame can be taken
-		 * while the busy row is still drawn and the rig's `expectGone` refuses the
-		 * run, which is exactly what happened on the first re-shoot of this set
-		 * (2026-10-08). The latch makes the frame a function of the story's own
-		 * finished state.
+		 * before the presses land. Round 2 kept the latch and rewrote the settle:
+		 * the old predicate waited on the live row's ABSENCE under `Most recent`,
+		 * which the window rule (A1) makes unreachable - the wait is now for the
+		 * row DRAWN, in place, as the list's last row, which is the claim the
+		 * frame carries.
 		 */
 		document.documentElement.dataset.capturePending = "1";
 		try {
@@ -2397,7 +2406,13 @@ export const AuditOrderMostRecent: Story = {
 			await openAuditPopover();
 			await pressGroupBy("flat");
 			await pressGroupBy("recent");
-			await settle(() => !rowDrawn("audit-busy-old"));
+			await settle(() => {
+				const ids = drawnRowIds();
+				return (
+					rowDrawn("audit-busy-old") &&
+					ids.indexOf("audit-busy-old") === ids.length - 1
+				);
+			});
 		} finally {
 			document.documentElement.dataset.capturePending = "";
 		}
@@ -2407,10 +2422,14 @@ export const AuditOrderMostRecent: Story = {
 /**
  * `Order by: Active first`, the same list one press later.
  *
- * The live turn is lifted to the head of the page, so it is drawn - the two
- * frames differ by that row and by nothing else, which is what makes this pair
- * evidence that the two options are two comparators rather than one control
- * writing the same order twice.
+ * The live turn is lifted into the running band, so it draws third - after the
+ * two pinned rows, at the head of the page. THE TWO FRAMES DIFFER BY ITS
+ * POSITION AND NOT BY ITS PRESENCE (reversed by round 2, the same day the
+ * window rule landed): `Most recent` draws it too, in place as the last row,
+ * because a live row is never withheld by the page's cut - what `Active first`
+ * changes is WHERE it draws, which is what makes this pair evidence that the
+ * two options are two comparators rather than one control writing the same
+ * order twice.
  */
 export const AuditOrderActiveFirst: Story = {
 	render: () => {
@@ -2429,7 +2448,13 @@ export const AuditOrderActiveFirst: Story = {
 			await pressGroupBy("flat");
 			await pressGroupBy("recent");
 			await pressGroupBy("active-first");
-			await settle(() => rowDrawn("audit-busy-old"));
+			/* Drawn INSIDE the ten-row window: the lift's own claim, as against the
+			   story above, where the same row draws last. */
+			await settle(
+				() =>
+					rowDrawn("audit-busy-old") &&
+					drawnRowIds().indexOf("audit-busy-old") < 10,
+			);
 		} finally {
 			document.documentElement.dataset.capturePending = "";
 		}

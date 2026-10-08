@@ -281,15 +281,17 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 				)}
 			</fieldset>
 			{/*
-			 * THE ONE LINE THE BASIS NEEDS (UX review round 1, C1): the arrangement
-			 * made this control decide the ORDER as well as what the dates read
-			 * (2026-10-08), and nothing in the panel said so - a reader switching
+			 * THE ONE LINE THE BASIS NEEDS (UX review round 1, C1; the wording is
+			 * design round 2's D2 - "this clock" had no antecedent and read as a
+			 * caption of the `Created` row, so it names the SELECTED clock). The
+			 * arrangement made this control decide the ORDER as well as what the dates
+			 * read (2026-10-08), and nothing in the panel said so - a reader switching
 			 * clocks watched the list re-sort with no explanation. One subtext in the
 			 * same voice as the hidden-sections sentence below; the group's two
 			 * labels and its structure are untouched.
 			 */}
 			<p className="px-1 pt-0.5 pb-1 text-meta text-ink-dim">
-				Dates and ordering follow this clock.
+				Dates and ordering follow the selected clock.
 			</p>
 			{group("Order by")}
 			{/* The same group, for the same reason - see the comment above. */}

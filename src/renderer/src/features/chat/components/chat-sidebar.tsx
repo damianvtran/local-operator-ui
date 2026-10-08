@@ -215,6 +215,7 @@ import {
 	pageLimit,
 	pageMoreLabel,
 	pageOrder,
+	pageReveal,
 	pageRows,
 	parseSidebarView,
 	raiseSectionCap,
@@ -8998,8 +8999,10 @@ export function ChatSidebar({
 			 * contract: "show the latest 10 ... and then have a 'Load 10 more', starts
 			 * with 10, then 25, then 50, and then user can click to load more". The
 			 * label names the NEXT rung rather than the ladder, and it is bounded by
-			 * what is actually left, so it cannot offer fifteen rows when four are
-			 * unloaded.
+			 * what a press will actually ADD over the rows held: `pageReveal`'s number,
+			 * because a live row inside the next slice is already drawn as a stray
+			 * (round 2's follow-up a) - so it cannot offer fifteen rows when fourteen
+			 * are what a press reveals.
 			 *
 			 * IT IS NOT DRAWN WHILE SEARCHING, because the page is not: a query lifts
 			 * the limit entirely (`pageRows`), so there is nothing left to load and a
@@ -9027,7 +9030,9 @@ export function ChatSidebar({
 				>
 					{pageMoreLabel(
 						view.loads,
-						page.remaining > 0 ? page.remaining : ladderStep,
+						page.remaining > 0
+							? pageReveal(arranged, view.loads, page.remaining)
+							: ladderStep,
 					)}
 				</button>
 			)}

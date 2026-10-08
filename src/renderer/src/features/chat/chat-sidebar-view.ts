@@ -526,12 +526,50 @@ export function pageLimit(loads: number): number {
  *
  * The step is bounded by what is actually left (`remaining`), so the control
  * cannot offer ten rows when four are unloaded - the operator's own reference
- * prints `Show 4 more sessions`, not the ladder's next rung.
+ * prints `Show 4 more sessions`, not the ladder's next rung. And `remaining`
+ * now comes from `pageReveal` where the list can compute it (follow-up a,
+ * 2026-10-08), because a live row inside the next slice is already drawn: the
+ * sentence names the rows the press ADDS, never the rows that merely exist.
  */
 export function pageMoreLabel(loads: number, remaining: number): string {
 	const step = pageLimit(loads + 1) - pageLimit(loads);
 	const add = Math.max(0, Math.min(step, remaining));
 	return add === 1 ? "Show 1 more chat" : `Show ${add} more chats`;
+}
+
+/**
+ * The rows a press of the foot will ACTUALLY add, over the rows already held.
+ *
+ * WHY THIS IS NOT `remaining`. The page is a window of the arrangement PLUS
+ * every live row beyond it (agent review round 1, A1), so a RUNNING row inside
+ * the next slice is already DRAWN - it was drawn as a stray the moment it fell
+ * outside the window. Counting it as something a press `reveals` overstates: the
+ * review's own measurement (round 2, follow-up a) observed `Show 15 more chats`
+ * revealing 14, because one of the fifteen positions in the next slice was a
+ * live row already on screen.
+ *
+ * ZERO IS A RUNG-ONLY PRESS, and it is why there is a fallback rather than a
+ * clamp: when every row in the slice is live (each already drawn), the press
+ * still moves the ladder's rung and the daemon's own tail may answer with rows -
+ * so the sentence states the bounded step as before rather than offering
+ * `Show 0 more chats`. Reachable only with step-many live rows below the cut,
+ * which is why the fallback is a sentence and not a second control.
+ */
+export function pageReveal(
+	ordered: readonly CanonicalSessionRow[],
+	loads: number,
+	remaining: number,
+): number {
+	const step = pageLimit(loads + 1) - pageLimit(loads);
+	const from = pageLimit(loads);
+	const to = Math.min(from + step, ordered.length);
+	let live = 0;
+	for (let index = from; index < to; index += 1) {
+		if (isActiveRow(ordered[index] as CanonicalSessionRow)) live += 1;
+	}
+	const add = Math.max(0, to - from - live);
+	if (add > 0) return add;
+	return Math.max(0, Math.min(step, remaining));
 }
 
 /**
