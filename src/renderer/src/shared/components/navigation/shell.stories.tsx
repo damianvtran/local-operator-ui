@@ -1096,7 +1096,7 @@ const ChatShellFrame: FC<{
 };
 
 /**
- * The dock in its Files view, at the shell's own default pane width.
+ * The dock in its Files view, at the slot's one default pane width.
  *
  * `rightSlotWidth` is a story ARG (default 0, the fresh-profile arm this story
  * has always shown) rather than a literal because the #677 evidence needs the
@@ -1265,8 +1265,8 @@ export const WindowsCaptionFleetAsksOnSettings: Story = {
  * The width is an ARG for the same reason `ChatDockFiles`' is: the #677
  * evidence photographs the shared-width arm (`?args=rightSlotWidth:700` — the
  * run pane reads the full 700 at row 1180) against this story's 0, where the
- * run pane reads its 420 seed. That pair is what shows switching surfaces
- * stops resizing.
+ * run pane reads the slot's one default (640). That pair is what shows switching
+ * surfaces stops resizing.
  */
 export const ChatDockRunPanel: Story = {
 	args: { rightSlotWidth: 0 },

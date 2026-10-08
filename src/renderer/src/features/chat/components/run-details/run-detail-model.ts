@@ -3262,15 +3262,18 @@ export const tallyFitsInline = (paneWidth: number): boolean => {
 };
 
 /**
- * The pane's default width, mirrored from `ui-preferences-store`'s
- * `DEFAULT_RUN_PANEL_WIDTH`.
+ * The fallback for a pane width that is not a usable number at all: 420, one of
+ * the three widths the record measures (320/420/640).
  *
- * Duplicated rather than imported, and this is the only place the duplication is
- * acceptable: importing the store here would drag zustand into a module that is
- * otherwise pure arithmetic — the module the model test bundles and runs without
- * a DOM — to obtain one number the CALLER always has. The real width is passed in
- * by the pane (`chat-content.tsx`), so this is only the fallback for a width that
- * is not a usable number at all.
+ * It USED to mirror the store's run-panel default, which was 420; the slot's one
+ * default is 640 now (`DEFAULT_RIGHT_SLOT_WIDTH`, #872 follow-up) and this is
+ * deliberately NOT moved with it: a fallback decides how much a pane that has no
+ * width sheds, and 420 is the middle rung of the record, whereas a width nobody
+ * could measure is not evidence the pane is wide. Duplicated rather than
+ * imported for the reason it always was: importing the store here would drag
+ * zustand into a module that is otherwise pure arithmetic — the module the model
+ * test bundles and runs without a DOM. The real width is passed in by the pane
+ * (`chat-content.tsx`).
  */
 const FALLBACK_PANE_PX = 420;
 

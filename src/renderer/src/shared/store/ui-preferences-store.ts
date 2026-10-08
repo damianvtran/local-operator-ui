@@ -31,7 +31,6 @@ import {
 } from "@features/chat/transcript-display-mode";
 import { DEFAULT_THEME } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
-import { measureCell } from "@shared/themes/terminal-theme";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -156,13 +155,13 @@ type UiPreferencesState = {
 	 * workspace, which is the reporter's observation. Drag once, it holds
 	 * everywhere: the four panes are lenses on one physical column.
 	 *
-	 * 0 IS "UNSET", the same reading the four slots always had, and unset now
-	 * means "open at this pane's own seed": the browser a page's 640, the run
-	 * panel a roster's 420, the canvas its fresh-profile 800, the console its
-	 * measured 100-column grid (see each `DEFAULT_*_WIDTH` below for why those
-	 * four numbers are what they are). A pane the user has never dragged still
-	 * opens at the number designed for it; the SHARED value only exists once
-	 * someone drags, and from then on it is what every pane renders.
+	 * 0 IS "UNSET", the same reading the four slots always had, and unset means
+	 * "open at `DEFAULT_RIGHT_SLOT_WIDTH`": ONE number for every pane, so a
+	 * profile that has never dragged a divider sees the same slot width whichever
+	 * pane it opens (#872 follow-up; before it, unset resolved to a different
+	 * number per pane and the slot re-sized on every switch). The SHARED value
+	 * only exists once someone drags, and from then on it is what every pane
+	 * renders.
 	 *
 	 * THE FLOORS STAY PER PANE, at the divider that drags them: a page stops
 	 * being a page below ~480 and the canvas below its 400, and those minimums
@@ -177,7 +176,8 @@ type UiPreferencesState = {
 	setRightSlotWidth: (width: number) => void;
 
 	/**
-	 * Forget the shared width: every pane goes back to opening at its own seed.
+	 * Forget the shared width: every pane goes back to opening at the slot's one
+	 * default (`DEFAULT_RIGHT_SLOT_WIDTH`).
 	 *
 	 * The reset affordance is each divider's double-click, and with one shared
 	 * value "this pane back to how it opens" can only mean unset — writing any
@@ -1070,13 +1070,12 @@ export const EMPTY_RIGHT_SLOT_ROUTE: RightSlotRouteFacts = Object.freeze({
  * report with a different cause — so the two callers are made to read the same
  * measurement rather than to agree by convention.
  *
- * WHY IT IS A NUMBER AND NOT "WHICH PANE IS OPEN": the four panes are not
- * widths-scaled versions of one another — the canvas holds documents (default
- * 800, capped at 560 docked), the run panel prose and rosters (420), the browser
- * a page (640) and the console a measured 100-column grid — and any union of pane
- * ids would carry their four widths with it, i.e. a second place deciding which
- * width belongs to an open pane. The caller asks "how wide is the slot" and gets
- * the one answer that is true for the pane actually open.
+ * WHY IT IS A NUMBER AND NOT "WHICH PANE IS OPEN": the panes differ in their
+ * floors and maxima (the canvas holds documents and is capped at 560 docked, the
+ * run panel prose and rosters and stops at 640, the browser and console stop at
+ * 1200), and any union of pane ids would carry those with it, i.e. a second place
+ * deciding which width belongs to an open pane. The caller asks "how wide is the
+ * slot" and gets the one answer that is true for the pane actually open.
  *
  * THE ARITHMETIC IS THE ROW'S OWN FLEX, restated once: the row is the work area
  * beside the sidebar, the conversation's floor is CHAT_PANE_MIN_PX of it, and the
@@ -1084,13 +1083,12 @@ export const EMPTY_RIGHT_SLOT_ROUTE: RightSlotRouteFacts = Object.freeze({
  * `canvasDockWidth` — §I's `min(560, row - 480)`, which IS the same leftover
  * capped at the pane's dock maximum — and why the other three are
  * `min(preference, leftover)`. A preference of 0 is the store's "unset" and
- * resolves to that pane's own SEED first (four panes, four numbers, stated where
- * each `DEFAULT_*_WIDTH` is declared); since #677 a non-zero preference is the
- * ONE shared `rightSlotWidth`, so the four seeds are first-open values rather
- * than four competing memories of one panel. And since the #677 review (D2)
- * every branch holds the pane's own floor as well: a shared width below it
- * lifts to it here, where all three writers of the value are covered at once —
- * see the floor constants below.
+ * resolves to `DEFAULT_RIGHT_SLOT_WIDTH` for EVERY pane (#872 follow-up; it used
+ * to be one seed per pane, which is what re-sized the slot on a switch even
+ * before anyone had dragged); since #677 a non-zero preference is the ONE shared
+ * `rightSlotWidth`. And since the #677 review (D2) every branch holds the pane's
+ * own floor as well: a shared width below it lifts to it here, where all three
+ * writers of the value are covered at once — see the floor constants below.
  *
  * THE CANVAS'S `overlay` MODE IS THE CASE TO STATE EXPLICITLY, because it is the
  * one where the mode and the arithmetic are easiest to get out of step: when the
@@ -1133,42 +1131,44 @@ export function resolveRightSlotWidth(
 	 */
 	if (pane === null || !rightSlotPaneDrawable(pane, state)) return 0;
 
-	// THE SHARED WIDTH OR THIS PANE'S SEED, HELD UP TO THIS PANE'S FLOOR: one
-	// read, four seeds + four floors, which is the whole of #677 at the
+	// THE SHARED WIDTH OR THE ONE DEFAULT, HELD UP TO THIS PANE'S FLOOR: one
+	// read, one default + four floors, which is the whole of #677 at the
 	// resolving end (see `rightSlotWidth` and the floor constants).
 	let preferred: number;
 	switch (pane) {
 		/*
 		 * THE ASKS DRAWER WEARS THE CANVAS'S GEOMETRY, deliberately and not by
 		 * oversight (design note §2: the drawer "must be a member of the existing canvas
-		 * family", 400-560px by the family's arithmetic). Reusing the seed, the floor and
-		 * the dock cap is what makes the card "never again the widest thing on the
+		 * family", 400-560px by the family's arithmetic). Reusing the default, the floor
+		 * and the dock cap is what makes the card "never again the widest thing on the
 		 * screen": its width is the family's, so it needs no rule of its own - which is
-		 * the mistake the note names ("do not patch the width separately").
+		 * the mistake the note names ("do not patch the width separately"). The default
+		 * (640) is wider than the dock cap (560) at every row, so for these two it
+		 * never draws: the cap is what an unset canvas opens at.
 		 */
 		case "canvas":
 		case "ask":
 			preferred = Math.max(
 				CANVAS_PANE_MIN_PX,
-				state.rightSlotWidth || DEFAULT_CANVAS_WIDTH,
+				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
 			);
 			break;
 		case "run":
 			preferred = Math.max(
 				RUN_PANEL_MIN_PX,
-				state.rightSlotWidth || DEFAULT_RUN_PANEL_WIDTH,
+				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
 			);
 			break;
 		case "browser":
 			preferred = Math.max(
 				BROWSER_PANEL_MIN_PX,
-				state.rightSlotWidth || DEFAULT_BROWSER_PANEL_WIDTH,
+				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
 			);
 			break;
 		case "console":
 			preferred = Math.max(
 				CONSOLE_PANEL_MIN_PX,
-				state.rightSlotWidth || DEFAULT_CONSOLE_PANEL_WIDTH,
+				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
 			);
 			break;
 	}
@@ -1280,32 +1280,43 @@ export type RunPanelReveal = {
  * need.
  */
 /**
- * The width a fresh profile gives the canvas: since #677 it is also the SEED
- * an unset `rightSlotWidth` opens the canvas at (the old 450 zero-read is
- * retired with the four per-surface slots — see the note where it lived).
- * Exported because the shell story that mounts the dock reads the app's own
- * default rather than restating it.
+ * THE ONE WIDTH THE RIGHT SLOT OPENS AT while the shared `rightSlotWidth` is
+ * unset (0) - the experience of anyone who has never dragged a divider - for the
+ * run panel, the browser and the console, and the number the canvas and the asks
+ * drawer start from before their dock cap (`canvasDockWidth`, 560 at every row
+ * that matters) takes over.
+ *
+ * WHY ONE NUMBER (#872 follow-up). Until it, an unset slot resolved to a seed per
+ * pane - run 420, browser 640, console 796 (100 columns), canvas 800 - so
+ * switching panes re-sized the slot, and the chat column re-wrapped the
+ * transcript on every switch (measured at 1280: 551px with the run panel open,
+ * 474px with the browser or console). #677 made the DRAGGED width shared; this
+ * makes the width nobody dragged shared too.
+ *
+ * WHY 640 AND NOT A ROUNDER 600. It is the number the browser already shipped
+ * (a page's room), and it is exactly 80 terminal columns at the shipped face:
+ * `ceil(80 x measureCell().cellWidth)` is 624 (a 7.8px cell at the 13px face)
+ * plus the pane's 16px of chrome - the `px-2` gutter on each side of the
+ * terminal in `console-pane.tsx` - is 640. `scripts/console-pane.test.mjs` pins
+ * that sum, so a font step or a gutter change breaks a test rather than silently
+ * cropping the grid. 600 is a 74-column pane, i.e. a cropped legacy-80 grid. The console's old 100-column default (796) is dropped:
+ * it was already undelivered below ~1580px windows, where the row's leftover
+ * capped it, and the user can still drag to 100 columns.
+ *
+ * WHAT IT DOES NOT TOUCH: the per-pane FLOORS and MAXIMA (run 320..640, browser
+ * and console 480..1200, canvas 400..the dock cap), the meaning of 0 as "unset",
+ * and every stored width - nothing persisted changes meaning, which is why this
+ * rides without a persist-version step.
  */
-export const DEFAULT_CANVAS_WIDTH = 800;
+export const DEFAULT_RIGHT_SLOT_WIDTH = 640;
 /*
  * THE CANVAS'S 450 ZERO-READ IS RETIRED WITH THE FOUR SLOTS (#677). An unset
- * preference used to read as 450 for the canvas alone — a number nothing
- * persisted, since the canvas divider's own floor keeps every drag above it —
- * while a fresh profile opened at `DEFAULT_CANVAS_WIDTH`. One unset meaning
- * one thing (open at the pane's seed) makes 450 unreachable: an unset canvas
- * opens at its fresh-profile 800, and every other pane's unset opens at its
- * own default.
+ * preference used to read as 450 for the canvas alone - a number nothing
+ * persisted, since the canvas divider's own floor keeps every drag above it.
+ * One unset meaning one thing makes 450 unreachable: an unset canvas starts from
+ * `DEFAULT_RIGHT_SLOT_WIDTH` like every other pane, then its dock cap applies.
  */
 const DEFAULT_CHAT_SIDEBAR_WIDTH = SIDEBAR_DEFAULT_WIDTH;
-/**
- * Exported because the pane's reset path needs the NUMBER, not the write: a
- * double-click on the divider stores this width directly, and the divider's own
- * contract is that the value it stores is one the pane will render. Read here so
- * the reset can be routed through the same clamped write a drag goes through,
- * instead of around it (`chat-content.tsx`).
- */
-export const DEFAULT_RUN_PANEL_WIDTH = 420;
-
 /**
  * How many accepted mentions one workspace remembers.
  *
@@ -1328,64 +1339,6 @@ export const MENTION_RECENTS_LIMIT = 20;
  * one.
  */
 export const PROFILE_RECENTS_LIMIT = 4;
-/** The browser pane's default, and the design's number rather than a fit: see
- * `DEFAULT_BROWSER_PANEL_WIDTH`'s own note for why a page wants 640 where a
- * roster wants 420. */
-export const DEFAULT_BROWSER_PANEL_WIDTH = 640;
-/**
- * Exported for the same reason `DEFAULT_RUN_PANEL_WIDTH` is: the shell's own
- * fallback for an unset preference reads this number instead of restating it
- * (`chat-content.tsx`), and `resolveRightSlotWidth` above is the third reader.
- */
-
-/**
- * The console pane's default width: the design's default grid, measured.
- *
- * Design 6.1 fixes the grid at 100x30 and asks the PR to print the px-per-column
- * it used. This computes the width from the SHIPPED face instead of printing a
- * number nobody can check, and it is deliberately arithmetic over the same
- * `measureCell` the pane reports to main: change the font, the font step or the
- * default grid and this follows, while a literal 843 would silently become "a pane
- * that crops 3 columns".
- *
- * The chrome allowance is the pane's own horizontal padding plus the terminal's
- * inset - the box the 100 columns have to fit inside - and it is one number rather
- * than a sum of class names so that a change to either is a change here.
- *
- * A STALE PERSISTED VALUE IS NOT A PROBLEM: a width the user dragged is theirs and
- * is kept (it is the shared `rightSlotWidth` now, #677); forgetting it — the
- * divider's double-click — puts the pane back on this seed, which is recomputed
- * from the face that is shipping now.
- */
-const CONSOLE_GRID_COLUMNS = 100;
-/*
- * THE PANE'S HORIZONTAL GUTTERS, and the round-2 design finding (D12) is why this
- * is 16 rather than the 24 it was: the allowance was being spent as a right-hand
- * gutter rather than as chrome, because the terminal painted from the pane's own
- * edge (`column 0 at x=1` while the header's title sits at x=9 and the strip's pill
- * at x=8) and the remaining 24 px showed as uniform ground to the right of the last
- * column. Measured, not inferred: 780 px of grid inside an 804 px pane.
- *
- * The decision is INSET rather than bleed - the terminal takes the same two 8 px
- * gutters the pane's header and its strip already use, so the pane has one gutter at
- * one width instead of a chrome bar at 8 px sitting over a grid at 0 - and the
- * allowance is therefore exactly those two gutters. `console-pane.tsx` carries the
- * matching `px-2` on the terminal's box; if either moves, this moves with it.
- */
-const CONSOLE_PANE_CHROME_PX = 16;
-const measureConsoleDefaultWidth = (): number =>
-	Math.ceil(CONSOLE_GRID_COLUMNS * measureCell().cellWidth) +
-	CONSOLE_PANE_CHROME_PX;
-/**
- * The console pane's default width, exported.
- *
- * Exported because the slot's own render (`chat-content.tsx`) needs the NUMBER
- * rather than the write, exactly as the browser pane's 640 is spelled there: an
- * unset preference has to land on the same width the reset path stores, or a pane
- * that has never been dragged and one that has been double-clicked would differ.
- */
-export const DEFAULT_CONSOLE_PANEL_WIDTH = measureConsoleDefaultWidth();
-
 /**
  * The floor each pane's own control stops a drag at — and, since the #677
  * round-1 review (D2), the floor the RESOLVER holds the shared width to.
@@ -1862,7 +1815,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			 * legacy width the user had actually dragged. Version 0 is also every
 			 * existing blob's version, so the migration runs exactly once per
 			 * profile — and a blob that never carried any of the four keys seeds
-			 * to 0, which is "every pane opens at its own seed".
+			 * to 0, which is "every pane opens at the one default".
 			 */
 			version: 1,
 			migrate: migrateUiPreferences,
@@ -2011,20 +1964,24 @@ export function persistedUiPreferences<
  * console — the order `resolveRightSlotWidth` reads), and the FIRST value that
  * is neither absent nor its own default becomes the shared width. The others
  * are dropped. A profile where the user never dragged anything has all four at
- * their defaults, seeds 0, and therefore keeps opening each pane at its own
- * seed — the migration reproduces the fresh-profile experience rather than
- * freezing some default onto every pane.
+ * their v0 defaults, seeds 0, and therefore keeps opening each pane at the
+ * slot's one default (`DEFAULT_RIGHT_SLOT_WIDTH`) — the migration reproduces
+ * the fresh-profile experience rather than freezing some default onto every
+ * pane.
  *
  * TWO HONEST CAVEATS, stated rather than discovered later:
  *
- * - A width dragged to exactly its default is indistinguishable from an
- *   untouched one and does not seed. Nothing is lost: the default IS the value
- *   that pane would open at.
- * - The console's default is measured from the shipping face, so a face or
- *   font step that changed since a value was stored reads as "dragged". A
- *   profile that never touched the console can therefore seed with a number
- *   that used to BE the console's default — a number that user was actually
- *   seeing, and a double-click away from being forgotten.
+ * - A width dragged to exactly its v0 default is indistinguishable from an
+ *   untouched one and does not seed. Nothing is lost for the canvas and the
+ *   browser, whose default is still what they open at; a run panel dragged to
+ *   exactly 420 or a console dragged to exactly 796 now opens at the slot's
+ *   one 640 instead (they were indistinguishable from untouched when the
+ *   blob was written, so this is the same loss, now with a different target).
+ * - The console's v0 default was measured from the face that shipped then, so
+ *   a face or font step that changed since a value was stored reads as
+ *   "dragged". A profile that never touched the console can therefore seed with
+ *   a number that used to BE the console's default - a number that user was
+ *   actually seeing, and a double-click away from being forgotten.
  */
 export function migrateUiPreferences(
 	persisted: unknown,
@@ -2034,11 +1991,22 @@ export function migrateUiPreferences(
 		...((persisted ?? {}) as Record<string, unknown>),
 	};
 	if (version >= 1) return blob;
+	/*
+	 * THE FOUR v0 DEFAULTS, PINNED AS LITERALS (#872 follow-up). A v0 blob's
+	 * "this is not a drag" sentinel is the default each per-surface slot shipped
+	 * WITH, which is a fact about the build that wrote the blob and not about the
+	 * build reading it. These used to be the live `DEFAULT_*_WIDTH` exports; once
+	 * the slot got one default (`DEFAULT_RIGHT_SLOT_WIDTH`, 640) those exports were
+	 * gone and, had they been repointed, every legacy blob's untouched 420 / 800 /
+	 * 796 would have read as a drag and been frozen onto all four panes as the
+	 * shared width. The values are the ones v0 stored: canvas 800, run 420, browser
+	 * 640 and the console's `ceil(100 columns x 7.8px) + 16px` = 796.
+	 */
 	const seeds: Array<[string, number]> = [
-		["canvasWidth", DEFAULT_CANVAS_WIDTH],
-		["runPanelWidth", DEFAULT_RUN_PANEL_WIDTH],
-		["browserPanelWidth", DEFAULT_BROWSER_PANEL_WIDTH],
-		["consolePanelWidth", DEFAULT_CONSOLE_PANEL_WIDTH],
+		["canvasWidth", 800],
+		["runPanelWidth", 420],
+		["browserPanelWidth", 640],
+		["consolePanelWidth", 796],
 	];
 	let shared = 0;
 	for (const [key, seed] of seeds) {
