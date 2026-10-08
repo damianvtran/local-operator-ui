@@ -1672,7 +1672,20 @@
       "chat-run-panel--mcp-grant-failed-diagnosis",
       "chat-run-panel--mcp-remedy-hover",
       "chat-run-panel--mcp-remedy-focus",
-      "chat-run-panel--mcp-floor-320"
+      "chat-run-panel--mcp-floor-320",
+      "chat-run-panel--mcp-all-connected",
+      "chat-run-panel--mcp-auth-required-closed",
+      "chat-run-panel--mcp-auth-required",
+      "chat-run-panel--mcp-cold",
+      "chat-run-panel--mcp-connecting",
+      "chat-run-panel--mcp-disconnected",
+      "chat-run-panel--mcp-dot-ack-acknowledged",
+      "chat-run-panel--mcp-dot-ack",
+      "chat-run-panel--mcp-grant-cancelled-removed",
+      "chat-run-panel--mcp-grant-failed",
+      "chat-run-panel--mcp-grant-locked",
+      "chat-run-panel--mcp-grant-running",
+      "chat-run-panel--mcp-unknown-status"
     ],
     "refreshedThemes": [
       "localOperatorDark",
