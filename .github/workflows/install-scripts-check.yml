@@ -483,8 +483,7 @@ jobs:
       # THE UV ARM, and why it belongs HERE rather than only on Linux (review
       # R1-4 / QA Q7): macOS is the platform that ships a uv, and this script is
       # not a copy of the Linux one - it refuses a standalone run without
-      # `LOCAL_OPERATOR_VENV_PATH`, defaults `PYTHONPYCACHEPREFIX`, and treats a
-      # failed `pip install --upgrade pip` as FATAL where Linux warns. A regression
+      # `LOCAL_OPERATOR_VENV_PATH` and defaults `PYTHONPYCACHEPREFIX`. A regression
       # in the path macOS users actually take would otherwise ship green.
       #
       # The version is read from the layout definition rather than written here,
