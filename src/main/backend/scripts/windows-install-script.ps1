@@ -99,7 +99,14 @@ function Test-CommandExists {
 #     shape of a dev checkout or an artifact built before uv was bundled.
 #
 # None of them writes to the user's environment variables.
-$PythonVersion = if ($env:LOCAL_OPERATOR_PYTHON_VERSION) { $env:LOCAL_OPERATOR_PYTHON_VERSION } else { "3.14.7" }
+# THE VERSION IS NOT SPELLED HERE (code review round 1, R5). It used to fall
+# back to a literal "3.14.7", which is a second copy of
+# `src/shared/bundled-runtime-layout.json`'s `python.version` - exactly the
+# duplication this file's own note above forbids, and nothing would have caught
+# it drifting. The app always sets the variable; a hand-run that does not gets a
+# loud sentence naming what to set, inside the branch that actually needs it (a
+# machine whose PYTHON_BIN or PATH Python answers never reads it at all).
+$PythonVersion = $env:LOCAL_OPERATOR_PYTHON_VERSION
 $ManagedPythonDir = "$AppDataDir\python"
 
 # Is this a Python 3.12+ executable we can run? The floor is local-operator's own
@@ -116,6 +123,21 @@ function Test-PythonUsable {
     }
 }
 
+# THE `python` STAGE IS ANNOUNCED HERE, ON THIS PLATFORM TOO (code review round 1,
+# R1). macOS gets it from `managed-python.ts` when it copies the managed runtime;
+# nothing ever announced it on win32, so the panel painted with no step, no clock
+# and no estimate through the whole CPython download and the first line a Windows
+# user saw was "Step 2 of 4" - while the rail still showed four rows and the
+# win32 baseline this PR measured was dead input.
+#
+# IT BRACKETS THE STAGE, NOT ONLY ITS uv BRANCH: this is where the interpreter is
+# found, and fetched only if it is not already here. Announcing inside
+# provisioning alone would leave a machine whose PYTHON_BIN or PATH Python
+# answers without any phase 1 at all, which is the same hole one branch over. The
+# phase's own words are "Getting ready / Finding the copy of Python Local
+# Operator runs on", so finding is what it means - and `$PythonVersion` above is
+# read inside the branch that needs it, never to decide this marker.
+Write-Output "|LO1:python"
 $PythonExe = $null
 if ($env:PYTHON_BIN -and (Test-Path $env:PYTHON_BIN) -and (Test-PythonUsable $env:PYTHON_BIN)) {
     $PythonExe = $env:PYTHON_BIN
@@ -214,6 +236,10 @@ $env:UV_CACHE_DIR = $UvCacheDir
 $env:UV_SYSTEM_CERTS = "1"
 
 if (-not $PythonExe -and (Test-UvUsable)) {
+    if (-not $PythonVersion) {
+        Write-Error "ERROR: no Python version was handed down (LOCAL_OPERATOR_PYTHON_VERSION is unset), so the bundled uv has nothing to install. Launch setup from the app, or set that variable to the version src/shared/bundled-runtime-layout.json pins."
+        exit 1
+    }
     Write-Output "Installing Python $PythonVersion with uv..."
     # `UV_PYTHON_DOWNLOADS=manual` for THIS call alone: the global `never` above is
     # what keeps every later uv call on the interpreter it was handed, and an

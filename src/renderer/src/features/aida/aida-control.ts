@@ -182,15 +182,52 @@ export function aidaGreetFailure(
 }
 
 /**
- * The one extra sentence a SUCCESSFUL first-run landing may owe: she is paused,
- * so her conversation opens but the greeting is held (the backend keeps it
- * owed and `resume` delivers it). Null when there is nothing to say.
+ * The one extra sentence a SUCCESSFUL first-run landing may owe (code review
+ * round 1, R3's sibling: read the facts, never the prose). Two of them, and both
+ * come from the answer's own additive fields rather than from inferring her
+ * plans out of `paused`/`greeted`:
+ *
+ * - `held: true` — a live session on this machine owns her rows, so the greeting
+ *   arrives IN THE OTHER WINDOW. The route sets it on exactly that outcome
+ *   (`desktop_aida.py`'s `owner` branch) and it is a 200, not a failure; without
+ *   it the desktop could only guess, because the ordinary success carries the
+ *   same three legacy fields.
+ * - `paused` with the greeting unsettled — she is held behind the pause and
+ *   `/aida resume` delivers it. `greeting_state` is what says "unsettled":
+ *   `delivered` and `skipped` are terminal (the backend's own words for the
+ *   ledger), so a pause over either of those owes the user nothing.
+ *
+ * NOT USED FOR THE SKIP PATH, deliberately: `skipped` is set by the backend for
+ * an install that already has human conversations before the first-run
+ * precondition is read — the desktop's "Skip to chat" never calls `greet` at all,
+ * so there is no request of ours for a state word to describe.
+ *
+ * TOLERANT OF AN OLDER BACKEND: with both additions absent the notice falls back
+ * to the `paused && !greeted` inference this shipped with, so an older payload
+ * still gets the resume sentence and never a wrong owner sentence.
  */
 export function aidaGreetHeldNotice(
-	state: Pick<DesktopAidaControlResult, "paused" | "greeted">,
+	state: Pick<
+		DesktopAidaControlResult,
+		"paused" | "greeted" | "greeting_state" | "held"
+	>,
 	name: string,
 ): string | null {
-	if (state.paused && !state.greeted)
+	if (state.held === true)
+		return `${name} is already open in another window, so she will say hello there.`;
+	/*
+	 * "Settled" is delivered-or-skipped, and `greeted` is the OLDER spelling of
+	 * exactly those two states for a backend that predates the ledger: it is the
+	 * frozen field's whole meaning ("the greeting has been delivered"), so an
+	 * absent `greeting_state` falls back to it rather than to "nothing is
+	 * settled", which would tell a user whose name she already knows that she
+	 * still has to say hello.
+	 */
+	const settled =
+		state.greeting_state === "delivered" ||
+		state.greeting_state === "skipped" ||
+		(state.greeting_state == null && state.greeted === true);
+	if (state.paused && !settled)
 		return `${name} is paused, so she will say hello when you resume her: type /aida resume.`;
 	return null;
 }

@@ -496,6 +496,19 @@ export function wakeIsCatchup(details: Record<string, unknown>): boolean {
  * STRICT `=== true`: the producer writes a JSON boolean, and the fail-safe
  * direction is to SHOW a row - hiding something a person needed to see is the
  * worse failure (the same asymmetry `isHarnessInjected` states).
+ *
+ * THE ONE DIVERGENCE FROM THE CORE, NAMED SO THE PRODUCER KNOWS WHICH SHAPE IS
+ * LOAD-BEARING (code review round 1, R3): `harness/rows.py`'s
+ * `is_hidden_wake_delivery` reads the same marker TRUTHILY
+ * (`bool(details.get("hidden"))`), so a producer that wrote a truthy
+ * non-boolean - `"yes"`, `1` - would have the core drop the row from the
+ * served window while this client kept painting it on a `history_delta`. Strict
+ * is kept, deliberately, because the two failures are not symmetric: the
+ * divergence costs a stale row on screen, and mirroring the core would let a
+ * malformed value from a future producer silently hide a message from the person
+ * it was addressed to. What is load-bearing is a JSON `true` — the shape lane B's
+ * ledger writes — and this docblock is where that is stated rather than the
+ * divergence being rediscovered from the two implementations.
  */
 export function wakeIsHidden(details: Record<string, unknown>): boolean {
 	return details.hidden === true;

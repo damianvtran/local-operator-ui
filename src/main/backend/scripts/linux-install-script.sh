@@ -151,7 +151,13 @@ check_connectivity() {
 # Call connectivity check
 check_connectivity
 
-# Check if PYTHON_BIN is already set by the installer
+# The `python` stage (code review round 1, R1): this script owns the same stage
+# macOS gets from `managed-python.ts` and Windows from its own marker - finding
+# (and, where there is none, refusing to guess about) the interpreter everything
+# below runs on. Without it the panel opened on "Step 2 of 4" with the rail's
+# first row never lit. `|LO1:` lines are the app's milestone vocabulary
+# (`src/shared/install-progress.ts`), matched on the WHOLE line.
+echo "|LO1:python"
 if [ -n "${PYTHON_BIN:-}" ]; then
   log "Using Python executable provided by installer: ${PYTHON_BIN}"
   # Verify the provided Python binary works on this architecture
@@ -631,7 +637,7 @@ if [ "${UV_INSTALLED}" != true ]; then
   # gives beside the same lines (first-run onboarding, Q4/Q13): an extra
   # resolve-and-download that changes nothing, and output nobody reads.
   echo "Installing local-operator package..."
-  python -m pip install local-operator || {
+  python -m pip install --upgrade local-operator || {
     echo "ERROR: Failed to install local-operator package. Exit code: $?"
     echo "Python version:"
     python --version

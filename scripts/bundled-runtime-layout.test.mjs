@@ -391,6 +391,24 @@ test("each install script installs with uv and keeps the pip path it had", () =>
 			`${path}: the pip fallback is verbose again`,
 		);
 		/*
+		 * THE INTERPRETER VERSION IS NOT SPELLED IN A SCRIPT (code review round 1,
+		 * R5): the Windows script carried a literal `"3.14.7"` fallback, a second
+		 * copy of this file's `python.version` that nothing compared against the
+		 * layout and that only a hand-run reached. The app hands the version down
+		 * (`LOCAL_OPERATOR_PYTHON_VERSION`, read from the layout in
+		 * `backend-installer.ts`), and the script now fails loudly without it.
+		 */
+		if (path.endsWith(".ps1")) {
+			assert.ok(
+				!/\b3\.\d+\.\d+\b/.test(code),
+				`${path}: a Python version literal is a second pin - pass LOCAL_OPERATOR_PYTHON_VERSION instead`,
+			);
+			assert.ok(
+				code.includes("LOCAL_OPERATOR_PYTHON_VERSION"),
+				`${path}: the version must come from the app`,
+			);
+		}
+		/*
 		 * pip stays in the venv: the app's backend-update path runs
 		 * `pip install --upgrade local-operator` inside this environment, so BOTH
 		 * creation paths have to leave a pip behind - and the claims to hold them to

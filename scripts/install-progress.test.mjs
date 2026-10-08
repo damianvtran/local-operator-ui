@@ -186,6 +186,12 @@ const SCRIPT_MARKERS = [
 	[
 		"src/main/backend/scripts/linux-install-script.sh",
 		{
+			/*
+			 * The stage's first statement: which interpreter everything below runs
+			 * on. Linux has no managed runtime to copy, so this IS its "Getting
+			 * ready" - the same work macOS reports from `managed-python.ts`.
+			 */
+			python: 'if [ -n "${PYTHON_BIN:-}" ]; then',
 			environment: "Creating virtual environment at $VENV_PATH",
 			components: "UV_INSTALLED=false",
 		},
@@ -193,6 +199,12 @@ const SCRIPT_MARKERS = [
 	[
 		"src/main/backend/scripts/windows-install-script.ps1",
 		{
+			/*
+			 * Resolution into `$PythonExe`, which on a clean machine fetches the
+			 * interpreter through the bundled uv - the arm that used to run with no
+			 * phase announced at all.
+			 */
+			python: "$PythonExe = $null",
 			environment: "Creating virtual environment at $VenvPath",
 			components: "Installing local-operator in virtual environment",
 		},
@@ -376,10 +388,19 @@ test("each shipped script announces the phases it actually runs, in order", () =
 				return [index, quoted ? parseInstallMarker(quoted[1]) : null];
 			})
 			.filter(([, phase]) => phase !== null);
+		/*
+		 * THREE SCRIPT-OWNED PHASES on the two platforms that have no managed
+		 * runtime: they announce `python` themselves because nothing else does
+		 * (code review round 1, R1 - `managed-python.ts` is macOS-only, so the
+		 * panel used to open on "Step 2 of 4" with the rail's first row never lit).
+		 * macOS still announces two, because its `python` comes from the app.
+		 */
 		assert.deepEqual(
 			found.map(([, phase]) => phase),
-			["environment", "components"],
-			`${file} must announce exactly its two script-owned phases, in order`,
+			named.python
+				? ["python", "environment", "components"]
+				: ["environment", "components"],
+			`${file} must announce exactly its script-owned phases, in order`,
 		);
 		for (const [index, phase] of found) {
 			// The line after the marker is the work it names: a marker emitted
@@ -1194,27 +1215,39 @@ const UV_COLD_RUN = [
 ];
 
 test("uv's own narration folds into counts, and the line only moves forward", () => {
+	/*
+	 * Consecutive repeats are collapsed: a new `Downloading X` line moves the fold
+	 * (the started count is real) without changing the sentence, so what this
+	 * asserts is the sequence a READER sees rather than the sequence of sends.
+	 * The collapse is what makes "monotonic" checkable - a repeat can hide a
+	 * regression, a changed line cannot.
+	 */
 	const seen = [];
 	let sub = EMPTY_SUB_PROGRESS;
 	for (const line of UV_COLD_RUN) {
 		const next = foldInstallLine(sub, line);
-		if (next !== sub) seen.push(installSubProgressLine(next));
+		if (next !== sub) {
+			const rendered = installSubProgressLine(next);
+			if (rendered !== seen[seen.length - 1]) seen.push(rendered);
+		}
 		sub = next;
 	}
+	/*
+	 * EVERY LINE HERE IS MONOTONIC, which is the property design round 1 (D3) and
+	 * code review round 1 (R2) both filed against: the old shape printed a
+	 * fraction whose denominator grew with the work uv was still discovering.
+	 * The count of finished files only ever rises, and the sentence under it
+	 * carries the constant `Resolved N` rather than a second moving number.
+	 */
 	assert.deepEqual(seen, [
 		"Found 55 packages to fetch.",
-		"0 of 1 large downloads done \u00b7 55 packages in all.",
-		"0 of 2 large downloads done \u00b7 55 packages in all.",
-		"0 of 3 large downloads done \u00b7 55 packages in all.",
-		"0 of 4 large downloads done \u00b7 55 packages in all.",
-		"0 of 5 large downloads done \u00b7 55 packages in all.",
-		"0 of 6 large downloads done \u00b7 55 packages in all.",
-		"1 of 6 large downloads done \u00b7 55 packages in all.",
-		"2 of 6 large downloads done \u00b7 55 packages in all.",
-		"3 of 6 large downloads done \u00b7 55 packages in all.",
-		"4 of 6 large downloads done \u00b7 55 packages in all.",
-		"5 of 6 large downloads done \u00b7 55 packages in all.",
-		"6 of 6 large downloads done \u00b7 55 packages in all.",
+		"Fetching the large files...",
+		"1 large download finished \u00b7 55 packages in all.",
+		"2 large downloads finished \u00b7 55 packages in all.",
+		"3 large downloads finished \u00b7 55 packages in all.",
+		"4 large downloads finished \u00b7 55 packages in all.",
+		"5 large downloads finished \u00b7 55 packages in all.",
+		"6 large downloads finished \u00b7 55 packages in all.",
 		"Unpacking and finishing up.",
 	]);
 	// A line that says nothing returns the SAME object, which is what lets the
@@ -1224,6 +1257,49 @@ test("uv's own narration folds into counts, and the line only moves forward", ()
 	let pip = foldInstallLine(EMPTY_SUB_PROGRESS, "Collecting local-operator");
 	pip = foldInstallLine(pip, "Collecting httpx>=0.28");
 	assert.equal(installSubProgressLine(pip), "Fetched 2 packages so far.");
+
+	/*
+	 * THE SHAPE THE OLD CODE GOT WRONG, folded from pip's real narration (the
+	 * repro in code review round 1, R2): pip prints `Downloading X (size)` and NO
+	 * `Downloaded X` line, so `downloadsDone` stays 0 forever while
+	 * `downloadsStarted` climbs. The old line read `0 of 1`, `0 of 2`, ... `0 of
+	 * 10 large downloads done` - a growing denominator over a stuck zero, on the
+	 * screen whose whole job is to prove the install is moving. The collected
+	 * count is the honest fact pip does give, and it is what the line now falls
+	 * back to; the test above could not catch this because it fed bare
+	 * `Collecting` lines with no download line in front of them.
+	 */
+	const pipRealNarration = [
+		"Collecting local-operator",
+		"  Downloading local_operator-0.30.6-py3-none-any.whl (13.5 MB)",
+		"Collecting pydantic",
+		"  Downloading pydantic-2.11.9-py3-none-any.whl (444 kB)",
+		"Collecting cryptography",
+		"  Downloading cryptography-45.0.7-cp39-abi3-macosx_10_12_universal2.whl (4.2 MB)",
+		"Installing collected packages: local-operator, pydantic, cryptography",
+		"Successfully installed cryptography-45.0.7 local-operator-0.30.6 pydantic-2.11.9",
+	];
+	const pipLines = [];
+	let pipSub = EMPTY_SUB_PROGRESS;
+	for (const line of pipRealNarration) {
+		const next = foldInstallLine(pipSub, line);
+		if (next !== pipSub) {
+			const rendered = installSubProgressLine(next);
+			if (rendered !== pipLines[pipLines.length - 1]) pipLines.push(rendered);
+		}
+		pipSub = next;
+	}
+	assert.deepEqual(pipLines, [
+		"Fetched 1 package so far.",
+		"Fetched 2 packages so far.",
+		"Fetched 3 packages so far.",
+		"Unpacking and finishing up.",
+	]);
+	// And nothing in the whole narration ever prints a zero denominator.
+	assert.ok(
+		pipLines.every((line) => !/\b0 of\b/.test(line ?? "")),
+		"the pip fallback still prints a stuck zero",
+	);
 	assert.equal(installSubProgressLine(EMPTY_SUB_PROGRESS), null);
 	assert.equal(installSubProgressLine(null), null);
 });
@@ -1238,7 +1314,13 @@ test("the estimate is the measured baselines, rounded, and never negative", () =
 	const total = INSTALL_PHASES.reduce((sum, phase) => sum + mac[phase], 0);
 	assert.ok(total < 30_000, `macOS baselines sum to ${total} ms`);
 	// At the start of `components`: its own baseline plus `verify`, to 5 s.
-	assert.equal(installEta("darwin", "components", 0), "about 15 s left");
+	/*
+	 * `components` + `verify` at the start of `components`. It moved from 15 s
+	 * when QA's cold 8.08 s reading for that phase showed the old 8 s baseline had
+	 * no headroom at all (Q-1) - the number is the measured figure plus headroom,
+	 * so this expectation moves with it.
+	 */
+	assert.equal(installEta("darwin", "components", 0), "about 20 s left");
 	// Small numbers are exact, so the last seconds count down one by one.
 	assert.equal(installEta("darwin", "verify", 0), "about 4 s left");
 	// Outrunning a phase is said in words, never as a negative count.

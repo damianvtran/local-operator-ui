@@ -497,8 +497,53 @@ test("first-run greet refusals land in the chat with a sentence keyed on the cod
 		aidaGreetHeldNotice({ paused: false, greeted: false }, "Ada"),
 		null,
 	);
+	// Older backend, no ledger: `greeted` is the frozen spelling of "settled", so
+	// a pause over a hello she has ALREADY said owes the user nothing.
 	assert.equal(
 		aidaGreetHeldNotice({ paused: true, greeted: true }, "Ada"),
+		null,
+	);
+
+	/*
+	 * THE ADDITIVE FIELDS (the contract code review round 1 handed over). `held`
+	 * is the owner outcome - a live session on this machine carries the greeting
+	 * out - so the notice says WHERE it will arrive rather than leaving the user
+	 * watching this window for it. A 200, never a refusal, and absent on an older
+	 * backend (where it must not be read as `false`).
+	 */
+	assert.match(
+		aidaGreetHeldNotice({ paused: false, greeted: false, held: true }, "Ada"),
+		/is already open in another window/,
+	);
+	assert.equal(
+		aidaGreetHeldNotice({ paused: false, greeted: false }, "Ada"),
+		null,
+	);
+	/*
+	 * And the ledger's settled states beat `paused`: `delivered`/`skipped` are
+	 * terminal, so a pause over either must not promise a hello that will never
+	 * come.
+	 */
+	for (const greeting_state of ["delivered", "skipped"]) {
+		assert.equal(
+			aidaGreetHeldNotice(
+				{
+					paused: true,
+					greeted: greeting_state === "delivered",
+					greeting_state,
+				},
+				"Ada",
+			),
+			null,
+			`a ${greeting_state} greeting must not be re-promised`,
+		);
+	}
+	// Unsettled and unpaused is the ordinary "she is about to speak" path.
+	assert.equal(
+		aidaGreetHeldNotice(
+			{ paused: false, greeted: false, greeting_state: "armed" },
+			"Ada",
+		),
 		null,
 	);
 });

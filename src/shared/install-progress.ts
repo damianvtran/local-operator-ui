@@ -127,11 +127,14 @@ export const INSTALL_PHASE_DETAILS: Record<InstallPhase, string> = {
  * it rather than counting into negative numbers.
  *
  * WHERE EACH NUMBER COMES FROM (cold uv cache, the bundled uv 0.12.17):
- *  - darwin: `environment` 1.2 s, `components` 7.6 s (resolve 0.9 s, download
- *    6.1 s, install 0.1 s) and `verify` 3.3 s (`serve` until `/health`),
- *    measured on an M-series Mac on 2026-10-08 by running the shipped script and
- *    the smoke probe's own command; `python` is the managed runtime copy, 5-8 s
- *    cold as the UX round measured it (`prepareAndInstall`'s note).
+ *  - darwin: `environment` 1.2 s, `components` 7.6 s this author measured and
+ *    8.08 s QA measured independently (resolve 0.9 s, download 6.1 s, install
+ *    0.1 s), and `verify` 3.3 s (`serve` until `/health`), measured on an M-series
+ *    Mac on 2026-10-08 by running the shipped script and the smoke probe's own
+ *    command; `python` is the managed runtime copy, 5-8 s cold as the UX round
+ *    measured it (`prepareAndInstall`'s note). Every baseline is the MEASURED
+ *    figure plus headroom, never the figure itself - see the note on the darwin
+ *    entry below.
  *  - win32: `environment` 6.4 s and `components` 8.9 s from the uv arm of the
  *    install-scripts CI job (run 36646304432); `python` is `uv python install`,
  *    3.6 s on the Mac above, doubled for a slower disk and network. `verify` is
@@ -149,10 +152,19 @@ export const INSTALL_PHASE_BASELINE_MS: Record<
 	InstallPlatform,
 	Record<InstallPhase, number>
 > = {
+	/*
+	 * `components` carries headroom because QA's independent cold measurement of
+	 * that phase was 8.08 s against the 8.0 s this used to hold, which flipped a
+	 * perfectly normal install to "taking longer than usual" underneath the same
+	 * screen's "less than a minute" (QA round 1, Q-1). It is 14 s now: 1.73x that
+	 * reading and 1.35x this author's own worst cold run (10.40 s), so the word
+	 * appears when the phase really has outrun its work rather than at the end of
+	 * every install.
+	 */
 	darwin: {
 		python: 6_000,
 		environment: 1_500,
-		components: 8_000,
+		components: 14_000,
 		verify: 4_000,
 	},
 	win32: { python: 7_500, environment: 6_500, components: 9_000, verify: 500 },
@@ -232,23 +244,39 @@ export function foldInstallLine(
 /**
  * The one line the window shows for the sub-progress, or null for nothing yet.
  *
- * In the order the facts arrive, so the line only ever moves forward: found the
- * list, then the downloads, then the install.
+ * MONOTONIC, and that is the property the order below is chosen for: every
+ * number it prints only ever grows, so a line that changes always changes
+ * forward. Two earlier shapes failed it (design round 1, D3; code review round
+ * 1, R2):
+ *
+ *  - `done of started large downloads done` moves BACKWARDS, because uv walks
+ *    the resolve and starts files as it finds them, so 6 started with 3 done
+ *    becomes 9 started with 3 done. Worse on the pip fallback, which prints no
+ *    `Downloaded X` line at all, so it read `0 of 1`, `0 of 2`, ... `0 of 10` -
+ *    a growing denominator over a stuck zero, on the screen U8 exists to keep
+ *    from looking hung.
+ *  - the downloads sentence therefore now REQUIRES a completion (`downloadsDone
+ *    > 0`) before it is used, and pip's own `Collecting` count is the honest
+ *    fallback in between.
+ *
+ * `resolved` is set once by uv's `Resolved N packages` line, so quoting it on a
+ * later line is a constant rather than a second moving part.
  */
 export function installSubProgressLine(
 	sub: InstallSubProgress | null | undefined,
 ): string | null {
 	if (!sub) return null;
 	if (sub.installed) return "Unpacking and finishing up.";
-	if (sub.downloadsStarted > 0) {
-		const done = Math.min(sub.downloadsDone, sub.downloadsStarted);
-		return `${done} of ${sub.downloadsStarted} large downloads done${
+	if (sub.downloadsDone > 0) {
+		const done = sub.downloadsDone;
+		return `${done} large download${done === 1 ? "" : "s"} finished${
 			sub.resolved !== null ? ` \u00b7 ${sub.resolved} packages in all` : ""
 		}.`;
 	}
-	if (sub.resolved !== null) return `Found ${sub.resolved} packages to fetch.`;
 	if (sub.collected > 0)
 		return `Fetched ${sub.collected} package${sub.collected === 1 ? "" : "s"} so far.`;
+	if (sub.downloadsStarted > 0) return "Fetching the large files...";
+	if (sub.resolved !== null) return `Found ${sub.resolved} packages to fetch.`;
 	return null;
 }
 
