@@ -3052,6 +3052,161 @@ test("the rung only shows when nothing the owner drove has taken over", () => {
 	);
 });
 
+/* ---------------------- the in-flight claim: the pair, the terminal yield */
+
+/*
+ * The operator incident (2026-10-07), at the model level and at the call sites.
+ *
+ * The report: a running turn showed NO in-flight indicator while work ran - the
+ * working line blanked on every ~1.5-4 s receipt gap a busy session answers
+ * with, and for the whole stretch of a flapping link. The tests below pin the
+ * rule that fixes it: the model's two facts, the press's own rung, and where
+ * the call sites get them.
+ */
+test("a busy turn keeps its line through a reconnect and yields only to a terminal statement", () => {
+	/*
+	 * The model cannot see a gap as such - it reads `waiting` and `unavailable`,
+	 * and it is the CALL SITES that decide which fact lands in each. So the first
+	 * two cases below feed `waiting` the way `chat-page.tsx`'s `turnAlive` does
+	 * (the pair, `frontend ?? heldFrontend`) and the third is the discriminating
+	 * one: a terminal statement stands the rung down even though the stale
+	 * `frontend` still says `streaming` (the hook keeps that field across an
+	 * `end`/`error`, which is exactly why `waiting` alone cannot decide this).
+	 */
+	const turnAlive = (frontend, heldFrontend) =>
+		(frontend ?? heldFrontend)?.streaming === true;
+	const pane = (over = {}) =>
+		deriveWorkingLine({
+			waiting: true,
+			compacting: false,
+			starting: false,
+			gate: false,
+			unavailable: false,
+			records: [],
+			...over,
+		});
+	// busy + healthy: the authoritative frontend is present and streaming.
+	assert.deepEqual(
+		pane({ waiting: turnAlive({ streaming: true }, null) }),
+		{ activity: "thinking", phase: "thinking" },
+		"a healthy busy turn keeps its line",
+	);
+	// busy + a receipt gap: `frontend` is null and the last reading is held.
+	// This is the state the flapping link lives in, and the claim survives it -
+	// the frame `reconnect-gap.stories.tsx`'s `RestoredRunning` photographs.
+	assert.deepEqual(
+		pane({ waiting: turnAlive(null, { streaming: true }) }),
+		{ activity: "thinking", phase: "thinking" },
+		"the held reading's streaming keeps the in-flight claim up through the gap",
+	);
+	// busy + a TERMINAL statement: the pane renders its failure instead of the
+	// conversation, so the rung stands down (the call sites pass
+	// `canonicalTranscriptTerminal`, which the reconnecting status does not
+	// reach - see its doc in `transcript-pane.ts`).
+	assert.equal(
+		pane({ waiting: turnAlive({ streaming: true }, null), unavailable: true }),
+		null,
+		"a terminal statement stands the rung down even while the stale reading streams",
+	);
+});
+
+test("a Stop press in flight relabels the line and withholds its clock, without restarting it", () => {
+	/*
+	 * The press's own rung: from the press until its receipt or its bound, the
+	 * line says the cancel is in progress. It does so by OVERLAYING the live
+	 * state, so the phase and anchor underneath survive and the clock cannot
+	 * restart or jump - the operator's tell is a fresh `0s` under the press, and
+	 * a label-only swap cannot print one because the number is withheld for the
+	 * whole window (`clock: false`, the queued arm's rule).
+	 */
+	const stoppingInput = (over = {}) => ({
+		waiting: true,
+		compacting: false,
+		starting: false,
+		gate: false,
+		unavailable: false,
+		stopping: true,
+		records: [],
+		...over,
+	});
+	// The live phase and its anchor, relabelled with the clock withheld.
+	assert.deepEqual(deriveWorkingLine(stoppingInput()), {
+		activity: "stopping the turn",
+		phase: "thinking",
+		clock: false,
+	});
+	// A running batch keeps its OWN anchor and phase under the label: the
+	// clock's zero is the batch's oldest card, and the overlay must not move it.
+	assert.deepEqual(
+		deriveWorkingLine(
+			stoppingInput({ records: [userRow(ECHO, "go"), runningToolRow("t1")] }),
+		),
+		{
+			activity: "stopping the turn",
+			phase: "running",
+			startedAt: 1,
+			clock: false,
+		},
+	);
+	// A state the ladder does not claim is never relabelled into one.
+	assert.equal(deriveWorkingLine(stoppingInput({ gate: true })), null);
+	assert.equal(deriveWorkingLine(stoppingInput({ unavailable: true })), null);
+	// The composer's hint reads the same derivation, so the press cannot hide
+	// the box's own sentence while the turn is still the thing running.
+	assert.equal(workingLineClaimed(stoppingInput()), true);
+});
+
+test("the two claim surfaces read the pair while the controls keep the raw reading", () => {
+	/*
+	 * The wiring half of the same incident, pinned in source because
+	 * `chat-content.tsx` is a page component this suite cannot mount (the
+	 * sibling guards, `stopped-row-measure.test.mjs` among them, read it the
+	 * same way). The split is the fix: the transcript's line and the composer's
+	 * hint read `canonical.turnAlive` (the pair, defined once in `chat-page.tsx`),
+	 * while the controls keep `canonical.busy` - a control acts on the
+	 * authoritative stream, not on a held reading.
+	 */
+	const strip = (source) =>
+		source
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+	const content = strip(
+		readFileSync(
+			"src/renderer/src/features/chat/components/chat-content.tsx",
+			"utf8",
+		),
+	);
+	const page = strip(
+		readFileSync(
+			"src/renderer/src/features/chat/components/chat-page.tsx",
+			"utf8",
+		),
+	);
+	assert.match(
+		page,
+		/const turnAlive =\s*\n\s*\(canonical\.frontend \?\? canonical\.heldFrontend\)\?\.streaming === true;/,
+		"turnAlive is the pair, defined once in the page that owns the prop",
+	);
+	assert.match(
+		content,
+		/waiting=\{canonical\.turnAlive\}/,
+		"the working line reads the pair",
+	);
+	assert.match(
+		content,
+		/waiting: canonical\.turnAlive,/,
+		"the composer's hint reads the pair",
+	);
+	// Neither claim surface may go back to the raw field - that is the blanking
+	// defect this split exists to remove.
+	assert.doesNotMatch(content, /waiting=\{canonical\.busy\}/);
+	assert.doesNotMatch(content, /waiting: canonical\.busy,/);
+	// And the controls the split deliberately keeps on the raw reading: the Stop
+	// control's availability and the aside adopt gate.
+	assert.match(content, /active: canonical\.busy, onStop: canonical\.onStop/);
+	assert.match(content, /asideStreaming=\{canonical\.busy\}/);
+});
+
 /* ---------------------------------- which send is "unsettled" (the box's claim) */
 
 /*

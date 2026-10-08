@@ -152,6 +152,30 @@ export const STARTING_SESSION_ACTIVITY = "starting the session";
 export const COMPACTING_ACTIVITY = "compacting context";
 
 /**
+ * The label for the window between a Stop press and its answer, and the reason
+ * the press gets a rung at all.
+ *
+ * THE INCIDENT (operator report, 2026-10-07): a Stop press could sit with no
+ * feedback of its own while the pane's last reading still said a turn was up -
+ * the band that did appear is the OTHER statement ("the turn you stopped ended
+ * this way") and it could vanish without a word when the answer was `idle`.
+ * Between the press and its receipt the one thing the app knows is that a
+ * cancel is IN PROGRESS, and the line is where every other in-flight fact on
+ * this pane already speaks, so it says that and only that.
+ *
+ * WHY IT CARRIES NO CLOCK, not even the phase's: a number here would measure
+ * one of two things and both are wrong. Counting the turn re-narrates the work
+ * the user just asked to cancel - and any RESTART of that number (0s again) is
+ * the tell the operator's own report names; counting from the press would
+ * invent an age for a cancel whose length nothing has measured. The queued arm
+ * withholds its number for the same reason (see `clock`), and this rung keeps
+ * the LIVE phase and anchor underneath its label so the clock neither restarts
+ * nor jumps if the receipt turns out to say nothing was running. The copy is
+ * provisional, pending the design round.
+ */
+export const STOPPING_ACTIVITY = "stopping the turn";
+
+/**
  * The send a pane has admitted, read from the store's own draft row.
  *
  * WHAT THIS REPLACED, AND WHY. It used to be `admittedSendFor(sessionId,
@@ -428,6 +452,17 @@ export type WorkingLineInput = {
 	 * is this wait's producer and it knows the start.
 	 */
 	startingSince?: number | null;
+	/**
+	 * A Stop press is in flight for this conversation, from the press until its
+	 * receipt or its bound.
+	 *
+	 * The page owns it (`chat-page.tsx` sets it in the same handler that writes
+	 * the stopped-turn fact) and it is here because this line is the surface that
+	 * already speaks for in-flight facts on this pane. Absent means false, so
+	 * every caller that predates this field derives exactly what it derived
+	 * before.
+	 */
+	stopping?: boolean;
 	/** A question is pending; it outranks every working state (branding § 7). */
 	gate: boolean;
 	/**
@@ -453,7 +488,32 @@ export type WorkingLineInput = {
 	records: TranscriptRecord[];
 };
 
-export function deriveWorkingLine({
+/**
+ * The derivation, plus the one rung that is not a reading of the turn at all:
+ * a Stop press in flight relabels the line and withholds its clock.
+ *
+ * WHY AN OVERLAY AND NOT A BRANCH INSIDE THE LADDER. The press is a fact about
+ * the USER'S REQUEST, not about the work, so it can land on any rung - running
+ * a batch, composing, responding, thinking - and a branch per rung would be
+ * five copies of the same rule. Overlaying instead keeps the live state's
+ * PHASE and ANCHOR underneath the label, which is the whole of the no-restart
+ * guarantee: the label changes, the clock cell goes empty rather than
+ * restarting, and if the receipt turns out to say nothing was running the
+ * number resumes from the same zero (`STOPPING_ACTIVITY` carries the why).
+ *
+ * A state the ladder does not claim stays unclaimed: `gate` and `unavailable`
+ * still return null before the overlay is reached, so a pending question or a
+ * terminal transport is never relabelled into a claim.
+ */
+export function deriveWorkingLine(
+	input: WorkingLineInput,
+): WorkingLineState | null {
+	const live = deriveLiveWorkingLine(input);
+	if (live === null || input.stopping !== true) return live;
+	return { ...live, activity: STOPPING_ACTIVITY, clock: false };
+}
+
+function deriveLiveWorkingLine({
 	waiting,
 	compacting,
 	compactingSince,
@@ -527,6 +587,27 @@ export function deriveWorkingLine({
 	}
 
 	if (waiting) {
+		/*
+		 * THE RUNG YIELDS TO A TERMINAL STATEMENT, AND TO NOTHING SOFTER (operator
+		 * incident, 2026-10-07).
+		 *
+		 * `unavailable` is the pane's own "this statement is terminal" fact - the
+		 * failure notice it is rendering instead of the conversation, a session this
+		 * machine no longer has, or nothing but a cached page. Beside any of those a
+		 * line claiming progress is claiming progress nobody can vouch for, which is
+		 * why the compacting and admitted-send arms already yield to it and this one
+		 * now does too.
+		 *
+		 * WHAT IT DELIBERATELY IS NOT: the reconnecting window. A receipt gap is not
+		 * a statement that the turn ended; the pane says the connection is being
+		 * rebuilt while the app still holds the last reading, and on a flaky link -
+		 * the operator's own incident - the work on the far side is real the whole
+		 * time. Blanking this rung through every ~1.5-4 s reconnect is what left a
+		 * running turn with NO in-flight indicator at all, so the call sites feed
+		 * this door the terminal fact (`canonicalTranscriptTerminal`,
+		 * `transcript-pane.ts`) rather than "anything the pane is saying".
+		 */
+		if (unavailable) return null;
 		const runningTools = records.filter(
 			(record) => record.kind === "tool" && record.phase === "running",
 		) as Extract<TranscriptRecord, { kind: "tool" }>[];
@@ -695,10 +776,13 @@ export function workingLineClaimed(input: WorkingLineInput): boolean {
  *
  * Exported so the rung and the composer are handed the same facts from one
  * builder rather than two constructions that can drift, and so `unavailable`
- * is the pane's own `canonicalTranscriptSpeaks` rather than a second copy of
- * the rule. The records are NOT one list in every caller: the transcript's
- * rung is handed the cross-session filter's `shownRecords` while the
- * composer's hint still reads the raw records, and no divergence is reachable
+ * is the pane's own terminal-statement predicate (`canonicalTranscriptTerminal`,
+ * `transcript-pane.ts`) rather than a second copy of the rule - the one
+ * deliberate exception is the reconnecting window, which is not terminal and
+ * must not stand the line down (see the waiting arm). The records are NOT one
+ * list in every caller: the transcript's rung is handed the cross-session
+ * filter's `shownRecords` while the composer's hint still reads the raw
+ * records, and no divergence is reachable
  * today because the one predicate that could flip on the dropped rows
  * (`ownerAnswered`) is decided over raw records in `chat-page` before either
  * reader is built - the trace and the dependency live beside the rung
@@ -714,6 +798,8 @@ export function workingLineInputFor(pane: {
 	startingSession?: boolean;
 	/** See `WorkingLineInput.startingSince`: the press's persisted anchor. */
 	startingSince?: number | null;
+	/** See `WorkingLineInput.stopping`: the press's own window, page-owned. */
+	stopping?: boolean;
 	gate?: unknown;
 	unavailable: boolean;
 	records: TranscriptRecord[];
@@ -756,6 +842,8 @@ export function workingLineInputFor(pane: {
 		...(pane.startingSince == null
 			? {}
 			: { startingSince: pane.startingSince }),
+		// Spread, for the same shape reason as `folded` above.
+		...(pane.stopping === true ? { stopping: true } : {}),
 		gate: Boolean(pane.gate),
 		unavailable: pane.unavailable,
 		...folded,
