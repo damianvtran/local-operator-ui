@@ -136,7 +136,22 @@ const withRows = (rows) => ({
 const liveEmpty = () => ({ asks: null, asks_open: 0 });
 const unsupported = () => ({ asks: null, asks_open: null });
 const tallyOnly = (n) => ({ asks: null, asks_open: n, asks_truncated: true });
+/** The wire's bounded PREFIX: `rows` are the ones that fit, `tally` the true outstanding count. */
+const prefixOf = (rows, tally) => ({
+	asks: rows,
+	asks_open: tally,
+	asks_truncated: true,
+});
 const unread = () => null;
+/** What a frame names as outstanding, in the shape the record is written and settled with. */
+const reading = (rows, listComplete = true) => ({
+	outstandingIds: rows
+		.filter((row) => OUTSTANDING.has(row.status))
+		.map((row) => row.ask_id),
+	listComplete,
+});
+/** The same row, settled: an answered ask is no longer outstanding and never comes back. */
+const answered = (row) => ({ ...row, status: "answered", delivered: true });
 
 /**
  * One render's facts for a pane showing conversation `c-a`: the queue facts come from
@@ -283,7 +298,8 @@ test("state 4 - dismissed while pending: stays closed, including after switching
 		frame(withRows(rows)),
 		frame(withRows([ask("open"), ...rows])),
 		frame(withRows([{ ...rows[0], status: "timed_out" }])),
-		frame(withRows([ask("answered"), ask("open")])),
+		/* Others settle and arrive around it; the waved-off ask is still outstanding. */
+		frame(withRows([ask("answered"), ask("open"), ...rows])),
 	]) {
 		const again = first.observe(later);
 		assert.equal(again.verdict.action, "leave");
@@ -305,11 +321,216 @@ test("state 4 - dismissed while pending: stays closed, including after switching
 	assert.equal(back.settled, true);
 });
 
+/* ======================= the record names the asks it waved off (U10) ==== */
+
+/**
+ * A pane that opens over `frontend` by policy and is then closed by the user: the exact
+ * sequence the app runs (open verdict, an open frame, a closed frame), so the dismissal
+ * under test is the one the close watch writes and not a hand-built entry. Returns the
+ * view, which keeps observing like a mounted pane would.
+ */
+const dismissOver = (dismissals, frontend) => {
+	const view = createAskOpenView(dismissals, T0);
+	assert.equal(view.observe(frame(frontend)).verdict.action, "open");
+	view.observe(frame(frontend, opened));
+	assert.equal(view.observe(frame(frontend)).closeWatch, "dismissed");
+	return view;
+};
+
+/** What a brand-new view of `c-a` decides on its first RESOLVED frame. */
+const returnTo = (dismissals, frontend) =>
+	createAskOpenView(dismissals, T0).observe(frame(frontend)).verdict;
+
+test("E1 - a partial resolve holds: the dismissal stands while ANY waved-off ask is still outstanding", () => {
+	const dismissals = createAskDismissals();
+	const a = ask("open");
+	const b = ask("open");
+	const watching = dismissOver(dismissals, withRows([a, b]));
+	/* a is answered (elsewhere); b is not. The pane that is still mounted sees it... */
+	watching.observe(frame(withRows([answered(a), b])));
+	assert.equal(dismissals.has("c-a"), true, "b is still outstanding");
+	/* ...and so does a switch away and back, even with a newer ask beside b. */
+	for (const frontend of [
+		withRows([answered(a), b]),
+		withRows([answered(a), b, ask("open")]),
+		withRows([b]),
+	]) {
+		assert.deepEqual(
+			(({ action, reason }) => ({ action, reason }))(
+				returnTo(dismissals, frontend),
+			),
+			{ action: "leave", reason: "dismissed" },
+		);
+	}
+});
+
+test("E2 - resolve both, leave and return, and a NEW batch opens a fresh view", () => {
+	const dismissals = createAskDismissals();
+	const a = ask("open");
+	const b = ask("open");
+	const watching = dismissOver(dismissals, withRows([a, b]));
+	watching.observe(frame(withRows([answered(a), answered(b)])));
+	assert.equal(
+		dismissals.has("c-a"),
+		false,
+		"none of the waved-off asks is outstanding any more: forgotten",
+	);
+	const fresh = returnTo(
+		dismissals,
+		withRows([answered(a), answered(b), ask("open")]),
+	);
+	assert.deepEqual(
+		{ action: fresh.action, reason: fresh.reason },
+		{ action: "open", reason: "pending-on-open" },
+	);
+});
+
+test("E3 - a queue that emptied and refilled while the user was away needs no 'seen empty' frame", () => {
+	const dismissals = createAskDismissals();
+	const a = ask("open");
+	/* The pane unmounts at the close and nothing observes this conversation again. */
+	dismissOver(dismissals, withRows([a]));
+	assert.equal(dismissals.has("c-a"), true);
+	/*
+	 * Away, `a` is answered, the queue goes empty and a new batch is queued. The only
+	 * frame the next pane ever sees is the REFILLED queue: there is no empty frame to
+	 * have observed. The record settles against that very frame, before the decision
+	 * reads it, so the verdict is an open and the record is gone.
+	 */
+	const back = createAskOpenView(dismissals, T0);
+	assert.equal(back.observe(frame(unread())).verdict.reason, "unresolved");
+	assert.equal(
+		dismissals.has("c-a"),
+		true,
+		"a frame that has not answered settles nothing",
+	);
+	const landed = back.observe(frame(withRows([ask("open")]))).verdict;
+	assert.deepEqual(
+		{ action: landed.action, reason: landed.reason },
+		{ action: "open", reason: "pending-on-open" },
+	);
+	assert.equal(dismissals.has("c-a"), false);
+});
+
+test("U2 - an id list that cannot be named in full HOLDS: a truncated prefix, a tally with no rows", () => {
+	/* (a) the close happened over a bounded PREFIX: two ids named of five outstanding. */
+	const prefixClosed = createAskDismissals();
+	const a = ask("open");
+	const b = ask("open");
+	dismissOver(prefixClosed, prefixOf([a, b], 5));
+	/*
+	 * Later a COMPLETE frame lists only an ask nobody waved off. The three ids the close
+	 * could not name might be any of them, so "none of the waved-off asks is outstanding"
+	 * cannot be shown from ids: it holds, and the new ask does not force the drawer open.
+	 */
+	const fresh = ask("open");
+	assert.equal(returnTo(prefixClosed, withRows([fresh])).reason, "dismissed");
+	assert.equal(prefixClosed.has("c-a"), true);
+	/* A complete frame with NOTHING outstanding is the one observation that settles it. */
+	createAskOpenView(prefixClosed, T0).observe(frame(liveEmpty()));
+	assert.equal(prefixClosed.has("c-a"), false);
+	assert.equal(returnTo(prefixClosed, withRows([fresh])).action, "open");
+
+	/* (b) the close happened over a TALLY with no rows behind it: no id is known at all. */
+	const tallyClosed = createAskDismissals();
+	const tallyView = createAskOpenView(tallyClosed, T0);
+	tallyView.observe(frame(tallyOnly(4), opened));
+	assert.equal(tallyView.observe(frame(tallyOnly(4))).closeWatch, "dismissed");
+	assert.equal(
+		returnTo(tallyClosed, withRows([ask("open")])).reason,
+		"dismissed",
+	);
+	createAskOpenView(tallyClosed, T0).observe(frame(withRows([])));
+	assert.equal(tallyClosed.has("c-a"), false);
+
+	/* (c) a COMPLETE record, and a later frame that cannot name every ask. */
+	const completeClosed = createAskDismissals();
+	const waved = ask("open");
+	dismissOver(completeClosed, withRows([waved]));
+	const later = createAskOpenView(completeClosed, T0);
+	/* The prefix omits `waved`, but `waved` may be among the rows that were left out. */
+	later.observe(frame(prefixOf([ask("open")], 3)));
+	assert.equal(completeClosed.has("c-a"), true);
+	/* Neither does a frame that says nothing about the queue at all. */
+	later.observe(frame(unread()));
+	later.observe(frame(unsupported()));
+	later.observe(frame(tallyOnly(2)));
+	assert.equal(completeClosed.has("c-a"), true);
+	/* Only a frame that names every outstanding ask, and not `waved` among them, settles it. */
+	later.observe(frame(withRows([answered(waved), ask("open")])));
+	assert.equal(completeClosed.has("c-a"), false);
+});
+
+test("U3 - a second close over a different set UNIONS into the record, it never replaces it", () => {
+	const dismissals = createAskDismissals();
+	const a = ask("open");
+	const b = ask("open");
+	dismissals.record("c-a", reading([a]));
+	dismissals.record("c-a", reading([b]));
+	const holds = (rows, complete = true) => {
+		dismissals.reconcile("c-a", reading(rows, complete));
+		return dismissals.has("c-a");
+	};
+	/* Each close's asks are still waved off: a replaced record would have forgotten one. */
+	assert.equal(holds([a]), true, "the FIRST close's ask is still waved off");
+	assert.equal(holds([b]), true, "the SECOND close's ask is waved off too");
+	assert.equal(holds([]), false, "both gone: forgotten");
+
+	/* A close that names nothing refused nothing, and does not disturb a record held. */
+	dismissals.record("c-a", reading([a]));
+	dismissals.record("c-a", reading([]));
+	assert.equal(holds([a]), true);
+	assert.equal(holds([]), false);
+
+	/*
+	 * The record is only as complete as its LEAST complete close, in either order: a close
+	 * over a full list that comes AFTER one over a truncated prefix must not launder the
+	 * unnamed remainder into a complete record.
+	 */
+	for (const order of [
+		[reading([a]), reading([b], false)],
+		[reading([a], false), reading([b])],
+	]) {
+		for (const close of order) dismissals.record("c-a", close);
+		assert.equal(
+			holds([ask("open")]),
+			true,
+			"an unnamed remainder cannot be ruled out",
+		);
+		assert.equal(holds([]), false);
+	}
+});
+
+test("U3 - the union is what the real second close writes: dismiss, hand-open, close again", () => {
+	const dismissals = createAskDismissals();
+	const a = ask("open");
+	const b = ask("open");
+	const view = dismissOver(dismissals, withRows([a]));
+	/* The user opens it by hand over a queue that now also holds b, and closes it again. */
+	view.observe(frame(withRows([a, b]), opened));
+	assert.equal(view.observe(frame(withRows([a, b]))).closeWatch, "dismissed");
+	/* a settles; b alone still holds (a replaced record {b} would also hold - so the other way): */
+	assert.equal(
+		returnTo(dismissals, withRows([answered(a), b])).reason,
+		"dismissed",
+	);
+	/* b settles; a alone still holds, which only a record that KEPT {a} can say. */
+	assert.equal(
+		returnTo(dismissals, withRows([a, answered(b)])).reason,
+		"dismissed",
+	);
+	assert.equal(
+		returnTo(dismissals, withRows([answered(a), answered(b), ask("open")]))
+			.action,
+		"open",
+	);
+});
+
 /* ============================================================ the guards ==== */
 
 test("a dismissal belongs to its conversation, and to this page's lifetime only", () => {
 	const dismissals = createAskDismissals();
-	dismissals.record("c-a");
+	dismissals.record("c-a", reading([ask("open")]));
 
 	// Another conversation's pending queue is not muted by it.
 	const other = createAskOpenView(dismissals, T0);
@@ -536,7 +757,7 @@ test("a durable pane does not stop an auto-open: it borrows the slot like a pres
 
 test("a policy-opened drawer carried onto a DISMISSED conversation is closed", () => {
 	const dismissals = createAskDismissals();
-	dismissals.record("c-a");
+	dismissals.record("c-a", reading([ask("open")]));
 	const facts = (over = {}) => ({
 		conversationId: "c-a",
 		dismissed: dismissals,
@@ -649,18 +870,42 @@ test("the facts are read off the shipped view: published, rows, and the wire's t
 	const facts = (frontend, startedAtMs = T0) =>
 		askOpenFacts(askQueueView(frontend), startedAtMs);
 	const none = { pendingRows: 0, arrivedRows: 0, outstanding: 0 };
-	assert.deepEqual(facts(null), { resolved: false, ...none });
-	assert.deepEqual(facts(unsupported()), { resolved: false, ...none });
-	assert.deepEqual(facts(liveEmpty()), { resolved: true, ...none });
+	const nothingNamed = { outstandingIds: [], listComplete: false };
+	assert.deepEqual(facts(null), { resolved: false, ...none, ...nothingNamed });
+	assert.deepEqual(facts(unsupported()), {
+		resolved: false,
+		...none,
+		...nothingNamed,
+	});
+	/* A live, empty queue names everything it holds: nothing. That is a COMPLETE reading. */
+	assert.deepEqual(facts(liveEmpty()), {
+		resolved: true,
+		...none,
+		outstandingIds: [],
+		listComplete: true,
+	});
 	assert.deepEqual(facts(tallyOnly(4)), {
 		resolved: true,
 		pendingRows: 0,
 		arrivedRows: 0,
 		outstanding: 4,
+		...nothingNamed,
 	});
+	const open = ask("open");
+	const movedOn = ask("timed_out");
+	const rows = [open, movedOn, ask("answered")];
+	const got = facts(withRows(rows));
 	assert.deepEqual(
-		facts(withRows([ask("open"), ask("timed_out"), ask("answered")])),
-		{ resolved: true, pendingRows: 2, arrivedRows: 0, outstanding: 2 },
+		{ ...got, outstandingIds: [...got.outstandingIds].sort() },
+		{
+			resolved: true,
+			pendingRows: 2,
+			arrivedRows: 0,
+			outstanding: 2,
+			outstandingIds: [open.ask_id, movedOn.ask_id].sort(),
+			listComplete: true,
+		},
+		"the outstanding set is open plus timed_out, never the settled row",
 	);
 });
 

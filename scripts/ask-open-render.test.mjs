@@ -161,6 +161,14 @@ const withRows = (rows) => ({
 	asks_truncated: null,
 });
 const liveEmpty = () => ({ asks: null, asks_open: 0 });
+/** The wire's bounded PREFIX: the rows that fit, and the true outstanding count beside them. */
+const prefixOf = (rows, tally) => ({
+	asks: rows,
+	asks_open: tally,
+	asks_truncated: true,
+});
+/** The same row, settled: an answered ask is no longer outstanding and never comes back. */
+const answered = (row) => ({ ...row, status: "answered", delivered: true });
 
 /* ------------------------------------------------------------ the harness ---- */
 
@@ -346,14 +354,16 @@ test("Escape inside the drawer is a dismissal too: the watch is on the flag, not
 
 test("another pane taking the slot is read as a dismissal: the user chose something else for it", async (t) => {
 	const view = await rig(t);
-	await view.show("c-a", withRows([ask("open")]));
+	const row = ask("open");
+	await view.show("c-a", withRows([row]));
 	await act(async () => {
 		useUiPreferencesStore.getState().setCanvasOpen(true);
 	});
 	assert.equal(view.flag(), false, "the canvas claimed the slot");
 	assert.equal(askDismissals.has("c-a"), true);
 	await view.show("c-b", liveEmpty());
-	await view.show("c-a", withRows([ask("open")]));
+	/* The SAME ask is still outstanding, so what was waved off is still waved off. */
+	await view.show("c-a", withRows([row]));
 	assert.equal(view.flag(), false);
 });
 
@@ -567,19 +577,119 @@ test("the policy opens through the store's one writer, borrowing a durable pane 
 test("a policy-opened drawer carried onto a dismissed conversation is closed before it paints", async (t) => {
 	const view = await rig(t);
 	// B is dismissed: opened, then closed by the user.
-	await view.show("c-b", withRows([ask("open")]));
+	const waved = ask("open");
+	await view.show("c-b", withRows([waved]));
 	await view.press("Close asks");
 	assert.equal(askDismissals.has("c-b"), true);
 	// A opens by policy; the flag then FOLLOWS the user to B.
 	await view.show("c-a", withRows([ask("open")]));
 	assert.equal(view.flag(), true);
-	await view.show("c-b", withRows([ask("open")]));
+	await view.show("c-b", withRows([waved]));
 	assert.equal(
 		view.flag(),
 		false,
 		"the carried drawer was closed for the dismissed conversation",
 	);
 	assert.equal(view.drawer(), null);
+});
+
+/* ========================= the record names the asks it waved off (U10), in the app ==== */
+
+/**
+ * Dismiss `waved` on c-a, then land on c-b, whose pending ask the policy opens for: the
+ * drawer flag is UP (and policy-opened) when the user goes back to c-a, which is the one
+ * path where a stale record and a carried drawer meet.
+ */
+const dismissThenCarry = async (view) => {
+	const waved = ask("open");
+	await view.show("c-a", withRows([waved]));
+	await view.press("Close asks");
+	assert.equal(askDismissals.has("c-a"), true);
+	await view.show("c-b", withRows([ask("open")]));
+	assert.equal(
+		view.flag(),
+		true,
+		"c-b's drawer is up: the flag is carried to c-a",
+	);
+	return waved;
+};
+
+test("E1 - a partial resolve holds, through the carried drawer: the same waved-off ask keeps c-a shut", async (t) => {
+	const view = await rig(t);
+	const a = ask("open");
+	const b = ask("open");
+	await view.show("c-a", withRows([a, b]));
+	await view.press("Close asks");
+	await view.show("c-b", withRows([ask("open")]));
+	assert.equal(view.flag(), true);
+	/* a was answered while away; b was not, and a newer ask sits beside it. */
+	await view.show("c-a", null);
+	await view.show("c-a", withRows([answered(a), b, ask("open")]));
+	assert.equal(askDismissals.has("c-a"), true, "b is still outstanding");
+	assert.equal(
+		view.flag(),
+		false,
+		"the carried drawer was closed and stays closed",
+	);
+	assert.equal(view.drawer(), null);
+});
+
+test("E2/E3 - resolved while away and a new batch queued: c-a opens a fresh view, frame landing after the mount", async (t) => {
+	const view = await rig(t);
+	const waved = await dismissThenCarry(view);
+	/*
+	 * THE REAL APP'S ORDER: the pane mounts on an UNREAD frame and the real one lands a
+	 * beat later. The carried drawer is closed at mount (nothing is known yet, and
+	 * under-opening is the safe failure), and that close is the POLICY's own, not the
+	 * user's - so it must not spend the view's one decision, or the frame that proves the
+	 * record stale would arrive to a view that had already decided.
+	 */
+	await view.show("c-a", null);
+	assert.equal(
+		view.flag(),
+		false,
+		"nothing is known yet: the carried drawer is shut",
+	);
+	await view.show("c-a", withRows([answered(waved), ask("open")]));
+	assert.equal(askDismissals.has("c-a"), false, "the record proved stale");
+	assert.equal(view.flag(), true, "and the new batch opens a fresh view");
+	assert.ok(view.drawer() !== null);
+});
+
+test("E2/E3 - the same, when the pane mounts with the frame already resolved", async (t) => {
+	const view = await rig(t);
+	const waved = await dismissThenCarry(view);
+	/*
+	 * No unread beat (a story, a rig, a seeded frame): the record must be settled against
+	 * the mounting frame BEFORE the carried drawer is judged, or the layout effect would
+	 * close the very drawer the view then opens for the new batch.
+	 */
+	await view.show("c-a", withRows([answered(waved), ask("open")]));
+	assert.equal(askDismissals.has("c-a"), false);
+	assert.equal(view.flag(), true);
+	assert.ok(view.drawer() !== null);
+});
+
+test("U2 - a truncated frame cannot prove a record stale, so a refill beside it stays shut", async (t) => {
+	const view = await rig(t);
+	const a = ask("open");
+	/* The close happened over a bounded PREFIX: one id named of three outstanding. */
+	await view.show("c-a", prefixOf([a], 3));
+	assert.equal(view.flag(), true);
+	await view.press("Close asks");
+	assert.equal(askDismissals.has("c-a"), true);
+	await view.show("c-b", liveEmpty());
+	/* A complete frame that lists none of the named ids: the unnamed two might be any of them. */
+	await view.show("c-a", withRows([ask("open")]));
+	assert.equal(askDismissals.has("c-a"), true);
+	assert.equal(view.flag(), false, "an unknown id list HOLDS");
+	/* Only a complete, empty queue settles it; the refill after that opens. */
+	await view.show("c-b", liveEmpty());
+	await view.show("c-a", liveEmpty());
+	assert.equal(askDismissals.has("c-a"), false);
+	await view.show("c-b", liveEmpty());
+	await view.show("c-a", withRows([ask("open")]));
+	assert.equal(view.flag(), true);
 });
 
 /**
@@ -592,7 +702,14 @@ const settledOnly = () => withRows([ask("answered")]);
 
 test("a drawer the USER opened follows them onto a dismissed conversation, as it always did", async (t) => {
 	const view = await rig(t);
-	await view.show("c-b", withRows([ask("open")]));
+	/*
+	 * The SAME waved-off ask on the way back: a different one would make the record stale
+	 * (the waved-off ask would no longer be outstanding), and this case would then be
+	 * about a conversation that is not dismissed any more - it would pass for that reason
+	 * and prove nothing about the user's own drawer.
+	 */
+	const waved = ask("open");
+	await view.show("c-b", withRows([waved]));
 	await view.press("Close asks");
 	assert.equal(askDismissals.has("c-b"), true);
 	await view.show("c-a", settledOnly());
@@ -600,7 +717,8 @@ test("a drawer the USER opened follows them onto a dismissed conversation, as it
 		useUiPreferencesStore.getState().setAskDrawerOpen(true, "session");
 	});
 	assert.equal(view.flag(), true, "the user's own open on c-a");
-	await view.show("c-b", withRows([ask("open")]));
+	await view.show("c-b", withRows([waved]));
+	assert.equal(askDismissals.has("c-b"), true, "c-b is still dismissed");
 	assert.equal(
 		view.flag(),
 		true,
@@ -615,7 +733,8 @@ test("provenance does not outlive the flag: a policy open, a close, then a hand-
 	assert.equal(view.flag(), true);
 	await view.press("Close asks");
 	// c-b is dismissed too.
-	await view.show("c-b", withRows([ask("open")]));
+	const waved = ask("open");
+	await view.show("c-b", withRows([waved]));
 	await view.press("Close asks");
 	assert.equal(askDismissals.has("c-b"), true);
 	// The user now opens the drawer by hand over a conversation that keeps it...
@@ -625,7 +744,8 @@ test("provenance does not outlive the flag: a policy open, a close, then a hand-
 	});
 	assert.equal(view.flag(), true);
 	// ...and walks onto the dismissed conversation: a stale provenance would close it.
-	await view.show("c-b", withRows([ask("open")]));
+	await view.show("c-b", withRows([waved]));
+	assert.equal(askDismissals.has("c-b"), true, "c-b is still dismissed");
 	assert.equal(
 		view.flag(),
 		true,

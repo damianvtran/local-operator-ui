@@ -21,11 +21,22 @@
  *  1. NOTHING PENDING ON OPEN -> closed (what every surface did before the policy).
  *  2. PENDING ON OPEN -> open, ONCE for that view of that conversation.
  *  3. ALL ADDRESSED ON OPEN -> closed, and a queue that settles never re-opens.
- *  4. A DELIBERATE CLOSE WHILE ASKS REMAIN IS RESPECTED for that conversation, for
- *     the rest of the page's lifetime: not on a re-render, a queue refresh, an ask
- *     arriving or changing, or a switch away and back. It lives in memory only (a
- *     fresh start may open again), and a NEW ask arriving later does not force the
- *     surface open - the chip and the badge already cover that.
+ *  4. A DELIBERATE CLOSE WHILE ASKS REMAIN IS RESPECTED for that conversation: not on
+ *     a re-render, a queue refresh, an ask arriving or changing, or a switch away and
+ *     back. It lives in memory only (a fresh start may open again), and a NEW ask
+ *     arriving later does not force the surface open - the chip and the badge already
+ *     cover that. THE RECORD IS THE ASK IDS the close waved off (the outstanding set at
+ *     close time), under three clauses every surface shares (the cross-surface "U10"
+ *     wording, which replaced "forget it when the queue is seen empty"):
+ *       a. it HOLDS while any of those asks is still outstanding and is FORGOTTEN once
+ *          none is (answered, declined, withdrawn, expired), so a later batch gets the
+ *          same discoverability as the first - including a batch that emptied and
+ *          refilled while the user was away, which needs no "seen empty" observation;
+ *       b. an id list that cannot be named in full (a truncated frame, a tally with no
+ *          rows) HOLDS: such a record clears only when the queue is observed empty.
+ *          Fail closed - under-opening is the safe failure, forcing open a panel the
+ *          user refused is not;
+ *       c. a SECOND close over a different set UNIONS into the record, never replaces it.
  *  5. NO THEFT, NO TRAP, NO GUESSING: opening never moves focus, the user can always
  *     close (the drawer's own unconditional close control, #864), and the policy
  *     never acts on a frame that has not actually answered.
@@ -194,7 +205,10 @@ export type AskOpenInput = {
 	outstanding: number;
 	/** Milliseconds since the view began, on this machine's clock. */
 	viewAgeMs: number;
-	/** The conversations whose surface the user has closed while asks remained. */
+	/**
+	 * Whether a dismissal is still HELD for this conversation (`AskDismissals.has`): the user
+	 * closed the surface while asks remained, and at least one of those asks still is.
+	 */
 	dismissed: Pick<AskDismissals, "has">;
 	/** Whether this view already took its one decision. */
 	viewDecided: boolean;
@@ -311,12 +325,13 @@ export const decideAskAutoOpen = (input: AskOpenInput): AskOpenVerdict => {
  * been there a while" is the safe reading of a fact that was not stated.
  */
 export const askOpenFacts = (
-	view: Pick<AskQueueView, "published" | "rows" | "open">,
+	view: Pick<AskQueueView, "published" | "rows" | "open" | "truncated">,
 	startedAtMs: number,
 ): Pick<
 	AskOpenInput,
 	"resolved" | "pendingRows" | "arrivedRows" | "outstanding"
-> => {
+> &
+	AskOutstandingReading => {
 	const cutoff = startedAtMs + ASK_ARRIVAL_SKEW_MS;
 	let pendingRows = 0;
 	let arrivedRows = 0;
@@ -331,6 +346,50 @@ export const askOpenFacts = (
 		pendingRows,
 		arrivedRows,
 		outstanding: view.open,
+		...askOutstandingReading(view),
+	};
+};
+
+/**
+ * Which asks a frame names as outstanding, and whether that is ALL of them: the one
+ * reading a dismissal is recorded from (`AskDismissals.record`) and settled against
+ * (`AskDismissals.reconcile`).
+ *
+ * ITS OWN FUNCTION, with no view start time, because it has two callers and one of them
+ * has no view yet: `askOpenFacts` feeds it into every frame, and the hook's layout
+ * effect settles the record against the frame a pane MOUNTS with, before the view that
+ * would observe it exists. Both must read "complete" the same way, so there is one
+ * expression of it.
+ *
+ * THE LIST IS COMPLETE ONLY WHEN THE FRAME SAYS NOTHING WAS LEFT OUT, and the wire can
+ * say otherwise in two ways this surface does see: the row list is a bounded PREFIX
+ * (`asks_truncated`, the core's `bound_ask_rows`), or the rows were dropped outright and
+ * only the tally rode (`asks` absent, `asks_open: N`), which also covers a list that lags
+ * its own tally. `view.open` is the wire's count when it published one, so a tally larger
+ * than the outstanding rows IS the evidence of an unnamed remainder. A tally smaller than
+ * the rows is not: every id is named, some are just stale. An unread or unpublished
+ * frame is not complete either (`published` is false for both), which is what keeps it
+ * from settling a record in either direction.
+ *
+ * `asks_truncated` OVER-READS, ON PURPOSE. The core sets it for a dropped ROW and also for
+ * a clipped question or option list inside a row that did ride (`bound_ask_rows`: more
+ * than 12 questions, or 10 options on one), and a client cannot tell the two apart. The
+ * second case names every id, so reading it as "not all named" is wrong in fact and right
+ * in direction: it can only HOLD a record that a complete reading would have settled, which
+ * costs one missed re-open on a pathologically large ask and never forces a refused panel
+ * open (the shared contract's clause b: an unknown list holds).
+ */
+export const askOutstandingReading = (
+	view: Pick<AskQueueView, "published" | "rows" | "open" | "truncated">,
+): AskOutstandingReading => {
+	const outstandingIds: string[] = [];
+	for (const row of view.rows) {
+		if (row.open) outstandingIds.push(row.ask.ask_id);
+	}
+	return {
+		outstandingIds,
+		listComplete:
+			view.published && !view.truncated && view.open <= outstandingIds.length,
 	};
 };
 
@@ -347,7 +406,9 @@ export const askOpenFacts = (
  *
  * THE RULE IS NARROW ON PURPOSE: close only when the drawer is up in the SESSION scope,
  * it was opened by THE POLICY (never by the user's own press - a drawer the user opened
- * is theirs and follows them as it always did), and this conversation is dismissed.
+ * is theirs and follows them as it always did), and this conversation HOLDS a dismissal
+ * (`AskDismissals.has`: asks the user waved off are still outstanding, or cannot be shown
+ * to have resolved).
  * "Opened by the policy" is provenance the store does not keep, so the hook that
  * applies verdicts tracks it (`use-ask-open-policy.ts`) and hands it in as a fact.
  */
@@ -363,33 +424,124 @@ export const shouldCloseCarriedDrawer = (facts: {
 	facts.dismissed.has(facts.conversationId as string);
 
 /**
- * The conversations whose surface the user has closed while asks remained.
+ * What one frame says about WHICH asks are outstanding: the facts a dismissal is
+ * recorded from and reconciled against (rule 4).
+ *
+ * Two fields because "the ids I can see" and "all of them" are different claims, and
+ * the second is the one the wire does not always make: the row list is a bounded
+ * prefix (`asks_truncated`), and a frame can carry the tally with no rows at all.
+ */
+export type AskOutstandingReading = {
+	/** The ids of the outstanding rows (open, or timed out and still answerable) the frame carries. */
+	outstandingIds: readonly string[];
+	/**
+	 * Whether `outstandingIds` is EVERY outstanding ask. False for a frame that has not
+	 * answered, a truncated prefix, a tally with no rows, and a list that lags its own
+	 * tally - each says some asks exist that this reading cannot name.
+	 */
+	listComplete: boolean;
+};
+
+/**
+ * The conversations whose surface the user has closed while asks remained, and WHICH
+ * asks they waved off.
  *
  * IN MEMORY AND NOWHERE ELSE, on purpose (rule 4): a dismissal is a remark about
  * what the user wanted to see in the window they have open, not a preference. It is
- * not persisted, so a fresh start may open the surface again; it is keyed by
- * conversation, so dismissing one never mutes another; and it is never cleared by
- * the queue changing, because "the asks changed" is exactly the event the contract
- * says must not bring the surface back.
+ * not persisted, so a fresh start may open the surface again; and it is keyed by
+ * conversation, so dismissing one never mutes another.
+ *
+ * WHY IT RECORDS ASK IDS AND NOT A BARE FLAG (the shared contract's "U10" wording). A
+ * dismissal means "not THESE questions". Keyed by conversation alone, the only way to
+ * tell the user's questions from a later batch was to watch the queue go empty, and a
+ * batch that emptied and refilled while the user was in another conversation left the
+ * flag in place: the conversation stayed quiet for good after one close, which is the
+ * opposite of the discoverability the policy exists for. With the ids recorded the
+ * question answers itself from any resolved frame (`reconcile`), and no "seen empty"
+ * observation is needed. The three clauses, one per method:
+ *
+ *  - `reconcile`: the record HOLDS while any waved-off ask is still outstanding and is
+ *    FORGOTTEN once none is. "The asks changed" is still not an event that brings the
+ *    surface back: a new ask beside a waved-off one that remains changes nothing.
+ *  - `reconcile`, again: a record whose ids are NOT ALL KNOWN (the close happened over
+ *    a truncated or tally-only frame) HOLDS, and so does a frame that cannot name every
+ *    outstanding ask. The only observation that proves such a record empty is a
+ *    COMPLETE frame with nothing outstanding. Fail closed: a missed auto-open costs a
+ *    discoverability nudge the chip and the badge still make, and forcing open a panel
+ *    the user refused costs their trust in the close.
+ *  - `record`: a SECOND close over a different set UNIONS into the record and never
+ *    replaces it, and the record is only as complete as the least complete close.
+ *
+ * The entry holds ids only for as long as it lives, and it lives only while one of them
+ * is outstanding, so its size is bounded by the wire's own bounded list.
  */
 export type AskDismissals = {
+	/** Whether a dismissal is HELD for this conversation right now. */
 	has: (conversationId: string) => boolean;
-	record: (conversationId: string) => void;
-	/** The test seam. The app never forgets a dismissal inside a page's lifetime. */
+	/** Record a close over the asks `reading` names; unions into a held record. */
+	record: (conversationId: string, reading: AskOutstandingReading) => void;
+	/**
+	 * Settle the record against a frame: forget it once the frame proves none of the
+	 * waved-off asks is outstanding, and leave it alone in every other case.
+	 */
+	reconcile: (conversationId: string, reading: AskOutstandingReading) => void;
+	/** The test seam. The app only forgets through `reconcile`. */
 	clear: () => void;
 	readonly size: number;
 };
 
 export const createAskDismissals = (): AskDismissals => {
-	const ids = new Set<string>();
+	const held = new Map<string, { ids: Set<string>; complete: boolean }>();
 	return {
-		has: (conversationId) => ids.has(conversationId),
-		record: (conversationId) => {
-			if (conversationId) ids.add(conversationId);
+		has: (conversationId) => held.has(conversationId),
+		record: (conversationId, reading) => {
+			if (!conversationId) return;
+			/*
+			 * A close over a COMPLETE, EMPTY reading refused nothing, so it records nothing and
+			 * must not disturb a record already held. An empty but INCOMPLETE reading is the
+			 * tally-only close: asks existed, no id is known, and that is a record.
+			 */
+			if (reading.outstandingIds.length === 0 && reading.listComplete) return;
+			const existing = held.get(conversationId);
+			if (existing === undefined) {
+				held.set(conversationId, {
+					ids: new Set(reading.outstandingIds),
+					complete: reading.listComplete,
+				});
+				return;
+			}
+			/* UNIONED, never replaced: the first close's asks are still waved off. */
+			for (const id of reading.outstandingIds) existing.ids.add(id);
+			existing.complete = existing.complete && reading.listComplete;
 		},
-		clear: () => ids.clear(),
+		reconcile: (conversationId, reading) => {
+			const existing = held.get(conversationId);
+			if (existing === undefined) return;
+			/*
+			 * A frame that cannot name every outstanding ask DECIDES NOTHING, whatever the ids
+			 * it does show: a waved-off ask missing from a prefix may be in the part that was
+			 * left out. This is also what makes an unresolved frame inert, since an unread or
+			 * unpublished frame is never `listComplete`.
+			 */
+			if (!reading.listComplete) return;
+			if (!existing.complete) {
+				/*
+				 * Some waved-off ids were never named, so "none of them is outstanding" cannot be
+				 * checked by comparing ids. A complete frame with NOTHING outstanding is the one
+				 * observation that settles it: no waved-off ask, named or not, can be outstanding
+				 * when none is.
+				 */
+				if (reading.outstandingIds.length === 0) held.delete(conversationId);
+				return;
+			}
+			for (const id of reading.outstandingIds) {
+				if (existing.ids.has(id)) return;
+			}
+			held.delete(conversationId);
+		},
+		clear: () => held.clear(),
 		get size() {
-			return ids.size;
+			return held.size;
 		},
 	};
 };
@@ -406,17 +558,18 @@ export const askDismissals: AskDismissals = createAskDismissals();
 export type AskOpenFrame = Omit<
 	AskOpenInput,
 	"dismissed" | "viewDecided" | "viewAgeMs"
-> & {
-	/** This machine's clock at the moment of the observation, in epoch milliseconds. */
-	nowMs: number;
-	/**
-	 * Whether the SESSION-scoped drawer is the one up (`isAskDrawerOpen` and the
-	 * session scope). Distinct from `drawerOpen`, which is true for a fleet pane too:
-	 * a session pane replaced by the fleet pane was not closed by the user, it was
-	 * swapped, and the close watch must not read the swap as a dismissal.
-	 */
-	sessionDrawerOpen: boolean;
-};
+> &
+	AskOutstandingReading & {
+		/** This machine's clock at the moment of the observation, in epoch milliseconds. */
+		nowMs: number;
+		/**
+		 * Whether the SESSION-scoped drawer is the one up (`isAskDrawerOpen` and the
+		 * session scope). Distinct from `drawerOpen`, which is true for a fleet pane too:
+		 * a session pane replaced by the fleet pane was not closed by the user, it was
+		 * swapped, and the close watch must not read the swap as a dismissal.
+		 */
+		sessionDrawerOpen: boolean;
+	};
 
 export type AskOpenObservation = {
 	verdict: AskOpenVerdict;
@@ -480,6 +633,11 @@ export const createAskOpenView = (
 	return {
 		observe(frame) {
 			let closeWatch: AskOpenObservation["closeWatch"] = null;
+			/* The ids this frame names, in the one shape the record reads and writes. */
+			const reading: AskOutstandingReading = {
+				outstandingIds: frame.outstandingIds,
+				listComplete: frame.listComplete,
+			};
 			/*
 			 * THE EDGE: this view's session drawer was up on the previous frame and is gone
 			 * now, and no drawer of the other scope took its place. `conversationId` gates
@@ -510,15 +668,34 @@ export const createAskOpenView = (
 					/*
 					 * ASKS REMAIN - an outstanding row (old or arrived: the user turned the
 					 * surface away over live asks either way), or a tally the frame could not
-					 * show rows for (the chip still counts them). That is the rule-4 dismissal.
+					 * show rows for (the chip still counts them). That is the rule-4 dismissal,
+					 * recorded AGAINST THE IDS the frame names: those are the asks waved off, and
+					 * a frame that could not name them all says so (`listComplete`), which makes
+					 * the record hold until a complete frame shows an empty queue.
 					 */
-					dismissals.record(frame.conversationId);
+					dismissals.record(frame.conversationId, reading);
 					closeWatch = "dismissed";
 				} else {
 					closeWatch = "nothing-to-show";
 				}
 			}
 			wasSessionOpen = frame.sessionDrawerOpen;
+			/*
+			 * EVERY FRAME SETTLES THE RECORD, before the decision reads it, and in this order
+			 * for two reasons the shared contract names. (1) A fresh view that meets only a
+			 * LATER batch - the waved-off asks resolved while the user was in another
+			 * conversation, the queue emptied and refilled without anyone watching - must find
+			 * the record already gone when `decideAskAutoOpen` asks `has`; no "seen empty"
+			 * frame ever happened, and none is needed. (2) A view that has already decided (the
+			 * user closed the drawer) still watches the asks get answered, and that is the very
+			 * frame that must clear the record, so this runs ahead of the decided latch too.
+			 * A frame that has not answered, or cannot name every ask, settles nothing
+			 * (`reconcile`), so a stale or partial reading can only keep a record, never drop
+			 * one. The cost per frame is one Map lookup while nothing is dismissed.
+			 */
+			if (frame.conversationId) {
+				dismissals.reconcile(frame.conversationId, reading);
+			}
 			const verdict = decideAskAutoOpen({
 				...frame,
 				viewAgeMs: frame.nowMs - startedAtMs,
