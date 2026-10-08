@@ -1020,7 +1020,7 @@ test("Ask for a change puts its own sentence in the box that renders (QA round 2
 			"Change the agent aida: ",
 			"the press seeded a store the box does not render: the sentence is not in the box",
 		);
-		assert.equal(
+		same(
 			document.activeElement,
 			box(),
 			"the caret did not land in the box the sentence arrived in",
@@ -1159,7 +1159,7 @@ test("the discard question takes the focus its Cancel gave up (UX round 2, U1)",
 		});
 		const keep = buttonNamed(footer(), "Keep editing");
 		assert.ok(keep, "the discard question never opened");
-		assert.equal(
+		same(
 			document.activeElement,
 			keep,
 			"focus fell out of the question, so the next Tab reaches Discard changes",
@@ -1442,11 +1442,7 @@ test("Keep editing closes the bar on the tab route, wherever the tab left focus 
 		});
 		await frame();
 		same(barOf(container), null, "Escape closes the bar");
-		assert.equal(
-			buttonNamed(footer(), "Keep editing"),
-			null,
-			"and asks nothing else",
-		);
+		same(buttonNamed(footer(), "Keep editing"), null, "and asks nothing else");
 		await act(async () => {
 			window.dispatchEvent(
 				new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
