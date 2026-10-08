@@ -92,10 +92,12 @@ export {
  * device's daemon answers (`CanonicalSessionRow`: a plain page never carries a
  * peer's row), so it keys as this device.
  *
- * The same rule `ownerOf` (`features/mesh/mesh-sessions.ts`) states for the
- * mesh's own rows - local is the empty id, remote is the owner's - restated over
- * the catalogue row's optional fields, which that function's `MeshSessionRow`
- * parameter cannot take.
+ * STRICTER THAN `ownerOf` (`features/mesh/mesh-sessions.ts`), which it parallels
+ * (local is the empty id, remote is the owner's): `ownerOf` takes a
+ * `MeshSessionRow` and has no ownerless-remote case - a remote row with
+ * `owner_device: ""` would key as local there - whereas here it is `null`, so a
+ * peer can never be mistaken for this device. It is restated over the catalogue
+ * row's optional fields because that function's parameter cannot take them.
  */
 export function headerHostKey(
 	row:

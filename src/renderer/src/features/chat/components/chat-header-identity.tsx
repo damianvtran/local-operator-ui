@@ -752,20 +752,18 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 	 */
 	const publishedNow = effectiveIdentityPublished(effectiveIdentity) !== null;
 	/*
-	 * Subscribed, so a reset (the feed saw the daemon change) re-renders the
+	 * Subscribed, so a wipe (the feed saw the daemon change) re-renders the
 	 * header instead of leaving a lock on screen that the record no longer
-	 * justifies; `recordVersion` also re-runs the write below, which is how a
-	 * still-warm frame re-establishes the record after a reset - the only way
-	 * back in.
+	 * justifies. The subscription is READ-ONLY here: the write below is keyed on
+	 * the frame, never on this value - keying it on the record's version
+	 * re-noted the record from the stale frame still painted and undid every
+	 * wipe (review R6).
 	 */
-	const recordVersion = useSyncExternalStore(
-		hostPublishRecord.subscribe,
-		hostPublishRecord.version,
-	);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `recordVersion` is the trigger - a reset must be followed by a re-note from the warm frame still on screen
+	useSyncExternalStore(hostPublishRecord.subscribe, hostPublishRecord.version);
 	useEffect(() => {
-		if (publishedNow && hostKey !== null) hostPublishRecord.note(hostKey);
-	}, [publishedNow, hostKey, recordVersion]);
+		if (publishedNow && effectiveIdentity)
+			hostPublishRecord.noteFrame(hostKey, effectiveIdentity);
+	}, [publishedNow, hostKey, effectiveIdentity]);
 	const hostPublishes =
 		publishedNow || (hostKey !== null && hostPublishRecord.has(hostKey));
 	/*

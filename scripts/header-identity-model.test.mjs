@@ -879,6 +879,80 @@ test("strict host, then an invalidation signal, then `{}` -> #866; then a warm f
 	}
 });
 
+/*
+ * THE WIPE IS NOT UNDONE BY THE FRAME THAT PREDATES IT (review R6). The header
+ * subscribes to the record and re-renders when it is wiped; the frame still
+ * painted at that moment says "published" but is older than the wipe. `paint`
+ * is the header's write step in its WORST case: it re-runs on EVERY record
+ * notification, holding the same statement object, exactly the re-render that
+ * used to re-note the record from the stale frame.
+ */
+const paintHeader = (record, statement, key = "") => {
+	const write = () => {
+		if (effectiveIdentityPublished(statement) !== null)
+			record.noteFrame(key, statement);
+	};
+	write();
+	const off = record.subscribe(write);
+	return { off };
+};
+
+test("a wipe is not undone by re-rendering the SAME published frame; a NEW frame re-establishes it (R6)", () => {
+	for (const signal of [
+		(record) => record.reset(),
+		(record) => record.observeProcess("epoch-b"),
+	]) {
+		const record = createHostPublishRecord();
+		record.observeProcess("epoch-a");
+		const painted = { ...STRICT_TEAM };
+		const view = paintHeader(record, painted);
+		assert.equal(record.has(""), true);
+		signal(record);
+		// The header re-rendered on the wipe, holding the old frame: still empty.
+		assert.equal(record.has(""), false);
+		// An older host's cold `{}` is therefore #866, not a closed seat.
+		const older = resolveHeaderIdentity({
+			...COLD_TEAM_BOUND_EMPTY,
+			hostPublishes: record.has(""),
+		});
+		assert.equal(older.seat, null);
+		// A NEW warm frame (a new statement object) is what re-establishes it.
+		record.noteFrame("", { ...STRICT_TEAM });
+		assert.equal(record.has(""), true);
+		assert.notEqual(
+			resolveHeaderIdentity({
+				...COLD_TEAM_BOUND_EMPTY,
+				hostPublishes: record.has(""),
+			}).seat,
+			null,
+		);
+		view.off();
+	}
+});
+
+test("a frame first evaluated after a wipe with no producer key is still stamped as old (R6)", () => {
+	const record = createHostPublishRecord();
+	const painted = { ...STRICT_TEAM };
+	// Painted before the wipe while the row (and so the key) was unknown.
+	record.noteFrame(null, painted);
+	record.reset();
+	// The row arrives after the wipe: the same old frame must not write.
+	assert.equal(record.noteFrame("", painted), false);
+	assert.equal(record.has(""), false);
+});
+
+test("a late frame from a stale epoch cannot re-establish a wiped record", () => {
+	const record = createHostPublishRecord();
+	record.observeProcess("epoch-a");
+	record.note("");
+	record.observeProcess("epoch-b");
+	assert.equal(record.has(""), false);
+	// A late frame of the OLD process: the feed hook only ever feeds the epoch
+	// (it never writes the record), and seeing the old epoch again wipes again.
+	record.observeProcess("epoch-a");
+	assert.equal(record.has(""), false);
+});
+
 test("the process epoch wipes the record only when it CHANGES, and notifies subscribers", () => {
 	const record = createHostPublishRecord();
 	let notified = 0;
