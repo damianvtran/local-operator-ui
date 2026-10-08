@@ -651,7 +651,7 @@ test("the shell publishes the inset the panel rail leaves, and every trailing ro
 	);
 	assert.match(
 		rail,
-		/h-\[max\(0\.25rem,var\(--chrome-inset-end-h\)\)\]/,
-		"the rail's top clears the caption buttons' height",
+		/pt-\[calc\(var\(--chrome-inset-end-h\)\+0\.25rem\)\]/,
+		"the rail's top clears the caption buttons' height, as padding (no flow gap after it: design D3)",
 	);
 });

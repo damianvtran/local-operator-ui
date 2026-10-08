@@ -4,7 +4,7 @@ import { deriveRunDetails } from "@features/chat/components/run-details/run-deta
 import * as fixtures from "@features/chat/components/run-details/run-details.fixtures";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { type FC, useLayoutEffect } from "react";
+import { type FC, useEffect, useLayoutEffect } from "react";
 import { PanelRailFrame } from "./panel-rail-frame";
 
 /**
@@ -42,6 +42,8 @@ type OpenFlag =
 
 const Rail: FC<{
 	open?: OpenFlag;
+	/** Focus this item with the keyboard modality, so `:focus-visible` is the frame's state. */
+	focusItem?: "run" | "browser" | "console" | "canvas";
 	details?: ReturnType<typeof deriveRunDetails> | null;
 	sessionId?: string | null;
 	browserAttentionCount?: number;
@@ -50,6 +52,7 @@ const Rail: FC<{
 	fileCount?: number;
 }> = ({
 	open,
+	focusItem,
 	details = deriveRunDetails(fixtures.idle()),
 	sessionId = "session-rail-story",
 	browserAttentionCount = 0,
@@ -74,6 +77,17 @@ const Rail: FC<{
 				isCanvasOpen: false,
 			});
 	}, [open]);
+	/*
+	 * `focusVisible: true` is what makes `:focus-visible` match for a script-focused
+	 * control (Chromium's heuristic treats an unprompted `.focus()` as pointer
+	 * focus), the same call `RemedyFocusGround` makes for the run panel's remedy.
+	 */
+	useEffect(() => {
+		if (!focusItem) return;
+		document
+			.querySelector<HTMLButtonElement>(`[data-panel-rail-item="${focusItem}"]`)
+			?.focus({ focusVisible: true } as FocusOptions);
+	}, [focusItem]);
 	return (
 		<div
 			data-testid="rail-frame"
@@ -152,4 +166,34 @@ export const CanvasOpen: Story = {
  */
 export const DraftRoute: Story = {
 	render: () => <Rail details={null} sessionId={null} />,
+};
+
+/**
+ * THE FOCUSED, LIT ITEM (design round 1, D2): the keyboard ring and the 2px lit
+ * bar must BOTH be drawn. Before, they occupied the same pixels in the same ink.
+ */
+export const BrowserOpenFocused: Story = {
+	render: () => (
+		<Rail
+			open="isBrowserPaneOpen"
+			focusItem="browser"
+			browserAttentionCount={2}
+		/>
+	),
+};
+
+/** The capped badge on the LIT item (D4): the mark, the lit ground and the bar together. */
+export const BrowserOpenAtCap: Story = {
+	render: () => <Rail open="isBrowserPaneOpen" browserAttentionCount={12} />,
+};
+
+/** The console's blip while its own pane is open (the item is lit and the dot still draws). */
+export const ConsoleOpenBlip: Story = {
+	render: () => (
+		<Rail
+			open="isConsolePaneOpen"
+			consoleUnseenCount={1}
+			consoleUnseenPulsing={true}
+		/>
+	),
 };
