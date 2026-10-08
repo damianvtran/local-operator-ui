@@ -85,6 +85,7 @@ import {
 import {
 	EditFooter,
 	FieldLabel,
+	LINK_HIT_AREA,
 	ReadBlock,
 	Section,
 	TITLE_LINE_HEIGHT,
@@ -1129,6 +1130,10 @@ export function AgentDetail({
 										<li key={team.id}>
 											<Button
 												variant="link"
+												// 24 px target on a 19.5 px line (design review round 2 D4),
+												// the same shape as the Manager link; the surplus is handed
+												// back so the list's pitch stays the one it had.
+												className={cn("-my-0.5", LINK_HIT_AREA)}
 												onClick={() => onOpenTeam(team.name)}
 											>
 												{team.name}
