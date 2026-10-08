@@ -811,7 +811,10 @@ const ConversationStandIn = ({
 }: {
 	details: ReturnType<typeof deriveRunDetails>;
 }) => (
-	<div className="w-0 min-w-[480px] flex-1 flex h-full min-h-0 flex-col overflow-hidden">
+	<div
+		data-tour-tag="chat-column"
+		className="w-0 min-w-[480px] flex-1 flex h-full min-h-0 flex-col overflow-hidden"
+	>
 		<ChatHeader
 			agentName="Core"
 			description="Invoices workspace · on this machine"
@@ -867,7 +870,11 @@ const useMacChrome = () => {
  * inert on the old store - its reader never looks at it - which is exactly what
  * makes the pair the same scene under two readers.
  */
-const EMPTY_ROUTE = { mounted: false, runDetails: false, session: false } as const;
+const EMPTY_ROUTE = {
+	mounted: false,
+	runDetails: false,
+	session: false,
+} as const;
 
 /*
  * A route every right-slot pane can draw on: the three facts the app's own
@@ -938,6 +945,7 @@ const ChatShellFrame: FC<{
 					<main className="flex min-w-0 grow flex-col overflow-hidden">
 						<div
 							ref={rowRef}
+							data-tour-tag="pane-row"
 							className="flex h-full min-h-0 w-full overflow-hidden"
 						>
 							<ConversationStandIn details={details} />
@@ -1206,5 +1214,73 @@ export const ChatDockAsks: Story = {
 				)}
 			/>
 		);
+	},
+};
+
+/*
+ * #868: THE CLAIM THAT OUTLIVED ITS ROUTE.
+ *
+ * The pane flags persist across routes on purpose, so the state these two arms
+ * photograph is the operator's own captured sequence: the asks drawer closes
+ * and hands the run panel's flag back (or the drawer's own flag stays up), then
+ * the user is on a draft - a route with no run details and no conversation, so
+ * neither pane can mount. The slot's readers must answer from what the route
+ * can DRAW: no elevated band over the empty column, no reserved corner, and the
+ * lane's stop on the conversation's own right edge.
+ *
+ * The before half of each pair is the same story under `origin/main`'s store
+ * module, which reads the bare flag - see
+ * `docs/evidence/shell-app-shell/slot-release-before/README.md` for the recipe
+ * and the numbers, and `scripts/capture-evidence.mjs`'s rows for the claims
+ * asserted at shutter time.
+ */
+export const ChatDockRunPanelOnDraft: Story = {
+	args: { rightSlotWidth: 0 },
+	render: (args) => {
+		const { rightSlotWidth = 0 } = args as { rightSlotWidth?: number };
+		useLayoutEffect(() => {
+			/*
+			 * The run panel's flag, still up, on a route that cannot draw it - the
+			 * drawer's close handed it back. No pane mounts (the draft's own
+			 * `runDetails` is null in the app), which is the point.
+			 */
+			useUiPreferencesStore.setState({
+				isRunPanelOpen: true,
+				rightSlotWidth,
+				rightSlotRoute: { mounted: true, runDetails: false, session: false },
+			});
+			return () => {
+				useUiPreferencesStore.setState({
+					isRunPanelOpen: false,
+					rightSlotRoute: EMPTY_ROUTE,
+				});
+			};
+		}, [rightSlotWidth]);
+
+		return <ChatShellFrame details={deriveRunDetails(runFixtures.settled())} />;
+	},
+};
+
+/** The same state for the drawer's own flag: open on a session scope, with no session to show it in. */
+export const ChatDockAsksOnDraft: Story = {
+	args: { rightSlotWidth: 0 },
+	render: (args) => {
+		const { rightSlotWidth = 0 } = args as { rightSlotWidth?: number };
+		useLayoutEffect(() => {
+			useUiPreferencesStore.setState({
+				isAskDrawerOpen: true,
+				askDrawerScope: "session",
+				rightSlotWidth,
+				rightSlotRoute: { mounted: true, runDetails: false, session: false },
+			});
+			return () => {
+				useUiPreferencesStore.setState({
+					isAskDrawerOpen: false,
+					rightSlotRoute: EMPTY_ROUTE,
+				});
+			};
+		}, [rightSlotWidth]);
+
+		return <ChatShellFrame details={deriveRunDetails(runFixtures.settled())} />;
 	},
 };
