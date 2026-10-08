@@ -58,10 +58,16 @@ export type PanelRailItemProps = Omit<
  * the non-colour second signal. The sidebar dropped its bar because `font-medium`
  * carries that channel for a text row; an icon-only rail has no weight to change,
  * so the bar is what survives a theme whose `rowSelected` sits close to `surface`.
- * The bar is a `before:` pseudo-element so it costs no layout, and it sits 4px
- * outside the 32px control, i.e. inside the 44px rail's own 5.5px gutter and clear
- * of the rail's leading hairline, so it reads as the panel-facing edge of the item
- * rather than as a second border.
+ * The bar is a `before:` pseudo-element so it costs no layout, and it is drawn ON
+ * THE RAIL'S LEADING HAIRLINE COLUMN (design round 1, D2 and D7): 6.5px outside
+ * the 32px control (the 5.5px gutter plus the 1px border) and 2px wide, so it
+ * overlays the hairline instead of standing 1.5px beside it as a thickened rule,
+ * and it ends 4.5px outside the control - clear of the keyboard focus ring, which
+ * is drawn at a 1px offset on this rail (`focus-visible:outline-offset-1!`, below)
+ * and so occupies 1px-3px outside the control. Before, the bar was at 2px-4px and
+ * the default 2px-offset ring at 2px-4px: the same pixels, both `accent`, so a
+ * focused lit item showed ring only and lost its non-colour "lit" signal in exactly
+ * the state a keyboard user is in.
  *
  * The ghost variant's own `hover:bg-accent-wash` is overridden on both states:
  * the wash is the transient "a pointer is here" idiom and `rowSelected` must keep
@@ -69,7 +75,7 @@ export type PanelRailItemProps = Omit<
  * comment records (design round 2, D2-1).
  */
 const LIT =
-	"bg-row-selected text-accent hover:bg-row-selected hover:text-accent active:bg-row-selected active:text-accent before:absolute before:inset-y-1 before:-left-1 before:w-0.5 before:rounded-full before:bg-accent";
+	"bg-row-selected text-accent hover:bg-row-selected hover:text-accent active:bg-row-selected active:text-accent before:absolute before:inset-y-1 before:-left-[6.5px] before:w-0.5 before:rounded-full before:bg-accent";
 const IDLE =
 	"text-ink-muted hover:bg-row-hover hover:text-ink active:bg-row-hover active:text-ink";
 
@@ -107,7 +113,11 @@ export const PanelRailItem = forwardRef<HTMLButtonElement, PanelRailItemProps>(
 					aria-label={ariaLabel}
 					aria-pressed={pressed}
 					tabIndex={rail ? (rail.roving === id ? 0 : -1) : undefined}
-					className={cn("relative", pressed ? LIT : IDLE, className)}
+					className={cn(
+						"relative focus-visible:outline-offset-1!",
+						pressed ? LIT : IDLE,
+						className,
+					)}
 					{...props}
 				>
 					{children}

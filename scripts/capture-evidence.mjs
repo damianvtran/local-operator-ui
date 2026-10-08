@@ -5316,6 +5316,13 @@ export const STORIES = [
 	["navigation-panel-rail--console-open", 132, 184],
 	["navigation-panel-rail--canvas-open", 132, 184],
 	["navigation-panel-rail--draft-route", 132, 184],
+	/* ROUND 1, design D2/D4 and the three frames design listed as missing: the
+	   focused LIT item (ring and bar together), the capped badge on the LIT item,
+	   and the console blip with its own pane open. The non-brand-palette proof (sage
+	   and iceberg) is these same stories captured with `--themes`. */
+	["navigation-panel-rail--browser-open-focused", 132, 184],
+	["navigation-panel-rail--browser-open-at-cap", 132, 184],
+	["navigation-panel-rail--console-open-blip", 132, 184],
 	/*
 	 * WINDOWS/LINUX CAPTION CLEARANCE - SIMULATED, NOT PHOTOGRAPHED (#872). This
 	 * host is macOS, so no frame here can show the OS buttons; these three arms set

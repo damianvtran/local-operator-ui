@@ -207,22 +207,33 @@ export const PanelRail: FC<PanelRailProps> = ({
 				onKeyDown={onKeyDown}
 				onFocus={onFocus}
 				className={cn(
-					"flex h-full w-full flex-col items-center gap-1 border-l border-hairline bg-surface",
+					"relative flex h-full w-full flex-col items-center gap-1 border-l border-hairline bg-surface",
+					/*
+					 * THE FIRST ITEM'S TOP IS THE CAPTION INSET PLUS 4px, set as PADDING (design
+					 * round 1, D3). It was a flex child strut of `max(4px, inset)` followed by
+					 * the container's own `gap-1`, so with no inset the first item sat at 8px,
+					 * not the 4px a 40px row centres a 32px control with: its glyph centred on
+					 * y=56 against the `...`, the pane's close and the scope switch on y=52.
+					 * Padding has no gap after it, so the item is at exactly 4px with no inset
+					 * and at inset + 4px under the OS buttons (Windows/Linux: 44px, as before).
+					 */
+					"pt-[calc(var(--chrome-inset-end-h)+0.25rem)]",
 				)}
 			>
 				{/*
 				 * THE TOP CLEARANCE, and the drag handle with it. On Windows and Linux the
 				 * OS caption buttons are drawn into the window's top-right corner, which is
 				 * now this rail's top: `--chrome-inset-end-h` is the caption area's height
-				 * there and 0 everywhere the OS draws nothing, so the first item sits at
-				 * the 4px a 40px row centres a 32px control with (`max` keeps that floor).
+				 * there and 0 everywhere the OS draws nothing, and the container's padding
+				 * (above) keeps the first item that far plus 4px below the top.
 				 * `data-titlebar-drag` because the strip is empty chrome a frameless window
-				 * must be movable by; the items opt back out.
+				 * must be movable by; the items opt back out. ABSOLUTE, so it is out of the
+				 * flex flow and adds no gap of its own (the D3 defect was a strut IN the flow).
 				 */}
 				<div
 					aria-hidden="true"
 					data-titlebar-drag=""
-					className="h-[max(0.25rem,var(--chrome-inset-end-h))] w-full shrink-0"
+					className="absolute inset-x-0 top-0 h-[calc(var(--chrome-inset-end-h)+0.25rem)]"
 				/>
 				{runDetails !== null && (
 					<RunDetailsTrigger
@@ -243,18 +254,28 @@ export const PanelRail: FC<PanelRailProps> = ({
 					<Globe aria-hidden={true} />
 					{browserAttentionCount > 0 && (
 						/*
-						 * The badge hangs 4px past the control's corner, not the header's 10:
-						 * the rail is 44px with a 32px control, so the gutter is 6px and the
-						 * 2px ring uses all of what is left. The header's offset would have
-						 * been clipped by the window's edge. `ring-surface` because the
-						 * ring names the ground BEHIND the badge, and that is the rail's.
+						 * A SMALLER MARK, ANCHORED OUT AT THE CORNER (design round 1, D4; QA Q2
+						 * is the same root). The 16px mark hung 4px past a 32px control whose
+						 * glyph is 16px centred, so it covered ~17% of the globe at 1-9 and ~40%
+						 * at "9+", and the capped pill's ring reached the window's edge. The
+						 * header's `-top-2.5 -right-2.5` is not available in a 44px rail (5.5px
+						 * of gutter to the window), so of design's three answers this takes
+						 * "a smaller size": a 14px mark anchored at -2px/-2px of the control,
+						 * which puts its top ON the rail's own top edge (the item is 4px below
+						 * it, so the 2px ring starts at the host's edge and spills nothing into
+						 * the lane) and its 2px ring 1.5px inside the host's trailing edge. It
+						 * overlaps the glyph's box by 4px vertically only (measured in the
+						 * stories: ~6% of the glyph at 1-9, ~18% at "9+", against ~17% / ~40%). The
+						 * count stays whole in the accessible name and the tooltip, and the
+						 * glyph's own cap ("9+") is unchanged. `ring-surface` because the ring
+						 * names the ground BEHIND the badge, and that is the rail's.
 						 */
-						<span className="pointer-events-none absolute -top-1 -right-1">
+						<span className="pointer-events-none absolute -top-[2px] -right-[2px] flex">
 							<Badge
 								variant="attention"
 								shape="pill"
 								size="count"
-								className="ring-2 ring-surface"
+								className="h-3.5 min-w-3.5 px-[3px] text-[0.6875rem] leading-none ring-2 ring-surface"
 								data-tour-tag="browser-pane-badge"
 							>
 								{countLabel(browserAttentionCount, 9)}
