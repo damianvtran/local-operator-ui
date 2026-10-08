@@ -384,14 +384,30 @@ and must clear 3:1. If no, delete it rather than reaching for `hairline`.
 
 **The panel rail is chrome (#872).** The 44px column at the window's right edge
 holds the four right-slot doors, and it stands on the sidebar's rung: `surface`,
-with a `border-l border-hairline` leading edge - the boundary the tone step to the
-slot's `elevated` cannot carry on its own, mirroring the sidebar's `border-r`. The
-lit item is the sidebar's selected-row pair, `rowSelected` ground and `accent`
-ink, plus a 2px `accent` bar on the panel-facing edge; the bar is there because
-an icon-only item has no weight to change (the sidebar's non-colour channel is
-`font-medium`), so it is the one mark that survives a theme whose `rowSelected`
-sits close to `surface`. No new role: `check-themes` carries the pairs as the
-`panel rail ...` rows of `scripts/contrast-contract.mjs`.
+with **no drawn rule** at its leading edge - the boundary is the tone step alone,
+following the left sidebar's own edge (there is no line between it and the chat
+pane either). That is a choice to match the sidebar, not a sufficiency claim: the
+ladder asserts these pairs at the 2.0 field floor, and
+`REGION_SEPARATION_FLOOR` (4.0) in `scripts/contrast-contract.mjs` is the
+stronger bar it sets for two full-height planes with no line between them.
+Against the conversation's `canvas` with no pane the step measures ΔE00 2.05 at
+the fleet's tightest (`sage`) to 6.76 (`radient`), median 2.94 (2.77
+`localOperatorDark`, 2.32 `localOperatorLight`); against the slot's `elevated`
+with a pane open 2.02 (`arcade`) to 6.62 (`gruvboxLight`), median 2.58 (3.29
+dark, 2.50 light). Where a pane draws its own `surface` plane flush to the rail,
+the two chrome planes meet with no step by design: the canvas Files list
+scroller, the browser approvals dock, the canvas markdown viewer's root (via the
+`display: contents` tab panel) and the html/pdf preview iframe grounds are all
+`bg-surface`. `scripts/pane-slot-ground.test.mjs` pins the
+absence: the rail's root carries its ground and no border, divide or shadow, so
+the rule this paragraph used to describe cannot come back as a second way of
+drawing the edge. The lit item is the sidebar's selected-row pair, `rowSelected`
+ground and `accent` ink, plus a 2px `accent` bar flush with the rail's leading
+edge; the bar is there because an icon-only item has no weight to change (the
+sidebar's non-colour channel is `font-medium`), so it is the one mark that
+survives a theme whose `rowSelected` sits close to `surface`. No new role:
+`check-themes` carries the pairs as the `panel rail ...` rows of
+`scripts/contrast-contract.mjs`.
 
 **The composer is an object that leaves the flow.** Its ground is `elevated` on
 `canvas` (+4.89 L\* at worst, +6.64 at the median across the 59 palettes) and it
