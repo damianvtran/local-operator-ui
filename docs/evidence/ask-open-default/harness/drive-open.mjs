@@ -244,8 +244,22 @@ const probeSource = () => {
 					tag: active.tagName,
 					label: active.getAttribute("aria-label"),
 					inDrawer: Boolean(active.closest("[data-lo-ask-surfaces]")),
+					/*
+					 * U1's reading: where the caret landed after a close is either the composer
+					 * (the fix) or `<body>` (the defect this remediation returns). The same flag the
+					 * tap's `describe` carries, so the two records name the same element the same way.
+					 */
+					composer: active.matches?.('textarea[aria-label="Message"]') === true,
 				}
 			: null,
+		/*
+		 * THE OPEN POLICY'S LIVE REGION (design review round 1, D1; remediation r1). It cannot
+		 * be photographed - it is `sr-only` on purpose - so the shutter records its TEXT: null
+		 * on a tree with no region at all (the before arm), "" while it is silent, the one
+		 * sentence after a policy open. That is the whole of the visual claim this feature can
+		 * make, stated as a reading instead of a frame.
+		 */
+		liveRegion: q('output[aria-live="polite"]')?.textContent ?? null,
 		scope: q("[data-ask-drawer] [data-ask-scope]")?.textContent ?? null,
 		canvas: count('[data-tour-tag="canvas-container"]'),
 		other: {
@@ -1370,6 +1384,18 @@ const CASES = [
 			);
 			await wait(600);
 			readings.closed = await page.probe();
+			/*
+			 * U1 (remediation r1, UX round 1): on the AFTER arm the drawer opened by itself - no
+			 * door was pressed - so the close must hand the caret to the composer. Before the
+			 * fix this read `<body>` and the reader's next keystrokes went nowhere. The BEFORE
+			 * arm has no such expectation: the chip press IS the door there, and the door is
+			 * where focus returns (both arms still record it).
+			 */
+			if (arm === "after" && readings.closed.active?.composer !== true) {
+				throw new Error(
+					`U1: the caret after the close is ${JSON.stringify(readings.closed.active)}, not the composer`,
+				);
+			}
 			return readings;
 		},
 	},
@@ -1595,6 +1621,51 @@ const CASES = [
 			return readings;
 		},
 	},
+	{
+		name: "s17",
+		title:
+			"a carried drawer onto a SETTLED conversation: closed, not carried (U3, remediation r1)",
+		arms: ["after"],
+		async run(page, arm) {
+			const readings = {};
+			/*
+			 * C'S FRAME IS WARMED FIRST, so the switch below mounts with a RESOLVED frame and the
+			 * close is the layout effect's (before paint) rather than the passive one's - the
+			 * strongest form of the claim. The timeline records which happened either way.
+			 */
+			await open(page, arm, "C");
+			await wait(SETTLE);
+			readings.warmC = await page.probe();
+			await page.pressRow("A");
+			await page.waitFor(
+				`document.querySelector(${JSON.stringify(DRAWER)}) !== null`,
+				"the auto-opened drawer on A",
+				15_000,
+			);
+			await wait(900);
+			readings.openedOnA = await page.probe();
+			/*
+			 * THE SWITCH THAT WAS THE DEFECT: A's drawer, carried onto C - whose queue is
+			 * settled - used to stay up over `All asks settled` with the composer narrowed
+			 * (UX round 1, U3). It must be closed instead, and the sampler says whether a frame
+			 * ever drew it on C (framesWithDrawer) or the layout close beat the first paint.
+			 */
+			await page.startSampler(4500);
+			await page.pressRow("C");
+			await wait(SETTLE + 1500);
+			readings.onSettledC = await page.probe();
+			readings.settleTimeline = await page.timeline();
+			readings.frameSettled = await page.shot(
+				"state-17-carried-onto-settled-closed",
+			);
+			if (readings.onSettledC.drawer !== 0) {
+				throw new Error(
+					`U3: the carried drawer is still up on the settled conversation (drawer ${readings.onSettledC.drawer})`,
+				);
+			}
+			return readings;
+		},
+	},
 ];
 
 /* ----------------------------------------------------------------------- run ---- */
@@ -1614,6 +1685,7 @@ const RUN_ORDER = [
 	"s2",
 	"s2l",
 	"s3",
+	"s17",
 	"s11",
 	"s6",
 	"s7",
