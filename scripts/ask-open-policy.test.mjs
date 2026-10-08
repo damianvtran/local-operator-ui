@@ -23,7 +23,9 @@ import { build } from "esbuild";
  *   4. dismissed pending  -> stays closed through a re-render, a queue refresh, an ask
  *                            arriving, and a switch away and back
  * plus the guards that make the policy safe to ship: an unresolved frame opens nothing,
- * a tally with no rows opens nothing, and an open never takes the user's keyboard.
+ * a tally with no rows opens nothing, an ask that ARRIVED during the view is not
+ * "pending on open", a first answer that comes after the window is not "on open", and
+ * an open never takes the user's keyboard.
  *
  * WHAT IT CANNOT CLAIM: that the drawer is on screen. That is `ask-open-render.test.mjs`
  * (the hook and the real drawer in jsdom) and the committed frames. The module under
@@ -63,6 +65,8 @@ try {
 	await unlink(bundlePath).catch(() => {});
 }
 const {
+	ASK_ARRIVAL_SKEW_MS,
+	ASK_OPEN_WINDOW_MS,
 	askOpenFacts,
 	askQueueView,
 	createAskDismissals,
@@ -85,7 +89,14 @@ const DOM_REACHES = [
 const BLOCK_COMMENT = /\/\*[\s\S]*?\*\//g;
 const LINE_COMMENT = /(^|[^:])\/\/.*$/gm;
 
-const TS = 1_760_000_000_000;
+/*
+ * THE CLOCK. `T0` is the instant every view in this file begins, in the unit an ask's
+ * `created_at` uses (epoch milliseconds). An ask built by `ask()` is OLD by default -
+ * queued a minute before the view - which is the ordinary "pending on open" row; the
+ * arrival cases build theirs with `arrivedAfter`.
+ */
+const T0 = 1_760_000_000_000;
+const TS = T0 - 60_000;
 let counter = 0;
 /** One ask row as the wire carries it; `status` is the fold's word for its state. */
 const ask = (status = "open", extra = {}) => {
@@ -93,7 +104,7 @@ const ask = (status = "open", extra = {}) => {
 	return {
 		ask_id: `ask-${counter}`,
 		created_at: TS + counter,
-		expires_at: TS + 3_600_000,
+		expires_at: T0 + 3_600_000,
 		timeout_s: 3600,
 		status,
 		delivered: status !== "open" && status !== "timed_out",
@@ -132,7 +143,8 @@ const unread = () => null;
  */
 const frame = (frontend, over = {}) => ({
 	conversationId: "c-a",
-	...askOpenFacts(askQueueView(frontend)),
+	...askOpenFacts(askQueueView(frontend), T0),
+	nowMs: T0 + 1_000,
 	composerHasText: false,
 	keyboardOnDoor: false,
 	drawerOpen: false,
@@ -143,7 +155,7 @@ const frame = (frontend, over = {}) => ({
 /** A pane's life: a fresh view over the page's dismissals, fed frames in order. */
 const pane = (dismissals = createAskDismissals()) => ({
 	dismissals,
-	view: createAskOpenView(dismissals),
+	view: createAskOpenView(dismissals, T0),
 });
 
 const opened = { drawerOpen: true, sessionDrawerOpen: true };
@@ -257,7 +269,7 @@ test("state 4 - dismissed while pending: stays closed, including after switching
 	const rows = [ask("open")];
 
 	// The view opens it, the user closes it while the ask is still pending.
-	const first = createAskOpenView(dismissals);
+	const first = createAskOpenView(dismissals, T0);
 	assert.equal(first.observe(frame(withRows(rows))).verdict.action, "open");
 	first.observe(frame(withRows(rows), opened));
 	const close = first.observe(frame(withRows(rows)));
@@ -282,7 +294,7 @@ test("state 4 - dismissed while pending: stays closed, including after switching
 	 * pending and it still stays closed - which is the whole point of keying the record
 	 * by conversation outside the view.
 	 */
-	const back = createAskOpenView(dismissals);
+	const back = createAskOpenView(dismissals, T0);
 	assert.equal(back.observe(frame(unread())).verdict.reason, "unresolved");
 	const returned = back.observe(frame(withRows(rows)));
 	assert.deepEqual(
@@ -299,7 +311,7 @@ test("a dismissal belongs to its conversation, and to this page's lifetime only"
 	dismissals.record("c-a");
 
 	// Another conversation's pending queue is not muted by it.
-	const other = createAskOpenView(dismissals);
+	const other = createAskOpenView(dismissals, T0);
 	assert.equal(
 		other.observe(frame(withRows([ask("open")]), { conversationId: "c-b" }))
 			.verdict.action,
@@ -307,7 +319,7 @@ test("a dismissal belongs to its conversation, and to this page's lifetime only"
 	);
 
 	// A fresh page lifetime is a fresh record: the same conversation opens again.
-	const restarted = createAskOpenView(createAskDismissals());
+	const restarted = createAskOpenView(createAskDismissals(), T0);
 	assert.equal(
 		restarted.observe(frame(withRows([ask("open")]))).verdict.action,
 		"open",
@@ -354,7 +366,7 @@ test("an unresolved frame opens nothing and spends nothing", () => {
 	);
 });
 
-test("a tally with no rows behind it opens nothing, and does not claim there are no asks", () => {
+test("a tally with no rows behind it opens nothing, says so truthfully, and keeps waiting inside the window", () => {
 	const { view } = pane();
 	const first = view.observe(frame(tallyOnly(4)));
 	assert.equal(first.verdict.action, "leave");
@@ -363,10 +375,37 @@ test("a tally with no rows behind it opens nothing, and does not claim there are
 		"tally-only",
 		"four asks ARE outstanding; `nothing-pending` would be a false sentence",
 	);
-	assert.equal(first.verdict.settled, true);
 	assert.equal(
-		view.observe(frame(withRows([ask("open")]))).verdict.reason,
-		"already-decided",
+		first.verdict.settled,
+		false,
+		"a frame that cannot show the asks is not an answer about them: the view keeps waiting",
+	);
+	assert.equal(view.settled, false);
+
+	/* The rows arrive inside the window (the wire re-sends a frame that fits): open. */
+	const rescued = view.observe(
+		frame(withRows([ask("open")]), { nowMs: T0 + 12_000 }),
+	);
+	assert.equal(rescued.verdict.action, "open");
+	assert.equal(rescued.verdict.reason, "pending-on-open");
+});
+
+test("a tally that never gets its rows stops waiting when the window closes", () => {
+	const { view } = pane();
+	assert.equal(
+		view.observe(frame(tallyOnly(4), { nowMs: T0 + 30_000 })).verdict.reason,
+		"tally-only",
+	);
+	const late = view.observe(
+		frame(withRows([ask("open")]), { nowMs: T0 + ASK_OPEN_WINDOW_MS + 1 }),
+	);
+	assert.deepEqual(
+		{
+			action: late.verdict.action,
+			reason: late.verdict.reason,
+			settled: late.verdict.settled,
+		},
+		{ action: "leave", reason: "too-late", settled: true },
 	);
 });
 
@@ -463,7 +502,7 @@ test("a close before the queue answered spends the decision and records nothing"
 	assert.equal(landed.verdict.reason, "already-decided");
 	// A later view of the same conversation is not muted by it.
 	assert.equal(
-		createAskOpenView(dismissals).observe(frame(withRows([ask("open")])))
+		createAskOpenView(dismissals, T0).observe(frame(withRows([ask("open")])))
 			.verdict.action,
 		"open",
 	);
@@ -495,7 +534,9 @@ test("the reason a verdict names is the first thing that kept the drawer shut", 
 		conversationId: "c-a",
 		resolved: true,
 		pendingRows: 2,
+		arrivedRows: 0,
 		outstanding: 2,
+		viewAgeMs: 1_000,
 		dismissed: { has: () => false },
 		viewDecided: false,
 		composerHasText: false,
@@ -508,6 +549,16 @@ test("the reason a verdict names is the first thing that kept the drawer shut", 
 	assert.equal(reason({ resolved: false }), "unresolved");
 	assert.equal(reason({ pendingRows: 0, outstanding: 0 }), "nothing-pending");
 	assert.equal(reason({ pendingRows: 0, outstanding: 3 }), "tally-only");
+	assert.equal(
+		reason({ pendingRows: 0, arrivedRows: 2, outstanding: 2 }),
+		"arrived",
+	);
+	assert.equal(reason({ viewAgeMs: ASK_OPEN_WINDOW_MS + 1 }), "too-late");
+	assert.equal(
+		reason({ viewAgeMs: ASK_OPEN_WINDOW_MS + 1, resolved: false }),
+		"too-late",
+		"the window outranks an unanswered queue: a view that never got an answer is decided",
+	);
 	/* Overrides are reported only over a queue that WOULD have opened. */
 	assert.equal(
 		reason({
@@ -530,32 +581,178 @@ test("the reason a verdict names is the first thing that kept the drawer shut", 
 });
 
 test("the facts are read off the shipped view: published, rows, and the wire's tally", () => {
-	assert.deepEqual(askOpenFacts(askQueueView(null)), {
-		resolved: false,
-		pendingRows: 0,
-		outstanding: 0,
-	});
-	assert.deepEqual(askOpenFacts(askQueueView(unsupported())), {
-		resolved: false,
-		pendingRows: 0,
-		outstanding: 0,
-	});
-	assert.deepEqual(askOpenFacts(askQueueView(liveEmpty())), {
+	const facts = (frontend, startedAtMs = T0) =>
+		askOpenFacts(askQueueView(frontend), startedAtMs);
+	const none = { pendingRows: 0, arrivedRows: 0, outstanding: 0 };
+	assert.deepEqual(facts(null), { resolved: false, ...none });
+	assert.deepEqual(facts(unsupported()), { resolved: false, ...none });
+	assert.deepEqual(facts(liveEmpty()), { resolved: true, ...none });
+	assert.deepEqual(facts(tallyOnly(4)), {
 		resolved: true,
 		pendingRows: 0,
-		outstanding: 0,
-	});
-	assert.deepEqual(askOpenFacts(askQueueView(tallyOnly(4))), {
-		resolved: true,
-		pendingRows: 0,
+		arrivedRows: 0,
 		outstanding: 4,
 	});
 	assert.deepEqual(
-		askOpenFacts(
-			askQueueView(withRows([ask("open"), ask("timed_out"), ask("answered")])),
-		),
-		{ resolved: true, pendingRows: 2, outstanding: 2 },
+		facts(withRows([ask("open"), ask("timed_out"), ask("answered")])),
+		{ resolved: true, pendingRows: 2, arrivedRows: 0, outstanding: 2 },
 	);
+});
+
+/* ============================================ "on open" means it existed first ==== */
+
+/** An outstanding ask the owner queued `ms` after the view began (an ARRIVAL). */
+const arrivedAfter = (ms, status = "open") =>
+	ask(status, { created_at: T0 + ms });
+
+test("an ask that arrives on the view's first resolved frame is an arrival, not pending on open", () => {
+	/*
+	 * THE RACE the TUI lane found, and the same latch exists here: the view settles on
+	 * its first RESOLVED reading, so a brand-new conversation whose first question lands
+	 * on that very frame would read as "pending on open" and pop the drawer over a user
+	 * who is only watching the agent work. The ask was queued a minute AFTER the pane
+	 * mounted; that is an ask arriving, which rule 4 says never forces the surface open.
+	 */
+	const { view } = pane();
+	const first = view.observe(
+		frame(withRows([arrivedAfter(ASK_ARRIVAL_SKEW_MS + 55_000)])),
+	);
+	assert.deepEqual(
+		{
+			action: first.verdict.action,
+			reason: first.verdict.reason,
+			settled: first.verdict.settled,
+		},
+		{ action: "leave", reason: "arrived", settled: true },
+	);
+	/* And it is final: nothing later in the view re-opens it. */
+	assert.equal(
+		view.observe(frame(withRows([ask("open")]))).verdict.reason,
+		"already-decided",
+	);
+});
+
+test("the arrival boundary: queued before the view or within the skew counts as on open", () => {
+	const at = (ms) =>
+		pane().view.observe(frame(withRows([arrivedAfter(ms)]))).verdict.action;
+	assert.equal(at(-60_000), "open", "queued before the view began");
+	assert.equal(at(0), "open", "queued the instant the view began");
+	assert.equal(
+		at(ASK_ARRIVAL_SKEW_MS),
+		"open",
+		"within the skew: a peer's clock a few seconds ahead must not turn a pending ask into an arrival",
+	);
+	assert.equal(
+		at(ASK_ARRIVAL_SKEW_MS + 1),
+		"leave",
+		"one millisecond past the skew is an arrival",
+	);
+});
+
+test("one ask that existed before the view makes the queue pending, whatever else arrived", () => {
+	const { view } = pane();
+	const mixed = view.observe(
+		frame(withRows([ask("open"), arrivedAfter(40_000)])),
+	);
+	assert.equal(mixed.verdict.action, "open");
+	assert.equal(mixed.verdict.reason, "pending-on-open");
+});
+
+test("an ask with no usable created_at is read as old, the safe reading of a fact not stated", () => {
+	for (const created_at of [undefined, null, 0, Number.NaN, "later"]) {
+		const row = ask("open", { created_at });
+		assert.equal(
+			pane().view.observe(frame(withRows([row]))).verdict.action,
+			"open",
+			`created_at=${String(created_at)}`,
+		);
+	}
+});
+
+test("a timed-out ask that arrived during the view is an arrival too", () => {
+	const row = arrivedAfter(40_000, "timed_out");
+	assert.equal(
+		pane().view.observe(frame(withRows([row]))).verdict.reason,
+		"arrived",
+	);
+});
+
+test("a close over an arrived ask is still a dismissal: asks remained", () => {
+	const { view, dismissals } = pane();
+	const rows = [arrivedAfter(40_000)];
+	/* The user opened it by hand (the chip), then closed it with the ask outstanding. */
+	view.observe(frame(withRows(rows), opened));
+	assert.equal(view.observe(frame(withRows(rows))).closeWatch, "dismissed");
+	assert.equal(dismissals.has("c-a"), true);
+});
+
+test("the wait for a first answer is bounded: a frame that resolves later is not on open", () => {
+	const old = withRows([ask("open")]);
+	const at = (ms) =>
+		pane().view.observe(frame(old, { nowMs: T0 + ms })).verdict;
+	assert.equal(at(ASK_OPEN_WINDOW_MS).action, "open", "exactly on the bound");
+	const late = at(ASK_OPEN_WINDOW_MS + 1);
+	assert.deepEqual(
+		{ action: late.action, reason: late.reason, settled: late.settled },
+		{ action: "leave", reason: "too-late", settled: true },
+	);
+});
+
+test("a late view stays decided: a long wait does not reopen the question", () => {
+	const { view } = pane();
+	assert.equal(
+		view.observe(frame(unread(), { nowMs: T0 + 10_000 })).verdict.reason,
+		"unresolved",
+		"inside the window the view waits",
+	);
+	assert.equal(
+		view.observe(
+			frame(withRows([ask("open")]), {
+				nowMs: T0 + ASK_OPEN_WINDOW_MS + 5_000,
+			}),
+		).verdict.reason,
+		"too-late",
+	);
+	assert.equal(view.settled, true);
+	assert.equal(
+		view.observe(frame(withRows([ask("open")]), { nowMs: T0 + 1_000 })).verdict
+			.reason,
+		"already-decided",
+		"even a frame stamped inside the window cannot reopen a view that timed out",
+	);
+});
+
+test("a cold conversation that warms inside the window still opens on its pending ask", () => {
+	/*
+	 * The reason the wait exists at all: a conversation resumed cold only builds its
+	 * queue once it is engaged, so its first frames are unread / unsupported. The
+	 * desktop's own snapshot bound is 20 s plus one 10 s re-check, inside the window.
+	 */
+	const { view } = pane();
+	for (const [frontend, ms] of [
+		[unread(), 0],
+		[unsupported(), 4_000],
+		[unread(), 21_000],
+	]) {
+		assert.equal(
+			view.observe(frame(frontend, { nowMs: T0 + ms })).verdict.reason,
+			"unresolved",
+		);
+	}
+	const warmed = view.observe(
+		frame(withRows([ask("open")]), { nowMs: T0 + 31_000 }),
+	);
+	assert.equal(warmed.verdict.action, "open");
+});
+
+test("the window and the skew are the shared contract's numbers", () => {
+	/*
+	 * Pinned because they are cross-surface: the TUI's `OPEN_WINDOW_S` is 45 s and its
+	 * `ARRIVAL_SKEW_MS` is 5000. A surface that quietly changed one would make a
+	 * conversation open on one client and stay shut on another.
+	 */
+	assert.equal(ASK_OPEN_WINDOW_MS, 45_000);
+	assert.equal(ASK_ARRIVAL_SKEW_MS, 5_000);
 });
 
 /** Comments blanked, so the source pins read code and not the prose about it. */

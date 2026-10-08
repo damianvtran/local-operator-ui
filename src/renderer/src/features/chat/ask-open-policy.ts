@@ -44,31 +44,66 @@
  * file rather than a promise of its caller. `use-ask-open-policy.ts` is the thin
  * React shell that feeds it facts and applies its verdict.
  *
- * ## The decision point is the FIRST PUBLISHED frame of a view
+ * ## "On open" means the ask EXISTED BEFORE the view did, and the wait is bounded
  *
  * A "view" is one mount of a conversation's pane (the pane is keyed by conversation,
- * so switching away unmounts it and coming back is a NEW view). Each view gets
- * exactly one decision, taken on the first frame in which the queue has PUBLISHED.
+ * so switching away unmounts it and coming back is a NEW view). Each view gets exactly
+ * one decision, taken on the first frame in which the queue has PUBLISHED ROWS (or says
+ * it holds none), and two further tests keep that from becoming "whenever an ask
+ * shows up":
+ *
+ *  - AN ASK THAT ARRIVED DURING THE VIEW IS NOT PENDING ON OPEN. The first published
+ *    frame of a view can already carry an ask the agent raised a moment after the
+ *    pane mounted (a conversation resumed cold only builds its queue once it is
+ *    engaged; a brand-new one's first question can land on its very first frame).
+ *    Opening over that pops the surface onto a user who is simply watching the agent
+ *    work - an ask ARRIVING, which rule 4 says never forces it open. Each outstanding
+ *    row is therefore compared with the instant the view began: only a row queued
+ *    before it (plus `ASK_ARRIVAL_SKEW_MS`, because the owner stamps `created_at` and
+ *    a conversation viewed across the mesh is read against THIS machine's clock) is
+ *    pending on open. The skew is deliberately biased toward opening: a real arrival
+ *    in the view's first seconds read as pending costs a drawer that appears a
+ *    moment after the conversation did, which is the behaviour being asked for; the
+ *    other direction costs the feature.
+ *  - THE WAIT FOR A FIRST ANSWER IS BOUNDED (`ASK_OPEN_WINDOW_MS`). A frame that
+ *    resolves long after the view began is not "on open" any more, and waiting forever
+ *    would open the drawer at minute ten over whatever the user is doing then. The
+ *    bound is the shared contract's, not this surface's: the TUI's is the engage
+ *    seam's 30 s plus 15 s, and the desktop's own snapshot bound
+ *    (`STREAM_SNAPSHOT_DEADLINE_MS`, 20 s, plus one silent 10 s re-check) sits inside
+ *    it, so an owner that stalls and recovers still counts as on open.
+ *
+ * What counts as "has not answered", and so decides nothing and spends nothing:
  *
  *  - An UNREAD frame (`frontend == null`) is not an empty one, and a RESOLVED frame
  *    that publishes no queued engine is not an empty one either (#864's lesson: the
- *    capability is the presence of `asks` OR `asks_open`, `askQueuePublished`). Both
- *    mean "the queue has not answered", so they decide nothing and spend nothing: a
- *    runtime that warms later still gets its decision when its first real frame
- *    lands.
- *  - A TALLY-ONLY frame (`asks` absent, `asks_open: N`) HAS published, and says N asks
- *    are outstanding without being able to show one. It is not "pending asks" for
- *    this policy - the surface it would open can only say that the details could not
- *    be loaded - so the view decides `leave` and spends its chance. The chip still
- *    carries the count. (The wire only does this when the row list will not fit at
- *    all, so a later frame in the same view would not normally carry rows; waiting
- *    for one would risk opening the surface long after the conversation was opened.)
- *  - Everything after the decision is the user's: later frames cannot re-open, which
- *    is what makes "an ask arriving later does not force the surface open" a
- *    property of the view rather than a check somebody has to remember.
+ *    capability is the presence of `asks` OR `asks_open`, `askQueuePublished`).
+ *  - A TALLY-ONLY frame (`asks` absent, `asks_open: N`) says N asks are outstanding
+ *    without being able to show one. It is not "pending asks" - the surface it would
+ *    open can only say that the details could not be loaded - but it is not "no asks"
+ *    either, so the view keeps waiting (inside the window) for a frame that carries
+ *    the rows. The chip still carries the count meanwhile.
+ *
+ * Everything after the decision is the user's: later frames cannot re-open, which is
+ * what makes "an ask arriving later does not force the surface open" a property of the
+ * view rather than a check somebody has to remember.
  */
 
 import type { AskQueueView } from "./ask-queue";
+
+/**
+ * How long after a view begins it may still choose to open. See "On open means the ask
+ * existed before the view did" in the module note for why this is the shared
+ * contract's number (the TUI's `OPEN_WINDOW_S`) and not a desktop-specific one.
+ */
+export const ASK_OPEN_WINDOW_MS = 45_000;
+
+/**
+ * How far past the instant a view began an ask's `created_at` may sit and still count
+ * as having existed on open. Mirrors the TUI's `ARRIVAL_SKEW_MS`; the reasoning (the
+ * owner's clock against this machine's, biased toward opening) is in the module note.
+ */
+export const ASK_ARRIVAL_SKEW_MS = 5_000;
 
 /**
  * Why a verdict is what it is. Also the vocabulary the tests and the evidence rows
@@ -83,13 +118,20 @@ export type AskOpenReason =
 	| "unresolved"
 	/** This view already took its one decision. */
 	| "already-decided"
+	/** The view is older than `ASK_OPEN_WINDOW_MS`: whatever resolves now is not "on open". */
+	| "too-late"
 	/** The queue answered and nothing in it is pending (rules 1 and 3). */
 	| "nothing-pending"
 	/**
-	 * The queue answered with a TALLY and no pending row to show (the wire bound's
-	 * frame: `asks` absent, `asks_open: N`). Asks ARE outstanding, so
-	 * `nothing-pending` would be a false sentence; but the surface it would open can
-	 * only apologise for the missing details, so it stays shut (rule 5).
+	 * Every outstanding ask was queued AFTER the view began: they arrived, they were not
+	 * pending on open (rule 4: an arrival never forces the surface open). Final.
+	 */
+	| "arrived"
+	/**
+	 * The queue published a TALLY and no rows to show (the wire bound's frame: `asks`
+	 * absent, `asks_open: N`). Asks ARE outstanding, so `nothing-pending` would be a
+	 * false sentence; but the surface it would open can only apologise for the missing
+	 * details, so it stays shut for now (rule 5) and the view keeps waiting.
 	 */
 	| "tally-only"
 	/** The user closed this conversation's surface while asks remained (rule 4). */
@@ -104,9 +146,11 @@ export type AskOpenReason =
 export type AskOpenVerdict = {
 	action: "open" | "leave";
 	/**
-	 * Whether this verdict SPENDS the view's one decision. `false` only for the two
-	 * "the queue has not answered" reasons: the caller asks again on the next frame.
-	 * Every other verdict - including every `leave` - is final for the view.
+	 * Whether this verdict SPENDS the view's one decision. `false` only for the reasons
+	 * that mean "the queue has not answered in a form a surface can draw" (`unresolved`,
+	 * `tally-only`) and for a view with no conversation: the caller asks again on the
+	 * next frame, inside the window. Every other verdict - including every `leave` - is
+	 * final for the view.
 	 */
 	settled: boolean;
 	reason: AskOpenReason;
@@ -121,14 +165,21 @@ export type AskOpenInput = {
 	 * `asks_open` tally is on the frame. NOT merely "a frame arrived".
 	 */
 	resolved: boolean;
-	/** Outstanding rows the frame actually carries - open or timed out, answerable. */
+	/**
+	 * Outstanding rows the frame carries that EXISTED BEFORE the view began - open or
+	 * timed out, answerable. The only rows that make a queue "pending on open".
+	 */
 	pendingRows: number;
+	/** Outstanding rows queued AFTER the view began: arrivals, which never open it. */
+	arrivedRows: number;
 	/**
 	 * The wire's own outstanding tally (`AskQueueView.open`). Read for ONE purpose: to
 	 * tell a queue with nothing in it from a queue whose rows were dropped (see
 	 * `tally-only`). It never opens anything by itself.
 	 */
 	outstanding: number;
+	/** Milliseconds since the view began, on this machine's clock. */
+	viewAgeMs: number;
 	/** The conversations whose surface the user has closed while asks remained. */
 	dismissed: Pick<AskDismissals, "has">;
 	/** Whether this view already took its one decision. */
@@ -193,16 +244,25 @@ const leave = (reason: AskOpenReason): AskOpenVerdict => ({
  * name the first thing that kept the drawer closed: `dismissed`, `composer-has-text`,
  * `door-focused` and `drawer-open` are reported only for a queue that WOULD have
  * opened (they are overrides on a pending queue, so a settled queue in a dismissed
- * conversation says `nothing-pending`, which is the truer sentence). Only
- * `no-conversation` and `unresolved` return without settling.
+ * conversation says `nothing-pending`, which is the truer sentence).
+ *
+ * Only `no-conversation`, `unresolved` and `tally-only` return without settling: each
+ * means "the queue has not answered in a form a surface can draw", and each is bounded
+ * by the window check above it, so a view that never gets an answer is decided
+ * (`too-late`) rather than left to open whenever one finally arrives.
  */
 export const decideAskAutoOpen = (input: AskOpenInput): AskOpenVerdict => {
 	const { conversationId } = input;
 	if (!conversationId) return wait("no-conversation");
 	if (input.viewDecided) return leave("already-decided");
+	if (input.viewAgeMs > ASK_OPEN_WINDOW_MS) return leave("too-late");
 	if (!input.resolved) return wait("unresolved");
 	if (input.pendingRows <= 0) {
-		return leave(input.outstanding > 0 ? "tally-only" : "nothing-pending");
+		if (input.arrivedRows > 0) return leave("arrived");
+		/* Rows absent but a tally present: asks exist that no surface can draw yet. */
+		return input.outstanding > 0
+			? wait("tally-only")
+			: leave("nothing-pending");
 	}
 	if (input.dismissed.has(conversationId)) return leave("dismissed");
 	if (input.composerHasText) return leave("composer-has-text");
@@ -215,20 +275,40 @@ export const decideAskAutoOpen = (input: AskOpenInput): AskOpenVerdict => {
  * The queue facts a decision reads off a view, derived once.
  *
  * `resolved` is `published`, not "a frame arrived": a frame with no `asks` and no
- * `asks_open` has not answered (see the module note). `pendingRows` counts ROWS that
- * are still answerable (`open` is the backend's outstanding fold: `open` plus
- * `timed_out`, because a late answer still reaches the agent - the same set the
- * header badge counts), never the wire's tally: rule 5 opens only over rows that are
- * actually there. An unknown status is not pending: `presentAsk` refuses to coerce it
- * into `open`, and this inherits that.
+ * `asks_open` has not answered (see the module note). The rows are the OUTSTANDING ones
+ * (`open` is the backend's fold: `open` plus `timed_out`, because a late answer still
+ * reaches the agent - the same set the header badge counts), never the wire's tally:
+ * rule 5 opens only over rows that are actually there. An unknown status is not
+ * outstanding: `presentAsk` refuses to coerce it into `open`, and this inherits that.
+ *
+ * Each outstanding row is split by whether it EXISTED BEFORE the view began
+ * (`startedAtMs`, on this machine's clock; `created_at` is epoch milliseconds from the
+ * owner). A row that states no usable `created_at` is read as old - "an ask that has
+ * been there a while" is the safe reading of a fact that was not stated.
  */
 export const askOpenFacts = (
 	view: Pick<AskQueueView, "published" | "rows" | "open">,
-): { resolved: boolean; pendingRows: number; outstanding: number } => ({
-	resolved: view.published,
-	pendingRows: view.rows.filter((row) => row.open).length,
-	outstanding: view.open,
-});
+	startedAtMs: number,
+): Pick<
+	AskOpenInput,
+	"resolved" | "pendingRows" | "arrivedRows" | "outstanding"
+> => {
+	const cutoff = startedAtMs + ASK_ARRIVAL_SKEW_MS;
+	let pendingRows = 0;
+	let arrivedRows = 0;
+	for (const row of view.rows) {
+		if (!row.open) continue;
+		const createdAt = Number(row.ask.created_at);
+		if (Number.isFinite(createdAt) && createdAt > cutoff) arrivedRows += 1;
+		else pendingRows += 1;
+	}
+	return {
+		resolved: view.published,
+		pendingRows,
+		arrivedRows,
+		outstanding: view.open,
+	};
+};
 
 /**
  * The conversations whose surface the user has closed while asks remained.
@@ -271,7 +351,12 @@ export const createAskDismissals = (): AskDismissals => {
 export const askDismissals: AskDismissals = createAskDismissals();
 
 /** What a view is fed on each frame: the decision's inputs minus its own memory. */
-export type AskOpenFrame = Omit<AskOpenInput, "dismissed" | "viewDecided"> & {
+export type AskOpenFrame = Omit<
+	AskOpenInput,
+	"dismissed" | "viewDecided" | "viewAgeMs"
+> & {
+	/** This machine's clock at the moment of the observation, in epoch milliseconds. */
+	nowMs: number;
 	/**
 	 * Whether the SESSION-scoped drawer is the one up (`isAskDrawerOpen` and the
 	 * session scope). Distinct from `drawerOpen`, which is true for a fleet pane too:
@@ -328,11 +413,16 @@ export type AskOpenObservation = {
  */
 export type AskOpenView = {
 	observe: (frame: AskOpenFrame) => AskOpenObservation;
+	/** When this view began, which is what "existed before the view" is measured from. */
+	readonly startedAtMs: number;
 	/** Whether this view has taken its decision (tests and evidence read it). */
 	readonly settled: boolean;
 };
 
-export const createAskOpenView = (dismissals: AskDismissals): AskOpenView => {
+export const createAskOpenView = (
+	dismissals: AskDismissals,
+	startedAtMs: number,
+): AskOpenView => {
 	let settled = false;
 	let wasSessionOpen = false;
 	return {
@@ -360,10 +450,15 @@ export const createAskOpenView = (dismissals: AskDismissals): AskOpenView => {
 					 */
 					settled = true;
 					closeWatch = "before-decision";
-				} else if (frame.pendingRows > 0 || frame.outstanding > 0) {
+				} else if (
+					frame.pendingRows > 0 ||
+					frame.arrivedRows > 0 ||
+					frame.outstanding > 0
+				) {
 					/*
-					 * ASKS REMAIN - a pending row, or a tally the frame could not show rows
-					 * for (the chip still counts them). That is the rule-4 dismissal.
+					 * ASKS REMAIN - an outstanding row (old or arrived: the user turned the
+					 * surface away over live asks either way), or a tally the frame could not
+					 * show rows for (the chip still counts them). That is the rule-4 dismissal.
 					 */
 					dismissals.record(frame.conversationId);
 					closeWatch = "dismissed";
@@ -374,6 +469,7 @@ export const createAskOpenView = (dismissals: AskDismissals): AskOpenView => {
 			wasSessionOpen = frame.sessionDrawerOpen;
 			const verdict = decideAskAutoOpen({
 				...frame,
+				viewAgeMs: frame.nowMs - startedAtMs,
 				dismissed: dismissals,
 				viewDecided: settled,
 			});
@@ -383,5 +479,6 @@ export const createAskOpenView = (dismissals: AskDismissals): AskOpenView => {
 		get settled() {
 			return settled;
 		},
+		startedAtMs,
 	};
 };
