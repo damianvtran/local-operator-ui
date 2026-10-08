@@ -7,7 +7,12 @@ import "../../../styles/index.css";
  * file's own notes call a defect, and the frame would keep asserting the old
  * wording after the function changed.
  */
-import { installFailureSentence } from "../../../../../shared/install-progress";
+import {
+	EMPTY_SUB_PROGRESS,
+	type InstallTiming,
+	foldInstallLine,
+	installFailureSentence,
+} from "../../../../../shared/install-progress";
 import { InstallerContent, InstallerShell } from "./installer-content";
 import { InstallPanel } from "./installer-panel";
 
@@ -104,6 +109,27 @@ const panel = (
 
 const noop = () => {};
 
+/*
+ * A PINNED CLOCK for the frames that show the status line (first-run
+ * onboarding, U8): `now` is fixed and the run's instants are offsets from it, so
+ * "Step 3 of 4 · 0:05 elapsed · about 10 s left" is the same pixels on every
+ * capture rather than whatever second the capture landed on.
+ */
+const NOW = Date.UTC(2026, 9, 8, 12, 0, 0);
+const timingAt = (
+	elapsedMs: number,
+	phaseElapsedMs: number,
+	lines: string[] = [],
+): InstallTiming => ({
+	startedAt: NOW - elapsedMs,
+	phaseStartedAt: NOW - phaseElapsedMs,
+	platform: "darwin",
+	sub:
+		lines.length === 0
+			? null
+			: lines.reduce(foldInstallLine, EMPTY_SUB_PROGRESS),
+});
+
 /**
  * The first phase, with nothing finished behind it.
  *
@@ -121,6 +147,8 @@ export const FirstStage: Story = {
 			phase: "python",
 			installed: false,
 			failure: null,
+			timing: timingAt(1_000, 1_000),
+			now: NOW,
 			onCancel: noop,
 			onRetry: noop,
 		}),
@@ -133,6 +161,21 @@ export const MidInstall: Story = {
 			phase: "components",
 			installed: false,
 			failure: null,
+			/* uv's real narration, three of six large downloads in (see the test's
+			   UV_COLD_RUN fixture for where these lines come from). */
+			timing: timingAt(9_000, 3_000, [
+				"Resolved 55 packages in 888ms",
+				"Downloading pydantic-core (1.9MiB)",
+				"Downloading local-operator (13.5MiB)",
+				"Downloading cryptography (3.7MiB)",
+				"Downloading pillow (4.6MiB)",
+				"Downloading pygments (1.2MiB)",
+				"Downloading pillow-heif (4.1MiB)",
+				" Downloaded pygments",
+				" Downloaded pydantic-core",
+				" Downloaded cryptography",
+			]),
+			now: NOW,
 			onCancel: noop,
 			onRetry: noop,
 		}),
@@ -260,6 +303,28 @@ export const Verifying: Story = {
 			phase: "verify",
 			installed: false,
 			failure: null,
+			timing: timingAt(16_000, 1_000),
+			now: NOW,
+			onCancel: noop,
+			onRetry: noop,
+		}),
+};
+
+/**
+ * A slow network: the download phase has outrun its baseline, and the estimate
+ * says so in words rather than counting past zero (first-run onboarding, Q5).
+ */
+export const SlowNetwork: Story = {
+	render: () =>
+		panel({
+			phase: "components",
+			installed: false,
+			failure: null,
+			timing: timingAt(41_000, 31_000, [
+				"Resolved 55 packages in 888ms",
+				"Downloading local-operator (13.5MiB)",
+			]),
+			now: NOW,
 			onCancel: noop,
 			onRetry: noop,
 		}),
