@@ -65,12 +65,18 @@ export type InstallPhase = (typeof INSTALL_PHASES)[number];
  * that makes the app's own copy of it says so. "Verifying the installation"
  * became "Checking the installation" for the same reason - the row is read by
  * someone deciding whether to keep waiting, not by us.
+ *
+ * FIRST-RUN ONBOARDING (D9, U8) took the same rule one step further: "runtime",
+ * "Python" and "components" are still OUR nouns. The four labels now say what
+ * the user is waiting for in words they already have - getting ready, setting
+ * the app up, downloading what it needs, starting it - and the detail line under
+ * the rail carries the one technical fact each step has.
  */
 export const INSTALL_PHASE_LABELS: Record<InstallPhase, string> = {
-	python: "Preparing the runtime",
-	environment: "Creating its own Python",
-	components: "Downloading components",
-	verify: "Checking the installation",
+	python: "Getting ready",
+	environment: "Setting up Local Operator",
+	components: "Downloading what it needs",
+	verify: "Starting it up",
 };
 
 /**
@@ -103,12 +109,193 @@ export const INSTALL_PHASE_LABELS: Record<InstallPhase, string> = {
  * step.
  */
 export const INSTALL_PHASE_DETAILS: Record<InstallPhase, string> = {
-	python: "Copying what the app starts from.",
+	python: "Finding the copy of Python Local Operator runs on.",
 	environment:
-		"Giving Local Operator a private copy of Python nothing else touches.",
-	components: "The packages Local Operator runs on, and the longest step.",
-	verify: "Starting the backend once to see it come up.",
+		"Making Local Operator its own private folder nothing else touches.",
+	components: "Downloading the packages Local Operator runs on.",
+	verify: "Starting Local Operator once to check it comes up.",
 };
+
+/**
+ * How long each phase usually takes, per platform, in milliseconds - the input
+ * the window's estimate is computed from (first-run onboarding, U8/Q5/D10).
+ *
+ * WHY BASELINES AND NOT A LIVE RATE. The phases report boundaries, not bytes:
+ * nothing on the wire says how much of a download is left, so any estimate is a
+ * prior. A measured prior per phase is the honest one, and the window says
+ * "about" and switches to "taking longer than usual" the moment a phase outruns
+ * it rather than counting into negative numbers.
+ *
+ * WHERE EACH NUMBER COMES FROM (cold uv cache, the bundled uv 0.12.17):
+ *  - darwin: `environment` 1.2 s, `components` 7.6 s (resolve 0.9 s, download
+ *    6.1 s, install 0.1 s) and `verify` 3.3 s (`serve` until `/health`),
+ *    measured on an M-series Mac on 2026-10-08 by running the shipped script and
+ *    the smoke probe's own command; `python` is the managed runtime copy, 5-8 s
+ *    cold as the UX round measured it (`prepareAndInstall`'s note).
+ *  - win32: `environment` 6.4 s and `components` 8.9 s from the uv arm of the
+ *    install-scripts CI job (run 36646304432); `python` is `uv python install`,
+ *    3.6 s on the Mac above, doubled for a slower disk and network. `verify` is
+ *    not a separate wait on win32/linux (`prepareAndInstall` settles straight
+ *    after the script), so it is a token half second.
+ *  - linux: the same CI job's uv arm measured `environment` 3.2 s on the venv
+ *    module (uv's `--seed` path is the 1.2 s above) and `components` 1 s on a
+ *    datacentre link; the Mac's 7.6 s is used for `components` instead, because
+ *    a user's link is not a datacentre's.
+ *
+ * Rounded UP to the half second: an estimate that runs out early reads as a
+ * stall, one that finishes early reads as a pleasant surprise.
+ */
+export const INSTALL_PHASE_BASELINE_MS: Record<
+	InstallPlatform,
+	Record<InstallPhase, number>
+> = {
+	darwin: {
+		python: 6_000,
+		environment: 1_500,
+		components: 8_000,
+		verify: 4_000,
+	},
+	win32: { python: 7_500, environment: 6_500, components: 9_000, verify: 500 },
+	linux: { python: 500, environment: 3_500, components: 8_000, verify: 500 },
+};
+
+/** The platforms the window has a baseline for; anything else reads as linux. */
+export type InstallPlatform = "darwin" | "win32" | "linux";
+
+/** Narrow `process.platform` to the three the install scripts exist for. */
+export function installPlatform(platform: string): InstallPlatform {
+	return platform === "darwin" || platform === "win32" ? platform : "linux";
+}
+
+/**
+ * What the install child has said inside the `components` phase, parsed from
+ * its own output (first-run onboarding, D9).
+ *
+ * Counts, never a fraction: uv announces the large downloads it STARTS
+ * (`Downloading pillow (4.6MiB)`) and finishes (` Downloaded pillow`), and pip
+ * announces each package it collects - neither says how many bytes remain. So
+ * the window can say "3 of 6 downloads done", which is true, and nothing that
+ * would need a total it does not have.
+ */
+export type InstallSubProgress = {
+	/** `Resolved N packages`: how many packages the install will lay down. */
+	resolved: number | null;
+	/** Large downloads started, and finished, so far. */
+	downloadsStarted: number;
+	downloadsDone: number;
+	/** pip's `Collecting X` lines: packages fetched so far, when uv is absent. */
+	collected: number;
+	/** `Installed N packages` / `Successfully installed`: the last step ran. */
+	installed: boolean;
+};
+
+export const EMPTY_SUB_PROGRESS: InstallSubProgress = {
+	resolved: null,
+	downloadsStarted: 0,
+	downloadsDone: 0,
+	collected: 0,
+	installed: false,
+};
+
+const UV_RESOLVED = /^\s*Resolved (\d+) packages?\b/;
+const UV_DOWNLOADING = /^\s*Downloading \S+ \(\d/;
+const UV_DOWNLOADED = /^\s*Downloaded \S+\s*$/;
+const UV_INSTALLED = /^\s*Installed \d+ packages?\b/;
+const PIP_COLLECTING = /^\s*Collecting \S/;
+const PIP_INSTALLED = /^\s*Successfully installed\b/;
+
+/**
+ * Fold one output line into the running sub-progress, or return the same
+ * object when the line says nothing about it (so a caller can skip a send).
+ *
+ * `Downloading X (size)` is uv's spelling for a large file; pip spells its
+ * downloads `Downloading <url-or-file> (size)` too, which is why a pip run's
+ * downloads are counted the same way - the two clients agree on the shape.
+ */
+export function foldInstallLine(
+	current: InstallSubProgress,
+	line: string,
+): InstallSubProgress {
+	const resolved = UV_RESOLVED.exec(line);
+	if (resolved) return { ...current, resolved: Number(resolved[1]) };
+	if (UV_DOWNLOADING.test(line))
+		return { ...current, downloadsStarted: current.downloadsStarted + 1 };
+	if (UV_DOWNLOADED.test(line))
+		return { ...current, downloadsDone: current.downloadsDone + 1 };
+	if (UV_INSTALLED.test(line) || PIP_INSTALLED.test(line))
+		return { ...current, installed: true };
+	if (PIP_COLLECTING.test(line))
+		return { ...current, collected: current.collected + 1 };
+	return current;
+}
+
+/**
+ * The one line the window shows for the sub-progress, or null for nothing yet.
+ *
+ * In the order the facts arrive, so the line only ever moves forward: found the
+ * list, then the downloads, then the install.
+ */
+export function installSubProgressLine(
+	sub: InstallSubProgress | null | undefined,
+): string | null {
+	if (!sub) return null;
+	if (sub.installed) return "Unpacking and finishing up.";
+	if (sub.downloadsStarted > 0) {
+		const done = Math.min(sub.downloadsDone, sub.downloadsStarted);
+		return `${done} of ${sub.downloadsStarted} large downloads done${
+			sub.resolved !== null ? ` \u00b7 ${sub.resolved} packages in all` : ""
+		}.`;
+	}
+	if (sub.resolved !== null) return `Found ${sub.resolved} packages to fetch.`;
+	if (sub.collected > 0)
+		return `Fetched ${sub.collected} package${sub.collected === 1 ? "" : "s"} so far.`;
+	return null;
+}
+
+/**
+ * Elapsed time, `m:ss`. A clock rather than prose because it ticks: "12 seconds"
+ * re-flows the line every second, `0:12` keeps its width (with tabular figures).
+ */
+export function formatElapsed(ms: number): string {
+	const total = Math.max(0, Math.floor(ms / 1000));
+	return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+/**
+ * The estimate, in words: what is left of the running phase's baseline plus
+ * every later phase's.
+ *
+ * ROUNDED TO 5 s ABOVE 10 s so the number does not twitch every second on a
+ * screen whose whole job is to be calm, and NEVER negative: a phase that has
+ * outrun its baseline is "taking longer than usual", which is the true thing to
+ * say and the cue that something (usually the network) is slow.
+ */
+export function installEta(
+	platform: InstallPlatform,
+	phase: InstallPhase,
+	phaseElapsedMs: number,
+): string {
+	const baselines = INSTALL_PHASE_BASELINE_MS[platform];
+	const index = INSTALL_PHASES.indexOf(phase);
+	if (phaseElapsedMs > baselines[phase]) return "taking longer than usual";
+	const later = INSTALL_PHASES.slice(index + 1).reduce(
+		(sum, entry) => sum + baselines[entry],
+		0,
+	);
+	const left = baselines[phase] - phaseElapsedMs + later;
+	const seconds = Math.max(1, Math.ceil(left / 1000));
+	if (seconds >= 90) return `about ${Math.round(seconds / 60)} min left`;
+	const shown = seconds > 10 ? Math.ceil(seconds / 5) * 5 : seconds;
+	return `about ${shown} s left`;
+}
+
+/**
+ * What the window says about the run's whole length before any phase has
+ * started. It replaced "This takes a few minutes the first time" (U8): the
+ * uv-backed install measures 15-25 s end to end, and "minutes" told a user to
+ * walk away from a screen that would be done before they came back.
+ */
+export const INSTALL_EXPECTATION = "This usually takes less than a minute.";
 
 /**
  * The marker's leading token. Versioned because a future release may need
@@ -176,9 +363,32 @@ export function splitLines(
  * reads as a log line rather than as the message.
  */
 export type InstallProgressPayload =
-	| { kind: "phase"; phase: InstallPhase | null; installed?: false }
+	| ({
+			kind: "phase";
+			phase: InstallPhase | null;
+			installed?: false;
+	  } & Partial<InstallTiming>)
 	| { kind: "installed"; phase: InstallPhase; installed: true }
 	| { kind: "failed"; phase: InstallPhase | null; failure: InstallFailure };
+
+/**
+ * The timing a phase payload carries, so a window that mounts late (or ticks a
+ * clock between payloads) computes elapsed and the estimate from the MAIN
+ * process's instants rather than from when it happened to hear about them.
+ *
+ * OPTIONAL on the wire: a payload without it is the shape every earlier build
+ * sent, and the window then shows the step counter alone - no clock it cannot
+ * stand behind.
+ */
+export type InstallTiming = {
+	/** Epoch ms this attempt started (a Retry starts a new one). */
+	startedAt: number;
+	/** Epoch ms the current phase was announced. */
+	phaseStartedAt: number;
+	platform: InstallPlatform;
+	/** What the install child has said inside the phase, when it said anything. */
+	sub: InstallSubProgress | null;
+};
 
 /**
  * One failure, in the terms the window has to say it in: which phase, the
@@ -201,6 +411,21 @@ export type InstallFailure = {
 };
 
 /**
+ * Each phase as the clause a failure sentence ends with.
+ *
+ * NOT the label lowercased, which is what this used to be: the plain-language
+ * labels carry the product's name ("Setting up Local Operator"), and lowercasing
+ * printed "setting up local operator" in the one sentence a user reads on a bad
+ * day. A clause per phase keeps the name capitalised and the grammar whole.
+ */
+const INSTALL_PHASE_FAILURE_CLAUSE: Record<InstallPhase, string> = {
+	python: "getting ready",
+	environment: "setting up Local Operator",
+	components: "downloading what it needs",
+	verify: "starting Local Operator",
+};
+
+/**
  * The sentence the panel says when no cause in the table matches.
  *
  * WHY THIS EXISTS rather than the raw captured line (design D3): a failure the
@@ -215,7 +440,36 @@ export type InstallFailure = {
  */
 export function installFailureSentence(phase: InstallPhase | null): string {
 	if (phase === null) return "Setup stopped before it could finish.";
-	return `Setup stopped while ${INSTALL_PHASE_LABELS[phase].toLowerCase()}.`;
+	return `Setup stopped while ${INSTALL_PHASE_FAILURE_CLAUSE[phase]}.`;
+}
+
+/**
+ * Whether a phase payload's OPTIONAL timing is either absent or whole.
+ *
+ * A half-present timing (a clock with no platform, a sub-progress that is not an
+ * object) is refused rather than half-rendered: the panel computes an estimate
+ * from these fields on every tick, and a NaN there is a visible "about NaN s".
+ */
+function timingOk(payload: Record<string, unknown>): boolean {
+	const keys = ["startedAt", "phaseStartedAt", "platform", "sub"];
+	const present = keys.filter((key) => payload[key] !== undefined);
+	if (present.length === 0) return true;
+	if (present.length !== keys.length) return false;
+	if (!Number.isFinite(payload.startedAt)) return false;
+	if (!Number.isFinite(payload.phaseStartedAt)) return false;
+	if (!["darwin", "win32", "linux"].includes(payload.platform as string))
+		return false;
+	const sub = payload.sub;
+	if (sub === null) return true;
+	if (typeof sub !== "object") return false;
+	const fields = sub as Record<string, unknown>;
+	return (
+		(fields.resolved === null || Number.isFinite(fields.resolved)) &&
+		Number.isFinite(fields.downloadsStarted) &&
+		Number.isFinite(fields.downloadsDone) &&
+		Number.isFinite(fields.collected) &&
+		typeof fields.installed === "boolean"
+	);
 }
 
 /**
@@ -236,7 +490,9 @@ export function isInstallProgressPayload(
 	const phaseOk = (phase: unknown) =>
 		phase === null || (INSTALL_PHASES as readonly unknown[]).includes(phase);
 	if (!phaseOk(payload.phase ?? null)) return false;
-	if (payload.kind === "phase" || payload.kind === "installed") return true;
+	if (payload.kind === "phase")
+		return timingOk(value as Record<string, unknown>);
+	if (payload.kind === "installed") return true;
 	if (payload.kind !== "failed") return false;
 	/*
 	 * EVERY FIELD THE PANEL WILL READ, not just the one it reads first. The
