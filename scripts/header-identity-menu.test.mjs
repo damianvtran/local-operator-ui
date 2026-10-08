@@ -76,6 +76,7 @@ const {
 	IDENTITY_MENU_NO_SETTABLE_TYPED,
 	PROFILE_RECENTS_LIMIT,
 	identityAgentClosedCaption,
+	identityAgentClosedTitle,
 	identityAgentConstraint,
 	identityAgentConstraintCaption,
 	identityAgentSettable,
@@ -748,9 +749,14 @@ test("a closure builds a constraint with no catalogue row, and carries the runti
 		identityAgentConstraint({
 			teamLabel: "lopdev",
 			manager: null,
-			closure: { speaker: "manager", sentence },
+			closure: { speaker: "manager", sentence, title: "T" },
 		}),
-		{ manager: "manager", caption: sentence, closed: sentence },
+		{
+			manager: "manager",
+			caption: sentence,
+			closed: sentence,
+			closedTitle: "T",
+		},
 	);
 	// No closure and no manager: still nothing to apply (the #866 null).
 	assert.equal(
@@ -760,5 +766,13 @@ test("a closure builds a constraint with no catalogue row, and carries the runti
 			closure: null,
 		}),
 		null,
+	);
+});
+
+test("the closed note's lead line names the team as the chip does (design D2/D3)", () => {
+	// The label the chip shows, where the sentence under it keeps the slug.
+	assert.equal(
+		identityAgentClosedTitle("Local Operator Dev"),
+		"Agent seat closed by Local Operator Dev",
 	);
 });

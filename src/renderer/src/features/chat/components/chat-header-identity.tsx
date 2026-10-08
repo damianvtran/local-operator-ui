@@ -74,6 +74,7 @@ import {
 	type FC,
 	type MutableRefObject,
 	useCallback,
+	useEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -91,7 +92,9 @@ import {
 	identityMenuShowsList,
 } from "./chat-header-identity-menu-model";
 import {
+	effectiveIdentityPublished,
 	headerIdentityAgentFlagged,
+	hostPublishRecord,
 	resolveHeaderIdentity,
 } from "./chat-header-identity-model";
 import { TeamAvatarBubble } from "./team-avatar-bubble";
@@ -111,6 +114,13 @@ export type HeaderIdentityData = {
 	 * `effectiveIdentityPublished`.
 	 */
 	effectiveIdentity?: CanonicalEffectiveIdentity | null;
+	/**
+	 * The producer of this session's frames, as the capability record's key: the
+	 * catalogue row's `owner_device` (`""` on this device). See
+	 * `createHostPublishRecord` for why the host, not the frame, is what a
+	 * capability belongs to.
+	 */
+	hostKey?: string;
 };
 
 /**
@@ -302,6 +312,30 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	 * closure.
 	 */
 	const triggerRef = useRef<HTMLButtonElement>(null);
+	/*
+	 * FOCUS FOLLOWS A LIST THAT BECOMES A NOTE (QA Q1). A cold frame can open the
+	 * list and then be promoted to the host's strict frame while the panel is up:
+	 * the search field that held focus unmounts and focus falls to `<body>`, so
+	 * the next key goes nowhere. Escape and Tab only work from the chip, so when
+	 * the closure arrives with the panel open and focus has been orphaned, it
+	 * goes back to the chip. Only an ORPHANED focus is moved (`body`, or the
+	 * panel being replaced): a user who already moved elsewhere is not pulled back.
+	 */
+	const wasClosedRef = useRef(closedReason !== null);
+	useEffect(() => {
+		const closed = closedReason !== null;
+		if (closed && !wasClosedRef.current && open) {
+			const holder = document.activeElement;
+			if (
+				holder === null ||
+				holder === document.body ||
+				holder.closest("[data-header-identity-menu]") !== null
+			) {
+				triggerRef.current?.focus();
+			}
+		}
+		wasClosedRef.current = closed;
+	}, [closedReason, open]);
 	/*
 	 * The Tab path's mark (UX round 1, U1), consumed by `onCloseAutoFocus`
 	 * below exactly as the pair's swap mark is: the close the field's Tab
@@ -639,6 +673,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 				caption={constraint?.caption ?? null}
 				closedReason={closedReason}
 				closedNoteId={closedNoteId}
+				closedTitle={constraint?.closedTitle}
 				onPick={(value) => {
 					/* A pick is a decision, so the panel closes on it - the chip's own
 					 * busy spinner is what says the switch is in flight, and the label
@@ -702,8 +737,20 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 	boundAgent,
 	boundTeam,
 	effectiveIdentity,
+	hostKey = "",
 }) => {
 	const rawTeam = activeTeam || boundTeam || null;
+	/*
+	 * THE CAPABILITY RECORD (cold frames). A frame that carries the field proves
+	 * this host publishes it; a later `{}` from the same host is then a cold
+	 * frame, not an older runtime. Written in an effect - the render that saw
+	 * the published statement already uses it directly - and read at render.
+	 */
+	const publishedNow = effectiveIdentityPublished(effectiveIdentity) !== null;
+	useEffect(() => {
+		if (publishedNow) hostPublishRecord.note(hostKey);
+	}, [publishedNow, hostKey]);
+	const hostPublishes = publishedNow || hostPublishRecord.has(hostKey);
 	/*
 	 * The manager label's source, loaded only when a team is actually bound and
 	 * never gating the control: while it loads, `resolveHeaderIdentity` answers
@@ -718,6 +765,7 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 		boundTeam,
 		teams: teams.data,
 		effectiveIdentity,
+		hostPublishes,
 	});
 	/*
 	 * THE STRICT RULE, decided once in the model (`view.seat`): the host

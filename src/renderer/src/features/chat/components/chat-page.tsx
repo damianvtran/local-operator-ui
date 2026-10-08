@@ -3156,6 +3156,7 @@ function SessionPanel({
 					 * host's absent field and `{}` both reach it as they arrived.
 					 */
 					effectiveIdentity: canonical.frontend?.effective_identity ?? null,
+					hostKey: boundRow?.owner_device ?? "",
 				} satisfies HeaderIdentityData)
 			: undefined;
 	/*

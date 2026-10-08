@@ -42,6 +42,7 @@ const {
 	effectiveIdentityPublished,
 	headerIdentityAgentFlagged,
 	headerIdentityControlsShown,
+	createHostPublishRecord,
 	identityAgentClosedCaption,
 	identityAgentConstraint,
 	identityAgentSettable,
@@ -564,8 +565,10 @@ test("strict host: the cue stays dark where #866 would have lit it", () => {
 });
 
 test("strict host: the speaker ladder says who owns the session rather than render a blank", () => {
-	// Team set, speaker empty: the team's name stands in (the runtime's own
-	// fallback for a manager it cannot name), and the sentence says `its manager`.
+	// Speaker empty and the catalogue has no row: `its manager` stands in, on the
+	// chip AND in the sentence (the runtime's own phrase for an unnamed manager).
+	// It is never the team's name, which read as a second chip beside the team's
+	// own (design D5).
 	const blank = resolveHeaderIdentity({
 		activeTeam: "lopdev",
 		teams: [],
@@ -575,10 +578,23 @@ test("strict host: the speaker ladder says who owns the session rather than rend
 			role_of_speaker: "manager",
 		},
 	});
-	assert.equal(blank.agentValue, "lopdev");
+	assert.equal(blank.agentValue, "its manager");
 	assert.equal(blank.seat.speakerKnown, false);
 	assert.match(blank.seat.sentence, ITS_MANAGER);
-	// Speaker equal to the team is the runtime's fallback rung too.
+	// ...but with a catalogue row, the row's manager is the named speaker.
+	const withRow = resolveHeaderIdentity({
+		activeTeam: "minerva",
+		teams: TEAMS,
+		effectiveIdentity: {
+			speaker: "",
+			team: "minerva",
+			role_of_speaker: "manager",
+		},
+	});
+	assert.equal(withRow.agentValue, "ops-lead");
+	assert.equal(withRow.seat.speakerKnown, true);
+	// core's fallback (speaker == team) is the unnamed-manager rung when the
+	// catalogue names no other manager...
 	const fallback = resolveHeaderIdentity({
 		activeTeam: "lopdev",
 		teams: [],
@@ -589,6 +605,20 @@ test("strict host: the speaker ladder says who owns the session rather than rend
 		},
 	});
 	assert.equal(fallback.seat.speakerKnown, false);
+	// ...and a manager that is genuinely NAMED like its team is the speaker
+	// (review N1: core says `its manager` only for a manager it cannot name).
+	const sameName = resolveHeaderIdentity({
+		activeTeam: "boss",
+		teams: [{ name: "boss", manager: "boss" }],
+		effectiveIdentity: {
+			speaker: "boss",
+			team: "boss",
+			role_of_speaker: "manager",
+		},
+	});
+	assert.equal(sameName.agentValue, "boss");
+	assert.equal(sameName.seat.speakerKnown, true);
+	assert.doesNotMatch(sameName.seat.sentence, ITS_MANAGER);
 	// The host's team stands in for a stream that has not named one yet.
 	const hostOnly = resolveHeaderIdentity({
 		teams: [],
@@ -596,6 +626,98 @@ test("strict host: the speaker ladder says who owns the session rather than rend
 	});
 	assert.equal(hostOnly.teamValue, "lopdev");
 	assert.equal(hostOnly.agentValue, "manager");
+});
+
+/*
+ * COLD FRAMES (review R1, QA Q1). Core publishes `effective_identity` on warm
+ * frames only; a resumed, never-promoted team session's frame carries `{}` on a
+ * STRICT host exactly as an older host's does. A host that has published the
+ * field once is strict, so its later `{}` is a cold frame; a host that never
+ * has stays on #866. The team-bound determination keys on `active_team` / the
+ * catalogue's bound team, never on the empty field.
+ */
+const COLD = {
+	activeAgent: "",
+	activeTeam: "",
+	boundAgent: "manager",
+	boundTeam: "lopdev",
+	teams: TEAMS,
+	effectiveIdentity: {},
+};
+
+test("cold frame on a host that HAS published: the strict seat stays closed", () => {
+	const view = resolveHeaderIdentity({ ...COLD, hostPublishes: true });
+	assert.notEqual(view.seat, null);
+	assert.equal(view.teamValue, "lopdev");
+	// The speaker is the catalogue row's manager, not the stale bound agent.
+	assert.equal(view.agentValue, "manager");
+	assert.equal(view.seat.speakerKnown, true);
+	assert.equal(
+		identityAgentSettable({
+			name: "manager",
+			manager: view.teamManager,
+			delegate: true,
+			teamOwnsSeat: view.seat !== null,
+		}),
+		false,
+	);
+	// A stale explicit agent on the cold frame is never the speaker.
+	const stale = resolveHeaderIdentity({
+		...COLD,
+		boundAgent: "coder",
+		hostPublishes: true,
+	});
+	assert.equal(stale.agentValue, "manager");
+});
+
+test("the same cold frame on a host that NEVER published stays #866", () => {
+	for (const hostPublishes of [false, undefined]) {
+		const view = resolveHeaderIdentity({ ...COLD, hostPublishes });
+		assert.equal(view.seat, null);
+		assert.equal(
+			identityAgentSettable({
+				name: "manager",
+				manager: view.teamManager,
+				delegate: false,
+				teamOwnsSeat: false,
+			}),
+			true,
+		);
+	}
+});
+
+test("a cold frame with no team bound is not a closed seat, even on a strict host", () => {
+	const view = resolveHeaderIdentity({
+		activeAgent: "coder",
+		teams: TEAMS,
+		effectiveIdentity: {},
+		hostPublishes: true,
+	});
+	assert.equal(view.seat, null);
+	assert.equal(view.agentValue, "coder");
+});
+
+test('a published `team: ""` outranks a stale bound team (review N2)', () => {
+	const view = resolveHeaderIdentity({
+		activeAgent: "",
+		boundTeam: "lopdev",
+		teams: TEAMS,
+		effectiveIdentity: STRICT_NO_TEAM,
+		hostPublishes: true,
+	});
+	assert.equal(view.seat, null);
+	assert.equal(view.teamValue, null);
+});
+
+test("the capability record is per host and never leaks across hosts", () => {
+	const record = createHostPublishRecord();
+	assert.equal(record.has(""), false);
+	record.note("");
+	assert.equal(record.has(""), true);
+	// A peer's runtime may be older: its sessions key on its own device.
+	assert.equal(record.has("laptop-b"), false);
+	record.reset();
+	assert.equal(record.has(""), false);
 });
 
 test("the closure sentence is the runtime's refusal, pinned byte for byte", () => {
