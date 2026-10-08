@@ -1968,9 +1968,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										onLoadOlderOutcome={canonical.view.loadOlderDetailed}
 										olderFailed={canonical.view.olderFailed}
 										containerRef={messagesContainerRef}
-										/* The chat page is the one mount that owns the measure; the run pane's
-										 * child reader deliberately does not opt in (see the prop's note). */
-										measureHandle
 										isSmallView={isSmallView}
 										status={canonical.view.status}
 										failure={canonical.view.failure}

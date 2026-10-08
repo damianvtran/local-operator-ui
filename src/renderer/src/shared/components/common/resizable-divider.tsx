@@ -59,19 +59,17 @@
  * Long enough to ignore a pass-through, short enough to feel immediate when
  * you are actually reaching for it.
  *
- * EXPORTED because the surfaces around it are revealed on the same intent: the
- * chat's measure handle (`chat-measure-handle.tsx`, a sibling rather than a child
- * of this separator, so it cannot inherit the state) and the chat sidebar's
- * per-row acts (`chat-row-hover-intent.tsx`). A second delay written beside the
- * first is two numbers a later change can put out of step (review round 1, M-1:
- * the shipped build revealed the plate after 120ms of CSS while this line waited
- * 200ms, and the PR body claimed the delay was already there).
+ * EXPORTED because the surface beside it is revealed on the same intent: the chat
+ * sidebar's per-row acts (`chat-row-hover-intent.tsx`). A second delay written
+ * beside the first is two numbers a later change can put out of step (review
+ * round 1, M-1: the shipped build revealed the plate after 120ms of CSS while this
+ * line waited 200ms, and the PR body claimed the delay was already there).
  *
- * ITS FIRST CONSUMER IS GONE AND IS NOT NAMED HERE ANY MORE (agent review round
- * 1's M1): this line used to cite "the chat sidebar's collapse cluster", which the
- * panel no longer draws (`chat-sidebar.tsx` records that the cluster, the
- * draggable boundary and the region swap are not drawn at all). The constant kept
- * its consumers, so the export stays; only the census was stale.
+ * THE CENSUS IS TWO READERS AND IT HAS SHRUNK BEFORE: the chat sidebar's collapse
+ * cluster is no longer drawn (agent review round 1's M1; `chat-sidebar.tsx`
+ * records that the cluster, the draggable boundary and the region swap are gone),
+ * and the conversation column's measure handle was removed in #895. Re-count the
+ * importers (`git grep HOVER_INTENT_MS`) before adding a name here.
  */
 export const HOVER_INTENT_MS = 200;
 
@@ -89,15 +87,14 @@ let cursorOverlay: HTMLDivElement | null = null;
  * and stating it per drag is also what keeps a missed `mouseup` from leaving the
  * previous drag's cursor in place for the next one.
  *
- * EXPORTED for the second consumer: the conversation column's measure handle
- * (`features/chat/components/chat-measure-handle.tsx`) drags a width the same
- * way and would otherwise keep its own copy of this node and its teardown - two
- * overlays for one pointer is exactly the defect the single module reference
- * above exists to prevent.
+ * NOT EXPORTED: this component is the only caller. It was exported for a second
+ * consumer, the conversation column's measure handle, which drags a width the
+ * same way and would otherwise have kept its own copy of this node - two overlays
+ * for one pointer is the defect the single module reference above exists to
+ * prevent. That consumer was removed in #895; a new drag surface that needs the
+ * overlay should export these two again rather than keep a second node.
  */
-export const addResizeCursorOverlay = (
-	cursor: "col-resize" | "row-resize",
-): void => {
+const addResizeCursorOverlay = (cursor: "col-resize" | "row-resize"): void => {
 	if (!cursorOverlay) {
 		cursorOverlay = document.createElement("div");
 		Object.assign(cursorOverlay.style, {
@@ -113,7 +110,7 @@ export const addResizeCursorOverlay = (
 	cursorOverlay.style.cursor = cursor;
 };
 
-export const removeResizeCursorOverlay = (): void => {
+const removeResizeCursorOverlay = (): void => {
 	if (cursorOverlay) {
 		document.body.removeChild(cursorOverlay);
 		cursorOverlay = null;
