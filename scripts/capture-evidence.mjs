@@ -1981,9 +1981,9 @@ export const STORIES = [
 	["browser-pane--with-approval", 640, 720],
 	["browser-pane--narrow-minimum", 480, 460],
 	["browser-pane--route-for-comparison", 1240, 780],
-	["browser-pane--trigger-no-approval", 560, 84],
-	["browser-pane--trigger-one-approval", 560, 84],
-	["browser-pane--trigger-three-approvals", 560, 84],
+	["browser-pane--trigger-no-approval", 560, 224],
+	["browser-pane--trigger-one-approval", 560, 224],
+	["browser-pane--trigger-three-approvals", 560, 224],
 	/*
 	 * The COMPOSED pair (design round 1, D6; review round 1, F1), which is the only
 	 * place the pane's own frame meets a chat column: the seam, the divider, the width
@@ -2012,7 +2012,7 @@ export const STORIES = [
 	/* Before the first read lands (spec 7.4). */
 	["browser-pane--pane-loading", 640, 460],
 	/* The badge at its cap (design round 1, D5). */
-	["browser-pane--trigger-at-cap", 560, 84],
+	["browser-pane--trigger-at-cap", 560, 224],
 	/*
 	 * The chat header's whole action cluster, which is one control more than the
 	 * trigger frames above carry: the run trigger, the browser button and the canvas
@@ -2028,21 +2028,25 @@ export const STORIES = [
 	 * those. `no-approval` is the operator's own state: no badge drawn, and the
 	 * asymmetry visible as 8px against 12px before the fix.
 	 */
+	/*
+	 * THE FOUR PANEL TRIGGERS LEFT THE HEADER (#872), so six of this surface's
+	 * stories (`one-approval`, `at-cap`, `trigger-dot`, `canvas-open-badge`,
+	 * `console-blip`, `console-blip-resting`) are `navigation-panel-rail--*` now and
+	 * their rows are gone with them: a row naming a story that no longer exists fails
+	 * the whole run. The frames already committed under `docs/evidence/
+	 * chat-header-cluster/` PREDATE the move and are not re-shot (they show the
+	 * header cluster as it was, which is what they are evidence of); the surface's
+	 * remaining rows are the header as it is - the menu and the Asks trigger.
+	 */
 	["chat-header-cluster--no-approval", 560, 84],
-	["chat-header-cluster--one-approval", 560, 84],
-	["chat-header-cluster--at-cap", 560, 84],
-	["chat-header-cluster--trigger-dot", 560, 84],
 	/* The badge drawn with the canvas button unmounted: the reservation's room is
 	   owed for the box that button owns, so this state must stay at the 8px step. */
-	["chat-header-cluster--canvas-open-badge", 560, 84],
 	/*
 	 * The console trigger's attention dot (design 12.2), in the same band and at the
 	 * same size as the cluster's other frames so the pair can be held against them.
 	 * They exist because the design round's D1 could not find the header dot in any
 	 * frame: the pane's row mark and this dot are two halves of one rule.
 	 */
-	["chat-header-cluster--console-blip", 560, 84],
-	["chat-header-cluster--console-blip-resting", 560, 84],
 	/*
 	 * THE CONVERSATION-ACTIONS MENU, AND THE TRANSCRIPT-DISPLAY SUBMENU (issue
 	 * #756's surfacing half).
