@@ -1,0 +1,490 @@
+{
+  "viewport": {
+    "w": 800,
+    "h": 700,
+    "theme": "localOperatorDark"
+  },
+  "aside": {
+    "left": 0,
+    "right": 0,
+    "top": 0,
+    "bottom": 0,
+    "width": 0,
+    "height": 0,
+    "border": {
+      "t": 0,
+      "r": 0,
+      "b": 0,
+      "l": 0
+    },
+    "padding": {
+      "t": 16,
+      "r": 16,
+      "b": 16,
+      "l": 16
+    },
+    "radius": "0px",
+    "bg": "rgb(43, 39, 33)",
+    "overflowY": "visible"
+  },
+  "main": {
+    "left": 0,
+    "right": 800,
+    "top": 0,
+    "bottom": 700,
+    "width": 800,
+    "height": 700,
+    "border": {
+      "t": 0,
+      "r": 0,
+      "b": 0,
+      "l": 0
+    },
+    "padding": {
+      "t": 0,
+      "r": 0,
+      "b": 0,
+      "l": 0
+    },
+    "radius": "0px",
+    "bg": "rgba(0, 0, 0, 0)",
+    "overflowY": "visible"
+  },
+  "pane": {
+    "left": 0,
+    "right": 800,
+    "top": 45,
+    "bottom": 534,
+    "width": 800,
+    "height": 489,
+    "border": {
+      "t": 0,
+      "r": 0,
+      "b": 0,
+      "l": 0
+    },
+    "padding": {
+      "t": 24,
+      "r": 16,
+      "b": 0,
+      "l": 16
+    },
+    "radius": "0px",
+    "bg": "rgba(0, 0, 0, 0)",
+    "overflowY": "auto",
+    "scrollbarWidth": 16,
+    "gutter": "stable both-edges",
+    "contentLeft": 24,
+    "hasEdgeCue": true,
+    "maskImage": "linear-gradient(rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 0px, rgb(0, 0, 0) 100%, rgba(0, 0, 0, 0) 100%)"
+  },
+  "composerPlacement": "docked",
+  "composerBothRendered": 1,
+  "dock": {
+    "element": {
+      "left": 0,
+      "right": 800,
+      "top": 534,
+      "bottom": 700,
+      "width": 800,
+      "height": 166,
+      "border": {
+        "t": 0,
+        "r": 0,
+        "b": 0,
+        "l": 0
+      },
+      "padding": {
+        "t": 0,
+        "r": 0,
+        "b": 0,
+        "l": 0
+      },
+      "radius": "0px",
+      "bg": "rgb(34, 32, 28)",
+      "overflowY": "visible"
+    },
+    "totalHeight": 166,
+    "shareOfViewportHeight": 0.24,
+    "nonInputHeight": 56,
+    "box": {
+      "left": 24,
+      "right": 776,
+      "top": 574,
+      "bottom": 684,
+      "width": 752,
+      "height": 110,
+      "border": {
+        "t": 0,
+        "r": 0,
+        "b": 0,
+        "l": 0
+      },
+      "padding": {
+        "t": 16,
+        "r": 16,
+        "b": 16,
+        "l": 16
+      },
+      "radius": "16px",
+      "bg": "rgb(50, 45, 34)",
+      "overflowY": "visible"
+    },
+    "statusRow": {
+      "left": 24,
+      "right": 776,
+      "top": 542,
+      "bottom": 570,
+      "width": 752,
+      "height": 28
+    },
+    "note": {
+      "left": 24,
+      "right": 497.56,
+      "top": 547.3,
+      "bottom": 564.69,
+      "width": 473.56,
+      "height": 17.39
+    },
+    "noteInDom": true,
+    "run": null,
+    "frames": [
+      {
+        "tag": "div",
+        "cls": "mx-auto flex flex-col bg-elevated box-border transition-colo",
+        "testid": null,
+        "border": false,
+        "bg": "rgb(50, 45, 34)",
+        "radius": "16px"
+      },
+      {
+        "tag": "div",
+        "cls": "shrink-0 bg-canvas",
+        "testid": null,
+        "border": false,
+        "bg": "rgb(34, 32, 28)",
+        "radius": "0px"
+      }
+    ],
+    "boxFrames": [
+      {
+        "tag": "div",
+        "cls": "mx-auto flex flex-col bg-elevated box-border transition-colo",
+        "testid": null,
+        "border": false,
+        "bg": "rgb(50, 45, 34)",
+        "radius": "16px"
+      }
+    ],
+    "nestedFrameCount": 1,
+    "boxTopToPaneBottom": 40,
+    "chipCount": 0
+  },
+  "detail": {
+    "container": {
+      "left": 24,
+      "right": 776,
+      "top": 69,
+      "bottom": 517.25,
+      "width": 752,
+      "height": 448.25
+    },
+    "column": {
+      "left": 24,
+      "right": 776,
+      "top": 69,
+      "bottom": 517.25,
+      "width": 752,
+      "height": 448.25
+    },
+    "columnClass": "w-full @min-[750px]/chatcol:max-w-[var(--lo-chat-measure)] @min-[750px]/chatcol:mx-auto",
+    "maxWidthClass": "max-w-[var(--lo-chat-measure)]",
+    "header": {
+      "left": 24,
+      "right": 776,
+      "top": 69,
+      "bottom": 118.5,
+      "width": 752,
+      "height": 49.5
+    },
+    "heading": {
+      "left": 24,
+      "right": 461.77,
+      "top": 69,
+      "bottom": 95,
+      "width": 437.77,
+      "height": 26
+    },
+    "headingCenterY": 82,
+    "headerButtons": [
+      {
+        "text": "New team chat",
+        "left": 477.77,
+        "right": 594.39,
+        "top": 66,
+        "bottom": 98,
+        "width": 116.63,
+        "height": 32
+      },
+      {
+        "text": "Edit",
+        "left": 602.39,
+        "right": 652.42,
+        "top": 66,
+        "bottom": 98,
+        "width": 50.03,
+        "height": 32
+      },
+      {
+        "text": "Ask for a change",
+        "left": 660.42,
+        "right": 788,
+        "top": 66,
+        "bottom": 98,
+        "width": 127.58,
+        "height": 32
+      }
+    ],
+    "headerButtonsRight": 788,
+    "headerButtonsCenterYs": [
+      82,
+      82,
+      82
+    ],
+    "headerTextButtons": 3,
+    "headerIconButtons": 0,
+    "headerMeta": "3 members",
+    "accentFills": 2
+  },
+  "boxVsColumn": {
+    "leftDelta": 0,
+    "rightDelta": 0
+  },
+  "sections": [
+    {
+      "title": "Manager",
+      "left": 24,
+      "right": 776,
+      "top": 150.5,
+      "bottom": 216.89,
+      "width": 752,
+      "height": 66.39,
+      "borderTop": 0,
+      "paddingTop": 0
+    },
+    {
+      "title": "Members",
+      "left": 24,
+      "right": 776,
+      "top": 248.89,
+      "bottom": 351.28,
+      "width": 752,
+      "height": 102.39,
+      "borderTop": 0,
+      "paddingTop": 0
+    },
+    {
+      "title": "What it is for",
+      "left": 24,
+      "right": 776,
+      "top": 383.28,
+      "bottom": 433.17,
+      "width": 752,
+      "height": 49.89,
+      "borderTop": 0,
+      "paddingTop": 0
+    },
+    {
+      "title": "Collaboration instructions",
+      "left": 24,
+      "right": 776,
+      "top": 465.17,
+      "bottom": 517.25,
+      "width": 752,
+      "height": 52.08,
+      "borderTop": 0,
+      "paddingTop": 0
+    }
+  ],
+  "sectionGaps": [
+    32,
+    32,
+    32
+  ],
+  "sectionRuleCount": 0,
+  "readBlocks": [
+    {
+      "left": 24,
+      "right": 776,
+      "top": 495.56,
+      "bottom": 517.25,
+      "width": 752,
+      "height": 21.69,
+      "border": 0,
+      "bg": "rgba(0, 0, 0, 0)",
+      "clamped": false,
+      "clientHeight": 22,
+      "scrollHeight": 22,
+      "textLength": 22,
+      "showAll": false,
+      "tabIndex": null
+    }
+  ],
+  "nestedScrollers": [],
+  "paneScroll": {
+    "clientHeight": 489,
+    "scrollHeight": 489,
+    "hiddenPx": 0
+  },
+  "paneShareOfViewportHeight": 0.7,
+  "tables": [
+    {
+      "rows": [
+        {
+          "h": 36,
+          "nameLeft": 24,
+          "typeLeft": 624,
+          "countRight": 768,
+          "text": "managerAgent"
+        }
+      ],
+      "badges": 0
+    },
+    {
+      "rows": [
+        {
+          "h": 36,
+          "nameLeft": 24,
+          "typeLeft": 624,
+          "countRight": 776,
+          "text": "coderAgent×1"
+        },
+        {
+          "h": 36,
+          "nameLeft": 24,
+          "typeLeft": 624,
+          "countRight": 776,
+          "text": "reviewerAgent×2"
+        }
+      ],
+      "badges": 0
+    }
+  ],
+  "roster": {
+    "rowCount": 12,
+    "distinctHeights": [
+      0
+    ],
+    "rowHeights": [
+      {
+        "id": "content",
+        "h": 0
+      },
+      {
+        "id": "data-investigations",
+        "h": 0
+      },
+      {
+        "id": "data-quality",
+        "h": 0
+      },
+      {
+        "id": "helpdesk",
+        "h": 0
+      },
+      {
+        "id": "hyperplane-development",
+        "h": 0
+      },
+      {
+        "id": "local-operator-development",
+        "h": 0
+      },
+      {
+        "id": "minerva-development",
+        "h": 0
+      },
+      {
+        "id": "pergamon-research",
+        "h": 0
+      },
+      {
+        "id": "radient-net",
+        "h": 0
+      },
+      {
+        "id": "radient-development",
+        "h": 0
+      },
+      {
+        "id": "support-desk",
+        "h": 0
+      },
+      {
+        "id": "on-call-rotation-with-an-unreasonably-long-and-descriptive-name",
+        "h": 0
+      }
+    ],
+    "pitch": 0,
+    "scroller": {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0
+    },
+    "scrollerEdgeCue": true,
+    "visibleRows": 12,
+    "selected": [
+      "roster-row-on-call-rotation-with-an-unreasonably-long-and-descriptive-name"
+    ],
+    "firstRowText": "Content5 membersTurns what is moving in the market into reviewed posts, from the first signal to the finished layout.",
+    "proactiveMarks": 0,
+    "countWords": [
+      "5 members",
+      "4 members",
+      "3 members",
+      "3 members",
+      "5 members",
+      "7 members",
+      "8 members",
+      "4 members",
+      "3 members",
+      "5 members",
+      "4 members",
+      "3 members"
+    ]
+  },
+  "cluster": {
+    "tabsRight": 0,
+    "searchRight": 0,
+    "scopeRight": null,
+    "scrollerTop": 0,
+    "footer": {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0
+    },
+    "footerText": "Add team manually",
+    "showingLabel": false
+  },
+  "documentOverflow": {
+    "scrollWidth": 800,
+    "clientWidth": 800
+  },
+  "activeElement": {
+    "tag": "textarea"
+  },
+  "placeholder": "Change on-call-rotation-with-an-unreasonably-long-and-descriptive-name…",
+  "boxDisabled": false,
+  "boxStyle": {
+    "outlineStyle": "solid",
+    "outlineWidth": "2px",
+    "borderTop": "0px",
+    "bg": "rgb(50, 45, 34)"
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "U5": {
+    "800x700": [
+      {
+        "n": 1,
+        "discard": [
+          "Discard this team"
+        ],
+        "active": "BUTTON:Keep editing"
+      },
+      {
+        "n": 2,
+        "discard": [
+          "Discard this team",
+          "Discard your unsaved changes"
+        ],
+        "active": "BUTTON:Keep editing"
+      },
+      {
+        "n": 3,
+        "discard": [
+          "Discard this team",
+          "Discard your unsaved changes"
+        ],
+        "active": "BUTTON:Keep editing"
+      }
+    ],
+    "1024x725": [
+      {
+        "n": 1,
+        "discard": [
+          "Discard this team"
+        ],
+        "active": "BUTTON:Keep editing"
+      },
+      {
+        "n": 2,
+        "discard": [],
+        "active": "BODY:Name\n        Description\n     "
+      },
+      {
+        "n": 3,
+        "discard": [
+          "Discard this team"
+        ],
+        "active": "BUTTON:Keep editing"
+      }
+    ]
+  },
+  "U6": {
+    "start": "TEXTAREA:Message",
+    "afterOpen": "TEXTAREA:Message",
+    "afterBack": "TEXTAREA:Message",
+    "rowFocused": false,
+    "at1024afterOpen": "TEXTAREA:Message"
+  },
+  "U9": {
+    "rowL": 16,
+    "rowR": 264,
+    "scrollerL": 16,
+    "scrollerR": 272,
+    "outline": "solid 2px offset 2px",
+    "clipLeft": true,
+    "clipRight": false,
+    "focusVisible": true
+  }
+}

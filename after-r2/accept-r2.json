@@ -1,0 +1,632 @@
+{
+  "A": {
+    "team-settled-long@1024x725": {
+      "dock": 246.5,
+      "pane": 478.5,
+      "boxTop": 599,
+      "boxBottom": 709,
+      "vh": 725,
+      "share": 0.34,
+      "reach": {
+        "lastHeadingBottom": 229.25,
+        "paneBottom": 478.5
+      },
+      "region": {
+        "tab": 0,
+        "role": "region",
+        "sh": 1133,
+        "ch": 73
+      },
+      "boxOnScreen": true
+    },
+    "team-error-long@1024x725": {
+      "dock": 278.5,
+      "pane": 446.5,
+      "boxTop": 599,
+      "boxBottom": 709,
+      "vh": 725,
+      "share": 0.38413793103448274,
+      "reach": {
+        "lastHeadingBottom": 197.25,
+        "paneBottom": 446.5
+      },
+      "region": {
+        "tab": 0,
+        "role": "region",
+        "sh": 95,
+        "ch": 73
+      },
+      "boxOnScreen": true
+    },
+    "team-stop-refused@1024x725": {
+      "dock": 229.890625,
+      "pane": 495.109375,
+      "boxTop": 599,
+      "boxBottom": 709,
+      "vh": 725,
+      "share": 0.3170905172413793,
+      "reach": {
+        "lastHeadingBottom": 245.25,
+        "paneBottom": 495.109375
+      },
+      "region": null,
+      "boxOnScreen": true
+    },
+    "team-settled@1024x725": {
+      "dock": 234,
+      "pane": 491,
+      "boxTop": 599,
+      "boxBottom": 709,
+      "vh": 725,
+      "share": 0.32275862068965516,
+      "reach": {
+        "lastHeadingBottom": 241.25,
+        "paneBottom": 491
+      },
+      "region": null,
+      "boxOnScreen": true
+    },
+    "team-running@1024x725": {
+      "dock": 166,
+      "pane": 559,
+      "boxTop": 599,
+      "boxBottom": 709,
+      "vh": 725,
+      "share": 0.2289655172413793,
+      "reach": {
+        "lastHeadingBottom": 309.25,
+        "paneBottom": 559
+      },
+      "region": null,
+      "boxOnScreen": true
+    },
+    "team-selected@1024x725": {
+      "dock": 166,
+      "pane": 559,
+      "boxTop": 599,
+      "boxBottom": 709,
+      "vh": 725,
+      "share": 0.2289655172413793,
+      "reach": {
+        "lastHeadingBottom": 309.25,
+        "paneBottom": 559
+      },
+      "region": null,
+      "boxOnScreen": true
+    },
+    "team-settled-long@800x600": {
+      "dock": 234,
+      "pane": 321,
+      "boxTop": 474,
+      "boxBottom": 584,
+      "vh": 600,
+      "share": 0.39,
+      "reach": {
+        "lastHeadingBottom": 116.25,
+        "paneBottom": 366
+      },
+      "region": {
+        "tab": 0,
+        "role": "region",
+        "sh": 587,
+        "ch": 60
+      },
+      "boxOnScreen": true
+    },
+    "team-error-long@800x600": {
+      "dock": 266,
+      "pane": 289,
+      "boxTop": 474,
+      "boxBottom": 584,
+      "vh": 600,
+      "share": 0.44333333333333336,
+      "reach": {
+        "lastHeadingBottom": 84.25,
+        "paneBottom": 334
+      },
+      "region": {
+        "tab": 0,
+        "role": "region",
+        "sh": 76,
+        "ch": 60
+      },
+      "boxOnScreen": true
+    },
+    "team-stop-refused@800x600": {
+      "dock": 229.890625,
+      "pane": 325.109375,
+      "boxTop": 474,
+      "boxBottom": 584,
+      "vh": 600,
+      "share": 0.3831510416666667,
+      "reach": {
+        "lastHeadingBottom": 120.25,
+        "paneBottom": 370.109375
+      },
+      "region": null,
+      "boxOnScreen": true
+    },
+    "team-settled@800x600": {
+      "dock": 234,
+      "pane": 321,
+      "boxTop": 474,
+      "boxBottom": 584,
+      "vh": 600,
+      "share": 0.39,
+      "reach": {
+        "lastHeadingBottom": 116.25,
+        "paneBottom": 366
+      },
+      "region": null,
+      "boxOnScreen": true
+    },
+    "team-running@800x600": {
+      "dock": 166,
+      "pane": 389,
+      "boxTop": 474,
+      "boxBottom": 584,
+      "vh": 600,
+      "share": 0.27666666666666667,
+      "reach": {
+        "lastHeadingBottom": 184.25,
+        "paneBottom": 434
+      },
+      "region": null,
+      "boxOnScreen": true
+    },
+    "team-selected@800x600": {
+      "dock": 166,
+      "pane": 389,
+      "boxTop": 474,
+      "boxBottom": 584,
+      "vh": 600,
+      "share": 0.27666666666666667,
+      "reach": {
+        "lastHeadingBottom": 184.25,
+        "paneBottom": 434
+      },
+      "region": null,
+      "boxOnScreen": true
+    }
+  },
+  "B": {
+    "start1440": {
+      "sh": 174,
+      "ch": 174,
+      "clamped": false,
+      "hiddenLines": false,
+      "btn": null,
+      "w": 810
+    },
+    "1_to420": {
+      "sh": 369,
+      "ch": 217,
+      "clamped": true,
+      "hiddenLines": true,
+      "btn": "Show all",
+      "w": 372
+    },
+    "2_to1440": {
+      "sh": 174,
+      "ch": 174,
+      "clamped": false,
+      "hiddenLines": false,
+      "btn": null,
+      "w": 810
+    },
+    "3_to420": {
+      "sh": 369,
+      "ch": 217,
+      "clamped": true,
+      "hiddenLines": true,
+      "btn": "Show all",
+      "w": 372
+    },
+    "4_to1440": {
+      "sh": 174,
+      "ch": 174,
+      "clamped": false,
+      "hiddenLines": false,
+      "btn": null,
+      "w": 810
+    },
+    "expandedThenWide": [
+      "Show less"
+    ]
+  },
+  "C": [
+    {
+      "name": "Manager: the agent that leads the chat",
+      "columnheaders": [
+        "Member",
+        "Type",
+        "Count"
+      ]
+    },
+    {
+      "name": "Members",
+      "columnheaders": [
+        "Member",
+        "Type",
+        "Count"
+      ]
+    }
+  ],
+  "K": {
+    "Manager": {
+      "rows": [
+        36
+      ],
+      "headingToFirstRow": 8,
+      "colX": [
+        312,
+        840,
+        936
+      ]
+    },
+    "Members": {
+      "rows": [
+        36,
+        36.5,
+        36.5,
+        36.5,
+        36
+      ],
+      "headingToFirstRow": 8,
+      "colX": [
+        312,
+        840,
+        936
+      ]
+    }
+  },
+  "J": {
+    "heights": [
+      50.89
+    ],
+    "titles": 0,
+    "sample": [
+      {
+        "t": "Local Operator Development - Builds and ships changes to the Local Operator harness and its desktop app.",
+        "name": "Local Operator Development",
+        "ell": true
+      },
+      {
+        "t": "Minerva Development - Builds and ships changes to the Minerva services and dashboards.",
+        "name": "Minerva Development",
+        "ell": false
+      },
+      {
+        "t": "Pergamon Research - Researches people and companies for the Pergamon watchlists and cites every source.",
+        "name": "Pergamon Research",
+        "ell": false
+      },
+      {
+        "t": "Radient Net",
+        "name": "Radient Net",
+        "ell": false
+      }
+    ],
+    "noDesc": [
+      {
+        "n": "roster-row-radient-net",
+        "h": 50.890625
+      }
+    ]
+  },
+  "L": {
+    "manager": {
+      "w": 54.328125,
+      "h": 24
+    },
+    "pitch": [
+      null,
+      32,
+      32,
+      32
+    ],
+    "showAll": {
+      "w": 48.0625,
+      "h": 24,
+      "gapToText": 1
+    }
+  },
+  "M": {
+    "800": {
+      "columnRight": 776,
+      "askGlyphRight": 776,
+      "dismissGlyphRight": 776,
+      "headerRight": 776,
+      "askBox": 788,
+      "dismissBox": 784
+    },
+    "1024": {
+      "columnRight": 1000,
+      "askGlyphRight": 1000,
+      "dismissGlyphRight": 1000,
+      "headerRight": 1000,
+      "askBox": 1012,
+      "dismissBox": 1008
+    },
+    "1440": {
+      "columnRight": 1269,
+      "askGlyphRight": 1269,
+      "dismissGlyphRight": 1269,
+      "headerRight": 1269,
+      "askBox": 1281,
+      "dismissBox": 1277
+    },
+    "agent": {
+      "columnRight": 1000,
+      "glyphRight": 1000,
+      "boxRight": 1008
+    },
+    "dismissFocus": {
+      "outline": "solid 2px offset 1px",
+      "boxRight": 1008,
+      "outlineRight": 1011,
+      "viewport": 1024,
+      "focusVisible": true
+    },
+    "askFocus": {
+      "text": "Ask for a change",
+      "outline": "solid 2px offset 2px",
+      "boxRight": 1012,
+      "viewport": 1024,
+      "focusVisible": true,
+      "pane": 1024
+    }
+  },
+  "D": {
+    "cells": [
+      "×1",
+      "×2"
+    ],
+    "header": "3 members",
+    "rosterRow": "on-call-rotation-with-an-unreasonably-long-and-descriptive-name3 membersNo description"
+  },
+  "P": {
+    "title": "About team on-call-rotation-with-an-unreasonably-long-and-descriptive-name",
+    "truncated": true,
+    "text": "About team on-call-rotation-with-an-unreasonably-long-and-descriptive-name",
+    "def": {
+      "liveText": "Finished. Configured 1 definition",
+      "visibleCount": [
+        "",
+        "Configured 1 definition"
+      ]
+    },
+    "aboutTitle": "About team on-call-rotation-with-an-unreasonably-long-and-descriptive-name"
+  },
+  "H": {
+    "ph": "Change on-call-rotation-with-an-unreasonably-long-and-descriptive-name…",
+    "fit": {
+      "phWidth": 443.625,
+      "textareaWidth": 656,
+      "ph": "Ask for a change to this definition, or describe a new agent or team…"
+    },
+    "fit800": {
+      "phWidth": 443.625,
+      "textareaWidth": 720
+    },
+    "hero": "Describe what you want…",
+    "heroAgents": "Describe what you want…"
+  },
+  "I": {
+    "team-selected": {
+      "empty": 166,
+      "withDraft": 166,
+      "boxVal": "twenty chars draft!!",
+      "emptyText": "Ask for an agent or team change | Runs in the background. This does not appear in your conversation.",
+      "draftText": "Ask for an agent or team change | Runs in the background. This does not appear in your conversation.",
+      "boxTopEmpty": 599,
+      "boxTopDraft": 599
+    },
+    "team-running": {
+      "empty": 166,
+      "withDraft": 166,
+      "boxVal": "twenty chars draft!!",
+      "emptyText": "Ask for an agent or team change | Working on your request | 43s | Configured | 1 definition | Runs in the background. This does not appear in your conversation. | Stop",
+      "draftText": "Ask for an agent or team change | Working on your request | 43s | Configured | 1 definition | Runs in the background. This does not appear in your conversation. | Stop",
+      "boxTopEmpty": 599,
+      "boxTopDraft": 599
+    },
+    "team-blocked-by-edit": {
+      "empty": 166,
+      "withDraft": 166,
+      "boxVal": "twenty chars draft!!",
+      "emptyText": "Ask for an agent or team change | Runs in the background. This does not appear in your conversation.",
+      "draftText": "Ask for an agent or team change | Finish or cancel your edit first.",
+      "boxTopEmpty": 599,
+      "boxTopDraft": 599
+    }
+  },
+  "F": {
+    "found": true,
+    "tag": "P",
+    "text": "Ask for a change needs a newer backend. Update Local Operator to configure agents by conversation.",
+    "w": 688,
+    "h": 17.390625,
+    "truncated": false,
+    "rowH": 28,
+    "at476": {
+      "mainW": 476,
+      "noteW": 428,
+      "noteH": 34.78125,
+      "lines": 2,
+      "truncated": false,
+      "fullyVisible": true,
+      "rowH": 28,
+      "dockH": 208.78125,
+      "text": "Ask for a change needs a newer backend. Update Local Operator to configure agents by conversation."
+    }
+  },
+  "G": {
+    "team edit@1024x725": {
+      "rest": {
+        "top": 508.5625,
+        "bottom": 540.5625,
+        "footerTop": 502,
+        "footerH": 57,
+        "cx": 364.65625,
+        "cy": 524.5625,
+        "onScreen": true,
+        "hit": "Save changes",
+        "scrollTop": 0,
+        "scrollPad": "61px",
+        "padVar": "57px",
+        "members": 5
+      },
+      "tabbed": {
+        "focused": "Add member",
+        "bottom": 264.5625,
+        "top": 232.5625,
+        "footerTop": 502,
+        "fullyAbove": true
+      },
+      "click": {
+        "hit": "Add member",
+        "membersBefore": 5,
+        "membersAfter": 6,
+        "stillEditing": true,
+        "saveAttempted": false
+      }
+    },
+    "team edit@800x560": {
+      "rest": {
+        "top": 553.5625,
+        "bottom": 585.5625,
+        "footerTop": 337,
+        "footerH": 57,
+        "cx": 76.65625,
+        "cy": 569.5625,
+        "onScreen": false,
+        "hit": null,
+        "scrollTop": 0,
+        "scrollPad": "61px",
+        "padVar": "57px",
+        "members": 5
+      },
+      "tabbed": {
+        "focused": "Add member",
+        "bottom": 204.5625,
+        "top": 172.5625,
+        "footerTop": 337,
+        "fullyAbove": true
+      },
+      "click": {
+        "hit": "Add member",
+        "membersBefore": 5,
+        "membersAfter": 6,
+        "stillEditing": true,
+        "saveAttempted": false
+      }
+    },
+    "team create@1024x725": {
+      "rest": {
+        "top": 789.296875,
+        "bottom": 821.296875,
+        "footerTop": 502,
+        "footerH": 57,
+        "cx": 364.65625,
+        "cy": 805.296875,
+        "onScreen": false,
+        "hit": null,
+        "scrollTop": 0,
+        "scrollPad": "61px",
+        "padVar": "57px",
+        "members": 5
+      },
+      "tabbed": {
+        "focused": "Add member",
+        "bottom": 265.296875,
+        "top": 233.296875,
+        "footerTop": 502,
+        "fullyAbove": true
+      },
+      "click": {
+        "hit": "Add member",
+        "membersBefore": 5,
+        "membersAfter": 6,
+        "stillEditing": true,
+        "saveAttempted": false
+      }
+    },
+    "team create@800x560": {
+      "rest": {
+        "top": 834.296875,
+        "bottom": 866.296875,
+        "footerTop": 337,
+        "footerH": 57,
+        "cx": 364.65625,
+        "cy": 850.296875,
+        "onScreen": false,
+        "hit": null,
+        "scrollTop": 0,
+        "scrollPad": "61px",
+        "padVar": "57px",
+        "members": 5
+      },
+      "tabbed": {
+        "focused": "Add member",
+        "bottom": 205.296875,
+        "top": 173.296875,
+        "footerTop": 337,
+        "fullyAbove": true
+      },
+      "click": {
+        "hit": "Add member",
+        "membersBefore": 5,
+        "membersAfter": 6,
+        "stillEditing": true,
+        "saveAttempted": false
+      }
+    },
+    "agentEditButtonFooter": "agent edit/create checked below",
+    "agent edit@1024x725": {
+      "lastControlBottom": 448.8125,
+      "footerTop": 502,
+      "clear": true,
+      "padVar": "57px"
+    },
+    "agent edit@800x560": {
+      "lastControlBottom": 283.8125,
+      "footerTop": 337,
+      "clear": true,
+      "padVar": "57px"
+    },
+    "team create end@1024x725": {
+      "lastControlBottom": 464.703125,
+      "footerTop": 502,
+      "clear": true
+    },
+    "team create end@800x560": {
+      "lastControlBottom": 299.703125,
+      "footerTop": 337,
+      "clear": true
+    }
+  },
+  "E": {
+    "team": {
+      "titleLine": 26,
+      "clusterH": 26,
+      "titleCentre": 37,
+      "buttonCentres": [
+        37,
+        37,
+        37
+      ]
+    },
+    "agent": {
+      "titleLine": 26,
+      "clusterH": 26,
+      "titleCentre": 37,
+      "buttonCentres": [
+        37,
+        37,
+        37,
+        37
+      ]
+    }
+  }
+}
