@@ -54,7 +54,14 @@ const {
  * cannot be mounted here.
  */
 const RECENTS_JOIN_CALL =
-	/chatRecentsOfRow\(\s*row,\s*conversationRecents,\s*displayedSessionId,\s*archiveEnabled,?\s*\)/;
+	/chatRecentsOfRow\(\s*row,\s*conversationRecents,\s*displayedSessionId,\s*archiveEnabled,\s*archiveFacts,?\s*\)/;
+/* The facts are read from the store, and are an input of the `chatItems` memo:
+ * without the dependency the memo would not rebuild when an archive press settles
+ * its fact, which is the whole of agent review round 2's R2-1. */
+const ARCHIVE_FACTS_SELECTOR =
+	/const archiveFacts = useCanonicalSessionsStore\(\s*\(state\) => state\.archiveFacts,?\s*\);/;
+const ARCHIVE_FACTS_MEMO_DEPENDENCY =
+	/archiveEnabled,\s*archiveFacts,?\s*\]\);/;
 const ARCHIVE_CAPABILITY_GATE =
 	/desktopFeatureEnabled\(\s*capabilities\.data,\s*"session_archive",\s*\)/;
 const RECENTS_FIELDS_FROM_HELPER =
@@ -1422,6 +1429,16 @@ test("the Recents pin's row facts come from the one tested helper, over the side
 		"the archive fact must come from the sidebar's own capability",
 	);
 	assert.match(source, RECENTS_FIELDS_FROM_HELPER);
+	assert.match(
+		source,
+		ARCHIVE_FACTS_SELECTOR,
+		"the answered archive facts must be read from the store, as the sidebar reads them",
+	);
+	assert.match(
+		source,
+		ARCHIVE_FACTS_MEMO_DEPENDENCY,
+		"the facts must be a dependency of the chatItems memo, or a settled press never rebuilds it",
+	);
 });
 
 /* ------------------------------------------------------------------ *

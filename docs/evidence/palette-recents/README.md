@@ -66,15 +66,21 @@ PNGs, un-resized. The run's scratch profile, config dir and log dir are
 throwaway; its log carries the readings that prove the app held no connection to
 the operator's own backend.
 
-**Why the round's delta is not re-evidenced in the six older frames.** This
-round's change is renderer-side and narrow: the Recents pin no longer CLAIMS a
+**Why the round's delta is not re-evidenced in the six older frames.** The
+round-1 change is renderer-side and narrow: the Recents pin no longer CLAIMS a
 conversation the archive store holds out of the default lists (`palette-search.ts`
 carries the row's `archived` fact and excludes it; the browse pool is unchanged).
-The six committed frames' rings contain no archived conversation, so no state they
-render moved. That is measured rather than assumed: `after-switcher` was re-shot
-from this round's tree and compared against the committed frame - 6 pixels differ
-at a 5% per-channel tolerance and 0 at 8%, i.e. lossy re-encoding noise, not a
-render.
+Round 2 corrected WHICH fact: the pin reads the sidebar's membership rule in the
+sidebar's order, the answered `archiveFacts` laid over the row and then
+`visibleRows` (`chatRecentsOfRow`), because an accepted archive press settles the
+fact and patches no row. The six committed frames' rings contain no archived
+conversation, so no state they render moved. That was checked by re-shooting
+`after-switcher` from the round-1 tree and comparing it against the committed
+frame at a 5% per-channel tolerance: no layout moved. The re-shot frame was a scratch
+file and is NOT committed, so the comparison itself cannot be repeated from this
+directory; what a reader can check is the committed `before-empty` / `after-empty` pair,
+whose difference is only the caret and lossy re-encoding (the 138-pixel reading
+in that row below, measured from the two committed files).
 
 ## The profile the scene seeds
 
@@ -96,7 +102,7 @@ duplicate. That is the visit hook working on the real app.
 | `before-switcher` | Base tree. The `#` switcher: **Unread** (one row) then **Chats** (five rows). The selection is on the unread row. No Recents. |
 | `after-switcher` | Head. **Unread** (Quarterly retention sweep), then **Recents** - Migration checklist, Release notes for 0.29, AWS cost increase review - then **Chats** (Invoice reconciliation, Old onboarding notes). Both halves list SIX conversations and the head half draws one more heading: no row was added, three conversations moved from the Chats tier into Recents. The results listbox (`#command-palette-results`, not the whole panel) is 638 x 324.2px against the base half's 638 x 314.8px, so this pair is 9.4px taller - one heading, less the 24px `h-6` dropped-rows end spacer (`command-palette.tsx`) the base half's list still carries. The head half reconciles exactly at 324.2px (6 x `h-9` rows = 216px, three headings, `p-2`); the base half's six rows and two headings compute to 290.8px, 24px short of the logged 314.8px, and the 24px is that spacer. |
 | `after-switcher` (light) | The same scene in `localOperatorLight` - the same list, the same selection on the unread row, no Recents row moved. Shot because the committed set was dark-only; the section headings' contrast is HIGHER here than in the dark frame (`ink-dim` on `elevated` is 6.14:1 against 5.25:1 - the design round's token ratios, not pixel samples) (design round 1, D4). |
-| `after-full` | The pin at its FULL five rows, over the stub's large catalogue (`--catalogue 90`), with a ring of six bound conversations: **Recents** draws Chat 016/017/018 (team `minervadev`) and Chat 035/036 (agent `reviewer`) - five rows, in visit order, each drawing its binding hint - and **Chats** draws Chat 000-003. The sixth ring entry is past the Chats tier's own five-row cap in this fixture, so this frame does not draw it (it is not in Recents either - the pin's cap, not an exclusion). |
+| `after-full` | The pin at its FULL five rows, over the stub's large catalogue (`--catalogue 90`), with a ring of six bound conversations: **Recents** draws Chat 016/017/018 (team `minervadev`) and Chat 035/036 (agent `reviewer`) - five rows, in visit order, each drawing its binding hint - and **Chats** lists five rows in the DOM read (`run-full.log`: `chat-p000` to `chat-p004`), of which the frame shows Chat 000-002 in full and Chat 003 half-faded at the list's fold; Chat 004 is below the fold, reached by scrolling. The sixth ring entry is past the Chats tier's own five-row cap in this fixture, so the Chats tier does not list it (it is not in Recents either - the pin's cap, not an exclusion). |
 | `before-down` | Base tree after one ArrowDown: selection moves from the unread row to the first Chats row (`chat-2d5ad5da0025`, the conversation on screen). |
 | `after-down` | Head after one ArrowDown: the selection has crossed the Unread -> Recents boundary onto the first Recents row, Migration checklist (`aria-activedescendant` `chat-b3f1a09c7d52` -> `chat-7c1b0f2a4d31`). |
 | `before-empty` / `after-empty` | An EMPTY ring (the profile reseeded to `[]` and rebooted). The boot restores the open conversation, so the ring fills with exactly that one, which is the conversation on screen and therefore excluded: nothing is eligible. Both halves read `Unread` then `Chats` and no Recents heading. Measured from the two COMMITTED WebPs themselves (decoded, 8 per channel): 138 pixels differ, spread over the frame (x 71-1980, y 554-1763, worst per-channel delta 205) - lossy re-encoding noise, plus the blinking text caret in the query field. No structural difference is visible in the pair. |
@@ -122,6 +128,7 @@ duplicate. That is the visit hook working on the real app.
 
 ## What these frames cannot prove
 
+- **Visual axes the set skips (design round 2, D7):** two themes only (`localOperatorDark`, and `localOperatorLight` for one frame) - `highContrastLight`, `palenight` and the rest are not shot; one window size (1380x900), so narrow and short windows, where the list scrolls sooner, are not shown; and no frame has MANY unread rows, which is where the pin's cost shows (it sits under an uncapped Unread pin and so is pushed below the fold).
 - **Recents driven by a notification click or a deep link** is not photographed:
   the hook reads the one displayed-conversation value those paths move, and the
   rule is pinned in `scripts/palette-recents.test.mjs`, but only the sidebar row
