@@ -154,6 +154,34 @@ const contentKey = (value: unknown) => {
 	return `${text.length}.${hash.toString(36)}`;
 };
 
+/**
+ * WHERE "KEEP EDITING" MAY PUT FOCUS BACK, which is never on a control whose focus
+ * DOES something (UX review round 3 U3; QA round 3 Q1).
+ *
+ * Radix `Tabs` activates a trigger ON FOCUS. The discard bar records the control
+ * the operator was on and gives focus back to it, and on the tab routes that
+ * control is the tab they just arrowed or pressed - which is not the selected one,
+ * because the switch is the very thing the bar is holding. Focusing it activated it
+ * again, `requestGo` re-asked, and the bar came straight back: "Keep editing" could
+ * not be answered on that route (focus log `Keep editing > agents-tab > Keep editing`).
+ *
+ * The rule is a property of the TARGET, not a list of routes: a tab that is not the
+ * selected one is replaced by the tab list's SELECTED trigger, where focus is a
+ * no-op because that trigger is already active. Everything else (a field, a button,
+ * a roster row, Back) is returned as it is - focusing those only focuses them.
+ */
+function focusThatActivatesNothing(
+	target: HTMLElement | null,
+): HTMLElement | null {
+	if (!target || target.getAttribute("role") !== "tab") return target;
+	if (target.getAttribute("aria-selected") === "true") return target;
+	return (
+		target
+			.closest('[role="tablist"]')
+			?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]') ?? null
+	);
+}
+
 export function AgentsPage() {
 	const laneLeadingColumn = useLaneLeadingColumn("surface");
 	const { agentId } = useParams<{ agentId?: string }>();
@@ -429,27 +457,37 @@ export function AgentsPage() {
 	);
 
 	/**
+	 * WHERE "KEEP EDITING" PUTS THE OPERATOR BACK (UX review round 2 U2; round 3 U3).
+	 * The bar takes focus when it opens - it is 28-29 Tab stops from the field, and a
+	 * keyboard user otherwise has no way to answer it - and a dialog that takes focus
+	 * owes it back. The place owed is where the operator was WORKING: the last control
+	 * focused inside the pane, which is the form they are keeping. The control that
+	 * asked (a roster row, a tab, Back) is the fallback, for a pane nothing was
+	 * focused in yet; it is passed through `focusThatActivatesNothing` on the way out.
+	 */
+	const barReturnFocus = useRef<HTMLElement | null>(null);
+	const paneLastFocus = useRef<HTMLElement | null>(null);
+	const keepBarRef = useRef<HTMLButtonElement>(null);
+	/**
 	 * Navigation that ASKS when an edit is unsaved, and does not when it is not.
 	 *
 	 * Every roster click, tab switch, "Add manually" and link between a team and
 	 * its agents goes through here. A dirty draft used to be discarded with no
-	 * question (U9) or — worse, after the key was missing — carried onto the next
+	 * question (U9) or - worse, after the key was missing - carried onto the next
 	 * record (D1/U1/Q1). Neither is acceptable, so the question is asked once, in
 	 * the pane the operator is looking at.
 	 */
-	/**
-	 * WHERE THE OPERATOR WAS WHEN THE DISCARD BAR OPENED, so "Keep editing" can put
-	 * them back (UX review round 2, U2). The bar takes focus when it opens - it is
-	 * 28-29 Tab stops from the field, and a keyboard user otherwise has no way to
-	 * answer it - and a dialog that takes focus owes it back.
-	 */
-	const barReturnFocus = useRef<HTMLElement | null>(null);
-	const keepBarRef = useRef<HTMLButtonElement>(null);
 	const requestGo = useCallback(
 		(next: NavIntent) => {
 			if (editDirty) {
+				const inPane = paneLastFocus.current;
 				const active = document.activeElement;
-				barReturnFocus.current = active instanceof HTMLElement ? active : null;
+				barReturnFocus.current =
+					inPane?.isConnected && inPane.closest("form")
+						? inPane
+						: active instanceof HTMLElement
+							? active
+							: null;
 				setPendingNav(next);
 				return;
 			}
@@ -460,24 +498,39 @@ export function AgentsPage() {
 	const dismissBar = useCallback(() => {
 		setPendingNav(null);
 		const target = barReturnFocus.current;
-		barReturnFocus.current = null;
 		// After the bar unmounts, so the focus ring is not painted on a node that is
 		// about to leave. A control the click already removed is simply skipped.
 		requestAnimationFrame(() => {
-			if (target?.isConnected) target.focus();
+			const landing = focusThatActivatesNothing(target);
+			if (landing?.isConnected) landing.focus();
 		});
 	}, []);
 	const barOpen = pendingNav !== null;
 	useEffect(() => {
 		if (!barOpen) return;
-		setPageDiscardBarOpen(true);
+		// The second argument is how the pane's own Cancel withdraws this bar (UX
+		// review round 3, U4): it asks its own question, and two would stack.
+		setPageDiscardBarOpen(true, () => setPendingNav(null));
 		// The SAFE arm, as `EditFooter`'s own question does (its round 2 U1): the
 		// destructive button is never the one a stray Enter lands on.
 		keepBarRef.current?.focus();
 		/*
+		 * AGAIN AFTER THE BROWSER'S OWN FOCUS HANDLING (UX review round 3 U3). A
+		 * MOUSE press on a tab asks on `mousedown`, the bar takes focus in this effect,
+		 * and then the press's default action focuses the tab - the bar was open with
+		 * focus on the control that opened it, 32 Tab stops from "Keep editing". One
+		 * frame later that default action is over, so the check is made then: focus
+		 * that is still inside the bar is left alone.
+		 */
+		const settled = requestAnimationFrame(() => {
+			const bar = keepBarRef.current?.closest('[role="alertdialog"]');
+			if (bar && !bar.contains(document.activeElement))
+				keepBarRef.current?.focus();
+		});
+		/*
 		 * ESCAPE CLOSES THE BAR, and nothing else answers it while it is open. The
-		 * pane's own Escape reads `pageDiscardBarOpen` (detail-parts) and stands down, so this is
-		 * the only owner. A Radix layer that already took the key marks it handled.
+		 * pane's own Escape reads `pageDiscardBarOpen` (detail-parts) and stands down,
+		 * so this is the only owner. A Radix layer that already took the key marks it handled.
 		 */
 		const onKey = (event: KeyboardEvent) => {
 			if (event.key !== "Escape" || event.defaultPrevented) return;
@@ -486,6 +539,7 @@ export function AgentsPage() {
 		};
 		window.addEventListener("keydown", onKey);
 		return () => {
+			cancelAnimationFrame(settled);
 			window.removeEventListener("keydown", onKey);
 			setPageDiscardBarOpen(false);
 		};
@@ -813,6 +867,16 @@ export function AgentsPage() {
 					 */
 					data-agents-pane
 					/*
+					 * THE LAST CONTROL FOCUSED IN THE PANE, for the discard bar to give focus
+					 * back to (see `barReturnFocus`). `onFocus` bubbles in React, so one
+					 * handler here sees every field, select and button of the open form; the
+					 * bar and the dock are outside this element, so they never overwrite it.
+					 */
+					onFocus={(event) => {
+						if (event.target instanceof HTMLElement)
+							paneLastFocus.current = event.target;
+					}}
+					/*
 					 * THE FADE AT THE DOCK'S EDGE (design spec s6.3). The scroller used to end
 					 * in a hard cut against the composer, slicing a heading in half. The
 					 * sidebar's 24 px scroll-driven mask answers the same problem and is
@@ -844,10 +908,19 @@ export function AgentsPage() {
 						 * the `calc` is INVALID when the property is absent, which computes to
 						 * `auto`, so a read view gets no padding without a conditional here. The
 						 * 4 px is the focus ring's offset-and-width, so the ring clears the bar.
+						 *
+						 * AND THE FOOTER'S CUE BAND (`--lo-pane-footer-cue-h`, `index.css`): the
+						 * 24 px fade above the bar is painted OVER the content, so a control that
+						 * `nearest` left flush on the bar sat inside it with its focus ring at
+						 * 1.2:1 (QA round 3 Q2 / design round 3 D1). Counting the band as outside
+						 * the viewport lands every focus scroll - Add member after each add, Tab
+						 * into a member row - above it. It is scroll padding, not content
+						 * padding: the page's note above still holds, nothing is added under the
+						 * bar.
 						 */
 						showsEmptyPane
 							? undefined
-							: "px-4 pt-6 [scroll-padding-bottom:calc(var(--lo-pane-footer-h)+4px)] [scrollbar-gutter:stable_both-edges]",
+							: "px-4 pt-6 [scroll-padding-bottom:calc(var(--lo-pane-footer-h)+var(--lo-pane-footer-cue-h)+4px)] [scrollbar-gutter:stable_both-edges]",
 					)}
 				>
 					{showsEmptyPane ? (

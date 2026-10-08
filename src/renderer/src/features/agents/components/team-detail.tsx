@@ -293,8 +293,17 @@ export function TeamDetail({
 		 * `scroll-padding-bottom` (the footer's published height) counts the sticky
 		 * footer as outside - which is the whole point: the button lands just above the
 		 * bar, not under it. It does not need focus, so a pointer press is covered too.
+		 *
+		 * The pane's `scroll-padding-bottom` also counts the footer's 24 px cue band
+		 * (`--lo-pane-footer-cue-h`), so `nearest` stops ABOVE the fade rather than
+		 * flush on the bar, where the fade took the focus ring to 1.2:1 (QA round 3 Q2).
+		 *
+		 * `typeof` because jsdom has no layout and no `scrollIntoView`: a test that
+		 * presses Add member must not throw inside this effect (agent review round 3, N5).
 		 */
-		addMemberRef.current?.scrollIntoView({ block: "nearest" });
+		const button = addMemberRef.current;
+		if (typeof button?.scrollIntoView === "function")
+			button.scrollIntoView({ block: "nearest" });
 		// No dependency array: the flag, not a value, says a row was just added, and the
 		// effect runs after the commit that made the button move.
 	});
