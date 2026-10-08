@@ -5,6 +5,7 @@ import {
 	type AskOpenView,
 	askDismissals,
 	askOpenFacts,
+	askOutstandingReading,
 	createAskOpenView,
 	shouldCloseCarriedDrawer,
 } from "./ask-open-policy";
@@ -128,9 +129,26 @@ export const useAskOpenPolicy = ({
 	 * conversation's asks first - the very thing being refused. The close lands before the
 	 * browser paints, so there is no frame to see. A drawer the user opened by hand is
 	 * never closed here: it follows them, as it always did.
+	 *
+	 * "DISMISSED" HERE IS THE RECORD AS IT STANDS AT MOUNT, and a pane mounts with an unread
+	 * frame (the stream starts at `frontend: null`), which settles nothing: a held record
+	 * therefore closes the carried drawer even when it is about to prove stale. That is the
+	 * safe order. The passive effect below reconciles the record against the frame the
+	 * moment it lands, and a record that proves stale (the waved-off asks resolved while the
+	 * user was away, a new batch queued) opens the drawer for that batch like any other
+	 * pending-on-open view - one closed beat, which is also how a cold open of any other
+	 * conversation reads - while a record that still holds keeps it shut.
+	 *
+	 * A pane that mounts with a frame already RESOLVED (a story, a rig, a future seeded
+	 * frame) has no such beat to wait for, so the record is settled against that frame
+	 * first: closing a carried drawer over a record the same frame is about to prove stale
+	 * would shut the very drawer the view then opens. An unread frame settles nothing
+	 * (`reconcile`), so for the app's ordinary mount this line changes no verdict.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: runs once per view, at its start, on the frame that view mounted with; every later frame is the passive effect's
 	useLayoutEffect(() => {
 		if (!sessionId) return;
+		askDismissals.reconcile(sessionId, askOutstandingReading(view));
 		const live = useUiPreferencesStore.getState();
 		if (
 			shouldCloseCarriedDrawer({
@@ -154,8 +172,23 @@ export const useAskOpenPolicy = ({
 	 */
 	const viewRef = useRef<{ key: string; view: AskOpenView } | null>(null);
 
+	/*
+	 * THE DRAWER FLAGS ARE READ LIVE IN THE EFFECT, and the render's own copies below are only
+	 * its triggers. The layout effect above can close a carried drawer AFTER this render read
+	 * the flag, so the render's value is stale by exactly that close: observed as written, the
+	 * next render would look like the USER closing the drawer, which over a frame that has not
+	 * answered spends the view's one decision (`before-decision`), and the frame that lands a
+	 * moment later - the one that may prove the record stale and open the drawer for a fresh
+	 * batch - would arrive to a view that had already decided. The close the policy performs
+	 * on its own behalf must never be read as the user's.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `drawerOpen` and `sessionDrawerOpen` are the re-run triggers; the body reads the same flags live from the store
 	useEffect(() => {
 		if (!sessionId) return;
+		const flags = useUiPreferencesStore.getState();
+		const liveDrawerOpen = flags.isAskDrawerOpen;
+		const liveSessionDrawerOpen =
+			flags.isAskDrawerOpen && flags.askDrawerScope === "session";
 		let slot = viewRef.current;
 		if (slot === null || slot.key !== sessionId) {
 			slot = {
@@ -175,8 +208,8 @@ export const useAskOpenPolicy = ({
 			 * first published one.
 			 */
 			keyboardOnDoor: !slot.view.settled && keyboardIsOnDoor(),
-			drawerOpen,
-			sessionDrawerOpen,
+			drawerOpen: liveDrawerOpen,
+			sessionDrawerOpen: liveSessionDrawerOpen,
 		});
 		if (verdict.action === "open") {
 			/*
