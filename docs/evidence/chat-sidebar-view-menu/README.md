@@ -88,7 +88,14 @@ The frames are stamped `e248483bf` (this branch); the before halves are named in
 their rows below. The two `audit-order-*` plays gained the repository's
 `capturePending` latch in the same pass - their state arrives through four real
 presses, and the first re-shoot attempt had the rig refuse the run because the
-busy row was still on screen when its `expectGone` was read.
+busy row was still on screen when its `expectGone` was read. ROUND 2 REVERSED
+THAT PAIR'S CLAIM (U3/D1): the window rule (A1) draws the live row under BOTH
+orderings - under `Most recent` in place, as the list's last row - so the rig
+entry's `expectGone` became `expectPresent`, the settles now assert POSITION
+(last there; inside the ten-row window under `Active first`), and every
+popover-showing state in this set was re-shot at the round-2 head, because round
+1's C1 subtext had reached only seven of them and round 2's D2 re-worded that
+very line.
 
 TWO RULES THIS PASS LEARNT THE HARD WAY, both named by agent review round 1:
 
@@ -117,6 +124,20 @@ TWO RULES THIS PASS LEARNT THE HARD WAY, both named by agent review round 1:
   twice - once while the remediation was landing and once at the amended head
   this set ships - because a frame has to be a picture of the tree it ships in.
 
+  THE 2026-10-08 ROUND-2 RE-SHOOT (agent review round 2's U3/D1, design D2).
+  Every POPOVER-SHOWING state in this set - seventeen, not the seven round 1
+  re-shot - was re-taken in both BRAND hues (34 frames), plus
+  `popover-basis-created`'s `tokyoNight`/`radient` (2 more, so the basis pair
+  stays fresh in all four hues). U3/D1 reversed the audit pair's claim: both
+  orderings now DRAW the live row (`most-recent`'s frame reads `chat rows drawn:
+  13` with `audit-busy-old` LAST; `active-first`'s reads 12 with it third), the
+  rig entry's `expectGone` flipped to `expectPresent`, and the settles assert
+  the positions. D2 re-worded the basis subtext to `…follow the selected
+  clock.`, which wraps to two lines and moves every panel's content height again
+  (621 -> 638); the rows above carry the new readings. Round 1 had left the ten
+  audit states and `reorder-edges` showing the pre-C1 panel - this pass closes
+  that, and the frames are stamped `d5111a40935`.
+
 ## What each frame is
 
 | story | what it is |
@@ -127,8 +148,8 @@ TWO RULES THIS PASS LEARNT THE HARD WAY, both named by agent review round 1:
 | `popover-basis-last-active` | the basis fixture below under the DEFAULT basis: `Stored view: section/active/active-first`, `basis [active=true created=false]`. |
 | `popover-basis-created` | the same fixture with `Created` pressed: the check moves, the readout says `section/created/active-first`, and the sections, their ORDER and the labels below all re-read. Since 2026-10-08 the basis orders each section by its own clock (`chat-sidebar-view.ts`'s `pageOrder`); the story's play asserts that order, and it replaced the assertion of the opposite "never a re-sort" claim the same day. |
 | `reorder-edges` | the rail after D1 and round 1's m1/U1: Pinned and both entity rows draw NO pair; Running's pair is disabled on BOTH sides (its up-neighbour is Pinned, and an empty section's own press draws nothing either); Today's up is disabled (its shown neighbour, the empty Running, draws nothing) while `today:down` is live; Older's down is disabled. The legal press still moves the section in the panel and the column behind it. |
-| `popover-open-short` | D2's own capture: the same panel in an 800x600 window, where the fourth group pushed it past the floor, plus round 1's D1 inset: the cap is `calc(var(--radix-popover-content-available-height) - 16px)`, so the panel's own bottom edge - and its rounded corner - stays 16px above the window's instead of the box ending flush. THE ROUND-1 SUBTEXT MOVED THE CUT (C1, 2026-10-08): the `Dates and ordering follow this clock.` line adds 23px of content, so this window now hides 79px (`content 621` against `box 240x542`, was 598) and the fold crosses the `Older` ROW - the frames draw its label with the row clipped below - where round 2 (D4) had measured the cut landing in the padding under the row (zero content pixels above the fold, six themes). That D4 reading described the pre-subtext height; the inset's own claim is unchanged, and design round 2 re-reads this state's delta. The first shot of this state clipped outright (the panel ran off the bottom; the Teams row was unreachable), and the earlier wording of this row promised a content sliver the pixels do not show. |
-| `popover-open-narrow` | the same state in the shape the APP can reach with a short window (round 1, Q-2): the popover does not exist below ~1024px - the nav rail collapses and the trigger is not drawn - so a docked width with a short height (1100x600) is the honest worst case. Same inset and the same numbers as the 800x600 state - `box 240x542 · bottom 584/600 · content 621 (scrolls)` - including the round-1 cut into the `Older` row. |
+| `popover-open-short` | D2's own capture: the same panel in an 800x600 window, where the fourth group pushed it past the floor, plus round 1's D1 inset: the cap is `calc(var(--radix-popover-content-available-height) - 16px)`, so the panel's own bottom edge - and its rounded corner - stays 16px above the window's instead of the box ending flush. THE SUBTEXT MOVED THE CUT (C1, re-worded by PR #903's design D2): `Dates and ordering follow the selected clock.` wraps to two lines at this width and adds 40px of content, so this window now hides 96px (`content 638` against `box 240x542`, was 598) and the fold crosses the `This week` ROW - the frames draw its label with the row clipped below - where the set's own D4 pass (PR #872's round 2) had measured the cut landing in the padding under a row (zero content pixels above the fold, six themes). That D4 reading described the pre-subtext height; the inset's own claim is unchanged, and PR #903's design round 2 re-reads this state's delta. The first shot of this state clipped outright (the panel ran off the bottom; the Teams row was unreachable), and the earlier wording of this row promised a content sliver the pixels do not show. |
+| `popover-open-narrow` | the same state in the shape the APP can reach with a short window (round 1, Q-2): the popover does not exist below ~1024px - the nav rail collapses and the trigger is not drawn - so a docked width with a short height (1100x600) is the honest worst case. Same inset and the same numbers as the 800x600 state - `box 240x542 · bottom 584/600 · content 638 (scrolls)` - including the cut into the `This week` row. |
 | `popover-hidden-section`, `popover-reordered-pair`, `page-ladder-*`, `section-cap-*`, `expanded-agent-group`, `band-resting`, `band-*-hover`, `off-route-voice` | the states earlier passes added. The two panel states were re-shot in round 1 (the glyph and the rail rule are in their content); the rest are unchanged by this pass. |
 
 ## The Time basis pair, and what the sections say under each
@@ -288,10 +309,10 @@ nothing traded a header gap for a phantom scroll region.
   own. A design round that wants the pair side by side can ask for it.
 - **What sits below `popover-open-short`'s fold.** The panel scrolls, so what a
   tall window would show under the box's edge is not in the frame; the readout's
-  own numbers carry the claim instead (`content 621` against `box 240x542` - 23px
-  of it the C1 subtext, and the fold's cut now crossing the `Older` row where
-  before it landed in the padding under it), and the story's play asserts all
-  seven rows are present. The pre-remedy shot of the same state - the clipped
+  own numbers carry the claim instead (`content 638` against `box 240x542` - 40px
+  of it the subtext, whose D2 wording wraps to a second line, and the fold's cut
+  now crossing the `This week` row where the set's D4 pass had it in the padding
+  under a row), and the story's play asserts all seven rows are present. The pre-remedy shot of the same state - the clipped
   one - is described in the state's row above rather than kept beside it: a
   frame that photographs a defect the same pass removed belongs to the record of
   the reading, not the set.
