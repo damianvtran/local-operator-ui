@@ -610,15 +610,35 @@ test("the invitation is true on both tabs: object-free in the hero, both objects
 		);
 		/*
 		 * AND IT FITS ONE LINE (design D1 = QA Q1 = UX U3): the idle docked box does
-		 * not auto-grow, so a wrapped placeholder is clipped. 301 px at the box's font
-		 * is the measured width of the shipped words; 50 characters is the ceiling
-		 * (the narrowest docked text area is 328 px, ~6 px per character), and the
-		 * 71-character sentence this replaced measured 444 px. "Definition" is the run
-		 * counter's noun, not the page's (D5).
+		 * not auto-grow, so a wrapped placeholder is clipped. THE SHIPPED STRING IS
+		 * PINNED EXACTLY, not bounded by a length, because no character count
+		 * guarantees a width (agent review round 3, M1: the old `length <= 50` was
+		 * arithmetic on a per-character figure that the measurement itself refuted -
+		 * 301.2 px for 44 characters is 6.85 px each, so 50 characters would be ~342 px
+		 * against a 320 px text area).
+		 *
+		 * WHAT WAS MEASURED, and what a change to this string invalidates: this exact
+		 * sentence is 301.2 px in the box's own font (14 px system-ui, canvas
+		 * `measureText`) and the NARROWEST docked box is the 416 px pane (the shell
+		 * sidebar docks from 1024 px at up to 320 px, the roster is a fixed 288 px),
+		 * whose 336 px textarea has a 320 px text area: 18.8 px spare, and the textarea
+		 * reported `scrollHeight == clientHeight` (34 == 34, no thumb) there. The 71
+		 * characters this replaced measured 444 px. ANY edit needs the sweep again:
+		 * Storybook `agents-teams-page--team-selected`, `<main>` pinned to 416 px,
+		 * then `textarea.scrollHeight === textarea.clientHeight` and the width of
+		 * the string measured in `getComputedStyle(textarea).font` (the rig is
+		 * `after-r4`'s `probe-placeholder.mjs` in the PR's evidence record).
+		 * "Definition" is the run counter's noun, not the page's (D5).
 		 */
-		assert.ok(
-			placeholder.length <= 50,
-			`short enough for one line at the narrowest pane (got ${placeholder.length}: ${placeholder})`,
+		assert.equal(
+			placeholder,
+			"Ask for a change, or describe something new\u2026",
+			"the docked placeholder is the string measured at 301.2 px; re-measure at the 416 px pane before changing it",
+		);
+		assert.notEqual(
+			placeholder,
+			"Describe what you want\u2026",
+			"and it is not the hero's, which has the chips and a heading beside it",
 		);
 		assert.doesNotMatch(
 			placeholder,
@@ -857,9 +877,16 @@ for (const status of ["idle", "running", "done", "stopped", "error"]) {
 				 * the dock over its 166 px); the sentence stays the box's `sr-only`
 				 * description. Assert the title is there so "nothing visible" cannot hide.
 				 */
-				assert.ok(
-					(host.textContent ?? "").includes("Working on your request"),
-					"a live run says what it is doing on screen",
+				const title = [...host.querySelectorAll("*")].find(
+					(node) =>
+						node.children.length === 0 &&
+						(node.textContent ?? "").includes("Working on your request"),
+				);
+				assert.ok(title, "a live run says what it is doing");
+				assert.equal(
+					visuallyHidden(title, host),
+					false,
+					"and a sighted reader can see it (not an `sr-only` node)",
 				);
 			} else {
 				assert.equal(
