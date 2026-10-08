@@ -1,0 +1,1342 @@
+{
+  "label": "r1",
+  "origin": "http://localhost:5332",
+  "frames": {
+    "i1-card": "r1/i1-card/localOperatorLight.webp",
+    "i1-card-pane": "r1/i1-card-pane/localOperatorLight.webp",
+    "i2-typed": "r1/i2-typed/localOperatorLight.webp",
+    "i3-restored": "r1/i3-restored/localOperatorLight.webp",
+    "i3-restored-pane": "r1/i3-restored-pane/localOperatorLight.webp",
+    "i4-continued": "r1/i4-continued/localOperatorLight.webp",
+    "i5-sent": "r1/i5-sent/localOperatorLight.webp",
+    "j1-other-empty": "r1/j1-other-empty/localOperatorLight.webp",
+    "j1-other-empty-pane": "r1/j1-other-empty-pane/localOperatorLight.webp",
+    "j2-other-unticked": "r1/j2-other-unticked/localOperatorLight.webp",
+    "j3-sent": "r1/j3-sent/localOperatorLight.webp",
+    "ka-answered-undelivered": "r1/ka-answered-undelivered/localOperatorLight.webp",
+    "kb-change-form": "r1/kb-change-form/localOperatorLight.webp",
+    "kb-change-form-pane": "r1/kb-change-form-pane/localOperatorLight.webp",
+    "kc-change-edited": "r1/kc-change-edited/localOperatorLight.webp",
+    "kc-change-edited-pane": "r1/kc-change-edited-pane/localOperatorLight.webp",
+    "kd-updated": "r1/kd-updated/localOperatorLight.webp"
+  },
+  "probes": {
+    "i1": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BUTTON",
+        "attr": "eu-west"
+      },
+      "buttons": {
+        "send": {
+          "disabled": true,
+          "box": {
+            "x": 801,
+            "y": 267.1,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 267.1,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-93ea",
+          "text": "Queued — the agent is continuing; expires in 59m Which region should the canary run in?eu-westus-eastap-southOtherType your answerSend answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "region",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 144.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "eu-west",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "us-east",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "ap-south",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "false",
+            "text": "OtherType your answer",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": null,
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "i2": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        },
+        {
+          "cls": "w-full resize-y border border-control bg-surface text-ink pl",
+          "scrollHeight": 54,
+          "clientHeight": 54,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "TEXTAREA",
+        "attr": "region"
+      },
+      "buttons": {
+        "send": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 331.1,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 331.1,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-93ea",
+          "text": "Queued — the agent is continuing; expires in 59m Which region should the canary run in?eu-westus-eastap-southOthereu-centralSend answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "region",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 208.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "eu-west",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "us-east",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "ap-south",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "true",
+            "text": "Other",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": {
+            "box": {
+              "x": 829,
+              "y": 263.1,
+              "w": 478,
+              "h": 56
+            },
+            "focused": true,
+            "valueLength": 10,
+            "value": "eu-central",
+            "selectionStart": 10,
+            "selectionEnd": 10,
+            "rows": 2,
+            "placeholder": "Type your answer",
+            "ariaLabel": "Your answer to: Which region should the canary run in?",
+            "disabled": false
+          },
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "i3": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        },
+        {
+          "cls": "w-full resize-y border border-control bg-surface text-ink pl",
+          "scrollHeight": 54,
+          "clientHeight": 54,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "TEXTAREA",
+        "attr": "region"
+      },
+      "buttons": {
+        "send": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 331.1,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 331.1,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-93ea",
+          "text": "Queued — the agent is continuing; expires in 59m Which region should the canary run in?eu-westus-eastap-southOthereu-centralSend answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "region",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 208.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "eu-west",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "us-east",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "ap-south",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "true",
+            "text": "Other",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": {
+            "box": {
+              "x": 829,
+              "y": 263.1,
+              "w": 478,
+              "h": 56
+            },
+            "focused": true,
+            "valueLength": 10,
+            "value": "eu-central",
+            "selectionStart": 10,
+            "selectionEnd": 10,
+            "rows": 2,
+            "placeholder": "Type your answer",
+            "ariaLabel": "Your answer to: Which region should the canary run in?",
+            "disabled": false
+          },
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "i4": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        },
+        {
+          "cls": "w-full resize-y border border-control bg-surface text-ink pl",
+          "scrollHeight": 54,
+          "clientHeight": 54,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "TEXTAREA",
+        "attr": "region"
+      },
+      "buttons": {
+        "send": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 331.1,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 331.1,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-93ea",
+          "text": "Queued — the agent is continuing; expires in 59m Which region should the canary run in?eu-westus-eastap-southOthereu-central (canary)Send answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "region",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 208.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "eu-west",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "us-east",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "ap-south",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "true",
+            "text": "Other",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": {
+            "box": {
+              "x": 829,
+              "y": 263.1,
+              "w": 478,
+              "h": 56
+            },
+            "focused": true,
+            "valueLength": 19,
+            "value": "eu-central (canary)",
+            "selectionStart": 19,
+            "selectionEnd": 19,
+            "rows": 2,
+            "placeholder": "Type your answer",
+            "ariaLabel": "Your answer to: Which region should the canary run in?",
+            "disabled": false
+          },
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "j1": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        },
+        {
+          "cls": "w-full resize-y border border-control bg-surface text-ink pl",
+          "scrollHeight": 54,
+          "clientHeight": 54,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "TEXTAREA",
+        "attr": "checks"
+      },
+      "buttons": {
+        "send": {
+          "disabled": true,
+          "box": {
+            "x": 801,
+            "y": 331.1,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 331.1,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-a6b3",
+          "text": "Queued — the agent is continuing; expires in 59m Which checks should run before the deploy?Unit testsIntegration testsSmoke testsOtherSend answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "checks",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 208.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "Unit tests",
+              "role": "checkbox",
+              "pressed": "true",
+              "checked": null,
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Integration tests",
+              "role": "checkbox",
+              "pressed": "false",
+              "checked": null,
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Smoke tests",
+              "role": "checkbox",
+              "pressed": "false",
+              "checked": null,
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "checkbox",
+            "pressed": "true",
+            "checked": null,
+            "text": "Other",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": {
+            "box": {
+              "x": 829,
+              "y": 263.1,
+              "w": 478,
+              "h": 56
+            },
+            "focused": true,
+            "valueLength": 0,
+            "value": "",
+            "selectionStart": 0,
+            "selectionEnd": 0,
+            "rows": 2,
+            "placeholder": "Type your answer",
+            "ariaLabel": "Your answer to: Which checks should run before the deploy?",
+            "disabled": false
+          },
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "j2": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BUTTON",
+        "attr": null
+      },
+      "buttons": {
+        "send": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 267.1,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 267.1,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-a6b3",
+          "text": "Queued — the agent is continuing; expires in 59m Which checks should run before the deploy?Unit testsIntegration testsSmoke testsOtherType your answerSend answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "checks",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 144.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "Unit tests",
+              "role": "checkbox",
+              "pressed": "true",
+              "checked": null,
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Integration tests",
+              "role": "checkbox",
+              "pressed": "false",
+              "checked": null,
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Smoke tests",
+              "role": "checkbox",
+              "pressed": "false",
+              "checked": null,
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "checkbox",
+            "pressed": "false",
+            "checked": null,
+            "text": "OtherType your answer",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": null,
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "ka": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BODY",
+        "attr": null
+      },
+      "buttons": {
+        "send": null,
+        "update": null,
+        "change": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 160.4,
+            "w": 125.6,
+            "h": 34
+          }
+        },
+        "decline": null,
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-473a",
+          "text": "Answered — delivering Which build should the canary start from?StagingChange answer"
+        }
+      ],
+      "questions": []
+    },
+    "kb": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BUTTON",
+        "attr": "Staging"
+      },
+      "buttons": {
+        "send": null,
+        "update": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 290.5,
+            "w": 123.1,
+            "h": 34
+          }
+        },
+        "change": null,
+        "decline": null,
+        "cancel": {
+          "disabled": false,
+          "box": {
+            "x": 932.1,
+            "y": 290.5,
+            "w": 70.4,
+            "h": 34
+          }
+        }
+      },
+      "rows": [
+        {
+          "id": "a-473a",
+          "text": "Answered — delivering Which build should the canary start from?StagingProductionHold offOtherType your answerYou can change this until the agent is handed your answer.Update answerCancel"
+        }
+      ],
+      "questions": [
+        {
+          "id": "change-other",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 144.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "Staging",
+              "role": "radio",
+              "pressed": null,
+              "checked": "true",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Production",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Hold off",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "false",
+            "text": "OtherType your answer",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": null,
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "kc": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        },
+        {
+          "cls": "w-full resize-y border border-control bg-surface text-ink pl",
+          "scrollHeight": 54,
+          "clientHeight": 54,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "TEXTAREA",
+        "attr": "change-other"
+      },
+      "buttons": {
+        "send": null,
+        "update": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 354.5,
+            "w": 123.1,
+            "h": 34
+          }
+        },
+        "change": null,
+        "decline": null,
+        "cancel": {
+          "disabled": false,
+          "box": {
+            "x": 932.1,
+            "y": 354.5,
+            "w": 70.4,
+            "h": 34
+          }
+        }
+      },
+      "rows": [
+        {
+          "id": "a-473a",
+          "text": "Answered — delivering Which build should the canary start from?StagingProductionHold offOtherCanary (5% of traffic)You can change this until the agent is handed your answer.Update answerCancel"
+        }
+      ],
+      "questions": [
+        {
+          "id": "change-other",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 208.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "Staging",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Production",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Hold off",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "true",
+            "text": "Other",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": {
+            "box": {
+              "x": 829,
+              "y": 263.1,
+              "w": 478,
+              "h": 56
+            },
+            "focused": true,
+            "valueLength": 22,
+            "value": "Canary (5% of traffic)",
+            "selectionStart": 22,
+            "selectionEnd": 22,
+            "rows": 2,
+            "placeholder": "Type your answer",
+            "ariaLabel": "Your answer to: Which build should the canary start from?",
+            "disabled": false
+          },
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    }
+  },
+  "audits": {},
+  "log": {
+    "i": [
+      {
+        "kind": "queued",
+        "at": 1791492593254
+      },
+      {
+        "kind": "answered",
+        "at": 1791492597730,
+        "by": {
+          "surface": "desktop"
+        },
+        "answers": {
+          "region": [
+            "eu-central (canary)"
+          ]
+        }
+      }
+    ],
+    "step-i": "ok",
+    "j": [
+      {
+        "kind": "queued",
+        "at": 1791492599104
+      },
+      {
+        "kind": "answered",
+        "at": 1791492603076,
+        "by": {
+          "surface": "desktop"
+        },
+        "answers": {
+          "checks": [
+            "Unit tests"
+          ]
+        }
+      }
+    ],
+    "step-j": "ok",
+    "k": [
+      {
+        "kind": "queued",
+        "at": 1791492604351
+      },
+      {
+        "kind": "answered",
+        "at": 1791492606801,
+        "by": {
+          "surface": "desktop"
+        },
+        "answers": {
+          "change-other": [
+            "Staging"
+          ]
+        }
+      },
+      {
+        "kind": "revised",
+        "at": 1791492610143,
+        "by": {
+          "surface": "desktop"
+        },
+        "answers": {
+          "change-other": [
+            "Canary (5% of traffic)"
+          ]
+        }
+      }
+    ],
+    "step-k": "ok"
+  },
+  "otherPresent": {
+    "i1:region": true,
+    "kb:change-other": true
+  },
+  "providerCalls": {},
+  "history": {},
+  "errors": []
+}

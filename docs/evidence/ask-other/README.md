@@ -11,6 +11,11 @@ which the operator himself asked for: while the drawer was open the page's one c
 the answer box. Two changes ship together because each is the other's replacement - the
 composer stops being a door, and the door that was missing is built into the card.
 
+The round-1 remediation of this branch (the caret after a restored `Other`, the gate on a
+selected-but-empty `Other`, the answered tag's separator, one prompt for the row and the
+field) has its own delta set from the same rig, one commit later:
+`docs/evidence/ask-other-remediation/`.
+
 ## What the frames carry
 
 Every pair is the SAME step on the SAME rig; the only thing that differs is the tree.
