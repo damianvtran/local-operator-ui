@@ -89,6 +89,8 @@ const DOM_REACHES = [
 ];
 const BLOCK_COMMENT = /\/\*[\s\S]*?\*\//g;
 const LINE_COMMENT = /(^|[^:])\/\/.*$/gm;
+/** A read of the wire's truncation flag, under either spelling, in code and not in prose. */
+const TRUNCATION_FLAG_READ = /\btruncated\b/;
 
 /*
  * THE CLOCK. `T0` is the instant every view in this file begins, in the unit an ask's
@@ -507,6 +509,87 @@ test("U2 - a tally above the rows beside it HOLDS even with no truncation flag: 
 	);
 	createAskOpenView(dismissals, T0).observe(frame(liveEmpty()));
 	assert.equal(dismissals.has("c-a"), false);
+});
+
+test("U2 - the wire's truncation flag is STICKY, so the record never reads it: the four frames the shipped ask_wire published", () => {
+	/*
+	 * DERIVED, NOT ASSUMED: the installed runtime's `ask_wire` + `bound_ask_rows` run over
+	 * eight asks of about 900 characters each (the queue's own cap is eight open). The text
+	 * budget (6,000 characters, the head row exempt) keeps seven rows and drops the eighth, and
+	 * `asks_truncated` is set - and it is NEVER CLEARED while a dropped row stays in the
+	 * projection, which is up to seven days past its deadline, whether or not any ask is
+	 * outstanding any more:
+	 *
+	 *   8 open                       7 rows  asks_open 8  asks_truncated true
+	 *   the oldest 7 answered        7 rows  asks_open 1  asks_truncated true
+	 *   all answered                 7 rows  asks_open 0  asks_truncated true   <- nothing outstanding
+	 *   one new short ask            7 rows  asks_open 1  asks_truncated true
+	 *
+	 * A predicate that required `!asks_truncated` for "this list names every outstanding ask"
+	 * could never be true again after the first frame, so a record made over the first frame
+	 * could never be cleared by "a complete frame with nothing outstanding", and the
+	 * conversation stayed muted for good. The tally says what the flag was being read for.
+	 */
+	const sticky = (rows, tally) => ({
+		asks: rows,
+		asks_open: tally,
+		asks_truncated: true,
+	});
+	const settledTail = () => Array.from({ length: 6 }, () => ask("answered"));
+	const waved = Array.from({ length: 7 }, () => ask("open"));
+	const first = sticky(waved, 8);
+	const oneLeft = sticky([waved[0], ...settledTail()], 1);
+	const allAnswered = sticky([ask("answered"), ...settledTail()], 0);
+	const fresh = ask("open");
+	const newBatch = sticky([fresh, ...settledTail()], 1);
+
+	/* The first frame IS incomplete (an eighth ask is unnamed); the other three are complete. */
+	assert.equal(askOpenFacts(askQueueView(first), T0).listComplete, false);
+	for (const frontend of [oneLeft, allAnswered, newBatch]) {
+		assert.equal(
+			askOpenFacts(askQueueView(frontend), T0).listComplete,
+			true,
+			"the flag is set but the tally equals the outstanding rows named: nothing is unnamed",
+		);
+	}
+
+	const dismissals = createAskDismissals();
+	dismissOver(dismissals, first);
+	assert.equal(dismissals.has("c-a"), true);
+	/* One waved-off ask is still outstanding on a COMPLETE frame: the record holds. */
+	assert.equal(returnTo(dismissals, oneLeft).reason, "dismissed");
+	/*
+	 * Nothing is outstanding on a complete frame, flag or no flag: THE record is forgotten.
+	 * This is the line the first cut failed, and the next frame is why it matters.
+	 */
+	createAskOpenView(dismissals, T0).observe(frame(allAnswered));
+	assert.equal(dismissals.has("c-a"), false);
+	assert.deepEqual(
+		(({ action, reason }) => ({ action, reason }))(
+			returnTo(dismissals, newBatch),
+		),
+		{ action: "open", reason: "pending-on-open" },
+	);
+});
+
+test("the policy never reads the wire's truncation flag: it is not in the facts' input type and not in the module's code", () => {
+	/*
+	 * The behavioural case above is the proof; this is the property that keeps it true. The
+	 * flag is one field away on every `AskQueueView`, which is how the first cut came to read
+	 * it, and the `Pick` on `askOpenFacts` / `askOutstandingReading` now leaves it out so the
+	 * compiler refuses a read. This pins the same thing in the code a reader would grep, with
+	 * comments blanked (the prose is free to explain why).
+	 */
+	const source = stripComments(
+		readFileSync(
+			join(process.cwd(), "src/renderer/src/features/chat/ask-open-policy.ts"),
+			"utf8",
+		),
+	);
+	assert.ok(
+		!TRUNCATION_FLAG_READ.test(source),
+		"a read of `truncated` / `asks_truncated` makes the dismissal unclearable once any row is dropped",
+	);
 });
 
 test("a close over nothing refused nothing: only a close over asks, named or not, is a record", () => {

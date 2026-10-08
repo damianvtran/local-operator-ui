@@ -720,6 +720,54 @@ test("U2 - a truncated frame cannot prove a record stale, so a refill beside it 
 	assert.equal(view.flag(), true);
 });
 
+test("U2 - a sticky asks_truncated flag does not mute the conversation: the record clears on the frame that shows nothing outstanding", async (t) => {
+	/*
+	 * The core's text budget keeps seven of eight long asks and sets `asks_truncated`, and the
+	 * flag STAYS set while the dropped row remains in the projection (see the policy suite's
+	 * case of the same name for the four frames and where they come from). Through the real
+	 * hook and drawer: close over the prefix, answer everything while away, and the frame that
+	 * shows nothing outstanding must forget the record even though the flag is still on it -
+	 * which is what lets the next batch open. The first cut read the flag and never did.
+	 */
+	const view = await rig(t);
+	const settled = (count) =>
+		Array.from({ length: count }, () => ask("answered"));
+	await view.show(
+		"c-a",
+		prefixOf(
+			Array.from({ length: 7 }, () => ask("open")),
+			8,
+		),
+	);
+	assert.equal(view.flag(), true, "pending on open over a bounded prefix");
+	await view.press("Close asks");
+	assert.equal(askDismissals.has("c-a"), true);
+	await view.show("c-b", liveEmpty());
+	await view.show("c-a", {
+		asks: settled(7),
+		asks_open: 0,
+		asks_truncated: true,
+	});
+	assert.equal(
+		askDismissals.has("c-a"),
+		false,
+		"complete, nothing outstanding: forgotten, flag or no flag",
+	);
+	assert.equal(view.flag(), false, "and nothing is pending to open over");
+	await view.show("c-b", liveEmpty());
+	await view.show("c-a", {
+		asks: [ask("open"), ...settled(6)],
+		asks_open: 1,
+		asks_truncated: true,
+	});
+	assert.equal(
+		view.flag(),
+		true,
+		"the new batch opens, on a frame whose flag is still set",
+	);
+	assert.ok(view.drawer() !== null);
+});
+
 /**
  * A conversation whose only ask is already answered: the policy leaves it alone
  * (`nothing-pending`), and the drawer stays up if it is opened over it (a settled row is
