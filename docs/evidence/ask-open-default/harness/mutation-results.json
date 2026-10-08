@@ -1,5 +1,5 @@
 {
- "head": "548203edc2c9ac3913e8cab0a3d82f40f86f913f",
+ "head": "288eae9727a97c08fee9afff4616ca8cc5c4c4ff",
  "treeClean": true,
  "results": [
   {
@@ -51,8 +51,8 @@
    "rc": 1,
    "tally": {
     "tests": 70,
-    "pass": 57,
-    "fail": 13
+    "pass": 56,
+    "fail": 14
    },
    "fails": [
     "state 1 - no asks on open: closed, and an ask that arrives later does not open it",
@@ -63,6 +63,7 @@
     "an ask that arrives on the view's first resolved frame is an arrival, not pending on open",
     "the arrival boundary: queued before the view or within the skew counts as on open",
     "a timed-out ask that arrived during the view is an arrival too",
+    "state 1 - no asks on open: the drawer stays closed, and an arriving ask does not open it",
     "an unresolved frame opens nothing; the frame landing later opens once",
     "U2 - a sticky asks_truncated flag does not mute the conversation: the record clears on the frame that shows nothing outstanding",
     "a drawer the USER opened follows them onto a dismissed conversation, as it always did",

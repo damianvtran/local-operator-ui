@@ -28,7 +28,9 @@ Two arms of ONE driver, and the split is stated rather than implied. `before/` i
 this branch stacks on - `feat/ask-other-option` at `8f189b3f40e` (PR #892) - served by its
 own Vite from its own worktree, so the only difference between a before frame and an after
 frame is the open policy: three renderer source paths (`ask-open-policy.ts`,
-`use-ask-open-policy.ts` and 18 lines in `chat-content.tsx`). `after/` is this branch's head. Each arm ran against
+`use-ask-open-policy.ts` and 18 lines in `chat-content.tsx`). `after/` is this branch's renderer at
+`548203edc2c`; every later commit touches only `docs/evidence/` and `scripts/` (`git diff 548203edc2c HEAD --
+src package.json` is empty), so the frames still picture the shipped renderer. Each arm ran against
 its OWN freshly started backend (a routes daemon plus one owner process per conversation,
 real `Session`s and a real `AskQueue`), one headless Chrome per run, one browser context per
 case, 1380x900 unless a case names another size. 38 frames: 11 before, 27 after; 36 Dark
@@ -163,8 +165,9 @@ committed frames show. Both suites are registered in `test:desktop`;
 `harness/mutate.py` is the fail-on-old reading, per rule. M0 is the old tree in one line (the
 hook returns before doing anything); M1-M19 are one exact-text replacement each in shipped
 source, asserted to match exactly once, restored byte-for-byte, and run against both suites.
-`harness/mutation-results.json` is its output at this branch's head: the control passes 70 of
-70, and every one of the 20 mutants fails at least one test, with no survivor. The old tree
+`harness/mutation-results.json` is its output at `288eae9727a`, the last commit to touch `src/` or
+`scripts/`: the control passes 70 of 70, and every one of the 20 mutants fails at least one
+test, with no survivor. The old tree
 (M0) fails 20 of the 70, among them:
 
 ```
@@ -175,9 +178,12 @@ opening never takes the keyboard: the composer keeps focus and the drawer takes 
 ```
 
 and the states the old tree already satisfies are pinned from the other side: M1 (open over a
-queue with nothing pending) fails `state 1` and `state 3`, M2 (a dismissal never recorded)
-fails both `state 4` cases. A mutant that survived the first run each time showed a test that
-could not fail for the thing it was named after; those two are why `1cb3ef3` exists.
+queue with nothing pending) fails `state 1` (in both suites) and `state 3`, M2 (a dismissal never
+recorded) fails both `state 4` cases. Three times a mutant, or a read of the table, showed a test
+that could not fail for the thing it was named after: the two survivors of the first run (why
+`1cb3ef3` exists), and the render suite's own `state 1`, which asserted the flag's end value and
+so passed under M1 because the drawer closes itself over an empty queue, writing `true` then
+`false` (`288eae9`: it now requires that no write ever reads `true`).
 
 ## Re-deriving the frames
 
