@@ -624,7 +624,13 @@ const row = (over = {}) => ({
  */
 const installBridge = (
 	rows,
-	{ failWrite = null, aidaName = "Aida", features = {} } = {},
+	{
+		failWrite = null,
+		aidaName = "Aida",
+		features = {},
+		teams = [],
+		teamWrites = [],
+	} = {},
 ) => {
 	const calls = [];
 	const handler = async (request) => {
@@ -687,7 +693,30 @@ const installBridge = (
 				return { status: 200, body: { result: { ...hit } } };
 			}
 			case "teams.list":
-				return { status: 200, body: { result: { teams: [] } } };
+				return {
+					status: 200,
+					body: { result: { teams: teams.map((entry) => ({ ...entry })) } },
+				};
+			case "teams.get": {
+				const hit = teams.find((entry) => entry.name === request.name);
+				if (!hit) return { status: 404, body: { detail: "missing" } };
+				return { status: 200, body: { result: { ...hit } } };
+			}
+			/*
+			 * A TEAM WRITE IS RECORDED, NOT APPLIED: the case that reads it asks what the
+			 * form SENT, which is a fact about the payload and not about a world.
+			 */
+			case "teams.update":
+				teamWrites.push(request.fields);
+				return {
+					status: 200,
+					body: {
+						result: {
+							...teams.find((entry) => entry.name === request.name),
+							...request.fields,
+						},
+					},
+				};
 			case "settings.list":
 				return { status: 200, body: { result: { settings: [] } } };
 			case "profiles.install": {
@@ -1134,6 +1163,377 @@ test("the discard question takes the focus its Cancel gave up (UX round 2, U1)",
 			document.activeElement,
 			keep,
 			"focus fell out of the question, so the next Tab reaches Discard changes",
+		);
+		await act(async () => root.unmount());
+	});
+});
+
+/* ------------------------------------------------ the count-less member --- */
+
+/*
+ * A MEMBER THE WIRE SENDS WITHOUT A COUNT (agent review round 3, M2).
+ *
+ * The backend's default for an omitted count is 1 (`memberCountOf`: `count || 1`),
+ * and the edit form must take the same view of the same row: the stepper printed an
+ * empty number and did NaN arithmetic on it before `draftOf` normalised the count.
+ * The second half is the cost of that normalisation, and the reason it is pinned
+ * against the PAYLOAD rather than the screen: base and draft are both built by
+ * `draftOf`, so a count-less row compares equal to itself and an edit to the
+ * description must not rewrite the members; touching a member writes the whole list
+ * with concrete counts, because the row was changed on purpose.
+ *
+ * Mounts the real page, so the stepper is the shipped one and the payload is what
+ * the shipped `save` sent to the bridge (`teamWrites`, the fields of `teams.update`).
+ */
+const crew = () => ({
+	id: "team-crew",
+	name: "crew",
+	description: "Ships things.",
+	manager: "aida",
+	instructions: "Work together.",
+	project: "",
+	members: [
+		{ role: "aida", kind: "agent" },
+		{ role: "reviewer", kind: "agent", count: 2 },
+	],
+});
+
+const stepperOf = (container, role) => ({
+	value: () =>
+		container
+			.querySelector(`[aria-label$=" of ${role}"]`)
+			?.textContent?.trim() ?? null,
+	more: () => container.querySelector(`[aria-label="One more ${role}"]`),
+	fewer: () => container.querySelector(`[aria-label="One fewer ${role}"]`),
+});
+
+const mountCrewEdit = async (world, teamWrites) => {
+	const mounted = await mount("/agents?kind=team&name=crew", world, {
+		teams: [crew()],
+		teamWrites,
+	});
+	assert.ok(
+		await settle(() => Boolean(buttonNamed(mounted.container, "Edit"))),
+		"the team pane never rendered its read view",
+	);
+	await act(async () => buttonNamed(mounted.container, "Edit")?.click());
+	assert.ok(
+		await settle(() =>
+			Boolean(mounted.container.querySelector('[data-testid="edit-footer"]')),
+		),
+		"the team editor never rendered",
+	);
+	return mounted;
+};
+
+const saveOf = (container) =>
+	buttonNamed(
+		container.querySelector('[data-testid="edit-footer"]'),
+		"Save changes",
+	);
+
+test("a count-less member reads 1 in the stepper, and + and - move from there", async () => {
+	await withPage(async (world) => {
+		const { container, root } = await mountCrewEdit(world, []);
+		const lone = stepperOf(container, "aida");
+		assert.equal(
+			lone.value(),
+			"1",
+			"an omitted count reads as the wire's default",
+		);
+		assert.equal(
+			stepperOf(container, "reviewer").value(),
+			"2",
+			"and a stated count is untouched",
+		);
+		assert.ok(lone.fewer()?.disabled, "one is the floor");
+		await act(async () => lone.more().click());
+		assert.equal(lone.value(), "2", "+ adds one to the default, not to NaN");
+		await act(async () => lone.fewer().click());
+		assert.equal(lone.value(), "1", "- takes it back");
+		assert.ok(
+			!/Unsaved changes/.test(
+				container.querySelector('[data-testid="edit-footer"]')?.textContent ??
+					"",
+			),
+			"and 1 -> 2 -> 1 is not a change",
+		);
+		await act(async () => root.unmount());
+	});
+});
+
+test("an untouched count-less row is not rewritten on save; a touched one writes a concrete count", async () => {
+	await withPage(async (world) => {
+		/* Description only: the members must not appear in the update at all. */
+		const writes = [];
+		const first = await mountCrewEdit(world, writes);
+		const description = first.container.querySelector("#team-description");
+		assert.ok(description, "the description field is not mounted");
+		/*
+		 * THE FIELD IS DRIVEN THROUGH ITS OWN `onChange`, not a synthesised `input`
+		 * event. MEASURED: here a native-setter write plus a bubbling `input` event
+		 * changes the element's value but leaves React's value tracker on the old
+		 * string, so the controlled field's `onChange` never fires (clicks, the only
+		 * input every other case in this file uses, are unaffected). The likely reason
+		 * is the import-before-DOM order described under "WHY THE DOM AND ITS STORAGE
+		 * ARRIVE AFTER THE BUNDLE", but that is not proven; the case does not depend on
+		 * it, because calling the prop is the same function React would call.
+		 */
+		const propsKey = Object.keys(description).find((key) =>
+			key.startsWith("__reactProps"),
+		);
+		await act(async () => {
+			description[propsKey].onChange({
+				target: { value: "Ships things, carefully." },
+			});
+		});
+		await act(async () => saveOf(first.container)?.click());
+		assert.ok(
+			await settle(() => writes.length === 1),
+			"the save never reached the bridge",
+		);
+		assert.deepEqual(
+			writes[0],
+			{ description: "Ships things, carefully." },
+			"a description edit sends the description and nothing about members",
+		);
+		await act(async () => first.root.unmount());
+		document.body.innerHTML = "";
+
+		/* A member touched: the list goes, and every row has a concrete count. */
+		const touched = [];
+		const second = await mountCrewEdit(world, touched);
+		await act(async () => stepperOf(second.container, "aida").more().click());
+		await act(async () => saveOf(second.container)?.click());
+		assert.ok(
+			await settle(() => touched.length === 1),
+			"the save never reached the bridge",
+		);
+		assert.deepEqual(
+			touched[0].members.map(({ role, count }) => ({ role, count })),
+			[
+				{ role: "aida", count: 2 },
+				{ role: "reviewer", count: 2 },
+			],
+			"a touched member writes the list with concrete counts",
+		);
+		await act(async () => second.root.unmount());
+	});
+});
+
+/* ------------------------------------------------------ the discard bar --- */
+
+/*
+ * THE PAGE'S DISCARD BAR, AND WHERE "KEEP EDITING" PUTS FOCUS (QA round 3, Q1; UX
+ * round 3, U3/U4).
+ *
+ * WHY THIS FILE: it is the tree's only harness that mounts the real `AgentsPage`
+ * and therefore the real Radix `Tabs`. That matters for the first case, because the
+ * defect lived in what Radix does, not in anything the page wrote: a tab trigger
+ * ACTIVATES ON FOCUS. The bar gave focus back to the control that opened it, on the
+ * tab routes that control was the tab just pressed or arrowed onto, focusing it
+ * selected it again, `requestGo` re-asked, and "Keep editing" could not be answered.
+ * jsdom's `focus()` dispatches the same `focusin` React turns into Radix's
+ * `onFocus`, so nothing here is modelled: the real trigger really activates on
+ * the real focus call, which is what makes a restore-to-the-trigger regression go
+ * red. (Revert proof, recorded in the PR: `dismissBar` focusing `barReturnFocus`
+ * directly again turns the two tab cases below red.)
+ */
+
+/** Open the agent editor and make it dirty with a real press; `focus: false` leaves nothing focused in the pane. */
+const openDirtyAgentEdit = async (container, { focus = true } = {}) => {
+	assert.ok(
+		await settle(() => Boolean(buttonNamed(container, "Edit"))),
+		"the pane never rendered its read view",
+	);
+	await act(async () => {
+		buttonNamed(container, "Edit")?.click();
+	});
+	const footer = () => container.querySelector('[data-testid="edit-footer"]');
+	assert.ok(
+		await settle(() => Boolean(footer())),
+		"the editor never rendered its footer",
+	);
+	const delegate = container.querySelector(
+		'[aria-label="May delegate to subagents"]',
+	);
+	assert.ok(delegate, "the edit form's delegation switch is not mounted");
+	await act(async () => {
+		if (focus) delegate.focus();
+		delegate.click();
+	});
+	assert.match(footer().textContent ?? "", /Unsaved changes/);
+	return { footer, delegate };
+};
+
+/**
+ * NEVER HAND A DOM NODE TO `assert.equal`. On a failure node:assert builds its diff
+ * by inspecting both operands, and a jsdom element drags React's fiber graph with it:
+ * one red run of these cases measured 156 GB before the memory guard ended it. A
+ * boolean (and a name for the message) fails just as loudly and costs nothing.
+ */
+const same = (a, b, message) => assert.ok(a === b, message);
+
+/** One animation frame, which the harness shims as a zero-delay timer. */
+const frame = () =>
+	act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 20));
+	});
+
+/** The page's bar, found by its role - the only `alertdialog` the page renders. */
+const barOf = (container) =>
+	container.querySelector('[role="alertdialog"]') ?? null;
+
+const tabNamed = (container, testid) =>
+	container.querySelector(`[data-testid="${testid}"]`);
+
+test("Keep editing closes the bar on the tab route, wherever the tab left focus (QA round 3, Q1)", async () => {
+	await withPage(async (world) => {
+		const { container, root } = await mount(
+			"/agents?kind=agent&name=aida",
+			world,
+		);
+		const { footer, delegate } = await openDirtyAgentEdit(container);
+		const teamsTab = tabNamed(container, "teams-tab");
+		assert.ok(teamsTab, "the Teams tab is not mounted");
+		assert.equal(teamsTab.getAttribute("aria-selected"), "false");
+
+		/*
+		 * ROUTE 1 - THE KEYBOARD (ArrowRight moves focus onto the next tab, and Radix
+		 * activates it on that focus). The operator was working in the form, so
+		 * that is where Keep editing returns them.
+		 */
+		await act(async () => teamsTab.focus());
+		assert.ok(
+			barOf(container),
+			"arrowing onto a tab with a dirty edit asks first",
+		);
+		await act(async () =>
+			buttonNamed(barOf(container), "Keep editing")?.click(),
+		);
+		await frame();
+		same(barOf(container), null, "Keep editing closes the bar");
+		same(
+			document.activeElement,
+			delegate,
+			"and puts the operator back where they were typing",
+		);
+		assert.match(
+			footer()?.textContent ?? "",
+			/Unsaved changes/,
+			"the edit stays dirty",
+		);
+		assert.equal(
+			tabNamed(container, "agents-tab").getAttribute("aria-selected"),
+			"true",
+			"and the tab did not move",
+		);
+
+		/*
+		 * ESCAPE is the same answer by the other door, and the flag is clear after
+		 * it: Escape on the pane alone asks exactly ONE question.
+		 */
+		await act(async () => teamsTab.focus());
+		assert.ok(barOf(container));
+		await act(async () => {
+			window.dispatchEvent(
+				new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+			);
+		});
+		await frame();
+		same(barOf(container), null, "Escape closes the bar");
+		assert.equal(
+			buttonNamed(footer(), "Keep editing"),
+			null,
+			"and asks nothing else",
+		);
+		await act(async () => {
+			window.dispatchEvent(
+				new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+			);
+		});
+		assert.ok(
+			buttonNamed(footer(), "Keep editing"),
+			"with the bar gone, Escape reaches the pane: one question",
+		);
+		same(barOf(container), null, "and only one");
+		await act(async () => root.unmount());
+	});
+});
+
+test("with nothing focused in the pane, Keep editing still does not land on the tab that was pressed (QA round 3, Q1)", async () => {
+	await withPage(async (world) => {
+		const { container, root } = await mount(
+			"/agents?kind=agent&name=aida",
+			world,
+		);
+		const { footer } = await openDirtyAgentEdit(container, { focus: false });
+		const teamsTab = tabNamed(container, "teams-tab");
+		assert.ok(teamsTab, "the Teams tab is not mounted");
+		/*
+		 * THE MOUSE ON A TAB, WITH NO PANE CONTROL TO RETURN TO: the only origin the
+		 * page can record is the tab itself, and it is NOT the selected one. mousedown
+		 * activates a Radix tab, and the browser's default action then focuses it.
+		 * Returning focus there activates it again and re-opens the bar, so the
+		 * landing has to be the tab list's SELECTED trigger instead.
+		 */
+		await act(async () => {
+			teamsTab.dispatchEvent(
+				new window.MouseEvent("mousedown", { bubbles: true, button: 0 }),
+			);
+			teamsTab.focus();
+		});
+		assert.ok(barOf(container), "pressing a tab with a dirty edit asks first");
+		await frame();
+		same(
+			document.activeElement,
+			buttonNamed(barOf(container), "Keep editing"),
+			"and the browser's own focus on the tab does not take the bar's focus away",
+		);
+		await act(async () =>
+			buttonNamed(barOf(container), "Keep editing")?.click(),
+		);
+		await frame();
+		same(
+			barOf(container),
+			null,
+			"Keep editing closes the bar - it must not focus a tab that activates itself",
+		);
+		assert.equal(
+			tabNamed(container, "agents-tab").getAttribute("aria-selected"),
+			"true",
+			"and the selected tab did not change",
+		);
+		same(
+			document.activeElement,
+			tabNamed(container, "agents-tab"),
+			"focus is on the tab that is already selected, where focusing does nothing",
+		);
+		assert.match(footer()?.textContent ?? "", /Unsaved changes/);
+		await act(async () => root.unmount());
+	});
+});
+
+test("the pane's own Cancel withdraws the page's bar instead of stacking a second question (UX round 3, U4)", async () => {
+	await withPage(async (world) => {
+		const { container, root } = await mount(
+			"/agents?kind=agent&name=aida",
+			world,
+		);
+		const { footer } = await openDirtyAgentEdit(container);
+		await act(async () => {
+			container.querySelector('[data-testid="roster-row-reviewer"]')?.click();
+		});
+		assert.ok(barOf(container), "a roster click with a dirty edit asks first");
+		await act(async () => buttonNamed(footer(), "Cancel")?.click());
+		same(barOf(container), null, "the bar is withdrawn");
+		const keeps = [...container.querySelectorAll("button")].filter(
+			(button) => button.textContent?.trim() === "Keep editing",
+		);
+		assert.equal(keeps.length, 1, "exactly one question is on screen");
+		assert.ok(
+			buttonNamed(footer(), "Keep editing"),
+			"and it is the pane's own",
 		);
 		await act(async () => root.unmount());
 	});
