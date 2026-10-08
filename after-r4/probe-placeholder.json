@@ -1,0 +1,32 @@
+{
+  "416": {
+    "placeholder": "Ask for a change, or describe something new…",
+    "textWidth": 301.2,
+    "textarea": 336,
+    "inner": 320,
+    "spare": 18.8,
+    "scrollH": 34,
+    "clientH": 34,
+    "font": "14px / 21.7px system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif"
+  },
+  "476": {
+    "placeholder": "Ask for a change, or describe something new…",
+    "textWidth": 301.2,
+    "textarea": 396,
+    "inner": 380,
+    "spare": 78.8,
+    "scrollH": 34,
+    "clientH": 34,
+    "font": "14px / 21.7px system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif"
+  },
+  "540": {
+    "placeholder": "Ask for a change, or describe something new…",
+    "textWidth": 301.2,
+    "textarea": 460,
+    "inner": 444,
+    "spare": 142.8,
+    "scrollH": 34,
+    "clientH": 34,
+    "font": "14px / 21.7px system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif"
+  }
+}

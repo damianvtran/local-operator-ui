@@ -1,0 +1,1870 @@
+{
+  "focus": {
+    "row-click": [
+      {
+        "run": 1,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "TEXTAREA:Message",
+            "editing": false
+          }
+        }
+      },
+      {
+        "run": 2,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "TEXTAREA:Message",
+            "editing": false
+          }
+        }
+      },
+      {
+        "run": 3,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "TEXTAREA:Message",
+            "editing": false
+          }
+        }
+      }
+    ],
+    "tab-mouse": [
+      {
+        "run": 1,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "agents-tab",
+            "focus": "TEXTAREA:Message",
+            "editing": false
+          }
+        }
+      },
+      {
+        "run": 2,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "agents-tab",
+            "focus": "TEXTAREA:Message",
+            "editing": false
+          }
+        }
+      },
+      {
+        "run": 3,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "agents-tab",
+            "focus": "TEXTAREA:Message",
+            "editing": false
+          }
+        }
+      }
+    ],
+    "tab-keyboard": [
+      {
+        "run": 1,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "agents-tab",
+            "focus": "TEXTAREA:Message",
+            "editing": false
+          }
+        }
+      },
+      {
+        "run": 2,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "agents-tab",
+            "focus": "TEXTAREA:Message",
+            "editing": false
+          }
+        }
+      },
+      {
+        "run": 3,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "agents-tab",
+            "focus": "TEXTAREA:Message",
+            "editing": false
+          }
+        }
+      }
+    ],
+    "add-manually": [
+      {
+        "run": 1,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-name",
+            "editing": true
+          }
+        }
+      },
+      {
+        "run": 2,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-name",
+            "editing": true
+          }
+        }
+      },
+      {
+        "run": 3,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-name",
+            "editing": true
+          }
+        }
+      }
+    ],
+    "back-800": [
+      {
+        "run": 1,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "TEXTAREA:Message",
+            "editing": false
+          }
+        }
+      },
+      {
+        "run": 2,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "TEXTAREA:Message",
+            "editing": false
+          }
+        }
+      },
+      {
+        "run": 3,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "TEXTAREA:Message",
+            "editing": false
+          }
+        }
+      }
+    ],
+    "add-manually-800": [
+      {
+        "run": 1,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "TEXTAREA:Message",
+            "editing": false
+          }
+        }
+      },
+      {
+        "run": 2,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "TEXTAREA:Message",
+            "editing": false
+          }
+        }
+      },
+      {
+        "run": 3,
+        "steps": {
+          "dirty": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "INPUT:team-description",
+            "editing": true
+          },
+          "keep-click": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "keep-enter": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "escape": {
+            "opened": {
+              "bar": true,
+              "focus": "BUTTON:Keep editing"
+            },
+            "after": {
+              "bar": false,
+              "dirty": true,
+              "footerQuestion": false,
+              "keepButtons": 0,
+              "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+              "tabSel": "teams-tab",
+              "focus": "INPUT:team-description",
+              "editing": true
+            }
+          },
+          "paneEscape": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": true,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "paneEscape2": {
+            "bar": false,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Save changes",
+            "editing": true
+          },
+          "reopened": {
+            "bar": true,
+            "dirty": true,
+            "footerQuestion": false,
+            "keepButtons": 1,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "BUTTON:Keep editing",
+            "editing": true
+          },
+          "discard": {
+            "bar": false,
+            "dirty": false,
+            "footerQuestion": false,
+            "keepButtons": 0,
+            "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark",
+            "tabSel": "teams-tab",
+            "focus": "TEXTAREA:Message",
+            "editing": false
+          }
+        }
+      }
+    ]
+  }
+}

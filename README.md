@@ -29,3 +29,18 @@ are 2x crops of the trailing ghost buttons' focus outline against the viewport e
 - `n-origin-main-repro.json` / `n-branch-fixed.json` - the U5/U6/U9 probes run on origin/main
   and on the fixed branch.
 - Not framed: the Watch list (needs a session transcript stream the stub bridge cannot serve).
+
+## Round 4 (`after-r4/`)
+
+Frames and geometry for round 3's remediation on PR #884, from head `a3e5f52ca57`. Every
+story at 1024x725 and 800x700, dark and light (70 of the 76 are byte-identical in pixels to
+`after-r3/` within a 12/765 channel tolerance; the six that differ are the two Add member
+frames per theme/size and two one-line antialiasing differences in `team-running` and
+`team-stop-refused`). Plus: `cue-rest__*` (the footer cue at rest, six states),
+`add-after6__team-editing__1024x725` (Add member after six adds, focused),
+`bar-open-tab-route__1024x725` (the discard bar opened by a mouse press on the Agents tab),
+`rule-rest__team-editing__1024x725__<palette>` (the footer's top rule in five palettes) and
+`placeholder-pane{416,476,540}` (the exact-string pin's measurement). `r4-focus.json`,
+`r4-add.json` and `probe-placeholder.json` are the raw numbers; `acceptance-r4.md` computes
+each finding's criterion from them. The sweep freezes animations, so the scroll-driven cue is
+absent from the `__dark/__light` frames by design: the live frames above are the cue's evidence.
