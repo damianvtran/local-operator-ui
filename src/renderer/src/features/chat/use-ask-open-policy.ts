@@ -1,9 +1,10 @@
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
 	type AskOpenView,
 	askDismissals,
+	askOpenAnnouncement,
 	askOpenFacts,
 	askOutstandingReading,
 	createAskOpenView,
@@ -62,7 +63,7 @@ useUiPreferencesStore.subscribe((state) => {
  *
  * The decision is `ask-open-policy.ts`'s (read its module note for the six rules, the
  * "existed before the view" test and the bounded wait). This hook is the thin React
- * shell around it, and it exists to do three things the pure module cannot:
+ * shell around it, and it exists to do five things the pure module cannot:
  *
  *  1. OWN THE VIEW'S LIFETIME. A view is one mount of a conversation's pane, and this
  *     hook is mounted by `ChatContent`, which sits under `SessionPanel key={identity}`,
@@ -74,6 +75,16 @@ useUiPreferencesStore.subscribe((state) => {
  *  3. APPLY THE VERDICT through the store's ONE writer, `setAskDrawerOpen`, so an
  *     auto-open goes through the same slot claim as a press on the chip - including
  *     the borrow of a durable pane, which the close gives back.
+ *  4. CLOSE WHAT MUST NOT BE CARRIED when a view BEGINS over an open drawer it did not
+ *     ask for (`shouldCloseCarriedDrawer`): a dismissed conversation's, or one whose
+ *     landing frame proves nothing is outstanding. The mount frame is judged before the
+ *     browser paints, and the frame that lands later is judged too - the same predicate
+ *     both times, so the two halves cannot drift.
+ *  5. RETURN THE LIVE REGION'S SENTENCE. The `<output aria-live="polite">` that tells a
+ *     reader who cannot see the drawer (design review round 1, D1) must be mounted
+ *     BEFORE it has text, so this hook returns the one sentence a POLICY open speaks
+ *     (`askOpenAnnouncement`) and the call site renders it in an always-mounted region;
+ *     a chip press and a refresh write nothing, and any close clears it.
  *
  * WHAT IT DELIBERATELY DOES NOT DO. It never focuses anything, because it has no
  * element to focus and the drawer does not move focus on a mount that no door opened
@@ -100,7 +111,15 @@ export const useAskOpenPolicy = ({
 	sessionId: string | undefined;
 	composerId: string | undefined;
 	view: AskQueueView;
-}): void => {
+}): string => {
+	/*
+	 * THE LIVE REGION'S SENTENCE (design review round 1, D1): "" until a POLICY open
+	 * writes it, cleared when the drawer closes. It is RETURNED rather than rendered
+	 * here because the region must be mounted BEFORE it has text - a region that mounts
+	 * together with its content is frequently not announced - so the call site keeps one
+	 * `<output aria-live="polite">` in its tree and only its CONTENT changes.
+	 */
+	const [announcement, setAnnouncement] = useState("");
 	const drawerOpen = useUiPreferencesStore((s) => s.isAskDrawerOpen);
 	const sessionDrawerOpen = useUiPreferencesStore(
 		(s) => s.isAskDrawerOpen && s.askDrawerScope === "session",
@@ -120,8 +139,11 @@ export const useAskOpenPolicy = ({
 	});
 
 	/*
-	 * A DRAWER THE POLICY OPENED FOR ANOTHER CONVERSATION, CARRIED ONTO ONE THE USER
-	 * DISMISSED, is closed before this pane paints (rule 4; `shouldCloseCarriedDrawer`).
+	 * A DRAWER THE POLICY OPENED FOR ANOTHER CONVERSATION IS NOT CARRIED ONTO A VIEW THAT
+	 * WOULD NOT HAVE IT OPEN, and this is where the view BEGINS: carried onto one the
+	 * user dismissed (rule 4), or onto one whose mount frame already proves nothing is
+	 * outstanding (rule 3's settled queue - U3, agent review round 1).
+	 * `shouldCloseCarriedDrawer` states both arms.
 	 *
 	 * A LAYOUT EFFECT, keyed on the conversation, because the question only exists at the
 	 * moment a view begins: the drawer is mounted by `ChatContent` from the same flag in
@@ -139,11 +161,14 @@ export const useAskOpenPolicy = ({
 	 * pending-on-open view - one closed beat, which is also how a cold open of any other
 	 * conversation reads - while a record that still holds keeps it shut.
 	 *
-	 * A pane that mounts with a frame already RESOLVED (a story, a rig, a future seeded
-	 * frame) has no such beat to wait for, so the record is settled against that frame
-	 * first: closing a carried drawer over a record the same frame is about to prove stale
-	 * would shut the very drawer the view then opens. An unread frame settles nothing
-	 * (`reconcile`), so for the app's ordinary mount this line changes no verdict.
+	 * THE MOUNT FRAME IS HANDED IN AS THE LANDING READING, so a pane that mounts with a
+	 * frame already RESOLVED (a story, a rig, a cached frame) closes a carried drawer over
+	 * a SETTLED queue before the browser paints, and the record is settled against that
+	 * frame first: closing a carried drawer over a record the same frame is about to prove
+	 * stale would shut the very drawer the view then opens. An unread frame settles nothing
+	 * (`reconcile`) and proves nothing (the second arm fails closed), so for the app's
+	 * ordinary mount this line changes no verdict - the passive effect below completes
+	 * the same judgement when the frame lands (see `wasDecided` there).
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: runs once per view, at its start, on the frame that view mounted with; every later frame is the passive effect's
 	useLayoutEffect(() => {
@@ -157,6 +182,7 @@ export const useAskOpenPolicy = ({
 				sessionDrawerOpen:
 					live.isAskDrawerOpen && live.askDrawerScope === "session",
 				openedByPolicy: policyOpenedDrawer,
+				landing: askOutstandingReading(view),
 			})
 		) {
 			live.setAskDrawerOpen(false, "session");
@@ -197,9 +223,18 @@ export const useAskOpenPolicy = ({
 			};
 			viewRef.current = slot;
 		}
+		/*
+		 * `wasDecided` IS READ BEFORE `observe` SETTLES THE VIEW, because the carried close
+		 * below is part of a view's BEGINNING, not a live watcher: a drawer a view opened
+		 * itself survives its queue settling (a settled row is history, #864), so the close
+		 * must not fire once the view has taken its own decision - turning the live settle
+		 * into a close would be Q1's behaviour change smuggled in as a side effect.
+		 */
+		const wasDecided = slot.view.settled;
+		const facts = askOpenFacts(view, slot.view.startedAtMs);
 		const { verdict } = slot.view.observe({
 			conversationId: sessionId,
-			...askOpenFacts(view, slot.view.startedAtMs),
+			...facts,
 			nowMs: Date.now(),
 			composerHasText,
 			/*
@@ -207,24 +242,53 @@ export const useAskOpenPolicy = ({
 			 * once the view has decided - which is every frame of a live run after the
 			 * first published one.
 			 */
-			keyboardOnDoor: !slot.view.settled && keyboardIsOnDoor(),
+			keyboardOnDoor: !wasDecided && keyboardIsOnDoor(),
 			drawerOpen: liveDrawerOpen,
 			sessionDrawerOpen: liveSessionDrawerOpen,
 		});
 		if (verdict.action === "open") {
 			/*
-			 * READ THE FLAG LIVE BEFORE WRITING. `drawerOpen` above is the value this render
-			 * saw; the user can press the chip in the gap before this effect runs, and a
-			 * second `setAskDrawerOpen(true)` over an already-open drawer would rewrite its
-			 * record of the pane it borrowed the slot from (`askDrawerEvictedPane`) and credit
-			 * the user's own open to the policy. Provenance is recorded only for a write that
-			 * actually happens; the store subscription above clears it for every state that
-			 * is not an open session drawer, so it cannot outlive the flag.
+			 * THE WRITE IS UNCONDITIONAL BECAUSE THE DECISION ALREADY WAS. `observe` refuses
+			 * to open over an up drawer (`drawer-open`), reading the same flag this effect
+			 * read live a few lines above, and nothing writes the store in between - so the
+			 * second "read the flag before writing" guard that used to sit here could never
+			 * fire and no test could pin it (agent review round 1, M1). Provenance is
+			 * recorded only for the write that actually happens; the store subscription
+			 * above clears it for every state that is not an open session drawer, so it
+			 * cannot outlive the flag.
 			 */
-			if (!useUiPreferencesStore.getState().isAskDrawerOpen) {
-				policyOpenedDrawer = true;
-				setAskDrawerOpen(true, "session");
-			}
+			policyOpenedDrawer = true;
+			setAskDrawerOpen(true, "session");
+			/*
+			 * AND THE OPEN SPEAKS, exactly when it is the policy's own (design review round
+			 * 1, D1). The reader who pressed a door did that themselves and hears nothing;
+			 * a queue refresh writes nothing; one sentence per policy open, and the effect
+			 * below clears it on close so a later open re-announces.
+			 */
+			setAnnouncement(askOpenAnnouncement(view));
+		} else if (
+			!wasDecided &&
+			shouldCloseCarriedDrawer({
+				conversationId: sessionId,
+				dismissed: askDismissals,
+				sessionDrawerOpen: liveSessionDrawerOpen,
+				openedByPolicy: policyOpenedDrawer,
+				landing: {
+					outstandingIds: facts.outstandingIds,
+					listComplete: facts.listComplete,
+				},
+			})
+		) {
+			/*
+			 * THE PASSIVE HALF OF THE LAYOUT RULE, for the app's ordinary mount whose first
+			 * frames are unread: the frame that lands and proves NOTHING is outstanding (or
+			 * the dismissed landing the mount frame could not settle) closes the carried
+			 * drawer here. The close is the policy's own, and the close watch reads it as
+			 * what it is - the frame it lands on has nothing to show, which is
+			 * `nothing-to-show`, never a dismissal - so the record and the latch are left
+			 * exactly as the frame above set them.
+			 */
+			flags.setAskDrawerOpen(false, "session");
 		}
 	}, [
 		sessionId,
@@ -234,4 +298,22 @@ export const useAskOpenPolicy = ({
 		sessionDrawerOpen,
 		setAskDrawerOpen,
 	]);
+
+	/*
+	 * CLEARED ON THE OPEN -> CLOSED TRANSITION, so a later policy open re-announces (an
+	 * unchanged sentence is not re-spoken, which is exactly what the clear is for) and a
+	 * stale sentence cannot describe a surface that is down. This is about the FLAG,
+	 * not the door: every close clears it, including the policy's own carried close and
+	 * the drawer's #864 auto-close over an emptied queue. The TRANSITION, not the
+	 * closed state: the commit that OPENS the drawer renders with the flag still false
+	 * (the write lands in that commit's effect), and an effect keyed on "is it closed"
+	 * would wipe the sentence the open wrote in the same flush.
+	 */
+	const drawerWasOpen = useRef(sessionDrawerOpen);
+	useEffect(() => {
+		if (drawerWasOpen.current && !sessionDrawerOpen) setAnnouncement("");
+		drawerWasOpen.current = sessionDrawerOpen;
+	}, [sessionDrawerOpen]);
+
+	return announcement;
 };

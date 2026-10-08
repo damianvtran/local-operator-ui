@@ -1368,9 +1368,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * key={identity}`), so a mount IS a "view" and coming back to a conversation is a
 		 * new one. `chat-page.tsx` owns the composer's answer-mode routing, which this does
 		 * not touch: the hook writes the same store flag a press on the chip writes, through
-		 * the same writer, and nothing else.
+		 * the same writer, and nothing else. IT ALSO RETURNS the one sentence a policy open
+		 * speaks to assistive tech (design review round 1, D1), rendered by the `<output>`
+		 * the row mounts below - the hook owns both edges of it, so the region here is
+		 * mounted before it ever has text and only its CONTENT changes.
 		 */
-		useAskOpenPolicy({
+		const asksAnnouncement = useAskOpenPolicy({
 			sessionId,
 			composerId: conversationId,
 			view: sessionAsksView,
@@ -1716,6 +1719,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				data-tour-tag="pane-row"
 				className="relative flex h-full w-full flex-row overflow-hidden"
 			>
+				{/*
+				 * THE OPEN POLICY'S LIVE REGION (design review round 1, D1), and it is
+				 * mounted HERE, on every commit of this pane, NOT inside `AskDrawer`: a
+				 * region that mounts together with its content is frequently not
+				 * announced, so the element exists with EMPTY text from the pane's first
+				 * paint and only its CONTENT changes when the policy opens the drawer.
+				 * The hook owns both edges (`useAskOpenPolicy`'s return): it writes one
+				 * sentence on a policy open and clears it on close; a press on the chip
+				 * or the header trigger - the reader's own act - writes neither, and a
+				 * queue refresh is not an appearance. `sr-only`, so the visual surface
+				 * is unchanged. On a draft (no `sessionId`) the hook waits forever and
+				 * the sentence stays empty, which is correct: there is no conversation
+				 * whose asks could open.
+				 */}
+				<output className="sr-only" aria-live="polite">
+					{asksAnnouncement}
+				</output>
 				<div
 					ref={chatColumnRef}
 					data-tour-tag="chat-column"

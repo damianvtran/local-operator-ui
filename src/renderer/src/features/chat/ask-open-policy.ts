@@ -115,7 +115,7 @@
  * view rather than a check somebody has to remember.
  */
 
-import type { AskQueueView } from "./ask-queue";
+import { type AskQueueView, askChipCountClause } from "./ask-queue";
 
 /**
  * How long after a view begins it may still choose to open. See "On open means the ask
@@ -409,34 +409,61 @@ export const askOutstandingReading = (
 };
 
 /**
- * Whether a drawer that is ALREADY UP on arrival must be closed to honour a dismissal.
+ * Whether a drawer that is ALREADY UP when a view begins must be closed instead of
+ * carried onto the conversation being opened.
  *
  * WHY THIS EXISTS AT ALL. `isAskDrawerOpen` is one flag for the whole window and it
  * deliberately follows the user between conversations (like the four panes it shares
- * the slot with). So rule 4 has a hole the per-view surfaces (the TUI, the relay, the
- * native app) cannot have: dismiss A, arrive at B and the policy opens the drawer for
- * B, go back to A - and the drawer is open on A. The policy did not re-open A; the
- * flag was carried. But the user closed this conversation's asks and sees them again,
- * which is exactly the insistence rule 4 forbids.
+ * the slot with). So the per-view rules (1, 3 and 4) have a hole the per-view
+ * surfaces (the TUI, the relay, the native app) cannot have: open A, arrive at B -
+ * the flag is CARRIED, and the landing view never decided to have a drawer up.
+ * Two landings make that a defect rather than a curiosity, one arm each:
+ *
+ *  - a DISMISSAL the conversation HOLDS (`AskDismissals.has`): asks the user waved
+ *    off are still outstanding, or cannot be shown to have resolved. The user closed
+ *    this conversation's asks and is seeing them again - the insistence rule 4
+ *    forbids (dismiss A, the policy opens B, go back to A, and the drawer is open on
+ *    A although the policy never re-opened it).
+ *  - NOTHING TO SHOW: the landing frame has ANSWERED and proves every outstanding
+ *    ask resolved (`listComplete` with no outstanding ids) - rule 3's settled queue,
+ *    arriving with a drawer on it (U3, agent review round 1). An open drawer over
+ *    `All asks settled` keeps the composer narrowed for a record the reader already
+ *    read, and a first-view open of the same conversation would have been closed.
+ *
+ * THE SECOND ARM STILL FAILS CLOSED: it needs the frame's own word that it is
+ * complete (`listComplete`, never the sticky truncation flag), so an unread,
+ * unpublished, tally-only or clipped frame closes nothing - the landing view waits
+ * for an answer rather than guessing (the same reading every other decision here
+ * uses). And it is NOT rule 3 for a LIVE settle: a view that opened the drawer
+ * itself keeps it through its queue settling (`!wasDecided` in the hook), which is
+ * the pre-existing #864 behaviour, unchanged.
  *
  * THE RULE IS NARROW ON PURPOSE: close only when the drawer is up in the SESSION scope,
  * it was opened by THE POLICY (never by the user's own press - a drawer the user opened
- * is theirs and follows them as it always did), and this conversation HOLDS a dismissal
- * (`AskDismissals.has`: asks the user waved off are still outstanding, or cannot be shown
- * to have resolved).
+ * is theirs and follows them as it always did), and one of the two arms holds.
  * "Opened by the policy" is provenance the store does not keep, so the hook that
- * applies verdicts tracks it (`use-ask-open-policy.ts`) and hands it in as a fact.
+ * applies verdicts tracks it (`use-ask-open-policy.ts`) and hands it in as a fact -
+ * one boolean for the whole window, which assumes the ONE mounted `ChatContent` that
+ * file's call site states (`chat-content.tsx`, the right-slot route note).
  */
 export const shouldCloseCarriedDrawer = (facts: {
 	conversationId: string | null | undefined;
 	dismissed: Pick<AskDismissals, "has">;
 	sessionDrawerOpen: boolean;
 	openedByPolicy: boolean;
+	/**
+	 * What the frame the landing view is DECIDING ON says is outstanding
+	 * (`askOutstandingReading`). Only its `listComplete` arm can close anything: a
+	 * frame that has not answered, cannot name every ask it counts, or carries
+	 * outstanding rows keeps the drawer exactly as it is.
+	 */
+	landing: Pick<AskOutstandingReading, "outstandingIds" | "listComplete">;
 }): boolean =>
 	Boolean(facts.conversationId) &&
 	facts.sessionDrawerOpen &&
 	facts.openedByPolicy &&
-	facts.dismissed.has(facts.conversationId as string);
+	(facts.dismissed.has(facts.conversationId as string) ||
+		(facts.landing.listComplete && facts.landing.outstandingIds.length === 0));
 
 /**
  * What one frame says about WHICH asks are outstanding: the facts a dismissal is
@@ -458,6 +485,25 @@ export type AskOutstandingReading = {
 	 */
 	listComplete: boolean;
 };
+
+/**
+ * The ONE sentence a screen reader is told when the policy opens the drawer, and
+ * nothing else ever writes it (design review round 1, D1).
+ *
+ * WHY A SENTENCE AT ALL. Rule 5 deliberately takes no focus, which is right - and
+ * it means a live region is the only channel through which a reader who cannot see
+ * the drawer learns it appeared. Without one the feature ships silent for them: the
+ * surface arrives, the chip's `aria-expanded` flips, and nothing is announced.
+ *
+ * THE COUNT IS THE CHIP'S OWN CLAUSE (one vocabulary point,
+ * `askChipCountClause`), so the sentence and the chip can never disagree about
+ * what is waiting. It is spoken ONCE per policy open - the reader who pressed the
+ * chip did that themselves, and a queue refresh is not an appearance - and the
+ * surface that renders it (chat-content.tsx's `<output aria-live="polite">`)
+ * clears it when the drawer closes, so a later open re-announces.
+ */
+export const askOpenAnnouncement = (view: AskQueueView): string =>
+	`Opened your questions: ${askChipCountClause(view)}.`;
 
 /**
  * The conversations whose surface the user has closed while asks remained, and WHICH

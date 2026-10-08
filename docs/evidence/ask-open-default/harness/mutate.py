@@ -4,12 +4,17 @@ WHY THIS IS COMMITTED. A green suite says the code does what the tests expect; i
 say the tests would notice if the code stopped doing it. Each mutant below is ONE exact-text
 replacement in shipped source, asserted to match EXACTLY ONCE (so a drifted source fails
 loudly instead of mutating nothing and "passing"), then the two suites are run and the
-failing test titles are read off the runner's own output. A mutant that the suites do not
-kill is a rule with no test. The first run of the refined rules left two survivors (M17, M19);
+failing tests are read off the runner's own output, KEYED BY SUITE AND TITLE (agent review
+round 1, M2: two suites carry a test with the same title - "state 3 - all addressed on
+open..." - so a title-only key reads as one test where there are two and would hide when
+only one suite's copy stopped biting). A mutant that the suites do not kill is a rule with
+no test. The first run of the refined rules left two survivors (M17, M19);
 each was a test that could not fail for the thing it was named after, and each now has a case.
 M20 and M21 were added afterwards, by hand-probing rather than from a survivor: rule 2's "once"
 latch had no mutant of its own in this table (the suites do catch it - 10 and 9 failing tests
-when the probes were first run - but a table that says "per rule" has to show it).
+when the probes were first run - but a table that says "per rule" has to show it). M22-M24
+cover round 1's remediation the same way: the carried close's second arm, the live region's
+sentence, and the composer fallback after an auto-opened close.
 
 HOW IT STAYS SAFE. Every mutated file is restored with `git checkout -- <path>` in a
 `finally`, then compared byte-for-byte with what was read, and the working tree is verified
@@ -29,11 +34,12 @@ import json, os, re, subprocess, sys
 WT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", ".."))
 POLICY = "src/renderer/src/features/chat/ask-open-policy.ts"
 HOOK = "src/renderer/src/features/chat/use-ask-open-policy.ts"
+DRAWER = "src/renderer/src/features/chat/components/asks/ask-drawer.tsx"
 SUITES = ["scripts/ask-open-policy.test.mjs", "scripts/ask-open-render.test.mjs"]
 
 MUTANTS = [
     ("M0", "OLD TREE: the hook does nothing (no auto-open, no dismissal watch)", HOOK,
-     "}): void => {", "}): void => {\n\treturn;"),
+     "}): string => {", "}): string => {\n\treturn \"\";"),
     ("M1", "over-eager: open over a queue with nothing pending (breaks states 1 and 3)", POLICY,
      "if (input.pendingRows <= 0) {", "if (false) {"),
     ("M2", "dismissal never recorded (breaks state 4)", POLICY,
@@ -85,18 +91,35 @@ MUTANTS = [
      'if (input.viewDecided) return leave("already-decided");', "/* mutant */"),
     ("M21", "the view never records that it decided, so the latch is never set (the other half of 'once')", POLICY,
      "if (verdict.settled) settled = true;", "/* mutant */"),
+    # ---- round 1's remediation, one mutant per new rule ----
+    ("M22", "the carried close loses its second arm: a landing frame that proves NOTHING outstanding no longer closes (U3)", POLICY,
+     "(facts.dismissed.has(facts.conversationId as string) ||\n\t\t(facts.landing.listComplete && facts.landing.outstandingIds.length === 0));",
+     "facts.dismissed.has(facts.conversationId as string);"),
+    ("M23", "a policy open never writes the live region's sentence: the surface appears silently (D1)", HOOK,
+     "setAnnouncement(askOpenAnnouncement(view));", "/* mutant */"),
+    ("M24", "closing an auto-opened drawer strands the caret on <body> again: the composer fallback is gone (U1)", DRAWER,
+     "handCaretToComposer();", "/* mutant */"),
 ]
 
 def run_suites():
     p = subprocess.run(["node", "--test", "--test-reporter=spec", *SUITES], cwd=WT,
                        capture_output=True, text=True, timeout=300)
     out = p.stdout + p.stderr
-    head = out.split("failing tests:")[0]
+    # The SUMMARY section is the only place that names the suite ("test at <path>:<line>:<col>"
+    # ahead of each failing test); the inline section prints the same failures without it.
+    summary = out.split("✖ failing tests:", 1)[1] if "✖ failing tests:" in out else ""
     fails = []
-    for line in head.splitlines():
+    suite = None
+    for line in summary.splitlines():
+        m = re.match(r"^test at (.+?):\d+:\d+\s*$", line)
+        if m:
+            suite = os.path.basename(m.group(1))
+            continue
         m = re.match(r"^\s*✖ (.+?) \(\d+(?:\.\d+)?ms\)\s*$", line)
-        if m and m.group(1) not in fails:
-            fails.append(m.group(1))
+        if m:
+            key = f"{suite}:: {m.group(1)}" if suite else m.group(1)
+            if key not in fails:
+                fails.append(key)
     tally = {k: int(v) for k, v in re.findall(r"^ℹ (tests|pass|fail) (\d+)$", out, re.M)}
     return p.returncode, tally, fails
 
