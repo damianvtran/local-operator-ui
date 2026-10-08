@@ -809,9 +809,13 @@ const INERT_MONITOR_CONTROLS: MonitorControls = {
 const ConversationStandIn = ({
 	details,
 }: {
-	details: ReturnType<typeof deriveRunDetails>;
+	/** Null on a draft: the app's draft has no run details, so no trigger. */
+	details: ReturnType<typeof deriveRunDetails> | null;
 }) => (
-	<div className="w-0 min-w-[480px] flex-1 flex h-full min-h-0 flex-col overflow-hidden">
+	<div
+		data-tour-tag="chat-column"
+		className="w-0 min-w-[480px] flex-1 flex h-full min-h-0 flex-col overflow-hidden"
+	>
 		<ChatHeader
 			agentName="Core"
 			description="Invoices workspace · on this machine"
@@ -858,6 +862,36 @@ const useMacChrome = () => {
 	}, []);
 };
 
+/*
+ * The route facts, inline rather than the store's `EMPTY_RIGHT_SLOT_ROUTE`
+ * constant, DELIBERATELY: the before half of this change's evidence pair swaps
+ * IF `origin/main`'s store module under these stories (see
+ * `docs/evidence/shell-app-shell/slot-release-before/README.md`), and an import the old module
+ * does not export would fail that bundle. The extra `rightSlotRoute` key is
+ * inert on the old store - its reader never looks at it - which is exactly what
+ * makes the pair the same scene under two readers.
+ */
+const EMPTY_ROUTE = {
+	mounted: false,
+	runDetails: false,
+	session: false,
+} as const;
+
+/*
+ * A route every right-slot pane can draw on: the three facts the app's own
+ * `chat-content` publishes on a conversation route (`mounted`, `runDetails`,
+ * `session` all true). These arms mount the dock directly rather than through
+ * `chat-content`, the app's only publisher, so they STATE the route they
+ * simulate - without it the slot's derivation would answer 0 for a pane the
+ * story is showing, and the lane above the dock would photograph a stop the
+ * app does not draw.
+ */
+const DRAWABLE_ROUTE = {
+	mounted: true,
+	runDetails: true,
+	session: true,
+} as const;
+
 const ChatShellFrame: FC<{
 	/**
 	 * The dock, rendered at the width the app's own slot resolves for this frame's
@@ -870,7 +904,13 @@ const ChatShellFrame: FC<{
 	 * frame; the dock now draws at the app's number for the row it is in.
 	 */
 	pane?: (slotWidth: number) => ReactNode;
-	details: ReturnType<typeof deriveRunDetails>;
+	/**
+	 * The conversation's run details, or null for a DRAFT - which has none in the
+	 * app, so `RunDetailsTrigger` renders nothing there. The draft arms pass null
+	 * so a frame of the released slot does not show a pressed trigger for a pane
+	 * that cannot open (design review round 1, D2).
+	 */
+	details: ReturnType<typeof deriveRunDetails> | null;
 }> = ({ pane, details }) => {
 	useFixtureFetch();
 	useMacChrome();
@@ -912,6 +952,7 @@ const ChatShellFrame: FC<{
 					<main className="flex min-w-0 grow flex-col overflow-hidden">
 						<div
 							ref={rowRef}
+							data-tour-tag="pane-row"
 							className="flex h-full min-h-0 w-full overflow-hidden"
 						>
 							<ConversationStandIn details={details} />
@@ -963,9 +1004,13 @@ export const ChatDockFiles: Story = {
 			useUiPreferencesStore.setState({
 				isCanvasOpen: true,
 				rightSlotWidth,
+				rightSlotRoute: DRAWABLE_ROUTE,
 			});
 			return () => {
-				useUiPreferencesStore.setState({ isCanvasOpen: false });
+				useUiPreferencesStore.setState({
+					isCanvasOpen: false,
+					rightSlotRoute: EMPTY_ROUTE,
+				});
 			};
 		}, [rightSlotWidth]);
 
@@ -1008,9 +1053,13 @@ export const ChatDockRunPanel: Story = {
 			useUiPreferencesStore.setState({
 				isRunPanelOpen: true,
 				rightSlotWidth,
+				rightSlotRoute: DRAWABLE_ROUTE,
 			});
 			return () => {
-				useUiPreferencesStore.setState({ isRunPanelOpen: false });
+				useUiPreferencesStore.setState({
+					isRunPanelOpen: false,
+					rightSlotRoute: EMPTY_ROUTE,
+				});
 			};
 		}, [rightSlotWidth]);
 
@@ -1138,9 +1187,16 @@ export const ChatDockAsks: Story = {
 			 * story that mounted the pane without claiming the slot would photograph a
 			 * lane painted for no pane.
 			 */
-			useUiPreferencesStore.setState({ isAskDrawerOpen: true, rightSlotWidth });
+			useUiPreferencesStore.setState({
+				isAskDrawerOpen: true,
+				rightSlotWidth,
+				rightSlotRoute: DRAWABLE_ROUTE,
+			});
 			return () => {
-				useUiPreferencesStore.setState({ isAskDrawerOpen: false });
+				useUiPreferencesStore.setState({
+					isAskDrawerOpen: false,
+					rightSlotRoute: EMPTY_ROUTE,
+				});
 			};
 		}, [rightSlotWidth]);
 
@@ -1165,5 +1221,74 @@ export const ChatDockAsks: Story = {
 				)}
 			/>
 		);
+	},
+};
+
+/*
+ * #868: THE CLAIM THAT OUTLIVED ITS ROUTE.
+ *
+ * The pane flags persist across routes on purpose, so the state these two arms
+ * photograph is the operator's own captured sequence: the asks drawer closes
+ * and hands the run panel's flag back (or the drawer's own flag stays up), then
+ * the user is on a draft - a route with no run details and no conversation, so
+ * neither pane can mount. The slot's readers must answer from what the route
+ * can DRAW: no elevated band over the empty column, no reserved corner, and the
+ * lane's stop on the conversation's own right edge.
+ *
+ * The before half of each pair is the same story under `origin/main`'s store
+ * module, which reads the bare flag - see
+ * `docs/evidence/shell-app-shell/slot-release-before/README.md` for the recipe
+ * and the numbers, and `scripts/capture-evidence.mjs`'s rows for the claims
+ * asserted at shutter time.
+ */
+export const ChatDockRunPanelOnDraft: Story = {
+	args: { rightSlotWidth: 0 },
+	render: (args) => {
+		const { rightSlotWidth = 0 } = args as { rightSlotWidth?: number };
+		useLayoutEffect(() => {
+			/*
+			 * The run panel's flag, still up, on a route that cannot draw it - the
+			 * drawer's close handed it back. No pane mounts (the draft's own
+			 * `runDetails` is null in the app), which is the point.
+			 */
+			useUiPreferencesStore.setState({
+				isRunPanelOpen: true,
+				rightSlotWidth,
+				rightSlotRoute: { mounted: true, runDetails: false, session: false },
+			});
+			return () => {
+				useUiPreferencesStore.setState({
+					isRunPanelOpen: false,
+					rightSlotRoute: EMPTY_ROUTE,
+				});
+			};
+		}, [rightSlotWidth]);
+
+		// A draft has no run details, so the header draws no trigger (D2).
+		return <ChatShellFrame details={null} />;
+	},
+};
+
+/** The same state for the drawer's own flag: open on a session scope, with no session to show it in. */
+export const ChatDockAsksOnDraft: Story = {
+	args: { rightSlotWidth: 0 },
+	render: (args) => {
+		const { rightSlotWidth = 0 } = args as { rightSlotWidth?: number };
+		useLayoutEffect(() => {
+			useUiPreferencesStore.setState({
+				isAskDrawerOpen: true,
+				askDrawerScope: "session",
+				rightSlotWidth,
+				rightSlotRoute: { mounted: true, runDetails: false, session: false },
+			});
+			return () => {
+				useUiPreferencesStore.setState({
+					isAskDrawerOpen: false,
+					rightSlotRoute: EMPTY_ROUTE,
+				});
+			};
+		}, [rightSlotWidth]);
+
+		return <ChatShellFrame details={null} />;
 	},
 };
