@@ -323,16 +323,18 @@ const Scene: FC<{
 	/** Teams appended to the shared catalogue for ONE story, so the other frames'
 	 *  rosters stay exactly what the before frames photographed. */
 	extraTeams?: ReusableTeam[];
-}> = ({ at, children, extraTeams = [] }) => {
+	/** The capabilities the stub backend advertises; live (composer on) by default. */
+	capabilities?: typeof LIVE_CAPABILITIES;
+}> = ({ at, children, extraTeams = [], capabilities = LIVE_CAPABILITIES }) => {
 	const rows = useRef<WorldProfile[] | null>(null);
 	rows.current ??= AGENTS.map((row) => ({ ...row }));
 	// A LAYOUT effect so the bridge exists before any query effect reads it.
 	useLayoutEffect(() => {
 		installBridge(rows.current as WorldProfile[], {
 			teams: [...TEAMS, ...extraTeams],
-			capabilities: LIVE_CAPABILITIES,
+			capabilities,
 		});
-	}, [extraTeams]);
+	}, [extraTeams, capabilities]);
 	return (
 		<div className="flex h-screen flex-col overflow-hidden bg-canvas">
 			{/*
@@ -483,8 +485,24 @@ export const TeamCreate: Story = {
  * A LAYOUT effect, so the state exists on the first paint and the shutter never
  * photographs an idle row that then changes.
  */
+const LONG_ANSWER = Array.from(
+	{ length: 28 },
+	(_, line) =>
+		`${line + 1}. Content now hands every draft to copy-reviewer before content-designer sees it, and the manager keeps the calendar.`,
+).join("\n");
+
+/** A provider-style failure: real ones run to a few hundred characters. */
+const LONG_ERROR =
+	"The model provider rejected the request: the account has exceeded its rate limit for this model, and the retry-after header asked for 3600 seconds. The request was never delivered to the run, so nothing was started. Check the provider's status page, wait for the limit to reset, or choose a different default model in Settings and send the request again.";
+
 const SeedRun: FC<{
-	state: "running" | "settled" | "error" | "stop-refused";
+	state:
+		| "running"
+		| "settled"
+		| "settled-long"
+		| "error"
+		| "error-long"
+		| "stop-refused";
 }> = ({ state }) => {
 	useLayoutEffect(() => {
 		const store = useConfigRunStore.getState();
@@ -493,7 +511,7 @@ const SeedRun: FC<{
 		// a while, and the row carries its elapsed slot in every state.
 		useConfigRunStore.setState({ startedAt: Date.now() - 42_000 });
 		store.noteTouched({ kind: "team", name: "content" });
-		if (state === "settled")
+		if (state === "settled" || state === "settled-long")
 			store.settle(
 				[
 					{
@@ -503,12 +521,18 @@ const SeedRun: FC<{
 					},
 				],
 				"done",
-				"Added a second coder to content.",
+				state === "settled-long"
+					? LONG_ANSWER
+					: "Added a second coder to content.",
 			);
-		if (state === "error")
+		if (state === "error" || state === "error-long")
 			useConfigRunStore
 				.getState()
-				.failUnsent("The request could not be sent. Check the connection.");
+				.failUnsent(
+					state === "error-long"
+						? LONG_ERROR
+						: "The request could not be sent. Check the connection.",
+				);
 		if (state === "stop-refused")
 			useConfigRunStore
 				.getState()
@@ -666,6 +690,39 @@ export const TeamErrorRetry: Story = {
 	),
 };
 
+/**
+ * SETTLED, LONG ANSWER: a closing message of 28 lines. Unbounded it took the
+ * dock to 1,012 px and the box off screen (agent review round 1 #1); bounded it
+ * scrolls inside the dock.
+ */
+export const TeamSettledLong: Story = {
+	render: () => (
+		<Scene at="/agents?kind=team&name=content">
+			<SeedRun state="settled-long" />
+			<HoldShutterUntil
+				done={() =>
+					paneSays("Collaboration instructions")() && stripSays("Finished")()
+				}
+			/>
+		</Scene>
+	),
+};
+
+/** ERROR, LONG TEXT: a ~330-character provider message, full and scrollable. */
+export const TeamErrorLong: Story = {
+	render: () => (
+		<Scene at="/agents?kind=team&name=content">
+			<SeedRun state="error-long" />
+			<HoldShutterUntil
+				done={() =>
+					paneSays("Collaboration instructions")() &&
+					Boolean(document.querySelector('[data-testid="config-retry"]'))
+				}
+			/>
+		</Scene>
+	),
+};
+
 /** STOP REFUSED: the run is still live and says the stop did not take. */
 export const TeamStopRefused: Story = {
 	render: () => (
@@ -709,6 +766,182 @@ export const TeamAwkward: Story = {
 			extraTeams={AWKWARD_EXTRA}
 		>
 			<HoldShutterUntil done={paneSays("Ship it carefully")} />
+		</Scene>
+	),
+};
+
+/**
+ * A team with a member row that omits its count (the wire's own default is one),
+ * so the table must print "x1" where it printed "xundefined", and the header must
+ * agree: 3 members. The About name is long enough to ellipsize at `max-w-56`.
+ */
+const NO_COUNT_TEAM = team(
+	"on-call-rotation-with-an-unreasonably-long-and-descriptive-name",
+	"",
+	"manager",
+	["coder", "reviewer"],
+	{ instructions: "Page the right person." },
+);
+NO_COUNT_TEAM.members = [
+	{
+		role: "coder",
+		kind: "agent",
+	} as unknown as ReusableTeam["members"][number],
+	{ role: "reviewer", count: 2, kind: "agent" },
+];
+const NO_COUNT_EXTRA = [NO_COUNT_TEAM];
+
+const SeedLongAbout: FC = () => {
+	useLayoutEffect(() => {
+		useConfigRunStore
+			.getState()
+			.setAbout({ kind: "team", name: NO_COUNT_TEAM.name });
+		return () => useConfigRunStore.getState().setAbout(null);
+	}, []);
+	return null;
+};
+
+/** MEMBER WITHOUT A COUNT, LONG ABOUT NAME, A TEAM WITH NO DESCRIPTION. */
+export const TeamNoCountLongAbout: Story = {
+	render: () => (
+		<Scene
+			at={`/agents?kind=team&name=${NO_COUNT_TEAM.name}`}
+			extraTeams={NO_COUNT_EXTRA}
+		>
+			<SeedLongAbout />
+			<HoldShutterUntil
+				done={() =>
+					paneSays("Page the right person")() &&
+					Boolean(
+						document.querySelector('[data-testid="config-composer-about"]'),
+					)
+				}
+			/>
+		</Scene>
+	),
+};
+
+/**
+ * Press Edit, then move focus to "Add member" the way Tab does, so the frame
+ * shows the control the sticky footer used to cover (UX review round 1 U1). The
+ * focus call scrolls through the scroller's `scroll-padding-bottom`, which is
+ * exactly what is under test.
+ */
+const PressEditAndFocusAdd: FC = () => {
+	useEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		let pressed = false;
+		let focused = false;
+		const settle = () => {
+			if (!pressed) {
+				const edit = Array.from(
+					document.querySelectorAll<HTMLButtonElement>(
+						"[data-agents-pane] header button",
+					),
+				).find((button) => button.textContent?.trim() === "Edit");
+				if (edit) {
+					pressed = true;
+					edit.click();
+				}
+			}
+			if (!focused) {
+				const add = Array.from(
+					document.querySelectorAll<HTMLButtonElement>(
+						"[data-agents-pane] form button",
+					),
+				).find((button) => button.textContent?.trim() === "Add member");
+				if (add && document.querySelector('[data-testid="edit-footer"]')) {
+					focused = true;
+					add.focus();
+					document.documentElement.removeAttribute("data-capture-pending");
+				}
+			}
+		};
+		const observer = new MutationObserver(settle);
+		observer.observe(document.body, { childList: true, subtree: true });
+		settle();
+		return () => {
+			observer.disconnect();
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, []);
+	return null;
+};
+
+/** TEAM EDITING, "Add member" reached by keyboard: it clears the sticky footer. */
+export const TeamEditingAddMember: Story = {
+	render: () => (
+		<Scene at="/agents?kind=team&name=content">
+			<PressEditAndFocusAdd />
+		</Scene>
+	),
+};
+
+/**
+ * Open the agent's "More actions" menu the way a pointer does. Radix opens a
+ * dropdown on `pointerdown` (primary button, no ctrl), so that is the event sent;
+ * `click` alone would leave it closed.
+ */
+const OpenMoreActions: FC = () => {
+	useEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		let opened = false;
+		const settle = () => {
+			if (!opened) {
+				const trigger = document.querySelector<HTMLButtonElement>(
+					'[data-agents-pane] button[aria-label="More actions"]',
+				);
+				if (trigger) {
+					opened = true;
+					trigger.dispatchEvent(
+						new PointerEvent("pointerdown", {
+							bubbles: true,
+							button: 0,
+							ctrlKey: false,
+							pointerType: "mouse",
+						}),
+					);
+				}
+			}
+			if (document.querySelector('[role="menu"]'))
+				document.documentElement.removeAttribute("data-capture-pending");
+		};
+		const observer = new MutationObserver(settle);
+		observer.observe(document.body, { childList: true, subtree: true });
+		settle();
+		return () => {
+			observer.disconnect();
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, []);
+	return null;
+};
+
+/**
+ * AGENT, "..." MENU OPEN. The Watch list is NOT framed: it renders the run's own
+ * tool rows, which come from the session transcript stream, and the stub bridge
+ * has no session to stream one from (the node:test files cover that path).
+ */
+export const AgentMoreActionsOpen: Story = {
+	render: () => (
+		<Scene at="/agents?kind=agent&name=trend-scout">
+			<OpenMoreActions />
+		</Scene>
+	),
+};
+
+/**
+ * COMPOSER UNAVAILABLE: a backend without `agents_config`. The only explanation
+ * of why the box is dead is a 119-character sentence whose second half is the
+ * actionable one (QA review round 1 Q2); it must wrap in full below the row.
+ */
+export const TeamComposerUnavailable: Story = {
+	render: () => (
+		<Scene
+			at="/agents?kind=team&name=content"
+			capabilities={CAPABILITIES as typeof LIVE_CAPABILITIES}
+		>
+			<HoldShutterUntil done={paneSays("Collaboration instructions")} />
 		</Scene>
 	),
 };
