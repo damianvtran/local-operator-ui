@@ -37180,7 +37180,7 @@ async function sceneProjectOpen(cdp) {
 			const strip = document.querySelector(${JSON.stringify(PROJECT_OPEN_STRIP)});
 			if (strip !== null && !state.sawStrip) {
 				state.sawStrip = true;
-				state.sawAt = performance.now();
+				state.sawAt = Math.round(performance.now() - started);
 			}
 			let scrollTop = null;
 			let stripTop = null;
@@ -37559,16 +37559,23 @@ async function sceneProjectOpen(cdp) {
 
 	/*
 	 * (a) BACK TO THE LIST AND IN AGAIN, the way a reader does it: the detail
-	 * header's own "All projects" control, then the row again. The claim is the
-	 * change's (the page opens at the top, unfocused, on every entry); the base
-	 * half RECORDS the same numbers instead, because its own reading is the
-	 * defect and failing on it there would only restate that the old build is
-	 * the old build.
+	 * header's own "All projects" control - scrolled back up to by the page's
+	 * own wheel, because after the send the page sits at the bottom and a press
+	 * aimed at an off-screen button would land on whatever is at those
+	 * coordinates - then the row again. The claim is the change's (the page
+	 * opens at the top, unfocused, on every entry); the base half RECORDS the
+	 * same numbers instead, because its own reading is the defect and failing
+	 * on it there would only restate that the old build is the old build.
 	 */
-	const backToAll = await pressFoundElement(
-		cdp,
-		`() => [...document.querySelectorAll("button")].find((element) => element.textContent.trim() === "All projects") ?? null`,
+	const allProjectsFinder = `() => [...document.querySelectorAll("button")].find((element) => element.textContent.trim() === "All projects") ?? null`;
+	const allProjectsReached = await wheelUntilInScroller(cdp, allProjectsFinder);
+	check(
+		"the All projects control is reachable by the page's own scrolling",
+		allProjectsReached.ok,
+		JSON.stringify(allProjectsReached),
 	);
+	await wait(150);
+	const backToAll = await pressFoundElement(cdp, allProjectsFinder);
 	const backAtList = await waitForCondition(
 		cdp,
 		`Boolean(document.querySelector(${JSON.stringify(listRow)}))`,
