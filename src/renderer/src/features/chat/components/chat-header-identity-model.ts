@@ -61,44 +61,70 @@ export type HeaderIdentityInput = {
 	 * `resolveHeaderIdentity`'s cold branch.
 	 */
 	hostPublishes?: boolean;
+	/**
+	 * The frame is core's cold synthesis (`isColdFrame`): its identity statement,
+	 * `{}` or published-empty, says nothing about the session's team, so the
+	 * binding is read instead.
+	 */
+	coldFrame?: boolean;
 };
 
-/**
- * WHICH HOSTS HAVE PUBLISHED `effective_identity`, remembered for the app run.
- *
- * WHY THIS EXISTS. Core publishes the field only on warm frames (core PR #2050
- * at f98240bd42 builds the cold frame in `cold_model.py`/`attached.py` without
- * it), so on a strict host a resumed team session reads `{}` until the runtime
- * promotes it - indistinguishable, frame by frame, from an older host. A
- * capability is a fact about the HOST, not the frame, so the first frame that
- * carries the field records it and a later `{}` from the same host is read as
- * cold, never as "older". The proper fix is core deriving the keys on the cold
- * path (the anchor lane is doing that); until it lands this is a stopgap, and
- * its stated residual is that the FIRST cold team session opened on a strict
- * host before any warm frame has been seen is still #866's open list.
- *
- * WHY MODULE STATE AND NOT A STORE. The record is written once per host, never
- * read reactively - a write only ever happens on a render that already saw the
- * published statement, so no consumer needs a subscription - and nothing
- * persists it: a restart re-learns it from the next warm frame, which is the
- * right lifetime for a capability of a runtime that may have been updated.
- *
- * WHY THE KEY IS THE SESSION'S OWNER DEVICE. The frames of a peer's session
- * are relayed through this device's daemon but produced by the PEER's runtime,
- * which may be older; the catalogue row's `owner_device` (`""` on this device)
- * is the only datum that names the producer, so it is the key - one record per
- * runtime, never one for "the backend".
+/*
+ * The capability record lives in `shared/lib/host-publish-record.ts` (the feed
+ * hook that invalidates it is in `shared/`, and `shared/` does not import from a
+ * feature); it is re-exported here because this module is where its readers and
+ * the pure tests look for it.
  */
-export function createHostPublishRecord() {
-	const seen = new Set<string>();
-	return {
-		note: (hostKey: string) => void seen.add(hostKey),
-		has: (hostKey: string) => seen.has(hostKey),
-		reset: () => seen.clear(),
-	};
+export {
+	createHostPublishRecord,
+	hostPublishRecord,
+} from "../../../shared/lib/host-publish-record";
+
+/**
+ * The record's KEY for one session: which RUNTIME produced its frames.
+ *
+ * A peer's session is relayed through this device's daemon but produced by the
+ * PEER's runtime, which may be older, so a peer never shares this device's key.
+ * `null` means "the producer is not known" - no catalogue row, or a remote row
+ * that names no owner - and a null key is neither read from nor written to the
+ * record, so an absent row can never be mistaken for the local host (review
+ * R5). A row with no `locality` came from a plain listing, which only this
+ * device's daemon answers (`CanonicalSessionRow`: a plain page never carries a
+ * peer's row), so it keys as this device.
+ *
+ * The same rule `ownerOf` (`features/mesh/mesh-sessions.ts`) states for the
+ * mesh's own rows - local is the empty id, remote is the owner's - restated over
+ * the catalogue row's optional fields, which that function's `MeshSessionRow`
+ * parameter cannot take.
+ */
+export function headerHostKey(
+	row:
+		| { locality?: "local" | "remote"; owner_device?: string }
+		| null
+		| undefined,
+): string | null {
+	if (!row) return null;
+	if (row.locality === "remote") {
+		return row.owner_device ? `peer:${row.owner_device}` : null;
+	}
+	return "";
 }
 
-export const hostPublishRecord = createHostPublishRecord();
+/**
+ * Whether a frontend frame is the runtime's COLD synthesis rather than a live
+ * owner's: core stamps those `epoch: "cold-<session_id>"` (`attached.py`,
+ * `cold_model.py`; the type is `CanonicalFrontendState.epoch`).
+ *
+ * WHY IT MATTERS. A cold frame is not a statement about the session's team at
+ * all - core's own comment (`cold_model.py`, "Consumers that need the binding
+ * before a runtime engages already have it: the desktop's session catalogue row
+ * ... is where the header should read it until the first warm frame arrives")
+ * says the binding is the answer. Its published-empty identity must therefore
+ * never be read as "no team is attached".
+ */
+export function isColdFrame(epoch: string | null | undefined): boolean {
+	return typeof epoch === "string" && epoch.startsWith("cold-");
+}
 
 /**
  * What a host that PUBLISHES `effective_identity` said, normalised: all three
@@ -271,14 +297,20 @@ export function resolveHeaderIdentity(
 	/*
 	 * WHICH TEAM OWNS THE SESSION. The determination keys on the stream's
 	 * `active_team` and the catalogue row's bound team - the two sources that
-	 * stay reliable on a COLD frame, where `effective_identity` is `{}` - with a
-	 * published statement's team as the last rung (a closed seat must never sit
-	 * over a "No team" chip). The exception is a PUBLISHED statement that says
-	 * `team: ""`: the host has just said no team is attached, so a durable
-	 * binding the catalogue has not yet refreshed (the gap between a detach and
-	 * the row catching up) is stale and must not constrain the seat.
+	 * stay reliable on a COLD frame, where the identity is `{}` (f98240bd42) or
+	 * the published-EMPTY statement (7905eab965) - with a published statement's
+	 * team as the last rung (a closed seat must never sit over a "No team" chip).
+	 *
+	 * A published `team: ""` on a LIVE frame means the host has just said no team
+	 * is attached, so a binding the catalogue has not yet refreshed (the gap
+	 * between a detach and the row catching up) is stale and loses to it. On a
+	 * COLD frame it means nothing of the kind - the synthesis attaches nothing
+	 * and says so for every session, team-bound or not - so the binding stands
+	 * (review R3: reading it as "no team" blanked every cold team session's chips
+	 * to `No agent` / `No team`).
 	 */
-	const publishedNoTeam = published !== null && published.team === "";
+	const publishedNoTeam =
+		published !== null && published.team === "" && input.coldFrame !== true;
 	const teamValue = publishedNoTeam
 		? input.activeTeam || null
 		: input.activeTeam || input.boundTeam || published?.team || null;

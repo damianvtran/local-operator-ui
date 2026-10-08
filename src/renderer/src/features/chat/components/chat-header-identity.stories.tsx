@@ -445,6 +445,9 @@ const identity = (over: Partial<HeaderIdentityData>): HeaderIdentityData => ({
 	activeTeam: null,
 	boundAgent: null,
 	boundTeam: null,
+	// This device's own key: the capability record is keyed per producer and an
+	// unknown producer (null) is neither read nor written.
+	hostKey: "",
 	...over,
 });
 
@@ -702,6 +705,8 @@ export const StrictTeamColdFrame: Story = {
 						boundAgent: "manager",
 						boundTeam: "lopdev",
 						effectiveIdentity: {},
+						// Core stamps its cold synthesis `cold-<session_id>`.
+						frameEpoch: `cold-${SESSION}`,
 					})}
 					renameSessionId={SESSION}
 					onOpenOptions={() => undefined}

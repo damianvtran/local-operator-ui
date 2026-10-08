@@ -78,6 +78,7 @@ import {
 	useMemo,
 	useRef,
 	useState,
+	useSyncExternalStore,
 } from "react";
 import type { CanonicalEffectiveIdentity } from "../../../../../shared/desktop-session-contract";
 import { useEntities } from "../pickers/destination-pickers";
@@ -95,6 +96,7 @@ import {
 	effectiveIdentityPublished,
 	headerIdentityAgentFlagged,
 	hostPublishRecord,
+	isColdFrame,
 	resolveHeaderIdentity,
 } from "./chat-header-identity-model";
 import { TeamAvatarBubble } from "./team-avatar-bubble";
@@ -115,12 +117,13 @@ export type HeaderIdentityData = {
 	 */
 	effectiveIdentity?: CanonicalEffectiveIdentity | null;
 	/**
-	 * The producer of this session's frames, as the capability record's key: the
-	 * catalogue row's `owner_device` (`""` on this device). See
-	 * `createHostPublishRecord` for why the host, not the frame, is what a
-	 * capability belongs to.
+	 * The producer of this session's frames, as the capability record's key
+	 * (`headerHostKey`): `""` for this device, `peer:<id>` for a peer's runtime,
+	 * `null` when the producer is not known (nothing is read or recorded then).
 	 */
-	hostKey?: string;
+	hostKey?: string | null;
+	/** The frame's `epoch`, which marks core's cold synthesis (`isColdFrame`). */
+	frameEpoch?: string | null;
 };
 
 /**
@@ -737,7 +740,8 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 	boundAgent,
 	boundTeam,
 	effectiveIdentity,
-	hostKey = "",
+	hostKey = null,
+	frameEpoch,
 }) => {
 	const rawTeam = activeTeam || boundTeam || null;
 	/*
@@ -747,10 +751,23 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 	 * the published statement already uses it directly - and read at render.
 	 */
 	const publishedNow = effectiveIdentityPublished(effectiveIdentity) !== null;
+	/*
+	 * Subscribed, so a reset (the feed saw the daemon change) re-renders the
+	 * header instead of leaving a lock on screen that the record no longer
+	 * justifies; `recordVersion` also re-runs the write below, which is how a
+	 * still-warm frame re-establishes the record after a reset - the only way
+	 * back in.
+	 */
+	const recordVersion = useSyncExternalStore(
+		hostPublishRecord.subscribe,
+		hostPublishRecord.version,
+	);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `recordVersion` is the trigger - a reset must be followed by a re-note from the warm frame still on screen
 	useEffect(() => {
-		if (publishedNow) hostPublishRecord.note(hostKey);
-	}, [publishedNow, hostKey]);
-	const hostPublishes = publishedNow || hostPublishRecord.has(hostKey);
+		if (publishedNow && hostKey !== null) hostPublishRecord.note(hostKey);
+	}, [publishedNow, hostKey, recordVersion]);
+	const hostPublishes =
+		publishedNow || (hostKey !== null && hostPublishRecord.has(hostKey));
 	/*
 	 * The manager label's source, loaded only when a team is actually bound and
 	 * never gating the control: while it loads, `resolveHeaderIdentity` answers
@@ -766,6 +783,7 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 		teams: teams.data,
 		effectiveIdentity,
 		hostPublishes,
+		coldFrame: isColdFrame(frameEpoch),
 	});
 	/*
 	 * THE STRICT RULE, decided once in the model (`view.seat`): the host
