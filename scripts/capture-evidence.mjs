@@ -114,14 +114,16 @@ const DIR_FILTER = flag("dirs")?.split(",").filter(Boolean) ?? null;
 /**
  * The console pane's shipped default width, in px.
  *
- * `DEFAULT_CONSOLE_PANEL_WIDTH` from `ui-preferences-store.ts` — `ceil(100 columns
- * x 7.8px) + 16px of chrome` at `TERMINAL_FONT_SIZE = 13` — restated here because
- * this file is JavaScript and cannot import the store's TypeScript. The restatement
- * is pinned by `scripts/console-pane.test.mjs`, which imports both and fails when
- * they differ, so a font step or a column count that moves upstream breaks a test
- * rather than silently re-cropping every console frame.
+ * `DEFAULT_RIGHT_SLOT_WIDTH` from `ui-preferences-store.ts` — the slot's one
+ * default, which at `TERMINAL_FONT_SIZE = 13` is `ceil(80 columns x 7.8px) + 16px
+ * of chrome` — restated here because this file is JavaScript and cannot import the
+ * store's TypeScript. (It was `ceil(100 columns x 7.8px) + 16px` = 796 before the
+ * #872 follow-up gave every pane one default.) The restatement is pinned by
+ * `scripts/console-pane.test.mjs`, which reads both and fails when they differ, so
+ * a font step or a column count that moves upstream breaks a test rather than
+ * silently re-cropping every console frame.
  */
-const CONSOLE_PANE_WIDTH = 796;
+const CONSOLE_PANE_WIDTH = 640;
 
 const KEY_CODES = {
 	Escape: { code: "Escape", keyCode: 27 },
@@ -1931,13 +1933,13 @@ export const STORIES = [
 	 * default, not at a number typed here.
 	 *
 	 * THE NUMBER MOVED, and the reason is design round 1's D2: these rows read `843`,
-	 * which was neither the store's `DEFAULT_CONSOLE_PANEL_WIDTH` (~804, derived from
-	 * the shipped face at `TERMINAL_FONT_SIZE = 13`) nor the design's 100-column grid
-	 * — measured off the frame, 843 painted ~108 columns. The frames therefore showed
-	 * a pane no user has, while the PR body quoted the default's own arithmetic.
-	 * `CONSOLE_PANE_WIDTH` below is that default, and `scripts/console-pane.test.mjs`
-	 * pins it against the store's constant so the two cannot drift apart again (the
-	 * story renders the pane at the same imported width).
+	 * which was neither the width the store shipped for the console then (~804,
+	 * derived from the shipped face at `TERMINAL_FONT_SIZE = 13`) nor the design's
+	 * 100-column grid — measured off the frame, 843 painted ~108 columns. The frames
+	 * therefore showed a pane no user has, while the PR body quoted the default's own
+	 * arithmetic. `CONSOLE_PANE_WIDTH` below is the slot's default, and
+	 * `scripts/console-pane.test.mjs` pins it against the store's constant so the two
+	 * cannot drift apart again (the story renders the pane at the same imported width).
 	 *
 	 * The extra height on the ended and restored frames is their banner: those states
 	 * still grow a 28px row (§7.3, and D6 keeps it — there is no process left to

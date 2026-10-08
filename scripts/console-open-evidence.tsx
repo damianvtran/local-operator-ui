@@ -35,7 +35,7 @@
 
 import { ConsolePane } from "@features/console/components/console-pane";
 import {
-	DEFAULT_CONSOLE_PANEL_WIDTH,
+	DEFAULT_RIGHT_SLOT_WIDTH,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { StrictMode } from "react";
@@ -168,7 +168,7 @@ createRoot(document.getElementById("root") as HTMLElement).render(
 		<div
 			id="pane-box"
 			className="flex h-full flex-col overflow-hidden"
-			style={{ width: DEFAULT_CONSOLE_PANEL_WIDTH, height: BOX_HEIGHT }}
+			style={{ width: DEFAULT_RIGHT_SLOT_WIDTH, height: BOX_HEIGHT }}
 		>
 			<ConsolePane sessionId={SESSION} onClose={() => undefined} />
 		</div>

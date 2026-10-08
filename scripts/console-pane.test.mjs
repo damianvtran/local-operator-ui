@@ -517,38 +517,54 @@ test("a mark for a surface the host no longer has banners nothing", () => {
  * Design round 1's D2: the sweep captured this pane at a literal `843` while the
  * store shipped ~804, so every console frame showed a pane no user has and the body
  * quoted the default's arithmetic. The frame is now rendered at the store's constant
- * and the sweep carries a restatement of it — because the sweep is JavaScript and
+ * and the sweep carries a restatement of it - because the sweep is JavaScript and
  * cannot import the store's TypeScript. This test is what makes the restatement a
  * copy rather than a second opinion: it reads the number out of the script's own
  * source and compares it with the store's.
+ *
+ * THE DEFAULT IS THE SLOT'S ONE 640 NOW (#872 follow-up), and the console is the
+ * pane whose width has a derivation: 80 terminal columns at the shipped face plus
+ * the pane's own horizontal gutters. That derivation is what chose 640 over a
+ * rounder 600 (a 74-column pane), so it is pinned HERE: a font step or a gutter
+ * change that stops 640 being 80 columns breaks this test instead of silently
+ * cropping the console's grid. The old 100-column console-only default (796) is
+ * gone with its constant.
  */
-test("the sweep's console width is the store's own default, not a second number", () => {
-	/*
-	 * THE ARITHMETIC IS THE SHIPPED ONE and only its two inputs are read from the
-	 * store's source, because the store itself cannot be imported here: it pulls in
-	 * zustand's `persist`, which reaches for a `localStorage` this process does not
-	 * have, and a bundle of it fails at import rather than at a useful line. So the
-	 * formula comes from `measureCell` (the same function the pane reports to main)
-	 * and the two constants it multiplies are read out of the file that owns them —
-	 * a change to either breaks this test instead of silently re-cropping frames.
-	 */
+test("the slot's one default is 80 console columns, and the sweep's console width is that default", () => {
 	const storeSource = readFileSync(
 		"src/renderer/src/shared/store/ui-preferences-store.ts",
 		"utf8",
 	);
-	const columns = Number(
-		storeSource.match(/const CONSOLE_GRID_COLUMNS = (\d+);/)?.[1],
-	);
-	const chrome = Number(
-		storeSource.match(/const CONSOLE_PANE_CHROME_PX = (\d+);/)?.[1],
+	const declaredDefault = storeSource.match(
+		/export const DEFAULT_RIGHT_SLOT_WIDTH = (\d+);/,
 	);
 	assert.ok(
-		Number.isFinite(columns) && Number.isFinite(chrome),
-		"the store still states the grid and its chrome as named constants",
+		declaredDefault,
+		"the store still states the slot's default as one named, numeric constant",
 	);
-	// `measureCell` with no document is the shipped face's ratio (0.6em), which is the
-	// same branch the store's own default is computed from before a render exists.
-	const expected = Math.ceil(columns * measureCell().cellWidth) + chrome;
+	// The store itself cannot be imported here (zustand's `persist` reaches for a
+	// `localStorage` this process does not have), so the constant is read out of its
+	// source and the arithmetic is the shipped one: `measureCell` with no document is
+	// the shipped face's ratio (0.6em), the same branch a render-less process gets.
+	const COLUMNS = 80;
+	// The pane's two `px-2` gutters (8px each) on the terminal's box; asserted below
+	// against the component so the 16 is not a number only this file believes.
+	const CHROME_PX = 16;
+	const paneSource = readFileSync(
+		"src/renderer/src/features/console/components/console-pane.tsx",
+		"utf8",
+	);
+	assert.match(
+		paneSource,
+		/relative flex min-h-0 grow flex-col px-2/,
+		"the terminal's box still carries the px-2 gutter the 16px allowance counts",
+	);
+	const expected = Math.ceil(COLUMNS * measureCell().cellWidth) + CHROME_PX;
+	assert.equal(
+		Number(declaredDefault[1]),
+		expected,
+		"the slot's default no longer fits exactly 80 console columns: a font step or a gutter change moved it",
+	);
 
 	const source = readFileSync("scripts/capture-evidence.mjs", "utf8");
 	const declared = source.match(/const CONSOLE_PANE_WIDTH = (\d+);/);
@@ -558,8 +574,8 @@ test("the sweep's console width is the store's own default, not a second number"
 	);
 	assert.equal(
 		Number(declared[1]),
-		expected,
-		"a font step or a column count that moves upstream must break this test rather than silently re-crop every console frame",
+		Number(declaredDefault[1]),
+		"the sweep's console width must be the store's default, or every console frame is re-cropped in silence",
 	);
 	// And the rows must USE it: a constant nothing reads would pass the check above
 	// while every frame stayed at the old number.

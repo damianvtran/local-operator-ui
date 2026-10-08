@@ -35,9 +35,7 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import {
 	BROWSER_PANEL_MIN_PX,
 	CONSOLE_PANEL_MIN_PX,
-	DEFAULT_BROWSER_PANEL_WIDTH,
-	DEFAULT_CONSOLE_PANEL_WIDTH,
-	DEFAULT_RUN_PANEL_WIDTH,
+	DEFAULT_RIGHT_SLOT_WIDTH,
 	EMPTY_RIGHT_SLOT_ROUTE,
 	RUN_PANEL_MIN_PX,
 	resolveRightSlotOccupied,
@@ -672,8 +670,9 @@ const defaultCanvasState = {
 };
 
 /**
- * The run pane's own contract floor, in pixels: the design's 320/420/640 range
- * (`docs/run-sidebar.md` § 8) starts at 320.
+ * The run pane's own contract floor, in pixels: the design's range
+ * (`docs/run-sidebar.md` § 8) is 320..640 and starts at 320 (it used to carry a
+ * 420 default between them; the slot's one default is 640 now).
  *
  * ONE home for that number, because it is the floor of THREE different things:
  * the width the divider lets the user DRAG the pane's preference down to, the
@@ -1030,8 +1029,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * THE RIGHT SLOT'S ONE WIDTH (#677), declared here because this is the
 		 * first of the four panes to read it and every later cluster below reads
 		 * the same value: one column, one width, whichever pane is on screen.
-		 * `rightSlotWidth` in the store carries the rule (0 = unset, each pane's
-		 * own `DEFAULT_*_WIDTH` is its first-open seed).
+		 * `rightSlotWidth` in the store carries the rule (0 = unset, and unset opens
+		 * every pane at the one `DEFAULT_RIGHT_SLOT_WIDTH`).
 		 */
 		const rightSlotWidth = useUiPreferencesStore((s) => s.rightSlotWidth);
 		const setRightSlotWidth = useUiPreferencesStore((s) => s.setRightSlotWidth);
@@ -1174,15 +1173,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const mentionedFileCount = (canvasState ?? defaultCanvasState)
 			.mentionedFiles.length;
 
-		// The run panel's own SEED, not the canvas's 800: the panes are
-		// deliberately different first-open widths, and an unset slot should land
-		// the run panel on the design's default. Once any pane has been dragged,
-		// the shared width is what every pane renders — that is #677 — held up to
-		// THIS pane's floor so a width dragged from a smaller pane can never draw
-		// this one under its own contract range (review round 1, D2).
+		// The slot's ONE default while nothing has been dragged
+		// (`DEFAULT_RIGHT_SLOT_WIDTH`, #872 follow-up): the run panel opens at the
+		// same width as the browser and the console, so switching panes does not
+		// re-size the slot. Once any pane has been dragged, the shared width is
+		// what every pane renders — that is #677 — held up to THIS pane's floor so
+		// a width dragged from a smaller pane can never draw this one under its own
+		// contract range (review round 1, D2). `resolveRightSlotWidth` reads the
+		// same two inputs for the canvas and for the lane above the row.
 		const effectiveRunPanelWidth = Math.max(
 			RUN_PANEL_MIN_PX,
-			rightSlotWidth === 0 ? DEFAULT_RUN_PANEL_WIDTH : rightSlotWidth,
+			rightSlotWidth === 0 ? DEFAULT_RIGHT_SLOT_WIDTH : rightSlotWidth,
 		);
 
 		/*
@@ -1198,15 +1199,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const setBrowserPaneOpen = useUiPreferencesStore(
 			(s) => s.setBrowserPaneOpen,
 		);
-		// Same seed shape as its neighbours above, and the same reason: an unset
-		// slot should land the browser on the design's 640 (a page's room) rather
-		// than on whichever pane's number happens to be first — and, like them,
-		// held up to this pane's 480 floor: a shared width dragged down from the
-		// run pane's 320 must never draw a page as a mobile column again
-		// (review round 1, D2), and the separator below announces the same 480.
+		// Same shape as the run panel's above, and the same one default — held up
+		// to this pane's 480 floor: a shared width dragged down from the run pane's
+		// 320 must never draw a page as a mobile column again (review round 1, D2),
+		// and the separator below announces the same 480.
 		const effectiveBrowserPanelWidth = Math.max(
 			BROWSER_PANEL_MIN_PX,
-			rightSlotWidth === 0 ? DEFAULT_BROWSER_PANEL_WIDTH : rightSlotWidth,
+			rightSlotWidth === 0 ? DEFAULT_RIGHT_SLOT_WIDTH : rightSlotWidth,
 		);
 
 		/*
@@ -1215,12 +1214,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * trigger and the pane must answer "is it up" from ONE field, or the trigger
 		 * and what is on screen can disagree.
 		 *
-		 * The SEED is that same shape and a different number on purpose: the
-		 * console's default is DERIVED from the measured advance of the shipped mono
-		 * face times the design's 100-column grid (see `DEFAULT_CONSOLE_PANEL_WIDTH`), so
-		 * an unset slot lands the pane on the grid the design names rather than on
-		 * whichever sibling's number happens to be first — and a dragged width, once
-		 * there is one, is the shared one every pane renders (#677).
+		 * The default is that same shape and the same number: the slot's one 640
+		 * (`DEFAULT_RIGHT_SLOT_WIDTH`), which at the shipped face is exactly 80
+		 * columns of the console's grid. The design's 100-column default (796) is
+		 * gone: it drew only at windows past ~1580px, where a row had the room, and
+		 * a dragged width, once there is one, is the shared one every pane renders
+		 * (#677) - so the user can still reach 100 columns by dragging.
 		 */
 		const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
 		/*
@@ -1380,7 +1379,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		);
 		const effectiveConsolePanelWidth = Math.max(
 			CONSOLE_PANEL_MIN_PX,
-			rightSlotWidth === 0 ? DEFAULT_CONSOLE_PANEL_WIDTH : rightSlotWidth,
+			rightSlotWidth === 0 ? DEFAULT_RIGHT_SLOT_WIDTH : rightSlotWidth,
 		);
 
 		/*
@@ -1573,7 +1572,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * A RESET IS A DRAG, to the shared width's UNSET state — the separator's
 		 * double-click, and its Enter, both land here — so it goes through the SAME
 		 * clamped write a drag does. Since #677 the reset means "forget the shared
-		 * width": every pane goes back to opening at its own seed, which is the
+		 * width": every pane goes back to opening at the slot's one default, which is the
 		 * only reading of "this pane back to how it opens" that does not hand this
 		 * pane's default to its three siblings. The store's own reset writes the
 		 * preference directly and knows nothing about the row, which is round 2's
@@ -1582,7 +1581,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * number the control hands back would be one the pane does not use. Routing
 		 * UNSET through the clamp leaves the stored preference alone in that state —
 		 * the same refusal a drag gets — and forgets it wherever the row can host
-		 * the pane's seed.
+		 * the pane's default.
 		 */
 		const handleRunPanelWidthReset = useCallback(() => {
 			handleRunPanelWidthChange(0);
@@ -2646,7 +2645,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				 * occupant's. The divider takes its own label: two separators named
 				 * "Resize canvas" 8px apart are indistinguishable to a screen reader.
 				 *
-				 * The width range is the design's (320/420/640), narrower than the canvas's
+				 * The width range is the design's (320..640, opening at the slot's one
+				 * default), narrower than the canvas's
 				 * because a roster and a prose transcript do not need a document pane's
 				 * room, and the pane does NOT auto-hide at narrow widths: the operator
 				 * asked for persistence, and a pane that disappears below a breakpoint is
