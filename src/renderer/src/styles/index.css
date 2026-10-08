@@ -582,6 +582,88 @@
 }
 
 /*
+ * TWO CUES THAT A MASK CANNOT DRAW: THE EDIT FOOTER'S AND THE RUN DETAILS' (UX
+ * review round 2 U1; design review round 2 D2).
+ *
+ * The pane's own cue is a `mask-image` on the scroller, which is exactly wrong for
+ * both. The edit footer is `sticky` INSIDE the pane scroller, so a bottom mask would
+ * dim Save itself (that is why `[data-lo-pane-edge-cues]:has([data-lo-pane-footer])`
+ * switches it off) - which left an edit form with NOTHING saying it continues, and
+ * a control that rests wholly under the bar ("Add member" at 1024x725, 32 of 32 px)
+ * with no cue that it exists. And a mask clips an OUTLINE, which would cut the run
+ * details' 2 px focus ring.
+ *
+ * So both are an inert gradient child painted from the canvas role, not a shadow:
+ * a PSEUDO-ELEMENT whose opacity follows the scroller's own position, with the
+ * same silence as the mask cues when the engine has no scroll timeline or nothing
+ * overflows (the timeline is then inactive and the base opacity of 0 stands).
+ *
+ * - `[data-lo-pane-footer]::before` sits on the footer's top edge, 24 px (the pane's
+ *   own cue length) tall, and is gone at the end of the scroll;
+ * - `[data-lo-region-cue]::after` is a sticky 12 px strip at the foot of the
+ *   region, pulled back with a negative margin so it adds nothing to the scroll
+ *   height. 12 px, not 24: the region is 56-88 px tall and a 24 px fade dims a third
+ *   of it, including the last line the reader is trying to read at rest.
+ *
+ * Both are `pointer-events: none` and `aria-hidden` by nature (pseudo-elements).
+ */
+[data-lo-pane-footer]::before,
+[data-lo-region-cue]::after {
+	content: "";
+	pointer-events: none;
+	opacity: 0;
+}
+
+[data-lo-pane-footer]::before {
+	position: absolute;
+	inset-inline: 0;
+	bottom: 100%;
+	height: 24px;
+	background: linear-gradient(to top, var(--color-canvas), transparent);
+}
+
+[data-lo-region-cue]::after {
+	display: block;
+	position: sticky;
+	bottom: 0;
+	height: 12px;
+	margin-top: -12px;
+	background: linear-gradient(to top, var(--color-canvas), transparent);
+}
+
+@supports (animation-timeline: scroll()) {
+	[data-lo-pane-footer]::before {
+		animation: lo-footer-cue linear both;
+		animation-timeline: scroll(nearest);
+		animation-range: calc(100% - 24px) 100%;
+	}
+
+	[data-lo-region-cue]::after {
+		animation: lo-region-cue linear both;
+		animation-timeline: scroll(nearest);
+		animation-range: calc(100% - 12px) 100%;
+	}
+
+	@keyframes lo-footer-cue {
+		from {
+			opacity: 1;
+		}
+		to {
+			opacity: 0;
+		}
+	}
+
+	@keyframes lo-region-cue {
+		from {
+			opacity: 1;
+		}
+		to {
+			opacity: 0;
+		}
+	}
+}
+
+/*
  * The chat column's shared content measure.
  *
  * THIS IS THE ONLY PLACE THE SHIPPED NUMBER IS WRITTEN. `CHAT_MEASURE` in
