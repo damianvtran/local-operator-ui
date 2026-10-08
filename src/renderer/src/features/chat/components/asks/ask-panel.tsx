@@ -1,16 +1,20 @@
 /**
  * The EXPANDED ask surface: the queue, and the form that answers one entry.
  *
- * ## Two states, one component (design §5.0, R7)
+ * ## Two states, one component (design §5.0)
  *
  * This is the EXPANDED half of the shared interaction model. The minimized
- * trigger is now the ask ITEM in the composer's status row
- * (`composer-status-row.tsx`), which expands into this panel, and the rule that
- * binds them is the composer's routing invariant: while this panel is open the
- * composer answers the ask, and while it is collapsed the composer is an ordinary
- * conversation box. The panel is entered ONLY by the user - a press on that item,
- * or an explicit action - and never by an ask arriving, which is the
- * no-focus-steal promise the whole redesign is built on.
+ * trigger is the ask ITEM in the composer's status row (`composer-status-row.tsx`),
+ * which expands into this panel. The panel is the ONLY place an ask is answered
+ * from this window: the main composer is an ordinary conversation box whether the
+ * panel is open or not, and a send from it never touches an ask draft and never
+ * answers anything. (That reverses design §5.0's R7 amendment, under which the
+ * composer answered the ask while this panel was open; the operator retired it on
+ * 2026-10-07 because nobody could tell that typing in the composer was how an
+ * `Other` answer was given. The explicit `Other` row in each question below is the
+ * replacement.) The panel is entered ONLY by the user - a press on that item, or an
+ * explicit action - and never by an ask arriving, which is the no-focus-steal
+ * promise the whole redesign is built on.
  *
  * ## Why the whole ask is one form
  *
@@ -146,12 +150,10 @@ export type AskPanelProps = {
 	/**
 	 * The in-flight answers, keyed by ask id then question id.
 	 *
-	 * OWNED BY THE CALLER, not by this panel, and that is the composer routing's
-	 * requirement rather than a preference (design §5.0): while the ask surface is
-	 * expanded the COMPOSER answers the question, so the text the user typed there
-	 * and the ticks they made here must be the same draft. Two owners would mean a
-	 * composer Enter that silently discarded a ticked option, or a tick that
-	 * discarded what they typed.
+	 * OWNED BY THE CALLER, not by this panel, so a draft outlives the panel: closing
+	 * the drawer to read the transcript (or the fleet pane switching rows) must not
+	 * discard a half-made answer. The panel's own controls - the ticks and the
+	 * `Other` fields - are the only writers; the main composer is not one.
 	 */
 	drafts: Record<string, AskDraft>;
 	onDraftChange: (askId: string, next: AskDraft) => void;
@@ -239,20 +241,16 @@ const AskQuestionField = ({
 	const marked = recommendedIndex(question.recommended, options.length);
 	/*
 	 * A SOURCE OF THE DRAFT THAT IS NOT IN THE LIST IS DRAWN, AND DRAWN AS WHAT IT IS
-	 * (design round 1, D2's addendum incident). Two doors write this one draft: the
-	 * option rows below (always a label) and the COMPOSER, whose Enter is routed to the
-	 * ask (design §5.0) and which writes the RAW TYPED TEXT into the first unanswered
-	 * question.
-	 *
-	 * Before this row existed the second door was invisible: typing `prod` at the
-	 * staging/production question answered with the string `prod` while every radio
-	 * stayed EMPTY, so the card said nothing had been chosen about a question that was
-	 * already answered - and an answer that did not come from the list was
-	 * indistinguishable from one that did. The row below is the other half of that fix:
-	 * the value is shown, labelled `Other` so it reads as a value the list did not
-	 * offer rather than as a missing selection, and it is a real choice in the group
-	 * (`aria-checked`, the same mark, the same ground) so the two doors agree about
-	 * what is selected.
+	 * (design round 1, D2's addendum incident). A draft cell can hold a string that is
+	 * not one of the labels - what the user typed into this question's `Other` field -
+	 * and a card that drew nothing for it showed every radio EMPTY beside a question
+	 * that was already answered, which made an answer from outside the list
+	 * indistinguishable from no answer. (The incident came from the retired composer
+	 * routing, which wrote raw typed text into the first unanswered question; the
+	 * writer is now this card's own `Other` field, and the derivation below is
+	 * unchanged.) The row below shows the value, labelled `Other` so it reads as a
+	 * value the list did not offer rather than as a missing selection, and it is a
+	 * real choice in the group (`aria-checked`, the same mark, the same ground).
 	 *
 	 * Only for the LIST shape: a free-text question (no options) already renders the
 	 * draft in its own field, and a secret is never drawn anywhere.
@@ -529,11 +527,10 @@ const AskRow = ({
 	const urgent = ask.urgent === true && waiting;
 	/*
 	 * THE CHANGE FORM (design §10, #1936). Local to the card ON PURPOSE: `onDraftChange`
-	 * owns the FIRST-answer buffer, which the composer's Enter routes into while the ask
-	 * is expanded — that buffer is the user's in-progress reply to a question nobody has
-	 * answered yet, and a revision is a different act on a body that already exists.
-	 * Folding the two together would let an abandoned change ride into the next ask the
-	 * composer answers, and would make "which draft is this?" a question the caller has to
+	 * owns the FIRST-answer buffer — the user's in-progress reply to a question nobody
+	 * has answered yet — and a revision is a different act on a body that already exists.
+	 * Folding the two together would let an abandoned change ride into the first answer
+	 * of the next ask, and would make "which draft is this?" a question the caller has to
 	 * ask of every render.
 	 *
 	 * The SECRET values are the shared record, deliberately: they are already kept out of

@@ -630,32 +630,20 @@ export const askChipLabel = (
 };
 
 /**
- * Whether the composer may ANSWER from this view at all.
- *
- * ONE PREDICATE FOR THE MODE, THE SWAP AND THE ROUTE (agent review round 3, F1 and
- * F3). They had come apart: the mode read a derived flag while the swap keyed on the
- * panel flag alone, so a queue that stopped being answerable under an OPEN panel
- * flipped the mode without swapping the buffers - the ask-buffer answer stayed in
- * the box and the next Enter posted it to the conversation.
- *
- * The head must be OPEN and answerable, and at least one of its questions must be
- * one a plaintext box may fill. A SECRET question is not: its value belongs in the
- * panel's masked field, so a secret-ONLY ask is deliberately NOT this mode - the
- * `askComposerHoldsSecret` state below refuses the box instead, because the failure
- * that matters there is the user typing a credential into a chat message.
- */
-export const askComposerAnswers = (view: AskQueueView): boolean => {
-	const head = view.head;
-	if (head === null || !head.canAnswer) return false;
-	return head.ask.questions.some((question) => question.secret !== true);
-};
-
-/**
  * Whether the head open ask can ONLY be answered in the panel's masked field.
  *
  * The composer refuses input in this state (the same refusal the blocking dock's
  * secret gate uses), rather than leaving an ordinary box that would carry the
  * credential into the transcript as a chat message.
+ *
+ * THIS IS A CREDENTIAL-SAFETY RULE, NOT ROUTING, and it stays when the routing
+ * goes. The main composer used to ANSWER the ask while the drawer was open (design
+ * §5.0, R7); that is retired - a send is an ordinary chat message in every state -
+ * but this refusal never depended on it. It covers the one state where the ask's only
+ * question is secret: an open box there is where a typed credential becomes a chat
+ * message, and the panel's masked field is the only door for the value. Dropping it
+ * is a separate decision about that hazard, and the operator's to make rather than a
+ * clean-up that rides along with removing the routing.
  */
 export const askComposerHoldsSecret = (view: AskQueueView): boolean => {
 	const head = view.head;
@@ -940,22 +928,6 @@ export const askTimeoutSummary = (receipt: {
 	waitedS: number;
 }): string =>
 	`Timed out after ${askWaitedText(receipt.waitedS)} — the agent moved on; you can still answer (ask ${receipt.askId})`;
-
-/**
- * The composer's placeholder while the ask surface is EXPANDED (design §5.0).
- *
- * It names the two facts the reader needs at that moment and neither alone: that
- * what they type is an ANSWER (not a message), and the one key that leaves the
- * mode. `Esc` is the right key to name because it is the collapse the status-row
- * item already offers (the panel's own `Esc`, the same key the window ladder
- * would otherwise spend on a stop), so the sentence describes a control that
- * exists rather than one this feature would have to add.
- *
- * The minimized and normal states keep each app's existing placeholder
- * unchanged, which is why this string is only ever supplied while expanded.
- */
-export const ASK_COMPOSER_PLACEHOLDER =
-	"Answering the agent's question — Esc to collapse";
 
 /**
  * WHAT CLOSES THE CHANGE WINDOW, said where the control that uses it is (design §10,

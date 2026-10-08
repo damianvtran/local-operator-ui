@@ -495,17 +495,17 @@ type ChatContentProps = {
 		 */
 		askOutcomes?: Record<string, AskOutcome | undefined>;
 		/*
-		 * THE ASK-MODE LANE (design §5.0). `askExpanded` is the one flag the
-		 * composer's routing rule reads, and the page owns it rather than the ask
-		 * surfaces so the bar and the composer cannot disagree about which mode the
-		 * user is in. `askComposerPlaceholder` is the page's sentence for the
-		 * expanded state, passed to the composer's own invitation slot.
+		 * THE ASKS DRAWER'S LANE. `askExpanded` is the one flag the status-row chip, the
+		 * header door and the drawer all read, and the page owns it rather than the ask
+		 * surfaces so they cannot disagree about whether the drawer is open. It says
+		 * nothing about the composer: the main box is an ordinary conversation box
+		 * whether the drawer is open or not (the reversal of design §5.0, R7), so
+		 * there is no sentence or mode to pass it. `askDrafts` is the panel's own draft.
 		 */
 		askExpanded?: boolean;
 		onAskToggle?: (next: boolean) => void;
 		askDrafts?: Record<string, AskDraft>;
 		onAskDraftChange?: (askId: string, next: AskDraft) => void;
-		askComposerPlaceholder?: string;
 	};
 	/**
 	 * The session's derived subagent and to-do view model (`run-details.md` § 8),
@@ -2209,28 +2209,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onCredentialsStored={invalidateStoredCredentials}
 								recordingProbe={recordingProbe}
 								/*
-								 * THE ANSWER-MODE INVITATION (design §5.0). The composer's
-								 * own invitation slot, so every state sentence - a refusal,
-								 * the recording line, a gate - still outranks it: those
-								 * describe facts about the box that this copy cannot.
-								 */
-								placeholderOverride={canonical?.askComposerPlaceholder}
-								/*
-								 * AND IT IS A MODE, not an invitation (design §5.0). Without this
-								 * the turn's own sentence outranked the ask's while a turn ran -
-								 * "Steer the agent. Enter sends now. Esc stops." over a box whose
-								 * Enter posts the ANSWER (UX round 1, U2). The ranking itself is
-								 * `composerPlaceholder`'s `askMode` rung.
-								 */
-								askMode={Boolean(canonical?.askComposerPlaceholder)}
-								/*
+								 * NO ASK-MODE SENTENCE OR FLAG REACHES THIS BOX. It used to receive the
+								 * answer-mode invitation (`placeholderOverride`) and an `askMode` flag
+								 * while the drawer was open, because its Enter was routed into the ask
+								 * (design §5.0, R7). The operator reversed that on 2026-10-07: this
+								 * box keeps its own placeholder in every state and a send is a chat
+								 * message. Do not re-add either prop here - the `Other` answer has its
+								 * own field inside the card.
+								 *
 								 * THE ASK LANE'S DOOR, forwarded to the STATUS ROW rather than to the
 								 * drawer: the trigger is a row item now, and the page owns the ONE flag that
-								 * row, the composer's routing rule and the drawer all read
-								 * (`chat-page.tsx`'s `askExpanded`, the store's `isAskDrawerOpen`). Handing
-								 * the same `canonical` pair to both keeps the row item's state and the
-								 * drawer's state the same state - a second copy is the one thing that rule
-								 * forbids.
+								 * row and the drawer both read (`chat-page.tsx`'s `askExpanded`, the
+								 * store's `isAskDrawerOpen`). Handing the same `canonical` pair to both keeps
+								 * the row item's state and the drawer's state the same state - a second copy
+								 * is the one thing that rule forbids.
 								 */
 								askExpanded={canonical?.askExpanded}
 								onAskToggle={canonical?.onAskToggle}
