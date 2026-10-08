@@ -1661,6 +1661,33 @@ test("placeholderOverride replaces the invitation; every state sentence outranks
 		COMPOSER_PLACEHOLDER.unavailable,
 		"and a state sentence still outranks it",
 	);
+	/*
+	 * The press's own sentence (design round 1, D6): while a Stop is in flight
+	 * the empty box says so - the square it was pressed on is pixel-identical
+	 * and the rung is 420 px above it, so this is the answer where the finger
+	 * is. It reads AHEAD of the send/steer sentences because the press is the
+	 * newer act, and absent means nothing changes for every mount that predates
+	 * the field.
+	 */
+	assert.equal(
+		composerPlaceholder({
+			...base,
+			stopping: true,
+			sendingUnsettled: true,
+			awaitingReply: true,
+		}),
+		COMPOSER_PLACEHOLDER.stopping,
+		"a Stop press in flight is answered where the finger is",
+	);
+	assert.equal(
+		composerPlaceholder({
+			...base,
+			sendingUnsettled: true,
+			awaitingReply: true,
+		}),
+		COMPOSER_PLACEHOLDER.sending,
+		"and without a press the send sentence is unchanged",
+	);
 
 	await act(async () => {
 		root.unmount();

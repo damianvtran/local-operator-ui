@@ -48,7 +48,7 @@ const measure = readFileSync(
 );
 
 test("the stopped row's wrapper declares the chatcol container, and the line keeps the shared measure", () => {
-	const block = pane.indexOf("{stoppedTurnAt !== null && (");
+	const block = pane.indexOf("{stoppedTurnAt !== null &&");
 	assert.ok(block >= 0, "the stopped row's block is not in chat-content.tsx");
 	const lineAt = pane.indexOf("data-stopped-turn", block);
 	assert.ok(lineAt > block, "§G3's line is not inside the stopped row's block");
@@ -79,6 +79,42 @@ test("the stopped row's wrapper declares the chatcol container, and the line kee
 	assert.ok(
 		line.includes("CHAT_MEASURE"),
 		`§G3's line must keep CHAT_MEASURE - it is the thing that resolves against the container the wrapper declares. Line was: ${line}`,
+	);
+});
+
+test("the stopped band renders only for a turn that ENDED and a press that was not left unconfirmed", () => {
+	/*
+	 * The operator incident (2026-10-07), structural half: the band said
+	 * "Stopped · Retry" while the turn was still running (the fact is written at
+	 * the press, and the gate used to be the fact alone), and a press whose
+	 * answer was lost could leave it standing with nothing stopped. Both terms
+	 * are read off the SAME block the wrapper test locates, because the gate and
+	 * the row it guards are one contract:
+	 *
+	 * - `!canonical.turnAlive` - the pair the working line reads (`frontend ??
+	 *   heldFrontend`, `chat-page.tsx`): during a receipt gap the raw `busy` is
+	 *   false while the last reading still says "streaming", and a band claiming
+	 *   the turn ended in that window is the lying halftone the report is about.
+	 * - `canonical.stopOutcome !== "unconfirmed"` - the answer's own end: the
+	 *   classification fact survives a lost answer on purpose (the reducer
+	 *   reclassifies a killed call from it), so the DISPLAY is the half that must
+	 *   stop claiming a stopped turn when nothing ever confirmed one.
+	 */
+	const block = pane.indexOf("{stoppedTurnAt !== null &&");
+	assert.ok(block >= 0, "the stopped row's block is not in chat-content.tsx");
+	const gateEnd = pane.indexOf("&& (", block);
+	assert.ok(
+		gateEnd > block,
+		"the stopped row's block has no opening condition",
+	);
+	const gate = pane.slice(block, gateEnd);
+	assert.ok(
+		gate.includes("!canonical.turnAlive"),
+		`the band must not render while the turn is still alive. Gate was: ${gate}`,
+	);
+	assert.ok(
+		gate.includes('canonical.stopOutcome !== "unconfirmed"'),
+		`the band must not claim a stopped turn from a press whose answer was lost. Gate was: ${gate}`,
 	);
 });
 
