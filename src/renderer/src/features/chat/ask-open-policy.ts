@@ -44,6 +44,20 @@
  * file rather than a promise of its caller. `use-ask-open-policy.ts` is the thin
  * React shell that feeds it facts and applies its verdict.
  *
+ * ## What it yields to
+ *
+ * Auto-open is a courtesy, so it gives way to anything the user is already doing,
+ * and it gives way FOR GOOD (the view decides once): the composer holds text (not
+ * mid-sentence), the keyboard is on one of the drawer's doors (it would read as a
+ * press), or the drawer is already up. None of those is a dismissal and none mutes the
+ * conversation: the next view of it decides afresh.
+ *
+ * IT DOES NOT YIELD TO A DURABLE PANE. A press on the chip BORROWS the right slot from
+ * the canvas, run panel, browser or console and the close gives it back
+ * (`askDrawerEvictedPane`); an auto-open is the same borrow, through the same writer.
+ * Yielding would make the feature a no-op for exactly the user who keeps a pane open -
+ * the one most likely to miss a chip - and the shared contract has no such exception.
+ *
  * ## "On open" means the ask EXISTED BEFORE the view did, and the wait is bounded
  *
  * A "view" is one mount of a conversation's pane (the pane is keyed by conversation,
@@ -136,7 +150,7 @@ export type AskOpenReason =
 	| "tally-only"
 	/** The user closed this conversation's surface while asks remained (rule 4). */
 	| "dismissed"
-	/** The composer holds text: the user's draft is not ours to swap out (rule 5). */
+	/** The composer holds text: the user is typing (rule 5; a judgment call on the desktop). */
 	| "composer-has-text"
 	/** The keyboard is on one of the drawer's doors: an open would read as a press (rule 6). */
 	| "door-focused"
@@ -188,12 +202,22 @@ export type AskOpenInput = {
 	 * Whether the composer holds text at this instant - typed, or a draft restored for
 	 * this conversation. Empty is the ordinary state and is not a reason to wait.
 	 *
-	 * WHY A HELD DRAFT BLOCKS THE OPEN. Opening flips `askExpanded`, which is the same
-	 * flag that puts the composer into answer mode (`chat-page.tsx`): the box's text is
-	 * swapped out for the ask buffer, so an unrequested open over a draft would make the
-	 * user's words vanish from under their cursor. Even without that routing, a surface
-	 * docking beside the line being typed is motion nobody asked for. The user's own
-	 * press on the chip is still the door; this only declines to be the one to knock.
+	 * WHY A HELD DRAFT BLOCKS THE OPEN, AND WHY THAT IS A JUDGMENT CALL. Rule 5 says an
+	 * auto-open never lands on a user who is typing, and the other three surfaces keep it
+	 * literally (the phone's sheet is modal and covers the box; the TUI's panel stashes
+	 * the draft). On THIS surface the drawer docks BESIDE the composer and covers
+	 * nothing, and the composer's routing no longer depends on the drawer, so there is no
+	 * hazard to the draft - what remains is motion: a pane sliding in beside the line
+	 * being typed, and the column narrowing under the caret.
+	 *
+	 * THE COST IS THE LATCH. The view decides once, so a user who had a half-written
+	 * message when the conversation opened and clears it a moment later does not get the
+	 * drawer for that view (the chip and the badge still announce the queue, which is
+	 * today's behaviour). Waiting for the box to empty would instead open the surface
+	 * mid-conversation, which is the "arrival" this contract forbids. Whether the desktop
+	 * should keep the latch, or open over a held draft because the drawer cannot hurt it,
+	 * is a UX call the design round is asked to make; flipping it is deleting one clause
+	 * in `decideAskAutoOpen`.
 	 */
 	composerHasText: boolean;
 	/**
@@ -309,6 +333,34 @@ export const askOpenFacts = (
 		outstanding: view.open,
 	};
 };
+
+/**
+ * Whether a drawer that is ALREADY UP on arrival must be closed to honour a dismissal.
+ *
+ * WHY THIS EXISTS AT ALL. `isAskDrawerOpen` is one flag for the whole window and it
+ * deliberately follows the user between conversations (like the four panes it shares
+ * the slot with). So rule 4 has a hole the per-view surfaces (the TUI, the relay, the
+ * native app) cannot have: dismiss A, arrive at B and the policy opens the drawer for
+ * B, go back to A - and the drawer is open on A. The policy did not re-open A; the
+ * flag was carried. But the user closed this conversation's asks and sees them again,
+ * which is exactly the insistence rule 4 forbids.
+ *
+ * THE RULE IS NARROW ON PURPOSE: close only when the drawer is up in the SESSION scope,
+ * it was opened by THE POLICY (never by the user's own press - a drawer the user opened
+ * is theirs and follows them as it always did), and this conversation is dismissed.
+ * "Opened by the policy" is provenance the store does not keep, so the hook that
+ * applies verdicts tracks it (`use-ask-open-policy.ts`) and hands it in as a fact.
+ */
+export const shouldCloseCarriedDrawer = (facts: {
+	conversationId: string | null | undefined;
+	dismissed: Pick<AskDismissals, "has">;
+	sessionDrawerOpen: boolean;
+	openedByPolicy: boolean;
+}): boolean =>
+	Boolean(facts.conversationId) &&
+	facts.sessionDrawerOpen &&
+	facts.openedByPolicy &&
+	facts.dismissed.has(facts.conversationId as string);
 
 /**
  * The conversations whose surface the user has closed while asks remained.
