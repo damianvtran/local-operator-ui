@@ -27,6 +27,12 @@ import { build } from "esbuild";
  *
  * The second case drops the steer entirely: a plain background turn produces
  * the same gap, which is what proves the steer incidental.
+ *
+ * A THIRD SHAPE SITS AT THE FOOT OF THIS FILE (#876): the reopen whose cached
+ * block sits hours BEHIND a journal-tail page. The seam there is behind the
+ * page rather than in front of it, the page itself is correct, and the cases
+ * assert the reads the closure costs beside the rows it must produce — see
+ * their own block comment.
  */
 
 // `zustand/middleware` reaches for localStorage at import time.
@@ -1227,6 +1233,137 @@ test("an empty journal-tail snapshot still reads its one page", async () => {
 	await pump();
 	assert.equal(historyReads(), 1, "empty means reconcile through /history");
 	assert.deepEqual(panel.ids(), rows.map(recordIdOf));
+});
+
+/*
+ * #876: THE REOPEN WHOSE CACHED BLOCK SITS BEHIND THE JOURNAL-TAIL PAGE.
+ *
+ * The reported session: this window had shown the conversation (its paint
+ * cache held the rows up to record N), the reader spent hours elsewhere while
+ * the conversation advanced (N+1.. became durable), and the return arrived as
+ * a journal-tail snapshot — `cold_reason` present, the page read from the
+ * journal's tail, its newest row past the published cursor. The page is
+ * correct and the cache is correct, and the hours between them were neither:
+ * the gate deferred the reconcile ("the page IS the journal tail") without
+ * asking whether the page CONNECTS to what the pane holds, and the read that
+ * would have closed the seam never happened.
+ *
+ * The driver below runs that sequence through the shipped hook: open, paint,
+ * leave (the unmount is what writes the paint), advance, return. The cases
+ * assert on the transcript — every held row and every row written while away,
+ * in journal order, no duplicates — and on the reads the closure costs, so
+ * the companion case refuses a fix that reads for a page that already
+ * connects.
+ */
+const REOPEN_TOTAL = 400;
+const REOPEN_PAGE = SNAPSHOT_PAGE;
+
+/** Rows N+1..M in the same journal shape `longConversation` builds. */
+function grow(transcript, from, to) {
+	for (let i = from; i <= to; i++) {
+		transcript.rows.push(
+			i % 3 === 1
+				? userRow(`r${i}`, 100 + i, `User row ${i}`)
+				: i % 3 === 2
+					? assistantRow(`r${i}`, 100 + i, `Assistant row ${i}`)
+					: toolRow(`r${i}`, 100 + i, `call-${i}`, "read", `output ${i}`),
+		);
+	}
+}
+
+async function driveCachedReopen({ away }) {
+	const base = longConversation({ awayRows: 0, total: REOPEN_TOTAL });
+	const transcript = makeTranscript(base.rows);
+	reset({ transcript });
+
+	const runtime = makeRuntime();
+	let sessionId = SESSION_A;
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(sessionId, Boolean(sessionId));
+		return handle;
+	};
+	runtime.rerender();
+	assert.equal(subscriptions.length, 1, "the panel subscribes on mount");
+
+	// Visit 1: a journal-tail page (the modern owner's shape), the published
+	// cursor behind it — the open that paints the tail without a second read.
+	const firstPage = transcript.tail(REOPEN_PAGE);
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: transcript.rows[transcript.rows.length - REOPEN_PAGE - 1].id,
+			entries: firstPage.entries,
+			liveEvents: [],
+			coldReason: null,
+		}),
+	);
+	await pump();
+	assert.deepEqual(
+		ids(handle.transcript),
+		firstPage.entries.map(recordIdOf),
+		"the first visit paints the tail page",
+	);
+	const readsAfterVisit1 = historyReads();
+
+	// Leave: the panel's identity changes, the stream closes, and the unmount's
+	// cleanup is what writes this conversation's paint. The journal advances
+	// while no stream of this client is open.
+	sessionId = SESSION_B;
+	runtime.rerender();
+	await pump();
+	assert.equal(subscriptions[0].disposed, true, "leaving closes the stream");
+	grow(transcript, REOPEN_TOTAL + 1, REOPEN_TOTAL + away);
+
+	// Return: a fresh subscription, a fresh journal-tail page, and — when the
+	// away window is wider than that page — a seam between the page and the
+	// cached block that only a read reaching back to the block can close.
+	sessionId = SESSION_A;
+	runtime.rerender();
+	deliver(openFrame(9, true));
+	deliver(
+		snapshotFrame(10, {
+			cursor: transcript.rows[transcript.rows.length - REOPEN_PAGE - 1].id,
+			entries: transcript.tail(REOPEN_PAGE).entries,
+			liveEvents: [],
+			coldReason: null,
+		}),
+	);
+	await pump();
+	return {
+		transcript,
+		painted: ids(handle.transcript),
+		reads: historyReads() - readsAfterVisit1,
+	};
+}
+
+test("a reopen whose cached block sits behind a journal-tail page still loads the rows between", async () => {
+	const { transcript, painted, reads } = await driveCachedReopen({ away: 300 });
+	assert.deepEqual(
+		painted,
+		transcript.rows.map(recordIdOf).slice(REOPEN_TOTAL - REOPEN_PAGE),
+		"every held row and every row written while away, in journal order",
+	);
+	assert.equal(
+		new Set(painted).size,
+		painted.length,
+		"and the merge duplicates nothing",
+	);
+	assert.equal(
+		reads,
+		4,
+		"the walk reads back page by page until it reaches the cached block (three pages + the block's own)",
+	);
+});
+
+test("a reopen whose journal-tail page already connects to the cached block still costs no read", async () => {
+	const { transcript, painted, reads } = await driveCachedReopen({ away: 50 });
+	assert.deepEqual(
+		painted,
+		transcript.rows.map(recordIdOf).slice(REOPEN_TOTAL - REOPEN_PAGE),
+		"the page's overlap with the cached block is the whole story",
+	);
+	assert.equal(reads, 0, "a connecting page is not re-read on the owner");
 });
 
 test("replayed events paint even when the snapshot lands in a later batch", async () => {
