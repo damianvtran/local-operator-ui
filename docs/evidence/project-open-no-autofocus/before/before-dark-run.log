@@ -1,0 +1,86 @@
+renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
+[build] current: assets 2026-10-08T21:12:56.868Z >= sources 2026-10-08T20:34:53.923Z
+[note] abandoned scratch trees
+        9 seen, 0 owned by a live pid (kept), 7 younger than 30m (kept), 2 removed: lo-renderer-driver-94307, lo-renderer-driver-96073
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080 (frame-src already lists it, media-src already lists it, img-src already lists it)
+  serve records 1 linked from /Users/damian/.local-operator/sessions/05ebc67a456f/scratchpad/project-open-before/daemon/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/project-composer-evidence
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-76059
+  frames        /Users/damian/.local-operator/sessions/05ebc67a456f/scratchpad/project-open-before/out-localOperatorDark
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-76059/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/project-composer-evidence/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown or focused
+[PASS] the theme this run photographs is the theme the app is in
+[note] focus emulation
+        Emulation.setFocusEmulationEnabled is ON over CDP (the window is never shown): document.hasFocus()=true visibilityState=visible
+[PASS] the run reads as focused through CDP focus emulation (the window is still never shown)
+[PASS] the seeded project exists on this run's daemon with at least two linked sessions
+[PASS] the projects LIST is showing the seeded row
+[PASS] the strip's box arrives on the detail page
+[PASS] project-open-first-1380x900-local-operator-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 39.5 vs 32.1 own / 237.3 other
+[note] first frame
+        scrollTop=705 scrollHeight=1784 clientHeight=868 card=373.2..571.2 (198px) textarea=449.2..483.2 (34px) naturalTop card=1046.2 textarea=1122.2 activeElement="textarea \"Message\"" :focus=true viewport=1380x900@2 | frame=project-open-first-1380x900-local-operator-dark 285294 bytes, pressed 916ms before
+[PASS] the strip starts below the fold at scrollTop 0 (the defect's precondition)
+[PASS] the page lands scrolled down with the box in view and focused (the defect this half records)
+[PASS] project-open-settled-1380x900-local-operator-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 39.6 vs 32.1 own / 237.3 other
+[note] settled frame
+        scrollTop=705 scrollHeight=1784 clientHeight=868 card=373.2..571.2 (198px) textarea=449.2..483.2 (34px) naturalTop card=1046.2 textarea=1122.2 activeElement="textarea \"Message\"" :focus=true viewport=1380x900@2 | frame=project-open-settled-1380x900-local-operator-dark stable=true toastFree=true
+[note] the sampler's trace
+        sawStrip=true at t=349ms, 4 sample(s); maxScrollTop=705; first non-zero scrollTop at t=349ms (705)
+[PASS] the settled page still shows the moved state (base)
+[PASS] the sampler saw the page move off the top
+[PASS] the strip can be reached by the page's own scrolling (a real wheel gesture)
+[PASS] the Send-to control opens its listbox
+[PASS] switching the target neither moves the page nor hands the box the keyboard
+[PASS] the pressed option names one of the seeded links
+[PASS] a real pointer press puts the caret in the strip's box
+[PASS] the typed message lands in the box that took the caret
+[PASS] project-open-typed-1380x900-local-operator-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 39.5 vs 32.1 own / 237.3 other
+[note] typed frame
+        frame=project-open-typed-1380x900-local-operator-dark stable=true
+[PASS] a pointer press of Send admits the message into the linked session's transcript (daemon read)
+        delivered (read back on attempt 1)
+[PASS] the press hands the keyboard back to the box
+[PASS] the refocus leaves the page where the reader left it
+[PASS] the All projects control is reachable by the page's own scrolling
+[PASS] All projects returns to the list
+[note] re-entry from the list (base)
+        scrollTop=705 scrollHeight=1784 clientHeight=868 card=373.2..571.2 (198px) textarea=449.2..483.2 (34px) naturalTop card=1046.2 textarea=1122.2 activeElement="textarea \"Message\"" :focus=true viewport=1380x900@2
+[PASS] the linked session's row is reachable by the page's own scrolling
+[PASS] the linked session's row was pressed
+[PASS] opening a conversation still puts the caret in the chat's composer (the control this change must not move)
+[PASS] project-open-chat-focus-1380x900-local-operator-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 39.1 vs 32.1 own / 237.3 other
+[note] chat-focus frame
+        frame=project-open-chat-focus-1380x900-local-operator-dark stable=true
+[note] returned from the chat (base)
+        scrollTop=705 scrollHeight=1784 clientHeight=868 card=373.2..571.2 (198px) textarea=449.2..483.2 (34px) naturalTop card=1046.2 textarea=1122.2 activeElement="textarea \"Message\"" :focus=true viewport=1380x900@2 hash=#/projects/78499744bc4746928cab69e723a05f64
+[PASS] no process from this run outlived its boot
+
+frames: project-open-chat-focus-1380x900-local-operator-dark.png, project-open-first-1380x900-local-operator-dark.png, project-open-settled-1380x900-local-operator-dark.png, project-open-typed-1380x900-local-operator-dark.png
+frames directory: /Users/damian/.local-operator/sessions/05ebc67a456f/scratchpad/project-open-before/out-localOperatorDark
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-76059/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
