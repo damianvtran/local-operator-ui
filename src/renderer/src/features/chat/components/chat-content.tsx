@@ -1771,6 +1771,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							identity={identity}
 							deviceSlot={deviceSlot}
 							renameSessionId={renameSessionId}
+							/*
+							 * THE COPY-SESSION-ID READ (#893): the same canonical id this component already
+							 * carries as its own `sessionId` prop, passed on unchanged so the header's
+							 * overflow menu copies what the pane is showing. Undefined on a draft, where
+							 * the item is simply not drawn.
+							 */
+							sessionId={sessionId}
 							onOpenOptions={onOpenOptions}
 							runDetails={runDetails}
 							/*

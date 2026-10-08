@@ -799,7 +799,8 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				 * The CONTENT is the chat surface's (`InPanelRailHost`), portaled in: the
 				 * rail's inputs live below the shell. The host's own ground is `surface`
 				 * (chrome, the sidebar's rung) so the strip is never a hole while the
-				 * portal is empty; the leading hairline is the rail's.
+				 * portal is empty; the rail draws no rule of its own - its leading edge is
+				 * the tone step, pinned by `scripts/pane-slot-ground.test.mjs`.
 				 */}
 				<div
 					ref={setRailHost}

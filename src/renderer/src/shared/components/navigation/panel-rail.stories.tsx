@@ -17,7 +17,7 @@ import { PanelRailFrame } from "./panel-rail-frame";
  * the marks: the run trigger's two dot inks, the browser badge at one and at the cap,
  * the console blip in both of its inks, the canvas files dot, each item lit, and the
  * draft route where two of the four are absent. The left half of every frame is the
- * slot's own rung (`elevated`), so the rail's leading hairline and the lit item's
+ * slot's own rung (`elevated`), so the rail's leading edge and the lit item's
  * bar are judged against the ground they really meet.
  *
  * THE STORE IS SET, NOT ASSUMED, for the reason every pane story sets its flags:
