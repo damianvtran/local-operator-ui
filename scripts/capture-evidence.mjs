@@ -5346,6 +5346,43 @@ export const STORIES = [
 			},
 		},
 	],
+	/*
+	 * #868, REVIEW R2: THE SAME ARM AT THE REPORTER'S WINDOW WIDTH. The sidebar's
+	 * yield to the canvas family (`resolveSidebarLayout`'s last argument) only acts
+	 * in 1024-1139px, so the 1280px rows above cannot show it: with the drawer's
+	 * flag stale on a draft, a reader that trusts the bare flag still collapses the
+	 * docked sidebar to the 56px strip there. The claim is read at shutter time -
+	 * the sidebar is DOCKED (the conversation column starts past the 56px strip) and
+	 * the released slot is as in the rows above. Its BEFORE half is
+	 * `slot-release-before/asks-on-draft-1024/`, taken by the same swap recipe
+	 * (three modules, since the shell is the reader this pair is about).
+	 */
+	[
+		"shell-app-shell--chat-dock-asks-on-draft",
+		1024,
+		768,
+		{
+			dir: "asks-on-draft-1024",
+			expect: {
+				expression: `(() => {
+					const lane = document.querySelector("[data-titlebar-lane]");
+					const column = document.querySelector('[data-tour-tag="chat-column"]');
+					const row = document.querySelector('[data-tour-tag="pane-row"]');
+					const pane = document.querySelector('[data-tour-tag="canvas-dock"], [data-tour-tag="ask-drawer-slot"]');
+					if (!lane || !column || !row) return "the frame is missing the lane, the column or the row";
+					if (pane) return "a pane is mounted on a route that cannot draw one";
+					const sidebar = column.getBoundingClientRect().left;
+					if (sidebar < 200) return "the sidebar is " + sidebar + "px wide at 1024 - a flag with no pane behind it collapsed it to the strip";
+					const edge = Number(lane.getAttribute("data-slot-edge"));
+					const columnRight = column.getBoundingClientRect().right;
+					if (Math.abs(edge - columnRight) > 1) return "the lane's stop is at " + edge + ", the column's edge is " + columnRight + " - the slot kept a band";
+					return true;
+				})()`,
+				message:
+					"at 1024px with the session-scoped drawer's flag stale on a draft, the docked sidebar must stay docked and the slot must release (#868, review R2)",
+			},
+		},
+	],
 
 	/*
 	 * Settings, Application updates and info, in the state the operator reported:

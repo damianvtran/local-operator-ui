@@ -28,8 +28,8 @@ globalThis.localStorage = {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { useUiPreferencesStore, persistedUiPreferences, migrateUiPreferences, resolveRightSlotWidth, resolveRightSlotOccupied, DEFAULT_CANVAS_WIDTH, DEFAULT_RUN_PANEL_WIDTH, DEFAULT_BROWSER_PANEL_WIDTH, DEFAULT_CONSOLE_PANEL_WIDTH, RUN_PANEL_MIN_PX, BROWSER_PANEL_MIN_PX, CONSOLE_PANEL_MIN_PX } from "./src/renderer/src/shared/store/ui-preferences-store";',
-			'export { CHAT_PANE_MIN_PX, CANVAS_PANE_MIN_PX, canvasDockWidth } from "./src/renderer/src/features/chat/chat-sidebar-layout";',
+			'export { useUiPreferencesStore, persistedUiPreferences, migrateUiPreferences, resolveRightSlotWidth, resolveRightSlotOccupied, resolveRightSlotYieldsSidebar, EMPTY_RIGHT_SLOT_ROUTE, DEFAULT_CANVAS_WIDTH, DEFAULT_RUN_PANEL_WIDTH, DEFAULT_BROWSER_PANEL_WIDTH, DEFAULT_CONSOLE_PANEL_WIDTH, RUN_PANEL_MIN_PX, BROWSER_PANEL_MIN_PX, CONSOLE_PANEL_MIN_PX } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			'export { CHAT_PANE_MIN_PX, CANVAS_PANE_MIN_PX, canvasDockWidth, resolveSidebarLayout, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_COLLAPSED_WIDTH, SIDEBAR_DOCK_MIN_PX } from "./src/renderer/src/features/chat/chat-sidebar-layout";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
@@ -55,6 +55,8 @@ const {
 	migrateUiPreferences,
 	resolveRightSlotWidth,
 	resolveRightSlotOccupied,
+	resolveRightSlotYieldsSidebar,
+	EMPTY_RIGHT_SLOT_ROUTE,
 	DEFAULT_CANVAS_WIDTH,
 	DEFAULT_RUN_PANEL_WIDTH,
 	DEFAULT_BROWSER_PANEL_WIDTH,
@@ -65,6 +67,10 @@ const {
 	CHAT_PANE_MIN_PX,
 	CANVAS_PANE_MIN_PX,
 	canvasDockWidth,
+	resolveSidebarLayout,
+	SIDEBAR_DEFAULT_WIDTH,
+	SIDEBAR_COLLAPSED_WIDTH,
+	SIDEBAR_DOCK_MIN_PX,
 } = mod;
 
 /** The store's state with the shared width set to `width` and one pane open. */
@@ -288,6 +294,134 @@ test("the drawable half is untouched: a pane the route mounts still holds the sl
 			persistedUiPreferences(useUiPreferencesStore.getState()),
 		false,
 	);
+});
+
+test("publishing facts that did not move wakes nobody and writes nothing (#868, review R1)", () => {
+	/*
+	 * The publisher re-runs for its own reasons (a render, a frame of a live
+	 * run), so the setter's contract is that an unchanged fact set is invisible:
+	 * zustand only skips a set whose updater returns the SAME state object, and
+	 * the first spelling of this returned `{}` - five identical publishes were
+	 * five notifications and five localStorage writes.
+	 */
+	const store = useUiPreferencesStore;
+	const facts = { mounted: true, runDetails: true, session: true };
+	// Start from a known, different answer so the first publish is a real move.
+	store.getState().setRightSlotRoute(EMPTY_RIGHT_SLOT_ROUTE);
+	let notifications = 0;
+	const unsubscribe = store.subscribe(() => {
+		notifications += 1;
+	});
+	// `persist` writes through the storage object's `setItem`, which lands in
+	// `memory.set`; counting there sees exactly the blob rewrites.
+	let writes = 0;
+	const realSet = memory.set.bind(memory);
+	memory.set = (key, value) => {
+		writes += 1;
+		return realSet(key, value);
+	};
+	try {
+		store.getState().setRightSlotRoute(facts);
+		assert.equal(notifications, 1, "the first publish is a real move");
+		const afterFirst = { notifications, writes };
+		const published = store.getState().rightSlotRoute;
+		for (let i = 0; i < 5; i += 1) {
+			store.getState().setRightSlotRoute({ ...facts });
+		}
+		assert.equal(
+			notifications - afterFirst.notifications,
+			0,
+			"an identical publish woke a subscriber",
+		);
+		assert.equal(
+			writes - afterFirst.writes,
+			0,
+			"an identical publish rewrote the persisted blob",
+		);
+		assert.equal(
+			store.getState().rightSlotRoute,
+			published,
+			"the facts object was replaced by an identical one",
+		);
+		// And a real move still gets through, so the guard is not a stuck setter.
+		store.getState().setRightSlotRoute({ ...facts, runDetails: false });
+		assert.equal(notifications - afterFirst.notifications, 1);
+		assert.equal(store.getState().rightSlotRoute.runDetails, false);
+	} finally {
+		memory.set = realSet;
+		unsubscribe();
+		store.getState().setRightSlotRoute(EMPTY_RIGHT_SLOT_ROUTE);
+	}
+});
+
+test("a flag that outlived its route does not collapse the docked sidebar (#868, review R2)", () => {
+	/*
+	 * The reporter's window is 1024 wide, inside the band (1024-1139 at the
+	 * default 260px sidebar) where a docked sidebar and a DOCKING canvas cannot
+	 * both keep their floors, so a claimed canvas/asks pane steps the sidebar down
+	 * to the strip. That step is right for a pane that is drawn and wrong for a
+	 * flag with no pane behind it - the 1280px frames cannot show the difference.
+	 */
+	const layoutFor = (width, state) =>
+		resolveSidebarLayout(
+			width,
+			false,
+			false,
+			SIDEBAR_DEFAULT_WIDTH,
+			resolveRightSlotYieldsSidebar(state),
+		);
+	// The control: what the bare flag did. If this stops collapsing, the band
+	// moved and the cells below no longer discriminate.
+	assert.equal(
+		resolveSidebarLayout(1024, false, false, SIDEBAR_DEFAULT_WIDTH, true).mode,
+		"strip",
+	);
+	for (const width of [SIDEBAR_DOCK_MIN_PX, 1100, 1139]) {
+		// Stale: the session drawer's flag on a draft, and a canvas flag on a
+		// route with no chat surface. Both must leave the sidebar docked.
+		for (const stale of [
+			claimed("ask", route(true, false, false)),
+			claimed("canvas", route(false, false, false)),
+		]) {
+			const layout = layoutFor(width, stale);
+			assert.equal(
+				layout.mode,
+				"docked",
+				`${width}px collapsed on a stale flag`,
+			);
+			assert.equal(layout.width, SIDEBAR_DEFAULT_WIDTH);
+		}
+		// Drawn: the same claims on a route that can draw them yield exactly as
+		// the bare flag did before.
+		for (const drawn of [
+			claimed("canvas", route(true, false, false)),
+			claimed("ask", route(true, false, true)),
+			// the fleet scope's home is the shell: drawn on every route
+			claimed("ask", route(false, false, false), "fleet"),
+		]) {
+			const layout = layoutFor(width, drawn);
+			assert.equal(
+				layout.mode,
+				"strip",
+				`${width}px did not yield to a drawn pane`,
+			);
+			assert.equal(layout.width, SIDEBAR_COLLAPSED_WIDTH);
+		}
+	}
+	// Outside the band nothing yields, drawn or not: 1140 keeps both floors.
+	assert.equal(
+		layoutFor(1140, claimed("canvas", route(true, false, false))).mode,
+		"docked",
+	);
+	// The run panel, the browser and the console never yielded the sidebar, and
+	// still do not - the answer is the canvas family's, not "any pane".
+	for (const pane of ["run", "browser", "console"]) {
+		assert.equal(
+			resolveRightSlotYieldsSidebar(claimed(pane, route(true, true, true))),
+			false,
+			`${pane} started yielding the sidebar`,
+		);
+	}
 });
 
 test("the store's setter and reset move the one shared value", () => {

@@ -666,7 +666,7 @@ const ConversationColumn: FC<{
  * inline rather than the store's constants because the before half of an
  * evidence pair swaps `origin/main`'s store module under these stories; an
  * import the old module lacks would fail that bundle (see
- * `docs/evidence/right-slot-release/README.md`).
+ * `docs/evidence/shell-app-shell/slot-release-before/README.md`).
  */
 const DRAWABLE_ROUTE = {
 	mounted: true,

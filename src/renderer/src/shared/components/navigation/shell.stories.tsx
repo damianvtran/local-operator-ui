@@ -809,7 +809,8 @@ const INERT_MONITOR_CONTROLS: MonitorControls = {
 const ConversationStandIn = ({
 	details,
 }: {
-	details: ReturnType<typeof deriveRunDetails>;
+	/** Null on a draft: the app's draft has no run details, so no trigger. */
+	details: ReturnType<typeof deriveRunDetails> | null;
 }) => (
 	<div
 		data-tour-tag="chat-column"
@@ -865,7 +866,7 @@ const useMacChrome = () => {
  * The route facts, inline rather than the store's `EMPTY_RIGHT_SLOT_ROUTE`
  * constant, DELIBERATELY: the before half of this change's evidence pair swaps
  * IF `origin/main`'s store module under these stories (see
- * `docs/evidence/right-slot-release/README.md`), and an import the old module
+ * `docs/evidence/shell-app-shell/slot-release-before/README.md`), and an import the old module
  * does not export would fail that bundle. The extra `rightSlotRoute` key is
  * inert on the old store - its reader never looks at it - which is exactly what
  * makes the pair the same scene under two readers.
@@ -903,7 +904,13 @@ const ChatShellFrame: FC<{
 	 * frame; the dock now draws at the app's number for the row it is in.
 	 */
 	pane?: (slotWidth: number) => ReactNode;
-	details: ReturnType<typeof deriveRunDetails>;
+	/**
+	 * The conversation's run details, or null for a DRAFT - which has none in the
+	 * app, so `RunDetailsTrigger` renders nothing there. The draft arms pass null
+	 * so a frame of the released slot does not show a pressed trigger for a pane
+	 * that cannot open (design review round 1, D2).
+	 */
+	details: ReturnType<typeof deriveRunDetails> | null;
 }> = ({ pane, details }) => {
 	useFixtureFetch();
 	useMacChrome();
@@ -1257,7 +1264,8 @@ export const ChatDockRunPanelOnDraft: Story = {
 			};
 		}, [rightSlotWidth]);
 
-		return <ChatShellFrame details={deriveRunDetails(runFixtures.settled())} />;
+		// A draft has no run details, so the header draws no trigger (D2).
+		return <ChatShellFrame details={null} />;
 	},
 };
 
@@ -1281,6 +1289,6 @@ export const ChatDockAsksOnDraft: Story = {
 			};
 		}, [rightSlotWidth]);
 
-		return <ChatShellFrame details={deriveRunDetails(runFixtures.settled())} />;
+		return <ChatShellFrame details={null} />;
 	},
 };

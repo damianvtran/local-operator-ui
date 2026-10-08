@@ -1177,14 +1177,32 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * re-render lands before the frame.
 		 */
 		const setRightSlotRoute = useUiPreferencesStore((s) => s.setRightSlotRoute);
+		/*
+		 * THE BOOLEANS, NOT THE OBJECT, ARE THE EFFECT'S KEYS (agent review round 1,
+		 * R1): `runDetails` is a `useMemo` over the canonical frame and takes a new
+		 * identity on every `frontend.update`, so keying on it re-published
+		 * identical facts on every frame of a live run. The facts are two booleans,
+		 * and a boolean only changes when the answer does.
+		 */
+		const hasRunDetails = Boolean(runDetails);
+		const hasSession = Boolean(sessionId);
 		useLayoutEffect(() => {
 			setRightSlotRoute({
 				mounted: true,
-				runDetails: Boolean(runDetails),
-				session: Boolean(sessionId),
+				runDetails: hasRunDetails,
+				session: hasSession,
 			});
-		}, [setRightSlotRoute, runDetails, sessionId]);
-		// The unmount reset: a route with no chat surface draws none of the five.
+		}, [setRightSlotRoute, hasRunDetails, hasSession]);
+		/*
+		 * The unmount reset: a route with no chat surface draws none of the five.
+		 *
+		 * IT RESETS UNCONDITIONALLY, which assumes ONE ChatContent per window
+		 * (`SessionPanel key={identity}` is the only mount, and React runs the old
+		 * tree's layout cleanup before the new tree's publish, so a swap ends
+		 * published). A second concurrent instance would have to compare the store's
+		 * facts with its own before resetting, or its unmount would release the slot
+		 * under the other one.
+		 */
 		useLayoutEffect(
 			() => () => setRightSlotRoute(EMPTY_RIGHT_SLOT_ROUTE),
 			[setRightSlotRoute],
