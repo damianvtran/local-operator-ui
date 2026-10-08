@@ -28,7 +28,7 @@ globalThis.localStorage = {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { useUiPreferencesStore, persistedUiPreferences, migrateUiPreferences, resolveRightSlotWidth, resolveRightSlotOccupied, resolveRightSlotYieldsSidebar, EMPTY_RIGHT_SLOT_ROUTE, DEFAULT_CANVAS_WIDTH, DEFAULT_RUN_PANEL_WIDTH, DEFAULT_BROWSER_PANEL_WIDTH, DEFAULT_CONSOLE_PANEL_WIDTH, RUN_PANEL_MIN_PX, BROWSER_PANEL_MIN_PX, CONSOLE_PANEL_MIN_PX } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			'export { useUiPreferencesStore, persistedUiPreferences, migrateUiPreferences, resolveRightSlotWidth, resolveRightSlotOccupied, resolveRightSlotYieldsSidebar, resolveDrawnRightSlotPane, EMPTY_RIGHT_SLOT_ROUTE, DEFAULT_CANVAS_WIDTH, DEFAULT_RUN_PANEL_WIDTH, DEFAULT_BROWSER_PANEL_WIDTH, DEFAULT_CONSOLE_PANEL_WIDTH, RUN_PANEL_MIN_PX, BROWSER_PANEL_MIN_PX, CONSOLE_PANEL_MIN_PX } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { CHAT_PANE_MIN_PX, CANVAS_PANE_MIN_PX, canvasDockWidth, resolveSidebarLayout, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_COLLAPSED_WIDTH, SIDEBAR_DOCK_MIN_PX } from "./src/renderer/src/features/chat/chat-sidebar-layout";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -56,6 +56,7 @@ const {
 	resolveRightSlotWidth,
 	resolveRightSlotOccupied,
 	resolveRightSlotYieldsSidebar,
+	resolveDrawnRightSlotPane,
 	EMPTY_RIGHT_SLOT_ROUTE,
 	DEFAULT_CANVAS_WIDTH,
 	DEFAULT_RUN_PANEL_WIDTH,
@@ -376,7 +377,7 @@ test("a flag that outlived its route does not collapse the docked sidebar (#868,
 		resolveSidebarLayout(1024, false, false, SIDEBAR_DEFAULT_WIDTH, true).mode,
 		"strip",
 	);
-	for (const width of [SIDEBAR_DOCK_MIN_PX, 1100, 1139]) {
+	for (const width of [SIDEBAR_DOCK_MIN_PX, 1100, 1139, 1183]) {
 		// Stale: the session drawer's flag on a draft, and a canvas flag on a
 		// route with no chat surface. Both must leave the sidebar docked.
 		for (const stale of [
@@ -408,9 +409,10 @@ test("a flag that outlived its route does not collapse the docked sidebar (#868,
 			assert.equal(layout.width, SIDEBAR_COLLAPSED_WIDTH);
 		}
 	}
-	// Outside the band nothing yields, drawn or not: 1140 keeps both floors.
+	// Outside the band nothing yields, drawn or not: 1184 keeps both floors (the
+	// band is 1024-1183 since the 44px panel rail joined the row's deficit, #872).
 	assert.equal(
-		layoutFor(1140, claimed("canvas", route(true, false, false))).mode,
+		layoutFor(1184, claimed("canvas", route(true, false, false))).mode,
 		"docked",
 	);
 	// The run panel, the browser and the console never yielded the sidebar, and
@@ -634,4 +636,76 @@ test("the asks drawer wears the canvas family's width, and takes the slot alone"
 		"the drawer must not be persisted",
 	);
 	assert.equal(typeof persisted.isCanvasOpen, "boolean");
+});
+
+test("the panel rail's lit pane is the DRAWN pane, built from the same two inputs (#872)", () => {
+	/*
+	 * `resolveDrawnRightSlotPane` answers WHICH pane is on screen where
+	 * `resolveRightSlotOccupied` answers WHETHER one is. A claimed-but-undrawable
+	 * pane must answer null (a lit rail item is a statement about what is on screen),
+	 * and the asks drawer is an answer of its own - "ask" - that the rail reads as
+	 * "light none of my four".
+	 */
+	for (const pane of ["run", "browser", "console", "canvas"]) {
+		assert.equal(
+			resolveDrawnRightSlotPane(claimed(pane, route(true, true, true))),
+			pane,
+			`${pane} is drawn on a route that mounts it`,
+		);
+		/* The sibling readers agree with it on WHETHER, which is the point of one derivation. */
+		assert.equal(
+			resolveRightSlotOccupied(claimed(pane, route(true, true, true))),
+			true,
+		);
+		assert.equal(
+			resolveDrawnRightSlotPane(claimed(pane, route(false, false, false))),
+			null,
+			`${pane} claimed on a route with no chat surface is not drawn`,
+		);
+	}
+	assert.equal(
+		resolveDrawnRightSlotPane(claimed("run", route(true, false, false))),
+		null,
+		"the run panel on a draft has no run details to draw",
+	);
+	/* The other three mount whenever the chat surface does, with or without run details. */
+	assert.equal(
+		resolveDrawnRightSlotPane(claimed("browser", route(true, false, false))),
+		"browser",
+	);
+	assert.equal(
+		resolveDrawnRightSlotPane(claimed("ask", route(true, false, true))),
+		"ask",
+	);
+	assert.equal(
+		resolveDrawnRightSlotPane(claimed("ask", route(true, false, false))),
+		null,
+		"the session drawer on a draft is not drawn",
+	);
+	assert.equal(
+		resolveDrawnRightSlotPane(
+			claimed("ask", route(false, false, false), "fleet"),
+		),
+		"ask",
+		"the fleet drawer's home is the shell: drawn on every route",
+	);
+	assert.equal(
+		resolveDrawnRightSlotPane(claimed("none", route(true, true, true))),
+		null,
+	);
+	/* Whatever it answers, WHETHER is the occupied reader's answer. */
+	for (const pane of ["run", "browser", "console", "canvas", "ask", "none"]) {
+		for (const r of [
+			route(true, true, true),
+			route(true, false, false),
+			route(false, false, false),
+		]) {
+			const state = claimed(pane, r);
+			assert.equal(
+				resolveDrawnRightSlotPane(state) !== null,
+				resolveRightSlotOccupied(state),
+				`${pane}: the two readers disagree about whether the slot is occupied`,
+			);
+		}
+	}
 });

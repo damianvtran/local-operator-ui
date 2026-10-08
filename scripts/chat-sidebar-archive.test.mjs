@@ -615,7 +615,7 @@ test("the header's menu is the session's actions, and its delete only ASKS", () 
 	const menu = between(
 		HEADER,
 		"<DropdownMenuTrigger asChild>",
-		"<RunDetailsTrigger",
+		"asksButtonShown && (",
 	);
 	// Fail-closed and whole: with neither capability there is no trigger at all,
 	// rather than a menu advertising items that do nothing.

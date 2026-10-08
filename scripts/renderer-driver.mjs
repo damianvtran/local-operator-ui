@@ -17692,9 +17692,15 @@ async function sceneApprovalBadges(cdp) {
 		);
 		if (conversation !== null) {
 			reading(
-				"a quiet conversation's header still offers its trigger, with no count in its name",
+				/*
+				 * #872: the trigger is the PANEL RAIL's browser item now (the selector is
+				 * the kept `data-tour-tag`, so the read still lands), and its accessible
+				 * name is the stable noun - the open/closed state is `aria-pressed`'s.
+				 */
+				"a quiet conversation's panel rail still offers its browser item, with no count in its name",
 				quiet.headerTrigger !== null &&
-					quiet.headerTriggerName === "Open browser",
+					quiet.headerTriggerName === "Browser" &&
+					quiet.headerTriggerPressed === "false",
 				JSON.stringify({
 					trigger: quiet.headerTrigger,
 					name: quiet.headerTriggerName,
@@ -17825,18 +17831,22 @@ async function sceneApprovalBadges(cdp) {
 			const withPane = await readApprovalBadges(cdp);
 			note("badges (three pending, pane open)", JSON.stringify(withPane));
 			reading(
-				"the trigger and its badge are still on the header while the pane is open",
+				"the browser item and its badge are still on the panel rail while the pane is open",
 				withPane.headerTrigger !== null &&
 					Number(withPane.headerBadgeText) === expectedHeader,
 				`trigger ${JSON.stringify(withPane.headerTrigger)}, badge ${JSON.stringify(withPane.headerBadgeText)} — the state the operator reported as a missing badge`,
 			);
 			reading(
-				"and the trigger now says it would CLOSE the pane, so it is never a control that does nothing",
-				withPane.headerTriggerName ===
-					(expectedHeader > 0
-						? `Close browser, ${expectedHeader} waiting`
-						: "Close browser"),
-				JSON.stringify(withPane.headerTriggerName),
+				"and the item is pressed with a stable name, so it is never a control that does nothing",
+				withPane.headerTriggerPressed === "true" &&
+					withPane.headerTriggerName ===
+						(expectedHeader > 0
+							? `Browser, ${expectedHeader} waiting`
+							: "Browser"),
+				JSON.stringify({
+					name: withPane.headerTriggerName,
+					pressed: withPane.headerTriggerPressed,
+				}),
 			);
 			await captureSettled(cdp, `approval-badges-pane-open-${suffix}`);
 			/*
@@ -17871,7 +17881,16 @@ async function sceneApprovalBadges(cdp) {
 			 * the 1380 case, the 900 case and the 800 floor.
 			 */
 			reading(
-				"and every control still paints inside the row, so no trigger is pushed under the pane",
+				/*
+				 * #872: the four panel triggers left this row for the panel rail, so what
+				 * this reading covers now is the row's REMAINING controls (the Asks
+				 * trigger, the `...` menu). It is no longer the shed ladder's proof that a
+				 * panel trigger is not pushed under the pane: the rail is a sibling of the
+				 * pane, not a member of the row, and its own geometry is asserted in the
+				 * shell rows of `capture-evidence.mjs`. This scene has not been re-run
+				 * against a built app since the move.
+				 */
+				"and every control the header still has paints inside the row",
 				withPane.headerBox !== null &&
 					withPane.headerControls.length > 0 &&
 					withPane.headerControls.every(
@@ -18354,6 +18373,7 @@ function readApprovalBadges(cdp) {
 			headerBadge: box(headerBadge),
 			headerBadgeText: headerBadge ? headerBadge.textContent.trim() : null,
 			headerTriggerName: trigger ? trigger.getAttribute('aria-label') : null,
+			headerTriggerPressed: trigger ? trigger.getAttribute('aria-pressed') : null,
 			headerClusterRight: box(cluster) ? box(cluster).right : null,
 			/*
 			 * EVERY CONTROL IN THE ROW, with the box it paints, so a narrow window can say

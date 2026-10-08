@@ -2,6 +2,7 @@ import "../../../styles/index.css";
 // The shim installs window.api for every story here.
 import "@features/chat/components/story-electron-shim";
 import { AgentsPage } from "@features/agents/components/agents-page";
+import { BrowserPane } from "@features/browser/components/browser-pane";
 import { AskDrawer } from "@features/chat/components/asks/ask-drawer";
 import { Canvas } from "@features/chat/components/canvas";
 import { ChatHeader } from "@features/chat/components/chat-header";
@@ -15,6 +16,7 @@ import { RunPanel } from "@features/chat/components/run-details/run-panel";
 import type { McpRemedyControls } from "@features/chat/components/run-details/use-mcp-remedy";
 import type { MonitorControls } from "@features/chat/components/run-details/use-monitor-controls";
 import type { CanvasDocument } from "@features/chat/types/canvas";
+import { ConsolePane } from "@features/console/components/console-pane";
 import { PROVIDER_ROWS } from "@features/settings/components/setting-combobox.fixtures";
 import { SettingsPage } from "@features/settings/components/settings-page";
 import type { ReusableProfile } from "@shared/api/local-operator/profile-hooks";
@@ -25,6 +27,7 @@ import { apiConfig } from "@shared/config/api-config";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
+	resolveRightSlotOccupied,
 	resolveRightSlotWidth,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
@@ -42,6 +45,7 @@ import {
 } from "../../../../../main/update-check-verdict";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
 import type { PendingAsk } from "../../../../../shared/desktop-session-contract";
+import { ShellStoryRail } from "./shell-story-rail";
 
 /**
  * The app shell: the rail, the settings surface and the agents surface, in one
@@ -531,8 +535,12 @@ const useFixtureFetch = () => {
  * naming. The two pages this frames read the route through hooks that fall
  * back to their own stores, which is what `useSelectedAgent` below sets.
  */
-const ShellFrame: FC<{ children: ReactNode }> = ({ children }) => {
+const ShellFrame: FC<{ children: ReactNode; windows?: boolean }> = ({
+	children,
+	windows = false,
+}) => {
 	useFixtureFetch();
+	useWindowsChromeSimulation(windows);
 
 	/*
 	 * The rail is drawn in the composition `app.tsx` draws it in, because the
@@ -808,31 +816,69 @@ const INERT_MONITOR_CONTROLS: MonitorControls = {
  */
 const ConversationStandIn = ({
 	details,
+	railProps = {},
+	asksCount = 0,
 }: {
 	/** Null on a draft: the app's draft has no run details, so no trigger. */
 	details: ReturnType<typeof deriveRunDetails> | null;
-}) => (
-	<div
-		data-tour-tag="chat-column"
-		className="w-0 min-w-[480px] flex-1 flex h-full min-h-0 flex-col overflow-hidden"
-	>
-		<ChatHeader
-			agentName="Core"
-			description="Invoices workspace · on this machine"
-			onOpenOptions={() => undefined}
-			runDetails={details}
-			mcpServers={deriveMcpServers([], {}, [])}
-			listOnScreen={false}
-			readerChildId={null}
-		/>
-		<div className="flex min-h-0 grow flex-col gap-4 overflow-hidden bg-canvas p-6">
-			<p className="text-body text-ink">
-				Three customers are outstanding: Northwind, Contoso and Fabrikam, for
-				$6,290 in total. The write-up is open in the canvas.
-			</p>
+	railProps?: {
+		browserAttentionCount?: number;
+		consoleUnseenCount?: number;
+		fileCount?: number;
+	};
+	/** The Asks trigger's count, for the Windows/Linux simulation's header. */
+	asksCount?: number;
+}) => {
+	/*
+	 * The header's trailing reservation, derived from the store exactly as
+	 * `chat-content` derives it: the spacer is drawn while no pane holds the slot.
+	 */
+	const occupied = useUiPreferencesStore(resolveRightSlotOccupied);
+	/*
+	 * PROPS THE RAIL TREE'S HEADER DOES NOT DECLARE, spread loosely on purpose (the
+	 * same device #868's before half used for `rightSlotRoute`). On this tree they
+	 * are inert - `ChatHeader` reads none of them, the four triggers having moved to
+	 * the rail - but the BEFORE half of this change's evidence swaps `origin/main`'s
+	 * `chat-header.tsx` under these arms (see
+	 * `docs/evidence/shell-app-shell/panel-rail-before/README.md`), and that header
+	 * reads exactly these to draw its four triggers and their marks. One scene under
+	 * two readers is what makes the pair a comparison.
+	 */
+	const legacyHeaderProps: Record<string, unknown> = {
+		mcpServers: deriveMcpServers([], {}, []),
+		listOnScreen: false,
+		readerChildId: null,
+		fileCount: railProps.fileCount ?? 0,
+		browserAttentionCount: railProps.browserAttentionCount ?? 0,
+		consoleUnseenCount: railProps.consoleUnseenCount ?? 0,
+		consoleUnseenPulsing: false,
+		reserveTrailingChrome: !occupied,
+	};
+	return (
+		<div
+			data-tour-tag="chat-column"
+			className="w-0 min-w-[480px] flex-1 flex h-full min-h-0 flex-col overflow-hidden"
+		>
+			<ChatHeader
+				agentName="Core"
+				description="Invoices workspace · on this machine"
+				onOpenOptions={() => undefined}
+				onToggleBrowser={() => undefined}
+				onOpenConsole={details ? () => undefined : undefined}
+				onToggleAsks={asksCount > 0 ? () => undefined : undefined}
+				asksAttentionCount={asksCount}
+				runDetails={details}
+				{...legacyHeaderProps}
+			/>
+			<div className="flex min-h-0 grow flex-col gap-4 overflow-hidden bg-canvas p-6">
+				<p className="text-body text-ink">
+					Three customers are outstanding: Northwind, Contoso and Fabrikam, for
+					$6,290 in total. The write-up is open in the canvas.
+				</p>
+			</div>
 		</div>
-	</div>
-);
+	);
+};
 
 /**
  * The chrome state the app would have on the operator's own platform.
@@ -846,8 +892,9 @@ const ConversationStandIn = ({
  * `integrated`, `mac`, leading traffic lights, no trailing controls, which is the
  * 32px strip the dock's ground has to be continuous with.
  */
-const useMacChrome = () => {
+const useMacChrome = (enabled = true) => {
 	useLayoutEffect(() => {
+		if (!enabled) return;
 		const root = document.documentElement;
 		root.dataset.chromeMode = "integrated";
 		root.dataset.chromePlatform = "mac";
@@ -859,7 +906,7 @@ const useMacChrome = () => {
 			delete root.dataset.chromeLeading;
 			delete root.dataset.chromeTrailing;
 		};
-	}, []);
+	}, [enabled]);
 };
 
 /*
@@ -892,6 +939,73 @@ const DRAWABLE_ROUTE = {
 	session: true,
 } as const;
 
+/**
+ * THE WINDOWS/LINUX CAPTION-BUTTON STATE, SIMULATED - NOT PHOTOGRAPHED (#872).
+ *
+ * The OS draws its caption buttons into the window's top-right corner only on
+ * Windows and on a trailing Linux layout, and this host is macOS: no frame taken
+ * here can show them. What a frame CAN show is the layout's answer to them, because
+ * everything the app does about them is CSS reading three document facts - the
+ * integrated/trailing attributes and the two insets `styles/index.css` derives from
+ * `env(titlebar-area-*)` - which Storybook has no WCO rect to feed. So this sets the
+ * attributes and OVERRIDES the two insets with the values a default Windows window
+ * reports (a ~138px by 40px caption area, `src/shared/window-chrome.ts`). The frame
+ * is the layout under that input; it is not the buttons, which are Electron's own
+ * views and cannot be drawn by a story. Every frame that uses it is filed as a
+ * simulation in the evidence README.
+ */
+const useWindowsChromeSimulation = (enabled: boolean) => {
+	useLayoutEffect(() => {
+		if (!enabled) return;
+		const root = document.documentElement;
+		root.dataset.chromeMode = "integrated";
+		root.dataset.chromePlatform = "win";
+		root.dataset.chromeLeading = "false";
+		root.dataset.chromeTrailing = "true";
+		root.style.setProperty("--chrome-inset-end", "138px");
+		root.style.setProperty("--chrome-inset-end-h", "40px");
+		/*
+		 * A LABELLED BLOCK WHERE THE BUTTONS WOULD BE (design round 1, D6): the
+		 * clearance is a claim about a region no frame can otherwise show, so the
+		 * region is drawn - 138 x 40, top-right, translucent, named - and the 94px
+		 * reservation and the rail's top strut read against it. It paints nothing the
+		 * app draws (the OS owns those pixels) and it is `pointer-events: none`, so it
+		 * cannot change a measurement; it exists only in a simulation frame.
+		 */
+		const block = document.createElement("div");
+		block.setAttribute("data-simulated-caption-buttons", "");
+		block.setAttribute("aria-hidden", "true");
+		Object.assign(block.style, {
+			position: "fixed",
+			top: "0",
+			right: "0",
+			width: "138px",
+			height: "40px",
+			zIndex: "2147483647",
+			pointerEvents: "none",
+			background: "rgba(255, 0, 128, 0.18)",
+			outline: "1px dashed rgba(255, 0, 128, 0.9)",
+			outlineOffset: "-1px",
+			font: "600 9px/40px system-ui, sans-serif",
+			whiteSpace: "nowrap",
+			overflow: "hidden",
+			color: "rgba(255, 0, 128, 1)",
+			textAlign: "center",
+		});
+		block.textContent = "SIMULATED 138x40";
+		document.body.appendChild(block);
+		return () => {
+			block.remove();
+			root.style.removeProperty("--chrome-inset-end");
+			root.style.removeProperty("--chrome-inset-end-h");
+			delete root.dataset.chromeMode;
+			delete root.dataset.chromePlatform;
+			delete root.dataset.chromeLeading;
+			delete root.dataset.chromeTrailing;
+		};
+	}, [enabled]);
+};
+
 const ChatShellFrame: FC<{
 	/**
 	 * The dock, rendered at the width the app's own slot resolves for this frame's
@@ -911,9 +1025,20 @@ const ChatShellFrame: FC<{
 	 * that cannot open (design review round 1, D2).
 	 */
 	details: ReturnType<typeof deriveRunDetails> | null;
-}> = ({ pane, details }) => {
+	/** The rail's attention marks, for the arms that photograph them. */
+	railProps?: {
+		browserAttentionCount?: number;
+		consoleUnseenCount?: number;
+		fileCount?: number;
+	};
+	/** The Asks trigger's count; above 0 the header draws the trigger. */
+	asksCount?: number;
+	/** Render the Windows caption-button layout instead of macOS's (simulated). */
+	windows?: boolean;
+}> = ({ pane, details, railProps = {}, asksCount = 0, windows = false }) => {
 	useFixtureFetch();
-	useMacChrome();
+	useMacChrome(!windows);
+	useWindowsChromeSimulation(windows);
 
 	/*
 	 * The row the pane shares with the conversation, measured — the same quantity
@@ -955,9 +1080,14 @@ const ChatShellFrame: FC<{
 							data-tour-tag="pane-row"
 							className="flex h-full min-h-0 w-full overflow-hidden"
 						>
-							<ConversationStandIn details={details} />
+							<ConversationStandIn
+								details={details}
+								railProps={railProps}
+								asksCount={asksCount}
+							/>
 							{pane?.(slotWidth)}
 						</div>
+						<ShellStoryRail details={details} railProps={railProps} />
 					</main>
 				}
 			/>
@@ -1032,6 +1162,99 @@ export const ChatDockFiles: Story = {
 					</PaneSlot>
 				)}
 			/>
+		);
+	},
+};
+
+/**
+ * WINDOWS CAPTION CLEARANCE, SIMULATED (#872): the rail with NO pane open, so the
+ * chat header is the row that reaches the rail's left edge. The two things the
+ * change protects are both in this frame: the rail's first item starts BELOW the
+ * 40px caption area, and the header's Asks trigger stops 94px (138 - 44) short of the
+ * window's edge rather than 138, because the rail already covers 44 of the buttons'
+ * width. A simulation: the buttons themselves are Electron's views and cannot be
+ * photographed on this host.
+ */
+export const WindowsCaptionNoPane: Story = {
+	render: () => {
+		useLayoutEffect(() => {
+			useUiPreferencesStore.setState({ rightSlotRoute: DRAWABLE_ROUTE });
+			return () =>
+				useUiPreferencesStore.setState({ rightSlotRoute: EMPTY_ROUTE });
+		}, []);
+		return (
+			<ChatShellFrame
+				windows
+				asksCount={3}
+				details={deriveRunDetails(runFixtures.settled())}
+			/>
+		);
+	},
+};
+
+/**
+ * The same simulation with the browser pane OPEN: the pane's own toolbar is the row
+ * that reaches the rail, so its close control must stop 94px short of the window's
+ * edge (the rail covers the rest), not 138 (the old reservation, which pushed the
+ * close button 44px further in for nothing).
+ */
+export const WindowsCaptionPaneOpen: Story = {
+	render: () => {
+		useEmptyBridges();
+		useLayoutEffect(() => {
+			useUiPreferencesStore.setState({
+				isBrowserPaneOpen: true,
+				rightSlotRoute: DRAWABLE_ROUTE,
+			});
+			return () => {
+				useUiPreferencesStore.setState({
+					isBrowserPaneOpen: false,
+					rightSlotRoute: EMPTY_ROUTE,
+				});
+			};
+		}, []);
+		return (
+			<ChatShellFrame
+				windows
+				details={deriveRunDetails(runFixtures.settled())}
+				pane={(slotWidth) => (
+					<PaneSlot width={slotWidth} tourTag="browser-pane-slot">
+						<BrowserPane sessionId="a1b2c3d4e5f6" onClose={() => undefined} />
+					</PaneSlot>
+				)}
+			/>
+		);
+	},
+};
+
+/**
+ * WINDOWS CAPTION CLEARANCE ON A ROUTE WITH NO RAIL, SIMULATED (#872): the fleet
+ * asks drawer on settings. The rail exists only where a chat surface is mounted, so
+ * here nothing else stands at the window's edge and the drawer's toolbar is the row
+ * the OS buttons sit over: it must keep the FULL 138px reservation, not the 94px the
+ * rail's presence earns on a chat route. `chat-layout.tsx` publishes
+ * `--chrome-inset-end-pane` as the inset less the rail's actual width (0 here), and
+ * `scripts/titlebar-options.test.mjs` pins that arithmetic; this frame is the layout
+ * under it. A simulation, for the reason `useWindowsChromeSimulation` gives.
+ */
+export const WindowsCaptionFleetAsksOnSettings: Story = {
+	render: () => {
+		useLayoutEffect(() => {
+			useUiPreferencesStore.setState({
+				isAskDrawerOpen: true,
+				askDrawerScope: "fleet",
+			});
+			return () => {
+				useUiPreferencesStore.setState({
+					isAskDrawerOpen: false,
+					askDrawerScope: "session",
+				});
+			};
+		}, []);
+		return (
+			<ShellFrame windows>
+				<SettingsPage />
+			</ShellFrame>
 		);
 	},
 };
@@ -1195,6 +1418,192 @@ export const ChatDockAsks: Story = {
 			return () => {
 				useUiPreferencesStore.setState({
 					isAskDrawerOpen: false,
+					rightSlotRoute: EMPTY_ROUTE,
+				});
+			};
+		}, [rightSlotWidth]);
+
+		return (
+			<ChatShellFrame
+				details={deriveRunDetails(runFixtures.settled())}
+				pane={(slotWidth) => (
+					<PaneSlot width={slotWidth} tourTag="ask-drawer-slot">
+						<AskDrawer
+							frontend={{
+								asks: DOCK_ASKS,
+								asks_open: 2,
+								asks_truncated: false,
+							}}
+							scope="session"
+							onClose={() => undefined}
+							nowMs={ASK_NOW}
+							onAnswer={() => undefined}
+							onDecline={() => undefined}
+						/>
+					</PaneSlot>
+				)}
+			/>
+		);
+	},
+};
+
+/*
+ * #872: THE PANEL RAIL BESIDE THE TWO PANES THAT HAD NO SHELL ARM, AND THE ASKS
+ * DRAWER COVERING ONE OF THEM.
+ *
+ * The browser and the console are the slot's other two occupants and neither was
+ * photographed in the shell, so the rail's lit item was only ever shown for the
+ * canvas family and the run panel. Both arms mount the real pane at the width the
+ * app's own resolver gives it for the frame's row, with the bridge the pane reads
+ * stubbed to an EMPTY projection (no tabs, no surfaces): what these frames are a
+ * claim about is the slot and the rail, not the pane's body.
+ *
+ * THE NARROW PAIR IS THE SAME ARM AT TWO WINDOWS, not two arms: at 1192 the row
+ * is 1192 - 260 - 44 = 888 and the pane is `888 - 480` = 408; at 1180 it is 396.
+ * (The issue says 408 at 1180; the arithmetic puts it at 1192.) The capture rows
+ * carry the window sizes.
+ */
+const useEmptyBridges = () => {
+	useLayoutEffect(() => {
+		const bridge = window as unknown as { api?: Record<string, unknown> };
+		bridge.api = bridge.api ?? {};
+		const noop = () => Promise.resolve({});
+		bridge.api.browser = {
+			state: async () => ({
+				tabs: [],
+				activeTabId: null,
+				url: "",
+				title: "",
+				loading: false,
+				canGoBack: false,
+				canGoForward: false,
+				pendingConsent: [],
+				approvals: [],
+				navFailure: null,
+			}),
+			onStateChanged: () => () => {},
+			onConsentChanged: () => () => {},
+			onConsentAttention: () => () => {},
+			setContentRect: noop,
+			setViewVisible: noop,
+		};
+		bridge.api.console = {
+			state: async () => ({
+				available: true,
+				total: 0,
+				agent: 0,
+				displayed_surface: null,
+				surfaces: [],
+			}),
+			createSurface: noop,
+			openPane: noop,
+			closePane: noop,
+			selectSurface: noop,
+			input: noop,
+			keys: noop,
+			setContentRect: noop,
+			setSecure: noop,
+			subscribe: noop,
+			unsubscribe: noop,
+			onOutput: () => () => {},
+			onExit: () => () => {},
+			onReveal: () => () => {},
+			onStateChanged: () => () => {},
+		};
+	}, []);
+};
+
+/** The shell with the browser pane in the right slot, a badge on its rail item. */
+export const ChatDockBrowser: Story = {
+	args: { rightSlotWidth: 0 },
+	render: (args) => {
+		const { rightSlotWidth = 0 } = args as { rightSlotWidth?: number };
+		useEmptyBridges();
+		useLayoutEffect(() => {
+			useUiPreferencesStore.setState({
+				isBrowserPaneOpen: true,
+				rightSlotWidth,
+				rightSlotRoute: DRAWABLE_ROUTE,
+			});
+			return () => {
+				useUiPreferencesStore.setState({
+					isBrowserPaneOpen: false,
+					rightSlotRoute: EMPTY_ROUTE,
+				});
+			};
+		}, [rightSlotWidth]);
+
+		return (
+			<ChatShellFrame
+				details={deriveRunDetails(runFixtures.settled())}
+				railProps={{ browserAttentionCount: 2 }}
+				pane={(slotWidth) => (
+					<PaneSlot width={slotWidth} tourTag="browser-pane-slot">
+						<BrowserPane sessionId="a1b2c3d4e5f6" onClose={() => undefined} />
+					</PaneSlot>
+				)}
+			/>
+		);
+	},
+};
+
+/** The shell with the console pane in the right slot, a blip on its rail item. */
+export const ChatDockConsole: Story = {
+	args: { rightSlotWidth: 0 },
+	render: (args) => {
+		const { rightSlotWidth = 0 } = args as { rightSlotWidth?: number };
+		useEmptyBridges();
+		useLayoutEffect(() => {
+			useUiPreferencesStore.setState({
+				isConsolePaneOpen: true,
+				rightSlotWidth,
+				rightSlotRoute: DRAWABLE_ROUTE,
+			});
+			return () => {
+				useUiPreferencesStore.setState({
+					isConsolePaneOpen: false,
+					rightSlotRoute: EMPTY_ROUTE,
+				});
+			};
+		}, [rightSlotWidth]);
+
+		return (
+			<ChatShellFrame
+				details={deriveRunDetails(runFixtures.settled())}
+				railProps={{ consoleUnseenCount: 1 }}
+				pane={(slotWidth) => (
+					<PaneSlot width={slotWidth} tourTag="console-pane-slot">
+						<ConsolePane sessionId="a1b2c3d4e5f6" onClose={() => undefined} />
+					</PaneSlot>
+				)}
+			/>
+		);
+	},
+};
+
+/**
+ * The asks drawer HOLDING the slot it borrowed from the browser pane: the rail
+ * lights NOTHING. The browser's flag is down and `askDrawerEvictedPane` records the
+ * borrow, which is exactly the state in which lighting the covered pane would say
+ * something false; pressing any item is a swap.
+ */
+export const ChatDockAsksCoveringBrowser: Story = {
+	args: { rightSlotWidth: 0 },
+	render: (args) => {
+		const { rightSlotWidth = 0 } = args as { rightSlotWidth?: number };
+		useLayoutEffect(() => {
+			useUiPreferencesStore.setState({
+				isAskDrawerOpen: true,
+				askDrawerScope: "session",
+				isBrowserPaneOpen: false,
+				askDrawerEvictedPane: "isBrowserPaneOpen",
+				rightSlotWidth,
+				rightSlotRoute: DRAWABLE_ROUTE,
+			});
+			return () => {
+				useUiPreferencesStore.setState({
+					isAskDrawerOpen: false,
+					askDrawerEvictedPane: null,
 					rightSlotRoute: EMPTY_ROUTE,
 				});
 			};

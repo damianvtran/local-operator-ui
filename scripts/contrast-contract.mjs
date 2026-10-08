@@ -1837,9 +1837,76 @@ const GRAPHICS = [
 		 * a set of semantics that passes on average is not a set of semantics.
 		 */
 		name: `run panel trigger dot (${role})`,
-		on: ["canvas", "accentWash"],
+		/*
+		 * THE TRIGGER MOVED TO THE PANEL RAIL (#872), so its grounds moved with it:
+		 * the rail is `surface`, and the lit item is `rowSelected` (the dot hangs
+		 * 2px past a 32px control, with ~6px of its 8 inside the box, so the lit
+		 * ground is where the `info` ink is drawn - the pane is open over a live
+		 * child) and `rowHover` under the pointer. `canvas` and `accentWash` stay:
+		 * the Storybook harnesses and the docs library still draw the trigger's dot on
+		 * those, and a row that dropped a ground the product no longer uses but a
+		 * rig still does would be blind exactly there.
+		 */
+		on: ["canvas", "accentWash", "surface", "rowSelected", "rowHover"],
 		fg: role,
 	})),
+	{
+		/*
+		 * THE PANEL RAIL'S LIT STATE (#872): the glyph and the 2px bar a lit item
+		 * wears. The glyph is `accent` on the sidebar's selected-row ground
+		 * (`rowSelected`) and, because the ghost item keeps its ground under a resting
+		 * pointer, on `rowHover` too; it is a GRAPHIC, so the 3:1 non-text floor is the
+		 * claim (a 16px outline icon, no text). The bar is `accent` on the rail's own
+		 * `surface`: it is the item's non-colour second signal, which exists because
+		 * an icon-only rail has no weight to change the way the sidebar's rows do, so
+		 * it is the one mark that must survive a theme whose `rowSelected` sits close
+		 * to `surface` - which is exactly why it is asserted against `surface` and not
+		 * against the fill it accompanies.
+		 *
+		 * ROUND 2 (R8): the bar no longer stands beside the control on the rail's
+		 * ground. Design round 1 (D2/D7) moved it onto the rail's leading hairline
+		 * column so it clears the focus ring, which puts its outer edge against the
+		 * PANE's ground: `elevated` (the browser, console, run and asks slots) or
+		 * `canvas` (when no pane is open, the conversation column). Those two are
+		 * listed so a palette whose `accent` sits close to either fails here and not
+		 * on screen. The hairline itself is a decorative rule that owes
+		 * perceptibility rather than a contrast floor (section 2), and the bar
+		 * covers it, so it is not a ground for this row.
+		 */
+		name: "panel rail lit glyph and bar",
+		on: ["rowSelected", "rowHover", "surface", "elevated", "canvas"],
+		fg: "accent",
+	},
+	{
+		/*
+		 * THE PANEL RAIL'S IDLE GLYPH (#872): `inkMuted` on the rail's `surface`, and
+		 * on `rowHover` while the pointer is on it (the hover step takes the ink to
+		 * `ink`, which the INKS x GROUNDS loop already covers). The glyph is the
+		 * item's whole label, so this is the pair that decides whether a closed
+		 * panel's door can be found at all.
+		 */
+		name: "panel rail idle glyph",
+		on: ["surface", "rowHover"],
+		fg: "inkMuted",
+	},
+	{
+		/*
+		 * The console's blip and the canvas's files dot, which moved from the header
+		 * (`canvas`) to the rail (#872): `accent` while a completion is fresh,
+		 * `inkMuted` once it rests, and `inkMuted` for the files dot. Both are
+		 * 6px graphics on the item, so they sit on `surface` at rest, `rowHover`
+		 * under the pointer and `rowSelected` when the item is lit (the files dot
+		 * stays drawn while the canvas is open).
+		 */
+		name: "panel rail console blip and files dot (inkMuted)",
+		on: ["surface", "rowHover", "rowSelected"],
+		fg: "inkMuted",
+	},
+	{
+		name: "panel rail console blip (accent)",
+		on: ["surface", "rowHover", "rowSelected"],
+		fg: "accent",
+	},
 	{
 		/*
 		 * The dot for an unmeasurable window, and the dotted rule beside it.

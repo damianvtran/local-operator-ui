@@ -64,6 +64,8 @@ import type {
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { PaneSlot } from "@shared/components/common/pane-slot";
 import { MessageInput } from "@shared/components/composer/message-input";
+import { PanelRail } from "@shared/components/navigation/panel-rail";
+import { InPanelRailHost } from "@shared/components/navigation/panel-rail-host";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { apiConfig } from "@shared/config/api-config";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
@@ -623,9 +625,6 @@ const ConversationColumn: FC<{
 				description="Invoices workspace · on this machine"
 				onOpenOptions={() => undefined}
 				runDetails={details}
-				mcpServers={deriveMcpServers([], {}, [])}
-				listOnScreen={false}
-				readerChildId={null}
 			/>
 			<div className="flex min-h-0 grow flex-col px-6 pt-4">
 				<CanonicalTranscript
@@ -767,6 +766,20 @@ const AppShell: FC<{
 								</PaneSlot>
 							)}
 						</div>
+						{/* The rail through the SHELL'S host, exactly as the app mounts it. */}
+						<InPanelRailHost>
+							<PanelRail
+								sessionId={CONVERSATION_ID}
+								runDetails={details}
+								mcpServers={deriveMcpServers([], {}, [])}
+								listOnScreen={false}
+								readerChildId={null}
+								browserAttentionCount={0}
+								consoleUnseenCount={0}
+								consoleUnseenPulsing={false}
+								fileCount={0}
+							/>
+						</InPanelRailHost>
 					</main>
 				}
 			/>

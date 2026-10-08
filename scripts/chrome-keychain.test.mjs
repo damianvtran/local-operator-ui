@@ -347,7 +347,7 @@ const CHROME_LAUNCH_SITES = [
 		"scripts/header-cluster-geometry.mjs",
 		"spawn",
 		1,
-		"measures the chat header's action cluster - the three controls' boxes, the two gaps between them and the attention badge's ring and clearance - from the live DOM",
+		"measures the chat header's action cluster (the shape before #872 moved the four panel triggers to the right-edge rail, so its stories are gone and it no longer finds that cluster; kept guarded because it still launches a rig Chrome) - the three controls' boxes, the two gaps between them and the attention badge's ring and clearance - from the live DOM",
 	),
 	guarded(
 		"scripts/click-proof.mjs",

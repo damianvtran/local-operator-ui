@@ -6,6 +6,7 @@ import {
 } from "@features/chat/chat-regions";
 import {
 	CANVAS_PANE_MIN_PX,
+	PANEL_RAIL_WIDTH_PX,
 	SIDEBAR_COLLAPSED_WIDTH,
 	SIDEBAR_DOCK_MIN_PX,
 	SIDEBAR_MAX_WIDTH,
@@ -28,6 +29,7 @@ import {
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import {
+	type CSSProperties,
 	type FC,
 	type ReactNode,
 	type RefObject,
@@ -39,6 +41,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { PanelRailHostContext } from "../navigation/panel-rail-host";
 import { PaneSlot } from "./pane-slot";
 import { ResizableDivider } from "./resizable-divider";
 
@@ -397,6 +400,19 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 		resolveRightSlotYieldsSidebar,
 	);
 
+	/*
+	 * THE PANEL RAIL'S WIDTH (#872): 44 while a chat surface is mounted, 0 on every
+	 * other route. It comes from #868's `mounted` fact - the one fact that says the
+	 * chat surface (which owns the rail's inputs and portals the rail in) is on
+	 * screen - and it is a LAYOUT-EFFECT fact, so a chat route gets its rail before
+	 * the first paint and settings/agents never get one. It is read HERE, above the
+	 * sidebar's layout, because the sidebar's yield to the canvas has to predict the
+	 * measured row (window minus sidebar minus rail) from the window alone.
+	 */
+	const railMounted = useUiPreferencesStore((s) => s.rightSlotRoute.mounted);
+	const railWidth = railMounted ? PANEL_RAIL_WIDTH_PX : 0;
+	const [railHost, setRailHost] = useState<HTMLElement | null>(null);
+
 	const layout: SidebarLayout = resolveSidebarLayout(
 		viewportWidth,
 		collapsedPref,
@@ -411,6 +427,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 		 * am I looking at" confusion this feature removes.
 		 */
 		slotYieldsSidebar,
+		railWidth,
 	);
 
 	/*
@@ -571,6 +588,16 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	const slotEdge =
 		contentBox.width > 0 ? contentBox.left + contentBox.width - slotWidth : 0;
 	/*
+	 * THE RAIL'S LEADING EDGE, which is the content column's trailing edge (#872).
+	 * The rail is a sibling AFTER the measured column, so it begins exactly where
+	 * the column ends; the lane's last pair paints its x-range in the rail's own
+	 * `surface` rather than letting the slot's `elevated` run to the window's end
+	 * above a rail that is not elevated. With no rail (settings, agents) the column
+	 * reaches the window's end and the band is zero-width.
+	 */
+	const railEdge =
+		contentBox.width > 0 ? contentBox.left + contentBox.width : 0;
+	/*
 	 * THE BAND'S OWN WIDTH, which is the sidebar's UNLESS the route beside it draws a
 	 * leading column of its own: settings has its rail, agents its list pane, and the
 	 * saved-agent route a 280px roster. On those routes the lane has to carry the
@@ -599,7 +626,27 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	const laneEdge = Math.max(columnWidth, leading?.edge ?? 0);
 	const laneGround = leading?.ground ?? "surface";
 	return (
-		<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+		<div
+			className="flex min-h-0 flex-1 flex-col overflow-hidden"
+			/*
+			 * THE RAIL'S WIDTH, PUBLISHED FOR THE CSS THAT HAS TO SUBTRACT IT (#872).
+			 * On Windows and Linux the OS caption buttons are ~138px wide
+			 * (`--chrome-inset-end`) and the rail is 44, so the rail covers only the
+			 * buttons' trailing part: whatever row reaches the rail's left edge at the
+			 * top (the chat header, or an open pane's toolbar) still has to clear the
+			 * rest. `--chrome-inset-end-pane` is that remainder, and it is declared
+			 * HERE rather than at `:root` because a custom property resolves its
+			 * `var()`s where it is declared: only an element that knows the rail's
+			 * width can subtract it. Routes with no rail (settings, agents) get the
+			 * full inset - the fleet asks drawer is the row that reaches the edge there.
+			 */
+			style={
+				{
+					"--panel-rail-w": `${railWidth}px`,
+					"--chrome-inset-end-pane": `max(0px, calc(var(--chrome-inset-end) - ${railWidth}px))`,
+				} as CSSProperties
+			}
+		>
 			{/*
 			 * THE macOS LANE, and it is SHELL-LEVEL rather than the sidebar's own.
 			 *
@@ -628,8 +675,8 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				style={{
 					background:
 						laneGround === "surface"
-							? `linear-gradient(to right, var(--lo-surface) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px)`
-							: `linear-gradient(to right, var(--lo-surface) ${columnWidth}px, var(--lo-${laneGround}) ${columnWidth}px, var(--lo-${laneGround}) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px)`,
+							? `linear-gradient(to right, var(--lo-surface) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`
+							: `linear-gradient(to right, var(--lo-surface) ${columnWidth}px, var(--lo-${laneGround}) ${columnWidth}px, var(--lo-${laneGround}) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`,
 				}}
 			/>
 			<div className="flex min-h-0 flex-1 overflow-hidden">
@@ -687,55 +734,79 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 					className="flex h-full min-w-0 grow flex-col overflow-hidden"
 				>
 					<LaneLeadingContext.Provider value={setLeadingColumn}>
-						{/*
-						 * THE CONTENT COLUMN IS A ROW INSIDE, so the shell can dock its own
-						 * pane BESIDE the route rather than over it. The measured box stays the
-						 * COLUMN (`contentColumnRef`, above): a flex item's width here is
-						 * resolved by the row it sits in, not by its own content, so adding a
-						 * pane inside cannot feed back into the number `resolveRightSlotWidth`
-						 * is called with — the column is the same width with the pane open as
-						 * with it closed, which is exactly what keeps the lane's stop and the
-						 * pane's leading edge one number.
-						 */}
-						<div className="flex h-full min-h-0 w-full overflow-hidden">
-							{content}
+						<PanelRailHostContext.Provider value={railHost}>
 							{/*
-							 * THE FLEET ASKS PANE: the same three pieces the route's occupants
-							 * use (the divider, the slot, the pane), so the column is one idiom in
-							 * both homes. The divider exists only while it DOCKS, for the reason
-							 * the canvas's own states: in the overlay mode there is no flow
-							 * boundary to drag.
+							 * THE CONTENT COLUMN IS A ROW INSIDE, so the shell can dock its own
+							 * pane BESIDE the route rather than over it. The measured box stays the
+							 * COLUMN (`contentColumnRef`, above): a flex item's width here is
+							 * resolved by the row it sits in, not by its own content, so adding a
+							 * pane inside cannot feed back into the number `resolveRightSlotWidth`
+							 * is called with — the column is the same width with the pane open as
+							 * with it closed, which is exactly what keeps the lane's stop and the
+							 * pane's leading edge one number.
 							 */}
-							{fleetAsksOpen && (
-								<>
-									{fleetDocked && (
-										<ResizableDivider
-											sidebarWidth={slotWidth}
-											onSidebarWidthChange={setRightSlotWidth}
-											minWidth={CANVAS_PANE_MIN_PX}
-											maxWidth={Math.max(
-												CANVAS_PANE_MIN_PX,
-												canvasDockWidth(contentBox.width),
-											)}
-											side="left"
-											onDoubleClick={restoreDefaultRightSlotWidth}
-											label="Resize asks. Double-click resets the shared pane width."
-										/>
-									)}
-									<PaneSlot
-										width={slotWidth}
-										tourTag="ask-fleet-slot"
-										data-ask-mode={fleetDocked ? "docked" : "overlay"}
-									>
-										<FleetAskDrawer
-											onClose={() => setAskDrawerOpen(false, "fleet")}
-										/>
-									</PaneSlot>
-								</>
-							)}
-						</div>
+							<div className="flex h-full min-h-0 w-full overflow-hidden">
+								{content}
+								{/*
+								 * THE FLEET ASKS PANE: the same three pieces the route's occupants
+								 * use (the divider, the slot, the pane), so the column is one idiom in
+								 * both homes. The divider exists only while it DOCKS, for the reason
+								 * the canvas's own states: in the overlay mode there is no flow
+								 * boundary to drag.
+								 */}
+								{fleetAsksOpen && (
+									<>
+										{fleetDocked && (
+											<ResizableDivider
+												sidebarWidth={slotWidth}
+												onSidebarWidthChange={setRightSlotWidth}
+												minWidth={CANVAS_PANE_MIN_PX}
+												maxWidth={Math.max(
+													CANVAS_PANE_MIN_PX,
+													canvasDockWidth(contentBox.width),
+												)}
+												side="left"
+												onDoubleClick={restoreDefaultRightSlotWidth}
+												label="Resize asks. Double-click resets the shared pane width."
+											/>
+										)}
+										<PaneSlot
+											width={slotWidth}
+											tourTag="ask-fleet-slot"
+											data-ask-mode={fleetDocked ? "docked" : "overlay"}
+										>
+											<FleetAskDrawer
+												onClose={() => setAskDrawerOpen(false, "fleet")}
+											/>
+										</PaneSlot>
+									</>
+								)}
+							</div>
+						</PanelRailHostContext.Provider>
 					</LaneLeadingContext.Provider>
 				</div>
+				{/*
+				 * THE PANEL RAIL'S HOST (#872): a 44px sibling AFTER the measured column,
+				 * on the window's trailing edge, present while a chat surface is mounted.
+				 *
+				 * OUTSIDE `contentColumnRef` ON PURPOSE. The column's box is what every
+				 * width reader measures (the lane's stop here, the chat surface's own row),
+				 * so a sibling narrows that one number for all of them and the resolver, the
+				 * canvas's dock arithmetic and the chat floor need no edit; `data-slot-edge`
+				 * keeps meaning "the pane's leading edge". Inside the column it would sit
+				 * LEFT of the fleet asks pane, which is a shell-level sibling of the route.
+				 *
+				 * The CONTENT is the chat surface's (`InPanelRailHost`), portaled in: the
+				 * rail's inputs live below the shell. The host's own ground is `surface`
+				 * (chrome, the sidebar's rung) so the strip is never a hole while the
+				 * portal is empty; the leading hairline is the rail's.
+				 */}
+				<div
+					ref={setRailHost}
+					data-panel-rail-host=""
+					className="h-full shrink-0 bg-surface"
+					style={{ width: railWidth }}
+				/>
 			</div>
 			{/*
 			 * THE UNSOLICITED UPDATE NOTICE LIVES HERE (issue #672), at the bottom edge of

@@ -589,12 +589,15 @@ export const AskDrawer = ({
 			 *
 			 * `[padding-inline-end:...]` reserves the OS caption buttons' corner, exactly
 			 * as the canvas's bar does (chat redesign §J4): this pane's bar is what
-			 * reaches the window's right edge while it is open.
+			 * reaches the window's right edge while it is open - on the SETTINGS and
+			 * agents routes, where the fleet drawer mounts with no panel rail beside it,
+			 * the shell publishes the full inset; on the chat route the rail covers its
+			 * own 44px of it (`--chrome-inset-end-pane`, #872).
 			 */}
 			<div
 				className={cn(
 					"flex h-10 shrink-0 items-center justify-between gap-2 px-2",
-					"[padding-inline-end:max(0.5rem,var(--chrome-inset-end))]",
+					"[padding-inline-end:max(0.5rem,var(--chrome-inset-end-pane,var(--chrome-inset-end)))]",
 				)}
 			>
 				<span

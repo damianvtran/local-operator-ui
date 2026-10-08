@@ -116,10 +116,21 @@ test("the canvas chord is ⌘⇧C / ⌘+Shift+C, and the unshifted ⌘C is never
 		"src/renderer/src/features/chat/components/chat-header.tsx",
 		"utf8",
 	);
+	/* The control that PRINTS the cap moved to the panel rail (#872); the listener
+	 * that answers it did not. The cap and the predicate still share one module. */
+	const rail = readFileSync(
+		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
+		"utf8",
+	);
 	assert.match(
-		header,
-		/const shortcut = canvasToggleCap\(isMac\);/,
+		rail,
+		/canvasToggleCap\(isMac\)/,
 		"the control's printed cap no longer comes from the shared module, so what it promises and what answers it can drift",
+	);
+	assert.doesNotMatch(
+		rail,
+		/addEventListener\(\s*"keydown"/,
+		"the rail adds no chord: the listener that answers the printed cap stays bound exactly once, in the header",
 	);
 	assert.match(
 		header,
