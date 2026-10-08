@@ -262,7 +262,28 @@ const doorFocused = () => {
 
 test("state 1 - no asks on open: the drawer stays closed, and an arriving ask does not open it", async (t) => {
 	const view = await rig(t);
+	/*
+	 * THE FLAG'S WRITES, NOT ITS END VALUE, because the end value cannot tell a policy that
+	 * stayed out from one that opened and was closed again: the drawer closes itself over a
+	 * resolved queue with nothing outstanding (#864), so an over-eager open over this frame
+	 * writes `true` and then `false`, and every end-state assertion in this case still reads
+	 * a closed drawer. Measured with the `pendingRows <= 0` gate removed from
+	 * `decideAskAutoOpen` (mutant M1 in `harness/mutate.py`): the writes over this frame were
+	 * [true,false] and this case still passed. Other tests kill M1, but the case NAMED for
+	 * the state did not, which is the one a reader would trust to. Same instrument, for the
+	 * same reason, as the E2/E3 case below.
+	 */
+	const writes = [];
+	const stop = useUiPreferencesStore.subscribe((state) => {
+		writes.push(state.isAskDrawerOpen);
+	});
+	t.after(stop);
 	await view.show("c-a", liveEmpty());
+	assert.equal(
+		writes.includes(true),
+		false,
+		`the policy opened the drawer over a queue with nothing pending (flag writes: ${JSON.stringify(writes)})`,
+	);
 	assert.equal(view.flag(), false);
 	assert.equal(view.drawer(), null);
 	await view.show(
