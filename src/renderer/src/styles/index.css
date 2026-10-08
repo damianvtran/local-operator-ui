@@ -422,7 +422,7 @@
 		 * would be faded to two thirds.
 		 */
 		animation-timeline: scroll(self);
-		animation-range: calc(100% - var(--lo-pane-footer-cue-h)) 100%;
+		animation-range: calc(100% - 24px) 100%;
 	}
 
 	@keyframes transcript-top-fade {
