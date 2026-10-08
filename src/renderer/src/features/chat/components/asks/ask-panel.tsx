@@ -248,6 +248,51 @@ const LIVE_CONTROL =
 	"button[data-ask-option]:not([disabled]), input[data-ask-secret]:not([disabled]), textarea[data-ask-other]:not([disabled])";
 
 /**
+ * The one prompt every free-form entry says: the `Other` row's hint, the placeholder of
+ * the field that row opens, and the placeholder of a question that has no options (design
+ * review round 1, D4). Three phrasings of one instruction was copy drift, and the two
+ * that a user meets in sequence (the row's hint, then the field's placeholder once
+ * pressed) are the ones that must agree.
+ */
+const OTHER_PROMPT = "Type your answer";
+
+/**
+ * Focus a control the user's own press asked for, with the CARET AFTER ITS TEXT when it
+ * is a text field (round 1, UX U1).
+ *
+ * A browser places the caret of a textarea at offset 0 when it is focused without a
+ * selection, and a field that is mounted with its text already in it is exactly that
+ * case: the `Other` the user typed, then pressed an option over, then pressed again came
+ * back with the caret in FRONT of its text, so the next keystrokes were PREPENDED (`No`
+ * became `NoNo, thanks` and was sent as typed). Typing continues what the user wrote, so
+ * the caret goes to the end.
+ *
+ * THREE doors focus a control over text that is already there, and all three go through
+ * here so they cannot disagree: the `Other` row's own press (a field that is already
+ * open), the layout effect that press arms (a field that has just mounted over stashed
+ * text), and the change form's hand-off (a free-text field seeded from the log). The
+ * fourth caller, `Enter` moving on to the next unanswered question, lands on whatever
+ * control that question offers first, which is usually an option button.
+ *
+ * Only press-driven paths call this; a field that mounts over a restored draft is never
+ * focused, so nothing here moves a caret the user did not ask to move. The selection is
+ * set after focus so it is the one that stands, and the length is read from the DOM
+ * value because that is the text the caret is actually in. A button or the masked input
+ * is focused as it is: the first has no caret, and the second is never seeded (a secret
+ * is retyped, never restored).
+ */
+const focusAtEnd = (control: HTMLElement | null | undefined) => {
+	if (control === null || control === undefined) return;
+	control.focus();
+	// By tag, not `instanceof`: the global `HTMLTextAreaElement` belongs to a window, and
+	// this module must work under the test host's detached jsdom as well as in a page.
+	if (control.tagName !== "TEXTAREA") return;
+	const field = control as HTMLTextAreaElement;
+	const end = field.value.length;
+	field.setSelectionRange(end, end);
+};
+
+/**
  * One question's control.
  *
  * Three shapes, decided by the question itself rather than by the ask: an option list
@@ -339,11 +384,14 @@ const AskQuestionField = ({
 	 * question has no row to open: its field is always shown, and it reads the draft cell
 	 * directly because there is no option for a typed word to be mistaken for.
 	 *
-	 * THE TEXT IS KEPT WHEN AN OPTION IS CHOSEN (single-select), so a mis-click does not
-	 * destroy a typed answer - within this card's life. Closing the drawer unmounts the
-	 * card and only the draft cell survives it, so a typed Other text that an option then
-	 * replaced is gone after a close and reopen. That asymmetry is deliberate: the draft
-	 * holds ANSWERS, and the answer is the option.
+	 * THE TEXT IS KEPT WHEN AN OPTION IS CHOSEN (single-select) or `Other` IS UNTICKED
+	 * (multi-select), so a mis-click does not destroy a typed answer - within this card's
+	 * life. Closing the drawer unmounts the card and only the draft cell survives it, so
+	 * what a close KEEPS is exactly what the cell holds: a LIVE `Other` (selected, with
+	 * its text, or selected and still empty - the cell carries a pending entry for it,
+	 * `askCellWith`) and the ticks. What it DROPS is text stashed on an `Other` the user
+	 * had moved off. That asymmetry is deliberate: the draft holds ANSWERS, and an
+	 * unselected `Other` is not one (pinned by `scripts/ask-other.test.mjs`, N1).
 	 */
 	const labels = options.map((option) => option.label);
 	const [other, setOther] = useState<AskOther>(() =>
@@ -362,7 +410,7 @@ const AskQuestionField = ({
 	useLayoutEffect(() => {
 		if (focusOtherRef.current !== question.id) return;
 		focusOtherRef.current = null;
-		otherField.current?.focus();
+		focusAtEnd(otherField.current);
 	}, [other.open]);
 	/*
 	 * Every write goes through ONE function so the cell can never disagree with the
@@ -521,11 +569,18 @@ const AskQuestionField = ({
 					 * same mark, ground and focus outline, so it reads as one more choice and
 					 * a screen reader announces it as one.
 					 *
-					 * `Other` is the label and `Type your own answer` is the hint: the label
+					 * `Other` is the label and `Type your answer` is the hint: the label
 					 * alone does not say what pressing it does, which was the operator's
 					 * complaint about the old design. The hint goes while the field is open,
 					 * because the field's own placeholder says the same thing there and the
 					 * two would print it twice.
+					 *
+					 * ONE SENTENCE, `OTHER_PROMPT`, for the hint, the field's placeholder and the
+					 * free-text-only field's placeholder (design review round 1, D4): the first
+					 * cut said `Type your own answer` on the row and `Type your answer` in the
+					 * field it opens - one prompt in two phrasings, seen one after the other as the
+					 * user presses. The accessible name is the same everywhere too, `Your answer
+					 * to: <question>`, which is also what the masked field is called.
 					 *
 					 * Pressing it selects it AND moves focus into the field - this is the user's
 					 * own press, the one place this change is allowed to take focus - and
@@ -546,7 +601,7 @@ const AskQuestionField = ({
 								return;
 							}
 							focusOtherRef.current = question.id;
-							if (other.open) otherField.current?.focus();
+							if (other.open) focusAtEnd(otherField.current);
 							else writeOther({ ...other, open: true });
 						}}
 						className={cn(
@@ -560,7 +615,7 @@ const AskQuestionField = ({
 							<span>Other</span>
 							{other.open ? null : (
 								<span className="ml-1.5 text-ink-muted text-xs">
-									Type your own answer
+									{OTHER_PROMPT}
 								</span>
 							)}
 						</span>
@@ -572,8 +627,8 @@ const AskQuestionField = ({
 								fieldRef={otherField}
 								value={other.text}
 								disabled={disabled}
-								ariaLabel={`Your own answer to: ${question.question}`}
-								placeholder="Type your answer"
+								ariaLabel={`Your answer to: ${question.question}`}
+								placeholder={OTHER_PROMPT}
 								onChange={(text) => writeOther({ open: true, text })}
 								onEnter={() => onAdvance(question.id)}
 							/>
@@ -596,7 +651,7 @@ const AskQuestionField = ({
 					value={other.text}
 					disabled={disabled}
 					ariaLabel={`Your answer to: ${question.question}`}
-					placeholder="Type your answer"
+					placeholder={OTHER_PROMPT}
 					onChange={(text) => writeOther({ open: true, text })}
 					onEnter={() => onAdvance(question.id)}
 				/>
@@ -764,8 +819,8 @@ const AskRow = ({
 	useLayoutEffect(() => {
 		if (!armChangeFocus.current) return;
 		armChangeFocus.current = false;
-		rowRef.current
-			?.querySelector<HTMLElement>(
+		focusAtEnd(
+			rowRef.current?.querySelector<HTMLElement>(
 				/*
 				 * THE DRAWER'S OWN SHAPES, and they are not the dock's: an option is a
 				 * button carrying `data-ask-option`, the masked field wears
@@ -777,10 +832,13 @@ const AskRow = ({
 				 * for a secret-only ask. The answer field is in the list because a
 				 * free-text-only question has NO option and no secret: without it the change
 				 * form for such an ask lands on the body.
+				 *
+				 * `focusAtEnd`, not `.focus()`: a free-text field seeded from the log holds
+				 * text, and a bare focus puts the caret in front of it (round 1, U1).
 				 */
 				LIVE_CONTROL,
-			)
-			?.focus();
+			),
+		);
 	}, [changing]);
 	/*
 	 * ONE EDIT PATH, TWO BUFFERS: the change form and the first-answer form render the
@@ -853,7 +911,7 @@ const AskRow = ({
 					"[data-lo-ask-question]",
 				) ?? []),
 			].find((node) => node.dataset.loAskQuestion === candidate.id);
-			block?.querySelector<HTMLElement>(LIVE_CONTROL)?.focus();
+			focusAtEnd(block?.querySelector<HTMLElement>(LIVE_CONTROL));
 			return;
 		}
 	};
@@ -954,7 +1012,17 @@ const AskRow = ({
 										>
 											{value}
 											{tags && !offered.includes(value) ? (
-												<span className="ml-1.5 text-ink-muted text-xs">
+												/*
+												 * A SEPARATOR, so the tag reads as a LABEL and not as the last word
+												 * of what the user wrote (design review round 1, D2: `Canary (5% of
+												 * traffic) Other` read as one phrase, and a short answer such as
+												 * `Staging Other` was ambiguous). The dot is the app's own separator
+												 * (the checkpoint rail, the status row) and is decoration only, so it
+												 * is hidden from assistive tech; the spaces inside it carry the gap
+												 * (the parent keeps whitespace, `whitespace-pre-wrap`).
+												 */
+												<span className="text-ink-muted text-xs">
+													<span aria-hidden="true">{" \u00b7 "}</span>
 													Other
 												</span>
 											) : null}
