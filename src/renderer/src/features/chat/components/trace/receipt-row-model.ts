@@ -506,9 +506,11 @@ export function wakeIsCatchup(details: Record<string, unknown>): boolean {
  * is kept, deliberately, because the two failures are not symmetric: the
  * divergence costs a stale row on screen, and mirroring the core would let a
  * malformed value from a future producer silently hide a message from the person
- * it was addressed to. What is load-bearing is a JSON `true` — the shape lane B's
- * ledger writes — and this docblock is where that is stated rather than the
- * divergence being rediscovered from the two implementations.
+ * it was addressed to. What is load-bearing is a JSON `true`, and the producer
+ * GUARANTEES that shape: the backend writes `details.hidden` as a real boolean on
+ * the greeting's `custom_type: "wake_prompt"` row (confirmed on the backend side
+ * in round 1). This docblock is where that is stated, rather than the divergence
+ * being rediscovered from the two implementations.
  */
 export function wakeIsHidden(details: Record<string, unknown>): boolean {
 	return details.hidden === true;

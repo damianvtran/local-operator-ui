@@ -46,6 +46,18 @@ export const ExtrasStep: FC<ExtrasStepProps> = ({ aidaName = null }) => (
 				<h3 id="onboarding-extras-next" className="text-heading text-ink">
 					Next: meet {aidaName}
 				</h3>
+				{/*
+				 * The promise is about a greeting she still OWES, and this screen
+				 * cannot check that: the ledger's state word (`greeting_state`) is on
+				 * the POST's answer, and the status document this step reads carries
+				 * only `enabled`/`greeted`/`name`. So the sentence is the tolerant
+				 * path — true for a fresh install and for an older backend, and the
+				 * one shape it does not cover is an install whose greeting was already
+				 * delivered or skipped, where she has met the user somewhere else. If
+				 * the read grows that field, gating this on
+				 * `greeting_state === "owed"` is one line (code review round 1's
+				 * contract addendum, point 1).
+				 */}
 				<p className="text-body text-ink-muted">
 					{aidaName} is your chief of staff. She will say hello first, ask what
 					to call you and what you would like help with, and show you around.
