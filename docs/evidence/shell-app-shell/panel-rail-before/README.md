@@ -198,3 +198,32 @@ committed frames, so nothing of theirs is stale; 1 could not be captured (below)
   `run-details.fixtures.ts`) are not in this PR; fixing the fixture is outside this slice.
 - `chat-header-cluster*`, `browser-approval-badges` and the `chat-run-panel/` trigger rows
   captured before the move (the PR #880 list): superseded by the rail frames above.
+
+## Round 1, part 2 (design D2 / D3 / D4; code commit `9f41c633641`)
+
+Every frame that draws the rail moved when D3 landed (the first item is 4px higher), so
+the sets that draw it were re-captured after it: `navigation-panel-rail/` (all 16 states,
+both palettes), every `shell-app-shell/` directory that draws the rail, `browser-pane/`
+and `chat-run-panel/` (all 94 directories that draw it, except the one that cannot
+prepare, `mcp-key-popout`, still named above). Readings are taken from the rendered
+stories with `getBoundingClientRect` / computed styles, in CSS px:
+
+- **D3, first item vs the band it shares.** At 1280 and at 1192: first item box
+  [x, 36, 32, 32], its glyph centre y=52; the `...` glyph centre y=52; the pane close
+  centre y=52. Before (design's round-1 reading, not re-measured here): item top 40, glyph centre y=56. Windows simulation: first item top
+  44 under a 44px drag strip (the `--chrome-inset-end-h` + 4px padding), header spacer 94,
+  unchanged.
+- **D2, lit bar vs focus ring.** Focused lit item: bar x=88-90 (on the rail's hairline
+  column), ring x=91.5-93.5 (`outline: 2px solid`, offset 1px), item x=94.5. Before (design's reading, and the
+  CSS: bar `before:-left-1`, default 2px-offset ring): bar and ring both at x=90.5-92.5 in the same ink. Frame: `navigation-panel-rail/browser-open-focused/`
+  shows the ring and the bar together (focus emulation on, as the run panel's remedy-focus
+  frame does).
+- **D4, count badge.** 14px mark at -2px/-2px, ring 2px. Overlap with the 16px glyph box:
+  1-9 -> 5.2 x 4 px = 8.1%; "9+" -> 12.3 x 4 px = 19.2%. The "before" figures (~17% and ~40%
+  for the 16px mark) are DESIGN's round-1 readings; I did not re-measure the old mark. The ring ends at x=130.5 of the 132px host (1.5px inside; was flush at 132.5).
+  Frame with the item LIT: `navigation-panel-rail/browser-open-at-cap/`.
+- **Frames design listed as missing:** `browser-open-focused` (focused lit item),
+  `browser-open-at-cap` (9+ on a lit item), `console-open-blip` (blip with the console open),
+  and a non-brand-palette proof: `browser-open-focused`, `browser-open-at-cap`,
+  `console-open-blip`, `console-open`, `browser-open` and `canvas-open` in `sage` and
+  `iceberg` (the rail's ground, lit pair, bar, ring and badge all resolve on those palettes).
