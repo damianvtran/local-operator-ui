@@ -705,15 +705,21 @@ export type MessageInputProps = {
 	 * a pending gate is answered here. So the stop button sits beside Send
 	 * rather than replacing it, and only while the owner is actually working.
 	 *
-	 * `active` is `busy` AND the backend's `session_interrupt` capability, folded
-	 * at the call site rather than here so that the ESCAPE accelerator's own
+	 * `active` is the TURN-ALIVE pair (`frontend ?? heldFrontend`'s streaming,
+	 * round 1's D2) AND the backend's `session_interrupt` capability, folded at
+	 * the call site rather than here so that the ESCAPE accelerator's own
 	 * predicate can be the same expression (`use-interrupt-on-escape.ts`). An
 	 * older backend therefore renders no control at all rather than one whose
 	 * every press is refused: the button promises this session's CURRENT WORK,
 	 * and the only other route this build has for stopping work is `/stop`, which
 	 * ends the session - a different promise than the control makes.
+	 *
+	 * `stopping` is the press's own window (`stopOutcome` in `pending` or
+	 * `awaiting-end`), riding along for the one surface that answers where the
+	 * finger is: the empty box's placeholder (design round 1, D6) says the press
+	 * landed instead of re-teaching `Esc stops` while it is already in flight.
 	 */
-	canonicalStop?: { active: boolean; onStop: () => void };
+	canonicalStop?: { active: boolean; stopping?: boolean; onStop: () => void };
 	/**
 	 * Whether this session's backend negotiates `session_interrupt` at all.
 	 *
@@ -8024,6 +8030,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													asideAttached: aside !== null,
 													sendingUnsettled: sendUnsettled || sendInFlight,
 													awaitingReply,
+													/*
+													 * The press's own window (round 1, D6): the box says the
+													 * press landed instead of re-teaching `Esc stops` under a
+													 * finger that already pressed. Read from the same object
+													 * the control is drawn from, so the two cannot disagree
+													 * about a press.
+													 */
+													stopping: canonicalStop?.stopping === true,
 													// The last reading before the invitation: nothing is in
 													// flight and the box is not refused, but no model
 													// provider is connected, so the invitation is a lie

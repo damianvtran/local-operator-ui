@@ -565,12 +565,21 @@ async function fixture({ startedAt, now }, run) {
 			const anchor =
 				override && "startedAt" in override ? override.startedAt : startedAt;
 			const nextPhase = override?.phase ?? "running";
+			/*
+			 * `clock` is overridable since round 1's D4: the press window is the one
+			 * state that withholds the number (`clock: false` from the stopping
+			 * overlay), and the re-seed case needs the flip back driven like any
+			 * other prop.
+			 */
+			const nextClock =
+				override && "clock" in override ? override.clock : undefined;
 			await act(() =>
 				root.render(
 					h(WorkingLine, {
 						activity: "running bash",
 						phase: nextPhase,
 						...(anchor === undefined ? {} : { startedAt: anchor }),
+						...(nextClock === undefined ? {} : { clock: nextClock }),
 					}),
 				),
 			);
@@ -770,6 +779,42 @@ test("a PHASE CHANGE drops a withdrawn anchor rather than latching the cell blan
 			);
 		},
 	);
+});
+
+test("the clock re-seeds when the press window closes rather than showing a stale second (round 1's D4/U3)", async () => {
+	/*
+	 * The measured sequence across a fired bound on the real app: `stopping the
+	 * turn` -> `running bash 3s` for ~0.8 s -> `running bash 19s`. The mechanism
+	 * is the one this row's own notes state as a guarantee ("the label changes,
+	 * the clock cell goes empty rather than restarting"): with the clock
+	 * withheld the interval stops, so `elapsed` holds the PRE-press number, and
+	 * the first frame after the window closes rendered that number until the
+	 * next tick corrected it. The fix is a re-seed on the flip - gated on the
+	 * phase holding, because a phase change has its own edge rule (the case
+	 * above) - and the property asserted here is what the operator named: the
+	 * FIRST frame after the resume, with no tick, states the true age, and it is
+	 * never a fresh `0s`.
+	 */
+	await fixture({ startedAt: 0, now: 30_000 }, async (api) => {
+		// 30 s of work, then a press withholds the clock for 5 s...
+		await api.render();
+		assert.equal(api.label(), "30s");
+		await api.render({ clock: false });
+		assert.equal(api.label(), "", "the withheld clock renders the slot empty");
+		await act(() => api.advance(5_000));
+		assert.equal(api.label(), "", "and no number moves while it is withheld");
+		// ...and the frame the window closes on states the age NOW - not the
+		// stale reading, not a restart.
+		await api.render({ clock: true });
+		assert.equal(
+			api.label(),
+			"35s",
+			"the resumed frame states the true age at once, not the pre-press number",
+		);
+		assert.notEqual(api.label(), "0s", "and never restarts the zero");
+		await act(() => api.advance(1_000));
+		assert.equal(api.label(), "36s", "and keeps counting from the same anchor");
+	});
 });
 
 /*
@@ -984,7 +1029,7 @@ test("a reconnecting pane keeps its working line, and a terminal statement takes
 			status: "unavailable",
 			failure: streamFailureNotice(null),
 		});
-		assert.equal(api.line(), null, "a terminal statement stands the line down");
+		assert.ok(!api.line(), "a terminal statement stands the line down");
 	});
 });
 

@@ -40,14 +40,36 @@ import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks"
 import type { DesktopInterruptReceipt } from "../../../../shared/desktop-session-contract";
 
 /**
- * What the app tells the user when a Stop press found nothing to stop.
+ * What the app tells the user when a Stop press found nothing to stop and the
+ * pane AGREES nothing was running.
  *
  * The press is an action the user took, so it gets an answer even when the
  * answer is "nothing was running" - see `interruptNotice` for the incident that
- * made silence untenable. PROVISIONAL COPY, pending the design round.
+ * made silence untenable. The sentence reports the STATE rather than the press
+ * (design round 1, D5/U7: "the stop changed nothing" read as the mechanism
+ * failing, and named the press where the state is the fact). PROVISIONAL COPY,
+ * pending the design round.
  */
 export const IDLE_STOP_NOTICE =
-	"Nothing was running — the stop changed nothing.";
+	"No turn was running, so there was nothing to stop.";
+
+/**
+ * The same answer when the pane still CLAIMS a turn is running.
+ *
+ * A receipt is the one fresh authoritative reading a pane with a dead feed
+ * gets, and it can contradict the held claim the working line is still
+ * showing - measured in UX round 1's U1 as `Nothing was running` sitting
+ * directly above a ticking `running bash 13s` line, with the operator's own
+ * incident on record as the case where the serve's roster may itself have been
+ * stale. Neither side can be declared the liar from here, so the sentence is
+ * ATTRIBUTED to its source and admits the pane may be the one out of date,
+ * instead of asserting a fact the view beside it visibly contradicts. The
+ * caller pairs this with a re-read (`canonical.retry`) so the disagreement is
+ * settled by the next snapshot rather than left standing. PROVISIONAL COPY,
+ * pending the design round.
+ */
+export const IDLE_STOP_DISPUTED_NOTICE =
+	"The runtime says no turn is running, so nothing was stopped. This view may be out of date.";
 
 /**
  * Whether this renderer may interrupt a turn against this backend.
@@ -184,8 +206,17 @@ export const INTERRUPT_ACK_TIMEOUT_MS = 15_000;
  */
 export function interruptNotice(
 	receipt: DesktopInterruptReceipt,
+	/*
+	 * Whether the pane's held claim still says a turn is alive, which selects
+	 * which idle sentence is true (see `IDLE_STOP_DISPUTED_NOTICE`). A default of
+	 * false keeps every reader that predates the field on the plain sentence.
+	 */
+	options: { turnClaimed?: boolean } = {},
 ): string | null {
-	if (receipt.status === "idle") return IDLE_STOP_NOTICE;
+	if (receipt.status === "idle")
+		return options.turnClaimed === true
+			? IDLE_STOP_DISPUTED_NOTICE
+			: IDLE_STOP_NOTICE;
 	if (receipt.status !== "interrupted") return null;
 	const children = receipt.children_running ?? 0;
 	const jobs = receipt.background_jobs ?? 0;
