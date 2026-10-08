@@ -118,6 +118,25 @@ export type PaintedConversation = {
 	 * on a route that has just refused to answer.
 	 */
 	markLabels: ReadonlySet<string>;
+	/**
+	 * Record ids a reconnect REPLAY put on the pane that no journal page had named
+	 * when the paint was stored (`replayBornIds` in `use-canonical-session.ts`).
+	 *
+	 * WHY IT TRAVELS WITH THE ROWS (#876, review round 1's R1-1). A settled row a
+	 * replay delivered is cached like any other, and the next mount seeds the pane
+	 * from it. Without this set that mount counts the row as held - "the pane
+	 * holds a journal row" - when it is only a row the discontinuity delivered, and
+	 * a journal-tail page ending on it defers with no read over the rows between:
+	 * the original hole, arriving through the cache. The rows still DISPLAY (the
+	 * cached pane shows what it showed); only the claim that they are evidence of a
+	 * held journal range is withheld.
+	 *
+	 * IN-MEMORY, LIKE THE CACHE: it dies with the renderer, so a restored id can
+	 * only be stale within one window's lifetime, and the reader prunes it against
+	 * the seeded index. A record written without the field restores as empty, which
+	 * is the behaviour before this existed.
+	 */
+	replayBorn: ReadonlySet<string>;
 };
 
 type Entry = PaintedConversation & { bytes: number };
@@ -182,6 +201,8 @@ export function writePaint(
 		 * `markLabels` on `PaintedConversation`.
 		 */
 		markLabels?: ReadonlySet<string>;
+		/** Replay-born record ids not yet named by a page; see `replayBorn`. */
+		replayBorn?: ReadonlySet<string>;
 	},
 ): void {
 	// In-flight rows are dropped HERE rather than asked of the caller. The
@@ -235,6 +256,14 @@ export function writePaint(
 		 * arguments shows its command whatever this set says.
 		 */
 		markLabels: carriedLabelsFor(records, input.markLabels),
+		/*
+		 * Only ids whose row SURVIVED the in-flight drop and the trim: an id with no
+		 * row here has nothing to withhold, and a stale one must not shadow a real
+		 * row that later arrives under it.
+		 */
+		replayBorn: new Set(
+			[...(input.replayBorn ?? [])].filter((id) => transcript.index.has(id)),
+		),
 	};
 	// Delete before set so the re-inserted key is the newest for eviction order.
 	cache.delete(sessionId);
