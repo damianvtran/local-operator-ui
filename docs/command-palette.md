@@ -56,6 +56,41 @@ a statement about the list rather than a section sitting outside the caps. A
 typed query drops the pin; it is the switcher's alone, and widening it to the
 un-scoped `Cmd/Ctrl+K` browse is the open design question on the issue.
 
+**Directly beneath it, the switcher pins Recents**: the conversations you were
+last in, so getting back to one is a single keystroke. The rules, all of them
+deliberate:
+
+- **What counts as a visit.** A conversation is recorded when it becomes the one
+  the app is DISPLAYING (`panelSessionIdOfView`, the value `app.tsx` already
+  computes), by one hook (`use-conversation-recents.ts`) mounted beside the
+  shortcut hook. Reading the displayed value rather than asking each way of
+  switching to declare itself is what makes the rule complete: the palette, a
+  sidebar click, a deep link and a notification click all move that one value, and
+  none of them has to remember to call anything. A draft with no session yet shows
+  no conversation and is skipped.
+- **The ring and the pin.** The store keeps the last **20** visited session ids,
+  most recent first, persisted with the other UI preferences
+  (`conversationRecents`, ordered by the pure `pushConversationRecent`: a revisit
+  moves, it does not duplicate). The pin shows at most **5** (`RECENTS_PIN_CAP`).
+  The ring is larger than the pin on purpose: the surplus keeps the pin full when
+  some of what it remembers is on screen, unread, or gone. A blob written before
+  the key existed hydrates to an empty ring; no migration is needed.
+- **What is left out.** The conversation on screen (you are already in it; this is
+  what makes the first row "the previous conversation", the Alt-Tab behaviour) and
+  unread rows (they already sit in the Unread pin, and a row never appears twice).
+  A remembered id with no live catalogue row - deleted, archived out of view,
+  forgotten - draws nothing: rows come from the live catalogue, so the ring cannot
+  resurrect a conversation.
+- **Same budget.** Recents draws from the SAME running 48-row budget as Unread and
+  the tiers, with `total` and `clipped` kept honest the way Unread keeps them, and
+  every row it claims is held out of the Chats tier below so it never appears
+  twice.
+- **Nothing to show, nothing drawn.** An empty ring, or no eligible row, adds no
+  section and no empty heading; the list is the one it was before.
+- **Switcher only.** A typed query drops the pin, and the un-scoped `Cmd/Ctrl+P`
+  browse is unchanged, for the reason the Unread pin is: the pins belong to the
+  door whose job is finding a conversation.
+
 The **rail row** is the third door, and it exists because the chord is invisible:
 a user who never learns `Cmd+K` would use the palette once, if at all. The row is
 the only control the rail carries besides the account row, it is on screen on

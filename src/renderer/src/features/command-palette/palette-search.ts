@@ -212,6 +212,23 @@ export type PaletteItem = {
 	 * reader (issue #760).
 	 */
 	unread?: boolean;
+	/**
+	 * The row's place in the visited ring (`conversationRecents`), 0 being the
+	 * conversation visited most recently. Set at the source, for the same reason
+	 * `unread` is: this module is deliberately import-free, so the ring's data
+	 * travels on the item and the browse layout's Recents pin is its only reader.
+	 * Absent when the conversation is not in the ring - a fresh install, or one
+	 * not visited lately - which is what keeps the section from drawing at all.
+	 */
+	recentRank?: number;
+	/**
+	 * True on the row for the conversation the app is displaying right now.
+	 * Decided at the source (the shell's own displayed-session rule) and carried
+	 * as data for the same import-free reason. The Recents pin reads it to leave
+	 * that row out: you are already in it, and without it the first Recents row
+	 * would always be the screen you are looking at instead of the one you left.
+	 */
+	current?: boolean;
 	/** Rendered in the danger role; the one row that destroys something. */
 	destructive?: boolean;
 };
@@ -229,11 +246,12 @@ export type PaletteMatch = {
 };
 
 /**
- * A section's key: one of the source groups, or the pinned `unread` section
- * (issue #760) — a section about one fact rather than a source of its own, so
- * it is a SECTION key and deliberately not a member of `PaletteGroup`.
+ * A section's key: one of the source groups, or one of the two pinned sections
+ * the chats switcher draws above them - `unread` (issue #760) and `recents`.
+ * Each is a section about one fact rather than a source of its own, so they are
+ * SECTION keys and deliberately not members of `PaletteGroup`.
  */
-export type PaletteSectionKey = PaletteGroup | "unread";
+export type PaletteSectionKey = PaletteGroup | "unread" | "recents";
 
 export type PaletteSection = {
 	group: PaletteSectionKey;
@@ -797,6 +815,7 @@ export const PALETTE_GROUP_TITLES: Record<PaletteGroup, string> = {
 export const PALETTE_SECTION_TITLES: Record<PaletteSectionKey, string> = {
 	...PALETTE_GROUP_TITLES,
 	unread: "Unread",
+	recents: "Recents",
 };
 
 /**
@@ -839,6 +858,18 @@ export const PALETTE_GROUP_ORDER: PaletteGroup[] = [
 const GROUP_CAP = 6;
 const SCOPED_GROUP_CAP = 24;
 export const TOTAL_CAP = 48;
+/**
+ * How many rows the switcher's Recents pin shows.
+ *
+ * Five: the pin is a shortcut to the conversations you were just in, and it sits
+ * between the Unread pin and the Chats tier, whose own browse cap is also five
+ * (`BROWSE_CAP.chats`). A longer pin would push the Chats tier - the list's
+ * complete answer - below the fold of the 24rem list on open, which is a
+ * shortcut hiding the thing it shortcuts. The ring remembers more
+ * (`CONVERSATION_RECENTS_LIMIT`, twenty) so that the pin stays full when some of
+ * what it remembers is on screen, unread, or gone.
+ */
+export const RECENTS_PIN_CAP = 5;
 const BROWSE_CAP: Record<PaletteGroup, number> = {
 	navigation: 6,
 	chats: 5,
@@ -941,6 +972,60 @@ export function searchPalette({
 				 * what the false side of `clipped` must not hide.
 				 */
 				for (const item of unread) pinnedIds.add(item.id);
+			}
+			/*
+			 * THE RECENTS PIN: the conversations visited lately, directly beneath
+			 * Unread, so getting back to one is a single keystroke. `recentRank` is
+			 * the row's index in the visited ring, set at the source (this module
+			 * stays import-free).
+			 *
+			 * WHICH ROWS. Featured chat rows that carry a rank, minus two kinds:
+			 * - unread rows, which already sit in the Unread pin above - a row never
+			 *   appears twice, and `pinnedIds` holds them by now;
+			 * - the conversation on screen, because the reader is already in it. It
+			 *   is what makes the first Recents row "the previous conversation"
+			 *   (the Alt-Tab behaviour).
+			 * A ring entry with no catalogue row (deleted, archived out of view,
+			 * forgotten) never reaches here: rows are derived from live catalogue
+			 * items, so nothing is resurrected. An empty ring, or no eligible row,
+			 * draws no section and no heading, and the list is exactly what it was.
+			 *
+			 * SAME BUDGET, SAME ACCOUNTING as the Unread pin: `total` counts the
+			 * pin's whole claim, the drawn rows come out of the running `rendered`
+			 * budget, and every row the pin claims - drawn within its five or not -
+			 * goes into `pinnedIds`, so it cannot reappear under the Chats tier as a
+			 * second copy. SWITCHER-ONLY for the reason the Unread pin is: the gate is
+			 * the `#` seed's scope, and the un-scoped Cmd/Ctrl+P browse is unchanged.
+			 */
+			const recents = pool
+				.filter(
+					(item) =>
+						item.group === "chats" &&
+						item.featured &&
+						item.recentRank !== undefined &&
+						item.current !== true &&
+						!pinnedIds.has(item.id),
+				)
+				.sort(
+					(a, b) => (a.recentRank ?? 0) - (b.recentRank ?? 0) || byOrder(a, b),
+				);
+			if (recents.length > 0) {
+				const claimed = recents.slice(0, RECENTS_PIN_CAP);
+				total += claimed.length;
+				const room = Math.max(0, TOTAL_CAP - rendered);
+				if (room > 0) {
+					const shown = claimed.slice(0, room);
+					sections.push({
+						group: "recents",
+						items: shown.map((item) => ({
+							item,
+							score: 0,
+							soft: item.tier === SOFT_TIER,
+						})),
+					});
+					rendered += shown.length;
+				}
+				for (const item of claimed) pinnedIds.add(item.id);
 			}
 		}
 		for (const group of PALETTE_GROUP_ORDER) {

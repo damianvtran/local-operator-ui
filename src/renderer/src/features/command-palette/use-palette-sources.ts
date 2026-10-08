@@ -53,9 +53,11 @@ import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import {
 	LEGACY_CATALOGUE_PAGE,
+	panelSessionIdOfView,
 	unreadMarkKind,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
 import type { SessionSearchHit } from "../../../../shared/desktop-session-contract";
@@ -445,10 +447,34 @@ export function usePaletteItems({
 		}),
 		[forgotten],
 	);
+	/*
+	 * THE VISITED RING and the conversation on screen, the two facts the Recents
+	 * pin is built from (`conversationRecents`, `ui-preferences-store.ts`). The
+	 * displayed id is the shell's own rule (`panelSessionIdOfView`, the same call
+	 * `app.tsx` records visits from) rather than `activeSessionId`, which a staged
+	 * draft leaves pointing at the conversation the reader came FROM: reading that
+	 * field would exclude the wrong row while a draft is on screen.
+	 */
+	const conversationRecents = useUiPreferencesStore(
+		(state) => state.conversationRecents,
+	);
+	const displayedSessionId = useCanonicalSessionsStore((state) => {
+		const draft = state.activeDraftKey
+			? state.drafts[state.activeDraftKey]
+			: undefined;
+		return panelSessionIdOfView(
+			state.activeDraftKey,
+			draft?.sessionId,
+			state.activeSessionId,
+		);
+	});
 	const chatItems = useMemo(() => {
 		if (!wantsChats) return [];
 		const { rows } = searchChats(sessions, terms, hits, {}, archiveView);
 		const byId = new Map((hits ?? []).map((hit) => [hit.id, hit]));
+		const recentIndex = new Map(
+			conversationRecents.map((id, index) => [id, index]),
+		);
 		return rows.map((row, index) => {
 			const hit = byId.get(row.session_id);
 			const labelMatch = matchesLabel(row, terms);
@@ -507,9 +533,28 @@ export function usePaletteItems({
 				 * cannot draw.
 				 */
 				unread: unreadMarkKind(row) !== null,
+				/*
+				 * The Recents pin's two facts (see `PaletteItem.recentRank` and
+				 * `.current`): the row's place in the visited ring, absent when it is
+				 * not in it, and whether it is the conversation on screen. Derived from
+				 * the same live catalogue row as everything above, so an id in the ring
+				 * whose conversation is gone has no item here to carry a rank, and the
+				 * ring can never resurrect one.
+				 */
+				recentRank: recentIndex.get(row.session_id),
+				current: row.session_id === displayedSessionId,
 			} satisfies PaletteItem;
 		});
-	}, [sessions, terms, hits, wantsChats, archiveView, teamLabels]);
+	}, [
+		sessions,
+		terms,
+		hits,
+		wantsChats,
+		archiveView,
+		teamLabels,
+		conversationRecents,
+		displayedSessionId,
+	]);
 
 	/* -------------------------------- agents -------------------------------- */
 

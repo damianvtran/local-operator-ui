@@ -40,6 +40,7 @@ const {
 	PALETTE_GROUP_ORDER,
 	PALETTE_SECTION_TITLES,
 	parsePaletteQuery,
+	RECENTS_PIN_CAP,
 	SCOPE_LEGEND,
 	searchPalette,
 	SOFT_TIER,
@@ -520,6 +521,221 @@ test("with everything shown, clipped stays false — it is not 'a cap was consul
 	);
 	assert.equal(outcome.total, 3);
 	assert.equal(outcome.clipped, false);
+});
+
+/* ------------------------------------------------------------------ *
+ * The Recents pin
+ * ------------------------------------------------------------------ */
+
+/*
+ * A visited row carries `recentRank` (its index in the visited ring, 0 the most
+ * recent) and, for the conversation on screen, `current` - both decided at the
+ * source (`use-palette-sources.ts`) because this module is import-free. `order`
+ * stays the catalogue's newest-first rank, so a rank and an order can disagree,
+ * which is the point of the pin: it is ordered by VISIT, not by activity.
+ */
+const visitedChat = (id, title, order, recentRank, extra = {}) => ({
+	...listedChat(id, title, order),
+	recentRank,
+	...extra,
+});
+
+test("the switcher pins Recents directly beneath Unread, above the Chats tier", () => {
+	const outcome = searchPalette({
+		items: [
+			unreadChat("u1", "Unread one", 0),
+			visitedChat("r1", "Visited one", 1, 0),
+			listedChat("c1", "Never visited", 2),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.equal(PALETTE_SECTION_TITLES.recents, "Recents");
+	assert.deepEqual(groups(outcome), ["unread", "recents", "chats"]);
+	assert.deepEqual(names(outcome), [
+		"Unread one",
+		"Visited one",
+		"Never visited",
+	]);
+	assert.equal(outcome.clipped, false);
+});
+
+test("Recents follows the visited ring, not the catalogue's recency", () => {
+	const outcome = searchPalette({
+		items: [
+			// Newest by activity, but visited longest ago.
+			visitedChat("r-old", "Visited longest ago", 0, 2),
+			visitedChat("r-new", "Visited last", 1, 0),
+			visitedChat("r-mid", "Visited before that", 2, 1),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(
+		outcome.sections[0].items.map((match) => match.item.name),
+		["Visited last", "Visited before that", "Visited longest ago"],
+	);
+});
+
+test("no row appears twice across Unread, Recents and Chats", () => {
+	const outcome = searchPalette({
+		items: [
+			// Unread AND visited: it lives in the Unread pin only.
+			unreadChat("both", "Unread and visited", 0),
+			visitedChat("r1", "Visited", 1, 1),
+			listedChat("c1", "Plain", 2),
+		].map((item) =>
+			item.id === "chat-both" ? { ...item, recentRank: 0 } : item,
+		),
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	const ids = outcome.sections.flatMap((section) =>
+		section.items.map((match) => match.item.id),
+	);
+	assert.equal(new Set(ids).size, ids.length);
+	assert.deepEqual(
+		outcome.sections.map((section) => [
+			section.group,
+			section.items.map((match) => match.item.name),
+		]),
+		[
+			["unread", ["Unread and visited"]],
+			["recents", ["Visited"]],
+			["chats", ["Plain"]],
+		],
+	);
+});
+
+test("the conversation on screen is left out of Recents, so the first row is the previous one", () => {
+	const outcome = searchPalette({
+		items: [
+			visitedChat("here", "On screen", 0, 0, { current: true }),
+			visitedChat("prev", "Previous", 1, 1),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["recents", "chats"]);
+	assert.deepEqual(
+		outcome.sections[0].items.map((match) => match.item.name),
+		["Previous"],
+	);
+	// It is not lost: it is an ordinary row of the Chats tier.
+	assert.deepEqual(
+		outcome.sections[1].items.map((match) => match.item.name),
+		["On screen"],
+	);
+});
+
+test("Recents shows at most five rows, and the rest stay in the Chats tier exactly once", () => {
+	assert.equal(RECENTS_PIN_CAP, 5);
+	const outcome = searchPalette({
+		items: Array.from({ length: 8 }, (_, index) =>
+			visitedChat(`r${index}`, `Visited ${index}`, index, index),
+		),
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["recents", "chats"]);
+	assert.deepEqual(
+		outcome.sections[0].items.map((match) => match.item.name),
+		["Visited 0", "Visited 1", "Visited 2", "Visited 3", "Visited 4"],
+	);
+	// The pin claims only its five; the other three browse in their own tier.
+	assert.deepEqual(
+		outcome.sections[1].items.map((match) => match.item.name),
+		["Visited 5", "Visited 6", "Visited 7"],
+	);
+	assert.equal(outcome.total, 8);
+	assert.equal(outcome.clipped, false);
+});
+
+test("Recents is absent, with no empty heading, when no row carries a rank", () => {
+	const outcome = searchPalette({
+		items: [listedChat("c1", "Alpha", 0), listedChat("c2", "Beta", 1)],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["chats"]);
+	assert.deepEqual(names(outcome), ["Alpha", "Beta"]);
+});
+
+test("Recents is absent when the only ranked row is the one on screen", () => {
+	const outcome = searchPalette({
+		items: [
+			visitedChat("here", "On screen", 0, 0, { current: true }),
+			listedChat("c1", "Beta", 1),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["chats"]);
+});
+
+test("a typed query drops Recents, and the row is found by search as always", () => {
+	const outcome = searchPalette({
+		items: [visitedChat("r1", "Retention follow-up", 0, 0)],
+		raw: "#retention",
+	});
+	assert.ok(!groups(outcome).includes("recents"));
+	assert.deepEqual(names(outcome), ["Retention follow-up"]);
+});
+
+test("Recents is the switcher's alone; the un-scoped browse is untouched", () => {
+	const outcome = searchPalette({
+		items: [visitedChat("r1", "Visited", 0, 0), listedChat("c1", "Plain", 1)],
+		raw: "",
+	});
+	assert.ok(!groups(outcome).includes("recents"));
+	assert.deepEqual(names(outcome), ["Visited", "Plain"]);
+});
+
+test("Recents draws from the same budget as Unread and the tiers, with honest accounting", () => {
+	const outcome = searchPalette({
+		items: [
+			...Array.from({ length: 46 }, (_, index) =>
+				unreadChat(`u${index}`, `Unread ${index}`, index),
+			),
+			...Array.from({ length: 5 }, (_, index) =>
+				visitedChat(`r${index}`, `Visited ${index}`, 46 + index, index),
+			),
+			...Array.from({ length: 4 }, (_, index) =>
+				listedChat(`c${index}`, `Listed ${index}`, 51 + index),
+			),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	// 46 unread leave two rows of budget: Recents gets them, the Chats tier none.
+	assert.deepEqual(groups(outcome), ["unread", "recents"]);
+	assert.deepEqual(
+		outcome.sections[1].items.map((match) => match.item.name),
+		["Visited 0", "Visited 1"],
+	);
+	assert.equal(
+		outcome.sections.reduce(
+			(count, section) => count + section.items.length,
+			0,
+		),
+		TOTAL_CAP,
+	);
+	// 46 + 5 claimed by the pins + 4 left for the tier: every row considered.
+	assert.equal(outcome.total, 55);
+	assert.equal(outcome.clipped, true);
+	// A claimed-but-undrawn Recents row does not reappear as a Chats duplicate.
+	const ids = outcome.sections.flatMap((section) =>
+		section.items.map((match) => match.item.id),
+	);
+	assert.equal(new Set(ids).size, ids.length);
+});
+
+test("a full Unread pin leaves Recents nothing to draw, and its rows are not duplicated below", () => {
+	const outcome = searchPalette({
+		items: [
+			...Array.from({ length: 48 }, (_, index) =>
+				unreadChat(`u${index}`, `Unread ${index}`, index),
+			),
+			visitedChat("r0", "Visited 0", 48, 0),
+			listedChat("c0", "Listed 0", 49),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["unread"]);
+	assert.equal(outcome.total, 50);
+	assert.equal(outcome.clipped, true);
 });
 
 /* ------------------------------------------------------------------ *
