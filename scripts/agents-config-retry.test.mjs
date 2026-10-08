@@ -19,7 +19,7 @@ import React, { act } from "react";
  * frame cannot hold that distinction and a still cannot tell the states apart,
  * so the rule is pinned here against the REAL composer.
  *
- * WHAT IS REAL: the shipped `ConfigComposer`, `RunStrip` and `RunSummary`, the
+ * WHAT IS REAL: the shipped `ConfigComposer`, its status row and `RunSummary`, the
  * `Button`/`Badge`/`Textarea` primitives and `cn`. What is faked, and only that:
  * the run handle itself, which is a plain object in every case — the states
  * under test are decisions about a value, not about a hook.
@@ -115,6 +115,16 @@ globalThis.localStorage = DOM.window.localStorage;
 globalThis.requestAnimationFrame = (callback) =>
 	setTimeout(() => callback(Date.now()), 0);
 globalThis.cancelAnimationFrame = (handle) => clearTimeout(handle);
+/*
+ * The status row's detail region measures its own overflow with a ResizeObserver
+ * (it is a keyboard stop only while it overflows); jsdom has none, and no layout
+ * either, so an inert observer is the honest shim - `scrollHeight` reads 0 here and
+ * the region is therefore never a tab stop, which nothing in this file asserts.
+ */
+globalThis.ResizeObserver = class {
+	observe() {}
+	disconnect() {}
+};
 DOM.window.HTMLCanvasElement.prototype.getContext = () => ({
 	measureText: (text) => ({ width: String(text).length * 8 }),
 	font: "",

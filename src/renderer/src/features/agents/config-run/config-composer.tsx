@@ -36,7 +36,11 @@
  * the subagent reader shows per child.
  */
 
-import { CHAT_COLUMN_INSET } from "@features/chat/chat-measure";
+import {
+	CHAT_COLUMN_CONTAINER,
+	CHAT_COLUMN_INSET,
+	CHAT_MEASURE,
+} from "@features/chat/chat-measure";
 import { draftPreviewQuery } from "@features/chat/draft-selection";
 import {
 	desktopFeatureEnabled,
@@ -47,7 +51,6 @@ import {
 	type MessageInputHandle,
 	type MessageInputProps,
 } from "@shared/components/composer";
-import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { cn } from "@shared/lib/utils";
@@ -55,7 +58,7 @@ import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-stor
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Square } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { ConfigRunHandle } from "./use-config-run";
 
 /**
@@ -118,7 +121,15 @@ function StateDot({ status, pulse }: { status: string; pulse: boolean }) {
 	);
 }
 
-/** The run's own steps, one line each, newest last. */
+/**
+ * The run's own steps, one line each, newest last.
+ *
+ * NO SCROLLER OF ITS OWN (it was `max-h-48 overflow-y-auto`): the whole detail
+ * block is bounded and scrolls once (`DetailRegion`), and a list that scrolls
+ * inside a block that scrolls is two wheel traps for one gesture. The 192 px it
+ * used to allow is more than the block's cap at every window height this app
+ * runs at, so it could never have scrolled on its own anyway.
+ */
 function RunActivity({ run }: { run: ConfigRunHandle }) {
 	if (run.activity.length === 0) {
 		return (
@@ -128,7 +139,7 @@ function RunActivity({ run }: { run: ConfigRunHandle }) {
 		);
 	}
 	return (
-		<ul className="max-h-48 space-y-1 overflow-y-auto">
+		<ul className="space-y-1">
 			{run.activity.map((row, index) => (
 				<li
 					// The row's own instant is its identity: a run may call the same tool
@@ -149,17 +160,203 @@ function RunActivity({ run }: { run: ConfigRunHandle }) {
 	);
 }
 
-function RunStrip({
+/**
+ * THE ROW'S TRAILING GHOST BUTTON IS PULLED OUT BY ITS OWN PADDING (design review
+ * round 1 D1). A ghost button has no edge, so its box was flush with the column
+ * while its label ended 8 px inside it, and the bordered Stop and the box itself
+ * were on the edge. `-mr-2` is the `sm` button's `px-2`: the hover ground moves
+ * into the 24 px gutter (nothing there clips it - the dock has no overflow), and
+ * the glyph lands on the column edge.
+ */
+const TRAILING_GHOST = "-mr-2";
+
+/**
+ * THE BOUND ON EVERYTHING THAT MAY GROW THE DOCK (agent review round 1 #1 =
+ * design review D3).
+ *
+ * The status row is fixed at 28 px, and the block under it is the only part of the
+ * dock whose height depends on what a run said: `run.answer` is the run's whole
+ * closing message and `run.error` is a provider's own text, so unbounded they put
+ * the dock at 1,012 px (a 30-line answer) and the box off screen, with the pane
+ * squeezed to 24 px above it. The bound is a fraction of the WINDOW's height
+ * because the budget is the window's: 10vh, floored at 3.5rem so a very short window
+ * still shows a few lines and capped at 5.5rem so a tall one does not hand the dock
+ * back to the run.
+ *
+ * What the bound does and does not promise (QA round 2, Q2). With an EMPTY box, the
+ * WORST dock - this block full plus Retry's row, the only control that lives
+ * beneath it - measured 278.5 px (38%) at 1024x725 and 266 px (44%) at the app's
+ * 800x600 minimum. That is the whole claim: the bound caps THIS block only. The
+ * box beneath it has its own, older max height, so a draft of 20 lines under the
+ * same error measured 356.5 px (49%) at 1024x725 and 344 px (57%) at 800x600; the
+ * dock is the sum of the two caps, and what holds there is that the last block of
+ * the pane stays reachable by scrolling, not that the dock stays under a share of
+ * the window. Measured in the round-2 evidence, not derived here.
+ *
+ * The block scrolls ITSELF rather than clamping text behind a "Show all": an error
+ * must stay readable in full, and a clamp would need a second control on a row
+ * that is already the densest in the page. It is a keyboard stop only while it
+ * actually overflows (`useOverflowing`), so a short sentence does not add a Tab
+ * stop that does nothing.
+ */
+const DETAIL_BOUND = "max-h-[clamp(3.5rem,10vh,5.5rem)]";
+
+/**
+ * Whether an element's content is taller than its box, kept current as the
+ * element resizes. The block above changes size when the window does, when Watch
+ * opens and when a run settles, and a stale answer here would either hide the only
+ * way to the overflowing text (no tab stop) or leave a stop with nothing to
+ * scroll. The observer is on the BOX: content growing past a box that is already
+ * at its cap changes nothing the flag would not already say.
+ */
+function useOverflowing<T extends HTMLElement>() {
+	const ref = useRef<T>(null);
+	const [overflowing, setOverflowing] = useState(false);
+	/*
+	 * NO DEPENDENCY ARRAY, ON PURPOSE: the box can stay the same size while its
+	 * CHILDREN change (a settled summary replacing the live step, an error arriving
+	 * in a block that was already at its cap), and a ResizeObserver on the box says
+	 * nothing about that. Re-running after every render re-measures through
+	 * `measure()` below, which is the only thing that sees it; rebuilding the observer
+	 * is the cost, and it cannot loop because the setter bails out on an unchanged
+	 * boolean (agent review round 2, nit 3).
+	 */
+	useEffect(() => {
+		const element = ref.current;
+		if (!element) return;
+		const measure = () =>
+			setOverflowing(element.scrollHeight > element.clientHeight + 1);
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(element);
+		return () => observer.disconnect();
+	});
+	return { ref, overflowing };
+}
+
+/**
+ * The dock's detail block: bounded, and a named, focusable region only while it
+ * actually overflows.
+ *
+ * ONE SCROLL CONTEXT FOR ALL OF IT (attached notice, refused stop, Watch, the
+ * settled summary or the error text), not one per part: the parts can co-occur (a
+ * refused stop above an open Watch), and a bound per part would add up to the
+ * unbounded dock again. NOTHING FOCUSABLE LIVES INSIDE IT: an `overflow` box clips
+ * an outline at its padding edge, and Retry (the one control that used to sit in
+ * this block) is rendered BENEATH it for that reason - measured, at the cap it was
+ * a 12 px sliver under the clip that a pointer user had to scroll to find.
+ *
+ * A scroller no key can reach is the failure the pane's own `ReadBlock` rule
+ * exists to avoid, and its content is text, so without a tab stop a keyboard user
+ * could not read past the cap. It is NOT a stop when everything fits, so a short
+ * sentence adds no inert Tab stop.
+ *
+ * `empty:hidden` because a running run with nothing to say yet renders this with
+ * no children, and its 8 px margin would otherwise add 4 px to the dock over idle
+ * (measured: 166 -> 170).
+ */
+function DetailRegion({ children }: { children: ReactNode }) {
+	const { ref, overflowing } = useOverflowing<HTMLDivElement>();
+	return (
+		<div
+			ref={ref}
+			tabIndex={overflowing ? 0 : undefined}
+			role={overflowing ? "region" : undefined}
+			aria-label={overflowing ? "Run details" : undefined}
+			/*
+			 * THE BOUND CUTS TEXT, SO IT SAYS SO (design review round 2 D2): measured,
+			 * 72.5 px of a 1,133 px answer sliced a line through its glyphs with only a
+			 * faint thumb to say more follows. `data-lo-region-cue` is the 12 px fade
+			 * `index.css` draws while the region is not scrolled to its end; it is a
+			 * pseudo-element, not a mask, because a mask would clip the focus ring.
+			 */
+			data-lo-region-cue={overflowing ? "" : undefined}
+			className={cn("mb-2 overflow-y-auto empty:hidden", DETAIL_BOUND)}
+		>
+			{children}
+		</div>
+	);
+}
+
+/**
+ * THE STATUS ROW: one 28 px line above the box, in every state.
+ *
+ * It replaces three things that were each a frame of their own — the bordered card
+ * the whole composer sat in, the absolutely-positioned strip card floating over the
+ * detail pane, and the `Badge`s inside them (design spec D1: the dock was 287 px of
+ * a 725 px window, 177 px of which was not the input). What is left is the box
+ * (the only object with a ground and a radius) and this row, which says in order of
+ * priority what the run is doing, what the next request is about, or — at rest —
+ * what the box is for.
+ *
+ * WHY ONE FIXED HEIGHT. `min-h-7` is the `size="sm"` button height, so a row that
+ * swaps a sentence for Stop and Dismiss never changes height, and the box beneath
+ * it never moves under the caret (the original D4). Only the error and
+ * stop-refused text, which are rare and caused by the operator's own action, are
+ * allowed to grow the block, and they grow it BELOW the row so the row itself keeps
+ * its place.
+ *
+ * LEFT SIDE PRIORITY: run > about > sentence. The right side is decided
+ * separately: the about label and its Clear stay while a run is live (the next
+ * request is still about that row), and Watch / Stop / Dismiss sit after them, so
+ * Stop is never the control that is hidden.
+ *
+ * THE SENTENCE IS NEVER REMOVED FROM THE DOM. The box names it in
+ * `aria-describedby`, and the design brief calls it a permanent node (U4); while a
+ * run owns the left side it is `sr-only` rather than unmounted, so the reference
+ * cannot dangle and a screen reader still reads the standing promise.
+ *
+ * The run's own testid is set only while a run is showing, because the e2e drivers
+ * wait on its appearance as the signal that a run exists.
+ */
+const STATUS_ROW = "mb-1 flex min-h-7 items-center gap-3";
+
+/** "1 definition" / "N definitions" - the count of rows a run touched. */
+const definitionsPhrase = (count: number) =>
+	count === 1 ? "1 definition" : `${count} definitions`;
+
+function ComposerStatus({
 	run,
+	about,
+	blockedReason,
+	hasDraft,
+	onClearAbout,
 	onDismiss,
 }: {
 	run: ConfigRunHandle;
+	/**
+	 * Why the page is refusing input, and whether the box holds a draft. TOGETHER
+	 * they pick the one carrier that SAYS it on screen (agent review round 2, #1):
+	 * an empty box says it as its placeholder; a draft hides the placeholder, so the
+	 * row says it (idle strip) or a line under the row does (a run strip owns the
+	 * row). `MessageInput` stands its own copy down for a draft (`statedByNode`) on
+	 * the strength of that guarantee, so every branch below that is reached with a
+	 * draft must render the sentence VISIBLY.
+	 */
+	blockedReason?: string | null;
+	hasDraft: boolean;
+	about: { kind: "agent" | "team"; name: string } | null;
+	onClearAbout: () => void;
 	/** Wraps `run.dismiss` so the caret lands back in the box (UX U8). */
-	onDismiss?: () => void;
+	onDismiss: () => void;
 }) {
 	const [watching, setWatching] = useState(false);
 	const stopRef = useRef<HTMLButtonElement>(null);
 	const live = run.status === "running" || run.status === "stopping";
+	const showsRun = run.enabled && run.status !== "idle";
+	/*
+	 * WHERE A DRAFT'S BLOCKED REASON IS VISIBLE (agent review round 2 #1). An idle
+	 * strip has a sentence slot in the row; a settled, stopped or errored strip has
+	 * none - the row is the run's title, time and buttons - so the reason gets a line
+	 * under it. A LIVE run gets neither: its title ("Working on your request") is
+	 * already the one visible statement of why the box refuses, and a second line
+	 * would grow the dock 25 px over the 166 px idle height (measured 191.4) for a
+	 * sentence about a state the run is already covering. The reason stays the box's
+	 * `sr-only` description there, so what the reader hears is still the true state.
+	 */
+	const reasonInRow = Boolean(blockedReason) && hasDraft && !showsRun;
+	const reasonBelowRow =
+		Boolean(blockedReason) && hasDraft && showsRun && !live;
 
 	/*
 	 * Escape focuses Stop while a run is live — the accelerator the chat composer
@@ -216,29 +413,150 @@ function RunStrip({
 
 	return (
 		<div
-			className="border-hairline border-b pb-2"
-			data-testid="config-run-strip"
+			className={CHAT_MEASURE}
+			data-testid={showsRun ? "config-run-strip" : undefined}
 		>
-			<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-				<StateDot status={run.status} pulse={live} />
-				<span aria-live="polite" className="text-body-sm text-ink">
-					{title}
-				</span>
-				{(live || run.status === "stopped" || run.status === "done") &&
-				run.elapsed !== "0s" ? (
-					<span className="text-meta text-ink-muted tabular-nums">
-						{run.elapsed}
-					</span>
+			<div className={STATUS_ROW}>
+				{showsRun ? (
+					<div className="flex min-w-0 flex-1 items-center gap-3">
+						<StateDot status={run.status} pulse={live} />
+						<span
+							aria-live="polite"
+							className="min-w-0 truncate text-body-sm text-ink"
+						>
+							{title}
+							{/*
+							 * THE SETTLED RESULTS LINE IS SPOKEN WITH THE TITLE (UX review round 1
+							 * U10). This span is the row's one live region, and text changing
+							 * inside an existing region is announced where a newly mounted region
+							 * is often not, so the count rides here as `sr-only` text (the visible
+							 * count beside it is hidden from AT for that state, so it is read once).
+							 * Only `done`: while running the count changes with every write and
+							 * announcing each would talk over the run.
+							 */}
+							{run.status === "done" && run.touched.length > 0 ? (
+								<span className="sr-only">
+									{`. Configured ${definitionsPhrase(run.touched.length)}`}
+								</span>
+							) : null}
+						</span>
+						{(live || run.status === "stopped" || run.status === "done") &&
+						run.elapsed !== "0s" ? (
+							<span className="shrink-0 text-meta text-ink-muted tabular-nums">
+								{run.elapsed}
+							</span>
+						) : null}
+						{/* A count is a fact about the run, not a state to be badged. */}
+						{run.touched.length > 0 ? (
+							<span
+								// "1 definition" alone has no noun context for a reader that meets it
+								// out of order; the settled state is spoken by the live title instead.
+								aria-hidden={run.status === "done" ? true : undefined}
+								className="shrink-0 text-meta text-ink-muted"
+							>
+								<span className="sr-only">Configured </span>
+								{definitionsPhrase(run.touched.length)}
+							</span>
+						) : null}
+					</div>
 				) : null}
-				{run.touched.length > 0 ? (
-					<Badge variant="neutral">
-						{run.touched.length === 1
-							? "1 definition"
-							: `${run.touched.length} definitions`}
-					</Badge>
-				) : null}
-				<div className="ml-auto flex items-center gap-1">
-					{run.activity.length > 0 ? (
+				{/*
+				 * THE STANDING SENTENCE, verbatim and permanent — not a placeholder and
+				 * not an invitation (U4): the page already hands work to a conversation
+				 * from "New chat", and without this line the reasonable reading of the
+				 * box is that it does the same. `ink-dim`, the palette's own floor for
+				 * secondary text (5:1 on canvas in both brand palettes): it is a
+				 * footnote to the box and must not compete with the run's title.
+				 */}
+				{run.enabled && !reasonBelowRow ? (
+					<>
+						{/*
+						 * THE STANDING SENTENCE, verbatim and permanent — not a placeholder and
+						 * not an invitation (U4): the page already hands work to a conversation
+						 * from "New chat", and without this line the reasonable reading of the
+						 * box is that it does the same. `ink-dim`, the palette's own floor for
+						 * secondary text (5:1 on canvas in both brand palettes): it is a
+						 * footnote to the box and must not compete with the run's title.
+						 *
+						 * IT IS THE BOX'S DESCRIPTION ONLY WHILE THE PAGE IS NOT BLOCKED (UX
+						 * review round 2, U4): "Runs in the background" is not what a refused
+						 * box does, and a reader on it heard that instead of why it refuses.
+						 * Blocked, the id moves to the reason's span below; this stays on screen
+						 * in the empty-box state so the dock's frame does not change, and gives
+						 * its place to the reason when the box holds a draft.
+						 */}
+						{reasonInRow ? null : (
+							<span
+								id={blockedReason ? undefined : ASIDE_NOTICE_ID}
+								data-testid={blockedReason ? undefined : "config-composer-note"}
+								className={
+									showsRun
+										? "sr-only"
+										: "min-w-0 flex-1 truncate text-meta text-ink-dim"
+								}
+							>
+								Runs in the background. This does not appear in your
+								conversation.
+							</span>
+						)}
+						{blockedReason ? (
+							<span
+								id={ASIDE_NOTICE_ID}
+								data-testid="config-composer-note"
+								className={
+									reasonInRow
+										? "min-w-0 flex-1 truncate text-meta text-ink-dim"
+										: "sr-only"
+								}
+							>
+								{/*
+								 * A BLOCKED PAGE SPEAKS ONCE, AND WHERE IT CAN BE SEEN (UX review
+								 * round 1 U3; agent review round 2 #1). The reason used to ride in
+								 * `hostNotice.placeholder`, which the composer ALSO prints as a meta
+								 * line above this row whenever the box holds a draft - the same
+								 * sentence twice within 26 px - so `statedByNode` stands that copy
+								 * down for a draft, and that is a promise this component keeps: with
+								 * a draft the sentence is VISIBLE in exactly one place. An idle strip:
+								 * here, taking the standing promise's place (nothing can be sent, so
+								 * the promise about a send has nothing to say). A settled strip: the
+								 * line under the row (`reasonBelowRow`); a live run: its own title. With
+								 * an EMPTY box the placeholder is the visible statement, and this span is
+								 * the `sr-only` description so the reader hears the reason too.
+								 */}
+								{blockedReason}
+							</span>
+						) : null}
+					</>
+				) : (
+					// An empty flexible slot keeps the row's 28 px and its right edge; the
+					// sentence itself is the paragraph BELOW the row (see `ComposerStatus`).
+					<span className="flex-1" aria-hidden="true" />
+				)}
+				<div className="ml-auto flex shrink-0 items-center gap-1">
+					{about ? (
+						<>
+							{/* Plain text, not an accent badge: the accent is spent on Send and the focus ring (D16). */}
+							<span
+								data-testid="config-composer-about"
+								// The name truncates at 224 px; the full words stay reachable (UX U8).
+								title={`About ${about.kind} ${about.name}`}
+								className="max-w-56 truncate text-meta text-ink-muted"
+							>
+								About {about.kind} {about.name}
+							</span>
+							<Button
+								variant="ghost"
+								size="sm"
+								// The trailing control when no run is showing: `-mr-2` (the button's
+								// own `px-2`) puts its LABEL's last glyph on the column edge (D1).
+								className={showsRun ? undefined : TRAILING_GHOST}
+								onClick={onClearAbout}
+							>
+								Clear
+							</Button>
+						</>
+					) : null}
+					{showsRun && run.activity.length > 0 ? (
 						<Button
 							variant="ghost"
 							size="sm"
@@ -253,117 +571,172 @@ function RunStrip({
 							Watch
 						</Button>
 					) : null}
-					{live ? (
-						<Button
-							ref={stopRef}
-							variant="secondary"
-							size="sm"
-							disabled={run.status === "stopping"}
-							onClick={() => void run.stop()}
-						>
-							<Square className="size-3.5" />
-							{run.status === "stopping" ? "Stopping…" : "Stop"}
-						</Button>
-					) : (
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => (onDismiss ? onDismiss() : run.dismiss())}
-						>
-							Dismiss
-						</Button>
-					)}
-				</div>
-			</div>
-			{run.attached ? (
-				<p className="mt-1 text-meta text-ink-muted">
-					Another configuration run was already going, so this page attached to
-					it. Your request was not sent — it is still in the box.
-				</p>
-			) : null}
-			{/*
-			 * THE STOP THAT DID NOT TAKE (UX review round 3, U1).
-			 *
-			 * A refused interrupt used to render the settled error shape: the live
-			 * Stop and the elapsed time vanished, Dismiss was the only control left,
-			 * and the strip said the run had stopped — while it went on writing
-			 * definitions. The strip keeps its live shape in that case (Stop still
-			 * pressable, the clock still running) and says what happened here, with
-			 * the refusal's own reason under it when the backend gave one.
-			 */}
-			{run.stopError ? (
-				<div
-					className="mt-2 border-danger-border border-t pt-2"
-					data-testid="config-stop-refused"
-				>
-					<p className="text-body-sm text-danger">
-						The stop did not take — the run is still going.
-					</p>
-					<p className="mt-0.5 text-meta text-ink-muted">{run.stopError}</p>
-				</div>
-			) : null}
-			{watching ? (
-				<div className="mt-2 border-hairline border-t pt-2">
-					<RunActivity run={run} />
-				</div>
-			) : null}
-			{/*
-			 * THE STOPPED CASE SAYS WHAT IT KEPT. Cancellation is not rollback: the
-			 * tools write through as they go, so a stop mid-run leaves whatever it had
-			 * already written, and the honest sentence is the one that says so rather
-			 * than implying the machine was put back — and a stop that happened before
-			 * anything was written says THAT instead (review round 1, UX nit: the kept
-			 * sentence was shown over an empty result list).
-			 */}
-			{run.status === "stopped" ? (
-				<div className="mt-2 space-y-1 border-hairline border-t pt-2 text-body-sm">
-					<p className="text-ink">
-						{run.results.length > 0
-							? "Stopped. Changes it had already made were kept."
-							: "Stopped. Nothing had been changed yet."}
-					</p>
-					{run.results.length > 0 ? (
-						<ul className="space-y-0.5">
-							{run.results.map((result) => (
-								<li
-									key={`${result.target.kind}:${result.target.name}`}
-									className="text-ink-muted"
-								>
-									{result.created ? "Created " : "Changed "}
-									<span className="text-ink">{result.target.name}</span>
-								</li>
-							))}
-						</ul>
-					) : null}
-				</div>
-			) : null}
-			{run.status === "done" ? <RunSummary run={run} /> : null}
-			{run.status === "error" && run.error ? (
-				<div className="mt-2 border-danger-border border-t pt-2">
-					<p className="text-body-sm text-danger">{run.error}</p>
-					<div className="mt-1 flex items-center gap-2">
-						{/*
-						 * RETRY, WHEN THERE IS SOMETHING TO RETRY ON. The message-call
-						 * failure is the one error the page can act on — the run exists and
-						 * the text is still in the box — so the strip offers the same call
-						 * again rather than telling the operator to send it themselves
-						 * (review round 1, UX U10).
-						 */}
-						{run.canRetry ? (
+					{showsRun ? (
+						live ? (
 							<Button
+								ref={stopRef}
 								variant="secondary"
 								size="sm"
-								data-testid="config-retry"
-								disabled={run.starting}
-								onClick={() => void run.retry()}
+								disabled={run.status === "stopping"}
+								onClick={() => void run.stop()}
 							>
-								{run.starting ? "Sending…" : "Retry"}
+								<Square className="size-3.5" />
+								{run.status === "stopping" ? "Stopping…" : "Stop"}
 							</Button>
-						) : null}
-						<p className="text-meta text-ink-muted">
-							Nothing else was changed by this run.
+						) : (
+							<Button
+								variant="ghost"
+								size="sm"
+								className={TRAILING_GHOST}
+								onClick={onDismiss}
+							>
+								Dismiss
+							</Button>
+						)
+					) : null}
+				</div>
+			</div>
+			{run.enabled ? null : (
+				/*
+				 * THE DISABLED GATE'S SENTENCE WRAPS BELOW THE ROW (QA review round 1 Q2).
+				 * It is the only explanation of why the box is dead and its second half is
+				 * the actionable one ("Update Local Operator to ..."), so `truncate` in the
+				 * row cut exactly the part that mattered at the real 476 px pane. It is the
+				 * box's `aria-describedby` target in this state, with the same id and testid
+				 * the in-row sentence carries when the box is enabled. 119 characters is two
+				 * lines at the narrowest pane, so it needs no bound of its own.
+				 */
+				<p
+					id={ASIDE_NOTICE_ID}
+					data-testid="config-composer-note"
+					className="mb-2 text-meta text-ink-dim"
+				>
+					{run.disabledReason}
+				</p>
+			)}
+			{reasonBelowRow ? (
+				<p
+					id={ASIDE_NOTICE_ID}
+					data-testid="config-composer-note"
+					className="mb-2 text-meta text-ink-muted"
+				>
+					{blockedReason}
+				</p>
+			) : null}
+			{showsRun ? (
+				/*
+				 * THE DETAIL UNDER THE ROW, IN FLOW. Watch, the settled summary, a refused
+				 * stop and an error render here, between the row and the box. They are the
+				 * only things that may make the dock taller than its resting height, they
+				 * grow it upward (the dock is the column's last child, so the box stays
+				 * where it is), and the whole block is bounded by `DETAIL_BOUND` and scrolls
+				 * itself (`DetailRegion`): `run.answer` and `run.error` are free-length.
+				 */
+				<DetailRegion>
+					{run.attached ? (
+						<p className="mt-1 text-meta text-ink-muted">
+							Another configuration run was already going, so this page attached
+							to it. Your request was not sent — it is still in the box.
 						</p>
-					</div>
+					) : null}
+					{/*
+					 * THE STOP THAT DID NOT TAKE (UX review round 3, U1).
+					 *
+					 * A refused interrupt used to render the settled error shape: the live
+					 * Stop and the elapsed time vanished, Dismiss was the only control left,
+					 * and the strip said the run had stopped — while it went on writing
+					 * definitions. The strip keeps its live shape in that case (Stop still
+					 * pressable, the clock still running) and says what happened here, with
+					 * the refusal's own reason under it when the backend gave one.
+					 */}
+					{run.stopError ? (
+						<div
+							className="mt-2 border-danger-border border-t pt-2"
+							data-testid="config-stop-refused"
+						>
+							<p className="text-body-sm text-danger">
+								The stop did not take — the run is still going.
+							</p>
+							<p className="mt-0.5 text-meta text-ink-muted">{run.stopError}</p>
+						</div>
+					) : null}
+					{watching ? (
+						<div className="mt-2 border-hairline border-t pt-2">
+							<RunActivity run={run} />
+						</div>
+					) : null}
+					{/*
+					 * THE STOPPED CASE SAYS WHAT IT KEPT. Cancellation is not rollback: the
+					 * tools write through as they go, so a stop mid-run leaves whatever it had
+					 * already written, and the honest sentence is the one that says so rather
+					 * than implying the machine was put back — and a stop that happened before
+					 * anything was written says THAT instead (review round 1, UX nit: the kept
+					 * sentence was shown over an empty result list).
+					 */}
+					{run.status === "stopped" ? (
+						<div className="mt-2 space-y-1 border-hairline border-t pt-2 text-body-sm">
+							<p className="text-ink">
+								{run.results.length > 0
+									? "Stopped. Changes it had already made were kept."
+									: "Stopped. Nothing had been changed yet."}
+							</p>
+							{run.results.length > 0 ? (
+								<ul className="space-y-0.5">
+									{run.results.map((result) => (
+										<li
+											key={`${result.target.kind}:${result.target.name}`}
+											className="text-ink-muted"
+										>
+											{result.created ? "Created " : "Changed "}
+											<span className="text-ink">{result.target.name}</span>
+										</li>
+									))}
+								</ul>
+							) : null}
+						</div>
+					) : null}
+					{run.status === "done" ? <RunSummary run={run} /> : null}
+					{run.status === "error" && run.error ? (
+						<div className="mt-2 border-danger-border border-t pt-2">
+							<p className="text-body-sm text-danger">{run.error}</p>
+						</div>
+					) : null}
+				</DetailRegion>
+			) : null}
+			{showsRun && run.status === "error" && run.error ? (
+				/*
+				 * `mb-2.5` (design review round 2 D3): Retry sat 4 px above the box and its
+				 * focus ring (offset 1 + width 2) left 1 px, so it read as part of the box.
+				 * Every other state leaves 9-10 px between the last line and the box; this
+				 * row ends in a 32 px button, so the clearance has to be its own margin.
+				 * The box does not move: the dock is the column's last child and grows UP.
+				 */
+				<div className="mb-2.5 flex items-center gap-2">
+					{/*
+					 * RETRY, WHEN THERE IS SOMETHING TO RETRY ON. The message-call failure is
+					 * the one error the page can act on - the run exists and the text is still
+					 * in the box - so the strip offers the same call again rather than telling
+					 * the operator to send it themselves (review round 1, UX U10).
+					 *
+					 * BENEATH THE BOUNDED REGION, NOT INSIDE IT (design review round 1 D3): the
+					 * error text above scrolls, and a control inside a scroller is clipped at
+					 * the cap - measured, Retry was a 12 px sliver below the clip. Here it is
+					 * always whole, and its outline has the dock's own room.
+					 */}
+					{run.canRetry ? (
+						<Button
+							variant="secondary"
+							size="sm"
+							data-testid="config-retry"
+							disabled={run.starting}
+							onClick={() => void run.retry()}
+						>
+							{run.starting ? "Sending…" : "Retry"}
+						</Button>
+					) : null}
+					<p className="text-meta text-ink-muted">
+						Nothing else was changed by this run.
+					</p>
 				</div>
 			) : null}
 		</div>
@@ -555,26 +928,14 @@ export function ConfigComposer({
 	/** Names the row the next request is about, when one is selected. */
 	about,
 	onClearAbout,
-	onStripHeightChange,
 }: {
 	run: ConfigRunHandle;
 	hero?: boolean;
 	blockedReason?: string | null;
 	about: { kind: "agent" | "team"; name: string } | null;
 	onClearAbout: () => void;
-	/**
-	 * The docked strip's own height, in px, while it is shown (0 when it is not).
-	 *
-	 * THE OVERLAY TRADES ONE PROBLEM FOR ANOTHER unless the pane is told how much
-	 * room it is covering: floating above the composer stopped the strip from
-	 * resizing the scroller (D4), and then sat on the last 106 px of the detail,
-	 * which scrolling could not reach (design review round 2, D12). The page adds
-	 * this to the scroller's bottom padding, so the last block can clear it.
-	 */
-	onStripHeightChange?: (height: number) => void;
 }) {
 	const inputRef = useRef<MessageInputHandle | null>(null);
-	const stripObserver = useRef<ResizeObserver | null>(null);
 	const recordingProbe = useRadientCredentialProbe();
 	/*
 	 * THE IDLE BOX'S READINGS COME FROM THE DRAFT PREVIEW, the same resolution a
@@ -618,34 +979,6 @@ export function ConfigComposer({
 	/** The composer owns the box's text; this writes into the same key it reads. */
 	const setBoxText = (value: string) =>
 		useConversationInputStore.getState().setCurrentInput(boxKey, value);
-	/*
-	 * A CALLBACK REF RATHER THAN AN EFFECT, because the fact this measures is the
-	 * node MOUNTING: the strip exists only from `running` on, and what changes its
-	 * height afterwards is its own content (the Watch list opening, a settled
-	 * summary arriving). React calls this with the node when it mounts, with a new
-	 * node if it is replaced, and with null on the way out — which is exactly the
-	 * three moments the pane's reserved room changes, and it keeps the hook's own
-	 * dependency rule honest instead of listing values the effect never reads.
-	 */
-	const measureStrip = useCallback(
-		(node: HTMLDivElement | null) => {
-			stripObserver.current?.disconnect();
-			stripObserver.current = null;
-			if (!onStripHeightChange) return;
-			if (!node) {
-				onStripHeightChange(0);
-				return;
-			}
-			const report = () =>
-				onStripHeightChange(node.getBoundingClientRect().height);
-			report();
-			if (typeof ResizeObserver === "undefined") return;
-			const observer = new ResizeObserver(report);
-			observer.observe(node);
-			stripObserver.current = observer;
-		},
-		[onStripHeightChange],
-	);
 	const live = run.status === "running" || run.status === "stopping";
 	/*
 	 * WHY THE BOX REFUSES INPUT WHILE A RUN IS LIVE, and what that refusal is NOT.
@@ -686,6 +1019,27 @@ export function ConfigComposer({
 	 * reaches it. `hostLine` is the channel that does, and it is the same one the
 	 * dirty-edit gate already speaks through above.
 	 */
+	/*
+	 * THE DRAFT, READ SO THE BAND'S SECOND COPY CAN STAND DOWN (UX review round 1
+	 * U3).
+	 *
+	 * `MessageInput` prints `hostNotice.placeholder` a SECOND time, as a meta line
+	 * above the status row, whenever a refusing box holds text - because a
+	 * placeholder is not painted on a control with a value. That line stacked on
+	 * the row's own state ("Working on your request" twice within 26 px; the
+	 * blocked sentence beside the standing promise) and made the dock's height
+	 * depend on whether the box was empty. The status row carries the state in
+	 * every case (its sentence slot takes the blocked reason; its title carries the
+	 * run), so with a draft the line has nothing left to say, and `statedByNode`
+	 * tells the composer so. The placeholder ATTRIBUTE is untouched: it is what an
+	 * EMPTY box paints. The reading is the store's, the same row the composer
+	 * writes every keystroke to.
+	 */
+	const hasDraft = useConversationInputStore(
+		(state) =>
+			(state.inputByConversation[CONFIG_BOX_KEY]?.currentInput ?? "").trim()
+				.length > 0,
+	);
 	const hostPlaceholder = blockedReason
 		? blockedReason
 		: live
@@ -702,10 +1056,33 @@ export function ConfigComposer({
 	 * the sentence the pane itself gives the operator: "Describe what you want and a
 	 * configuration run sets it up."
 	 */
+	/*
+	 * THE DOCKED, NO-TARGET BOX NAMES ITS JOB (UX review round 1 U2). With the chips
+	 * gone from the dock and its heading `sr-only`, "Describe what you want…" under
+	 * an open team read like messaging that team. Round 3's rule is that the
+	 * invitation must not contradict the open TAB, and what it forbade was naming ONE
+	 * object first ("a new agent" over the Teams pane). A sentence that names BOTH
+	 * objects, and a change to the open definition first, is true on either tab. The
+	 * hero keeps its object-free words: it is a different arm, with the heading and
+	 * the chips standing beside it to say what the box is for.
+	 *
+	 * IT MUST FIT ON ONE LINE AT EVERY PANE WIDTH THE APP CAN PRODUCE (design review
+	 * round 2 D1 = QA Q1 = UX U3). The idle docked box is one row tall and does not
+	 * auto-grow, so a placeholder that wraps is clipped mid-sentence with a stray
+	 * scrollbar thumb in an empty box. The narrowest docked pane is 416 px: the
+	 * shell's sidebar docks from 1024 px at up to 320 px wide, and the roster is a
+	 * fixed 288 px. The box's text area is the pane less 88 px of insets (measured:
+	 * 328 px at 416, 388 px at 476). The previous 71-character sentence measured
+	 * 444 px and needed a 532 px pane; this one measures 301 px. It still names the job (a change) and, naming neither
+	 * object, cannot contradict whichever tab is open. Do not lengthen it without
+	 * re-running the pane-width sweep.
+	 */
 	const placeholder = about
 		? `Change ${about.name}…`
 		: run.enabled
-			? "Describe what you want…"
+			? hero
+				? "Describe what you want…"
+				: "Ask for a change, or describe something new…"
 			: DISABLED_GATE_LINE;
 
 	/*
@@ -737,80 +1114,26 @@ export function ConfigComposer({
 
 	return (
 		<div
-			className={cn(
-				"relative",
-				/*
-				 * THE HERO IS NOT A CARD (operator report on the ask page: the composer
-				 * "sits in a bordered inset card"). The docked box is a control inside a
-				 * pane and keeps its own frame; the hero IS the page's content column,
-				 * and a second border around the composer's own bordered box is the
-				 * boxed-card reading the new-chat composer does not have. The strip still
-				 * positions against this element in both cases (`bottom-full`), so the
-				 * positioning context stays.
-				 */
-				!hero && "rounded-md border border-hairline bg-surface p-3",
-			)}
+			/*
+			 * NO FRAME, NO PADDING, NO POSITIONING CONTEXT. This element used to be a
+			 * bordered `bg-surface` card around the box in the docked arm (the second of
+			 * three nested frames; design spec D1) and the containing block of an
+			 * absolutely-positioned strip. The box is the composer's own object with its
+			 * own step of lightness, the status row is in flow above it, and the band
+			 * inside `MessageInput` already carries the horizontal and vertical padding,
+			 * so a wrapper that added any of it would be a second inset on one edge.
+			 * Docked and hero are now the same element: the difference is only the chips.
+			 */
 			data-testid="config-composer"
 		>
 			<div className="sr-only" id="config-composer-label">
 				Ask for an agent or team change
 			</div>
 			{/*
-			 * THE STRIP FLOATS IN THE DOCKED COMPOSER (design review round 1, D4).
-			 * Inside the flow it pushed the pane it is docked under: measured 629 px
-			 * of detail at rest, 699 while typing and 547 once a run settled — a 152
-			 * px shift of the content the operator was reading, with the summary
-			 * landing flush on the textarea's border. Above the box it covers the
-			 * scroller's last lines instead of moving them, and the pane's height
-			 * stops depending on the run's state. The hero (nothing selected, no pane
-			 * to protect) keeps it in the flow, where a growing card is the point.
-			 */}
-			{/*
-			 * THE STRIP SITS ON THE COMPOSER'S OWN INSET (design round 2, D6; the inset
-			 * moved out here in round 3, D8). Every other element of this column - the
-			 * heading, the note, the box - starts at `CHAT_COLUMN_INSET`, and the strip
-			 * started at the container's edge, so its state sentence, Stop control and
-			 * settled summary hung left of the field they describe.
-			 *
-			 * WHY A WRAPPER RATHER THAN PADDING ON THE STRIP. Padding insets the CONTENT
-			 * and leaves the element's own box - and therefore its `border-b` - on the
-			 * container's measure, which put the strip's bottom rule 24px outside its own
-			 * internal divider: two rules of one block that did not agree (measured
-			 * 572.0..1355.5 against 596.0..1331.5). Insetting the ELEMENT puts both rules
-			 * on the column's inset, which is the grammar the note and the heading already
-			 * follow. The docked arm below deliberately does NOT take this wrapper: there
-			 * the strip lives inside its own floating card, whose border and padding are
-			 * that arm's frame.
-			 */}
-			{run.enabled && run.status !== "idle" ? (
-				hero ? (
-					<div className={CHAT_COLUMN_INSET}>
-						<RunStrip run={run} onDismiss={dismissAndFocus} />
-					</div>
-				) : (
-					<div
-						ref={measureStrip}
-						className="absolute inset-x-0 bottom-full rounded-t-md border-hairline border bg-canvas p-3"
-					>
-						<RunStrip run={run} onDismiss={dismissAndFocus} />
-					</div>
-				)
-			) : null}
-			{about ? (
-				<div className="mb-2 flex items-center gap-2">
-					<Badge variant="accent" data-testid="config-composer-about">
-						About {about.kind} {about.name}
-					</Badge>
-					<Button variant="ghost" size="sm" onClick={clearAboutAndFocus}>
-						Clear
-					</Button>
-				</div>
-			) : null}
-			{/*
 			 * THE BOX IS THE APP'S OWN COMPOSER (Scope B, §3.1).
 			 *
 			 * WHAT IT REPLACES: the bespoke `<Textarea>` and its own Send button, and
-			 * nothing else. The run keeps the surface above it — `RunStrip`, Watch,
+			 * nothing else. The run keeps the surface above it — `ComposerStatus`, Watch,
 			 * Stop, `RunSummary` — because that is the run's progress vocabulary and
 			 * not a transcript (§3.1's two-surface reading); this is one shared box
 			 * with speech, attachments and the model/effort readings the page never
@@ -870,30 +1193,31 @@ export function ConfigComposer({
 					 */
 					blocksInput: !run.enabled || Boolean(blockedReason) || live,
 					placeholder: hostPlaceholder,
+					/*
+					 * TRUE WITH A DRAFT BECAUSE `ComposerStatus` KEEPS THE PROMISE THAT GOES
+					 * WITH IT: the sentence is visible in the row (idle), under it (settled,
+					 * stopped, errored) or is the live title. Do not widen this to a state
+					 * where the node renders the sentence `sr-only` - that was the round 2
+					 * regression (a blocked box with a draft and no reason on screen).
+					 */
+					statedByNode: hasDraft,
+					/*
+					 * THE STATUS ROW IS THE NOTICE NODE (design spec s2). The slot is the one
+					 * place a node can sit immediately outboard of the box AND be named by its
+					 * `aria-describedby`, and the composer renders it as a plain child of the
+					 * form (not inside a `<p>` and not `aria-hidden`), so interactive content
+					 * is fine here. The sentence inside carries `ASIDE_NOTICE_ID`; the row
+					 * around it must not, or the box would describe itself with Stop and Clear.
+					 */
 					node: (
-						/*
-						 * THE STANDING SENTENCE, verbatim and permanent — not a
-						 * placeholder and not an invitation (U4): the page already hands
-						 * work to a conversation from "New chat", and without this line the
-						 * reasonable reading of the box is that it does the same.
-						 */
-						/*
-						 * `mb-2` IS THE BAND'S OWN STEP, not a chosen number: the
-						 * sentence renders immediately above the box, and the design
-						 * round measured it FLUSH with the box's top border — 0 px, with
-						 * the descenders touching the ring (D2). One 8 px step from the
-						 * scale the surrounding chrome uses puts the sentence back in the
-						 * band's rhythm.
-						 */
-						<p
-							id={ASIDE_NOTICE_ID}
-							data-testid="config-composer-note"
-							className="mb-2 text-meta text-ink-muted"
-						>
-							{run.enabled
-								? "Runs in the background. This does not appear in your conversation."
-								: run.disabledReason}
-						</p>
+						<ComposerStatus
+							run={run}
+							about={about}
+							blockedReason={blockedReason}
+							hasDraft={hasDraft}
+							onClearAbout={clearAboutAndFocus}
+							onDismiss={dismissAndFocus}
+						/>
 					),
 				}}
 				/*
@@ -906,67 +1230,68 @@ export function ConfigComposer({
 				}
 			/>
 			{/*
-			 * THE CHIPS STAY WHILE THE BOX IS FOCUSED, and they are disabled with it
-			 * (design review round 1, D4/U11 and D9). They write through the SAME store
-			 * the box reads, keyed by its conversation id — the composer owns the text
-			 * now, so a chip that wrote anywhere else would type into a box nobody is
-			 * looking at.
-			 */}
-			{/*
-			 * THE ROW IS ALWAYS MOUNTED, AND ALWAYS IN THE BOX'S COLUMN.
+			 * THE EXAMPLES BELONG TO THE HERO ALONE (design spec s2, D1).
 			 *
-			 * D4: hiding it collapsed the card by 37 px and moved the box's top
-			 * 196 -> 233 the moment Enter was pressed — the control the operator is
-			 * using jumped under the caret. `invisible` reserves the row instead
-			 * (and takes the hidden buttons out of the tab order for free).
+			 * They are examples of NEW requests ("A reviewer that only reads code"),
+			 * and the docked composer is mounted exactly when a definition is open, i.e.
+			 * when the likely ask is a change to THAT definition. Docked, they cost 61
+			 * px of a 725 px window (three wrapped lines) and suggested the wrong thing;
+			 * in the hero, where creating is the whole point, they stay. They are a
+			 * vertical stack because the three measure 211 + 241 + 353 px against a
+			 * 630 px box, so a single non-wrapping row is not achievable and a wrapping
+			 * row is ragged.
 			 *
-			 * D3: at the card's own edge the chips sat 24 px left of the box and of
-			 * the sentence above them. `CHAT_COLUMN_INSET` is the composer's own
-			 * inset — the value, not a copied number — so the two columns line up
-			 * and stay lined up if that inset ever moves.
+			 * THEY STAY WHILE THE BOX IS REFUSING (a run, a held edit) and are disabled
+			 * with it, and they write through the SAME store the box reads, keyed by its
+			 * conversation id (design review round 1, D4/U11 and D9): the composer owns
+			 * the text now, so a chip that wrote anywhere else would type into a box
+			 * nobody is looking at. `invisible` rather than unmounted while a run or an
+			 * `about` is set keeps the hero's height, so the box does not move under the
+			 * caret the moment Enter is pressed (the original D4).
+			 *
+			 * `-ml-2` cancels the button's own `px-2`, so the chip's TEXT starts at the
+			 * box's left edge rather than its padding box; the hover ground then reaches
+			 * 8 px outside the column, which a ground is allowed to do and text is not.
+			 * The inset wrapper is the band's own (`CHAT_COLUMN_INSET`, the value and not
+			 * a copy of it) so the three columns share an edge if that inset moves. The
+			 * wrapper is its own query container, exactly as the band is, because the
+			 * hero's composer is a direct child of the pane (see `EmptyPane`) and nothing
+			 * above it supplies one for `CHAT_MEASURE`'s 750 px gate to resolve against.
 			 */}
-			{run.enabled ? (
-				<div
-					className={cn(
-						"mt-2 flex flex-wrap gap-1.5",
-						CHAT_COLUMN_INSET,
-						run.enabled && !about && !live ? "" : "invisible",
-					)}
-				>
-					{EXAMPLES.map((example) => (
-						<Button
-							key={example}
-							/*
-							 * THE CHIPS ARE THE NEW CHAT'S SUGGESTION STYLE, NOT THE APP'S HEAVIEST
-							 * BUTTON (design round 1, D2). They were `variant="outline"` - a
-							 * `border-control` pill, the loudest chip in the system - in the one column
-							 * this change re-aligned to the new-chat composer, whose own suggestions are
-							 * borderless muted lines (`measured-suggestion-stack.tsx`, which states the
-							 * missing border as deliberate). Same classes as that row, so the two surfaces
-							 * cannot drift apart again.
-							 */
-							variant="ghost"
-							size="sm"
-							className="h-auto max-w-full whitespace-normal break-words rounded-sm px-2 py-1 text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"
-							disabled={disabled}
-							onClick={() => {
-								setBoxText(example);
-								inputRef.current?.focusInput();
-							}}
-						>
-							{example}
-						</Button>
-					))}
+			{hero && run.enabled ? (
+				<div className={cn(CHAT_COLUMN_CONTAINER, CHAT_COLUMN_INSET)}>
+					<div
+						className={cn(
+							CHAT_MEASURE,
+							"mt-2 flex flex-col items-start gap-0.5",
+							!about && !live ? "" : "invisible",
+						)}
+					>
+						{EXAMPLES.map((example) => (
+							<Button
+								key={example}
+								/*
+								 * THE NEW CHAT'S SUGGESTION STYLE, NOT THE APP'S HEAVIEST BUTTON
+								 * (design round 1, D2): `ghost`, the borderless muted line
+								 * `measured-suggestion-stack.tsx` states the missing border of as
+								 * deliberate. Same colour classes as that row so the two surfaces
+								 * cannot drift apart.
+								 */
+								variant="ghost"
+								size="sm"
+								className="-ml-2 h-auto max-w-full justify-start whitespace-normal break-words px-2 py-1 text-left text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"
+								disabled={disabled}
+								onClick={() => {
+									setBoxText(example);
+									inputRef.current?.focusInput();
+								}}
+							>
+								{example}
+							</Button>
+						))}
+					</div>
 				</div>
 			) : null}
-			{/*
-			 * U4: the blocked sentence is said ONCE, in the box's own placeholder
-			 * (D1). The paragraph that repeated it verbatim — at the card's foot,
-			 * further from the caret than the box and shouting in warning ink — is
-			 * what "Finish or cancel your edit first." twice on one card looked
-			 * like. The affordance that frees the box (U5) needs a page-level
-			 * answer and is deferred; see the remediation comment, not a copy here.
-			 */}
 		</div>
 	);
 }

@@ -22,7 +22,8 @@
  * page — so the same `Tabs` component and the same counts live where the thing
  * they switch is, which is the one place the two surfaces deliberately differ.
  * Everything else is taken from the hub rather than invented: `TabsList` with
- * `aria-label`, the count slot, and the `Showing` + `aria-pressed` chip group
+ * `aria-label`, the count slot, and the `aria-pressed` scope segments (named by
+ * an `sr-only` legend, with no visible "Showing" label)
  * (design consult § 5, "build to the same contract").
  *
  * WHAT IS NOT HERE. No delete: no `profiles.*`/`teams.*` desktop op deletes
@@ -94,9 +95,10 @@ import {
 	PaneError,
 	RosterSkeleton,
 	SourceChip,
+	setPageDiscardBarOpen,
 } from "./detail-parts";
 import { HubUpdatePanel } from "./hub-update-panel";
-import { TeamDetail } from "./team-detail";
+import { TeamDetail, memberCountLabel } from "./team-detail";
 
 // Old UUID links remain ordinary chat-agent settings, not reusable profiles.
 // Loading them explicitly preserves compatibility without contaminating the
@@ -107,7 +109,7 @@ const LegacyAgentsPage = lazy(() =>
 	})),
 );
 
-/** The scope chips, in the hub's `Showing` register: who owns the definition. */
+/** The scope segments, in the hub's register: who owns the definition. */
 type Scope = "all" | "custom" | "installed" | "builtin";
 
 /** The settings keys that name an effort tier: `subagents.models.<tier>`. */
@@ -151,6 +153,34 @@ const contentKey = (value: unknown) => {
 		hash = ((hash * 33) ^ text.charCodeAt(index)) >>> 0;
 	return `${text.length}.${hash.toString(36)}`;
 };
+
+/**
+ * WHERE "KEEP EDITING" MAY PUT FOCUS BACK, which is never on a control whose focus
+ * DOES something (UX review round 3 U3; QA round 3 Q1).
+ *
+ * Radix `Tabs` activates a trigger ON FOCUS. The discard bar records the control
+ * the operator was on and gives focus back to it, and on the tab routes that
+ * control is the tab they just arrowed or pressed - which is not the selected one,
+ * because the switch is the very thing the bar is holding. Focusing it activated it
+ * again, `requestGo` re-asked, and the bar came straight back: "Keep editing" could
+ * not be answered on that route (focus log `Keep editing > agents-tab > Keep editing`).
+ *
+ * The rule is a property of the TARGET, not a list of routes: a tab that is not the
+ * selected one is replaced by the tab list's SELECTED trigger, where focus is a
+ * no-op because that trigger is already active. Everything else (a field, a button,
+ * a roster row, Back) is returned as it is - focusing those only focuses them.
+ */
+function focusThatActivatesNothing(
+	target: HTMLElement | null,
+): HTMLElement | null {
+	if (!target || target.getAttribute("role") !== "tab") return target;
+	if (target.getAttribute("aria-selected") === "true") return target;
+	return (
+		target
+			.closest('[role="tablist"]')
+			?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]') ?? null
+	);
+}
 
 export function AgentsPage() {
 	const laneLeadingColumn = useLaneLeadingColumn("surface");
@@ -224,15 +254,6 @@ export function AgentsPage() {
 	 */
 	const [pendingNav, setPendingNav] = useState<NavIntent | null>(null);
 	const [dirtyIdentity, setDirtyIdentity] = useState<string | null>(null);
-	/*
-	 * HOW MUCH OF THE SCROLLER THE DOCKED STRIP IS COVERING (D12, design review
-	 * round 2). The strip floats above the composer so it cannot resize the pane
-	 * (D4) — which means the pane has to reserve that room itself, or the last
-	 * block of a long definition sits under the overlay where no scroll reaches
-	 * it. The composer reports its own measured height; this is the scroller's
-	 * answer, and `16` is the dock's own `p-4`, which the overlay also spans.
-	 */
-	const [stripHeight, setStripHeight] = useState(0);
 	const run = useConfigRun();
 	const marks = useConfigRunStore((state) => state.marks);
 	const clearMark = useConfigRunStore((state) => state.clearMark);
@@ -421,12 +442,12 @@ export function AgentsPage() {
 				 * `output` carries the `status` role, which is what this is.
 				 *
 				 * IT WEARS ITS NEIGHBOURS' MEASUREMENTS. The panel above it and the pane
-				 * below it are both `max-w-3xl`, so on a page wider than 48rem an
-				 * uncapped notice stretches past both of them and reads as a third,
-				 * unrelated block; its bottom margin is the panel's own `mb-6` for the
-				 * same reason (design review round 4, R4-M1).
+				 * below it all sit in the page's one measure wrapper now (they used to
+				 * be `max-w-3xl` each, which a notice outside that cap stretched past),
+				 * so it takes the wrapper's width and the panel's own `mb-8` - the
+				 * section tier - for the same reason (design review round 4, R4-M1).
 				 */
-				<output className="mb-6 block max-w-3xl rounded-md border border-warning-border px-3 py-2 text-meta text-ink-muted">
+				<output className="mb-8 block rounded-md border border-warning-border px-3 py-2 text-meta text-ink-muted">
 					The hub updated this definition while you were editing, and the form
 					below now shows the merged version. Edits you had not saved were
 					replaced.
@@ -436,17 +457,37 @@ export function AgentsPage() {
 	);
 
 	/**
+	 * WHERE "KEEP EDITING" PUTS THE OPERATOR BACK (UX review round 2 U2; round 3 U3).
+	 * The bar takes focus when it opens - it is 28-29 Tab stops from the field, and a
+	 * keyboard user otherwise has no way to answer it - and a dialog that takes focus
+	 * owes it back. The place owed is where the operator was WORKING: the last control
+	 * focused inside the pane, which is the form they are keeping. The control that
+	 * asked (a roster row, a tab, Back) is the fallback, for a pane nothing was
+	 * focused in yet; it is passed through `focusThatActivatesNothing` on the way out.
+	 */
+	const barReturnFocus = useRef<HTMLElement | null>(null);
+	const paneLastFocus = useRef<HTMLElement | null>(null);
+	const keepBarRef = useRef<HTMLButtonElement>(null);
+	/**
 	 * Navigation that ASKS when an edit is unsaved, and does not when it is not.
 	 *
 	 * Every roster click, tab switch, "Add manually" and link between a team and
 	 * its agents goes through here. A dirty draft used to be discarded with no
-	 * question (U9) or — worse, after the key was missing — carried onto the next
+	 * question (U9) or - worse, after the key was missing - carried onto the next
 	 * record (D1/U1/Q1). Neither is acceptable, so the question is asked once, in
 	 * the pane the operator is looking at.
 	 */
 	const requestGo = useCallback(
 		(next: NavIntent) => {
 			if (editDirty) {
+				const inPane = paneLastFocus.current;
+				const active = document.activeElement;
+				barReturnFocus.current =
+					inPane?.isConnected && inPane.closest("form")
+						? inPane
+						: active instanceof HTMLElement
+							? active
+							: null;
 				setPendingNav(next);
 				return;
 			}
@@ -454,6 +495,55 @@ export function AgentsPage() {
 		},
 		[editDirty, go],
 	);
+	const dismissBar = useCallback(() => {
+		setPendingNav(null);
+		const target = barReturnFocus.current;
+		// After the bar unmounts, so the focus ring is not painted on a node that is
+		// about to leave. A control the click already removed is simply skipped.
+		requestAnimationFrame(() => {
+			const landing = focusThatActivatesNothing(target);
+			if (landing?.isConnected) landing.focus();
+		});
+	}, []);
+	const barOpen = pendingNav !== null;
+	useEffect(() => {
+		if (!barOpen) return;
+		// The second argument is how the pane's own Cancel withdraws this bar (UX
+		// review round 3, U4): it asks its own question, and two would stack.
+		setPageDiscardBarOpen(true, () => setPendingNav(null));
+		// The SAFE arm, as `EditFooter`'s own question does (its round 2 U1): the
+		// destructive button is never the one a stray Enter lands on.
+		keepBarRef.current?.focus();
+		/*
+		 * AGAIN AFTER THE BROWSER'S OWN FOCUS HANDLING (UX review round 3 U3). A
+		 * MOUSE press on a tab asks on `mousedown`, the bar takes focus in this effect,
+		 * and then the press's default action focuses the tab - the bar was open with
+		 * focus on the control that opened it, 32 Tab stops from "Keep editing". One
+		 * frame later that default action is over, so the check is made then: focus
+		 * that is still inside the bar is left alone.
+		 */
+		const settled = requestAnimationFrame(() => {
+			const bar = keepBarRef.current?.closest('[role="alertdialog"]');
+			if (bar && !bar.contains(document.activeElement))
+				keepBarRef.current?.focus();
+		});
+		/*
+		 * ESCAPE CLOSES THE BAR, and nothing else answers it while it is open. The
+		 * pane's own Escape reads `pageDiscardBarOpen` (detail-parts) and stands down,
+		 * so this is the only owner. A Radix layer that already took the key marks it handled.
+		 */
+		const onKey = (event: KeyboardEvent) => {
+			if (event.key !== "Escape" || event.defaultPrevented) return;
+			event.preventDefault();
+			dismissBar();
+		};
+		window.addEventListener("keydown", onKey);
+		return () => {
+			cancelAnimationFrame(settled);
+			window.removeEventListener("keydown", onKey);
+			setPageDiscardBarOpen(false);
+		};
+	}, [barOpen, dismissBar]);
 
 	/*
 	 * ESCAPE LEAVES A DEFINITION AT NARROW WIDTHS, where the roster is hidden and
@@ -467,12 +557,26 @@ export function AgentsPage() {
 			if (event.key !== "Escape" || event.defaultPrevented) return;
 			if (!window.matchMedia("(max-width: 999px)").matches) return;
 			if (!selected && !creating) return;
+			/*
+			 * AN UNSAVED EDIT OWNS ESCAPE (UX review round 1 U5). The pane asks its own
+			 * "Discard this team?" and the second press means "keep editing", but the
+			 * pane's listener re-registers on every render (`useEscapeToCancel`), so
+			 * after the first press it sits BEHIND this one and `defaultPrevented` is
+			 * not yet set when this runs: the second press also raised the page-level
+			 * "Discard your unsaved changes?" bar under the first question - two
+			 * differently-worded questions for one intent. Reproduced identically on
+			 * origin/main at 800 px, so it predates this branch; the guard that matters
+			 * (a click or tab switch asking before it discards) is `requestGo`'s and is
+			 * untouched. Order-independent on purpose: it reads the state, not the
+			 * listener order.
+			 */
+			if (editDirty || barOpen) return;
 			event.preventDefault();
 			requestGo({ name: null });
 		};
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
-	}, [requestGo, selected, creating]);
+	}, [requestGo, selected, creating, editDirty, barOpen]);
 
 	/*
 	 * THE TARGET FOLLOWS THE SELECTION (review round 1, U6 / D2).
@@ -565,72 +669,86 @@ export function AgentsPage() {
 				{/* The page's ONLY h1 (design D9): a definition's name is an h2. */}
 				<h1 className="text-heading">Agents and teams</h1>
 
-				<Tabs
-					value={teamMode ? "team" : "agent"}
-					onValueChange={(next) =>
-						requestGo({ kind: next as "agent" | "team", name: null })
-					}
-				>
-					<TabsList aria-label="Browse definitions by type" className="w-full">
-						<TabsTrigger
-							value="agent"
-							className="flex-1"
-							data-testid="agents-tab"
-						>
-							<Bot className="size-3.5" />
-							Agents
-							{profiles.data ? (
-								<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
-									{profiles.data.length}
-								</span>
-							) : null}
-						</TabsTrigger>
-						<TabsTrigger
-							value="team"
-							className="flex-1"
-							data-testid="teams-tab"
-						>
-							<Users className="size-3.5" />
-							Teams
-							{teams.data ? (
-								<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
-									{teams.data.length}
-								</span>
-							) : null}
-						</TabsTrigger>
-					</TabsList>
-				</Tabs>
-
-				<div className="relative">
-					<Search
-						aria-hidden="true"
-						className="pointer-events-none absolute top-2 left-2 size-4 text-ink-dim"
-					/>
-					<Input
-						className="pl-8"
-						type="search"
-						aria-label="Search agents and teams"
-						placeholder={teamMode ? "Search teams" : "Search agents"}
-						value={search}
-						onChange={(event) => setSearch(event.target.value)}
-					/>
-				</div>
-
 				{/*
-				 * The scope axis for this page is WHO OWNS the definition — on-device
-				 * versus shipped — where the hub's is where it lives. Same register, same
-				 * meaning of "showing", which is what makes the two read as one system.
-				 * Teams have no `source` on the wire, so the control is the agents' alone
-				 * rather than a chip row that does nothing.
+				 * ONE CLUSTER, 8 px INSIDE AND 12 px BETWEEN COMPONENTS (design spec s3):
+				 * tabs, search and scope are one control stack, so they sit closer to each
+				 * other than to the list below and the button beneath it. Each is
+				 * full-width, so their right edges are one line.
 				 */}
-				{!teamMode && profiles.data ? (
-					<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-						<span aria-hidden="true" className="text-meta text-ink-muted">
-							Showing
-						</span>
+				<div className="space-y-2">
+					<Tabs
+						value={teamMode ? "team" : "agent"}
+						onValueChange={(next) =>
+							requestGo({ kind: next as "agent" | "team", name: null })
+						}
+					>
+						<TabsList
+							aria-label="Browse definitions by type"
+							className="w-full"
+						>
+							<TabsTrigger
+								value="agent"
+								className="flex-1"
+								data-testid="agents-tab"
+							>
+								<Bot className="size-3.5" />
+								Agents
+								{profiles.data ? (
+									<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
+										{profiles.data.length}
+									</span>
+								) : null}
+							</TabsTrigger>
+							<TabsTrigger
+								value="team"
+								className="flex-1"
+								data-testid="teams-tab"
+							>
+								<Users className="size-3.5" />
+								Teams
+								{teams.data ? (
+									<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
+										{teams.data.length}
+									</span>
+								) : null}
+							</TabsTrigger>
+						</TabsList>
+					</Tabs>
+
+					<div className="relative">
+						<Search
+							aria-hidden="true"
+							className="pointer-events-none absolute top-2 left-2 size-4 text-ink-dim"
+						/>
+						<Input
+							className="pl-8"
+							type="search"
+							aria-label="Search agents and teams"
+							placeholder={teamMode ? "Search teams" : "Search agents"}
+							value={search}
+							onChange={(event) => setSearch(event.target.value)}
+						/>
+					</div>
+
+					{/*
+					 * The scope axis for this page is WHO OWNS the definition — on-device
+					 * versus shipped — where the hub's is where it lives. Same register, same
+					 * meaning of "showing", which is what makes the two read as one system.
+					 * Teams have no `source` on the wire, so the control is the agents' alone
+					 * rather than a chip row that does nothing.
+					 */}
+					{!teamMode && profiles.data ? (
 						<fieldset className="m-0 min-w-0 border-0 p-0">
 							<legend className="sr-only">Show definitions owned by</legend>
-							<div className="flex flex-wrap gap-0.5 rounded-md bg-sunken p-0.5">
+							{/*
+							 * NO VISIBLE "Showing" LABEL (design spec D10): it cost 24 px of height
+							 * and pushed the segments' right edge in from the tabs' and the search's.
+							 * The legend keeps the group's accessible name, and `aria-pressed` on
+							 * each segment keeps its state, so nothing a screen reader had is lost;
+							 * the segments are the visible words. `flex-1` makes the group span the
+							 * column like its two siblings.
+							 */}
+							<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
 								{(Object.keys(SCOPE_LABEL) as Scope[]).map((value) => (
 									<Button
 										key={value}
@@ -638,18 +756,25 @@ export function AgentsPage() {
 										size="sm"
 										aria-pressed={scope === value}
 										onClick={() => setScope(value)}
-										className={cn(scope === value && rowCurrent)}
+										className={cn("flex-1", scope === value && rowCurrent)}
 									>
 										{SCOPE_LABEL[value]}
 									</Button>
 								))}
 							</div>
 						</fieldset>
-					</div>
-				) : null}
+					) : null}
+				</div>
 
 				{/* The roster: a listbox, so arrow keys move between rows (U12). */}
-				<div className="min-h-0 flex-1 overflow-y-auto">
+				<div
+					/*
+					 * The roster scroller takes the pane's 24 px edge mask (design spec s3),
+					 * so rows dissolve into the footer instead of being sliced at it.
+					 */
+					data-lo-pane-edge-cues
+					className="min-h-0 flex-1 overflow-y-auto"
+				>
 					{listError ? null : !profiles.data && !teams.data ? (
 						<RosterSkeleton />
 					) : rows.length === 0 ? (
@@ -681,8 +806,14 @@ export function AgentsPage() {
 					)}
 				</div>
 
+				{/*
+				 * GHOST, FULL-WIDTH, LEFT-ALIGNED (design spec D15): it is the list's last
+				 * affordance, not a boxed button - a bordered secondary was the heaviest
+				 * object in the column for a secondary job.
+				 */}
 				<Button
-					variant="secondary"
+					variant="ghost"
+					className="w-full justify-start"
 					disabled={!catalogueEnabled}
 					onClick={() => requestGo({ create: teamMode ? "team" : "agent" })}
 				>
@@ -735,193 +866,64 @@ export function AgentsPage() {
 					 * `data-*` hooks exist to avoid.
 					 */
 					data-agents-pane
-					className="min-h-0 flex-1 overflow-auto p-6 pb-0"
-					style={
-						stripHeight > 0 ? { paddingBottom: stripHeight + 16 } : undefined
-					}
+					/*
+					 * THE LAST CONTROL FOCUSED IN THE PANE, for the discard bar to give focus
+					 * back to (see `barReturnFocus`). `onFocus` bubbles in React, so one
+					 * handler here sees every field, select and button of the open form; the
+					 * bar and the dock are outside this element, so they never overwrite it.
+					 */
+					onFocus={(event) => {
+						if (event.target instanceof HTMLElement)
+							paneLastFocus.current = event.target;
+					}}
+					/*
+					 * THE FADE AT THE DOCK'S EDGE (design spec s6.3). The scroller used to end
+					 * in a hard cut against the composer, slicing a heading in half. The
+					 * sidebar's 24 px scroll-driven mask answers the same problem and is
+					 * element-agnostic (`index.css`), so the pane takes the same attribute
+					 * rather than growing a second fade.
+					 */
+					data-lo-pane-edge-cues
+					className={cn(
+						"min-h-0 flex-1 overflow-auto",
+						/*
+						 * THE 24 PX EDGE, BY ARITHMETIC. The hero is un-padded: it is its own
+						 * column, and the band inside `MessageInput` is the only inset on its
+						 * box. Every other state is a scroller with a classic 8 px scrollbar, so
+						 * `px-4` (16) plus the 8 px gutter reserved on BOTH edges is 24 - the
+						 * transcript's own sum (`chat-measure.ts`) - and the detail column and
+						 * the docked box then have the same content width, so `CHAT_MEASURE`'s
+						 * 750 px gate and 810 cap resolve identically in both. Do not "fix" the
+						 * 16: with an overlay scrollbar (the capture rig's) the gutter is 0 and
+						 * the edge reads 16, which is the rig, not the page.
+						 *
+						 * NO BOTTOM PADDING: the edit footer sticks to the scroller's foot, and a
+						 * padding under it left a band where sections scrolled through beneath
+						 * the bar. The status row above the box is the breathing room.
+						 *
+						 * SCROLL PADDING INSTEAD, SIZED FROM THE FOOTER (UX review round 1 U1).
+						 * Focus and `scrollIntoView` treat the sticky footer as part of the
+						 * viewport, so a control behind it was never scrolled into view. The
+						 * footer publishes its own height as `--lo-pane-footer-h` (`EditFooter`);
+						 * the `calc` is INVALID when the property is absent, which computes to
+						 * `auto`, so a read view gets no padding without a conditional here. The
+						 * 4 px is the focus ring's offset-and-width, so the ring clears the bar.
+						 *
+						 * AND THE FOOTER'S CUE BAND (`--lo-pane-footer-cue-h`, `index.css`): the
+						 * 24 px fade above the bar is painted OVER the content, so a control that
+						 * `nearest` left flush on the bar sat inside it with its focus ring at
+						 * 1.2:1 (QA round 3 Q2 / design round 3 D1). Counting the band as outside
+						 * the viewport lands every focus scroll - Add member after each add, Tab
+						 * into a member row - above it. It is scroll padding, not content
+						 * padding: the page's note above still holds, nothing is added under the
+						 * bar.
+						 */
+						showsEmptyPane
+							? undefined
+							: "px-4 pt-6 [scroll-padding-bottom:calc(var(--lo-pane-footer-h)+var(--lo-pane-footer-cue-h)+4px)] [scrollbar-gutter:stable_both-edges]",
+					)}
 				>
-					{!catalogueEnabled ? (
-						/*
-						 * THREE STATES, THREE TITLES. While the capabilities read is in flight
-						 * the page used to shout "needs a newer backend" over a body that said
-						 * "Connecting…" — a fault the body denied (design review round 1, D7).
-						 * Connecting is neutral; only an ANSWERED `false` is a version claim.
-						 */
-						<Alert
-							variant={capabilities.isLoading ? "neutral" : "warning"}
-							className="max-w-xl"
-						>
-							<AlertTitle>
-								{capabilities.isLoading
-									? "Connecting to the backend"
-									: capabilities.error
-										? "The backend could not be reached"
-										: "Reusable agents need a newer backend"}
-							</AlertTitle>
-							<AlertDescription>
-								{capabilities.isLoading
-									? "Loading what this backend can do…"
-									: capabilities.error
-										? capabilities.error.message
-										: "Update the backend to manage reusable agents and teams. Saved chats are unchanged."}
-							</AlertDescription>
-						</Alert>
-					) : listError ? (
-						<PaneError
-							title={
-								teamMode
-									? "Teams could not be read"
-									: "Agents could not be read"
-							}
-							what={
-								listError instanceof Error
-									? listError.message
-									: "The request did not complete."
-							}
-							meaning="Nothing is lost. This is a read that failed — the backend answered an error, which is different from the backend being out of date."
-							onRetry={refreshAll}
-							retrying={profiles.isFetching || teams.isFetching}
-						/>
-					) : selected && detailLoading ? (
-						/* A skeleton shaped like the pane, never a blanket "Select a
-						   definition" while something is on its way (D4). */
-						<DetailSkeleton />
-					) : selected && detailError ? (
-						<PaneError
-							title={
-								teamMode
-									? `“${selected}” could not be read`
-									: `“${selected}” could not be read`
-							}
-							what={
-								detailError instanceof Error
-									? detailError.message
-									: "The request did not complete."
-							}
-							meaning="The definition may have been removed, or the backend refused the read."
-							onRetry={() => {
-								void profileDetail.refetch();
-								void teamDetail.refetch();
-							}}
-							retrying={profileDetail.isFetching || teamDetail.isFetching}
-						/>
-					) : creating && teamMode ? (
-						/*
-						 * KEYED BY WHAT IT IS, never by position in the branch ladder. These
-						 * two panes share a component with the read/edit panes below, so React
-						 * reconciled one INTO the other and a "New team" form opened holding
-						 * the last team that was merely VIEWED — name, manager and members —
-						 * while the same reuse let a dirty draft ride a roster click onto the
-						 * next record (D2, and D1/U1/Q1 across all four streams). A key makes
-						 * each record its own instance.
-						 */
-						<TeamDetail
-							key="team:create"
-							agents={profiles.data}
-							teams={teams.data}
-							askEnabled={run.enabled}
-							onDirtyChange={reportDirty}
-							onSaved={(savedName) => {
-								void refreshAll();
-								go({ name: savedName });
-							}}
-							onCancelCreate={() => go({ name: null })}
-							onOpenAgent={(agentName) =>
-								requestGo({ kind: "agent", name: agentName })
-							}
-							onAskAgent={(prompt) => {
-								askForChange(run, { kind: "team", name: name ?? "" }, prompt);
-							}}
-						/>
-					) : creating && duplicateOf && duplicateDetail.isLoading ? (
-						/*
-						 * WAIT FOR THE RECORD BEFORE MOUNTING THE FORM. `AgentCreate` seeds its
-						 * draft once, on mount, so a form mounted before the duplicate's own read
-						 * landed would keep the empty instructions it was born with.
-						 */
-						<DetailSkeleton />
-					) : creating ? (
-						<AgentCreate
-							key="agent:create"
-							initial={duplicateDetail.data ?? null}
-							takenNames={(profiles.data ?? []).map((row) => row.name)}
-							effortTiers={effortTiers}
-							onDirtyChange={reportDirty}
-							onSaved={(savedName) => {
-								void refreshAll();
-								go({ name: savedName });
-							}}
-							onCancel={() => go({ name: null })}
-						/>
-					) : teamMode && teamDetail.data ? (
-						<>
-							{hubPane("team", teamDetail.data.name)}
-							<TeamDetail
-								key={`team:${teamDetail.data.name}:${contentKey(teamDetail.data)}`}
-								team={teamDetail.data}
-								agents={profiles.data}
-								teams={teams.data}
-								askEnabled={run.enabled}
-								onDirtyChange={reportDirty}
-								onSaved={(savedName) => {
-									void refreshAll();
-									go({ name: savedName });
-								}}
-								onOpenAgent={(agentName) =>
-									requestGo({ kind: "agent", name: agentName })
-								}
-								onAskAgent={(prompt) => {
-									askForChange(
-										run,
-										{ kind: "team", name: teamDetail.data?.name ?? "" },
-										prompt,
-									);
-								}}
-							/>
-						</>
-					) : !teamMode && profileDetail.data ? (
-						<>
-							{hubPane("agent", profileDetail.data.name)}
-							<AgentDetail
-								key={`agent:${profileDetail.data.name}:${profileDetail.data.source}:${contentKey(profileDetail.data)}`}
-								profile={profileDetail.data}
-								displayedName={printName(profileDetail.data.name)}
-								classNotice={
-									classNotice?.name === profileDetail.data.name
-										? classNotice.copy
-										: null
-								}
-								onClassNotice={(copy) =>
-									setClassNotice(
-										copy ? { name: profileDetail.data.name, copy } : null,
-									)
-								}
-								teams={teams.data}
-								effortTiers={effortTiers}
-								askEnabled={run.enabled}
-								onDirtyChange={reportDirty}
-								onSaved={(savedName) => {
-									void refreshAll();
-									go({ name: savedName });
-								}}
-								onDuplicate={(profile) =>
-									requestGo({ create: "agent", duplicate: profile.name })
-								}
-								onOpenTeam={(teamName) =>
-									requestGo({ kind: "team", name: teamName })
-								}
-								onAskAgent={(prompt) => {
-									askForChange(
-										run,
-										{ kind: "agent", name: profileDetail.data?.name ?? "" },
-										prompt,
-									);
-								}}
-							/>
-						</>
-					) : selected ? (
-						<Skeleton className="h-6 w-40" />
-					) : (
+					{showsEmptyPane ? (
 						<EmptyPane
 							teamMode={teamMode}
 							run={run}
@@ -929,6 +931,207 @@ export function AgentsPage() {
 								requestGo({ create: teamMode ? "team" : "agent" })
 							}
 						/>
+					) : (
+						/*
+						 * ONE WRAPPER FOR EVERY NON-HERO STATE: the capability alert, a failed
+						 * read, the skeleton, the hub panel and the detail all sit in the same
+						 * `CHAT_COLUMN_CONTAINER` > `CHAT_MEASURE` chain as the docked box, so
+						 * their left and right edges ARE the box's (design spec D2/D3). Nothing
+						 * below this line sets horizontal padding, margin or a max-width.
+						 */
+						<div className={CHAT_COLUMN_CONTAINER}>
+							<div className={CHAT_MEASURE}>
+								{!catalogueEnabled ? (
+									/*
+									 * THREE STATES, THREE TITLES. While the capabilities read is in flight
+									 * the page used to shout "needs a newer backend" over a body that said
+									 * "Connecting…" — a fault the body denied (design review round 1, D7).
+									 * Connecting is neutral; only an ANSWERED `false` is a version claim.
+									 */
+									<Alert
+										variant={capabilities.isLoading ? "neutral" : "warning"}
+										className="max-w-xl"
+									>
+										<AlertTitle>
+											{capabilities.isLoading
+												? "Connecting to the backend"
+												: capabilities.error
+													? "The backend could not be reached"
+													: "Reusable agents need a newer backend"}
+										</AlertTitle>
+										<AlertDescription>
+											{capabilities.isLoading
+												? "Loading what this backend can do…"
+												: capabilities.error
+													? capabilities.error.message
+													: "Update the backend to manage reusable agents and teams. Saved chats are unchanged."}
+										</AlertDescription>
+									</Alert>
+								) : listError ? (
+									<PaneError
+										title={
+											teamMode
+												? "Teams could not be read"
+												: "Agents could not be read"
+										}
+										what={
+											listError instanceof Error
+												? listError.message
+												: "The request did not complete."
+										}
+										meaning="Nothing is lost. This is a read that failed — the backend answered an error, which is different from the backend being out of date."
+										onRetry={refreshAll}
+										retrying={profiles.isFetching || teams.isFetching}
+									/>
+								) : selected && detailLoading ? (
+									/* A skeleton shaped like the pane, never a blanket "Select a
+						   definition" while something is on its way (D4). */
+									<DetailSkeleton />
+								) : selected && detailError ? (
+									<PaneError
+										title={
+											teamMode
+												? `“${selected}” could not be read`
+												: `“${selected}” could not be read`
+										}
+										what={
+											detailError instanceof Error
+												? detailError.message
+												: "The request did not complete."
+										}
+										meaning="The definition may have been removed, or the backend refused the read."
+										onRetry={() => {
+											void profileDetail.refetch();
+											void teamDetail.refetch();
+										}}
+										retrying={profileDetail.isFetching || teamDetail.isFetching}
+									/>
+								) : creating && teamMode ? (
+									/*
+									 * KEYED BY WHAT IT IS, never by position in the branch ladder. These
+									 * two panes share a component with the read/edit panes below, so React
+									 * reconciled one INTO the other and a "New team" form opened holding
+									 * the last team that was merely VIEWED — name, manager and members —
+									 * while the same reuse let a dirty draft ride a roster click onto the
+									 * next record (D2, and D1/U1/Q1 across all four streams). A key makes
+									 * each record its own instance.
+									 */
+									<TeamDetail
+										key="team:create"
+										agents={profiles.data}
+										teams={teams.data}
+										askEnabled={run.enabled}
+										onDirtyChange={reportDirty}
+										onSaved={(savedName) => {
+											void refreshAll();
+											go({ name: savedName });
+										}}
+										onCancelCreate={() => go({ name: null })}
+										onOpenAgent={(agentName) =>
+											requestGo({ kind: "agent", name: agentName })
+										}
+										onAskAgent={(prompt) => {
+											askForChange(
+												run,
+												{ kind: "team", name: name ?? "" },
+												prompt,
+											);
+										}}
+									/>
+								) : creating && duplicateOf && duplicateDetail.isLoading ? (
+									/*
+									 * WAIT FOR THE RECORD BEFORE MOUNTING THE FORM. `AgentCreate` seeds its
+									 * draft once, on mount, so a form mounted before the duplicate's own read
+									 * landed would keep the empty instructions it was born with.
+									 */
+									<DetailSkeleton />
+								) : creating ? (
+									<AgentCreate
+										key="agent:create"
+										initial={duplicateDetail.data ?? null}
+										takenNames={(profiles.data ?? []).map((row) => row.name)}
+										effortTiers={effortTiers}
+										onDirtyChange={reportDirty}
+										onSaved={(savedName) => {
+											void refreshAll();
+											go({ name: savedName });
+										}}
+										onCancel={() => go({ name: null })}
+									/>
+								) : teamMode && teamDetail.data ? (
+									<>
+										{hubPane("team", teamDetail.data.name)}
+										<TeamDetail
+											key={`team:${teamDetail.data.name}:${contentKey(teamDetail.data)}`}
+											team={teamDetail.data}
+											agents={profiles.data}
+											teams={teams.data}
+											askEnabled={run.enabled}
+											onDirtyChange={reportDirty}
+											onSaved={(savedName) => {
+												void refreshAll();
+												go({ name: savedName });
+											}}
+											onOpenAgent={(agentName) =>
+												requestGo({ kind: "agent", name: agentName })
+											}
+											onAskAgent={(prompt) => {
+												askForChange(
+													run,
+													{ kind: "team", name: teamDetail.data?.name ?? "" },
+													prompt,
+												);
+											}}
+										/>
+									</>
+								) : !teamMode && profileDetail.data ? (
+									<>
+										{hubPane("agent", profileDetail.data.name)}
+										<AgentDetail
+											key={`agent:${profileDetail.data.name}:${profileDetail.data.source}:${contentKey(profileDetail.data)}`}
+											profile={profileDetail.data}
+											displayedName={printName(profileDetail.data.name)}
+											classNotice={
+												classNotice?.name === profileDetail.data.name
+													? classNotice.copy
+													: null
+											}
+											onClassNotice={(copy) =>
+												setClassNotice(
+													copy ? { name: profileDetail.data.name, copy } : null,
+												)
+											}
+											teams={teams.data}
+											effortTiers={effortTiers}
+											askEnabled={run.enabled}
+											onDirtyChange={reportDirty}
+											onSaved={(savedName) => {
+												void refreshAll();
+												go({ name: savedName });
+											}}
+											onDuplicate={(profile) =>
+												requestGo({ create: "agent", duplicate: profile.name })
+											}
+											onOpenTeam={(teamName) =>
+												requestGo({ kind: "team", name: teamName })
+											}
+											onAskAgent={(prompt) => {
+												askForChange(
+													run,
+													{
+														kind: "agent",
+														name: profileDetail.data?.name ?? "",
+													},
+													prompt,
+												);
+											}}
+										/>
+									</>
+								) : selected ? (
+									<Skeleton className="h-6 w-40" />
+								) : null}
+							</div>
+						</div>
 					)}
 				</div>
 				{/*
@@ -958,7 +1161,7 @@ export function AgentsPage() {
 						>
 							Discard changes
 						</Button>
-						<Button variant="ghost" onClick={() => setPendingNav(null)}>
+						<Button ref={keepBarRef} variant="ghost" onClick={dismissBar}>
 							Keep editing
 						</Button>
 					</div>
@@ -971,12 +1174,20 @@ export function AgentsPage() {
 				 * state change twice. One composer, one placement.
 				 */}
 				{showsEmptyPane ? null : (
-					<div className="shrink-0 border-hairline border-t bg-canvas p-4">
+					/*
+					 * THE DOCK ADDS NOTHING: no rule, no padding, no frame. The band inside
+					 * `MessageInput` already carries the 24 px side inset and the 8 / 16 px
+					 * vertical padding, and the box's step of lightness on `canvas` is the
+					 * separation a `border-t` used to draw (design spec D1: this wrapper was
+					 * the first of three nested frames). The status row sits in flow above
+					 * the box at a fixed 28 px, so there is no overlay to reserve room for -
+					 * which is what the old `stripHeight` padding on the scroller did.
+					 */
+					<div className="shrink-0 bg-canvas">
 						<ConfigComposer
 							run={run}
 							about={run.about}
 							onClearAbout={() => run.setAbout(null)}
-							onStripHeightChange={setStripHeight}
 							blockedReason={
 								editDirty ? "Finish or cancel your edit first." : null
 							}
@@ -1018,26 +1229,36 @@ function EmptyPane({
 	/*
 	 * THE ASK PANE IS THE CHAT COMPOSER'S COLUMN (operator report, 2026-10-05).
 	 *
-	 * IT WAS `max-w-xl space-y-4` — 576px, pinned to the pane's LEFT edge, with the
-	 * composer inside a second bordered card — and beside a new chat (whose box is
+	 * IT WAS `max-w-xl space-y-4` - 576px, pinned to the pane's LEFT edge, with the
+	 * composer inside a second bordered card - and beside a new chat (whose box is
 	 * centred on the 810px measure, §"Why 810" in `chat-measure.ts`) it read as a
 	 * different, unfinished composer. The numbers here are the chat column's own,
-	 * taken from the chat mount rather than chosen: `CHAT_COLUMN_CONTAINER` makes
-	 * this wrapper the query container, `CHAT_MEASURE` caps and centres the column
-	 * at the shared measure, and `CHAT_COLUMN_INSET` gives the heading and the
-	 * hand-add button the same 24px inset the composer's own band applies to the
-	 * box — so the three share one left edge at every width, exactly as the
-	 * transcript and the composer do in a conversation.
+	 * taken from the chat mount rather than chosen.
+	 *
+	 * ONE INSET AND ONE MEASURE, THE BAND'S (design spec s4, D13). The composer's
+	 * band is already `CHAT_COLUMN_CONTAINER` + `CHAT_COLUMN_INSET` + `CHAT_MEASURE`
+	 * around its own box, so it must NOT be wrapped in a measure of its own: the first
+	 * version of this pane did exactly that and the hero box came out 762 px at 1440
+	 * against the dock's 810 (the band measured the already-measured column, losing
+	 * its 24 px inset a second time on each side). So the box is a direct child of
+	 * the pane, and the heading and the hand-add button get the SAME three-class chain
+	 * the band has, as siblings of it. Heading, description, box, chip text and
+	 * hand-add then start at one x at every width (L312 at 1024, L459 at 1440).
+	 *
+	 * VERTICALLY CENTRED, with `pb-12` of optical lift, so the block sits near the
+	 * middle of the pane the way the new-chat splash does rather than hanging from
+	 * the top with a void beneath it.
 	 *
 	 * NOT CENTRED TEXT: a new chat's splash centres a greeting over the box, but
 	 * this pane's prose is a description of what an agent is, and centring a
 	 * paragraph to match a one-line greeting would trade the chat's alignment for
 	 * its mood. The column is centred; the prose keeps the column's left edge.
 	 */
+	const column = cn(CHAT_COLUMN_CONTAINER, CHAT_COLUMN_INSET);
 	return (
-		<div className={CHAT_COLUMN_CONTAINER}>
-			<div className={cn(CHAT_MEASURE, "space-y-4")}>
-				<div className={cn(CHAT_COLUMN_INSET, "space-y-2")}>
+		<div className="flex min-h-full flex-col justify-center space-y-4 pb-12">
+			<div className={column}>
+				<div className={cn(CHAT_MEASURE, "space-y-2")}>
 					<h2 className="text-title">
 						{teamMode ? "Ask for a team" : "Ask for an agent"}
 					</h2>
@@ -1047,14 +1268,17 @@ function EmptyPane({
 							: "An agent is a reusable set of instructions you can start a chat with, or let other agents call on. Describe what you want and a configuration run sets it up."}
 					</p>
 				</div>
-				<ConfigComposer
-					run={run}
-					hero
-					about={run.about}
-					onClearAbout={() => run.setAbout(null)}
-				/>
-				<div className={CHAT_COLUMN_INSET}>
-					<Button variant="ghost" onClick={onAddManually}>
+			</div>
+			<ConfigComposer
+				run={run}
+				hero
+				about={run.about}
+				onClearAbout={() => run.setAbout(null)}
+			/>
+			<div className={column}>
+				<div className={CHAT_MEASURE}>
+					{/* `-ml-3` cancels this `md` button's own `px-3` (the chips are `sm`, `px-2`, hence their `-ml-2`), so its TEXT is at the box's edge. */}
+					<Button variant="ghost" className="-ml-3" onClick={onAddManually}>
 						{teamMode ? "Or add a team by hand" : "Or add an agent by hand"}
 					</Button>
 				</div>
@@ -1096,6 +1320,14 @@ function Roster({
 }) {
 	const refs = useRef(new Map<string, HTMLButtonElement>());
 	const [focused, setFocused] = useState<string | null>(name);
+	/*
+	 * The READABLE name for a row: a team's label, or her configured name for the
+	 * seat; every other agent row renders its own name unchanged. Identity stays
+	 * `row.name` - the testid, the selection and the URL all read it. One function
+	 * because the visible name and the tooltip must be the same words.
+	 */
+	const rowLabel = (row: ReusableProfile | ReusableTeam) =>
+		"members" in row ? teamDisplayName(row) : printName(row.name);
 
 	const move = (from: string, delta: number) => {
 		const index = rows.findIndex((row) => row.name === from);
@@ -1118,7 +1350,7 @@ function Roster({
 	 * of buttons with roving `tabIndex` is exactly that.
 	 */
 	return (
-		<ul aria-label={teamMode ? "Teams" : "Agents"} className="space-y-1">
+		<ul aria-label={teamMode ? "Teams" : "Agents"} className="space-y-0.5">
 			{rows.map((row) => {
 				const isProfile = "source" in row;
 				const mark = marked.get(`${teamMode ? "team" : "agent"}:${row.name}`);
@@ -1133,8 +1365,21 @@ function Roster({
 							aria-current={row.name === name ? "true" : undefined}
 							tabIndex={row.name === (focused ?? rows[0]?.name) ? 0 : -1}
 							data-testid={`roster-row-${row.name}`}
+							/*
+							 * THE FULL NAME AND DESCRIPTION AS A TOOLTIP (design review round 1
+							 * D4 = UX U4). The count shares line one with the name and is the
+							 * part that is protected (`shrink-0`), so a long name ellipsizes at
+							 * 160 px of a 256 px row; `title` is the cheapest way to keep the
+							 * identifier reachable without giving the count its own line back,
+							 * which is what made rows 57 px.
+							 */
+							title={
+								row.description
+									? `${rowLabel(row)} - ${row.description}`
+									: rowLabel(row)
+							}
 							className={cn(
-								"flex min-h-11 w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-row-hover",
+								"flex min-h-12 w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-row-hover",
 								/*
 								 * The selected row names the SHARED role rather than painting a
 								 * state of its own: the roster is one of the app's row surfaces, and
@@ -1162,26 +1407,17 @@ function Roster({
 								}
 							}}
 						>
+							{/*
+							 * LINE 1: the name, the transient mark, and ONE quiet fact pinned to
+							 * the right edge (design spec s3). Teams print their member count and
+							 * agents their source word in the same slot, so the column has one
+							 * right edge and no row carries a bordered chip - which is also what
+							 * made row heights ragged (44 / 51 / 57 px) when a Badge wrapped.
+							 */}
 							<span className="flex w-full items-center gap-2">
-								<span className="truncate text-body-sm text-ink">
-									{/* The READABLE name for a row: a team's label, or her configured
-									    name for the seat; every other agent row renders its own name
-									    unchanged. Identity stays `row.name` - the testid, the
-									    selection and the URL all read it. */}
-									{"members" in row
-										? teamDisplayName(row)
-										: printName(row.name)}
+								<span className="min-w-0 truncate text-body-sm text-ink">
+									{rowLabel(row)}
 								</span>
-								{/*
-								 * THE SOURCE CHIP SITS WITH THE NAME and reads as a statement, not a
-								 * control (design review round 1, D11): as a bordered box on the second
-								 * line it looked like the actionable outline chips next to it, and it
-								 * took the room the description needed (about 25 characters were
-								 * visible before).
-								 */}
-								{isProfile ? (
-									<SourceChip source={row.source} appearance="text" />
-								) : null}
 								{mark !== undefined ? (
 									<Badge variant="attention" data-testid="roster-row-updated">
 										{/*
@@ -1192,38 +1428,59 @@ function Roster({
 										{mark ? "New" : "Updated"}
 									</Badge>
 								) : null}
-							</span>
-							<span className="flex w-full flex-wrap items-center gap-1.5">
-								{"members" in row ? (
-									<Badge variant="neutral">
-										{row.members.length === 1
-											? "1 member"
-											: `${row.members.length} members`}
-									</Badge>
-								) : null}
 								{/*
-								 * THE CLASS, IN THE LIST, as a statement rather than a control.
-								 *
-								 * Only a PROACTIVE row says anything: reactive is the absent value
-								 * on the wire and the state an agent is in unless somebody chose
-								 * otherwise, so a "Reactive" badge on thirty rows would be thirty
-								 * repetitions of the default and would bury the one badge that is
-								 * worth noticing. The word is the backend's own and matches the
-								 * detail pane's control, so the list and the pane cannot drift into
-								 * two names for one fact.
+								 * `ink-dim` is the palette's own floor for secondary text; it
+								 * measures 5.05 (dark) / 5.04 (light) on the selected row, the
+								 * lowest ground it meets here. The count is the SUMMED member count
+								 * (`memberCountLabel`), the number the detail pane prints, so the
+								 * two surfaces cannot disagree for a team with a member twice.
 								 */}
+								<span className="ml-auto shrink-0 text-meta text-ink-dim tabular-nums">
+									{"members" in row ? (
+										memberCountLabel(row.members)
+									) : (
+										<SourceChip source={row.source} appearance="text" />
+									)}
+								</span>
+							</span>
+							{/*
+							 * LINE 2: always mounted and exactly one line tall (`min-h-lh`), so a
+							 * row with no description is the same height as one with a long
+							 * description. The CLASS leads the line for a proactive agent as a
+							 * word, not a Badge: reactive is the absent value on the wire and the
+							 * state an agent is in unless somebody chose otherwise, so only the
+							 * exception is said, and in the backend's own word (`CLASS_LABEL`) so
+							 * the list and the detail control cannot drift into two names.
+							 */}
+							<span className="flex min-h-lh w-full items-baseline text-meta text-ink-muted">
 								{isProfile && classOf(row) === "proactive" ? (
-									<Badge variant="neutral" data-testid="roster-row-proactive">
-										{/* The word comes from the class module, not from this row: one
-										    spelling, so the badge and the control cannot drift. */}
-										{CLASS_LABEL.proactive}
-									</Badge>
-								) : null}
-								{row.description ? (
-									<span className="min-w-0 flex-1 truncate text-meta text-ink-muted">
-										{row.description}
+									<span
+										// `mr-1` and not a trailing space: a flex item's trailing
+										// whitespace collapses, which glued the dot to the description.
+										className="mr-1 shrink-0"
+										data-testid="roster-row-proactive"
+									>
+										<span className="text-ink">{CLASS_LABEL.proactive}</span>
+										{/* Always: the line now always has a second part ("No description"). */}
+										<span className="text-ink-dim"> ·</span>
 									</span>
 								) : null}
+								{row.description ? (
+									<span className="min-w-0 flex-1 truncate">
+										{row.description}
+									</span>
+								) : (
+									/*
+									 * A ROW WITH NO DESCRIPTION SAYS SO (design review round 1 D4 =
+									 * UX U4). The empty second line read as a missing row, and a row
+									 * still loading looked identical. `ink-dim` (the palette's floor
+									 * for secondary text) in the SAME line box, so the row height does
+									 * not move.
+									 */
+									<span className="min-w-0 flex-1 truncate text-ink-dim">
+										No description
+									</span>
+								)}
 							</span>
 						</button>
 					</li>
