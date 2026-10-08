@@ -212,11 +212,15 @@ export const PanelRail: FC<PanelRailProps> = ({
 					 * NO RULE ON THE LEADING EDGE (the operator's ask: the rail should be
 					 * borderless "like the left sidebar"). The boundary is the TONE STEP
 					 * alone - `surface` against the slot's `elevated` (a pane open) or the
-					 * conversation's `canvas` (no pane) - the way the sidebar's own edge is
-					 * carried, and the pair is already asserted by the ladder's adjacent
-					 * rows in `scripts/contrast-contract.mjs` (floor 2.0; measured min 2.05
-					 * `sage` pane-closed / 2.02 `arcade` pane-open over the 59 palettes).
-					 * Its ABSENCE is pinned by `scripts/pane-slot-ground.test.mjs`, because
+					 * conversation's `canvas` (no pane) - because that is how the sidebar's
+					 * own edge is carried, and the rail follows it. That is a choice, not a
+					 * proof of sufficiency: the ladder asserts these pairs at 2.0, the floor
+					 * for small FIELDS, while `REGION_SEPARATION_FLOOR` (4.0) in
+					 * `scripts/contrast-contract.mjs` is the stronger bar it sets for two
+					 * full-height planes with no line between them. The measured steps over
+					 * the 59 palettes are min 2.05 (`sage`, pane closed) and 2.02 (`arcade`,
+					 * pane open); `localOperatorDark`/`Light` read 2.77 / 3.29 and 2.32 /
+					 * 2.50 (closed / open). Its ABSENCE is pinned by `scripts/pane-slot-ground.test.mjs`, because
 					 * the `border-l border-hairline` this replaced drew a line from y=32
 					 * under the lane downwards - the "doesn't go all the way up" seam - and
 					 * a pin is the only thing that keeps a second way of drawing the edge
@@ -272,12 +276,12 @@ export const PanelRail: FC<PanelRailProps> = ({
 						 * is the same root). The 16px mark hung 4px past a 32px control whose
 						 * glyph is 16px centred, so it covered ~17% of the globe at 1-9 and ~40%
 						 * at "9+", and the capped pill's ring reached the window's edge. The
-						 * header's `-top-2.5 -right-2.5` is not available in a 44px rail (5.5px
-						 * of gutter to the window), so of design's three answers this takes
+						 * header's `-top-2.5 -right-2.5` is not available in a 44px rail (6px
+						 * of gutter to the window: (44 - 32) / 2), so of design's three answers this takes
 						 * "a smaller size": a 14px mark anchored at -2px/-2px of the control,
 						 * which puts its top ON the rail's own top edge (the item is 4px below
 						 * it, so the 2px ring starts at the host's edge and spills nothing into
-						 * the lane) and its 2px ring 1.5px inside the host's trailing edge. It
+						 * the lane) and its 2px ring 2px inside the host's trailing edge. It
 						 * overlaps the glyph's box by 4px vertically only (measured in the
 						 * stories: ~6% of the glyph at 1-9, ~18% at "9+", against ~17% / ~40%). The
 						 * count stays whole in the accessible name and the tooltip, and the
