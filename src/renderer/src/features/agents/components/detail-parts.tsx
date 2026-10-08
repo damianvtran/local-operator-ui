@@ -62,6 +62,35 @@ export function Section({
 }
 
 /**
+ * THE 24 PX TARGET FLOOR FOR A LINK-STYLE BUTTON, WITHOUT MOVING ANYTHING
+ * (design review round 1 D2 = UX U7).
+ *
+ * The `link` variant is `h-auto p-0`, so "Show all" measured 48x17.4 and the
+ * Manager name 54x19.5 - the smallest targets on the page, next to 36 px rows.
+ * `min-h-6` gives the element its own 24 px box (the target a pointer and an
+ * auditor both measure), and the call site cancels the surplus with a negative
+ * margin so the section pitch does not move. It is a class constant rather than
+ * a variant change because `link` is also the inline-in-prose style elsewhere
+ * in the app, where a 24 px box would break the line.
+ */
+export const LINK_HIT_AREA = "min-h-6";
+
+/**
+ * THE HEIGHT OF THE TITLE'S OWN LINE BOX, DERIVED FROM THE TYPE TOKEN (agent
+ * review round 1 nit 6).
+ *
+ * The header's action cluster is this tall so its 32 px buttons centre on the
+ * TITLE line and not on the title-plus-meta block. It was `h-6.5`, a hand copy of
+ * `--text-title` (1.25rem) x `--text-title--line-height` (1.3) = 26 px that would
+ * have silently stopped centring if either token moved. The calc reads the same
+ * two tokens, so it is exact by construction (measured 26 px at the default
+ * root size, in both headers); `1lh` was rejected because the cluster is a
+ * sibling of the heading, not its parent, so its own `lh` is the body line.
+ */
+export const TITLE_LINE_HEIGHT =
+	"h-[calc(var(--text-title)*var(--text-title--line-height))]";
+
+/**
  * Prose, at reading weight, with a bound and a way past it.
  *
  * THIS IS THE FIX FOR THE READ VIEW'S CENTRAL DEFECT (design consult D1). The
@@ -105,13 +134,27 @@ export function ReadBlock({
 
 	/*
 	 * Measured, not assumed from a character count: what overflows depends on the
-	 * column's width, which changes with the window, and a character threshold
-	 * would show "Show all" on text that already fits at 1380px.
+	 * column's width, which changes with the window AND with the sidebar drag, and
+	 * a character threshold would show "Show all" on text that already fits at
+	 * 1380px.
+	 *
+	 * A RESIZEOBSERVER, NOT A MEASURE-ONCE (agent review round 1 #2 = QA round 1
+	 * Q1). `line-clamp` cuts the text, unlike the old `max-h-64` scroller that was
+	 * still scrollable behind a stale flag, so a flag measured at mount and never
+	 * again left clamped text with no way to reach it after the column narrowed
+	 * (and a dead "Show all" after it widened). The observer fires on the clamped
+	 * element's own box changing - width is what moves the line count, and the
+	 * box itself changes height when the text goes from fitting to clamped - and
+	 * the effect still re-runs on `text`, because new text at an unchanged size
+	 * changes `scrollHeight` without any resize to observe. The callback only ever
+	 * sets a boolean that React bails out of when unchanged, and showing the button
+	 * does not resize the observed element, so it cannot loop.
 	 *
 	 * The measurement is skipped while expanded ON PURPOSE, so `overflows` keeps
 	 * its last clamped value - which is what keeps "Show less" on screen once the
 	 * block has been expanded (an unclamped block never overflows, so re-measuring
-	 * would hide the only control that can put it back).
+	 * would hide the only control that can put it back). The observer is therefore
+	 * only attached while collapsed.
 	 */
 	useEffect(() => {
 		if (expanded) return;
@@ -119,11 +162,16 @@ export function ReadBlock({
 		if (!element) return;
 		// `text` is read by the MEASUREMENT rather than by the arithmetic: the
 		// bound has to be re-measured when the content changes, and this is the
-		// dependency that says so (the empty-text branch above returns before the
+		// dependency that says so (the empty-text branch below returns before the
 		// element exists at all).
-		setOverflows(
-			Boolean(text) && element.scrollHeight > element.clientHeight + 1,
-		);
+		const measure = () =>
+			setOverflows(
+				Boolean(text) && element.scrollHeight > element.clientHeight + 1,
+			);
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(element);
+		return () => observer.disconnect();
 	}, [text, expanded]);
 
 	if (!text.trim()) {
@@ -131,7 +179,7 @@ export function ReadBlock({
 	}
 
 	return (
-		<div className="space-y-1">
+		<div>
 			<div
 				ref={ref}
 				className={cn(
@@ -146,6 +194,10 @@ export function ReadBlock({
 				<Button
 					variant="link"
 					size="sm"
+					// The 24 px box is centred on the 17 px text, so 3 px of it sits above and
+					// below; the margins give those back so the text keeps the 4 px it had
+					// under the block and the section pitch is unchanged (`LINK_HIT_AREA`).
+					className={cn("mt-px -mb-[3px]", LINK_HIT_AREA)}
 					aria-expanded={expanded}
 					onClick={() => setExpanded((value) => !value)}
 				>
@@ -301,10 +353,65 @@ export function EditFooter({
 	 * lands here too, which is what makes "Escape asks, Enter keeps" true for both
 	 * entries.
 	 */
+	const wasConfirming = useRef(false);
 	useEffect(() => {
-		if (!isConfirming) return;
-		keepEditingRef.current?.focus();
+		if (isConfirming) {
+			keepEditingRef.current?.focus();
+		} else if (
+			wasConfirming.current &&
+			document.activeElement === document.body
+		) {
+			/*
+			 * THE QUESTION CLOSED BY ESCAPE (UX review round 1 U5): "Keep editing"
+			 * unmounted with its row while it held focus, so the caret fell to `BODY`
+			 * and the next Tab started from the top of the page. The button path
+			 * already focuses Save; this is the same landing for the key path. Only
+			 * when focus really is on `body`, so a close that moved focus somewhere
+			 * deliberate (Discard, a roster click) is left alone.
+			 */
+			primaryRef.current?.focus();
+		}
+		wasConfirming.current = isConfirming;
 	}, [isConfirming]);
+	const footerRef = useRef<HTMLDivElement>(null);
+
+	/*
+	 * THE SCROLLER LEARNS HOW TALL THIS FOOTER IS (UX review round 1 U1).
+	 *
+	 * The footer is `sticky bottom-0` INSIDE the pane's scroller, so any control
+	 * whose natural position falls in the last footer-height of the viewport is
+	 * painted under it. At rest "Add member" sat at y 509..541 behind a bar that
+	 * starts at 502, a click at its centre landed on Save, and Tab did not scroll
+	 * because the browser only scrolls a focused element that is outside the
+	 * scrollport - and under a sticky bar it is inside. `scroll-padding-bottom` on
+	 * the scroller is the property that moves that edge (focus and scrollIntoView
+	 * both honour it), but it has to equal the footer's real height, which is not
+	 * a constant: it is 57 px at rest and grows when the discard question wraps
+	 * onto a second line at a narrow column. So the footer reports its own height
+	 * to the nearest pane scroller as a custom property that `agents-page.tsx`
+	 * reads (`scroll-pb-*`), and removes it on the way out so a read view does not
+	 * keep padding for a bar that is gone. No bottom PADDING is added to the
+	 * content as well: the footer is the last child of the column, so at the end
+	 * of the scroll the last control already rests above it, and padding would put
+	 * the band of scrolling sections under the bar that the page's note forbids.
+	 */
+	useEffect(() => {
+		const footer = footerRef.current;
+		const scroller = footer?.closest<HTMLElement>("[data-agents-pane]");
+		if (!footer || !scroller) return;
+		const publish = () =>
+			scroller.style.setProperty(
+				"--lo-pane-footer-h",
+				`${footer.getBoundingClientRect().height}px`,
+			);
+		publish();
+		const observer = new ResizeObserver(publish);
+		observer.observe(footer);
+		return () => {
+			observer.disconnect();
+			scroller.style.removeProperty("--lo-pane-footer-h");
+		};
+	}, []);
 	const requestConfirming = (next: boolean) => {
 		if (!isControlled) setUncontrolledConfirming(next);
 		onConfirmingChange?.(next);
@@ -341,6 +448,7 @@ export function EditFooter({
 		 * the Save button itself (`index.css`).
 		 */
 		<div
+			ref={footerRef}
 			data-testid="edit-footer"
 			data-lo-pane-footer
 			className="sticky bottom-0 z-10 flex flex-wrap items-center gap-2 border-hairline border-t bg-canvas py-3"

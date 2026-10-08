@@ -87,6 +87,7 @@ import {
 	FieldLabel,
 	ReadBlock,
 	Section,
+	TITLE_LINE_HEIGHT,
 	consumeHeadingFocus,
 	requestHeadingFocus,
 	sourceLabel,
@@ -824,11 +825,23 @@ export function AgentDetail({
 					 * ONE PRIMARY, ONE SECONDARY, ONE QUIET - and none while the form is open
 					 * (design D5; spec D8). The primary while editing is Save changes in the
 					 * footer, and a second accent fill in the same frame split the decision.
-					 * `h-6.5` is the title's own line box, so the 32 px buttons centre on the
-					 * TITLE line and not on the title-plus-meta block.
+					 * `TITLE_LINE_HEIGHT` is the title's own line box (derived from the type
+					 * token, not copied), so the 32 px buttons centre on the TITLE line and
+					 * not on the title-plus-meta block.
+					 *
+					 * THE TRAILING GLYPH SITS ON THE COLUMN EDGE (design review round 1 D1):
+					 * the last control is the ghost "More actions" icon button, 32 px wide
+					 * around a 16 px glyph, so `-mr-2` (the 8 px of box on each side of the
+					 * glyph) moves the glyph's edge onto the column edge into the 24 px
+					 * gutter, where only its hover ground reaches.
 					 */}
 					{editing ? null : (
-						<div className="flex h-6.5 shrink-0 items-center gap-2">
+						<div
+							className={cn(
+								"flex shrink-0 items-center gap-2",
+								TITLE_LINE_HEIGHT,
+							)}
+						>
 							<Button
 								variant="primary"
 								onClick={() => {
@@ -881,7 +894,12 @@ export function AgentDetail({
 							 */}
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
-									<Button variant="ghost" size="icon" aria-label="More actions">
+									<Button
+										variant="ghost"
+										size="icon"
+										aria-label="More actions"
+										className="-mr-2"
+									>
 										<MoreHorizontal aria-hidden="true" />
 									</Button>
 								</DropdownMenuTrigger>

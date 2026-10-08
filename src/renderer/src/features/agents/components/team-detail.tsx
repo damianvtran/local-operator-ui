@@ -50,6 +50,7 @@ import {
 	TableRow,
 } from "@shared/components/ui/table";
 import { Textarea } from "@shared/components/ui/textarea";
+import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { Minus, Plus } from "lucide-react";
@@ -59,8 +60,10 @@ import { type FieldTarget, refusalCopy } from "../utils/backend-copy";
 import {
 	EditFooter,
 	FieldLabel,
+	LINK_HIT_AREA,
 	ReadBlock,
 	Section,
+	TITLE_LINE_HEIGHT,
 	consumeHeadingFocus,
 	requestHeadingFocus,
 	useEscapeToCancel,
@@ -136,15 +139,26 @@ function memberResolution(
  * summed count under a different noun, so a team with the coder twice read "5
  * members" in one and "6 agents" in the other (design spec D9). One word and one
  * arithmetic, exported so the two surfaces cannot disagree again; `count || 1`
- * is the wire's own default for a row that omits it.
+ * (`memberCountOf`) is the wire's own default for a row that omits it.
  */
 export function memberCount(
 	members: readonly TeamMember[] | undefined,
 ): number {
 	return (members ?? []).reduce(
-		(total, member) => total + (member.count || 1),
+		(total, member) => total + memberCountOf(member),
 		0,
 	);
+}
+
+/**
+ * ONE ROW'S COUNT, the single normalisation every surface reads (agent review
+ * round 1 #4). The table printed `member.count` raw while the header summed
+ * `member.count || 1`, so a row that omitted its count read "x undefined" under a
+ * header that had counted it as one. Exported so the table cell and the sum
+ * cannot take different views of the same row.
+ */
+export function memberCountOf(member: Pick<TeamMember, "count">): number {
+	return member.count || 1;
 }
 
 /** "1 member" / "N members" - the phrase both surfaces print. */
@@ -419,12 +433,27 @@ export function TeamDetail({
 					 * ACTIONS: one primary, one secondary, one quiet - and NONE while the
 					 * form is open. In edit mode the primary is Save changes in the footer,
 					 * and a second accent fill in the same frame (New team chat) split the
-					 * decision (design spec D8). `h-6.5` is the title's own line box, so the
-					 * 32 px buttons centre on the TITLE line and not on the title-plus-meta
-					 * block.
+					 * decision (design spec D8). `TITLE_LINE_HEIGHT` is the title's own line box,
+					 * derived from the type token, so the 32 px buttons centre on the TITLE
+					 * line and not on the title-plus-meta block.
+					 *
+					 * THE TRAILING GHOST BUTTON IS PULLED OUT BY ITS OWN PADDING (design
+					 * review round 1 D1). A ghost button has no edge, so its box was flush
+					 * with the column but its LABEL ended 12 px inside it; `-mr-3` (the
+					 * `md` button's `px-3`) puts the label's last glyph on the column edge
+					 * that the box and the count are on. It moves into the 24 px scroller
+					 * gutter, where nothing is clipped (the hover ground is the only thing
+					 * there). Without "Ask for a change" the last button is the bordered
+					 * Edit, whose edge IS its box, so nothing is pulled.
 					 */}
 					{team && !editing ? (
-						<div className="flex h-6.5 shrink-0 items-center gap-2">
+						<div
+							className={cn(
+								"flex shrink-0 items-center gap-2",
+								TITLE_LINE_HEIGHT,
+								askEnabled && "-mr-3",
+							)}
+						>
 							<Button
 								variant="primary"
 								onClick={() => {
@@ -765,25 +794,44 @@ export function TeamDetail({
 					</>
 				) : (
 					<>
-						<Section
-							title="Manager"
-							description="The agent that leads the chat."
-						>
+						<Section title="Manager">
 							{/*
-							 * THE MANAGER ROW IS THE MEMBERS' GRID (design spec s4): name | type |
-							 * blank, with the same fixed columns, so the manager's name sits at
-							 * the x the member names do. The name is still the navigation button
-							 * it was.
+							 * THE MANAGER ROW IS THE MEMBERS' ROW (design spec s4; design review
+							 * round 1 D5). Same `<colgroup>`, same `py-2` cells, same sr-only head:
+							 * the manager's name sits at the members' name x, the row is the same
+							 * 36 px, and the heading-to-row distance is the Members section's.
+							 *
+							 * THE SECTION'S SENTENCE WENT INTO THE TABLE'S NAME. "The agent that
+							 * leads the chat." was a visible line that made this section 21 px
+							 * taller than Members for the one fact a reader of a one-row table
+							 * already has; the table's accessible name keeps it for assistive tech
+							 * (agent review round 1 #3 asked for a name anyway) and the edit form,
+							 * where the field needs explaining, still prints it.
 							 */}
-							<Table className="table-fixed">
+							<Table
+								className="table-fixed"
+								aria-label="Manager: the agent that leads the chat"
+							>
 								<MemberCols />
+								<TableHeader className="sr-only">
+									<TableRow>
+										<TableHead>Member</TableHead>
+										<TableHead>Type</TableHead>
+										<TableHead>Count</TableHead>
+									</TableRow>
+								</TableHeader>
 								<TableBody>
 									<TableRow className="border-0">
-										<TableCell className="px-0 py-1">
+										<TableCell className="px-0 py-2">
 											<div className="flex min-w-0 items-center gap-2">
 												<Button
 													variant="link"
-													className="min-w-0 justify-start truncate"
+													// 24 px target inside the 20 px line: the surplus 2 px each side
+													// is handed back so the row stays the Members' 36 px.
+													className={cn(
+														"-my-0.5 min-w-0 justify-start truncate",
+														LINK_HIT_AREA,
+													)}
 													onClick={() => onOpenAgent(draft.manager)}
 												>
 													{draft.manager}
@@ -807,7 +855,7 @@ export function TeamDetail({
 												) : null}
 											</div>
 										</TableCell>
-										<TableCell className="px-2 py-1 text-ink-dim text-meta">
+										<TableCell className="px-2 py-2 text-ink-dim text-meta">
 											{/* The type is a fact about the row; the manager is an agent. */}
 											Agent
 										</TableCell>
@@ -826,7 +874,7 @@ export function TeamDetail({
 							 * five-row list. Rows are separated by the hairline, which is the
 							 * token's stated job; the last row drops it.
 							 */}
-							<Table className="table-fixed">
+							<Table className="table-fixed" aria-label="Members">
 								<MemberCols />
 								<TableHeader className="sr-only">
 									<TableRow>
@@ -861,7 +909,7 @@ export function TeamDetail({
 											</TableCell>
 											{/* Right-aligned so every count shares an x; the glyph is kept. */}
 											<TableCell className="px-0 py-2 text-right text-ink-muted tabular-nums">
-												{`×${member.count}`}
+												{`×${memberCountOf(member)}`}
 											</TableCell>
 										</TableRow>
 									))}
