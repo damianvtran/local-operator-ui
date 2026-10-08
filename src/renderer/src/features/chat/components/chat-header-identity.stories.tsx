@@ -53,6 +53,7 @@ import type { ReactNode } from "react";
 import "../../../styles/index.css";
 import { ChatHeader } from "./chat-header";
 import type { HeaderIdentityData } from "./chat-header-identity";
+import { hostPublishRecord } from "./chat-header-identity-model";
 
 const meta = {
 	title: "Chat/Header identity",
@@ -265,6 +266,13 @@ type BridgeOptions = {
 	 */
 	teams?: typeof TEAMS;
 	/**
+	 * `pending` holds `teams.list` open FOREVER, so the closed seat's claim - it
+	 * is built from the host's statement and does not wait for the catalogue - is
+	 * a frame rather than a sentence (design round 1). `commands.entities` is
+	 * unaffected.
+	 */
+	teamsList?: "rows" | "pending";
+	/**
 	 * How long `sessions.command` stays in flight. The busy state the rig
 	 * photographs needs the receipt UNSETTLED at shutter time, and the story
 	 * owes the frame that rather than a promise that races it.
@@ -292,8 +300,15 @@ const installBridge = ({
 	holdCommandMs = 0,
 	agents = AGENTS,
 	teams = TEAMS,
+	teamsList = "rows",
 	onRename,
 }: BridgeOptions = {}) => {
+	/*
+	 * The strict-host capability record is module state that outlives a story, so
+	 * every story starts from "this host has not published" and a story that
+	 * models a warm-then-cold host says so itself (`StrictTeamColdFrame`).
+	 */
+	hostPublishRecord.reset();
 	const ok = <T,>(result: T) => ({ status: 200, body: { result } });
 	const bridge = async (request: {
 		op: string;
@@ -302,6 +317,9 @@ const installBridge = ({
 	}) => {
 		switch (request.op) {
 			case "teams.list":
+				if (teamsList === "pending") {
+					return new Promise<{ status: number; body: unknown }>(() => {});
+				}
 				return ok({ teams });
 			case "commands.entities":
 				if (entities === "refused") {
@@ -427,6 +445,9 @@ const identity = (over: Partial<HeaderIdentityData>): HeaderIdentityData => ({
 	activeTeam: null,
 	boundAgent: null,
 	boundTeam: null,
+	// This device's own key: the capability record is keyed per producer and an
+	// unknown producer (null) is neither read nor written.
+	hostKey: "",
 	...over,
 });
 
@@ -537,6 +558,274 @@ export const IncompatiblePairLoading: Story = {
 					agentName="Install the pinned uv on Windows"
 					description="coder · lopdev"
 					identity={identity({ activeAgent: "coder", activeTeam: "lopdev" })}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * The runtime's STRICT rule (issue #861, second slice; core PR #2050): the host
+ * publishes `effective_identity` and a team owns the session, so the agent slot
+ * is closed for every name.
+ *
+ * WHAT THE FRAMES ARE. `strict-team-chip` is the speaker statement at rest -
+ * `manager` on the agent chip with the closed-seat lock, `Local Operator Dev` on
+ * the team chip, no cue; `strict-team-open` is the press: the panel is a note
+ * that states the runtime's own sentence and the way out (`/team clear`), with
+ * no field and no rows. The stale-agent arm below is the same host with a
+ * leftover `coder` still on the frame: it must read `manager` (the speaker),
+ * not `coder`, and the cue must be dark.
+ */
+const STRICT_TEAM_IDENTITY = {
+	speaker: "manager",
+	team: "lopdev",
+	role_of_speaker: "manager",
+};
+
+export const StrictTeam: Story = {
+	render: () => {
+		installBridge();
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="manager · lopdev"
+					identity={identity({
+						activeTeam: "lopdev",
+						effectiveIdentity: STRICT_TEAM_IDENTITY,
+					})}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/** The strict host at the app's full width, the band the operator's own screenshot was taken at. */
+export const StrictTeamWide: Story = {
+	render: () => {
+		installBridge();
+		return (
+			<Band width={1380}>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="manager · lopdev"
+					identity={identity({
+						activeTeam: "lopdev",
+						effectiveIdentity: STRICT_TEAM_IDENTITY,
+					})}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * A strict host whose frame still carries the earlier `coder` (the bound row or
+ * a frame in flight): the runtime has replaced it with the manager, so the
+ * header must name the SPEAKER and light no cue - the #866 cue's pair does not
+ * exist on this host.
+ */
+export const StrictTeamStaleAgent: Story = {
+	render: () => {
+		installBridge();
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="coder · lopdev"
+					identity={identity({
+						activeAgent: "coder",
+						activeTeam: "lopdev",
+						boundAgent: "coder",
+						effectiveIdentity: STRICT_TEAM_IDENTITY,
+					})}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * The speaker ladder's last rung: the host names a team but no distinct
+ * speaker (`speaker: ""`), so the chip says the team's name rather than a blank
+ * and the sentence reads `its manager`.
+ */
+export const StrictTeamNoSpeaker: Story = {
+	render: () => {
+		/* `field-ops` is in no catalogue row, so nothing names its manager: the
+		 * unnamed-manager rung. A team WITH a row would read that row's manager. */
+		installBridge();
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="field-ops"
+					identity={identity({
+						activeTeam: "field-ops",
+						effectiveIdentity: {
+							speaker: "",
+							team: "field-ops",
+							role_of_speaker: "manager",
+						},
+					})}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * A COLD frame on a host that has published the field before (review R1, QA
+ * Q1): a resumed team session whose frame carries `{}` and no live team, only
+ * the durable binding. The seat stays closed and the speaker is the catalogue's
+ * manager. The capability record is primed here exactly as an earlier warm
+ * frame would have primed it.
+ */
+export const StrictTeamColdFrame: Story = {
+	render: () => {
+		installBridge();
+		hostPublishRecord.note("");
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="manager · lopdev"
+					identity={identity({
+						boundAgent: "manager",
+						boundTeam: "lopdev",
+						effectiveIdentity: {},
+						// Core stamps its cold synthesis `cold-<session_id>`.
+						frameEpoch: `cold-${SESSION}`,
+					})}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * The list-to-note swap (QA Q1's second half): a cold team session opened on a
+ * host the app has not yet seen publish the field shows #866's open list; the
+ * moment the panel is up the host's strict frame arrives, the list is replaced
+ * by the closed note and the search field that held focus unmounts. Focus must
+ * land on the chip, not on `<body>` - the rig asserts `document.activeElement`.
+ *
+ * The promotion is triggered by the panel's own appearance (a MutationObserver),
+ * so the shutter cannot beat or miss it, and it waits long enough for the list
+ * to mount and take focus first.
+ */
+export const StrictTeamPromotedWhileOpen: Story = {
+	render: () => <PromotedWhileOpen />,
+};
+
+const PromotedWhileOpen = () => {
+	installBridge();
+	const [promoted, setPromoted] = useState(false);
+	useLayoutEffect(() => {
+		const observer = new MutationObserver(() => {
+			if (document.querySelector('[data-header-identity-menu="agent"] input')) {
+				observer.disconnect();
+				window.setTimeout(() => setPromoted(true), 600);
+			}
+		});
+		observer.observe(document.body, { childList: true, subtree: true });
+		return () => observer.disconnect();
+	}, []);
+	return (
+		<Band>
+			<ChatHeader
+				agentName="Install the pinned uv on Windows"
+				description="manager · lopdev"
+				identity={identity({
+					boundAgent: "manager",
+					boundTeam: "lopdev",
+					effectiveIdentity: promoted ? STRICT_TEAM_IDENTITY : {},
+				})}
+				renameSessionId={SESSION}
+				onOpenOptions={() => undefined}
+			/>
+		</Band>
+	);
+};
+
+/** A 47-character speaker at the 560 band: the chip's cap and the lock's slot (design round 1). */
+export const StrictTeamLongSpeaker: Story = {
+	render: () => {
+		installBridge();
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="long speaker"
+					identity={identity({
+						activeTeam: "lopdev",
+						effectiveIdentity: {
+							speaker: "regulatory-and-sanctions-review-coordinator-02",
+							team: "lopdev",
+							role_of_speaker: "manager",
+						},
+					})}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/** The closed seat while `teams.list` has not answered: the seat is closed from the host's statement alone. */
+export const StrictTeamCatalogueLoading: Story = {
+	render: () => {
+		installBridge({ teamsList: "pending" });
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="manager · lopdev"
+					identity={identity({
+						activeTeam: "lopdev",
+						effectiveIdentity: STRICT_TEAM_IDENTITY,
+					})}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * AN OLDER HOST: `effective_identity` arrives as `{}`. The header must look and
+ * behave exactly as #866 shipped - this is the legacy pair arm
+ * (`IncompatiblePair`) with the empty object added, and its frames are read
+ * against that arm's: the cue lit, the constrained list, no lock.
+ */
+export const OlderHostEmptyIdentity: Story = {
+	render: () => {
+		installBridge();
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="coder · lopdev"
+					identity={identity({
+						activeAgent: "coder",
+						activeTeam: "lopdev",
+						effectiveIdentity: {},
+					})}
 					renameSessionId={SESSION}
 					onOpenOptions={() => undefined}
 				/>

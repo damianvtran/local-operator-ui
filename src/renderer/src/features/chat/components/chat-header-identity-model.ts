@@ -11,8 +11,13 @@
  * without a DOM, and the component only maps their answers onto pixels.
  */
 
+import type { CanonicalEffectiveIdentity } from "../../../../../shared/desktop-session-contract";
 import { teamDisplayName } from "../../../shared/api/local-operator/team-display";
-import { identityAgentSettable } from "./chat-header-identity-menu-model";
+import {
+	identityAgentClosedCaption,
+	identityAgentClosedTitle,
+	identityAgentSettable,
+} from "./chat-header-identity-menu-model";
 
 /**
  * One team as the label resolver needs it: the name the binding uses, the
@@ -41,6 +46,151 @@ export type HeaderIdentityInput = {
 	boundTeam?: string | null;
 	/** The authored teams catalogue (`teams.list`), for the manager lookup. */
 	teams?: readonly HeaderIdentityTeam[] | undefined;
+	/**
+	 * The host's `effective_identity` statement (`canonical.frontend`), or
+	 * absent/`{}` from a host that predates it. See `effectiveIdentityPublished`
+	 * for the one predicate that tells the two apart.
+	 */
+	effectiveIdentity?: CanonicalEffectiveIdentity | null | undefined;
+	/**
+	 * Whether THIS HOST has published `effective_identity` on some earlier frame
+	 * in this app run (`hostPublishRecord`). It is what tells a COLD frame from
+	 * an older host: a cold (resumed, never-promoted) session's frame is built
+	 * without the field on a strict host and reads `{}`, exactly as an older
+	 * host's does, but a host that has published it once is strict. See
+	 * `resolveHeaderIdentity`'s cold branch.
+	 */
+	hostPublishes?: boolean;
+	/**
+	 * The frame is core's cold synthesis (`isColdFrame`): its identity statement,
+	 * `{}` or published-empty, says nothing about the session's team, so the
+	 * binding is read instead.
+	 */
+	coldFrame?: boolean;
+};
+
+/*
+ * The capability record lives in `shared/lib/host-publish-record.ts` (the feed
+ * hook that invalidates it is in `shared/`, and `shared/` does not import from a
+ * feature); it is re-exported here because this module is where its readers and
+ * the pure tests look for it.
+ */
+export {
+	createHostPublishRecord,
+	hostPublishRecord,
+} from "../../../shared/lib/host-publish-record";
+
+/**
+ * The record's KEY for one session: which RUNTIME produced its frames.
+ *
+ * A peer's session is relayed through this device's daemon but produced by the
+ * PEER's runtime, which may be older, so a peer never shares this device's key.
+ * `null` means "the producer is not known" - no catalogue row, or a remote row
+ * that names no owner - and a null key is neither read from nor written to the
+ * record, so an absent row can never be mistaken for the local host (review
+ * R5). A row with no `locality` came from a plain listing, which only this
+ * device's daemon answers (`CanonicalSessionRow`: a plain page never carries a
+ * peer's row), so it keys as this device.
+ *
+ * STRICTER THAN `ownerOf` (`features/mesh/mesh-sessions.ts`), which it parallels
+ * (local is the empty id, remote is the owner's): `ownerOf` takes a
+ * `MeshSessionRow` and has no ownerless-remote case - a remote row with
+ * `owner_device: ""` would key as local there - whereas here it is `null`, so a
+ * peer can never be mistaken for this device. It is restated over the catalogue
+ * row's optional fields because that function's parameter cannot take them.
+ */
+export function headerHostKey(
+	row:
+		| { locality?: "local" | "remote"; owner_device?: string }
+		| null
+		| undefined,
+): string | null {
+	if (!row) return null;
+	if (row.locality === "remote") {
+		return row.owner_device ? `peer:${row.owner_device}` : null;
+	}
+	return "";
+}
+
+/**
+ * Whether a frontend frame is the runtime's COLD synthesis rather than a live
+ * owner's: core stamps those `epoch: "cold-<session_id>"` (`attached.py`,
+ * `cold_model.py`; the type is `CanonicalFrontendState.epoch`).
+ *
+ * WHY IT MATTERS. A cold frame is not a statement about the session's team at
+ * all - core's own comment (`cold_model.py`, "Consumers that need the binding
+ * before a runtime engages already have it: the desktop's session catalogue row
+ * ... is where the header should read it until the first warm frame arrives")
+ * says the binding is the answer. Its published-empty identity must therefore
+ * never be read as "no team is attached".
+ */
+export function isColdFrame(epoch: string | null | undefined): boolean {
+	return typeof epoch === "string" && epoch.startsWith("cold-");
+}
+
+/**
+ * What a host that PUBLISHES `effective_identity` said, normalised: all three
+ * keys, strings. Produced only by `effectiveIdentityPublished`.
+ */
+export type PublishedEffectiveIdentity = {
+	speaker: string;
+	team: string;
+	role_of_speaker: string;
+};
+
+/**
+ * THE ONE PREDICATE for "this host publishes `effective_identity`" - the
+ * capability signal the strict rule is gated on.
+ *
+ * It is `true` when at least one of the three keys is a string. A host that
+ * publishes the field sends all three, with `""` for an empty value, so
+ * `{ speaker: "", team: "", role_of_speaker: "" }` (no team, no profile) IS
+ * published and means "nobody is attached". `{}`, `null` and an absent field
+ * are a host that PREDATES the field, and must not be read as that statement:
+ * the older runtime still accepts the manager and delegating profiles, so
+ * closing the agent control on its silence would withdraw a working control.
+ *
+ * Returns the normalised statement (a key that is not a string reads `""`,
+ * because a frame is untrusted wire data) or `null` for "not published".
+ */
+export function effectiveIdentityPublished(
+	identity: CanonicalEffectiveIdentity | null | undefined,
+): PublishedEffectiveIdentity | null {
+	if (!identity || typeof identity !== "object") return null;
+	const { speaker, team, role_of_speaker } = identity;
+	if (
+		typeof speaker !== "string" &&
+		typeof team !== "string" &&
+		typeof role_of_speaker !== "string"
+	) {
+		return null;
+	}
+	return {
+		speaker: typeof speaker === "string" ? speaker : "",
+		team: typeof team === "string" ? team : "",
+		role_of_speaker: typeof role_of_speaker === "string" ? role_of_speaker : "",
+	};
+}
+
+/**
+ * The strict rule in force on this chat: the runtime closed the agent slot
+ * because a team owns the session, and said who is speaking.
+ */
+export type HeaderSeatClosure = {
+	/** What the agent chip shows: the speaker, or the team's name when the host named none. */
+	speaker: string;
+	/**
+	 * Whether the host named a speaker distinct from the team. `false` is the
+	 * fallback rung (blank speaker, or the runtime's own team-name fallback for
+	 * a manager it cannot name), and the sentence then says `its manager`.
+	 */
+	speakerKnown: boolean;
+	/** The team slug the host reported. */
+	team: string;
+	/** The explanation the closed control states (chip title, accessible name, panel). */
+	sentence: string;
+	/** The note's lead line, naming the team as the chip does (design D2/D3). */
+	title: string;
 };
 
 export type HeaderIdentityView = {
@@ -73,6 +223,13 @@ export type HeaderIdentityView = {
 	 * See `chat-header-identity-menu-model.ts`'s `identityAgentConstraint`.
 	 */
 	teamManager: string | null;
+	/**
+	 * Non-null when the host publishes `effective_identity` AND names a team: the
+	 * runtime's strict rule, under which no agent is settable (the manager's own
+	 * name included) and the agent control states why instead of listing rows.
+	 * `null` on an older host - the #866 behaviour, unchanged.
+	 */
+	seat: HeaderSeatClosure | null;
 };
 
 /**
@@ -100,6 +257,14 @@ export const NO_AGENT_LABEL = "No agent";
  * whole control behind a query the label does not need.
  */
 export const DEFAULT_TEAM_MANAGER = "manager";
+
+/**
+ * The speaker chip's words when neither the host nor the catalogue names the
+ * manager: the runtime's own phrase for an unnamed manager (`its manager is the
+ * speaker`), which is distinguishable from the team chip beside it where the
+ * team's name was not (design D5).
+ */
+export const ITS_MANAGER_LABEL = "its manager";
 
 /**
  * The label ladder, for both controls, from the two sources in their
@@ -130,7 +295,30 @@ export const DEFAULT_TEAM_MANAGER = "manager";
 export function resolveHeaderIdentity(
 	input: HeaderIdentityInput,
 ): HeaderIdentityView {
-	const teamValue = input.activeTeam || input.boundTeam || null;
+	const published = effectiveIdentityPublished(input.effectiveIdentity);
+	/*
+	 * WHICH TEAM OWNS THE SESSION. The determination keys on the stream's
+	 * `active_team` and the catalogue row's bound team - the two sources that
+	 * stay reliable on a COLD frame, where the identity is the published-EMPTY
+	 * statement (merged core 86c7e7aefa0: `synthesise_cold_state`'s never-engaged
+	 * frame; a restored session's cold frame now derives the triple) or `{}` (an
+	 * earlier core head) - with a published statement's
+	 * team as the last rung (a closed seat must never sit over a "No team" chip).
+	 *
+	 * A published `team: ""` on a LIVE frame means the host has just said no team
+	 * is attached, so a binding the catalogue has not yet refreshed (the gap
+	 * between a detach and the row catching up) is stale and loses to it. On a
+	 * COLD frame it means nothing of the kind - the synthesis attaches nothing
+	 * and says so for every session, team-bound or not - so the binding stands
+	 * (review R3: reading it as "no team" blanked every cold team session's chips
+	 * to `No agent` / `No team`).
+	 */
+	const publishedNoTeam =
+		published !== null && published.team === "" && input.coldFrame !== true;
+	const teamValue = publishedNoTeam
+		? input.activeTeam || null
+		: input.activeTeam || input.boundTeam || published?.team || null;
+	const strictTeam = published?.team || teamValue || "";
 	/*
 	 * The catalogue row, read ONCE for the two answers it holds: the team's
 	 * readable name (the label below) and the manager (the agent fallback). A
@@ -141,15 +329,62 @@ export function resolveHeaderIdentity(
 	const teamRow = teamValue
 		? input.teams?.find((team) => team.name === teamValue)
 		: undefined;
-	let agentValue = input.activeAgent || input.boundAgent || null;
+	const teamLabel = teamValue
+		? teamDisplayName(teamRow ?? { name: teamValue })
+		: NO_TEAM_LABEL;
+	/*
+	 * ONE STATEMENT OF WHO IS SPEAKING. Under the strict rule the agent slot
+	 * is the team's, so the label is the speaker and NOT `active_agent`: the
+	 * runtime replaces any earlier profile with the manager when a team
+	 * attaches, so a stale explicit agent is never the speaker and a chip
+	 * reading it would be the "team + agent pair" this rule retires.
+	 *
+	 * THE STRICT RULE APPLIES when the frame publishes the field, OR when this
+	 * host has published it before and this frame is its cold shape (`{}` with a
+	 * team bound): a cold frame is not an older host. An older host - one that
+	 * has NEVER published the field in this run - keeps #866.
+	 *
+	 * THE SPEAKER LADDER, most to least specific: the host's `speaker`; the
+	 * catalogue row's manager (what the runtime's own `_team_manager_name`
+	 * returns, and the only name a cold frame has); then the words `its manager`
+	 * - never the team's name, which read as a second chip beside the team's
+	 * own (design D5) - and the sentence says so in the runtime's own phrase.
+	 * A speaker equal to the team's name is a real manager named like its team
+	 * unless the catalogue says the manager is someone else (core's fallback to
+	 * the team name fires only for a manager it cannot name).
+	 */
+	const cold = published === null && input.hostPublishes === true;
+	let seat: HeaderSeatClosure | null = null;
+	if ((published !== null || cold) && strictTeam && teamValue) {
+		/* The row's own manager, with the runtime's documented default for a row
+		 * that carries none (`Team.manager`); `null` only while the row is absent. */
+		const catalogueManager = teamRow
+			? teamRow.manager || DEFAULT_TEAM_MANAGER
+			: null;
+		const hostSpeaker = published?.speaker ?? "";
+		const hostSpeakerIsFallback =
+			hostSpeaker === strictTeam && catalogueManager !== strictTeam;
+		const named =
+			hostSpeaker !== "" && !hostSpeakerIsFallback
+				? hostSpeaker
+				: catalogueManager;
+		seat = {
+			speaker: named ?? ITS_MANAGER_LABEL,
+			speakerKnown: named !== null,
+			team: strictTeam,
+			sentence: identityAgentClosedCaption(strictTeam, named),
+			title: identityAgentClosedTitle(teamLabel),
+		};
+	}
+	let agentValue = seat
+		? seat.speaker
+		: input.activeAgent || input.boundAgent || null;
 	if (!agentValue && teamValue) {
 		agentValue = teamRow?.manager || DEFAULT_TEAM_MANAGER;
 	}
 	return {
 		teamValue,
-		teamLabel: teamValue
-			? teamDisplayName(teamRow ?? { name: teamValue })
-			: NO_TEAM_LABEL,
+		teamLabel,
 		agentValue,
 		agentLabel: agentValue ?? NO_AGENT_LABEL,
 		/*
@@ -162,6 +397,7 @@ export function resolveHeaderIdentity(
 				? teamRow.manager || DEFAULT_TEAM_MANAGER
 				: null
 			: null,
+		seat,
 	};
 }
 
@@ -229,7 +465,17 @@ export function headerIdentityAgentFlagged(input: {
 	manager: string | null;
 	/** The explicit agent's `delegate` flag; `null` while it is not known. */
 	delegate: boolean | null;
+	/**
+	 * The strict rule is in force (`HeaderIdentityView.seat !== null`). THE CUE
+	 * STAYS DARK: the runtime normalises a team chat to the manager alone, so a
+	 * stale explicit agent is never the speaker and there is no "pair that needs
+	 * resolving" to flag. Short-circuited HERE rather than by calling
+	 * `identityAgentSettable` with the strict flag, which would answer "refused"
+	 * for every name and light the cue on exactly the chats it must not.
+	 */
+	teamOwnsSeat?: boolean;
 }): boolean {
+	if (input.teamOwnsSeat === true) return false;
 	if (
 		input.explicitAgent === null ||
 		input.manager === null ||

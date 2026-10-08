@@ -156,7 +156,10 @@ import { canvasDocumentForPath } from "../utils/canvas-document";
 import { messageBudgetRefusal } from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
 import type { HeaderIdentityData } from "./chat-header-identity";
-import { headerIdentityControlsShown } from "./chat-header-identity-model";
+import {
+	headerHostKey,
+	headerIdentityControlsShown,
+} from "./chat-header-identity-model";
 import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	deriveRunDetails,
@@ -3516,6 +3519,15 @@ function SessionPanel({
 					activeTeam: canonical.frontend?.active_team ?? null,
 					boundAgent: boundRow?.binding?.agent ?? null,
 					boundTeam: boundRow?.binding?.team ?? null,
+					/*
+					 * The host's own statement of who is speaking, passed through
+					 * untouched: whether it counts as PUBLISHED (a non-empty object)
+					 * is the model's one predicate, not this site's, so an older
+					 * host's absent field and `{}` both reach it as they arrived.
+					 */
+					effectiveIdentity: canonical.frontend?.effective_identity ?? null,
+					hostKey: headerHostKey(boundRow),
+					frameEpoch: canonical.frontend?.epoch ?? null,
 				} satisfies HeaderIdentityData)
 			: undefined;
 	/*
