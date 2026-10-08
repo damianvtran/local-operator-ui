@@ -4,7 +4,7 @@
  * against a REAL backend, and count what the pane holds (issue #876).
  *
  *     node scripts/transcript-gap-live.mjs [--label=head] [--n=300,600,1400] \
- *       [--frames=<dir>] [--frame-n=600] [--json]
+ *       [--frames=<dir>] [--frame-n=600] [--echo] [--json]
  *
  * WHY THIS EXISTS BESIDE `reconnect-page-gap.test.mjs`. That suite drives the
  * shipped hook against a STUBBED backend contract, which proves the hook's rules
@@ -88,6 +88,18 @@ const NS = flag("n", "300,600,1400")
 const FRAMES = flag("frames", null);
 const FRAME_N = Number(flag("frame-n", "600"));
 const AS_JSON = ARGS.includes("--json");
+/*
+ * `--echo`: the user sent a message after returning, while the stale cached
+ * paint was on screen, and the owner had already journaled it as the NEWEST row
+ * by the time the page arrived. The app retains the unconfirmed echo under the
+ * admission request id - which is also the id of that journal row - and a held
+ * set that counts the echo reads the tail page as "reaching what the pane held"
+ * (#876, review round 1). One extra journal row (a user row: INITIAL + N is a
+ * multiple of four for every N the defaults use) is appended last and its id is
+ * painted as the pending send before the reopen.
+ */
+const ECHO = ARGS.includes("--echo");
+const EXTRA = ECHO ? 1 : 0;
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 /* The journal the first visit sees: longer than the snapshot page (100). */
 const INITIAL = 400;
@@ -572,7 +584,8 @@ async function main() {
 	for (const n of NS) {
 		const id = ids[n];
 		const journalEntries = [];
-		for (let i = 1; i <= INITIAL + n; i++) journalEntries.push(entry(i));
+		for (let i = 1; i <= INITIAL + n + EXTRA; i++)
+			journalEntries.push(entry(i));
 		const journal = journalEntries.map(recordIdOf);
 
 		/* (1) first visit: the tail page, painted, with the cache kept */
@@ -586,7 +599,13 @@ async function main() {
 		await sleep(600);
 
 		/* (3) rows written while away, to the journal file, strictly later */
-		appendFileSync(journals[n], lines(INITIAL + 1, INITIAL + n));
+		appendFileSync(journals[n], lines(INITIAL + 1, INITIAL + n + EXTRA));
+		if (ECHO) {
+			/* The send, retained as the composer's press retains it. */
+			await cdp.eval(
+				`window.__lopOpen.paintPendingSend(${JSON.stringify(id)}, ${JSON.stringify(hex32(INITIAL + n + 1))}, "sent after returning")`,
+			);
+		}
 
 		/* (4) reopen from the landing */
 		const mark = history.length;
