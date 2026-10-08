@@ -229,6 +229,18 @@ export type PaletteItem = {
 	 * would always be the screen you are looking at instead of the one you left.
 	 */
 	current?: boolean;
+	/**
+	 * True on a conversation the archive store holds out of the default lists -
+	 * the row's OWN `archived` fact, and only when this backend advertises
+	 * `session_archive`. Decided at the source with the sidebar's own predicate
+	 * (`visibleRows`, `chat-archived.ts`, called rather than restated) for the same
+	 * import-free reason as `unread`/`recentRank`, and read by exactly one caller:
+	 * the Recents pin leaves these rows out, so an archived conversation is not
+	 * claimed by the pin (QA round 1, Q-1). The browse pool below still offers
+	 * them - pre-existing on both trees - which is why this is a field on the row
+	 * rather than a filter on the pool.
+	 */
+	archived?: boolean;
 	/** Rendered in the danger role; the one row that destroys something. */
 	destructive?: boolean;
 };
@@ -861,13 +873,18 @@ export const TOTAL_CAP = 48;
 /**
  * How many rows the switcher's Recents pin shows.
  *
- * Five: the pin is a shortcut to the conversations you were just in, and it sits
- * between the Unread pin and the Chats tier, whose own browse cap is also five
- * (`BROWSE_CAP.chats`). A longer pin would push the Chats tier - the list's
- * complete answer - below the fold of the 24rem list on open, which is a
- * shortcut hiding the thing it shortcuts. The ring remembers more
+ * Five, because the pin is a shortcut to the conversations you were just in and it
+ * sits between the Unread pin and the Chats tier, whose own browse cap is also five
+ * (`BROWSE_CAP.chats`). It is NOT a number chosen to fit beside the Chats tier:
+ * five is ACCEPTED TO COST some of it. The list box is 384px, and with even one
+ * unread row the pin's five rows push most of the Chats tier below the fold on
+ * open (design round 1, D1 measured it: 1 unread + 5 Recents + 5 Chats leaves about
+ * 1.8 of the Chats rows visible). The fold fade and the scrollbar cue the rest -
+ * every row stays reachable by down-arrow or by scrolling - and a smaller cap was
+ * the alternative, rejected because a pin of two or three would be routinely short
+ * of the conversations the ring remembers. The ring remembers more
  * (`CONVERSATION_RECENTS_LIMIT`, twenty) so that the pin stays full when some of
- * what it remembers is on screen, unread, or gone.
+ * what it remembers is on screen, unread, gone or archived.
  */
 export const RECENTS_PIN_CAP = 5;
 const BROWSE_CAP: Record<PaletteGroup, number> = {
@@ -984,11 +1001,17 @@ export function searchPalette({
 			 *   appears twice, and `pinnedIds` holds them by now;
 			 * - the conversation on screen, because the reader is already in it. It
 			 *   is what makes the first Recents row "the previous conversation"
-			 *   (the Alt-Tab behaviour).
-			 * A ring entry with no catalogue row (deleted, archived out of view,
-			 * forgotten) never reaches here: rows are derived from live catalogue
-			 * items, so nothing is resurrected. An empty ring, or no eligible row,
-			 * draws no section and no heading, and the list is exactly what it was.
+			 *   (the Alt-Tab behaviour);
+			 * - archived rows, which the row carries as `archived` under `visibleRows`'
+			 *   rule (`chat-archived.ts`): the pin does not claim one (QA round 1,
+			 *   Q-1). The pin is the ONLY thing that changes here - the browse pool
+			 *   below still offers an archived conversation, which is pre-existing on
+			 *   both trees and recorded as deferred - and leaving a row to the tier
+			 *   below is already this pin's shape, because `current` does exactly that.
+			 * A ring entry with no catalogue row (deleted, forgotten) never reaches
+			 * here: rows are derived from live catalogue items, so nothing is
+			 * resurrected. An empty ring, or no eligible row, draws no section and no
+			 * heading, and the list is exactly what it was.
 			 *
 			 * SAME BUDGET, SAME ACCOUNTING as the Unread pin: `total` counts the
 			 * pin's whole claim, the drawn rows come out of the running `rendered`
@@ -1004,6 +1027,7 @@ export function searchPalette({
 						item.featured &&
 						item.recentRank !== undefined &&
 						item.current !== true &&
+						item.archived !== true &&
 						!pinnedIds.has(item.id),
 				)
 				.sort(

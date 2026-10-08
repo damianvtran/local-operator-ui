@@ -57,7 +57,10 @@ import {
 	unreadMarkKind,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import {
+	parseConversationRecents,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
 import type { SessionSearchHit } from "../../../../shared/desktop-session-contract";
@@ -72,6 +75,7 @@ import {
 	buildSettingsSectionItems,
 	parsePaletteQuery,
 } from "./palette-search";
+import { chatRecentsOfRow } from "./use-conversation-recents";
 
 /**
  * The agent roster's page size.
@@ -263,6 +267,18 @@ export function usePaletteItems({
 		2,
 	);
 	/*
+	 * The archive capability, the same gate the sidebar's own list reads
+	 * (`chat-sidebar.tsx`'s `archiveEnabled`), so the palette's chat rows carry the
+	 * SAME archive fact the sidebar's membership filter uses. `use-palette-sources`
+	 * derives the fact for the Recents pin only (`chatRecentsOfRow`, below); the
+	 * palette's browse pool keeps offering archived rows, which is pre-existing and
+	 * out of this change's scope.
+	 */
+	const archiveEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"session_archive",
+	);
+	/*
 	 * The team catalogue, for the CHAT ROWS' hint labels AND for the palette's own
 	 * team rows (issue #849). Widened from `wantsChats` to the roster scope so the
 	 * `@` view can draw teams: before this the call was made only to resolve a
@@ -424,18 +440,27 @@ export function usePaletteItems({
 		() => ({
 			/*
 			 * The palette asks its own search and does not widen it, so an archived
-			 * conversation is not in a palette answer. THE SIDEBAR IS NOT ALWAYS
-			 * NARROWER THAN THIS, which is the correction agent review round 3 (N3)
-			 * asked for: with `chat-search.tsx`'s `Include archived` toggle ON and a
-			 * query typed, the sidebar lists the archived conversation the palette will
-			 * not, so the two DO disagree for as long as the toggle is on. That is a
-			 * deliberate scope difference - the palette has no toggle and offering
-			 * archived rows in it, with no control saying so, would be the silent
-			 * widening the brief forbids - but the earlier sentence here ("a scope that
-			 * offered archived conversations would have to say so") read as though the
-			 * palette could never be the narrower of the two. It can, and the honest
-			 * statement is that this view declares its own scope rather than inheriting
-			 * the sidebar's.
+			 * conversation is not in a palette SEARCH answer. IT IS IN THE BROWSE
+			 * POOL: an empty query returns the catalogue rows as they came (this
+			 * module's join is the sidebar's, and `searchChats`'s empty-query arm
+			 * applies no archive filter), so the `#` switcher's browse list has always
+			 * offered archived conversations - the base tree draws them under Chats.
+			 * That is pre-existing on both trees (QA round 1, Q-1 measured it) and out
+			 * of this change's scope; what this change does is stop the Recents pin
+			 * from CLAIMING one (`palette-search.ts`, on the row's `archived` fact).
+			 * THE SIDEBAR IS NOT ALWAYS NARROWER THAN THIS, which is the correction
+			 * agent review round 3 (N3) asked for: with `chat-search.tsx`'s `Include
+			 * archived` toggle ON and a query typed, the sidebar lists the archived
+			 * conversation the palette's search will not, so the two DO disagree for as
+			 * long as the toggle is on. That is a deliberate scope difference - the
+			 * palette has no toggle and offering archived rows in it, with no control
+			 * saying so, would be the silent widening the brief forbids - but the
+			 * earlier sentence here ("a scope that offered archived conversations would
+			 * have to say so") read as though the palette could never be the narrower
+			 * of the two, and the sentence it replaced read as though an archived row
+			 * could never be in a palette list at all. The honest statement is that
+			 * this view declares its own scope - for the SEARCH - rather than
+			 * inheriting the sidebar's, and that the BROWSE arm inherits nothing.
 			 */
 			include: false,
 			facts: {},
@@ -455,8 +480,8 @@ export function usePaletteItems({
 	 * draft leaves pointing at the conversation the reader came FROM: reading that
 	 * field would exclude the wrong row while a draft is on screen.
 	 */
-	const conversationRecents = useUiPreferencesStore(
-		(state) => state.conversationRecents,
+	const conversationRecents = parseConversationRecents(
+		useUiPreferencesStore((state) => state.conversationRecents),
 	);
 	const displayedSessionId = useCanonicalSessionsStore((state) => {
 		const draft = state.activeDraftKey
@@ -472,13 +497,16 @@ export function usePaletteItems({
 		if (!wantsChats) return [];
 		const { rows } = searchChats(sessions, terms, hits, {}, archiveView);
 		const byId = new Map((hits ?? []).map((hit) => [hit.id, hit]));
-		const recentIndex = new Map(
-			conversationRecents.map((id, index) => [id, index]),
-		);
 		return rows.map((row, index) => {
 			const hit = byId.get(row.session_id);
 			const labelMatch = matchesLabel(row, terms);
 			const item = buildChatItem(row, teamLabels);
+			const recents = chatRecentsOfRow(
+				row,
+				conversationRecents,
+				displayedSessionId,
+				archiveEnabled,
+			);
 			/*
 			 * The marker says why the row is on screen. A row whose own title
 			 * contains the query is already explained by what is on screen, so it
@@ -534,15 +562,16 @@ export function usePaletteItems({
 				 */
 				unread: unreadMarkKind(row) !== null,
 				/*
-				 * The Recents pin's two facts (see `PaletteItem.recentRank` and
-				 * `.current`): the row's place in the visited ring, absent when it is
-				 * not in it, and whether it is the conversation on screen. Derived from
+				 * The Recents pin's three facts (see `PaletteItem.recentRank`, `.current`
+				 * and `.archived`), derived by `chatRecentsOfRow` from the row, the
+				 * visited ring and the displayed-session value - ALL THREE derived from
 				 * the same live catalogue row as everything above, so an id in the ring
 				 * whose conversation is gone has no item here to carry a rank, and the
 				 * ring can never resurrect one.
 				 */
-				recentRank: recentIndex.get(row.session_id),
-				current: row.session_id === displayedSessionId,
+				recentRank: recents.recentRank,
+				current: recents.current,
+				archived: recents.archived,
 			} satisfies PaletteItem;
 		});
 	}, [
@@ -554,6 +583,7 @@ export function usePaletteItems({
 		teamLabels,
 		conversationRecents,
 		displayedSessionId,
+		archiveEnabled,
 	]);
 
 	/* -------------------------------- agents -------------------------------- */

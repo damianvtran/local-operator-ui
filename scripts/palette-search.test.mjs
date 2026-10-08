@@ -47,6 +47,19 @@ const {
 	TOTAL_CAP,
 } = module;
 
+/*
+ * The source-anchor patterns, at module scope: a regex literal in a test body is
+ * recompiled per call, and this file's other anchors are read the same way. The
+ * anchor tests scan `use-palette-sources.ts` because the React hook it carries
+ * cannot be mounted here.
+ */
+const RECENTS_JOIN_CALL =
+	/chatRecentsOfRow\(\s*row,\s*conversationRecents,\s*displayedSessionId,\s*archiveEnabled,?\s*\)/;
+const ARCHIVE_CAPABILITY_GATE =
+	/desktopFeatureEnabled\(\s*capabilities\.data,\s*"session_archive",\s*\)/;
+const RECENTS_FIELDS_FROM_HELPER =
+	/recentRank: recents\.recentRank,\s*current: recents\.current,\s*archived: recents\.archived,/;
+
 /* ------------------------------------------------------------------ *
  * Fixtures
  * ------------------------------------------------------------------ */
@@ -621,6 +634,56 @@ test("the conversation on screen is left out of Recents, so the first row is the
 	assert.deepEqual(
 		outcome.sections[1].items.map((match) => match.item.name),
 		["On screen"],
+	);
+});
+
+test("an archived row in the ring is not claimed by the Recents pin (QA round 1, Q-1)", () => {
+	/*
+	 * The pin reads the row's OWN `archived` fact, set at the source with the
+	 * sidebar's `visibleRows` rule (`chatRecentsOfRow`). The row CAN be in the
+	 * browse pool - the join's empty-query arm applies no archive filter, which is
+	 * pre-existing on both trees - so without this the pin claimed the very
+	 * conversation the reader had just archived away (the base tree drew it under
+	 * Chats; the ring keeping its id is by design, the pin drawing it is not).
+	 */
+	const outcome = searchPalette({
+		items: [
+			visitedChat("r-arch", "Archived visit", 0, 0, { archived: true }),
+			visitedChat("r-live", "Live visit", 1, 1),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["recents", "chats"]);
+	assert.deepEqual(
+		outcome.sections[0].items.map((match) => match.item.name),
+		["Live visit"],
+	);
+	// Not claimed - and not dropped either: it is an ordinary row of the Chats
+	// tier, exactly what `current` does with the conversation on screen.
+	assert.deepEqual(
+		outcome.sections[1].items.map((match) => match.item.name),
+		["Archived visit"],
+	);
+});
+
+test("a row whose archived fact is false, or absent, is still claimed by Recents", () => {
+	/*
+	 * The predicate is `archived !== true`, not "has an `archived` field": a live
+	 * row that states the fact false, and a row that says nothing about it, are both
+	 * eligible - the same "absence is not a claim" rule the join applies to every
+	 * other fact it reads.
+	 */
+	const outcome = searchPalette({
+		items: [
+			visitedChat("r-false", "Stated live", 0, 0, { archived: false }),
+			visitedChat("r-silent", "Silent", 1, 1),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["recents"]);
+	assert.deepEqual(
+		outcome.sections[0].items.map((match) => match.item.name),
+		["Stated live", "Silent"],
 	);
 });
 
@@ -1333,6 +1396,32 @@ test("the palette's join is given the same tombstone view the sidebar's is (agen
 	);
 	assert.match(source, /forgotten: new Set\(Object\.keys\(forgotten\)\)/);
 	assert.match(source, /state\.forgotten\)/);
+});
+
+test("the Recents pin's row facts come from the one tested helper, over the sidebar's archive gate (agent review round 1, R1-1; QA round 1, Q-1)", () => {
+	/*
+	 * The source hook is a React module this node harness cannot mount, so the
+	 * half that CAN be pinned is that the seam exists rather than being re-derived
+	 * inline: the memo calls `chatRecentsOfRow` - whose in-ring/not, duplicate,
+	 * current and archived cases are exercised for real in
+	 * `scripts/palette-recents.test.mjs` - and the archive fact is read from the
+	 * same capability the sidebar's own list reads.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/command-palette/use-palette-sources.ts",
+		"utf8",
+	);
+	assert.match(
+		source,
+		RECENTS_JOIN_CALL,
+		"the row-to-ring join must go through the tested helper, over the archive gate",
+	);
+	assert.match(
+		source,
+		ARCHIVE_CAPABILITY_GATE,
+		"the archive fact must come from the sidebar's own capability",
+	);
+	assert.match(source, RECENTS_FIELDS_FROM_HELPER);
 });
 
 /* ------------------------------------------------------------------ *

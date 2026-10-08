@@ -1,3 +1,4 @@
+import { visibleRows } from "@features/chat/chat-archived";
 import {
 	panelSessionIdOfView,
 	useCanonicalSessionsStore,
@@ -61,4 +62,52 @@ export function visitedConversationId(
 		activeSessionId,
 	);
 	return id ? id : null;
+}
+
+/**
+ * The three palette facts a catalogue row and the visited ring decide together,
+ * as one pure function.
+ *
+ * WHY A NAMED EXPORT RATHER THAN THE INLINE DERIVATION IT REPLACES. This is the
+ * only place a catalogue row meets the visited ring, and the source hook that
+ * carries it (`use-palette-sources.ts`'s `chatItems` memo) cannot be mounted in
+ * this repository's node harness - so the join was the one seam no unit test
+ * touched: deleting the `current` flag left every palette test green and only the
+ * heavy `--scene` rig would have noticed (agent review round 1, R1-1). Extracted,
+ * `scripts/palette-recents.test.mjs` exercises it for real instead of through the
+ * rig.
+ *
+ * `recentRank` is the row's index in the ring, 0 being the visit most recent, and
+ * `undefined` when the row is not in it - a conversation this window has not
+ * displayed lately, which is what keeps the section from drawing at all. The read
+ * is `indexOf`, so a DUPLICATED id resolves to its FIRST (most recent) position:
+ * the ring's order is a most-recent-first contract, and a hand-edit that duplicated
+ * an id must not DEMOTE a row whose visit is the more recent of the two. The write
+ * path (`pushConversationRecent`) never produces a duplicate in the first place.
+ *
+ * `current` is the shell's displayed conversation (`panelSessionIdOfView`, read
+ * once by the caller and passed in because a staged draft leaves `activeSessionId`
+ * pointing at the conversation the reader came FROM), which the pin leaves out.
+ *
+ * `archived` is the row's own archive fact, and it is the SIDEBAR'S own rule rather
+ * than a second one: `visibleRows` (`chat-archived.ts`) is CALLED, so a backend
+ * that advertises no `session_archive` capability partitions nothing and an
+ * archived row stays eligible - exactly the arm in which `visibleRows` returns the
+ * rows unfiltered. The Recents pin is its only reader (QA round 1, Q-1).
+ */
+export function chatRecentsOfRow(
+	row: { session_id: string; archived?: boolean },
+	ring: readonly string[],
+	displayedSessionId: string | null | undefined,
+	archiveEnabled: boolean,
+): { recentRank?: number; current: boolean; archived: boolean } {
+	const rank = ring.indexOf(row.session_id);
+	return {
+		recentRank: rank === -1 ? undefined : rank,
+		current: row.session_id === displayedSessionId,
+		/* The row is "archived out of view" precisely when the sidebar's own list
+		 * would drop it: `visibleRows` returns the row unfiltered with no capability
+		 * and drops it only when `archived === true` with the capability on. */
+		archived: visibleRows([row], archiveEnabled).length === 0,
+	};
 }

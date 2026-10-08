@@ -1899,14 +1899,14 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 
 			rememberConversation: (sessionId) => {
 				set((state) => {
-					const next = pushConversationRecent(
-						state.conversationRecents ?? [],
-						sessionId,
-					);
+					/* The READ side, not the setter's: zustand rehydrates past the
+					 * setters, so this value is an untrusted blob's shape and is parsed
+					 * before either reader touches it (`parseConversationRecents`). */
+					const current = parseConversationRecents(state.conversationRecents);
+					const next = pushConversationRecent(current, sessionId);
 					/* Revisiting the conversation already at the front changes nothing, so
 					 * it must not notify: the palette's source hook subscribes to this
 					 * ring and would rebuild its row list for a no-op. */
-					const current = state.conversationRecents ?? [];
 					return next.length === current.length &&
 						next.every((id, index) => id === current[index])
 						? state
@@ -2007,6 +2007,36 @@ export function pushConversationRecent(
 		0,
 		CONVERSATION_RECENTS_LIMIT,
 	);
+}
+
+/**
+ * The visited ring as `localStorage` may hand it back, which is not the shape the
+ * setter wrote.
+ *
+ * ZUSTAND REHYDRATES PAST THE SETTERS, so a blob this build did not write - a
+ * hand-edit, a truncated write, a value from a build that stored something else -
+ * arrives at this key unvalidated and would throw TWICE: in
+ * `pushConversationRecent`'s `.filter` and, worse, in a RENDER path
+ * (`use-palette-sources.ts`'s row map). `rememberConversation`'s `?? []` covered
+ * neither, because `??` answers only null and undefined; a string passes straight
+ * through into `.filter`. This is the read-side rule `parseTranscriptDisplayMode`
+ * and `parseSidebarView` already follow, in its shape for a list: anything that is
+ * not an array is the empty ring, and every reader goes through it (agent review
+ * round 1, R1-5). `profileRecents` has the identical gap and is deliberately left
+ * alone here - recorded as deferred rather than widened into this change.
+ *
+ * THE ARRAY IDENTITY IS KEPT, on purpose: the palette's source hook SELECTS this
+ * value, and zustand compares the selected reference, so returning a fresh `[]`
+ * per call would re-render the row list on every render. A valid array is returned
+ * as-is; the invalid arm returns one shared constant. Members that are not strings
+ * are left in place rather than filtered, because they are inert in every reader
+ * (`indexOf`, `!==`, and the renderer's `id ===` comparisons can never match a
+ * session id) and filtering them would allocate on a path already taken only for a
+ * malformed value.
+ */
+const NO_CONVERSATION_RECENTS: string[] = [];
+export function parseConversationRecents(value: unknown): string[] {
+	return Array.isArray(value) ? (value as string[]) : NO_CONVERSATION_RECENTS;
 }
 
 /**
