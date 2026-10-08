@@ -5,10 +5,12 @@
  *   node drive-other.mjs <out-dir> <label>,<origin>,<scratch> [<label>,<origin>,<scratch> ...]
  *                        [--only=a,b,f] [--audit=<path to design-qa's dom_audit.mjs>]
  *
- * A label is `before` (the unfixed tree: the Other row must be ABSENT) or `after` (the
+ * A label is `before` (the unfixed tree: the Other row must be ABSENT), `after` (the
  * branch: it must be PRESENT, and a run that cannot find it fails rather than
- * photographing a card that is not the subject). Each run takes the SAME steps in the
- * SAME order, so a frame pair differs by the tree and nothing else.
+ * photographing a card that is not the subject), or `r0`/`r1` (the round-1 head and its
+ * remediation - BOTH carry the row, and the pair is read as a delta of the same steps).
+ * Each run takes the SAME steps in the SAME order, so a frame pair differs by the tree
+ * and nothing else.
  *
  * WHAT IS REAL: the page is the app's own `index.html` and `main.tsx`; every press is a
  * CDP mouse event at the element's measured centre (hit-tested first, so a press that
@@ -52,7 +54,18 @@ const RUNS = positional.slice(1).map((spec) => {
 	const [label, origin, scratch] = spec.split(",");
 	if (!label || !origin || !scratch)
 		throw new Error(`bad run spec ${JSON.stringify(spec)}`);
-	return { label, origin, scratch, expectOther: label.startsWith("after") };
+	/*
+	 * WHICH ARMS CARRY THE `Other` ROW: `after` against the unfixed `before`, and BOTH
+	 * of the round-1 pair (`r0`, the head, and `r1`, its remediation) - the r0/r1 delta
+	 * is how the row behaves, not whether it exists, so either arm missing it still
+	 * fails loudly.
+	 */
+	return {
+		label,
+		origin,
+		scratch,
+		expectOther: label.startsWith("after") || label.startsWith("r"),
+	};
 });
 if (!OUT || RUNS.length === 0)
 	throw new Error(
@@ -381,6 +394,14 @@ const PROBE = `(() => {
 						focused: field === active,
 						valueLength: field.value.length,
 						value: field.value,
+						/*
+						 * Where the caret stands after a restore (round 1, UX U1): a bare focus
+						 * puts a textarea's caret at offset 0, so text inserted right after lands
+						 * IN FRONT of the restored answer. Numbers, because a still cannot show
+						 * which side of the text the caret sat on.
+						 */
+						selectionStart: field.selectionStart,
+						selectionEnd: field.selectionEnd,
 						rows: field.rows,
 						placeholder: field.getAttribute("placeholder"),
 						ariaLabel: field.getAttribute("aria-label"),
@@ -975,6 +996,72 @@ step(
 		await changeFlow(run, "change-other", "g2x", { viaOther: true });
 	},
 );
+
+/* i. the caret after a restored Other (round 1, UX U1) and the one prompt (D4) */
+step(
+	"i",
+	"single-select: Other restored, where the caret lands",
+	async (run) => {
+		if (!run.expectOther) return;
+		const askId = await enqueue(run, "region");
+		await openDrawer(run);
+		await checkOther(run, "region", "i1");
+		run.record.probes.i1 = await probe();
+		await shot(run, "i1-card");
+		await shot(run, "i1-card-pane", { clip: await paneClip() });
+		await press(inAsk(askId, otherSelector));
+		await insert("eu-central");
+		run.record.probes.i2 = await probe();
+		await shot(run, "i2-typed");
+		// A single-select option press CLOSES Other and keeps the text; pressing Other
+		// again restores it. Where the caret lands in the restored text is the U1 delta:
+		// at offset 0 on r0 (the next keystrokes PREPEND, and `No` became `NoNo, thanks`),
+		// after the text on r1.
+		await press(inAsk(askId, "[data-ask-option='us-east']"));
+		await press(inAsk(askId, otherSelector));
+		await wait(400);
+		run.record.probes.i3 = await probe();
+		await shot(run, "i3-restored");
+		await shot(run, "i3-restored-pane", { clip: await paneClip() });
+		await insert(" (canary)");
+		run.record.probes.i4 = await probe();
+		await shot(run, "i4-continued");
+		await press(inAsk(askId, "button"), "Send answer");
+		await until(settledKind(run, askId, "answered"), "the answer", 20_000);
+		await wait(900);
+		await shot(run, "i5-sent");
+		run.record.log.i = askEvents(run, askId);
+	},
+);
+
+/* j. multi-select: an Other selected but EMPTY (round 1, design D1) */
+step("j", "multi-select: Other empty beside a tick", async (run) => {
+	if (!run.expectOther) return;
+	const askId = await enqueue(run, "checks");
+	await openDrawer(run);
+	await press(inAsk(askId, "[data-ask-option='Unit tests']"));
+	await press(inAsk(askId, otherSelector));
+	await wait(400);
+	run.record.probes.j1 = await probe();
+	await shot(run, "j1-other-empty");
+	await shot(run, "j1-other-empty-pane", { clip: await paneClip() });
+	// Unticking Other is the way to send the tick alone; the tick survives the fold.
+	await press(inAsk(askId, otherSelector));
+	await wait(300);
+	run.record.probes.j2 = await probe();
+	await shot(run, "j2-other-unticked");
+	await press(inAsk(askId, "button"), "Send answer");
+	await until(settledKind(run, askId, "answered"), "the answer", 20_000);
+	await wait(900);
+	await shot(run, "j3-sent");
+	run.record.log.j = askEvents(run, askId);
+});
+
+/* k. the answered readout's Other tag (round 1, design D2) */
+step("k", "the answered readout's Other tag", async (run) => {
+	if (!run.expectOther) return;
+	await changeFlow(run, "change-other", "k", { viaOther: true });
+});
 
 /* ------------------------------------------------------------------------ main ---- */
 
