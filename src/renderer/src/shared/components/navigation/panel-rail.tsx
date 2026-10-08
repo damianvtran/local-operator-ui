@@ -270,12 +270,12 @@ export const PanelRail: FC<PanelRailProps> = ({
 						 * glyph's own cap ("9+") is unchanged. `ring-surface` because the ring
 						 * names the ground BEHIND the badge, and that is the rail's.
 						 */
-						<span className="pointer-events-none absolute -top-[2px] -right-[2px] flex">
+						<span className="pointer-events-none absolute -top-0.5 -right-0.5 flex">
 							<Badge
 								variant="attention"
 								shape="pill"
 								size="count"
-								className="h-3.5 min-w-3.5 px-[3px] text-[0.6875rem] leading-none ring-2 ring-surface"
+								className="h-3.5 min-w-3.5 px-0.75 text-meta-sm leading-none ring-2 ring-surface"
 								data-tour-tag="browser-pane-badge"
 							>
 								{countLabel(browserAttentionCount, 9)}

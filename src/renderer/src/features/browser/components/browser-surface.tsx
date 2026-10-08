@@ -1,5 +1,6 @@
 import { useConsentAttention } from "@shared/browser-consent-attention";
 import {
+	registerBrowserViewRect,
 	useBrowserViewSuppressed,
 	useSuppressBrowserView,
 	useSuppressedOverlayIds,
@@ -308,6 +309,10 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		if (!element) return;
 		const report = (): void => chrome.setContentRect(measure(element));
 		report();
+		// The SAME box, offered to the overlay policy: an overlay that is only
+		// sometimes over the page (the panel rail's tooltips) decides whether it needs
+		// the view hidden by overlapping THIS rect, not a copy of it that could drift.
+		const unregisterRect = registerBrowserViewRect(() => measure(element));
 		const observer = new ResizeObserver(report);
 		observer.observe(element);
 		// Also on window resize: a monitor switch changes the device pixel ratio
@@ -316,6 +321,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		// change), and the observer cannot see that.
 		window.addEventListener("resize", report);
 		return () => {
+			unregisterRect();
 			observer.disconnect();
 			window.removeEventListener("resize", report);
 			// The surface is going away: nothing knows where the view belongs now.
@@ -650,7 +656,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						// is to look at what IS open, not to open a fourth. It is rendered only when
 						// the host actually HAS a wider scope to offer, so the route's own empty
 						// state keeps its single action.
-						<div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+						<div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center @max-[330px]/bpane:px-4">
 							<Globe aria-hidden className="size-6 text-ink-dim" />
 							{tabScope === "all" ? (
 								<p className="text-body text-ink-muted">No tabs are open.</p>
@@ -660,7 +666,18 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 									and tabs an agent opens while it works, appear here.
 								</p>
 							)}
-							<div className="flex items-center gap-2">
+							{/* `flex-wrap justify-center`: the two buttons are ~282px side by
+							    side and a pane can be 220px (the 800px window, with the panel
+							    rail taking its 44px), where the row clipped both edges
+							    ("Show all tabs" and "New tab in this conversation" cut,
+							    scrollWidth 251 vs clientWidth 220 - design round 2, D13).
+							    Wrapping stacks them only when they do not fit. The side
+							    padding drops from 24 to 16px at the same 330px threshold as the
+							    bar's title shed (`bpane` container, so a route host without the
+							    pane's container is untouched): the 900px window's 320px pane has a
+							    288px content box at 16px, which fits the 282px pair, where 24px
+							    (272px) would have stacked a layout that drew side by side before. */}
+							<div className="flex flex-wrap items-center justify-center gap-2">
 								{tabScope !== "all" && onShowAllTabs && (
 									<Button
 										variant="primary"

@@ -1,4 +1,4 @@
-import { useSuppressBrowserView } from "@shared/browser-view-policy";
+import { useSuppressBrowserViewWhileReaching } from "@shared/browser-view-policy";
 import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
@@ -8,6 +8,7 @@ import {
 	forwardRef,
 	useContext,
 	useLayoutEffect,
+	useRef,
 	useState,
 } from "react";
 
@@ -97,15 +98,40 @@ export const PanelRailItem = forwardRef<HTMLButtonElement, PanelRailItemProps>(
 		 * ever left suppressed - the registration is released by the effect cleanup
 		 * on close, on unmount, and when the item goes absent. The cost is the page
 		 * flash the policy header names as unmeasured (probe P11).
+		 *
+		 * AND ONLY WHEN IT REACHES THE VIEW (design round 2, D11). At 1280x900 only the
+		 * Canvas item's tooltip overlaps the view's rect; the other three end above it,
+		 * and on a draft none does, so registering for all four blanked the page for a
+		 * hint that never touched it. `useSuppressBrowserViewWhileReaching` measures the
+		 * open tooltip's painted box against the rect the browser surface reports to
+		 * main, and ends the registration on pointer-leave / window blur as well as on
+		 * close (a tooltip left open by an exit through the window edge would otherwise
+		 * hold the page blank until the pointer returned).
+		 *
+		 * The tooltip's element is found through the trigger's own `aria-describedby`,
+		 * which Radix points at the open panel: the wrapper exposes no content ref, and
+		 * a document query for "the tooltip" would pick up another one.
 		 */
 		const [tooltipOpen, setTooltipOpen] = useState(false);
-		useSuppressBrowserView(tooltipOpen, "panel-rail-tooltip");
+		const triggerRef = useRef<HTMLButtonElement | null>(null);
+		useSuppressBrowserViewWhileReaching(
+			tooltipOpen,
+			"panel-rail-tooltip",
+			() => {
+				const id = triggerRef.current?.getAttribute("aria-describedby");
+				return id ? document.getElementById(id) : null;
+			},
+		);
 		return (
 			/* Tooltips open TOWARD the pane (`left`): the rail is at the window's edge, so
 			   the other three sides either leave the window or cover a sibling item. */
 			<Tooltip content={label} side="left" onOpenChange={setTooltipOpen}>
 				<Button
-					ref={ref}
+					ref={(node) => {
+						triggerRef.current = node;
+						if (typeof ref === "function") ref(node);
+						else if (ref) ref.current = node;
+					}}
 					variant="ghost"
 					size="icon"
 					data-panel-rail-item={id}

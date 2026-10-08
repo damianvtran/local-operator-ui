@@ -7,6 +7,8 @@ import {
 	createContext,
 	forwardRef,
 	useContext,
+	useEffect,
+	useRef,
 	useState,
 } from "react";
 
@@ -239,10 +241,14 @@ export type TooltipProps = {
 	 * follow it (the panel rail suppresses the native browser view for exactly the
 	 * span a tooltip is painted over it - #872, design D1).
 	 *
-	 * It reports what the USER'S gestures did (hover, focus, Escape, leave), not a
-	 * `suppressed` override, and it never changes whether the root is controlled:
-	 * it is chained onto whichever path is already in force, so adding it to a call
-	 * site cannot trip Radix's uncontrolled-to-controlled warning.
+	 * It reports whether the panel is actually SHOWN. On the uncontrolled path that
+	 * is Radix's own answer (hover, focus, Escape, leave). On the controlled path
+	 * (the caller passes `suppressed`) it is `open && !suppressed`, reported from an
+	 * effect, so a caller that combines the two cannot be left holding a state that
+	 * says "open" while the root is forced shut (#872 review R12): the report
+	 * follows what is painted, whichever of the two moved. It never changes
+	 * whether the root is controlled, so adding it to a call site cannot trip
+	 * Radix's uncontrolled-to-controlled warning.
 	 */
 	onOpenChange?: (open: boolean) => void;
 	/** Applied to the tooltip panel, not to the trigger. */
@@ -276,6 +282,13 @@ export const Tooltip = ({
 	 */
 	const [open, setOpen] = useState(false);
 	const controlling = suppressed !== undefined;
+	/* Held in a ref so a caller's fresh closure per render does not re-run the report. */
+	const reportOpen = useRef(onOpenChange);
+	reportOpen.current = onOpenChange;
+	const shown = open && !suppressed;
+	useEffect(() => {
+		if (controlling) reportOpen.current?.(shown);
+	}, [controlling, shown]);
 
 	if (
 		(disabled && !suppressed) ||
@@ -299,12 +312,11 @@ export const Tooltip = ({
 			 */
 			open={controlling ? (suppressed ? false : open) : undefined}
 			onOpenChange={
-				controlling || onOpenChange
-					? (next) => {
-							if (controlling) setOpen(next);
-							onOpenChange?.(next);
-						}
-					: undefined
+				controlling
+					? setOpen
+					: onOpenChange
+						? (next) => onOpenChange(next)
+						: undefined
 			}
 			delayDuration={delayDuration}
 			disableHoverableContent={disableHoverableContent}

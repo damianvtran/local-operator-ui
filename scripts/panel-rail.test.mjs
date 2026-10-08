@@ -51,7 +51,9 @@ const bundle = await build({
 		contents: `
 			export { PanelRail } from "./${NAV}/panel-rail";
 			export { PanelRailFrame } from "./${NAV}/panel-rail-frame";
-			export { suppressedOverlayIds } from "./src/renderer/src/shared/browser-view-policy";
+			export { suppressedOverlayIds, registerBrowserViewRect, overlapsBrowserView } from "./src/renderer/src/shared/browser-view-policy";
+			export { ChatHeader } from "./src/renderer/src/features/chat/components/chat-header";
+			export { Tooltip, TooltipProvider } from "./src/renderer/src/shared/components/ui/tooltip";
 			export { ChatLayout } from "./src/renderer/src/shared/components/common/chat-layout";
 			export { InPanelRailHost, PanelRailHostContext } from "./${NAV}/panel-rail-host";
 			export { browserRailLabels, canvasRailLabels, consoleRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
@@ -96,6 +98,11 @@ writeFileSync(bundlePath, bundle.outputFiles[0].text);
 const {
 	PanelRail,
 	suppressedOverlayIds,
+	registerBrowserViewRect,
+	overlapsBrowserView,
+	Tooltip,
+	TooltipProvider,
+	ChatHeader,
 	ChatLayout,
 	InPanelRailHost,
 	PanelRailHostContext,
@@ -170,6 +177,8 @@ async function mount(render) {
 			unobserve() {}
 			disconnect() {}
 		},
+		// Radix's dropdown (the header's `...` menu) watches the DOM it portals into.
+		MutationObserver: window.MutationObserver,
 	};
 	for (const [key, value] of Object.entries(shims)) {
 		originals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
@@ -926,29 +935,306 @@ test("the host stays 44 across React StrictMode's double-mounted effects", async
 
 /* ------------------------------------- D1: a rail tooltip hides the native view */
 
-test("a rail tooltip suppresses the native browser view for exactly as long as it is open", async () => {
+/*
+ * THE SUPPRESSION IS MEASURED, NOT BLANKET (design round 2, D11 / review R7 / QA Q6).
+ * jsdom has no layout, so the rect of the open tooltip is STATED by the case - the
+ * instrument is the policy's own decision (does this box overlap the registered view
+ * rect), not a pixel. The measured positions the numbers come from (1280x900, run
+ * present): the view's rect is [740,150,496,750]; Canvas's tooltip is at y=150..178
+ * (23px inside), Console's at y=114..142 and Browser's and Run's higher still.
+ */
+const VIEW = { x: 740, y: 150, width: 496, height: 750 };
+const ours = () =>
+	suppressedOverlayIds().filter((id) => id.startsWith("panel-rail-tooltip"));
+const frames = (n = 14) =>
+	act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, n * 20));
+	});
+
+/** Open the item's tooltip by keyboard focus, with its panel reported at `rect`. */
+async function openTooltipAt(api, id, rect) {
+	const proto = api.window.HTMLElement.prototype;
+	const original = proto.getBoundingClientRect;
+	proto.getBoundingClientRect = function () {
+		if (this.getAttribute?.("role") === "tooltip") {
+			return {
+				left: rect.x,
+				top: rect.y,
+				right: rect.x + rect.width,
+				bottom: rect.y + rect.height,
+				x: rect.x,
+				y: rect.y,
+				width: rect.width,
+				height: rect.height,
+			};
+		}
+		return original.call(this);
+	};
+	act(() => api.item(id).focus());
+	await frames();
+	return () => {
+		proto.getBoundingClientRect = original;
+	};
+}
+
+test("a rail tooltip that REACHES the view suppresses it for exactly as long as it is open", async () => {
 	await mount(async (api) => {
 		reset(api);
 		api.store({ isBrowserPaneOpen: true });
+		const release = registerBrowserViewRect(() => VIEW);
 		await api.render(rail());
-		const ours = () =>
-			suppressedOverlayIds().filter((id) =>
-				id.startsWith("panel-rail-tooltip"),
-			);
 		assert.deepEqual(ours(), [], "nothing is suppressed at rest");
-		/* Keyboard focus is the path Radix opens a tooltip on without a pointer. */
-		act(() => api.item("console").focus());
-		await act(async () => {});
-		assert.equal(ours().length, 1, "an open tooltip registers one suppression");
-		act(() => api.item("console").blur());
-		await act(async () => {});
+		/* Canvas: y=150..178, inside the view by 23px of its 27 (design's measurement). */
+		const restore = await openTooltipAt(api, "canvas", {
+			x: 1000,
+			y: 150,
+			width: 120,
+			height: 28,
+		});
+		assert.equal(ours().length, 1, "a tooltip over the view registers once");
+		act(() => api.item("canvas").blur());
+		await frames(4);
 		assert.deepEqual(ours(), [], "closing it releases the suppression");
+		restore();
+		release();
 	});
-	assert.deepEqual(
-		suppressedOverlayIds().filter((id) => id.startsWith("panel-rail-tooltip")),
-		[],
-		"and unmounting leaves nothing behind",
+	assert.deepEqual(ours(), [], "and unmounting leaves nothing behind");
+});
+
+test("a rail tooltip that does NOT reach the view buys nothing: the page stays drawn (D11)", async () => {
+	await mount(async (api) => {
+		reset(api);
+		api.store({ isBrowserPaneOpen: true });
+		const release = registerBrowserViewRect(() => VIEW);
+		await api.render(rail());
+		/* Console's: y=114..142, ENDS above the view's top (150). */
+		const restore = await openTooltipAt(api, "console", {
+			x: 1000,
+			y: 114,
+			width: 120,
+			height: 28,
+		});
+		assert.deepEqual(ours(), [], "a tooltip above the view must not blank it");
+		restore();
+		release();
+	});
+});
+
+test("with no browser surface mounted there is no view to occlude, so nothing registers", async () => {
+	await mount(async (api) => {
+		reset(api, DRAFT);
+		await api.render(rail());
+		const restore = await openTooltipAt(api, "canvas", {
+			x: 1000,
+			y: 150,
+			width: 120,
+			height: 28,
+		});
+		assert.deepEqual(ours(), []);
+		restore();
+	});
+});
+
+test("the view's rect moving (a consent banner pushes the page down) changes the answer with no constant to update", async () => {
+	await mount(async (api) => {
+		reset(api);
+		api.store({ isBrowserPaneOpen: true });
+		let view = VIEW;
+		const release = registerBrowserViewRect(() => view);
+		await api.render(rail());
+		/* The page is pushed below Canvas's tooltip (y=150..178): it no longer reaches it. */
+		view = { ...VIEW, y: 200, height: 700 };
+		const restore = await openTooltipAt(api, "canvas", {
+			x: 1000,
+			y: 150,
+			width: 120,
+			height: 28,
+		});
+		assert.deepEqual(
+			ours(),
+			[],
+			"Canvas stops suppressing once the page is below it",
+		);
+		restore();
+		release();
+	});
+});
+
+test("a tooltip left open by an exit through the window edge does not hold the page blank (R6/Q5)", async () => {
+	await mount(async (api) => {
+		reset(api);
+		api.store({ isBrowserPaneOpen: true });
+		const release = registerBrowserViewRect(() => VIEW);
+		await api.render(rail());
+		const restore = await openTooltipAt(api, "canvas", {
+			x: 1000,
+			y: 150,
+			width: 120,
+			height: 28,
+		});
+		assert.equal(ours().length, 1);
+		/* Radix does not close on this (it waits for a later document pointermove),
+		   which is the point: the registration must not depend on it. */
+		act(() => {
+			api.document.documentElement.dispatchEvent(
+				new api.window.Event("pointerleave"),
+			);
+		});
+		await act(async () => {});
+		assert.deepEqual(ours(), [], "pointer left the document: released");
+		act(() => {
+			api.document.dispatchEvent(
+				new api.window.Event("pointermove", { bubbles: true }),
+			);
+		});
+		await act(async () => {});
+		assert.equal(
+			ours().length,
+			1,
+			"and re-armed while the tooltip is still open",
+		);
+		act(() => api.window.dispatchEvent(new api.window.Event("blur")));
+		await act(async () => {});
+		assert.deepEqual(ours(), [], "window blur: released");
+		restore();
+		release();
+	});
+});
+
+test("keyboard focus takes the SAME measured path as hover (D14)", async () => {
+	await mount(async (api) => {
+		reset(api);
+		api.store({ isBrowserPaneOpen: true });
+		const release = registerBrowserViewRect(() => VIEW);
+		await api.render(rail());
+		/* Browser's tooltip sits in the pane's bar, above the view. Focus rests on it. */
+		const restore = await openTooltipAt(api, "browser", {
+			x: 1000,
+			y: 60,
+			width: 120,
+			height: 28,
+		});
+		assert.deepEqual(
+			ours(),
+			[],
+			"a focused item whose tooltip is above the view holds nothing blank",
+		);
+		restore();
+		release();
+	});
+});
+
+test("Tooltip's onOpenChange follows what is SHOWN, so suppressed cannot leave a caller stuck on (R12)", async () => {
+	await mount(async (api) => {
+		const seen = [];
+		const el = (suppressed) =>
+			React.createElement(
+				TooltipProvider,
+				null,
+				React.createElement(
+					Tooltip,
+					{
+						content: "hint",
+						suppressed,
+						onOpenChange: (open) => seen.push(open),
+					},
+					React.createElement("button", { id: "t", type: "button" }, "t"),
+				),
+			);
+		await api.render(el(false));
+		act(() => api.$("#t").focus());
+		await act(async () => {});
+		assert.equal(seen.at(-1), true, "opened by focus");
+		await api.render(el(true));
+		assert.equal(
+			seen.at(-1),
+			false,
+			"forced shut by `suppressed`: the report follows, it is not left at true",
+		);
+		await api.render(el(false));
+		assert.equal(seen.at(-1), true, "and back when the override lifts");
+	});
+});
+
+test("the measured overlap is a positive area, so touching edges do not count", () => {
+	const release = registerBrowserViewRect(() => VIEW);
+	assert.equal(
+		overlapsBrowserView({ x: 1000, y: 122, width: 120, height: 28 }),
+		false,
+		"ends exactly at the view's top",
 	);
+	assert.equal(
+		overlapsBrowserView({ x: 1000, y: 123, width: 120, height: 28 }),
+		true,
+		"one px inside",
+	);
+	release();
+	assert.equal(
+		overlapsBrowserView({ x: 1000, y: 150, width: 120, height: 28 }),
+		false,
+		"no surface registered: no view",
+	);
+});
+
+/* -------------------- R9 / Q1: the `...` menu's canvas row is a second door, really */
+
+/*
+ * The row used to call `onOpenOptions`, the page's slash-command chips toggle, and
+ * so never opened the canvas at any width (on main as well). The menu's own comment
+ * says it writes the store fields the rail writes; this is the cell that makes that
+ * sentence executable: open the real menu, press the row, read the store.
+ *
+ * CONSEQUENCE, stated rather than hidden: nothing now sets the chat page's
+ * `options` state (`chat-page.tsx`, set only by `onOpenOptions`), so the legacy
+ * slash-command chips row it gates is unreachable. It was reachable only through
+ * this row, which labelled itself "Open canvas"; a control that did something other
+ * than its label says is the defect, and no other door to the chips exists. The
+ * dead row is recorded as an accepted consequence on the PR, not removed here.
+ */
+test("the ... menu's Open canvas row opens the CANVAS, not the slash-command chips", async () => {
+	await mount(async (api) => {
+		reset(api);
+		let chipsToggled = 0;
+		await api.render(
+			React.createElement(
+				TooltipProvider,
+				null,
+				React.createElement(ChatHeader, {
+					agentName: "Core",
+					onOpenOptions: () => {
+						chipsToggled += 1;
+					},
+					onToggleBrowser: () => {},
+					onOpenConsole: () => {},
+					runDetails: details(),
+				}),
+			),
+		);
+		const trigger = api.$('[aria-label="Conversation actions"]');
+		assert.ok(trigger, "the overflow menu's trigger is in the header");
+		act(() => {
+			trigger.dispatchEvent(
+				new api.window.KeyboardEvent("keydown", {
+					key: "Enter",
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		});
+		await act(async () => {});
+		const row = api
+			.$$('[role="menuitem"]')
+			.find((item) => item.textContent.trim() === "Open canvas");
+		assert.ok(row, "the menu offers Open canvas");
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, false);
+		await api.click(row);
+		assert.equal(
+			useUiPreferencesStore.getState().isCanvasOpen,
+			true,
+			"the row flips the canvas flag",
+		);
+		assert.equal(chipsToggled, 0, "and does not toggle the legacy chips row");
+	});
 });
 
 /*
@@ -998,10 +1284,46 @@ test("the count badge is the small mark anchored to the corner (D4)", () => {
 	const rail = read(
 		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
 	);
-	assert.match(rail, /absolute -top-\[2px\] -right-\[2px\] flex/);
+	assert.match(rail, /absolute -top-0\.5 -right-0\.5 flex/);
+	assert.ok(
+		rail.includes("text-meta-sm"),
+		"the type token, not a literal size",
+	);
+	assert.ok(!rail.includes("text-[0.6875rem]"));
 	assert.match(rail, /h-3\.5 min-w-3\.5/);
 	assert.ok(
 		rail.includes("ring-2 ring-surface"),
 		"the ring still names the rail's ground",
+	);
+});
+
+/*
+ * THE PANE'S BAR AND EMPTY STATE AT NARROW WIDTHS (design round 2, D12 / D13). Measured
+ * in the rendered stories, so these pin the spellings the readings depend on: the title
+ * sheds at 330px of pane (the switch's labels need ~325, so a shed at 300 left a band
+ * where the labels truncated before the title went), and the empty state's two buttons
+ * wrap instead of clipping when the pane is 220px.
+ */
+test("the title sheds before the switch's labels truncate, and the empty state's buttons wrap (D12/D13)", () => {
+	const pane = read(
+		"src/renderer/src/features/browser/components/browser-pane.tsx",
+	);
+	assert.equal(
+		(pane.match(/@max-\[330px\]\/bpane/g) ?? []).length,
+		3,
+		"the title and both switch triggers use the one threshold",
+	);
+	assert.ok(
+		!pane.includes("@max-[300px]/bpane"),
+		"no rung is left at the old threshold",
+	);
+	const surface = read(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+	);
+	assert.ok(
+		surface.includes(
+			'className="flex flex-wrap items-center justify-center gap-2"',
+		),
+		"the empty state's button row wraps",
 	);
 });

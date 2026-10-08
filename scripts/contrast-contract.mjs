@@ -1862,9 +1862,19 @@ const GRAPHICS = [
 		 * it is the one mark that must survive a theme whose `rowSelected` sits close
 		 * to `surface` - which is exactly why it is asserted against `surface` and not
 		 * against the fill it accompanies.
+		 *
+		 * ROUND 2 (R8): the bar no longer stands beside the control on the rail's
+		 * ground. Design round 1 (D2/D7) moved it onto the rail's leading hairline
+		 * column so it clears the focus ring, which puts its outer edge against the
+		 * PANE's ground: `elevated` (the browser, console, run and asks slots) or
+		 * `canvas` (when no pane is open, the conversation column). Those two are
+		 * listed so a palette whose `accent` sits close to either fails here and not
+		 * on screen. The hairline itself is a decorative rule that owes
+		 * perceptibility rather than a contrast floor (section 2), and the bar
+		 * covers it, so it is not a ground for this row.
 		 */
 		name: "panel rail lit glyph and bar",
-		on: ["rowSelected", "rowHover", "surface"],
+		on: ["rowSelected", "rowHover", "surface", "elevated", "canvas"],
 		fg: "accent",
 	},
 	{
