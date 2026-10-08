@@ -134,9 +134,11 @@ TWO RULES THIS PASS LEARNT THE HARD WAY, both named by agent review round 1:
   rig entry's `expectGone` flipped to `expectPresent`, and the settles assert
   the positions. D2 re-worded the basis subtext to `…follow the selected
   clock.`, which wraps to two lines and moves every panel's content height again
-  (621 -> 638); the rows above carry the new readings. Round 1 had left the ten
-  audit states and `reorder-edges` showing the pre-C1 panel - this pass closes
-  that, and the frames are stamped `d5111a40935`.
+  (621 -> 638); the rows above carry the new readings. Round 1 had left the
+  nine audit states and `reorder-edges` showing the pre-C1 panel (checked
+  against the pre-round-2 frames from `d5111a40935`: no subtext between
+  `Created` and `ORDER BY`) - this pass closes that, and the frames are stamped
+  `d5111a40935`.
 
 ## What each frame is
 

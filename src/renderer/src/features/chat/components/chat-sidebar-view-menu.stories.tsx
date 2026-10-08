@@ -1868,12 +1868,13 @@ export const BothSectionsExpanded: Story = {
  *
  * FOUR PROPERTIES, each there for one control. Two rows are PINNED, one of them
  * outside today's section, so a grouping that dropped them is visible; one row
- * is ACTIVE (a live turn) and deliberately the OLDEST - with four rows more
- * than the ten-row rung below `Pinned`, so the page's own cut separates the two
- * orderings: under `Most recent` it is past the cut and absent, under `Active
- * first` it leads the list; and the rest are spread over today / this week /
- * older, with the three agent bindings so `Agent and team` has real groups to
- * draw, `Ungrouped` among them.
+ * is ACTIVE (a live turn) carrying no clock the arrangement can key it by - no
+ * last-user time, no birth - so it sorts after every row that has one, past the
+ * ten-row rung (fourteen rows below `Pinned`, four more than the rung holds):
+ * under `Most recent` the window draws it anyway, in place at the list's end,
+ * while `Active first` lifts it into the band; and the rest are spread over
+ * today / this week / older, with the three agent bindings so `Agent and team`
+ * has real groups to draw, `Ungrouped` among them.
  */
 const auditRoster = (): WireRow[] => {
 	const now = NOW_SECONDS();
@@ -1905,10 +1906,12 @@ const auditRoster = (): WireRow[] => {
 		row("audit-older-5", "Older still", now - 120 * 86_400),
 		/*
 		 * FOUR MORE THAN THE PAGE HOLDS, and that is the point of them: the roster
-		 * has to outrun the ten-row rung (fourteen rows below `Pinned`) for the
-		 * live turn at the END of it to sit past the page's cut under `Most
-		 * recent` - which is the whole difference the two orderings are
-		 * photographed for.
+		 * outruns the ten-row rung (fourteen rows below `Pinned`) so the live turn
+		 * at the END of it sits past the page's cut under `Most recent` - drawn
+		 * there anyway, in place, because the window never withholds a live row,
+		 * and lifted into the band under `Active first`: the pair photographs the
+		 * POSITION one live row takes under the two orderings, not its presence
+		 * (round 2).
 		 */
 		row("audit-older-6", "Quarterly review", now - 150 * 86_400),
 		row("audit-older-7", "Backlog triage", now - 180 * 86_400),
@@ -2370,15 +2373,14 @@ export const AuditGroupFlat: Story = {
 /**
  * `Order by: Most recent`, over the flat list so the order is directly readable.
  *
- * The live turn (`audit-busy-old`, also the oldest conversation) sorts LAST
- * here: `Most recent` keys it by the time of its last USER message - absent, so
- * its birth - and every other row has a newer clock. So it sits past the
- * ten-row page's cut, and IT IS DRAWN ANYWAY, at that position, as the list's
- * last row: since agent review round 1 the page is a window of the arrangement
- * PLUS every live row beyond it, and a disclosure must not hide live work. The
- * pair with `AuditOrderActiveFirst` is the point - both frames DRAW the turn
- * and differ by its POSITION (lifted into the band there, in place at the end
- * here), not by its presence; the round-2 re-shoot replaced the old
+ * The live turn (`audit-busy-old`) carries no clock this arrangement can key it
+ * by - no last-user time, no birth - so `Most recent` puts it after every row
+ * that has one: the list's last place, past the ten-row page's cut. IT IS DRAWN
+ * ANYWAY, at that position: since agent review round 1 the page is a window of
+ * the arrangement PLUS every live row beyond it, and a disclosure must not hide
+ * live work. The pair with `AuditOrderActiveFirst` is the point - both frames
+ * DRAW the turn and differ by its POSITION (lifted into the band there, in place
+ * at the end here), not by its presence; the round-2 re-shoot replaced the old
  * `expectGone`/`!rowDrawn` claim, which this head can never settle.
  */
 export const AuditOrderMostRecent: Story = {

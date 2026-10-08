@@ -784,7 +784,7 @@ test("T2 with no last_user_at the running order is birth order, ties by catalogu
 
 test("T3 pressing the ladder reveals rows: drawn rows keep their order and are never dropped", () => {
 	/*
-	 * NARROWED BY A1's WINDOW (agent review round 1; T6 above states the rule
+	 * NARROWED BY A1's WINDOW (agent review round 1; T6 states the rule
 	 * itself). The old claim was a strict PREFIX: rung k's page was a prefix of
 	 * rung k+1's. With running rows drawn in place wherever they sit, a newly
 	 * revealed non-running row can land ABOVE an already-drawn running row that
