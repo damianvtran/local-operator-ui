@@ -194,7 +194,7 @@ test("the chord is ⌘B / Ctrl+B, and no near miss answers it", () => {
  * sidebar collapses to the 56px strip (it yields first, because it is re-openable
  * over the pane)" was applied only by the window's own width, so a docked 260px
  * sidebar with the canvas open at 1024 went straight to "the canvas overlays the
- * chat pane instead of docking" - the pane covering the whole conversation, with
+ * chat pane instead of docking" - the pane floating over the conversation, with
  * no scrim and no edge, which is round 1's D2 impression on the other pane.
  *
  * The arithmetic is the whole argument, so the test states it rather than the
@@ -205,7 +205,7 @@ test("a docked sidebar yields to the canvas where the yield is what lets it dock
 	/*
 	 * The frame's own numbers: at 1024 with the user's 260px, the docked row is
 	 * 764 and `canvasDockWidth(764)` is `min(560, 284)` = 284, below the pane's
-	 * 400px floor - so the canvas would overlay. With the strip (56) the row is
+	 * 400px floor - so the canvas would stop docking. With the strip (56) the row is
 	 * 968 and the dock is 488, so the chat keeps its 480 floor beside it.
 	 */
 	assert.equal(
@@ -215,7 +215,7 @@ test("a docked sidebar yields to the canvas where the yield is what lets it dock
 	assert.equal(canvasDockWidth(1024 - SIDEBAR_DEFAULT_WIDTH), 284);
 	assert.ok(
 		canvasDockWidth(1024 - SIDEBAR_DEFAULT_WIDTH) < CANVAS_PANE_MIN_PX,
-		"the docked row is short of the pane's own floor, which is what forces the overlay",
+		"the docked row is short of the pane's own floor, which is what stops the dock",
 	);
 	assert.equal(canvasDockWidth(1024 - SIDEBAR_COLLAPSED_WIDTH), 488);
 	assert.ok(
@@ -282,7 +282,7 @@ test("a docked sidebar yields to the canvas where the yield is what lets it dock
  * (the rail is a sibling after the measured column), and `sidebarYieldsToCanvas`
  * predicts that row from the window alone. Without the subtraction the band
  * 1140-1183 at the default 260 is the D24 defect again: the sidebar stays docked, the
- * real row is 44px short of the canvas's floor, and the canvas OVERLAYS the chat.
+ * real row is 44px short of the canvas's floor, and the canvas stops docking.
  */
 test("the yield counts the 44px panel rail: the band is 1024-1183 at the default sidebar", () => {
 	assert.equal(PANEL_RAIL_WIDTH_PX, 44);

@@ -527,7 +527,7 @@ test("the drawer's slot is readable, and the header's OS corner is reserved for 
 	const mode = source.match(ASK_SLOT_MODE);
 	assert.ok(
 		mode,
-		`${CHAT_CONTENT} no longer writes the drawer slot's \`data-ask-mode\` from \`canvasDocked\`. The canvas dock's \`data-canvas-mode\` is what a rig reads to tell a docked pane from an overlaying one; the drawer's slot is read the same way or a rig cannot tell them apart either.`,
+		`${CHAT_CONTENT} no longer writes the drawer slot's \`data-ask-mode\` from \`canvasDocked\`. The canvas dock's \`data-canvas-mode\` is what a rig reads to tell a docked pane from one that has stopped docking; the drawer's slot is read the same way or a rig cannot tell them apart either.`,
 	);
 	const reservation = source.match(RIGHT_SLOT_OCCUPIED);
 	assert.ok(

@@ -538,8 +538,9 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 * first version of it 60px wide), and `slotWidth` is 0 when no pane is open - a
 	 * zero-width last stop, so the band is exactly the two-stop gradient it was.
 	 * The canvas's `overlay` mode needs no branch here and gets none: the pane
-	 * covers the row at the width the resolver measures, and the lane paints the
-	 * pane's own ground from that leading edge (see the resolver's note).
+	 * draws at the width the resolver measures (it no longer covers the row - see
+	 * `canvasPaneMode` for what the literal draws today), and the lane paints the
+	 * pane's own ground from that leading edge.
 	 */
 	const columnWidth =
 		layout.mode === "docked" ? layout.width : SIDEBAR_COLLAPSED_WIDTH;
@@ -562,7 +563,8 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	/*
 	 * The slot's DOCKED/OVERLAY mode, from the same measured box the width comes
 	 * from: the width resolver above answers where the pane STOPS, and this answers
-	 * whether it is beside the conversation or over it - §I's one pair of rules, read
+	 * whether it is docked or has stopped docking (the `overlay` literal;
+	 * `canvasPaneMode` states what it draws today) - §I's one pair of rules, read
 	 * through the same `canvasPaneMode` the route-mounted occupants call.
 	 */
 	const fleetDocked =

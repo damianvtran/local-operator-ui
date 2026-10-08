@@ -1527,13 +1527,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		/*
 		 * §I's two canvas rules, from the one measured number: the pane DOCKED is
 		 * `min(560, available - 480)`, and where that leaves less than the pane's own
-		 * 400px floor it stops docking and overlays the chat instead. `canvasDocked`
+		 * 400px floor it stops docking and draws at the leftover (`canvasPaneMode`
+		 * states what the `overlay` literal draws today). `canvasDocked`
 		 * is the mode (the divider and `data-canvas-mode` read it); the WIDTH is the
 		 * slot resolver's own answer (`resolveRightSlotWidth`, `ui-preferences-store`),
 		 * which is also what the chrome lane above the row calls — one number for the
 		 * pane's leading edge rather than two that can disagree. The resolver's note
-		 * carries the arithmetic, the overlay case and the unmeasured frame, all three
-		 * of which used to be restated here.
+		 * carries the arithmetic, the stopped-dock case and the unmeasured frame, all
+		 * three of which used to be restated here.
 		 */
 		const canvasDocked =
 			canvasPaneMode(paneRowWidth || Number.MAX_SAFE_INTEGER) === "docked";
@@ -2455,9 +2456,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					<>
 						{/*
 						 * THE DIVIDER EXISTS ONLY WHILE THE CANVAS DOCKS (§I). In the overlay mode
-						 * there is nothing drawing a flow boundary to drag: the pane is over the chat
-						 * at a width its own preference decides, so a separator here would be a control
-						 * for a layout that is not on screen.
+						 * there is nothing drawing a flow boundary to drag: the pane has stopped
+						 * docking and draws at the slot's leftover (`canvasPaneMode` carries the
+						 * mode's note), so a separator here would be a control for a layout that is
+						 * not on screen.
 						 */}
 						{canvasDocked && (
 							<ResizableDivider
@@ -2489,10 +2491,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							tourTag="canvas-dock"
 							/*
 							 * THE MODE AS A FACT ON THE ELEMENT, rather than something a reader has to
-							 * infer from a width. §I's two shapes - docked beside the chat, or over it
-							 * once the row cannot give it 400 - are what the driver scene and the capture
-							 * meter assert against, and a mode reverse-engineered from a number is a mode
-							 * a test gets subtly wrong.
+							 * infer from a width. §I's two shapes - docked beside the chat, or stopped
+							 * docking once the row cannot give it 400 - are what the driver scene and
+							 * the capture meter assert against, and a mode reverse-engineered from a
+							 * number is a mode a test gets subtly wrong.
 							 */
 							data-canvas-mode={canvasDocked ? "docked" : "overlay"}
 						>

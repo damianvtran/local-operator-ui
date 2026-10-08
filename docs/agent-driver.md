@@ -400,8 +400,10 @@ rule:
   claim: that the chord moves the app to `/chat` and stages a fresh draft, and
   that with no catalogue answering the press changes nothing at all.
 - **`floors`** — §I's pane floors, measured rather than argued: the chat column's
-  480px floor, the canvas docking at `min(560, available - 480)`, and the overlay it
-  falls back to where the row cannot give the pane its own 400px floor. It is run at
+  480px floor, the canvas docking at `min(560, available - 480)`, and the `overlay`
+  literal it falls back to where the row cannot give the pane its own 400px floor
+  (a flex dock beside the column, not a cover: the mode's positioning was removed
+  with the PaneSlot refactor - `canvasPaneMode` carries the note). It is run at
   the widths that straddle both bands (`--window-size 1380x900`, `1024x673`,
   `960x673`, `800x600`), and it **requires `--backend`**: the chat pane does not mount
   without one (see `openCanvasDocument` above), so the scene names the gap in a note

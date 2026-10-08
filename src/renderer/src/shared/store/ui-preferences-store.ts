@@ -1093,13 +1093,14 @@ export const EMPTY_RIGHT_SLOT_ROUTE: RightSlotRouteFacts = Object.freeze({
  * THE CANVAS'S `overlay` MODE IS THE CASE TO STATE EXPLICITLY, because it is the
  * one where the mode and the arithmetic are easiest to get out of step: when the
  * row cannot host the pane beside the conversation, chat-content stops drawing
- * the divider and the pane COVERS the conversation — but the width it covers it
- * at is still the leftover, because the conversation keeps its floor under the
- * pane exactly as it does beside it. So there is no branch here for the mode: at
- * every row where the pane overlays, `row - 480` is both the width the pane is
- * drawn at and the whole region right of the sidebar's stop, and at the rows
- * where a naive reading would disagree (a preference smaller than the overlay's
- * room), the pane draws at its preference and this function says so.
+ * the divider and the pane draws at the leftover — `min(preference, row - 480)` —
+ * because the conversation keeps its 480 floor beside it exactly as it does at
+ * every other row, which is why this function needs no branch for the mode. (The
+ * mode's NAME is historical: since `1e88f7fc167` removed the pane's `absolute`
+ * positioning the pane no longer covers the conversation — the mode withholds the
+ * divider and the data attribute; `canvasPaneMode` carries the note.) At the rows
+ * where a naive reading would disagree (a preference smaller than the leftover),
+ * the pane draws at its preference and this function says so.
  *
  * UNMEASURED IS NOT ZERO. `rowWidth` is 0 for the frame before the row's first
  * measurement, and answering 0 there would tell the lane the slot has no pixels —

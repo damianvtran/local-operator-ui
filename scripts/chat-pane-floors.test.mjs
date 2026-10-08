@@ -43,7 +43,7 @@
  *    chat floor fits inside the width the pane is said to hold its floor at, and
  *    the docked sidebar plus the chat floor fits inside the dock threshold. §I's
  *    ordering rule (chat floor, then the sidebar to the strip, then the canvas
- *    overlaying) is only coherent while both sums hold.
+ *    stopping docking) is only coherent while both sums hold.
  */
 
 import assert from "node:assert/strict";
@@ -200,9 +200,9 @@ test("the right pane's capacity is the row minus the column's floor, measured", 
 	);
 	/*
 	 * And the pane's own contract floor, which is the number that decides whether a
-	 * docked pane is possible at all: §I's third rule ("the run panel is never an
-	 * overlay ... it obeys the same 480 floor and closes itself rather than squeezing
-	 * the chat below it") is a decision about `capacity < this`.
+	 * docked pane is possible at all: §I's third rule (the run panel has no overlay
+	 * mode to enter - "it obeys the same 480 floor and closes itself rather than
+	 * squeezing the chat below it") is a decision about `capacity < this`.
 	 */
 	/*
 	 * The floor's DECLARATION is read from the store since the #677 review
@@ -220,7 +220,7 @@ test("the right pane's capacity is the row minus the column's floor, measured", 
 	);
 });
 
-test("the canvas docks at min(560, available - 480), or overlays below 400 (§I)", () => {
+test("the canvas docks at min(560, available - 480), or stops docking below 400 (§I)", () => {
 	assert.equal(CANVAS_PANE_MIN_PX, 400);
 	assert.equal(CANVAS_PANE_MAX_PX, 560);
 	/*
@@ -240,7 +240,7 @@ test("the canvas docks at min(560, available - 480), or overlays below 400 (§I)
 			row: 764,
 			dock: 284,
 			mode: "overlay",
-			why: "1024 with the sidebar docked: 284 is under the pane's own floor, so it overlays",
+			why: "1024 with the sidebar docked: 284 is under the pane's own floor, so it stops docking",
 		},
 		{
 			row: 904,
@@ -252,7 +252,7 @@ test("the canvas docks at min(560, available - 480), or overlays below 400 (§I)
 			row: 744,
 			dock: 264,
 			mode: "overlay",
-			why: "800 with the strip: 264 over the chat",
+			why: "800 with the strip: 264 is under the pane's own floor",
 		},
 	];
 	for (const { row, dock, mode, why } of cases) {
