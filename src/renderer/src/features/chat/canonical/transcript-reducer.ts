@@ -5339,16 +5339,24 @@ export function pageOrphanResults(
  * tail page connects long before that on any turn with more than a page of
  * calls. So:
  *
- *  - `connected`: some fetched page overlapped the painted rows, or nothing was
- *    painted (then no page can overlap and one page is the whole coverage);
+ *  - `connected`: the caller passes the CONJUNCTION of the walk's two seams
+ *    (#876) — some fetched page overlapped the rows this batch painted, or none
+ *    were painted; AND some fetched page reached back to the rows the pane HELD
+ *    before the batch, or none were held. The second seam is what closed a
+ *    reopen whose cached block sat disjoint from the snapshot's tail page: the
+ *    first fetch overlaps the batch by construction, so a walk that stopped
+ *    there stood down over exactly the hole it exists to find;
  *  - `unlabelled`: how many target calls no fetched page has named yet.
  *
  * The walk's other exits live in the loop, because they are facts about the
- * route, the turn or the calls rather than about the goal: `!has_more`, the
- * `RECONCILE_WALK_MAX_ROWS` and `RECONCILE_WALK_MAX_REQUESTS` bounds,
- * `pageOpensTurn` (the row past which no seeded call of this turn can have its
- * assistant row) and `pagePassedOldestStart` (the instant past which the OLDEST
- * unlabelled call's own row cannot lie) — see each for which shape needs it.
+ * route or the bounds rather than about the goal: `!has_more`, the
+ * `RECONCILE_WALK_MAX_ROWS` and `RECONCILE_WALK_MAX_REQUESTS` bounds. The two
+ * label floors (`pageOpensTurn`, `pagePassedOldestStart` — the row past which
+ * no seeded call of this turn can have its assistant row, and the instant past
+ * which the OLDEST unlabelled call's own row cannot lie) are no longer exits of
+ * their own: they zero the label debt, and the goal test above still has to
+ * pass — a floor reached while the held seam is open keeps the walk reading for
+ * the connection (#876).
  */
 export function reconcileWalkDone(connected: boolean, unlabelled: number) {
 	return connected && unlabelled === 0;
