@@ -1138,9 +1138,9 @@ function EmptyPane({
 					about={run.about}
 					onClearAbout={() => run.setAbout(null)}
 				/>
-				{/* `-ml-2` cancels the ghost button's own `px-2`, so its TEXT is at the box's edge. */}
+				{/* `-ml-3` cancels this `md` button's own `px-3` (the chips are `sm`, `px-2`, hence their `-ml-2`), so its TEXT is at the box's edge. */}
 				<div className={CHAT_COLUMN_INSET}>
-					<Button variant="ghost" className="-ml-2" onClick={onAddManually}>
+					<Button variant="ghost" className="-ml-3" onClick={onAddManually}>
 						{teamMode ? "Or add a team by hand" : "Or add an agent by hand"}
 					</Button>
 				</div>
@@ -1301,10 +1301,15 @@ function Roster({
 							 */}
 							<span className="flex min-h-lh w-full items-baseline text-meta text-ink-muted">
 								{isProfile && classOf(row) === "proactive" ? (
-									<span className="shrink-0" data-testid="roster-row-proactive">
+									<span
+										// `mr-1` and not a trailing space: a flex item's trailing
+										// whitespace collapses, which glued the dot to the description.
+										className="mr-1 shrink-0"
+										data-testid="roster-row-proactive"
+									>
 										<span className="text-ink">{CLASS_LABEL.proactive}</span>
 										{row.description ? (
-											<span className="text-ink-dim"> · </span>
+											<span className="text-ink-dim"> ·</span>
 										) : null}
 									</span>
 								) : null}
