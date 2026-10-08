@@ -64,6 +64,25 @@ const stepTitles: Record<OnboardingStep, string> = {
 };
 
 /**
+ * The title a step is read under, which for the LAST step is what the step ends
+ * in rather than what it contains (design round 1, D4).
+ *
+ * "Web search (optional)" named the body while the primary action had become
+ * `Meet <name>`, so the one screen that ends setup was titled after its smallest
+ * part. With her available the title names her; without her the step really does
+ * end in web search, so the shipped title stands.
+ *
+ * A function rather than a second table: `stepTitles` is also the accessible
+ * name of each progress segment, and two spellings of one title is how the track
+ * and the panel end up disagreeing about what step 3 is.
+ */
+function stepTitle(step: OnboardingStep, aidaName: string | null): string {
+	if (step === OnboardingStep.EXTRAS && aidaName)
+		return `Web search, then meet ${aidaName}`;
+	return stepTitles[step];
+}
+
+/**
  * The numbered sequence, in order (design audit section 5). Three steps: the
  * model access the app cannot work without, the model it bought, and the
  * extras that are genuinely optional. "Create your first agent" and the
@@ -132,8 +151,25 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const aidaCapable = desktopFeatureEnabled(capabilities.data, "aida", 1);
 	const aida = useAidaTarget(open && aidaCapable);
 	const aidaAvailable = aidaCapable && aida.data?.enabled === true;
-	const aidaName = aida.data?.name ?? "Aida";
+	/*
+	 * `.trim() ||` rather than `??`: whitespace is a name the backend can hold
+	 * (a rename to "   " is a string), and `??` would render "Meet " on the first
+	 * screen a user ever sees (design round 1, D5). An empty or blank name falls
+	 * back to the shipped default here, exactly as the sidebar's row does.
+	 */
+	const aidaName = aida.data?.name?.trim() || "Aida";
 	const aidaControl = useAidaControl();
+	/*
+	 * One resolved title table for the panel and the track, so the two cannot
+	 * spell step 3 differently (see `stepTitle`). Memoized because the track maps
+	 * over it on every render.
+	 */
+	const resolvedTitles = useMemo(() => {
+		const name = aidaAvailable ? aidaName : null;
+		return Object.fromEntries(
+			STEP_SEQUENCE.map((step) => [step, stepTitle(step, name)]),
+		) as Record<OnboardingStep, string>;
+	}, [aidaAvailable, aidaName]);
 	const [meeting, setMeeting] = useState(false);
 	/** Step 2 registers the write a PROPOSED default needs on Continue. */
 	const beforeContinue = useRef<(() => Promise<void>) | null>(null);
@@ -185,7 +221,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		});
 	}, [currentStep]);
 
-	const dialogTitle = stepTitles[currentStep] ?? "First-time setup";
+	const dialogTitle = resolvedTitles[currentStep] ?? "First-time setup";
 
 	/**
 	 * Leave setup and land in the chat. Used by Finish, by "Skip for now" and
@@ -220,13 +256,24 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			const state = await aidaControl("greet");
 			completeModalOnboarding();
 			if (!state.session_id) {
-				// Unreachable by the contract (`greet` ensures); stated rather than
-				// navigated on, because `/chat/null` is a pane showing nothing.
-				throw new Error(`${aidaName}'s conversation could not be opened.`);
+				/*
+				 * UNREACHABLE BY THE CONTRACT (`greet` ensures her session), and handled
+				 * here rather than thrown (code review round 1, R6): a throw lands in the
+				 * catch below, which re-describes it through `aidaGreetFailure` and appends
+				 * the transport's own fallback sentence - so the user read "could not be
+				 * opened" followed by "could not reach the backend" on a path where the
+				 * backend answered 200. `/chat/null` is a pane showing nothing, so the
+				 * landing is the chat either way; only this sentence belongs to it.
+				 */
+				navigate("/chat");
+				showErrorToast(
+					`${aidaName}'s conversation could not be opened, so you are in a new chat instead.`,
+				);
+				return;
 			}
 			void openConversation(navigate, state.session_id);
-			const held = aidaGreetHeldNotice(state, aidaName);
-			if (held) showInfoToast(held);
+			const notice = aidaGreetHeldNotice(state, aidaName);
+			if (notice) showInfoToast(notice);
 		} catch (error) {
 			completeModalOnboarding();
 			navigate("/chat");
@@ -394,7 +441,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 
 						return (
 							<li key={step} className="flex">
-								<Tooltip content={stepTitles[step]}>
+								<Tooltip content={resolvedTitles[step]}>
 									{/*
 									 * A real button, so the track is tabbable and each step's
 									 * name is announced. `aria-disabled` rather than
@@ -403,7 +450,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 									 */}
 									<button
 										type="button"
-										aria-label={stepTitles[step]}
+										aria-label={resolvedTitles[step]}
 										aria-current={isActive ? "step" : undefined}
 										aria-disabled={!canNavigate}
 										onClick={() => {
@@ -433,7 +480,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				</ol>
 			</div>
 		);
-	}, [currentStep, visitedSteps, setCurrentStep]); // stepTitles is stable
+	}, [currentStep, visitedSteps, setCurrentStep, resolvedTitles]);
 
 	return (
 		<OnboardingDialog

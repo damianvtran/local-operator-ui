@@ -854,7 +854,26 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		);
 	};
 
-	const groupOrder: ProviderGroup[] = ["subscription", "key", "local"];
+	/*
+	 * WHICH GROUP LEADS DEPENDS ON THE SURFACE (design round 1, D1), and the
+	 * reason is the disclosure's own promise.
+	 *
+	 * In the dialog the trigger line names the local runtimes (`More providers:
+	 * xAI, OpenRouter, DeepSeek, local models and 6 more`), and they used to be
+	 * the LAST group — so opening the panel at the app's shipped 1380x900 window
+	 * left them below the fold under a footer that reads as the end of the list,
+	 * i.e. the one thing the trigger had just promised read as absent. First-run
+	 * is also exactly where a local model is a real answer (no account, nothing
+	 * to paste), so they lead here.
+	 *
+	 * The full page keeps the shipped order, which is the order the TUI's own
+	 * setup splash mirrors — a divergence this dialog owns deliberately rather
+	 * than a new convention: the dialog is the only surface whose heading promises
+	 * a group by name.
+	 */
+	const groupOrder: ProviderGroup[] = featuredOnly
+		? ["local", "subscription", "key"]
+		: ["subscription", "key", "local"];
 	const nothingMatches = groupOrder.every(
 		(group) => groups[group].length === 0,
 	);

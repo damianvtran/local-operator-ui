@@ -583,7 +583,15 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 			{!failure && (
 				<p
 					className={cn(
-						"mt-2 text-body text-ink-muted",
+						/*
+						 * DEMOTED, so the live line above it reads first (design round 1, D2):
+						 * this sentence is identical on every frame, and it used to hold the
+						 * body size and `ink-muted` while the step/clock/estimate below sat a
+						 * rank under it at `text-meta`/`ink-dim`. Liveliness sets the rank now
+						 * - the status line takes this line's old weight and this one steps
+						 * down - rather than length.
+						 */
+						"mt-2 text-body text-ink-dim",
 						installed && "invisible",
 					)}
 				>
@@ -603,7 +611,15 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 					aria-hidden="true"
 					data-install-status=""
 					className={cn(
-						"mt-1 min-h-5 text-ink-dim text-meta tabular-nums",
+						/*
+						 * The rank the requirement asks for (design round 1, D2): the moved
+						 * fact - step, elapsed, estimate - is the one the operator asked the
+						 * installer to broadcast, and it sat a size and a colour below the
+						 * static sentence above it. `text-body-sm text-ink-muted` is where
+						 * that sentence used to be, and it is still under the rail's row ink
+						 * so the rail stays the map.
+						 */
+						"mt-1 min-h-5 text-body-sm text-ink-muted tabular-nums",
 						!statusLine && "invisible",
 					)}
 				>

@@ -29,12 +29,17 @@ export const ConnectProviderStep: FC<ConnectProviderStepProps> = ({
 		 * the recommended route first and why, then the two subscriptions people
 		 * already pay for, then where everything else is - so a user who came for
 		 * xAI or a local model knows where to look before scanning the list.
+		 *
+		 * The prose does NOT re-list the brands (design round 1, D6): the
+		 * disclosure's own trigger is derived from the census and names them, so two
+		 * enumerations on one screen could disagree with each other and with the
+		 * rows. The prose says where the rest are; the trigger says who they are.
 		 */}
 		<p className="text-body text-ink-muted">
 			Local Operator needs an AI account to work. Radient is the easiest: one
 			browser sign-in and nothing to paste. Already pay for ChatGPT or Claude?
-			Sign in with that instead. xAI, OpenRouter, DeepSeek, local models and the
-			rest are under More providers.
+			Sign in with that instead. Anything else is under More providers below,
+			which names what it holds.
 		</p>
 		<ProviderGrid
 			context="dialog"
