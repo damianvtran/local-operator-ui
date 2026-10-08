@@ -34,6 +34,12 @@
  *     the gate actually reads (`chatStatusStripPresent()`), so the claim "the
  *     sidebar speaks where the strip is not" is checkable in the frame instead
  *     of assumed from the story being a sidebar.
+ *   - **The mixed catalogue** (`TimeOrderMixed`, 2026-10-08) is the ORDER
+ *     frames' fixture: a Running section whose three clocks disagree and a
+ *     This-week section that only reads in order once the arrangement sorts by
+ *     the basis clock. Its before half lives beside it in the evidence set; the
+ *     rule it photographs is asserted without a browser in
+ *     `scripts/chat-sidebar-time-order.test.mjs`.
  *
  * ## The fixture, and the one state it deliberately does not take
  *
@@ -85,6 +91,23 @@ type WireRow = {
 	 * predates the field does not send it; the Created basis reads it.
 	 */
 	created_at?: number;
+	/**
+	 * The time of the last USER message, in epoch seconds - the clock a RUNNING
+	 * row's order reads (`CanonicalSessionRow.last_user_at`). Core does not
+	 * publish it yet, so no other story here sets it; `TimeOrderMixed` does,
+	 * because the running band's stability is that story's whole claim.
+	 */
+	last_user_at?: number;
+	/**
+	 * `remote` marks a row as owned by another device - the flat locality fields
+	 * a peers-inclusive listing carries (`SessionCatalogueRow`'s mesh half). The
+	 * plain page omits `locality` entirely, which reads as "no claim" rather than
+	 * "local", so a story that wants a remote row states it.
+	 */
+	locality?: "local" | "remote";
+	owner_device?: string;
+	owner_device_name?: string;
+	reachable?: boolean;
 };
 
 const EPOCH = "3f2a1b4c5d6e7f8091a2b3c4d5e6f708";
@@ -897,12 +920,18 @@ export const PopoverBasisLastActive: Story = {
 
 /**
  * The same roster with `Created` pressed, and the assertion a still cannot make
- * on its own: the LIST ORDER must not change.
+ * on its own: the list RE-ORDERS on the clock the basis names.
  *
- * The design's rule is that the basis moves what the TIME numbers read - the
- * bins and the labels - and is orthogonal to the ordering axes; a frame shows
- * the first half, and the drawn-row ids compared before and after the press are
- * the second.
+ * THE CONTRACT THIS PINS WAS REVERSED ON 2026-10-08, and the reversal is the
+ * story's own subject: it used to assert that the basis "moves WHAT the sections
+ * and the labels read, never the ORDER the list is sorted in" (the operator's
+ * 2026-09-28 "orthogonal" claim). His later report - the rows did not sort
+ * within a section by the basis he had chosen, and "in that case it should show
+ * what we have selected/expect" - made the clock the order's key too
+ * (`chat-sidebar-view.ts`'s `pageOrder` carries the rule). So the frame and the
+ * assertion now check ONE claim: every drawn section's rows follow the basis's
+ * clock, newest first, and the columns that show ids rather than timestamps
+ * (the readout beside the panel) are where the membership shift is read.
  */
 export const PopoverBasisCreated: Story = {
 	render: () => {
@@ -924,24 +953,20 @@ export const PopoverBasisCreated: Story = {
 					?.getAttribute("aria-checked") === "true",
 		);
 		/*
-		 * The design's own claim, asserted rather than left to the eye: the basis
-		 * moves WHAT the sections and the labels read, never the ORDER the list is
-		 * sorted in. Section MEMBERSHIP is the basis's to change - `basis-moved`
-		 * lands under OLDER once Created is pressed, and that is the feature - so
-		 * the comparison is each row's position WITHIN its drawn section against
-		 * the catalogue's own order: a basis that re-sorted by `created_at` would
-		 * put rows in an order the catalogue never sent. (The first version of this
-		 * check compared the whole column and failed on the membership change
-		 * itself - the rig's own error, kept in the set's history as the reason
-		 * this reads the sections separately.)
+		 * The 2026-10-08 claim, asserted rather than left to the eye: the basis moves
+		 * WHAT the sections and the labels read AND the order the list is drawn in.
+		 * Section MEMBERSHIP is the basis's to change - `basis-moved` lands under
+		 * OLDER once Created is pressed, and that is the feature - so the comparison
+		 * is each row's position WITHIN its drawn section against the clock the basis
+		 * names: `created_at`, newest first, with no clock sorting last. (The
+		 * previous revision of this check asserted the opposite - that the position
+		 * within a section never moved - which is the contract the operator reversed;
+		 * it is recorded in the set's history beside the first version's own error,
+		 * a whole-column comparison that failed on the membership change itself.)
 		 */
-		const rosterOrder = [
-			"basis-moved",
-			"basis-born",
-			"basis-pinned",
-			"basis-running",
-			"basis-steady",
-		];
+		const clocks = new Map(
+			basisRoster().map((entry) => [entry.id, entry.created_at ?? 0]),
+		);
 		const sectionOfRow = (id: string) =>
 			document
 				.querySelector(`[data-session-row="${id}"]`)
@@ -949,14 +974,149 @@ export const PopoverBasisCreated: Story = {
 				?.getAttribute("data-chat-section") ?? null;
 		for (const section of ["running", "today", "week", "older"]) {
 			const drawn = drawnRowIds().filter((id) => sectionOfRow(id) === section);
-			const positions = drawn.map((id) => rosterOrder.indexOf(id));
-			const sorted = [...positions].sort((a, b) => a - b);
-			if (positions.join(",") !== sorted.join(",")) {
+			const keys = drawn.map((id) => clocks.get(id) ?? 0);
+			const sorted = [...keys].sort((a, b) => b - a);
+			if (keys.join(",") !== sorted.join(",")) {
 				throw new Error(
-					`the Created basis re-sorted ${section}: drawn [${drawn.join(", ")}] against the catalogue's own order`,
+					`the Created basis did not order ${section} by created_at: drawn [${drawn.join(", ")}] with clocks [${keys.join(", ")}]`,
 				);
 			}
 		}
+		await sleep(350);
+	},
+};
+
+/**
+ * THE MIXED CATALOGUE (2026-10-08): one small roster whose Running and This-week
+ * sections order differently under the clock the labels print, so the before and
+ * after frames differ in what a reader reads first rather than in colour or
+ * spacing.
+ *
+ * WHAT EACH PART IS FOR:
+ *
+ *   - THE RUNNING SECTION'S THREE CLOCKS DISAGREE. `mix-run-heartbeat` was born
+ *     thirty days ago, has a five-minute-old heartbeat and was last asked
+ *     something three hours ago; `mix-run-message` was born two days ago and was
+ *     told something ten minutes ago; `mix-run-stopped` is an approval waiting
+ *     on the reader. The order is that story's whole subject: a response must
+ *     move nothing, a user message moves exactly its row, and a turn stopped on
+ *     the reader leads both;
+ *   - THIS WEEK MIXES the row kinds the operator's own sidebar showed together:
+ *     an idle chat revived this morning (`mix-week-revived`, born twenty days
+ *     ago), a quietly ageing one (`mix-week-quiet`), a stopped one wearing the
+ *     pause glyph (`mix-week-stopped`), a scheduled one wearing the clock glyph
+ *     (`mix-week-scheduled`), a dormant one (`mix-week-dormant`), and two remote
+ *     rows - one with a real last-active stamp, one whose stamp is the wire's
+ *     zero (`mix-remote-nostamp`, core's "no claim");
+ *   - the ladder is held at its third rung (`loads: 2`, the 50-row page) so
+ *     every row draws and the frames are eleven rows of ORDER rather than a cut
+ *     that hides the tail.
+ *
+ * WHAT THE PAIR SHOWS. Before, the section draws the catalogue's arrival order -
+ * creation-ranked - under activity labels, so `2h` sits above `1d` above `6d`
+ * above `4d` above `12h`, and the zero-stamp remote row prints `56y`; the running
+ * triple reads heartbeat, message, stopped. After, every section reads
+ * newest-first by the basis clock (the stopped row leads the running trio, then
+ * the ten-minute message, then the heartbeat), and the zero-stamp row prints no
+ * label at all. The frames are `docs/evidence/chat-sidebar-view-menu/
+ * time-order-mixed/` (this branch) and `time-order-mixed-before/` (unmodified
+ * `origin/main` at `15a7a4ed522`, the same story and fixtures staged into a
+ * detached worktree of it).
+ */
+const timeOrderRoster = (): WireRow[] => {
+	const now = NOW_SECONDS();
+	return [
+		row("mix-run-heartbeat", "Heartbeat five minutes ago", now - 300, {
+			status: { code: "busy", label: "Working" },
+			status_revision: 3,
+			created_at: now - 30 * 86_400,
+			last_user_at: now - 3 * 3_600,
+		}),
+		row("mix-run-message", "Last message ten minutes ago", now - 120, {
+			status: { code: "busy", label: "Working" },
+			status_revision: 4,
+			created_at: now - 2 * 86_400,
+			last_user_at: now - 600,
+		}),
+		row("mix-run-stopped", "Waiting on you", now - 2_400, {
+			status: { code: "approval", label: "Needs approval" },
+			status_revision: 5,
+			created_at: now - 6 * 3_600,
+			last_user_at: now - 6 * 3_600,
+		}),
+		row("mix-week-revived", "Revived this morning", now - 2 * 3_600, {
+			created_at: now - 20 * 86_400,
+		}),
+		row("mix-week-quiet", "Quiet since last week", now - 6 * 86_400, {
+			created_at: now - 86_400,
+		}),
+		row("mix-week-stopped", "Stopped mid-turn", now - 4 * 86_400, {
+			status: { code: "interrupted", label: "Interrupted" },
+			created_at: now - 3 * 86_400,
+		}),
+		row("mix-week-scheduled", "Wakes at nine", now - 12 * 3_600, {
+			status: { code: "scheduled", label: "Scheduled" },
+			created_at: now - 5 * 86_400,
+		}),
+		row("mix-week-dormant", "Dormant since Tuesday", now - 5 * 86_400, {
+			status: { code: "dormant", label: "Dormant" },
+			created_at: now - 4 * 86_400,
+		}),
+		row("mix-today-1", "Asked an hour ago", now - 3_600, {
+			created_at: now - 2 * 3_600,
+		}),
+		row("mix-today-2", "Asked three hours ago", now - 3 * 3_600, {
+			created_at: now - 26 * 3_600,
+		}),
+		row("mix-older-1", "Last month's thread", now - 35 * 86_400, {
+			created_at: now - 40 * 86_400,
+		}),
+		row("mix-older-2", "Stopped a month ago", now - 50 * 86_400, {
+			status: { code: "dormant", label: "Dormant" },
+			created_at: now - 60 * 86_400,
+		}),
+		row(
+			"mix-remote-fresh",
+			"On the other Mac, active yesterday",
+			now - 86_400,
+			{
+				locality: "remote",
+				owner_device: "d_9c4e21ab77",
+				owner_device_name: "mac-studio",
+				reachable: true,
+			},
+		),
+		row("mix-remote-nostamp", "On the other Mac, no claim", 0, {
+			locality: "remote",
+			owner_device: "d_9c4e21ab77",
+			owner_device_name: "mac-studio",
+			reachable: true,
+		}),
+	];
+};
+
+/**
+ * The mixed catalogue, photographed whole (see `timeOrderRoster`).
+ *
+ * The frame is the claim: This week reads `2h 12h 1d 4d 5d 6d` and the Running
+ * triple leads with the turn stopped on the reader, after the arrangement; the
+ * same fixture on `origin/main` reads `2h 1d 6d 4d 12h 5d` under a `56y` remote
+ * row. The play only waits for the rows - the assertions that pin the rule live
+ * in `scripts/chat-sidebar-time-order.test.mjs`, where the pipeline is driven
+ * with no browser in the way.
+ */
+export const TimeOrderMixed: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view({ loads: 2 });
+		roster = timeOrderRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 14);
+		await settled();
 		await sleep(350);
 	},
 };

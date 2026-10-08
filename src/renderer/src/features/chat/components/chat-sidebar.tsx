@@ -172,12 +172,13 @@ import {
 /*
  * THE REMOTE ROW'S OWN FACTS (the shared convention; the header of
  * `canonical-sessions-store.ts` names the sentence all surfaces keep): the
- * device label, the network lookup, the one sentence both channels read, and
- * the order remote rows are drawn in.
+ * device label, the network lookup, and the one sentence both channels read.
+ * The ORDER remote rows are drawn in left this module on 2026-10-08 - the
+ * arrangement decides every row's position now (`chat-remote.ts` records the
+ * move).
  */
 import {
 	deviceNetworkNames,
-	mergeRemoteRowsByActivity,
 	remoteClause,
 	remoteUnreachableClause,
 } from "../chat-remote";
@@ -2342,10 +2343,7 @@ export function ChatSidebar({
 		[sessions, archiveFacts],
 	);
 	const listed = useMemo(
-		() =>
-			mergeRemoteRowsByActivity(
-				visibleRows(answeredForMembership, archiveEnabled && !widened),
-			),
+		() => visibleRows(answeredForMembership, archiveEnabled && !widened),
 		[answeredForMembership, archiveEnabled, widened],
 	);
 	/*
@@ -2928,9 +2926,14 @@ export function ChatSidebar({
 	 * THE PAGE, and it is where the operator's three invariants live
 	 * (`chat-sidebar-view.ts` carries the rules and the reasons):
 	 *
-	 *   - `pageOrder` lifts the ACTIVE rows - a live turn, a turn stopped on the
-	 *     reader, a wedged one - above the rest by a stable partition, so the
-	 *     recency below them is the catalogue's own and never inverted;
+	 *   - `pageOrder` ARRANGES the rows in the order their time labels imply -
+	 *     the running rows lifted (a live turn, a turn stopped on the reader, a
+	 *     wedged one), then every other row newest-first by the chosen basis's
+	 *     clock. It replaced a stable partition on 2026-10-08 at the operator's
+	 *     instruction ("the sorting doesn't seem to properly sort within each
+	 *     section by last active first"); the old shape lifted running rows and
+	 *     left the rest in the catalogue's arrival order, which is CREATION
+	 *     order, so the two clocks disagreed down the section;
 	 *   - `pageRows` cuts the page at the ladder's current rung and LIFTS the
 	 *     viewed conversation in when it sits past the end, so "you are here"
 	 *     is not something a page size can take away;
@@ -2939,8 +2942,17 @@ export function ChatSidebar({
 	 *     filter over that answer.
 	 *
 	 * The ORDER of the two calls is the contract: the page is cut from the
-	 * ordered list, never the other way round, so the active rows occupy the
-	 * page's head rather than being appended to it.
+	 * ARRANGED list, never the other way round, so the running rows occupy the
+	 * page's head rather than being appended to it, and `Show more` reveals rows
+	 * instead of re-arranging the ones on screen.
+	 *
+	 * A QUERY'S ROWS ARE NOT ARRANGED, and the guard below is the whole of that
+	 * rule (`pageOrder` carries the reasoning): the search answer is ranked by
+	 * relevance, and a clock order over it would be a second ranking authority
+	 * over the one the reader searched with. So while the field is non-empty the
+	 * list draws the answer's own order, exactly as it did before this change -
+	 * the arrangement is the DEFAULT list's, and the sections and groups below
+	 * still read the same basis for their bins and labels.
 	 */
 	const view = parseSidebarView(chatSidebarView);
 	/*
@@ -3497,10 +3509,17 @@ export function ChatSidebar({
 	 * A failed claim is not pending and is clearable.
 	 */
 	const clearableDraftRows = draftRows.filter((row) => !row.pending);
-	const page = pageRows(pageOrder(rest, view.orderBy), {
+	const searchActive = query.trim().length > 0;
+	/*
+	 * THE ARRANGEMENT, skipped while a query is on (see the block above).
+	 */
+	const arranged = searchActive
+		? rest
+		: pageOrder(rest, view.orderBy, view.basis);
+	const page = pageRows(arranged, {
 		limit: pageLimit(view.loads),
 		currentId: selectedConversation,
-		searching: query.trim().length > 0,
+		searching: searchActive,
 	});
 	const liftedRow = page.lifted ? page.rows[0] : null;
 	const pagedRows = page.lifted ? page.rows.slice(1) : page.rows;
@@ -6175,20 +6194,33 @@ export function ChatSidebar({
 		const open = Boolean(query) || isOpen(key);
 		/*
 		 * THE BOUND ON THIS GROUP'S OWN ROWS, and all three of its rules - the
-		 * catalogue's order untouched, running rows exempt, a search never bounded -
-		 * live in `chat-sidebar-view.ts` beside the ladder they share with the chats
-		 * list (see `entityRows`).
+		 * arranged order taken as given, running rows exempt, a search never
+		 * bounded - live in `chat-sidebar-view.ts` beside the ladder they share
+		 * with the chats list (see `entityRows`).
+		 *
+		 * THE ROWS ARRIVE ARRANGED, by the SAME call the list above uses and under
+		 * the same skip: a query's rows keep the search answer's relevance order,
+		 * and everything else is ordered by the reader's `orderBy` and basis. The
+		 * operator's 2026-10-08 instruction was "across surfaces", and the nested
+		 * lists carried the same creation-ranked defect the list did - a group's
+		 * rows arrived in the catalogue's `-created_at` order while the labels
+		 * beside them read activity.
 		 *
 		 * IT IS TAKEN OVER THE ROWS THE GROUP DRAWS, which are already narrowed by the
 		 * query and partitioned by the archive rules - so the bound can never act as a
 		 * filter over a search answer, and a hit the reader is looking for cannot hide
 		 * behind a press.
 		 */
-		const page = entityRows(rows, {
-			loads: entityLoads[key] ?? 0,
-			currentId: selectedConversation,
-			searching: Boolean(query.trim()),
-		});
+		const page = entityRows(
+			searchActive
+				? rows
+				: pageOrder(rows, sidebarView.orderBy, sidebarView.basis),
+			{
+				loads: entityLoads[key] ?? 0,
+				currentId: selectedConversation,
+				searching: searchActive,
+			},
+		);
 		const shown = page.rows;
 		/*
 		 * THE GROUP'S BADGE AND ITS SENTENCES, both from the module rather than from a
@@ -8804,6 +8836,13 @@ export function ChatSidebar({
 			 * at the top", and `unpinnedRows` has already removed these rows from the
 			 * page, so no conversation is drawn twice (operator's view-settings audit,
 			 * 2026-09-27: "Group by ... each must actually regroup the list").
+			 *
+			 * THE PAGE HALF ARRIVES ARRANGED (2026-10-08): `pagedRows` is the head of
+			 * `pageOrder`'s output, so `Agent and team` and `In one list` draw the same
+			 * clock order the sections do, and a group's rows are that order filtered to
+			 * the binding - `groupRows` preserves the sequence it is given. The PINNED
+			 * rows keep their own place ahead of it, because their order is the reader's
+			 * manual arrangement (`chat-pin-order.ts`) and no clock's to change.
 			 */}
 			{view.groupBy !== "section" &&
 				(groupRows([...pinned, ...pagedRows], view.groupBy) ?? []).map(
