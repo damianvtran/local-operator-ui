@@ -4,7 +4,9 @@ import "../../../styles/index.css";
 // is why it is a side-effect import and not a wrapper.
 import "../../chat/components/story-electron-shim";
 import { AgentsPage } from "@features/agents/components/agents-page";
+import { useConfigRunStore } from "@features/agents/config-run/config-run-store";
 import type { ReusableTeam } from "@shared/api/local-operator/profile-hooks";
+import { GlobalScrollbarStyles } from "@shared/components/common/global-scrollbar-styles";
 import type { Meta, StoryObj } from "@storybook/react";
 import {
 	type FC,
@@ -327,6 +329,15 @@ const Scene: FC<{ at: string; children?: ReactNode }> = ({ at, children }) => {
 	}, []);
 	return (
 		<div className="flex h-screen flex-col overflow-hidden bg-canvas">
+			{/*
+			 * THE APP'S REAL 8 PX SCROLLBAR SHEET (`main.tsx` mounts it for every
+			 * window). The pane's 24 px edge is `px-4` plus a stable 8 px gutter on each
+			 * side, and a headless host reports overlay scrollbars of width 0, so
+			 * without this sheet the arithmetic reads 16 and the frame is a picture of
+			 * the rig, not the page. The capture rig also drops `--hide-scrollbars` for
+			 * the same reason.
+			 */}
+			<GlobalScrollbarStyles />
 			<RouteTo path={at}>
 				<AgentsPage />
 			</RouteTo>
@@ -444,6 +455,220 @@ export const TeamCreate: Story = {
 			<HoldShutterUntil
 				done={() =>
 					Boolean(document.querySelector('[data-testid="team-name-input"]'))
+				}
+			/>
+		</Scene>
+	),
+};
+
+/* ------------------------------------------------------ composer states -- */
+
+/**
+ * Put the page's module-scope configuration run in a named state BEFORE the page
+ * renders, through the store's own actions (the same ones the hook calls), so the
+ * docked composer shows the state a live run would put it in.
+ *
+ * WHY THE STORE AND NOT A LIVE RUN. A real run needs a backend session, a stream
+ * and a settle probe; the frames are about the composer's CHROME in each state,
+ * and the store is the one thing that chrome reads. The run has no session in
+ * the stub bridge, so `Watch` (which needs the run's transcript) is not reachable
+ * from here - that disclosure is exercised by the node:test files, not by a frame.
+ *
+ * A LAYOUT effect, so the state exists on the first paint and the shutter never
+ * photographs an idle row that then changes.
+ */
+const SeedRun: FC<{
+	state: "running" | "settled" | "error" | "stop-refused";
+}> = ({ state }) => {
+	useLayoutEffect(() => {
+		const store = useConfigRunStore.getState();
+		store.adopt("story-run", "Add the coder twice to content", null);
+		// Backdated so the elapsed clock reads like a run that has been going
+		// a while, and the row carries its elapsed slot in every state.
+		useConfigRunStore.setState({ startedAt: Date.now() - 42_000 });
+		store.noteTouched({ kind: "team", name: "content" });
+		if (state === "settled")
+			store.settle(
+				[
+					{
+						target: { kind: "team", name: "content" },
+						created: false,
+						changes: [{ label: "members", before: "5", after: "6" }],
+					},
+				],
+				"done",
+				"Added a second coder to content.",
+			);
+		if (state === "error")
+			useConfigRunStore
+				.getState()
+				.failUnsent("The request could not be sent. Check the connection.");
+		if (state === "stop-refused")
+			useConfigRunStore
+				.getState()
+				.stopFailed("The backend did not acknowledge the interrupt.");
+		return () => useConfigRunStore.getState().dismiss();
+	}, [state]);
+	return null;
+};
+
+/** "Ask for a change" pressed: the box is now about this row. */
+const SeedAbout: FC = () => {
+	useLayoutEffect(() => {
+		useConfigRunStore.getState().setAbout({ kind: "team", name: "content" });
+		return () => useConfigRunStore.getState().setAbout(null);
+	}, []);
+	return null;
+};
+
+/**
+ * Press Edit, then type into the description so the form is DIRTY, which is what
+ * makes the page hold the composer ("Finish or cancel your edit first.").
+ */
+const PressEditAndType: FC = () => {
+	useEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		let pressed = false;
+		let typed = false;
+		const settle = () => {
+			if (!pressed) {
+				const edit = Array.from(
+					document.querySelectorAll<HTMLButtonElement>(
+						"[data-agents-pane] header button",
+					),
+				).find((button) => button.textContent?.trim() === "Edit");
+				if (edit) {
+					pressed = true;
+					edit.click();
+				}
+			}
+			const field =
+				document.querySelector<HTMLInputElement>("#team-description");
+			if (field && !typed) {
+				typed = true;
+				// The native setter, because React tracks the value property and a plain
+				// assignment would not raise its onChange.
+				Object.getOwnPropertyDescriptor(
+					HTMLInputElement.prototype,
+					"value",
+				)?.set?.call(
+					field,
+					"Turns what is moving into reviewed posts, edited.",
+				);
+				field.dispatchEvent(new Event("input", { bubbles: true }));
+			}
+			if (
+				typed &&
+				document
+					.querySelector('[data-testid="config-composer"] textarea')
+					?.getAttribute("placeholder")
+					?.includes("Finish or cancel")
+			)
+				document.documentElement.removeAttribute("data-capture-pending");
+		};
+		const observer = new MutationObserver(settle);
+		// `attributes` too: the blocked placeholder arrives as an ATTRIBUTE change on a
+		// node that already exists, which a childList-only observer never sees.
+		observer.observe(document.body, {
+			childList: true,
+			subtree: true,
+			attributes: true,
+			attributeFilter: ["placeholder"],
+		});
+		settle();
+		return () => {
+			observer.disconnect();
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, []);
+	return null;
+};
+
+const stripSays = (text: string) => () =>
+	Boolean(
+		document
+			.querySelector('[data-testid="config-run-strip"]')
+			?.textContent?.includes(text),
+	);
+
+/** ABOUT SET: "Ask for a change" has named the open team. */
+export const TeamAboutSet: Story = {
+	render: () => (
+		<Scene at="/agents?kind=team&name=content">
+			<SeedAbout />
+			<HoldShutterUntil
+				done={() =>
+					paneSays("Collaboration instructions")() &&
+					Boolean(
+						document.querySelector('[data-testid="config-composer-about"]'),
+					)
+				}
+			/>
+		</Scene>
+	),
+};
+
+/** BLOCKED: a dirty edit holds the composer. */
+export const TeamBlockedByEdit: Story = {
+	render: () => (
+		<Scene at="/agents?kind=team&name=content">
+			<PressEditAndType />
+		</Scene>
+	),
+};
+
+/** RUNNING: a live run - state dot, title, elapsed, count, Stop. */
+export const TeamRunning: Story = {
+	render: () => (
+		<Scene at="/agents?kind=team&name=content">
+			<SeedRun state="running" />
+			<HoldShutterUntil
+				done={() =>
+					paneSays("Collaboration instructions")() && stripSays("42s")()
+				}
+			/>
+		</Scene>
+	),
+};
+
+/** SETTLED: the run finished and named what it changed. */
+export const TeamSettled: Story = {
+	render: () => (
+		<Scene at="/agents?kind=team&name=content">
+			<SeedRun state="settled" />
+			<HoldShutterUntil
+				done={() =>
+					paneSays("Collaboration instructions")() && stripSays("Finished")()
+				}
+			/>
+		</Scene>
+	),
+};
+
+/** ERROR: the request never reached the run; Retry is offered. */
+export const TeamErrorRetry: Story = {
+	render: () => (
+		<Scene at="/agents?kind=team&name=content">
+			<SeedRun state="error" />
+			<HoldShutterUntil
+				done={() =>
+					paneSays("Collaboration instructions")() &&
+					Boolean(document.querySelector('[data-testid="config-retry"]'))
+				}
+			/>
+		</Scene>
+	),
+};
+
+/** STOP REFUSED: the run is still live and says the stop did not take. */
+export const TeamStopRefused: Story = {
+	render: () => (
+		<Scene at="/agents?kind=team&name=content">
+			<SeedRun state="stop-refused" />
+			<HoldShutterUntil
+				done={() =>
+					paneSays("Collaboration instructions")() &&
+					Boolean(document.querySelector('[data-testid="config-stop-refused"]'))
 				}
 			/>
 		</Scene>

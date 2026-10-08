@@ -360,11 +360,14 @@ function ComposerStatus({
 				 * only things that may make the dock taller than its resting height, they
 				 * grow it upward (the dock is the column's last child, so the box stays
 				 * where it is), and each is bounded or short: the Watch list scrolls at
-				 * `max-h-48`, the rest are a sentence and a result list. No second
+				 * `max-h-48`, the rest are a sentence and a result list. `empty:hidden`
+				 * because a running run with nothing to say yet renders this wrapper with
+				 * no children, and its 8 px margin would otherwise add 4 px to the dock
+				 * over idle (measured: 166 -> 170). No second
 				 * scroller is added around them - a clipping ancestor would cut the
 				 * focus outline of Retry and Dismiss.
 				 */
-				<div className="mb-2">
+				<div className="mb-2 empty:hidden">
 					{run.attached ? (
 						<p className="mt-1 text-meta text-ink-muted">
 							Another configuration run was already going, so this page attached
