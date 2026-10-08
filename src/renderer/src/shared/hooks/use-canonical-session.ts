@@ -2282,8 +2282,27 @@ export function useCanonicalSessionStream(
 	 * snapshot ride a continuous stream and are deliberately not tracked, or an
 	 * up-to-date pane would stop deferring a connecting page. Cleared of an id when
 	 * a journal page names it (then it IS a journal row the pane holds), pruned of
-	 * ids no longer on the pane, and emptied at a session change. A missed deletion
-	 * costs one extra read and can never paint a hole: the safe direction.
+	 * ids no longer on the pane. A missed deletion costs one extra read and can
+	 * never paint a hole: the safe direction.
+	 *
+	 * IT TRAVELS THROUGH THE PAINT CACHE (review round 1, R1-1). The cache stores
+	 * the settled rows a replay delivered like any others, and a mount that seeded
+	 * them as ordinary held rows would launder them back into evidence: the user
+	 * leaves between the replay's flush and the snapshot's, returns, and the page
+	 * "connects" through the cached row. So the unmount writes this set beside the
+	 * rows (`replayBorn` in the cache record) and a cached mount restores it,
+	 * intersected with the seeded index; a different session starts empty, and a
+	 * cache record without the field restores as empty (the previous behaviour).
+	 *
+	 * PATHS BY WHICH A REPLAY-BORN ROW COULD STILL REACH `heldIds`, audited rather
+	 * than assumed: the live `replayBornIds` check (this); the paint cache (above);
+	 * `seedPendingSends` and a pending echo (local/provisional, so not durable by
+	 * `isDurableOwnerRow`); the snapshot seed `applyLiveSeed` (applied in the
+	 * snapshot arm AFTER the page, so it is the continuous state the owner states
+	 * at that instant, not a replay across the gap, and it mints streaming or
+	 * unsettled rows that are not durable); `addNote` (`local:` ids, not durable);
+	 * `loadOlder`/walk/tail-refresh pages (journal pages, which is what held means).
+	 * Not exercised by a test: the seed row path, which is argued from the code.
 	 */
 	const replayBornIds = useRef<Set<string>>(new Set());
 	/*
@@ -4837,7 +4856,6 @@ export function useCanonicalSessionStream(
 		// The transcript is replaced below, so a previous session's anchors must
 		// not suppress the first reconcile of the new one.
 		paintedIds.current = EMPTY_TRANSCRIPT.index;
-		replayBornIds.current = new Set();
 		/*
 		 * Kept when the state already belongs to THIS session. The panel that
 		 * mounts on the New-chat flip is exactly that case: it mounted with the id
@@ -4878,6 +4896,23 @@ export function useCanonicalSessionStream(
 		paintedIds.current = sameSession
 			? viewRef.current.transcript.index
 			: (seed?.transcript ?? EMPTY_TRANSCRIPT).index;
+		/*
+		 * THE REPLAY-BORN SET FOLLOWS THE TRANSCRIPT. A cached paint restores the ids
+		 * it was stored with (a replay-born row is still no evidence of a held journal
+		 * row after a trip through the cache); a same-session state keeps what the pane
+		 * already knew; a different session starts empty. Intersected with the index
+		 * the pane will actually hold, so a stale id cannot outlive its row.
+		 */
+		const restoredReplayBorn = new Set<string>(
+			sameSession ? replayBornIds.current : [],
+		);
+		for (const id of seed?.replayBorn ?? []) restoredReplayBorn.add(id);
+		const seededIndex = sameSession
+			? viewRef.current.transcript.index
+			: (seed?.transcript ?? EMPTY_TRANSCRIPT).index;
+		for (const id of restoredReplayBorn)
+			if (!seededIndex.has(id)) restoredReplayBorn.delete(id);
+		replayBornIds.current = restoredReplayBorn;
 		commitView((current) => ({
 			...current,
 			frontend: null,
@@ -5011,6 +5046,14 @@ export function useCanonicalSessionStream(
 					 * an id whose read answered would have left the set in the commit that named it.
 					 */
 					markLabels: new Set(viewRef.current.labelMarked),
+					/*
+					 * THE REPLAY-BORN SET TRAVELS TOO (#876, review round 1's R1-1): a
+					 * settled row a replay delivered is cached with the rest, and a mount
+					 * that seeded it as an ordinary held row would defer a journal-tail
+					 * page over the hole beneath it. The rows still display; only the claim
+					 * is withheld. `writePaint` intersects it with the rows that survive.
+					 */
+					replayBorn: new Set(replayBornIds.current),
 				});
 			/*
 			 * AND THIS PANE'S OUTSTANDING READS GO WITH IT (agent review round 3, M2's
