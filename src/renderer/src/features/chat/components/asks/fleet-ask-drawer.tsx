@@ -25,16 +25,16 @@
  * label block and `fleetAskConversationLabels`) is a rendering of the row, never
  * the identity used to answer it.
  *
- * ## The composer does not answer here, and that is deliberate
+ * ## The composer does not answer here, and now it does not answer anywhere
  *
- * §5.0's routing invariant ("while the answer surface is expanded the composer
- * answers the ask") is a property of a surface mounted BESIDE a composer. This one
- * is not: it lives in the shell's right slot, over whatever route is up, and there
- * is no single session whose composer it could be. So the fleet panel answers
- * in-panel, through the cards' own controls, and `chat-page.tsx` holds the other
- * half of that rule by reading the scope before entering ask mode. A fleet
- * question can therefore never be answered by typing into an unrelated
- * conversation's composer - the exact misroute the scope split exists to prevent.
+ * This panel lives in the shell's right slot, over whatever route is up, and there
+ * is no single session whose composer it could be, so it always answered in-panel,
+ * through the cards' own controls. That used to be the exception to §5.0's routing
+ * invariant ("while the answer surface is expanded the composer answers the ask"),
+ * which held for the SESSION drawer beside its own composer. The operator retired the
+ * invariant on 2026-10-07 (the reversal of R7): no composer answers an ask, so the
+ * session drawer now behaves the way this panel always did, and a fleet question
+ * still can never be answered by typing into an unrelated conversation's box.
  *
  * ## One lock, per panel
  *
