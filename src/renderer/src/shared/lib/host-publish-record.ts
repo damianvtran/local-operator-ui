@@ -3,12 +3,14 @@
  * that said so is demonstrably the same process.
  *
  * WHY THIS EXISTS. Core publishes the field on warm frames; a resumed team
- * session's cold frame may carry `{}` (core PR #2050 at f98240bd42), which is
+ * session's cold frame may carry `{}` (core PR #2050's earlier head f98240bd42; merged core
+ * 86c7e7aefa0 derives the triple for a restored session, so this is now the
+ * older-runtime and mid-restore case), which is
  * indistinguishable, frame by frame, from an older host. A capability is a fact
  * about the HOST, not the frame, so the first frame that carries the field
  * records it and a later `{}` from the same host is read as cold, never as
- * "older". The proper fix is core deriving the keys on the cold path (the anchor
- * lane is doing that); this is the stopgap, and its stated residual is that the
+ * "older". Core now derives the keys on a restored session's cold path (merged
+ * 86c7e7aefa0), so this is a stopgap for the cases that remain, and its stated residual is that the
  * FIRST cold team session opened on a strict host before any warm frame has been
  * seen is still #866's open list.
  *

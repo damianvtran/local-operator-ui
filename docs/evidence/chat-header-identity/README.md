@@ -362,7 +362,7 @@ records the runs.
 
 ## The runtime's strict rule (issue #861, second slice)
 
-The runtime half (damianvtran/local-operator#2050 at `f98240bd42`) is stricter
+The runtime half (damianvtran/local-operator#2050, merged at `86c7e7aefa0`) is stricter
 than the rule above: while a team is attached, `/agent` is refused for EVERY
 name, the manager's own included, and the session's frontend state carries
 `effective_identity: {speaker, team, role_of_speaker}` (all three keys whenever
