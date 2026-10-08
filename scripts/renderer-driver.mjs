@@ -89,17 +89,23 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|hit-zones|route-tops|project-detail|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|none>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
  *                          where a dropped file attaches, or the base tree, where
  *                          the same gesture leaves nothing behind
- *   --project <key>        (with --scene project-detail or project-inline-edit)
- *                          the seeded project the scene drives; the seed decides
- *                          the name and a default would photograph whatever it
- *                          happened to use
- *   --gate-state <label>   (with --scene settings-gate) what this run's backend
+ *   --project <key>        (with --scene project-detail, project-inline-edit or
+ *                          project-open) the seeded project the scene drives;
+ *                          the seed decides the name and a default would
+ *                          photograph whatever it happened to use
+ *   --autofocus-expect <jump|stay>  (with --scene project-open) which half of
+ *                          the pair this run records: `jump` is the base tree,
+ *                          where the strip's mount-time focus scrolls the
+ *                          detail page down and hands the box the caret;
+ *                          `stay` is the head tree, where the page opens at
+ *                          scrollTop 0, unfocused, with the strip below the
+ *                          fold. *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
  *                          runs against two backends can be told apart
  *   --integration-command <cmd> (with --scene settings-integrations) the stdio
@@ -505,6 +511,28 @@ const BIN_EXPECT = argValue("--bin-expect", "prompt");
  * same reason `--authoring-expect` and `--bin-expect` are.
  */
 const SLASH_EXPECT = argValue("--slash-expect", "open");
+/**
+ * WHICH CLAIM A `--scene project-open` RUN IS IN (operator report, 2026-10-08).
+ *
+ * The operator's report: "when clicking into a project, because of the standard
+ * behaviour of the composer, it scrolls the user down to centre on the composer
+ * and focuses it ... on the projects page it shouldn't [autofocus], and we
+ * should stay scrolled at the top when clicking in."
+ *
+ * `jump` is the base tree: the quick-send strip's mount-time focus scrolls the
+ * detail page down (a plain `focus()` scrolls the element into view), the box
+ * holds the caret and the page does NOT open at the top. `stay` is the head
+ * tree: same bytes, same gestures, and the page opens at scrollTop 0 with the
+ * box unfocused.
+ *
+ * ONE SCENE, BOTH HALVES, THE SAME BYTES - the same reading `--slash-expect`
+ * and `--row-space-expect` exist for: the base tree's half runs the SAME scene
+ * bytes with `jump`, so the pair's difference is the app rather than the rig,
+ * and a run that disagrees with its flag fails by name. A value the scene does
+ * not know is refused rather than defaulted, for the same reason the flags
+ * above are.
+ */
+const AUTOFOCUS_EXPECT = argValue("--autofocus-expect", null);
 /**
  * WHICH CLAIM A `--scene row-space` RUN IS IN ABOUT THE POINTER'S DWELL (issue
  * #840) AND THE LIST'S EDGE CUES (issue #845).
@@ -36762,6 +36790,882 @@ async function sceneProjectDetail(cdp) {
 }
 
 /* ------------------------------------------------------------------------ *
+ * The project page's composer autofocus (operator report, 2026-10-08).
+ * ------------------------------------------------------------------------ */
+
+/**
+ * THE STRIP'S HANDLES, and why nothing here spells a class.
+ *
+ * The quick-send strip (`project-quick-send.tsx`) mounts the app's own
+ * `MessageInput`, so the box is the composer's textarea and the control is the
+ * composer's Send button - the same handles the `project-detail` scene types
+ * through. The scroller is the detail VIEW's own `overflow-y-auto` region
+ * (`projects-page.tsx`), and it is found by WALKING UP from the strip to the
+ * nearest ancestor whose computed `overflow-y` is `auto` or `scroll` rather
+ * than by that class string: the class is a restyle away from being renamed,
+ * the computed property is what makes it a scroller, and the page is free to
+ * move which element owns the scroll.
+ */
+const PROJECT_OPEN_STRIP = '[data-tour-tag="project-quick-send"]';
+const PROJECT_OPEN_TEXTAREA = `${PROJECT_OPEN_STRIP} textarea`;
+const PROJECT_OPEN_SEND = `${PROJECT_OPEN_STRIP} button[aria-label="Send message"]`;
+const PROJECT_OPEN_TARGET = `${PROJECT_OPEN_STRIP} button[aria-label="Select the session to message"]`;
+/** The chat pane's own composer - the control the change must not move. */
+const PROJECT_OPEN_CHAT_TEXTAREA =
+	'[data-tour-tag="chat-input-textarea"] textarea';
+/** The key `projects-view-switcher.tsx` persists the view under (`PROJECTS_VIEW_STORAGE_KEY`). */
+const PROJECTS_VIEW_STORAGE_KEY = "projects-view";
+
+/**
+ * ONE READ OF THE PROJECT DETAIL PAGE'S SCROLL GEOMETRY.
+ *
+ * WHY A SCENE NEEDS THIS: the defect is a SCROLL, and a still cannot carry a
+ * scrollTop - two frames of the same page one scroll apart differ in every
+ * pixel, and "the composer is centred" is a number rather than a resemblance.
+ * So the scene prints and asserts the numbers the pair is decided by: the
+ * scroller's scrollTop/scrollHeight/clientHeight, the strip card's and the
+ * textarea's boxes, where each element sits at scrollTop 0 (`*NaturalTop` -
+ * `rect.top - scrollerRect.top + scrollTop`, which is the same number whether
+ * the page is currently scrolled or not), the active element's description,
+ * and whether the textarea matches `:focus`.
+ */
+async function projectOpenReading(cdp) {
+	return cdp.evaluate(`(() => {
+		const strip = document.querySelector(${JSON.stringify(PROJECT_OPEN_STRIP)});
+		if (strip === null) return null;
+		let scroller = strip.parentElement;
+		while (scroller !== null) {
+			const overflow = getComputedStyle(scroller).overflowY;
+			if (overflow === "auto" || overflow === "scroll") break;
+			scroller = scroller.parentElement;
+		}
+		const textarea = strip.querySelector("textarea");
+		const round = (value) => Math.round(value * 10) / 10;
+		const boxOf = (element) => {
+			if (element === null) return null;
+			const rect = element.getBoundingClientRect();
+			return { top: round(rect.top), bottom: round(rect.bottom), height: round(rect.height) };
+		};
+		const describe = (element) => {
+			if (element === null) return "null";
+			if (element === document.body) return "body";
+			const name = (element.getAttribute("aria-label") ?? element.textContent ?? "").trim();
+			return element.tagName.toLowerCase() + (element.id ? "#" + element.id : "") + " " + JSON.stringify(name.slice(0, 60));
+		};
+		const scrollerRect = scroller === null ? null : scroller.getBoundingClientRect();
+		const scrollTop = scroller === null ? null : scroller.scrollTop;
+		const card = boxOf(strip);
+		const field = boxOf(textarea);
+		const naturalTop = (box) =>
+			box === null || scrollerRect === null || scrollTop === null
+				? null
+				: round(box.top - scrollerRect.top + scrollTop);
+		return {
+			scrollTop,
+			scrollHeight: scroller === null ? null : scroller.scrollHeight,
+			clientHeight: scroller === null ? null : scroller.clientHeight,
+			scroller: scrollerRect === null ? null : { top: round(scrollerRect.top), bottom: round(scrollerRect.bottom) },
+			card,
+			textarea: field,
+			cardNaturalTop: naturalTop(card),
+			textareaNaturalTop: naturalTop(field),
+			activeElement: describe(document.activeElement),
+			textareaFocused: textarea !== null && textarea === document.activeElement,
+			textareaMatchesFocus: textarea !== null && textarea.matches(":focus"),
+			viewport: { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio },
+		};
+	})()`);
+}
+
+/** The one-line rendering of a reading: the run log and the README's table read the same numbers. */
+function projectOpenSummary(reading) {
+	if (reading === null) return "(no strip on the page)";
+	const box = (b) =>
+		b === null ? "none" : `${b.top}..${b.bottom} (${b.height}px)`;
+	return [
+		`scrollTop=${reading.scrollTop}`,
+		`scrollHeight=${reading.scrollHeight}`,
+		`clientHeight=${reading.clientHeight}`,
+		`card=${box(reading.card)}`,
+		`textarea=${box(reading.textarea)}`,
+		`naturalTop card=${reading.cardNaturalTop} textarea=${reading.textareaNaturalTop}`,
+		`activeElement=${JSON.stringify(reading.activeElement)}`,
+		`:focus=${reading.textareaMatchesFocus}`,
+		`viewport=${reading.viewport.width}x${reading.viewport.height}@${reading.viewport.devicePixelRatio}`,
+	].join(" ");
+}
+
+/** Two animation frames: the first frame in which a mount EFFECT can have shown on screen. */
+function twoAnimationFrames(cdp) {
+	return cdp.evaluate(
+		"new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))",
+	);
+}
+
+/**
+ * A REAL pointer press on an element the SCENE finds by its own words.
+ *
+ * Three of this scene's controls carry no id, no test id and no tour tag - the
+ * detail header's "All projects" button, a linked-session row and a Radix
+ * select option - so the element is located IN the page, and the press is
+ * still the same three-event CDP sequence `clickAt` sends, at the element's
+ * measured centre and HIT-TESTED FIRST: a press whose point resolves to
+ * another element is a thrown failure, not a photograph of the wrong control.
+ */
+async function pressFoundElement(cdp, finder) {
+	const aimed = await cdp.evaluate(`(() => {
+		const element = (${finder})();
+		if (element === null || element === undefined) return null;
+		const rect = element.getBoundingClientRect();
+		const centre = { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) };
+		const hit = document.elementFromPoint(centre.x, centre.y);
+		return {
+			centre,
+			hitTest: hit !== null && (hit === element || element.contains(hit)),
+			text: (element.textContent ?? "").trim().slice(0, 80),
+			description: element.tagName.toLowerCase() + " " + JSON.stringify((element.getAttribute("aria-label") ?? element.textContent ?? "").trim().slice(0, 80)),
+		};
+	})()`);
+	if (aimed === null) return null;
+	if (!aimed.hitTest) {
+		throw new Error(
+			`the press point of ${aimed.description} resolves to another element - the scene will not press through whatever is over it`,
+		);
+	}
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x: aimed.centre.x,
+		y: aimed.centre.y,
+		button: "none",
+		buttons: 0,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mousePressed",
+		x: aimed.centre.x,
+		y: aimed.centre.y,
+		button: "left",
+		buttons: 1,
+		clickCount: 1,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseReleased",
+		x: aimed.centre.x,
+		y: aimed.centre.y,
+		button: "left",
+		buttons: 0,
+		clickCount: 1,
+	});
+	return aimed;
+}
+
+/**
+ * Scroll a page the way a READER does - a real `mouseWheel` event, dispatched
+ * at the scroller's own centre - and report when the element is inside the
+ * scroller's viewport. Not `scrollIntoView`: the claim is that a reader can
+ * reach the strip, and a programmatic scroll would skip the gesture the claim
+ * is about. The direction is chosen per attempt (the element may be above or
+ * below the port), and the loop is bounded, reporting rather than hanging.
+ */
+async function wheelUntilInScroller(
+	cdp,
+	finder,
+	{ attempts = 40, delta = 260 } = {},
+) {
+	const read = () =>
+		cdp.evaluate(`(() => {
+			const element = (${finder})();
+			if (element === null || element === undefined) return null;
+			let scroller = element.parentElement;
+			while (scroller !== null) {
+				const overflow = getComputedStyle(scroller).overflowY;
+				if (overflow === "auto" || overflow === "scroll") break;
+				scroller = scroller.parentElement;
+			}
+			if (scroller === null) return { visible: null };
+			const rect = element.getBoundingClientRect();
+			const port = scroller.getBoundingClientRect();
+			return {
+				visible: rect.top >= port.top && rect.bottom <= port.bottom,
+				direction: rect.top < port.top ? -1 : 1,
+				scrollTop: scroller.scrollTop,
+				centre: { x: Math.round(port.left + port.width / 2), y: Math.round(port.top + port.height / 2) },
+			};
+		})()`);
+	for (let attempt = 1; attempt <= attempts; attempt += 1) {
+		const state = await read();
+		if (state === null)
+			return { ok: false, attempts: attempt, why: "the element is gone" };
+		if (state.visible === true)
+			return { ok: true, attempts: attempt, scrollTop: state.scrollTop };
+		if (state.visible === null)
+			return { ok: false, attempts: attempt, why: "no scrolling ancestor" };
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseWheel",
+			x: state.centre.x,
+			y: state.centre.y,
+			deltaX: 0,
+			deltaY: delta * state.direction,
+		});
+		await wait(90);
+	}
+	return { ok: false, attempts, why: "never came into view" };
+}
+
+/**
+ * THE PAGE'S COMPOSER AUTOFOCUS (operator report, 2026-10-08).
+ *
+ * THE REPORT, verbatim: "when clicking into a project, because of the standard
+ * behaviour of the composer, it scrolls the user down to centre on the
+ * composer and focuses it. For projects the composer is an optional
+ * interaction, not the primary one ... on the projects page it shouldn't
+ * [autofocus], and we should stay scrolled at the top when clicking in."
+ *
+ * THE DEFECT: the detail page's quick-send strip mounts the shared
+ * `MessageInput`, whose mount effect ends in a plain `textareaRef.current?.focus()`
+ * (`message-input.tsx`, ~5926 on the base tree). A plain focus scrolls the
+ * element into view, so a page whose strip starts BELOW THE FOLD lands
+ * scrolled down with the composer centred and its focus ring showing.
+ *
+ * ONE SCENE, BOTH HALVES, THE SAME BYTES - the reading `--slash-expect`
+ * exists for. `--autofocus-expect jump` is the base tree: the page must show
+ * the jump (scrollTop > 0, the box focused, the box in view). `stay` is the
+ * head tree: scrollTop 0 in the first frame, at every sampled frame and when
+ * settled, with the box unfocused and still under the fold. The flag changes
+ * which CLAIM the checks assert, never what the scene drives - and the control
+ * legs (click-in, pointer send, target switch, chat autofocus, back) run under
+ * both, because a change that fixes the jump by breaking the composer is not a
+ * fix.
+ *
+ * WHAT IT NEEDS: `--backend` and `--backend-records` (the seeded row and its
+ * two linked sessions are read from the daemon this run owns), `--project`
+ * (the seed's key), and `--theme` one palette per launch. It captures four
+ * frames per palette: `first` and `settled` (the pair), `typed` and
+ * `chat-focus` (the two controls the change must not move).
+ *
+ * WHAT IT USES THAT IS NOT THE PRODUCT: `Emulation.setFocusEmulationEnabled`
+ * over CDP, because a window that is never shown cannot be focused and a page
+ * that does not read as focused paints no `:focus` ring at all - the state the
+ * operator's report is about. It makes the page READ as focused; it never
+ * raises or focuses the window (`scripts/window-mode.test.mjs` bans the three
+ * calls that would), and the facts check below proves the window stayed
+ * hidden. The run log says it used it.
+ */
+async function sceneProjectOpen(cdp) {
+	if (PROJECT === null) {
+		throw new Error(
+			"--scene project-open needs --project <key>: the list press and every daemon read address the seeded row's own key, and a default would drive whatever the lane's seed happened to call its row",
+		);
+	}
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const theme = THEME ?? "localOperatorDark";
+	await verb(cdp, "setTheme", theme);
+	const themed = await verb(cdp, "state");
+	check(
+		"the theme this run photographs is the theme the app is in",
+		themed.theme === theme,
+		`theme=${themed.theme}`,
+	);
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	/*
+	 * Frame labels are lowercase-only (the capture verb refuses anything else)
+	 * and END in the palette stem, which is what makes `capture()` assert the
+	 * palette each frame's name claims.
+	 */
+	const themeStem = theme
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
+	const label = (claim) => `project-open-${claim}-${size}-${themeStem}`;
+
+	/*
+	 * See the scene docstring: the sanctioned alternative to focusing a window,
+	 * named in the log because every `:focus` reading below depends on it.
+	 */
+	await cdp.send("Emulation.setFocusEmulationEnabled", { enabled: true });
+	const emulated = await cdp.evaluate(
+		"({ hasFocus: document.hasFocus(), visibility: document.visibilityState })",
+	);
+	note(
+		"focus emulation",
+		`Emulation.setFocusEmulationEnabled is ON over CDP (the window is never shown): document.hasFocus()=${emulated.hasFocus} visibilityState=${emulated.visibility}`,
+	);
+	check(
+		"the run reads as focused through CDP focus emulation (the window is still never shown)",
+		emulated.hasFocus === true,
+		`document.hasFocus()=${emulated.hasFocus} visibilityState=${emulated.visibility}`,
+	);
+
+	/*
+	 * THE SEEDED ROW, read straight off the daemon this run owns: the key the
+	 * list press addresses and the linked sessions the strip can be aimed at.
+	 * TWO is the scene's own precondition - the target-switch leg needs a second
+	 * session to switch TO - and it is asserted rather than assumed.
+	 */
+	const seeded = await fetchProjectView(PROJECT);
+	const links = Array.isArray(seeded.body?.result?.links)
+		? seeded.body.result.links
+		: [];
+	const sessionLabelOf = (link) => link.title || link.session_id;
+	check(
+		"the seeded project exists on this run's daemon with at least two linked sessions",
+		seeded.status === 200 &&
+			links.length >= 2 &&
+			links.every((link) => typeof link.session_id === "string"),
+		`status=${seeded.status} links=${JSON.stringify(
+			links.map((link) => ({
+				session_id: link.session_id,
+				title: link.title,
+				exists: link.exists,
+			})),
+		)}`,
+	);
+
+	/*
+	 * THE LIST VIEW, SET THE WAY THE SWITCHER PERSISTS IT: `readProjectsView()`
+	 * reads `localStorage` before the page mounts, and the designed default is
+	 * the BOARD - so the key is written BEFORE navigating, and the check below
+	 * then asserts the LIST is what actually drew the row rather than trusting
+	 * the key. The list row is the real pointer target: `project-list.tsx`
+	 * carries `data-project-name` on its button.
+	 */
+	await cdp.evaluate(
+		`localStorage.setItem(${JSON.stringify(PROJECTS_VIEW_STORAGE_KEY)}, "list")`,
+	);
+	await verb(cdp, "navigate", "/projects");
+	const listRow = `[data-project-name="${PROJECT}"]`;
+	const listed = await waitForCondition(
+		cdp,
+		`(() => {
+			const row = document.querySelector(${JSON.stringify(listRow)});
+			if (row === null) return null;
+			const switcher = [...document.querySelectorAll('[data-tour-tag="projects-view-switcher"] button')].find((button) => button.textContent.trim() === "List");
+			return { inListItem: row.closest("li") !== null, listActive: switcher ? switcher.getAttribute("data-state") === "active" : false };
+		})()`,
+		30_000,
+	);
+	check(
+		"the projects LIST is showing the seeded row",
+		listed.ok &&
+			listed.last?.inListItem === true &&
+			listed.last?.listActive === true,
+		`after ${listed.waitedMs}ms: ${JSON.stringify(listed.last)}`,
+	);
+
+	/*
+	 * THE SAMPLER, installed BEFORE the press: a rAF loop that records, per
+	 * frame and ONLY on change, the scroller's scrollTop, the strip card's top
+	 * and the active element's description - so "when did the page move, and
+	 * when did the box take the caret" is a reading rather than an inference
+	 * from two stills. Its window runs to 2.5 s after the strip first appears,
+	 * bounded at 6 s from installation (the detail query resolves first, and a
+	 * slow daemon must not end the window before the frame under test exists).
+	 */
+	await cdp.evaluate(`(() => {
+		const started = performance.now();
+		const state = { sawStrip: false, sawAt: null, stopped: false, maxScrollTop: 0, samples: [] };
+		window.__projectOpenSampler = state;
+		const describe = (element) => {
+			if (element === null) return "null";
+			if (element === document.body) return "body";
+			const name = (element.getAttribute("aria-label") ?? element.textContent ?? "").trim();
+			return element.tagName.toLowerCase() + (element.id ? "#" + element.id : "") + " " + JSON.stringify(name.slice(0, 60));
+		};
+		const tick = () => {
+			const strip = document.querySelector(${JSON.stringify(PROJECT_OPEN_STRIP)});
+			if (strip !== null && !state.sawStrip) {
+				state.sawStrip = true;
+				state.sawAt = performance.now();
+			}
+			let scrollTop = null;
+			let stripTop = null;
+			if (strip !== null) {
+				let scroller = strip.parentElement;
+				while (scroller !== null) {
+					const overflow = getComputedStyle(scroller).overflowY;
+					if (overflow === "auto" || overflow === "scroll") break;
+					scroller = scroller.parentElement;
+				}
+				if (scroller !== null) scrollTop = scroller.scrollTop;
+				stripTop = Math.round(strip.getBoundingClientRect().top);
+			}
+			if (scrollTop !== null && scrollTop > state.maxScrollTop) state.maxScrollTop = scrollTop;
+			const sample = { t: Math.round(performance.now() - started), strip: strip !== null, scrollTop, stripTop, activeElement: describe(document.activeElement) };
+			const last = state.samples[state.samples.length - 1];
+			if (last === undefined || last.strip !== sample.strip || last.scrollTop !== sample.scrollTop || last.stripTop !== sample.stripTop || last.activeElement !== sample.activeElement) {
+				state.samples.push(sample);
+			}
+			const now = performance.now();
+			if (now - started < 6000 && (state.sawAt === null || now < state.sawAt + 2500)) requestAnimationFrame(tick);
+			else state.stopped = true;
+		};
+		requestAnimationFrame(tick);
+		return true;
+	})()`);
+
+	/*
+	 * THE PRESS A USER MAKES: a real pointer press on the project's row in the
+	 * list, from the list view the page actually draws. Everything after this
+	 * line is the page's own behaviour, not the rig's.
+	 */
+	const pressedAt = Date.now();
+	await clickAt(cdp, listRow);
+	const stripAlive = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector(${JSON.stringify(PROJECT_OPEN_TEXTAREA)}))`,
+		30_000,
+	);
+	check(
+		"the strip's box arrives on the detail page",
+		stripAlive.ok,
+		`after ${stripAlive.waitedMs}ms`,
+	);
+	if (!stripAlive.ok) return;
+
+	/*
+	 * TWO ANIMATION FRAMES, and why the FIRST frame is not the very first paint
+	 * of the textarea: the defect's focus call lives in a mount EFFECT, which
+	 * runs after the commit's first paint - so the first painted frame with the
+	 * box on screen legitimately shows the pre-effect state on BOTH trees, and a
+	 * frame taken then would answer the wrong question. Two frames later is the
+	 * first frame the effect can have shown in, which is the frame a reader
+	 * perceives as "the page landing". The sampler's per-frame trace carries the
+	 * exact moment the scroll happened, so this choice is checkable in the run's
+	 * own record rather than taken on trust.
+	 */
+	await twoAnimationFrames(cdp);
+	const firstFrame = await capture(cdp, label("first"));
+	const first = await projectOpenReading(cdp);
+	note(
+		"first frame",
+		`${projectOpenSummary(first)} | frame=${firstFrame.label} ${firstFrame.bytes} bytes, pressed ${Date.now() - pressedAt}ms before`,
+	);
+
+	/*
+	 * THE DEFECT'S OWN PRECONDITION, checked rather than assumed: a plain
+	 * `focus()` only scrolls when the box is NOT already on screen, so the
+	 * before half proves nothing unless the strip starts BELOW THE FOLD at
+	 * scrollTop 0. The natural tops are positions INDEPENDENT of the current
+	 * scroll, so this reads the same on both trees; a page that fails it fails
+	 * HERE by name, with the seed's own page height, rather than photographing
+	 * a vacuous pair.
+	 */
+	check(
+		"the strip starts below the fold at scrollTop 0 (the defect's precondition)",
+		first !== null &&
+			first.cardNaturalTop !== null &&
+			first.clientHeight !== null &&
+			first.scrollHeight !== null &&
+			first.scrollHeight > first.clientHeight &&
+			first.cardNaturalTop >= first.clientHeight,
+		`cardNaturalTop=${first?.cardNaturalTop} textareaNaturalTop=${first?.textareaNaturalTop} clientHeight=${first?.clientHeight} scrollHeight=${first?.scrollHeight} - the seed must put the strip under the fold (see this set's seed.py)`,
+	);
+
+	const inScroller = (reading) =>
+		reading !== null &&
+		reading.scroller !== null &&
+		reading.textarea !== null &&
+		reading.textarea.top >= reading.scroller.top &&
+		reading.textarea.bottom <= reading.scroller.bottom &&
+		reading.textarea.top >= 0 &&
+		reading.textarea.bottom <= reading.viewport.height;
+
+	if (AUTOFOCUS_EXPECT === "jump") {
+		check(
+			"the page lands scrolled down with the box in view and focused (the defect this half records)",
+			first !== null &&
+				first.scrollTop > 0 &&
+				first.textareaFocused &&
+				first.textareaMatchesFocus &&
+				inScroller(first),
+			`expected scrollTop > 0 and the box focused; ${projectOpenSummary(first)}`,
+		);
+	} else {
+		check(
+			"the page opens at scrollTop 0 with the box unfocused (the change's claim, first frame)",
+			first !== null &&
+				first.scrollTop === 0 &&
+				!first.textareaFocused &&
+				!first.textareaMatchesFocus,
+			`expected scrollTop === 0 and no focus; ${projectOpenSummary(first)}`,
+		);
+	}
+
+	/*
+	 * THE SETTLED FRAME: the sampler's own window, plus a quiet second (the
+	 * sibling scenes' shape for "a frame the app held still for").
+	 */
+	await waitForCondition(
+		cdp,
+		"window.__projectOpenSampler !== undefined && window.__projectOpenSampler.stopped === true",
+		12_000,
+	);
+	await wait(1000);
+	const settledFrame = await captureSettled(cdp, label("settled"));
+	const settled = await projectOpenReading(cdp);
+	note(
+		"settled frame",
+		`${projectOpenSummary(settled)} | frame=${settledFrame.label} stable=${settledFrame.stable === true} toastFree=${settledFrame.toastFree === true}`,
+	);
+
+	/*
+	 * THE SAMPLER'S TRACE, read back and written beside the frames as its own
+	 * small JSON: the per-run record of WHEN the page moved (or that it never
+	 * did), which no still can carry.
+	 */
+	const sampler = await cdp.evaluate(`(() => {
+		const state = window.__projectOpenSampler;
+		if (state === undefined) return null;
+		return { sawStrip: state.sawStrip === true, sawAt: state.sawAt === null ? null : Math.round(state.sawAt), stopped: state.stopped === true, maxScrollTop: state.maxScrollTop, samples: state.samples };
+	})()`);
+	const firstMove =
+		sampler === null
+			? null
+			: (sampler.samples.find(
+					(sample) => sample.scrollTop !== null && sample.scrollTop !== 0,
+				) ?? null);
+	note(
+		"the sampler's trace",
+		sampler === null
+			? "(no sampler)"
+			: `sawStrip=${sampler.sawStrip} at t=${sampler.sawAt}ms, ${sampler.samples.length} sample(s); maxScrollTop=${sampler.maxScrollTop}; first non-zero scrollTop ${firstMove === null ? "never" : `at t=${firstMove.t}ms (${firstMove.scrollTop})`}`,
+	);
+	mkdirSync(FRAMES, { recursive: true });
+	writeFileSync(
+		join(FRAMES, `${label("sampler")}.json`),
+		`${JSON.stringify({ expect: AUTOFOCUS_EXPECT, theme, first, settled, sampler }, null, 1)}\n`,
+	);
+
+	if (AUTOFOCUS_EXPECT === "jump") {
+		check(
+			"the settled page still shows the moved state (base)",
+			settled !== null &&
+				settled.scrollTop > 0 &&
+				settled.textareaFocused &&
+				inScroller(settled),
+			`expected the moved state to hold; ${projectOpenSummary(settled)}`,
+		);
+		check(
+			"the sampler saw the page move off the top",
+			sampler !== null && sampler.maxScrollTop > 0,
+			`maxScrollTop=${sampler?.maxScrollTop}`,
+		);
+	} else {
+		check(
+			"the sampler records no movement at all: every sampled frame sits at scrollTop 0",
+			sampler !== null &&
+				sampler.sawStrip === true &&
+				sampler.samples.every(
+					(sample) => sample.scrollTop === null || sample.scrollTop === 0,
+				) &&
+				sampler.maxScrollTop === 0,
+			`maxScrollTop=${sampler?.maxScrollTop} sawStrip=${sampler?.sawStrip} samples=${JSON.stringify(sampler?.samples?.slice(0, 8))}`,
+		);
+		check(
+			"the settled page is still at the top, unfocused, with the strip under the fold",
+			settled !== null &&
+				settled.scrollTop === 0 &&
+				!settled.textareaFocused &&
+				!settled.textareaMatchesFocus &&
+				settled.cardNaturalTop >= settled.clientHeight,
+			`expected scrollTop === 0, no focus and the strip under the fold; ${projectOpenSummary(settled)}`,
+		);
+	}
+
+	/*
+	 * THE CONTROL LEGS. Everything below runs under BOTH halves, because the
+	 * change must not buy the top of the page by breaking the composer: the
+	 * strip is still reachable, still typeable, still sendable, the target still
+	 * switches, the chat still autofocuses, and coming back still lands right.
+	 */
+	const stripFinder = `() => document.querySelector(${JSON.stringify(PROJECT_OPEN_TEXTAREA)})`;
+	const reached = await wheelUntilInScroller(cdp, stripFinder);
+	check(
+		"the strip can be reached by the page's own scrolling (a real wheel gesture)",
+		reached.ok,
+		JSON.stringify(reached),
+	);
+	await wait(200);
+
+	/*
+	 * THE TARGET SWITCH, one short leg: the strip's Send-to control is the app's
+	 * own Radix `Select`, so the option is picked with a real pointer press on
+	 * the option's own box. The claim recorded is the change's own - switching
+	 * the target must neither move the page nor hand the box the caret - and it
+	 * runs in both halves because it must keep working either way.
+	 */
+	const beforeSwitch = await projectOpenReading(cdp);
+	const selectedText = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(PROJECT_OPEN_TARGET)})?.textContent?.trim() ?? null`,
+	);
+	await clickAt(cdp, PROJECT_OPEN_TARGET);
+	const listbox = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[role="listbox"]'))`,
+		10_000,
+	);
+	check(
+		"the Send-to control opens its listbox",
+		listbox.ok,
+		`after ${listbox.waitedMs}ms`,
+	);
+	await wait(250);
+	const option = await pressFoundElement(
+		cdp,
+		`() => [...document.querySelectorAll('[role="option"]')].find((element) => element.textContent.trim() !== ${JSON.stringify(selectedText ?? "\u0000")}) ?? null`,
+	);
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll('[role="option"]').length === 0`,
+		10_000,
+	);
+	await wait(200);
+	const afterSwitch = await projectOpenReading(cdp);
+	check(
+		"switching the target neither moves the page nor hands the box the keyboard",
+		option !== null &&
+			beforeSwitch !== null &&
+			afterSwitch !== null &&
+			afterSwitch.scrollTop === beforeSwitch.scrollTop &&
+			!afterSwitch.textareaFocused &&
+			!afterSwitch.textareaMatchesFocus,
+		`chose ${JSON.stringify(option?.text)}; scrollTop ${beforeSwitch?.scrollTop} -> ${afterSwitch?.scrollTop}; activeElement=${JSON.stringify(afterSwitch?.activeElement)}`,
+	);
+	const targetSession =
+		links.find((link) => sessionLabelOf(link) === option?.text) ?? null;
+	check(
+		"the pressed option names one of the seeded links",
+		targetSession !== null,
+		`option=${JSON.stringify(option?.text)} links=${JSON.stringify(links.map(sessionLabelOf))}`,
+	);
+
+	/*
+	 * THE USER CAN STILL CLICK IN AND TYPE (both halves): a real pointer press
+	 * into the box, the text through CDP's input pipeline, and the value read
+	 * back off the element - the interaction the change must not break.
+	 */
+	await clickAt(cdp, PROJECT_OPEN_TEXTAREA);
+	await wait(150);
+	const focused = await waitForCondition(
+		cdp,
+		`document.activeElement === document.querySelector(${JSON.stringify(PROJECT_OPEN_TEXTAREA)})`,
+		5_000,
+	);
+	check(
+		"a real pointer press puts the caret in the strip's box",
+		focused.ok,
+		`after ${focused.waitedMs}ms`,
+	);
+	const messageText = `Rig check: report the page position. [${Date.now().toString(36)}]`;
+	await cdp.send("Input.insertText", { text: messageText });
+	await wait(200);
+	const typed = await cdp.evaluate(
+		`(() => {
+			const box = document.querySelector(${JSON.stringify(PROJECT_OPEN_TEXTAREA)});
+			return box === null ? null : { value: box.value, active: box === document.activeElement };
+		})()`,
+	);
+	check(
+		"the typed message lands in the box that took the caret",
+		typed !== null && typed.value === messageText && typed.active === true,
+		JSON.stringify(typed),
+	);
+	const typedFrame = await captureSettled(cdp, label("typed"));
+	note(
+		"typed frame",
+		`frame=${typedFrame.label} stable=${typedFrame.stable === true}`,
+	);
+
+	/*
+	 * THE POINTER SEND, read back from the daemon's own transcript: a painted
+	 * optimistic echo also puts the text on screen, so the DOM alone cannot
+	 * tell an admitted message from a row that may still be replaced. The
+	 * pre-admission refusal dance is the `project-detail` scene's own (a strip
+	 * whose target stream has not answered yet is refused IN WORDS and keeps
+	 * the text - the operator's move is to wait it out and press again).
+	 */
+	const scrollBeforeSend = (await projectOpenReading(cdp))?.scrollTop ?? null;
+	await clickAt(cdp, PROJECT_OPEN_SEND);
+	const REFUSAL = "not ready for messages yet";
+	const outcome = await waitForCondition(
+		cdp,
+		`(() => {
+			const box = document.querySelector(${JSON.stringify(PROJECT_OPEN_TEXTAREA)});
+			if (box === null) return "gone";
+			if (box.value === "") return "admitted";
+			return document.body.textContent.includes(${JSON.stringify(REFUSAL)}) ? "refused" : null;
+		})()`,
+		30_000,
+	);
+	const firstOutcome = String(outcome.last ?? "none");
+	if (firstOutcome === "refused") {
+		await waitForCondition(
+			cdp,
+			`(() => !document.body.textContent.includes(${JSON.stringify(REFUSAL)}))()`,
+			60_000,
+		);
+		await clickAt(cdp, PROJECT_OPEN_SEND);
+	}
+	const cleared = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(PROJECT_OPEN_TEXTAREA)}).value === ""`,
+		60_000,
+	);
+	let admitted = null;
+	if (cleared.ok && targetSession !== null) {
+		for (let attempt = 1; attempt <= 20; attempt += 1) {
+			const history = await fetchSessionHistory(targetSession.session_id);
+			const entries = JSON.stringify(history.body?.result?.entries ?? []);
+			if (history.status === 200 && entries.includes(messageText)) {
+				admitted = { attempt, status: history.status };
+				break;
+			}
+			await wait(1000);
+		}
+	}
+	check(
+		"a pointer press of Send admits the message into the linked session's transcript (daemon read)",
+		cleared.ok && admitted !== null,
+		cleared.ok
+			? `the box cleared but the transcript never carried the text (first outcome=${firstOutcome}, last read status=${admitted?.status ?? "n/a"})`
+			: `first outcome=${firstOutcome}, still holding after ${cleared.waitedMs}ms; toast: ${(await toastText(cdp).catch(() => null)) ?? "none"}`,
+		cleared.ok
+			? `delivered (read back on attempt ${admitted?.attempt})`
+			: undefined,
+	);
+	const refocus = await waitForCondition(
+		cdp,
+		`document.activeElement === document.querySelector(${JSON.stringify(PROJECT_OPEN_TEXTAREA)})`,
+		10_000,
+	);
+	check(
+		"the press hands the keyboard back to the box",
+		refocus.ok,
+		`after ${refocus.waitedMs}ms; activeElement=${JSON.stringify(await cdp.evaluate("document.activeElement === document.body ? 'body' : (document.activeElement?.tagName.toLowerCase() ?? 'null') + ' ' + (document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.textContent ?? '').trim().slice(0, 60)"))}`,
+	);
+	const afterSend = await projectOpenReading(cdp);
+	check(
+		"the refocus leaves the page where the reader left it",
+		afterSend !== null &&
+			scrollBeforeSend !== null &&
+			afterSend.scrollTop === scrollBeforeSend,
+		`scrollTop ${scrollBeforeSend} -> ${afterSend?.scrollTop}`,
+	);
+
+	/*
+	 * (a) BACK TO THE LIST AND IN AGAIN, the way a reader does it: the detail
+	 * header's own "All projects" control, then the row again. The claim is the
+	 * change's (the page opens at the top, unfocused, on every entry); the base
+	 * half RECORDS the same numbers instead, because its own reading is the
+	 * defect and failing on it there would only restate that the old build is
+	 * the old build.
+	 */
+	const backToAll = await pressFoundElement(
+		cdp,
+		`() => [...document.querySelectorAll("button")].find((element) => element.textContent.trim() === "All projects") ?? null`,
+	);
+	const backAtList = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector(${JSON.stringify(listRow)}))`,
+		30_000,
+	);
+	check(
+		"All projects returns to the list",
+		backToAll !== null && backAtList.ok,
+		`after ${backAtList.waitedMs}ms`,
+	);
+	await clickAt(cdp, listRow);
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector(${JSON.stringify(PROJECT_OPEN_TEXTAREA)}))`,
+		30_000,
+	);
+	await twoAnimationFrames(cdp);
+	const reentry = await projectOpenReading(cdp);
+	if (AUTOFOCUS_EXPECT === "jump") {
+		note("re-entry from the list (base)", projectOpenSummary(reentry));
+	} else {
+		check(
+			"re-entering from the list opens at the top with the box unfocused (stay)",
+			reentry !== null &&
+				reentry.scrollTop === 0 &&
+				!reentry.textareaFocused &&
+				!reentry.textareaMatchesFocus,
+			`expected scrollTop === 0 and no focus; ${projectOpenSummary(reentry)}`,
+		);
+	}
+
+	/*
+	 * (b) A LINKED SESSION'S CHAT - the control the change must not move. The
+	 * row is pressed (its own text is the session's label: the seed's sessions
+	 * carry no title, so the label IS the id), the chat's composer must take the
+	 * caret on open exactly as it did before the change, and the frame carries
+	 * the ring the caret brings. Then `history.back()` returns to the project,
+	 * where the page's own claim is asked again.
+	 */
+	const rowSession = targetSession ?? links[0] ?? null;
+	const rowFinder = `() => [...document.querySelectorAll("button")].find((element) => element.textContent.trim() === ${JSON.stringify(rowSession?.session_id ?? "")}) ?? null`;
+	const rowReached = await wheelUntilInScroller(cdp, rowFinder);
+	check(
+		"the linked session's row is reachable by the page's own scrolling",
+		rowReached.ok,
+		JSON.stringify(rowReached),
+	);
+	await wait(150);
+	const rowPress = await pressFoundElement(cdp, rowFinder);
+	check(
+		"the linked session's row was pressed",
+		rowPress !== null,
+		JSON.stringify(rowPress),
+	);
+	const chatFocused = await waitForCondition(
+		cdp,
+		`document.activeElement === document.querySelector(${JSON.stringify(PROJECT_OPEN_CHAT_TEXTAREA)})`,
+		20_000,
+	);
+	check(
+		"opening a conversation still puts the caret in the chat's composer (the control this change must not move)",
+		chatFocused.ok,
+		`after ${chatFocused.waitedMs}ms; activeElement=${JSON.stringify(await cdp.evaluate("document.activeElement === document.body ? 'body' : (document.activeElement?.tagName.toLowerCase() ?? 'null') + ' ' + (document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.textContent ?? '').trim().slice(0, 60)"))}`,
+	);
+	const chatFrame = await captureSettled(cdp, label("chat-focus"));
+	note(
+		"chat-focus frame",
+		`frame=${chatFrame.label} stable=${chatFrame.stable === true}`,
+	);
+	await cdp.evaluate("window.history.back(); true");
+	const returned = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector(${JSON.stringify(PROJECT_OPEN_TEXTAREA)}))`,
+		30_000,
+	);
+	if (returned.ok) await twoAnimationFrames(cdp);
+	const back = await projectOpenReading(cdp);
+	const backHash = await cdp.evaluate("window.location.hash");
+	if (AUTOFOCUS_EXPECT === "jump") {
+		note(
+			"returned from the chat (base)",
+			`${projectOpenSummary(back)} hash=${backHash}`,
+		);
+	} else {
+		check(
+			"returning from the chat leaves the project page at the top, unfocused (stay)",
+			back !== null &&
+				returned.ok &&
+				back.scrollTop === 0 &&
+				!back.textareaFocused &&
+				!back.textareaMatchesFocus,
+			`expected scrollTop === 0 and no focus; ${projectOpenSummary(back)} hash=${backHash}`,
+		);
+	}
+}
+
+/* ------------------------------------------------------------------------ *
  * The inline editors on a project (the inline-edit slice, 2026-09-30).
  * ------------------------------------------------------------------------ */
 
@@ -39852,6 +40756,23 @@ async function main() {
 			"--scene project-detail needs --backend: the seeded row, quick-send's message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
 		);
 	}
+	if (SCENE === "project-open") {
+		if (BACKEND === null || BACKEND_RECORDS === null) {
+			throw new Error(
+				"--scene project-open needs --backend and --backend-records: the seeded row and its linked sessions are read from the daemon this run owns, the send is asserted against that daemon's own transcript, and the app admits only a daemon a serve record describes",
+			);
+		}
+		if (PROJECT === null) {
+			throw new Error(
+				"--scene project-open needs --project: the row the list press opens is the seeded project's own key, and a default would drive whatever the lane's seed happened to call its row",
+			);
+		}
+		if (AUTOFOCUS_EXPECT !== "jump" && AUTOFOCUS_EXPECT !== "stay") {
+			throw new Error(
+				`--scene project-open needs --autofocus-expect jump|stay (got ${JSON.stringify(AUTOFOCUS_EXPECT)}): the base tree's half of the pair is the jump the operator reported and the head tree's half is the page staying put, and a default would answer one of them without saying so`,
+			);
+		}
+	}
 	if (SCENE === "composer-drop") {
 		if (BACKEND === null || BACKEND_RECORDS === null) {
 			throw new Error(
@@ -40062,6 +40983,7 @@ async function main() {
 				await sceneSettingsIntegrations(cdp);
 			else if (SCENE === "route-tops") await sceneRouteTops(cdp);
 			else if (SCENE === "project-detail") await sceneProjectDetail(cdp);
+			else if (SCENE === "project-open") await sceneProjectOpen(cdp);
 			else if (SCENE === "agents-ask") await sceneAgentsAsk(cdp);
 			else if (SCENE === "composer-drop") await sceneComposerDrop(cdp);
 			else if (SCENE === "project-inline-edit")
