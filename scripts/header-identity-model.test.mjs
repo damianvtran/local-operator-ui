@@ -343,7 +343,7 @@ test("the cue waits for its facts: no agent, no manager, no delegate datum is si
 
 /*
  * ---------------------------------------------------------------- the
- * runtime's STRICT rule (issue #861, second slice; core PR #2050 at f98240bd42)
+ * runtime's STRICT rule (issue #861, second slice; core PR #2050, merged at 86c7e7aefa0)
  *
  * `effective_identity: { speaker, team, role_of_speaker }` is the capability
  * signal: a host that publishes it refuses `/agent` for EVERY name while a team
@@ -700,21 +700,32 @@ test("a cold frame with no team bound is not a closed seat, even on a strict hos
 });
 
 /*
- * THE TWO CORE COLD SHAPES, pinned side by side (review R3, QA Q4). Both are
- * core PR #2050's frame for a session no runtime has engaged, stamped
- * `epoch: "cold-<session_id>"`:
+ * THE CORE FRAME SHAPES THIS HEADER IS PINNED TO, against the MERGED core
+ * (local-operator main at 86c7e7aefa0, which contains core PR #2050). The
+ * `effective_identity` values below are not hand-written: they are what
+ * `local_operator.session.frontend_state.effective_identity_for` returns on that
+ * commit for the inputs each producer passes it.
  *
- * - f98240bd42: `effective_identity` is `{}` (the field is not set at all);
- * - 7905eab965: `effective_identity` is the EMPTY STATEMENT
- *   `{speaker:"", team:"", role_of_speaker:""}` and `active_team` is `""`
- *   (`attached.py` `saved_preview`, `cold_model.py` `synthesise_cold_state`),
- *   with core's own comment that the header should read the catalogue row's
- *   stored team/agent until the first warm frame.
+ * - (a) WARM (`Session.effective_identity`, session.py): the triple, always, e.g.
+ *   `{speaker:"manager", team:"lopdev", role_of_speaker:"manager"}`.
+ * - (b) RESTORED-SESSION COLD (`AttachedSession`, attached.py ~1982): the triple is
+ *   DERIVED from the durable attachment, never copied from the checkpoint, so a
+ *   resumed team session is published on its first frame. The epoch is
+ *   `cold-<session_id>`. When the registry cannot name the manager the rule falls
+ *   back to the TEAM name as the speaker (`{speaker:"lopdev", team:"lopdev"}`).
+ * - (c) NEVER-ENGAGED cold (`cold_model.synthesise_cold_state` ~503 and
+ *   `AttachedSession.saved_preview` ~1752): the one remaining EMPTY STATEMENT
+ *   `{speaker:"", team:"", role_of_speaker:""}` with `active_team: ""`, and core's
+ *   own comment says the header must read the catalogue row's stored team/agent
+ *   until the first warm frame.
+ * - the `{}` cells are the shape of core PR #2050's EARLIER head (f98240bd42),
+ *   kept because an older runtime and a host mid-restore still produce it; they
+ *   pin the sticky record, not a merged-core shape.
  *
- * Both are team-bound in the catalogue (`boundTeam`), and in neither may the
+ * Every cell is team-bound in the catalogue (`boundTeam`), and in none may the
  * chips blank (`No team` / `No agent`) or the seat open. What differs is why the
- * seat is closed: `{}` needs the host's sticky record, the empty statement is
- * itself a published statement and needs nothing.
+ * seat is closed: `{}` needs the host's sticky record, a published statement
+ * (b, c) is itself the capability signal and needs nothing.
  */
 const COLD_BOUND = {
 	activeAgent: "",
@@ -724,7 +735,7 @@ const COLD_BOUND = {
 	teams: TEAMS,
 };
 
-test("core 7905eab965's cold frame (the published-EMPTY statement) never blanks a team-bound chat", () => {
+test("merged core (c): the never-engaged cold frame (published-EMPTY statement) never blanks a team-bound chat", () => {
 	for (const hostPublishes of [undefined, false, true]) {
 		const view = resolveHeaderIdentity({
 			...COLD_BOUND,
@@ -744,7 +755,68 @@ test("core 7905eab965's cold frame (the published-EMPTY statement) never blanks 
 	}
 });
 
-test("core f98240bd42's cold frame (`{}`) on a host that has published: chips from the binding, seat closed", () => {
+/*
+ * Values produced by merged core's `effective_identity_for` (86c7e7aefa0); see
+ * the block above. Kept as literals so the pure cells need no Python, with the
+ * producer and inputs named beside each.
+ */
+const MERGED_CORE = {
+	// Session.effective_identity, team in force, manager named.
+	warm: { speaker: "manager", team: "lopdev", role_of_speaker: "manager" },
+	// AttachedSession cold restore, manager named by the registry.
+	restoredNamed: {
+		speaker: "manager",
+		team: "lopdev",
+		role_of_speaker: "manager",
+	},
+	// AttachedSession cold restore, registry could not name the manager: the
+	// rule falls back to the team's own name.
+	restoredUnnamed: {
+		speaker: "lopdev",
+		team: "lopdev",
+		role_of_speaker: "manager",
+	},
+};
+
+test("merged core (a)+(b): a warm frame and a restored cold frame publish the triple; closed, speaker read from it", () => {
+	for (const [label, statement, coldFrame] of [
+		["warm", MERGED_CORE.warm, false],
+		["restored cold, manager named", MERGED_CORE.restoredNamed, true],
+	]) {
+		// The cold restore sets `active_team` from the durable attachment; the live
+		// frame sets it too. Both are team-bound.
+		const view = resolveHeaderIdentity({
+			activeAgent: "",
+			activeTeam: "lopdev",
+			boundTeam: "lopdev",
+			teams: TEAMS,
+			effectiveIdentity: statement,
+			coldFrame,
+			hostPublishes: undefined,
+		});
+		assert.notEqual(view.seat, null, label);
+		assert.equal(view.seat.speaker, "manager", label);
+		assert.equal(view.teamValue, "lopdev", label);
+		assert.equal(view.agentValue, "manager", label);
+	}
+});
+
+test("merged core (b): a restored cold frame whose registry could not name the manager reads the catalogue's manager, not the team's name", () => {
+	const view = resolveHeaderIdentity({
+		activeAgent: "",
+		activeTeam: "lopdev",
+		boundTeam: "lopdev",
+		teams: TEAMS,
+		effectiveIdentity: MERGED_CORE.restoredUnnamed,
+		coldFrame: true,
+	});
+	assert.notEqual(view.seat, null);
+	// `speaker === team` is core's fallback; the catalogue names `manager`.
+	assert.equal(view.seat.speaker, "manager");
+	assert.equal(view.agentValue, "manager");
+});
+
+test("a cold `{}` (core #2050's earlier head) on a host that has published: chips from the binding, seat closed", () => {
 	const view = resolveHeaderIdentity({
 		...COLD_BOUND,
 		effectiveIdentity: {},
@@ -756,7 +828,7 @@ test("core f98240bd42's cold frame (`{}`) on a host that has published: chips fr
 	assert.notEqual(view.seat, null);
 });
 
-test("core f98240bd42's cold frame (`{}`) on a host that never published: #866, chips from the binding", () => {
+test("a cold `{}` (core #2050's earlier head) on a host that never published: #866, chips from the binding", () => {
 	const view = resolveHeaderIdentity({
 		...COLD_BOUND,
 		effectiveIdentity: {},
@@ -985,8 +1057,27 @@ test("a local reset wipes the peers' records too: the feed cannot vouch for a pe
 });
 
 test("the closure sentence is the runtime's refusal, pinned byte for byte", () => {
-	// Core PR #2050, `Session._team_agent_slot_refusal("attach")`, with <team>
-	// the chip's name for the team and <manager> the published speaker.
+	// Merged core (86c7e7aefa0): `Session._team_agent_slot_refusal("attach")`
+	// delegates to `errors.team_owns_the_agent_slot_message(team, manager)`, whose
+	// docstring says the header lane "keys on this exact sentence". <team> is the
+	// chip's name for the team and <manager> the published speaker. The literals
+	// below were compared byte for byte against that function's real output for
+	// four (team, manager) pairs. The DETACH sentence (`/agent clear`) is not
+	// rendered by the header at all, so it is deliberately not pinned here.
+	for (const [team, manager, expected] of [
+		[
+			"minerva",
+			"ops-lead",
+			"team minerva owns this session: ops-lead is the speaker, so /agent is closed. Run /team clear to detach the team first.",
+		],
+		[
+			"a-b_c.1",
+			"x y",
+			"team a-b_c.1 owns this session: x y is the speaker, so /agent is closed. Run /team clear to detach the team first.",
+		],
+	]) {
+		assert.equal(identityAgentClosedCaption(team, manager), expected);
+	}
 	assert.equal(
 		identityAgentClosedCaption("lopdev", "manager"),
 		"team lopdev owns this session: manager is the speaker, so /agent is closed. Run /team clear to detach the team first.",
@@ -995,7 +1086,8 @@ test("the closure sentence is the runtime's refusal, pinned byte for byte", () =
 		identityAgentClosedCaption("lopdev", null),
 		"team lopdev owns this session: its manager is the speaker, so /agent is closed. Run /team clear to detach the team first.",
 	);
-	// No sentence about a silently replaced profile: core emits none (#2050).
+	// No sentence of ours about a silently replaced profile: core's merged
+	// `/team X` path appends its own clause and the UI renders messages as-is.
 	assert.doesNotMatch(
 		identityAgentClosedCaption("lopdev", "manager"),
 		REPLACED_NOTICE,

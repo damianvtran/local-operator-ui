@@ -299,8 +299,10 @@ export function resolveHeaderIdentity(
 	/*
 	 * WHICH TEAM OWNS THE SESSION. The determination keys on the stream's
 	 * `active_team` and the catalogue row's bound team - the two sources that
-	 * stay reliable on a COLD frame, where the identity is `{}` (f98240bd42) or
-	 * the published-EMPTY statement (7905eab965) - with a published statement's
+	 * stay reliable on a COLD frame, where the identity is the published-EMPTY
+	 * statement (merged core 86c7e7aefa0: `synthesise_cold_state`'s never-engaged
+	 * frame; a restored session's cold frame now derives the triple) or `{}` (an
+	 * earlier core head) - with a published statement's
 	 * team as the last rung (a closed seat must never sit over a "No team" chip).
 	 *
 	 * A published `team: ""` on a LIVE frame means the host has just said no team
