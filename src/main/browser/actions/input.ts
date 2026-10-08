@@ -51,7 +51,10 @@ import { nodeIdForSelector } from "./page";
  *   the same breath as the assignment), and a framework-controlled field can take
  *   a setter write and revert it on the very next tick; so the fallback is only
  *   reported as landed when the page, asked afresh, holds the text. A field that
- *   does not keep it is refused, never reported typed.
+ *   does not keep it is refused, never reported typed. "Holds the text" is
+ *   `holdsTypedText` below, shared by both read-backs. The afresh read waits a
+ *   short, fixed window first (`SETTLE_BEFORE_REREAD_MS`); a revert later than
+ *   that window cannot be seen by any read-back taken at `type` time.
  * The result reports which path landed, so "why is this field sometimes empty"
  * has an answer instead of a guess.
  */
@@ -519,6 +522,62 @@ export async function type(
 	);
 }
 
+/** What `holdsTypedText` ignores: everything that is not a letter or a digit in
+ * any script. Module scope because it is applied on every `type`. */
+const NON_ALPHANUMERIC = /[^\p{L}\p{N}]+/gu;
+
+function foldForComparison(value: string): string {
+	return value.normalize("NFKC").toLowerCase().replace(NON_ALPHANUMERIC, "");
+}
+
+/**
+ * Whether a field's read-back shows that the typed text landed. ONE predicate for
+ * both the `insertText` read-back and the value-setter fallback's independent
+ * re-read, so the two cannot disagree about what "landed" means.
+ *
+ * "Landed" means the field holds the typed CONTENT, not that its value is a
+ * superstring of the input byte for byte. Masks and normalisers rewrite how text
+ * is spelled - a card field groups `4242424242424242` as `4242 4242 4242 4242`,
+ * one field uppercases, one trims, a browser stores a CRLF as LF - and each of
+ * those fields really holds what was typed; refusing them as "does not hold the
+ * text" would be false and would break typing that worked before #871. So both
+ * sides are folded (NFKC, lower case, letters and digits only) before comparing.
+ *
+ * What it deliberately does NOT forgive is lost or replaced content: a field that
+ * is empty, unchanged, reverted, or that dropped characters (a digits-only mask
+ * turning `abc123` into `123`) does not contain the folded text and is refused.
+ *
+ * Text with no letter or digit in it (empty, whitespace, `---`) folds to nothing,
+ * which would match any field, so it is compared raw instead.
+ */
+function holdsTypedText(readBack: string, text: string): boolean {
+	const folded = foldForComparison(text);
+	if (folded === "") return readBack.includes(text);
+	return foldForComparison(readBack).includes(folded);
+}
+
+/**
+ * How long the fallback waits between its setter write and the independent
+ * re-read. A framework-controlled field commonly reverts a write on the next task
+ * or after a frame or two (a controlled-input sync, `requestAnimationFrame`), and
+ * an immediate re-read is just another round trip that can arrive first.
+ *
+ * Bounded and fixed because every `type` that reaches the fallback pays it. The
+ * honest limit: a revert later than this window (a debounced validation, an async
+ * re-render, a network-backed check) cannot be seen by ANY read-back taken while
+ * `type` is running; this narrows the gap, it does not close it.
+ */
+const SETTLE_BEFORE_REREAD_MS = 100;
+
+/** The longest read-back quoted in a refusal, so a huge field cannot flood the
+ * caller's context with whatever the page chooses to hold. */
+const MAX_QUOTED_READBACK = 80;
+
+function quoteReadBack(value: string): string {
+	if (value.length <= MAX_QUOTED_READBACK) return `'${value}'`;
+	return `'${value.slice(0, MAX_QUOTED_READBACK)}…' (${value.length} chars)`;
+}
+
 /**
  * Focus, select, `insertText`, READ BACK — and the value-setter fallback when the
  * read-back disagrees. Every command runs in the node's own session, so a frame
@@ -544,7 +603,7 @@ async function typeInto(
 	await sendIn(ctx, contents, node.sessionId, "Input.insertText", { text });
 	const readBack = await conversationReadBack(ctx, node, contents);
 
-	if (readBack.includes(text)) {
+	if (holdsTypedText(readBack, text)) {
 		return { value: readBack, via: "insert_text" };
 	}
 	// The read-back disagreed, so the field did not take what `insertText` sent.
@@ -567,9 +626,11 @@ async function typeInto(
 	if (setValue === null) return null;
 	// `setValue` is the setter's own echo of what it just wrote, so it proves
 	// nothing about whether the field kept it. Ask the page again, independently,
-	// in the node's own session (a frame field verifies inside its frame).
+	// in the node's own session (a frame field verifies inside its frame), after
+	// the settle window so a next-tick or next-frame revert is already visible.
+	await sleep(SETTLE_BEFORE_REREAD_MS);
 	const settled = await conversationReadBack(ctx, node, contents);
-	if (settled.includes(text)) {
+	if (holdsTypedText(settled, text)) {
 		return {
 			value: settled,
 			via: "value_setter",
@@ -581,7 +642,7 @@ async function typeInto(
 	// this node CAN hold text, it just did not keep this text.
 	throw new BrowserHostError(
 		"element_not_found",
-		`${target} took the value-setter write but does not hold the text (read back '${settled}'), so nothing was reported typed`,
+		`${target} took the value-setter write but does not hold the text (read back ${quoteReadBack(settled)}), so nothing was reported typed`,
 	);
 }
 
