@@ -1,35 +1,35 @@
 {
-  "label": "ext",
+  "label": "r3x",
   "build": "/Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007",
   "steps": [
     {
-      "at": 2192,
+      "at": 1621,
       "step": "daemon",
       "status": 200,
       "interrupt": 1
     },
     {
-      "at": 3399,
+      "at": 2663,
       "step": "windowMode",
       "lines": [
         "[window-mode] window mode headless: 1380x900, window created and never shown, page throttling off, no Dock tile",
-        "23:50:10.339 › [window-mode] headless run launched by pid 61460; it quits when that process goes"
+        "00:48:29.472 › [window-mode] headless run launched by pid 64220; it quits when that process goes"
       ]
     },
     {
-      "at": 7408,
+      "at": 6675,
       "step": "uiCapabilities",
       "session_interrupt": "1"
     },
     {
-      "at": 13292,
+      "at": 12532,
       "step": "turn.admit",
-      "sid": "0b779866ea56",
+      "sid": "2eaa8df5559f",
       "status": 200
     },
     {
-      "at": 16761,
-      "step": "ext-light-stopping",
+      "at": 16003,
+      "step": "r3x-light-stopping",
       "note": "light theme, stopping rung",
       "styles": {
         "line": {
@@ -42,7 +42,7 @@
         "output": null,
         "alert": null
       },
-      "workingLine": "⣻ stopping the turn",
+      "workingLine": "⢿ stopping the turn",
       "workingLineRect": {
         "x": 415,
         "y": 270,
@@ -59,14 +59,14 @@
       "failureText": null
     },
     {
-      "at": 26241,
+      "at": 25430,
       "step": "turn.admit",
-      "sid": "ef8770aae94b",
+      "sid": "1083fc488023",
       "status": 200
     },
     {
-      "at": 33833,
-      "step": "ext-light-idle",
+      "at": 33017,
+      "step": "r3x-light-idle",
       "note": "light theme, idle notice",
       "styles": {
         "line": {
@@ -79,7 +79,7 @@
         "output": null,
         "alert": null
       },
-      "workingLine": "⣯ running bash 6s",
+      "workingLine": "⣯ running bash",
       "workingLineRect": {
         "x": 415,
         "y": 270,
@@ -98,14 +98,14 @@
       "failureText": null
     },
     {
-      "at": 43087,
+      "at": 42287,
       "step": "turn.admit",
-      "sid": "55e62ee37c8f",
+      "sid": "2dcfc9d2b7f3",
       "status": 200
     },
     {
-      "at": 50671,
-      "step": "ext-narrow-idle",
+      "at": 49897,
+      "step": "r3x-narrow-idle",
       "note": "760px wide, idle notice",
       "styles": {
         "line": {
@@ -118,7 +118,7 @@
         "output": null,
         "alert": null
       },
-      "workingLine": "⣯ running bash 6s",
+      "workingLine": "⣯ running bash",
       "workingLineRect": {
         "x": 80,
         "y": 270,
@@ -137,14 +137,14 @@
       "failureText": null
     },
     {
-      "at": 55287,
+      "at": 54311,
       "step": "turn.admit",
-      "sid": "36abf2197372",
+      "sid": "ea96abfebb79",
       "status": 200
     },
     {
-      "at": 59552,
-      "step": "ext-narrow-stopping",
+      "at": 58577,
+      "step": "r3x-narrow-stopping",
       "note": "760px wide, stopping rung",
       "styles": {
         "line": {
@@ -174,8 +174,8 @@
       "failureText": null
     },
     {
-      "at": 74545,
-      "step": "ext-narrow-lost",
+      "at": 73570,
+      "step": "r3x-narrow-lost",
       "note": "760px wide, bound fired",
       "styles": {
         "line": {
@@ -214,1491 +214,1631 @@
   ],
   "proxyLog": [
     [
-      3088,
+      2089,
       "GET",
       "/health",
       "pass",
       0
     ],
     [
-      3157,
+      2142,
       "GET",
       "/health",
       "pass",
       0
     ],
     [
-      3164,
+      2148,
       "GET",
       "/v1/desktop/sessions?limit=1",
       "pass",
       0
     ],
     [
-      3289,
+      2256,
       "GET",
       "/v1/capabilities",
       "pass",
       0
     ],
     [
-      3303,
+      2268,
       "GET",
       "/v1/capabilities",
       "pass",
       0
     ],
     [
-      3304,
+      2269,
       "GET",
       "/v1/capabilities",
       "pass",
       0
     ],
     [
-      3317,
+      2278,
       "GET",
       "/v1/desktop/events",
       "pass",
       0
     ],
     {
-      "at": 3317,
+      "at": 2278,
       "m": "GET",
       "p": "/v1/desktop/events",
       "held": false
     },
     [
-      3324,
+      2286,
       "POST",
       "/v1/desktop/presence",
       "pass",
       1
     ],
     [
-      3592,
+      2507,
       "GET",
       "/v1/config",
       "pass",
       1
     ],
     [
-      3593,
-      "POST",
-      "/v1/desktop/radient",
-      "pass",
-      1
-    ],
-    [
-      3593,
-      "GET",
-      "/v1/capabilities",
-      "pass",
-      1
-    ],
-    [
-      3593,
+      2507,
       "GET",
       "/v1/desktop/asks",
       "pass",
       1
     ],
     [
-      3652,
+      2508,
+      "POST",
+      "/v1/desktop/radient",
+      "pass",
+      1
+    ],
+    [
+      2508,
+      "GET",
+      "/v1/capabilities",
+      "pass",
+      1
+    ],
+    [
+      2563,
       "GET",
       "/v1/desktop/networks",
       "pass",
       1
     ],
     [
-      3652,
+      2564,
       "GET",
       "/v1/desktop/hub/updates",
       "pass",
       1
     ],
     [
-      3652,
+      2564,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       1
     ],
     [
-      3653,
-      "GET",
-      "/v1/desktop/profiles",
-      "pass",
-      1
-    ],
-    [
-      3654,
-      "GET",
-      "/v1/desktop/teams",
-      "pass",
-      1
-    ],
-    [
-      3654,
+      2565,
       "POST",
       "/v1/desktop/radient",
       "pass",
       1
     ],
     [
-      3655,
+      2565,
       "GET",
       "/v1/desktop/aida",
       "pass",
       1
     ],
     [
-      3656,
+      2565,
       "GET",
       "/v1/desktop/peers",
       "pass",
       1
     ],
     [
-      3657,
+      2565,
+      "GET",
+      "/v1/desktop/profiles",
+      "pass",
+      1
+    ],
+    [
+      2565,
+      "GET",
+      "/v1/desktop/teams",
+      "pass",
+      1
+    ],
+    [
+      2566,
       "GET",
       "/v1/settings",
       "pass",
       1
     ],
     [
-      3658,
+      2566,
       "GET",
       "/v1/desktop/commands",
       "pass",
       1
     ],
     [
-      3658,
+      2566,
       "GET",
       "/v1/settings",
       "pass",
       1
     ],
     [
-      3659,
+      2566,
       "GET",
       "/v1/auth/status",
       "pass",
       1
     ],
     [
-      3659,
+      2566,
       "GET",
       "/v1/credentials",
       "pass",
       1
     ],
     [
-      3659,
+      2566,
       "GET",
       "/v1/auth/providers",
       "pass",
       1
     ],
     [
-      3660,
+      2566,
       "GET",
       "/v1/desktop/asks",
       "pass",
       1
     ],
     [
-      3660,
+      2568,
       "POST",
       "/v1/desktop/sessions/preview",
       "pass",
       1
     ],
     [
-      3660,
+      2568,
       "GET",
       "/v1/agents?page=1&per_page=1",
       "pass",
       1
     ],
     [
-      3679,
+      2585,
       "GET",
       "/v1/desktop/skills?cwd=%7E",
       "pass",
       1
     ],
     [
-      7406,
+      2642,
       "GET",
-      "/v1/capabilities",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       1
     ],
     [
-      7500,
+      2749,
       "GET",
       "/v1/config",
       "pass",
       1
     ],
     [
-      7501,
+      2750,
       "POST",
       "/v1/desktop/radient",
       "pass",
       1
     ],
     [
-      7507,
+      2750,
       "GET",
       "/v1/capabilities",
       "pass",
       1
     ],
     [
-      7508,
+      2750,
       "GET",
       "/v1/desktop/asks",
       "pass",
       1
     ],
     [
-      7530,
+      2764,
       "GET",
       "/v1/desktop/networks",
       "pass",
       1
     ],
     [
-      7532,
+      2766,
       "GET",
       "/v1/desktop/profiles",
       "pass",
       1
     ],
     [
-      7532,
+      2766,
       "GET",
       "/v1/desktop/teams",
       "pass",
       1
     ],
     [
-      7532,
+      2766,
       "GET",
       "/v1/desktop/hub/updates",
       "pass",
       1
     ],
     [
-      7532,
+      2766,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       1
     ],
     [
-      7533,
+      2766,
       "POST",
       "/v1/desktop/radient",
       "pass",
       1
     ],
     [
-      7533,
+      2766,
       "GET",
       "/v1/desktop/aida",
       "pass",
       1
     ],
     [
-      7534,
+      2766,
       "GET",
       "/v1/desktop/peers",
       "pass",
       1
     ],
     [
-      7534,
+      2766,
       "GET",
       "/v1/settings",
       "pass",
       1
     ],
     [
-      7534,
+      2766,
       "GET",
       "/v1/desktop/commands",
       "pass",
       1
     ],
     [
-      7534,
+      2766,
       "GET",
       "/v1/settings",
       "pass",
       1
     ],
     [
-      7534,
+      2766,
       "GET",
       "/v1/auth/status",
       "pass",
       1
     ],
     [
-      7534,
-      "GET",
-      "/v1/auth/providers",
-      "pass",
-      1
-    ],
-    [
-      7534,
-      "POST",
-      "/v1/desktop/sessions/preview",
-      "pass",
-      1
-    ],
-    [
-      7547,
-      "GET",
-      "/v1/desktop/skills?cwd=%7E",
-      "pass",
-      1
-    ],
-    [
-      7547,
+      2766,
       "GET",
       "/v1/credentials",
       "pass",
       1
     ],
     [
-      7550,
+      2766,
       "GET",
-      "/v1/agents?page=1&per_page=1",
+      "/v1/auth/providers",
       "pass",
       1
     ],
     [
-      11442,
-      "GET",
-      "/v1/settings",
-      "pass",
-      1
-    ],
-    [
-      11443,
+      2767,
       "GET",
       "/v1/desktop/asks",
       "pass",
       1
     ],
     [
-      11443,
+      2767,
+      "POST",
+      "/v1/desktop/sessions/preview",
+      "pass",
+      1
+    ],
+    [
+      2768,
       "GET",
-      "/v1/desktop/sessions/0b779866ea56/events?frontend_replace=1",
+      "/v1/agents?page=1&per_page=1",
+      "pass",
+      1
+    ],
+    [
+      2779,
+      "GET",
+      "/v1/desktop/skills?cwd=%7E",
+      "pass",
+      1
+    ],
+    [
+      6673,
+      "GET",
+      "/v1/capabilities",
+      "pass",
+      1
+    ],
+    [
+      6756,
+      "POST",
+      "/v1/desktop/radient",
+      "pass",
+      1
+    ],
+    [
+      6756,
+      "GET",
+      "/v1/config",
+      "pass",
+      1
+    ],
+    [
+      6757,
+      "GET",
+      "/v1/capabilities",
+      "pass",
+      1
+    ],
+    [
+      6757,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      1
+    ],
+    [
+      6781,
+      "GET",
+      "/v1/desktop/networks",
+      "pass",
+      1
+    ],
+    [
+      6782,
+      "GET",
+      "/v1/desktop/profiles",
+      "pass",
+      1
+    ],
+    [
+      6782,
+      "GET",
+      "/v1/desktop/hub/updates",
+      "pass",
+      1
+    ],
+    [
+      6782,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      1
+    ],
+    [
+      6782,
+      "GET",
+      "/v1/desktop/teams",
+      "pass",
+      1
+    ],
+    [
+      6782,
+      "POST",
+      "/v1/desktop/radient",
+      "pass",
+      1
+    ],
+    [
+      6782,
+      "GET",
+      "/v1/desktop/aida",
+      "pass",
+      1
+    ],
+    [
+      6782,
+      "GET",
+      "/v1/desktop/peers",
+      "pass",
+      1
+    ],
+    [
+      6783,
+      "GET",
+      "/v1/settings",
+      "pass",
+      1
+    ],
+    [
+      6783,
+      "GET",
+      "/v1/desktop/commands",
+      "pass",
+      1
+    ],
+    [
+      6783,
+      "GET",
+      "/v1/settings",
+      "pass",
+      1
+    ],
+    [
+      6783,
+      "GET",
+      "/v1/auth/status",
+      "pass",
+      1
+    ],
+    [
+      6783,
+      "GET",
+      "/v1/auth/providers",
+      "pass",
+      1
+    ],
+    [
+      6784,
+      "POST",
+      "/v1/desktop/sessions/preview",
+      "pass",
+      1
+    ],
+    [
+      6797,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      1
+    ],
+    [
+      6805,
+      "GET",
+      "/v1/agents?page=1&per_page=1",
+      "pass",
+      1
+    ],
+    [
+      6808,
+      "GET",
+      "/v1/desktop/skills?cwd=%7E",
+      "pass",
+      1
+    ],
+    [
+      10700,
+      "GET",
+      "/v1/settings",
+      "pass",
+      1
+    ],
+    [
+      10700,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      1
+    ],
+    [
+      10701,
+      "GET",
+      "/v1/desktop/sessions/2eaa8df5559f/events?frontend_replace=1",
       "pass",
       1
     ],
     {
-      "at": 11443,
+      "at": 10701,
       "m": "GET",
-      "p": "/v1/desktop/sessions/0b779866ea56/events",
+      "p": "/v1/desktop/sessions/2eaa8df5559f/events",
       "held": false
     },
     [
-      11444,
+      10701,
       "GET",
-      "/v1/desktop/sessions/0b779866ea56/command-entities?command=effort",
+      "/v1/desktop/sessions/2eaa8df5559f/command-entities?command=effort",
       "pass",
       1
     ],
     [
-      11444,
+      10701,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true",
       "pass",
       1
     ],
     [
-      11510,
+      10740,
       "GET",
-      "/v1/desktop/sessions/0b779866ea56/history?limit=100",
+      "/v1/desktop/sessions/2eaa8df5559f/history?limit=100",
       "pass",
       2
     ],
     [
-      11515,
+      10744,
       "GET",
-      "/v1/desktop/sessions/0b779866ea56/checkpoints",
+      "/v1/desktop/sessions/2eaa8df5559f/checkpoints",
       "pass",
       2
     ],
     [
-      11540,
-      "GET",
-      "/v1/desktop/sessions/0b779866ea56/command-entities?command=effort",
-      "pass",
-      2
-    ],
-    [
-      11541,
+      10746,
       "GET",
       "/v1/desktop/skills?cwd=%2FUsers%2Fdamian%2F.local-operator%2Fsessions%2F844903b621a4%2Fscr",
       "pass",
       2
     ],
     [
-      11541,
+      10746,
+      "POST",
+      "/v1/desktop/sessions/2eaa8df5559f/watch",
+      "pass",
+      2
+    ],
+    [
+      10746,
+      "GET",
+      "/v1/desktop/sessions/2eaa8df5559f/mcp",
+      "pass",
+      2
+    ],
+    [
+      10746,
+      "GET",
+      "/v1/desktop/sessions/2eaa8df5559f/command-entities?command=effort",
+      "pass",
+      2
+    ],
+    [
+      10746,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true",
       "pass",
       2
     ],
     [
-      11541,
-      "POST",
-      "/v1/desktop/sessions/0b779866ea56/watch",
-      "pass",
-      2
-    ],
-    [
-      11541,
-      "GET",
-      "/v1/desktop/sessions/0b779866ea56/mcp",
-      "pass",
-      2
-    ],
-    [
-      11604,
+      10983,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       2
     ],
     [
-      11927,
+      10988,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       2
     ],
     [
-      11939,
+      11484,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       2
     ],
     [
-      12664,
+      11899,
       "GET",
-      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "/v1/desktop/sessions/2eaa8df5559f/history?limit=100",
       "pass",
       2
     ],
     [
-      12830,
-      "GET",
-      "/v1/desktop/sessions/0b779866ea56/history?limit=100",
-      "pass",
-      2
-    ],
-    [
-      13180,
+      12159,
       "GET",
       "/health",
       "pass",
       2
     ],
     [
-      13295,
+      12538,
       "GET",
       "/v1/config",
       "pass",
       2
     ],
     [
-      13295,
+      12538,
       "GET",
       "/v1/credentials",
       "pass",
       2
     ],
     [
-      13302,
+      12545,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true",
       "pass",
       2
     ],
     [
-      13389,
+      12605,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       2
     ],
     [
-      13396,
+      12610,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       2
     ],
     [
-      15557,
+      14799,
       "POST",
-      "/v1/desktop/sessions/0b779866ea56/interrupt",
+      "/v1/desktop/sessions/2eaa8df5559f/interrupt",
       "pass",
       2
     ],
     {
-      "at": 15557,
+      "at": 14799,
       "m": "POST",
-      "p": "/v1/desktop/sessions/0b779866ea56/interrupt",
+      "p": "/v1/desktop/sessions/2eaa8df5559f/interrupt",
       "held": false,
       "interrupt": 5000
     },
     [
-      18325,
+      17286,
       "POST",
       "/v1/desktop/presence",
       "pass",
       2
     ],
     [
-      20593,
+      19827,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true",
       "pass",
       2
     ],
     [
-      20646,
+      19842,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       2
     ],
     [
-      20654,
+      19848,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       2
     ],
     [
-      21457,
+      20717,
       "GET",
       "/v1/desktop/asks",
       "pass",
       2
     ],
     [
-      21513,
+      20747,
       "GET",
-      "/v1/desktop/sessions/0b779866ea56/history?limit=100",
+      "/v1/desktop/sessions/2eaa8df5559f/history?limit=100",
       "pass",
       2
     ],
     [
-      21516,
+      20750,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true",
       "pass",
       2
     ],
     [
-      23180,
+      22159,
       "GET",
       "/health",
       "pass",
       2
     ],
     [
-      24409,
-      "GET",
-      "/v1/settings",
-      "pass",
-      2
-    ],
-    [
-      24409,
-      "GET",
-      "/v1/credentials",
-      "pass",
-      2
-    ],
-    [
-      24409,
+      23602,
       "GET",
       "/v1/config",
       "pass",
       2
     ],
     [
-      24409,
+      23603,
       "GET",
       "/v1/settings",
       "pass",
       2
     ],
     [
-      24409,
+      23603,
+      "GET",
+      "/v1/settings",
+      "pass",
+      2
+    ],
+    [
+      23603,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      2
+    ],
+    [
+      23603,
       "GET",
       "/v1/desktop/asks",
       "pass",
       2
     ],
     [
-      24409,
+      23603,
       "GET",
-      "/v1/desktop/sessions/ef8770aae94b/events?frontend_replace=1",
+      "/v1/desktop/sessions/1083fc488023/events?frontend_replace=1",
       "pass",
       2
     ],
     {
-      "at": 24409,
+      "at": 23603,
       "m": "GET",
-      "p": "/v1/desktop/sessions/ef8770aae94b/events",
+      "p": "/v1/desktop/sessions/1083fc488023/events",
       "held": false
     },
     [
-      24409,
+      23604,
       "GET",
-      "/v1/desktop/sessions/ef8770aae94b/command-entities?command=effort",
+      "/v1/desktop/sessions/1083fc488023/command-entities?command=effort",
       "pass",
       2
     ],
     [
-      24410,
+      23604,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true",
       "pass",
       2
     ],
     [
-      24447,
+      23632,
       "GET",
-      "/v1/desktop/sessions/ef8770aae94b/history?limit=100",
+      "/v1/desktop/sessions/1083fc488023/history?limit=100",
       "pass",
       2
     ],
     [
-      24449,
-      "GET",
-      "/v1/desktop/sessions/ef8770aae94b/checkpoints",
-      "pass",
-      2
-    ],
-    [
-      24450,
-      "GET",
-      "/v1/desktop/sessions/ef8770aae94b/mcp",
-      "pass",
-      2
-    ],
-    [
-      24452,
+      23634,
       "POST",
-      "/v1/desktop/sessions/ef8770aae94b/watch",
+      "/v1/desktop/sessions/1083fc488023/watch",
       "pass",
       2
     ],
     [
-      24452,
+      23634,
       "GET",
-      "/v1/desktop/sessions/ef8770aae94b/command-entities?command=effort",
+      "/v1/desktop/sessions/1083fc488023/checkpoints",
       "pass",
       2
     ],
     [
-      24452,
+      23636,
       "GET",
-      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "/v1/desktop/sessions/1083fc488023/mcp",
       "pass",
       2
     ],
     [
-      24642,
+      23636,
       "GET",
-      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "/v1/desktop/sessions/1083fc488023/command-entities?command=effort",
       "pass",
       2
     ],
     [
-      24650,
-      "GET",
-      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
-      "pass",
-      2
-    ],
-    [
-      24948,
-      "GET",
-      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
-      "pass",
-      2
-    ],
-    [
-      25588,
-      "GET",
-      "/v1/desktop/sessions/ef8770aae94b/history?limit=100",
-      "pass",
-      2
-    ],
-    [
-      26251,
+      23636,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true",
       "pass",
       2
     ],
     [
-      26279,
+      23709,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       2
     ],
     [
-      26287,
+      23774,
+      "GET",
+      "/v1/desktop/sessions/1083fc488023/history?limit=100",
+      "pass",
+      2
+    ],
+    [
+      23816,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       2
     ],
     [
-      32926,
+      23822,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      25442,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      2
+    ],
+    [
+      25452,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      2
+    ],
+    [
+      32111,
       "POST",
-      "/v1/desktop/sessions/ef8770aae94b/interrupt",
+      "/v1/desktop/sessions/1083fc488023/interrupt",
       "pass",
       2
     ],
     {
-      "at": 32926,
+      "at": 32111,
       "m": "POST",
-      "p": "/v1/desktop/sessions/ef8770aae94b/interrupt",
+      "p": "/v1/desktop/sessions/1083fc488023/interrupt",
       "held": false,
       "interrupt": "pass"
     },
     [
-      33181,
+      32162,
       "GET",
       "/health",
       "pass",
       2
     ],
     [
-      33329,
+      32291,
       "POST",
       "/v1/desktop/presence",
       "pass",
       2
     ],
     [
-      33913,
+      33107,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       2
     ],
     [
-      33918,
+      33111,
       "GET",
-      "/v1/desktop/sessions/ef8770aae94b/history?limit=100",
+      "/v1/desktop/sessions/1083fc488023/history?limit=100",
       "pass",
       2
     ],
     [
-      33928,
+      33122,
       "GET",
       "/v1/config",
       "pass",
       2
     ],
     [
-      33929,
+      33122,
       "GET",
       "/v1/credentials",
       "pass",
       2
     ],
     [
-      33935,
+      33125,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true",
       "pass",
       2
     ],
     [
-      34431,
+      33620,
       "GET",
       "/v1/desktop/asks",
       "pass",
       2
     ],
     [
-      36426,
+      35612,
       "POST",
-      "/v1/desktop/sessions/ef8770aae94b/watch",
+      "/v1/desktop/sessions/1083fc488023/watch",
       "pass",
       2
     ],
     [
-      36505,
+      35693,
       "GET",
       "/v1/config",
       "pass",
       2
     ],
     [
-      36505,
-      "GET",
-      "/v1/capabilities",
-      "pass",
-      2
-    ],
-    [
-      36505,
+      35693,
       "POST",
       "/v1/desktop/radient",
       "pass",
       2
     ],
     [
-      36505,
+      35693,
+      "GET",
+      "/v1/capabilities",
+      "pass",
+      2
+    ],
+    [
+      35693,
       "GET",
       "/v1/desktop/asks",
       "pass",
       2
     ],
     [
-      36522,
+      35711,
       "GET",
       "/v1/desktop/networks",
       "pass",
       2
     ],
     [
-      36522,
+      35712,
       "GET",
       "/v1/desktop/hub/updates",
       "pass",
       2
     ],
     [
-      36523,
+      35712,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       2
     ],
     [
-      36523,
+      35712,
       "POST",
       "/v1/desktop/radient",
       "pass",
       2
     ],
     [
-      36523,
+      35712,
       "GET",
       "/v1/desktop/aida",
       "pass",
       2
     ],
     [
-      36523,
+      35712,
       "GET",
       "/v1/desktop/peers",
       "pass",
       2
     ],
     [
-      36523,
+      35712,
       "GET",
       "/v1/settings",
       "pass",
       2
     ],
     [
-      36523,
+      35712,
       "GET",
       "/v1/desktop/commands",
       "pass",
       2
     ],
     [
-      36523,
+      35712,
       "GET",
       "/v1/desktop/profiles",
       "pass",
       2
     ],
     [
-      36523,
+      35712,
       "GET",
       "/v1/desktop/teams",
       "pass",
       2
     ],
     [
-      36524,
+      35713,
       "GET",
       "/v1/settings",
       "pass",
       2
     ],
     [
-      36524,
+      35713,
       "GET",
       "/v1/auth/status",
       "pass",
       2
     ],
     [
-      36524,
+      35713,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      2
+    ],
+    [
+      35713,
       "GET",
       "/v1/auth/providers",
       "pass",
       2
     ],
     [
-      36524,
+      35713,
       "GET",
-      "/v1/desktop/asks",
-      "pass",
-      2
-    ],
-    [
-      36524,
-      "GET",
-      "/v1/desktop/sessions/ef8770aae94b/events?frontend_replace=1",
+      "/v1/desktop/sessions/1083fc488023/events?frontend_replace=1",
       "pass",
       2
     ],
     {
-      "at": 36524,
+      "at": 35713,
       "m": "GET",
-      "p": "/v1/desktop/sessions/ef8770aae94b/events",
+      "p": "/v1/desktop/sessions/1083fc488023/events",
       "held": false
     },
     [
-      36524,
+      35714,
       "GET",
-      "/v1/desktop/sessions/ef8770aae94b/command-entities?command=effort",
+      "/v1/desktop/sessions/1083fc488023/command-entities?command=effort",
       "pass",
       2
     ],
     [
-      36530,
-      "GET",
-      "/v1/credentials",
-      "pass",
-      2
-    ],
-    [
-      36538,
+      35714,
       "GET",
       "/v1/agents?page=1&per_page=1",
       "pass",
       2
     ],
     [
-      36573,
+      35757,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true",
       "pass",
       3
     ],
     [
-      36589,
+      35770,
       "GET",
-      "/v1/desktop/sessions/ef8770aae94b/checkpoints",
+      "/v1/desktop/sessions/1083fc488023/checkpoints",
       "pass",
       3
     ],
     [
-      36590,
+      35771,
       "GET",
       "/v1/desktop/skills?cwd=%2FUsers%2Fdamian%2F.local-operator%2Fsessions%2F844903b621a4%2Fscr",
       "pass",
       3
     ],
     [
-      36590,
+      35771,
       "POST",
-      "/v1/desktop/sessions/ef8770aae94b/watch",
+      "/v1/desktop/sessions/1083fc488023/watch",
       "pass",
       3
     ],
     [
-      36590,
+      35771,
       "GET",
-      "/v1/desktop/sessions/ef8770aae94b/mcp",
+      "/v1/desktop/sessions/1083fc488023/mcp",
       "pass",
       3
     ],
     [
-      36590,
+      35771,
       "GET",
-      "/v1/desktop/sessions/ef8770aae94b/command-entities?command=effort",
+      "/v1/desktop/sessions/1083fc488023/command-entities?command=effort",
       "pass",
       3
     ],
     [
-      36590,
+      35772,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true",
       "pass",
       3
     ],
     [
-      40430,
+      39619,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       3
     ],
     [
-      41263,
-      "GET",
-      "/v1/desktop/asks",
-      "pass",
-      3
-    ],
-    [
-      41263,
-      "GET",
-      "/v1/desktop/sessions/55e62ee37c8f/events?frontend_replace=1",
-      "pass",
-      3
-    ],
-    {
-      "at": 41263,
-      "m": "GET",
-      "p": "/v1/desktop/sessions/55e62ee37c8f/events",
-      "held": false
-    },
-    [
-      41263,
-      "GET",
-      "/v1/desktop/sessions/55e62ee37c8f/command-entities?command=effort",
-      "pass",
-      3
-    ],
-    [
-      41263,
+      40449,
       "GET",
       "/v1/settings",
       "pass",
       3
     ],
     [
-      41263,
+      40450,
+      "GET",
+      "/v1/desktop/asks",
+      "pass",
+      3
+    ],
+    [
+      40450,
+      "GET",
+      "/v1/desktop/sessions/2dcfc9d2b7f3/events?frontend_replace=1",
+      "pass",
+      3
+    ],
+    {
+      "at": 40450,
+      "m": "GET",
+      "p": "/v1/desktop/sessions/2dcfc9d2b7f3/events",
+      "held": false
+    },
+    [
+      40450,
+      "GET",
+      "/v1/desktop/sessions/2dcfc9d2b7f3/command-entities?command=effort",
+      "pass",
+      3
+    ],
+    [
+      40450,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true",
       "pass",
       3
     ],
     [
-      41303,
+      40478,
       "GET",
-      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "/v1/desktop/sessions/2dcfc9d2b7f3/history?limit=100",
       "pass",
       3
     ],
     [
-      41558,
+      40482,
       "GET",
-      "/v1/desktop/sessions/55e62ee37c8f/history?limit=100",
+      "/v1/desktop/sessions/2dcfc9d2b7f3/command-entities?command=effort",
       "pass",
       3
     ],
     [
-      41558,
+      40483,
       "GET",
-      "/v1/desktop/sessions/55e62ee37c8f/checkpoints",
+      "/v1/desktop/sessions/2dcfc9d2b7f3/checkpoints",
       "pass",
       3
     ],
     [
-      41560,
+      40483,
       "POST",
-      "/v1/desktop/sessions/55e62ee37c8f/watch",
+      "/v1/desktop/sessions/2dcfc9d2b7f3/watch",
       "pass",
       3
     ],
     [
-      41560,
+      40483,
       "GET",
-      "/v1/desktop/sessions/55e62ee37c8f/mcp",
+      "/v1/desktop/sessions/2dcfc9d2b7f3/mcp",
       "pass",
       3
     ],
     [
-      41560,
-      "GET",
-      "/v1/desktop/sessions/55e62ee37c8f/command-entities?command=effort",
-      "pass",
-      3
-    ],
-    [
-      41561,
+      40483,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true",
       "pass",
       3
     ],
     [
-      42007,
+      40666,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       3
     ],
     [
-      42809,
-      "GET",
-      "/v1/desktop/sessions/55e62ee37c8f/history?limit=100",
-      "pass",
-      3
-    ],
-    [
-      43087,
-      "GET",
-      "/v1/config",
-      "pass",
-      3
-    ],
-    [
-      43087,
-      "GET",
-      "/v1/credentials",
-      "pass",
-      3
-    ],
-    [
-      43105,
-      "GET",
-      "/v1/desktop/sessions?limit=50&include_archived=true",
-      "pass",
-      3
-    ],
-    [
-      43127,
+      41070,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       3
     ],
     [
-      43184,
+      41621,
+      "GET",
+      "/v1/desktop/sessions/2dcfc9d2b7f3/history?limit=100",
+      "pass",
+      3
+    ],
+    [
+      42165,
       "GET",
       "/health",
       "pass",
       3
     ],
     [
-      48329,
+      42294,
+      "GET",
+      "/v1/config",
+      "pass",
+      3
+    ],
+    [
+      42295,
+      "GET",
+      "/v1/credentials",
+      "pass",
+      3
+    ],
+    [
+      42302,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      3
+    ],
+    [
+      42317,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      3
+    ],
+    [
+      47291,
       "POST",
       "/v1/desktop/presence",
       "pass",
       3
     ],
     [
-      49767,
+      48992,
       "POST",
-      "/v1/desktop/sessions/55e62ee37c8f/interrupt",
+      "/v1/desktop/sessions/2dcfc9d2b7f3/interrupt",
       "pass",
       3
     ],
     {
-      "at": 49767,
+      "at": 48992,
       "m": "POST",
-      "p": "/v1/desktop/sessions/55e62ee37c8f/interrupt",
+      "p": "/v1/desktop/sessions/2dcfc9d2b7f3/interrupt",
       "held": false,
       "interrupt": "pass"
     },
     [
-      50930,
+      49944,
+      "GET",
+      "/v1/desktop/sessions/2dcfc9d2b7f3/history?limit=100",
+      "pass",
+      3
+    ],
+    [
+      49948,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       3
     ],
     [
-      50930,
-      "GET",
-      "/v1/desktop/sessions/55e62ee37c8f/history?limit=100",
-      "pass",
-      3
-    ],
-    [
-      50937,
+      49948,
       "GET",
       "/v1/credentials",
       "pass",
       3
     ],
     [
-      50938,
+      49949,
       "GET",
       "/v1/config",
       "pass",
       3
     ],
     [
-      50951,
+      49960,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true",
       "pass",
       3
     ],
     [
-      51281,
+      50469,
       "GET",
       "/v1/desktop/asks",
       "pass",
       3
     ],
     [
-      53186,
+      52167,
       "GET",
       "/health",
       "pass",
       3
     ],
     [
-      53447,
+      52471,
       "GET",
       "/v1/settings",
       "pass",
       3
     ],
     [
-      53447,
-      "GET",
-      "/v1/desktop/sessions/36abf2197372/events?frontend_replace=1",
-      "pass",
-      3
-    ],
-    {
-      "at": 53447,
-      "m": "GET",
-      "p": "/v1/desktop/sessions/36abf2197372/events",
-      "held": false
-    },
-    [
-      53448,
-      "GET",
-      "/v1/desktop/sessions/36abf2197372/command-entities?command=effort",
-      "pass",
-      3
-    ],
-    [
-      53448,
-      "GET",
-      "/v1/desktop/sessions?limit=50&include_archived=true",
-      "pass",
-      3
-    ],
-    [
-      53449,
+      52472,
       "GET",
       "/v1/settings",
       "pass",
-      2
+      3
     ],
     [
-      53449,
+      52472,
       "GET",
       "/v1/desktop/asks",
       "pass",
-      2
+      3
     ],
     [
-      53475,
+      52472,
       "GET",
-      "/v1/desktop/sessions/36abf2197372/history?limit=100",
-      "pass",
-      3
-    ],
-    [
-      53478,
-      "GET",
-      "/v1/desktop/sessions/36abf2197372/checkpoints",
-      "pass",
-      3
-    ],
-    [
-      53479,
-      "GET",
-      "/v1/desktop/sessions/36abf2197372/mcp",
-      "pass",
-      3
-    ],
-    [
-      53480,
-      "POST",
-      "/v1/desktop/sessions/36abf2197372/watch",
-      "pass",
-      3
-    ],
-    [
-      53480,
-      "GET",
-      "/v1/desktop/sessions/36abf2197372/command-entities?command=effort",
-      "pass",
-      3
-    ],
-    [
-      53481,
-      "GET",
-      "/v1/desktop/sessions?limit=50&include_archived=true",
-      "pass",
-      3
-    ],
-    [
-      53529,
-      "GET",
-      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
-      "pass",
-      3
-    ],
-    [
-      53746,
-      "GET",
-      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
-      "pass",
-      3
-    ],
-    [
-      54642,
-      "GET",
-      "/v1/desktop/sessions/36abf2197372/history?limit=100",
-      "pass",
-      3
-    ],
-    [
-      55296,
-      "GET",
-      "/v1/desktop/sessions?limit=50&include_archived=true",
-      "pass",
-      3
-    ],
-    [
-      55323,
-      "GET",
-      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
-      "pass",
-      3
-    ],
-    [
-      57046,
-      "POST",
-      "/v1/desktop/sessions/36abf2197372/interrupt",
+      "/v1/desktop/sessions/ea96abfebb79/events?frontend_replace=1",
       "pass",
       3
     ],
     {
-      "at": 57046,
+      "at": 52472,
+      "m": "GET",
+      "p": "/v1/desktop/sessions/ea96abfebb79/events",
+      "held": false
+    },
+    [
+      52472,
+      "GET",
+      "/v1/desktop/sessions/ea96abfebb79/command-entities?command=effort",
+      "pass",
+      3
+    ],
+    [
+      52472,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      3
+    ],
+    [
+      52503,
+      "GET",
+      "/v1/desktop/sessions/ea96abfebb79/history?limit=100",
+      "pass",
+      3
+    ],
+    [
+      52506,
+      "POST",
+      "/v1/desktop/sessions/ea96abfebb79/watch",
+      "pass",
+      3
+    ],
+    [
+      52506,
+      "GET",
+      "/v1/desktop/sessions/ea96abfebb79/checkpoints",
+      "pass",
+      3
+    ],
+    [
+      52507,
+      "GET",
+      "/v1/desktop/sessions/ea96abfebb79/mcp",
+      "pass",
+      3
+    ],
+    [
+      52507,
+      "GET",
+      "/v1/desktop/sessions/ea96abfebb79/command-entities?command=effort",
+      "pass",
+      3
+    ],
+    [
+      52508,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      3
+    ],
+    [
+      52685,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      3
+    ],
+    [
+      53291,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      3
+    ],
+    [
+      53660,
+      "GET",
+      "/v1/desktop/sessions/ea96abfebb79/history?limit=100",
+      "pass",
+      3
+    ],
+    [
+      54320,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true",
+      "pass",
+      3
+    ],
+    [
+      54407,
+      "GET",
+      "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
+      "pass",
+      3
+    ],
+    [
+      56073,
+      "POST",
+      "/v1/desktop/sessions/ea96abfebb79/interrupt",
+      "pass",
+      3
+    ],
+    {
+      "at": 56073,
       "m": "POST",
-      "p": "/v1/desktop/sessions/36abf2197372/interrupt",
+      "p": "/v1/desktop/sessions/ea96abfebb79/interrupt",
       "held": false,
       "interrupt": "swallow"
     },
     [
-      63185,
+      62167,
       "GET",
       "/health",
       "pass",
       3
     ],
     [
-      63333,
+      62293,
       "POST",
       "/v1/desktop/presence",
       "pass",
       3
     ],
     [
-      63468,
+      62488,
       "GET",
       "/v1/desktop/asks",
       "pass",
       3
     ],
     [
-      66512,
+      65701,
       "GET",
       "/v1/capabilities",
       "pass",
       3
     ],
     [
-      68482,
+      67508,
       "POST",
-      "/v1/desktop/sessions/36abf2197372/watch",
+      "/v1/desktop/sessions/ea96abfebb79/watch",
       "pass",
       3
     ],
     [
-      68489,
+      67516,
       "GET",
-      "/v1/desktop/sessions/36abf2197372/mcp",
+      "/v1/desktop/sessions/ea96abfebb79/mcp",
       "pass",
       3
     ],
     [
-      73186,
+      72167,
       "GET",
       "/health",
       "pass",
       3
     ],
     [
-      73478,
+      72494,
       "GET",
       "/v1/desktop/asks",
       "pass",
       3
     ],
     [
-      74630,
+      73622,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true",
       "pass",
       3
     ],
     [
-      74674,
+      73688,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true&with_counts=true",
       "pass",
       3
     ],
     [
-      75570,
+      74563,
       "GET",
-      "/v1/desktop/sessions/36abf2197372/history?limit=100",
+      "/v1/desktop/sessions/ea96abfebb79/history?limit=100",
       "pass",
       3
     ],
     [
-      75573,
+      74565,
       "GET",
       "/v1/desktop/sessions?limit=50&include_archived=true",
       "pass",
       3
     ]
   ],
-  "appLogTail": "00\nError occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25851:31\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25881:21\n    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\n    at Session.emit (node:events:514:28)\n23:51:00.465 › Backend health check response status: 200\nError occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25851:31\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25881:21\n    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\n    at Session.emit (node:events:514:28)\n23:51:10.468 › Backend health check response status: 200\n23:51:20.468 › Backend health check response status: 200\nError occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25851:31\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25881:21\n    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\n    at Session.emit (node:events:514:28)\n",
-  "daemonLogTail": "0 - \"POST /v1/desktop/sessions/36abf2197372/watch HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:49577 - \"GET /v1/desktop/sessions/36abf2197372/mcp HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:49577 - \"GET /health HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:49577 - \"GET /v1/desktop/asks HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:49664 - \"POST /v1/desktop/sessions/36abf2197372/interrupt HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:49577 - \"GET /v1/desktop/sessions?limit=50&include_archived=true HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:49577 - \"GET /v1/desktop/sessions?limit=50&include_archived=true&with_counts=true HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:49577 - \"GET /v1/desktop/sessions/36abf2197372/history?limit=100 HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:49675 - \"GET /v1/desktop/sessions?limit=50&include_archived=true HTTP/1.1\" 200 OK\n"
+  "appLogTail": "00\nError occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25851:31\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25881:21\n    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\n    at Session.emit (node:events:514:28)\n00:49:19.570 › Backend health check response status: 200\nError occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25851:31\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25881:21\n    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\n    at Session.emit (node:events:514:28)\n00:49:29.572 › Backend health check response status: 200\n00:49:39.571 › Backend health check response status: 200\nError occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25851:31\n    at /Users/damian/local-operator-ui-worktrees/turn-lifecycle-honesty-1007/out/main/index.js:25881:21\n    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)\n    at Session.emit (node:events:514:28)\n",
+  "daemonLogTail": "3 - \"POST /v1/desktop/sessions/ea96abfebb79/watch HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:54293 - \"GET /v1/desktop/sessions/ea96abfebb79/mcp HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:54293 - \"GET /health HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:54293 - \"GET /v1/desktop/asks HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:54334 - \"POST /v1/desktop/sessions/ea96abfebb79/interrupt HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:54293 - \"GET /v1/desktop/sessions?limit=50&include_archived=true HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:54293 - \"GET /v1/desktop/sessions?limit=50&include_archived=true&with_counts=true HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:54293 - \"GET /v1/desktop/sessions/ea96abfebb79/history?limit=100 HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:54339 - \"GET /v1/desktop/sessions?limit=50&include_archived=true HTTP/1.1\" 200 OK\n"
 }

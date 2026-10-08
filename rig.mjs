@@ -96,6 +96,7 @@ const proxy = http.createServer((req, res) => {
   if (isEvents || isInterrupt) report.proxyLog.push({ at: Date.now() - t0, m: req.method, p: req.url.split("?")[0], held: px.holdEvents && isEvents, interrupt: isInterrupt ? px.interrupt : undefined });
   if (isEvents && px.holdEvents) { px.held.push(() => forward(req, res, true)); return; }
   if (isInterrupt && px.interrupt === "swallow") return; // never answered, never forwarded
+  if (isInterrupt && px.interrupt === "holdresp") { const up = http.request({ host: "127.0.0.1", port: DAEMON_PORT, method: req.method, path: req.url, headers: { ...req.headers, host: `127.0.0.1:${DAEMON_PORT}` } }, (ur) => { const chunks = []; ur.on("data", (c) => chunks.push(c)); ur.on("end", () => setTimeout(() => { res.writeHead(ur.statusCode ?? 502, ur.headers); res.end(Buffer.concat(chunks)); }, 900)); }); up.on("error", () => res.destroy()); req.pipe(up); return; }
   if (isInterrupt && typeof px.interrupt === "number") return void setTimeout(() => forward(req, res, false), px.interrupt);
   forward(req, res, isEvents);
 });
@@ -445,6 +446,73 @@ try {
     releaseHold();
     await sleep(1500); await snap(`${LABEL}-stopgap-3-restored`, "stream back, receipt still pending");
     await sleep(4500); await snap(`${LABEL}-stopgap-4-receipt`, "receipt delivered");
+    await endTurn(sid);
+  }
+
+  const sq = () => cdp.ev(`(() => { const b = document.querySelector('[aria-label="Stop"]'); if (!b) return null; const c = getComputedStyle(b); return JSON.stringify({bg: c.backgroundColor, border: c.borderTopColor, color: c.color, stopping: b.getAttribute("data-stopping"), busy: b.getAttribute("aria-busy"), hovered: b.matches(":hover"), disabled: b.disabled, opacity: c.opacity, name: b.getAttribute("aria-label")}); })()`).then((v) => (v ? JSON.parse(v) : null));
+  const mouseAway = () => cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 700, y: 300 });
+  const mouseOn = async () => { const b = await cdp.ev(`(() => { const r = document.querySelector('[aria-label="Stop"]').getBoundingClientRect(); return {x: r.left + r.width/2, y: r.top + r.height/2}; })()`); await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: b.x, y: b.y }); };
+
+  /* r3 sqhold: the pressed hold on the square, keyboard path (pointer away) and pointer path (pointer on it) */
+  if (want("sqhold")) {
+    const sid = await newSession(45);
+    await uiRunning(sid);
+    await mouseAway(); await sleep(400);
+    rec("sq.rest.unhovered", await sq()); await snap(`${LABEL}-sqhold-0-rest-unhovered`, "square at rest, pointer away");
+    await mouseOn(); await sleep(300);
+    rec("sq.rest.hovered", await sq()); await snap(`${LABEL}-sqhold-1-rest-hovered`, "square at rest, hovered");
+    await mouseAway(); await sleep(200);
+    px.interrupt = 6000;
+    await pressEscape(); await sleep(1200);
+    rec("sq.pending.unhovered", await sq()); await snap(`${LABEL}-sqhold-2-pending-unhovered`, "Escape pressed, pointer away, receipt held");
+    await mouseOn(); await sleep(300);
+    rec("sq.pending.hovered", await sq()); await snap(`${LABEL}-sqhold-3-pending-hovered`, "same, pointer on it");
+    await sleep(6000);
+    rec("sq.after", await sq()); await snap(`${LABEL}-sqhold-4-after-receipt`, "receipt in");
+    await endTurn(sid);
+  }
+
+  /* r3 strand: the receipt lands AFTER the feed already showed the end (interrupt forwarded at once, answer held 900ms) */
+  if (want("strand")) {
+    const sid = await newSession(45);
+    await uiRunning(sid);
+    await sleep(1500);
+    px.interrupt = "holdresp";
+    await aimAndPress(STOP);
+    await sleep(700); await snap(`${LABEL}-strand-1-+0.7s`, "feed has shown the end; receipt still held");
+    await sleep(600); await snap(`${LABEL}-strand-2-+1.3s`, "receipt landed");
+    await sleep(4000); await snap(`${LABEL}-strand-3-+5.3s`, "settled");
+    await sleep(6000); await snap(`${LABEL}-strand-4-+11.3s`, "later");
+    await endTurn(sid);
+  }
+
+  /* r3 u10: the answer is swallowed, the turn then ends server-side: the composer must stop saying 'Stopping the turn' when the feed shows the end */
+  if (want("u10")) {
+    const sid = await newSession(45);
+    await uiRunning(sid);
+    await sleep(1500);
+    px.interrupt = "swallow";
+    await aimAndPress(STOP);
+    await sleep(2000); await snap(`${LABEL}-u10-0-pressed+2s`, "pressed, answer swallowed");
+    await dapi("POST", `/v1/desktop/sessions/${sid}/interrupt`, { request_id: randomUUID() });
+    await sleep(500); await snap(`${LABEL}-u10-1-end+0.5s`, "turn ended server-side, feed shows it");
+    await sleep(2500); await snap(`${LABEL}-u10-2-end+3s`, "later");
+    await sleep(6000); await snap(`${LABEL}-u10-3-end+9s`, "later still");
+    px.interrupt = "pass"; await endTurn(sid);
+  }
+
+  /* r3 idleclock: disputed idle must withhold the clock; Escape x2 afterwards */
+  if (want("idleclock")) {
+    const sid = await newSession(6);
+    await uiRunning(sid);
+    px.freeze = true;
+    await waitFor(async () => !(await streaming(sid)), 25000, "server turn ended");
+    await sleep(500); await snap(`${LABEL}-idleclock-0-before`, "server idle, pane stale");
+    await pressEscape();
+    await sleep(900); await snap(`${LABEL}-idleclock-1-+0.9s`, "Escape; idle receipt; sentence up");
+    await sleep(3000); await snap(`${LABEL}-idleclock-2-+3.9s`, "still");
+    await sleep(6000); await snap(`${LABEL}-idleclock-3-+9.9s`, "still");
+    unfreeze(); await sleep(1500); await snap(`${LABEL}-idleclock-4-unfrozen`, "stream resumed");
     await endTurn(sid);
   }
 
