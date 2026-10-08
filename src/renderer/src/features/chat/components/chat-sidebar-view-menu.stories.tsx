@@ -1115,9 +1115,28 @@ export const TimeOrderMixed: Story = {
 		return <Page />;
 	},
 	play: async () => {
-		await waitFor(() => chatRows() >= 14);
-		await settled();
-		await sleep(350);
+		/*
+		 * THE LATCH (the repository's own idiom, `chat-sidebar-status-feed.stories
+		 * .tsx` carries the argument): the shutter is held until the frame is worth
+		 * taking. Two waits are needed rather than one, and the second is what the
+		 * latch exists for here: the readout's samples ride a 250 ms interval that a
+		 * HIDDEN page's timers throttle, so a frame taken the moment the rows paint
+		 * can carry `Drawn: 0` beside fourteen rows - which is exactly what this
+		 * story's first capture came back with, twice. The state the frame claims is
+		 * the READOUT's agreement with the DOM it describes.
+		 */
+		document.documentElement.dataset.capturePending = "1";
+		try {
+			await waitFor(() => chatRows() >= 14);
+			await waitFor(() =>
+				(document.body.textContent ?? "").includes("Drawn: 14 chat row(s)"),
+			);
+			await settled();
+			await sleep(350);
+		} finally {
+			/* Empty string, not `delete`: the probe reads the value's truthiness. */
+			document.documentElement.dataset.capturePending = "";
+		}
 	},
 };
 
@@ -2344,11 +2363,25 @@ export const AuditOrderMostRecent: Story = {
 		return <AuditPage />;
 	},
 	play: async () => {
-		await auditScene();
-		await openAuditPopover();
-		await pressGroupBy("flat");
-		await pressGroupBy("recent");
-		await settle(() => !rowDrawn("audit-busy-old"));
+		/*
+		 * THE SHUTTER IS HELD (the repository's own latch): the rig's readiness
+		 * probe is satisfied by the story's ELEMENTS, and this state is reached
+		 * through four real presses - so without the latch the frame can be taken
+		 * while the busy row is still drawn and the rig's `expectGone` refuses the
+		 * run, which is exactly what happened on the first re-shoot of this set
+		 * (2026-10-08). The latch makes the frame a function of the story's own
+		 * finished state.
+		 */
+		document.documentElement.dataset.capturePending = "1";
+		try {
+			await auditScene();
+			await openAuditPopover();
+			await pressGroupBy("flat");
+			await pressGroupBy("recent");
+			await settle(() => !rowDrawn("audit-busy-old"));
+		} finally {
+			document.documentElement.dataset.capturePending = "";
+		}
 	},
 };
 
@@ -2369,11 +2402,17 @@ export const AuditOrderActiveFirst: Story = {
 		return <AuditPage />;
 	},
 	play: async () => {
-		await auditScene();
-		await openAuditPopover();
-		await pressGroupBy("flat");
-		await pressGroupBy("recent");
-		await pressGroupBy("active-first");
-		await settle(() => rowDrawn("audit-busy-old"));
+		/* The latch, for the reason the story above states. */
+		document.documentElement.dataset.capturePending = "1";
+		try {
+			await auditScene();
+			await openAuditPopover();
+			await pressGroupBy("flat");
+			await pressGroupBy("recent");
+			await pressGroupBy("active-first");
+			await settle(() => rowDrawn("audit-busy-old"));
+		} finally {
+			document.documentElement.dataset.capturePending = "";
+		}
 	},
 };
