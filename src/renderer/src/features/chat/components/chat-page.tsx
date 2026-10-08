@@ -155,7 +155,10 @@ import { canvasDocumentForPath } from "../utils/canvas-document";
 import { messageBudgetRefusal } from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
 import type { HeaderIdentityData } from "./chat-header-identity";
-import { headerIdentityControlsShown } from "./chat-header-identity-model";
+import {
+	headerHostKey,
+	headerIdentityControlsShown,
+} from "./chat-header-identity-model";
 import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	deriveRunDetails,
@@ -3156,7 +3159,8 @@ function SessionPanel({
 					 * host's absent field and `{}` both reach it as they arrived.
 					 */
 					effectiveIdentity: canonical.frontend?.effective_identity ?? null,
-					hostKey: boundRow?.owner_device ?? "",
+					hostKey: headerHostKey(boundRow),
+					frameEpoch: canonical.frontend?.epoch ?? null,
 				} satisfies HeaderIdentityData)
 			: undefined;
 	/*

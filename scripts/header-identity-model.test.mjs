@@ -43,9 +43,11 @@ const {
 	headerIdentityAgentFlagged,
 	headerIdentityControlsShown,
 	createHostPublishRecord,
+	headerHostKey,
 	identityAgentClosedCaption,
 	identityAgentConstraint,
 	identityAgentSettable,
+	isColdFrame,
 	resolveHeaderIdentity,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -697,16 +699,99 @@ test("a cold frame with no team bound is not a closed seat, even on a strict hos
 	assert.equal(view.agentValue, "coder");
 });
 
-test('a published `team: ""` outranks a stale bound team (review N2)', () => {
+/*
+ * THE TWO CORE COLD SHAPES, pinned side by side (review R3, QA Q4). Both are
+ * core PR #2050's frame for a session no runtime has engaged, stamped
+ * `epoch: "cold-<session_id>"`:
+ *
+ * - f98240bd42: `effective_identity` is `{}` (the field is not set at all);
+ * - 7905eab965: `effective_identity` is the EMPTY STATEMENT
+ *   `{speaker:"", team:"", role_of_speaker:""}` and `active_team` is `""`
+ *   (`attached.py` `saved_preview`, `cold_model.py` `synthesise_cold_state`),
+ *   with core's own comment that the header should read the catalogue row's
+ *   stored team/agent until the first warm frame.
+ *
+ * Both are team-bound in the catalogue (`boundTeam`), and in neither may the
+ * chips blank (`No team` / `No agent`) or the seat open. What differs is why the
+ * seat is closed: `{}` needs the host's sticky record, the empty statement is
+ * itself a published statement and needs nothing.
+ */
+const COLD_BOUND = {
+	activeAgent: "",
+	activeTeam: "",
+	boundAgent: "",
+	boundTeam: "lopdev",
+	teams: TEAMS,
+};
+
+test("core 7905eab965's cold frame (the published-EMPTY statement) never blanks a team-bound chat", () => {
+	for (const hostPublishes of [undefined, false, true]) {
+		const view = resolveHeaderIdentity({
+			...COLD_BOUND,
+			effectiveIdentity: STRICT_NO_TEAM,
+			coldFrame: true,
+			hostPublishes,
+		});
+		// The chips read the BINDING, as core's own comment instructs.
+		assert.equal(view.teamValue, "lopdev");
+		assert.equal(view.teamLabel, "lopdev");
+		assert.equal(view.agentValue, "manager");
+		// The empty statement is a published statement: strict, closed, and the
+		// speaker is the catalogue row's manager.
+		assert.notEqual(view.seat, null);
+		assert.equal(view.seat.speaker, "manager");
+		assert.equal(view.seat.speakerKnown, true);
+	}
+});
+
+test("core f98240bd42's cold frame (`{}`) on a host that has published: chips from the binding, seat closed", () => {
 	const view = resolveHeaderIdentity({
-		activeAgent: "",
-		boundTeam: "lopdev",
-		teams: TEAMS,
-		effectiveIdentity: STRICT_NO_TEAM,
+		...COLD_BOUND,
+		effectiveIdentity: {},
+		coldFrame: true,
 		hostPublishes: true,
 	});
+	assert.equal(view.teamValue, "lopdev");
+	assert.equal(view.agentValue, "manager");
+	assert.notEqual(view.seat, null);
+});
+
+test("core f98240bd42's cold frame (`{}`) on a host that never published: #866, chips from the binding", () => {
+	const view = resolveHeaderIdentity({
+		...COLD_BOUND,
+		effectiveIdentity: {},
+		coldFrame: true,
+		hostPublishes: false,
+	});
 	assert.equal(view.seat, null);
-	assert.equal(view.teamValue, null);
+	assert.equal(view.teamValue, "lopdev");
+	assert.equal(view.agentValue, "manager");
+});
+
+test('a LIVE published `team: ""` outranks a stale bound team, and a COLD one does not (review N2 / R3)', () => {
+	// After `/team clear` the host says no team on a live frame while the
+	// catalogue row has not refreshed: the stale binding must lose.
+	const live = resolveHeaderIdentity({
+		...COLD_BOUND,
+		effectiveIdentity: STRICT_NO_TEAM,
+		coldFrame: false,
+	});
+	assert.equal(live.seat, null);
+	assert.equal(live.teamValue, null);
+	// On a cold frame the same statement says nothing about the team.
+	const cold = resolveHeaderIdentity({
+		...COLD_BOUND,
+		effectiveIdentity: STRICT_NO_TEAM,
+		coldFrame: true,
+	});
+	assert.equal(cold.teamValue, "lopdev");
+});
+
+test("a cold frame is told by core's `cold-<session_id>` epoch, and nothing else", () => {
+	assert.equal(isColdFrame("cold-2d5ad5da0025"), true);
+	for (const warm of ["a1b2c3", "", null, undefined, "colder"]) {
+		assert.equal(isColdFrame(warm), false);
+	}
 });
 
 test("the capability record is per host and never leaks across hosts", () => {
@@ -714,9 +799,114 @@ test("the capability record is per host and never leaks across hosts", () => {
 	assert.equal(record.has(""), false);
 	record.note("");
 	assert.equal(record.has(""), true);
-	// A peer's runtime may be older: its sessions key on its own device.
-	assert.equal(record.has("laptop-b"), false);
+	// A peer's runtime may be older: its sessions key on their own host.
+	assert.equal(record.has("peer:laptop-b"), false);
 	record.reset();
+	assert.equal(record.has(""), false);
+});
+
+test("the host key: a peer is never the local host, and an absent row is nobody (review R5)", () => {
+	assert.equal(headerHostKey({ locality: "local" }), "");
+	// A plain listing carries no locality: only this device's daemon answers one.
+	assert.equal(headerHostKey({}), "");
+	assert.equal(
+		headerHostKey({ locality: "remote", owner_device: "laptop-b" }),
+		"peer:laptop-b",
+	);
+	// A remote row that names no owner cannot be attributed: no key at all.
+	assert.equal(headerHostKey({ locality: "remote", owner_device: "" }), null);
+	assert.equal(headerHostKey(undefined), null);
+	assert.equal(headerHostKey(null), null);
+});
+
+/*
+ * THE RECORD FAILS OPEN (review R4, QA Q3). The renderer is not reloaded when a
+ * daemon is replaced in place, so a strict host followed by an older runtime on
+ * the same port must not leave the older host classified strict. The record is
+ * wiped on the feed's process epoch changing, on the connection dropping and on
+ * the capability being withdrawn, and is re-established ONLY from a warm frame.
+ * `frame()` is the header component's own two steps: a warm frame notes the host
+ * (an effect), and `hostPublishes` is the frame's own statement or the record.
+ */
+const COLD_TEAM_BOUND_EMPTY = {
+	...COLD_BOUND,
+	effectiveIdentity: {},
+	coldFrame: true,
+};
+const frameOf = (record, input, key = "") => {
+	const published =
+		effectiveIdentityPublished(input.effectiveIdentity) !== null;
+	if (published) record.note(key);
+	return resolveHeaderIdentity({
+		...input,
+		hostPublishes: published || record.has(key),
+	});
+};
+const WARM_TEAM_FRAME = {
+	activeAgent: "manager",
+	activeTeam: "lopdev",
+	boundTeam: "lopdev",
+	teams: TEAMS,
+	effectiveIdentity: STRICT_TEAM,
+};
+
+test("strict host, then an invalidation signal, then `{}` -> #866; then a warm frame -> strict again", () => {
+	for (const signal of [
+		(record) => record.observeProcess("epoch-b"),
+		(record) => record.reset(),
+	]) {
+		const record = createHostPublishRecord();
+		record.observeProcess("epoch-a");
+		assert.notEqual(frameOf(record, WARM_TEAM_FRAME).seat, null);
+		// Cold `{}` while the record stands: strict, as before.
+		assert.notEqual(frameOf(record, COLD_TEAM_BOUND_EMPTY).seat, null);
+		// The host may have changed (older runtime on the same port):
+		signal(record);
+		const afterSwap = frameOf(record, COLD_TEAM_BOUND_EMPTY);
+		assert.equal(afterSwap.seat, null);
+		assert.equal(
+			identityAgentSettable({
+				name: "manager",
+				manager: afterSwap.teamManager,
+				delegate: false,
+				teamOwnsSeat: afterSwap.seat !== null,
+			}),
+			true,
+		);
+		// Only a warm frame re-establishes it.
+		assert.notEqual(frameOf(record, WARM_TEAM_FRAME).seat, null);
+		assert.notEqual(frameOf(record, COLD_TEAM_BOUND_EMPTY).seat, null);
+	}
+});
+
+test("the process epoch wipes the record only when it CHANGES, and notifies subscribers", () => {
+	const record = createHostPublishRecord();
+	let notified = 0;
+	const off = record.subscribe(() => {
+		notified += 1;
+	});
+	// The first epoch seen learned nothing under an earlier one: nothing to wipe.
+	record.observeProcess("a");
+	record.note("");
+	const afterNote = notified;
+	record.observeProcess("a");
+	assert.equal(record.has(""), true);
+	assert.equal(notified, afterNote);
+	record.observeProcess("b");
+	assert.equal(record.has(""), false);
+	assert.equal(notified, afterNote + 1);
+	off();
+	record.note("");
+	assert.equal(notified, afterNote + 1);
+});
+
+test("a local reset wipes the peers' records too: the feed cannot vouch for a peer (fail open)", () => {
+	const record = createHostPublishRecord();
+	record.note("peer:laptop-b");
+	record.note("");
+	record.reset();
+	// The feed is this device's daemon's, so it cannot vouch for a peer either.
+	assert.equal(record.has("peer:laptop-b"), false);
 	assert.equal(record.has(""), false);
 });
 
