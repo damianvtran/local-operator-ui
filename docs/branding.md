@@ -385,13 +385,20 @@ and must clear 3:1. If no, delete it rather than reaching for `hairline`.
 **The panel rail is chrome (#872).** The 44px column at the window's right edge
 holds the four right-slot doors, and it stands on the sidebar's rung: `surface`,
 with **no drawn rule** at its leading edge - the boundary is the tone step alone,
-the way the sidebar's own edge is carried (there is no line between it and the
-chat pane either). Against the conversation's `canvas` with no pane it measures
-ΔE00 2.05 at the fleet's tightest (`sage`) to 6.76 (`radient`), median 2.94;
-against the slot's `elevated` with a pane open 2.02 (`arcade`) to 6.62
-(`gruvboxLight`), median 2.58 - the ladder's own asserted adjacent pairs
-(`canvas`/`surface`, `surface`/`elevated`, floor 2.0 in
-`scripts/contrast-contract.mjs`). `scripts/pane-slot-ground.test.mjs` pins the
+following the left sidebar's own edge (there is no line between it and the chat
+pane either). That is a choice to match the sidebar, not a sufficiency claim: the
+ladder asserts these pairs at the 2.0 field floor, and
+`REGION_SEPARATION_FLOOR` (4.0) in `scripts/contrast-contract.mjs` is the
+stronger bar it sets for two full-height planes with no line between them.
+Against the conversation's `canvas` with no pane the step measures ΔE00 2.05 at
+the fleet's tightest (`sage`) to 6.76 (`radient`), median 2.94 (2.77
+`localOperatorDark`, 2.32 `localOperatorLight`); against the slot's `elevated`
+with a pane open 2.02 (`arcade`) to 6.62 (`gruvboxLight`), median 2.58 (3.29
+dark, 2.50 light). Where a pane draws its own `surface` plane flush to the rail,
+the two chrome planes meet with no step by design: the canvas Files list
+scroller, the browser approvals dock, the canvas markdown viewer's root (via the
+`display: contents` tab panel) and the html/pdf preview iframe grounds are all
+`bg-surface`. `scripts/pane-slot-ground.test.mjs` pins the
 absence: the rail's root carries its ground and no border, divide or shadow, so
 the rule this paragraph used to describe cannot come back as a second way of
 drawing the edge. The lit item is the sidebar's selected-row pair, `rowSelected`
