@@ -479,6 +479,29 @@ export function wakeIsCatchup(details: Record<string, unknown>): boolean {
 }
 
 /**
+ * Is this wake row a HIDDEN delivery - one no human surface may paint?
+ *
+ * Two producers write the marker today: a patience fire (`ask`'s internal
+ * timer), and Aida's first-run greeting trigger, whose text is a factual line
+ * addressed to her (`[first-run] surface=desktop; ...`). The operator's rule for
+ * the second is that the conversation OPENS on her message: a wake receipt, or
+ * worse a user row, above it reads as if the user had typed the trigger.
+ *
+ * The core decides this once (`harness/rows.py::is_hidden_wake_delivery`) and
+ * already drops the row from the history window it serves, so on a current
+ * backend this is the second line of defence: it covers a page from an owner
+ * whose window predates that drop and a `history_delta` frame, which reaches
+ * `durableRecord` without passing through the window at all.
+ *
+ * STRICT `=== true`: the producer writes a JSON boolean, and the fail-safe
+ * direction is to SHOW a row - hiding something a person needed to see is the
+ * worse failure (the same asymmetry `isHarnessInjected` states).
+ */
+export function wakeIsHidden(details: Record<string, unknown>): boolean {
+	return details.hidden === true;
+}
+
+/**
  * The human-readable headline of a wake delivery.
  *
  * A wake's persisted text is `<envelope>\n\n<message>`, and the envelope is

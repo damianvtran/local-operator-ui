@@ -75,6 +75,7 @@ import {
 	connectedRows,
 	modelDisplayName,
 	monogramOf,
+	moreProvidersSummary,
 	providerGroup,
 	rowActionLabel,
 } from "./provider-catalog";
@@ -1057,7 +1058,12 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 				) : null}
 				{searching || restCount > 0 ? (
 					<Disclosure
-						summary="More providers"
+						/*
+						 * The summary NAMES what is behind it (first-run onboarding, D11): a
+						 * bare "More providers" hid xAI, OpenRouter, DeepSeek and the local
+						 * runtimes from anyone who did not think to open it.
+						 */
+						summary={moreProvidersSummary(rest)}
 						defaultOpen={focusGroup !== null || initialProviderId !== null}
 						chevron="trailing"
 					>

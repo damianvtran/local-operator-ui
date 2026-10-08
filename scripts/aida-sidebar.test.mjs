@@ -63,6 +63,8 @@ const bundle = await build({
 const {
 	aidaControlFailureCopy,
 	aidaControlReceipt,
+	aidaGreetFailure,
+	aidaGreetHeldNotice,
 	aidaMessageText,
 	aidaReservedAction,
 	DesktopControlError,
@@ -450,5 +452,89 @@ test("the two ops exist in the shared vocabulary with the route they map to", ()
 		contract,
 		/body: \{ op: request\.action \},/,
 		"the action travels under the route's own `op` field",
+	);
+});
+
+/*
+ * First-run setup's landing (first-run onboarding, U1/A2): "Meet <name>" sends
+ * `greet`, and every refusal still lands the user in the chat - what differs is
+ * the sentence, keyed on the transport's vetted CODE rather than on the
+ * backend's prose. Executed, not pinned as source, for the reason the copy test
+ * above gives.
+ */
+test("first-run greet refusals land in the chat with a sentence keyed on the code", () => {
+	const refusal = (status, code) =>
+		new DesktopControlError(
+			status,
+			"backend prose that may change",
+			undefined,
+			code,
+		);
+	// 409 aida_no_provider: a fact and its remedy, at info - nothing broke.
+	const noProvider = aidaGreetFailure(refusal(409, "aida_no_provider"), "Ada");
+	assert.equal(noProvider.kind, "info");
+	assert.match(
+		noProvider.text,
+		/^Ada will say hello once an AI account is connected/,
+	);
+	// 409 aida_disabled: silence - setup does not advertise a switched-off feature.
+	assert.equal(aidaGreetFailure(refusal(409, "aida_disabled"), "Ada"), null);
+	// Anything else: an error that says where the user is, through the one copy path.
+	const other = aidaGreetFailure(new Error("TypeError: fetch failed"), "Ada");
+	assert.equal(other.kind, "error");
+	assert.match(
+		other.text,
+		/^Ada's conversation could not be opened, so you are in a new chat instead\./,
+	);
+	assert.doesNotMatch(other.text, /TypeError/);
+	// A paused Aida opens her conversation and says why she has not spoken yet;
+	// an active or already-greeted one says nothing extra.
+	assert.match(
+		aidaGreetHeldNotice({ paused: true, greeted: false }, "Ada"),
+		/\/aida resume/,
+	);
+	assert.equal(
+		aidaGreetHeldNotice({ paused: false, greeted: false }, "Ada"),
+		null,
+	);
+	assert.equal(
+		aidaGreetHeldNotice({ paused: true, greeted: true }, "Ada"),
+		null,
+	);
+});
+
+test("setup's last step greets through the control op, never before the press", () => {
+	/*
+	 * A SHAPE pin, the same bargain `onboarding-step-block.test.mjs` strikes for
+	 * this modal: rendering it needs a store, a dialog and a query client to
+	 * assert one call. What matters, and what this holds: `greet` is sent from the
+	 * press handler (attended - the operator's rule that the greeting is never
+	 * requested by a background launch), its session id is what the conversation
+	 * opens on, and the switch goes through the shared rule.
+	 */
+	const modal = readFileSync(
+		"src/renderer/src/features/onboarding/components/onboarding-modal.tsx",
+		"utf8",
+	);
+	assert.match(modal, /const state = await aidaControl\("greet"\);/);
+	assert.match(modal, /openConversation\(navigate, state\.session_id\)/);
+	assert.equal(
+		modal.split('aidaControl("greet")').length - 1,
+		1,
+		"one greet call site: the press",
+	);
+	// Inside the press handler and nowhere else: the greet call sits between
+	// `const meetAida = useCallback(` and the next hook, which is a press.
+	const handler = modal.indexOf("const meetAida = useCallback(");
+	const greet = modal.indexOf('aidaControl("greet")');
+	assert.ok(handler >= 0 && greet > handler, "greet is not inside meetAida");
+	assert.ok(
+		modal.indexOf("}, [", handler) > greet,
+		"greet must not be sent from an effect - that is a launch, not a press",
+	);
+	assert.match(
+		modal,
+		/await meetAida\(\)/,
+		"the last step's primary press calls it",
 	);
 });

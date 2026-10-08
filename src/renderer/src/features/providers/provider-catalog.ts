@@ -42,13 +42,64 @@ export const RECOMMENDED_PROVIDER_ID = "radient";
  * The rows onboarding shows before "More providers": the recommendation, the
  * two subscriptions most people already pay for, and one key provider so the
  * key route is visible without expanding anything (design § 5).
+ *
+ * THE KEY ROW IS GOOGLE NOW, not DeepSeek (first-run onboarding, D11/U7): the
+ * one key provider a first-time user is shown should be one they recognise, and
+ * Gemini is. DeepSeek, xAI and OpenRouter are named in the "More providers"
+ * summary instead (`moreProvidersSummary`), so none of them is hidden behind an
+ * unlabelled disclosure.
  */
 export const FEATURED_PROVIDER_IDS = [
 	"radient",
 	"anthropic",
 	"openai",
-	"deepseek",
+	"google",
 ] as const;
+
+/**
+ * The brands the "More providers" summary names, in order, when they are behind
+ * it. The operator's list of providers that must stay easy to find (xAI,
+ * OpenRouter, DeepSeek) leads; Google is featured above, so it is named here
+ * only on a census where it is not.
+ */
+const MORE_PROVIDERS_NAMED = [
+	"xai",
+	"openrouter",
+	"google",
+	"deepseek",
+	"mistral",
+] as const;
+const MORE_PROVIDERS_NAMED_LIMIT = 3;
+
+/**
+ * What the "More providers" disclosure says is behind it (first-run onboarding,
+ * D11): `More providers: xAI, OpenRouter, DeepSeek, local models and 8 more`.
+ *
+ * DERIVED FROM THE ROWS IT HIDES, never written as a literal, so it cannot name a
+ * provider that is not there or under-count the ones that are: the names are the
+ * rows' own brands, "local models" appears only when the local group is
+ * non-empty, and the count is exactly the rows not otherwise named.
+ */
+export function moreProvidersSummary(rest: {
+	subscription: DesktopProvider[];
+	key: DesktopProvider[];
+	local: DesktopProvider[];
+}): string {
+	const cloud = [...rest.subscription, ...rest.key];
+	const named = MORE_PROVIDERS_NAMED.map((id) =>
+		cloud.find((provider) => provider.id === id),
+	)
+		.filter((provider): provider is DesktopProvider => provider !== undefined)
+		.slice(0, MORE_PROVIDERS_NAMED_LIMIT);
+	const parts = named.map((provider) => brandOf(provider));
+	if (rest.local.length > 0) parts.push("local models");
+	const others = cloud.length - named.length;
+	if (parts.length === 0) return "More providers";
+	if (others > 0)
+		return `More providers: ${parts.join(", ")} and ${others} more`;
+	if (parts.length === 1) return `More providers: ${parts[0]}`;
+	return `More providers: ${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
 
 /** "Anthropic (Claude Pro/Max)" -> "Anthropic"; a name without one is kept. */
 export function brandOf(provider: {
