@@ -2788,6 +2788,11 @@ export function useCanonicalSessionStream(
 			 * joined to it is joined to the held rows too, whatever else ended the walk.
 			 * `painted === held` is a caller with no separate batch (the retry paths),
 			 * where the intersection is the whole set and proves nothing.
+			 *
+			 * BOTH SIDES ARE RECORD KEYS (review round 4, R4-1): `painted` is built from
+			 * `entryRecordKey` of the batch's page entries and `held` from the view's
+			 * record ids, so a page that touches the held block only through a TOOL row
+			 * (`tool:<call_id>`, the top of every busy turn) is seen as touching it.
 			 */
 			const batchTouchesHeld =
 				painted !== held && [...painted].some((id) => held.has(id));
@@ -3275,7 +3280,8 @@ export function useCanonicalSessionStream(
 					joined ||
 					painted.size === 0 ||
 					page.entries.some(
-						(entry) => painted.has(entry.id) || fetchedIds.has(entry.id),
+						(entry) =>
+							painted.has(entryRecordKey(entry)) || fetchedIds.has(entry.id),
 					);
 				/*
 				 * The held seam, latched the same way and deliberately NOT through
@@ -3571,15 +3577,21 @@ export function useCanonicalSessionStream(
 				viewRef.current.transcript.argsByCall.keys(),
 			);
 			const seedEvents: Record<string, unknown>[] = [];
-			// Every id the frames in this batch put on screen. A durable entry id
-			// and a live message id are the same id space (that is why the reducer
-			// coalesces on it), which is what makes this the connection proof
-			// `reconcileTail` tests a fetched page against.
+			// Every RECORD key the frames in this batch put on screen. A durable
+			// entry id and a live message id are the same id space (that is why the
+			// reducer coalesces on it), which is what makes this the connection proof
+			// `reconcileTail` tests a fetched page against - and "record key" is the
+			// point (#876, review round 4): a tool entry is held as `tool:<call_id>`,
+			// and every comparison between a page and what the pane holds must go
+			// through `entryRecordKey` on the page side or a page that connects
+			// through a tool row reads as disjoint. The retry paths already hand
+			// `reconcileTail` the view's index keys, which are record keys too, so the
+			// walk now compares one key space whoever called it.
 			const paintedEntryIds = new Set<string>();
 			for (const frame of frames) {
 				if (frame.type !== "snapshot") continue;
 				for (const entry of frame.payload.history.entries) {
-					paintedEntryIds.add(entry.id);
+					paintedEntryIds.add(entryRecordKey(entry));
 					const calls = entry.payload?.tool_calls;
 					if (!Array.isArray(calls)) continue;
 					for (const call of calls as Record<string, unknown>[]) {
@@ -5177,6 +5189,16 @@ export function useCanonicalSessionStream(
 		const requested = sessionId;
 		const epoch = epochRef.current.epoch;
 		const stillHere = () => epochRef.current.epoch === epoch;
+		/*
+		 * A `/clear` is view-only and does not move the session epoch above, so
+		 * `stillHere` alone cannot tell this read that the rows it is about to merge
+		 * are the rows the reader just removed (#876, review round 4; the same
+		 * defect as the walk's, through the loader's arm). `viewEpoch` is the
+		 * counter `clearTranscript` bumps for exactly this.
+		 */
+		const viewEpochAtDispatch = viewRef.current.transcript.viewEpoch;
+		const notCleared = () =>
+			viewRef.current.transcript.viewEpoch === viewEpochAtDispatch;
 		// Single-flight is per VIEW for the same reason `isCurrent` is: a page left
 		// out for a previous visit to this conversation resolves `stale`, and handing
 		// that promise to the returning reader would answer their ask with a dropped
@@ -5190,7 +5212,7 @@ export function useCanonicalSessionStream(
 					beforeId,
 					limit: 100,
 				}),
-			isCurrent: stillHere,
+			isCurrent: () => stillHere() && notCleared(),
 			commit: (update) =>
 				commitView((current) => {
 					const transcript = update(current.transcript);
