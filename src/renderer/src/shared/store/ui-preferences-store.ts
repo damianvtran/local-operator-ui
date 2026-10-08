@@ -1195,6 +1195,35 @@ export function resolveRightSlotOccupied(state: UiPreferencesState): boolean {
 }
 
 /**
+ * Whether the pane DRAWN in the right slot is one of the two that size
+ * themselves like the canvas - the canvas itself and the asks drawer - which is
+ * the question the sidebar's yield is asking (agent review round 1, R2).
+ *
+ * `resolveSidebarLayout`'s last argument is §I's first yielding step: a docked
+ * sidebar steps down to the strip so a DOCKING canvas keeps its 400px floor. It
+ * used to be fed the bare `isCanvasOpen || isAskDrawerOpen`, which is the same
+ * claim-only reading #868 removed from the width and the header: a flag that
+ * outlived its route (a session-scoped drawer on a draft, the canvas on a
+ * settings route) still collapsed the sidebar at 1024-1139px for a pane nobody
+ * could see. The run panel, the browser and the console are deliberately not in
+ * this answer - they never yielded the sidebar before, and the row's own width
+ * arithmetic (`resolveRightSlotWidth`) is what keeps their floors.
+ *
+ * It is a third reader of the SAME two inputs (`activeRightSlotPane` and
+ * `rightSlotPaneDrawable`), not a third copy of the disjunction: the shell reads
+ * it because the sidebar belongs to the shell, above the component that
+ * publishes the route facts.
+ */
+export function resolveRightSlotYieldsSidebar(
+	state: UiPreferencesState,
+): boolean {
+	const pane = activeRightSlotPane(state);
+	return (
+		(pane === "canvas" || pane === "ask") && rightSlotPaneDrawable(pane, state)
+	);
+}
+
+/**
  * A one-shot request to bring one of the pane's sections into view.
  */
 export type RunPanelReveal = {
@@ -1443,7 +1472,7 @@ const applyChatMeasureOverride = (width: number | null): void => {
 
 export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
-		(set) => ({
+		(set, get) => ({
 			isCommandPaletteOpen: false,
 			commandPaletteQuery: "",
 			isSidebarCollapsed: false,
@@ -1660,14 +1689,30 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			},
 
 			setRightSlotRoute: (route: RightSlotRouteFacts) => {
-				// The identity is kept when nothing moved: see the field's own note.
-				set((state) =>
-					state.rightSlotRoute.mounted === route.mounted &&
-					state.rightSlotRoute.runDetails === route.runDetails &&
-					state.rightSlotRoute.session === route.session
-						? {}
-						: { rightSlotRoute: { ...route } },
-				);
+				/*
+				 * THE EQUALITY GUARD SITS BEFORE `set`, not inside its updater (agent review
+				 * round 1, R1). Two layers each re-act to a `set` whose result is unchanged,
+				 * and an updater can only silence one of them:
+				 *
+				 * - an updater returning `{}` builds a fresh state object, so zustand
+				 *   replaces the store and wakes every listener (it short-circuits only on
+				 *   `Object.is(next, state)`);
+				 * - an updater returning `state` stops that, but `persist` wraps `set` and
+				 *   calls `setItem()` after EVERY call regardless of the result, so the
+				 *   whole preferences blob was still serialised to localStorage.
+				 *
+				 * Not calling `set` at all is the one spelling that is a no-op in both.
+				 * The publisher re-runs for its own reasons, so this has to be cheap.
+				 */
+				const current = get().rightSlotRoute;
+				if (
+					current.mounted === route.mounted &&
+					current.runDetails === route.runDetails &&
+					current.session === route.session
+				) {
+					return;
+				}
+				set({ rightSlotRoute: { ...route } });
 			},
 
 			setBrowserPaneScope: (scope: BrowserPaneScope) => {
