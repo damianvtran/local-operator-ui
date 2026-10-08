@@ -18,12 +18,19 @@
  * is where the operator's "showing and hiding sections, reordering" lives.
  *
  * WHY `Time basis` IS ITS OWN GROUP AND NOT A FOURTH RADIO IN `Group by`. It is
- * a third axis of the view, not a way OF grouping: it changes what the time
- * numbers beside the titles MEASURE (time since the conversation last moved
- * against time since it was created), it is orthogonal to how rows are grouped
- * and ordered, and a reader looking for "which date do these bins use" would
- * not look under `Group by`. The label never says "bin" - the operator's own
- * word for the control is "how that works", and the sections keep their names.
+ * a third axis of the view, not a way OF grouping: it changes which clock the
+ * time sections and the numbers beside the titles read - time since the
+ * conversation last moved against time since it was created - and, since the
+ * operator's 2026-10-08 instruction, the clock the list is ARRANGED by below
+ * the running lift (`chat-sidebar-view.ts`'s `pageOrder`: his report was that the
+ * rows did not sort within a section by the basis he had chosen, and "in that
+ * case it should show what we have selected/expect"). It was documented here as
+ * "orthogonal to how rows are grouped and ordered" until the same day, and that
+ * sentence is why the shell of this control never moved when the rule reversed:
+ * the group's own copy is unchanged, and a reader looking for "which date do
+ * these bins use" still does not look under `Group by`. The label never says
+ * "bin" - the operator's own word for the control is "how that works", and the
+ * sections keep their names.
  *
  * WHY REORDER IS ARROW BUTTONS RATHER THAN A DRAG, AND WHY THE ARROWS ARE
  * THE ONLY ROUTE TO A CHANGED SECTION ORDER. The operator asked for reordering

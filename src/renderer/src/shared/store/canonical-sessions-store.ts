@@ -88,6 +88,26 @@ export type CanonicalSessionRow = {
 	 * is how a renamed field would empty the basis silently.
 	 */
 	created_at?: number | null;
+	/**
+	 * The time of the last USER message in this conversation, in epoch SECONDS -
+	 * the clock a RUNNING row's order reads (`chat-sidebar-view.ts`'s `pageOrder`
+	 * states why a response must not move a running row and a message may).
+	 *
+	 * DECLARED EXPLICITLY for the reason `created_at` above and `asks_open`
+	 * below give: this row type has an index signature, so without a declaration
+	 * every read of the "running order" key is `unknown` at the one reader
+	 * (`chat-list-sections.ts`'s `runningOrderMs`, which reads it through
+	 * `LAST_USER_AT_FIELD` - the two spellings must stay one string).
+	 *
+	 * THE BACKEND DOES NOT PUBLISH IT YET (2026-10-08), on either wire: the
+	 * catalogue row and the mesh row both carry `mtime`/`created_at` and nothing
+	 * user-message-shaped, so today every running row falls back to `created_at`
+	 * and the running band is a birth order. The declaration is what the core
+	 * change lands against - the field arrives with the read that fetched it
+	 * (`projectRows` spreads the wire row's fields onto this one), and a core PR
+	 * is a separate lane from this one.
+	 */
+	last_user_at?: number | null;
 	preview?: string | null;
 	attention?: CompletionAttention;
 	live_state?: string;
@@ -4547,8 +4567,9 @@ type CanonicalSessionsState = {
 	 *   2. THE REMOTE ROWS ARE UPSERTED through `mergeRow`, exactly as a page's
 	 *      rows are - incoming wins, an absent key is not a claim. New rows are
 	 *      APPENDED in the answer's own order; the order the sidebar DRAWS is
-	 *      not this array's (`mergeRemoteRowsByActivity` states that rule where
-	 *      the list is built).
+	 *      not this array's (`chat-sidebar-view.ts`'s `pageOrder` arranges every
+	 *      drawn row by the reader's chosen clock, which is why the ordering
+	 *      merge that used to sit in `chat-remote.ts` retired on 2026-10-08).
 	 *   3. PRUNING, and only against a read that can speak: the relay
 	 *      contributes NO rows for a peer that did not answer, so an absent id
 	 *      proves nothing on its own. A held remote row is dropped only when

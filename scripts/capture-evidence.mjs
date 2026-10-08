@@ -6949,6 +6949,21 @@ export const STORIES = [
 	 */
 	["chat-sidebar-view-menu--popover-basis-last-active", 741, 760],
 	["chat-sidebar-view-menu--popover-basis-created", 741, 760],
+	[
+		/*
+		 * THE MIXED CATALOGUE (2026-10-08): the one frame the order change is
+		 * read off - a Running section whose three clocks disagree and a This-week
+		 * section of idle, stopped, scheduled and remote rows whose labels only
+		 * read in order once the arrangement sorts by the basis clock. The before
+		 * half lives beside it as `time-order-mixed-before/`, captured from
+		 * unmodified `origin/main` (`15a7a4ed522`) in a detached worktree with this
+		 * story file staged in - the same recipe the set's other before pairs
+		 * document.
+		 */
+		"chat-sidebar-view-menu--time-order-mixed",
+		741,
+		760,
+	],
 	["chat-sidebar-view-menu--reorder-edges", 741, 760],
 	/* The design direction's D2 capture: the same panel in the window floor. */
 	["chat-sidebar-view-menu--popover-open-short", 800, 600],
