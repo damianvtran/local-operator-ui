@@ -726,190 +726,37 @@ export function AgentsPage() {
 					 * `data-*` hooks exist to avoid.
 					 */
 					data-agents-pane
-					className="min-h-0 flex-1 overflow-auto p-6 pb-0"
+					/*
+					 * THE FADE AT THE DOCK'S EDGE (design spec s6.3). The scroller used to end
+					 * in a hard cut against the composer, slicing a heading in half. The
+					 * sidebar's 24 px scroll-driven mask answers the same problem and is
+					 * element-agnostic (`index.css`), so the pane takes the same attribute
+					 * rather than growing a second fade.
+					 */
+					data-lo-pane-edge-cues
+					className={cn(
+						"min-h-0 flex-1 overflow-auto",
+						/*
+						 * THE 24 PX EDGE, BY ARITHMETIC. The hero is un-padded: it is its own
+						 * column, and the band inside `MessageInput` is the only inset on its
+						 * box. Every other state is a scroller with a classic 8 px scrollbar, so
+						 * `px-4` (16) plus the 8 px gutter reserved on BOTH edges is 24 - the
+						 * transcript's own sum (`chat-measure.ts`) - and the detail column and
+						 * the docked box then have the same content width, so `CHAT_MEASURE`'s
+						 * 750 px gate and 810 cap resolve identically in both. Do not "fix" the
+						 * 16: with an overlay scrollbar (the capture rig's) the gutter is 0 and
+						 * the edge reads 16, which is the rig, not the page.
+						 *
+						 * NO BOTTOM PADDING: the edit footer sticks to the scroller's foot, and a
+						 * padding under it left a band where sections scrolled through beneath
+						 * the bar. The status row above the box is the breathing room.
+						 */
+						showsEmptyPane
+							? undefined
+							: "px-4 pt-6 [scrollbar-gutter:stable_both-edges]",
+					)}
 				>
-					{!catalogueEnabled ? (
-						/*
-						 * THREE STATES, THREE TITLES. While the capabilities read is in flight
-						 * the page used to shout "needs a newer backend" over a body that said
-						 * "Connecting…" — a fault the body denied (design review round 1, D7).
-						 * Connecting is neutral; only an ANSWERED `false` is a version claim.
-						 */
-						<Alert
-							variant={capabilities.isLoading ? "neutral" : "warning"}
-							className="max-w-xl"
-						>
-							<AlertTitle>
-								{capabilities.isLoading
-									? "Connecting to the backend"
-									: capabilities.error
-										? "The backend could not be reached"
-										: "Reusable agents need a newer backend"}
-							</AlertTitle>
-							<AlertDescription>
-								{capabilities.isLoading
-									? "Loading what this backend can do…"
-									: capabilities.error
-										? capabilities.error.message
-										: "Update the backend to manage reusable agents and teams. Saved chats are unchanged."}
-							</AlertDescription>
-						</Alert>
-					) : listError ? (
-						<PaneError
-							title={
-								teamMode
-									? "Teams could not be read"
-									: "Agents could not be read"
-							}
-							what={
-								listError instanceof Error
-									? listError.message
-									: "The request did not complete."
-							}
-							meaning="Nothing is lost. This is a read that failed — the backend answered an error, which is different from the backend being out of date."
-							onRetry={refreshAll}
-							retrying={profiles.isFetching || teams.isFetching}
-						/>
-					) : selected && detailLoading ? (
-						/* A skeleton shaped like the pane, never a blanket "Select a
-						   definition" while something is on its way (D4). */
-						<DetailSkeleton />
-					) : selected && detailError ? (
-						<PaneError
-							title={
-								teamMode
-									? `“${selected}” could not be read`
-									: `“${selected}” could not be read`
-							}
-							what={
-								detailError instanceof Error
-									? detailError.message
-									: "The request did not complete."
-							}
-							meaning="The definition may have been removed, or the backend refused the read."
-							onRetry={() => {
-								void profileDetail.refetch();
-								void teamDetail.refetch();
-							}}
-							retrying={profileDetail.isFetching || teamDetail.isFetching}
-						/>
-					) : creating && teamMode ? (
-						/*
-						 * KEYED BY WHAT IT IS, never by position in the branch ladder. These
-						 * two panes share a component with the read/edit panes below, so React
-						 * reconciled one INTO the other and a "New team" form opened holding
-						 * the last team that was merely VIEWED — name, manager and members —
-						 * while the same reuse let a dirty draft ride a roster click onto the
-						 * next record (D2, and D1/U1/Q1 across all four streams). A key makes
-						 * each record its own instance.
-						 */
-						<TeamDetail
-							key="team:create"
-							agents={profiles.data}
-							teams={teams.data}
-							askEnabled={run.enabled}
-							onDirtyChange={reportDirty}
-							onSaved={(savedName) => {
-								void refreshAll();
-								go({ name: savedName });
-							}}
-							onCancelCreate={() => go({ name: null })}
-							onOpenAgent={(agentName) =>
-								requestGo({ kind: "agent", name: agentName })
-							}
-							onAskAgent={(prompt) => {
-								askForChange(run, { kind: "team", name: name ?? "" }, prompt);
-							}}
-						/>
-					) : creating && duplicateOf && duplicateDetail.isLoading ? (
-						/*
-						 * WAIT FOR THE RECORD BEFORE MOUNTING THE FORM. `AgentCreate` seeds its
-						 * draft once, on mount, so a form mounted before the duplicate's own read
-						 * landed would keep the empty instructions it was born with.
-						 */
-						<DetailSkeleton />
-					) : creating ? (
-						<AgentCreate
-							key="agent:create"
-							initial={duplicateDetail.data ?? null}
-							takenNames={(profiles.data ?? []).map((row) => row.name)}
-							effortTiers={effortTiers}
-							onDirtyChange={reportDirty}
-							onSaved={(savedName) => {
-								void refreshAll();
-								go({ name: savedName });
-							}}
-							onCancel={() => go({ name: null })}
-						/>
-					) : teamMode && teamDetail.data ? (
-						<>
-							{hubPane("team", teamDetail.data.name)}
-							<TeamDetail
-								key={`team:${teamDetail.data.name}:${contentKey(teamDetail.data)}`}
-								team={teamDetail.data}
-								agents={profiles.data}
-								teams={teams.data}
-								askEnabled={run.enabled}
-								onDirtyChange={reportDirty}
-								onSaved={(savedName) => {
-									void refreshAll();
-									go({ name: savedName });
-								}}
-								onOpenAgent={(agentName) =>
-									requestGo({ kind: "agent", name: agentName })
-								}
-								onAskAgent={(prompt) => {
-									askForChange(
-										run,
-										{ kind: "team", name: teamDetail.data?.name ?? "" },
-										prompt,
-									);
-								}}
-							/>
-						</>
-					) : !teamMode && profileDetail.data ? (
-						<>
-							{hubPane("agent", profileDetail.data.name)}
-							<AgentDetail
-								key={`agent:${profileDetail.data.name}:${profileDetail.data.source}:${contentKey(profileDetail.data)}`}
-								profile={profileDetail.data}
-								displayedName={printName(profileDetail.data.name)}
-								classNotice={
-									classNotice?.name === profileDetail.data.name
-										? classNotice.copy
-										: null
-								}
-								onClassNotice={(copy) =>
-									setClassNotice(
-										copy ? { name: profileDetail.data.name, copy } : null,
-									)
-								}
-								teams={teams.data}
-								effortTiers={effortTiers}
-								askEnabled={run.enabled}
-								onDirtyChange={reportDirty}
-								onSaved={(savedName) => {
-									void refreshAll();
-									go({ name: savedName });
-								}}
-								onDuplicate={(profile) =>
-									requestGo({ create: "agent", duplicate: profile.name })
-								}
-								onOpenTeam={(teamName) =>
-									requestGo({ kind: "team", name: teamName })
-								}
-								onAskAgent={(prompt) => {
-									askForChange(
-										run,
-										{ kind: "agent", name: profileDetail.data?.name ?? "" },
-										prompt,
-									);
-								}}
-							/>
-						</>
-					) : selected ? (
-						<Skeleton className="h-6 w-40" />
-					) : (
+					{showsEmptyPane ? (
 						<EmptyPane
 							teamMode={teamMode}
 							run={run}
@@ -917,6 +764,207 @@ export function AgentsPage() {
 								requestGo({ create: teamMode ? "team" : "agent" })
 							}
 						/>
+					) : (
+						/*
+						 * ONE WRAPPER FOR EVERY NON-HERO STATE: the capability alert, a failed
+						 * read, the skeleton, the hub panel and the detail all sit in the same
+						 * `CHAT_COLUMN_CONTAINER` > `CHAT_MEASURE` chain as the docked box, so
+						 * their left and right edges ARE the box's (design spec D2/D3). Nothing
+						 * below this line sets horizontal padding, margin or a max-width.
+						 */
+						<div className={CHAT_COLUMN_CONTAINER}>
+							<div className={CHAT_MEASURE}>
+								{!catalogueEnabled ? (
+									/*
+									 * THREE STATES, THREE TITLES. While the capabilities read is in flight
+									 * the page used to shout "needs a newer backend" over a body that said
+									 * "Connecting…" — a fault the body denied (design review round 1, D7).
+									 * Connecting is neutral; only an ANSWERED `false` is a version claim.
+									 */
+									<Alert
+										variant={capabilities.isLoading ? "neutral" : "warning"}
+										className="max-w-xl"
+									>
+										<AlertTitle>
+											{capabilities.isLoading
+												? "Connecting to the backend"
+												: capabilities.error
+													? "The backend could not be reached"
+													: "Reusable agents need a newer backend"}
+										</AlertTitle>
+										<AlertDescription>
+											{capabilities.isLoading
+												? "Loading what this backend can do…"
+												: capabilities.error
+													? capabilities.error.message
+													: "Update the backend to manage reusable agents and teams. Saved chats are unchanged."}
+										</AlertDescription>
+									</Alert>
+								) : listError ? (
+									<PaneError
+										title={
+											teamMode
+												? "Teams could not be read"
+												: "Agents could not be read"
+										}
+										what={
+											listError instanceof Error
+												? listError.message
+												: "The request did not complete."
+										}
+										meaning="Nothing is lost. This is a read that failed — the backend answered an error, which is different from the backend being out of date."
+										onRetry={refreshAll}
+										retrying={profiles.isFetching || teams.isFetching}
+									/>
+								) : selected && detailLoading ? (
+									/* A skeleton shaped like the pane, never a blanket "Select a
+						   definition" while something is on its way (D4). */
+									<DetailSkeleton />
+								) : selected && detailError ? (
+									<PaneError
+										title={
+											teamMode
+												? `“${selected}” could not be read`
+												: `“${selected}” could not be read`
+										}
+										what={
+											detailError instanceof Error
+												? detailError.message
+												: "The request did not complete."
+										}
+										meaning="The definition may have been removed, or the backend refused the read."
+										onRetry={() => {
+											void profileDetail.refetch();
+											void teamDetail.refetch();
+										}}
+										retrying={profileDetail.isFetching || teamDetail.isFetching}
+									/>
+								) : creating && teamMode ? (
+									/*
+									 * KEYED BY WHAT IT IS, never by position in the branch ladder. These
+									 * two panes share a component with the read/edit panes below, so React
+									 * reconciled one INTO the other and a "New team" form opened holding
+									 * the last team that was merely VIEWED — name, manager and members —
+									 * while the same reuse let a dirty draft ride a roster click onto the
+									 * next record (D2, and D1/U1/Q1 across all four streams). A key makes
+									 * each record its own instance.
+									 */
+									<TeamDetail
+										key="team:create"
+										agents={profiles.data}
+										teams={teams.data}
+										askEnabled={run.enabled}
+										onDirtyChange={reportDirty}
+										onSaved={(savedName) => {
+											void refreshAll();
+											go({ name: savedName });
+										}}
+										onCancelCreate={() => go({ name: null })}
+										onOpenAgent={(agentName) =>
+											requestGo({ kind: "agent", name: agentName })
+										}
+										onAskAgent={(prompt) => {
+											askForChange(
+												run,
+												{ kind: "team", name: name ?? "" },
+												prompt,
+											);
+										}}
+									/>
+								) : creating && duplicateOf && duplicateDetail.isLoading ? (
+									/*
+									 * WAIT FOR THE RECORD BEFORE MOUNTING THE FORM. `AgentCreate` seeds its
+									 * draft once, on mount, so a form mounted before the duplicate's own read
+									 * landed would keep the empty instructions it was born with.
+									 */
+									<DetailSkeleton />
+								) : creating ? (
+									<AgentCreate
+										key="agent:create"
+										initial={duplicateDetail.data ?? null}
+										takenNames={(profiles.data ?? []).map((row) => row.name)}
+										effortTiers={effortTiers}
+										onDirtyChange={reportDirty}
+										onSaved={(savedName) => {
+											void refreshAll();
+											go({ name: savedName });
+										}}
+										onCancel={() => go({ name: null })}
+									/>
+								) : teamMode && teamDetail.data ? (
+									<>
+										{hubPane("team", teamDetail.data.name)}
+										<TeamDetail
+											key={`team:${teamDetail.data.name}:${contentKey(teamDetail.data)}`}
+											team={teamDetail.data}
+											agents={profiles.data}
+											teams={teams.data}
+											askEnabled={run.enabled}
+											onDirtyChange={reportDirty}
+											onSaved={(savedName) => {
+												void refreshAll();
+												go({ name: savedName });
+											}}
+											onOpenAgent={(agentName) =>
+												requestGo({ kind: "agent", name: agentName })
+											}
+											onAskAgent={(prompt) => {
+												askForChange(
+													run,
+													{ kind: "team", name: teamDetail.data?.name ?? "" },
+													prompt,
+												);
+											}}
+										/>
+									</>
+								) : !teamMode && profileDetail.data ? (
+									<>
+										{hubPane("agent", profileDetail.data.name)}
+										<AgentDetail
+											key={`agent:${profileDetail.data.name}:${profileDetail.data.source}:${contentKey(profileDetail.data)}`}
+											profile={profileDetail.data}
+											displayedName={printName(profileDetail.data.name)}
+											classNotice={
+												classNotice?.name === profileDetail.data.name
+													? classNotice.copy
+													: null
+											}
+											onClassNotice={(copy) =>
+												setClassNotice(
+													copy ? { name: profileDetail.data.name, copy } : null,
+												)
+											}
+											teams={teams.data}
+											effortTiers={effortTiers}
+											askEnabled={run.enabled}
+											onDirtyChange={reportDirty}
+											onSaved={(savedName) => {
+												void refreshAll();
+												go({ name: savedName });
+											}}
+											onDuplicate={(profile) =>
+												requestGo({ create: "agent", duplicate: profile.name })
+											}
+											onOpenTeam={(teamName) =>
+												requestGo({ kind: "team", name: teamName })
+											}
+											onAskAgent={(prompt) => {
+												askForChange(
+													run,
+													{
+														kind: "agent",
+														name: profileDetail.data?.name ?? "",
+													},
+													prompt,
+												);
+											}}
+										/>
+									</>
+								) : selected ? (
+									<Skeleton className="h-6 w-40" />
+								) : null}
+							</div>
+						</div>
 					)}
 				</div>
 				{/*
