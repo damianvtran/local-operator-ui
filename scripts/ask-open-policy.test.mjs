@@ -461,19 +461,28 @@ test("U2 - an id list that cannot be named in full HOLDS: a truncated prefix, a 
 	assert.equal(completeClosed.has("c-a"), false);
 });
 
-test("U2 - a list that lags its own tally HOLDS even with no truncation flag: the fold's own cap", () => {
+test("U2 - a tally above the rows beside it HOLDS even with no truncation flag: the list can lag its tally", () => {
 	/*
-	 * The fold caps the list at `PROJECTION_CAP` (20 rows, outstanding first), and that cap
-	 * is NOT the wire bound: it sets no `asks_truncated`. A conversation with 25 outstanding
-	 * asks therefore publishes 20 rows beside `asks_open: 25` and says nothing else, and the
-	 * tally is the only evidence that five ids were left out. Every other incomplete frame in
-	 * this file carries the flag, so this is the case that pins the tally arm on its own.
+	 * `askSplitIsKnowable` (ask-queue.ts) already reads this frame as "the list is not
+	 * whole" - a tally above the rows it rides with, and no `asks_truncated` - and the
+	 * record reads it from the same two fields, so the chip's clause and the dismissal
+	 * cannot disagree about whether every id is known.
+	 *
+	 * WHAT THIS DOES NOT CLAIM IS THAT THE CORE SENDS IT TODAY. Derived, not recalled:
+	 * the shipped `ask_wire` run over 25 outstanding asks (24 timed out, 1 open) published
+	 * 20 rows beside `asks_open: 20` and no flag, because the tally is counted over the
+	 * rows `AskQueue.projection` had already clipped to `PROJECTION_CAP`. Past 20 the
+	 * surplus is on neither field, which is the limit the module states under "WHAT THE
+	 * WIRE CANNOT SAY". So this frame is the client's defence for a list that lags its
+	 * tally by any other route, pinned on its own because every other incomplete frame in
+	 * this file carries the flag and the comparison could be dropped without one of them
+	 * noticing.
 	 */
 	const rows = Array.from({ length: 20 }, () => ask("open"));
-	const capped = { asks: rows, asks_open: 25, asks_truncated: null };
-	const facts = askOpenFacts(askQueueView(capped), T0);
+	const lagging = { asks: rows, asks_open: 25, asks_truncated: null };
+	const facts = askOpenFacts(askQueueView(lagging), T0);
 	assert.equal(facts.outstandingIds.length, 20);
-	assert.equal(facts.listComplete, false, "25 outstanding, 20 named");
+	assert.equal(facts.listComplete, false, "tally 25, 20 named");
 	/* The same frame without the shortfall IS complete: the comparison is the whole signal. */
 	const whole = askOpenFacts(
 		askQueueView({ asks: rows, asks_open: 20, asks_truncated: null }),
@@ -487,9 +496,9 @@ test("U2 - a list that lags its own tally HOLDS even with no truncation flag: th
 	);
 	assert.equal(stale.listComplete, true);
 
-	/* And it is what the record does with it: a close over the capped frame HOLDS. */
+	/* And it is what the record does with it: a close over the lagging frame HOLDS. */
 	const dismissals = createAskDismissals();
-	dismissOver(dismissals, capped);
+	dismissOver(dismissals, lagging);
 	assert.equal(dismissals.has("c-a"), true);
 	assert.equal(
 		returnTo(dismissals, withRows([ask("open")])).reason,
