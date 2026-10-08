@@ -637,6 +637,70 @@ function iframeMorePage(frameOrigin, sameSiteOrigin) {
 </body></html>`;
 }
 
+/**
+ * Issue #871: fields that take a write and then give it back.
+ *
+ * `type` falls back to the node's value setter when `Input.insertText` does not
+ * land, and used to report what that setter's own function returned - the value
+ * read in the same breath as the assignment. A framework-controlled field can take
+ * that write and revert it on the very next tick, so the old answer was "Value is
+ * now ..." over an empty field. Three field shapes, so each claim has a control:
+ *
+ *   - `revert`: refuses `insertText` (a cancelled `beforeinput`, so the primary
+ *     path's read-back disagrees and the setter fallback is the code that runs) and
+ *     restores the empty value one macrotask after any `input` event, which is what
+ *     the setter fallback dispatches. Nothing can make it keep text.
+ *   - `setter-only`: refuses `insertText` the same way but KEEPS a setter write.
+ *     The fallback must still land here, with `via: value_setter`, or the fix has
+ *     broken the path it guards.
+ *   - `keep`: an ordinary input; `insertText` lands.
+ *
+ * Shared by the top document and the cross-site frame so both go through the same
+ * script; the frame is the case where the read-back must happen in the frame's own
+ * session. No backticks in this comment or the markup: it lives inside a template
+ * literal.
+ */
+const REVERT_FIELDS = `
+<input id="REVERT_ID" type="text" />
+<input id="SETTER_ID" type="text" />
+<input id="KEEP_ID" type="text" />
+<script>
+for (const id of ["REVERT_ID", "SETTER_ID"]) {
+  document.getElementById(id).addEventListener("beforeinput", (event) => {
+    if (event.inputType === "insertText") event.preventDefault();
+  });
+}
+const reverting = document.getElementById("REVERT_ID");
+reverting.addEventListener("input", () => {
+  setTimeout(() => { reverting.value = ""; }, 0);
+});
+</script>`;
+
+const DOES_NOT_HOLD_TEXT = /does not hold the text/;
+const NOTHING_REPORTED_TYPED = /nothing was reported typed/;
+
+function revertFields(prefix) {
+	return REVERT_FIELDS.replaceAll("REVERT_ID", `${prefix}revert`)
+		.replaceAll("SETTER_ID", `${prefix}setter-only`)
+		.replaceAll("KEEP_ID", `${prefix}keep`);
+}
+
+/** The top document: its own three fields and a cross-site frame holding three more. */
+function revertTypePage(frameOrigin) {
+	return `<!doctype html>
+<html><head><meta charset="utf-8"><title>Reverting field proof page</title>
+<style>body{font:14px system-ui;margin:0;padding:24px}iframe{width:360px;height:120px;border:1px solid #888;display:block}</style>
+</head><body>
+<h1>Reverting field proof page</h1>
+${revertFields("top-")}
+<iframe id="rv" title="Reverting card" src="${frameOrigin}/revert-frame"></iframe>
+</body></html>`;
+}
+
+const REVERT_FRAME_PAGE = `<!doctype html>
+<html><head><meta charset="utf-8"><title>Reverting frame</title></head>
+<body style="margin:8px;font:14px system-ui">${revertFields("frame-")}</body></html>`;
+
 /** The second loopback server the iframes' documents come from. It serves only
  * the frames; anything else is a 404 so a wrong URL is visible. */
 function startFrameSite() {
@@ -647,6 +711,7 @@ function startFrameSite() {
 			"/multi-frame": () => MULTI_FRAME_PAGE,
 			"/blank-frame": () => BLANK_FRAME_PAGE,
 			"/samesite-frame": () => SAMESITE_FRAME_PAGE,
+			"/revert-frame": () => REVERT_FRAME_PAGE,
 		};
 		const page = pages[url.pathname];
 		if (page) {
@@ -730,6 +795,11 @@ function startSite(frameOrigin) {
 					frameOrigin.replace("//localhost:", "//127.0.0.1:"),
 				),
 			);
+			return;
+		}
+		if (url.pathname === "/revert-type") {
+			res.writeHead(200, { "Content-Type": "text/html" });
+			res.end(revertTypePage(frameOrigin));
 			return;
 		}
 		if (url.pathname === "/popup-target") {
@@ -2441,6 +2511,156 @@ async function main() {
 			/>>>/.test(headingTyped.json.error?.message ?? ""),
 		`type {selector: "h1"} -> ${headingTyped.text}`,
 	);
+
+	// --- 5c-ii. type into a field that reverts the write (#871) ----------------
+	/*
+	 * `type`'s value-setter fallback used to report the setter's own echo, so a
+	 * field that took the write and gave it back one tick later was still answered
+	 * "Value is now ...". The fix reads the field back again, independently, in the
+	 * node's own session, and refuses when it does not hold the text. Every claim
+	 * below is read back from the page's or frame's OWN target over the devtools
+	 * port, never from the host's reply, which is the code under test.
+	 *
+	 * Placed before the DENY block below because that deny persists for the frame's
+	 * origin and would refuse the cross-site cases here for the wrong reason.
+	 */
+	const revertTab = await rpcOk(state, "open", {
+		url: `${siteOrigin}/revert-type`,
+		requester: "session:proof",
+	});
+	let revertFrame = null;
+	for (let attempt = 0; attempt < 40 && !revertFrame; attempt += 1) {
+		revertFrame = (await frameTargets("/revert-frame"))[0] ?? null;
+		if (!revertFrame) await sleep(250);
+	}
+	const revertPage = await waitForTarget(
+		(target) => target.url === `${siteOrigin}/revert-type`,
+		"the reverting-field proof page's target",
+	);
+	check(
+		"the reverting field's frame loaded cross-site, in its own frame target",
+		revertFrame !== null,
+		revertFrame
+			? `iframe target ${revertFrame.url} (page ${siteOrigin}/revert-type)`
+			: `no iframe target for ${frameOrigin}/revert-frame`,
+	);
+	const fieldValue = async (target, id) => {
+		if (!target) return "(no target)";
+		const read = await targetEvaluate(
+			target,
+			`document.getElementById(${JSON.stringify(id)}).value`,
+		);
+		return read.value ?? read.error;
+	};
+	const REVERT_TEXT = "4000056655665556";
+	const refusedAsNotHolding = (typed) =>
+		typed.json?.ok === false &&
+		DOES_NOT_HOLD_TEXT.test(typed.json.error?.message ?? "") &&
+		NOTHING_REPORTED_TYPED.test(typed.json.error?.message ?? "");
+
+	// The page has to be able to revert at all, or every refusal below is vacuous:
+	// a setter write on the reverting field reads back the text for the instant
+	// before the page restores it, and empty afterwards.
+	const revertProbe = await targetEvaluate(
+		revertPage,
+		`new Promise((resolve) => {
+			const field = document.getElementById("top-revert");
+			field.value = "x";
+			field.dispatchEvent(new Event("input", { bubbles: true }));
+			const instant = field.value;
+			setTimeout(() => resolve(JSON.stringify({ instant, later: field.value })), 50);
+		})`,
+	);
+	check(
+		"precondition: the fixture field takes a setter write and reverts it a tick later",
+		revertProbe.value === JSON.stringify({ instant: "x", later: "" }),
+		`top-revert, set + input event, read at once and 50 ms later -> ${revertProbe.value ?? revertProbe.error}`,
+	);
+
+	const topRevert = await rpc(state, "type", {
+		tab: revertTab.tab,
+		selector: "#top-revert",
+		text: REVERT_TEXT,
+	});
+	const topRevertField = await fieldValue(revertPage, "top-revert");
+	check(
+		"type at a top-document field that reverts the write is REFUSED, and the field reads back empty",
+		refusedAsNotHolding(topRevert) && topRevertField === "",
+		`type {selector: "#top-revert"} -> ${topRevert.text}\ntop document #top-revert (read over devtools) -> ${JSON.stringify(topRevertField)}`,
+	);
+	const frameRevert = await rpc(state, "type", {
+		tab: revertTab.tab,
+		selector: "iframe#rv >>> #frame-revert",
+		text: REVERT_TEXT,
+	});
+	const frameRevertField = await fieldValue(revertFrame, "frame-revert");
+	check(
+		"type at a cross-site frame field that reverts the write is REFUSED, and the field reads back empty from the frame's own target",
+		refusedAsNotHolding(frameRevert) && frameRevertField === "",
+		`type {selector: "iframe#rv >>> #frame-revert"} -> ${frameRevert.text}\nframe target #frame-revert (read over devtools) -> ${JSON.stringify(frameRevertField)}`,
+	);
+	// By the iframe ELEMENT: the descent picks the frame's field, and its setter
+	// fallback is verified inside the frame too. This frame holds three fields, so
+	// the host asks which one is meant - a refusal that types nothing - and the
+	// field stays empty either way.
+	const frameElementRevert = await rpc(state, "type", {
+		tab: revertTab.tab,
+		selector: "#rv",
+		text: REVERT_TEXT,
+	});
+	check(
+		"type aimed at the multi-field iframe ELEMENT types nothing, and the reverting field stays empty",
+		frameElementRevert.json?.ok === false &&
+			(await fieldValue(revertFrame, "frame-revert")) === "" &&
+			(await fieldValue(revertFrame, "frame-setter-only")) === "" &&
+			(await fieldValue(revertFrame, "frame-keep")) === "",
+		`type {selector: "#rv"} -> ${frameElementRevert.text}`,
+	);
+
+	// Controls: the same fallback must still LAND where the field keeps the write,
+	// and the primary path must still land on an ordinary field. A fix that refused
+	// everything would pass the checks above.
+	const topSetter = await rpc(state, "type", {
+		tab: revertTab.tab,
+		selector: "#top-setter-only",
+		text: REVERT_TEXT,
+	});
+	const topSetterField = await fieldValue(revertPage, "top-setter-only");
+	check(
+		"the control: a top-document field that refuses insertText but keeps a setter write lands via value_setter",
+		topSetter.json?.ok === true &&
+			topSetter.json.result?.via === "value_setter" &&
+			topSetter.json.result?.value === REVERT_TEXT &&
+			topSetterField === REVERT_TEXT,
+		`type {selector: "#top-setter-only"} -> ${topSetter.text}\ntop document #top-setter-only (read over devtools) -> ${JSON.stringify(topSetterField)}`,
+	);
+	const frameSetter = await rpc(state, "type", {
+		tab: revertTab.tab,
+		selector: "iframe#rv >>> #frame-setter-only",
+		text: REVERT_TEXT,
+	});
+	const frameSetterField = await fieldValue(revertFrame, "frame-setter-only");
+	check(
+		"the control: a cross-site frame field that keeps a setter write lands via value_setter, read back from the frame's own target",
+		frameSetter.json?.ok === true &&
+			frameSetter.json.result?.via === "value_setter" &&
+			frameSetter.json.result?.frame_origin === frameOrigin &&
+			frameSetterField === REVERT_TEXT,
+		`type {selector: "iframe#rv >>> #frame-setter-only"} -> ${frameSetter.text}\nframe target #frame-setter-only (read over devtools) -> ${JSON.stringify(frameSetterField)}`,
+	);
+	const topKeep = await rpc(state, "type", {
+		tab: revertTab.tab,
+		selector: "#top-keep",
+		text: REVERT_TEXT,
+	});
+	check(
+		"the control: an ordinary field on the same page still lands via insert_text",
+		topKeep.json?.ok === true &&
+			topKeep.json.result?.via === "insert_text" &&
+			(await fieldValue(revertPage, "top-keep")) === REVERT_TEXT,
+		`type {selector: "#top-keep"} -> ${topKeep.text}`,
+	);
+	await rpcOk(state, "close", { tab: revertTab.tab });
 
 	// A frame from an origin the user DENIED (review round 1, M1): approval stays
 	// per top-level origin, but an explicit deny overrides it everywhere else, so a
