@@ -359,6 +359,11 @@ test("the drawer's slot is readable, and the header's OS corner is reserved for 
 	 * of a rendered surface, so they are pinned here - and the docked frame the
 	 * evidence set carries (`docs/evidence/ask-drawer/after/dock-asks/`) is the
 	 * visual half of the reservation.
+	 *
+	 * (#868 evolved the second pin: `rightSlotOccupied` now reads the store's own
+	 * derivation rather than restating the five flags, because a bare flag cannot
+	 * tell a CLAIMED pane from one the route can DRAW - the second copy is what
+	 * reserved the corner for a pane that was not on screen.)
 	 */
 	const mode = source.match(ASK_SLOT_MODE);
 	assert.ok(
@@ -368,18 +373,19 @@ test("the drawer's slot is readable, and the header's OS corner is reserved for 
 	const reservation = source.match(RIGHT_SLOT_OCCUPIED);
 	assert.ok(
 		reservation,
-		`${CHAT_CONTENT} no longer derives \`rightSlotOccupied\` as one disjunction. It decides whether the chat header has to reserve the window's OS-control corner, and it is read from the panes' own flags rather than measured (§J4).`,
+		`${CHAT_CONTENT} no longer derives \`rightSlotOccupied\` as one expression. It decides whether the chat header has to reserve the window's OS-control corner (§J4); this file reads that expression's text, so a rewrite has to re-read this pin.`,
 	);
-	for (const term of [
-		"isCanvasOpen",
-		"isRunPanelOpen",
-		"isBrowserPaneOpen",
-		"isConsolePaneOpen",
-		"isAskDrawerOpen",
-	]) {
-		assert.ok(
-			reservation[1].includes(term),
-			`${CHAT_CONTENT}'s \`rightSlotOccupied\` no longer accounts for \`${term}\`. A pane the header does not know about leaves the OS controls sitting over that pane's own toolbar - the drawer included, now that it is the slot's fifth occupant.`,
-		);
-	}
+	/*
+	 * #868: THE DISJUNCTION MOVED INTO THE STORE, where the route facts live. The
+	 * pin is now that the header reads the ONE derivation rather than restating
+	 * the five flags - the second copy is exactly what reserved a corner for a
+	 * pane no route mounts. The store's own route matrix is
+	 * `right-slot-width.test.mjs`'s subject.
+	 */
+	assert.ok(
+		/useUiPreferencesStore\(\s*resolveRightSlotOccupied\s*\)/.test(
+			reservation[1],
+		),
+		`${CHAT_CONTENT}'s \`rightSlotOccupied\` no longer reads the store's \`resolveRightSlotOccupied\` derivation (#868). The header's reservation has to answer from the same claim and the same route facts as the lane's stop and the column's deficit; a disjunction of bare flags here is the second copy that reserved a corner for a pane that is not on screen.`,
+	);
 });

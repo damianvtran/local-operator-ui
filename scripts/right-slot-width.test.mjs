@@ -28,7 +28,7 @@ globalThis.localStorage = {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { useUiPreferencesStore, persistedUiPreferences, migrateUiPreferences, resolveRightSlotWidth, DEFAULT_CANVAS_WIDTH, DEFAULT_RUN_PANEL_WIDTH, DEFAULT_BROWSER_PANEL_WIDTH, DEFAULT_CONSOLE_PANEL_WIDTH, RUN_PANEL_MIN_PX, BROWSER_PANEL_MIN_PX, CONSOLE_PANEL_MIN_PX } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			'export { useUiPreferencesStore, persistedUiPreferences, migrateUiPreferences, resolveRightSlotWidth, resolveRightSlotOccupied, DEFAULT_CANVAS_WIDTH, DEFAULT_RUN_PANEL_WIDTH, DEFAULT_BROWSER_PANEL_WIDTH, DEFAULT_CONSOLE_PANEL_WIDTH, RUN_PANEL_MIN_PX, BROWSER_PANEL_MIN_PX, CONSOLE_PANEL_MIN_PX } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { CHAT_PANE_MIN_PX, CANVAS_PANE_MIN_PX, canvasDockWidth } from "./src/renderer/src/features/chat/chat-sidebar-layout";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -54,6 +54,7 @@ const {
 	persistedUiPreferences,
 	migrateUiPreferences,
 	resolveRightSlotWidth,
+	resolveRightSlotOccupied,
 	DEFAULT_CANVAS_WIDTH,
 	DEFAULT_RUN_PANEL_WIDTH,
 	DEFAULT_BROWSER_PANEL_WIDTH,
@@ -75,6 +76,12 @@ const withPane = (pane, width) => ({
 	isBrowserPaneOpen: pane === "browser",
 	isConsolePaneOpen: pane === "console",
 	isAskDrawerOpen: pane === "ask",
+	/*
+	 * A route every pane is drawable on: the facts the slot's readers take since
+	 * #868. These cells are about the WIDTH arithmetic, so the route is the
+	 * drawable one; the route matrix is `claimed`'s subject below.
+	 */
+	rightSlotRoute: { mounted: true, runDetails: true, session: true },
 });
 
 const ROW = 1400;
@@ -160,6 +167,126 @@ test("the conversation's floor still wins over the shared width", () => {
 	assert.equal(
 		resolveRightSlotWidth(row, withPane("canvas", width)),
 		Math.min(width, canvasDockWidth(row)),
+	);
+});
+
+/*
+ * #868: THE ROUTE'S HALF OF THE SLOT'S TRUTH.
+ *
+ * The five pane flags persist across routes ON PURPOSE (what belongs to the
+ * window's slot survives a conversation switch), so a claimed pane is not
+ * always a pane a route can DRAW: the run panel needs run details, the
+ * session-scoped asks drawer needs a conversation, and a route with no chat
+ * surface mounts none of the five. The resolver and the header's occupancy
+ * boolean have to answer from the route's facts (see `rightSlotRoute`) or a
+ * flag that outlived its route reserves an empty column and paints the empty
+ * band the operator reported.
+ */
+const route = (mounted, runDetails, session) => ({
+	mounted,
+	runDetails,
+	session,
+});
+/** The store's state with `pane` claimed and the route's facts set. */
+const claimed = (pane, facts, scope = "session") => ({
+	...useUiPreferencesStore.getState(),
+	rightSlotWidth: 0,
+	isCanvasOpen: pane === "canvas",
+	isRunPanelOpen: pane === "run",
+	isBrowserPaneOpen: pane === "browser",
+	isConsolePaneOpen: pane === "console",
+	isAskDrawerOpen: pane === "ask",
+	askDrawerScope: scope,
+	rightSlotRoute: facts,
+});
+
+test("a claimed pane the route cannot draw answers no width (#868)", () => {
+	// The captured sequence: the drawer closes and hands the run flag back, then
+	// New chat - no run details, nothing to mount.
+	assert.equal(
+		resolveRightSlotWidth(ROW, claimed("run", route(true, false, false))),
+		0,
+	);
+	// A conversation whose canonical frame has not arrived: same answer, same
+	// reason - the run panel's mount gate is runDetails, not the flag.
+	assert.equal(
+		resolveRightSlotWidth(ROW, claimed("run", route(true, false, true))),
+		0,
+	);
+	// The session-scoped drawer's flag on a draft: no conversation, no home.
+	assert.equal(
+		resolveRightSlotWidth(ROW, claimed("ask", route(true, false, false))),
+		0,
+	);
+	// A route with no chat surface at all (settings, agents): none of the five
+	// mounts, so no flag holds the slot.
+	for (const pane of ["canvas", "run", "browser", "console", "ask"]) {
+		assert.equal(
+			resolveRightSlotWidth(ROW, claimed(pane, route(false, false, false))),
+			0,
+			`${pane} held the slot on a route with no chat surface`,
+		);
+	}
+	// The occupancy boolean the header reserves from answers the same.
+	assert.equal(
+		resolveRightSlotOccupied(claimed("run", route(true, false, false))),
+		false,
+	);
+	assert.equal(
+		resolveRightSlotOccupied(claimed("ask", route(true, false, false))),
+		false,
+	);
+	assert.equal(
+		resolveRightSlotOccupied(claimed("canvas", route(false, false, false))),
+		false,
+	);
+});
+
+test("the drawable half is untouched: a pane the route mounts still holds the slot (#868)", () => {
+	// The fix must not release panes a route CAN draw - a second way of leaking
+	// the column would be no better than the first.
+	assert.equal(
+		resolveRightSlotWidth(ROW, claimed("run", route(true, true, true))),
+		DEFAULT_RUN_PANEL_WIDTH,
+	);
+	assert.equal(
+		resolveRightSlotWidth(ROW, claimed("canvas", route(true, false, false))),
+		Math.min(DEFAULT_CANVAS_WIDTH, canvasDockWidth(ROW)),
+	);
+	assert.equal(
+		resolveRightSlotWidth(ROW, claimed("ask", route(true, false, true))),
+		Math.min(DEFAULT_CANVAS_WIDTH, canvasDockWidth(ROW)),
+	);
+	// The fleet drawer's home is the shell, which every route has - it needs no
+	// conversation, and it is drawable even where the chat surface is not.
+	assert.equal(
+		resolveRightSlotWidth(
+			ROW,
+			claimed("ask", route(false, false, false), "fleet"),
+		),
+		Math.min(DEFAULT_CANVAS_WIDTH, canvasDockWidth(ROW)),
+	);
+	assert.equal(
+		resolveRightSlotOccupied(claimed("run", route(true, true, true))),
+		true,
+	);
+	assert.equal(
+		resolveRightSlotOccupied(
+			claimed("ask", route(false, false, false), "fleet"),
+		),
+		true,
+	);
+	// Nothing claimed is nothing occupied, whatever the route could draw.
+	assert.equal(
+		resolveRightSlotOccupied(claimed("none", route(true, true, true))),
+		false,
+	);
+	// The route facts are not persisted: they describe where the app IS, and the
+	// next launch publishes its own.
+	assert.equal(
+		"rightSlotRoute" in
+			persistedUiPreferences(useUiPreferencesStore.getState()),
+		false,
 	);
 });
 

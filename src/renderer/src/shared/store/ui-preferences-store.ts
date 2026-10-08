@@ -186,6 +186,43 @@ type UiPreferencesState = {
 	restoreDefaultRightSlotWidth: () => void;
 
 	/**
+	 * WHAT THE CURRENT ROUTE CAN DRAW INTO THE SLOT - the half of the slot's truth
+	 * the flags cannot answer alone (#868).
+	 *
+	 * THE FLAGS ARE PREFERENCES; AN OCCUPIED SLOT IS SOMETHING ON SCREEN. The five
+	 * pane flags persist across conversation switches and relaunches ON PURPOSE
+	 * (see `isAskDrawerOpen` and its siblings), so a true flag is not a promise
+	 * that a pane is mounted: the run panel only mounts with `runDetails` (a draft
+	 * has none), the session-scoped asks drawer only mounts with a conversation to
+	 * show, and a route that mounts no chat surface at all (settings, agents)
+	 * draws none of the five. The slot's readers used to trust the bare flag and
+	 * so answered a width and a reservation for panes nothing could mount - the
+	 * empty band and the reserved column #868 reports.
+	 *
+	 * ONE PUBLISHER, and it is the component that OWNS the mount gates
+	 * (`chat-content`, which mounts every one of the five): it publishes these
+	 * facts from the same values its own render conditions read, so the derivation
+	 * and the mounts cannot disagree about what the route can draw. A second
+	 * publisher would be a second answer to that question.
+	 *
+	 * NOT PERSISTED, deliberately (see `persistedUiPreferences`): a route fact
+	 * describes the route the app is on NOW, and a relaunch that restored one would
+	 * answer for a route it is not on until the next publish.
+	 */
+	rightSlotRoute: RightSlotRouteFacts;
+
+	/**
+	 * Publish what the current route can draw into the slot.
+	 *
+	 * Called by the one component that mounts the slot's panes; see
+	 * `rightSlotRoute` for the whole argument. The write is a no-op when nothing
+	 * moved, so a caller re-rendering for its own reasons does not wake the slot's
+	 * readers.
+	 * @param route - The route's facts
+	 */
+	setRightSlotRoute: (route: RightSlotRouteFacts) => void;
+
+	/**
 	 * Which list the browser pane's strip shows (spec 7.2).
 	 *
 	 * THE SLOT'S STATE, NOT THE PANE'S, and that placement is the fix rather than a
@@ -876,6 +913,43 @@ const activeRightSlotPane = (state: {
 						: null;
 
 /**
+ * Whether the current route can actually DRAW the pane that holds the slot.
+ *
+ * The claims above say which pane WANTS the slot; this is the half a claim cannot
+ * answer - see `rightSlotRoute`. It is a separate function rather than folded
+ * into `activeRightSlotPane` because the drawer's borrow (`evictedFlag` below)
+ * records the CLAIM the drawer displaced: a claim survives routes, and a record
+ * that disappeared with the route would lose the flag the drawer must give back.
+ */
+const rightSlotPaneDrawable = (
+	pane: RightSlotPane,
+	state: {
+		askDrawerScope: AskScope;
+		rightSlotRoute: RightSlotRouteFacts;
+	},
+): boolean => {
+	if (pane === "ask") {
+		/*
+		 * THE TWO ASKS HOMES, one fact each: the fleet drawer's home is the shell
+		 * (`chat-layout`), mounted on every route, so it always draws; the session
+		 * drawer's home is the conversation's own mount, which a draft and a
+		 * non-chat route do not have.
+		 */
+		return (
+			state.askDrawerScope === "fleet" ||
+			(state.rightSlotRoute.mounted && state.rightSlotRoute.session)
+		);
+	}
+	if (!state.rightSlotRoute.mounted) return false;
+	/*
+	 * The run panel's mount gate is `runDetails`; the canvas, browser and console
+	 * mount whenever their flags are set on a chat route, so `mounted` is the
+	 * whole of their condition.
+	 */
+	return pane !== "run" || state.rightSlotRoute.runDetails;
+};
+
+/**
  * The DURABLE flag the drawer is about to borrow the slot from, or null.
  *
  * `ask` is excluded: a second open of the drawer is not a borrow from itself, and
@@ -952,6 +1026,35 @@ const claimRightSlot = (
 export type RightSlotPane = "canvas" | "run" | "browser" | "console" | "ask";
 
 /**
+ * WHAT THE CURRENT ROUTE CAN RENDER, in the slot's own terms (#868).
+ *
+ * Three facts a claim cannot answer, each mirrored from ONE mount gate in
+ * `chat-content` (see `rightSlotRoute` for why the split is exactly these):
+ *
+ * - `mounted` - the chat surface that hosts the slot is on screen at all; false
+ *   on settings/agents routes, where none of the five panes can draw.
+ * - `runDetails` - the route has run details, the run panel's own mount gate; a
+ *   draft (or a conversation whose canonical frame has not arrived) has none.
+ * - `session` - the route shows a conversation, the session-scoped asks
+ *   drawer's home; the fleet scope's home is the shell and needs no fact.
+ */
+export type RightSlotRouteFacts = {
+	mounted: boolean;
+	runDetails: boolean;
+	session: boolean;
+};
+
+/**
+ * The empty route: nothing drawable. Shared so the store's initial state and the
+ * chat surface's unmount reset are one value rather than two spellings.
+ */
+export const EMPTY_RIGHT_SLOT_ROUTE: RightSlotRouteFacts = Object.freeze({
+	mounted: false,
+	runDetails: false,
+	session: false,
+});
+
+/**
  * The width the right slot gives the open pane, for the row it shares with the
  * conversation — ONE implementation, TWO callers, which are exactly the two that
  * can disagree about where the slot's leading edge is:
@@ -1010,13 +1113,25 @@ export type RightSlotPane = "canvas" | "run" | "browser" | "console" | "ask";
  * Precedence is the reading order of the four and it only matters if the store's
  * own invariant ever breaks: `claimRightSlot` above makes the four flags mutually
  * exclusive by construction, so at most one of them is ever true.
+ *
+ * AND A CLAIMED PANE IS NOT YET A DRAWN ONE (#868): the flags persist across
+ * routes by design, so before answering a width this reads the route's own facts
+ * (`rightSlotPaneDrawable` over `rightSlotRoute`) - a run panel on a draft and a
+ * session-scoped drawer on a route with no conversation are claims with nothing
+ * to mount, and they answer 0.
  */
 export function resolveRightSlotWidth(
 	rowWidth: number,
 	state: UiPreferencesState,
 ): number {
 	const pane: RightSlotPane | null = activeRightSlotPane(state);
-	if (pane === null) return 0;
+	/*
+	 * A CLAIMED PANE THE ROUTE CANNOT DRAW IS NOT AN OCCUPIED SLOT (#868): this
+	 * answer is the lane's stop and the column's deficit, and a width for a pane
+	 * nothing will mount is the empty band and the reserved column the issue
+	 * reports. See `rightSlotPaneDrawable` / `rightSlotRoute`.
+	 */
+	if (pane === null || !rightSlotPaneDrawable(pane, state)) return 0;
 
 	// THE SHARED WIDTH OR THIS PANE'S SEED, HELD UP TO THIS PANE'S FLOOR: one
 	// read, four seeds + four floors, which is the whole of #677 at the
@@ -1063,6 +1178,20 @@ export function resolveRightSlotWidth(
 		return Math.min(preferred, canvasDockWidth(rowWidth));
 	}
 	return Math.min(preferred, Math.max(0, rowWidth - CHAT_PANE_MIN_PX));
+}
+
+/**
+ * Whether anything is DRAWN in the right slot - the boolean the header's
+ * OS-corner reservation reads (chat redesign §J4).
+ *
+ * The width resolver's sibling: same claim, same drawable check
+ * (`rightSlotPaneDrawable`), so the lane's stop, the column's deficit and the
+ * header's reservation are three reads of ONE answer rather than three copies of
+ * a disjunction - which is exactly the disagreement #868 caught.
+ */
+export function resolveRightSlotOccupied(state: UiPreferencesState): boolean {
+	const pane = activeRightSlotPane(state);
+	return pane !== null && rightSlotPaneDrawable(pane, state);
 }
 
 /**
@@ -1345,6 +1474,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			isAskDrawerOpen: false,
 			askDrawerScope: "session",
 			askDrawerEvictedPane: null,
+			rightSlotRoute: EMPTY_RIGHT_SLOT_ROUTE,
 			consoleOpenIntent: null,
 			runPanelReveal: null,
 			browserPaneScope: "conversation",
@@ -1527,6 +1657,17 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				set({
 					rightSlotWidth: 0,
 				});
+			},
+
+			setRightSlotRoute: (route: RightSlotRouteFacts) => {
+				// The identity is kept when nothing moved: see the field's own note.
+				set((state) =>
+					state.rightSlotRoute.mounted === route.mounted &&
+					state.rightSlotRoute.runDetails === route.runDetails &&
+					state.rightSlotRoute.session === route.session
+						? {}
+						: { rightSlotRoute: { ...route } },
+				);
 			},
 
 			setBrowserPaneScope: (scope: BrowserPaneScope) => {
@@ -1715,8 +1856,10 @@ export function pushProfileRecent(
 }
 
 /**
- * The part of the preferences that is written to disk: all of it, minus the two
- * requests that only mean something inside the run that made them.
+ * The part of the preferences that is written to disk: all of it, minus the
+ * values that only mean something inside the run - or the route - that produced
+ * them (the two requests, the asks drawer's flag/scope/record, and the route
+ * facts).
  *
  * A NAMED FUNCTION RATHER THAN AN INLINE CLOSURE, and the reason is a test that went
  * red in CI rather than here: the pin over this filter used to reach the closure
@@ -1738,6 +1881,7 @@ export function persistedUiPreferences<
 		isAskDrawerOpen: unknown;
 		askDrawerScope: unknown;
 		askDrawerEvictedPane: unknown;
+		rightSlotRoute: unknown;
 	},
 >(
 	state: T,
@@ -1748,6 +1892,7 @@ export function persistedUiPreferences<
 	| "isAskDrawerOpen"
 	| "askDrawerScope"
 	| "askDrawerEvictedPane"
+	| "rightSlotRoute"
 > {
 	const {
 		runPanelReveal: _pending,
@@ -1763,6 +1908,12 @@ export function persistedUiPreferences<
 		isAskDrawerOpen: drawerOpen,
 		askDrawerScope: _scope,
 		askDrawerEvictedPane: evicted,
+		/*
+		 * THE ROUTE FACTS JOIN THE REQUESTS RATHER THAN THE PREFERENCES: they
+		 * describe where the app IS, not what the user chose, and the next launch
+		 * publishes its own (see `rightSlotRoute`).
+		 */
+		rightSlotRoute: _route,
 		...persisted
 	} = state;
 	/*

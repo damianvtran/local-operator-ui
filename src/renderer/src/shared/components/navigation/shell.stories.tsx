@@ -858,6 +858,32 @@ const useMacChrome = () => {
 	}, []);
 };
 
+/*
+ * The route facts, inline rather than the store's `EMPTY_RIGHT_SLOT_ROUTE`
+ * constant, DELIBERATELY: the before half of this change's evidence pair swaps
+ * IF `origin/main`'s store module under these stories (see
+ * `docs/evidence/right-slot-release/README.md`), and an import the old module
+ * does not export would fail that bundle. The extra `rightSlotRoute` key is
+ * inert on the old store - its reader never looks at it - which is exactly what
+ * makes the pair the same scene under two readers.
+ */
+const EMPTY_ROUTE = { mounted: false, runDetails: false, session: false } as const;
+
+/*
+ * A route every right-slot pane can draw on: the three facts the app's own
+ * `chat-content` publishes on a conversation route (`mounted`, `runDetails`,
+ * `session` all true). These arms mount the dock directly rather than through
+ * `chat-content`, the app's only publisher, so they STATE the route they
+ * simulate - without it the slot's derivation would answer 0 for a pane the
+ * story is showing, and the lane above the dock would photograph a stop the
+ * app does not draw.
+ */
+const DRAWABLE_ROUTE = {
+	mounted: true,
+	runDetails: true,
+	session: true,
+} as const;
+
 const ChatShellFrame: FC<{
 	/**
 	 * The dock, rendered at the width the app's own slot resolves for this frame's
@@ -963,9 +989,13 @@ export const ChatDockFiles: Story = {
 			useUiPreferencesStore.setState({
 				isCanvasOpen: true,
 				rightSlotWidth,
+				rightSlotRoute: DRAWABLE_ROUTE,
 			});
 			return () => {
-				useUiPreferencesStore.setState({ isCanvasOpen: false });
+				useUiPreferencesStore.setState({
+					isCanvasOpen: false,
+					rightSlotRoute: EMPTY_ROUTE,
+				});
 			};
 		}, [rightSlotWidth]);
 
@@ -1008,9 +1038,13 @@ export const ChatDockRunPanel: Story = {
 			useUiPreferencesStore.setState({
 				isRunPanelOpen: true,
 				rightSlotWidth,
+				rightSlotRoute: DRAWABLE_ROUTE,
 			});
 			return () => {
-				useUiPreferencesStore.setState({ isRunPanelOpen: false });
+				useUiPreferencesStore.setState({
+					isRunPanelOpen: false,
+					rightSlotRoute: EMPTY_ROUTE,
+				});
 			};
 		}, [rightSlotWidth]);
 
@@ -1138,9 +1172,16 @@ export const ChatDockAsks: Story = {
 			 * story that mounted the pane without claiming the slot would photograph a
 			 * lane painted for no pane.
 			 */
-			useUiPreferencesStore.setState({ isAskDrawerOpen: true, rightSlotWidth });
+			useUiPreferencesStore.setState({
+				isAskDrawerOpen: true,
+				rightSlotWidth,
+				rightSlotRoute: DRAWABLE_ROUTE,
+			});
 			return () => {
-				useUiPreferencesStore.setState({ isAskDrawerOpen: false });
+				useUiPreferencesStore.setState({
+					isAskDrawerOpen: false,
+					rightSlotRoute: EMPTY_ROUTE,
+				});
 			};
 		}, [rightSlotWidth]);
 
