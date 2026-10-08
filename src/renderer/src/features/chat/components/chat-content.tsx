@@ -97,6 +97,7 @@ import type {
 } from "../draft-selection";
 import { useFleetAsks } from "../fleet-asks";
 import type { Message } from "../types/message";
+import { useAskOpenPolicy } from "../use-ask-open-policy";
 import { AskDrawer } from "./asks/ask-drawer";
 import { Canvas } from "./canvas";
 import { documentsForCanvas } from "./canvas/document-buffers";
@@ -1357,6 +1358,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			() => askQueueView(canonical?.view.frontend ?? null),
 			[canonical?.view.frontend],
 		);
+		/*
+		 * OPEN BY DEFAULT over pending asks (the open policy; `ask-open-policy.ts` states
+		 * the six-rule contract it shares with the TUI, the relay and the native app).
+		 *
+		 * HERE, AND NOT IN `chat-page.tsx`, because this is the one mount that owns the
+		 * drawer's lifetime: `sessionAsksOpen` below is what draws it, `handleCloseAskDrawer`
+		 * is its close door, and this component is keyed by conversation (`SessionPanel
+		 * key={identity}`), so a mount IS a "view" and coming back to a conversation is a
+		 * new one. `chat-page.tsx` owns the composer's answer-mode routing, which this does
+		 * not touch: the hook writes the same store flag a press on the chip writes, through
+		 * the same writer, and nothing else.
+		 */
+		useAskOpenPolicy({
+			sessionId,
+			composerId: conversationId,
+			view: sessionAsksView,
+		});
 		/*
 		 * The same `FLEET_ASKS_QUERY_KEY` read the sidebar and the sessions list already
 		 * make (react-query dedupes it), so the top-level count adds no second poll.

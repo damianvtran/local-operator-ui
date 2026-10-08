@@ -72,6 +72,7 @@ const {
 	createAskDismissals,
 	createAskOpenView,
 	decideAskAutoOpen,
+	shouldCloseCarriedDrawer,
 } = policy;
 
 /*
@@ -426,9 +427,11 @@ test("a draft has no conversation, and a view over one never settles", () => {
 
 test("opening never takes the user's keyboard: a held draft and a focused door both keep it shut", () => {
 	/*
-	 * The two ways an open could move or swap what the user is in the middle of:
-	 *  - the composer holds text, and opening flips the flag that puts the box into
-	 *    answer mode (the draft would be swapped out from under the cursor);
+	 * The two moments an open would land on something the user is in the middle of:
+	 *  - the composer holds text (rule 5: not while typing). On the desktop the drawer
+	 *    cannot hurt the draft, so the LATCH is a judgment call the design round is asked
+	 *    to make; this pins what ships, including that clearing the box later does not
+	 *    open the surface for the view;
 	 *  - the keyboard is on one of the drawer's doors, which the drawer would read as a
 	 *    PRESS (rule 6) and answer by moving focus into its list.
 	 * Both decline, both are final for the view, and neither is a dismissal.
@@ -508,6 +511,63 @@ test("a close before the queue answered spends the decision and records nothing"
 	);
 });
 
+test("a durable pane does not stop an auto-open: it borrows the slot like a press", () => {
+	/*
+	 * The policy has no slot term at all. The store's writer does the borrowing
+	 * (`claimRightSlot` + `askDrawerEvictedPane`), exactly as for the chip, so the pane
+	 * the user had up comes back when the drawer closes. Pinned as an ABSENCE: the
+	 * decision's inputs name no pane, so a future "yield to the canvas" has to be a
+	 * deliberate change to the contract rather than a clause that slipped in.
+	 */
+	const reasons = ["pane-open", "slot-held", "canvas-open"];
+	const source = readFileSync(
+		join(process.cwd(), "src/renderer/src/features/chat/ask-open-policy.ts"),
+		"utf8",
+	);
+	for (const reason of reasons) {
+		assert.ok(
+			!source.includes(`"${reason}"`),
+			`the policy names a ${reason} reason: auto-open yields to a pane the press does not`,
+		);
+	}
+});
+
+/* ====================================== the global flag carries across views ==== */
+
+test("a policy-opened drawer carried onto a DISMISSED conversation is closed", () => {
+	const dismissals = createAskDismissals();
+	dismissals.record("c-a");
+	const facts = (over = {}) => ({
+		conversationId: "c-a",
+		dismissed: dismissals,
+		sessionDrawerOpen: true,
+		openedByPolicy: true,
+		...over,
+	});
+	assert.equal(shouldCloseCarriedDrawer(facts()), true);
+	/* Each narrowing term is load-bearing: drop any one and the answer is no. */
+	assert.equal(
+		shouldCloseCarriedDrawer(facts({ openedByPolicy: false })),
+		false,
+		"a drawer the USER opened follows them, as it always did",
+	);
+	assert.equal(
+		shouldCloseCarriedDrawer(facts({ sessionDrawerOpen: false })),
+		false,
+		"nothing to close; and a FLEET pane is not this conversation's to close",
+	);
+	assert.equal(
+		shouldCloseCarriedDrawer(facts({ conversationId: "c-b" })),
+		false,
+		"another conversation was not dismissed",
+	);
+	assert.equal(
+		shouldCloseCarriedDrawer(facts({ conversationId: undefined })),
+		false,
+		"a draft has no conversation to have dismissed",
+	);
+});
+
 test("a swap to the fleet pane is not a dismissal", () => {
 	const { view, dismissals } = pane();
 	const rows = [ask("open")];
@@ -573,6 +633,11 @@ test("the reason a verdict names is the first thing that kept the drawer shut", 
 		reason({ composerHasText: true, keyboardOnDoor: true, drawerOpen: true }),
 		"composer-has-text",
 	);
+	assert.equal(
+		reason({ keyboardOnDoor: true, drawerOpen: true }),
+		"door-focused",
+	);
+	assert.equal(reason({ drawerOpen: true }), "drawer-open");
 	assert.equal(
 		reason({ pendingRows: 0, outstanding: 0, dismissed: { has: () => true } }),
 		"nothing-pending",
