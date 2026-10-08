@@ -715,26 +715,14 @@
  * renders them resolve against one number and cannot drift apart.
  *
  * It is a custom property rather than a Tailwind `max-w-[810px]` literal in the
- * class string because a class can only carry a literal: the value has to be
- * addressable by name for a runtime change to reach the transcript and the
- * composer together, and a second copy of the number in a class string is the
- * drift this file's sibling comment (in `chat-measure.ts`) exists to prevent.
- *
- * ## Two properties, because a drag needs two questions answered
- *
- * `--lo-chat-measure-shipped` is what the column is for a reader who has never
- * touched it - 810px, and the measurement behind that value is below.
- * `--lo-chat-measure` is what it renders as, and it resolves the reader's own
- * width FIRST and falls back to the shipped one. That is the whole of the
- * precedence rule: an override REPLACES the shipped default rather than
- * sitting beside it, and there is no window size below which it stops applying.
- * The pattern is `deepseek-harness`'s (`--dsh-chat-content-width: var(
- * --dsh-chat-user-width, clamp(...))`), adopted here with this app's own shape.
- *
- * A chain of properties rather than one property rewritten by the store, for the
- * reason the reset path exists: with the shipped value still declared, "put it
- * back" is `removeProperty` on the override, which cannot restore the wrong
- * number and does not need the number to be carried around in JavaScript.
+ * class string because the value has to be addressable by name to be shared: a
+ * second copy of the number in a class string is the drift this file's sibling
+ * comment (in `chat-measure.ts`) exists to prevent. It is NOT a runtime
+ * setting. The conversation column used to resolve this through an override
+ * property a reader's drag wrote onto the document root (`--lo-chat-measure-
+ * override`, behind a second `-shipped` property); the handles, the persisted
+ * width and that chain were removed in #895, so there is one declaration, one
+ * number and nothing that changes it while the app runs.
  *
  * ## Why 810, and not 640
  *
@@ -767,47 +755,19 @@
  * explicitly "narrow the constraint just a bit", so the step is deliberately
  * well above 640 and does not re-open the redesign.
  *
- * ## The override is the CAP, and a resize never rewrites it
+ * ## The measure is a MAXIMUM, and the pane can still be narrower
  *
- * The column is responsive: `max-width` gives way to a narrow pane. So a reader
- * who chooses 1100px on a wide window and then shrinks it sees a narrower
- * column, and gets 1100px back when they widen it again - the stored width is
- * never rewritten by a resize, because the RENDER clamps and the preference does
- * not (`chatSidebarListHeight`'s note in `ui-preferences-store.ts` states the
- * same rule for the sidebar's list height, and it is the rule this repo already
- * holds).
- *
- * The honest limit, stated rather than discovered later: on a pane narrower than
- * the chosen width the column takes the pane, and the handle can then only narrow
- * it further. That is the seat the shipped cap is in too, so the override does
- * not fight the layout - it is the layout's own ceiling, raised or lowered. An
- * override that pinned a fixed width would fight the layout exactly where the app
- * is narrowest, which is why it is not what this does.
- *
- * The bounds and the drag arithmetic live in `features/chat/chat-measure-drag.ts`
- * rather than in the component's handlers: `pnpm test:desktop` bundles the
- * shipped TypeScript in memory instead of rendering it, so a clamp written into
- * a JSX handler is a decision nothing can reach. `scripts/chat-measure-drag.test.mjs`
- * drives that module directly.
- *
- * The class still gates the cap behind `@min-[750px]/chatcol:`, and the two do
- * not fight: at a 750px container the content box is 750 - 48 = 702px, so a
- * 810px cap can only bind above an 858px container. The gate is therefore inert
- * at every width the product renders, and it is kept because it states the
- * intent (a narrow column takes the full width) that the number alone does not.
+ * The column is responsive: `max-width` gives way to a narrow pane, so a docked
+ * run panel or canvas, or a smaller window, leaves a column narrower than 810px
+ * and a wider window does not widen it past 810px. The class gates the cap
+ * behind `@min-[750px]/chatcol:`, and the two do not fight: at a 750px container
+ * the content box is 750 - 48 = 702px, so the 810px cap can only bind above an
+ * 858px container. The gate is therefore inert at every width the product
+ * renders, and it is kept because it states the intent (a narrow column takes
+ * the full width) that the number alone does not.
  */
 :root {
-	/* The shipped default: the number, written once. */
-	--lo-chat-measure-shipped: 810px;
-	/*
-	 * The measure as rendered. The override wins outright when the reader has
-	 * set one; the shipped default is the fallback term, so a removed override
-	 * restores it with no JavaScript involved.
-	 */
-	--lo-chat-measure: var(
-		--lo-chat-measure-override,
-		var(--lo-chat-measure-shipped)
-	);
+	--lo-chat-measure: 810px;
 }
 
 /*

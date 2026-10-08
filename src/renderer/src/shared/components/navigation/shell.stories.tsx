@@ -1359,11 +1359,13 @@ export const ChatDockRunPanel: Story = {
  * mix (an answer, three tool rows), so the column is the width the measure
  * allows rather than the width of a short line.
  *
- * THE SAME STORY SERVES BOTH TREES. `measureHandle` is the prop the chat page passes
- * so the transcript mounts its resize handles; it exists on `origin/main` and is
- * the thing #895 removes, so the before half of the evidence reads this scene
- * with the handles the app shipped and the after half reads it without them. The
- * pair is one scene under two readers.
+ * THE BEFORE HALF IS A COMMIT, NOT A FLAG. These arms were added by #895 before the
+ * handles were removed, passing the chat page's own `measureHandle` so the
+ * transcript mounted them as the app did; the BEFORE frames in
+ * `docs/evidence/chat-measure-handles-removed/before/` were taken from that
+ * commit's tree. The removal commit drops the prop (it no longer exists), so
+ * these arms show the app as it is now. `scripts/chat-measure-handles-removed-
+ * evidence.mjs` drives both trees unchanged, which is the pairing.
  */
 const MEASURE_SEED_AT = 1_760_000_000_000;
 const MEASURE_SAMPLE =
@@ -1441,7 +1443,6 @@ const MeasureTranscriptBody: FC = () => {
 			failure={null as SessionFailureNotice | null}
 			awaitingHydration={false}
 			onReconnect={() => undefined}
-			measureHandle
 		/>
 	);
 };

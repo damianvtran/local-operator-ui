@@ -223,6 +223,11 @@ const launch = async () => {
  * The strips are derived from the content column's own rect (the column's edge
  * and the 10px just outboard of it, where the handle's grab band sat) rather than
  * from a handle element, because on the `after` tree there is no handle to ask.
+ * Each probe is a WHOLE-pixel x (the pixel whose left edge it names): Chrome
+ * rounds a fractional `elementsFromPoint` x to the next pixel, so a half-pixel
+ * probe on the strip's last pixel lands in whatever starts at the next one - the
+ * panel divider's own hit band begins exactly where the right strip ends, which
+ * is the reading this corrected.
  * `y` is the middle of the column's visible height: the handle spanned the
  * column's full height, so any y inside it hits the band.
  */
@@ -248,7 +253,7 @@ const READ = `(() => {
 	};
 	const sweep = (from, to) => {
 		const out = [];
-		for (let x = from; x <= to; x += 1) out.push(probe(x + 0.5));
+		for (let x = from; x <= to; x += 1) out.push(probe(x));
 		return out;
 	};
 	const leftFrom = Math.ceil(c.left - 10);
