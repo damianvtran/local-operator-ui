@@ -19,19 +19,19 @@ Result: 2 check(s) FAILED
 ### the state file exists with the permissions the design requires
 
 ```
-[PASS] <scratch>/config/run/ui-browser/host.json mode 600; directory mode 700; {"pid":42131,"port":51960,"session_key":"OTcBXW035SUrpZuL9gSSeUatpgBMYjPZCTlbnbhMGSo","proto":1,"host":"ui","app_version":"0.32.13","profile_dir":"<scratch>/userdata/Partitions/local-operator-browser","capabilities":["styles","hit_test","ancestors","download","upload"],"tabs":1,"agent_tabs":0,"console":true,"console_surfaces":0,"console_agent_surfaces":0,"heartbeat_at":1791423877.751,"started_at":1791423877.729}
+[PASS] <scratch>/config/run/ui-browser/host.json mode 600; directory mode 700; {"pid":10442,"port":57009,"session_key":"uDot72u-3kgPulLk-P4hzy1ZwgrXZ1lPsM8K57PbGG8","proto":1,"host":"ui","app_version":"0.32.13","profile_dir":"<scratch>/userdata/Partitions/local-operator-browser","capabilities":["styles","hit_test","ancestors","download","upload"],"tabs":1,"agent_tabs":0,"console":true,"console_surfaces":0,"console_agent_surfaces":0,"heartbeat_at":1791426146.493,"started_at":1791426146.395}
 ```
 
 ### the record names a live ui host with a protocol version
 
 ```
-[PASS] host=ui proto=1 key length=43 pid=42131
+[PASS] host=ui proto=1 key length=43 pid=10442
 ```
 
 ### /health identifies this process
 
 ```
-[PASS] GET /health -> 200 {"host":"ui","proto":1,"pid":42131,"console":true,"capabilities":["styles","hit_test","ancestors","download","upload"]}
+[PASS] GET /health -> 200 {"host":"ui","proto":1,"pid":10442,"console":true,"capabilities":["styles","hit_test","ancestors","download","upload"]}
 ```
 
 ### a request without the key is refused
@@ -73,14 +73,14 @@ Result: 2 check(s) FAILED
 ### the host publishes the loopback address it bound, naming the state file's port
 
 ```
-[PASS] 21:44:37.730 › [browser] host on 127.0.0.1:51960 (proto 1), profile <scratch>/userdata/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
-state file port=51960
+[PASS] 22:22:26.395 › [browser] host on 127.0.0.1:57009 (proto 1), profile <scratch>/userdata/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+state file port=57009
 ```
 
 ### a connection to this machine's non-loopback address is refused
 
 ```
-[PASS] net.connect({host: "192.168.0.155", port: 51960}) -> ECONNREFUSED
+[PASS] net.connect({host: "192.168.0.155", port: 57009}) -> ECONNREFUSED
 ```
 
 ### a valid call answers the envelope the Python client expects
@@ -132,21 +132,21 @@ state file port=51960
 ### an agent open on an unapproved origin fails early, before any prompt
 
 ```
-[PASS] -> {"id":"proof-open","ok":false,"error":{"code":"origin_not_allowed","message":"the user has not approved http://127.0.0.1:51945 for agent access","data":{"origin":"http://127.0.0.1:51945","authority":"127.0.0.1:51945","reason":"unapproved"}}}
+[PASS] -> {"id":"proof-open","ok":false,"error":{"code":"origin_not_allowed","message":"the user has not approved http://127.0.0.1:56994 for agent access","data":{"origin":"http://127.0.0.1:56994","authority":"127.0.0.1:56994","reason":"unapproved"}}}
 ```
 
 ### request_access raises a prompt the app's chrome can answer, and await_access sees the decision
 
 ```
-[PASS] request_access -> {"origin":"http://127.0.0.1:51945","state":"pending","entry_id":"8ae9e4992a9c4fff849c6560c51a46e6","authority":"127.0.0.1:51945","expires_at":1791424478134,"broad":{"scope":"host","key":"127.0.0.1"}}
-respondToConsent (via window.api.browser) -> {"origin":"http://127.0.0.1:51945","state":"allowed","scope":"origin","tabs":[{"tabId":1,"title":"New tab","url":"about:blank","owner":"user","sessionId":null,"active":true,"restored":false,"handedOver":false,"failed":false,"loading":false}],"activeTabId":1,"transfers":{"active":null,"dir":null,"notes":[],"activeTabId":1,"recent":null},"url":"about:blank","title":"","loading":false,"canGoBack":false,"canGoForward":false,"navFailure":null,"pendingConsent":[],"approvals":[{"origin":"http://127.0.0.1:51945","scope":"origin","grantedAt":1791423878157}]}
-await_access -> {"origin":"http://127.0.0.1:51945","state":"allowed"}
+[PASS] request_access -> {"origin":"http://127.0.0.1:56994","state":"pending","entry_id":"4a642f56452d4427bd8fe19fcd6e7846","authority":"127.0.0.1:56994","expires_at":1791426746752,"broad":{"scope":"host","key":"127.0.0.1"}}
+respondToConsent (via window.api.browser) -> {"origin":"http://127.0.0.1:56994","state":"allowed","scope":"origin","tabs":[{"tabId":1,"title":"New tab","url":"about:blank","owner":"user","sessionId":null,"active":true,"restored":false,"handedOver":false,"failed":false,"loading":false}],"activeTabId":1,"transfers":{"active":null,"dir":null,"notes":[],"activeTabId":1,"recent":null},"url":"about:blank","title":"","loading":false,"canGoBack":false,"canGoForward":false,"navFailure":null,"pendingConsent":[],"approvals":[{"origin":"http://127.0.0.1:56994","scope":"origin","grantedAt":1791426146767}]}
+await_access -> {"origin":"http://127.0.0.1:56994","state":"allowed"}
 ```
 
 ### read returns the page's text from the isolated world
 
 ```
-[PASS] read.text starts: "Browser host proof page\nA page for the local-operator browser host evidence run.\nName\n\nGo\nNext page\nPopup dance\nHold a p"... url=http://127.0.0.1:51945/
+[PASS] read.text starts: "Browser host proof page\nA page for the local-operator browser host evidence run.\nName\n\nGo\nNext page\nPopup dance\nHold a p"... url=http://127.0.0.1:56994/
 ```
 
 ### the driven page's own script finds no bridge surface (no preload, sandboxed)
@@ -182,26 +182,26 @@ await_access -> {"origin":"http://127.0.0.1:51945","state":"allowed"}
 ### type lands in the field and reads back
 
 ```
-[PASS] type -> {"value":"Ada Lovelace","via":"insert_text","url":"http://127.0.0.1:51945/","title":"Browser host proof page"}
+[PASS] type -> {"value":"Ada Lovelace","via":"insert_text","url":"http://127.0.0.1:56994/","title":"Browser host proof page"}
 ```
 
 ### click fires the page's handler (the click reads back as the page wrote it)
 
 ```
-[PASS] click -> {"navigated":false,"url":"http://127.0.0.1:51945/","title":"Browser host proof page"}
+[PASS] click -> {"navigated":false,"url":"http://127.0.0.1:56994/","title":"Browser host proof page"}
 read after click: "Browser host proof page\nA page for the local-operator browser host evidence run.\nName\n\nGo\nNext page\nPopup dance\nHold a popup\nBlank-first popup\nDenied scheme\nFil"
 ```
 
 ### screenshot returns a PNG, written here and magic-checked
 
 ```
-[PASS] <scratch>/out/proof-page.png: 92122 bytes, magic 89504e470d0a1a0a, url=http://127.0.0.1:51945/, title="Browser host proof page"
+[PASS] <scratch>/out/proof-page.png: 92122 bytes, magic 89504e470d0a1a0a, url=http://127.0.0.1:56994/, title="Browser host proof page"
 ```
 
 ### scroll moves the page and reports whether more remains
 
 ```
-[PASS] scroll -> {"scrollX":0,"scrollY":1187,"moreBelow":false,"moreRight":false,"url":"http://127.0.0.1:51945/","title":"Browser host proof page"}
+[PASS] scroll -> {"scrollX":0,"scrollY":1187,"moreBelow":false,"moreRight":false,"url":"http://127.0.0.1:56994/","title":"Browser host proof page"}
 ```
 
 ### logs carry console output and the uncaught exception
@@ -211,7 +211,7 @@ read after click: "Browser host proof page\nA page for the local-operator browse
   log [console] proof: log line
   warning [console] proof: warning line
   error [console] proof: error line
-  error [exception] Error: proof: uncaught exception     at http://127.0.0.1:51945/:117:28
+  error [exception] Error: proof: uncaught exception     at http://127.0.0.1:56994/:117:28
   warning [console] %cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This ren
   log [console] proof: clicked with [Ada Lovelace]
 ```
@@ -225,7 +225,7 @@ read after click: "Browser host proof page\nA page for the local-operator browse
 ### page targets before the popup section
 
 ```
-http://127.0.0.1:51945/
+http://127.0.0.1:56994/
 about:blank
 about:blank
 file://<worktree>/out/renderer/index.html#/chat
@@ -254,27 +254,27 @@ popup status: "popup: opener=present cookies=shared held"
 
 ```
 [PASS] opener record: "popup: opened / opener=yes / selfCookie=yes / sharedJar=yes / grandchild=denied / ack=sent / opener-at=/ / closed=yes / blank=opened / mailto=refused"
-targets: ["http://127.0.0.1:51945/popup-target?hold=1&which=blank","http://127.0.0.1:51945/","about:blank","about:blank","file://<worktree>/out/renderer/index.html#/chat"]
+targets: ["http://127.0.0.1:56994/popup-target?hold=1&which=blank","http://127.0.0.1:56994/","about:blank","about:blank","file://<worktree>/out/renderer/index.html#/chat"]
 ```
 
 ### the cap admits the 4th live child and refuses the 5th
 
 ```
 [PASS] opener record: "popup: opened / opener=yes / selfCookie=yes / sharedJar=yes / grandchild=denied / ack=sent / opener-at=/ / closed=yes / blank=opened / mailto=refused / hold=opened / cap=0:opened,1:opened,2:refused"
-targets: ["http://127.0.0.1:51945/popup-target?hold=1&which=cap1","http://127.0.0.1:51945/popup-target?hold=1&which=cap0","http://127.0.0.1:51945/popup-target?hold=1&which=direct","http://127.0.0.1:51945/popup-target?hold=1&which=blank","http://127.0.0.1:51945/","about:blank","about:blank","file://<worktree>/out/renderer/index.html#/chat"]
+targets: ["http://127.0.0.1:56994/popup-target?hold=1&which=cap1","http://127.0.0.1:56994/popup-target?hold=1&which=cap0","http://127.0.0.1:56994/popup-target?hold=1&which=direct","http://127.0.0.1:56994/popup-target?hold=1&which=blank","http://127.0.0.1:56994/","about:blank","about:blank","file://<worktree>/out/renderer/index.html#/chat"]
 ```
 
 ### each popup captures as a full frame while the run is headless
 
 ```
-[PASS] popup-headless.png 23876 bytes (http://127.0.0.1:51945/popup-target?hold=1&which=direct)
-popup-blank-headless.png 23876 bytes (http://127.0.0.1:51945/popup-target?hold=1&which=blank)
+[PASS] popup-headless.png 23876 bytes (http://127.0.0.1:56994/popup-target?hold=1&which=direct)
+popup-blank-headless.png 23876 bytes (http://127.0.0.1:56994/popup-target?hold=1&which=blank)
 ```
 
 ### closing the tab takes its popup with it, and only its popup
 
 ```
-[PASS] targets after the close: ["http://127.0.0.1:51945/popup-target?hold=1&which=cap1","http://127.0.0.1:51945/popup-target?hold=1&which=cap0","http://127.0.0.1:51945/popup-target?hold=1&which=direct","http://127.0.0.1:51945/popup-target?hold=1&which=blank","http://127.0.0.1:51945/","about:blank","about:blank","file://<worktree>/out/renderer/index.html#/chat"]
+[PASS] targets after the close: ["http://127.0.0.1:56994/popup-target?hold=1&which=cap1","http://127.0.0.1:56994/popup-target?hold=1&which=cap0","http://127.0.0.1:56994/popup-target?hold=1&which=direct","http://127.0.0.1:56994/popup-target?hold=1&which=blank","http://127.0.0.1:56994/","about:blank","about:blank","file://<worktree>/out/renderer/index.html#/chat"]
 tabs: 2
 ```
 
@@ -336,7 +336,7 @@ inline={"--radix-popper-available-width":"640px","--radix-popper-transform-origi
     }
   ],
   "truncated": false,
-  "url": "http://127.0.0.1:51945/geometry",
+  "url": "http://127.0.0.1:56994/geometry",
   "title": "Geometry proof page"
 }
 ```
@@ -498,7 +498,7 @@ inline={"--radix-popper-available-width":"640px","--radix-popper-transform-origi
       }
     }
   ],
-  "url": "http://127.0.0.1:51945/geometry",
+  "url": "http://127.0.0.1:56994/geometry",
   "title": "Geometry proof page"
 }
 ```
@@ -562,14 +562,14 @@ styles -> {"id":"proof-styles","ok":false,"error":{"code":"internal","message":"
 ### the card field's frame loaded cross-site, in its own frame target
 
 ```
-[PASS] iframe target http://localhost:51944/card-frame (page http://127.0.0.1:51945/iframe-type)
+[PASS] iframe target http://localhost:56993/card-frame (page http://127.0.0.1:56994/iframe-type)
 ```
 
 ### type aimed at the iframe ELEMENT lands in its one field, read back from the frame's own target
 
 ```
-[PASS] type {selector: "#card", text: "4000056655665556"} -> {"id":"proof-type","ok":true,"result":{"value":"4000056655665556","via":"insert_text","frame_origin":"http://localhost:51944","url":"http://127.0.0.1:51945/iframe-type","title":"Iframe type proof page"}}
-frame target #number (read over devtools) -> {"origin":"http://localhost:51944","number":"4000056655665556"}
+[PASS] type {selector: "#card", text: "4000056655665556"} -> {"id":"proof-type","ok":true,"result":{"value":"4000056655665556","via":"insert_text","frame_origin":"http://localhost:56993","url":"http://127.0.0.1:56994/iframe-type","title":"Iframe type proof page"}}
+frame target #number (read over devtools) -> {"origin":"http://localhost:56993","number":"4000056655665556"}
 ```
 
 ### nothing was planted on the iframe element itself
@@ -581,15 +581,15 @@ frame target #number (read over devtools) -> {"origin":"http://localhost:51944",
 ### an explicit hop `iframe#card >>> #number` lands
 
 ```
-[PASS] type {selector: "iframe#card >>> #number", text: "5555555555554444"} -> {"id":"proof-type","ok":true,"result":{"value":"5555555555554444","via":"insert_text","frame_origin":"http://localhost:51944","url":"http://127.0.0.1:51945/iframe-type","title":"Iframe type proof page"}}
-frame target #number (read over devtools) -> {"origin":"http://localhost:51944","number":"5555555555554444"}
+[PASS] type {selector: "iframe#card >>> #number", text: "5555555555554444"} -> {"id":"proof-type","ok":true,"result":{"value":"5555555555554444","via":"insert_text","frame_origin":"http://localhost:56993","url":"http://127.0.0.1:56994/iframe-type","title":"Iframe type proof page"}}
+frame target #number (read over devtools) -> {"origin":"http://localhost:56993","number":"5555555555554444"}
 ```
 
 ### a selector the page misses (`#number`) is found in the one frame that has it, and lands
 
 ```
-[PASS] type {selector: "#number", text: "378282246310005"} -> {"id":"proof-type","ok":true,"result":{"value":"378282246310005","via":"insert_text","frame_origin":"http://localhost:51944","url":"http://127.0.0.1:51945/iframe-type","title":"Iframe type proof page"}}
-frame target #number (read over devtools) -> {"origin":"http://localhost:51944","number":"378282246310005"}
+[PASS] type {selector: "#number", text: "378282246310005"} -> {"id":"proof-type","ok":true,"result":{"value":"378282246310005","via":"insert_text","frame_origin":"http://localhost:56993","url":"http://127.0.0.1:56994/iframe-type","title":"Iframe type proof page"}}
+frame target #number (read over devtools) -> {"origin":"http://localhost:56993","number":"378282246310005"}
 ```
 
 ### snapshot shows the frame's own tree, with a ref for its textbox
@@ -603,7 +603,7 @@ frame target #number (read over devtools) -> {"origin":"http://localhost:51944",
   - textbox "Cardholder" [e2]
   - InlineTextBox "Card number (inside a cross-site frame):"
   - Iframe "Card number"
-- frame iframe#card (http://localhost:51944):
+- frame iframe#card (http://localhost:56993):
   - RootWebArea "Card frame" [e3]
     - textbox "1234 1234 1234 1234" [e4]
       - InlineTextBox "378282246310005"
@@ -614,14 +614,14 @@ frame target #number (read over devtools) -> {"origin":"http://localhost:51944",
 ### type by that ref lands in the frame
 
 ```
-[PASS] type {ref: "e4", text: "4242424242424242"} -> {"id":"proof-type","ok":true,"result":{"value":"4242424242424242","via":"insert_text","frame_origin":"http://localhost:51944","url":"http://127.0.0.1:51945/iframe-type","title":"Iframe type proof page"}}
-frame target #number -> {"origin":"http://localhost:51944","number":"4242424242424242"}
+[PASS] type {ref: "e4", text: "4242424242424242"} -> {"id":"proof-type","ok":true,"result":{"value":"4242424242424242","via":"insert_text","frame_origin":"http://localhost:56993","url":"http://127.0.0.1:56994/iframe-type","title":"Iframe type proof page"}}
+frame target #number -> {"origin":"http://localhost:56993","number":"4242424242424242"}
 ```
 
 ### the control: type on the same page's top-level field lands exactly as before, with no frame_origin
 
 ```
-[PASS] type {selector: "#holder"} -> {"id":"proof-type","ok":true,"result":{"value":"Ada Lovelace","via":"insert_text","url":"http://127.0.0.1:51945/iframe-type","title":"Iframe type proof page"}}
+[PASS] type {selector: "#holder"} -> {"id":"proof-type","ok":true,"result":{"value":"Ada Lovelace","via":"insert_text","url":"http://127.0.0.1:56994/iframe-type","title":"Iframe type proof page"}}
 ```
 
 ### precondition: the card frame has user activation, so a _top hop reaches the host's gate rather than Chromium's own block
@@ -633,7 +633,7 @@ frame target #number -> {"origin":"http://localhost:51944","number":"42424242424
 ### a _top link clicked inside the frame is refused by the host's origin gate, and the tab stays put
 
 ```
-[PASS] click {selector: "iframe#card >>> #escape"} -> {"id":"proof-click","ok":false,"error":{"code":"origin_not_allowed","message":"the user has not approved http://localhost:51944 for agent access","data":{"origin":"http://localhost:51944","blocked":["http://localhost:51944"]}}}
+[PASS] click {selector: "iframe#card >>> #escape"} -> {"id":"proof-click","ok":false,"error":{"code":"origin_not_allowed","message":"the user has not approved http://localhost:56993 for agent access","data":{"origin":"http://localhost:56993","blocked":["http://localhost:56993"]}}}
 page targets at /escaped: 0
 ```
 
@@ -654,8 +654,8 @@ frame target text -> "Nothing to type into here."
 ### a same-site frame (in the page's process, no target of its own) is reached through its document, and lands
 
 ```
-[PASS] type {selector: "iframe#samesite >>> #postcode"} -> {"id":"proof-type","ok":true,"result":{"value":"SW1A 1AA","via":"insert_text","frame_origin":"http://127.0.0.1:51944","url":"http://127.0.0.1:51945/iframe-more","title":"Iframe refusal proof page"}}
-frame document #postcode (page target, isolated world in that frame) -> {"value":"SW1A 1AA","url":"http://127.0.0.1:51944/samesite-frame"}
+[PASS] type {selector: "iframe#samesite >>> #postcode"} -> {"id":"proof-type","ok":true,"result":{"value":"SW1A 1AA","via":"insert_text","frame_origin":"http://127.0.0.1:56993","url":"http://127.0.0.1:56994/iframe-more","title":"Iframe refusal proof page"}}
+frame document #postcode (page target, isolated world in that frame) -> {"value":"SW1A 1AA","url":"http://127.0.0.1:56993/samesite-frame"}
 ```
 
 ### type at a non-editable top-level element keeps #851's sentence, with the >>> hint appended
@@ -667,7 +667,7 @@ frame document #postcode (page target, isolated world in that frame) -> {"value"
 ### the reverting field's frame loaded cross-site, in its own frame target
 
 ```
-[PASS] iframe target http://localhost:51944/revert-frame (page http://127.0.0.1:51945/revert-type)
+[PASS] iframe target http://localhost:56993/revert-frame (page http://127.0.0.1:56994/revert-type)
 ```
 
 ### precondition: the fixture field takes a setter write and reverts it a tick later
@@ -690,43 +690,72 @@ top document #top-revert (read over devtools) -> ""
 frame target #frame-revert (read over devtools) -> ""
 ```
 
-### type aimed at the multi-field iframe ELEMENT types nothing, and the reverting field stays empty
+### type aimed at the multi-field iframe ELEMENT is refused, never answered ok for text no frame field holds
 
 ```
-[PASS] type {selector: "#rv"} -> {"id":"proof-type","ok":false,"error":{"code":"element_not_found","message":"#rv is an iframe holding 3 editable fields, so nothing was typed; name one: iframe#rv >>> #frame-revert, iframe#rv >>> #frame-setter-only, iframe#rv >>> #frame-keep","data":{"candidates":["iframe#rv >>> #frame-revert","iframe#rv >>> #frame-setter-only","iframe#rv >>> #frame-keep"]}}}
+[PASS] type {selector: "#rv"} -> {"id":"proof-type","ok":false,"error":{"code":"element_not_found","message":"#rv took the value-setter write but does not hold the text (read back ''), so nothing was reported typed","data":{}}}
+frame fields (read over devtools) -> {"revert":"","lateRevert":"","setterOnly":"","mask":"","keep":""}
+```
+
+### type at a top-document field that reverts the write 40 ms later is REFUSED, and the field reads back empty
+
+```
+[PASS] type {selector: "#top-late-revert"} -> {"id":"proof-type","ok":false,"error":{"code":"element_not_found","message":"#top-late-revert took the value-setter write but does not hold the text (read back ''), so nothing was reported typed","data":{}}}
+top document #top-late-revert (read over devtools) -> ""
+```
+
+### type at a cross-site frame field that reverts the write 40 ms later is REFUSED, and the field reads back empty from the frame's own target
+
+```
+[PASS] type {selector: "iframe#rv >>> #frame-late-revert"} -> {"id":"proof-type","ok":false,"error":{"code":"element_not_found","message":"iframe#rv >>> #frame-late-revert took the value-setter write but does not hold the text (read back ''), so nothing was reported typed","data":{}}}
+frame target #frame-late-revert (read over devtools) -> ""
 ```
 
 ### the control: a top-document field that refuses insertText but keeps a setter write lands via value_setter
 
 ```
-[PASS] type {selector: "#top-setter-only"} -> {"id":"proof-type","ok":true,"result":{"value":"4000056655665556","via":"value_setter","insert_text_readback":"","url":"http://127.0.0.1:51945/revert-type","title":"Reverting field proof page"}}
+[PASS] type {selector: "#top-setter-only"} -> {"id":"proof-type","ok":true,"result":{"value":"4000056655665556","via":"value_setter","insert_text_readback":"","url":"http://127.0.0.1:56994/revert-type","title":"Reverting field proof page"}}
 top document #top-setter-only (read over devtools) -> "4000056655665556"
 ```
 
 ### the control: a cross-site frame field that keeps a setter write lands via value_setter, read back from the frame's own target
 
 ```
-[PASS] type {selector: "iframe#rv >>> #frame-setter-only"} -> {"id":"proof-type","ok":true,"result":{"value":"4000056655665556","via":"value_setter","insert_text_readback":"","frame_origin":"http://localhost:51944","url":"http://127.0.0.1:51945/revert-type","title":"Reverting field proof page"}}
+[PASS] type {selector: "iframe#rv >>> #frame-setter-only"} -> {"id":"proof-type","ok":true,"result":{"value":"4000056655665556","via":"value_setter","insert_text_readback":"","frame_origin":"http://localhost:56993","url":"http://127.0.0.1:56994/revert-type","title":"Reverting field proof page"}}
 frame target #frame-setter-only (read over devtools) -> "4000056655665556"
 ```
 
 ### the control: an ordinary field on the same page still lands via insert_text
 
 ```
-[PASS] type {selector: "#top-keep"} -> {"id":"proof-type","ok":true,"result":{"value":"4000056655665556","via":"insert_text","url":"http://127.0.0.1:51945/revert-type","title":"Reverting field proof page"}}
+[PASS] type {selector: "#top-keep"} -> {"id":"proof-type","ok":true,"result":{"value":"4000056655665556","via":"insert_text","url":"http://127.0.0.1:56994/revert-type","title":"Reverting field proof page"}}
+```
+
+### the control: a masking field in the top document (digits grouped in fours) LANDS and reports the field's own formatted value
+
+```
+[PASS] type {selector: "#top-mask", text: "4242424242424242"} -> {"id":"proof-type","ok":true,"result":{"value":"4242 4242 4242 4242","via":"insert_text","url":"http://127.0.0.1:56994/revert-type","title":"Reverting field proof page"}}
+top document #top-mask (read over devtools) -> "4242 4242 4242 4242"
+```
+
+### the control: a masking field in the cross-site frame LANDS and reports the field's own formatted value, read back from the frame's own target
+
+```
+[PASS] type {selector: "iframe#rv >>> #frame-mask", text: "4242424242424242"} -> {"id":"proof-type","ok":true,"result":{"value":"4242 4242 4242 4242","via":"insert_text","frame_origin":"http://localhost:56993","url":"http://127.0.0.1:56994/revert-type","title":"Reverting field proof page"}}
+frame target #frame-mask (read over devtools) -> "4242 4242 4242 4242"
 ```
 
 ### precondition: the frame origin is DENIED through the consent path
 
 ```
-[PASS] request_access -> pending; await_access -> {"origin":"http://localhost:51944","state":"denied"}
+[PASS] request_access -> pending; await_access -> {"origin":"http://localhost:56993","state":"denied"}
 ```
 
 ### a frame from a DENIED origin is refused on every route, absent from snapshot, and its field stays empty
 
 ```
-[PASS] hop -> {"id":"proof-type","ok":false,"error":{"code":"origin_not_allowed","message":"the user denied http://localhost:51944 for agent access, and that element is inside a frame from it","data":{"origin":"http://localhost:51944","reason":"denied"}}}
-element -> {"id":"proof-type","ok":false,"error":{"code":"origin_not_allowed","message":"the user denied http://localhost:51944 for agent access, and that element is inside a frame from it","data":{"origin":"http://localhost:51944","reason":"denied"}}}
+[PASS] hop -> {"id":"proof-type","ok":false,"error":{"code":"origin_not_allowed","message":"the user denied http://localhost:56993 for agent access, and that element is inside a frame from it","data":{"origin":"http://localhost:56993","reason":"denied"}}}
+element -> {"id":"proof-type","ok":false,"error":{"code":"origin_not_allowed","message":"the user denied http://localhost:56993 for agent access, and that element is inside a frame from it","data":{"origin":"http://localhost:56993","reason":"denied"}}}
 auto -> {"id":"proof-type","ok":false,"error":{"code":"element_not_found","message":"selector #number matched nothing in the page itself or the frames searched (1 frame(s) from an origin the user denied were not searched); address the frame explicitly as <iframe-selector> >>> <selector>","data":{}}}
 snapshot ->
 - RootWebArea "Iframe type proof page" [e1]
@@ -754,12 +783,12 @@ frame target #number (read over devtools) -> ""
 ### page targets on the app's debugging port (raw)
 
 ```
-http://127.0.0.1:51945/hidden-viewport
-http://127.0.0.1:51945/popup-target?hold=1&which=cap1
-http://127.0.0.1:51945/popup-target?hold=1&which=cap0
-http://127.0.0.1:51945/popup-target?hold=1&which=direct
-http://127.0.0.1:51945/popup-target?hold=1&which=blank
-http://127.0.0.1:51945/
+http://127.0.0.1:56994/hidden-viewport
+http://127.0.0.1:56994/popup-target?hold=1&which=cap1
+http://127.0.0.1:56994/popup-target?hold=1&which=cap0
+http://127.0.0.1:56994/popup-target?hold=1&which=direct
+http://127.0.0.1:56994/popup-target?hold=1&which=blank
+http://127.0.0.1:56994/
 about:blank
 about:blank
 file://<worktree>/out/renderer/index.html#/chat
@@ -799,41 +828,41 @@ frame: <scratch>/out/hidden-view-popup.png
 ### a goto re-reports the page that arrived, and a pre-navigation ref is refused
 
 ```
-[PASS] goto -> {"url":"http://127.0.0.1:51945/page2","title":"Proof page two","tab":"ui:2:e0a5ea94ac99ec035491c41cea885044","via":"stored_grant"}
+[PASS] goto -> {"url":"http://127.0.0.1:56994/page2","title":"Proof page two","tab":"ui:2:9716184d30e6c05691b7d3bf82bb0bf4","via":"stored_grant"}
 click with the pre-navigation ref -> {"id":"proof-click","ok":false,"error":{"code":"element_not_found","message":"the page navigated since that snapshot; take a new snapshot and retry","data":{}}}
 ```
 
 ### the ref was valid before the navigation
 
 ```
-[PASS] same ref before the navigation -> {"id":"proof-click","ok":true,"result":{"navigated":false,"url":"http://127.0.0.1:51945/","title":"Browser host proof page"}}
+[PASS] same ref before the navigation -> {"id":"proof-click","ok":true,"result":{"navigated":false,"url":"http://127.0.0.1:56994/","title":"Browser host proof page"}}
 ```
 
 ### a hung navigation ends as the typed nav_timeout, inside the published budget
 
 ```
-[PASS] goto http://127.0.0.1:51945/slow -> {"id":"proof-goto","ok":false,"error":{"code":"nav_timeout","message":"navigation timed out","data":{"timeout_ms":30000}}}
-elapsed 30012ms against the 30 s budget (the client's deadline is 35 s)
+[PASS] goto http://127.0.0.1:56994/slow -> {"id":"proof-goto","ok":false,"error":{"code":"nav_timeout","message":"navigation timed out","data":{"timeout_ms":30000}}}
+elapsed 30006ms against the 30 s budget (the client's deadline is 35 s)
 ```
 
 ### the tab is usable again after a timed-out navigation
 
 ```
-[PASS] goto http://127.0.0.1:51945/page2 after the timeout -> {"id":"proof-goto","ok":true,"result":{"url":"http://127.0.0.1:51945/page2","title":"Proof page two","tab":"ui:2:e0a5ea94ac99ec035491c41cea885044","via":"stored_grant"}}
+[PASS] goto http://127.0.0.1:56994/page2 after the timeout -> {"id":"proof-goto","ok":true,"result":{"url":"http://127.0.0.1:56994/page2","title":"Proof page two","tab":"ui:2:9716184d30e6c05691b7d3bf82bb0bf4","via":"stored_grant"}}
 ```
 
 ### the app's own renderer cannot use the agent's RPC
 
 ```
 [PASS] from the renderer: blocked: TypeError: Failed to fetch
-chromium's own reason: Connecting to 'http://127.0.0.1:51960/rpc' violates the following Content Security Policy directive: "connect-src 'self' http://localhost:1111 http://127.0.0.1:1111 http://localhost:8080 http://127.0.0.1:8080 https://api.radienthq.com https://us.i.posthog.com https://login.microsoftonline.com https://accounts.google.com". The action has been blocked. | Fetch API cannot load http://127.0.0.1:51960/rpc. Refused to connect because it violates the document's Content Security Policy.
+chromium's own reason: Connecting to 'http://127.0.0.1:57009/rpc' violates the following Content Security Policy directive: "connect-src 'self' http://localhost:1111 http://127.0.0.1:1111 http://localhost:8080 http://127.0.0.1:8080 https://api.radienthq.com https://us.i.posthog.com https://login.microsoftonline.com https://accounts.google.com". The action has been blocked. | Fetch API cannot load http://127.0.0.1:57009/rpc. Refused to connect because it violates the document's Content Security Policy.
 ```
 
 ### a no-cors attempt yields nothing readable either
 
 ```
 [PASS] from the renderer: blocked: TypeError: Failed to fetch
-chromium's own reason: Fetch API cannot load http://127.0.0.1:51960/rpc. Refused to connect because it violates the document's Content Security Policy. | Connecting to 'http://127.0.0.1:51960/rpc' violates the following Content Security Policy directive: "connect-src 'self' http://localhost:1111 http://127.0.0.1:1111 http://localhost:8080 http://127.0.0.1:8080 https://api.radienthq.com https://us.i.posthog.com https://login.microsoftonline.com https://accounts.google.com". The action has been blocked. | Fetch API cannot load http://127.0.0.1:51960/rpc. Refused to connect because it violates the document's Content Security Policy.
+chromium's own reason: Fetch API cannot load http://127.0.0.1:57009/rpc. Refused to connect because it violates the document's Content Security Policy. | Connecting to 'http://127.0.0.1:57009/rpc' violates the following Content Security Policy directive: "connect-src 'self' http://localhost:1111 http://127.0.0.1:1111 http://localhost:8080 http://127.0.0.1:8080 https://api.radienthq.com https://us.i.posthog.com https://login.microsoftonline.com https://accounts.google.com". The action has been blocked. | Fetch API cannot load http://127.0.0.1:57009/rpc. Refused to connect because it violates the document's Content Security Policy.
 ```
 
 ### the host publishes the resolved storage path of the persistent partition
@@ -865,7 +894,7 @@ stderr: (none)
 ### an approved origin stays approved across a restart (the grant is durable)
 
 ```
-[PASS] open after restart -> {"tab":"ui:2:9ec5fb300c6e8fe552c35633f61235dd","url":"http://127.0.0.1:51945/echo"}
+[PASS] open after restart -> {"tab":"ui:2:7d7ff2861b3c0fd28172c0cc0eee86d7","url":"http://127.0.0.1:56994/echo"}
 ```
 
 ### cookies the jar sent after restart
@@ -906,138 +935,138 @@ after clearing, /echo saw: COOKIE_HEADER: (none)
 ### the host logged its denials and its decisions
 
 ```
-[PASS] 21:45:47.576 › [browser] session cookies: the previous run did not shut down cleanly, so the stored session cookies were discarded
-21:45:47.601 › [browser] denied a media permission request from (unknown origin)
-21:45:47.601 › [browser] denied a media permission request from (unknown origin)
-21:45:47.601 › [browser] denied a web-app-installation permission request from (unknown origin)
-21:45:47.601 › [browser] denied a geolocation permission request from (unknown origin)
-21:45:47.725 › [browser] 2 recorded tab(s) were opened by an agent and were not active at the quit; not restored
-21:45:47.727 › [browser] denied a media permission request from (unknown origin)
-21:45:47.727 › [browser] denied a media permission request from (unknown origin)
-21:45:47.727 › [browser] denied a web-app-installation permission request from (unknown origin)
-21:45:47.727 › [browser] denied a geolocation permission request from (unknown origin)
-21:45:47.736 › [browser] host on 127.0.0.1:52381 (proto 1), profile <scratch>/userdata/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
-21:45:47.874 › [browser] tab 1 navigated to about:blank
-21:45:47.936 › [browser] denied a media permission request from (unknown origin)
-21:45:47.936 › [browser] denied a media permission request from (unknown origin)
-21:45:47.936 › [browser] denied a web-app-installation permission request from (unknown origin)
-21:45:47.936 › [browser] denied a geolocation permission request from (unknown origin)
-21:45:48.118 › [browser] tab 2 navigated to about:blank
-21:45:48.127 › [browser] denied a media permission request from about:blank
-21:45:48.127 › [browser] denied a media permission request from about:blank
-21:45:48.127 › [browser] denied a web-app-installation permission request from about:blank
-21:45:48.127 › [browser] denied a geolocation permission request from about:blank
-21:45:48.142 › [browser] tab 2 navigated to http://127.0.0.1:51945/echo
-21:45:48.184 › [browser] session cookies: discarded the stored session cookies as part of clearing browsing data
-21:45:48.204 › [browser] cleared browsing data: cookies
-21:45:49.209 › [browser] denied a media permission request from http://127.0.0.1:51945/
-21:45:49.210 › [browser] denied a media permission request from http://127.0.0.1:51945/
-21:45:49.212 › [browser] denied a web-app-installation permission request from http://127.0.0.1:51945/
-21:45:49.212 › [browser] denied a geolocation permission request from http://127.0.0.1:51945/
-21:45:49.236 › [browser] tab 2 navigated to http://127.0.0.1:51945/echo
-21:45:49.289 › [browser] 1 recorded tab(s) were opened by an agent and were not active at the quit; not restored
-21:45:49.294 › [browser] session cookies: not saving (the macOS login keychain is not at <scratch>/home/Library/Keychains/login.keychain-db, so the stored session cookies cannot be read)
-21:45:49.294 › [browser] host stopped
-21:44:37.446 › [browser] denied a media permission request from (unknown origin)
-21:44:37.447 › [browser] denied a media permission request from (unknown origin)
-21:44:37.447 › [browser] denied a web-app-installation permission request from (unknown origin)
-21:44:37.447 › [browser] denied a geolocation permission request from (unknown origin)
-21:44:37.597 › [browser] denied a media permission request from (unknown origin)
-21:44:37.598 › [browser] denied a media permission request from (unknown origin)
-21:44:37.599 › [browser] denied a web-app-installation permission request from (unknown origin)
-21:44:37.600 › [browser] denied a geolocation permission request from (unknown origin)
+[PASS] 22:23:34.806 › [browser] session cookies: the previous run did not shut down cleanly, so the stored session cookies were discarded
+22:23:34.826 › [browser] denied a media permission request from (unknown origin)
+22:23:34.826 › [browser] denied a media permission request from (unknown origin)
+22:23:34.826 › [browser] denied a web-app-installation permission request from (unknown origin)
+22:23:34.827 › [browser] denied a geolocation permission request from (unknown origin)
+22:23:34.899 › [browser] 2 recorded tab(s) were opened by an agent and were not active at the quit; not restored
+22:23:34.900 › [browser] denied a media permission request from (unknown origin)
+22:23:34.901 › [browser] denied a media permission request from (unknown origin)
+22:23:34.901 › [browser] denied a web-app-installation permission request from (unknown origin)
+22:23:34.901 › [browser] denied a geolocation permission request from (unknown origin)
+22:23:34.908 › [browser] host on 127.0.0.1:57480 (proto 1), profile <scratch>/userdata/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+22:23:34.965 › [browser] tab 1 navigated to about:blank
+22:23:34.999 › [browser] denied a media permission request from (unknown origin)
+22:23:35.000 › [browser] denied a media permission request from (unknown origin)
+22:23:35.000 › [browser] denied a web-app-installation permission request from (unknown origin)
+22:23:35.000 › [browser] denied a geolocation permission request from (unknown origin)
+22:23:35.062 › [browser] tab 2 navigated to about:blank
+22:23:35.074 › [browser] denied a media permission request from about:blank
+22:23:35.075 › [browser] denied a media permission request from about:blank
+22:23:35.075 › [browser] denied a web-app-installation permission request from about:blank
+22:23:35.075 › [browser] denied a geolocation permission request from about:blank
+22:23:35.087 › [browser] tab 2 navigated to http://127.0.0.1:56994/echo
+22:23:35.134 › [browser] session cookies: discarded the stored session cookies as part of clearing browsing data
+22:23:35.151 › [browser] cleared browsing data: cookies
+22:23:36.159 › [browser] denied a media permission request from http://127.0.0.1:56994/
+22:23:36.159 › [browser] denied a media permission request from http://127.0.0.1:56994/
+22:23:36.159 › [browser] denied a web-app-installation permission request from http://127.0.0.1:56994/
+22:23:36.159 › [browser] denied a geolocation permission request from http://127.0.0.1:56994/
+22:23:36.167 › [browser] tab 2 navigated to http://127.0.0.1:56994/echo
+22:23:36.186 › [browser] 1 recorded tab(s) were opened by an agent and were not active at the quit; not restored
+22:23:36.189 › [browser] session cookies: not saving (the macOS login keychain is not at <scratch>/home/Library/Keychains/login.keychain-db, so the stored session cookies cannot be read)
+22:23:36.189 › [browser] host stopped
+22:22:26.239 › [browser] denied a media permission request from (unknown origin)
+22:22:26.239 › [browser] denied a media permission request from (unknown origin)
+22:22:26.240 › [browser] denied a web-app-installation permission request from (unknown origin)
+22:22:26.240 › [browser] denied a geolocation permission request from (unknown origin)
+22:22:26.385 › [browser] denied a media permission request from (unknown origin)
+22:22:26.385 › [browser] denied a media permission request from (unknown origin)
+22:22:26.385 › [browser] denied a web-app-installation permission request from (unknown origin)
+22:22:26.385 › [browser] denied a geolocation permission request from (unknown origin)
 ```
 
 ### the log carries every popup call: opened lines with presentation=never, the blank case, the scheme refusal, the grandchild refusal and the cap refusal
 
 ```
-[PASS] 21:44:40.536 › [browser] tab 2 opened a popup: http://127.0.0.1:51945/popup-target (disposition=foreground-tab, presentation=never)
-21:44:40.568 › [browser] refused a popup from a popup: http://127.0.0.1:51945/popup-target?which=grandchild
-21:44:42.034 › [browser] tab 2 opened a popup: about:blank (disposition=foreground-tab, presentation=never)
-21:44:43.277 › [browser] refused a popup from a driven page: mailto:proof@example.com (scheme)
-21:44:45.493 › [browser] tab 2 opened a popup: http://127.0.0.1:51945/popup-target?hold=1&which=direct (disposition=foreground-tab, presentation=never)
-21:44:46.737 › [browser] tab 2 opened a popup: http://127.0.0.1:51945/popup-target?hold=1&which=cap0 (disposition=foreground-tab, presentation=never)
-21:44:46.761 › [browser] tab 2 opened a popup: http://127.0.0.1:51945/popup-target?hold=1&which=cap1 (disposition=foreground-tab, presentation=never)
-21:44:46.788 › [browser] refused a popup from a driven page: http://127.0.0.1:51945/popup-target?hold=1&which=cap2 (cap)
-21:44:49.788 › [browser] tab 3 opened a popup: http://127.0.0.1:51945/popup-target?hold=1&which=cleanup (disposition=foreground-tab, presentation=never)
+[PASS] 22:22:30.577 › [browser] tab 2 opened a popup: http://127.0.0.1:56994/popup-target (disposition=foreground-tab, presentation=never)
+22:22:30.612 › [browser] refused a popup from a popup: http://127.0.0.1:56994/popup-target?which=grandchild
+22:22:32.069 › [browser] tab 2 opened a popup: about:blank (disposition=foreground-tab, presentation=never)
+22:22:33.310 › [browser] refused a popup from a driven page: mailto:proof@example.com (scheme)
+22:22:35.523 › [browser] tab 2 opened a popup: http://127.0.0.1:56994/popup-target?hold=1&which=direct (disposition=foreground-tab, presentation=never)
+22:22:36.753 › [browser] tab 2 opened a popup: http://127.0.0.1:56994/popup-target?hold=1&which=cap0 (disposition=foreground-tab, presentation=never)
+22:22:36.775 › [browser] tab 2 opened a popup: http://127.0.0.1:56994/popup-target?hold=1&which=cap1 (disposition=foreground-tab, presentation=never)
+22:22:36.793 › [browser] refused a popup from a driven page: http://127.0.0.1:56994/popup-target?hold=1&which=cap2 (cap)
+22:22:39.675 › [browser] tab 3 opened a popup: http://127.0.0.1:56994/popup-target?hold=1&which=cleanup (disposition=foreground-tab, presentation=never)
 ```
 
 ### no presentation fallback fired: no popup under the never plan ever read visible
 
 ```
-[PASS] 21:45:46.777 › Deprecated: no serve records found. Falling back to the fixed-port probe at http://127.0.0.1:1111/health for a daemon predating the record format. This fallback is scheduled for removal (design §8).
-21:45:47.472 › Adopted a pre-record daemon at http://127.0.0.1:1111 (v0.68.5) through the deprecated fallback.
-21:44:36.996 › Deprecated: no serve records found. Falling back to the fixed-port probe at http://127.0.0.1:1111/health for a daemon predating the record format. This fallback is scheduled for removal (design §8).
-21:44:37.317 › Adopted a pre-record daemon at http://127.0.0.1:1111 (v0.68.5) through the deprecated fallback.
+[PASS] 22:23:34.608 › Deprecated: no serve records found. Falling back to the fixed-port probe at http://127.0.0.1:1111/health for a daemon predating the record format. This fallback is scheduled for removal (design §8).
+22:23:34.712 › Adopted a pre-record daemon at http://127.0.0.1:1111 (v0.68.5) through the deprecated fallback.
+22:22:25.894 › Deprecated: no serve records found. Falling back to the fixed-port probe at http://127.0.0.1:1111/health for a daemon predating the record format. This fallback is scheduled for removal (design §8).
+22:22:26.087 › Adopted a pre-record daemon at http://127.0.0.1:1111 (v0.68.5) through the deprecated fallback.
 ```
 
 ### the app was never frontmost (sampled from outside, by pid)
 
 ```
-[PASS] 48 sample(s), app frontmost in 0: ["Local Operator|90507","Local Operator|90507","Local Operator|90507","Local Operator|90507","Local Operator|90507","Local Operator|90507"]
+[PASS] 57 sample(s), app frontmost in 0: ["Local Operator|90507","Local Operator|90507","Local Operator|90507","Local Operator|90507","Local Operator|90507","Local Operator|90507"]
 ```
 
 ### app log lines from the browser host
 
 ```
-21:45:47.576 › [browser] session cookies: the previous run did not shut down cleanly, so the stored session cookies were discarded
-21:45:47.601 › [browser] denied a media permission request from (unknown origin)
-21:45:47.601 › [browser] denied a media permission request from (unknown origin)
-21:45:47.601 › [browser] denied a web-app-installation permission request from (unknown origin)
-21:45:47.601 › [browser] denied a geolocation permission request from (unknown origin)
-21:45:47.725 › [browser] 2 recorded tab(s) were opened by an agent and were not active at the quit; not restored
-21:45:47.727 › [browser] denied a media permission request from (unknown origin)
-21:45:47.727 › [browser] denied a media permission request from (unknown origin)
-21:45:47.727 › [browser] denied a web-app-installation permission request from (unknown origin)
-21:45:47.727 › [browser] denied a geolocation permission request from (unknown origin)
-21:45:47.736 › [browser] host on 127.0.0.1:52381 (proto 1), profile <scratch>/userdata/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
-21:45:47.874 › [browser] tab 1 navigated to about:blank
-21:45:47.936 › [browser] denied a media permission request from (unknown origin)
-21:45:47.936 › [browser] denied a media permission request from (unknown origin)
-21:45:47.936 › [browser] denied a web-app-installation permission request from (unknown origin)
-21:45:47.936 › [browser] denied a geolocation permission request from (unknown origin)
-21:45:48.118 › [browser] tab 2 navigated to about:blank
-21:45:48.127 › [browser] denied a media permission request from about:blank
-21:45:48.127 › [browser] denied a media permission request from about:blank
-21:45:48.127 › [browser] denied a web-app-installation permission request from about:blank
-21:45:48.127 › [browser] denied a geolocation permission request from about:blank
-21:45:48.142 › [browser] tab 2 navigated to http://127.0.0.1:51945/echo
-21:45:48.184 › [browser] session cookies: discarded the stored session cookies as part of clearing browsing data
-21:45:48.204 › [browser] cleared browsing data: cookies
-21:45:49.209 › [browser] denied a media permission request from http://127.0.0.1:51945/
-21:45:49.210 › [browser] denied a media permission request from http://127.0.0.1:51945/
-21:45:49.212 › [browser] denied a web-app-installation permission request from http://127.0.0.1:51945/
-21:45:49.212 › [browser] denied a geolocation permission request from http://127.0.0.1:51945/
-21:45:49.236 › [browser] tab 2 navigated to http://127.0.0.1:51945/echo
-21:45:49.289 › [browser] 1 recorded tab(s) were opened by an agent and were not active at the quit; not restored
-21:45:49.294 › [browser] session cookies: not saving (the macOS login keychain is not at <scratch>/home/Library/Keychains/login.keychain-db, so the stored session cookies cannot be read)
-21:45:49.294 › [browser] host stopped
-21:44:37.446 › [browser] denied a media permission request from (unknown origin)
-21:44:37.447 › [browser] denied a media permission request from (unknown origin)
-21:44:37.447 › [browser] denied a web-app-installation permission request from (unknown origin)
-21:44:37.447 › [browser] denied a geolocation permission request from (unknown origin)
-21:44:37.597 › [browser] denied a media permission request from (unknown origin)
-21:44:37.598 › [browser] denied a media permission request from (unknown origin)
-21:44:37.599 › [browser] denied a web-app-installation permission request from (unknown origin)
-21:44:37.600 › [browser] denied a geolocation permission request from (unknown origin)
-21:44:37.730 › [browser] host on 127.0.0.1:51960 (proto 1), profile <scratch>/userdata/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
-21:44:37.742 › [browser] tab 1 navigated to about:blank
-21:44:38.135 › [browser] session:proof is asking for access to http://127.0.0.1:51945 (1 pending)
-21:44:38.177 › [browser] denied a media permission request from (unknown origin)
-21:44:38.177 › [browser] denied a media permission request from (unknown origin)
-21:44:38.178 › [browser] denied a web-app-installation permission request from (unknown origin)
-21:44:38.178 › [browser] denied a geolocation permission request from (unknown origin)
-21:44:38.319 › [browser] tab 2 navigated to about:blank
-21:44:38.328 › [browser] denied a media permission request from about:blank
-21:44:38.328 › [browser] denied a media permission request from about:blank
-21:44:38.329 › [browser] denied a web-app-installation permission request from about:blank
-21:44:38.329 › [browser] denied a geolocation permission request from about:blank
-21:44:38.349 › [browser] tab 2 navigated to http://127.0.0.1:51945/
-21:44:38.355 › [browser] denied a geolocation permission request from http://127.0.0.1:51945/
-21:44:40.536 › [browser] tab 2 opened a popup: http://127.0.0.1:51945/popup-target (disposition=foreground-tab, presentation=never)
-21:44:40.560 › [browser] denied a media permission request from http://127.0.0.1:51945/
-21:44:40.561 › [browser] denied a media permission request from http://127.0.0.1:51945/
-21:44:40.561 › [browser] denied a web-app-installation permission request from http://127.0.0.1:51945/
-21:44:40.561 › [browser] denied a geolocation permission request from http://127.0.0.1:51945/
-21:44:40.568 › [browser] refused a popup from a popup: http://127.0.0.1:51945/popup-target?which=grandchild
+22:23:34.806 › [browser] session cookies: the previous run did not shut down cleanly, so the stored session cookies were discarded
+22:23:34.826 › [browser] denied a media permission request from (unknown origin)
+22:23:34.826 › [browser] denied a media permission request from (unknown origin)
+22:23:34.826 › [browser] denied a web-app-installation permission request from (unknown origin)
+22:23:34.827 › [browser] denied a geolocation permission request from (unknown origin)
+22:23:34.899 › [browser] 2 recorded tab(s) were opened by an agent and were not active at the quit; not restored
+22:23:34.900 › [browser] denied a media permission request from (unknown origin)
+22:23:34.901 › [browser] denied a media permission request from (unknown origin)
+22:23:34.901 › [browser] denied a web-app-installation permission request from (unknown origin)
+22:23:34.901 › [browser] denied a geolocation permission request from (unknown origin)
+22:23:34.908 › [browser] host on 127.0.0.1:57480 (proto 1), profile <scratch>/userdata/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+22:23:34.965 › [browser] tab 1 navigated to about:blank
+22:23:34.999 › [browser] denied a media permission request from (unknown origin)
+22:23:35.000 › [browser] denied a media permission request from (unknown origin)
+22:23:35.000 › [browser] denied a web-app-installation permission request from (unknown origin)
+22:23:35.000 › [browser] denied a geolocation permission request from (unknown origin)
+22:23:35.062 › [browser] tab 2 navigated to about:blank
+22:23:35.074 › [browser] denied a media permission request from about:blank
+22:23:35.075 › [browser] denied a media permission request from about:blank
+22:23:35.075 › [browser] denied a web-app-installation permission request from about:blank
+22:23:35.075 › [browser] denied a geolocation permission request from about:blank
+22:23:35.087 › [browser] tab 2 navigated to http://127.0.0.1:56994/echo
+22:23:35.134 › [browser] session cookies: discarded the stored session cookies as part of clearing browsing data
+22:23:35.151 › [browser] cleared browsing data: cookies
+22:23:36.159 › [browser] denied a media permission request from http://127.0.0.1:56994/
+22:23:36.159 › [browser] denied a media permission request from http://127.0.0.1:56994/
+22:23:36.159 › [browser] denied a web-app-installation permission request from http://127.0.0.1:56994/
+22:23:36.159 › [browser] denied a geolocation permission request from http://127.0.0.1:56994/
+22:23:36.167 › [browser] tab 2 navigated to http://127.0.0.1:56994/echo
+22:23:36.186 › [browser] 1 recorded tab(s) were opened by an agent and were not active at the quit; not restored
+22:23:36.189 › [browser] session cookies: not saving (the macOS login keychain is not at <scratch>/home/Library/Keychains/login.keychain-db, so the stored session cookies cannot be read)
+22:23:36.189 › [browser] host stopped
+22:22:26.239 › [browser] denied a media permission request from (unknown origin)
+22:22:26.239 › [browser] denied a media permission request from (unknown origin)
+22:22:26.240 › [browser] denied a web-app-installation permission request from (unknown origin)
+22:22:26.240 › [browser] denied a geolocation permission request from (unknown origin)
+22:22:26.385 › [browser] denied a media permission request from (unknown origin)
+22:22:26.385 › [browser] denied a media permission request from (unknown origin)
+22:22:26.385 › [browser] denied a web-app-installation permission request from (unknown origin)
+22:22:26.385 › [browser] denied a geolocation permission request from (unknown origin)
+22:22:26.395 › [browser] host on 127.0.0.1:57009 (proto 1), profile <scratch>/userdata/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+22:22:26.484 › [browser] tab 1 navigated to about:blank
+22:22:26.753 › [browser] session:proof is asking for access to http://127.0.0.1:56994 (1 pending)
+22:22:26.772 › [browser] denied a media permission request from (unknown origin)
+22:22:26.772 › [browser] denied a media permission request from (unknown origin)
+22:22:26.773 › [browser] denied a web-app-installation permission request from (unknown origin)
+22:22:26.773 › [browser] denied a geolocation permission request from (unknown origin)
+22:22:26.854 › [browser] tab 2 navigated to about:blank
+22:22:26.864 › [browser] denied a media permission request from about:blank
+22:22:26.864 › [browser] denied a media permission request from about:blank
+22:22:26.864 › [browser] denied a web-app-installation permission request from about:blank
+22:22:26.865 › [browser] denied a geolocation permission request from about:blank
+22:22:26.881 › [browser] tab 2 navigated to http://127.0.0.1:56994/
+22:22:26.884 › [browser] denied a geolocation permission request from http://127.0.0.1:56994/
+22:22:30.577 › [browser] tab 2 opened a popup: http://127.0.0.1:56994/popup-target (disposition=foreground-tab, presentation=never)
+22:22:30.598 › [browser] denied a media permission request from http://127.0.0.1:56994/
+22:22:30.599 › [browser] denied a media permission request from http://127.0.0.1:56994/
+22:22:30.599 › [browser] denied a web-app-installation permission request from http://127.0.0.1:56994/
+22:22:30.599 › [browser] denied a geolocation permission request from http://127.0.0.1:56994/
+22:22:30.612 › [browser] refused a popup from a popup: http://127.0.0.1:56994/popup-target?which=grandchild
 ```

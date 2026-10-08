@@ -16,21 +16,28 @@ target, never from the host's reply.
 | | commit |
 | --- | --- |
 | before: base `src/main/browser/actions/input.ts` | `c14e07d95b0` (origin/main this branch was cut from) |
-| after: this branch's fix, harness section included | `73c1602981d` (fix) + `06d827f64fc` (unit tests), with the harness at `f4f9e0060c4` |
+| after: this branch's `input.ts` | head of the branch (`73c1602981d` plus the round 1 remediation) |
 
-The harness (`f4f9e0060c4`) is identical on both sides; only `input.ts` differs.
-`transcript-before.md` is the harness with `git checkout c14e07d95b0 -- src/main/browser/actions/input.ts`
-rebuilt; `transcript-after.md` is the same harness with the branch's `input.ts`.
+The harness is identical on both sides; only `input.ts` differs. Round 1 of the
+review (a masking field the first cut falsely refused, and a revert later than the
+next tick) added the `late-revert` and `mask` fields, so these transcripts were
+re-taken. `transcript-before.md` is the harness with
+`git checkout c14e07d95b0 -- src/main/browser/actions/input.ts` rebuilt;
+`transcript-after.md` is the same harness with the branch's `input.ts`.
 
 ## The fixture
 
 A top document and a cross-site frame (`127.0.0.1` page, `localhost` frame: a
-different site, so its own process and devtools target), each holding three fields:
+different site, so its own process and devtools target), each holding five fields:
 
 - `revert`: refuses `insertText` (cancelled `beforeinput`), so the primary path's
   read-back disagrees and the setter fallback is what runs; restores `''` one
   macrotask after any `input` event. A precondition check proves the page really
   does take a setter write and give it back (`instant: "x"`, `later: ""`).
+- `late-revert`: the same, but restores `''` 40 ms later, which an immediate
+  re-read cannot see and the host's settle window (100 ms) can.
+- `mask`: groups digits in fours on every `input`. It really holds what was typed,
+  in another spelling, so it must LAND; a byte-for-byte comparison would refuse it.
 - `setter-only`: refuses `insertText` the same way but keeps a setter write: the
   control that the fallback still lands (`via: value_setter`).
 - `keep`: an ordinary input: lands via `insert_text`.
@@ -41,12 +48,39 @@ different site, so its own process and devtools target), each holding three fiel
 | --- | --- | --- |
 | `type at a top-document field that reverts the write is REFUSED, and the field reads back empty` | `[FAIL]` `ok:true`, `via: value_setter`, `value: "4000056655665556"`; field reads `""` | `[PASS]` `element_not_found`: `#top-revert took the value-setter write but does not hold the text (read back ''), so nothing was reported typed`; field `""` |
 | `type at a cross-site frame field that reverts the write is REFUSED, and the field reads back empty from the frame's own target` | `[FAIL]` `ok:true`, `via: value_setter`, `frame_origin` set; frame field reads `""` | `[PASS]` same refusal naming `iframe#rv >>> #frame-revert`; frame field `""` |
+| `type at a top-document field that reverts the write 40 ms later is REFUSED, and the field reads back empty` | `[FAIL]` `ok:true`, `via: value_setter`; the field reads `"4000056655665556"` at the moment of the read and is `""` shortly after | `[PASS]` refused; field `""` |
+| `type at a cross-site frame field that reverts the write 40 ms later is REFUSED, ...` | `[FAIL]` `ok:true`, `via: value_setter` | `[PASS]` refused |
+| `type aimed at the multi-field iframe ELEMENT is refused, never answered ok for text no frame field holds` | `[FAIL]` `ok:true` (the descent lands on the frame's focused, reverting field and the old code echoes the setter) | `[PASS]` refused; every frame field reads `""` |
 
-Unchanged and passing on both sides: the fixture precondition, the iframe-element
-refusal (three fields, nothing typed), both `setter-only` controls (top document
-and frame land via `value_setter`, read back equal) and the `keep` control (via
-`insert_text`). The before run's two `[FAIL]`s here are therefore exactly the
-claim of #871, and nothing else regressed.
+The `ELEMENT` row is an invariant rather than a fixed message: focusing an
+`<iframe>` element hands focus back to the field the frame last focused, so the
+call is the candidates refusal or a type at that field depending on focus state.
+Either way the host must not answer `ok` for text no field holds.
+
+## What did NOT flip (regression guards)
+
+| check | before | after |
+| --- | --- | --- |
+| `the control: a masking field in the top document (digits grouped in fours) LANDS ...` | `[PASS]` `ok:true`, `value: "4242 4242 4242 4242"` | `[PASS]` identical |
+| `the control: a masking field in the cross-site frame LANDS ...` | `[PASS]` | `[PASS]` identical |
+| both `setter-only` controls (`via: value_setter`), the `keep` control (`via: insert_text`), the fixture precondition | `[PASS]` | `[PASS]` |
+
+The masking rows are the reason round 1 exists: the first cut of the fix compared
+the read-back to the typed text byte for byte, so on this fixture it refused a card
+field that held `4242 4242 4242 4242`. Those rows pass on the base (which echoed
+success) and must keep passing on the fix.
+
+## Limit
+
+The host re-reads the field once, 100 ms after its setter write. A revert later
+than that window (a debounced validation, an async re-render, a network-backed
+check; QA measured one at 300 ms) is not seen at `type` time, by this check or by
+any read-back taken while `type` runs, and `type` still answers `ok`. This change
+narrows the gap from "never" to "100 ms"; it does not claim to close it.
+"Holds the text" also means the field's value contains the typed content after
+folding case, spacing and punctuation (masks rewrite those): a field that drops
+characters (a digits-only mask turning `abc123` into `123`) is refused, and one
+that keeps all of them is not.
 
 ## The two cookie `[FAIL]`s present on both sides
 
