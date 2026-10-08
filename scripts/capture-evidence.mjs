@@ -5275,8 +5275,363 @@ export const STORIES = [
 	 * --dirs= matched no story`, and the message names the two filters rather than
 	 * the missing row).
 	 */
-	["shell-app-shell--chat-dock-files", 1280, 900],
-	["shell-app-shell--chat-dock-run-panel", 1280, 900],
+	/*
+	 * #872: THE PANEL RAIL IN THE SHELL. Every `ChatDock*` arm now mounts the rail
+	 * through the shell's own host, and each row below states at shutter time what
+	 * the frame is a claim about: the host is 44px wide and ends on the window's
+	 * edge, `data-slot-edge` is still the pane's own leading edge (the rail is a
+	 * sibling AFTER the measured column, so the resolver's arithmetic is untouched),
+	 * the pane ends where the rail begins, and the lit item is the pane that is
+	 * drawn. The narrow pair (1192 -> a 408px dock, 1180 -> 396px) also asserts that
+	 * the pane's own close control stays inside the pane and clear of the rail, and
+	 * that its 40px bar does not overflow: the tools zone gives way first.
+	 *
+	 * THE ISSUE SAID 408 AT 1180. It is 396 at 1180 and 408 at 1192 (260 sidebar +
+	 * 44 rail + 480 chat floor leaves `window - 784`), which is why both are rows.
+	 * The BEFORE half of every pair is `shell-app-shell/panel-rail-before/`, taken by
+	 * the recipe its README carries; it is not a row because a sweep of this tree can
+	 * never take it.
+	 */
+	/*
+	 * THE PANEL RAIL'S OWN STATES (#872), one frame per state, both themes: the
+	 * run trigger's two dot inks, the browser badge at one and at the cap, the
+	 * console blip in both inks, the files dot, each item lit, and the draft route
+	 * where Run details and Console are absent. The frames are small on purpose (the
+	 * rail is 44px wide); the shell arms above carry the geometry.
+	 */
+	["navigation-panel-rail--idle", 132, 184],
+	["navigation-panel-rail--run-attention", 132, 184],
+	["navigation-panel-rail--run-activity", 132, 184],
+	["navigation-panel-rail--browser-one", 132, 184],
+	["navigation-panel-rail--browser-at-cap", 132, 184],
+	["navigation-panel-rail--console-blip", 132, 184],
+	["navigation-panel-rail--console-blip-resting", 132, 184],
+	["navigation-panel-rail--canvas-files", 132, 184],
+	["navigation-panel-rail--run-open", 132, 184],
+	["navigation-panel-rail--browser-open", 132, 184],
+	["navigation-panel-rail--console-open", 132, 184],
+	["navigation-panel-rail--canvas-open", 132, 184],
+	["navigation-panel-rail--draft-route", 132, 184],
+	/*
+	 * WINDOWS/LINUX CAPTION CLEARANCE - SIMULATED, NOT PHOTOGRAPHED (#872). This
+	 * host is macOS, so no frame here can show the OS buttons; these three arms set
+	 * the integrated/trailing attributes and override `--chrome-inset-end` (138px) and
+	 * `--chrome-inset-end-h` (40px) with a default Windows window's values
+	 * (`useWindowsChromeSimulation`), so the frame is the LAYOUT's answer to them.
+	 * The shutter-time claims are the change's own: the rail's first item starts
+	 * below the 40px caption area; with no pane the header's Asks trigger ends 94px
+	 * (138 - 44) short of the window's edge, with a pane open its close control does,
+	 * and on a route with no rail (settings) the fleet drawer keeps the FULL 138px.
+	 */
+	[
+		"shell-app-shell--windows-caption-no-pane",
+		1280,
+		900,
+		{
+			dir: "windows-caption-no-pane-SIMULATED",
+			expect: {
+				expression: `(() => {
+					const host = document.querySelector("[data-panel-rail-host]");
+					const first = document.querySelector("[data-panel-rail-item]");
+					const spacer = document.querySelector(".chrome-reserve-trailing");
+					if (!host || !first || !spacer) return "the frame is missing the rail, its first item or the header's trailing spacer";
+					if (first.getBoundingClientRect().top < 40) return "the rail's first item starts at " + first.getBoundingClientRect().top + ", inside the 40px caption area";
+					const width = spacer.getBoundingClientRect().width;
+					if (Math.abs(width - 94) > 0.5) return "the header's trailing spacer is " + width + "px wide, expected 94 (138 - the rail's 44); the pre-rail reservation was 138";
+					return true;
+				})()`,
+				message:
+					"simulated Windows chrome: the rail's first item clears the 40px caption area and the header's trailing spacer keeps only the remainder, 94px = 138 - 44 (#872)",
+			},
+		},
+	],
+	[
+		"shell-app-shell--windows-caption-pane-open",
+		1280,
+		900,
+		{
+			dir: "windows-caption-pane-open-SIMULATED",
+			expect: {
+				expression: `(() => {
+					const pane = document.querySelector('[data-tour-tag="browser-pane-slot"]');
+					const close = pane?.querySelector('[aria-label="Close browser"]');
+					const first = document.querySelector("[data-panel-rail-item]");
+					if (!pane || !close || !first) return "the frame is missing the pane, its close control or the rail";
+					if (first.getBoundingClientRect().top < 40) return "the rail's first item starts inside the caption area";
+					const paneRight = pane.getBoundingClientRect().right;
+					const gap = paneRight - close.getBoundingClientRect().right;
+					if (gap < 94 - 1 || gap > 94 + 16) return "the close control ends " + gap + "px inside the pane's trailing edge, expected about 94 plus the toolbar's own padding, not the old 138";
+					return true;
+				})()`,
+				message:
+					"simulated Windows chrome: with a pane open its close control keeps only the remainder (138 - 44) of the caption reservation (#872)",
+			},
+		},
+	],
+	[
+		"shell-app-shell--windows-caption-fleet-asks-on-settings",
+		1280,
+		900,
+		{
+			dir: "windows-caption-fleet-asks-on-settings-SIMULATED",
+			expect: {
+				expression: `(() => {
+					if (document.querySelector("[data-panel-rail-host]")?.getBoundingClientRect().width > 0) return "a rail is mounted on settings";
+					const pane = document.querySelector('[data-tour-tag="ask-fleet-slot"]');
+					if (!pane) return "the fleet asks drawer is not mounted";
+					const close = pane.querySelector('button[aria-label^="Close"]');
+					if (!close) return "no close control in the fleet drawer";
+					const gap = pane.getBoundingClientRect().right - close.getBoundingClientRect().right;
+					if (gap < 138 - 1) return "the close control ends " + gap + "px inside the edge: the full 138px reservation is missing on a route with no rail";
+					return true;
+				})()`,
+				message:
+					"simulated Windows chrome: with no rail on settings the fleet drawer keeps the FULL 138px reservation (#872)",
+			},
+		},
+	],
+	[
+		"shell-app-shell--chat-dock-browser",
+		1280,
+		900,
+		{
+			dir: "browser-open",
+			expect: {
+				expression: `(() => {
+					const lane = document.querySelector("[data-titlebar-lane]");
+					const column = document.querySelector('[data-tour-tag="chat-column"]');
+					const host = document.querySelector("[data-panel-rail-host]");
+					if (!lane || !column || !host) return "the frame is missing the lane, the column or the rail host";
+					const railBox = host.getBoundingClientRect();
+					if (Math.abs(railBox.width - 44) > 0.5) return "the rail host is " + railBox.width + "px wide, expected 44";
+					if (Math.abs(railBox.right - window.innerWidth) > 1) return "the rail ends at " + railBox.right + ", the window at " + window.innerWidth + " - it is not on the window's edge";
+					if (Math.abs(column.getBoundingClientRect().right - railBox.left) > 1 && !document.querySelector('[data-tour-tag=\"browser-pane-slot\"]')) return "the column does not end where the rail begins";
+					if (!document.querySelector("[data-panel-rail][role=toolbar]")) return "the rail is not a toolbar";
+					const pane = document.querySelector('[data-tour-tag="browser-pane-slot"]');
+					if (!pane) return "the pane is not mounted";
+					const paneBox = pane.getBoundingClientRect();
+					const edge = Number(lane.getAttribute("data-slot-edge"));
+					if (Math.abs(edge - paneBox.left) > 1) return "data-slot-edge is " + edge + " but the pane starts at " + paneBox.left + " - the lane's stop is no longer the pane's leading edge";
+					if (Math.abs(paneBox.right - railBox.left) > 1) return "the pane ends at " + paneBox.right + " but the rail begins at " + railBox.left + " - something sits between them";
+					const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (pressed.join(",") !== "browser") return "the rail lights [" + pressed.join(",") + "], expected [browser]";
+					return true;
+				})()`,
+				message:
+					"the rail must sit on the window's edge at 44px, light only the drawn pane (browser) and leave data-slot-edge on the pane's leading edge (#872)",
+			},
+		},
+	],
+	[
+		"shell-app-shell--chat-dock-console",
+		1280,
+		900,
+		{
+			dir: "console-open",
+			expect: {
+				expression: `(() => {
+					const lane = document.querySelector("[data-titlebar-lane]");
+					const column = document.querySelector('[data-tour-tag="chat-column"]');
+					const host = document.querySelector("[data-panel-rail-host]");
+					if (!lane || !column || !host) return "the frame is missing the lane, the column or the rail host";
+					const railBox = host.getBoundingClientRect();
+					if (Math.abs(railBox.width - 44) > 0.5) return "the rail host is " + railBox.width + "px wide, expected 44";
+					if (Math.abs(railBox.right - window.innerWidth) > 1) return "the rail ends at " + railBox.right + ", the window at " + window.innerWidth + " - it is not on the window's edge";
+					if (Math.abs(column.getBoundingClientRect().right - railBox.left) > 1 && !document.querySelector('[data-tour-tag=\"console-pane-slot\"]')) return "the column does not end where the rail begins";
+					if (!document.querySelector("[data-panel-rail][role=toolbar]")) return "the rail is not a toolbar";
+					const pane = document.querySelector('[data-tour-tag="console-pane-slot"]');
+					if (!pane) return "the pane is not mounted";
+					const paneBox = pane.getBoundingClientRect();
+					const edge = Number(lane.getAttribute("data-slot-edge"));
+					if (Math.abs(edge - paneBox.left) > 1) return "data-slot-edge is " + edge + " but the pane starts at " + paneBox.left + " - the lane's stop is no longer the pane's leading edge";
+					if (Math.abs(paneBox.right - railBox.left) > 1) return "the pane ends at " + paneBox.right + " but the rail begins at " + railBox.left + " - something sits between them";
+					const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (pressed.join(",") !== "console") return "the rail lights [" + pressed.join(",") + "], expected [console]";
+					return true;
+				})()`,
+				message:
+					"the rail must sit on the window's edge at 44px, light only the drawn pane (console) and leave data-slot-edge on the pane's leading edge (#872)",
+			},
+		},
+	],
+	[
+		"shell-app-shell--chat-dock-browser",
+		1192,
+		900,
+		{
+			dir: "browser-narrow-1192",
+			expect: {
+				expression: `(() => {
+					const lane = document.querySelector("[data-titlebar-lane]");
+					const column = document.querySelector('[data-tour-tag="chat-column"]');
+					const host = document.querySelector("[data-panel-rail-host]");
+					if (!lane || !column || !host) return "the frame is missing the lane, the column or the rail host";
+					const railBox = host.getBoundingClientRect();
+					if (Math.abs(railBox.width - 44) > 0.5) return "the rail host is " + railBox.width + "px wide, expected 44";
+					if (Math.abs(railBox.right - window.innerWidth) > 1) return "the rail ends at " + railBox.right + ", the window at " + window.innerWidth + " - it is not on the window's edge";
+					if (Math.abs(column.getBoundingClientRect().right - railBox.left) > 1 && !document.querySelector('[data-tour-tag=\"browser-pane-slot\"]')) return "the column does not end where the rail begins";
+					if (!document.querySelector("[data-panel-rail][role=toolbar]")) return "the rail is not a toolbar";
+					const pane = document.querySelector('[data-tour-tag="browser-pane-slot"]');
+					if (!pane) return "the pane is not mounted";
+					const paneBox = pane.getBoundingClientRect();
+					const edge = Number(lane.getAttribute("data-slot-edge"));
+					if (Math.abs(edge - paneBox.left) > 1) return "data-slot-edge is " + edge + " but the pane starts at " + paneBox.left + " - the lane's stop is no longer the pane's leading edge";
+					if (Math.abs(paneBox.right - railBox.left) > 1) return "the pane ends at " + paneBox.right + " but the rail begins at " + railBox.left + " - something sits between them";
+					const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (pressed.join(",") !== "browser") return "the rail lights [" + pressed.join(",") + "], expected [browser]";
+					if (Math.abs(paneBox.width - 408) > 1) return "the dock is " + paneBox.width + "px, expected 408";
+					const close = pane.querySelector('[aria-label="Close browser"]');
+					if (!close) return "no Close browser control in the pane";
+					const closeBox = close.getBoundingClientRect();
+					if (closeBox.left < paneBox.left || closeBox.right > paneBox.right + 0.5) return "the close control (" + closeBox.left + ".." + closeBox.right + ") leaves the pane (" + paneBox.left + ".." + paneBox.right + ")";
+					if (closeBox.right > railBox.left) return "the close control reaches the rail (" + closeBox.right + " > " + railBox.left + ")";
+					const bar = close.closest(".h-10");
+					if (!bar) return "the pane's 40px bar was not found";
+					if (bar.scrollWidth > bar.clientWidth + 1) return "the bar overflows (" + bar.scrollWidth + " > " + bar.clientWidth + "): the tools zone did not give way before the close control";
+					return true;
+				})()`,
+				message:
+					"at 1192 the browser dock is 408px (window - 784), its close control stays inside it and the bar does not overflow (#872)",
+			},
+		},
+	],
+	[
+		"shell-app-shell--chat-dock-browser",
+		1180,
+		900,
+		{
+			dir: "browser-narrow-1180",
+			expect: {
+				expression: `(() => {
+					const lane = document.querySelector("[data-titlebar-lane]");
+					const column = document.querySelector('[data-tour-tag="chat-column"]');
+					const host = document.querySelector("[data-panel-rail-host]");
+					if (!lane || !column || !host) return "the frame is missing the lane, the column or the rail host";
+					const railBox = host.getBoundingClientRect();
+					if (Math.abs(railBox.width - 44) > 0.5) return "the rail host is " + railBox.width + "px wide, expected 44";
+					if (Math.abs(railBox.right - window.innerWidth) > 1) return "the rail ends at " + railBox.right + ", the window at " + window.innerWidth + " - it is not on the window's edge";
+					if (Math.abs(column.getBoundingClientRect().right - railBox.left) > 1 && !document.querySelector('[data-tour-tag=\"browser-pane-slot\"]')) return "the column does not end where the rail begins";
+					if (!document.querySelector("[data-panel-rail][role=toolbar]")) return "the rail is not a toolbar";
+					const pane = document.querySelector('[data-tour-tag="browser-pane-slot"]');
+					if (!pane) return "the pane is not mounted";
+					const paneBox = pane.getBoundingClientRect();
+					const edge = Number(lane.getAttribute("data-slot-edge"));
+					if (Math.abs(edge - paneBox.left) > 1) return "data-slot-edge is " + edge + " but the pane starts at " + paneBox.left + " - the lane's stop is no longer the pane's leading edge";
+					if (Math.abs(paneBox.right - railBox.left) > 1) return "the pane ends at " + paneBox.right + " but the rail begins at " + railBox.left + " - something sits between them";
+					const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (pressed.join(",") !== "browser") return "the rail lights [" + pressed.join(",") + "], expected [browser]";
+					if (Math.abs(paneBox.width - 396) > 1) return "the dock is " + paneBox.width + "px, expected 396";
+					const close = pane.querySelector('[aria-label="Close browser"]');
+					if (!close) return "no Close browser control in the pane";
+					const closeBox = close.getBoundingClientRect();
+					if (closeBox.left < paneBox.left || closeBox.right > paneBox.right + 0.5) return "the close control (" + closeBox.left + ".." + closeBox.right + ") leaves the pane (" + paneBox.left + ".." + paneBox.right + ")";
+					if (closeBox.right > railBox.left) return "the close control reaches the rail (" + closeBox.right + " > " + railBox.left + ")";
+					const bar = close.closest(".h-10");
+					if (!bar) return "the pane's 40px bar was not found";
+					if (bar.scrollWidth > bar.clientWidth + 1) return "the bar overflows (" + bar.scrollWidth + " > " + bar.clientWidth + "): the tools zone did not give way before the close control";
+					return true;
+				})()`,
+				message:
+					"at 1180 the browser dock is 396px (NOT 408: the issue's figure is the 1192 window), its close control stays inside it and the bar does not overflow (#872)",
+			},
+		},
+	],
+	[
+		"shell-app-shell--chat-dock-asks-covering-browser",
+		1280,
+		900,
+		{
+			dir: "asks-covering-browser",
+			expect: {
+				expression: `(() => {
+					const lane = document.querySelector("[data-titlebar-lane]");
+					const column = document.querySelector('[data-tour-tag="chat-column"]');
+					const host = document.querySelector("[data-panel-rail-host]");
+					if (!lane || !column || !host) return "the frame is missing the lane, the column or the rail host";
+					const railBox = host.getBoundingClientRect();
+					if (Math.abs(railBox.width - 44) > 0.5) return "the rail host is " + railBox.width + "px wide, expected 44";
+					if (Math.abs(railBox.right - window.innerWidth) > 1) return "the rail ends at " + railBox.right + ", the window at " + window.innerWidth + " - it is not on the window's edge";
+					if (Math.abs(column.getBoundingClientRect().right - railBox.left) > 1 && !document.querySelector('[data-tour-tag=\"ask-drawer-slot\"]')) return "the column does not end where the rail begins";
+					if (!document.querySelector("[data-panel-rail][role=toolbar]")) return "the rail is not a toolbar";
+					const pane = document.querySelector('[data-tour-tag="ask-drawer-slot"]');
+					if (!pane) return "the pane is not mounted";
+					const paneBox = pane.getBoundingClientRect();
+					const edge = Number(lane.getAttribute("data-slot-edge"));
+					if (Math.abs(edge - paneBox.left) > 1) return "data-slot-edge is " + edge + " but the pane starts at " + paneBox.left + " - the lane's stop is no longer the pane's leading edge";
+					if (Math.abs(paneBox.right - railBox.left) > 1) return "the pane ends at " + paneBox.right + " but the rail begins at " + railBox.left + " - something sits between them";
+					const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (pressed.join(",") !== "") return "the rail lights [" + pressed.join(",") + "], expected []";
+					return true;
+				})()`,
+				message:
+					"while the asks drawer holds the slot the rail lights NOTHING, though the browser's pane is the one the drawer borrowed from (#872)",
+			},
+		},
+	],
+	[
+		"shell-app-shell--chat-dock-files",
+		1280,
+		900,
+		{
+			dir: "chat-dock-files",
+			expect: {
+				expression: `(() => {
+					const lane = document.querySelector("[data-titlebar-lane]");
+					const column = document.querySelector('[data-tour-tag="chat-column"]');
+					const host = document.querySelector("[data-panel-rail-host]");
+					if (!lane || !column || !host) return "the frame is missing the lane, the column or the rail host";
+					const railBox = host.getBoundingClientRect();
+					if (Math.abs(railBox.width - 44) > 0.5) return "the rail host is " + railBox.width + "px wide, expected 44";
+					if (Math.abs(railBox.right - window.innerWidth) > 1) return "the rail ends at " + railBox.right + ", the window at " + window.innerWidth + " - it is not on the window's edge";
+					if (Math.abs(column.getBoundingClientRect().right - railBox.left) > 1 && !document.querySelector('[data-tour-tag=\"canvas-dock\"]')) return "the column does not end where the rail begins";
+					if (!document.querySelector("[data-panel-rail][role=toolbar]")) return "the rail is not a toolbar";
+					const pane = document.querySelector('[data-tour-tag="canvas-dock"]');
+					if (!pane) return "the pane is not mounted";
+					const paneBox = pane.getBoundingClientRect();
+					const edge = Number(lane.getAttribute("data-slot-edge"));
+					if (Math.abs(edge - paneBox.left) > 1) return "data-slot-edge is " + edge + " but the pane starts at " + paneBox.left + " - the lane's stop is no longer the pane's leading edge";
+					if (Math.abs(paneBox.right - railBox.left) > 1) return "the pane ends at " + paneBox.right + " but the rail begins at " + railBox.left + " - something sits between them";
+					const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (pressed.join(",") !== "canvas") return "the rail lights [" + pressed.join(",") + "], expected [canvas]";
+					return true;
+				})()`,
+				message:
+					"the canvas dock's rail must be 44px on the window's edge with only the canvas lit (#872)",
+			},
+		},
+	],
+	[
+		"shell-app-shell--chat-dock-run-panel",
+		1280,
+		900,
+		{
+			dir: "chat-dock-run-panel",
+			expect: {
+				expression: `(() => {
+					const lane = document.querySelector("[data-titlebar-lane]");
+					const column = document.querySelector('[data-tour-tag="chat-column"]');
+					const host = document.querySelector("[data-panel-rail-host]");
+					if (!lane || !column || !host) return "the frame is missing the lane, the column or the rail host";
+					const railBox = host.getBoundingClientRect();
+					if (Math.abs(railBox.width - 44) > 0.5) return "the rail host is " + railBox.width + "px wide, expected 44";
+					if (Math.abs(railBox.right - window.innerWidth) > 1) return "the rail ends at " + railBox.right + ", the window at " + window.innerWidth + " - it is not on the window's edge";
+					if (Math.abs(column.getBoundingClientRect().right - railBox.left) > 1 && !document.querySelector('[data-tour-tag=\"run-panel-dock\"]')) return "the column does not end where the rail begins";
+					if (!document.querySelector("[data-panel-rail][role=toolbar]")) return "the rail is not a toolbar";
+					const pane = document.querySelector('[data-tour-tag="run-panel-dock"]');
+					if (!pane) return "the pane is not mounted";
+					const paneBox = pane.getBoundingClientRect();
+					const edge = Number(lane.getAttribute("data-slot-edge"));
+					if (Math.abs(edge - paneBox.left) > 1) return "data-slot-edge is " + edge + " but the pane starts at " + paneBox.left + " - the lane's stop is no longer the pane's leading edge";
+					if (Math.abs(paneBox.right - railBox.left) > 1) return "the pane ends at " + paneBox.right + " but the rail begins at " + railBox.left + " - something sits between them";
+					const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (pressed.join(",") !== "run") return "the rail lights [" + pressed.join(",") + "], expected [run]";
+					return true;
+				})()`,
+				message:
+					"the run panel dock's rail must be 44px on the window's edge with only run details lit (#872)",
+			},
+		},
+	],
 	/*
 	 * #868: THE SLOT RELEASED WHERE THE ROUTE CANNOT DRAW ITS PANE.
 	 *
