@@ -65,6 +65,7 @@ const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 const CHAT_LAYOUT = "src/renderer/src/shared/components/common/chat-layout.tsx";
 const CHAT_CONTENT =
 	"src/renderer/src/features/chat/components/chat-content.tsx";
+const UI_STORE = "src/renderer/src/shared/store/ui-preferences-store.ts";
 
 /**
  * The slot's four occupants: the pane's own root class expression, and the file
@@ -134,6 +135,28 @@ const DRAG_IN_SLOT = /<PaneSlot[\s\S]{0,400}?data-titlebar-drag/;
  * work `useTopLevelRegex` is right to refuse. */
 const ASK_SLOT_MODE = /data-ask-mode=\{canvasDocked \? "docked" : "overlay"\}/;
 const RIGHT_SLOT_OCCUPIED = /const rightSlotOccupied =([\s\S]{0,400}?);/;
+/* #868's publisher and mount-gate reads, at module scope for the same reason. */
+const ROUTE_PUBLISH =
+	/setRightSlotRoute\(\{\s*mounted: true,\s*runDetails: hasRunDetails,\s*session: hasSession,\s*\}\)/;
+const ROUTE_PUBLISH_DEPS = /\[setRightSlotRoute, hasRunDetails, hasSession\]/;
+const HAS_RUN_DETAILS = /const hasRunDetails = Boolean\(runDetails\);/;
+const HAS_SESSION = /const hasSession = Boolean\(sessionId\);/;
+const SESSION_ASKS_GATE =
+	/const sessionAsksOpen =\s*isAskDrawerOpen && askDrawerScope === "session" && Boolean\(sessionId\);/;
+const DRAWABLE_BODY = /const rightSlotPaneDrawable = \([\s\S]*?\n\};\n/;
+const DRAWABLE_ASK =
+	/if \(pane === "ask"\) \{\s*return \(\s*state\.askDrawerScope === "fleet" \|\|\s*\(state\.rightSlotRoute\.mounted && state\.rightSlotRoute\.session\)\s*\);\s*\}/;
+const DRAWABLE_MOUNTED = /if \(!state\.rightSlotRoute\.mounted\) return false;/;
+const DRAWABLE_RUN =
+	/return pane !== "run" \|\| state\.rightSlotRoute\.runDetails;/;
+const FLEET_GATE =
+	/const fleetAsksOpen = askDrawerOpen && askDrawerScope === "fleet";/;
+const SIDEBAR_YIELD_ARG = /slotYieldsSidebar,\s*\);/;
+const SIDEBAR_YIELD_READ =
+	/useUiPreferencesStore\(\s*resolveRightSlotYieldsSidebar,?\s*\)/;
+const HEADER_OCCUPIED_READ =
+	/useUiPreferencesStore\(\s*resolveRightSlotOccupied,?\s*\)/;
+const SIDEBAR_BARE_FLAGS = /canvasOpen\s*\|\|\s*askDrawerOpen/;
 const SLOT_COMPONENT =
 	"src/renderer/src/shared/components/common/pane-slot.tsx";
 
@@ -359,6 +382,11 @@ test("the drawer's slot is readable, and the header's OS corner is reserved for 
 	 * of a rendered surface, so they are pinned here - and the docked frame the
 	 * evidence set carries (`docs/evidence/ask-drawer/after/dock-asks/`) is the
 	 * visual half of the reservation.
+	 *
+	 * (#868 evolved the second pin: `rightSlotOccupied` now reads the store's own
+	 * derivation rather than restating the five flags, because a bare flag cannot
+	 * tell a CLAIMED pane from one the route can DRAW - the second copy is what
+	 * reserved the corner for a pane that was not on screen.)
 	 */
 	const mode = source.match(ASK_SLOT_MODE);
 	assert.ok(
@@ -368,18 +396,95 @@ test("the drawer's slot is readable, and the header's OS corner is reserved for 
 	const reservation = source.match(RIGHT_SLOT_OCCUPIED);
 	assert.ok(
 		reservation,
-		`${CHAT_CONTENT} no longer derives \`rightSlotOccupied\` as one disjunction. It decides whether the chat header has to reserve the window's OS-control corner, and it is read from the panes' own flags rather than measured (§J4).`,
+		`${CHAT_CONTENT} no longer derives \`rightSlotOccupied\` as one expression. It decides whether the chat header has to reserve the window's OS-control corner (§J4); this file reads that expression's text, so a rewrite has to re-read this pin.`,
 	);
-	for (const term of [
-		"isCanvasOpen",
-		"isRunPanelOpen",
-		"isBrowserPaneOpen",
-		"isConsolePaneOpen",
-		"isAskDrawerOpen",
+	/*
+	 * #868: THE DISJUNCTION MOVED INTO THE STORE, where the route facts live. The
+	 * pin is now that the header reads the ONE derivation rather than restating
+	 * the five flags - the second copy is exactly what reserved a corner for a
+	 * pane no route mounts. The store's own route matrix is
+	 * `right-slot-width.test.mjs`'s subject.
+	 */
+	assert.ok(
+		HEADER_OCCUPIED_READ.test(reservation[1]),
+		`${CHAT_CONTENT}'s \`rightSlotOccupied\` no longer reads the store's \`resolveRightSlotOccupied\` derivation (#868). The header's reservation has to answer from the same claim and the same route facts as the lane's stop and the column's deficit; a disjunction of bare flags here is the second copy that reserved a corner for a pane that is not on screen.`,
+	);
+});
+
+test("the published route facts are the mount gates' own terms (#868)", () => {
+	/*
+	 * THE LINK THE FIX RESTS ON, pinned. `rightSlotRoute` is a COPY of three
+	 * conditions that live in `chat-content`'s JSX; the store answers from the
+	 * copy, so a gate that grew a term the copy does not know would draw (or fail
+	 * to draw) a pane the lane, the column and the header disagree about - the
+	 * empty band this issue is about, back by a different door. Both halves are
+	 * read as text because neither is observable until a route reaches the
+	 * disagreeing state: the publisher's expressions here, each pane's mount
+	 * condition below, and `rightSlotPaneDrawable`'s encoding of them after.
+	 */
+	const content = withoutComments(read(CHAT_CONTENT));
+	// The publisher: the three facts, from the expressions the gates read, keyed
+	// on the BOOLEANS (an object key re-published on every live frame, R1).
+	assert.ok(
+		HAS_RUN_DETAILS.test(content) && HAS_SESSION.test(content),
+		`${CHAT_CONTENT} no longer derives the published facts as \`Boolean(runDetails)\` / \`Boolean(sessionId)\` - the two terms the run panel's and the session drawer's mount gates read`,
+	);
+	assert.ok(
+		ROUTE_PUBLISH.test(content) && ROUTE_PUBLISH_DEPS.test(content),
+		`${CHAT_CONTENT} no longer publishes { mounted: true, runDetails, session } keyed on the booleans. Keying on the \`runDetails\` object re-publishes identical facts on every frame of a live run.`,
+	);
+	// Each pane's mount condition, exactly as `rightSlotPaneDrawable` encodes it.
+	for (const [pane, gate] of [
+		["canvas", "{isCanvasOpen && ("],
+		["run panel", "{isRunPanelOpen && runDetails && ("],
+		["browser", "{isBrowserPaneOpen && ("],
+		["console", "{isConsolePaneOpen && ("],
 	]) {
 		assert.ok(
-			reservation[1].includes(term),
-			`${CHAT_CONTENT}'s \`rightSlotOccupied\` no longer accounts for \`${term}\`. A pane the header does not know about leaves the OS controls sitting over that pane's own toolbar - the drawer included, now that it is the slot's fifth occupant.`,
+			content.includes(gate),
+			`${CHAT_CONTENT}'s ${pane} mount gate is no longer \`${gate}\`. \`rightSlotPaneDrawable\` encodes that condition (the flag plus the route's \`mounted\`${pane === "run panel" ? " and `runDetails`" : ""}); change both together.`,
 		);
 	}
+	assert.ok(
+		SESSION_ASKS_GATE.test(content),
+		`${CHAT_CONTENT}'s session asks gate is no longer \`isAskDrawerOpen && askDrawerScope === "session" && Boolean(sessionId)\`; \`rightSlotPaneDrawable\` encodes that condition as \`mounted && session\``,
+	);
+	const layout = withoutComments(read(CHAT_LAYOUT));
+	assert.ok(
+		FLEET_GATE.test(layout),
+		`${CHAT_LAYOUT}'s fleet asks gate moved; \`rightSlotPaneDrawable\` says the fleet scope is drawable on every route because the shell mounts it unconditionally`,
+	);
+	const drawable = withoutComments(read(UI_STORE)).match(DRAWABLE_BODY);
+	assert.ok(
+		drawable,
+		`${UI_STORE} no longer defines \`rightSlotPaneDrawable\``,
+	);
+	for (const [name, shape] of [
+		["asks: fleet always, session on mounted && session", DRAWABLE_ASK],
+		["the other four need the chat surface mounted", DRAWABLE_MOUNTED],
+		["only the run panel needs runDetails", DRAWABLE_RUN],
+	]) {
+		assert.ok(
+			shape.test(drawable[0]),
+			`\`rightSlotPaneDrawable\` no longer encodes "${name}" - the mount gates in ${CHAT_CONTENT} and ${CHAT_LAYOUT} are what it mirrors`,
+		);
+	}
+});
+
+test("the shell's sidebar yield reads the drawable-aware derivation (#868)", () => {
+	/*
+	 * `resolveSidebarLayout` is the FOURTH reader of the slot (R2): fed the bare
+	 * \`isCanvasOpen || isAskDrawerOpen\` it collapsed the docked sidebar at
+	 * 1024-1139px for a flag with no pane behind it, and only a window in that
+	 * band shows it.
+	 */
+	const layout = withoutComments(read(CHAT_LAYOUT));
+	assert.ok(
+		SIDEBAR_YIELD_READ.test(layout) && SIDEBAR_YIELD_ARG.test(layout),
+		`${CHAT_LAYOUT} no longer feeds \`resolveSidebarLayout\` from \`resolveRightSlotYieldsSidebar\`. A bare flag collapses the sidebar for a pane the route cannot draw.`,
+	);
+	assert.ok(
+		!SIDEBAR_BARE_FLAGS.test(layout),
+		`${CHAT_LAYOUT} restates the canvas/asks disjunction again - the second copy #868 removed`,
+	);
 });
