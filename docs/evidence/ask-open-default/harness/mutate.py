@@ -7,6 +7,9 @@ loudly instead of mutating nothing and "passing"), then the two suites are run a
 failing test titles are read off the runner's own output. A mutant that the suites do not
 kill is a rule with no test. The first run of the refined rules left two survivors (M17, M19);
 each was a test that could not fail for the thing it was named after, and each now has a case.
+M20 and M21 were added afterwards, by hand-probing rather than from a survivor: rule 2's "once"
+latch had no mutant of its own in this table (the suites do catch it - 10 and 9 failing tests
+when the probes were first run - but a table that says "per rule" has to show it).
 
 HOW IT STAYS SAFE. Every mutated file is restored with `git checkout -- <path>` in a
 `finally`, then compared byte-for-byte with what was read, and the working tree is verified
@@ -77,6 +80,11 @@ MUTANTS = [
      "drawerOpen,\n\t\t\tsessionDrawerOpen,"),
     ("M19", "a close over a complete EMPTY reading records a dismissal (the drawer's own auto-close read as a refusal)", POLICY,
      "if (reading.outstandingIds.length === 0 && reading.listComplete) return;", "/* mutant */"),
+    # ---- rule 2's "ONCE": the latch has two halves, and each needs its own mutant ----
+    ("M20", "the view never reads its own decision, so every later frame decides again (rule 2: once)", POLICY,
+     'if (input.viewDecided) return leave("already-decided");', "/* mutant */"),
+    ("M21", "the view never records that it decided, so the latch is never set (the other half of 'once')", POLICY,
+     "if (verdict.settled) settled = true;", "/* mutant */"),
 ]
 
 def run_suites():
