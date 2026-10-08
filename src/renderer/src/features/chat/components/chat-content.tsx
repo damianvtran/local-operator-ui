@@ -370,6 +370,16 @@ type ChatContentProps = {
 		 * from a press whose outcome was never confirmed.
 		 */
 		stopOutcome?: "pending" | "awaiting-end" | "unconfirmed" | null;
+		/**
+		 * True while the sentence standing in the composer is the DISPUTED idle
+		 * one (UX round 2, U9): an `idle` receipt arrived while the pane's held
+		 * claim still said a turn was alive, so the claim stays - the work may be
+		 * real - but the rung withholds its clock for exactly as long as the pane
+		 * is admitting it cannot vouch for a duration. The page folds this from
+		 * the notice's own kind (`chat-page.tsx`), so the sentence and the
+		 * withheld clock are one fact with one lifetime.
+		 */
+		idleDisputed?: boolean;
 		admitting?: boolean;
 		/**
 		 * A send this conversation has admitted and that has produced nothing yet.
@@ -916,13 +926,25 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const stoppingTurn =
 			canonical?.stopOutcome === "pending" ||
 			canonical?.stopOutcome === "awaiting-end";
+		/*
+		 * U10: the composer's `Stopping the turn` and the square's pressed hold
+		 * yield the moment the FEED shows the turn over, not only at the receipt
+		 * or the bound. Measured: with the receipt withheld, the line went and the
+		 * band came up at +116 ms while the box kept saying `Stopping the turn`
+		 * for the full 15 s - two surfaces in one viewport disagreeing, with the
+		 * band's `Retry` directly above a box that claimed to still be stopping.
+		 * The rung needs no such term (its overlay sits on a live state, and a
+		 * live state cannot outlive the pair's fall); the placeholder has no live
+		 * state of its own, so it takes the pair's own reading explicitly.
+		 */
+		const stoppingShown = stoppingTurn && canonical?.turnAlive === true;
 		const terminalPane = canonicalTerminal(canonical, gone);
 		const canonicalStop = useMemo(
 			() =>
 				canonical?.stopAvailable && !terminalPane
 					? {
 							active: canonical.turnAlive,
-							stopping: stoppingTurn,
+							stopping: stoppingShown,
 							onStop: canonical.onStop,
 						}
 					: undefined,
@@ -930,7 +952,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				canonical?.stopAvailable,
 				terminalPane,
 				canonical?.turnAlive,
-				stoppingTurn,
+				stoppingShown,
 				canonical?.onStop,
 			],
 		);
@@ -1882,6 +1904,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										startingSession={canonical.startingSession === true}
 										startingSince={canonical.startingSince ?? null}
 										stopping={stoppingTurn}
+										/*
+										 * The disputed idle withholds the rung's clock (U9): the
+										 * label stands - the work may be real - but the ticking
+										 * number asserts a duration the pane just admitted it
+										 * cannot vouch for. One fact with the sentence; see
+										 * `idleDisputed` on the handle type.
+										 */
+										idleDisputed={canonical.idleDisputed === true}
 										loadingOlder={canonical.view.loadingOlder}
 										onLoadOlder={canonical.view.loadOlder}
 										onLoadOlderOutcome={canonical.view.loadOlderDetailed}

@@ -3156,6 +3156,58 @@ test("a Stop press in flight relabels the line and withholds its clock, without 
 	assert.equal(workingLineClaimed(stoppingInput()), true);
 });
 
+test("the disputed idle keeps the line and withholds its clock (UX round 2, U9)", () => {
+	/*
+	 * The disputed idle's half of the overlay rule: an `idle` receipt under a
+	 * held live claim leaves the claim STANDING - the runtime's answer and the
+	 * pane's last reading disagree, and neither side can be declared the liar
+	 * from here - but the line must stop asserting a duration, because the
+	 * ticking `running bash 15s` beside `This view may be out of date.` was the
+	 * operator-visible tell. Same shape as `stopping`, one rung less: the label
+	 * stays the live state's own, only the number goes.
+	 */
+	const disputedInput = (over = {}) => ({
+		waiting: true,
+		compacting: false,
+		starting: false,
+		gate: false,
+		unavailable: false,
+		idleDisputed: true,
+		records: [],
+		...over,
+	});
+	// The label stays the live state's own; only the clock is withheld.
+	assert.deepEqual(deriveWorkingLine(disputedInput()), {
+		activity: "thinking",
+		phase: "thinking",
+		clock: false,
+	});
+	// A running batch keeps its own label and anchor - the line still claims
+	// the work, it just stops dating it.
+	assert.deepEqual(
+		deriveWorkingLine(
+			disputedInput({ records: [userRow(ECHO, "go"), runningToolRow("t1")] }),
+		),
+		{
+			activity: "running bash",
+			phase: "running",
+			startedAt: 1,
+			clock: false,
+		},
+	);
+	// `stopping` outranks it if both were ever set (they cannot be - the
+	// disputed sentence is written by the idle receipt that RESOLVES the
+	// press window - but the order is the rule).
+	assert.deepEqual(deriveWorkingLine(disputedInput({ stopping: true })), {
+		activity: "stopping the turn",
+		phase: "thinking",
+		clock: false,
+	});
+	// A gate or a terminal statement still outranks everything.
+	assert.equal(deriveWorkingLine(disputedInput({ gate: true })), null);
+	assert.equal(deriveWorkingLine(disputedInput({ unavailable: true })), null);
+});
+
 test("the line, the hint and every control read the one pair", () => {
 	/*
 	 * The wiring half of the incident, pinned in source because
@@ -3210,6 +3262,42 @@ test("the line, the hint and every control read the one pair", () => {
 		/active: canonical\.turnAlive,/,
 		"the Stop control is drawn from the pair",
 	);
+	/*
+	 * The Escape accelerator's call site is pinned with them (QA round 2, Q5):
+	 * the hook's own module is tested, but the wiring that decides WHICH fact
+	 * arrives there was rig-only coverage - a raw field at this seam left every
+	 * suite green while the key died in a gap. It lives in the PAGE (the
+	 * accelerator is the page's own listener), so it is asserted on `page`.
+	 */
+	assert.match(
+		page,
+		/useInterruptOnEscape\(\{\s*sessionId,\s*turnAlive,/,
+		"the escape accelerator reads the pair at its call site",
+	);
+	/*
+	 * The composer's `Stopping the turn` yields on the same fall the line does
+	 * (UX round 2, U10): with the receipt withheld, the feed showed the turn
+	 * over and the box kept claiming to still be stopping for the full 15 s -
+	 * the band's Retry directly above it. `stoppingTurn` (the phase) still
+	 * drives the rung; the sentence takes the pair's reading explicitly.
+	 */
+	assert.match(
+		content,
+		/const stoppingShown = stoppingTurn && canonical\?\.turnAlive === true;/,
+		"the composer's stopping sentence yields when the feed showed the turn over",
+	);
+	assert.match(content, /stopping: stoppingShown,/);
+	assert.match(content, /stopping=\{stoppingTurn\}/);
+	/*
+	 * And the disputed idle's clock-withhold rides the rung (UX round 2, U9):
+	 * the page folds it from the notice's own kind, so the sentence and the
+	 * withheld number are one fact with one lifetime.
+	 */
+	assert.match(
+		content,
+		/idleDisputed=\{canonical\.idleDisputed === true\}/,
+		"the rung is handed the disputed-idle withhold",
+	);
 	assert.match(
 		content,
 		/asideStreaming=\{canonical\.turnAlive\}/,
@@ -3254,12 +3342,32 @@ test("the press window's resolutions are pinned (round 1's R1-2)", () => {
 		/if \(pressId !== pressSeq\.current\) return;/,
 		"a superseded press must not write",
 	);
-	// A receipt: a confirmed cancel keeps the rung until the stream shows the
-	// end; every other answer closes the window.
+	/*
+	 * A press while a press is IN FLIGHT neither sends nor takes a number
+	 * (design round 2, D10, the coalesce): the double-tap is how people press
+	 * Escape, and the second press used to bounce the rung to `running bash`,
+	 * print `nothing was stopped` over a press the server had confirmed, and
+	 * lose the band (measured in the `dblesc`/`gapesc` reads).
+	 */
+	assert.match(page, /stopOutcomeRef\.current = stopOutcome;/);
 	assert.match(
 		page,
-		/receipt\.status === "interrupted" \? "awaiting-end" : null/,
-		"the receipt resolves the press (and keeps the rung through teardown)",
+		/const phase = stopOutcomeRef\.current;/,
+		"the press reads the committed phase",
+	);
+	assert.match(
+		page,
+		/if \(phase === "pending" \|\| phase === "awaiting-end"\) return;/,
+		"a press during a live press window is coalesced",
+	);
+	// A receipt: a confirmed cancel keeps the rung until the stream shows the
+	// end - but ONLY while the feed still claims the turn (R2-1): a receipt
+	// landing after the end the pair already showed must resolve clean, or
+	// `awaiting-end` strands the composer on a spent edge.
+	assert.match(
+		page,
+		/receipt\.status === "interrupted" && turnAliveRef\.current\s*\? "awaiting-end"\s*:\s*null/,
+		"the receipt resolves the press (and keeps the rung through teardown only while the turn is still claimed)",
 	);
 	// The bound: stated as unconfirmed ONLY while the turn is still alive; an
 	// end the feed already showed resolves clean instead.
@@ -3295,11 +3403,41 @@ test("the press window's resolutions are pinned (round 1's R1-2)", () => {
 		/current === "awaiting-end" \|\| current === "unconfirmed"/,
 		"the turn's end resolves the waiting phases",
 	);
-	// And the disputed idle asks the conversation again (U1).
+	// And the disputed idle asks the conversation again (U1), with its own
+	// notice kind (U9) so the rung's clock-withhold has exactly the sentence's
+	// lifetime - retiring on the pair's fall with the plain idle, never on a
+	// timer.
 	assert.match(
 		page,
 		/if \(receipt\.status === "idle" && claimAlive\) canonical\.retry\(\);/,
 		"an idle receipt under a live claim triggers a re-read",
+	);
+	assert.match(
+		page,
+		/receipt\.status !== "idle"\s*\? "outcome"\s*:\s*claimAlive\s*\? "idle-disputed"\s*:\s*"idle",/,
+		"the disputed idle is its own kind",
+	);
+	assert.match(
+		page,
+		/current\?\.kind === "idle" \|\| current\?\.kind === "idle-disputed"/,
+		"both idle sentences retire on the pair's fall",
+	);
+	/*
+	 * Q5 (QA round 2): the call-site wiring that was rig-only. The selection
+	 * itself is tested in `interrupt-control.test.mjs`; what is pinned here is
+	 * that the call site hands it the PANE'S live claim, and that the stop
+	 * alert has exactly its three owners - a fourth caller would be an eraser
+	 * nobody signed for.
+	 */
+	assert.match(
+		page,
+		/interruptNotice\(receipt, \{ turnClaimed: claimAlive \}\)/,
+		"the disputed-idle selection is handed the pane's live claim",
+	);
+	assert.equal(
+		(page.match(/clearStopAlert\(\);/g) ?? []).length,
+		3,
+		"the stop alert has exactly its three owners: the receipt arm and the pair's two edges",
 	);
 });
 
