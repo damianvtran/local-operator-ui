@@ -45,6 +45,7 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { hostPublishRecord } from "@shared/lib/host-publish-record";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useEffect, useRef, useState } from "react";
 import type { DesktopFeedFrame } from "../../../../shared/desktop-session-contract";
@@ -143,6 +144,8 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			wasConnected.current = false;
 			setConnected(false);
 			setReported(false);
+			/* The runtime may have changed under us (see `host-publish-record.ts`). */
+			hostPublishRecord.reset();
 			return;
 		}
 		const applyAttention = useCanonicalSessionsStore.getState().applyAttention;
@@ -158,11 +161,20 @@ export function useDesktopFeed(): DesktopFeedConnection {
 				}
 				hasConnected.current = true;
 			}
+			/*
+			 * A DROPPED CONNECTION WIPES WHAT WAS LEARNED ABOUT THE HOST: the daemon
+			 * may be replaced before it returns, and the renderer is not reloaded
+			 * when that happens. Wiped on the drop rather than on the return so an
+			 * outage never leaves a lock the record cannot vouch for.
+			 */
+			if (!nextConnected) hostPublishRecord.reset();
 			wasConnected.current = nextConnected;
 			setReported(true);
 			setConnected(nextConnected);
 		});
 		const offFrames = native.subscribe((frame: DesktopFeedFrame) => {
+			/* Every feed frame names the process that produced it. */
+			hostPublishRecord.observeProcess(frame.epoch);
 			if (frame.type === "attention") {
 				applyAttention(frame.session_id, frame.payload);
 				/*

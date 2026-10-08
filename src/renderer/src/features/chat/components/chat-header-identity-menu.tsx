@@ -134,6 +134,22 @@ export type IdentityMenuProps = {
 	 * states render no caption - there is no list for a rule to be about.
 	 */
 	caption: string | null;
+	/**
+	 * The runtime's strict rule has CLOSED this seat (a team owns the session):
+	 * the sentence that says so and names the way out, or `null` while the seat
+	 * is open. When set the panel is not a list at all - no field, no rows, no
+	 * roster fetch - because a list with every row disabled would read as a
+	 * choice that is merely unavailable, where the truth is that the runtime
+	 * refuses every name. The panel exists so the reason is VISIBLE on press
+	 * (keyboard and touch have no hover, which is all a tooltip would give).
+	 */
+	closedReason?: string | null;
+	/**
+	 * The closed panel's own id (the DIALOG element, which the trigger's
+	 * `aria-controls` names while it is up) and the lead line that names it.
+	 */
+	closedNoteId?: string;
+	closedTitle?: string;
 	onPick: (value: string) => void;
 	/**
 	 * The TAB path (UX round 1, U1): the field claims Tab and asks the control
@@ -165,6 +181,9 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	loadError,
 	emptyText,
 	caption,
+	closedReason = null,
+	closedNoteId,
+	closedTitle,
 	onPick,
 	onClose,
 	onCloseAutoFocus,
@@ -490,6 +509,49 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 			/>
 		</div>
 	);
+
+	if (closedReason !== null) {
+		const titleId = `${closedNoteId}-title`;
+		return (
+			<PopoverContent
+				align="start"
+				sideOffset={6}
+				collisionPadding={8}
+				className={cn("flex w-80 flex-col gap-0.5 p-1")}
+				data-header-identity-menu={kind}
+				data-header-identity-closed=""
+				/*
+				 * THE DIALOG IS THE NAMED, REFERENCED ELEMENT (review M1): Radix gives
+				 * the content `role="dialog"`, the trigger announces `aria-haspopup`
+				 * for it, and both need something to point at - the id here is what
+				 * the trigger's `aria-controls` names, and the lead line names it.
+				 */
+				id={closedNoteId}
+				aria-labelledby={titleId}
+				/*
+				 * Focus stays on the chip: the note holds nothing to operate, and
+				 * moving focus into it would strand a keyboard user inside a panel
+				 * whose only content is a sentence. Escape and an outside press
+				 * close it through Radix, as on the list panel.
+				 */
+				onOpenAutoFocus={(event) => event.preventDefault()}
+				onCloseAutoFocus={onCloseAutoFocus}
+			>
+				{/* The caption's register (#866: `ink-dim` over a list at `ink`), one
+				 * step up from the sentence it introduces so the pair reads as a
+				 * statement and its detail. */}
+				<p id={titleId} className="px-2 pt-1 text-body-sm text-ink-muted">
+					{closedTitle}
+				</p>
+				<p
+					data-header-identity-constraint=""
+					className="px-2 pb-1.5 text-ink-dim text-meta"
+				>
+					{closedReason}
+				</p>
+			</PopoverContent>
+		);
+	}
 
 	return (
 		<PopoverContent
