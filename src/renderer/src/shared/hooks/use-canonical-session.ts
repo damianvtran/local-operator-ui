@@ -2604,6 +2604,15 @@ export function useCanonicalSessionStream(
 			 * one.
 			 */
 			held: ReadonlySet<string> = painted,
+			/**
+			 * EVERY row that was on the pane before the batch, live or durable — the
+			 * seal's "was this inside the walk's reach" set, which is not `held` (see
+			 * the note at the top of `flush`: `held` is a CONNECTION proof and leaves
+			 * out the rows a seal must not mistake for unreached ones). Defaults to
+			 * `painted` for the same reason `held` does: the retry paths pass the whole
+			 * index, so for them the three sets are one.
+			 */
+			onPane: ReadonlySet<string> = painted,
 		) => {
 			/*
 			 * THIS WALK IS A READ THE PANE CAN PAINT (remote-load-hydration, U1): the
@@ -2647,6 +2656,7 @@ export function useCanonicalSessionStream(
 					generation,
 					painted,
 					held,
+					onPane,
 					labels,
 					historyAttempt,
 					onSpend,
@@ -2745,6 +2755,7 @@ export function useCanonicalSessionStream(
 			generation: number,
 			painted: ReadonlySet<string>,
 			held: ReadonlySet<string>,
+			onPane: ReadonlySet<string>,
 			labels: LabelWalk,
 			historyAttempt: number,
 			onSpend?: (rows: number) => void,
@@ -2761,6 +2772,7 @@ export function useCanonicalSessionStream(
 				generation,
 				painted,
 				held,
+				onPane,
 				labels,
 				historyAttempt,
 				seam,
@@ -2798,7 +2810,19 @@ export function useCanonicalSessionStream(
 				// the chain's edge. `hasMore` is unknown here, which paging resolves
 				// itself (an empty older page clears it).
 				if (batchTouchesHeld) return handedOff;
-				edge = oldestDurableOutside(viewRef.current.transcript, held);
+				/*
+				 * `onPane`, NOT `held` (#876, CI regression of review round 1). "Outside"
+				 * here means "arrived with this batch", i.e. a row that was not on the
+				 * pane before the flush; `held` is the CONNECTION set and leaves out every
+				 * row the pane had in a live state. The worked example is the load-
+				 * sequence case: the pane holds 93 durable rows and tool c91 RUNNING
+				 * (not durable, so not in `held`); the next flush's `tool_execution_end`
+				 * settles c91 and asks for its label, the page comes back empty, and with
+				 * `held` the now-`done` c91 read as a durable row outside the walk's
+				 * reach - the edge - so the seal dropped the 93 rows older than it. c91
+				 * was never outside anything: it changed STATE during the flush.
+				 */
+				edge = oldestDurableOutside(viewRef.current.transcript, onPane);
 			}
 			if (!edge) return handedOff;
 			const sealed = commitView((current) => {
@@ -2823,6 +2847,7 @@ export function useCanonicalSessionStream(
 			generation: number,
 			painted: ReadonlySet<string>,
 			held: ReadonlySet<string>,
+			onPane: ReadonlySet<string>,
 			labels: LabelWalk,
 			historyAttempt: number,
 			seam: WalkSeam,
@@ -2997,6 +3022,7 @@ export function useCanonicalSessionStream(
 								historyAttempt + 1,
 								onSpend,
 								held,
+								onPane,
 							);
 						}, streamRetryDelayMs(historyAttempt));
 						return true;
@@ -3379,6 +3405,22 @@ export function useCanonicalSessionStream(
 			for (const record of viewRef.current.transcript.records)
 				if (paintedIds.current.has(record.id) && isDurableOwnerRow(record))
 					heldIds.add(record.id);
+			/*
+			 * `heldIds` IS A CONNECTION PROOF AND NOTHING ELSE (#876, CI regression of
+			 * review round 1). The gate, `reachedHeld`, `batchTouchesHeld` and the
+			 * empty-set defer ask one question - "does a fetched page overlap a row
+			 * the JOURNAL owns that this pane holds" - and answer it by leaving out
+			 * every row that is not one. The seal asks a different question of a
+			 * different set: "which rows were on the pane before this flush", so that a
+			 * row which merely CHANGED STATE during it (a running tool that settles, a
+			 * streaming answer that completes, an echo that the owner confirms) is
+			 * never mistaken for a durable row the walk failed to reach. That is
+			 * every key of the pre-flush index, captured at the same instant, before
+			 * any commit. One definition for both jobs was the bug: the durable-only
+			 * set made a running tool that settled mid-flush look like an unreached
+			 * durable row, and the seal cut at it.
+			 */
+			const onPaneBefore = new Set(paintedIds.current.keys());
 			/*
 			 * The off-record chunks first, and outside the state update: see
 			 * `applyAsideDeltas` for why they can be neither a reducer branch nor a write
@@ -4317,6 +4359,7 @@ export function useCanonicalSessionStream(
 					 * captured before this flush's commits (see the top of `flush`). #876.
 					 */
 					heldIds,
+					onPaneBefore,
 				);
 			}
 		};
