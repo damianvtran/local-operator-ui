@@ -115,6 +115,16 @@ globalThis.localStorage = DOM.window.localStorage;
 globalThis.requestAnimationFrame = (callback) =>
 	setTimeout(() => callback(Date.now()), 0);
 globalThis.cancelAnimationFrame = (handle) => clearTimeout(handle);
+/*
+ * The status row's detail region measures its own overflow with a ResizeObserver
+ * (it is a keyboard stop only while it overflows); jsdom has none, and no layout
+ * either, so an inert observer is the honest shim - `scrollHeight` reads 0 here and
+ * the region is therefore never a tab stop, which nothing in this file asserts.
+ */
+globalThis.ResizeObserver = class {
+	observe() {}
+	disconnect() {}
+};
 DOM.window.HTMLCanvasElement.prototype.getContext = () => ({
 	measureText: (text) => ({ width: String(text).length * 8 }),
 	font: "",
