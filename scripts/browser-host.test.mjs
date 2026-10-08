@@ -2786,6 +2786,29 @@ test("a document round trip cannot return the unapproved document's text", async
 });
 
 /**
+ * Make the fixture's field HOLD what `Input.insertText` sent, so a `type` the
+ * fixture drives is read back honestly. These tests are about navigation and the
+ * per-hop gate, not about the type outcome, but `type` now refuses a value the
+ * page does not hold (#871) rather than echoing a write nothing performed, and a
+ * fixture that answers `{}` to every read-back is exactly that unverifiable page.
+ */
+function installHeldValue(cdp) {
+	let held = "";
+	const send = cdp.send;
+	cdp.send = async (contents, method, params) => {
+		if (method === "Input.insertText") held = params.text;
+		if (
+			method === "Runtime.callFunctionOn" &&
+			String(params?.functionDeclaration ?? "").includes("'value' in this")
+		) {
+			cdp.calls.push({ method, params });
+			return { result: { value: held } };
+		}
+		return send(contents, method, params);
+	};
+}
+
+/**
  * Arm the three DOM answers a `click` needs, and let the caller reproduce what
  * Electron does once the click's own handler has run and the navigation it
  * started commits: the document moves and `did-navigate` bumps the tab's epoch.
@@ -2859,6 +2882,7 @@ test("a form submit on the approved origin reports the page it landed on", async
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
 	const opened = await host.dispatch("open", params, "open");
 	const record = registry.requireSurface(opened.tab);
+	installHeldValue(cdp);
 	installClickFixture(cdp, () => {
 		record.view.webContents.url = "https://approved.example/after?q=qa";
 		registry.bumpEpoch(record.tabId);
@@ -3135,6 +3159,7 @@ test("the per-hop gate is armed for the actions that can navigate, and only thos
 		}
 		return send(contents, method, params);
 	};
+	installHeldValue(cdp);
 	const params = {
 		url: "https://approved.example/",
 		requester: "session:alice",
@@ -7050,6 +7075,39 @@ test("type still lands through the value setter on a real form field", async () 
 	assert.equal(input.value, "hello");
 });
 
+/** An `<input>` whose setter accepts a write and then loses it, as a
+ * framework-controlled field that reverts to its own state does. */
+class FakeRevertingInputElement extends FakeInputElement {
+	get value() {
+		return "";
+	}
+	set value(_next) {}
+}
+
+test("type refuses a setter write that does not stick instead of echoing it (#871)", async () => {
+	const { host, cdp } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const input = new FakeRevertingInputElement();
+	executingCdp(cdp, input);
+
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"type",
+				{ ...owner, tab, selector: "input#email", text: "hello" },
+				"type",
+			),
+		(error) => {
+			assert.equal(error.code, "element_not_found");
+			assert.match(error.message, /input#email took the value-setter write/);
+			assert.match(error.message, /does not hold the text/);
+			assert.match(error.message, /read back ''/);
+			assert.match(error.message, /nothing was reported typed/);
+			return true;
+		},
+	);
+});
+
 // ---- frames: reaching fields inside iframes (ARCH-1) -------------------------
 
 /**
@@ -7543,6 +7601,70 @@ test("frames 4: type at an iframe element descends to one field, refuses zero (#
 			}),
 		(error) => error.code === "element_not_found",
 	);
+});
+
+test("frames 4b: a frame field's setter write is verified in the frame's session (#871)", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	// `focus` no longer registers the field with the fake's `insertText`, so the
+	// primary path reads back nothing and the setter fallback is what runs.
+	const setterOnly = (input) => {
+		input.focus = () => {};
+	};
+	const afterSetter = (page) => {
+		const calls = page.calls;
+		const setAt = calls.findLastIndex(
+			(c) =>
+				c.method === "Runtime.callFunctionOn" &&
+				c.params.functionDeclaration.includes("setter.call"),
+		);
+		return { set: calls[setAt], after: calls.slice(setAt + 1) };
+	};
+
+	// A write that sticks: reported via the setter, with the frame's origin.
+	const kept = cardPage();
+	setterOnly(kept.inputs[0]);
+	const keptPool = await framePool(kept.page);
+	const typed = await FRAMES_ACTIONS.type(
+		frameCtx(keptPool.pool, keptPool.contents),
+		{ tab: "t", selector: "#card", text: "4242" },
+	);
+	assert.equal(typed.via, "value_setter");
+	assert.equal(typed.value, "4242");
+	assert.equal(typed.frame_origin, "https://pay.example");
+	assert.equal(kept.inputs[0].value, "4242");
+	const keptTail = afterSetter(kept.page);
+	assert.equal(keptTail.set.sessionId, "S1");
+	assert.equal(keptTail.after.at(-1).sessionId, "S1");
+
+	// A write that does not stick: refused, and the check ran in the frame.
+	const lost = cardPage();
+	setterOnly(lost.inputs[0]);
+	Object.defineProperty(lost.inputs[0], "value", {
+		get: () => "",
+		configurable: true,
+	});
+	Object.setPrototypeOf(lost.inputs[0], FakeRevertingInputElement.prototype);
+	const lostPool = await framePool(lost.page);
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.type(frameCtx(lostPool.pool, lostPool.contents), {
+				tab: "t",
+				selector: "#card",
+				text: "4242",
+			}),
+		(error) => {
+			assert.equal(error.code, "element_not_found");
+			assert.match(error.message, /#card took the value-setter write/);
+			assert.match(error.message, /nothing was reported typed/);
+			return true;
+		},
+	);
+	const lostTail = afterSetter(lost.page);
+	assert.equal(lostTail.set.sessionId, "S1");
+	assert.equal(lostTail.after.length, 1, "exactly one independent read-back");
+	assert.equal(lostTail.after[0].method, "Runtime.callFunctionOn");
+	assert.equal(lostTail.after[0].sessionId, "S1");
+	assert.equal(lostTail.after[0].params.arguments, undefined);
 });
 
 test("frames 5: detachedFromTarget drops the cached session; a stale one re-attaches exactly once", async () => {
