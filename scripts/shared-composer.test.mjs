@@ -4,6 +4,7 @@ import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
+import { installFocusScrollModel } from "./focus-scroll-model.mjs";
 
 /*
  * THE SHARED COMPOSER'S HOST CONTRACT, driven through the SHIPPED component.
@@ -185,6 +186,15 @@ for (const [key, value] of Object.entries({
 Object.defineProperty(window.document, "visibilityState", { value: "hidden" });
 Object.defineProperty(window.document, "hidden", { value: true });
 
+/*
+ * THE FOCUSING STEPS' SCROLL HALF, MODELLED (see `focus-scroll-model.mjs`).
+ * jsdom moves focus and never scrolls - no layout engine - so without this the
+ * difference between a plain `focus()` and `focus({preventScroll: true})` is
+ * invisible here, and that difference is what the shared composer's focus
+ * contract now rests on: it may claim the caret, never the host page's scroll.
+ */
+const focusModel = installFocusScrollModel(window);
+
 window.setTimeout = tracked(realSetTimeout);
 window.setInterval = tracked(realSetInterval);
 
@@ -346,6 +356,7 @@ const h = React.createElement;
 
 after(() => {
 	for (const id of liveTimers) clearTimeout(id);
+	focusModel.restore();
 	dom.window.close();
 });
 
@@ -381,6 +392,14 @@ async function mount({
 } = {}) {
 	useConversationInputStore.setState({ inputByConversation: {} });
 	const container = window.document.createElement("div");
+	/*
+	 * THE HOST PAGE'S SCROLLER, and it is the geometry the focus contract is
+	 * about: a composer that claims the caret without `preventScroll` asks its
+	 * host's page to move. Inline rather than a class because no stylesheet is
+	 * applied here, and the model in `focus-scroll-model.mjs` is what turns a
+	 * non-prevented call into that movement.
+	 */
+	container.style.overflowY = "auto";
 	window.document.body.appendChild(container);
 	root = createRoot(container);
 	/*
@@ -1692,6 +1711,147 @@ test("placeholderOverride replaces the invitation; every state sentence outranks
 	await act(async () => {
 		root.unmount();
 	});
+});
+
+/* ------------------------------------------------------------------ */
+/* 4b. The caret, and whether a claim may take the host page with it    */
+/* ------------------------------------------------------------------ */
+/*
+ * OPERATOR RULE, 2026-10-08: "the composer auto-focuses mostly, but on the
+ * projects page it shouldn't, and we should stay scrolled at the top when
+ * clicking in". The two halves of that are here - the default keeps the claim,
+ * and the claim never moves the page - while the projects strip's own opt-out
+ * is asserted where the strip is mounted (`projects-quick-send.test.mjs`).
+ * jsdom has no layout, so "moves the page" is read off the focus calls
+ * themselves through `focus-scroll-model.mjs`: a call that does not prevent the
+ * scroll is what a real engine turns into movement.
+ */
+
+test("a default-props mount still takes the caret on its own, and the claim never moves the page", async () => {
+	/*
+	 * TEARDOWN IN `finally`, because this rig's `after` hook unmounts only the LAST
+	 * tree: a case that fails before its own unmount leaves a mounted composer
+	 * behind, and the dictation machinery under it is what holds the file's process
+	 * alive (measured while writing this case: a red run sat five minutes on
+	 * multiplying Timeouts before the runner reaped it).
+	 */
+	let frame;
+	try {
+		frame = await mount({ messages: [] });
+		const field = frame.textarea();
+		assert.ok(field, "the composer's field is mounted");
+		assert.equal(
+			window.document.activeElement,
+			field,
+			"a host that says nothing gets today's behaviour: the chat-shaped mount claims the caret",
+		);
+		const claims = focusModel.calls.filter((call) => call.element === field);
+		assert.ok(
+			claims.length >= 1,
+			"the mount's own focus call is this case's subject, so it has to have been recorded",
+		);
+		assert.equal(
+			claims[0].prevented,
+			true,
+			"and it carries preventScroll - taking focus is not a request to scroll the host's page, and a plain focus is what centred the projects strip",
+		);
+		assert.equal(
+			frame.container.scrollTop,
+			0,
+			"so a scrolled container is left exactly where it was",
+		);
+	} finally {
+		await act(async () => {
+			root?.unmount();
+		});
+	}
+});
+
+test("with autoFocus={false} the end of a dictation take still hands the caret back", async () => {
+	/*
+	 * WHY THE OPT-OUT CANNOT BE `if (!autoFocus) return`. A take leaves the caret
+	 * on the microphone - a click put it there, or the push-to-talk chord drove the
+	 * manager - and the composer's own focus effect is what returns it to the box
+	 * when the take ends. Leave it on the mic and Enter re-triggers a recording
+	 * instead of sending: the wrong control in the middle of an interaction this
+	 * box owns. So the host's answer gates the CLAIM and never the HAND-BACK, and
+	 * this case drives the real capture dispatch - the same synthetic media stack
+	 * the dictation cases above use - through an opted-out mount.
+	 */
+	mic.calls = 0;
+	mic.next = async () => fakeStream();
+	let frame;
+	try {
+		frame = await mount({
+			messages: [],
+			autoFocus: false,
+			recordingProbe: {
+				canUseRadientSpeech: true,
+				speechBlock: "could-not-check",
+			},
+		});
+		const field = frame.textarea();
+		assert.ok(field, "the composer's field is mounted");
+		assert.notEqual(
+			window.document.activeElement,
+			field,
+			"an opted-out mount does not claim the caret",
+		);
+
+		const { code } = resolvePushToTalkBinding();
+		await act(async () => {
+			window.dispatchEvent(
+				new window.KeyboardEvent("keydown", {
+					code,
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		});
+		await settle();
+		/*
+		 * THE TAKE IS PROVED LIVE BEFORE IT IS ENDED, or the case could pass on a
+		 * dispatch that never recorded anything: the confirm control only renders
+		 * while `isRecording` (`{isRecording && (...)}` in the composer), which is the
+		 * state the hand-back's falling edge is read off.
+		 */
+		assert.ok(
+			frame.container.querySelector('[aria-label="Confirm recording"]'),
+			"the hold reached the capture path, so the take this case ends is a real one",
+		);
+		await act(async () => {
+			window.dispatchEvent(
+				new window.KeyboardEvent("keyup", {
+					code,
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		});
+		await settle();
+		assert.equal(
+			window.document.activeElement,
+			field,
+			"the end of the take hands the caret back to the box",
+		);
+		const handback = focusModel.calls
+			.filter((call) => call.element === field)
+			.at(-1);
+		assert.ok(
+			handback,
+			"the hand-back is a focus call, so it has to be recorded for the flag below to mean anything",
+		);
+		assert.equal(
+			handback.prevented,
+			true,
+			"with preventScroll, because a hand-back restores a caret rather than navigating",
+		);
+	} finally {
+		await act(async () => {
+			root?.unmount();
+		});
+		mic.next = null;
+	}
 });
 
 /* ------------------------------------------------------------------ */

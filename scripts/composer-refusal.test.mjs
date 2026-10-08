@@ -418,8 +418,27 @@ test("a refused box takes the caret from a gesture and not from an unprompted fo
 	const source = code(COMPOSER);
 	assert.match(
 		source,
-		/if \(!isInputDisabled && !isRecording && !isTranscribing\) \{/,
+		/if \(isInputDisabled \|\| dictating\) return;/,
 		"the mount self-focus keeps its refusal gate: pulling the caret into a box the app has just declared inert is the silent steal, and it is what would take the caret out of the transcript when a refusal lands mid-read",
+	);
+	/*
+	 * AND THE OPT-OUT MAY NOT SHORT-CIRCUIT THE DICTATION HAND-BACK (operator,
+	 * 2026-10-08). The projects strip now passes `autoFocus={false}` because its
+	 * composer is a secondary interaction on a long page - and the naive shape of
+	 * that opt-out, a single `if (!autoFocus) return;` ahead of the rest, would
+	 * leave the caret on the mic control when a take ends, where Enter re-triggers
+	 * a recording instead of sending. The two spellings are pinned separately, so
+	 * collapsing them into one arm fails here rather than in a browser.
+	 */
+	assert.match(
+		source,
+		/const dictationEnded = wasDictatingRef\.current && !dictating;/,
+		"the end of a take has to stay an edge of its own, not a by-product of the host's answer",
+	);
+	assert.match(
+		source,
+		/if \(!autoFocus && !dictationEnded\) return;/,
+		"and the opt-out may only skip the claim, never the hand-back",
 	);
 	assert.match(
 		code(CARET),
