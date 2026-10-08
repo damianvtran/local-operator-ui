@@ -343,6 +343,7 @@ const snapshotFrame = (
 		streaming = true,
 		coldReason,
 		hasMore = true,
+		cursorMissing = false,
 	},
 ) => ({
 	session_id: SESSION_A,
@@ -389,7 +390,7 @@ const snapshotFrame = (
 				attention: null,
 			},
 		},
-		history: { entries, has_more: hasMore, cursor_missing: false },
+		history: { entries, has_more: hasMore, cursor_missing: cursorMissing },
 		cold: false,
 		/*
 		 * Absent unless a case names it: an older backend sends no token, and the
@@ -1319,7 +1320,10 @@ function grow(transcript, from, to) {
  *    between the open frame and the snapshot; `split` puts it in a flush of its
  *    own BEFORE the snapshot (the shape #876's R4-2 measured), otherwise both
  *    ride one flush. `id` names a row the pane ALREADY holds instead (a replayed
- *    event on a held row), which leaves the journal as it was.
+ *    event on a held row), which leaves the journal as it was. `switchAway`
+ *    leaves the conversation for another one and comes back AFTER the replay's
+ *    flush and BEFORE the snapshot (the paint cache round trip of review round
+ *    1's R1-1).
  */
 async function driveCachedReopen({
 	away,
@@ -1329,6 +1333,7 @@ async function driveCachedReopen({
 	returnPage = null,
 	visitPage = null,
 	replay = null,
+	switchAway = false,
 }) {
 	const base = longConversation({ awayRows: 0, total });
 	const transcript = makeTranscript(base.rows);
@@ -1450,6 +1455,18 @@ async function driveCachedReopen({
 	let seq = 10;
 	for (const event of replayFrames) deliver(eventFrame(seq++, event));
 	if (replay?.split) await pump();
+	if (switchAway) {
+		// Leave BEFORE the snapshot flush: the unmount writes the paint cache with
+		// the replayed row in it, and the return seeds the pane from that cache.
+		await pump();
+		sessionId = SESSION_B;
+		runtime.rerender();
+		await pump();
+		sessionId = SESSION_A;
+		runtime.rerender();
+		await pump();
+		deliver(openFrame(seq++, true));
+	}
 	const page = returnPage
 		? returnPage(transcript)
 		: {
@@ -1569,32 +1586,160 @@ for (const away of [50, 300, 480, 600, 900])
 					assert.ok(r.reads > 0, "a disjoint page is read through");
 			});
 		}
-test("the replay table runs the cells it says it runs", () => {
+/*
+ * THE SWITCH-AWAY VARIANT (R1-1): the replay's flush, then a trip to another
+ * conversation (the unmount writes the paint cache), then the snapshot. The
+ * paint cache must not launder the replay-born row into a held one.
+ */
+let switchCells = 0;
+for (const away of [300, 600])
+	for (const kind of ["assistant", "user"]) {
+		switchCells += 1;
+		test(`replay table: away ${away} x split replay x newest ${kind} x switch away and back before the snapshot`, async () => {
+			const r = await driveCachedReopen({
+				away,
+				replay: { kind, split: true },
+				switchAway: true,
+			});
+			assertContiguousSuffix(
+				r.painted,
+				replayJournal(r),
+				`away ${away} ${kind} switch`,
+			);
+			assert.ok(r.reads > 0, "the cached replay-born row proves no held range");
+			if (away > 500) assert.equal(r.hasMore, true);
+		});
+	}
+test("the replay tables run the cells they say they run", () => {
 	assert.equal(replayCells, 30);
+	assert.equal(switchCells, 4);
 });
 
 /*
  * COST PINS: the exclusion must not turn an ordinary reconnect into reads.
  */
-test("a replay of a row the pane ALREADY holds, plus a connecting snapshot, costs no read", async () => {
-	// r400 is the pane's newest held row (an assistant at 400 % 3 == 1? use the
-	// journal's own id so the replay lands on a held id, not a new one).
-	const held = `r${REOPEN_TOTAL - 1}`; // r399: an assistant row (399 % 3 === 0 is a tool; 398 is assistant)
-	const r = await driveCachedReopen({
-		away: 50,
-		replay: { id: "r398", split: true },
-	});
-	assert.equal(r.reads, 0, `replaying a held row (not ${held}) is not new`);
-	assertContiguousSuffix(r.painted, replayJournal(r), "held replay");
+/*
+ * THE HELD-ID COST PINS, MADE TO DISCRIMINATE (review round 1, R1-3). A page
+ * that connects by the usual route defers anyway on an EMPTY held set, so a
+ * replay of an already-held id passes whether or not the id is tracked. These
+ * pages touch the cached block through EXACTLY ONE row, the replayed one, and
+ * leave an unconnected seam everywhere else: only that row being HELD can make
+ * the gate defer, so tracking it (an unconditional add) costs a read.
+ * Held block r301..r400; r398 is an assistant row.
+ */
+async function driveHeldReplay({ split }) {
+	// The pane's cached block ENDS at r398 (an assistant row), so a page that
+	// starts at r398 overlaps it through that one row and no other.
+	const transcript = makeTranscript(
+		longConversation({ awayRows: 0, total: 398 }).rows,
+	);
+	const { handle } = await openOn(transcript, { id: SESSION_A });
+	let seq = 3;
+	deliver(openFrame(seq++, true));
+	for (const event of assistantFrames("r398"))
+		deliver(eventFrame(seq++, event));
+	if (split) await pump();
+	grow(transcript, 399, 398 + 400);
+	const reads0 = historyReads();
+	deliver(
+		snapshotFrame(seq++, {
+			cursor: "r497",
+			entries: transcript.page("r497", REOPEN_PAGE).entries,
+			coldReason: null,
+		}),
+	);
+	await pump();
+	return { reads: historyReads() - reads0, handle };
+}
+
+test("a replay of a row the pane ALREADY holds stays held: a page touching the block only through it costs no read (split)", async () => {
+	const r = await driveHeldReplay({ split: true });
+	assert.equal(
+		r.reads,
+		0,
+		"the replayed id was already held, so it still connects",
+	);
 });
 
-test("a replay of a held row in the snapshot's own flush costs no read", async () => {
-	const r = await driveCachedReopen({
-		away: 50,
-		replay: { id: "r398", split: false },
-	});
+test("a replay of a held row in the snapshot's own flush stays held too", async () => {
+	const r = await driveHeldReplay({ split: false });
 	assert.equal(r.reads, 0);
 });
+
+/*
+ * THE OTHER TWO "A PAGE NAMES IT" DELETIONS (review round 1, R1-2). The snapshot
+ * arm's is pinned by "a page that NAMES a replayed row makes it held again". These
+ * name a replay-born id ONLY through a walk page and ONLY through a tail refresh,
+ * then hand the gate a page that connects through that one row and nothing else
+ * the pane holds: a missed deletion is an extra read, and that is what they count.
+ * `a-mid` is a settled assistant row the replay delivered that sits mid-journal,
+ * so the snapshot's own page does not name it.
+ */
+async function driveReplayBornMid({ viaRefresh }) {
+	const transcript = makeTranscript(
+		longConversation({ awayRows: 0, total: REOPEN_TOTAL }).rows,
+	);
+	const { handle } = await openOn(transcript, { id: SESSION_A });
+	const grown = viaRefresh ? 50 : 400;
+	grow(transcript, REOPEN_TOTAL + 1, REOPEN_TOTAL + grown);
+	const at = viaRefresh ? REOPEN_TOTAL + grown : REOPEN_TOTAL + 250;
+	transcript.rows[at - 1] = assistantRow("a-mid", 100 + at, "a-mid done");
+	let seq = 3;
+	deliver(openFrame(seq++, true));
+	for (const event of assistantFrames("a-mid"))
+		deliver(eventFrame(seq++, event));
+	await pump(); // replay-born, in a flush of its own
+	if (viaRefresh) {
+		// No snapshot yet: the tail refresh is what names it.
+		const ok = await handle().refreshTail(0, handle().transcript.viewEpoch);
+		void ok;
+	} else {
+		// The snapshot's page is the journal tail, which does not reach a-mid; the
+		// reconcile walk reads back through it and names it there.
+		deliver(tailFrame(seq++, transcript, REOPEN_PAGE));
+		await pump();
+	}
+	const reads0 = historyReads();
+	deliver(openFrame(seq++, true));
+	deliver(
+		snapshotFrame(seq++, {
+			cursor: "a-mid",
+			entries: transcript.page("a-mid", 1).entries,
+			coldReason: null,
+		}),
+	);
+	await pump();
+	return historyReads() - reads0;
+}
+
+test("a replay-born id named only by a reconcile WALK page is held on the next reconnect", async () => {
+	assert.equal(await driveReplayBornMid({ viaRefresh: false }), 0);
+});
+
+test("a replay-born id named only by a TAIL REFRESH is held on the next reconnect", async () => {
+	assert.equal(await driveReplayBornMid({ viaRefresh: true }), 0);
+});
+
+/*
+ * THE DISCRIMINATING SHAPE (R1-3): a replay of an id the pane ALREADY holds must
+ * leave the held set intact, and the only way to see an emptied set is a page that
+ * does NOT connect - an emptied set defers ("a pane holding nothing has no seam")
+ * over the hole, an intact one reads back to the block. The connecting cost pins
+ * above stay as the other half: they prove a held id still connects.
+ */
+for (const split of [true, false])
+	test(`a replay of a row the pane already holds leaves the held set intact: a DISJOINT page still reads back to the block (${split ? "split" : "same flush"})`, async () => {
+		const r = await driveCachedReopen({
+			away: 300,
+			replay: { id: "r398", split },
+		});
+		assertContiguousSuffix(
+			r.painted,
+			replayJournal(r),
+			"held replay, disjoint page",
+		);
+		assert.ok(r.reads > 0, "the held block is a seam the page does not touch");
+	});
 
 test("a cold pane (nothing held) with a split replay still defers with no read", async () => {
 	// Nothing was painted by a first visit: the page is the whole coverage.
@@ -1609,11 +1754,13 @@ test("a cold pane (nothing held) with a split replay still defers with no read",
 	};
 	runtime.rerender();
 	deliver(openFrame(1, true));
-	for (const event of assistantFrames("a-live")) deliver(eventFrame(2, event));
+	let coldSeq = 2;
+	for (const event of assistantFrames("a-live"))
+		deliver(eventFrame(coldSeq++, event));
 	await pump();
 	const reads0 = historyReads();
 	deliver(
-		snapshotFrame(3, {
+		snapshotFrame(coldSeq++, {
 			cursor: "r50",
 			entries: transcript.tail(REOPEN_PAGE).entries,
 			coldReason: null,
@@ -1785,14 +1932,20 @@ test("a /clear forgets what a replay delivered, so the same id arriving on a con
 	);
 });
 
-test("a session switch forgets what a replay delivered, so the cached row counts as held on return", async () => {
+test("a session switch carries what a replay delivered through the paint cache: the row still displays, and still is not evidence of a held journal row", async () => {
+	// CONTRACT CHANGED IN REVIEW ROUND 1 (R1-1). This case used to assert the
+	// opposite - that the set empties on a switch and the cached row then "counts
+	// as held" - which is exactly the route by which a replay-born row became a
+	// held one and reopened the hole. The row is displayed from the cache either
+	// way; what travels is the refusal to call it a held JOURNAL row.
 	const transcript = makeTranscript(
 		longConversation({ awayRows: 0, total: REOPEN_TOTAL }).rows,
 	);
 	const ref = { id: SESSION_A };
 	const { runtime, handle } = await openOn(transcript, ref);
+	grow(transcript, REOPEN_TOTAL + 1, REOPEN_TOTAL + 299);
 	transcript.rows.push(
-		assistantRow("a-live", 100 + REOPEN_TOTAL + 1, "a-live done"),
+		assistantRow("a-live", 100 + REOPEN_TOTAL + 300, "a-live done"),
 	);
 	let seq = 3;
 	deliver(openFrame(seq++, true));
@@ -1811,13 +1964,52 @@ test("a session switch forgets what a replay delivered, so the cached row counts
 	);
 	const reads0 = historyReads();
 	deliver(openFrame(seq++, true));
-	deliver(tailFrame(seq++, transcript, 1));
+	deliver(tailFrame(seq++, transcript, REOPEN_PAGE));
+	await pump();
+	assert.ok(
+		historyReads() - reads0 > 0,
+		"a-live is not evidence the block is held",
+	);
+	assertContiguousSuffix(
+		ids(handle().transcript),
+		transcript.rows.map(recordIdOf),
+		"switch away with a replay-born row",
+	);
+});
+
+test("a replay-born id a page already named is a journal row on the next mount: the cache does not carry it", async () => {
+	const transcript = makeTranscript(
+		longConversation({ awayRows: 0, total: REOPEN_TOTAL }).rows,
+	);
+	const ref = { id: SESSION_A };
+	const { runtime, handle } = await openOn(transcript, ref);
+	transcript.rows.push(
+		assistantRow("a-live", 100 + REOPEN_TOTAL + 1, "a-live done"),
+	);
+	let seq = 3;
+	deliver(openFrame(seq++, true));
+	for (const event of assistantFrames("a-live"))
+		deliver(eventFrame(seq++, event));
+	await pump();
+	deliver(tailFrame(seq++, transcript, REOPEN_PAGE)); // names a-live
+	await pump();
+	ref.id = SESSION_B;
+	runtime.rerender();
+	await pump();
+	ref.id = SESSION_A;
+	runtime.rerender();
+	await pump();
+	grow(transcript, REOPEN_TOTAL + 2, REOPEN_TOTAL + 60);
+	const reads0 = historyReads();
+	deliver(openFrame(seq++, true));
+	deliver(tailFrame(seq++, transcript, REOPEN_PAGE)); // overlaps the cache, incl. a-live
 	await pump();
 	assert.equal(
 		historyReads() - reads0,
 		0,
-		"cached rows count as held on a new visit",
+		"a named row is held again after a remount",
 	);
+	assert.ok(ids(handle().transcript).includes("a-live"));
 });
 
 test("a page that NAMES a replayed row makes it held again: the next reconnect defers", async () => {
