@@ -522,6 +522,18 @@ test("single-select: Other is the LAST row of the radiogroup, labelled and hinte
 		row.textContent.includes(OTHER_HINT),
 		"a first-time user is told what the row is for",
 	);
+	/*
+	 * ONE REAL SPACE between the label and the hint (round 2, design D8 / UX U6):
+	 * with only the `ml-1.5` margin between the two spans, the accessible-name
+	 * computation concatenates them into one announced word - Chrome's AX tree
+	 * read `OtherType your answer`. The space is what puts the boundary in the
+	 * name, and `textContent` is where this host can see it.
+	 */
+	assert.equal(
+		row.textContent.replace(/\s+/g, " ").trim(),
+		`Other ${OTHER_HINT}`,
+		"the announced name is two words, not one",
+	);
 	const group = row.closest('[role="radiogroup"]');
 	assert.ok(group, "it is a member of the same radiogroup as the options");
 	const rows = [...group.children];
@@ -1468,10 +1480,21 @@ test("the change form seeds an Other answer into the Other field and Enter posts
 	);
 	assert.equal(field(view).value, "prod", "seeded from the log");
 	assert.equal(other(view).getAttribute("aria-checked"), "true");
+	/*
+	 * U7 CHANGED THIS ON PURPOSE (round 2): the hand-off PREFERS the answer's own
+	 * entry, so the press lands in the seeded field and misses no keystrokes. The
+	 * old rule focused the form's first live control (the `staging` option here),
+	 * and an `Input.insertText` there changed nothing.
+	 */
+	is(
+		document.activeElement,
+		field(view),
+		"the seeded field, not an option row",
+	);
 	assert.equal(
-		document.activeElement?.getAttribute("data-ask-option"),
-		"staging",
-		"the existing hand-off: the form's first live control",
+		field(view).selectionStart,
+		"prod".length,
+		"the caret is after the seeded text",
 	);
 	await type(field(view), "prod-2");
 	await key(field(view), "Enter");
