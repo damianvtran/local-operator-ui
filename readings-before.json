@@ -1,0 +1,66 @@
+[
+  {
+    "name": "01-installer-first-stage",
+    "story": "installer-installercontent--first-stage",
+    "missing": false,
+    "clip": [],
+    "status": null,
+    "records": []
+  },
+  {
+    "name": "02-installer-mid-install",
+    "story": "installer-installercontent--mid-install",
+    "missing": false,
+    "clip": [],
+    "status": null,
+    "records": []
+  },
+  {
+    "name": "04-installer-verifying",
+    "story": "installer-installercontent--verifying",
+    "missing": false,
+    "clip": [],
+    "status": null,
+    "records": []
+  },
+  {
+    "name": "05-installer-installed",
+    "story": "installer-installercontent--installed",
+    "missing": false,
+    "clip": [],
+    "status": null,
+    "records": []
+  },
+  {
+    "name": "06-installer-failure",
+    "story": "installer-installercontent--failure",
+    "missing": false,
+    "clip": [],
+    "status": null,
+    "records": []
+  },
+  {
+    "name": "07-grid-collapsed",
+    "story": "onboarding-providersetup--in-dialog",
+    "missing": false,
+    "clip": [],
+    "status": null,
+    "records": []
+  },
+  {
+    "name": "08-grid-more-open",
+    "story": "onboarding-providersetup--in-dialog-more-open",
+    "missing": false,
+    "clip": [],
+    "status": null,
+    "records": []
+  },
+  {
+    "name": "09-onboarding-extras",
+    "story": "onboarding-onboardingmodal--extras",
+    "missing": false,
+    "clip": [],
+    "status": null,
+    "records": []
+  }
+]
