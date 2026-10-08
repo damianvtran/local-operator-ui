@@ -5541,6 +5541,66 @@ export const STORIES = [
 		},
 	],
 	[
+		"shell-app-shell--chat-dock-browser",
+		900,
+		900,
+		{
+			dir: "browser-narrow-900",
+			expect: {
+				expression: `(() => {
+					const pane = document.querySelector('[data-tour-tag="browser-pane-slot"]');
+					const host = document.querySelector("[data-panel-rail-host]");
+					if (!pane || !host) return "the frame is missing the pane or the rail host";
+					const paneBox = pane.getBoundingClientRect();
+					if (Math.abs(paneBox.width - 320) > 1) return "the dock is " + paneBox.width + "px, expected 320";
+					const bar = pane.querySelector('[data-tour-tag="browser-pane-header"]');
+					const conv = pane.querySelector('[data-tour-tag="browser-pane-scope-conversation"]');
+					const all = pane.querySelector('[data-tour-tag="browser-pane-scope-all"]');
+					const close = pane.querySelector('[data-tour-tag="browser-pane-close"]');
+					if (!bar || !conv || !all || !close) return "the pane's bar is missing the switch or the close control";
+					if (bar.scrollWidth > bar.clientWidth + 1) return "the bar overflows (" + bar.scrollWidth + " > " + bar.clientWidth + ")";
+					const c = conv.getBoundingClientRect(), a = all.getBoundingClientRect(), x = close.getBoundingClientRect();
+					if (c.right > a.left + 0.5) return "This conversation (..." + c.right + ") overlaps All tabs (" + a.left + "...)";
+					if (a.right > x.left + 0.5) return "All tabs (..." + a.right + ") overlaps Close browser (" + x.left + "...) by " + (a.right - x.left) + "px";
+					if (a.right > paneBox.right + 0.5 || x.right > paneBox.right + 0.5) return "a control leaves the pane";
+					return true;
+				})()`,
+				message:
+					"at 900 the browser dock is 320px and the bar's three members do not overlap or overflow: the title sheds below 300px of pane and the switch shrinks before the close control moves (#872, design D5)",
+			},
+		},
+	],
+	[
+		"shell-app-shell--chat-dock-browser",
+		800,
+		900,
+		{
+			dir: "browser-narrow-800",
+			expect: {
+				expression: `(() => {
+					const pane = document.querySelector('[data-tour-tag="browser-pane-slot"]');
+					const host = document.querySelector("[data-panel-rail-host]");
+					if (!pane || !host) return "the frame is missing the pane or the rail host";
+					const paneBox = pane.getBoundingClientRect();
+					if (Math.abs(paneBox.width - 220) > 1) return "the dock is " + paneBox.width + "px, expected 220";
+					const bar = pane.querySelector('[data-tour-tag="browser-pane-header"]');
+					const conv = pane.querySelector('[data-tour-tag="browser-pane-scope-conversation"]');
+					const all = pane.querySelector('[data-tour-tag="browser-pane-scope-all"]');
+					const close = pane.querySelector('[data-tour-tag="browser-pane-close"]');
+					if (!bar || !conv || !all || !close) return "the pane's bar is missing the switch or the close control";
+					if (bar.scrollWidth > bar.clientWidth + 1) return "the bar overflows (" + bar.scrollWidth + " > " + bar.clientWidth + ")";
+					const c = conv.getBoundingClientRect(), a = all.getBoundingClientRect(), x = close.getBoundingClientRect();
+					if (c.right > a.left + 0.5) return "This conversation (..." + c.right + ") overlaps All tabs (" + a.left + "...)";
+					if (a.right > x.left + 0.5) return "All tabs (..." + a.right + ") overlaps Close browser (" + x.left + "...) by " + (a.right - x.left) + "px";
+					if (a.right > paneBox.right + 0.5 || x.right > paneBox.right + 0.5) return "a control leaves the pane";
+					return true;
+				})()`,
+				message:
+					"at 800 the browser dock is 220px and the bar's three members do not overlap or overflow: the title sheds below 300px of pane and the switch shrinks before the close control moves (#872, design D5)",
+			},
+		},
+	],
+	[
 		"shell-app-shell--chat-dock-asks-covering-browser",
 		1280,
 		900,

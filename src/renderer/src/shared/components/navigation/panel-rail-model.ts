@@ -11,6 +11,14 @@
  * CLOSE states the console and canvas never had, because their old triggers hid
  * while the pane was open and the rail's items do not.
  *
+ * THE ACCESSIBLE NAME CARRIES NO STATE VERB (UX round 1, U2). Every item also
+ * exposes `aria-pressed`, so a name that flipped to "Close browser" while the
+ * control announced itself as pressed said the same fact twice, in two grammars
+ * ("Close browser, toggle button, pressed"). The name is therefore the STABLE noun
+ * ("Browser, 2 waiting") and the pressed state is the one voice for open/closed;
+ * the TOOLTIP keeps the verb, because a sighted pointer user is reading the action
+ * the press will take, and its sentences are the header's verbatim.
+ *
  * A COUNT IS NEVER CAPPED HERE. The `9+` cap belongs to the drawn badge
  * (`countLabel(count, 9)`), a geometry fact about a 16px glyph; the name a screen
  * reader hears and the tooltip a pointer reads carry the exact number.
@@ -36,11 +44,11 @@ export function browserRailLabels(
 ): { tooltip: string; aria: string } {
 	const verb = open ? "Close" : "Open";
 	if (attentionCount <= 0) {
-		return { tooltip: `${verb} browser`, aria: `${verb} browser` };
+		return { tooltip: `${verb} browser`, aria: "Browser" };
 	}
 	return {
 		tooltip: `${verb} browser — ${attentionCount} ${plural(attentionCount, "approval", "approvals")} waiting`,
-		aria: `${verb} browser, ${attentionCount} waiting`,
+		aria: `Browser, ${attentionCount} waiting`,
 	};
 }
 
@@ -51,11 +59,11 @@ export function consoleRailLabels(
 ): { tooltip: string; aria: string } {
 	const verb = open ? "Close" : "Open";
 	if (unseenCount <= 0) {
-		return { tooltip: `${verb} console`, aria: `${verb} console` };
+		return { tooltip: `${verb} console`, aria: "Console" };
 	}
 	return {
 		tooltip: `${verb} console — ${unseenCount} finished since you looked`,
-		aria: `${verb} console, ${unseenCount} finished since you looked`,
+		aria: `Console, ${unseenCount} finished since you looked`,
 	};
 }
 
@@ -69,12 +77,12 @@ export function canvasRailLabels(
 	if (fileCount <= 0) {
 		return {
 			tooltip: `${verb} canvas (${cap})`,
-			aria: `${verb} canvas (${cap})`,
+			aria: `Canvas (${cap})`,
 		};
 	}
 	const noun = plural(fileCount, "file", "files");
 	return {
 		tooltip: `${verb} canvas (${cap}) — ${fileCount} ${noun}`,
-		aria: `${verb} canvas (${cap}), ${fileCount} ${noun}`,
+		aria: `Canvas (${cap}), ${fileCount} ${noun}`,
 	};
 }

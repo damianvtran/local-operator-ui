@@ -1339,7 +1339,16 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								</DropdownMenuItem>
 							)}
 							{onOpenOptions && (
-								<DropdownMenuItem onSelect={() => onOpenOptions()}>
+								/*
+								 * THE CANVAS ROW WRITES THE CANVAS FLAG, NOT `onOpenOptions` (QA
+								 * round 1, Q1). `onOpenOptions` is the page's legacy slash-command
+								 * chips toggle (`setOptions`), so the row used to open that chip
+								 * row and never the canvas, at any width, on main as well. The
+								 * prop stays as the GATE for whether this pane offers the canvas
+								 * (and for the chord's listener above); the press is the same
+								 * store write the rail's canvas item and the chord make.
+								 */
+								<DropdownMenuItem onSelect={() => setCanvasOpen(!isCanvasOpen)}>
 									<FileText aria-hidden="true" />
 									<span>{isCanvasOpen ? "Close canvas" : "Open canvas"}</span>
 								</DropdownMenuItem>

@@ -964,7 +964,38 @@ const useWindowsChromeSimulation = (enabled: boolean) => {
 		root.dataset.chromeTrailing = "true";
 		root.style.setProperty("--chrome-inset-end", "138px");
 		root.style.setProperty("--chrome-inset-end-h", "40px");
+		/*
+		 * A LABELLED BLOCK WHERE THE BUTTONS WOULD BE (design round 1, D6): the
+		 * clearance is a claim about a region no frame can otherwise show, so the
+		 * region is drawn - 138 x 40, top-right, translucent, named - and the 94px
+		 * reservation and the rail's top strut read against it. It paints nothing the
+		 * app draws (the OS owns those pixels) and it is `pointer-events: none`, so it
+		 * cannot change a measurement; it exists only in a simulation frame.
+		 */
+		const block = document.createElement("div");
+		block.setAttribute("data-simulated-caption-buttons", "");
+		block.setAttribute("aria-hidden", "true");
+		Object.assign(block.style, {
+			position: "fixed",
+			top: "0",
+			right: "0",
+			width: "138px",
+			height: "40px",
+			zIndex: "2147483647",
+			pointerEvents: "none",
+			background: "rgba(255, 0, 128, 0.18)",
+			outline: "1px dashed rgba(255, 0, 128, 0.9)",
+			outlineOffset: "-1px",
+			font: "600 9px/40px system-ui, sans-serif",
+			whiteSpace: "nowrap",
+			overflow: "hidden",
+			color: "rgba(255, 0, 128, 1)",
+			textAlign: "center",
+		});
+		block.textContent = "SIMULATED 138x40";
+		document.body.appendChild(block);
 		return () => {
+			block.remove();
 			root.style.removeProperty("--chrome-inset-end");
 			root.style.removeProperty("--chrome-inset-end-h");
 			delete root.dataset.chromeMode;

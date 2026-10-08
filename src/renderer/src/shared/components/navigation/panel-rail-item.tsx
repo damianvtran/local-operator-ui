@@ -1,3 +1,4 @@
+import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
@@ -7,6 +8,7 @@ import {
 	forwardRef,
 	useContext,
 	useLayoutEffect,
+	useState,
 } from "react";
 
 /**
@@ -76,10 +78,26 @@ export const PanelRailItem = forwardRef<HTMLButtonElement, PanelRailItemProps>(
 		const rail = useContext(PanelRailRovingContext);
 		const register = rail?.register;
 		useLayoutEffect(() => register?.(id), [register, id]);
+		/*
+		 * A RAIL TOOLTIP IS PAINTED OVER THE NATIVE BROWSER VIEW (design D1). The
+		 * tooltips open `left`, into the pane, and with the Browser pane open that is
+		 * the `WebContentsView`'s rect: a native view paints above ALL DOM, so the
+		 * only visible label of three icon-only controls would vanish in the most-used
+		 * state. The repo's own answer is the policy registry (`browser-view-policy`,
+		 * the same call the pickers and the tab strip's menu make for a popover opened
+		 * inside the pane area): hide the view for the span the tooltip is open.
+		 * Scoped to that span and to this item (`useId`-suffixed, ref-counted), so a
+		 * stray hover blanks the page for the tooltip's lifetime only and nothing is
+		 * ever left suppressed - the registration is released by the effect cleanup
+		 * on close, on unmount, and when the item goes absent. The cost is the page
+		 * flash the policy header names as unmeasured (probe P11).
+		 */
+		const [tooltipOpen, setTooltipOpen] = useState(false);
+		useSuppressBrowserView(tooltipOpen, "panel-rail-tooltip");
 		return (
 			/* Tooltips open TOWARD the pane (`left`): the rail is at the window's edge, so
 			   the other three sides either leave the window or cover a sibling item. */
-			<Tooltip content={label} side="left">
+			<Tooltip content={label} side="left" onOpenChange={setTooltipOpen}>
 				<Button
 					ref={ref}
 					variant="ghost"

@@ -119,7 +119,9 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 			 * plane. The lane's stop above the slot moves with it (`chat-layout.tsx`),
 			 * because a pane-only change leaves this tone meeting the lane at y32.
 			 */
-			className={cn("flex h-full flex-col bg-elevated")}
+			/* `@container/bpane` is the container the bar's shed rules query (D5); it trails
+			   the ground so `pane-slot-ground.test.mjs` still reads the ground off this run. */
+			className={cn("flex h-full flex-col bg-elevated @container/bpane")}
 			data-tour-tag="browser-pane"
 		>
 			{/*
@@ -169,7 +171,24 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 					    selected label, so the header read as two claims about what the pane is;
 					    the pane's own contents name it, and this step leaves the switch the
 					    bar's one assertion. */}
-					<span className={cn("shrink-0 text-meta text-ink-dim")}>Browser</span>
+					{/* SHED FIRST BELOW 300px OF PANE (design round 1, D5). The bar's
+					    content is the title, the scope switch and the close control, and the
+					    switch alone is ~216px: at the 800px window floor the dock is 220px
+					    (the 44px panel rail takes its share), where the three summed to a
+					    278px scrollWidth, so "Close browser" painted 15px over the switch
+					    and "All tabs" fell out of the pane. The title is the first thing to
+					    go because the pane's own contents (and the rail's lit item) name it,
+					    exactly the "shed the lowest-value item first" rule the header's old
+					    ladder followed; the switch then SHRINKS (below) instead of overflowing,
+					    so the close control, the one thing that must stay put, never moves.
+					    Measured by the capture row `browser-narrow-800`. */}
+					<span
+						className={cn(
+							"shrink-0 text-meta text-ink-dim @max-[300px]/bpane:hidden",
+						)}
+					>
+						Browser
+					</span>
 					{/* THE RING IS THE WRAPPER'S, NOT THE LIST'S, AND THAT IS THE FIX RATHER
 					    THAN A PREFERENCE (design round 2; QA round 2 found the inline
 					    declaration and the primitive that writes it).
@@ -196,7 +215,7 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 					    before, so the geometry the track's 32px depends on is unchanged. */}
 					<div
 						className={cn(
-							"w-fit rounded-md outline-solid outline-1 -outline-offset-1 outline-control",
+							"w-fit min-w-0 max-w-full rounded-md outline-solid outline-1 -outline-offset-1 outline-control",
 						)}
 						data-tour-tag="browser-pane-scope-track"
 					>
@@ -206,6 +225,8 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 						>
 							<TabsList
 								aria-label="Which tabs to show"
+								/* `min-w-0 max-w-full` lets the track give way below 300px (D5). */
+								className="max-w-full min-w-0"
 								/* THE TRACK NEEDS A DRAWN EDGE HERE, and only here (design round 1,
 							   D3). The primitive's track is `sunken` and this header is `sunken`
 							   too - the pane's header must stay `sunken` because the slot's other
@@ -228,15 +249,17 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 									// mounted panel may be named (`chat-tabs.tsx` states that rule).
 									aria-controls={PANE_SURFACE_ID}
 									data-tour-tag="browser-pane-scope-conversation"
+									className="min-w-0 @max-[300px]/bpane:px-2"
 								>
-									This conversation
+									<span className="truncate">This conversation</span>
 								</TabsTrigger>
 								<TabsTrigger
 									value="all"
 									aria-controls={PANE_SURFACE_ID}
 									data-tour-tag="browser-pane-scope-all"
+									className="min-w-0 @max-[300px]/bpane:px-2"
 								>
-									All tabs
+									<span className="truncate">All tabs</span>
 								</TabsTrigger>
 							</TabsList>
 						</Tabs>
