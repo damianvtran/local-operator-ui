@@ -46,7 +46,12 @@ import { nodeIdForSelector } from "./page";
  *   framework-controlled field that ignores `insertText`, a masked input, a
  *   rich editor — set the value through the node's own prototype value setter and
  *   dispatch `input`/`change`, which is the mechanism the extension proved on
- *   these very fields.
+ *   these very fields — then READ THE VALUE BACK AGAIN, in a separate command.
+ *   The setter function's own return is the write's echo (`this.value` read in
+ *   the same breath as the assignment), and a framework-controlled field can take
+ *   a setter write and revert it on the very next tick; so the fallback is only
+ *   reported as landed when the page, asked afresh, holds the text. A field that
+ *   does not keep it is refused, never reported typed.
  * The result reports which path landed, so "why is this field sometimes empty"
  * has an answer instead of a guess.
  */
@@ -475,7 +480,7 @@ export async function type(
 	const node = await resolveNode(ctx, record, target);
 	const text = typeof params.text === "string" ? params.text : "";
 
-	const typed = await typeInto(ctx, contents, node, text);
+	const typed = await typeInto(ctx, contents, node, text, target);
 	if (typed) {
 		ctx.registry.touch(record);
 		return { ...typed, ...frameFields(node), ...pageOf(record.view) };
@@ -495,7 +500,7 @@ export async function type(
 			sessionId: frame.sessionId,
 			frame,
 		};
-		const typedInFrame = await typeInto(ctx, contents, inner, text);
+		const typedInFrame = await typeInto(ctx, contents, inner, text, target);
 		if (typedInFrame) {
 			ctx.registry.touch(record);
 			return {
@@ -518,13 +523,18 @@ export async function type(
  * Focus, select, `insertText`, READ BACK — and the value-setter fallback when the
  * read-back disagrees. Every command runs in the node's own session, so a frame
  * field is read back from the frame itself: nothing is reported typed that the
- * frame's document does not hold. `null` means the node cannot hold text at all.
+ * frame's document does not hold. The fallback's success is likewise a read-back
+ * from the page, taken after the setter returns, never the write's own echo: a
+ * setter write that does not stick throws instead of being reported. `null` means
+ * the node cannot hold text at all (no setter, not contenteditable) and is the
+ * only outcome that sends `type` on to the iframe descent or its final refusal.
  */
 async function typeInto(
 	ctx: BrowserActionContext,
 	contents: DriveableView["webContents"],
 	node: ResolvedNode,
 	text: string,
+	target: string,
 ): Promise<Record<string, unknown> | null> {
 	await sendIn(ctx, contents, node.sessionId, "Runtime.callFunctionOn", {
 		objectId: node.objectId,
@@ -555,11 +565,24 @@ async function typeInto(
 	);
 	const setValue = set?.result?.value;
 	if (setValue === null) return null;
-	return {
-		value: String(setValue ?? readBack),
-		via: "value_setter",
-		insert_text_readback: readBack,
-	};
+	// `setValue` is the setter's own echo of what it just wrote, so it proves
+	// nothing about whether the field kept it. Ask the page again, independently,
+	// in the node's own session (a frame field verifies inside its frame).
+	const settled = await conversationReadBack(ctx, node, contents);
+	if (settled.includes(text)) {
+		return {
+			value: settled,
+			via: "value_setter",
+			insert_text_readback: readBack,
+		};
+	}
+	// `element_not_found` because the protocol has no closer code (see the final
+	// refusal in `type`); the message names the real cause. Distinct from `null`:
+	// this node CAN hold text, it just did not keep this text.
+	throw new BrowserHostError(
+		"element_not_found",
+		`${target} took the value-setter write but does not hold the text (read back '${settled}'), so nothing was reported typed`,
+	);
 }
 
 /** The frame an iframe ELEMENT hosts, or `null` when the node is not one. */
