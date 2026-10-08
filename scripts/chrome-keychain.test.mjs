@@ -505,6 +505,12 @@ const CHROME_LAUNCH_SITES = [
 		1,
 		"the frame-level bound on the drawer's auto-close - sampling on every animation frame across a conversation switch to separate a paint-phase artifact from the unread window the close has to wait for - one private headless Chrome per run through the same helper",
 	),
+	guarded(
+		"docs/evidence/ask-other/harness/drive-other.mjs",
+		"spawn",
+		1,
+		"the asks drawer's composer-no-longer-answers and `Other` pair - origin/main beside the branch, each served by its own Vite against its own isolated daemon, photographed and read back from the daemon's ask log - one private headless Chrome per run through the same helper (registered in the PR that adds the harness, because an unregistered launch site fails Desktop Tests)",
+	),
 ];
 
 const key = (row) => `${row.file}#${row.name}#${row.index}`;

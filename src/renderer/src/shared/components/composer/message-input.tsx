@@ -1109,13 +1109,6 @@ export type MessageInputProps = {
 	 * because those describe facts about the box that a host's copy cannot.
 	 */
 	placeholderOverride?: string;
-	/**
-	 * This box is answering a QUEUED ASK, so its Enter posts the answer whatever
-	 * the turn is doing (design §5.0). `placeholderOverride` is then read as the
-	 * ask lane's MODE sentence and outranks the turn's own lines - see
-	 * `composerPlaceholder`'s `askMode`, which is where the ranking lives.
-	 */
-	askMode?: boolean;
 };
 
 /**
@@ -1682,7 +1675,6 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			onCredentialsStored,
 			onDictationStateChange,
 			placeholderOverride,
-			askMode,
 		},
 		ref,
 	) => {
@@ -8068,12 +8060,6 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													// The host's own words for its own states (D1/D5); absent on
 													// every chat mount, which is what keeps chat unchanged.
 													hostLine: hostNotice?.placeholder ?? null,
-													/*
-													 * In ask mode the host's sentence is the MODE's, not the invitation's,
-													 * so it is read on the run above the turn's own lines rather than at
-													 * the bottom of the chain.
-													 */
-													askMode: askMode ? placeholderOverride : undefined,
 												})
 									}
 									value={newMessage}
