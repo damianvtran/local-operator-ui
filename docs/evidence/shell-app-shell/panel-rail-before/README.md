@@ -227,3 +227,65 @@ stories with `getBoundingClientRect` / computed styles, in CSS px:
   and a non-brand-palette proof: `browser-open-focused`, `browser-open-at-cap`,
   `console-open-blip`, `console-open`, `browser-open` and `canvas-open` in `sage` and
   `iceberg` (the rail's ground, lit pair, bar, ring and badge all resolve on those palettes).
+
+## Round 2 (design D11-D14, review R6-R12; code commit named in the PR thread)
+
+### The suppression is measured (D11 / R7 / Q5 / Q6 / D14): two more real-window frames
+
+`useSuppressBrowserViewWhileReaching` registers the page-hiding suppression only when
+the open tooltip's painted box overlaps the rect the browser surface reports to main
+(`registerBrowserViewRect`, the same `measure(contentRef)` box), and ends it on
+document `pointerleave`, `mouseleave` and window `blur` as well as on close. Both frames
+are from `harness/capture.mjs` at 1280x900, `--window-mode=inactive`, one self-contained
+command each, the Electron process group reaped by exact pid before it returned (no
+process survived; checked with `pgrep` after each). Both use `--simulate-run-slot`, so
+the rail's items sit where they do in a real conversation (a Run details item above
+Browser), and that padding is a position SIMULATION, as in round 1.
+
+- `real-app-r2-console-page-visible.png` - hovering Console. The tooltip "Open console"
+  (x 1140.5, y 110.5, 95.9 x 27.4, so it ends at y=138) ends above the view's top (the
+  page's orange starts at about y=149, read off the frame at 2x; the DOM toolbar row is above it). `data-suppressed-by` read
+  EMPTY and the frame shows the page painted with the tooltip drawn over the URL bar:
+  the page is NOT blanked. Before this change it was (round 1's
+  `real-app-after-console-in-chrome-band.png`, kept, shows "Paused ...").
+- `real-app-r2-canvas-page-suppressed.png` - hovering Canvas. The tooltip "Open canvas
+  (cmd+shift+C)" (x 1101.5, y 146.5, 135.0 x 27.4) reaches the view, so it registers:
+  `data-suppressed-by` read `panel-rail-tooltip::...`, the page is replaced by the paused
+  note and the tooltip is drawn. This is the branch the suppression exists for.
+
+Not measured, and said so: the flash duration (probe P11). A still cannot show it and this
+rig takes one screenshot per run; sampling it would need a timed multi-shot capture the
+harness does not have, so `browser-view-policy.ts` still lists it as unmeasured. What the
+change DOES do is remove the flash for three of the four items and for every item on a
+draft (no browser view there).
+
+### The pane at narrow widths (D12 / D13), read from the rendered stories
+
+| window | dock | title | switch labels | pane scrollWidth / clientWidth | empty-state buttons |
+|---|---|---|---|---|---|
+| 1280 | 496 | shown | whole | 496 / 496 | side by side |
+| 1192 | 408 | shown | whole | 408 / 408 | side by side |
+| 900 | 320 | shed | whole (was 132.2 of 133.4px, truncated) | 320 / 320 | side by side |
+| 800 | 220 | shed | truncated (87 of 109, 37 of 46) | 220 / 220 (was 251 / 220) | stacked, no clipping |
+
+The 800 labels still truncate: with the title gone the switch (~216px) plus the 28px close
+and the bar's padding exceeds 220px, and the labels' full text stays in the DOM. That is
+the deferred one-width-range work, now with the only visible residue being an ellipsis
+rather than a clipped control. Frames re-shot: `shell-app-shell/browser-narrow-900/` and
+`browser-narrow-800/`. The 1192 and 1180 frames were re-captured and the committed
+files are BYTE-IDENTICAL to before (git reports no change), as the bar is unchanged above 330px.
+`browser-pane/` was re-captured as well; the four files that came out different were
+compared against HEAD pixel by pixel (more than 24/255 per channel): two have no
+differing pixel, and `pane-loading/` differs in 155-165 pixels inside a 32x27 box that is
+the loading spinner's rotation angle, so nothing was committed there.
+
+### Lossless stills for the rail set (D16): deferred
+
+`capture-evidence.mjs` writes every frame through `Page.captureScreenshot` at
+`format: "webp", quality: 88`, and the evidence gates (`check-evidence.mjs`, the manifest
+counts, the `.webp` sweep) are written around that container. A lossless mode for one set
+would need a second container the gates do not know, which is a bigger change than this
+PR's slice. The geometry readings above come from computed styles and rects, not from
+pixels, so they do not depend on it; a single-pixel colour read from these stills loses
+chroma (the lit bar reads `1f5225`/`72a47a` here where the lossless render reads
+`38c96a`) and should not be quoted.
