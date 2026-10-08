@@ -194,6 +194,37 @@ export const WorkingLine = ({
 		}
 	}
 
+	/*
+	 * AND THE STALE NUMBER WHEN THE CLOCK COMES BACK (design round 1, D4/U3).
+	 *
+	 * While the clock is withheld the interval is not running, so `elapsed` holds
+	 * the value it had when the press started; flipping back to counting without
+	 * re-seeding printed `running bash 1s` for up to a second before the next
+	 * tick jumped to the true age - measured across a fired bound as
+	 * `stopping the turn` -> `running bash 1s` (15076 ms) -> `running bash 17s`
+	 * (16052 ms) - against the model's documented no-restart guarantee and the
+	 * operator's own named tell (a fresh `0s` under the press). A re-seed, not a
+	 * restart: the number returns to the SAME zero the withheld clock would have
+	 * counted to.
+	 *
+	 * GATED ON THE PHASE HOLDING, because a PHASE change has its own edge rule
+	 * (the render-time block above renders the new phase at `0s`): a commit that
+	 * both resumes the clock and moves the phase would otherwise re-seed over
+	 * the edge the reader is most likely to be looking at. The withdrawal arm is
+	 * deliberately not gated on this effect - the anchor branch re-seeds it at
+	 * the moment the anchor moves.
+	 */
+	const previousClock = useRef(clock !== false);
+	const previousPhaseForClock = useRef(phase);
+	useEffect(() => {
+		const counting = clock !== false;
+		const wasCounting = previousClock.current;
+		const phaseHeld = previousPhaseForClock.current === phase;
+		previousClock.current = counting;
+		previousPhaseForClock.current = phase;
+		if (!wasCounting && counting && phaseHeld)
+			setElapsed(Math.floor((Date.now() - started.current) / 1000));
+	}, [clock, phase]);
 	useEffect(() => {
 		// The clock runs in both modes: it is the liveness channel that survives
 		// the spinner being frozen, and it changes a number rather than animating.

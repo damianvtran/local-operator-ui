@@ -240,7 +240,7 @@ const pressEscape = async (target) => {
 
 const busySession = {
 	sessionId: "aaaa11112222",
-	busy: true,
+	turnAlive: true,
 	available: true,
 };
 
