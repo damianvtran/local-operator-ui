@@ -121,6 +121,7 @@ const transcriptBundle = await build({
 		contents: `
 			export { CanonicalTranscript } from "./${canonical}canonical-transcript";
 			export { EMPTY_TRANSCRIPT } from "./${canonical}transcript-reducer";
+			export { streamFailureNotice } from "./src/shared/desktop-stream-notice";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -205,7 +206,8 @@ try {
 } finally {
 	await unlink(transcriptBundlePath);
 }
-const { CanonicalTranscript, EMPTY_TRANSCRIPT } = transcriptModule;
+const { CanonicalTranscript, EMPTY_TRANSCRIPT, streamFailureNotice } =
+	transcriptModule;
 
 const h = React.createElement;
 
@@ -894,13 +896,15 @@ async function paneFixture(now, run) {
 		label: () =>
 			window.document.querySelectorAll("[data-lo-working-line] span")[2]
 				?.textContent,
-		render: async (frontend) => {
+		/** The working line itself, when the pane claims one. */
+		line: () => window.document.querySelector("[data-lo-working-line]"),
+		render: async (frontend, over = {}) => {
 			await act(() =>
 				root.render(
 					h(
 						QueryClientProvider,
 						{ client: queryClient },
-						h(CanonicalTranscript, { ...paneProps, frontend }),
+						h(CanonicalTranscript, { ...paneProps, ...over, frontend }),
 					),
 				),
 			);
@@ -952,6 +956,35 @@ test("a pane whose fold states nothing keeps the local zero", async () => {
 	await paneFixture(PHASE_STARTED_MS, async (api) => {
 		await api.render({ activity_phase: "", activity_phase_started_at: null });
 		assert.equal(api.label(), "0s");
+	});
+});
+
+test("a reconnecting pane keeps its working line, and a terminal statement takes it", async () => {
+	/*
+	 * The call site's half of the operator incident (2026-10-07), through the
+	 * SHIPPED pane rather than the model: `waiting` carries the pair's reading
+	 * (the held `streaming` survives the gap - `chat-page.tsx`'s `turnAlive`)
+	 * and `status` is the gap's own. Two facts:
+	 *
+	 * - reconnecting: the in-flight claim stays up. It blanked here on every
+	 *   ~1.5-4 s reconnect, which is the defect; the frame this is about is
+	 *   `reconnect-gap.stories.tsx`'s `RestoredRunning`.
+	 * - terminal (`unavailable` with a failure): the pane renders its own failure
+	 *   instead of the conversation, so the rung stands down even though the last
+	 *   reading still says `streaming` - the same split the composer's hint reads
+	 *   (`canonicalTranscriptTerminal`).
+	 */
+	await paneFixture(PHASE_STARTED_MS, async (api) => {
+		await api.render(null, { status: "reconnecting" });
+		assert.ok(
+			api.line(),
+			"a reconnecting pane with a streaming last reading keeps its working line",
+		);
+		await api.render(null, {
+			status: "unavailable",
+			failure: streamFailureNotice(null),
+		});
+		assert.equal(api.line(), null, "a terminal statement stands the line down");
 	});
 });
 

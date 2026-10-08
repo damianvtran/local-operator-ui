@@ -606,6 +606,24 @@ function SessionPanel({
 	 */
 	const [stopNotice, setStopNotice] = useState<string | null>(null);
 	/*
+	 * THE STOP PRESS'S OWN WINDOW, which is a fact about the PRESS rather than
+	 * about the turn - and the one the operator's incident showed was missing
+	 * entirely (2026-10-07: four presses, zero feedback, and a band that could
+	 * vanish silently).
+	 *
+	 * `"pending"` from the press until its receipt or its bound; `"unconfirmed"`
+	 * when the press ended with no answer at all (the bound fired - the outcome is
+	 * unknown, and a LOST answer must not leave the UI claiming a stop the way the
+	 * latched fact used to); null otherwise. It is deliberately NOT folded into
+	 * `stoppedTurns`: that fact is the REDUCER's classification input and must
+	 * survive a lost answer until the next turn (`transcript-reducer.ts`), while
+	 * this one drives the DISPLAY only - the working line's `stopping` rung and
+	 * the stopped band's gate read it.
+	 */
+	const [stopOutcome, setStopOutcome] = useState<
+		"pending" | "unconfirmed" | null
+	>(null);
+	/*
 	 * Whether this backend can stop a TURN, as opposed to a session.
 	 *
 	 * Read once and used for both the control's presence and the Escape
@@ -622,6 +640,32 @@ function SessionPanel({
 		canonical.transcript.records.length,
 	);
 	const busy = canonical.frontend?.streaming === true;
+	/*
+	 * THE SAME QUESTION READ THROUGH THE HOLD - `frontend ?? heldFrontend` - for
+	 * the two CLAIM surfaces only (the transcript's working line and the
+	 * composer's hint).
+	 *
+	 * Both gap arms of the hook (`use-canonical-session.ts`: the `gap` frame and
+	 * `open{gap}`) null `frontend` and keep the last reading in `heldFrontend`,
+	 * by design - the pane still knows what it was last told. For a BUSY session
+	 * those gaps recur every ~1.5-4 s, so `busy` alone blanks the in-flight claim
+	 * on every routine reconnect and for the whole stretch of a flapping link,
+	 * which is exactly when the reader most needs it (operator report,
+	 * 2026-10-07: "no thinking indicator appeared ... while work ran"). The held
+	 * reading is dropped by every terminal state and by a real session change, so
+	 * it cannot keep a claim alive past the point the pane stops describing a
+	 * stream.
+	 *
+	 * `busy` itself is UNTOUCHED and stays the CONTROLS' reading (steer-vs-prompt
+	 * mode, the Stop control's availability and its Escape accelerator, the
+	 * references chip): a control acts on the authoritative stream, not on a held
+	 * reading, so the split is "claims read the pair, controls read the field".
+	 * ONE expression, read by the one call site that builds the `canonical` prop
+	 * (the two consumers are named in the prop's own note), so a future reader
+	 * cannot grow a second definition of "the turn is alive".
+	 */
+	const turnAlive =
+		(canonical.frontend ?? canonical.heldFrontend)?.streaming === true;
 	/*
 	 * The send this pane ADMITTED and the owner has not answered.
 	 *
@@ -2872,6 +2916,13 @@ function SessionPanel({
 		 */
 		setStopNotice(null);
 		/*
+		 * THE PRESS'S WINDOW OPENS HERE, before the request leaves: from this line
+		 * until the receipt or the bound, the working line says the cancel is in
+		 * progress instead of narrating a clock - see `stopOutcome` and
+		 * `STOPPING_ACTIVITY`.
+		 */
+		setStopOutcome("pending");
+		/*
 		 * THE PRESS'S OWN INSTANT, taken before the request leaves.
 		 *
 		 * It is what the reducer compares a killed call's `startedAt` against (`U7`),
@@ -2913,14 +2964,30 @@ function SessionPanel({
 			.then((receipt) => {
 				if (receipt.status !== "interrupted") clearTurnStopped(sessionId);
 				setStopNotice(interruptNotice(receipt));
+				/*
+				 * ANY receipt resolves the press's window: an answer arrived, even when
+				 * the answer is "nothing was running". Only a LOST answer leaves the
+				 * outcome unknown (the catch below).
+				 */
+				setStopOutcome(null);
 			})
-			.catch((error) =>
+			.catch((error) => {
+				/*
+				 * THE BOUND FIRED (or the request failed): nothing answered, so the
+				 * outcome is unknown - and it must be STATED, not latched. The
+				 * classification fact stays standing for the reducer (see the note at
+				 * `markTurnStopped` above; a timeout does not prove non-delivery), but
+				 * the display retires its claims in the same breath: `unconfirmed`
+				 * gates the stopped band off (chat-content) and the sentence lands in
+				 * the composer alert the same way a failed send does.
+				 */
+				setStopOutcome("unconfirmed");
 				// Renders in the same composer alert as a failed send, so it takes the
 				// same authored-copy rule. A receipt that never arrives is the one case
 				// this control cannot report as a stop, so it does not: the turn is
 				// still on screen and `busy` is still true, which is the honest state.
-				setSendError(userFacingMessage(error, "Stop could not be confirmed.")),
-			);
+				setSendError(userFacingMessage(error, "Stop could not be confirmed."));
+			});
 	}, [sessionId, interruptAvailable, markTurnStopped, clearTurnStopped]);
 	/*
 	 * The notice describes the LAST interrupt, so a turn that starts afterwards
@@ -2939,8 +3006,20 @@ function SessionPanel({
 			 * user's own stop.
 			 */
 			if (sessionId) clearTurnStopped(sessionId);
+			// The press's window is about that same turn; a new one retires it.
+			setStopOutcome(null);
 		}
 	}, [busy, sessionId, clearTurnStopped]);
+	/*
+	 * A stop press is a statement about ONE conversation, so a real session change
+	 * retires the window with the rest of this pane's per-conversation latches: a
+	 * "pending" left standing would relabel another conversation's line, and an
+	 * "unconfirmed" would suppress another conversation's band.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the session is the trigger, not a value read in the body
+	useEffect(() => {
+		setStopOutcome(null);
+	}, [sessionId]);
 	/*
 	 * ESCAPE MEANS COLLAPSE WHILE AN ASK IS EXPANDED, and this is where that claim
 	 * is made (design §5.0's R7, agent review F2, UX round 1 U2).
@@ -4182,6 +4261,14 @@ function SessionPanel({
 					canonical={{
 						view,
 						busy,
+						/*
+						 * The claim surfaces read THROUGH THE HOLD while the controls keep
+						 * `busy` (the prop's own note carries the why and the split), and the
+						 * stop window is the page-owned state machine the press/receipt pair
+						 * writes - one source for the rung, the hint and the band's gate.
+						 */
+						turnAlive,
+						stopOutcome,
 						admitting,
 						starting,
 						startingAfterId: admitted.current?.requestId ?? null,
