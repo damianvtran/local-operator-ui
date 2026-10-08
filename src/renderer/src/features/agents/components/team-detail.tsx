@@ -41,7 +41,16 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@shared/components/ui/select";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@shared/components/ui/table";
 import { Textarea } from "@shared/components/ui/textarea";
+import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { Minus, Plus } from "lucide-react";
@@ -51,8 +60,10 @@ import { type FieldTarget, refusalCopy } from "../utils/backend-copy";
 import {
 	EditFooter,
 	FieldLabel,
+	LINK_HIT_AREA,
 	ReadBlock,
 	Section,
+	TITLE_LINE_HEIGHT,
 	consumeHeadingFocus,
 	requestHeadingFocus,
 	useEscapeToCancel,
@@ -72,8 +83,18 @@ function draftOf(team?: ReusableTeam): Draft {
 	return {
 		description: team?.description ?? "",
 		manager: team?.manager ?? "manager",
+		/*
+		 * THE COUNT IS NORMALISED HERE, once, for everything the edit form does with
+		 * it (agent review round 2 #2): the stepper prints it, disables on it, and does
+		 * +/-1 arithmetic on it, and a member the wire sent without a count rendered an
+		 * empty number and NaN. `memberCountOf` is the one helper the table, the header
+		 * and the roster already read, so the form takes the same view of the same row.
+		 * Base and draft are both built here, so a count-less row is not "changed" by
+		 * being normalised; a SAVE that touches members writes the normalised count.
+		 */
 		members: (team?.members ?? []).map((member) => ({
 			...member,
+			count: memberCountOf(member),
 			key: crypto.randomUUID(),
 		})),
 		instructions: team?.instructions ?? "",
@@ -121,6 +142,62 @@ function memberResolution(
 	return pool.includes(member.role);
 }
 
+/**
+ * How many members a team has: the SUM of each row's `count`, in one place.
+ *
+ * The roster used to print `members.length` (rows) while the detail printed the
+ * summed count under a different noun, so a team with the coder twice read "5
+ * members" in one and "6 agents" in the other (design spec D9). One word and one
+ * arithmetic, exported so the two surfaces cannot disagree again; `count || 1`
+ * (`memberCountOf`) is the wire's own default for a row that omits it.
+ */
+export function memberCount(
+	members: readonly TeamMember[] | undefined,
+): number {
+	return (members ?? []).reduce(
+		(total, member) => total + memberCountOf(member),
+		0,
+	);
+}
+
+/**
+ * ONE ROW'S COUNT, the single normalisation every surface reads (agent review
+ * round 1 #4). The table printed `member.count` raw while the header summed
+ * `member.count || 1`, so a row that omitted its count read "x undefined" under a
+ * header that had counted it as one. Exported so the table cell and the sum
+ * cannot take different views of the same row.
+ */
+export function memberCountOf(member: Pick<TeamMember, "count">): number {
+	return member.count || 1;
+}
+
+/** "1 member" / "N members" - the phrase both surfaces print. */
+export function memberCountLabel(
+	members: readonly TeamMember[] | undefined,
+): string {
+	const total = memberCount(members);
+	return total === 1 ? "1 member" : `${total} members`;
+}
+
+/**
+ * The column widths the manager row and the members table SHARE (design spec s4).
+ *
+ * The two are separate tables in separate sections, and what makes the manager's
+ * name sit at the members' name x is that both are `table-fixed` with these same
+ * `<col>` widths inside the same measure - not a coincidence of content. The first
+ * column takes what is left; "Agent"/"Team" and the count are fixed so every row
+ * shares a type x and a count x whatever the names are (D7).
+ */
+function MemberCols() {
+	return (
+		<colgroup>
+			<col />
+			<col className="w-24" />
+			<col className="w-16" />
+		</colgroup>
+	);
+}
+
 export function TeamDetail({
 	team,
 	agents,
@@ -165,6 +242,17 @@ export function TeamDetail({
 	 * operator's eye and hand.
 	 */
 	const teamNameRef = useRef<HTMLInputElement>(null);
+	/**
+	 * "Add member" and the flag that a press just added a row, so the button is kept
+	 * on screen afterwards (UX review round 2, U1b). Pressing it inserts a row ABOVE
+	 * it, which moves the button down by a row's height; the browser scrolls a
+	 * focused control into view when focus MOVES, not when the focused control is
+	 * pushed, so the 4th press at 1024x725 left it wholly under the sticky footer with
+	 * `scrollTop` unchanged - the operator kept adding rows they could not see, with
+	 * the focus ring off screen.
+	 */
+	const addMemberRef = useRef<HTMLButtonElement>(null);
+	const justAddedMember = useRef(false);
 
 	/* A pane opened by a Create takes the caret itself (QA Q7) — see the note on
 	 * the handoff in `detail-parts`.
@@ -196,6 +284,29 @@ export function TeamDetail({
 		setBase(next);
 		setDraft(next);
 	}, [team, editing, dirty]);
+
+	useEffect(() => {
+		if (!justAddedMember.current) return;
+		justAddedMember.current = false;
+		/*
+		 * `nearest` moves the scroller only if the button is outside it, and the pane's
+		 * `scroll-padding-bottom` (the footer's published height) counts the sticky
+		 * footer as outside - which is the whole point: the button lands just above the
+		 * bar, not under it. It does not need focus, so a pointer press is covered too.
+		 *
+		 * The pane's `scroll-padding-bottom` also counts the footer's 24 px cue band
+		 * (`--lo-pane-footer-cue-h`), so `nearest` stops ABOVE the fade rather than
+		 * flush on the bar, where the fade took the focus ring to 1.2:1 (QA round 3 Q2).
+		 *
+		 * `typeof` because jsdom has no layout and no `scrollIntoView`: a test that
+		 * presses Add member must not throw inside this effect (agent review round 3, N5).
+		 */
+		const button = addMemberRef.current;
+		if (typeof button?.scrollIntoView === "function")
+			button.scrollIntoView({ block: "nearest" });
+		// No dependency array: the flag, not a value, says a row was just added, and the
+		// effect runs after the commit that made the button move.
+	});
 
 	const cancel = () => {
 		if (creating) {
@@ -315,19 +426,30 @@ export function TeamDetail({
 			),
 		}));
 
-	const memberCount = (
-		draft.members.length ? draft.members : (team?.members ?? [])
-	).reduce((total, member) => total + (member.count || 1), 0);
+	// The edit form's draft is what the operator is looking at while editing, so
+	// the count follows it; otherwise it is the saved team's.
+	const shownMembers = draft.members.length ? draft.members : team?.members;
+
+	const displayName = team ? teamDisplayName(team) : "New team";
+	const includesTeam = draft.members.some((member) => member.kind === "team");
 
 	return (
-		<div className="max-w-3xl space-y-6">
+		/*
+		 * NO WIDTH OR PADDING HERE: the page wraps every pane in the chat column's
+		 * container and measure, so this pane's edges ARE the docked box's. `space-y-8`
+		 * is the section tier (32 px) between the header, the form and its blocks.
+		 */
+		<div className="space-y-8">
 			<header className="space-y-3">
 				<div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-					<div className="min-w-0 space-y-2">
+					<div className="min-w-0 flex-[1_1_16rem] space-y-1">
 						<h2
 							ref={headingRef}
 							tabIndex={-1}
-							className="text-title focus:outline-none"
+							// A long name truncates rather than wrapping under the actions; the
+							// full name stays reachable as the tooltip.
+							title={displayName}
+							className="truncate text-title focus:outline-none"
 						>
 							{/*
 							 * The heading reads the team the way every other human-read
@@ -336,19 +458,46 @@ export function TeamDetail({
 							 * team back to its slug. The `name` field below stays the slug -
 							 * it is the key a rename edits, not prose.
 							 */}
-							{team ? teamDisplayName(team) : "New team"}
+							{displayName}
 						</h2>
-						<div className="flex flex-wrap items-center gap-1.5">
-							<Badge variant="neutral">
-								{memberCount === 1 ? "1 agent" : `${memberCount} agents`}
-							</Badge>
-							{draft.members.some((member) => member.kind === "team") ? (
-								<Badge variant="neutral">Includes a team</Badge>
-							) : null}
-						</div>
+						{/*
+						 * ONE META LINE, NOT CHIPS (design spec s4, D8/D14). A bordered badge
+						 * for a plain count made the header read as three controls, and
+						 * "0 agents" under "New team" said nothing, so a create has no count
+						 * line at all. Badges survive for states that need attention.
+						 */}
+						{team ? (
+							<p className="text-body-sm text-ink-muted">
+								{memberCountLabel(shownMembers)}
+								{includesTeam ? " · Includes a team" : ""}
+							</p>
+						) : null}
 					</div>
-					{team ? (
-						<div className="flex flex-wrap items-center gap-2">
+					{/*
+					 * ACTIONS: one primary, one secondary, one quiet - and NONE while the
+					 * form is open. In edit mode the primary is Save changes in the footer,
+					 * and a second accent fill in the same frame (New team chat) split the
+					 * decision (design spec D8). `TITLE_LINE_HEIGHT` is the title's own line box,
+					 * derived from the type token, so the 32 px buttons centre on the TITLE
+					 * line and not on the title-plus-meta block.
+					 *
+					 * THE TRAILING GHOST BUTTON IS PULLED OUT BY ITS OWN PADDING (design
+					 * review round 1 D1). A ghost button has no edge, so its box was flush
+					 * with the column but its LABEL ended 12 px inside it; `-mr-3` (the
+					 * `md` button's `px-3`) puts the label's last glyph on the column edge
+					 * that the box and the count are on. It moves into the 24 px scroller
+					 * gutter, where nothing is clipped (the hover ground is the only thing
+					 * there). Without "Ask for a change" the last button is the bordered
+					 * Edit, whose edge IS its box, so nothing is pulled.
+					 */}
+					{team && !editing ? (
+						<div
+							className={cn(
+								"flex shrink-0 items-center gap-2",
+								TITLE_LINE_HEIGHT,
+								askEnabled && "-mr-3",
+							)}
+						>
 							<Button
 								variant="primary"
 								onClick={() => {
@@ -360,11 +509,9 @@ export function TeamDetail({
 							>
 								New team chat
 							</Button>
-							{!editing ? (
-								<Button variant="secondary" onClick={() => setEditing(true)}>
-									Edit
-								</Button>
-							) : null}
+							<Button variant="secondary" onClick={() => setEditing(true)}>
+								Edit
+							</Button>
 							{askEnabled ? (
 								<Button
 									variant="ghost"
@@ -399,7 +546,7 @@ export function TeamDetail({
 					event.preventDefault();
 					void save(event);
 				}}
-				className="space-y-6"
+				className="space-y-8"
 			>
 				{creating || editing ? (
 					<>
@@ -430,7 +577,7 @@ export function TeamDetail({
 							title="Manager"
 							description="The agent that leads the chat and decides who works on what."
 						>
-							<div className="max-w-md space-y-2">
+							<div className="space-y-2">
 								<FieldLabel
 									label="Manager agent"
 									htmlFor="team-manager"
@@ -474,9 +621,17 @@ export function TeamDetail({
 									return (
 										<div
 											key={member.key}
-											className="flex flex-wrap items-center gap-2"
+											/*
+											 * A GRID, NOT A WRAP (design spec D12). The name flexes,
+											 * the kind is 128 px, the stepper and Remove take their own
+											 * width, so the last column ends on the column's right edge
+											 * in every row instead of wherever the previous control
+											 * stopped. Below the measure the grid keeps its tracks and
+											 * the name column is what gives.
+											 */
+											className="grid grid-cols-[minmax(0,1fr)_8rem_auto_auto] items-center gap-2"
 										>
-											<div className="w-56">
+											<div className="min-w-0">
 												<SearchableSelect
 													ariaLabel={`Member ${index + 1}`}
 													showLabel={false}
@@ -515,7 +670,7 @@ export function TeamDetail({
 											>
 												<SelectTrigger
 													aria-label={`Member ${index + 1} kind`}
-													className="w-32"
+													className="w-full"
 												>
 													<SelectValue />
 												</SelectTrigger>
@@ -573,7 +728,11 @@ export function TeamDetail({
 												Remove
 											</Button>
 											{missing ? (
-												<Badge variant="warning">
+												// Own grid row, so the warning never pushes a column.
+												<Badge
+													variant="warning"
+													className="col-span-full w-fit"
+												>
 													Not found: {member.role}
 												</Badge>
 											) : null}
@@ -581,8 +740,10 @@ export function TeamDetail({
 									);
 								})}
 								<Button
+									ref={addMemberRef}
 									variant="secondary"
-									onClick={() =>
+									onClick={() => {
+										justAddedMember.current = true;
 										setDraft((current) => ({
 											...current,
 											members: [
@@ -594,8 +755,8 @@ export function TeamDetail({
 													key: crypto.randomUUID(),
 												},
 											],
-										}))
-									}
+										}));
+									}}
 								>
 									Add member
 								</Button>
@@ -679,57 +840,127 @@ export function TeamDetail({
 					</>
 				) : (
 					<>
-						<Section
-							title="Manager"
-							description="The agent that leads the chat."
-						>
-							<div className="flex flex-wrap items-center gap-2">
-								<Button
-									variant="link"
-									onClick={() => onOpenAgent(draft.manager)}
-								>
-									{draft.manager}
-								</Button>
-								{/*
-								 * THE MANAGER GETS THE SAME "Not found" CHIP THE MEMBERS DO (QA round
-								 * 1, Q6). The edit view already marked a dangling manager, so the read
-								 * view was the one place a missing manager still read as a working
-								 * link that navigates nowhere.
-								 */}
-								{!managerOptions(agents, teams).some(
-									(option) => option.id === draft.manager,
-								) ? (
-									<Badge variant="warning" data-testid="team-manager-missing">
-										Not found
-									</Badge>
-								) : null}
-							</div>
+						<Section title="Manager">
+							{/*
+							 * THE MANAGER ROW IS THE MEMBERS' ROW (design spec s4; design review
+							 * round 1 D5). Same `<colgroup>`, same `py-2` cells, same sr-only head:
+							 * the manager's name sits at the members' name x, the row is the same
+							 * 36 px, and the heading-to-row distance is the Members section's.
+							 *
+							 * THE SECTION'S SENTENCE WENT INTO THE TABLE'S NAME. "The agent that
+							 * leads the chat." was a visible line that made this section 21 px
+							 * taller than Members for the one fact a reader of a one-row table
+							 * already has; the table's accessible name keeps it for assistive tech
+							 * (agent review round 1 #3 asked for a name anyway) and the edit form,
+							 * where the field needs explaining, still prints it.
+							 */}
+							<Table
+								className="table-fixed"
+								aria-label="Manager: the agent that leads the chat"
+							>
+								<MemberCols />
+								<TableHeader className="sr-only">
+									<TableRow>
+										<TableHead>Member</TableHead>
+										<TableHead>Type</TableHead>
+										<TableHead>Count</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									<TableRow className="border-0">
+										<TableCell className="px-0 py-2">
+											<div className="flex min-w-0 items-center gap-2">
+												<Button
+													variant="link"
+													// 24 px target inside the 20 px line: the surplus 2 px each side
+													// is handed back so the row stays the Members' 36 px.
+													className={cn(
+														"-my-0.5 min-w-0 justify-start truncate",
+														LINK_HIT_AREA,
+													)}
+													onClick={() => onOpenAgent(draft.manager)}
+												>
+													{draft.manager}
+												</Button>
+												{/*
+												 * THE MANAGER GETS THE SAME "Not found" CHIP THE MEMBERS DO
+												 * (QA round 1, Q6). The edit view already marked a dangling
+												 * manager, so the read view was the one place a missing
+												 * manager still read as a working link that navigates
+												 * nowhere.
+												 */}
+												{!managerOptions(agents, teams).some(
+													(option) => option.id === draft.manager,
+												) ? (
+													<Badge
+														variant="warning"
+														data-testid="team-manager-missing"
+													>
+														Not found
+													</Badge>
+												) : null}
+											</div>
+										</TableCell>
+										<TableCell className="px-2 py-2 text-ink-dim text-meta">
+											{/* The type is a fact about the row; the manager is an agent. */}
+											Agent
+										</TableCell>
+										<TableCell />
+									</TableRow>
+								</TableBody>
+							</Table>
 						</Section>
 						<Section title="Members">
-							<ul className="space-y-1">
-								{(team?.members ?? []).map((member) => (
-									<li
-										key={`${member.kind}:${member.role}`}
-										className="flex flex-wrap items-center gap-2 text-body-sm"
-									>
-										<span className="text-ink">{member.role}</span>
-										<Badge variant="neutral">
-											{member.kind === "team" ? "Team" : "Agent"}
-										</Badge>
-										<span className="text-ink-muted">
-											{member.count === 1 ? "×1" : `×${member.count}`}
-										</span>
-										{!memberResolution(member, agents, teams) ? (
-											<Badge
-												variant="warning"
-												data-testid="team-member-missing"
-											>
-												Not found
-											</Badge>
-										) : null}
-									</li>
-								))}
-							</ul>
+							{/*
+							 * A REAL TABLE (design spec D7): the three columns are the same on
+							 * every row, so the type word and the count share an x whatever the
+							 * name's length is, where the old flex-wrap line put each wherever the
+							 * name before it ended. The head is announced and not painted - the
+							 * columns are self-evident and a visible head would be chrome on a
+							 * five-row list. Rows are separated by the hairline, which is the
+							 * token's stated job; the last row drops it.
+							 */}
+							<Table className="table-fixed" aria-label="Members">
+								<MemberCols />
+								<TableHeader className="sr-only">
+									<TableRow>
+										<TableHead>Member</TableHead>
+										<TableHead>Type</TableHead>
+										<TableHead>Count</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{(team?.members ?? []).map((member) => (
+										<TableRow
+											key={`${member.kind}:${member.role}`}
+											className="last:border-0"
+										>
+											<TableCell className="px-0 py-2 text-ink">
+												<div className="flex min-w-0 items-center gap-2">
+													<span className="min-w-0 truncate">
+														{member.role}
+													</span>
+													{!memberResolution(member, agents, teams) ? (
+														<Badge
+															variant="warning"
+															data-testid="team-member-missing"
+														>
+															Not found
+														</Badge>
+													) : null}
+												</div>
+											</TableCell>
+											<TableCell className="px-2 py-2 text-ink-dim text-meta">
+												{member.kind === "team" ? "Team" : "Agent"}
+											</TableCell>
+											{/* Right-aligned so every count shares an x; the glyph is kept. */}
+											<TableCell className="px-0 py-2 text-right text-ink-muted tabular-nums">
+												{`×${memberCountOf(member)}`}
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
 						</Section>
 						<Section title="What it is for">
 							<ReadBlock

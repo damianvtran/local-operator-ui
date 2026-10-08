@@ -312,7 +312,7 @@ const mountBlocked = async (run, blockedReason) => {
 	return { host, root };
 };
 
-const mount = async (run) => {
+const mount = async (run, { hero = false } = {}) => {
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = createRoot(host);
@@ -331,6 +331,7 @@ const mount = async (run) => {
 				{ client: queryClient },
 				React.createElement(ConfigComposer, {
 					run,
+					hero,
 					about: null,
 					onClearAbout: () => undefined,
 				}),
@@ -568,23 +569,81 @@ test("the disabled gate's box never claims an agent is busy", async () => {
 	}
 });
 
-test("the invitation names no object, so neither pane contradicts itself", async () => {
+test("the invitation is true on both tabs: object-free in the hero, both objects when docked", async () => {
 	/*
 	 * U2 (UX review round 3): the heading above the box is per-pane ("Ask for an
 	 * agent" / "Ask for a team") while the box serves both, so an invitation that
-	 * names either object first makes the Teams pane's focal control ask for an
-	 * AGENT. A wording that names no object is true on both; this pins it, and
-	 * pins that it is the object-neutral one rather than a re-order.
+	 * names ONE object first makes the Teams pane's focal control ask for an AGENT.
+	 *
+	 * UX review round 1 (this PR), U2 narrows what that pinned. The HERO arm keeps
+	 * the object-free words (its heading and chips stand beside it). The DOCKED arm
+	 * lost both, so under an open team "Describe what you want" read like messaging
+	 * that team; it now names the job. The round-3 rule survives as: it never names
+	 * ONE object, so it cannot contradict whichever tab is open - it must name
+	 * both, or neither.
 	 */
+	const hero = await mount(handle().run, { hero: true });
+	try {
+		const placeholder =
+			hero.host.querySelector("textarea")?.getAttribute("placeholder") ?? "";
+		assert.doesNotMatch(
+			placeholder,
+			/agent|team/i,
+			`the hero invitation names no object (got ${placeholder})`,
+		);
+	} finally {
+		await act(async () => hero.root.unmount());
+	}
 	const { run } = handle();
 	const { host, root } = await mount(run);
 	try {
 		const placeholder =
 			host.querySelector("textarea")?.getAttribute("placeholder") ?? "";
+		assert.match(
+			placeholder,
+			/change/i,
+			`the docked box names the job, a change (got ${placeholder})`,
+		);
+		assert.ok(
+			/agent/i.test(placeholder) === /team/i.test(placeholder),
+			`and names both objects or neither, never one (got ${placeholder})`,
+		);
+		/*
+		 * AND IT FITS ONE LINE (design D1 = QA Q1 = UX U3): the idle docked box does
+		 * not auto-grow, so a wrapped placeholder is clipped. THE SHIPPED STRING IS
+		 * PINNED EXACTLY, not bounded by a length, because no character count
+		 * guarantees a width (agent review round 3, M1: the old `length <= 50` was
+		 * arithmetic on a per-character figure that the measurement itself refuted -
+		 * 301.2 px for 44 characters is 6.85 px each, so 50 characters would be ~342 px
+		 * against a 320 px text area).
+		 *
+		 * WHAT WAS MEASURED, and what a change to this string invalidates: this exact
+		 * sentence is 301.2 px in the box's own font (14 px system-ui, canvas
+		 * `measureText`) and the NARROWEST docked box is the 416 px pane (the shell
+		 * sidebar docks from 1024 px at up to 320 px, the roster is a fixed 288 px),
+		 * whose 336 px textarea has a 320 px text area: 18.8 px spare, and the textarea
+		 * reported `scrollHeight == clientHeight` (34 == 34, no thumb) there. The 71
+		 * characters this replaced measured 444 px. ANY edit needs the sweep again:
+		 * Storybook `agents-teams-page--team-selected`, `<main>` pinned to 416 px,
+		 * then `textarea.scrollHeight === textarea.clientHeight` and the width of
+		 * the string measured in `getComputedStyle(textarea).font` (the rig is
+		 * `after-r4`'s `probe-placeholder.mjs` in the PR's evidence record).
+		 * "Definition" is the run counter's noun, not the page's (D5).
+		 */
+		assert.equal(
+			placeholder,
+			"Ask for a change, or describe something new\u2026",
+			"the docked placeholder is the string measured at 301.2 px; re-measure at the 416 px pane before changing it",
+		);
+		assert.notEqual(
+			placeholder,
+			"Describe what you want\u2026",
+			"and it is not the hero's, which has the chips and a heading beside it",
+		);
 		assert.doesNotMatch(
 			placeholder,
-			/agent|team/i,
-			`the invitation names no object (got ${placeholder})`,
+			/definition/i,
+			"and uses the page's nouns",
 		);
 	} finally {
 		await act(async () => root.unmount());
@@ -713,12 +772,20 @@ test("a live run cannot be sent a second request from the box", async () => {
 test("a blocked box that already holds a draft still says why", async () => {
 	/*
 	 * F4: the reason can only be read off a PLACEHOLDER while the box is EMPTY,
-	 * and a draft now survives leaving the page (constant key, U2) — so a reader
+	 * and a draft now survives leaving the page (constant key, U2) - so a reader
 	 * can arrive with text in the box and then open an Edit, which leaves them
 	 * holding a readOnly box with their own words in it and no explanation on
-	 * screen. The sentence moves into the band for that state, exactly once:
-	 * the placeholder is not painted on a non-empty control, so the two can
+	 * screen. The sentence moves out of the placeholder for that state, exactly
+	 * once: the placeholder is not painted on a non-empty control, so the two can
 	 * never both show.
+	 *
+	 * UX review round 1 (this PR), U3 MOVED WHERE IT GOES. The band used to print
+	 * it as its own meta line (`#composer-host-blocked-reason`) ABOVE the status
+	 * row, which stacked it on the row's standing promise and made the dock a line
+	 * taller than an empty box's. The status row's sentence slot now carries it
+	 * (`#config-composer-note`, already the box's description), so "exactly once"
+	 * and "the box is described by it" are asserted against that node, and the old
+	 * band node is asserted ABSENT - a second copy returning is the regression.
 	 */
 	const { run } = handle();
 	const { host, root, render } = await mountToggle(run);
@@ -729,18 +796,145 @@ test("a blocked box that already holds a draft still says why", async () => {
 		const text = host.textContent ?? "";
 		const shown = text.match(/Finish or cancel your edit first\./g) ?? [];
 		assert.equal(shown.length, 1, "the reason is said exactly once");
-		/*
-		 * NIT-1: the sentence a reader with a draft meets must also be PROGRAMMATIC,
-		 * because the placeholder is not announced on a control that has a value.
-		 */
-		const named = host.querySelectorAll("#composer-host-blocked-reason");
-		assert.equal(named.length, 1, "the reason's node is named exactly once");
+		const note = host.querySelector("#config-composer-note");
+		assert.match(
+			note?.textContent ?? "",
+			/Finish or cancel your edit first\./,
+			"and it is said by the status row's sentence",
+		);
+		assert.equal(
+			host.querySelectorAll("#composer-host-blocked-reason").length,
+			0,
+			"the band does not print a second copy above the row",
+		);
 		assert.ok(
 			(box.getAttribute("aria-describedby") ?? "").includes(
-				"composer-host-blocked-reason",
+				"config-composer-note",
 			),
 			`the box is described by it (got ${box.getAttribute("aria-describedby")})`,
 		);
+		assert.ok(
+			!(box.getAttribute("aria-describedby") ?? "").includes(
+				"composer-host-blocked-reason",
+			),
+			"and not by an id whose node is not rendered",
+		);
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
+
+/**
+ * Whether a node (or an ancestor) is visually hidden by the `sr-only` utility.
+ * jsdom has no layout, so a class is the only thing it can see - which is why the
+ * round-2 regression (the reason rendered, but in an `sr-only` span) passed every
+ * `textContent` assertion in this file.
+ */
+const visuallyHidden = (node, within) => {
+	for (
+		let at = node;
+		at && at !== within.parentElement;
+		at = at.parentElement
+	) {
+		if ((at.getAttribute?.("class") ?? "").split(/\s+/).includes("sr-only"))
+			return true;
+	}
+	return false;
+};
+
+const BLOCKED = "Finish or cancel your edit first.";
+
+/**
+ * THE VISIBLE-STATEMENT RULE (agent review round 2, #1 = UX U4). With a draft in the
+ * box `MessageInput` stands its own copy of the reason down (`statedByNode`) on the
+ * promise that the host's node says it where a sighted reader can see it. This
+ * walks every run state that can sit beside a blocked page and asserts: ONE node
+ * carries the sentence, it is NOT `sr-only` when the box holds a draft (a live run
+ * excepted: its title is the visible statement), and the box is described by that node and
+ * not by the standing "Runs in the background" sentence.
+ */
+for (const status of ["idle", "running", "done", "stopped", "error"]) {
+	test(`a blocked box with a draft shows its reason on screen beside a ${status} strip`, async () => {
+		const { run } = handle({
+			status,
+			error: status === "error" ? "The provider timed out." : null,
+			results: [],
+			answer: status === "done" ? "Nothing needed changing." : "",
+		});
+		const { host, root, render } = await mountToggle(run);
+		try {
+			const box = await type(host, "half a request");
+			await render(BLOCKED);
+			const carriers = [...host.querySelectorAll("*")].filter(
+				(node) =>
+					node.children.length === 0 &&
+					(node.textContent ?? "").includes(BLOCKED),
+			);
+			assert.equal(carriers.length, 1, "one node carries the sentence");
+			if (status === "running") {
+				/*
+				 * A LIVE run's title is the visible statement (a second line would grow
+				 * the dock over its 166 px); the sentence stays the box's `sr-only`
+				 * description. Assert the title is there so "nothing visible" cannot hide.
+				 */
+				const title = [...host.querySelectorAll("*")].find(
+					(node) =>
+						node.children.length === 0 &&
+						(node.textContent ?? "").includes("Working on your request"),
+				);
+				assert.ok(title, "a live run says what it is doing");
+				assert.equal(
+					visuallyHidden(title, host),
+					false,
+					"and a sighted reader can see it (not an `sr-only` node)",
+				);
+			} else {
+				assert.equal(
+					visuallyHidden(carriers[0], host),
+					false,
+					`and a sighted reader can see it (strip: ${status})`,
+				);
+			}
+			const described = (box.getAttribute("aria-describedby") ?? "")
+				.split(/\s+/)
+				.map((id) => host.querySelector(`#${id}`)?.textContent ?? "");
+			assert.ok(
+				described.some((text) => text.includes(BLOCKED)),
+				`the box is described by the reason (got ${JSON.stringify(described)})`,
+			);
+			assert.ok(
+				!described.some((text) => /Runs in the background/.test(text)),
+				"and not by the standing promise, which is not what a blocked box does",
+			);
+		} finally {
+			await act(async () => root.unmount());
+		}
+	});
+}
+
+test("a blocked EMPTY box is described by its reason, not the standing promise", async () => {
+	/*
+	 * UX review round 2, U4. With nothing typed the PLACEHOLDER is the visible
+	 * statement, so the sentence node is `sr-only` - but it must still be what the
+	 * box is described by, or a screen-reader user hears "Runs in the background"
+	 * from a box that refuses input.
+	 */
+	const { run } = handle();
+	const { host, root } = await mountBlocked(run, BLOCKED);
+	try {
+		const box = host.querySelector("textarea");
+		const described = (box?.getAttribute("aria-describedby") ?? "")
+			.split(/\s+/)
+			.map((id) => host.querySelector(`#${id}`)?.textContent ?? "");
+		assert.ok(
+			described.some((text) => text.includes(BLOCKED)),
+			`described by the reason (got ${JSON.stringify(described)})`,
+		);
+		assert.ok(
+			!described.some((text) => /Runs in the background/.test(text)),
+			"and not by the standing promise",
+		);
+		assert.match(box?.getAttribute("placeholder") ?? "", /Finish or cancel/);
 	} finally {
 		await act(async () => root.unmount());
 	}

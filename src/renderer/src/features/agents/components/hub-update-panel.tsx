@@ -163,7 +163,7 @@ export function HubUpdatePanel({
 			<section
 				data-testid="hub-update-panel"
 				aria-label="Hub update"
-				className="mb-6 max-w-3xl rounded-md border border-hairline p-3 text-body-sm"
+				className="mb-8 rounded-md border border-hairline p-3 text-body-sm"
 			>
 				<p
 					role={note.tone === "error" ? "alert" : "status"}
@@ -192,7 +192,7 @@ export function HubUpdatePanel({
 			data-testid="hub-update-panel"
 			aria-label="Hub update"
 			className={cn(
-				"mb-6 max-w-3xl space-y-2 rounded-md border p-3 text-body-sm",
+				"mb-8 space-y-2 rounded-md border p-3 text-body-sm",
 				STATE_BORDER[mark.kind],
 			)}
 		>

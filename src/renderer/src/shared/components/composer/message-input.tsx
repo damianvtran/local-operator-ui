@@ -634,6 +634,20 @@ export type MessageInputProps = {
 		 * leaves the app's own sentences exactly as they are.
 		 */
 		placeholder?: string;
+		/**
+		 * The host's `node` already says what `placeholder` says, so the band must not
+		 * print it a second time above the node (Agents page UX review round 1, U3).
+		 *
+		 * WHY IT EXISTS. The band prints `placeholder` as its own meta line when a
+		 * refusing box holds text, because a placeholder is not painted on a control
+		 * with a value. A host whose node is an interactive status row already carries
+		 * the state ("Working on your request", the blocked reason), so that line stacked
+		 * a second copy of one fact within 26 px and made the host's block a line taller
+		 * only when the box was non-empty. The placeholder ATTRIBUTE is untouched, and
+		 * the box's `aria-describedby` drops the band line's id with it, so no reference
+		 * dangles. ABSENT MEANS NOTHING CHANGES: no chat mount passes a `hostNotice`.
+		 */
+		statedByNode?: boolean;
 	};
 	/**
 	 * A pending question takes a SECRET answer, and the composer is not where it
@@ -7302,6 +7316,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */}
 				{hostNotice?.blocksInput &&
 				hostNotice.placeholder &&
+				!hostNotice.statedByNode &&
 				newMessage.trim().length > 0 ? (
 					<p
 						id={HOST_BLOCKED_REASON_ID}
@@ -8312,6 +8327,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											 */
 											hostNotice?.blocksInput &&
 											hostNotice.placeholder &&
+											!hostNotice.statedByNode &&
 											newMessage.trim().length > 0
 												? HOST_BLOCKED_REASON_ID
 												: null,
