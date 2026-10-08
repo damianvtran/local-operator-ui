@@ -3155,6 +3155,100 @@ export function applyHistoryPage(
 	};
 }
 
+// ------------------------------------------------------------------- seal
+
+/**
+ * Ids the app mints for rows that are NOT journal entries (`local:` notes,
+ * `notice:`/`retry:`/`subagent:` stream notices, the live `compaction:` line).
+ * Paging can never bring one back, so a seal must never be the thing that
+ * removes it. (`tool:<call_id>` is deliberately absent: it is a journal row
+ * keyed by call id, and is judged by its phase instead.)
+ */
+const LIVE_ONLY_ID = /^(?:local|notice|retry|subagent|compaction):/;
+
+/**
+ * Whether paging can bring this row back: a row the journal owns, as opposed to
+ * one only this viewer holds. A user echo still awaiting its owner row, a
+ * streaming answer, a call that has not settled and the app's own notices are
+ * all LIVE — the journal has no copy to re-read, so removing one is data loss
+ * rather than a repaint.
+ */
+export function isDurableOwnerRow(record: TranscriptRecord): boolean {
+	switch (record.kind) {
+		case "user":
+			return !record.local && !record.provisional;
+		case "assistant":
+			return !record.streaming;
+		case "tool":
+			return record.phase === "done";
+		default:
+			return !LIVE_ONLY_ID.test(record.id);
+	}
+}
+
+/**
+ * Convert a HOLE into "more history above", so it is never painted (#876).
+ *
+ * THE INVARIANT. The durable rows on screen are always ONE contiguous journal
+ * range ending at the tail, and the cursor (`oldestId`/`oldestTs`) names that
+ * range's oldest entry. Everything that pages — load earlier, the jump walk, the
+ * mentioned-files scan — resumes from the cursor and trusts the range behind
+ * it to be gapless; a painted gap is therefore not merely ugly, it is
+ * UNREACHABLE: `applyHistoryPage`'s tail-read rule moves the cursor only to a
+ * strictly older instant, so with a cached block sitting below a hole the
+ * cursor stays at the block's oldest row and "load earlier" resumes from before
+ * the block, never into the hole.
+ *
+ * WHEN IT RUNS. A reconcile walk that ends without having reached the rows the
+ * pane held (a request or row bound, the failure stand-down, a label floor) has
+ * painted the journal's tail, the cached block, and nothing between. This drops
+ * the block — every durable row older than `oldest`, the oldest entry the
+ * fetched chain reached — and points the cursor at `oldest` with `hasMore`
+ * set, so the ordinary paging path re-reads the block contiguously. No ROW is
+ * lost: the dropped rows are journal rows, and paging fetches them again through
+ * the ordinary path. (That is a statement about rows only; label bookkeeping for
+ * a dropped tool row is untouched here, and a re-fetched row clears it.)
+ *
+ * WHAT IT NEVER DROPS: a row in `fetched` (the record keys the walk itself
+ * read), and anything `isDurableOwnerRow` refuses — echoes, streaming
+ * rows, unsettled calls, the app's own notices. Those have no journal copy to
+ * re-read; they stay wherever time order puts them. An entry carrying no
+ * instant orders nothing, so it seals nothing.
+ *
+ * Strict `<` on the instant, not `<=`: a page boundary may split rows that
+ * share a `ts`, and a fetched row tied with the edge must survive. The tied
+ * HELD row that survives instead is harmless — it is journal-older than the
+ * edge, so the first page back returns it and the merge dedups by id.
+ *
+ * Returns the SAME state when nothing is disjoint.
+ */
+export function sealDisjointBlock(
+	state: TranscriptState,
+	oldest: { id: string; ts: number },
+	fetched: ReadonlySet<string> = NO_OWNER_IDS,
+): TranscriptState {
+	if (oldest.ts <= 0) return state;
+	const records = state.records.filter(
+		(record) =>
+			!(
+				record.ts < oldest.ts &&
+				isDurableOwnerRow(record) &&
+				// A row the walk itself fetched is in the chain by definition, even if a
+				// skewed journal clock stamps it before the chain's oldest entry.
+				!fetched.has(record.id)
+			),
+	);
+	if (records.length === state.records.length) return state;
+	return {
+		...state,
+		records,
+		index: withIndex(records),
+		oldestId: oldest.id,
+		oldestTs: oldest.ts,
+		hasMore: true,
+	};
+}
+
 // ------------------------------------------------------------------- live
 
 type LiveEvent = { type: string; [key: string]: unknown };
@@ -5339,16 +5433,24 @@ export function pageOrphanResults(
  * tail page connects long before that on any turn with more than a page of
  * calls. So:
  *
- *  - `connected`: some fetched page overlapped the painted rows, or nothing was
- *    painted (then no page can overlap and one page is the whole coverage);
+ *  - `connected`: the caller passes the CONJUNCTION of the walk's two seams
+ *    (#876) — some fetched page overlapped the rows this batch painted, or none
+ *    were painted; AND some fetched page reached back to the rows the pane HELD
+ *    before the batch, or none were held. The second seam is what closed a
+ *    reopen whose cached block sat disjoint from the snapshot's tail page: the
+ *    first fetch overlaps the batch by construction, so a walk that stopped
+ *    there stood down over exactly the hole it exists to find;
  *  - `unlabelled`: how many target calls no fetched page has named yet.
  *
  * The walk's other exits live in the loop, because they are facts about the
- * route, the turn or the calls rather than about the goal: `!has_more`, the
- * `RECONCILE_WALK_MAX_ROWS` and `RECONCILE_WALK_MAX_REQUESTS` bounds,
- * `pageOpensTurn` (the row past which no seeded call of this turn can have its
- * assistant row) and `pagePassedOldestStart` (the instant past which the OLDEST
- * unlabelled call's own row cannot lie) — see each for which shape needs it.
+ * route or the bounds rather than about the goal: `!has_more`, the
+ * `RECONCILE_WALK_MAX_ROWS` and `RECONCILE_WALK_MAX_REQUESTS` bounds. The two
+ * label floors (`pageOpensTurn`, `pagePassedOldestStart` — the row past which
+ * no seeded call of this turn can have its assistant row, and the instant past
+ * which the OLDEST unlabelled call's own row cannot lie) are no longer exits of
+ * their own: they zero the label debt, and the goal test above still has to
+ * pass — a floor reached while the held seam is open keeps the walk reading for
+ * the connection (#876).
  */
 export function reconcileWalkDone(connected: boolean, unlabelled: number) {
 	return connected && unlabelled === 0;
