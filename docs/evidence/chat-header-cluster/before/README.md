@@ -33,3 +33,12 @@ A sweep cannot re-derive them: a sweep captures the CURRENT tree, and these
 frames need `main`'s `chat-header.tsx` under the same stories. That is why the
 set is declared in `docs/evidence/manifest.json` - so `clearSweptFrames` leaves
 it alone and the sweep's own count stays honest about what it can still take.
+
+**A NOTE FOR ANYONE RE-RUNNING THE RECIPE SINCE #893.** This branch's story file
+now passes `sessionId` to `ChatHeader` (the overflow menu's `Copy session ID` item
+depends on it), and `main`'s `chat-header.tsx` at `3f1f4e5a3` has no such prop.
+The render is unchanged either way - React hands the component props it ignores -
+so the recipe still produces the frames above; what a re-run would hit is
+`pnpm check-types`, which flags the unknown prop. Strip the prop for the re-run,
+or render with the branch's header, and say which was done - the point of these
+frames is the CLUSTER's spacing, not the menu.
