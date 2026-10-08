@@ -7352,7 +7352,14 @@ export const STORIES = [
 				name: "aria-checked",
 				equals: "true",
 			},
-			expectGone: '[data-session-row="audit-busy-old"]',
+			/*
+			 * PRESENT, NOT ABSENT (round 2, U3/D1): the window rule draws the live row
+			 * under BOTH orderings - under `recent` it is drawn in place, last - so the
+			 * old `expectGone` described a behaviour this head removed. The position
+			 * claim lives in the story's settle (the row is the LAST drawn row); this
+			 * one-shot reading pins what the shutter must see.
+			 */
+			expectPresent: '[data-session-row="audit-busy-old"]',
 		},
 	],
 	[

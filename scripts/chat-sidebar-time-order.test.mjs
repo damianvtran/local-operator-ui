@@ -91,6 +91,7 @@ const bundle = await build({
 const {
 	CHAT_LIST_SECTIONS,
 	STOPPED_ON_READER_CODES,
+	pageReveal,
 	entityRows,
 	groupRows,
 	mergeRemoteRowsByActivity,
@@ -783,16 +784,17 @@ test("T2 with no last_user_at the running order is birth order, ties by catalogu
 
 test("T3 pressing the ladder reveals rows: drawn rows keep their order and are never dropped", () => {
 	/*
-	 * NARROWED BY A1's EXEMPTION (agent review round 1). The old claim was a
-	 * strict PREFIX: rung k's page was a prefix of rung k+1's. With running rows
-	 * drawn in place wherever they sit, a newly revealed non-running row can land
-	 * ABOVE an already-drawn running row that sits later in the list - so the
-	 * claim splits into the three that are still exactly true, and the first two
-	 * are the ones the reader feels: nothing already on screen disappears, and
-	 * the drawn rows keep their relative order (rung k's sequence is a
-	 * subsequence of rung k+1's). What the strict prefix used to add on top is
-	 * that no row could appear ABOVE a drawn one, which the exemption
-	 * deliberately gives up (hiding live work is the worse failure - see A1).
+	 * NARROWED BY A1's WINDOW (agent review round 1; T6 above states the rule
+	 * itself). The old claim was a strict PREFIX: rung k's page was a prefix of
+	 * rung k+1's. With running rows drawn in place wherever they sit, a newly
+	 * revealed non-running row can land ABOVE an already-drawn running row that
+	 * sits later in the list - so the claim splits into what a window keeps
+	 * exactly true, and the first two are the ones the reader feels: nothing
+	 * already on screen disappears, and the drawn rows keep their relative order
+	 * (rung k's sequence is a subsequence of rung k+1's). What the strict prefix
+	 * used to add on top is that no row could appear ABOVE a drawn one, which the
+	 * exemption deliberately gives up (hiding live work is the worse failure -
+	 * A1; T6 is the rule's own test).
 	 */
 	const rows = catalogue();
 	for (const arrangeAs of ["active", "created"]) {
@@ -1176,4 +1178,76 @@ test("the needs-you band is a subset of the running codes", () => {
 			`${code} stops on the reader but is not a running code`,
 		);
 	}
+});
+
+/* ------------------- the foot's revealed count (round 2, follow-up a) */
+
+/*
+ * AGENT REVIEW ROUND 2, follow-up (a): `Show N more chats` could OVERSTATE, by
+ * the strays already drawn. The page is a window of the arrangement plus every
+ * live row beyond it (A1), so a RUNNING row inside the next slice was drawn the
+ * moment it fell outside the window - counting it as something a press reveals
+ * is the overstatement the review measured (`Show 15 more chats` revealing 14).
+ * `pageReveal` is the number the label now names: the rows the press will
+ * actually ADD over the rows held.
+ */
+const REVEAL_DONE = (index) => ({
+	session_id: `rev-done-${String(index).padStart(2, "0")}`,
+	title: `done ${index}`,
+	status: { code: "complete", label: "Done" },
+	updated_at: (NOW - (index + 1) * 3600) / 1000,
+	created_at: (NOW - (index + 1) * 7200) / 1000,
+});
+
+test("pageReveal names what a press adds: the review's 14, not the 15 the slice holds", () => {
+	// Ten newest are the window; the next slice (15 positions, under `recent`)
+	// holds ONE live row - keyed between the tenth and eleventh completed ones,
+	// already drawn as a stray - and fourteen completed ones: a press reveals 14.
+	const rows = Array.from({ length: 10 }, (_, index) => REVEAL_DONE(index));
+	rows.push(
+		A1_BUSY("rev-busy-slice", { created_at: (NOW - 10.5 * 3600) / 1000 }),
+	);
+	for (let index = 10; index < 30; index += 1) rows.push(REVEAL_DONE(index));
+	const arranged = pageOrder(rows, "recent", "active");
+	const page = pageRows(arranged, { limit: pageLimit(0) });
+	assert.equal(
+		page.remaining,
+		20,
+		"remaining counts every withheld row, the live stray excepted",
+	);
+	assert.equal(
+		pageReveal(arranged, 0, page.remaining),
+		14,
+		"the revealed count must subtract the live row the window already drew",
+	);
+});
+
+test("pageReveal is bounded by held rows and states the rung when every slice row is live", () => {
+	// Fewer held rows than the slice: the reveal is what is actually there.
+	const rows = Array.from({ length: 12 }, (_, index) => REVEAL_DONE(index));
+	assert.equal(pageReveal(rows, 0, 2), 2);
+	// A slice whose every row is LIVE (so already drawn): the press only moves
+	// the rung, and the sentence falls back to the bounded step - five rows are
+	// still withheld beyond the live band, so the foot still draws.
+	const live = Array.from({ length: 15 }, (_, index) =>
+		A1_BUSY(`rev-live-${String(index).padStart(2, "0")}`, {
+			created_at: (NOW - (10 + (index + 1) / 16) * 3600) / 1000,
+		}),
+	);
+	const beyond = Array.from({ length: 5 }, (_, index) =>
+		REVEAL_DONE(10 + index),
+	);
+	const allLive = [
+		...Array.from({ length: 10 }, (_, index) => REVEAL_DONE(index)),
+		...live,
+		...beyond,
+	];
+	const arranged = pageOrder(allLive, "recent", "active");
+	const page = pageRows(arranged, { limit: pageLimit(0) });
+	assert.equal(page.remaining, 5, "only the completed band beyond is withheld");
+	assert.equal(
+		pageReveal(arranged, 0, page.remaining),
+		5,
+		"the rung-only fallback is the bounded step",
+	);
 });
