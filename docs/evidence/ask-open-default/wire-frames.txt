@@ -1,0 +1,13 @@
+core constants: PROJECTION_CAP=20  OPEN_ASK_CAP=8  ASK_WIRE_TEXT_BUDGET_CHARS=6000  LATE_WINDOW_S=604800
+
+(1) eight ~900-character asks: the text budget keeps a PREFIX, and the flag never clears
+8 long asks, all open                          rows carried=7   outstanding among them=7   asks_open=8   asks_truncated=True
+7 answered, 1 open                             rows carried=7   outstanding among them=1   asks_open=1   asks_truncated=True
+ALL answered: nothing outstanding              rows carried=7   outstanding among them=0   asks_open=0   asks_truncated=True
+all answered + one new short ask               rows carried=7   outstanding among them=1   asks_open=1   asks_truncated=True
+
+(2) PROJECTION_CAP: more than 20 outstanding rows, the clip precedes the tally
+enqueued 25; outstanding in the log = 25
+25 outstanding asks (24 timed out, 1 open)     rows carried=20  outstanding among them=20  asks_open=20  asks_truncated=False
+
+# generation: 20261008T051705Z-0.68.7
