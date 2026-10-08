@@ -53,6 +53,11 @@ row), so its LEADING edge moves 44 left instead (860 -> 816) and its width does 
   trailing spacer / the pane's close button keep the full 138px. After (measured at
   shutter time): the spacer is exactly **94px = 138 - 44** wide and the rail's first
   item starts below the 40px caption area.
+  Read off the pane-open pair: the pane's close control sits at the SAME absolute x
+  (about 1128 of 1280) before and after, because the pane's trailing edge moved in by the
+  rail's 44px and the reservation shrank by the same 44 - which is the intended result
+  (the control still clears the 138px caption area) and is why the old reservation would
+  have pushed it 44px further in for nothing.
 - `windows-caption-fleet-asks-on-settings-SIMULATED/` is after-only by construction: on
   settings no rail is mounted, so the fleet asks drawer keeps the FULL 138px
   reservation, which is what the unmoved tree also does - the before and after frames
