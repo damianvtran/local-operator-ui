@@ -88,6 +88,7 @@ const {
 	CANVAS_PANE_MAX_PX,
 	canvasDockWidth,
 	canvasPaneMode,
+	rightSlotDividerContract,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -207,7 +208,8 @@ test("the right pane's capacity is the row minus the column's floor, measured", 
 	/*
 	 * The floor's DECLARATION is read from the store since the #677 review
 	 * (D2) - the resolver compares against it - and `chat-content.tsx` keeps
-	 * the use the rule below argues from (`runPanelResizable`).
+	 * the use the rule below argues from (the run separator's contract call,
+	 * `min: RUN_PANEL_MIN_PX`).
 	 */
 	const panelFloor = /export const RUN_PANEL_MIN_PX = (\d+);/.exec(prefs);
 	assert.ok(
@@ -217,6 +219,133 @@ test("the right pane's capacity is the row minus the column's floor, measured", 
 	assert.ok(
 		Number(panelFloor[1]) >= 320,
 		`the right pane's contract floor dropped to ${panelFloor[1]}; below 320 a docked pane cannot render its own content`,
+	);
+});
+
+/*
+ * D4: THE SEPARATOR'S CONTRACT, the browser and console half - and the run
+ * panel's, extracted so all three read one function rather than three spellings.
+ * The defect it fixes: the browser and console separators were handed the
+ * PREFERENCE with `minWidth={480} maxWidth={1200}`, so at rows that cannot host
+ * the pane's floor (windows ~800-1024 once the rail takes its 44px) the separator
+ * announced aria-valuenow=640 while the pane was drawn at 220 - the round-2 U6
+ * class the run panel had already fixed for itself. The contract hands over the
+ * DRAWN width and a range the row can honour, and the call sites refuse a write
+ * where it cannot.
+ */
+test("the separator contract collapses onto the drawn width where the row cannot host the floor (D4)", () => {
+	// 800x600 with the rail: row 700, capacity 220, the pane drawn at 220.
+	assert.deepEqual(
+		rightSlotDividerContract({
+			capacity: 220,
+			min: 480,
+			max: 1200,
+			drawn: 220,
+		}),
+		{ resizable: false, value: 220, minWidth: 220, maxWidth: 220 },
+	);
+	// 1380 with the rail: row 1076, capacity 596 - under the pane's own 1200
+	// ceiling, so the announced maximum is the capacity, not 1200.
+	assert.deepEqual(
+		rightSlotDividerContract({
+			capacity: 596,
+			min: 480,
+			max: 1200,
+			drawn: 596,
+		}),
+		{ resizable: true, value: 596, minWidth: 480, maxWidth: 596 },
+	);
+	// A capacity above the pane's own ceiling leaves the ceiling in place.
+	assert.deepEqual(
+		rightSlotDividerContract({
+			capacity: 2000,
+			min: 480,
+			max: 1200,
+			drawn: 1000,
+		}),
+		{ resizable: true, value: 1000, minWidth: 480, maxWidth: 1200 },
+	);
+	// The floor is inclusive: capacity === min is still resizable.
+	assert.equal(
+		rightSlotDividerContract({ capacity: 480, min: 480, max: 1200, drawn: 480 })
+			.resizable,
+		true,
+	);
+});
+
+test("the run panel's contract is unchanged by the extraction (U6's numbers)", () => {
+	// The 1024x673 case the run panel's own docblock records: capacity 44 < 320,
+	// so the value and the range collapse onto the drawn width.
+	assert.deepEqual(
+		rightSlotDividerContract({
+			capacity: 44,
+			min: 320,
+			max: 640,
+			drawn: 44,
+		}),
+		{ resizable: false, value: 44, minWidth: 44, maxWidth: 44 },
+	);
+	// A row that can host it: 320..min(640, capacity), value the drawn width.
+	assert.deepEqual(
+		rightSlotDividerContract({
+			capacity: 596,
+			min: 320,
+			max: 640,
+			drawn: 320,
+		}),
+		{ resizable: true, value: 320, minWidth: 320, maxWidth: 596 },
+	);
+});
+
+test("the run divider can announce a value above its ceiling when a wider shared width is drawn - measured, recorded, not fixed here (D4)", () => {
+	/*
+	 * Found while implementing D4, left as measured rather than reshaped: at a
+	 * 1600px window with a stored 1000 the run pane draws 816 (row 1296 minus the
+	 * conversation's 480 floor) while its own ceiling is 640, so the contract's
+	 * value sits above its maxWidth. Either clamp lies about the drawn width or
+	 * lifting the ceiling lets a run-panel drag store past its 640 contract
+	 * maximum - a design call, so the numbers are recorded in
+	 * docs/evidence/right-slot-one-default/readings.json and on the PR. This cell
+	 * pins the CURRENT shape so a fix fails visibly rather than silently.
+	 */
+	assert.deepEqual(
+		rightSlotDividerContract({
+			capacity: 816,
+			min: 320,
+			max: 640,
+			drawn: 816,
+		}),
+		{ resizable: true, value: 816, minWidth: 320, maxWidth: 640 },
+	);
+});
+
+test("the browser and console separators read the contract, and a write the row cannot host is refused on all three (D4)", () => {
+	const content = read(CONTENT);
+	for (const pane of ["browser", "console"]) {
+		assert.ok(
+			content.includes(`sidebarWidth={${pane}Divider.value}`),
+			`the ${pane} separator is no longer handed the DRAWN width from the contract`,
+		);
+		assert.ok(
+			!content.includes(
+				`sidebarWidth={effective${pane === "browser" ? "Browser" : "Console"}PanelWidth}`,
+			),
+			`the ${pane} separator is handed the preference again`,
+		);
+		assert.ok(
+			content.includes(`if (!${pane}Divider.resizable) return;`),
+			`the ${pane} separator no longer refuses a write the row cannot host`,
+		);
+	}
+	assert.ok(
+		content.includes("if (!runDivider.resizable) return;"),
+		"the run separator no longer refuses a write the row cannot host",
+	);
+	// The capacity each of the two derives is the row minus the conversation's
+	// floor - the same subtraction the run panel measures from its elements.
+	assert.ok(
+		content.includes("Math.max(0, paneRowWidth - CHAT_PANE_MIN_PX)"),
+		"the browser/console capacity no longer derives from the measured row",
 	);
 });
 

@@ -88,6 +88,7 @@ import {
 	CHAT_PANE_MIN_PX,
 	canvasDockWidth,
 	canvasPaneMode,
+	rightSlotDividerContract,
 } from "../chat-sidebar-layout";
 import type {
 	DraftPickerDestination,
@@ -693,6 +694,16 @@ const defaultCanvasState = {
  * refused at once the row cannot host it.
  */
 const RUN_PANEL_MAX_PX = 640;
+
+/**
+ * The drag ceilings the browser and console separators share: 1200, the range the
+ * two draw-only panes have had since their dividers existed. Named beside the run
+ * pane's 640 because the separator contract builds each pane's announced maximum
+ * from its own ceiling and the row's capacity, so the number is read here rather
+ * than restated at the call site.
+ */
+const BROWSER_PANEL_MAX_PX = 1200;
+const CONSOLE_PANEL_MAX_PX = 1200;
 
 /**
  * The chat column's own floor, in pixels, as a fallback for the measured one.
@@ -1542,32 +1553,34 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			resolveRightSlotWidth(paneRowWidth, state),
 		);
 		/*
-		 * THE DIVIDER'S CONTRACT, in one place: what the separator announces and
-		 * accepts is what the pane renders.
+		 * THE DIVIDER'S CONTRACT, the shared one now (`rightSlotDividerContract`,
+		 * `chat-sidebar-layout.ts`): what the separator announces and accepts is what
+		 * the pane renders. The browser and console read the same function - they
+		 * derive their capacity from the measured row where this pane measures it from
+		 * its own elements - and their call sites record the defect it fixes there.
 		 *
-		 * `runPanelResizable` is false when the row cannot host even the pane's own
+		 * `runDivider.resizable` is false when the row cannot host even the pane's own
 		 * 320px contract floor — at 1024x673 with the rail expanded the row is 524px
 		 * and the column's 480px floor leaves the pane 44px, so no preference the
 		 * control is allowed to store (320..640) could render as itself. Resizing is
-		 * then not a no-op that lies, it is not offered: the value
-		 * below is the drawn width, the range collapses onto it, and a write is
-		 * refused so the user's stored preference survives intact for a window that
-		 * can honour it. Otherwise the range ends at the capacity, which is what makes
-		 * the stored preference and the drawn width the same number after any drag.
+		 * then not a no-op that lies, it is not offered: the value is the drawn
+		 * width, the range collapses onto it, and a write is refused so the user's
+		 * stored preference survives intact for a window that can honour it.
+		 * Otherwise the range ends at the capacity, which is what makes the stored
+		 * preference and the drawn width the same number after any drag.
 		 */
-		const runPanelResizable = runPanelCapacity >= RUN_PANEL_MIN_PX;
-		const runPanelDividerValue = runPanelResizable
-			? Math.min(
-					Math.max(renderedRunPanelWidth, RUN_PANEL_MIN_PX),
-					runPanelCapacity,
-				)
-			: renderedRunPanelWidth;
+		const runDivider = rightSlotDividerContract({
+			capacity: runPanelCapacity,
+			min: RUN_PANEL_MIN_PX,
+			max: RUN_PANEL_MAX_PX,
+			drawn: renderedRunPanelWidth,
+		});
 		const handleRunPanelWidthChange = useCallback(
 			(width: number) => {
-				if (runPanelCapacity < RUN_PANEL_MIN_PX) return;
+				if (!runDivider.resizable) return;
 				setRightSlotWidth(width);
 			},
-			[runPanelCapacity, setRightSlotWidth],
+			[runDivider.resizable, setRightSlotWidth],
 		);
 		/*
 		 * A RESET IS A DRAG, to the shared width's UNSET state — the separator's
@@ -1587,6 +1600,65 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const handleRunPanelWidthReset = useCallback(() => {
 			handleRunPanelWidthChange(0);
 		}, [handleRunPanelWidthChange]);
+
+		/*
+		 * THE BROWSER'S AND CONSOLE'S SEPARATORS (D4), on the same contract as the
+		 * block above. THE DEFECT THIS REPLACES: both separators were handed the
+		 * PREFERENCE (`effectiveBrowserPanelWidth`) with `minWidth={480}
+		 * maxWidth={1200}`, so at rows that cannot host the pane's floor - windows
+		 * ~800-1024 once the panel rail takes its 44px - the separator announced
+		 * aria-valuenow=640 / min 480 / max 1200 while the pane was drawn at 220.
+		 * That is the round-2 U6 class the run panel fixed for itself; the contract
+		 * hands over the DRAWN width and a range the row can honour, and the write
+		 * (a drag or the reset) is refused where it cannot.
+		 *
+		 * The capacity is derived from the already-measured `paneRowWidth` - the same
+		 * subtraction the run panel measures from its elements (row minus the
+		 * conversation's floor) - and before the row's first measurement the pane's
+		 * preference stands, the run panel's own convention (its capacity state
+		 * starts there and the first measurement corrects it).
+		 */
+		const browserSlotCapacity =
+			paneRowWidth > 0
+				? Math.max(0, paneRowWidth - CHAT_PANE_MIN_PX)
+				: effectiveBrowserPanelWidth;
+		const browserDivider = rightSlotDividerContract({
+			capacity: browserSlotCapacity,
+			min: BROWSER_PANEL_MIN_PX,
+			max: BROWSER_PANEL_MAX_PX,
+			drawn: Math.min(effectiveBrowserPanelWidth, browserSlotCapacity),
+		});
+		const handleBrowserPanelWidthChange = useCallback(
+			(width: number) => {
+				if (!browserDivider.resizable) return;
+				setRightSlotWidth(width);
+			},
+			[browserDivider.resizable, setRightSlotWidth],
+		);
+		const handleBrowserPanelWidthReset = useCallback(() => {
+			handleBrowserPanelWidthChange(0);
+		}, [handleBrowserPanelWidthChange]);
+
+		const consoleSlotCapacity =
+			paneRowWidth > 0
+				? Math.max(0, paneRowWidth - CHAT_PANE_MIN_PX)
+				: effectiveConsolePanelWidth;
+		const consoleDivider = rightSlotDividerContract({
+			capacity: consoleSlotCapacity,
+			min: CONSOLE_PANEL_MIN_PX,
+			max: CONSOLE_PANEL_MAX_PX,
+			drawn: Math.min(effectiveConsolePanelWidth, consoleSlotCapacity),
+		});
+		const handleConsolePanelWidthChange = useCallback(
+			(width: number) => {
+				if (!consoleDivider.resizable) return;
+				setRightSlotWidth(width);
+			},
+			[consoleDivider.resizable, setRightSlotWidth],
+		);
+		const handleConsolePanelWidthReset = useCallback(() => {
+			handleConsolePanelWidthChange(0);
+		}, [handleConsolePanelWidthChange]);
 
 		const handleChangeActiveDocument = useCallback(
 			(documentId: string) => setSelectedTab(conversationId, documentId),
@@ -2657,16 +2729,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				{isRunPanelOpen && runDetails && (
 					<>
 						<ResizableDivider
-							sidebarWidth={runPanelDividerValue}
+							sidebarWidth={runDivider.value}
 							onSidebarWidthChange={handleRunPanelWidthChange}
-							minWidth={
-								runPanelResizable ? RUN_PANEL_MIN_PX : runPanelDividerValue
-							}
-							maxWidth={
-								runPanelResizable
-									? Math.min(RUN_PANEL_MAX_PX, runPanelCapacity)
-									: runPanelDividerValue
-							}
+							minWidth={runDivider.minWidth}
+							maxWidth={runDivider.maxWidth}
 							side="left"
 							onDoubleClick={handleRunPanelWidthReset}
 							label="Resize run details. Double-click resets the shared pane width."
@@ -2742,12 +2808,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				{isBrowserPaneOpen && (
 					<>
 						<ResizableDivider
-							sidebarWidth={effectiveBrowserPanelWidth}
-							onSidebarWidthChange={setRightSlotWidth}
-							minWidth={BROWSER_PANEL_MIN_PX}
-							maxWidth={1200}
+							sidebarWidth={browserDivider.value}
+							onSidebarWidthChange={handleBrowserPanelWidthChange}
+							minWidth={browserDivider.minWidth}
+							maxWidth={browserDivider.maxWidth}
 							side="left"
-							onDoubleClick={restoreDefaultRightSlotWidth}
+							onDoubleClick={handleBrowserPanelWidthReset}
 							label="Resize browser. Double-click resets the shared pane width."
 						/>
 						<PaneSlot
@@ -2784,12 +2850,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				{isConsolePaneOpen && (
 					<>
 						<ResizableDivider
-							sidebarWidth={effectiveConsolePanelWidth}
-							onSidebarWidthChange={setRightSlotWidth}
-							minWidth={CONSOLE_PANEL_MIN_PX}
-							maxWidth={1200}
+							sidebarWidth={consoleDivider.value}
+							onSidebarWidthChange={handleConsolePanelWidthChange}
+							minWidth={consoleDivider.minWidth}
+							maxWidth={consoleDivider.maxWidth}
 							side="left"
-							onDoubleClick={restoreDefaultRightSlotWidth}
+							onDoubleClick={handleConsolePanelWidthReset}
 							label="Resize console. Double-click resets the shared pane width."
 						/>
 						<PaneSlot

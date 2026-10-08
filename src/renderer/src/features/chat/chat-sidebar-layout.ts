@@ -156,14 +156,62 @@ export function canvasDockWidth(rowWidth: number): number {
  *
  * The run panel has no such mode: §I says it "is never an overlay (it is a reading
  * pane, not a document); it obeys the same 480 floor and closes itself rather than
- * squeezing the chat below it" - which is what `chat-content.tsx`'s
- * `runPanelResizable` does against the measured capacity. With the positioning
+ * squeezing the chat below it" - which is what the run pane's own separator
+ * contract does against the measured capacity. With the positioning
  * removed above, "never an overlay" is no longer a contrast between it and the
  * canvas: no pane covers the conversation today, and the mode is the withheld
  * divider and the data attribute.
  */
 export function canvasPaneMode(rowWidth: number): "docked" | "overlay" {
 	return canvasDockWidth(rowWidth) >= CANVAS_PANE_MIN_PX ? "docked" : "overlay";
+}
+
+/**
+ * The separator's contract for a right-slot pane, in one function so the run
+ * panel, the browser and the console cannot drift into three spellings (this
+ * change's D4 - the browser and console separators used to be handed the
+ * PREFERENCE with `minWidth={480} maxWidth={1200}`, so at rows that cannot host
+ * the pane's floor the separator announced aria-valuenow=640 while the pane was
+ * drawn at 220).
+ *
+ * THE PROPERTY IT ENCODES: what the separator announces and accepts is what the
+ * pane renders. `capacity` is what the ROW can give the pane (the measured row
+ * minus the conversation's floor - the run panel measures it from its own
+ * elements, the browser and console derive it from `paneRowWidth`); `drawn` is
+ * the width the pane draws; `min`/`max` are the pane's own drag range. Where the
+ * row cannot host the pane's FLOOR, resizing is not a no-op that lies, it is not
+ * offered: the value and both range ends collapse onto the drawn width, and the
+ * call sites refuse the write so a stored preference survives intact for a
+ * window that can honour it.
+ *
+ * `value` CAN LEGITIMATELY EXCEED `maxWidth`: a stored shared width wider than
+ * the pane's own ceiling is still drawn (the run panel at a 1600px window with a
+ * stored 1000 draws 816 against its 640 ceiling), and clamping either number
+ * would lie about the other. That case is measured in
+ * `docs/evidence/right-slot-one-default/` and recorded on the PR as
+ * found-not-fixed, not silently reshaped here.
+ */
+export function rightSlotDividerContract({
+	capacity,
+	min,
+	max,
+	drawn,
+}: {
+	capacity: number;
+	min: number;
+	max: number;
+	drawn: number;
+}): { resizable: boolean; value: number; minWidth: number; maxWidth: number } {
+	const resizable = capacity >= min;
+	if (!resizable) {
+		return { resizable, value: drawn, minWidth: drawn, maxWidth: drawn };
+	}
+	return {
+		resizable,
+		value: Math.min(Math.max(drawn, min), capacity),
+		minWidth: min,
+		maxWidth: Math.min(max, capacity),
+	};
 }
 
 /**
