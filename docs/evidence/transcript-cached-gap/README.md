@@ -11,6 +11,11 @@ counted off the pane.
 
 - `transcript-before.md` - raw output on the base tree (`src/` from `c14e07d95b0`).
 - `transcript-after.md` - raw output on the fixed tree. Same harness, same journals.
+  Re-run unchanged on the round-1 tree (the pending-send fix): the N = 300 / 600 /
+  1400 rows are identical, so the file is not rewritten.
+- `transcript-echo.md` - the pending-send case (`--echo`), before and after the
+  round-1 fix: a send the owner already journaled as the newest row must not make
+  the tail page look connected to the cached block.
 
 Reproduce either with `node scripts/transcript-gap-live.mjs --label=<name>`
 (add `--frames=<dir>` for the seam frame at N=600). The script's header says

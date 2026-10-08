@@ -36,6 +36,7 @@ import "@renderer/assets/fonts/fonts.css";
 import { ChatPage } from "@features/chat/components/chat-page";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
+import { paintPendingSend } from "@shared/hooks/use-canonical-session";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { __resetPaintCache } from "@shared/store/paint-cache";
@@ -320,6 +321,14 @@ const open = (target: string, deadlineMs = 30_000) =>
 		[...document.querySelectorAll("[data-session-row]")].map((row) =>
 			row.getAttribute("data-session-row"),
 		),
+	/**
+	 * Retain an unconfirmed send for a conversation through the app's own registry
+	 * (`paintPendingSend`), as the composer's press does, so the NEXT open of that
+	 * conversation seeds the echo into its first frame beside the cached paint
+	 * (#876: a send whose owner row is already the journal's newest row).
+	 */
+	paintPendingSend: (sessionId: string, id: string, text: string) =>
+		paintPendingSend(sessionId, { id, text, images: [] }),
 	/**
 	 * Back to the landing, so the next click is a real move onto a fresh pane.
 	 *
