@@ -68,13 +68,37 @@ palettes: seven in `group-bound/`, three in `section-gap/` and the same three in
 `captureOrigin`; its counts are re-derived at each folded tip rather than frozen at
 the capture.
 
+THE 2026-10-08 ORDER RE-SHOOT re-took every frame in this set, because every
+story here draws session rows and the drawn order changed (`pageOrder` now sorts
+by the chosen clock). One command per CHUNK of the list:
+
+```
+node scripts/capture-evidence.mjs http://localhost:<port> \
+  --only=chat-sidebar-view-menu --dirs=<~a-dozen-leaves> \
+  --themes=localOperatorDark,localOperatorLight --allow-backend --theme-settle-ms=180000
+```
+
+CHUNKED RATHER THAN ONE RUN, and that is a measurement rather than taste: this
+set is ~42 states, and a single run of that length crosses Chrome's five-minute
+hidden-tab timer throttle, after which the readout column samples once a minute
+and a frame can carry `Drawn: 0` beside eleven drawn rows. Measured on this pass:
+the one-run attempt's `group-bound/running-exempt` frame came back stale, and
+the same command chunked came back live (`Drawn: 10`, `Group rows drawn: 11`).
+The frames are stamped `e248483bf` (this branch); the before halves are named in
+their rows below. The two `audit-order-*` plays gained the repository's
+`capturePending` latch in the same pass - their state arrives through four real
+presses, and the first re-shoot attempt had the rig refuse the run because the
+busy row was still on screen when its `expectGone` was read.
+
 ## What each frame is
 
 | story | what it is |
 | --- | --- |
 | `popover-open` | the panel on a fresh view: four labelled groups, one check per single-choice group, seven section rows with the rail. Re-shot by this pass (the four-group panel) and by round 1 (the `Created` row's action-less `Calendar` glyph, D3). The three-group panel it replaces is this set's previous revision in git. |
+| `time-order-mixed` | the ORDER pair's AFTER half (2026-10-08): a fourteen-row mixed catalogue - a Running section whose last-user/created/activity clocks disagree (`mix-run-stopped` waits on the reader, `mix-run-message` was messaged ten minutes ago, `mix-run-heartbeat` only has heartbeats) and a This-week section of idle, stopped, scheduled and remote rows - drawn at the 50-row rung so every row shows. The labels read `2h 12h 1d 4d 5d 6d` down This week and the zero-stamp remote row prints no label at all. |
+| `time-order-mixed-before` | the same story and the same fixtures under unmodified `origin/main` (`15a7a4ed522`), captured in a detached worktree with this branch's story file staged in and its `src/` left alone: This week reads `1d 6d 4d 5d` (the array's arrival order) under its own activity labels, the approval row is buried third in Running, and the zero-stamp remote prints `56y`. The pair is the operator's report in one look. |
 | `popover-basis-last-active` | the basis fixture below under the DEFAULT basis: `Stored view: section/active/active-first`, `basis [active=true created=false]`. |
-| `popover-basis-created` | the same fixture with `Created` pressed: the check moves, the readout says `section/created/active-first`, and the sections and labels below re-read. |
+| `popover-basis-created` | the same fixture with `Created` pressed: the check moves, the readout says `section/created/active-first`, and the sections, their ORDER and the labels below all re-read. Since 2026-10-08 the basis orders each section by its own clock (`chat-sidebar-view.ts`'s `pageOrder`); the story's play asserts that order, and it replaced the assertion of the opposite "never a re-sort" claim the same day. |
 | `reorder-edges` | the rail after D1 and round 1's m1/U1: Pinned and both entity rows draw NO pair; Running's pair is disabled on BOTH sides (its up-neighbour is Pinned, and an empty section's own press draws nothing either); Today's up is disabled (its shown neighbour, the empty Running, draws nothing) while `today:down` is live; Older's down is disabled. The legal press still moves the section in the panel and the column behind it. |
 | `popover-open-short` | D2's own capture: the same panel in an 800x600 window, where the fourth group pushed it past the floor, plus round 1's D1 inset: the cap is `calc(var(--radix-popover-content-available-height) - 16px)`, so the panel's own bottom edge - and its rounded corner - stays 16px above the window's instead of the box ending flush. What the fold clips is the NEXT SECTION'S TOP PADDING, not a sliver of its content: round 2 (D4) measured zero content pixels above the fold in six themes (the cut would have to land 8-12px lower to cross the glyphs), and the content-sliver cue is consciously not taken - the inset's visible claim is the panel's own edge, which is what the frame's numbers describe: `box 240x542 · bottom 584/600 · content 598 (scrolls)`. The first shot of this state clipped outright (the panel ran off the bottom; the Teams row was unreachable), and the earlier wording of this row promised a content sliver the pixels do not show. |
 | `popover-open-narrow` | the same state in the shape the APP can reach with a short window (round 1, Q-2): the popover does not exist below ~1024px - the nav rail collapses and the trigger is not drawn - so a docked width with a short height (1100x600) is the honest worst case. Same inset, same numbers (`box 240x542 · bottom 584/600`). |
@@ -100,13 +124,7 @@ sides. That is the design's invariance claim in one pair of stills, and the
 `basis [active=… created=…]` line in each readout is how a reviewer reads which
 half they are looking at without trusting the checkmark's pixel position.
 
-**The order is not the basis's to change**, and the press asserts it: after
-`Created` lands, each section's drawn rows must still be in the catalogue's own
-relative order (`PopoverBasisCreated`'s play throws otherwise; the first version
-of that check compared the whole column and failed on the membership change
-itself, which is the feature — the check now reads the sections separately).
-Ordering is `Order by`'s axis and grouping is `Group by`'s; the basis is a third
-axis and moves only what the numbers MEAN.
+**The order follows the basis since 2026-10-08, and this paragraph said the opposite for ten days.** The old text here — "the order is not the basis's to change" — was the operator's own 2026-09-28 "orthogonal" reading; his 2026-10-08 report ("despite having order by active first, the sorting doesn't seem to properly sort within each section ... or maybe the timestamp it shows is not last active") reversed it: the drawn order inside every section and group is now newest-first by the basis's clock (`rowTimeMs`: `updated_at` under Last active, `created_at` under Created), with rows that have no usable stamp last. So under `Created` the OLDER section reads `basis-steady` (born 30 days ago) above `basis-moved` (born 40 days ago), and under Last active the same two rows sit in TODAY by their activity; `PopoverBasisCreated`'s play throws unless each drawn section follows the created clock, and the Last-active frame now draws `basis-born` (30m) above `basis-moved` (1h). Ordering is still `Order by`'s axis in the sense that `Active first` vs `Most recent` decides the LIFT and whether the running band leads; what changed is that the clock below (or through) that decision is the basis's, not the catalogue's arrival order.
 
 **The labels change with the basis, and the accessible sentence names it.**
 The visible label stays terse (`1h`, `5w`); the sr-only tail under the row says
@@ -163,7 +181,7 @@ bound to it, one bound elsewhere, the rest of the sidebar as it ships.
 | `group-bound/after-two/` | After **two presses**: the third rung is fifty against forty-one held, so the group is fully drawn and **the foot is gone** — the other half of the count agreeing with the disclosure, since a reader seeing no control is seeing all of it. |
 | `group-bound/current-lifted/` | The reader is IN `team-0034` — the group's 35th row, which the bound withholds. It is **lifted to the head of the group** under the panel's own `CURRENT CHAT` label rather than admitted in place (admitting it would draw the thirty-four rows between: the complaint this change answers). Eleven rows are drawn and the foot says `11 of 41`, because eleven is what is on screen. The row itself wears the current fill and weight, not just the label — the render seeds the store's `activeDraftKey: null` / `activeSessionId: team-0034`, the state the app reaches by opening the chat (design round 1, D1's re-shoot). |
 | `group-bound/current-settled/` | The other end of that movement, driven by two real presses (10 → 25 → 50 against forty-one held): the ladder has drawn past `team-0034`, so the lift and its label are **gone** and the row sits where the catalogue sorts it. The pair is design round 1's D6 as two stills. |
-| `group-bound/running-exempt/` | Design D4's case, framed: `team-0034` is **busy**, and a live row costs no quota, so eleven rows are drawn — the ten-row prefix plus the busy one in place — and the foot counts it: `Show 15 more chats · 11 of 41`. |
+| `group-bound/running-exempt/` | Design D4's case, framed: `team-0034` is **busy**, and a live row costs no quota, so eleven rows are drawn — the busy row LEADS the group (the arrangement's lift, 2026-10-08: under `Active first` a running row goes above the prefix) and the ten-row prefix follows — and the foot counts it: `Show 15 more chats · 11 of 41`. The exemption is the half that still matters when the arrangement has NOT lifted the row (a running row whose key is older than the prefix's tenth row), which is why both rules are kept. |
 | `group-bound/foot-hover/` | The foot under a real pointer (`:hover` asserted before the shutter): the idle `ink-dim` steps to `ink`, **12.8:1** dark / **15.23:1** light. The foot's focus still is not here — it is a roving stop (`tabindex=-1`, reached by the region's ArrowDown walk) and this rig's focus primitive is a Tab walk that cannot aim at it; recorded in the design-round remediation rather than faked. |
 
 **Withdrawn: `group-bound/search-finds-unloaded` has NO frame, deliberately.** The
@@ -241,6 +259,15 @@ nothing traded a header gap for a phantom scroll region.
   same state - the clipped one - is described in the state's row above rather
   than kept beside it: a frame that photographs a defect the same pass removed
   belongs to the record of the reading, not the set.
+  - **THE COMPLETENESS LIMIT OF THE ARRANGEMENT.** The client holds the first
+    50/100 rows by CREATION (`sessions.list`'s cursor pages, then `Show more`), so
+    the order `time-order-mixed` photographs is exact over HELD rows only: a
+    conversation created long ago and active this morning is only in the frame if
+    a page already fetched it. The operator's live store measured this (of 133
+    truly-active sessions, 14% sit in the first 50 creation-ordered rows and 50%
+    in the first 100). Paging by activity is a CORE change, a separate lane; until
+    it lands, the sidebar sorts exactly what it has and the ladder is how a reader
+    reaches the rest.
 - **THAT THE 800x600 SHAPE IS REACHABLE.** It is not: the panel's floor capture
   is the design contract's window minimum (`WINDOW_MIN_WIDTH/HEIGHT`), but at
   800x600 the app's nav rail is collapsed and the View options trigger does not

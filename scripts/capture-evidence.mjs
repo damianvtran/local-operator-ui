@@ -6962,7 +6962,7 @@ export const STORIES = [
 		 */
 		"chat-sidebar-view-menu--time-order-mixed",
 		741,
-		760,
+		1060,
 	],
 	["chat-sidebar-view-menu--reorder-edges", 741, 760],
 	/* The design direction's D2 capture: the same panel in the window floor. */
