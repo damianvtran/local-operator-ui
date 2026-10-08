@@ -207,7 +207,21 @@ export const PanelRail: FC<PanelRailProps> = ({
 				onKeyDown={onKeyDown}
 				onFocus={onFocus}
 				className={cn(
-					"relative flex h-full w-full flex-col items-center gap-1 border-l border-hairline bg-surface",
+					"relative flex h-full w-full flex-col items-center gap-1 bg-surface",
+					/*
+					 * NO RULE ON THE LEADING EDGE (the operator's ask: the rail should be
+					 * borderless "like the left sidebar"). The boundary is the TONE STEP
+					 * alone - `surface` against the slot's `elevated` (a pane open) or the
+					 * conversation's `canvas` (no pane) - the way the sidebar's own edge is
+					 * carried, and the pair is already asserted by the ladder's adjacent
+					 * rows in `scripts/contrast-contract.mjs` (floor 2.0; measured min 2.05
+					 * `sage` pane-closed / 2.02 `arcade` pane-open over the 59 palettes).
+					 * Its ABSENCE is pinned by `scripts/pane-slot-ground.test.mjs`, because
+					 * the `border-l border-hairline` this replaced drew a line from y=32
+					 * under the lane downwards - the "doesn't go all the way up" seam - and
+					 * a pin is the only thing that keeps a second way of drawing the edge
+					 * from quietly returning.
+					 */
 					/*
 					 * THE FIRST ITEM'S TOP IS THE CAPTION INSET PLUS 4px, set as PADDING (design
 					 * round 1, D3). It was a flex child strut of `max(4px, inset)` followed by
