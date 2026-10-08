@@ -1,7 +1,9 @@
 # The chat row's context menu — composition, states and copy
 
-**Issue:** #694 (the menu); #739 (Fork - **row 3 of five** since the round-1
-design review's D2, § 1, § 5, § 7, and the rows marked #739 in § 4 and § 9). **Design round:** 2026-09-30,
+**Issue:** #694 (the menu); #739 (Fork - **row 3 of six** since the round-1
+review's D2, § 1, § 5, § 7, and the rows marked #739 in § 4 and § 9); **#893
+(Copy session ID - row 4, § 1, § 7, and the superseded figures in § 2, § 4 and
+§ 9)**. **Design round:** 2026-09-30,
 `design/row-context-menu-694`.
 **Status:** design of record for the implementation, ported onto it with the
 design round's follow-ups (U-D1…U-D8) folded in and every frame reference
@@ -21,27 +23,32 @@ sequence, and it deliberately does not restate the reasons that live in
 ## 1. What the menu is
 
 A right-click (or `ContextMenu`/`Shift+F10`) on a chat row opens a Radix
-context menu holding the row's own acts, **five rows** - the two mirrored acts,
-then #739's Fork, then #743's Move pair:
+context menu holding the row's own acts, **six rows** - the two mirrored acts,
+then the UNCONDITIONAL run (#739's Fork and, since #893, Copy session ID), then
+#743's Move pair:
 
 | # | Row | Chord | Withheld when |
 |---|---|---|---|
 | 1 | `Archive conversation` / `Unarchive conversation` | `⌘⇧A` · `Ctrl+Shift+A` | `archiveEnabled` is false |
 | 2 | `Pin conversation` / `Unpin conversation` | `⌘⇧P` · `Ctrl+Shift+P` | `row.pinned === undefined` |
 | 3 | `Fork conversation` (#739) | none - fork has no chord | the row is a never-sent draft's conversation (`unstarted`): the backend has no transcript to copy |
-| 4 | `Move conversation up` | `⌘⇧↑` · `Ctrl+Shift+↑` | the row is not offered a move at all (`offersPinnedMove`: it is pinned AND in the section the order belongs to) |
-| 5 | `Move conversation down` | `⌘⇧↓` · `Ctrl+Shift+↓` | the same |
+| 4 | `Copy session ID` (**#893** - the act that moved the cap from five to six) | none - nothing binds the gesture | never - drawn on every row the menu is drawn on, like Fork |
+| 5 | `Move conversation up` (was row 4) | `⌘⇧↑` · `Ctrl+Shift+↑` | the row is not offered a move at all (`offersPinnedMove`: it is pinned AND in the section the order belongs to) |
+| 6 | `Move conversation down` (was row 5) | `⌘⇧↓` · `Ctrl+Shift+↓` | the same |
 
-**THE ROW ORDER IS THREE RULES, IN ORDER (round-1 design review, D2).** Rows 1-2
-are the mirrored pair in the strip's own measured order; row 3 is the menu's one
-UNCONDITIONAL singleton, so the third slot keeps one identity in every state -
-Fork on an ordinary row and Fork on a pinned one - rather than changing which act
-a reader finds there; and the CONDITIONAL block (the Move pair, offered only where
-`offersMove` holds) trails as a unit, so its two rows stay adjacent to each other
-either way. That replaces the fold's arrangement, which appended Fork after the
-Move pair and left the third slot's occupant state-dependent while never arguing
-the order it produced. The principle, not the position, is what the next act
-applies: a conditional act does not take a slot above an unconditional one.
+**THE ROW ORDER IS THREE RULES, IN ORDER (round-1 design review, D2; the second
+rule amended by #893).** Rows 1-2 are the mirrored pair in the strip's own
+measured order; rows 3-4 are the UNCONDITIONAL run, so each of those slots keeps
+one identity in every state - Fork on an ordinary row and Fork on a pinned one,
+Copy session ID everywhere - rather than changing which act a reader finds
+there; and the CONDITIONAL block (the Move pair, offered only where `offersMove`
+holds) trails as a unit, so its two rows stay adjacent to each other either way.
+That replaces the fold's arrangement, which appended Fork after the Move pair
+and left the third slot's occupant state-dependent while never arguing the order
+it produced. The principle, not the position, is what the next act applies: a
+conditional act does not take a slot above an unconditional one. #893 did not
+bend the rule to get its slot - Copy is itself unconditional, so it joins the
+unconditional run rather than displacing a row.
 
 **For the acts this menu carries, the order is the strip's order, left to
 right, and that is measured rather than argued.** In the row, the archive
@@ -67,7 +74,18 @@ end; the arrows were the pair that made it so. WCAG 2.5.7 asks for a single-poin
 path to an act, so the path could not simply be dropped, and this menu is the
 surface the row's other acts already live on: one door, four acts, and the row keeps
 its width back. Items 1-2 keep their order (the strip's own order, left to right,
-measured rather than argued); 3-4 follow them, first up then down.
+measured rather than argued); 3-4 follow them, first up then down, and #893's Copy
+session ID was inserted between Fork and the pair (row 4) when it arrived.
+
+**"COPY LINK" STAYS EXCLUDED, AND IT IS NOT #893's ACT (2026-10-08).** The
+paragraph above rules out an act that copies a LINK; `Copy session ID` copies an
+IDENTIFIER, and the difference is the whole reason the exclusion does not reach it.
+A link is another surface's address for the conversation and duplicates a door the
+user already has (open the conversation, copy its URL); an id is the value a
+`sessions`/`send` call or a `lop` command takes, which NOTHING in the product
+reveals - so an operator handing a session to another agent or to a terminal had no
+door at all before #893. The row's id has no other door (see § 7's rule): the
+header's overflow menu names the PANE's session, which is generally not the row's.
 
 **A BOUNDARY IS A SENTENCE, NOT A DEAD ITEM.** At the first or last pinned slot the
 item stays drawn and actionable, carrying `aria-disabled` and the boundary's own
@@ -212,7 +230,15 @@ bind in any of the measured states.
 | archive + fork (unknown pin state) | **273 × 77** | 2 |
 | pin + fork (archive capability withheld) | **246 × 77** | 2 |
 | archive + pin (fork withheld: a never-sent row) | **273 × 81** | 2 |
-| archive + unpin + fork + move up + move down (a pinned row in the moved-from section) | **296 × 184** | 5 |
+| archive + unpin + fork + move up + move down (a pinned row in the moved-from section) - **the PRE-#893 five-row panel** | **296 × 184** | 5 |
+| archive + unpin + fork + copy + move up + move down (**#893**, the widest state now) | **not measured here** - the re-measurement is owed to the evidence pass (see below) | 6 |
+
+**EVERY ROW OF THIS TABLE PREDATES #893 EXCEPT THE LAST, AND THAT IS STATED RATHER
+THAN LEFT TO BE INFERRED (2026-10-08).** The `measured panel` column is the pre-#893
+readout and is kept as the record; each of those states now also draws `Copy session
+ID`, a plain (chord-free) row - so the 3-item states draw four and the 2-item states
+draw three. The one row that is new is the last: the pinned row's SIX-row panel, whose
+frame and DOM readout the evidence pass on #893's head owns.
 
 **THE FOUR-ITEM CASE IS NOT IN THIS TABLE, AND THAT IS STATED RATHER THAN IMPLIED
 (2026-09-30).** A pinned row in the moved-from section draws `archive` + `unpin` +
@@ -226,7 +252,8 @@ measurement, and the design round should read it as such: re-shooting that set i
 
 **THE FIVE-ITEM CASE (#743's Move pair plus #739's Fork) IS MEASURED, where the
 four-item case above is arithmetic (2026-10-01, #739's re-shoot, re-taken for the
-round-1 design review's D1/D2).** `pinned-row` draws `archive`, `unpin`, `Fork
+round-1 design review's D1/D2), AND IT IS NOW SUPERSEDED BY #893'S SIX-ROW PANEL
+(annotated 2026-10-08, not re-measured here).** `pinned-row` draws `archive`, `unpin`, `Fork
 conversation`, `Move conversation up` and `Move conversation down` in **296 × 184 at
 142,297**, anchored at `140,297`, with the two Move rows boundary-inked and
 `aria-disabled` (the row is pinned and in the section the order belongs to, so
@@ -234,8 +261,9 @@ neither direction is available) and the row's own pair back to TWO children -
 `button[pin]:flex:243w24 | button[archive]:flex:215w24` - because the arrows left the
 strip for this menu. The ordinary-row states are unaffected by the Move pair
 (`offersMove` is false unless the row is pinned and in the section the order belongs
-to), which is why they stay at three rows; the one-capability-withheld states stay at
-two.
+to), which is why they keep their composition (three rows pre-#893; four since,
+because `Copy session ID` is drawn unconditionally); the one-capability-withheld
+states stay at two pre-#893 and three since.
 
 **THIS IS NOW THE WIDEST PANEL IN THE SET (296), AND THE JOINED CAPS ARE WHY (D1).**
 Measured A/B on the same story, same rig, one variable: with the Move rows printing
@@ -268,6 +296,18 @@ two-chord one; `36 + 36 + 32 + 36 + 36 + 8 = 184` exactly for the five-row state
 previously unexplained 6px WAS the two Move rows: they measured **33** while they
 printed one cap and **36** once they print three (the D1 A/B above), so the old
 `178` was 176 − 6 + 8. There is no third kind and no unexplained residue.
+
+**#893 ADDS ONE PLAIN ROW, AND THE NUMBER FOR IT IS OWED TO THE EVIDENCE PASS
+(2026-10-08).** `Copy session ID` is chord-free like Fork's row, so it is the PLAIN
+kind this set measured - and the six-row pinned state is therefore expected to be the
+table's `296 × 184` grown by one plain row. That is ARITHMETIC over the set's own
+measured kinds, not a measurement, and it is labelled the same way the four-item case
+above is: the WIDTH is not expected to move, because the Move rows' joined chord
+column (296) stays the widest content whatever a shorter label does, and the label
+here (`Copy session ID`) is shorter than `Unarchive conversation` at 288. The six-row
+FRAME and its DOM readout belong to `docs/evidence/chat-sidebar-row-context-menu/`,
+which the evidence pass on #893's head owns - this document does not carry a figure it
+has not seen.
 The 273 is the archive row's own length: `px-2` 16 + icon 16 + `gap-2` 8 +
 label + `pl-6` 24 + chord ≈ 60 + `px-2` 16. `Unarchive conversation` is the
 widest LABEL the menu draws, and its state measures **288 × 113**
@@ -418,18 +458,18 @@ default deliberately and the frames say so (`pointer-open`: `focus: menu`,
 | state | what the menu does | what the row does | frame |
 |---|---|---|---|
 | closed (no pointer) | not mounted | unchanged; the pair is `display: none` at rest | `menu-closed` - **one image with `flyout-alone`** (§ 9): the two names are one capture, taken with the pointer on the row, and it carries the flyout because the flyout is a dwell behind the pointer |
-| open at the pointer, normal row | 3 rows - archive, pin, fork; chords on the first two, none on fork (#739) | reveal held, hover ground held | `pointer-open` |
-| the same, the pointer moved onto the first item | the same 3 rows; item 1 carries `data-highlighted`, and the same `:focus-visible` outline the keyboard state draws (measured; see § 2) | reveal held | `pointer-hover` |
-| open via keyboard (`ContextMenu` / `Shift+F10`) | the same 3 rows; anchored at the row's bottom-left | reveal held, no pointer needed | `keyboard-open` |
-| open at the pointer, pinned row in the moved-from section | **5 rows**: `Archive conversation`, `Unpin conversation`, `Fork conversation`, `Move conversation up`, `Move conversation down` (both Move rows `aria-disabled` and boundary-inked at this row's ends, with the boundary sentence as their `title`) | the pair is drawn at rest (the mark is the state), with nothing else revealed | `pinned-row` (re-shot at #739's order and D1's joined caps: five rows in 296 × 184) |
-| `row.pinned === undefined` | **2 rows** (archive, fork); the pin row is withheld | row draws no pin control either | `pin-state-unknown` (273 × 77) |
-| `archiveEnabled` false | **2 rows** (pin, fork); the archive row is withheld | archive control absent | `archive-withheld` (246 × 77 - the widest-label-withheld state) |
-| the row is a never-sent draft's conversation (#739) | **2 rows** (archive, pin); Fork is **absent, not greyed** - the backend has no transcript to copy | the row reads `, not sent yet` | `fork-withheld` (273 × 81) |
+| open at the pointer, normal row | 4 rows - archive, pin, fork, copy session ID; chords on the first two, none on fork (#739) or on copy (#893) | reveal held, hover ground held | `pointer-open` |
+| the same, the pointer moved onto the first item | the same 4 rows; item 1 carries `data-highlighted`, and the same `:focus-visible` outline the keyboard state draws (measured; see § 2) | reveal held | `pointer-hover` |
+| open via keyboard (`ContextMenu` / `Shift+F10`) | the same 4 rows; anchored at the row's bottom-left | reveal held, no pointer needed | `keyboard-open` |
+| open at the pointer, pinned row in the moved-from section | **6 rows**: `Archive conversation`, `Unpin conversation`, `Fork conversation`, `Copy session ID` (#893), `Move conversation up`, `Move conversation down` (both Move rows `aria-disabled` and boundary-inked at this row's ends, with the boundary sentence as their `title`) | the pair is drawn at rest (the mark is the state), with nothing else revealed | `pinned-row` - the frame on this head is the PRE-#893 five-row one (`re-shot at #739's order and D1's joined caps: five rows in 296 × 184`); the six-row frame is owed to the evidence pass on #893's head |
+| `row.pinned === undefined` | **3 rows** (archive, fork, copy); the pin row is withheld | row draws no pin control either | `pin-state-unknown` (273 × 77 **pre-#893**, two rows then) |
+| `archiveEnabled` false | **3 rows** (pin, fork, copy); the archive row is withheld | archive control absent | `archive-withheld` (246 × 77 **pre-#893** - the widest-label-withheld state) |
+| the row is a never-sent draft's conversation (#739) | **3 rows** (archive, pin, copy); Fork is **absent, not greyed** - the backend has no transcript to copy | the row reads `, not sent yet` | `fork-withheld` (273 × 81 **pre-#893**) |
 | Fork pressed (#739) | closes; the request is in the store naming the row's conversation, and the route moves to `/chat` when no pane was mounted | unchanged; the picker (the pane's) opens for the row's conversation, not the pane's | `fork-pressed` |
-| archived row (not pinned) | 3 rows; item 1 reads `Unarchive conversation` | row only reachable with `Include archived` | `archived-row` (288 × 113 - the widest label the menu draws) |
+| archived row (not pinned) | 4 rows; item 1 reads `Unarchive conversation` | row only reachable with `Include archived` | `archived-row` (288 × 113 **pre-#893** - the widest label the menu draws) |
 | neither capability | **no menu** - no trigger element at all | panel byte-identical to the pre-feature one | - (assertion, not a frame) |
 | current row | unchanged | **selected** ground kept, no hover ground added | - |
-| the hold rule NOT applied (the design round's control) | the same 3 rows | **pair `none`, ground transparent** | `pointer-open-unheld`, on the design branch's proposal set - the shipped set does not reproduce a state the hold exists to remove |
+| the hold rule NOT applied (the design round's control) | the same 4 rows | **pair `none`, ground transparent** | `pointer-open-unheld`, on the design branch's proposal set - the shipped set does not reproduce a state the hold exists to remove |
 
 **The withheld states are the pre-#739 shapes with Fork added, and the never-sent
 row's own label is load-bearing (round-1 design review, point (e)).** On
@@ -471,7 +511,7 @@ drawn on is withheld rather than offered broken") and
 item" with `session_archive` absent). `data-[disabled]` styling therefore has
 **no state to draw in this change** and is inherited from the primitive unused —
 which is the point: a two-item menu on an unknown-pin row is correct
-(`pin-state-unknown`: `items: 2 — Archive conversation⌘⇧A | Fork conversation`).
+(`pin-state-unknown`: `items: 3 — Archive conversation⌘⇧A | Fork conversation | Copy session ID`, three since #893, where this read `items: 2`).
 
 **THE ONE item that carries a disabled look is the boundary Move row, and its
 CHORD FOLLOWS ITS ITEM (round-1 design review, D3).** A cap carries its own ink
@@ -580,6 +620,7 @@ truncate it and push the chord off the row's trailing edge.
 | `Move conversation up` | `⌘⇧↑` | `Ctrl+Shift+↑` |
 | `Move conversation down` | `⌘⇧↓` | `Ctrl+Shift+↓` |
 | `Fork conversation` (#739) | - | - |
+| `Copy session ID` (#893) | - | - |
 
 **AND THE MOVE ROWS PRINT THROUGH THE JOINED SIBLING (round-1 design review,
 D1).** `⌘⇧↑`/`⌘⇧↓` above are the HANDLER's spellings; the menu renders
@@ -739,6 +780,7 @@ node is gone).
 > `Move conversation up` / `Move conversation down` (WCAG 2.5.7's single-pointer path)
 > beside the two mirrored acts, which is exactly the "2 mirrored rows + 2 move rows = 4"
 > case worked out below; the cap has since moved to **five rows** (#739's Fork) and
+> then **six** (#893's Copy session ID, see this section's closing block), and
 > is now a RULE rather than a number (§ 7's closing block). The
 > reasoning that follows is kept as the record of what was weighed; its present-tense
 > statements about a three-row budget and the arrow strip no longer describe the build.
@@ -774,32 +816,41 @@ the arithmetic is worth stating so #693 does not have to rediscover it:
 > discoverable door. The Move pair qualifies as WCAG 2.5.7's single-pointer path,
 > which the deleted arrow buttons used to carry. Fork qualifies because it is the
 > only door that names the **row's** conversation - neither `/fork` nor the palette
-> can, as both act on the pane's.
+> can, as both act on the pane's. **Copy session ID (#893) qualifies as the sixth, and
+> it passes the same test**: an id is what a `sessions`/`send` call or a `lop` command
+> takes, and NOTHING in the product reveals the ROW's id today - the header's overflow
+> menu names the PANE's session, which is generally not the row's.
 >
-> **The cap is five rows, pinned by test** (`scripts/chat-sidebar-row-menu.test.mjs`
-> counts the items). A sixth act is admitted only by passing the same test;
+> **The cap is six rows, pinned by test** (`scripts/chat-sidebar-row-menu.test.mjs`
+> counts the items; five until #893 moved it, and the move is a number raised rather
+> than a row replaced). A seventh act is admitted only by passing the same test;
 > otherwise it replaces a row or finds another surface.
 >
-> **The cap costs 296 × 184 in its widest state** (a pinned row in the
-> moved-from section: five rows, the two Move rows at their widest chord), on a
-> 280px sidebar. Somewhere around **eight rows / ~280px tall** the answer changes
+> **The cap's widest state is a pinned row in the moved-from section, and it now draws
+> six rows.** The 296 × 184 this block used to carry is the PRE-#893 five-row
+> measurement; the six-row frame and its readout are owed to the evidence pass on
+> #893's head (`docs/evidence/chat-sidebar-row-context-menu/`), and no replacement
+> figure is written here because this document has not seen one. On a 280px sidebar,
+> somewhere around **eight rows / ~280px tall** the answer changes
 > from "grow the menu" to "a submenu or another surface" - the point at which the
 > panel stops being a menu and starts being a list.
 
-**HOW IT GOT TO FIVE, for the record.** It was declared at **three rows** (this section's
+**HOW IT GOT TO SIX, for the record.** It was declared at **three rows** (this section's
 arithmetic) with the third reserved; #693's Move pair landed on 2026-09-30 and the
 record raised the cap to **four**; #739 then spent the fifth on Fork, which the
-round-1 review placed at row 3 (D2) so that the conditional block trails. The rule that survives is the one this paragraph always carried - **an
+round-1 review placed at row 3 (D2) so that the conditional block trails; and #893
+spent the **sixth** on Copy session ID, placed at row 4 beside Fork so the
+unconditional run stays one run. The rule that survives is the one this paragraph always carried - **an
 act that lands here either replaces a row or finds another surface** - and it is
 worth stating plainly that the second raise was not argued from the first's
 arithmetic: the four-row case is the "2 mirrored + 2 move" case this section
 worked out as the one that BREAKS the budget, and it was taken anyway for
 WCAG 2.5.7's single-pointer path, with the three-row promise superseded on the
 record, and the round-1 review closed it with the rule above rather than another
-number: there is no open question about a sixth act, because there is a test it
+number: there is no open question about a seventh act, because there is a test it
 has to pass. What is decided is that the count and the ORDER are explicit and
 pinned - `scripts/chat-sidebar-row-menu.test.mjs` counts the items and asserts
-their sequence - so a sixth, or a re-ordering, is a failing assertion rather than
+their sequence - so a seventh, or a re-ordering, is a failing assertion rather than
 a quiet addition.
 
 ---
@@ -807,10 +858,12 @@ a quiet addition.
 ## 8. In scope, out of scope
 
 **In:** Fork as the menu's third row (#739) - the item, its `unstarted` withholding, the
-conversation-naming request and the pane's precedence; the menu's trigger
+conversation-naming request and the pane's precedence; **Copy session ID as the fourth
+(#893)**, which rides the same menu (the trigger's gate is untouched by it, for the
+same reason Fork left it untouched); the menu's trigger
 (`menuEnabled`) is **unchanged**: Fork rides an existing menu, so a panel with
 neither the archive nor the pin capability still has no menu and no Fork, and
-widening the trigger is out of scope here. The menu itself (five rows, withheld
+widening the trigger is out of scope here. The menu itself (six rows, withheld
 when there is nothing to draw); chord
 hints through the shared `KeyboardShortcut`, which finally spends
 `chatRowActCap`; the explicit keyboard opener with focus return; the state
@@ -839,13 +892,22 @@ outside this change's flows.
 ## 9. The numbers behind the frames
 
 All read out of the DOM by the story itself, so a frame cannot claim a state the
-app does not hold. `localOperatorDark`, 280px sidebar, 780 × 520:
+app does not hold. `localOperatorDark`, 280px sidebar, 780 × 520.
+
+**THE PANEL, ROW AND ANCHOR NUMBERS BELOW ARE THE PRE-#893 SET (annotated
+2026-10-08).** Every state now also draws `Copy session ID` (a plain, chord-free
+row), so the panel heights move and the widths are expected not to - but these are
+the frames THIS set measured, and the six-row panel's own readout belongs to the
+evidence pass on #893's head. Only the `items` counts are given post-#893 (a row of
+their own, below), and those are read off the shipped composition rather than off a
+frame.
 
 | | `pointer-open` | `pointer-hover` | `keyboard-open` | `archived-row` | `pinned-row` | `pin-state-unknown` | `archive-withheld` |
 |---|---|---|---|---|---|---|---|
 | anchor point | 140,369 | 140,369 | 12,371 | 140,362 | 140,297 | 140,401 | 140,369 |
 | panel | 273 × 113 at 142,369 | 273 × 113 at 142,369 | 273 × 113 at 14,370 | 288 × 113 at 142,362 | **296 × 184** at 142,297 | 273 × 77 at 142,401 | 246 × 77 at 142,369 |
 | items | 3 (archive, pin, fork) | 3 | 3 | 3 (`Unarchive conversation`) | **5** (`Archive conversation`, `Unpin conversation`, `Fork conversation`, `Move conversation up`, `Move conversation down`) | 2 (archive, fork) | 2 (`Pin conversation`, fork) |
+| items, POST-#893 (derived from the shipped composition, NOT from a frame - the readouts above and in this table are the PRE-#893 set) | 4 (archive, pin, fork, copy) | 4 | 4 | 4 (`Unarchive conversation`) | **6** (`Archive conversation`, `Unpin conversation`, `Fork conversation`, `Copy session ID`, `Move conversation up`, `Move conversation down`) | 3 (archive, fork, copy) | 3 (`Pin conversation`, fork, copy) |
 | row | 255 × 32 at 12,340 | same (s2) | same (s2) | 255 × 32 at 12,333 (s4) | 255 × 32 at 12,268 (s1) | 255 × 32 at 12,372 (s3) | s2 |
 | ground | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` |
 | `data-state` | `closed` | `closed` | `closed` | `closed` | `closed` | `closed` | `closed` |
@@ -920,6 +982,13 @@ by `--dirs=pointer-hover,archived-row`, so no existing frame was re-taken.)
 | `flyout-alone` | see `menu-closed` - one capture, two names: the flyout drawn with no menu, `data-state delayed-open` |
 | `fork-withheld` | #739: the row is a never-sent draft's conversation; two rows, Fork absent rather than greyed (273 × 81) |
 | `fork-pressed` | #739: Fork pressed - the readout shows the request naming the row's conversation, the row's own button as the invoker, and the route; the picker itself is the pane's and is not in this story |
+
+**EVERY FRAME IN THIS SET PREDATES #893 (2026-10-08),** and the row descriptions
+above therefore no longer enumerate what the states draw: `Copy session ID` is in
+none of these images, and the `pinned-row` frame is the PRE-#893 five-row panel. The
+re-shoot - the new row in every state plus the six-row `pinned-row` and its DOM
+readout - belongs to the evidence pass on #893's head, which owns
+`docs/evidence/chat-sidebar-row-context-menu/` and its `README.md`.
 
 The design round's **proposal set**
 (`docs/evidence/chat-sidebar-row-context-menu-proposal/`, 16 frames including
