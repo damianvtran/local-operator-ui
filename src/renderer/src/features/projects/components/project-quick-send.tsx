@@ -140,6 +140,13 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 		if (target) void refresh(target);
 	}, [target, refresh]);
 
+	/*
+	 * THE ROW'S MESSAGE ACTION IS A PLAIN FOCUS, DELIBERATELY. The user pressed a
+	 * control that exists to hand them this box, so bringing it into view is the
+	 * press working rather than the page moving on its own - the mirror of the
+	 * rule the composer keeps for the claims it makes unprompted (`preventScroll`
+	 * on the effect, and on the send's hand-back below).
+	 */
 	useEffect(() => {
 		if (focusTick > 0) inputRef.current?.focusInput();
 	}, [focusTick]);
@@ -178,6 +185,15 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 				<span className="text-meta text-ink-muted">Send to</span>
 				<Select
 					value={target ?? undefined}
+					/*
+					 * A PICK DOES NOT MOVE THE CARET INTO THE BOX. Choosing a session is the
+					 * transition the composer's own claim used to fire on: the strip mounts
+					 * refusing its box when there is no target (`hostNotice.blocksInput`
+					 * below), so becoming writable re-ran the self-focus and took the caret
+					 * off this trigger mid-interaction. Radix returns focus here when the
+					 * menu closes and `autoFocus={false}` keeps the composer out of the way -
+					 * both halves are needed, and neither is the other's backup.
+					 */
 					onValueChange={(value) => onTargetChange(value)}
 				>
 					<SelectTrigger
@@ -231,6 +247,18 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 				isLoading={false}
 				ownGutter
 				transcriptless
+				/*
+				 * A SECONDARY INTERACTION ON A LONG PAGE, SO IT DOES NOT CLAIM THE CARET
+				 * (operator, 2026-10-08). This strip sits at the foot of the detail's own
+				 * scroller (`projects-page.tsx`), and the composer's self-focus is also a
+				 * scroll: taking focus centres the element, so opening a project used to
+				 * jump the reader down to this box and put the keyboard in it - an optional
+				 * interaction presented as the page's primary one. The doors the user opens
+				 * themselves still work and still focus: a click into the box, the row's
+				 * message action above, the post-send hand-back below, and the dictation
+				 * hand-back the composer keeps for every host.
+				 */
+				autoFocus={false}
 				/*
 				 * THE CLIPBOARD ROUTE STAYS TAUGHT (design round 1, D4). The hint is the
 				 * strip's own pre-existing copy, and the operator called that copy in scope:
@@ -304,8 +332,14 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 						 * `project-detail` scene asserts `document.activeElement` for exactly
 						 * this). On a refusal the text is already back in the box, so the caret
 						 * belongs there too.
+						 *
+						 * `preventScroll` HERE THOUGH, unlike the row action above: restoring a
+						 * caret the user already had is not navigation, and the page may be their
+						 * own by now - a send can take seconds, and a reader who scrolled up to
+						 * check the project's updates while it was in flight must not be dragged
+						 * back down to the strip when it lands.
 						 */
-						inputRef.current?.focusInput();
+						inputRef.current?.focusInput({ preventScroll: true });
 					}
 				}}
 			/>
