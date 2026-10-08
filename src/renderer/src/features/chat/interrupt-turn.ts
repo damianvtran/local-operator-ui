@@ -40,6 +40,16 @@ import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks"
 import type { DesktopInterruptReceipt } from "../../../../shared/desktop-session-contract";
 
 /**
+ * What the app tells the user when a Stop press found nothing to stop.
+ *
+ * The press is an action the user took, so it gets an answer even when the
+ * answer is "nothing was running" - see `interruptNotice` for the incident that
+ * made silence untenable. PROVISIONAL COPY, pending the design round.
+ */
+export const IDLE_STOP_NOTICE =
+	"Nothing was running — the stop changed nothing.";
+
+/**
  * Whether this renderer may interrupt a turn against this backend.
  *
  * BOTH halves are required and neither is a formality: the route sits behind the
@@ -63,17 +73,73 @@ export function sessionInterruptEnabled(
  * a retried press with the same id answers the first receipt instead of
  * interrupting twice. Every press gets a fresh id - two presses are two requests
  * the user made.
+ *
+ * BOUNDED, AND WHY IT HAS TO BE (operator incident, 2026-10-07). A press on a
+ * half-dead socket used to sit on a promise that the transport would only
+ * abandon at its own generic control deadline - 25 s for this op
+ * (`desktopRequestTimeoutMs`), and not at all on the development proxy path -
+ * so the catch that owes the user a sentence could be a quarter-minute away,
+ * and the optimistic stopped-turn fact the press wrote stayed latched in the
+ * meantime: band on screen, nothing stopped, no answer. `INTERRUPT_ACK_TIMEOUT_MS`
+ * bounds it to the runtime's own answer envelope; a lost answer then reaches the
+ * caller's existing catch path, which states the outcome as unknown rather than
+ * leaving a claim standing.
  */
 export function interruptTurn(
 	sessionId: string,
 	requestId: string,
+	/*
+	 * The bound is injectable so a test can drive a never-settling transport at
+	 * 50 ms instead of waiting out the production envelope; every caller in the
+	 * app takes the default.
+	 */
+	timeoutMs: number = INTERRUPT_ACK_TIMEOUT_MS,
 ): Promise<DesktopInterruptReceipt> {
-	return desktopResult<DesktopInterruptReceipt>({
+	/*
+	 * The controller is the bound's REASON, not a cancellation channel: an IPC
+	 * invoke cannot be aborted (the transport's own `withDeadline` documents the
+	 * same stance - "abandoning it is exactly the point"), and the dev-proxy
+	 * `fetch` underneath does not take a signal through this call path. What the
+	 * race below buys is the property that matters for a press: the promise
+	 * SETTLES at the envelope, with the standard `AbortError` rejected into the
+	 * caller's catch - so the sentence lands, and a late answer cannot resurrect
+	 * a claim the receipt never made. For THIS op a race leaving the request in
+	 * flight is safe: the route is receipted and idempotent per `requestId`.
+	 */
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), timeoutMs);
+	const settled = desktopResult<DesktopInterruptReceipt>({
 		op: "sessions.interrupt",
 		sessionId,
 		requestId,
 	});
+	return Promise.race([
+		settled,
+		new Promise<never>((_, reject) => {
+			controller.signal.addEventListener(
+				"abort",
+				() => reject(controller.signal.reason),
+				{ once: true },
+			);
+		}),
+	]).finally(() => clearTimeout(timer));
 }
+
+/**
+ * How long a Stop press waits for its receipt before the answer is called LOST.
+ *
+ * THE RUNTIME'S OWN ENVELOPE, deliberately. The attach client gives a wedged
+ * owner 15 s before a request id that has not been answered becomes an error
+ * rather than a hang (`local_operator/mobile/attach_client.py`:
+ * `ACK_TIMEOUT_S = 15.0` - "long enough for a turn-boundary op ... on a busy
+ * owner, short enough that a wedged owner surfaces as an error rather than a
+ * hang"), and `session/attached.py` sizes its own dial allowances against the
+ * same number. A client bound that outlived the server's would keep the press
+ * latched for a stretch the runtime itself already gave up on; one shorter would
+ * call a healthy slow answer lost. So this is that number. The copy this
+ * change introduces is provisional, pending the design round.
+ */
+export const INTERRUPT_ACK_TIMEOUT_MS = 15_000;
 
 /**
  * The one sentence a completed interrupt can owe the user, or null.
@@ -82,10 +148,24 @@ export function interruptTurn(
  * stopped with nothing left under it has already said everything it has to say
  * by the stream ending, and the notification bridge's exclusion of the
  * `interrupted` kind is the tree's precedent for not raising a banner about the
- * user's own press. The route's `idle` - no turn was running, or the session is
- * cold - is also null: nothing happened, and a sentence would invent an outcome.
+ * user's own press.
  *
- * A notice exists only for work the user cannot otherwise see stop:
+ * `idle` IS NOT SILENT ANY MORE (operator incident, 2026-10-07). The route's
+ * `idle` - no turn was running, or the session was cold - used to answer with
+ * nothing, on the reasoning that a sentence would invent an outcome. That
+ * reasoning has a premise the incident falsified: it assumes the user already
+ * knows nothing was running. The operator pressed Stop four times while HIS
+ * pane believed a turn was up, and every press answered `idle` with zero
+ * feedback - so the app's silence read as "the press did nothing" rather than
+ * "there was nothing to stop", which is the one thing the press's answer must
+ * never mean. The press is an ACTION the user took; the composer owes its
+ * result a sentence even when the result is that nothing ran, and this one says
+ * exactly what the receipt says and no more. Whether the roster behind the
+ * answer was fresh is a separate, server-side question - the sentence is
+ * worded to be true either way. The copy is provisional, pending the design
+ * round.
+ *
+ * A notice ALSO exists for work the user cannot otherwise see stop:
  *
  * - `children_running` is subagents and team members the abort did NOT settle
  *   (the receipt counts what actually settled, so this is the remainder). They
@@ -105,6 +185,7 @@ export function interruptTurn(
 export function interruptNotice(
 	receipt: DesktopInterruptReceipt,
 ): string | null {
+	if (receipt.status === "idle") return IDLE_STOP_NOTICE;
 	if (receipt.status !== "interrupted") return null;
 	const children = receipt.children_running ?? 0;
 	const jobs = receipt.background_jobs ?? 0;
