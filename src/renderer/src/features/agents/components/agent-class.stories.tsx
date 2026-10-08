@@ -1,6 +1,9 @@
 import "../../../styles/index.css";
 import { AgentsPage } from "@features/agents/components/agents-page";
-import type { ReusableProfile } from "@shared/api/local-operator/profile-hooks";
+import type {
+	ReusableProfile,
+	ReusableTeam,
+} from "@shared/api/local-operator/profile-hooks";
 import type { Meta, StoryObj } from "@storybook/react";
 import {
 	type FC,
@@ -49,9 +52,9 @@ import type {
 
 /* ------------------------------------------------------------- the world -- */
 
-type WorldProfile = ReusableProfile & { instructions: string };
+export type WorldProfile = ReusableProfile & { instructions: string };
 
-const makeProfile = (
+export const makeProfile = (
 	over: Partial<WorldProfile> & { name: string },
 ): WorldProfile => ({
 	kind: "role",
@@ -112,18 +115,18 @@ const world = ({
 	}),
 ];
 
-const envelope = (result: unknown): DesktopResponse => ({
+export const envelope = (result: unknown): DesktopResponse => ({
 	status: 200,
 	body: { result },
 });
 
 /** A refusal in the transport's own envelope, so the page renders real copy. */
-const refusal = (status: number, detail: string): DesktopResponse => ({
+export const refusal = (status: number, detail: string): DesktopResponse => ({
 	status,
 	body: { detail },
 });
 
-const CAPABILITIES = {
+export const CAPABILITIES = {
 	desktop_contract: 1,
 	desktop_available: true,
 	desktop_auth: "bearer",
@@ -146,6 +149,20 @@ type BridgeOptions = {
 	 * that is what a story that says nothing gets.
 	 */
 	aidaName?: string;
+	/**
+	 * The team catalogue, for the stories that photograph the Teams tab
+	 * (`agents-teams.stories.tsx`). `teams.list` and `teams.get` answer from it, so
+	 * the roster row and the detail pane are one fact read twice. Omitted, the
+	 * catalogue is empty, which is what every class story wants.
+	 */
+	teams?: ReusableTeam[];
+	/**
+	 * Replace the capability answer. The class stories leave the composer's two
+	 * gates (`agents_config`, `session_interrupt`) off, so their docked composer
+	 * renders its disabled sentence; the Teams stories turn them on because the
+	 * operator's screen has a LIVE composer, and the box under review is that one.
+	 */
+	capabilities?: Record<string, unknown>;
 };
 
 /**
@@ -156,18 +173,20 @@ type BridgeOptions = {
  * performs (React Query invalidates `["desktop"]` and the detail is fetched
  * again) rather than by this file's own idea of what the answer would be.
  */
-const installBridge = (
+export const installBridge = (
 	rows: WorldProfile[],
 	{
 		refuseClassWrite = false,
 		holdDetail = false,
 		aidaName = "Aida",
+		teams = [],
+		capabilities = CAPABILITIES,
 	}: BridgeOptions = {},
 ) => {
 	const handler = async (request: DesktopRequest): Promise<DesktopResponse> => {
 		switch (request.op) {
 			case "capabilities":
-				return envelope(CAPABILITIES);
+				return envelope(capabilities);
 			/*
 			 * HER CONTROL STATE, which the page reads - and the op this rig would
 			 * otherwise THROW on, exactly as it should: a page that grows a read has to
@@ -195,7 +214,20 @@ const installBridge = (
 			 * than reaching a developer's live server.
 			 */
 			case "teams.list":
-				return envelope({ teams: [] });
+				/*
+				 * THE LIST IS THE ROSTER SHAPE: the backend's `team_catalogue` excludes
+				 * `instructions` and `project` (they ride `teams.get` only), so a story
+				 * that answered the list with the full row would let the roster read a
+				 * field the product's roster never has.
+				 */
+				return envelope({
+					teams: teams.map(({ instructions: _i, project: _p, ...row }) => row),
+				});
+			case "teams.get": {
+				const hit = teams.find((row) => row.name === request.name);
+				if (!hit) return refusal(404, `No team named ${request.name}.`);
+				return envelope(hit);
+			}
 			case "settings.list":
 				return envelope({ settings: [] });
 			case "profiles.install": {
@@ -235,7 +267,10 @@ const installBridge = (
 
 /* --------------------------------------------------------------- the rig -- */
 
-const RouteTo = ({ path, children }: { path: string; children: ReactNode }) => {
+export const RouteTo = ({
+	path,
+	children,
+}: { path: string; children: ReactNode }) => {
 	const navigate = useNavigate();
 	useEffect(() => {
 		navigate(path, { replace: true });
@@ -317,7 +352,7 @@ const Scene: FC<{
  * recording a frame of the wrong one (the failure mode `SettingsAtAppearance`
  * names from the other direction).
  */
-const HoldShutterUntil: FC<{ done: () => boolean }> = ({ done }) => {
+export const HoldShutterUntil: FC<{ done: () => boolean }> = ({ done }) => {
 	useEffect(() => {
 		document.documentElement.dataset.capturePending = "1";
 		const settle = () => {
@@ -360,6 +395,21 @@ const toastNames = (name: string) =>
 const meta: Meta = {
 	title: "Agents/Class",
 	parameters: { layout: "fullscreen" },
+	/*
+	 * The bridge helpers are exported for `agents-teams.stories.tsx`, which runs
+	 * the same page over a team catalogue. Storybook turns every named export of a
+	 * stories file into a story unless it is excluded, and a helper registered as
+	 * one would render as a broken entry in the sidebar.
+	 */
+	excludeStories: [
+		"makeProfile",
+		"envelope",
+		"refusal",
+		"CAPABILITIES",
+		"installBridge",
+		"RouteTo",
+		"HoldShutterUntil",
+	],
 };
 export default meta;
 
