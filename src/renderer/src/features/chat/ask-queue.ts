@@ -63,6 +63,7 @@ import {
 import type {
 	CanonicalFrontendState,
 	PendingAsk,
+	PendingAskQuestion,
 	PendingDesktopGate,
 } from "../../../../shared/desktop-session-contract";
 /*
@@ -1473,6 +1474,27 @@ export const draftFor = (draft: AskDraft, questionId: string): string[] =>
 	draft[questionId] ?? [];
 
 /**
+ * Whether ONE question has an answer between the draft and the typed secrets.
+ *
+ * The per-question half of `askDraftIsComplete`, exported so a surface that has to ask
+ * "which question still needs me" (Enter in an answer field moves to the next
+ * unanswered question instead of sending a partial answer) reads the SAME rule the
+ * submit is gated on rather than restating it - two copies of "what counts as an
+ * answer" is how a field and its Send button come to disagree.
+ *
+ * A blank string is not an answer, which is what makes an `Other` that is selected
+ * but empty an unanswered question.
+ */
+export const askQuestionIsAnswered = (
+	question: PendingAskQuestion,
+	draft: AskDraft,
+	secrets: AskSecrets = {},
+): boolean =>
+	question.secret
+		? (secrets[question.id] ?? "").trim().length > 0
+		: draftFor(draft, question.id).some((value) => value.trim().length > 0);
+
+/**
  * Whether every question in an ask has an answer between the draft and the
  * typed secrets.
  *
@@ -1487,10 +1509,127 @@ export const askDraftIsComplete = (
 	secrets: AskSecrets = {},
 ): boolean =>
 	ask.questions.every((question) =>
-		question.secret
-			? (secrets[question.id] ?? "").trim().length > 0
-			: draftFor(draft, question.id).some((value) => value.trim().length > 0),
+		askQuestionIsAnswered(question, draft, secrets),
 	);
+
+/**
+ * The most characters one answer value may carry: the wire's own cap on a string in
+ * `answers` (`desktop-contract.ts`, `z.string().max(32768)`). The `Other` field stops
+ * there and SAYS so; a pinned test parses a value one past it through the real schema,
+ * so the two numbers cannot drift apart unnoticed.
+ */
+export const ASK_ANSWER_MAX_CHARS = 32768;
+
+/**
+ * The values in a question's draft cell that its option list did NOT offer, blanks
+ * excluded. Used to SEED the card's `Other` state on mount (`askOtherSeed`), because a
+ * draft that outlives the card (the drawer collapsed and reopened, the change form
+ * seeded from the log) is the only place that text survives.
+ */
+export const otherValuesOf = (
+	cell: readonly string[],
+	labels: readonly string[],
+): string[] =>
+	cell.filter((value) => value.trim().length > 0 && !labels.includes(value));
+
+/**
+ * THE CARD'S OWN RECORD OF ITS `Other` ENTRY, kept beside the draft cell.
+ *
+ * `open` is whether the `Other` row is the selected one (single-select) or ticked
+ * (multi-select); `text` is what the field holds, UNTRIMMED. Both are card state and
+ * NOT derived from the cell, and that is a requirement rather than a convenience:
+ *
+ *  - The cell is TRIMMED on the way in (the answer that travels carries no padding),
+ *    so a field fed from it loses a space typed between two words on the keystroke.
+ *  - A text equal to an option's label is indistinguishable from that option in the
+ *    cell. A field whose visibility followed the cell unmounted mid-sentence the
+ *    moment `No` was typed beside an option `No`, and a multi-select read the
+ *    transient `No` as a TICK on the next keystroke, so typing `No, thanks` answered
+ *    `["No", "No, thanks"]` - an option the user never chose. Both are pinned as named
+ *    regressions in `scripts/ask-other.test.mjs`.
+ *
+ * Single-select KEEPS `text` while `open` is false, so choosing an option and coming
+ * back does not make the user type it again.
+ */
+export type AskOther = { open: boolean; text: string };
+
+/**
+ * The card's `Other` state on mount: open, with the text, when the draft already holds
+ * a value the options did not offer. A text that equals an option's label seeds as that
+ * option, which is the same answer on the wire.
+ *
+ * SEVERAL out-of-list values can only come from a recorded answer written by another
+ * surface (a terminal picker adds at most one); they seed the field joined by newlines
+ * so none is hidden, and the cell is rewritten as that one text only when the user
+ * edits it.
+ */
+export const askOtherSeed = (
+	cell: readonly string[],
+	labels: readonly string[],
+): AskOther => {
+	const values = otherValuesOf(cell, labels);
+	return { open: values.length > 0, text: values.join("\n") };
+};
+
+/**
+ * The ticked labels in a cell: the cell without the entry the `Other` field put there.
+ *
+ * Every non-label entry is Other's by definition. A label-EQUAL Other text is the
+ * ambiguous case (see `AskOther`): it is ALWAYS the LAST entry, because
+ * `askCellWith` writes it last and a duplicate of a ticked label is kept rather than
+ * collapsed, so the last occurrence is Other's and the earlier one, if any, is the tick.
+ *
+ * PRECONDITION: `other` is the entry that WROTE `cell`, not the one about to replace it.
+ * The two travel together in the card (both come from the same render), which is what
+ * makes the last-occurrence rule sound; pairing a NEW entry with the old cell reads the
+ * transient `No` of a half-typed `No, thanks` as a tick of the option `No`. A caller
+ * that computes the next cell therefore reads the ticks FIRST, with the current entry,
+ * and only then builds the cell from the next one (`ask-panel.tsx`'s `writeOther`).
+ */
+export const askTicks = (
+	cell: readonly string[],
+	labels: readonly string[],
+	other: AskOther,
+): string[] => {
+	const labelled = cell.filter((value) => labels.includes(value));
+	const entry = other.open ? other.text.trim() : "";
+	if (entry === "" || !labels.includes(entry)) return labelled;
+	const at = labelled.lastIndexOf(entry);
+	return labelled.filter((_, index) => index !== at);
+};
+
+/**
+ * The draft cell for these ticks and this `Other` state: the ONE write rule for the
+ * explicit `Other` answer, in both select modes.
+ *
+ * - **Single-select.** `Other` and the option rows exclude each other, so an open
+ *   `Other` makes the cell its text alone (or empty), whatever was chosen before; the
+ *   caller writes `[label]` itself when an option is pressed.
+ * - **Multi-select.** `Other` is ADDITIVE beside the ticks: they keep the order they
+ *   were pressed in and the text goes LAST, which is the order the card draws. (The
+ *   terminal picker sorts its ticks by option position; this card has always kept
+ *   press order and this change does not alter the wire's order for an answer that
+ *   uses no `Other`.) A text equal to a ticked label stays as a second entry rather
+ *   than collapsing, so removing it later removes the right one; `askAnswerMap`
+ *   deduplicates at the wire.
+ *
+ * AN EMPTY `Other` IS NOT AN ANSWER, in either mode. Blank text contributes nothing -
+ * not an empty string in the cell - so a single-select question whose only selection
+ * is an empty `Other` stays incomplete and `Send answer` stays disabled, while a
+ * multi-select with ticks and an empty `Other` is complete on its ticks.
+ *
+ * The text is trimmed on the way into the draft and nowhere else: the FIELD keeps what
+ * was typed. The terminal picker strips the same way (`state.typed.strip()`).
+ */
+export const askCellWith = (
+	ticks: readonly string[],
+	multi: boolean,
+	other: AskOther,
+): string[] => {
+	const entry = other.open ? other.text.trim() : "";
+	if (!multi) return entry === "" ? [] : [entry];
+	return entry === "" ? [...ticks] : [...ticks, entry];
+};
 
 /**
  * The whole-ask answer body's `answers` map, or `null` when the draft is short.
@@ -1513,7 +1652,18 @@ export const askAnswerMap = (
 	for (const question of ask.questions) {
 		const values = question.secret
 			? [(secrets[question.id] ?? "").trim()]
-			: draftFor(draft, question.id).filter((value) => value.trim().length > 0);
+			: /*
+				 * DEDUPLICATED, first occurrence kept: an `Other` text that equals a
+				 * ticked option's label is kept as a second cell entry (see
+				 * `askCellWith`), and on the wire it is the same answer once.
+				 */
+				[
+					...new Set(
+						draftFor(draft, question.id).filter(
+							(value) => value.trim().length > 0,
+						),
+					),
+				];
 		if (values.length > 0) answers[question.id] = values;
 	}
 	return Object.keys(answers).length > 0 ? answers : null;

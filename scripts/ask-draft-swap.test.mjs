@@ -705,10 +705,22 @@ test("the bar counts what the surface shows, not only what the agent waits on (U
 	await view.unmount();
 });
 
-test("an answer that is not one of the labels is DRAWN as Other (design D2)", async () => {
-	// A draft value no option row could have written: the card's own `Other` field
-	// writes the typed text into the question's draft, so it arrives as a plain string.
-	const view = await mount(
+test("an answer that is not one of the labels is DRAWN as Other (design D2)", async (t) => {
+	/*
+	 * A draft value no option row could have written. The card's own `Other` field writes
+	 * the typed text into the question's draft (the retired composer routing used to), so
+	 * it arrives as a plain string - and the card has to SHOW it as the user's own answer
+	 * rather than draw an empty group beside a question that is already answered.
+	 *
+	 * What changed with the explicit `Other` row: the value is no longer a separate
+	 * readout row keyed by its text (`data-ask-option-other="prod"`); the trailing
+	 * `Other` row IS that readout. It mounts selected, with the field open and holding
+	 * the text, and takes no focus (the full matrix is `ask-other.test.mjs`).
+	 * `mountFor`, not `mount`: a failing assertion before a manual unmount leaves the
+	 * drawer's clock running and the file waits out its whole bound.
+	 */
+	const view = await mountFor(
+		t,
 		h(AskDrawer, {
 			frontend: frontend([radioAsk]),
 			scope: "session",
@@ -716,7 +728,7 @@ test("an answer that is not one of the labels is DRAWN as Other (design D2)", as
 			onDraftChange: () => undefined,
 		}),
 	);
-	const row = view.container.querySelector('[data-ask-option-other="prod"]');
+	const row = view.container.querySelector("[data-ask-option-other]");
 	assert.ok(row, "the free-form answer is on the card");
 	assert.equal(row.getAttribute("role"), "radio");
 	assert.equal(row.getAttribute("aria-checked"), "true");
@@ -724,13 +736,22 @@ test("an answer that is not one of the labels is DRAWN as Other (design D2)", as
 		(row.textContent ?? "").includes("Other"),
 		"and it is marked as the other kind",
 	);
+	assert.equal(
+		view.container.querySelector("textarea[data-ask-other]")?.value,
+		"prod",
+		"the value is shown in the field the row opened",
+	);
+	assert.equal(
+		document.activeElement,
+		document.body,
+		"and mounting it took no focus",
+	);
 	// The option rows are NOT selected: the value came from elsewhere, and the card
 	// says so rather than showing an empty group beside a question already answered.
 	const production = view.container.querySelector(
 		'[data-ask-option="production"]',
 	);
 	assert.equal(production?.getAttribute("aria-checked"), "false");
-	await view.unmount();
 });
 
 test("the recommendation survives the selection moving (operator ask, 2026-10-04)", async () => {
