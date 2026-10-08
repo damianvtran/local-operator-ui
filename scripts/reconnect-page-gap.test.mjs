@@ -1347,6 +1347,22 @@ test("a gap between two snapshots holds the readings instead of blanking the com
 		"the hold is the snapshot's own object, not a copy that could drift from it",
 	);
 	/*
+	 * AND THE PAIR THE CLAIM SURFACES READ KEEPS ITS STREAMING READING (operator
+	 * incident, 2026-10-07): `(frontend ?? heldFrontend)?.streaming` is what
+	 * `chat-page.tsx`'s `turnAlive` feeds the working line and the composer's
+	 * hint, so the in-flight claim survives this whole gap - which is what the
+	 * operator's flapping link showed it did NOT do. Asserted here, on the hook's
+	 * own handle and in the same test as the hold, because `frontend` alone is
+	 * deliberately null through a gap and the two facts stand or fall together:
+	 * a hold that lost its `streaming` reading would blank the claim just as
+	 * surely as one that was never taken.
+	 */
+	assert.equal(
+		(panel.handle().frontend ?? panel.handle().heldFrontend)?.streaming,
+		true,
+		"the hold keeps a streaming reading for the claim surfaces while the frontend is null",
+	);
+	/*
 	 * AND THE SESSION IS NOT REPORTED MISSING, which is the whole of the
 	 * composer's refusal on this path: the pane's `unavailable` is
 	 * `sessionGone || view.missing`, and `view.missing` is written by the 404 arm

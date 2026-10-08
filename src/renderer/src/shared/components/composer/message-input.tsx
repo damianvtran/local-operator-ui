@@ -705,15 +705,21 @@ export type MessageInputProps = {
 	 * a pending gate is answered here. So the stop button sits beside Send
 	 * rather than replacing it, and only while the owner is actually working.
 	 *
-	 * `active` is `busy` AND the backend's `session_interrupt` capability, folded
-	 * at the call site rather than here so that the ESCAPE accelerator's own
+	 * `active` is the TURN-ALIVE pair (`frontend ?? heldFrontend`'s streaming,
+	 * round 1's D2) AND the backend's `session_interrupt` capability, folded at
+	 * the call site rather than here so that the ESCAPE accelerator's own
 	 * predicate can be the same expression (`use-interrupt-on-escape.ts`). An
 	 * older backend therefore renders no control at all rather than one whose
 	 * every press is refused: the button promises this session's CURRENT WORK,
 	 * and the only other route this build has for stopping work is `/stop`, which
 	 * ends the session - a different promise than the control makes.
+	 *
+	 * `stopping` is the press's own window (`stopOutcome` in `pending` or
+	 * `awaiting-end`), riding along for the one surface that answers where the
+	 * finger is: the empty box's placeholder (design round 1, D6) says the press
+	 * landed instead of re-teaching `Esc stops` while it is already in flight.
 	 */
-	canonicalStop?: { active: boolean; onStop: () => void };
+	canonicalStop?: { active: boolean; stopping?: boolean; onStop: () => void };
 	/**
 	 * Whether this session's backend negotiates `session_interrupt` at all.
 	 *
@@ -730,14 +736,15 @@ export type MessageInputProps = {
 	 */
 	canonicalStopAvailable?: boolean;
 	/**
-	 * What the last interrupt left running, or null for the common case.
+	 * The last interrupt's own answer, or null for the common silent case.
 	 *
 	 * Deliberately NOT the `sendError` alert, which is the failure register: this
-	 * sentence says a stop worked and names work that outlived it, so routed
-	 * through the alert it would read as an error and take `role="alert"`'s
-	 * assertive announcement for a press the user just made themselves. Muted ink
-	 * and its own line, which is what `heldNotice` and `refusedNotice` do in that
-	 * same region for the same reason.
+	 * sentence states the outcome of the user's own press - a stop that worked
+	 * (naming work that outlived it), or an answer of "nothing was running"
+	 * (operator incident, 2026-10-07) - so routed through the alert it would read
+	 * as an error and take `role="alert"`'s assertive announcement for a press
+	 * the user just made themselves. Muted ink and its own line, which is what
+	 * `heldNotice` and `refusedNotice` do in that same region for the same reason.
 	 */
 	interruptNotice?: string | null;
 	/**
@@ -7494,8 +7501,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * transient results of a press while the row above is ambient context.
 				 * It is a sibling rather than a child of the alert region because that
 				 * region is the FAILURE register: it carries `text-danger` and
-				 * `role="alert"`, and this sentence says a stop WORKED. Sharing the
-				 * region would both paint it as an error and inherit the alert's
+				 * `role="alert"`, and this sentence states the press's own ANSWER - a
+				 * stop that worked, or one that found nothing running. Sharing the
+				 * region would both paint the first as an error and inherit the alert's
 				 * assertive announcement for a press the user made themselves - which is
 				 * the same reason the notifier deliberately raises no banner for a
 				 * completed `interrupted`. An `<output>` instead: it implies the same
@@ -7504,7 +7512,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 *
 				 * Null in the common case by construction - see `interruptNotice` - so
 				 * a stopped turn with nothing under it leaves the band's height alone.
-				 * The padding steps are the alert's own, and they put this line one
+				 * The idle answer is one of the non-null cases now (a press that found
+				 * nothing to stop gets the sentence, not silence - operator incident,
+				 * 2026-10-07), and it belongs here for the same reason: it is the
+				 * outcome of the user's own action, which is what this `<output>` is
+				 * for. The padding steps are the alert's own, and they put this line one
 				 * padding step (16px at the default rung, 8 at the small one) inside
 				 * the box's OUTER edge - the same track the send-error alert resolves,
 				 * and NOT the textarea's text edge, which is that plus the textarea's
@@ -8018,6 +8030,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													asideAttached: aside !== null,
 													sendingUnsettled: sendUnsettled || sendInFlight,
 													awaitingReply,
+													/*
+													 * The press's own window (round 1, D6): the box says the
+													 * press landed instead of re-teaching `Esc stops` under a
+													 * finger that already pressed. Read from the same object
+													 * the control is drawn from, so the two cannot disagree
+													 * about a press.
+													 */
+													stopping: canonicalStop?.stopping === true,
 													// The last reading before the invitation: nothing is in
 													// flight and the box is not refused, but no model
 													// provider is connected, so the invitation is a lie
@@ -9028,6 +9048,31 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													onClick={canonicalStop.onStop}
 													aria-label="Stop"
 													aria-keyshortcuts="Escape"
+													/*
+													 * THE PRESSED HOLD (design round 2, D6). While the press
+													 * window is live the square wears the `danger` variant's own
+													 * pressed composite - the exact three classes on the
+													 * variant's `active:` line, applied by ATTRIBUTE rather than
+													 * `:active` because the hold must outlive the pointer (an
+													 * Escape press leaves it elsewhere entirely), and the two
+													 * frames measured byte-identical rest-vs-pending without
+													 * it. `button.tsx`'s header documents the composite as two
+													 * authored roles (`danger-wash`, `danger`), not a new one,
+													 * and it is deliberately NOT the `disabled:` line: the
+													 * control is engaged, not unavailable - still focusable,
+													 * still named `Stop`, announced busy to assistive tech.
+													 * The glyph stays the `Square`; the rung already carries
+													 * the spinner a second one would duplicate.
+													 */
+													data-stopping={
+														canonicalStop.stopping === true ? "true" : undefined
+													}
+													aria-busy={
+														canonicalStop.stopping === true ? true : undefined
+													}
+													className={cn(
+														"data-[stopping]:border-danger data-[stopping]:text-ink data-[stopping]:bg-[color-mix(in_oklab,var(--color-danger-wash)_80%,var(--color-danger))]",
+													)}
 												>
 													<Square aria-hidden="true" />
 												</Button>

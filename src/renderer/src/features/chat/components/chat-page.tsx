@@ -108,6 +108,7 @@ import {
 	askRefusalSentence,
 	effectiveGate,
 } from "../ask-queue";
+import { canonicalTranscriptTerminal } from "../canonical/transcript-pane";
 import {
 	ownerAnswered,
 	stoppedAfterAdmission,
@@ -603,8 +604,80 @@ function SessionPanel({
 	 * Held here rather than in the composer because this is where the request and
 	 * its receipt are: `message-input.tsx` renders the sentence and decides
 	 * nothing about it, which is the split the send error already uses.
+	 *
+	 * THE KIND IS THE SENTENCE'S OWN LIFETIME (design round 1, D5/U8). An `idle`
+	 * answer is a statement about the state a press found, so it retires the
+	 * moment that state is re-stated - the stream reporting the turn ended, or a
+	 * new turn starting - while an `outcome` sentence (the leftovers an interrupt
+	 * left behind) describes what is still running AFTER the turn and waits for
+	 * the next turn the way it always did. One lifecycle field rather than two
+	 * retire rules reading the sentence's text back, which is how the retire rule
+	 * would drift from the copy it retires. The disputed idle gets its own kind
+	 * (`idle-disputed`, UX round 2's U9) with the SAME lifetime as the plain one,
+	 * because a third state rides on it: the rung withholds its clock for exactly
+	 * as long as the disputed sentence stands - one fact, one lifetime.
 	 */
-	const [stopNotice, setStopNotice] = useState<string | null>(null);
+	const [stopNotice, setStopNotice] = useState<{
+		text: string;
+		kind: "idle" | "idle-disputed" | "outcome";
+	} | null>(null);
+	/*
+	 * THE STOP PRESS'S OWN WINDOW, which is a fact about the PRESS rather than
+	 * about the turn - and the one the operator's incident showed was missing
+	 * entirely (2026-10-07: four presses, zero feedback, and a band that could
+	 * vanish silently).
+	 *
+	 * `"pending"` from the press until its receipt or its bound; `"awaiting-end"`
+	 * once a receipt CONFIRMED the cancel but the stream has not yet shown the
+	 * turn ending - the rung must not fall back to narrating `running bash`
+	 * while the teardown this press asked for is still in flight (design round
+	 * 1, D1: a receipt delivered inside a gap measured `running bash 4s` under a
+	 * press the server had already confirmed); `"unconfirmed"` when the press
+	 * ended with no answer at all (the bound fired - the outcome is unknown, and
+	 * a LOST answer must not leave the UI claiming a stop the way the latched
+	 * fact used to); null otherwise. It is deliberately NOT folded into
+	 * `stoppedTurns`: that fact is the REDUCER's classification input and must
+	 * survive a lost answer until the next turn (`transcript-reducer.ts`), while
+	 * this one drives the DISPLAY only - the working line's `stopping` rung and
+	 * the stopped band's gate read it.
+	 */
+	const [stopOutcome, setStopOutcome] = useState<
+		"pending" | "awaiting-end" | "unconfirmed" | null
+	>(null);
+	/*
+	 * The committed phase as a PRESS can read it. `stop` is a `useCallback`, so
+	 * its closure sees the render it was created in; the coalesce below asks
+	 * "is a press already in flight" at press time and must read the latest
+	 * committed value. Written during render like `streamRef` and
+	 * `turnAliveRef`, and read only from event handlers - never from render,
+	 * where the state itself stays the one source.
+	 */
+	const stopOutcomeRef = useRef(stopOutcome);
+	stopOutcomeRef.current = stopOutcome;
+	/*
+	 * THE PRESS'S IDENTITY, and why an outcome alone was not enough (design
+	 * round 1's D3/U2, the reviewer's R1-4): with one shared window, a press that
+	 * was SUPERSEDED by a newer one could still write. Measured: a second press
+	 * five seconds after a dropped first one succeeded - band up, backend
+	 * `aborted` - and then the FIRST press's bound fired and retracted that band
+	 * while printing `could not be confirmed` over a turn that did stop. Every
+	 * write a press's answer makes is keyed to this number and a superseded
+	 * answer is dropped: the window it describes is no longer the one on screen.
+	 * Bumped by a new press, by a new turn, and by a session change - the three
+	 * events after which no older answer may revise the display.
+	 */
+	const pressSeq = useRef(0);
+	/*
+	 * The sentence THIS machinery last wrote into the composer alert, so it can
+	 * retire it without touching an alert some other path wrote since. The
+	 * comparison is on the exact string this ref holds, applied INSIDE the
+	 * setter, because "clear the stop failure" must never mean "clear whatever
+	 * alert is up": a send failure that landed while the stop alert stood is not
+	 * the stop's to erase (design round 1's U2, second half - the recovering
+	 * press's success used to leave the earlier red sentence on screen under its
+	 * own band).
+	 */
+	const stopAlertSentence = useRef<string | null>(null);
 	/*
 	 * Whether this backend can stop a TURN, as opposed to a session.
 	 *
@@ -621,7 +694,54 @@ function SessionPanel({
 		container,
 		canonical.transcript.records.length,
 	);
-	const busy = canonical.frontend?.streaming === true;
+	/*
+	 * THE TURN-IS-ALIVE READING, read through the HOLD - `frontend ?? heldFrontend` -
+	 * for the CLAIM surfaces AND, since round 1's D2, for every consumer that
+	 * acts on the turn: the Stop control and its Escape accelerator, the
+	 * steer-vs-prompt send mode, the `@` references chip, and the skew line the
+	 * band carries on a backend that cannot interrupt.
+	 *
+	 * Both gap arms of the hook (`use-canonical-session.ts`: the `gap` frame and
+	 * `open{gap}`) null `frontend` and keep the last reading in `heldFrontend`,
+	 * by design - the pane still knows what it was last told. For a BUSY session
+	 * those gaps recur every ~1.5-4 s, so the raw field blanked the in-flight
+	 * claim on every routine reconnect and for the whole stretch of a flapping
+	 * link, which is exactly when the reader most needs it (operator report,
+	 * 2026-10-07: "no thinking indicator appeared ... while work ran"). The held
+	 * reading is dropped by every terminal state and by a real session change, so
+	 * it cannot keep a claim alive past the point the pane stops describing a
+	 * stream.
+	 *
+	 * WHY THE CONTROLS FOLLOWED THE CLAIMS (design round 1's D2, replacing the
+	 * claims-vs-controls split round 1 shipped): through a gap the line said
+	 * `running bash 6s` and the composer said "Esc stops", while Stop was ABSENT,
+	 * Esc sent nothing (three presses, zero `/interrupt` requests on the wire),
+	 * and Enter sent `mode:"prompt"` - the wire shape that PARKS a message sent
+	 * during a live turn. One predicate for the line, the hint, the controls and
+	 * the send keeps a promise and the control that answers it from disagreeing.
+	 * The worst case it accepts is a press or a steer made on a stale held
+	 * reading, and that case is ANSWERED rather than silent: the interrupt route
+	 * is idempotent and receipted, its answer lands as a sentence (the idle
+	 * notice, the bound alert), and a steer sent after the turn really ended is
+	 * the same park the prompt mode already risked in the mirrored case.
+	 *
+	 * ONE expression, read by the one call site that builds the `canonical` prop
+	 * (its consumers are named in the prop's own note), so a future reader cannot
+	 * grow a second definition of "the turn is alive".
+	 */
+	const turnAlive =
+		(canonical.frontend ?? canonical.heldFrontend)?.streaming === true;
+	/*
+	 * The same reading, readable from inside an awaiting interrupt request, whose
+	 * closure is the render it started in. Written during render on purpose, like
+	 * `streamRef`: the value is only ever READ by async continuations, never by
+	 * render. Both the receipt and the bound ask it "has the feed shown the turn
+	 * ending since this press" - the question that decides whether a lost
+	 * answer's sentence still describes a state (D3) and which idle sentence is
+	 * true (U1).
+	 */
+	const turnAliveRef = useRef(turnAlive);
+	turnAliveRef.current = turnAlive;
 	/*
 	 * The send this pane ADMITTED and the owner has not answered.
 	 *
@@ -897,8 +1017,8 @@ function SessionPanel({
 	 *      the absent key covers both an older backend and a current one that will
 	 *      not expand, and this gate answers both the same way.
 	 *   2. the send this draft would make is a PROMPT rather than a mid-turn STEER.
-	 *      `busy` is the same expression the send path reads one screen down
-	 *      (`mode: busy ? "steer" : "prompt"`), and a steer bypasses
+	 *      The send path reads `turnAlive` one screen down (`mode: turnAlive ?
+	 *      "steer" : "prompt"`, design round 1's D2), and a steer bypasses
 	 *      `Session.prompt`, so an `@path` in one is left as inert prose. A chip
 	 *      there would assert an expansion the harness will not perform, so the
 	 *      affordance is withheld for the length of the turn instead.
@@ -907,7 +1027,7 @@ function SessionPanel({
 	 * sent as written, which is exactly what the harness would do with it.
 	 */
 	const mentionsEnabled =
-		desktopFeatureEnabled(capabilities.data, "references") && !busy;
+		desktopFeatureEnabled(capabilities.data, "references") && !turnAlive;
 	/*
 	 * AND WHETHER THE HARNESS WILL CARRY THE INPUT-MODE STAMP (arch §4.2).
 	 *
@@ -2107,7 +2227,7 @@ function SessionPanel({
 					text: content,
 					attachments,
 					images,
-					mode: busy ? "steer" : "prompt",
+					mode: turnAlive ? "steer" : "prompt",
 					cwd,
 					/*
 					 * The capability gate, applied HERE rather than at the composer: this
@@ -2856,6 +2976,21 @@ function SessionPanel({
 		else input.current?.focusInput();
 	}, [gateKey]);
 	/*
+	 * Retire the pressed-stop failure sentence - and ONLY if it is still the one
+	 * this machinery wrote (see `stopAlertSentence` for why the comparison is the
+	 * safeguard). Called by the three events that make the sentence stale: a
+	 * receipt answering a later press (U2: a recovering press's success must take
+	 * the earlier red sentence with it), a new turn, and the stream reporting the
+	 * turn ended while the outcome was unconfirmed (D3: the sentence described a
+	 * state that no longer exists).
+	 */
+	const clearStopAlert = useCallback(() => {
+		const sentence = stopAlertSentence.current;
+		if (sentence === null) return;
+		stopAlertSentence.current = null;
+		setSendError((current) => (current === sentence ? null : current));
+	}, []);
+	/*
 	 * `useCallback` rather than a fresh closure per render (reviewer round 1, NIT
 	 * 2): this identity is an effect DEPENDENCY of the Escape hook, and the panel
 	 * re-renders on every streaming delta - so an unstable `stop` unsubscribed and
@@ -2866,11 +3001,47 @@ function SessionPanel({
 	const stop = useCallback(() => {
 		if (!sessionId || !interruptAvailable) return;
 		/*
+		 * A PRESS IS COALESCED WHILE ITS PREDECESSOR IS STILL IN FLIGHT (design
+		 * round 2, D10, and why it is the PREFERRED of its two shapes: the wrong
+		 * writes live in the answer path, so the answer path is where they are
+		 * closed). The double-tap is how people press Escape, and the second
+		 * press used to be actively harmful: it took a new `pressId`, superseding
+		 * the first press's `interrupted` receipt (the rung fell back to `running
+		 * bash`), and its own answer - `idle`, because the FIRST press had already
+		 * stopped the turn - then cleared the classification fact, nulled the
+		 * window and printed `nothing was stopped` over a press the server had
+		 * confirmed (measured in the `dblesc`/`gapesc` reads). While the window
+		 * is `pending` or `awaiting-end` the press is already made and already
+		 * visible - the rung, the pressed square and the composer sentence all say
+		 * the cancel is in flight - so a further press for the same turn neither
+		 * sends nor takes a number. The window still frees itself at the receipt
+		 * or the 15 s bound, and after `unconfirmed` a recovery press is allowed:
+		 * the `lostlate` read's recovering press is exactly that path, and it must
+		 * keep working.
+		 */
+		const phase = stopOutcomeRef.current;
+		if (phase === "pending" || phase === "awaiting-end") return;
+		/*
+		 * THE PRESS TAKES ITS NUMBER BEFORE ANYTHING ELSE (round 1: D3, U2,
+		 * R1-4). Every write the answer makes below is keyed to it, and a press
+		 * that is no longer the current one writes NOTHING - see `pressSeq` for
+		 * the measured incident (a dropped first press's late bound retracting a
+		 * second press's confirmed band).
+		 */
+		const pressId = ++pressSeq.current;
+		/*
 		 * A NEW press retires the previous notice before it can be overtaken by a
 		 * new receipt: the sentence is a snapshot of one interrupt, and the second
 		 * press's own outcome is the only current one.
 		 */
 		setStopNotice(null);
+		/*
+		 * THE PRESS'S WINDOW OPENS HERE, before the request leaves: from this line
+		 * until the receipt or the bound, the working line says the cancel is in
+		 * progress instead of narrating a clock - see `stopOutcome` and
+		 * `STOPPING_ACTIVITY`.
+		 */
+		setStopOutcome("pending");
 		/*
 		 * THE PRESS'S OWN INSTANT, taken before the request leaves.
 		 *
@@ -2902,7 +3073,9 @@ function SessionPanel({
 		 * window of one round trip, and the only window in which a call already running
 		 * at the press can be told apart from one that failed on its own. A press that
 		 * never gets an answer (`catch` below) leaves the fact until the next turn
-		 * starts, which is the same door `clearTurnStopped` reads on `busy`.
+		 * starts, which is the same door `clearTurnStopped` reads on the new-turn
+		 * edge of `turnAlive` (below) - an edge a reconnecting link cannot fake,
+		 * because the pair holds its last reading through a gap.
 		 *
 		 * One visible consequence, stated rather than discovered: the Stop line and its
 		 * Retry read this same fact, so they appear at the press rather than a round
@@ -2911,36 +3084,211 @@ function SessionPanel({
 		markTurnStopped(sessionId, pressedAt);
 		void interruptTurn(sessionId, crypto.randomUUID())
 			.then((receipt) => {
+				/*
+				 * A SUPERSEDED PRESS WRITES NOTHING (D3/U2/R1-4). The window it names
+				 * is no longer on screen: a newer press owns it, or a new turn is the
+				 * subject now, or the conversation changed. Letting the stale answer
+				 * paint is exactly the defect class this guard exists for.
+				 */
+				if (pressId !== pressSeq.current) return;
 				if (receipt.status !== "interrupted") clearTurnStopped(sessionId);
-				setStopNotice(interruptNotice(receipt));
+				/*
+				 * The pane's held claim, read at answer time (see `turnAliveRef`): it
+				 * selects the idle sentence (an `idle` receipt under a live claim is
+				 * attributed instead of asserted - U1) and, below, whether the press
+				 * owes the pane a re-read.
+				 */
+				const claimAlive = turnAliveRef.current;
+				const sentence = interruptNotice(receipt, { turnClaimed: claimAlive });
+				setStopNotice(
+					sentence === null
+						? null
+						: {
+								text: sentence,
+								/*
+								 * The disputed idle is its OWN kind (UX round 2, U9): while it
+								 * stands, the line must stop asserting a duration it can no
+								 * longer vouch for, and the kind is what carries that fact to the
+								 * rung (`idleDisputed` below). The agreement case keeps `idle`,
+								 * which withholds nothing.
+								 */
+								kind:
+									receipt.status !== "idle"
+										? "outcome"
+										: claimAlive
+											? "idle-disputed"
+											: "idle",
+							},
+				);
+				/*
+				 * A RECEIPT THAT CONFIRMS THE STOP KEEPS THE RUNG UP (D1), and that is
+				 * the point rather than a delay: the cancel is confirmed but the turn
+				 * has not yet told this pane it ended, and dropping the rung here put
+				 * `running bash 4s` back on screen mid-teardown - measured with the
+				 * receipt delivered inside a gap. `awaiting-end` resolves on the
+				 * turnAlive fall below (or on a new turn, which retires the window
+				 * like any other).
+				 */
+				setStopOutcome(
+					/*
+					 * R2-1: the guard is the CATCH's own read (see below), because the
+					 * two arms race the same end. A receipt arriving after the feed has
+					 * already shown the turn over cannot await an end that is spent -
+					 * `awaiting-end` would strand the composer's `Stopping the turn`
+					 * until the next turn (measured: the SSE end beating the receipt by
+					 * 1-4 ms naturally, and structurally by up to the runtime's
+					 * 1 s abort-settle budget when children settle). The fall edge
+					 * deliberately resolves only `awaiting-end`/`unconfirmed`, so this
+					 * late receipt must resolve clean HERE instead.
+					 */
+					receipt.status === "interrupted" && turnAliveRef.current
+						? "awaiting-end"
+						: null,
+				);
+				/*
+				 * ANY receipt also answers an EARLIER press's failure sentence (U2):
+				 * the recovering press's success used to leave the red
+				 * `Stop could not be confirmed.` standing under its own band.
+				 */
+				clearStopAlert();
+				/*
+				 * THE DISPUTED IDLE ASKS THE CONVERSATION AGAIN (U1). The receipt is
+				 * the one fresh authoritative reading a pane with a dead feed gets,
+				 * and it contradicts the held claim the line is still showing; the
+				 * sentence above admits the disagreement rather than asserting a
+				 * fact the line visibly denies, and a re-read is what settles it -
+				 * the pane's own retry, the same door the failure state's Reconnect
+				 * uses, costing one snapshot. Nothing fires when the pane already
+				 * agrees (nothing to settle) or when the answer was `interrupted`.
+				 */
+				if (receipt.status === "idle" && claimAlive) canonical.retry();
 			})
-			.catch((error) =>
-				// Renders in the same composer alert as a failed send, so it takes the
-				// same authored-copy rule. A receipt that never arrives is the one case
-				// this control cannot report as a stop, so it does not: the turn is
-				// still on screen and `busy` is still true, which is the honest state.
-				setSendError(userFacingMessage(error, "Stop could not be confirmed.")),
-			);
-	}, [sessionId, interruptAvailable, markTurnStopped, clearTurnStopped]);
+			.catch((error) => {
+				if (pressId !== pressSeq.current) return;
+				/*
+				 * THE FEED MAY HAVE ALREADY SHOWN THE END (D3). The bound fired with
+				 * no answer, but if the stream itself reported the turn over, then
+				 * there is nothing left to call unconfirmed: the sentence would
+				 * describe a state that no longer exists, its gate would suppress a
+				 * band the reader has earned, and the measured read was exactly
+				 * that - `Interrupted` in the transcript while the red sentence
+				 * retracted the `Stopped · Retry` band and stayed for 25 s. The
+				 * fact still stands for the reducer (a timeout does not prove
+				 * non-delivery), but the display resolves clean and the band's own
+				 * gate can pass again.
+				 */
+				if (!turnAliveRef.current) {
+					setStopOutcome(null);
+					return;
+				}
+				/*
+				 * THE BOUND FIRED (or the request failed): nothing answered, so the
+				 * outcome is unknown - and it must be STATED, not latched. The
+				 * classification fact stays standing for the reducer (see the note at
+				 * `markTurnStopped` above; a timeout does not prove non-delivery), but
+				 * the display retires its claims in the same breath: `unconfirmed`
+				 * gates the stopped band off (chat-content) and the sentence lands in
+				 * the composer alert the same way a failed send does.
+				 */
+				setStopOutcome("unconfirmed");
+				/*
+				 * THE SENTENCE NAMES THE STATE AND THE NEXT STEP (round 1: D5's (d),
+				 * U4). `Stop could not be confirmed.` alone left the reader unable to
+				 * tell whether the turn still ran (it does) or what to do (press Stop
+				 * again; it works - measured). The alert register is the composer's
+				 * one-sentence failure register, so the next step is the control
+				 * beside it rather than a second sentence. The exact string stays in
+				 * `stopAlertSentence` so it can be retired later without touching
+				 * anything else that wrote to this alert.
+				 */
+				const sentence = userFacingMessage(
+					error,
+					"Stop could not be confirmed. The turn may still be running.",
+				);
+				stopAlertSentence.current = sentence;
+				setSendError(sentence);
+				setSendErrorCode(undefined);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
+			});
+	}, [
+		sessionId,
+		interruptAvailable,
+		markTurnStopped,
+		clearTurnStopped,
+		clearStopAlert,
+		canonical.retry,
+	]);
 	/*
-	 * The notice describes the LAST interrupt, so a turn that starts afterwards
-	 * retires it: the sentence says a turn was stopped, and the next turn is not
-	 * that turn. Cleared on `busy` becoming true rather than on a send, because a
-	 * turn can also be started by an approval or a resume. While the interrupt is
-	 * still settling `busy` is still true and this correctly does nothing.
+	 * THE ONE EDGE THAT RETIRES A TURN'S LATCHES, and why it is not `busy`
+	 * (operator incident 2026-10-07; round 1's D1 and R1-1).
+	 *
+	 * The old rule cleared this pane's turn latches on `busy` becoming TRUE, and
+	 * on the links this incident is about that edge lies: both gap arms null the
+	 * raw field, so every reconnect is a false->true edge - and one landing
+	 * mid-press retired the press's window (the rung collapsed back to `running
+	 * bash`), dropped the stopped-turn fact before the killed call's end event
+	 * could be classified, and wiped a sentence the press had just earned. A
+	 * reconnect is not a new turn; the incident's own premise is that the turn
+	 * never stopped.
+	 *
+	 * THE PAIR'S OWN EDGE IS. `turnAlive` never leaves true during a receipt gap
+	 * (the hold carries the last reading), so it rises false->true exactly when
+	 * the pane starts describing a turn it was not describing - a first
+	 * observation, a resume after an end, a cold send's first frame - and falls
+	 * true->false exactly when the stream says the turn ended. The rises retire
+	 * what belonged to the PREVIOUS turn (the notice, the press window and its
+	 * number, the classification fact); the falls retire what the end makes moot
+	 * (an `idle` sentence, an `awaiting-end` phase, an `unconfirmed` alert and
+	 * its gate - design round 1's D3).
+	 *
+	 * The rise fires on MOUNT onto a running turn too (`previous === null` reads
+	 * falsy), which keeps the old code's behaviour there: a pane opened onto a
+	 * busy turn clears the fact the way it always did, so a stale classification
+	 * cannot outlive its conversation's reopen. And the fall is what U8 asked
+	 * for: an idle sentence retires the moment the state it described is
+	 * re-stated, instead of standing 30 s under the answer that overtook it.
 	 */
+	const previousTurnAlive = useRef<boolean | null>(null);
 	useEffect(() => {
-		if (busy) {
-			setStopNotice(null);
+		const previous = previousTurnAlive.current;
+		previousTurnAlive.current = turnAlive;
+		if (!previous && turnAlive) {
 			/*
-			 * AND THE STOPPED-TURN FACT GOES WITH IT (U7): the fact says "the turn you
-			 * stopped ended this way", and the next turn is not that turn. Leaving it
-			 * standing would classify the NEXT turn's killed-by-anything calls as the
-			 * user's own stop.
+			 * A NEW TURN. The number bump retires the press window itself: no
+			 * in-flight answer may revise a turn it is not about.
 			 */
+			pressSeq.current += 1;
+			setStopNotice(null);
+			setStopOutcome(null);
+			clearStopAlert();
 			if (sessionId) clearTurnStopped(sessionId);
+		} else if (previous && !turnAlive) {
+			setStopNotice((current) =>
+				current?.kind === "idle" || current?.kind === "idle-disputed"
+					? null
+					: current,
+			);
+			setStopOutcome((current) =>
+				current === "awaiting-end" || current === "unconfirmed"
+					? null
+					: current,
+			);
+			clearStopAlert();
 		}
-	}, [busy, sessionId, clearTurnStopped]);
+	}, [turnAlive, sessionId, clearTurnStopped, clearStopAlert]);
+	/*
+	 * A stop press is a statement about ONE conversation, so a real session change
+	 * retires the window with the rest of this pane's per-conversation latches: a
+	 * "pending" left standing would relabel another conversation's line, an
+	 * "unconfirmed" would suppress another conversation's band, and an in-flight
+	 * answer from the old conversation must not write into either (the bump).
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the session is the trigger, not a value read in the body
+	useEffect(() => {
+		pressSeq.current += 1;
+		setStopOutcome(null);
+	}, [sessionId]);
 	/*
 	 * ESCAPE MEANS COLLAPSE WHILE AN ASK IS EXPANDED, and this is where that claim
 	 * is made (design §5.0's R7, agent review F2, UX round 1 U2).
@@ -2997,13 +3345,32 @@ function SessionPanel({
 	}, [askExpanded, toggleAskExpanded]);
 	/*
 	 * Escape is the control's accelerator, attached HERE because this component
-	 * owns both halves the predicate reads - `busy` and `stop` - and the ladder it
-	 * defers to is documented in the hook.
+	 * owns both halves the predicate reads - `turnAlive` and `stop` - and the
+	 * ladder it defers to is documented in the hook.
+	 *
+	 * THE PREDICATE IS THE STOP CONTROL'S, ALL THREE TERMS OF IT (round 1's D2
+	 * and U6). The pair, so a gap during a live turn no longer promises `Esc
+	 * stops` while the key sends nothing (three presses, zero `/interrupt`
+	 * requests on the wire - the operator's second symptom surviving in the gap
+	 * arm); and the same `canonicalTranscriptTerminal` the pane's own Stop gate
+	 * reads, so a TERMINAL pane - the failure notice, a conversation this
+	 * machine no longer has, a cached page - retires the key with the control:
+	 * posting into a conversation nobody can reach answered `could not be
+	 * confirmed` 15 s later about a state the pane had already spoken for. The
+	 * pane's own gate adds its membership term on top; where that term differs,
+	 * the pair is already false (a tombstone drops the stream), so the two
+	 * cannot disagree about a press.
 	 */
+	const paneTerminal = canonicalTranscriptTerminal({
+		status: canonical.status,
+		failure: canonical.failure,
+		missing: canonical.missing,
+		stale: canonical.stale,
+	});
 	useInterruptOnEscape({
 		sessionId,
-		busy,
-		available: interruptAvailable,
+		turnAlive,
+		available: interruptAvailable && !paneTerminal,
 		/*
 		 * Rung 4's answer, read from the surfaces that record rather than
 		 * inherited from `defaultPrevented` (UX round 1, U1): this listener runs
@@ -4181,7 +4548,24 @@ function SessionPanel({
 					pulses={canonical.subagentPulses}
 					canonical={{
 						view,
-						busy,
+						/*
+						 * The claim surfaces AND the controls that act on the turn read THROUGH
+						 * THE HOLD (round 1's D2: one predicate, so the line, the hint, the
+						 * Stop control, its Escape accelerator and the send mode cannot
+						 * disagree), and the stop window is the page-owned state machine the
+						 * press/receipt pair writes - one source for the rung, the hint and
+						 * the band's gate.
+						 */
+						turnAlive,
+						stopOutcome,
+						/*
+						 * The clock-withhold half of the disputed idle (U9): true while
+						 * the attributed sentence is on screen, so the rung drops its
+						 * ticking number for exactly as long as the pane is admitting
+						 * it cannot vouch for one. One derived fact, passed beside the
+						 * sentence it belongs to.
+						 */
+						idleDisputed: stopNotice?.kind === "idle-disputed",
 						admitting,
 						starting,
 						startingAfterId: admitted.current?.requestId ?? null,
@@ -4206,14 +4590,14 @@ function SessionPanel({
 						 * this build's pairing: a press that happened
 						 * (`interruptNotice(receipt)`), or a turn that cannot be pressed
 						 * at all because the paired backend predates the control
-						 * (`interruptUnavailableNotice(busy, interruptAvailable)` - UX
+						 * (`interruptUnavailableNotice(turnAlive, interruptAvailable)` - UX
 						 * round 1's U4). They cannot both apply: no press is possible
 						 * without the capability, so there is never a receipt to report
 						 * beside a skew line.
 						 */
 						stopNotice:
-							stopNotice ??
-							interruptUnavailableNotice(busy, interruptAvailable),
+							stopNotice?.text ??
+							interruptUnavailableNotice(turnAlive, interruptAvailable),
 						onAnswer: (label: string) => void answerWithOption(label),
 						/*
 						 * The secret field's own door, wired the same way and to the

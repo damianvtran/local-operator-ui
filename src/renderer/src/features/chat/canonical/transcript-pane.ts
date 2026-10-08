@@ -190,6 +190,35 @@ export function canonicalTranscriptSpeaks(view: {
 	return paneStatement(view) || Boolean(view.stale);
 }
 
+/**
+ * Whether the pane's statement is TERMINAL - the states a working claim must
+ * yield to, and the reason the reconnecting window is not one of them.
+ *
+ * `canonicalTranscriptSpeaks` answers "is the pane saying something of its own";
+ * this answers the narrower question the working line and the composer's hint
+ * ask: can the stream still vouch for progress? A published failure, a
+ * conversation this machine no longer has, and a page that is nothing but this
+ * window's cache are all statements the stream cannot revise - a claim beside
+ * them is a claim nobody can withdraw. RECONNECTING IS THE DELIBERATE EXCLUSION
+ * (operator incident, 2026-10-07): a receipt gap drops the authoritative
+ * frontend and the pane says so, but the app still holds the last reading and
+ * the work on the far side is real - blanking the in-flight claim through every
+ * ~1.5-4 s reconnect left a running turn with no indicator at all, and a
+ * reconnect is exactly when the reader most needs to be told the work did not
+ * end. See the waiting arm in `working-line-model.ts` for the rung's half of
+ * this rule, and `reconnect-gap.stories.tsx`'s `RestoredRunning` for the frame
+ * it is about.
+ */
+export function canonicalTranscriptTerminal(view: {
+	status: CanonicalTranscriptStatus;
+	failure: SessionFailureNotice | null;
+	missing?: boolean;
+	stale?: boolean;
+}): boolean {
+	if (view.status === "reconnecting") return false;
+	return canonicalTranscriptSpeaks(view);
+}
+
 /** The state every decision in this module reads. */
 export type TranscriptPaneView = {
 	/** Where the stream is. Only the pane's own statement depends on it. */
