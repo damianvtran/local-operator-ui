@@ -47,6 +47,7 @@ import {
 	labelTargetsBehind,
 	labelTargetsBehindIds,
 	markLiveRecordsTruncated,
+	oldestDurableOutside,
 	pageLabels,
 	pageOpensTurn,
 	pageOrphanResultInstants,
@@ -56,6 +57,7 @@ import {
 	reconcileLimit,
 	reconcileWalkDone,
 	removeRecord,
+	sealDisjointBlock,
 	seedCallStarts,
 	seedCallsMissingLabels,
 	seedSettledCalls,
@@ -923,6 +925,19 @@ type LabelWalk = {
 	 * calls whose missing instant does NOT refuse the floor (round 6, R16).
 	 */
 	waiting: ReadonlySet<string>;
+};
+
+/**
+ * What a walk leaves behind for `walkTail` to seal against (#876): the record
+ * keys of everything it fetched, the oldest entry it reached, whether the journal
+ * continues behind that entry, and which of the walk's two seams it reached.
+ */
+type WalkSeam = {
+	keys: Set<string>;
+	oldest: DesktopHistoryPage["entries"][number] | null;
+	hasMore: boolean;
+	joined: boolean;
+	reachedHeld: boolean;
 };
 
 /** A reconcile that is not a label read: connect to the painted rows and to what the pane held, nothing more. */
@@ -2696,13 +2711,120 @@ export function useCanonicalSessionStream(
 			}
 		};
 
-		/** The body of `reconcileTail`; answers whether a timer now owns the walk. */
+		/**
+		 * The body of `reconcileTail`; answers whether a timer now owns the walk.
+		 *
+		 * THE ONE EXIT THAT SEALS (#876). `walkPages` has a dozen ways out, and the
+		 * hole this exists for is the same however the walk left: it fetched the
+		 * tail, never reached the rows the pane held, and stopped (a bound, the
+		 * failure stand-down, the label floor, a page budget). Each of those used
+		 * to leave the held block painted beside the fetched tail with the gap
+		 * between them unmarked, and the cursor still pointing BEFORE the held
+		 * block, so no later "load earlier" could ever page into the gap. Doing the
+		 * seal here, after `walkPages` returns, covers every exit with one
+		 * statement instead of one per `return`, and a new exit added to the walk
+		 * later is covered without anyone remembering to.
+		 *
+		 * WHICH EXITS DO NOT SEAL, and why each is not a hole:
+		 *  - a timer owns the walk (`handedOff`): the walk is not over, and the
+		 *    re-entry carries the same held set;
+		 *  - the generation moved: this pane no longer shows these rows;
+		 *  - the view was cleared under the walk (`viewEpoch`): sealing would set
+		 *    `hasMore` over a transcript the reader just emptied, offering the
+		 *    cleared history back;
+		 *  - the held seam was reached (`reachedHeld`), or nothing was held: the
+		 *    fetched chain is contiguous with every row the pane has;
+		 *  - the journal ran out (`!hasMore`): there is nothing behind the fetched
+		 *    chain to be missing, so a held row older than it is not a hole but a
+		 *    row the journal no longer has, which this change leaves to the
+		 *    behaviour it always had;
+		 *  - no page was fetched: there is no fetched edge to seal AT.
+		 */
 		const walkTail = async (
 			generation: number,
 			painted: ReadonlySet<string>,
 			held: ReadonlySet<string>,
 			labels: LabelWalk,
 			historyAttempt: number,
+			onSpend?: (rows: number) => void,
+		): Promise<boolean> => {
+			const seam: WalkSeam = {
+				keys: new Set(),
+				oldest: null,
+				hasMore: false,
+				joined: false,
+				reachedHeld: held.size === 0,
+			};
+			const epochAtStart = viewRef.current.transcript.viewEpoch;
+			const handedOff = await walkPages(
+				generation,
+				painted,
+				held,
+				labels,
+				historyAttempt,
+				seam,
+				onSpend,
+			);
+			if (
+				handedOff ||
+				generationRef.current !== generation ||
+				seam.reachedHeld ||
+				viewRef.current.transcript.viewEpoch !== epochAtStart
+			)
+				return handedOff;
+			/*
+			 * A BATCH THAT ALREADY TOUCHES WHAT THE PANE HELD IS ONE BLOCK, so a chain
+			 * joined to it is joined to the held rows too, whatever else ended the walk.
+			 * `painted === held` is a caller with no separate batch (the retry paths),
+			 * where the intersection is the whole set and proves nothing.
+			 */
+			const batchTouchesHeld =
+				painted !== held && [...painted].some((id) => held.has(id));
+			if (batchTouchesHeld && seam.joined) return handedOff;
+			let edge: { id: string; ts: number } | null;
+			if (seam.oldest) {
+				// A journal that ends at the fetched chain has nothing behind it to be
+				// missing: `hasMore` would be a claim the journal contradicts.
+				if (!seam.hasMore) return handedOff;
+				edge = {
+					id: seam.oldest.id,
+					ts: Math.round((seam.oldest.ts ?? 0) * 1000),
+				};
+			} else {
+				// No page arrived (the first read failed twice). A batch page that
+				// touches the held rows says nothing about a hole; one DISJOINT from
+				// them is the same open seam the gate reads for, and its oldest row is
+				// the chain's edge. `hasMore` is unknown here, which paging resolves
+				// itself (an empty older page clears it).
+				if (batchTouchesHeld) return handedOff;
+				edge = oldestDurableOutside(viewRef.current.transcript, held);
+			}
+			if (!edge) return handedOff;
+			const sealed = commitView((current) => {
+				const transcript = sealDisjointBlock(
+					current.transcript,
+					edge,
+					seam.keys,
+				);
+				return transcript === current.transcript
+					? current
+					: { ...current, transcript };
+			});
+			// The ref is "the index the last commit left behind": the next flush asks
+			// it what the pane holds, and a dropped row it still listed would make a
+			// page "connect" to a row that is no longer on screen.
+			paintedIds.current = sealed.transcript.index;
+			return handedOff;
+		};
+
+		/** The walk itself; see `walkTail` for what happens when it ends. */
+		const walkPages = async (
+			generation: number,
+			painted: ReadonlySet<string>,
+			held: ReadonlySet<string>,
+			labels: LabelWalk,
+			historyAttempt: number,
+			seam: WalkSeam,
 			onSpend?: (rows: number) => void,
 		): Promise<boolean> => {
 			const fetchedIds = new Set<string>();
@@ -3121,6 +3243,15 @@ export function useCanonicalSessionStream(
 					reachedHeld ||
 					page.entries.some((entry) => held.has(entryRecordKey(entry)));
 				for (const entry of page.entries) fetchedIds.add(entry.id);
+				// What `walkTail` seals against if the walk ends short: the fetched
+				// chain's oldest edge and whether the journal goes on behind it. Pages
+				// are contiguous (`beforeId` is exclusive), so the last non-empty
+				// page's first entry IS the chain's oldest.
+				for (const entry of page.entries) seam.keys.add(entryRecordKey(entry));
+				if (oldest) seam.oldest = oldest;
+				seam.hasMore = page.has_more;
+				seam.joined = joined;
+				seam.reachedHeld = reachedHeld;
 				// The orphan results count as missing until their own rows are read.
 				const stillBehind = behind() + orphans.size;
 				/*
