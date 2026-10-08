@@ -255,6 +255,25 @@ export function sourceLabel(
 }
 
 /**
+ * WHETHER THE PAGE-LEVEL "Discard your unsaved changes?" BAR IS OPEN, owned by the
+ * page (`agents-page.tsx` sets it while the bar renders) and read by a pane's
+ * `useEscapeToCancel` AT KEY TIME. A roster click or a tab switch with a dirty edit
+ * opens that bar; the pane has its own Cancel question, and both answer Escape.
+ * One owner at a time: while the bar is open the pane stands down and the page
+ * closes the bar.
+ *
+ * A module flag rather than a prop or context, like `headingFocusPending` below:
+ * the hook is called from two panes the page renders several levels apart, and it
+ * is read inside the key handler so no re-registration or render ordering can
+ * matter - the failure this replaces was exactly a race between two window
+ * listeners.
+ */
+let pageDiscardBarOpen = false;
+export function setPageDiscardBarOpen(open: boolean) {
+	pageDiscardBarOpen = open;
+}
+
+/**
  * Escape cancels the edit, the way every other editor in this app does it.
  *
  * `defaultPrevented` is checked because Radix's dismissable layers (the
@@ -267,6 +286,12 @@ export function useEscapeToCancel(onCancel: () => void, active: boolean) {
 		if (!active) return;
 		const handler = (event: KeyboardEvent) => {
 			if (event.key !== "Escape" || event.defaultPrevented) return;
+			// The page's own question is open and Escape belongs to IT (UX review round
+			// 2, U2): raising this pane's question as well stacked two differently
+			// worded "discard?" prompts for one intent. Reading the page's flag instead
+			// of relying on listener order is the point - the two listeners are on the
+			// same window and their order flips whenever either effect re-registers.
+			if (pageDiscardBarOpen) return;
 			event.preventDefault();
 			onCancel();
 		};
@@ -445,7 +470,11 @@ export function EditFooter({
 		 *
 		 * `data-lo-pane-footer` is how the pane's bottom edge fade stands down: the
 		 * footer is `sticky` INSIDE the scroller, so a mask on the scroller would dim
-		 * the Save button itself (`index.css`).
+		 * the Save button itself (`index.css`). Its replacement is the footer's own
+		 * `::before` (also `index.css`): a 24 px canvas fade on the bar's top edge while
+		 * the pane has more below, so a control that rests wholly under the bar at the
+		 * top of the scroll ("Add member", 32 of 32 px hidden at 1024x725) is hinted at
+		 * rather than invisible (UX review round 2, U1a).
 		 */
 		<div
 			ref={footerRef}

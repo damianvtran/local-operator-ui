@@ -95,6 +95,7 @@ import {
 	PaneError,
 	RosterSkeleton,
 	SourceChip,
+	setPageDiscardBarOpen,
 } from "./detail-parts";
 import { HubUpdatePanel } from "./hub-update-panel";
 import { TeamDetail, memberCountLabel } from "./team-detail";
@@ -436,9 +437,19 @@ export function AgentsPage() {
 	 * record (D1/U1/Q1). Neither is acceptable, so the question is asked once, in
 	 * the pane the operator is looking at.
 	 */
+	/**
+	 * WHERE THE OPERATOR WAS WHEN THE DISCARD BAR OPENED, so "Keep editing" can put
+	 * them back (UX review round 2, U2). The bar takes focus when it opens - it is
+	 * 28-29 Tab stops from the field, and a keyboard user otherwise has no way to
+	 * answer it - and a dialog that takes focus owes it back.
+	 */
+	const barReturnFocus = useRef<HTMLElement | null>(null);
+	const keepBarRef = useRef<HTMLButtonElement>(null);
 	const requestGo = useCallback(
 		(next: NavIntent) => {
 			if (editDirty) {
+				const active = document.activeElement;
+				barReturnFocus.current = active instanceof HTMLElement ? active : null;
 				setPendingNav(next);
 				return;
 			}
@@ -446,6 +457,39 @@ export function AgentsPage() {
 		},
 		[editDirty, go],
 	);
+	const dismissBar = useCallback(() => {
+		setPendingNav(null);
+		const target = barReturnFocus.current;
+		barReturnFocus.current = null;
+		// After the bar unmounts, so the focus ring is not painted on a node that is
+		// about to leave. A control the click already removed is simply skipped.
+		requestAnimationFrame(() => {
+			if (target?.isConnected) target.focus();
+		});
+	}, []);
+	const barOpen = pendingNav !== null;
+	useEffect(() => {
+		if (!barOpen) return;
+		setPageDiscardBarOpen(true);
+		// The SAFE arm, as `EditFooter`'s own question does (its round 2 U1): the
+		// destructive button is never the one a stray Enter lands on.
+		keepBarRef.current?.focus();
+		/*
+		 * ESCAPE CLOSES THE BAR, and nothing else answers it while it is open. The
+		 * pane's own Escape reads `pageDiscardBarOpen` (detail-parts) and stands down, so this is
+		 * the only owner. A Radix layer that already took the key marks it handled.
+		 */
+		const onKey = (event: KeyboardEvent) => {
+			if (event.key !== "Escape" || event.defaultPrevented) return;
+			event.preventDefault();
+			dismissBar();
+		};
+		window.addEventListener("keydown", onKey);
+		return () => {
+			window.removeEventListener("keydown", onKey);
+			setPageDiscardBarOpen(false);
+		};
+	}, [barOpen, dismissBar]);
 
 	/*
 	 * ESCAPE LEAVES A DEFINITION AT NARROW WIDTHS, where the roster is hidden and
@@ -472,13 +516,13 @@ export function AgentsPage() {
 			 * untouched. Order-independent on purpose: it reads the state, not the
 			 * listener order.
 			 */
-			if (editDirty) return;
+			if (editDirty || barOpen) return;
 			event.preventDefault();
 			requestGo({ name: null });
 		};
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
-	}, [requestGo, selected, creating, editDirty]);
+	}, [requestGo, selected, creating, editDirty, barOpen]);
 
 	/*
 	 * THE TARGET FOLLOWS THE SELECTION (review round 1, U6 / D2).
@@ -1044,7 +1088,7 @@ export function AgentsPage() {
 						>
 							Discard changes
 						</Button>
-						<Button variant="ghost" onClick={() => setPendingNav(null)}>
+						<Button ref={keepBarRef} variant="ghost" onClick={dismissBar}>
 							Keep editing
 						</Button>
 					</div>
