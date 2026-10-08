@@ -9048,6 +9048,31 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													onClick={canonicalStop.onStop}
 													aria-label="Stop"
 													aria-keyshortcuts="Escape"
+													/*
+													 * THE PRESSED HOLD (design round 2, D6). While the press
+													 * window is live the square wears the `danger` variant's own
+													 * pressed composite - the exact three classes on the
+													 * variant's `active:` line, applied by ATTRIBUTE rather than
+													 * `:active` because the hold must outlive the pointer (an
+													 * Escape press leaves it elsewhere entirely), and the two
+													 * frames measured byte-identical rest-vs-pending without
+													 * it. `button.tsx`'s header documents the composite as two
+													 * authored roles (`danger-wash`, `danger`), not a new one,
+													 * and it is deliberately NOT the `disabled:` line: the
+													 * control is engaged, not unavailable - still focusable,
+													 * still named `Stop`, announced busy to assistive tech.
+													 * The glyph stays the `Square`; the rung already carries
+													 * the spinner a second one would duplicate.
+													 */
+													data-stopping={
+														canonicalStop.stopping === true ? "true" : undefined
+													}
+													aria-busy={
+														canonicalStop.stopping === true ? true : undefined
+													}
+													className={cn(
+														"data-[stopping]:border-danger data-[stopping]:text-ink data-[stopping]:bg-[color-mix(in_oklab,var(--color-danger-wash)_80%,var(--color-danger))]",
+													)}
 												>
 													<Square aria-hidden="true" />
 												</Button>

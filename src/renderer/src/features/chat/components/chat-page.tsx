@@ -612,11 +612,14 @@ function SessionPanel({
 	 * left behind) describes what is still running AFTER the turn and waits for
 	 * the next turn the way it always did. One lifecycle field rather than two
 	 * retire rules reading the sentence's text back, which is how the retire rule
-	 * would drift from the copy it retires.
+	 * would drift from the copy it retires. The disputed idle gets its own kind
+	 * (`idle-disputed`, UX round 2's U9) with the SAME lifetime as the plain one,
+	 * because a third state rides on it: the rung withholds its clock for exactly
+	 * as long as the disputed sentence stands - one fact, one lifetime.
 	 */
 	const [stopNotice, setStopNotice] = useState<{
 		text: string;
-		kind: "idle" | "outcome";
+		kind: "idle" | "idle-disputed" | "outcome";
 	} | null>(null);
 	/*
 	 * THE STOP PRESS'S OWN WINDOW, which is a fact about the PRESS rather than
@@ -641,6 +644,16 @@ function SessionPanel({
 	const [stopOutcome, setStopOutcome] = useState<
 		"pending" | "awaiting-end" | "unconfirmed" | null
 	>(null);
+	/*
+	 * The committed phase as a PRESS can read it. `stop` is a `useCallback`, so
+	 * its closure sees the render it was created in; the coalesce below asks
+	 * "is a press already in flight" at press time and must read the latest
+	 * committed value. Written during render like `streamRef` and
+	 * `turnAliveRef`, and read only from event handlers - never from render,
+	 * where the state itself stays the one source.
+	 */
+	const stopOutcomeRef = useRef(stopOutcome);
+	stopOutcomeRef.current = stopOutcome;
 	/*
 	 * THE PRESS'S IDENTITY, and why an outcome alone was not enough (design
 	 * round 1's D3/U2, the reviewer's R1-4): with one shared window, a press that
@@ -2988,6 +3001,27 @@ function SessionPanel({
 	const stop = useCallback(() => {
 		if (!sessionId || !interruptAvailable) return;
 		/*
+		 * A PRESS IS COALESCED WHILE ITS PREDECESSOR IS STILL IN FLIGHT (design
+		 * round 2, D10, and why it is the PREFERRED of its two shapes: the wrong
+		 * writes live in the answer path, so the answer path is where they are
+		 * closed). The double-tap is how people press Escape, and the second
+		 * press used to be actively harmful: it took a new `pressId`, superseding
+		 * the first press's `interrupted` receipt (the rung fell back to `running
+		 * bash`), and its own answer - `idle`, because the FIRST press had already
+		 * stopped the turn - then cleared the classification fact, nulled the
+		 * window and printed `nothing was stopped` over a press the server had
+		 * confirmed (measured in the `dblesc`/`gapesc` reads). While the window
+		 * is `pending` or `awaiting-end` the press is already made and already
+		 * visible - the rung, the pressed square and the composer sentence all say
+		 * the cancel is in flight - so a further press for the same turn neither
+		 * sends nor takes a number. The window still frees itself at the receipt
+		 * or the 15 s bound, and after `unconfirmed` a recovery press is allowed:
+		 * the `lostlate` read's recovering press is exactly that path, and it must
+		 * keep working.
+		 */
+		const phase = stopOutcomeRef.current;
+		if (phase === "pending" || phase === "awaiting-end") return;
+		/*
 		 * THE PRESS TAKES ITS NUMBER BEFORE ANYTHING ELSE (round 1: D3, U2,
 		 * R1-4). Every write the answer makes below is keyed to it, and a press
 		 * that is no longer the current one writes NOTHING - see `pressSeq` for
@@ -3071,7 +3105,19 @@ function SessionPanel({
 						? null
 						: {
 								text: sentence,
-								kind: receipt.status === "idle" ? "idle" : "outcome",
+								/*
+								 * The disputed idle is its OWN kind (UX round 2, U9): while it
+								 * stands, the line must stop asserting a duration it can no
+								 * longer vouch for, and the kind is what carries that fact to the
+								 * rung (`idleDisputed` below). The agreement case keeps `idle`,
+								 * which withholds nothing.
+								 */
+								kind:
+									receipt.status !== "idle"
+										? "outcome"
+										: claimAlive
+											? "idle-disputed"
+											: "idle",
 							},
 				);
 				/*
@@ -3084,7 +3130,20 @@ function SessionPanel({
 				 * like any other).
 				 */
 				setStopOutcome(
-					receipt.status === "interrupted" ? "awaiting-end" : null,
+					/*
+					 * R2-1: the guard is the CATCH's own read (see below), because the
+					 * two arms race the same end. A receipt arriving after the feed has
+					 * already shown the turn over cannot await an end that is spent -
+					 * `awaiting-end` would strand the composer's `Stopping the turn`
+					 * until the next turn (measured: the SSE end beating the receipt by
+					 * 1-4 ms naturally, and structurally by up to the runtime's
+					 * 1 s abort-settle budget when children settle). The fall edge
+					 * deliberately resolves only `awaiting-end`/`unconfirmed`, so this
+					 * late receipt must resolve clean HERE instead.
+					 */
+					receipt.status === "interrupted" && turnAliveRef.current
+						? "awaiting-end"
+						: null,
 				);
 				/*
 				 * ANY receipt also answers an EARLIER press's failure sentence (U2):
@@ -3205,7 +3264,11 @@ function SessionPanel({
 			clearStopAlert();
 			if (sessionId) clearTurnStopped(sessionId);
 		} else if (previous && !turnAlive) {
-			setStopNotice((current) => (current?.kind === "idle" ? null : current));
+			setStopNotice((current) =>
+				current?.kind === "idle" || current?.kind === "idle-disputed"
+					? null
+					: current,
+			);
 			setStopOutcome((current) =>
 				current === "awaiting-end" || current === "unconfirmed"
 					? null
@@ -4495,6 +4558,14 @@ function SessionPanel({
 						 */
 						turnAlive,
 						stopOutcome,
+						/*
+						 * The clock-withhold half of the disputed idle (U9): true while
+						 * the attributed sentence is on screen, so the rung drops its
+						 * ticking number for exactly as long as the pane is admitting
+						 * it cannot vouch for one. One derived fact, passed beside the
+						 * sentence it belongs to.
+						 */
+						idleDisputed: stopNotice?.kind === "idle-disputed",
 						admitting,
 						starting,
 						startingAfterId: admitted.current?.requestId ?? null,

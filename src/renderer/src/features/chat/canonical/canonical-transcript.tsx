@@ -375,6 +375,15 @@ export type CanonicalTranscriptProps = {
 	 */
 	stopping?: boolean;
 	/**
+	 * The disputed idle is standing (the page's own fact): an `idle` receipt
+	 * arrived while the pane still claimed a live turn.
+	 *
+	 * Passed through to `workingLineInputFor` untouched - see
+	 * `WorkingLineInput.idleDisputed` for why the claim stays and only the
+	 * clock is withheld (UX round 2, U9).
+	 */
+	idleDisputed?: boolean;
+	/**
 	 * The working line to paint, for a surface whose line does NOT come from this
 	 * pane's own live session — today the run panel's child reader.
 	 *
@@ -2507,6 +2516,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	startingSession,
 	startingSince,
 	stopping,
+	idleDisputed,
 	workingLine,
 	loadingOlder,
 	onLoadOlder,
@@ -2867,6 +2877,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					startingSession,
 					startingSince,
 					stopping: stopping === true,
+					// The disputed idle's clock-withhold (U9): one fact with the
+					// composer's sentence, folded from the notice's kind in the page
+					// and handed to the SAME derivation both surfaces read, so the
+					// rung's number and the sentence cannot disagree about whether
+					// the pane can vouch for a duration.
+					idleDisputed: idleDisputed === true,
 					gate,
 					// The rung yields to a TERMINAL statement and not to a reconnect
 					// (operator incident, 2026-10-07): a receipt gap drops the
@@ -2908,6 +2924,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			startingSession,
 			startingSince,
 			stopping,
+			// Read by the builder above (U9): a disputed idle arriving or retiring
+			// moves the rung's clock cell, so it is a dep of this memo by the same
+			// rule as `stopping`.
+			idleDisputed,
 			gate,
 			status,
 			failure,

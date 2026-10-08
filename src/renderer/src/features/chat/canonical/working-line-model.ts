@@ -467,6 +467,20 @@ export type WorkingLineInput = {
 	 * this field derives exactly what it derived before.
 	 */
 	stopping?: boolean;
+	/**
+	 * An `idle` receipt arrived while this pane still claimed a live turn, and
+	 * the disputed sentence is standing in the composer (UX round 2, U9).
+	 *
+	 * The claim STAYS - the runtime's `idle` and the pane's held reading
+	 * disagree, and neither side can be declared the liar from here - but the
+	 * clock is withheld: a ticking `running bash 15s` asserts a duration the
+	 * pane has just admitted it cannot vouch for. Label without number until
+	 * the claim re-states (the pane's own re-read, or the stream catching up -
+	 * the sentence and this flag share one lifetime, both folded from the
+	 * notice's kind in `chat-page.tsx`). Absent means false, so every caller
+	 * that predates this field derives exactly what it derived before.
+	 */
+	idleDisputed?: boolean;
 	/** A question is pending; it outranks every working state (branding § 7). */
 	gate: boolean;
 	/**
@@ -513,8 +527,19 @@ export function deriveWorkingLine(
 	input: WorkingLineInput,
 ): WorkingLineState | null {
 	const live = deriveLiveWorkingLine(input);
-	if (live === null || input.stopping !== true) return live;
-	return { ...live, activity: STOPPING_ACTIVITY, clock: false };
+	if (live === null) return live;
+	if (input.stopping === true)
+		return { ...live, activity: STOPPING_ACTIVITY, clock: false };
+	/*
+	 * The disputed idle's half (U9): the same overlay shape as `stopping`, one
+	 * rung less - the label stays the live state's own, only the number goes.
+	 * Two overlays rather than one flag because they are different facts with
+	 * different copy (`stopping` relabels, this one only withholds), and they
+	 * cannot coincide: the disputed sentence is written by the idle receipt
+	 * that RESOLVES the press window.
+	 */
+	if (input.idleDisputed === true) return { ...live, clock: false };
+	return live;
 }
 
 function deriveLiveWorkingLine({
@@ -804,6 +829,8 @@ export function workingLineInputFor(pane: {
 	startingSince?: number | null;
 	/** See `WorkingLineInput.stopping`: the press's own window, page-owned. */
 	stopping?: boolean;
+	/** See `WorkingLineInput.idleDisputed`: the disputed idle's clock-withhold. */
+	idleDisputed?: boolean;
 	gate?: unknown;
 	unavailable: boolean;
 	records: TranscriptRecord[];
@@ -848,6 +875,8 @@ export function workingLineInputFor(pane: {
 			: { startingSince: pane.startingSince }),
 		// Spread, for the same shape reason as `folded` above.
 		...(pane.stopping === true ? { stopping: true } : {}),
+		// Spread, for the same shape reason as `folded` above.
+		...(pane.idleDisputed === true ? { idleDisputed: true } : {}),
 		gate: Boolean(pane.gate),
 		unavailable: pane.unavailable,
 		...folded,
