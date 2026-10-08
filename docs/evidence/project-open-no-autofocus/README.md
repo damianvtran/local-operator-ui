@@ -14,7 +14,9 @@ effect at `src/renderer/src/shared/components/composer/message-input.tsx:5926`
 calls a plain `textareaRef.current?.focus()`. A plain focus runs the focusing
 steps' scroll - the element is scrolled into view, centred - so the detail page,
 whose scroller is the `overflow-y-auto` region in `projects-page.tsx` (~line
-625), lands scrolled down with the strip centred and its accent outline showing.
+625), lands scrolled down with the strip in view, the box centred in the
+scroller's port, and its accent outline showing (measured: the focused
+textarea's centre lands on the port's own centre, 466.2 vs 466).
 The head tree (PR #902) gives `MessageInput` a documented `autoFocus` prop (the
 strip passes it off; chat, mini and the agents page keep today's behaviour) and
 the composer's own self-initiated focus passes `{ preventScroll: true }`.
@@ -227,7 +229,7 @@ scroller reads 0.
 
 | Frame | What I saw in it |
 | --- | --- |
-| `before/first-dark.png`, `before/first-light.png` | the detail page scrolled down 705px: the milestone rows and "New milestone" form at the top of the view, the two linked session rows, the "Send to" strip centred in the viewport with the composer FOCUSED - accent outline on the card, caret in the box, placeholder "Message the session - paste an image to attach it". This is the operator's report, reproduced. |
+| `before/first-dark.png`, `before/first-light.png` | the detail page scrolled down 705px: the milestone rows and "New milestone" form at the top of the view, the two linked session rows, the "Send to" strip in view with the composer's box centred in the scroller's port and FOCUSED - accent outline on the card, caret in the box, placeholder "Message the session - paste an image to attach it". This is the operator's report, reproduced. |
 | `before/settled-dark.png`, `before/settled-light.png` | the same state after the settle window (the run asserts `stable=true`): the page never returns to the top on its own |
 | `before/typed-dark.png` | after the user's own wheel gesture to the strip, a pointer press in the box and a typed message: the text sits in the focused box, the Send control armed, the "Send to" target switched to the run's second linked session (the dark run's frame reads `c1d73f07954d`) - the strip still works on the old tree |
 | `before/chat-focus-dark.png` | the linked session's conversation, carrying the delivered message and the mock provider's answer, with the CHAT composer focused (accent outline, caret) - the control |
