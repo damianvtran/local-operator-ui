@@ -1,0 +1,4048 @@
+{
+  "arm": "after",
+  "theme": "localOperatorLight",
+  "origin": "http://localhost:5321",
+  "cases": {
+    "s1": {
+      "title": "canvas on A; hop to B; hop back to A",
+      "theme": "localOperatorLight",
+      "ok": true,
+      "ms": 12811,
+      "frames": {
+        "canvasOnA": "s1-canvas-on-a/after/localOperatorLight.webp",
+        "arrivalB": "s1-arrival-b/after/localOperatorLight.webp",
+        "backOnA": "s1-back-on-a/after/localOperatorLight.webp"
+      },
+      "readings": {
+        "canvasOnA": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/aaaa11112222",
+            "hash": "#/chat/aaaa11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [
+              "canvas"
+            ],
+            "slotBox": {
+              "canvas": {
+                "x": 776,
+                "y": 0,
+                "w": 560,
+                "h": 900
+              }
+            },
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 516,
+              "h": 900
+            },
+            "overlap": {
+              "canvas": 0
+            },
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "true"
+            },
+            "railLit": [
+              "canvas"
+            ],
+            "railPresent": 4,
+            "composer": {
+              "x": 292,
+              "y": 814,
+              "w": 452,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "BUTTON",
+              "label": "Canvas (⌘⇧C)",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 3
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat/aaaa11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": true,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "aaaa11112222",
+              "rightSlotMemory": [
+                [
+                  "aaaa11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "aaaa11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:a440120b-7bad-4d91-b81d-eaca6fb783a2": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 3,
+              "scopes": {},
+              "countsTotal": 3,
+              "archiveAttempts": 4,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "aaaa11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "aaaa11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": true,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "aaaa11112222",
+            "activeDraftKey": null
+          }
+        },
+        "arrivalB": {
+          "href": "http://localhost:5321/#/chat/bbbb11112222",
+          "hash": "#/chat/bbbb11112222",
+          "zone": "America/New_York",
+          "viewport": {
+            "w": 1380,
+            "h": 900
+          },
+          "overflowX": false,
+          "drawn": [],
+          "slotBox": {},
+          "column": {
+            "x": 260,
+            "y": 0,
+            "w": 1076,
+            "h": 900
+          },
+          "overlap": {},
+          "paneRow": {
+            "x": 260,
+            "y": 0,
+            "w": 1076,
+            "h": 900
+          },
+          "rail": {
+            "run": null,
+            "browser": "false",
+            "console": "false",
+            "canvas": "false"
+          },
+          "railLit": [],
+          "railPresent": 3,
+          "composer": {
+            "x": 409,
+            "y": 790,
+            "w": 778,
+            "h": 34,
+            "value": ""
+          },
+          "active": {
+            "tag": "TEXTAREA",
+            "label": "Message",
+            "text": ""
+          },
+          "ask": {
+            "slot": 0,
+            "drawer": 0,
+            "close": 0,
+            "chip": 0,
+            "chipExpanded": null,
+            "header": 0
+          },
+          "draft": {
+            "draftRows": 0,
+            "chatRows": 3
+          },
+          "prefsBytes": 842,
+          "state": {
+            "route": "/chat/bbbb11112222",
+            "theme": "localOperatorLight",
+            "commandPaletteOpen": false,
+            "canvasOpen": false,
+            "runPanelOpen": false,
+            "browserPaneOpen": false,
+            "rightSlotWidth": 0,
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotMemory": [
+              [
+                "aaaa11112222",
+                "canvas"
+              ]
+            ],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null,
+            "drafts": {
+              "draft:a440120b-7bad-4d91-b81d-eaca6fb783a2": {
+                "sessionId": null,
+                "error": false,
+                "undelivered": false,
+                "submitted": false,
+                "admissionAttempted": false
+              }
+            },
+            "sessionCount": 3,
+            "scopes": {},
+            "countsTotal": 3,
+            "archiveAttempts": 5,
+            "archiveFailure": null,
+            "onboardingVisible": false
+          }
+        },
+        "settledB": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/bbbb11112222",
+            "hash": "#/chat/bbbb11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [],
+            "slotBox": {},
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "overlap": {},
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "false"
+            },
+            "railLit": [],
+            "railPresent": 4,
+            "composer": {
+              "x": 409,
+              "y": 790,
+              "w": 778,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "TEXTAREA",
+              "label": "Message",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 3
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat/bbbb11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": false,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "bbbb11112222",
+              "rightSlotMemory": [
+                [
+                  "aaaa11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "bbbb11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:a440120b-7bad-4d91-b81d-eaca6fb783a2": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 3,
+              "scopes": {},
+              "countsTotal": 3,
+              "archiveAttempts": 6,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "aaaa11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": false,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null
+          }
+        },
+        "arrivalA": {
+          "href": "http://localhost:5321/#/chat/aaaa11112222",
+          "hash": "#/chat/aaaa11112222",
+          "zone": "America/New_York",
+          "viewport": {
+            "w": 1380,
+            "h": 900
+          },
+          "overflowX": false,
+          "drawn": [
+            "canvas"
+          ],
+          "slotBox": {
+            "canvas": {
+              "x": 740,
+              "y": 0,
+              "w": 596,
+              "h": 900
+            }
+          },
+          "column": {
+            "x": 260,
+            "y": 0,
+            "w": 480,
+            "h": 900
+          },
+          "overlap": {
+            "canvas": 0
+          },
+          "paneRow": {
+            "x": 260,
+            "y": 0,
+            "w": 1076,
+            "h": 900
+          },
+          "rail": {
+            "run": null,
+            "browser": "false",
+            "console": "false",
+            "canvas": "true"
+          },
+          "railLit": [
+            "canvas"
+          ],
+          "railPresent": 3,
+          "composer": {
+            "x": 292,
+            "y": 818,
+            "w": 416,
+            "h": 34,
+            "value": ""
+          },
+          "active": {
+            "tag": "TEXTAREA",
+            "label": "Message",
+            "text": ""
+          },
+          "ask": {
+            "slot": 0,
+            "drawer": 0,
+            "close": 0,
+            "chip": 0,
+            "chipExpanded": null,
+            "header": 0
+          },
+          "draft": {
+            "draftRows": 0,
+            "chatRows": 3
+          },
+          "prefsBytes": 842,
+          "state": {
+            "route": "/chat/aaaa11112222",
+            "theme": "localOperatorLight",
+            "commandPaletteOpen": false,
+            "canvasOpen": true,
+            "runPanelOpen": false,
+            "browserPaneOpen": false,
+            "rightSlotWidth": 0,
+            "rightSlotKey": "aaaa11112222",
+            "rightSlotMemory": [
+              [
+                "aaaa11112222",
+                "canvas"
+              ]
+            ],
+            "activeSessionId": "aaaa11112222",
+            "activeDraftKey": null,
+            "drafts": {
+              "draft:a440120b-7bad-4d91-b81d-eaca6fb783a2": {
+                "sessionId": null,
+                "error": false,
+                "undelivered": false,
+                "submitted": false,
+                "admissionAttempted": false
+              }
+            },
+            "sessionCount": 3,
+            "scopes": {},
+            "countsTotal": 3,
+            "archiveAttempts": 7,
+            "archiveFailure": null,
+            "onboardingVisible": false
+          }
+        },
+        "settledA": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/aaaa11112222",
+            "hash": "#/chat/aaaa11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [
+              "canvas"
+            ],
+            "slotBox": {
+              "canvas": {
+                "x": 776,
+                "y": 0,
+                "w": 560,
+                "h": 900
+              }
+            },
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 516,
+              "h": 900
+            },
+            "overlap": {
+              "canvas": 0
+            },
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "true"
+            },
+            "railLit": [
+              "canvas"
+            ],
+            "railPresent": 4,
+            "composer": {
+              "x": 292,
+              "y": 814,
+              "w": 452,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "TEXTAREA",
+              "label": "Message",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 3
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat/aaaa11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": true,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "aaaa11112222",
+              "rightSlotMemory": [
+                [
+                  "aaaa11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "aaaa11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:a440120b-7bad-4d91-b81d-eaca6fb783a2": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 3,
+              "scopes": {},
+              "countsTotal": 3,
+              "archiveAttempts": 9,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "aaaa11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "aaaa11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": true,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "aaaa11112222",
+            "activeDraftKey": null
+          }
+        }
+      },
+      "hopAtoB": {
+        "framesSampled": 152,
+        "changes": 2,
+        "marks": [
+          {
+            "t": 0,
+            "hash": "aaaa11112222",
+            "drawn": "canvas",
+            "lit": "canvas",
+            "slotW": 560,
+            "colW": 516,
+            "key": "aaaa11112222",
+            "mem": "aaaa11112222:canvas",
+            "flags": "C",
+            "active": "BUTTON[Canvas (⌘⇧C)]"
+          },
+          {
+            "t": 203,
+            "hash": "bbbb11112222",
+            "drawn": "",
+            "lit": "",
+            "slotW": null,
+            "colW": 1076,
+            "key": "bbbb11112222",
+            "mem": "aaaa11112222:canvas",
+            "flags": "",
+            "active": "TEXTAREA[Message]"
+          }
+        ]
+      },
+      "hopBtoA": {
+        "framesSampled": 151,
+        "changes": 7,
+        "marks": [
+          {
+            "t": 0,
+            "hash": "bbbb11112222",
+            "drawn": "",
+            "lit": "",
+            "slotW": null,
+            "colW": 1076,
+            "key": "bbbb11112222",
+            "mem": "aaaa11112222:canvas",
+            "flags": "",
+            "active": "TEXTAREA[Message]"
+          },
+          {
+            "t": 202,
+            "hash": "aaaa11112222",
+            "drawn": "canvas",
+            "lit": "canvas",
+            "slotW": 596,
+            "colW": 480,
+            "key": "aaaa11112222",
+            "mem": "aaaa11112222:canvas",
+            "flags": "C",
+            "active": "TEXTAREA[Message]"
+          },
+          {
+            "t": 285,
+            "hash": "aaaa11112222",
+            "drawn": "canvas",
+            "lit": "canvas",
+            "slotW": 581,
+            "colW": 495,
+            "key": "aaaa11112222",
+            "mem": "aaaa11112222:canvas",
+            "flags": "C",
+            "active": "TEXTAREA[Message]"
+          },
+          {
+            "t": 300,
+            "hash": "aaaa11112222",
+            "drawn": "canvas",
+            "lit": "canvas",
+            "slotW": 570,
+            "colW": 506,
+            "key": "aaaa11112222",
+            "mem": "aaaa11112222:canvas",
+            "flags": "C",
+            "active": "TEXTAREA[Message]"
+          },
+          {
+            "t": 317,
+            "hash": "aaaa11112222",
+            "drawn": "canvas",
+            "lit": "canvas",
+            "slotW": 565,
+            "colW": 511,
+            "key": "aaaa11112222",
+            "mem": "aaaa11112222:canvas",
+            "flags": "C",
+            "active": "TEXTAREA[Message]"
+          },
+          {
+            "t": 334,
+            "hash": "aaaa11112222",
+            "drawn": "canvas",
+            "lit": "canvas",
+            "slotW": 562,
+            "colW": 514,
+            "key": "aaaa11112222",
+            "mem": "aaaa11112222:canvas",
+            "flags": "C",
+            "active": "TEXTAREA[Message]"
+          },
+          {
+            "t": 351,
+            "hash": "aaaa11112222",
+            "drawn": "canvas",
+            "lit": "canvas",
+            "slotW": 560,
+            "colW": 516,
+            "key": "aaaa11112222",
+            "mem": "aaaa11112222:canvas",
+            "flags": "C",
+            "active": "TEXTAREA[Message]"
+          }
+        ]
+      }
+    },
+    "s2": {
+      "title": "canvas on A; hop to B; reload the page (the relaunch)",
+      "theme": "localOperatorLight",
+      "ok": true,
+      "ms": 14428,
+      "frames": {
+        "canvasOnA": "s2-canvas-on-a/after/localOperatorLight.webp",
+        "onB": "s2-b-before-reload/after/localOperatorLight.webp",
+        "firstPaint": "s2-b-first-paint/after/localOperatorLight.webp",
+        "settled": "s2-b-settled/after/localOperatorLight.webp",
+        "backOnA": "s2-a-still-remembers/after/localOperatorLight.webp"
+      },
+      "readings": {
+        "canvasOnA": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/aaaa11112222",
+            "hash": "#/chat/aaaa11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [
+              "canvas"
+            ],
+            "slotBox": {
+              "canvas": {
+                "x": 776,
+                "y": 0,
+                "w": 560,
+                "h": 900
+              }
+            },
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 516,
+              "h": 900
+            },
+            "overlap": {
+              "canvas": 0
+            },
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "true"
+            },
+            "railLit": [
+              "canvas"
+            ],
+            "railPresent": 4,
+            "composer": {
+              "x": 292,
+              "y": 814,
+              "w": 452,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "BUTTON",
+              "label": "Canvas (⌘⇧C)",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 3
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat/aaaa11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": true,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "aaaa11112222",
+              "rightSlotMemory": [
+                [
+                  "aaaa11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "aaaa11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:3ecc4b8d-17b5-43c9-bc6f-180731d51128": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 3,
+              "scopes": {},
+              "countsTotal": 3,
+              "archiveAttempts": 4,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "aaaa11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "aaaa11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": true,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "aaaa11112222",
+            "activeDraftKey": null
+          }
+        },
+        "onB": {
+          "href": "http://localhost:5321/#/chat/bbbb11112222",
+          "hash": "#/chat/bbbb11112222",
+          "zone": "America/New_York",
+          "viewport": {
+            "w": 1380,
+            "h": 900
+          },
+          "overflowX": false,
+          "drawn": [],
+          "slotBox": {},
+          "column": {
+            "x": 260,
+            "y": 0,
+            "w": 1076,
+            "h": 900
+          },
+          "overlap": {},
+          "paneRow": {
+            "x": 260,
+            "y": 0,
+            "w": 1076,
+            "h": 900
+          },
+          "rail": {
+            "run": "false",
+            "browser": "false",
+            "console": "false",
+            "canvas": "false"
+          },
+          "railLit": [],
+          "railPresent": 4,
+          "composer": {
+            "x": 409,
+            "y": 790,
+            "w": 778,
+            "h": 34,
+            "value": ""
+          },
+          "active": {
+            "tag": "TEXTAREA",
+            "label": "Message",
+            "text": ""
+          },
+          "ask": {
+            "slot": 0,
+            "drawer": 0,
+            "close": 0,
+            "chip": 0,
+            "chipExpanded": null,
+            "header": 1
+          },
+          "draft": {
+            "draftRows": 0,
+            "chatRows": 3
+          },
+          "prefsBytes": 842,
+          "state": {
+            "route": "/chat/bbbb11112222",
+            "theme": "localOperatorLight",
+            "commandPaletteOpen": false,
+            "canvasOpen": false,
+            "runPanelOpen": false,
+            "browserPaneOpen": false,
+            "rightSlotWidth": 0,
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotMemory": [
+              [
+                "aaaa11112222",
+                "canvas"
+              ]
+            ],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null,
+            "drafts": {
+              "draft:3ecc4b8d-17b5-43c9-bc6f-180731d51128": {
+                "sessionId": null,
+                "error": false,
+                "undelivered": false,
+                "submitted": false,
+                "admissionAttempted": false
+              }
+            },
+            "sessionCount": 3,
+            "scopes": {},
+            "countsTotal": 3,
+            "archiveAttempts": 6,
+            "archiveFailure": null,
+            "onboardingVisible": false
+          }
+        },
+        "firstPaint": {
+          "href": "http://localhost:5321/#/chat/bbbb11112222",
+          "hash": "#/chat/bbbb11112222",
+          "zone": "America/New_York",
+          "viewport": {
+            "w": 1380,
+            "h": 900
+          },
+          "overflowX": false,
+          "drawn": [],
+          "slotBox": {},
+          "column": {
+            "x": 260,
+            "y": 0,
+            "w": 1076,
+            "h": 900
+          },
+          "overlap": {},
+          "paneRow": {
+            "x": 260,
+            "y": 0,
+            "w": 1076,
+            "h": 900
+          },
+          "rail": {
+            "run": "false",
+            "browser": "false",
+            "console": "false",
+            "canvas": "false"
+          },
+          "railLit": [],
+          "railPresent": 4,
+          "composer": {
+            "x": 409,
+            "y": 790,
+            "w": 778,
+            "h": 34,
+            "value": ""
+          },
+          "active": {
+            "tag": "TEXTAREA",
+            "label": "Message",
+            "text": ""
+          },
+          "ask": {
+            "slot": 0,
+            "drawer": 0,
+            "close": 0,
+            "chip": 0,
+            "chipExpanded": null,
+            "header": 1
+          },
+          "draft": {
+            "draftRows": 0,
+            "chatRows": 0
+          },
+          "prefsBytes": 817,
+          "state": {
+            "route": "/chat/bbbb11112222",
+            "theme": "localOperatorLight",
+            "commandPaletteOpen": false,
+            "canvasOpen": false,
+            "runPanelOpen": false,
+            "browserPaneOpen": false,
+            "rightSlotWidth": 0,
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotMemory": [],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null,
+            "drafts": {
+              "draft:3ecc4b8d-17b5-43c9-bc6f-180731d51128": {
+                "sessionId": null,
+                "error": false,
+                "undelivered": false,
+                "submitted": false,
+                "admissionAttempted": false
+              }
+            },
+            "sessionCount": 0,
+            "scopes": {},
+            "countsTotal": null,
+            "archiveAttempts": 3,
+            "archiveFailure": null,
+            "onboardingVisible": false
+          }
+        },
+        "settled": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/bbbb11112222",
+            "hash": "#/chat/bbbb11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [],
+            "slotBox": {},
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "overlap": {},
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "false"
+            },
+            "railLit": [],
+            "railPresent": 4,
+            "composer": {
+              "x": 409,
+              "y": 790,
+              "w": 778,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "TEXTAREA",
+              "label": "Message",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 3
+            },
+            "prefsBytes": 817,
+            "state": {
+              "route": "/chat/bbbb11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": false,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "bbbb11112222",
+              "rightSlotMemory": [],
+              "activeSessionId": "bbbb11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:3ecc4b8d-17b5-43c9-bc6f-180731d51128": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 3,
+              "scopes": {},
+              "countsTotal": null,
+              "archiveAttempts": 3,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": false,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null
+          }
+        },
+        "backOnA": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/aaaa11112222",
+            "hash": "#/chat/aaaa11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [],
+            "slotBox": {},
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "overlap": {},
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "false"
+            },
+            "railLit": [],
+            "railPresent": 4,
+            "composer": {
+              "x": 409,
+              "y": 790,
+              "w": 778,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "TEXTAREA",
+              "label": "Message",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 3
+            },
+            "prefsBytes": 817,
+            "state": {
+              "route": "/chat/aaaa11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": false,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "aaaa11112222",
+              "rightSlotMemory": [],
+              "activeSessionId": "aaaa11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:3ecc4b8d-17b5-43c9-bc6f-180731d51128": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 3,
+              "scopes": {},
+              "countsTotal": 3,
+              "archiveAttempts": 6,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "aaaa11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": false,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "aaaa11112222",
+            "activeDraftKey": null
+          }
+        }
+      }
+    },
+    "s5a": {
+      "title": "the same hop in a 1024x900 window",
+      "theme": "localOperatorLight",
+      "ok": true,
+      "ms": 12145,
+      "frames": {
+        "onA": "s5a-narrow-1024-canvas-on-a/after/localOperatorLight.webp",
+        "arrival": "s5a-narrow-1024-arrival-b/after/localOperatorLight.webp",
+        "backOnA": "s5a-narrow-1024-back-on-a/after/localOperatorLight.webp"
+      },
+      "readings": {
+        "onA": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/aaaa11112222",
+            "hash": "#/chat/aaaa11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1024,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [
+              "canvas"
+            ],
+            "slotBox": {
+              "canvas": {
+                "x": 536,
+                "y": 0,
+                "w": 444,
+                "h": 900
+              }
+            },
+            "column": {
+              "x": 56,
+              "y": 0,
+              "w": 480,
+              "h": 900
+            },
+            "overlap": {
+              "canvas": 0
+            },
+            "paneRow": {
+              "x": 56,
+              "y": 0,
+              "w": 924,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "true"
+            },
+            "railLit": [
+              "canvas"
+            ],
+            "railPresent": 4,
+            "composer": {
+              "x": 88,
+              "y": 814,
+              "w": 416,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "BUTTON",
+              "label": "Canvas (⌘⇧C)",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 0
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat/aaaa11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": true,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "aaaa11112222",
+              "rightSlotMemory": [
+                [
+                  "aaaa11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "aaaa11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:3a9a4f20-cde5-4ab9-9c98-7422e8386007": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 3,
+              "scopes": {},
+              "countsTotal": 3,
+              "archiveAttempts": 5,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "aaaa11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "aaaa11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": true,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "aaaa11112222",
+            "activeDraftKey": null
+          },
+          "mode": "docked"
+        },
+        "arrival": {
+          "href": "http://localhost:5321/#/chat/bbbb11112222",
+          "hash": "#/chat/bbbb11112222",
+          "zone": "America/New_York",
+          "viewport": {
+            "w": 1024,
+            "h": 900
+          },
+          "overflowX": false,
+          "drawn": [],
+          "slotBox": {},
+          "column": {
+            "x": 260,
+            "y": 0,
+            "w": 720,
+            "h": 900
+          },
+          "overlap": {},
+          "paneRow": {
+            "x": 260,
+            "y": 0,
+            "w": 720,
+            "h": 900
+          },
+          "rail": {
+            "run": null,
+            "browser": "false",
+            "console": "false",
+            "canvas": "false"
+          },
+          "railLit": [],
+          "railPresent": 3,
+          "composer": {
+            "x": 300,
+            "y": 790,
+            "w": 640,
+            "h": 34,
+            "value": ""
+          },
+          "active": {
+            "tag": "TEXTAREA",
+            "label": "Message",
+            "text": ""
+          },
+          "ask": {
+            "slot": 0,
+            "drawer": 0,
+            "close": 0,
+            "chip": 0,
+            "chipExpanded": null,
+            "header": 0
+          },
+          "draft": {
+            "draftRows": 0,
+            "chatRows": 3
+          },
+          "prefsBytes": 842,
+          "state": {
+            "route": "/chat/bbbb11112222",
+            "theme": "localOperatorLight",
+            "commandPaletteOpen": false,
+            "canvasOpen": false,
+            "runPanelOpen": false,
+            "browserPaneOpen": false,
+            "rightSlotWidth": 0,
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotMemory": [
+              [
+                "aaaa11112222",
+                "canvas"
+              ]
+            ],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null,
+            "drafts": {
+              "draft:3a9a4f20-cde5-4ab9-9c98-7422e8386007": {
+                "sessionId": null,
+                "error": false,
+                "undelivered": false,
+                "submitted": false,
+                "admissionAttempted": false
+              }
+            },
+            "sessionCount": 3,
+            "scopes": {},
+            "countsTotal": 3,
+            "archiveAttempts": 9,
+            "archiveFailure": null,
+            "onboardingVisible": false
+          }
+        },
+        "settled": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/bbbb11112222",
+            "hash": "#/chat/bbbb11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1024,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [],
+            "slotBox": {},
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 720,
+              "h": 900
+            },
+            "overlap": {},
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 720,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "false"
+            },
+            "railLit": [],
+            "railPresent": 4,
+            "composer": {
+              "x": 300,
+              "y": 790,
+              "w": 640,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "TEXTAREA",
+              "label": "Message",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 3
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat/bbbb11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": false,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "bbbb11112222",
+              "rightSlotMemory": [
+                [
+                  "aaaa11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "bbbb11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:3a9a4f20-cde5-4ab9-9c98-7422e8386007": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 3,
+              "scopes": {},
+              "countsTotal": 3,
+              "archiveAttempts": 10,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "aaaa11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": false,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null
+          },
+          "mode": null
+        },
+        "backOnA": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/aaaa11112222",
+            "hash": "#/chat/aaaa11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1024,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [
+              "canvas"
+            ],
+            "slotBox": {
+              "canvas": {
+                "x": 536,
+                "y": 0,
+                "w": 444,
+                "h": 900
+              }
+            },
+            "column": {
+              "x": 56,
+              "y": 0,
+              "w": 480,
+              "h": 900
+            },
+            "overlap": {
+              "canvas": 0
+            },
+            "paneRow": {
+              "x": 56,
+              "y": 0,
+              "w": 924,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "true"
+            },
+            "railLit": [
+              "canvas"
+            ],
+            "railPresent": 4,
+            "composer": {
+              "x": 88,
+              "y": 814,
+              "w": 416,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "TEXTAREA",
+              "label": "Message",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 0
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat/aaaa11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": true,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "aaaa11112222",
+              "rightSlotMemory": [
+                [
+                  "aaaa11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "aaaa11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:3a9a4f20-cde5-4ab9-9c98-7422e8386007": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 3,
+              "scopes": {},
+              "countsTotal": 3,
+              "archiveAttempts": 15,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "aaaa11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "aaaa11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": true,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "aaaa11112222",
+            "activeDraftKey": null
+          },
+          "mode": "docked"
+        }
+      }
+    },
+    "s5b": {
+      "title": "the same hop in a 800x600 window",
+      "theme": "localOperatorLight",
+      "ok": true,
+      "ms": 12941,
+      "frames": {
+        "onA": "s5b-overlay-800-canvas-on-a/after/localOperatorLight.webp",
+        "arrival": "s5b-overlay-800-arrival-b/after/localOperatorLight.webp",
+        "backOnA": "s5b-overlay-800-back-on-a/after/localOperatorLight.webp"
+      },
+      "readings": {
+        "onA": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/aaaa11112222",
+            "hash": "#/chat/aaaa11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 800,
+              "h": 600
+            },
+            "overflowX": false,
+            "drawn": [
+              "canvas"
+            ],
+            "slotBox": {
+              "canvas": {
+                "x": 536,
+                "y": 0,
+                "w": 220,
+                "h": 600
+              }
+            },
+            "column": {
+              "x": 56,
+              "y": 0,
+              "w": 480,
+              "h": 600
+            },
+            "overlap": {
+              "canvas": 0
+            },
+            "paneRow": {
+              "x": 56,
+              "y": 0,
+              "w": 700,
+              "h": 600
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "true"
+            },
+            "railLit": [
+              "canvas"
+            ],
+            "railPresent": 4,
+            "composer": {
+              "x": 88,
+              "y": 514,
+              "w": 416,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "BUTTON",
+              "label": "Canvas (⌘⇧C)",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 0
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat/aaaa11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": true,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "aaaa11112222",
+              "rightSlotMemory": [
+                [
+                  "aaaa11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "aaaa11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:3a83e7b5-c0a7-44f9-b085-22423708f59e": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 3,
+              "scopes": {},
+              "countsTotal": null,
+              "archiveAttempts": 3,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "aaaa11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "aaaa11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": true,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "aaaa11112222",
+            "activeDraftKey": null
+          },
+          "mode": "overlay"
+        },
+        "arrival": {
+          "href": "http://localhost:5321/#/chat/bbbb11112222",
+          "hash": "#/chat/bbbb11112222",
+          "zone": "America/New_York",
+          "viewport": {
+            "w": 800,
+            "h": 600
+          },
+          "overflowX": false,
+          "drawn": [],
+          "slotBox": {},
+          "column": {
+            "x": 56,
+            "y": 0,
+            "w": 700,
+            "h": 600
+          },
+          "overlap": {},
+          "paneRow": {
+            "x": 56,
+            "y": 0,
+            "w": 700,
+            "h": 600
+          },
+          "rail": {
+            "run": null,
+            "browser": "false",
+            "console": "false",
+            "canvas": "false"
+          },
+          "railLit": [],
+          "railPresent": 3,
+          "composer": {
+            "x": 96,
+            "y": 490,
+            "w": 620,
+            "h": 34,
+            "value": ""
+          },
+          "active": {
+            "tag": "TEXTAREA",
+            "label": "Message",
+            "text": ""
+          },
+          "ask": {
+            "slot": 0,
+            "drawer": 0,
+            "close": 0,
+            "chip": 0,
+            "chipExpanded": null,
+            "header": 0
+          },
+          "draft": {
+            "draftRows": 0,
+            "chatRows": 0
+          },
+          "prefsBytes": 842,
+          "state": {
+            "route": "/chat/bbbb11112222",
+            "theme": "localOperatorLight",
+            "commandPaletteOpen": false,
+            "canvasOpen": false,
+            "runPanelOpen": false,
+            "browserPaneOpen": false,
+            "rightSlotWidth": 0,
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotMemory": [
+              [
+                "aaaa11112222",
+                "canvas"
+              ]
+            ],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null,
+            "drafts": {
+              "draft:3a83e7b5-c0a7-44f9-b085-22423708f59e": {
+                "sessionId": null,
+                "error": false,
+                "undelivered": false,
+                "submitted": false,
+                "admissionAttempted": false
+              }
+            },
+            "sessionCount": 3,
+            "scopes": {},
+            "countsTotal": null,
+            "archiveAttempts": 5,
+            "archiveFailure": null,
+            "onboardingVisible": false
+          }
+        },
+        "settled": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/bbbb11112222",
+            "hash": "#/chat/bbbb11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 800,
+              "h": 600
+            },
+            "overflowX": false,
+            "drawn": [],
+            "slotBox": {},
+            "column": {
+              "x": 56,
+              "y": 0,
+              "w": 700,
+              "h": 600
+            },
+            "overlap": {},
+            "paneRow": {
+              "x": 56,
+              "y": 0,
+              "w": 700,
+              "h": 600
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "false"
+            },
+            "railLit": [],
+            "railPresent": 4,
+            "composer": {
+              "x": 96,
+              "y": 490,
+              "w": 620,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "TEXTAREA",
+              "label": "Message",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 0
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat/bbbb11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": false,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "bbbb11112222",
+              "rightSlotMemory": [
+                [
+                  "aaaa11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "bbbb11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:3a83e7b5-c0a7-44f9-b085-22423708f59e": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 3,
+              "scopes": {},
+              "countsTotal": null,
+              "archiveAttempts": 6,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "aaaa11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": false,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null
+          },
+          "mode": null
+        },
+        "backOnA": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/aaaa11112222",
+            "hash": "#/chat/aaaa11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 800,
+              "h": 600
+            },
+            "overflowX": false,
+            "drawn": [
+              "canvas"
+            ],
+            "slotBox": {
+              "canvas": {
+                "x": 536,
+                "y": 0,
+                "w": 220,
+                "h": 600
+              }
+            },
+            "column": {
+              "x": 56,
+              "y": 0,
+              "w": 480,
+              "h": 600
+            },
+            "overlap": {
+              "canvas": 0
+            },
+            "paneRow": {
+              "x": 56,
+              "y": 0,
+              "w": 700,
+              "h": 600
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "true"
+            },
+            "railLit": [
+              "canvas"
+            ],
+            "railPresent": 4,
+            "composer": {
+              "x": 88,
+              "y": 514,
+              "w": 416,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "TEXTAREA",
+              "label": "Message",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 0
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat/aaaa11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": true,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "aaaa11112222",
+              "rightSlotMemory": [
+                [
+                  "aaaa11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "aaaa11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:3a83e7b5-c0a7-44f9-b085-22423708f59e": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 3,
+              "scopes": {},
+              "countsTotal": null,
+              "archiveAttempts": 9,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "aaaa11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "aaaa11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": true,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "aaaa11112222",
+            "activeDraftKey": null
+          },
+          "mode": "overlay"
+        }
+      }
+    },
+    "s3": {
+      "title": "canvas on A; New chat; browser pane on the draft; send it",
+      "theme": "localOperatorLight",
+      "ok": true,
+      "ms": 18483,
+      "frames": {
+        "onA": "s3-a-canvas-open/after/localOperatorLight.webp",
+        "draftClean": "s3-draft-clean/after/localOperatorLight.webp",
+        "draftPanel": "s3-draft-panel-open/after/localOperatorLight.webp",
+        "admitted": "s3-after-admission/after/localOperatorLight.webp"
+      },
+      "readings": {
+        "onA": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/aaaa11112222",
+            "hash": "#/chat/aaaa11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [
+              "canvas"
+            ],
+            "slotBox": {
+              "canvas": {
+                "x": 776,
+                "y": 0,
+                "w": 560,
+                "h": 900
+              }
+            },
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 516,
+              "h": 900
+            },
+            "overlap": {
+              "canvas": 0
+            },
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "true"
+            },
+            "railLit": [
+              "canvas"
+            ],
+            "railPresent": 4,
+            "composer": {
+              "x": 292,
+              "y": 814,
+              "w": 452,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "BUTTON",
+              "label": "Canvas (⌘⇧C)",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 3
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat/aaaa11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": true,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "aaaa11112222",
+              "rightSlotMemory": [
+                [
+                  "aaaa11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "aaaa11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:62cc9370-1619-4c83-9995-49dd0f8c37df": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 3,
+              "scopes": {},
+              "countsTotal": 3,
+              "archiveAttempts": 4,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "aaaa11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "aaaa11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": true,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "aaaa11112222",
+            "activeDraftKey": null
+          }
+        },
+        "draftClean": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat",
+            "hash": "#/chat",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [],
+            "slotBox": {},
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "overlap": {},
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": null,
+              "browser": "false",
+              "console": null,
+              "canvas": "false"
+            },
+            "railLit": [],
+            "railPresent": 2,
+            "composer": {
+              "x": 409,
+              "y": 790,
+              "w": 778,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "TEXTAREA",
+              "label": "Message",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 3
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": false,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "draft:bbc9f74b-e018-4dad-9873-1a7cab5983ba",
+              "rightSlotMemory": [
+                [
+                  "aaaa11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "aaaa11112222",
+              "activeDraftKey": "draft:bbc9f74b-e018-4dad-9873-1a7cab5983ba",
+              "drafts": {
+                "draft:62cc9370-1619-4c83-9995-49dd0f8c37df": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                },
+                "draft:bbc9f74b-e018-4dad-9873-1a7cab5983ba": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 3,
+              "scopes": {},
+              "countsTotal": 3,
+              "archiveAttempts": 4,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "draft:bbc9f74b-e018-4dad-9873-1a7cab5983ba",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "aaaa11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": false,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "aaaa11112222",
+            "activeDraftKey": "draft:bbc9f74b-e018-4dad-9873-1a7cab5983ba"
+          }
+        },
+        "draftPanel": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat",
+            "hash": "#/chat",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [
+              "browser"
+            ],
+            "slotBox": {
+              "browser": {
+                "x": 740,
+                "y": 0,
+                "w": 596,
+                "h": 900
+              }
+            },
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 480,
+              "h": 900
+            },
+            "overlap": {
+              "browser": 0
+            },
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": null,
+              "browser": "true",
+              "console": null,
+              "canvas": "false"
+            },
+            "railLit": [
+              "browser"
+            ],
+            "railPresent": 2,
+            "composer": {
+              "x": 292,
+              "y": 814,
+              "w": 416,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "BUTTON",
+              "label": "Browser",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 3
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": false,
+              "runPanelOpen": false,
+              "browserPaneOpen": true,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "draft:bbc9f74b-e018-4dad-9873-1a7cab5983ba",
+              "rightSlotMemory": [
+                [
+                  "aaaa11112222",
+                  "canvas"
+                ],
+                [
+                  "draft:bbc9f74b-e018-4dad-9873-1a7cab5983ba",
+                  "browser"
+                ]
+              ],
+              "activeSessionId": "aaaa11112222",
+              "activeDraftKey": "draft:bbc9f74b-e018-4dad-9873-1a7cab5983ba",
+              "drafts": {
+                "draft:62cc9370-1619-4c83-9995-49dd0f8c37df": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                },
+                "draft:bbc9f74b-e018-4dad-9873-1a7cab5983ba": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 3,
+              "scopes": {},
+              "countsTotal": 3,
+              "archiveAttempts": 5,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "draft:bbc9f74b-e018-4dad-9873-1a7cab5983ba",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "aaaa11112222:canvas",
+              "draft:bbc9f74b-e018-4dad-9873-1a7cab5983ba:browser"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": false,
+              "run": false,
+              "browser": true,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "aaaa11112222",
+            "activeDraftKey": "draft:bbc9f74b-e018-4dad-9873-1a7cab5983ba"
+          }
+        },
+        "atAdmission": {
+          "href": "http://localhost:5321/#/chat/7372bf426f90",
+          "hash": "#/chat/7372bf426f90",
+          "zone": "America/New_York",
+          "viewport": {
+            "w": 1380,
+            "h": 900
+          },
+          "overflowX": false,
+          "drawn": [
+            "browser"
+          ],
+          "slotBox": {
+            "browser": {
+              "x": 740,
+              "y": 0,
+              "w": 596,
+              "h": 900
+            }
+          },
+          "column": {
+            "x": 260,
+            "y": 0,
+            "w": 480,
+            "h": 900
+          },
+          "overlap": {
+            "browser": 0
+          },
+          "paneRow": {
+            "x": 260,
+            "y": 0,
+            "w": 1076,
+            "h": 900
+          },
+          "rail": {
+            "run": "false",
+            "browser": "true",
+            "console": "false",
+            "canvas": "false"
+          },
+          "railLit": [
+            "browser"
+          ],
+          "railPresent": 4,
+          "composer": {
+            "x": 292,
+            "y": 814,
+            "w": 416,
+            "h": 34,
+            "value": ""
+          },
+          "active": {
+            "tag": "TEXTAREA",
+            "label": "Message",
+            "text": ""
+          },
+          "ask": {
+            "slot": 0,
+            "drawer": 0,
+            "close": 0,
+            "chip": 0,
+            "chipExpanded": null,
+            "header": 1
+          },
+          "draft": {
+            "draftRows": 0,
+            "chatRows": 4
+          },
+          "prefsBytes": 869,
+          "state": {
+            "route": "/chat/7372bf426f90",
+            "theme": "localOperatorLight",
+            "commandPaletteOpen": false,
+            "canvasOpen": false,
+            "runPanelOpen": false,
+            "browserPaneOpen": true,
+            "rightSlotWidth": 0,
+            "rightSlotKey": "7372bf426f90",
+            "rightSlotMemory": [
+              [
+                "aaaa11112222",
+                "canvas"
+              ],
+              [
+                "7372bf426f90",
+                "browser"
+              ]
+            ],
+            "activeSessionId": "7372bf426f90",
+            "activeDraftKey": null,
+            "drafts": {
+              "draft:62cc9370-1619-4c83-9995-49dd0f8c37df": {
+                "sessionId": null,
+                "error": false,
+                "undelivered": false,
+                "submitted": false,
+                "admissionAttempted": false
+              }
+            },
+            "sessionCount": 4,
+            "scopes": {},
+            "countsTotal": 3,
+            "archiveAttempts": 11,
+            "archiveFailure": null,
+            "onboardingVisible": false
+          }
+        },
+        "atReply": {
+          "href": "http://localhost:5321/#/chat/7372bf426f90",
+          "hash": "#/chat/7372bf426f90",
+          "zone": "America/New_York",
+          "viewport": {
+            "w": 1380,
+            "h": 900
+          },
+          "overflowX": false,
+          "drawn": [
+            "browser"
+          ],
+          "slotBox": {
+            "browser": {
+              "x": 740,
+              "y": 0,
+              "w": 596,
+              "h": 900
+            }
+          },
+          "column": {
+            "x": 260,
+            "y": 0,
+            "w": 480,
+            "h": 900
+          },
+          "overlap": {
+            "browser": 0
+          },
+          "paneRow": {
+            "x": 260,
+            "y": 0,
+            "w": 1076,
+            "h": 900
+          },
+          "rail": {
+            "run": "false",
+            "browser": "true",
+            "console": "false",
+            "canvas": "false"
+          },
+          "railLit": [
+            "browser"
+          ],
+          "railPresent": 4,
+          "composer": {
+            "x": 292,
+            "y": 814,
+            "w": 416,
+            "h": 34,
+            "value": ""
+          },
+          "active": {
+            "tag": "TEXTAREA",
+            "label": "Message",
+            "text": ""
+          },
+          "ask": {
+            "slot": 0,
+            "drawer": 0,
+            "close": 0,
+            "chip": 0,
+            "chipExpanded": null,
+            "header": 1
+          },
+          "draft": {
+            "draftRows": 0,
+            "chatRows": 4
+          },
+          "prefsBytes": 869,
+          "state": {
+            "route": "/chat/7372bf426f90",
+            "theme": "localOperatorLight",
+            "commandPaletteOpen": false,
+            "canvasOpen": false,
+            "runPanelOpen": false,
+            "browserPaneOpen": true,
+            "rightSlotWidth": 0,
+            "rightSlotKey": "7372bf426f90",
+            "rightSlotMemory": [
+              [
+                "aaaa11112222",
+                "canvas"
+              ],
+              [
+                "7372bf426f90",
+                "browser"
+              ]
+            ],
+            "activeSessionId": "7372bf426f90",
+            "activeDraftKey": null,
+            "drafts": {
+              "draft:62cc9370-1619-4c83-9995-49dd0f8c37df": {
+                "sessionId": null,
+                "error": false,
+                "undelivered": false,
+                "submitted": false,
+                "admissionAttempted": false
+              }
+            },
+            "sessionCount": 4,
+            "scopes": {},
+            "countsTotal": 3,
+            "archiveAttempts": 11,
+            "archiveFailure": null,
+            "onboardingVisible": false
+          }
+        },
+        "admitted": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/7372bf426f90",
+            "hash": "#/chat/7372bf426f90",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [
+              "browser"
+            ],
+            "slotBox": {
+              "browser": {
+                "x": 740,
+                "y": 0,
+                "w": 596,
+                "h": 900
+              }
+            },
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 480,
+              "h": 900
+            },
+            "overlap": {
+              "browser": 0
+            },
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "true",
+              "console": "false",
+              "canvas": "false"
+            },
+            "railLit": [
+              "browser"
+            ],
+            "railPresent": 4,
+            "composer": {
+              "x": 292,
+              "y": 814,
+              "w": 416,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "TEXTAREA",
+              "label": "Message",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 4
+            },
+            "prefsBytes": 869,
+            "state": {
+              "route": "/chat/7372bf426f90",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": false,
+              "runPanelOpen": false,
+              "browserPaneOpen": true,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "7372bf426f90",
+              "rightSlotMemory": [
+                [
+                  "aaaa11112222",
+                  "canvas"
+                ],
+                [
+                  "7372bf426f90",
+                  "browser"
+                ]
+              ],
+              "activeSessionId": "7372bf426f90",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:62cc9370-1619-4c83-9995-49dd0f8c37df": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 4,
+              "scopes": {},
+              "countsTotal": 4,
+              "archiveAttempts": 12,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "7372bf426f90",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "aaaa11112222:canvas",
+              "7372bf426f90:browser"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": false,
+              "run": false,
+              "browser": true,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "7372bf426f90",
+            "activeDraftKey": null
+          }
+        }
+      },
+      "admission": {
+        "before": [
+          "9a354df131e8",
+          "aaaa11112222",
+          "bbbb11112222"
+        ],
+        "after": [
+          "7372bf426f90",
+          "9a354df131e8",
+          "aaaa11112222",
+          "bbbb11112222"
+        ],
+        "created": [
+          "7372bf426f90"
+        ],
+        "notes": [
+          {
+            "session": "7372bf426f90",
+            "askEventKinds": [],
+            "transcriptLines": 9,
+            "transcriptHasMessage": true
+          }
+        ],
+        "turn": {
+          "lines": 9,
+          "waitedMs": 0
+        }
+      },
+      "timeline": {
+        "framesSampled": 297,
+        "changes": 3,
+        "marks": [
+          {
+            "t": 1,
+            "hash": "#/chat",
+            "drawn": "browser",
+            "lit": "browser",
+            "slotW": 596,
+            "colW": 480,
+            "key": "draft:bbc9f74b-e018-4dad-9873-1a7cab5983ba",
+            "mem": "aaaa11112222:canvas,draft:bbc9f74b-e018-4dad-9873-1a7cab5983ba:browser",
+            "flags": "B",
+            "active": "BUTTON[Browser]"
+          },
+          {
+            "t": 664,
+            "hash": "#/chat",
+            "drawn": "browser",
+            "lit": "browser",
+            "slotW": 596,
+            "colW": 480,
+            "key": "7372bf426f90",
+            "mem": "aaaa11112222:canvas,7372bf426f90:browser",
+            "flags": "B",
+            "active": "TEXTAREA[Message]"
+          },
+          {
+            "t": 3444,
+            "hash": "7372bf426f90",
+            "drawn": "browser",
+            "lit": "browser",
+            "slotW": 596,
+            "colW": 480,
+            "key": "7372bf426f90",
+            "mem": "aaaa11112222:canvas,7372bf426f90:browser",
+            "flags": "B",
+            "active": "TEXTAREA[Message]"
+          }
+        ]
+      }
+    },
+    "s6": {
+      "title": "B remembers the run panel; first paint after the hop vs settled",
+      "theme": "localOperatorLight",
+      "ok": true,
+      "ms": 15504,
+      "frames": {
+        "openOnB": "s6-b-run-panel-open/after/localOperatorLight.webp",
+        "onA": "s6-on-a/after/localOperatorLight.webp",
+        "firstPaint": "s6-back-first-paint/after/localOperatorLight.webp",
+        "settled": "s6-back-settled/after/localOperatorLight.webp"
+      },
+      "readings": {
+        "openOnB": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/bbbb11112222",
+            "hash": "#/chat/bbbb11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [
+              "run"
+            ],
+            "slotBox": {
+              "run": {
+                "x": 916,
+                "y": 0,
+                "w": 420,
+                "h": 900
+              }
+            },
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 656,
+              "h": 900
+            },
+            "overlap": {
+              "run": 0
+            },
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": "true",
+              "browser": "false",
+              "console": "false",
+              "canvas": "false"
+            },
+            "railLit": [
+              "run"
+            ],
+            "railPresent": 4,
+            "composer": {
+              "x": 300,
+              "y": 790,
+              "w": 576,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "BUTTON",
+              "label": "Run details — 2 to-dos open",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 4
+            },
+            "prefsBytes": 839,
+            "state": {
+              "route": "/chat/bbbb11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": false,
+              "runPanelOpen": true,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "bbbb11112222",
+              "rightSlotMemory": [
+                [
+                  "bbbb11112222",
+                  "run"
+                ]
+              ],
+              "activeSessionId": "bbbb11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:0798258e-3ac8-498b-9b2d-c3e159042da3": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 4,
+              "scopes": {},
+              "countsTotal": 4,
+              "archiveAttempts": 6,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "bbbb11112222:run"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": false,
+              "run": true,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null
+          }
+        },
+        "onA": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/aaaa11112222",
+            "hash": "#/chat/aaaa11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [],
+            "slotBox": {},
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "overlap": {},
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "false"
+            },
+            "railLit": [],
+            "railPresent": 4,
+            "composer": {
+              "x": 409,
+              "y": 790,
+              "w": 778,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "TEXTAREA",
+              "label": "Message",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 4
+            },
+            "prefsBytes": 839,
+            "state": {
+              "route": "/chat/aaaa11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": false,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "aaaa11112222",
+              "rightSlotMemory": [
+                [
+                  "bbbb11112222",
+                  "run"
+                ]
+              ],
+              "activeSessionId": "aaaa11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:0798258e-3ac8-498b-9b2d-c3e159042da3": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 4,
+              "scopes": {},
+              "countsTotal": 4,
+              "archiveAttempts": 9,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "aaaa11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "bbbb11112222:run"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": false,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "aaaa11112222",
+            "activeDraftKey": null
+          }
+        },
+        "firstPaint": {
+          "href": "http://localhost:5321/#/chat/bbbb11112222",
+          "hash": "#/chat/bbbb11112222",
+          "zone": "America/New_York",
+          "viewport": {
+            "w": 1380,
+            "h": 900
+          },
+          "overflowX": false,
+          "drawn": [],
+          "slotBox": {},
+          "column": {
+            "x": 260,
+            "y": 0,
+            "w": 1076,
+            "h": 900
+          },
+          "overlap": {},
+          "paneRow": {
+            "x": 260,
+            "y": 0,
+            "w": 1076,
+            "h": 900
+          },
+          "rail": {
+            "run": null,
+            "browser": "false",
+            "console": "false",
+            "canvas": "false"
+          },
+          "railLit": [],
+          "railPresent": 3,
+          "composer": {
+            "x": 409,
+            "y": 790,
+            "w": 778,
+            "h": 34,
+            "value": ""
+          },
+          "active": {
+            "tag": "TEXTAREA",
+            "label": "Message",
+            "text": ""
+          },
+          "ask": {
+            "slot": 0,
+            "drawer": 0,
+            "close": 0,
+            "chip": 0,
+            "chipExpanded": null,
+            "header": 0
+          },
+          "draft": {
+            "draftRows": 0,
+            "chatRows": 4
+          },
+          "prefsBytes": 839,
+          "state": {
+            "route": "/chat/bbbb11112222",
+            "theme": "localOperatorLight",
+            "commandPaletteOpen": false,
+            "canvasOpen": false,
+            "runPanelOpen": true,
+            "browserPaneOpen": false,
+            "rightSlotWidth": 0,
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotMemory": [
+              [
+                "bbbb11112222",
+                "run"
+              ]
+            ],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null,
+            "drafts": {
+              "draft:0798258e-3ac8-498b-9b2d-c3e159042da3": {
+                "sessionId": null,
+                "error": false,
+                "undelivered": false,
+                "submitted": false,
+                "admissionAttempted": false
+              }
+            },
+            "sessionCount": 4,
+            "scopes": {},
+            "countsTotal": 4,
+            "archiveAttempts": 10,
+            "archiveFailure": null,
+            "onboardingVisible": false
+          }
+        },
+        "settled": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/bbbb11112222",
+            "hash": "#/chat/bbbb11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [
+              "run"
+            ],
+            "slotBox": {
+              "run": {
+                "x": 916,
+                "y": 0,
+                "w": 420,
+                "h": 900
+              }
+            },
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 656,
+              "h": 900
+            },
+            "overlap": {
+              "run": 0
+            },
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": "true",
+              "browser": "false",
+              "console": "false",
+              "canvas": "false"
+            },
+            "railLit": [
+              "run"
+            ],
+            "railPresent": 4,
+            "composer": {
+              "x": 300,
+              "y": 790,
+              "w": 576,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "TEXTAREA",
+              "label": "Message",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 4
+            },
+            "prefsBytes": 839,
+            "state": {
+              "route": "/chat/bbbb11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": false,
+              "runPanelOpen": true,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "bbbb11112222",
+              "rightSlotMemory": [
+                [
+                  "bbbb11112222",
+                  "run"
+                ]
+              ],
+              "activeSessionId": "bbbb11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:0798258e-3ac8-498b-9b2d-c3e159042da3": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 4,
+              "scopes": {},
+              "countsTotal": 4,
+              "archiveAttempts": 11,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "bbbb11112222:run"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": false,
+              "run": true,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null
+          }
+        }
+      },
+      "timeline": {
+        "framesSampled": 186,
+        "changes": 3,
+        "marks": [
+          {
+            "t": 1,
+            "hash": "aaaa11112222",
+            "drawn": "",
+            "lit": "",
+            "slotW": null,
+            "colW": 1076,
+            "key": "aaaa11112222",
+            "mem": "bbbb11112222:run",
+            "flags": "",
+            "active": "TEXTAREA[Message]"
+          },
+          {
+            "t": 202,
+            "hash": "bbbb11112222",
+            "drawn": "",
+            "lit": "",
+            "slotW": null,
+            "colW": 1076,
+            "key": "bbbb11112222",
+            "mem": "bbbb11112222:run",
+            "flags": "R",
+            "active": "TEXTAREA[Message]"
+          },
+          {
+            "t": 308,
+            "hash": "bbbb11112222",
+            "drawn": "run",
+            "lit": "run",
+            "slotW": 420,
+            "colW": 656,
+            "key": "bbbb11112222",
+            "mem": "bbbb11112222:run",
+            "flags": "R",
+            "active": "TEXTAREA[Message]"
+          }
+        ]
+      }
+    },
+    "s4": {
+      "title": "B remembers the canvas; a pending ask; the drawer opened by hand",
+      "theme": "localOperatorLight",
+      "ok": true,
+      "ms": 13390,
+      "frames": {
+        "remembersCanvas": "s4-b-remembers-canvas/after/localOperatorLight.webp",
+        "chipUp": "s4-ask-arrives-over-the-canvas/after/localOperatorLight.webp",
+        "borrow": "s4-drawer-borrows-the-slot/after/localOperatorLight.webp",
+        "restored": "s4-canvas-returns/after/localOperatorLight.webp"
+      },
+      "readings": {
+        "remembersCanvas": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/bbbb11112222",
+            "hash": "#/chat/bbbb11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [
+              "canvas"
+            ],
+            "slotBox": {
+              "canvas": {
+                "x": 776,
+                "y": 0,
+                "w": 560,
+                "h": 900
+              }
+            },
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 516,
+              "h": 900
+            },
+            "overlap": {
+              "canvas": 0
+            },
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "true"
+            },
+            "railLit": [
+              "canvas"
+            ],
+            "railPresent": 4,
+            "composer": {
+              "x": 292,
+              "y": 814,
+              "w": 452,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "BUTTON",
+              "label": "Canvas (⌘⇧C)",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 0,
+              "chipExpanded": null,
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 4
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat/bbbb11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": true,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "bbbb11112222",
+              "rightSlotMemory": [
+                [
+                  "bbbb11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "bbbb11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:14bedae9-42b5-4e2c-a9e7-1167af877bac": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 4,
+              "scopes": {},
+              "countsTotal": 4,
+              "archiveAttempts": 4,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "bbbb11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": true,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null
+          }
+        },
+        "chipUp": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/bbbb11112222",
+            "hash": "#/chat/bbbb11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [
+              "canvas"
+            ],
+            "slotBox": {
+              "canvas": {
+                "x": 776,
+                "y": 0,
+                "w": 560,
+                "h": 900
+              }
+            },
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 516,
+              "h": 900
+            },
+            "overlap": {
+              "canvas": 0
+            },
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "true"
+            },
+            "railLit": [
+              "canvas"
+            ],
+            "railPresent": 4,
+            "composer": {
+              "x": 292,
+              "y": 814,
+              "w": 452,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "BUTTON",
+              "label": "Canvas (⌘⇧C)",
+              "text": ""
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 1,
+              "chipExpanded": "false",
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 4
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat/bbbb11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": true,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "bbbb11112222",
+              "rightSlotMemory": [
+                [
+                  "bbbb11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "bbbb11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:14bedae9-42b5-4e2c-a9e7-1167af877bac": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 4,
+              "scopes": {},
+              "countsTotal": 4,
+              "archiveAttempts": 4,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "bbbb11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": true,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null
+          }
+        },
+        "borrow": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/bbbb11112222",
+            "hash": "#/chat/bbbb11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [
+              "ask"
+            ],
+            "slotBox": {
+              "ask": {
+                "x": 776,
+                "y": 0,
+                "w": 560,
+                "h": 900
+              }
+            },
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 516,
+              "h": 900
+            },
+            "overlap": {
+              "ask": 0
+            },
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "false"
+            },
+            "railLit": [],
+            "railPresent": 4,
+            "composer": {
+              "x": 292,
+              "y": 814,
+              "w": 452,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "BUTTON",
+              "label": null,
+              "text": "Staging"
+            },
+            "ask": {
+              "slot": 1,
+              "drawer": 1,
+              "close": 1,
+              "chip": 1,
+              "chipExpanded": "true",
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 4
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat/bbbb11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": false,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "bbbb11112222",
+              "rightSlotMemory": [
+                [
+                  "bbbb11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "bbbb11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:14bedae9-42b5-4e2c-a9e7-1167af877bac": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 4,
+              "scopes": {},
+              "countsTotal": 4,
+              "archiveAttempts": 4,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "bbbb11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": false,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null
+          }
+        },
+        "restored": {
+          "probe": {
+            "href": "http://localhost:5321/#/chat/bbbb11112222",
+            "hash": "#/chat/bbbb11112222",
+            "zone": "America/New_York",
+            "viewport": {
+              "w": 1380,
+              "h": 900
+            },
+            "overflowX": false,
+            "drawn": [
+              "canvas"
+            ],
+            "slotBox": {
+              "canvas": {
+                "x": 776,
+                "y": 0,
+                "w": 560,
+                "h": 900
+              }
+            },
+            "column": {
+              "x": 260,
+              "y": 0,
+              "w": 516,
+              "h": 900
+            },
+            "overlap": {
+              "canvas": 0
+            },
+            "paneRow": {
+              "x": 260,
+              "y": 0,
+              "w": 1076,
+              "h": 900
+            },
+            "rail": {
+              "run": "false",
+              "browser": "false",
+              "console": "false",
+              "canvas": "true"
+            },
+            "railLit": [
+              "canvas"
+            ],
+            "railPresent": 4,
+            "composer": {
+              "x": 292,
+              "y": 814,
+              "w": 452,
+              "h": 34,
+              "value": ""
+            },
+            "active": {
+              "tag": "BUTTON",
+              "label": "Expand this conversation's asks — 1 question waiting · expires in 59m",
+              "text": "1 question waiting · expires in 59m · 59"
+            },
+            "ask": {
+              "slot": 0,
+              "drawer": 0,
+              "close": 0,
+              "chip": 1,
+              "chipExpanded": "false",
+              "header": 1
+            },
+            "draft": {
+              "draftRows": 0,
+              "chatRows": 4
+            },
+            "prefsBytes": 842,
+            "state": {
+              "route": "/chat/bbbb11112222",
+              "theme": "localOperatorLight",
+              "commandPaletteOpen": false,
+              "canvasOpen": true,
+              "runPanelOpen": false,
+              "browserPaneOpen": false,
+              "rightSlotWidth": 0,
+              "rightSlotKey": "bbbb11112222",
+              "rightSlotMemory": [
+                [
+                  "bbbb11112222",
+                  "canvas"
+                ]
+              ],
+              "activeSessionId": "bbbb11112222",
+              "activeDraftKey": null,
+              "drafts": {
+                "draft:14bedae9-42b5-4e2c-a9e7-1167af877bac": {
+                  "sessionId": null,
+                  "error": false,
+                  "undelivered": false,
+                  "submitted": false,
+                  "admissionAttempted": false
+                }
+              },
+              "sessionCount": 4,
+              "scopes": {},
+              "countsTotal": 4,
+              "archiveAttempts": 5,
+              "archiveFailure": null,
+              "onboardingVisible": false
+            }
+          },
+          "memory": {
+            "rightSlotKey": "bbbb11112222",
+            "rightSlotKeyAbsent": false,
+            "rightSlotMemory": [
+              "bbbb11112222:canvas"
+            ],
+            "rightSlotMemoryAbsent": false,
+            "flags": {
+              "canvas": true,
+              "run": false,
+              "browser": false,
+              "console": null,
+              "ask": null
+            },
+            "flagsAbsentFromVerb": [
+              "consolePaneOpen",
+              "isAskDrawerOpen"
+            ],
+            "activeSessionId": "bbbb11112222",
+            "activeDraftKey": null
+          }
+        }
+      },
+      "enqueued": "a-7366",
+      "backend": {
+        "askEventKinds": [
+          "queued"
+        ],
+        "transcriptLines": 4,
+        "transcriptHasMessage": null
+      }
+    }
+  }
+}
