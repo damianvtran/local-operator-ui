@@ -194,7 +194,7 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 	);
 });
 
-test("Fork is the menu's newest row: its order, copy, withheld condition and wiring (#739)", () => {
+test("Fork is the menu's third row: its order, copy, withheld condition and wiring (#739)", () => {
 	/*
 	 * THE RESERVED THIRD ROW, SPENT. Fork is not a press on a row control (there
 	 * is none), so the pins below read the three things that make it THIS menu's
@@ -203,31 +203,33 @@ test("Fork is the menu's newest row: its order, copy, withheld condition and wir
 	 */
 	const forkItem = between(MENU, "{forkable && (", "</ContextMenuItem>");
 	/*
-	 * ORDER: Archive, Pin, Fork, then the conditional Move pair (round-1 design
-	 * review, D2). The principle, stated so the next act has something to apply:
-	 * rows 1-2 are the mirrored pair in the strip's own order, row 3 is the
-	 * UNCONDITIONAL singleton - so the third slot keeps one identity in every
-	 * state instead of changing between Fork and `Move conversation up` - and the
-	 * conditional block trails it. The two Move items stay adjacent to each other
-	 * under either arrangement.
+	 * ORDER: Archive, Pin, Fork, Copy session ID, then the conditional Move pair
+	 * (round-1 design review, D2; Copy added by #893). The principle, stated so the
+	 * next act has something to apply: rows 1-2 are the mirrored pair in the strip's
+	 * own order, rows 3-4 are the UNCONDITIONAL run - so those two slots keep one
+	 * identity in every state instead of changing between a singleton and
+	 * `Move conversation up` - and the conditional block trails it. The two Move
+	 * items stay adjacent to each other under either arrangement.
 	 */
 	const archiveAt = MENU.indexOf('pressRowAct(row.session_id, "archive")');
 	const pinAt = MENU.indexOf('pressRowAct(row.session_id, "pin")');
 	const forkAt = MENU.indexOf('"session.fork"');
+	const copyAt = MENU.indexOf("copySessionId(row.session_id)");
 	const moveUpAt = MENU.indexOf("movePinnedRow(row.session_id, -1, true)");
 	const moveDownAt = MENU.indexOf("movePinnedRow(row.session_id, 1, true)");
 	assert.ok(
 		archiveAt !== -1 &&
 			archiveAt < pinAt &&
 			pinAt < forkAt &&
-			forkAt < moveUpAt &&
+			forkAt < copyAt &&
+			copyAt < moveUpAt &&
 			moveUpAt < moveDownAt,
-		"the menu no longer reads Archive, Pin, Fork, Move up, Move down (D2) - the mirrored pair, the unconditional singleton, then the conditional block",
+		"the menu no longer reads Archive, Pin, Fork, Copy session ID, Move up, Move down (D2, #893) - the mirrored pair, the unconditional run, then the conditional block",
 	);
 	assert.equal(
 		MENU.split("<ContextMenuItem").length - 1,
-		5,
-		"the menu's row count moved without this file: the five-row budget (design \u00a77) is now the arithmetic of #743's four plus #739's Fork, and a sixth act either replaces a row or finds another surface",
+		6,
+		"the menu's row count moved without this file: the six-row budget (design \u00a77) is #743's four plus #739's Fork plus #893's Copy session ID, and Copy passed the rule a seventh would have to pass - the ROW-scoped id has no other door (the header's overflow names the PANE's session), so the number moved rather than a row being replaced",
 	);
 	/*
 	 * COPY: verb + object, the pair's register, with the icon `aria-hidden` like
@@ -313,6 +315,76 @@ test("Fork is the menu's newest row: its order, copy, withheld condition and wir
 		/ForkPicker|sessions\.fork|desktopResult/.test(SIDEBAR_CODE),
 		false,
 		"the sidebar carries its own fork - the picker is the register's and the pane presents it",
+	);
+});
+
+test("Copy session ID is the menu's sixth row, unconditional and chord-free (#893)", () => {
+	/*
+	 * The act that spent the sixth slot (#893). It is a plain press on no row
+	 * control - the value is the row's own id - so the pins read the four things
+	 * that make it this menu's item: it is drawn unconditionally, it copies
+	 * `row.session_id` rather than anything else on the row, and its label and
+	 * glyph are the ones the design record names.
+	 */
+	const itemAt = MENU.indexOf("copySessionId(row.session_id)");
+	assert.notEqual(
+		itemAt,
+		-1,
+		"the Copy session ID item is gone from the row menu",
+	);
+	const tagAt = MENU.lastIndexOf("<ContextMenuItem", itemAt);
+	assert.ok(
+		tagAt !== -1 && tagAt < itemAt,
+		"the copy call is no longer an item's `onSelect`",
+	);
+	const item = MENU.slice(tagAt, MENU.indexOf("</ContextMenuItem>", itemAt));
+	/*
+	 * UNCONDITIONAL, like Fork and unlike the pair above it and the Move pair
+	 * below: the JSX between the previous item's close and this tag carries no
+	 * `{... && (` gate, and the item carries neither `disabled` nor `aria-disabled`.
+	 * Copying an id works on EVERY row the menu is drawn on - a row whose pin state
+	 * is unknown, a row behind the archived list, a remote row - so there is no
+	 * predicate it could honestly be gated on, and the brief says so.
+	 */
+	const gap = MENU.slice(MENU.lastIndexOf("</ContextMenuItem>", itemAt), tagAt);
+	assert.equal(
+		/&&/.test(gap),
+		false,
+		"the Copy item gained a gate - it is drawn whenever the menu is, like Fork, because every row has an id",
+	);
+	assert.equal(
+		/disabled/.test(item),
+		false,
+		"the Copy item is disabled rather than unconditional: it has no unusable state",
+	);
+	/*
+	 * LABEL AND GLYPH. Verb + object, the pair's register (`Archive conversation`,
+	 * `Fork conversation`), and lucide's `Copy` - the two overlapping squares, NOT
+	 * `ClipboardCopy`, which the file-actions menu wears - with the `aria-hidden`
+	 * mark every glyph in this menu carries.
+	 */
+	assert.ok(
+		item.includes("<span>Copy session ID</span>"),
+		"the copy item's label moved: it reads `Copy session ID`, the one spelling both of its doors use",
+	);
+	assert.ok(
+		item.includes('<Copy aria-hidden="true" />'),
+		"the copy item's glyph is no longer lucide's `Copy` with its aria-hidden mark",
+	);
+	assert.equal(
+		item.includes("ClipboardCopy"),
+		false,
+		"the copy item wears `ClipboardCopy` (the file-actions menu's glyph); the design record names `Copy` for this one",
+	);
+	/*
+	 * NO CHORD, the rule Fork's own test states: nothing binds a copy-session-id
+	 * gesture, and a `KeyboardShortcut` here would print a hint for a gesture that
+	 * does nothing - and would move the accessible name as well.
+	 */
+	assert.equal(
+		item.includes("KeyboardShortcut"),
+		false,
+		"the copy item prints a chord, but no chord is bound to copying a session id",
 	);
 });
 
