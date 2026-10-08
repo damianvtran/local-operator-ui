@@ -37,7 +37,7 @@
       "scrollHeight": 511,
       "clientHeight": 511,
       "clipped": false,
-      "text": "Web search (optional)Step 3 of 3Agents can look things up while they work \u2014 today's prices, this week's news \u2014 instead of relying on what the model already knows.Search setupFree\u00b7RecommendedUses a rotating pool of free p"
+      "text": "Web search, then meet AdaStep 3 of 3Agents can look things up while they work — today's prices, this week's news — instead of relying on what the model already knows.Search setupFree·RecommendedUses a rotating pool of fr"
     },
     "dialogBody": {
       "left": 321,
@@ -54,7 +54,7 @@
       "scrollHeight": 58,
       "clientHeight": 58,
       "clipped": false,
-      "text": "Web search (optional)Step 3 of 3"
+      "text": "Web search, then meet AdaStep 3 of 3"
     },
     "installStatus": null,
     "installLive": null,
@@ -93,12 +93,63 @@
       "scrollHeight": 166,
       "clientHeight": 166,
       "clipped": false,
-      "text": "Free\u00b7RecommendedUses a rotating pool of free providers \u2014 DuckDuckGo, Tavily's free tier, Exa and Parallel. No key needed; the pool is shared, so searches can be slower at busy times.Add API keysBring your own keys for th"
+      "text": "Free·RecommendedUses a rotating pool of free providers — DuckDuckGo, Tavily's free tier, Exa and Parallel. No key needed; the pool is shared, so searches can be slower at busy times.Add API keysBring your own keys for th"
     },
     "transcript": null,
     "transcriptRegion": null
   },
   "installRailRows": [
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "0px 0px 0px 0px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Missing Context/Providers: You can use decorators to supply specific contexts or providers, which are sometimes necessary for components to render correctly. For detailed instructions on using decorators, please visit th"
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "12px 0px 0px 0px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Misconfigured Webpack or Vite: Verify that Storybook picks up all necessary settings for loaders, plugins, and other relevant parameters. You can find step-by-step guides for configuring Webpack or Vite with Storybook."
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "12px 0px 0px 0px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Missing Environment Variables: Your Storybook may require specific environment variables to function as intended. You can set up custom environment variables as outlined in the Environment Variables documentation."
+    },
     {
       "left": 847,
       "right": 863,
@@ -150,6 +201,57 @@
   ],
   "gridRows": [],
   "buttons": [
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "10px 16px 10px 16px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0.1)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Set string"
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "10px 16px 10px 16px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0.1)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Set string"
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "10px 16px 10px 16px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0.1)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Set string"
+    },
     {
       "left": 847,
       "right": 863,
@@ -272,5 +374,5 @@
     "scrollHeight": 900,
     "clientHeight": 900
   },
-  "text": "Web search (optional)\nStep 3 of 3\n\nAgents can look things up while they work \u2014 today's prices, this week's news \u2014 instead of relying on what the model already knows.\n\nSearch setup\nFree\n\u00b7\nRecommended\nUses a rotating pool of free providers \u2014 DuckDuckGo, Tavily's free tier, Exa and Parallel. No key needed; the pool is shared, so searches can be slower at busy times.\nAdd API keys\nBring your own keys for the search providers you use.\nNext: meet Ada\n\nAda is your chief of staff. She will say hello first, ask what to call you and what you would like help with, and show you around. You can also skip straight to a new chat.\n\nBack\nSkip to chat\nMeet Ada"
+  "text": "Web search, then meet Ada\nStep 3 of 3\n\nAgents can look things up while they work — today's prices, this week's news — instead of relying on what the model already knows.\n\nSearch setup\nFree\n·\nRecommended\nUses a rotating pool of free providers — DuckDuckGo, Tavily's free tier, Exa and Parallel. No key needed; the pool is shared, so searches can be slower at busy times.\nAdd API keys\nBring your own keys for the search providers you use.\nNext: meet Ada\n\nAda is your chief of staff. She will say hello first, ask what to call you and what you would like help with, and show you around. You can also skip straight to a new chat.\n\nBack\nSkip to chat\nMeet Ada"
 }

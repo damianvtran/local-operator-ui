@@ -17,7 +17,7 @@ have one frame each.
 
 | # | state | what the frame shows |
 | --- | --- | --- |
-| 01 | first stage | `Step 1 of 4 · 0:01 elapsed · about 10 s left` over the rail |
+| 01 | first stage | `Step 1 of 4 · 0:01 elapsed · about 25 s left` over the rail |
 | 02 | mid install | `Step 3 of 4 · 0:09 elapsed · about 9 s left` + `3 of 6 large downloads done · 55 packages in all.` |
 | 03 | slow network | `0:41 elapsed · taking longer than usual` — the estimate in words, never a negative count |
 | 04 | verifying | `Step 4 of 4`, plain label `Starting it up` |
@@ -29,6 +29,13 @@ Python` → `Setting up Local Operator`, `Downloading components` → `Downloadi
 what it needs`, `Checking the installation` → `Starting it up`; `This takes a few
 minutes the first time, on this computer.` → `This usually takes less than a
 minute.`; the status line and the sub-progress line are new.
+
+`after/` was re-shot for the round-1 remediation (frames `01`, `02`, `03`, `04`,
+`05`, `07`, `08`, `09`, `10`); `06`, `11` and `12` are unchanged surfaces and keep
+their first-round frames. The line above is read off the RE-SHOT frame 01, which
+is the correction for this file's earlier claim of `about 10 s left` (design round
+1, D7 - the frame said 20 s at the time, because the darwin baselines changed in
+the same round).
 
 ## Onboarding (U1, A2, U7, D11, D12)
 
@@ -59,7 +66,7 @@ Read from the same live renders as the frames. The installer's own window is
 | --- | --- | --- |
 | installer story root, all six states | 480 px exactly | 480 px exactly (unchanged: the panel absorbs the new line) |
 | document `scrollHeight` vs window | 480 | 480 - nothing pushed out of the window, nothing internally `clipped` |
-| the new status line (`[data-install-status]`, mid-install) | - | 232.4 x 20 px at top 124.5, `overflowY: visible`, `clipped: false` |
+| the new status line (`[data-install-status]`, mid-install) | - | 232.4 x 20 px at top 124.5, `overflowY: visible`, `clipped: false`; re-shot at `text-body-sm`/`ink-muted` = 13 px `rgb(194,188,175)` while the static expectation is now `ink-dim` `rgb(166,160,145)` (they swapped rank: design round 1, D2) |
 | installer rail | 4 rows x 20 px | 4 rows x 20 px, labelled `Getting ready` / `Setting up Local Operator` / `Downloading what it needs` / `Starting it up` |
 | live region (`<output>`, detail + sub-progress) | 40 px | 40 px (the reserved two lines were already there) |
 | step 1 dialog | 640 x 510.1 | 640 x 531.8 (+21.7 px: the instructional intro is two lines) |
@@ -72,6 +79,30 @@ Read from the same live renders as the frames. The installer's own window is
 
 The last two rows are the A4 proof in numbers: the row the marker removes is
 34.7 px tall, and with `details.hidden: true` it is not in the record list at all.
+
+## Round 1 remediation readings
+
+Frames `07`/`08` were re-taken at the SHIPPED window (1380x900, previously
+1280x1000/1100) so D1's claim is checkable rather than argued. Read out of
+`08`'s geometry JSON, same render as the frame:
+
+| reading | value |
+| --- | --- |
+| viewport / dialog | 1380x900 / top 32, bottom 868 (836, the clamp), body 638x706 |
+| the four featured rows | 201.1 - 428.1 |
+| **the local group (LM Studio, Ollama, vLLM, llama.cpp, OpenAI-compatible)** | **559.1 - 843.1 - inside the body's 868** |
+| the groups after it (Kimi onward) | 884.5 - 1436.9, i.e. the list visibly continues past the fold |
+| the whole list | 18 rows, `dialog 640x836 \| body 638x706 \| grid 590x1239.9` |
+
+Under the shipped group order the local rows sat BELOW the subscription and key
+groups, so the same measurement puts their first row at ~970 px - past the body's
+868 and off-screen; that is the derivation behind D1, from this frame's own row
+boxes rather than from arithmetic about an unseen render. The trigger's promise
+(`... local models and 6 more`) is now true on screen at the default size.
+
+The download line is monotonic in the re-shot `02`/`03`: `3 large downloads
+finished \u00b7 55 packages in all.` where the old shape read `3 of 6 ... done`
+and, on the pip fallback, `0 of N` over a growing denominator (D3/R2).
 
 ## Measured install timings
 

@@ -21,16 +21,16 @@
       "scrollHeight": 480,
       "clientHeight": 480,
       "clipped": false,
-      "text": "Local OperatorThis usually takes less than a minute.Step 1 of 4 \u00b7 0:01 elapsed \u00b7 about 20 s leftGetting ready - in progressSetting up Local Operator - waitingDownloading what it needs - waitingStarting it up - waitingGet"
+      "text": "Local OperatorThis usually takes less than a minute.Step 1 of 4 · 0:01 elapsed · about 25 s leftGetting ready - in progressSetting up Local Operator - waitingDownloading what it needs - waitingStarting it up - waitingGet"
     },
     "dialog": null,
     "dialogBody": null,
     "installStatus": {
-      "left": 200,
-      "right": 440,
+      "left": 191.7,
+      "right": 448.3,
       "top": 124.5,
       "bottom": 144.5,
-      "width": 239.9,
+      "width": 256.6,
       "height": 20,
       "border": "0px 0px 0px 0px",
       "padding": "0px 0px 0px 0px",
@@ -40,7 +40,7 @@
       "scrollHeight": 20,
       "clientHeight": 20,
       "clipped": false,
-      "text": "Step 1 of 4 \u00b7 0:01 elapsed \u00b7 about 20 s left"
+      "text": "Step 1 of 4 · 0:01 elapsed · about 25 s left"
     },
     "installLive": {
       "left": 165.6,
@@ -84,6 +84,57 @@
     "transcriptRegion": null
   },
   "installRailRows": [
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "0px 0px 0px 0px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Missing Context/Providers: You can use decorators to supply specific contexts or providers, which are sometimes necessary for components to render correctly. For detailed instructions on using decorators, please visit th"
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "12px 0px 0px 0px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Misconfigured Webpack or Vite: Verify that Storybook picks up all necessary settings for loaders, plugins, and other relevant parameters. You can find step-by-step guides for configuring Webpack or Vite with Storybook."
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "12px 0px 0px 0px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Missing Environment Variables: Your Storybook may require specific environment variables to function as intended. You can set up custom environment variables as outlined in the Environment Variables documentation."
+    },
     {
       "left": 224.4,
       "right": 415.6,
@@ -156,6 +207,57 @@
   "gridRows": [],
   "buttons": [
     {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "10px 16px 10px 16px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0.1)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Set string"
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "10px 16px 10px 16px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0.1)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Set string"
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "10px 16px 10px 16px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0.1)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Set string"
+    },
+    {
       "left": 266.5,
       "right": 373.5,
       "top": 392.5,
@@ -179,5 +281,5 @@
     "scrollHeight": 480,
     "clientHeight": 480
   },
-  "text": "Local Operator\n\nThis usually takes less than a minute.\n\nStep 1 of 4 \u00b7 0:01 elapsed \u00b7 about 20 s left\n\nGetting ready\n- in progress\nSetting up Local Operator\n- waiting\nDownloading what it needs\n- waiting\nStarting it up\n- waiting\nGetting ready:\nFinding the copy of Python Local Operator runs on.\nCancel setup\n\nYou can minimize this window and keep working. Closing it stops setup."
+  "text": "Local Operator\n\nThis usually takes less than a minute.\n\nStep 1 of 4 · 0:01 elapsed · about 25 s left\n\nGetting ready\n- in progress\nSetting up Local Operator\n- waiting\nDownloading what it needs\n- waiting\nStarting it up\n- waiting\nGetting ready:\nFinding the copy of Python Local Operator runs on.\nCancel setup\n\nYou can minimize this window and keep working. Closing it stops setup."
 }
