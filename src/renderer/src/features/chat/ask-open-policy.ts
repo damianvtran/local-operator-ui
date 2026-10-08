@@ -32,8 +32,9 @@
  *          none is (answered, declined, withdrawn, expired), so a later batch gets the
  *          same discoverability as the first - including a batch that emptied and
  *          refilled while the user was away, which needs no "seen empty" observation;
- *       b. an id list that cannot be named in full (a truncated frame, a tally with no
- *          rows) HOLDS: such a record clears only when the queue is observed empty.
+ *       b. an id list that cannot be named in full (a bounded prefix, a tally with no
+ *          rows: a frame whose tally is above the outstanding rows it carries) HOLDS:
+ *          such a record clears only when the queue is observed empty.
  *          Fail closed - under-opening is the safe failure, forcing open a panel the
  *          user refused is not;
  *       c. a SECOND close over a different set UNIONS into the record, never replaces it.
@@ -325,7 +326,7 @@ export const decideAskAutoOpen = (input: AskOpenInput): AskOpenVerdict => {
  * been there a while" is the safe reading of a fact that was not stated.
  */
 export const askOpenFacts = (
-	view: Pick<AskQueueView, "published" | "rows" | "open" | "truncated">,
+	view: Pick<AskQueueView, "published" | "rows" | "open">,
 	startedAtMs: number,
 ): Pick<
 	AskOpenInput,
@@ -361,39 +362,41 @@ export const askOpenFacts = (
  * would observe it exists. Both must read "complete" the same way, so there is one
  * expression of it.
  *
- * THE LIST IS COMPLETE ONLY WHEN THE FRAME SAYS NOTHING WAS LEFT OUT, and the wire can
- * say otherwise in two ways this surface does see: the row list is a bounded PREFIX
- * (`asks_truncated`, the core's `bound_ask_rows`), or the rows were dropped outright and
- * only the tally rode (`asks` absent, `asks_open: N`), which also covers a list that lags
- * its own tally. `view.open` is the wire's count when it published one, so a tally larger
- * than the outstanding rows IS the evidence of an unnamed remainder. A tally smaller than
- * the rows is not: every id is named, some are just stale. An unread or unpublished
- * frame is not complete either (`published` is false for both), which is what keeps it
- * from settling a record in either direction.
+ * THE LIST IS COMPLETE WHEN THE FRAME'S TALLY IS NOT ABOVE THE OUTSTANDING ROWS IT CARRIES,
+ * and that comparison is the whole test. `view.open` is the wire's count of outstanding
+ * asks (`asks_open`), taken by the core BEFORE its text budget drops any row, so a row the
+ * budget dropped while it was still outstanding always shows as a tally above the rows
+ * named - and so does a frame that carries the tally alone (`asks` absent, `asks_open: N`).
+ * A tally BELOW the rows is not a gap: every id is named, some are just stale. An unread
+ * or unpublished frame is not complete either (`published` is false for both), which is
+ * what keeps it from settling a record in either direction.
  *
- * `asks_truncated` OVER-READS, ON PURPOSE. The core sets it for a dropped ROW and also for
- * a clipped question or option list inside a row that did ride (`bound_ask_rows`: more
- * than 12 questions, or 10 options on one), and a client cannot tell the two apart. The
- * second case names every id, so reading it as "not all named" is wrong in fact and right
- * in direction: it can only HOLD a record that a complete reading would have settled, which
- * costs one missed re-open on a pathologically large ask and never forces a refused panel
- * open (the shared contract's clause b: an unknown list holds).
+ * THIS NEVER READS `asks_truncated`, AND THE TYPE ABOVE IS WHY IT CANNOT: `truncated` is
+ * not in the `Pick`. The flag is STICKY. The core sets it whenever the text budget drops
+ * ANY row - including rows that are already answered - and it stays set for as long as
+ * those rows ride the projection (up to `LATE_WINDOW_S`, seven days past their deadlines).
+ * Derived by running the shipped `ask_wire` + `bound_ask_rows` over eight ~900-character
+ * asks: 8 open gave 7 rows, tally 8, flag; 7 answered gave 7 rows (one open), tally 1,
+ * flag; ALL answered gave 7 answered rows, tally 0, flag STILL SET; one new short ask gave
+ * 7 rows, tally 1, flag. A predicate that required `!truncated` could therefore never be
+ * true again, so a record made over a prefix could never be cleared by "a complete frame
+ * with nothing outstanding" and the conversation stayed muted until the dropped rows aged
+ * out. That was this function's first cut, and the live capture (s16) is what caught it.
+ * The tally says everything the flag was being read for, and it says it per frame.
  *
  * WHAT THE WIRE CANNOT SAY, derived rather than assumed: `ask_wire` (core,
  * `session/frontend_state.py`) counts `asks_open` over the rows `AskQueue.projection` has
- * already clipped to `PROJECTION_CAP` (20, open first, then newest). Run over 25
- * outstanding asks it published 20 rows beside `asks_open: 20` and no `asks_truncated`, so
- * past 20 outstanding the surplus is on neither field and no client can name it. The tally
- * arm above is therefore this surface's defence for a list that lags its tally by some other
- * route, not a reading of that clip. The cost of the limit is bounded and points the
- * harmless way: once the twenty named asks are gone the surplus surfaces as ids nobody
- * waved off, which reads as a refill and opens the drawer once for asks the user was never
- * shown (E2), and closing it records that batch again. Twenty outstanding asks needs
- * `timed_out` ones to pile up (`OPEN_ASK_CAP` holds the genuinely open ones to 8), so it is
- * a long-unanswered session, not an ordinary one.
+ * already clipped to `PROJECTION_CAP` (20 rows: open asks first, then everything else
+ * newest-first). Run over 25 outstanding asks it published 20 rows beside `asks_open: 20`
+ * and no flag, so an outstanding ask that clip drops is on neither field and no client can
+ * name it. The cost points the harmless way: once the named asks are gone the hidden one
+ * surfaces as an id nobody waved off, which reads as a refill and opens the drawer once for
+ * an ask the user was never shown (E2); closing it records that batch again. The clip
+ * needs more than twenty rows in the projection (`OPEN_ASK_CAP` holds the genuinely open
+ * ones to 8), so it is a long-lived, mostly-unanswered session and not an ordinary one.
  */
 export const askOutstandingReading = (
-	view: Pick<AskQueueView, "published" | "rows" | "open" | "truncated">,
+	view: Pick<AskQueueView, "published" | "rows" | "open">,
 ): AskOutstandingReading => {
 	const outstandingIds: string[] = [];
 	for (const row of view.rows) {
@@ -401,8 +404,7 @@ export const askOutstandingReading = (
 	}
 	return {
 		outstandingIds,
-		listComplete:
-			view.published && !view.truncated && view.open <= outstandingIds.length,
+		listComplete: view.published && view.open <= outstandingIds.length,
 	};
 };
 
@@ -441,16 +443,18 @@ export const shouldCloseCarriedDrawer = (facts: {
  * recorded from and reconciled against (rule 4).
  *
  * Two fields because "the ids I can see" and "all of them" are different claims, and
- * the second is the one the wire does not always make: the row list is a bounded
- * prefix (`asks_truncated`), and a frame can carry the tally with no rows at all.
+ * the second is the one the wire does not always make: the row list is a bounded prefix
+ * (its tally is above the rows), and a frame can carry the tally with no rows at all.
  */
 export type AskOutstandingReading = {
 	/** The ids of the outstanding rows (open, or timed out and still answerable) the frame carries. */
 	outstandingIds: readonly string[];
 	/**
 	 * Whether `outstandingIds` is EVERY outstanding ask. False for a frame that has not
-	 * answered, a truncated prefix, a tally with no rows, and a list that lags its own
-	 * tally - each says some asks exist that this reading cannot name.
+	 * answered, a bounded prefix, a tally with no rows, and a list that lags its own
+	 * tally - each says some asks exist that this reading cannot name, and each is one
+	 * comparison: the tally against the outstanding rows (never `asks_truncated`, which
+	 * sticks; see `askOutstandingReading`).
 	 */
 	listComplete: boolean;
 };
@@ -477,8 +481,8 @@ export type AskOutstandingReading = {
  *    FORGOTTEN once none is. "The asks changed" is still not an event that brings the
  *    surface back: a new ask beside a waved-off one that remains changes nothing.
  *  - `reconcile`, again: a record whose ids are NOT ALL KNOWN (the close happened over
- *    a truncated or tally-only frame) HOLDS, and so does a frame that cannot name every
- *    outstanding ask. The only observation that proves such a record empty is a
+ *    a bounded prefix or a tally-only frame) HOLDS, and so does a frame that cannot name
+ *    every outstanding ask. The only observation that proves such a record empty is a
  *    COMPLETE frame with nothing outstanding. Fail closed: a missed auto-open costs a
  *    discoverability nudge the chip and the badge still make, and forcing open a panel
  *    the user refused costs their trust in the close.
