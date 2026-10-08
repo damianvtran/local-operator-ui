@@ -96,7 +96,7 @@ import {
 	SourceChip,
 } from "./detail-parts";
 import { HubUpdatePanel } from "./hub-update-panel";
-import { TeamDetail } from "./team-detail";
+import { TeamDetail, memberCountLabel } from "./team-detail";
 
 // Old UUID links remain ordinary chat-agent settings, not reusable profiles.
 // Loading them explicitly preserves compatibility without contaminating the
@@ -556,72 +556,86 @@ export function AgentsPage() {
 				{/* The page's ONLY h1 (design D9): a definition's name is an h2. */}
 				<h1 className="text-heading">Agents and teams</h1>
 
-				<Tabs
-					value={teamMode ? "team" : "agent"}
-					onValueChange={(next) =>
-						requestGo({ kind: next as "agent" | "team", name: null })
-					}
-				>
-					<TabsList aria-label="Browse definitions by type" className="w-full">
-						<TabsTrigger
-							value="agent"
-							className="flex-1"
-							data-testid="agents-tab"
-						>
-							<Bot className="size-3.5" />
-							Agents
-							{profiles.data ? (
-								<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
-									{profiles.data.length}
-								</span>
-							) : null}
-						</TabsTrigger>
-						<TabsTrigger
-							value="team"
-							className="flex-1"
-							data-testid="teams-tab"
-						>
-							<Users className="size-3.5" />
-							Teams
-							{teams.data ? (
-								<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
-									{teams.data.length}
-								</span>
-							) : null}
-						</TabsTrigger>
-					</TabsList>
-				</Tabs>
-
-				<div className="relative">
-					<Search
-						aria-hidden="true"
-						className="pointer-events-none absolute top-2 left-2 size-4 text-ink-dim"
-					/>
-					<Input
-						className="pl-8"
-						type="search"
-						aria-label="Search agents and teams"
-						placeholder={teamMode ? "Search teams" : "Search agents"}
-						value={search}
-						onChange={(event) => setSearch(event.target.value)}
-					/>
-				</div>
-
 				{/*
-				 * The scope axis for this page is WHO OWNS the definition — on-device
-				 * versus shipped — where the hub's is where it lives. Same register, same
-				 * meaning of "showing", which is what makes the two read as one system.
-				 * Teams have no `source` on the wire, so the control is the agents' alone
-				 * rather than a chip row that does nothing.
+				 * ONE CLUSTER, 8 px INSIDE AND 12 px BETWEEN COMPONENTS (design spec s3):
+				 * tabs, search and scope are one control stack, so they sit closer to each
+				 * other than to the list below and the button beneath it. Each is
+				 * full-width, so their right edges are one line.
 				 */}
-				{!teamMode && profiles.data ? (
-					<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-						<span aria-hidden="true" className="text-meta text-ink-muted">
-							Showing
-						</span>
+				<div className="space-y-2">
+					<Tabs
+						value={teamMode ? "team" : "agent"}
+						onValueChange={(next) =>
+							requestGo({ kind: next as "agent" | "team", name: null })
+						}
+					>
+						<TabsList
+							aria-label="Browse definitions by type"
+							className="w-full"
+						>
+							<TabsTrigger
+								value="agent"
+								className="flex-1"
+								data-testid="agents-tab"
+							>
+								<Bot className="size-3.5" />
+								Agents
+								{profiles.data ? (
+									<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
+										{profiles.data.length}
+									</span>
+								) : null}
+							</TabsTrigger>
+							<TabsTrigger
+								value="team"
+								className="flex-1"
+								data-testid="teams-tab"
+							>
+								<Users className="size-3.5" />
+								Teams
+								{teams.data ? (
+									<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
+										{teams.data.length}
+									</span>
+								) : null}
+							</TabsTrigger>
+						</TabsList>
+					</Tabs>
+
+					<div className="relative">
+						<Search
+							aria-hidden="true"
+							className="pointer-events-none absolute top-2 left-2 size-4 text-ink-dim"
+						/>
+						<Input
+							className="pl-8"
+							type="search"
+							aria-label="Search agents and teams"
+							placeholder={teamMode ? "Search teams" : "Search agents"}
+							value={search}
+							onChange={(event) => setSearch(event.target.value)}
+						/>
+					</div>
+
+					{/*
+					 * The scope axis for this page is WHO OWNS the definition — on-device
+					 * versus shipped — where the hub's is where it lives. Same register, same
+					 * meaning of "showing", which is what makes the two read as one system.
+					 * Teams have no `source` on the wire, so the control is the agents' alone
+					 * rather than a chip row that does nothing.
+					 */}
+					{!teamMode && profiles.data ? (
 						<fieldset className="m-0 min-w-0 border-0 p-0">
 							<legend className="sr-only">Show definitions owned by</legend>
-							<div className="flex flex-wrap gap-0.5 rounded-md bg-sunken p-0.5">
+							{/*
+							 * NO VISIBLE "Showing" LABEL (design spec D10): it cost 24 px of height
+							 * and pushed the segments' right edge in from the tabs' and the search's.
+							 * The legend keeps the group's accessible name, and `aria-pressed` on
+							 * each segment keeps its state, so nothing a screen reader had is lost;
+							 * the segments are the visible words. `flex-1` makes the group span the
+							 * column like its two siblings.
+							 */}
+							<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
 								{(Object.keys(SCOPE_LABEL) as Scope[]).map((value) => (
 									<Button
 										key={value}
@@ -629,18 +643,25 @@ export function AgentsPage() {
 										size="sm"
 										aria-pressed={scope === value}
 										onClick={() => setScope(value)}
-										className={cn(scope === value && rowCurrent)}
+										className={cn("flex-1", scope === value && rowCurrent)}
 									>
 										{SCOPE_LABEL[value]}
 									</Button>
 								))}
 							</div>
 						</fieldset>
-					</div>
-				) : null}
+					) : null}
+				</div>
 
 				{/* The roster: a listbox, so arrow keys move between rows (U12). */}
-				<div className="min-h-0 flex-1 overflow-y-auto">
+				<div
+					/*
+					 * The roster scroller takes the pane's 24 px edge mask (design spec s3),
+					 * so rows dissolve into the footer instead of being sliced at it.
+					 */
+					data-lo-pane-edge-cues
+					className="min-h-0 flex-1 overflow-y-auto"
+				>
 					{listError ? null : !profiles.data && !teams.data ? (
 						<RosterSkeleton />
 					) : rows.length === 0 ? (
@@ -672,8 +693,14 @@ export function AgentsPage() {
 					)}
 				</div>
 
+				{/*
+				 * GHOST, FULL-WIDTH, LEFT-ALIGNED (design spec D15): it is the list's last
+				 * affordance, not a boxed button - a bordered secondary was the heaviest
+				 * object in the column for a secondary job.
+				 */}
 				<Button
-					variant="secondary"
+					variant="ghost"
+					className="w-full justify-start"
 					disabled={!catalogueEnabled}
 					onClick={() => requestGo({ create: teamMode ? "team" : "agent" })}
 				>
@@ -1062,16 +1089,25 @@ function EmptyPane({
 	/*
 	 * THE ASK PANE IS THE CHAT COMPOSER'S COLUMN (operator report, 2026-10-05).
 	 *
-	 * IT WAS `max-w-xl space-y-4` — 576px, pinned to the pane's LEFT edge, with the
-	 * composer inside a second bordered card — and beside a new chat (whose box is
+	 * IT WAS `max-w-xl space-y-4` - 576px, pinned to the pane's LEFT edge, with the
+	 * composer inside a second bordered card - and beside a new chat (whose box is
 	 * centred on the 810px measure, §"Why 810" in `chat-measure.ts`) it read as a
 	 * different, unfinished composer. The numbers here are the chat column's own,
 	 * taken from the chat mount rather than chosen: `CHAT_COLUMN_CONTAINER` makes
-	 * this wrapper the query container, `CHAT_MEASURE` caps and centres the column
-	 * at the shared measure, and `CHAT_COLUMN_INSET` gives the heading and the
-	 * hand-add button the same 24px inset the composer's own band applies to the
-	 * box — so the three share one left edge at every width, exactly as the
-	 * transcript and the composer do in a conversation.
+	 * this wrapper the query container and `CHAT_MEASURE` caps and centres the column
+	 * at the shared measure.
+	 *
+	 * ONE INSET, THE BAND'S (design spec s4, D13). The heading, the description and
+	 * the hand-add button used to add their own `CHAT_COLUMN_INSET` on top of the
+	 * pane's `p-6`, while the box got only the band's: the heading sat 24 px right of
+	 * the box at 1024 (L336 against L312) and the chip text 32 px. The pane is now
+	 * un-padded for this state (see its scroller), the composer's band supplies the
+	 * 24 px for the box, and the other three children take the same `CHAT_COLUMN_INSET`
+	 * ONCE, so heading, description, box, chip text and hand-add all start at one x.
+	 *
+	 * VERTICALLY CENTRED, with `pb-12` of optical lift, so the block sits near the
+	 * middle of the pane the way the new-chat splash does rather than hanging from
+	 * the top with a void beneath it.
 	 *
 	 * NOT CENTRED TEXT: a new chat's splash centres a greeting over the box, but
 	 * this pane's prose is a description of what an agent is, and centring a
@@ -1079,7 +1115,12 @@ function EmptyPane({
 	 * its mood. The column is centred; the prose keeps the column's left edge.
 	 */
 	return (
-		<div className={CHAT_COLUMN_CONTAINER}>
+		<div
+			className={cn(
+				CHAT_COLUMN_CONTAINER,
+				"flex min-h-full flex-col justify-center pb-12",
+			)}
+		>
 			<div className={cn(CHAT_MEASURE, "space-y-4")}>
 				<div className={cn(CHAT_COLUMN_INSET, "space-y-2")}>
 					<h2 className="text-title">
@@ -1097,8 +1138,9 @@ function EmptyPane({
 					about={run.about}
 					onClearAbout={() => run.setAbout(null)}
 				/>
+				{/* `-ml-2` cancels the ghost button's own `px-2`, so its TEXT is at the box's edge. */}
 				<div className={CHAT_COLUMN_INSET}>
-					<Button variant="ghost" onClick={onAddManually}>
+					<Button variant="ghost" className="-ml-2" onClick={onAddManually}>
 						{teamMode ? "Or add a team by hand" : "Or add an agent by hand"}
 					</Button>
 				</div>
@@ -1162,7 +1204,7 @@ function Roster({
 	 * of buttons with roving `tabIndex` is exactly that.
 	 */
 	return (
-		<ul aria-label={teamMode ? "Teams" : "Agents"} className="space-y-1">
+		<ul aria-label={teamMode ? "Teams" : "Agents"} className="space-y-0.5">
 			{rows.map((row) => {
 				const isProfile = "source" in row;
 				const mark = marked.get(`${teamMode ? "team" : "agent"}:${row.name}`);
@@ -1178,7 +1220,7 @@ function Roster({
 							tabIndex={row.name === (focused ?? rows[0]?.name) ? 0 : -1}
 							data-testid={`roster-row-${row.name}`}
 							className={cn(
-								"flex min-h-11 w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-row-hover",
+								"flex min-h-12 w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-row-hover",
 								/*
 								 * The selected row names the SHARED role rather than painting a
 								 * state of its own: the roster is one of the app's row surfaces, and
@@ -1206,8 +1248,15 @@ function Roster({
 								}
 							}}
 						>
+							{/*
+							 * LINE 1: the name, the transient mark, and ONE quiet fact pinned to
+							 * the right edge (design spec s3). Teams print their member count and
+							 * agents their source word in the same slot, so the column has one
+							 * right edge and no row carries a bordered chip - which is also what
+							 * made row heights ragged (44 / 51 / 57 px) when a Badge wrapped.
+							 */}
 							<span className="flex w-full items-center gap-2">
-								<span className="truncate text-body-sm text-ink">
+								<span className="min-w-0 truncate text-body-sm text-ink">
 									{/* The READABLE name for a row: a team's label, or her configured
 									    name for the seat; every other agent row renders its own name
 									    unchanged. Identity stays `row.name` - the testid, the
@@ -1216,16 +1265,6 @@ function Roster({
 										? teamDisplayName(row)
 										: printName(row.name)}
 								</span>
-								{/*
-								 * THE SOURCE CHIP SITS WITH THE NAME and reads as a statement, not a
-								 * control (design review round 1, D11): as a bordered box on the second
-								 * line it looked like the actionable outline chips next to it, and it
-								 * took the room the description needed (about 25 characters were
-								 * visible before).
-								 */}
-								{isProfile ? (
-									<SourceChip source={row.source} appearance="text" />
-								) : null}
 								{mark !== undefined ? (
 									<Badge variant="attention" data-testid="roster-row-updated">
 										{/*
@@ -1236,35 +1275,41 @@ function Roster({
 										{mark ? "New" : "Updated"}
 									</Badge>
 								) : null}
-							</span>
-							<span className="flex w-full flex-wrap items-center gap-1.5">
-								{"members" in row ? (
-									<Badge variant="neutral">
-										{row.members.length === 1
-											? "1 member"
-											: `${row.members.length} members`}
-									</Badge>
-								) : null}
 								{/*
-								 * THE CLASS, IN THE LIST, as a statement rather than a control.
-								 *
-								 * Only a PROACTIVE row says anything: reactive is the absent value
-								 * on the wire and the state an agent is in unless somebody chose
-								 * otherwise, so a "Reactive" badge on thirty rows would be thirty
-								 * repetitions of the default and would bury the one badge that is
-								 * worth noticing. The word is the backend's own and matches the
-								 * detail pane's control, so the list and the pane cannot drift into
-								 * two names for one fact.
+								 * `ink-dim` is the palette's own floor for secondary text; it
+								 * measures 5.05 (dark) / 5.04 (light) on the selected row, the
+								 * lowest ground it meets here. The count is the SUMMED member count
+								 * (`memberCountLabel`), the number the detail pane prints, so the
+								 * two surfaces cannot disagree for a team with a member twice.
 								 */}
+								<span className="ml-auto shrink-0 text-meta text-ink-dim tabular-nums">
+									{"members" in row ? (
+										memberCountLabel(row.members)
+									) : (
+										<SourceChip source={row.source} appearance="text" />
+									)}
+								</span>
+							</span>
+							{/*
+							 * LINE 2: always mounted and exactly one line tall (`min-h-lh`), so a
+							 * row with no description is the same height as one with a long
+							 * description. The CLASS leads the line for a proactive agent as a
+							 * word, not a Badge: reactive is the absent value on the wire and the
+							 * state an agent is in unless somebody chose otherwise, so only the
+							 * exception is said, and in the backend's own word (`CLASS_LABEL`) so
+							 * the list and the detail control cannot drift into two names.
+							 */}
+							<span className="flex min-h-lh w-full items-baseline text-meta text-ink-muted">
 								{isProfile && classOf(row) === "proactive" ? (
-									<Badge variant="neutral" data-testid="roster-row-proactive">
-										{/* The word comes from the class module, not from this row: one
-										    spelling, so the badge and the control cannot drift. */}
-										{CLASS_LABEL.proactive}
-									</Badge>
+									<span className="shrink-0" data-testid="roster-row-proactive">
+										<span className="text-ink">{CLASS_LABEL.proactive}</span>
+										{row.description ? (
+											<span className="text-ink-dim"> · </span>
+										) : null}
+									</span>
 								) : null}
 								{row.description ? (
-									<span className="min-w-0 flex-1 truncate text-meta text-ink-muted">
+									<span className="min-w-0 flex-1 truncate">
 										{row.description}
 									</span>
 								) : null}
