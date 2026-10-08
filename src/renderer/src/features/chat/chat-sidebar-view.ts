@@ -12,7 +12,9 @@
  * rather than described in a comment:
  *
  *   1. the conversation being VIEWED is on screen even when it falls outside
- *      the loaded page (`pageRows`);
+ *      the loaded page (`pageRows`), AND a RUNNING row is never withheld by the
+ *      page at all: the page is the first N rows of the arrangement plus every
+ *      running row beyond it, in both orderings (agent review round 1, A1);
  *   2. a search looks at EVERY conversation, not at the loaded page, and
  *      reveals a match the page would not have reached (`pageRows` under
  *      `searching`);
@@ -660,7 +662,12 @@ export type PageResult = {
 	 * without loading 400 rows to get there.
 	 */
 	lifted: boolean;
-	/** Rows past the page, i.e. how many `Show more` would reveal. */
+	/**
+	 * Rows past the page, i.e. how many `Show more` would reveal. A running row
+	 * beyond the window is drawn, not counted here (the cut never withholds a
+	 * live row - A1): what is left to reveal is the arranged rows past the
+	 * window that are not live.
+	 */
 	remaining: number;
 };
 
@@ -691,26 +698,73 @@ export function pageRows(
 	if (searching) {
 		return { rows: [...ordered], lifted: false, remaining: 0 };
 	}
-	const head = ordered.slice(0, Math.max(0, limit));
+	/*
+	 * THE PAGE IS A WINDOW OF THE ARRANGEMENT, PLUS EVERY LIVE ROW BEYOND IT.
+	 *
+	 * The first `limit` rows of the arranged list are drawn in order, and a
+	 * RUNNING row the window did not reach is drawn as well, in place. The cut is
+	 * a DISCLOSURE, and a disclosure must not be a way to hide live work: agent
+	 * review round 1 (A1) measured `Most recent` at rung 10 drawing ZERO of 2 live
+	 * turns against 40 completed ones, because under `recent` a running row keyed
+	 * by its (old) birth sorts below the cut - while `origin/main` had drawn it,
+	 * by the accident of the catalogue's tier order.
+	 *
+	 * WHY THE WINDOW AND NOT "RUNNING ROWS COST NO QUOTA", which is
+	 * `entityRows`' rule one level down. Both keep the guarantee; the difference
+	 * is the page's SIZE, and the size was measured. Under the no-quota shape the
+	 * page holds N non-running rows PLUS every running row, so the size is a
+	 * function of the LIVE SET: each completion moves its row from the free set
+	 * into the quota (evicting the tail row the quota held) and each new turn
+	 * does the reverse. The geometry rig (`sidebar-resort-geometry.mjs --assert`)
+	 * turned three cells red on exactly that: with the reader parked at the
+	 * scroll extreme, the one-row shrink clamped `scrollTop` 152 -> 120 and the
+	 * viewport "moved -32 px while a row re-filed". A page whose height churns
+	 * with every completion is the flicker this change exists to remove, so the
+	 * list's page is the window: size N, stable across completions that land
+	 * inside it, with live rows drawn in place instead of lifted (the lift is
+	 * `active-first`'s own rule, and `recent` exists for a reader who asked for
+	 * one clock). `entityRows` keeps its own shape - its bound is a per-group
+	 * disclosure with its own pinned contract - and both surfaces share only the
+	 * guarantee: a live row is never behind the cut.
+	 *
+	 * `remaining` counts every row not drawn, so the foot's number and the drawn
+	 * set agree by construction.
+	 */
+	const head: CanonicalSessionRow[] = [];
+	let quota = Math.max(0, limit);
+	for (const row of ordered) {
+		if (quota > 0) {
+			head.push(row);
+			quota -= 1;
+			continue;
+		}
+		if (isActiveRow(row)) head.push(row);
+	}
 	const remaining = Math.max(0, ordered.length - head.length);
 	if (!currentId) return { rows: head, lifted: false, remaining };
-	const index = ordered.findIndex((row) => row.session_id === currentId);
-	if (index < 0 || index < head.length) {
+	/*
+	 * The drawn set is no longer a prefix, so "is it already drawn" is a
+	 * membership test and not an index comparison - `head.includes` asks the
+	 * question the old `index < head.length` used to stand for.
+	 */
+	const viewed = ordered.find((row) => row.session_id === currentId) ?? null;
+	if (viewed === null || head.includes(viewed)) {
 		return { rows: head, lifted: false, remaining };
 	}
-	return { rows: [ordered[index], ...head], lifted: true, remaining };
+	return { rows: [viewed, ...head], lifted: true, remaining };
 }
 
 /** What one expanded entity's session list draws, and what it withholds. */
 export type EntityRows = {
 	/**
-	 * The rows to draw, in the catalogue's own order - with the viewed conversation
-	 * at the head when the bound withheld it (see `lifted`).
+	 * The rows to draw, in the order they were GIVEN (the arrangement's) - with
+	 * the viewed conversation at the head when the bound withheld it (see
+	 * `lifted`).
 	 */
 	rows: CanonicalSessionRow[];
 	/**
 	 * Whether `rows[0]` is the viewed conversation, lifted: it is drawn OUT OF the
-	 * catalogue's order because the bound withheld it from where it belongs.
+	 * order it was given because the bound withheld it from where it belongs.
 	 * `false` when it is drawn in place, or is not this group's row at all.
 	 */
 	lifted: boolean;
