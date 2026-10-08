@@ -1,0 +1,1167 @@
+{
+  "add": {
+    "team-editing@1024x725|mouse": {
+      "rest": {
+        "top": 509,
+        "bottom": 541,
+        "footerTop": 502,
+        "fullyAbove": false,
+        "hiddenPx": 32,
+        "cx": 364.65625,
+        "cy": 524.5625,
+        "hitIsAdd": false,
+        "hit": "Save changes",
+        "scrollTop": 0,
+        "members": 5
+      },
+      "cueRest": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 0,
+        "max": 617
+      },
+      "steps": [
+        {
+          "i": 0,
+          "preScrollHit": "Save changes",
+          "hiddenPx": 32
+        },
+        {
+          "i": 0,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 481.953125,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 114,
+            "members": 6
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 1,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 482.34375,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 185,
+            "members": 7
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 2,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 481.734375,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 257,
+            "members": 8
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 3,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 482.125,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 328,
+            "members": 9
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 4,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 481.515625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 400,
+            "members": 10
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 5,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 481.90625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 471,
+            "members": 11
+          },
+          "focusedIsAdd": true
+        }
+      ],
+      "shotRest": true,
+      "cueAfter": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 471,
+        "max": 1045
+      }
+    },
+    "team-editing@1024x725|enter": {
+      "rest": {
+        "top": 509,
+        "bottom": 541,
+        "footerTop": 502,
+        "fullyAbove": false,
+        "hiddenPx": 32,
+        "cx": 364.65625,
+        "cy": 524.5625,
+        "hitIsAdd": false,
+        "hit": "Save changes",
+        "scrollTop": 0,
+        "members": 5
+      },
+      "cueRest": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 0,
+        "max": 617
+      },
+      "steps": [
+        {
+          "i": 0,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 304,
+            "bottom": 336,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 319.953125,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 276,
+            "members": 6
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 1,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 375,
+            "bottom": 407,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 391.34375,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 276,
+            "members": 7
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 2,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 447,
+            "bottom": 479,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 462.734375,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 276,
+            "members": 8
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 3,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 482.125,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 328,
+            "members": 9
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 4,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 481.515625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 400,
+            "members": 10
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 5,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 481.90625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 471,
+            "members": 11
+          },
+          "focusedIsAdd": true
+        }
+      ],
+      "cueAfter": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 471,
+        "max": 1045
+      }
+    },
+    "team-editing@800x700|mouse": {
+      "rest": {
+        "top": 554,
+        "bottom": 586,
+        "footerTop": 477,
+        "fullyAbove": false,
+        "hiddenPx": 0,
+        "cx": 76.65625,
+        "cy": 569.5625,
+        "hitIsAdd": false,
+        "hit": "Runs in the backgrou",
+        "scrollTop": 0,
+        "members": 5
+      },
+      "cueRest": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 0,
+        "max": 687
+      },
+      "steps": [
+        {
+          "i": 0,
+          "preScrollHit": "Runs in the backgrou",
+          "hiddenPx": 0
+        },
+        {
+          "i": 0,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 76.65625,
+            "cy": 456.953125,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 184,
+            "members": 6
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 1,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 76.65625,
+            "cy": 457.34375,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 255,
+            "members": 7
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 2,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 76.65625,
+            "cy": 456.734375,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 327,
+            "members": 8
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 3,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 76.65625,
+            "cy": 457.125,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 398,
+            "members": 9
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 4,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 76.65625,
+            "cy": 456.515625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 470,
+            "members": 10
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 5,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 76.65625,
+            "cy": 456.90625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 541,
+            "members": 11
+          },
+          "focusedIsAdd": true
+        }
+      ],
+      "shotRest": true,
+      "cueAfter": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 541,
+        "max": 1115
+      }
+    },
+    "team-editing@800x700|enter": {
+      "rest": {
+        "top": 554,
+        "bottom": 586,
+        "footerTop": 477,
+        "fullyAbove": false,
+        "hiddenPx": 0,
+        "cx": 76.65625,
+        "cy": 569.5625,
+        "hitIsAdd": false,
+        "hit": "Runs in the backgrou",
+        "scrollTop": 0,
+        "members": 5
+      },
+      "cueRest": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 0,
+        "max": 687
+      },
+      "steps": [
+        {
+          "i": 0,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 354,
+            "bottom": 386,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 76.65625,
+            "cy": 369.953125,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 271,
+            "members": 6
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 1,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 425,
+            "bottom": 457,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 76.65625,
+            "cy": 441.34375,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 271,
+            "members": 7
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 2,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 76.65625,
+            "cy": 456.734375,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 327,
+            "members": 8
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 3,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 76.65625,
+            "cy": 457.125,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 398,
+            "members": 9
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 4,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 76.65625,
+            "cy": 456.515625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 470,
+            "members": 10
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 5,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 76.65625,
+            "cy": 456.90625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 541,
+            "members": 11
+          },
+          "focusedIsAdd": true
+        }
+      ],
+      "cueAfter": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 541,
+        "max": 1115
+      }
+    },
+    "team-create@1024x725|mouse": {
+      "rest": {
+        "top": 432,
+        "bottom": 464,
+        "footerTop": 502,
+        "fullyAbove": true,
+        "hiddenPx": 0,
+        "cx": 364.65625,
+        "cy": 448.34375,
+        "hitIsAdd": true,
+        "hit": "Add member",
+        "scrollTop": 0,
+        "members": 0
+      },
+      "cueRest": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 0,
+        "max": 540
+      },
+      "steps": [
+        {
+          "i": 0,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 481.734375,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 38,
+            "members": 1
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 1,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 482.125,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 109,
+            "members": 2
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 2,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 481.515625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 181,
+            "members": 3
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 3,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 481.90625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 252,
+            "members": 4
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 4,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 482.296875,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 323,
+            "members": 5
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 5,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 481.6875,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 395,
+            "members": 6
+          },
+          "focusedIsAdd": true
+        }
+      ],
+      "shotRest": true,
+      "cueAfter": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 395,
+        "max": 969
+      }
+    },
+    "team-create@1024x725|enter": {
+      "rest": {
+        "top": 432,
+        "bottom": 464,
+        "footerTop": 502,
+        "fullyAbove": true,
+        "hiddenPx": 0,
+        "cx": 364.65625,
+        "cy": 448.34375,
+        "hitIsAdd": true,
+        "hit": "Add member",
+        "scrollTop": 0,
+        "members": 0
+      },
+      "cueRest": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 0,
+        "max": 540
+      },
+      "steps": [
+        {
+          "i": 0,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 481.734375,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 38,
+            "members": 1
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 1,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 482.125,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 109,
+            "members": 2
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 2,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 481.515625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 181,
+            "members": 3
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 3,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 481.90625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 252,
+            "members": 4
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 4,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 482.296875,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 323,
+            "members": 5
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 5,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 466,
+            "bottom": 498,
+            "footerTop": 502,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 481.6875,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 395,
+            "members": 6
+          },
+          "focusedIsAdd": true
+        }
+      ],
+      "cueAfter": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 395,
+        "max": 969
+      }
+    },
+    "team-create@800x700|mouse": {
+      "rest": {
+        "top": 477,
+        "bottom": 509,
+        "footerTop": 477,
+        "fullyAbove": false,
+        "hiddenPx": 32,
+        "cx": 364.65625,
+        "cy": 493.34375,
+        "hitIsAdd": false,
+        "hit": "Create team",
+        "scrollTop": 0,
+        "members": 0
+      },
+      "cueRest": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 0,
+        "max": 610
+      },
+      "steps": [
+        {
+          "i": 0,
+          "preScrollHit": "Create team",
+          "hiddenPx": 32
+        },
+        {
+          "i": 0,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 456.734375,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 108,
+            "members": 1
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 1,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 457.125,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 179,
+            "members": 2
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 2,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 456.515625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 251,
+            "members": 3
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 3,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 456.90625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 322,
+            "members": 4
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 4,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 457.296875,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 393,
+            "members": 5
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 5,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 456.6875,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 465,
+            "members": 6
+          },
+          "focusedIsAdd": true
+        }
+      ],
+      "shotRest": true,
+      "cueAfter": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 465,
+        "max": 1039
+      }
+    },
+    "team-create@800x700|enter": {
+      "rest": {
+        "top": 477,
+        "bottom": 509,
+        "footerTop": 477,
+        "fullyAbove": false,
+        "hiddenPx": 32,
+        "cx": 364.65625,
+        "cy": 493.34375,
+        "hitIsAdd": false,
+        "hit": "Create team",
+        "scrollTop": 0,
+        "members": 0
+      },
+      "cueRest": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 0,
+        "max": 610
+      },
+      "steps": [
+        {
+          "i": 0,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 315,
+            "bottom": 347,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 330.734375,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 234,
+            "members": 1
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 1,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 386,
+            "bottom": 418,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 402.125,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 234,
+            "members": 2
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 2,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 456.515625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 251,
+            "members": 3
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 3,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 456.90625,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 322,
+            "members": 4
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 4,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 457.296875,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 393,
+            "members": 5
+          },
+          "focusedIsAdd": true
+        },
+        {
+          "i": 5,
+          "hitBefore": "Add member",
+          "after": {
+            "top": 441,
+            "bottom": 473,
+            "footerTop": 477,
+            "fullyAbove": true,
+            "hiddenPx": 0,
+            "cx": 364.65625,
+            "cy": 456.6875,
+            "hitIsAdd": true,
+            "hit": "Add member",
+            "scrollTop": 465,
+            "members": 6
+          },
+          "focusedIsAdd": true
+        }
+      ],
+      "cueAfter": {
+        "opacity": "1",
+        "height": "24px",
+        "pe": "none",
+        "position": "absolute",
+        "bg": "linear-gradient(to top, rgb(34, 32, 28), rgba(0, 0, 0, 0))",
+        "scrollTop": 465,
+        "max": 1039
+      }
+    }
+  }
+}

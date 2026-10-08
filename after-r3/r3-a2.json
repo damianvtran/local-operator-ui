@@ -1,0 +1,330 @@
+{
+  "blocked": {
+    "idle|empty|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 0,
+      "phVisible": true,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "",
+      "dock": 166,
+      "boxTop": 599
+    },
+    "idle|draft|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 1,
+      "phVisible": false,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": true
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 166,
+      "boxTop": 599
+    },
+    "running|empty|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 0,
+      "phVisible": true,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "",
+      "dock": 166,
+      "boxTop": 599
+    },
+    "running|draft|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 166,
+      "boxTop": 599
+    },
+    "settled|empty|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 0,
+      "phVisible": true,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "",
+      "dock": 234,
+      "boxTop": 599
+    },
+    "settled|draft|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 1,
+      "phVisible": false,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": true
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 259.390625,
+      "boxTop": 599
+    },
+    "error|empty|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 0,
+      "phVisible": true,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "",
+      "dock": 248.5,
+      "boxTop": 599
+    },
+    "error|draft|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 1,
+      "phVisible": false,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": true
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 273.890625,
+      "boxTop": 599
+    },
+    "stopRefused|empty|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 0,
+      "phVisible": true,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "",
+      "dock": 229.890625,
+      "boxTop": 599
+    },
+    "stopRefused|draft|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 229.890625,
+      "boxTop": 599
+    },
+    "running|empty|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "",
+      "dock": 166,
+      "boxTop": 599
+    },
+    "running|draft|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 166,
+      "boxTop": 599
+    },
+    "settled|empty|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": false,
+      "disabled": false,
+      "value": "",
+      "dock": 234,
+      "boxTop": 599
+    },
+    "settled|draft|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": false,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 234,
+      "boxTop": 599
+    },
+    "error|empty|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": false,
+      "disabled": false,
+      "value": "",
+      "dock": 248.5,
+      "boxTop": 599
+    },
+    "error|draft|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": false,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 248.5,
+      "boxTop": 599
+    },
+    "stopRefused|empty|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "",
+      "dock": 229.890625,
+      "boxTop": 599
+    },
+    "stopRefused|draft|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 229.890625,
+      "boxTop": 599
+    },
+    "ax|empty": "no node",
+    "ax|draft": "no node"
+  }
+}

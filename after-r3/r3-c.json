@@ -1,0 +1,411 @@
+{
+  "ax": {
+    "empty": [
+      {
+        "role": "combobox",
+        "name": "Member 1 kind",
+        "props": []
+      },
+      {
+        "role": "combobox",
+        "name": "Member 2 kind",
+        "props": []
+      },
+      {
+        "role": "combobox",
+        "name": "Member 3 kind",
+        "props": []
+      },
+      {
+        "role": "combobox",
+        "name": "Member 4 kind",
+        "props": []
+      },
+      {
+        "role": "combobox",
+        "name": "Member 5 kind",
+        "props": []
+      },
+      {
+        "role": "textbox",
+        "name": "What this team is for",
+        "props": [
+          "editable=plaintext",
+          "readonly=false"
+        ]
+      },
+      {
+        "role": "textbox",
+        "name": "Collaboration instructions",
+        "props": [
+          "editable=plaintext",
+          "readonly=false"
+        ]
+      },
+      {
+        "role": "textbox",
+        "name": "Project brief",
+        "props": [
+          "editable=plaintext",
+          "readonly=false"
+        ]
+      },
+      {
+        "role": "combobox",
+        "name": "Message",
+        "description": "Finish or cancel your edit first.",
+        "props": [
+          "disabled=true",
+          "editable=plaintext"
+        ]
+      },
+      {
+        "role": "combobox",
+        "name": "Manager agent",
+        "props": [
+          "editable=plaintext"
+        ]
+      },
+      {
+        "role": "combobox",
+        "name": "Member 1",
+        "props": [
+          "editable=plaintext"
+        ]
+      },
+      {
+        "role": "combobox",
+        "name": "Member 2",
+        "props": [
+          "editable=plaintext"
+        ]
+      },
+      {
+        "role": "combobox",
+        "name": "Member 3",
+        "props": [
+          "editable=plaintext"
+        ]
+      },
+      {
+        "role": "combobox",
+        "name": "Member 4",
+        "props": [
+          "editable=plaintext"
+        ]
+      },
+      {
+        "role": "combobox",
+        "name": "Member 5",
+        "props": [
+          "editable=plaintext"
+        ]
+      }
+    ],
+    "empty-describedby": [
+      {
+        "id": "config-composer-note",
+        "text": "Finish or cancel your edit first."
+      }
+    ],
+    "draft": [
+      {
+        "role": "combobox",
+        "name": "Member 1 kind",
+        "props": []
+      },
+      {
+        "role": "combobox",
+        "name": "Member 2 kind",
+        "props": []
+      },
+      {
+        "role": "combobox",
+        "name": "Member 3 kind",
+        "props": []
+      },
+      {
+        "role": "combobox",
+        "name": "Member 4 kind",
+        "props": []
+      },
+      {
+        "role": "combobox",
+        "name": "Member 5 kind",
+        "props": []
+      },
+      {
+        "role": "textbox",
+        "name": "What this team is for",
+        "props": [
+          "editable=plaintext",
+          "readonly=false"
+        ]
+      },
+      {
+        "role": "textbox",
+        "name": "Collaboration instructions",
+        "props": [
+          "editable=plaintext",
+          "readonly=false"
+        ]
+      },
+      {
+        "role": "textbox",
+        "name": "Project brief",
+        "props": [
+          "editable=plaintext",
+          "readonly=false"
+        ]
+      },
+      {
+        "role": "combobox",
+        "name": "Message",
+        "description": "Finish or cancel your edit first.",
+        "props": [
+          "disabled=true",
+          "editable=plaintext"
+        ]
+      },
+      {
+        "role": "combobox",
+        "name": "Manager agent",
+        "props": [
+          "editable=plaintext"
+        ]
+      },
+      {
+        "role": "combobox",
+        "name": "Member 1",
+        "props": [
+          "editable=plaintext"
+        ]
+      },
+      {
+        "role": "combobox",
+        "name": "Member 2",
+        "props": [
+          "editable=plaintext"
+        ]
+      },
+      {
+        "role": "combobox",
+        "name": "Member 3",
+        "props": [
+          "editable=plaintext"
+        ]
+      },
+      {
+        "role": "combobox",
+        "name": "Member 4",
+        "props": [
+          "editable=plaintext"
+        ]
+      },
+      {
+        "role": "combobox",
+        "name": "Member 5",
+        "props": [
+          "editable=plaintext"
+        ]
+      }
+    ],
+    "draft-describedby": [
+      {
+        "id": "config-composer-note",
+        "text": "Finish or cancel your edit first."
+      }
+    ]
+  },
+  "bar": {
+    "1024x725": {
+      "before": {
+        "bar": null,
+        "paneQuestion": false,
+        "footerText": "Save changesCancelUnsaved changes",
+        "active": "INPUT",
+        "activeTag": "INPUT",
+        "editing": true,
+        "descValue": "dirty edit",
+        "keepButtons": 0
+      },
+      "clicked": {
+        "tid": "roster-row-data-investigations",
+        "x": 140,
+        "y": 212.7265625
+      },
+      "opened": {
+        "bar": "Discard your unsaved changes to this team?Discard changesKeep editing",
+        "paneQuestion": false,
+        "footerText": "Save changesCancelUnsaved changes",
+        "active": "Keep editing",
+        "activeTag": "BUTTON",
+        "editing": true,
+        "descValue": "dirty edit",
+        "keepButtons": 1
+      },
+      "afterEscape": {
+        "bar": null,
+        "paneQuestion": false,
+        "footerText": "Save changesCancelUnsaved changes",
+        "active": "Data Investigations4 membersLo",
+        "activeTag": "BUTTON",
+        "editing": true,
+        "descValue": "dirty edit",
+        "keepButtons": 0
+      },
+      "paneEscape1": {
+        "bar": null,
+        "paneQuestion": true,
+        "footerText": "Save changesDiscard this team?Discard changesKeep editing",
+        "active": "Keep editing",
+        "activeTag": "BUTTON",
+        "editing": true,
+        "descValue": "dirty edit",
+        "keepButtons": 1
+      },
+      "paneEscape2": {
+        "bar": null,
+        "paneQuestion": false,
+        "footerText": "Save changesCancelUnsaved changes",
+        "active": "Save changes",
+        "activeTag": "BUTTON",
+        "editing": true,
+        "descValue": "dirty edit",
+        "keepButtons": 0
+      },
+      "reopened": {
+        "bar": "Discard your unsaved changes to this team?Discard changesKeep editing",
+        "paneQuestion": false,
+        "footerText": "Save changesCancelUnsaved changes",
+        "active": "Keep editing",
+        "activeTag": "BUTTON",
+        "editing": true,
+        "descValue": "dirty edit",
+        "keepButtons": 1
+      },
+      "afterDiscard": {
+        "bar": null,
+        "paneQuestion": false,
+        "footerText": "",
+        "active": "Message",
+        "activeTag": "TEXTAREA",
+        "editing": false,
+        "keepButtons": 0,
+        "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark"
+      }
+    },
+    "800x700": {
+      "before": {
+        "bar": null,
+        "paneQuestion": false,
+        "footerText": "Save changesCancelUnsaved changes",
+        "active": "INPUT",
+        "activeTag": "INPUT",
+        "editing": true,
+        "descValue": "dirty edit",
+        "keepButtons": 0
+      },
+      "clicked": {
+        "tid": null,
+        "x": 75.9921875,
+        "y": 22
+      },
+      "opened": {
+        "bar": "Discard your unsaved changes to this team?Discard changesKeep editing",
+        "paneQuestion": false,
+        "footerText": "Save changesCancelUnsaved changes",
+        "active": "Keep editing",
+        "activeTag": "BUTTON",
+        "editing": true,
+        "descValue": "dirty edit",
+        "keepButtons": 1
+      },
+      "afterEscape": {
+        "bar": null,
+        "paneQuestion": false,
+        "footerText": "Save changesCancelUnsaved changes",
+        "active": "Back to the list",
+        "activeTag": "BUTTON",
+        "editing": true,
+        "descValue": "dirty edit",
+        "keepButtons": 0
+      },
+      "paneEscape1": {
+        "bar": null,
+        "paneQuestion": true,
+        "footerText": "Save changesDiscard this team?Discard changesKeep editing",
+        "active": "Keep editing",
+        "activeTag": "BUTTON",
+        "editing": true,
+        "descValue": "dirty edit",
+        "keepButtons": 1
+      },
+      "paneEscape2": {
+        "bar": null,
+        "paneQuestion": false,
+        "footerText": "Save changesCancelUnsaved changes",
+        "active": "Save changes",
+        "activeTag": "BUTTON",
+        "editing": true,
+        "descValue": "dirty edit",
+        "keepButtons": 0
+      },
+      "reopened": {
+        "bar": "Discard your unsaved changes to this team?Discard changesKeep editing",
+        "paneQuestion": false,
+        "footerText": "Save changesCancelUnsaved changes",
+        "active": "Keep editing",
+        "activeTag": "BUTTON",
+        "editing": true,
+        "descValue": "dirty edit",
+        "keepButtons": 1
+      },
+      "afterDiscard": {
+        "bar": null,
+        "paneQuestion": false,
+        "footerText": "",
+        "active": "Message",
+        "activeTag": "TEXTAREA",
+        "editing": false,
+        "keepButtons": 0,
+        "url": "?id=agents-teams-page--team-selected&viewMode=story&args=theme%3AlocalOperatorDark"
+      }
+    }
+  },
+  "barKeyboard": {
+    "activeBefore": "roster-row-data-investigations",
+    "opened": {
+      "bar": "Discard your unsaved changes to this team?Discard changesKeep editing",
+      "paneQuestion": false,
+      "footerText": "Save changesCancelUnsaved changes",
+      "active": "Keep editing",
+      "activeTag": "BUTTON",
+      "editing": true,
+      "descValue": "dirty edit",
+      "keepButtons": 1
+    },
+    "afterEscape": {
+      "bar": null,
+      "paneQuestion": false,
+      "footerText": "Save changesCancelUnsaved changes",
+      "active": "Data Investigations4 membersLo",
+      "activeTag": "BUTTON",
+      "editing": true,
+      "descValue": "dirty edit",
+      "keepButtons": 0
+    },
+    "activeTid": "roster-row-data-investigations"
+  },
+  "u5": {
+    "afterDiscard": {
+      "bar": null,
+      "paneQuestion": false,
+      "footerText": "",
+      "active": "Message",
+      "activeTag": "TEXTAREA",
+      "editing": false,
+      "keepButtons": 0
+    }
+  }
+}

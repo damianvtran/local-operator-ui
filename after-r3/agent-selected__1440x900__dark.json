@@ -1,0 +1,527 @@
+{
+  "viewport": {
+    "w": 1440,
+    "h": 900,
+    "theme": "localOperatorDark"
+  },
+  "aside": {
+    "left": 0,
+    "right": 288,
+    "top": 0,
+    "bottom": 900,
+    "width": 288,
+    "height": 900,
+    "border": {
+      "t": 0,
+      "r": 0,
+      "b": 0,
+      "l": 0
+    },
+    "padding": {
+      "t": 16,
+      "r": 16,
+      "b": 16,
+      "l": 16
+    },
+    "radius": "0px",
+    "bg": "rgb(43, 39, 33)",
+    "overflowY": "visible"
+  },
+  "main": {
+    "left": 288,
+    "right": 1440,
+    "top": 0,
+    "bottom": 900,
+    "width": 1152,
+    "height": 900,
+    "border": {
+      "t": 0,
+      "r": 0,
+      "b": 0,
+      "l": 0
+    },
+    "padding": {
+      "t": 0,
+      "r": 0,
+      "b": 0,
+      "l": 0
+    },
+    "radius": "0px",
+    "bg": "rgba(0, 0, 0, 0)",
+    "overflowY": "visible"
+  },
+  "pane": {
+    "left": 288,
+    "right": 1440,
+    "top": 0,
+    "bottom": 734,
+    "width": 1152,
+    "height": 734,
+    "border": {
+      "t": 0,
+      "r": 0,
+      "b": 0,
+      "l": 0
+    },
+    "padding": {
+      "t": 24,
+      "r": 16,
+      "b": 0,
+      "l": 16
+    },
+    "radius": "0px",
+    "bg": "rgba(0, 0, 0, 0)",
+    "overflowY": "auto",
+    "scrollbarWidth": 16,
+    "gutter": "stable both-edges",
+    "contentLeft": 312,
+    "hasEdgeCue": true,
+    "maskImage": "linear-gradient(rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)"
+  },
+  "composerPlacement": "docked",
+  "composerBothRendered": 1,
+  "dock": {
+    "element": {
+      "left": 288,
+      "right": 1440,
+      "top": 734,
+      "bottom": 900,
+      "width": 1152,
+      "height": 166,
+      "border": {
+        "t": 0,
+        "r": 0,
+        "b": 0,
+        "l": 0
+      },
+      "padding": {
+        "t": 0,
+        "r": 0,
+        "b": 0,
+        "l": 0
+      },
+      "radius": "0px",
+      "bg": "rgb(34, 32, 28)",
+      "overflowY": "visible"
+    },
+    "totalHeight": 166,
+    "shareOfViewportHeight": 0.18,
+    "nonInputHeight": 56,
+    "box": {
+      "left": 459,
+      "right": 1269,
+      "top": 774,
+      "bottom": 884,
+      "width": 810,
+      "height": 110,
+      "border": {
+        "t": 0,
+        "r": 0,
+        "b": 0,
+        "l": 0
+      },
+      "padding": {
+        "t": 16,
+        "r": 16,
+        "b": 16,
+        "l": 16
+      },
+      "radius": "16px",
+      "bg": "rgb(50, 45, 34)",
+      "overflowY": "visible"
+    },
+    "statusRow": {
+      "left": 459,
+      "right": 1269,
+      "top": 742,
+      "bottom": 770,
+      "width": 810,
+      "height": 28
+    },
+    "note": {
+      "left": 459,
+      "right": 1257,
+      "top": 747.3,
+      "bottom": 764.69,
+      "width": 798,
+      "height": 17.39
+    },
+    "noteInDom": true,
+    "run": null,
+    "frames": [
+      {
+        "tag": "div",
+        "cls": "mx-auto flex flex-col bg-elevated box-border transition-colo",
+        "testid": null,
+        "border": false,
+        "bg": "rgb(50, 45, 34)",
+        "radius": "16px"
+      },
+      {
+        "tag": "div",
+        "cls": "shrink-0 bg-canvas",
+        "testid": null,
+        "border": false,
+        "bg": "rgb(34, 32, 28)",
+        "radius": "0px"
+      }
+    ],
+    "boxFrames": [
+      {
+        "tag": "div",
+        "cls": "mx-auto flex flex-col bg-elevated box-border transition-colo",
+        "testid": null,
+        "border": false,
+        "bg": "rgb(50, 45, 34)",
+        "radius": "16px"
+      }
+    ],
+    "nestedFrameCount": 1,
+    "boxTopToPaneBottom": 40,
+    "chipCount": 0
+  },
+  "detail": {
+    "container": {
+      "left": 312,
+      "right": 1416,
+      "top": 24,
+      "bottom": 814.31,
+      "width": 1104,
+      "height": 790.31
+    },
+    "column": {
+      "left": 459,
+      "right": 1269,
+      "top": 24,
+      "bottom": 806.31,
+      "width": 810,
+      "height": 782.31
+    },
+    "columnClass": "w-full @min-[750px]/chatcol:max-w-[var(--lo-chat-measure)] @min-[750px]/chatcol:mx-auto",
+    "maxWidthClass": "max-w-[var(--lo-chat-measure)]",
+    "header": {
+      "left": 459,
+      "right": 1269,
+      "top": 24,
+      "bottom": 73.5,
+      "width": 810,
+      "height": 49.5
+    },
+    "heading": {
+      "left": 459,
+      "right": 945.27,
+      "top": 24,
+      "bottom": 50,
+      "width": 486.27,
+      "height": 26
+    },
+    "headingCenterY": 37,
+    "headerButtons": [
+      {
+        "text": "New chat",
+        "left": 961.27,
+        "right": 1043.39,
+        "top": 21,
+        "bottom": 53,
+        "width": 82.13,
+        "height": 32
+      },
+      {
+        "text": "Edit",
+        "left": 1051.39,
+        "right": 1101.42,
+        "top": 21,
+        "bottom": 53,
+        "width": 50.03,
+        "height": 32
+      },
+      {
+        "text": "Ask for a change",
+        "left": 1109.42,
+        "right": 1237,
+        "top": 21,
+        "bottom": 53,
+        "width": 127.58,
+        "height": 32
+      },
+      {
+        "text": "More actions",
+        "left": 1245,
+        "right": 1277,
+        "top": 21,
+        "bottom": 53,
+        "width": 32,
+        "height": 32
+      }
+    ],
+    "headerButtonsRight": 1277,
+    "headerButtonsCenterYs": [
+      37,
+      37,
+      37,
+      37
+    ],
+    "headerTextButtons": 3,
+    "headerIconButtons": 1,
+    "headerMeta": "Custom · Proactive",
+    "accentFills": 3
+  },
+  "boxVsColumn": {
+    "leftDelta": 0,
+    "rightDelta": 0
+  },
+  "sections": [
+    {
+      "title": "When to use it",
+      "left": 459,
+      "right": 1269,
+      "top": 105.5,
+      "bottom": 157.58,
+      "width": 810,
+      "height": 52.08,
+      "borderTop": 0,
+      "paddingTop": 0
+    },
+    {
+      "title": "Instructions",
+      "left": 459,
+      "right": 1269,
+      "top": 189.58,
+      "bottom": 241.66,
+      "width": 810,
+      "height": 52.08,
+      "borderTop": 0,
+      "paddingTop": 0
+    },
+    {
+      "title": "Tools",
+      "left": 459,
+      "right": 1269,
+      "top": 273.66,
+      "bottom": 327.44,
+      "width": 810,
+      "height": 53.78,
+      "borderTop": 0,
+      "paddingTop": 0
+    },
+    {
+      "title": "Delegation and effort",
+      "left": 459,
+      "right": 1269,
+      "top": 359.44,
+      "bottom": 436.83,
+      "width": 810,
+      "height": 77.39,
+      "borderTop": 0,
+      "paddingTop": 0
+    },
+    {
+      "title": "Messaging",
+      "left": 459,
+      "right": 1269,
+      "top": 468.83,
+      "bottom": 617,
+      "width": 810,
+      "height": 148.17,
+      "borderTop": 0,
+      "paddingTop": 0
+    },
+    {
+      "title": "Used by",
+      "left": 459,
+      "right": 1269,
+      "top": 649,
+      "bottom": 726.53,
+      "width": 810,
+      "height": 77.53,
+      "borderTop": 0,
+      "paddingTop": 0
+    },
+    {
+      "title": "Where it came from",
+      "left": 459,
+      "right": 1269,
+      "top": 758.53,
+      "bottom": 806.31,
+      "width": 810,
+      "height": 47.78,
+      "borderTop": 0,
+      "paddingTop": 0
+    }
+  ],
+  "sectionGaps": [
+    32,
+    32,
+    32,
+    32,
+    32,
+    32
+  ],
+  "sectionRuleCount": 0,
+  "readBlocks": [
+    {
+      "left": 459,
+      "right": 1269,
+      "top": 135.89,
+      "bottom": 157.58,
+      "width": 810,
+      "height": 21.69,
+      "border": 0,
+      "bg": "rgba(0, 0, 0, 0)",
+      "clamped": false,
+      "clientHeight": 22,
+      "scrollHeight": 22,
+      "textLength": 68,
+      "showAll": false,
+      "tabIndex": null
+    },
+    {
+      "left": 459,
+      "right": 1269,
+      "top": 219.97,
+      "bottom": 241.66,
+      "width": 810,
+      "height": 21.69,
+      "border": 0,
+      "bg": "rgba(0, 0, 0, 0)",
+      "clamped": false,
+      "clientHeight": 22,
+      "scrollHeight": 22,
+      "textLength": 36,
+      "showAll": false,
+      "tabIndex": null
+    }
+  ],
+  "nestedScrollers": [],
+  "paneScroll": {
+    "clientHeight": 734,
+    "scrollHeight": 814,
+    "hiddenPx": 80
+  },
+  "paneShareOfViewportHeight": 0.82,
+  "tables": [],
+  "roster": {
+    "rowCount": 17,
+    "distinctHeights": [
+      50.89
+    ],
+    "rowHeights": [
+      {
+        "id": "aida",
+        "h": 50.89
+      },
+      {
+        "id": "manager",
+        "h": 50.89
+      },
+      {
+        "id": "reviewer",
+        "h": 50.89
+      },
+      {
+        "id": "coder",
+        "h": 50.89
+      },
+      {
+        "id": "architect",
+        "h": 50.89
+      },
+      {
+        "id": "designer",
+        "h": 50.89
+      },
+      {
+        "id": "qa-tester",
+        "h": 50.89
+      },
+      {
+        "id": "scout",
+        "h": 50.89
+      },
+      {
+        "id": "trend-scout",
+        "h": 50.89
+      },
+      {
+        "id": "post-analyst",
+        "h": 50.89
+      },
+      {
+        "id": "content-writer",
+        "h": 50.89
+      },
+      {
+        "id": "content-designer",
+        "h": 50.89
+      },
+      {
+        "id": "copy-reviewer",
+        "h": 50.89
+      },
+      {
+        "id": "data-analyst",
+        "h": 50.89
+      },
+      {
+        "id": "researcher",
+        "h": 50.89
+      },
+      {
+        "id": "support-triage",
+        "h": 50.89
+      },
+      {
+        "id": "release-notes",
+        "h": 50.89
+      }
+    ],
+    "pitch": 52.89,
+    "scroller": {
+      "left": 16,
+      "right": 272,
+      "top": 174.39,
+      "bottom": 840,
+      "width": 256,
+      "height": 665.61
+    },
+    "scrollerEdgeCue": true,
+    "visibleRows": 12,
+    "selected": [
+      "roster-row-trend-scout"
+    ],
+    "firstRowText": "Aida | Built-in | Proactive · | Your chief of staff: orchestrates agents and teams on your behalf, keeps an eye on everything in flight, and reports back.",
+    "proactiveMarks": 3,
+    "countWords": []
+  },
+  "cluster": {
+    "tabsRight": 272,
+    "searchRight": 272,
+    "scopeRight": 272,
+    "scrollerTop": 174.39,
+    "footer": {
+      "left": 16,
+      "right": 272,
+      "top": 852,
+      "bottom": 884,
+      "width": 256,
+      "height": 32
+    },
+    "footerText": "Add agent manually",
+    "showingLabel": false
+  },
+  "documentOverflow": {
+    "scrollWidth": 1440,
+    "clientWidth": 1440
+  },
+  "activeElement": {
+    "tag": "textarea"
+  },
+  "placeholder": "Ask for a change, or describe something new…",
+  "boxDisabled": false,
+  "boxStyle": {
+    "outlineStyle": "solid",
+    "outlineWidth": "2px",
+    "borderTop": "0px",
+    "bg": "rgb(50, 45, 34)"
+  }
+}

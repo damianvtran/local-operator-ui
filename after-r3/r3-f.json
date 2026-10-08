@@ -1,0 +1,37 @@
+{
+  "n1": {
+    "text": "Ask for a change",
+    "fv": true,
+    "outline": "solid 2px off 2px",
+    "boxRight": 1012,
+    "ringOuterRight": 1016,
+    "paneClientRight": 1008,
+    "paneBorderRight": 1024,
+    "scrollbarW": 16,
+    "overflowOfPane": 8
+  },
+  "n2": {
+    "team-error-long": {
+      "regionTop": 480.5,
+      "ringOuterTop": 476.5,
+      "ruleTop": 488.5,
+      "ruleBelowRegionTop": 8
+    },
+    "team-settled-long": {
+      "regionTop": 518.5,
+      "ringOuterTop": 514.5,
+      "ruleTop": 526.5,
+      "ruleBelowRegionTop": 8
+    },
+    "team-stop-refused": null
+  },
+  "u5": {
+    "transitions": [
+      "out:Keep editing",
+      "BUTTON:Discard changes",
+      "out:Discard changes",
+      "TEXTAREA:Message"
+    ],
+    "active": "TEXTAREA:Message"
+  }
+}

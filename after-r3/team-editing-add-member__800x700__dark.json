@@ -1,0 +1,549 @@
+{
+  "viewport": {
+    "w": 800,
+    "h": 700,
+    "theme": "localOperatorDark"
+  },
+  "aside": {
+    "left": 0,
+    "right": 0,
+    "top": 0,
+    "bottom": 0,
+    "width": 0,
+    "height": 0,
+    "border": {
+      "t": 0,
+      "r": 0,
+      "b": 0,
+      "l": 0
+    },
+    "padding": {
+      "t": 16,
+      "r": 16,
+      "b": 16,
+      "l": 16
+    },
+    "radius": "0px",
+    "bg": "rgb(43, 39, 33)",
+    "overflowY": "visible"
+  },
+  "main": {
+    "left": 0,
+    "right": 800,
+    "top": 0,
+    "bottom": 700,
+    "width": 800,
+    "height": 700,
+    "border": {
+      "t": 0,
+      "r": 0,
+      "b": 0,
+      "l": 0
+    },
+    "padding": {
+      "t": 0,
+      "r": 0,
+      "b": 0,
+      "l": 0
+    },
+    "radius": "0px",
+    "bg": "rgba(0, 0, 0, 0)",
+    "overflowY": "visible"
+  },
+  "pane": {
+    "left": 0,
+    "right": 800,
+    "top": 45,
+    "bottom": 534,
+    "width": 800,
+    "height": 489,
+    "border": {
+      "t": 0,
+      "r": 0,
+      "b": 0,
+      "l": 0
+    },
+    "padding": {
+      "t": 24,
+      "r": 16,
+      "b": 0,
+      "l": 16
+    },
+    "radius": "0px",
+    "bg": "rgba(0, 0, 0, 0)",
+    "overflowY": "auto",
+    "scrollbarWidth": 16,
+    "gutter": "stable both-edges",
+    "contentLeft": 24,
+    "hasEdgeCue": true,
+    "maskImage": "none"
+  },
+  "composerPlacement": "docked",
+  "composerBothRendered": 1,
+  "dock": {
+    "element": {
+      "left": 0,
+      "right": 800,
+      "top": 534,
+      "bottom": 700,
+      "width": 800,
+      "height": 166,
+      "border": {
+        "t": 0,
+        "r": 0,
+        "b": 0,
+        "l": 0
+      },
+      "padding": {
+        "t": 0,
+        "r": 0,
+        "b": 0,
+        "l": 0
+      },
+      "radius": "0px",
+      "bg": "rgb(34, 32, 28)",
+      "overflowY": "visible"
+    },
+    "totalHeight": 166,
+    "shareOfViewportHeight": 0.24,
+    "nonInputHeight": 56,
+    "box": {
+      "left": 24,
+      "right": 776,
+      "top": 574,
+      "bottom": 684,
+      "width": 752,
+      "height": 110,
+      "border": {
+        "t": 0,
+        "r": 0,
+        "b": 0,
+        "l": 0
+      },
+      "padding": {
+        "t": 16,
+        "r": 16,
+        "b": 16,
+        "l": 16
+      },
+      "radius": "16px",
+      "bg": "rgb(50, 45, 34)",
+      "overflowY": "visible"
+    },
+    "statusRow": {
+      "left": 24,
+      "right": 776,
+      "top": 542,
+      "bottom": 570,
+      "width": 752,
+      "height": 28
+    },
+    "note": {
+      "left": 24,
+      "right": 764,
+      "top": 547.3,
+      "bottom": 564.69,
+      "width": 740,
+      "height": 17.39
+    },
+    "noteInDom": true,
+    "run": null,
+    "frames": [
+      {
+        "tag": "div",
+        "cls": "mx-auto flex flex-col bg-elevated box-border transition-colo",
+        "testid": null,
+        "border": false,
+        "bg": "rgb(50, 45, 34)",
+        "radius": "16px"
+      },
+      {
+        "tag": "div",
+        "cls": "shrink-0 bg-canvas",
+        "testid": null,
+        "border": false,
+        "bg": "rgb(34, 32, 28)",
+        "radius": "0px"
+      }
+    ],
+    "boxFrames": [
+      {
+        "tag": "div",
+        "cls": "mx-auto flex flex-col bg-elevated box-border transition-colo",
+        "testid": null,
+        "border": false,
+        "bg": "rgb(50, 45, 34)",
+        "radius": "16px"
+      }
+    ],
+    "nestedFrameCount": 1,
+    "boxTopToPaneBottom": 40,
+    "chipCount": 0
+  },
+  "detail": {
+    "container": {
+      "left": 24,
+      "right": 776,
+      "top": -242,
+      "bottom": 909.61,
+      "width": 752,
+      "height": 1151.61
+    },
+    "column": {
+      "left": 24,
+      "right": 776,
+      "top": -242,
+      "bottom": 909.61,
+      "width": 752,
+      "height": 1151.61
+    },
+    "columnClass": "w-full @min-[750px]/chatcol:max-w-[var(--lo-chat-measure)] @min-[750px]/chatcol:mx-auto",
+    "maxWidthClass": "max-w-[var(--lo-chat-measure)]",
+    "header": {
+      "left": 24,
+      "right": 776,
+      "top": -242,
+      "bottom": -192.5,
+      "width": 752,
+      "height": 49.5
+    },
+    "heading": {
+      "left": 24,
+      "right": 776,
+      "top": -242,
+      "bottom": -216,
+      "width": 752,
+      "height": 26
+    },
+    "headingCenterY": -229,
+    "headerButtons": [],
+    "headerButtonsRight": null,
+    "headerButtonsCenterYs": [],
+    "headerTextButtons": 0,
+    "headerIconButtons": 0,
+    "headerMeta": "5 members",
+    "accentFills": 0
+  },
+  "boxVsColumn": {
+    "leftDelta": 0,
+    "rightDelta": 0
+  },
+  "sections": [
+    {
+      "title": "Manager",
+      "left": 24,
+      "right": 776,
+      "top": -160.5,
+      "bottom": -45.22,
+      "width": 752,
+      "height": 115.28,
+      "borderTop": 0,
+      "paddingTop": 0
+    },
+    {
+      "title": "Members",
+      "left": 24,
+      "right": 776,
+      "top": -13.22,
+      "bottom": 274.56,
+      "width": 752,
+      "height": 287.78,
+      "borderTop": 0,
+      "paddingTop": 0
+    },
+    {
+      "title": "Description",
+      "left": 24,
+      "right": 776,
+      "top": 306.56,
+      "bottom": 396.45,
+      "width": 752,
+      "height": 89.89,
+      "borderTop": 0,
+      "paddingTop": 0
+    },
+    {
+      "title": "Collaboration instructions",
+      "left": 24,
+      "right": 776,
+      "top": 428.45,
+      "bottom": 608.53,
+      "width": 752,
+      "height": 180.08,
+      "borderTop": 0,
+      "paddingTop": 0
+    },
+    {
+      "title": "Project brief",
+      "left": 24,
+      "right": 776,
+      "top": 640.53,
+      "bottom": 820.61,
+      "width": 752,
+      "height": 180.08,
+      "borderTop": 0,
+      "paddingTop": 0
+    }
+  ],
+  "sectionGaps": [
+    32,
+    32,
+    32,
+    32
+  ],
+  "sectionRuleCount": 0,
+  "readBlocks": [],
+  "nestedScrollers": [
+    {
+      "tag": "textarea",
+      "label": "Collaboration instructions",
+      "clientHeight": 142,
+      "scrollHeight": 621
+    }
+  ],
+  "paneScroll": {
+    "clientHeight": 489,
+    "scrollHeight": 1176,
+    "hiddenPx": 687
+  },
+  "paneShareOfViewportHeight": 0.7,
+  "tables": [],
+  "roster": {
+    "rowCount": 11,
+    "distinctHeights": [
+      0
+    ],
+    "rowHeights": [
+      {
+        "id": "content",
+        "h": 0
+      },
+      {
+        "id": "data-investigations",
+        "h": 0
+      },
+      {
+        "id": "data-quality",
+        "h": 0
+      },
+      {
+        "id": "helpdesk",
+        "h": 0
+      },
+      {
+        "id": "hyperplane-development",
+        "h": 0
+      },
+      {
+        "id": "local-operator-development",
+        "h": 0
+      },
+      {
+        "id": "minerva-development",
+        "h": 0
+      },
+      {
+        "id": "pergamon-research",
+        "h": 0
+      },
+      {
+        "id": "radient-net",
+        "h": 0
+      },
+      {
+        "id": "radient-development",
+        "h": 0
+      },
+      {
+        "id": "support-desk",
+        "h": 0
+      }
+    ],
+    "pitch": 0,
+    "scroller": {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0
+    },
+    "scrollerEdgeCue": true,
+    "visibleRows": 11,
+    "selected": [
+      "roster-row-content"
+    ],
+    "firstRowText": "Content5 membersTurns what is moving in the market into reviewed posts, from the first signal to the finished layout.",
+    "proactiveMarks": 0,
+    "countWords": [
+      "5 members",
+      "4 members",
+      "3 members",
+      "3 members",
+      "5 members",
+      "7 members",
+      "8 members",
+      "4 members",
+      "3 members",
+      "5 members",
+      "4 members"
+    ]
+  },
+  "cluster": {
+    "tabsRight": 0,
+    "searchRight": 0,
+    "scopeRight": null,
+    "scrollerTop": 0,
+    "footer": {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0
+    },
+    "footerText": "Add team manually",
+    "showingLabel": false
+  },
+  "edit": {
+    "footer": {
+      "left": 24,
+      "right": 776,
+      "top": 477,
+      "bottom": 534,
+      "width": 752,
+      "height": 57
+    },
+    "footerBorderTop": 1,
+    "saveLeft": 24,
+    "controlRights": [
+      {
+        "tag": "input",
+        "label": "Manager agent",
+        "right": 776
+      },
+      {
+        "tag": "input",
+        "label": "Member 1",
+        "right": 462.8
+      },
+      {
+        "tag": "button",
+        "label": "Member 1 kind",
+        "right": 598.8
+      },
+      {
+        "tag": "select",
+        "label": "",
+        "right": 24
+      },
+      {
+        "tag": "input",
+        "label": "Member 2",
+        "right": 462.8
+      },
+      {
+        "tag": "button",
+        "label": "Member 2 kind",
+        "right": 598.8
+      },
+      {
+        "tag": "select",
+        "label": "",
+        "right": 24
+      },
+      {
+        "tag": "input",
+        "label": "Member 3",
+        "right": 462.8
+      },
+      {
+        "tag": "button",
+        "label": "Member 3 kind",
+        "right": 598.8
+      },
+      {
+        "tag": "select",
+        "label": "",
+        "right": 24
+      },
+      {
+        "tag": "input",
+        "label": "Member 4",
+        "right": 462.8
+      },
+      {
+        "tag": "button",
+        "label": "Member 4 kind",
+        "right": 598.8
+      },
+      {
+        "tag": "select",
+        "label": "",
+        "right": 24
+      },
+      {
+        "tag": "input",
+        "label": "Member 5",
+        "right": 462.8
+      },
+      {
+        "tag": "button",
+        "label": "Member 5 kind",
+        "right": 598.8
+      },
+      {
+        "tag": "select",
+        "label": "",
+        "right": 24
+      },
+      {
+        "tag": "input",
+        "label": "team-description",
+        "right": 776
+      },
+      {
+        "tag": "textarea",
+        "label": "Collaboration instructions",
+        "right": 776
+      },
+      {
+        "tag": "textarea",
+        "label": "Project brief",
+        "right": 776
+      }
+    ],
+    "removeRights": [
+      776,
+      776,
+      776,
+      776,
+      776
+    ],
+    "memberRowRights": [
+      776,
+      776,
+      776,
+      776,
+      776
+    ],
+    "headerActions": 0,
+    "paneCue": true,
+    "maskImage": "none"
+  },
+  "documentOverflow": {
+    "scrollWidth": 800,
+    "clientWidth": 800
+  },
+  "activeElement": {
+    "tag": "button"
+  },
+  "placeholder": "Ask for a change, or describe something new…",
+  "boxDisabled": false,
+  "boxStyle": {
+    "outlineStyle": "none",
+    "outlineWidth": "3px",
+    "borderTop": "0px",
+    "bg": "rgb(50, 45, 34)"
+  }
+}

@@ -1,0 +1,512 @@
+{
+  "ph": {
+    "team-selected@800": {
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 720,
+      "clipped": false
+    },
+    "team-selected@1024": {
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 656,
+      "clipped": false
+    },
+    "team-selected@1440": {
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 778,
+      "clipped": false
+    },
+    "team-create@800": {
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 432,
+      "clipped": false
+    },
+    "team-create@1024": {
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 656,
+      "clipped": false
+    },
+    "team-create@1440": {
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 778,
+      "clipped": false
+    },
+    "agent-selected@800": {
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 720,
+      "clipped": false
+    },
+    "agent-selected@1024": {
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 656,
+      "clipped": false
+    },
+    "agent-selected@1440": {
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 778,
+      "clipped": false
+    },
+    "agents-empty-hero@800": {
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 432,
+      "clipped": false
+    },
+    "agents-empty-hero@1024": {
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 656,
+      "clipped": false
+    },
+    "agents-empty-hero@1440": {
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 778,
+      "clipped": false
+    },
+    "team-selected@pane416": {
+      "pane": 416,
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 336,
+      "clipped": false
+    },
+    "team-selected@pane424": {
+      "pane": 424,
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 344,
+      "clipped": false
+    },
+    "team-selected@pane452": {
+      "pane": 452,
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 372,
+      "clipped": false
+    },
+    "team-selected@pane476": {
+      "pane": 476,
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 396,
+      "clipped": false
+    },
+    "team-selected@pane540": {
+      "pane": 540,
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 460,
+      "clipped": false
+    },
+    "team-selected@pane736": {
+      "pane": 736,
+      "ph": "Ask for a change, or describe something new…",
+      "sh": 34,
+      "ch": 34,
+      "cw": 656,
+      "clipped": false
+    }
+  },
+  "phWidth": {
+    "font": "14px / 21.7px system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
+    "w": 301.1708984375,
+    "pl": "8px",
+    "pr": "8px"
+  },
+  "blocked": {
+    "idle|empty|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 0,
+      "phVisible": true,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "",
+      "dock": 166,
+      "boxTop": 599
+    },
+    "idle|draft|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 1,
+      "phVisible": false,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": true
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 166,
+      "boxTop": 599
+    },
+    "running|empty|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 0,
+      "phVisible": true,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "",
+      "dock": 166,
+      "boxTop": 599
+    },
+    "running|draft|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 1,
+      "phVisible": false,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": true
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 191.390625,
+      "boxTop": 599
+    },
+    "settled|empty|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 0,
+      "phVisible": true,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "",
+      "dock": 234,
+      "boxTop": 599
+    },
+    "settled|draft|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 1,
+      "phVisible": false,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": true
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 259.390625,
+      "boxTop": 599
+    },
+    "error|empty|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 0,
+      "phVisible": true,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "",
+      "dock": 248.5,
+      "boxTop": 599
+    },
+    "error|draft|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 1,
+      "phVisible": false,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": true
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 273.890625,
+      "boxTop": 599
+    },
+    "stopRefused|empty|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 0,
+      "phVisible": true,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "",
+      "dock": 229.890625,
+      "boxTop": 599
+    },
+    "stopRefused|draft|blocked": {
+      "leaves": 1,
+      "visibleLeaves": 1,
+      "phVisible": false,
+      "visibleStatements": 1,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Finish or cancel your edit first.",
+          "visible": true
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 255.28125,
+      "boxTop": 599
+    },
+    "running|empty|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "",
+      "dock": 166,
+      "boxTop": 599
+    },
+    "running|draft|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 166,
+      "boxTop": 599
+    },
+    "settled|empty|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": false,
+      "disabled": false,
+      "value": "",
+      "dock": 234,
+      "boxTop": 599
+    },
+    "settled|draft|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": false,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 234,
+      "boxTop": 599
+    },
+    "error|empty|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": false,
+      "disabled": false,
+      "value": "",
+      "dock": 248.5,
+      "boxTop": 599
+    },
+    "error|draft|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": false,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 248.5,
+      "boxTop": 599
+    },
+    "stopRefused|empty|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "",
+      "dock": 229.890625,
+      "boxTop": 599
+    },
+    "stopRefused|draft|free": {
+      "leaves": 0,
+      "visibleLeaves": 0,
+      "phVisible": false,
+      "visibleStatements": 0,
+      "desc": [
+        {
+          "id": "config-composer-note",
+          "text": "Runs in the background. This does not appear in your conversation.",
+          "visible": false
+        }
+      ],
+      "readOnly": true,
+      "disabled": false,
+      "value": "half a request",
+      "dock": 229.890625,
+      "boxTop": 599
+    },
+    "ax|empty": "no node",
+    "ax|draft": "no node"
+  },
+  "retry": {
+    "team-error-retry@1024x725": {
+      "retryTop": 561,
+      "retryBottom": 589,
+      "boxTop": 599,
+      "gap": 10,
+      "ringGap": 7,
+      "dock": 248.5
+    },
+    "team-error-retry@800x600": {
+      "retryTop": 436,
+      "retryBottom": 464,
+      "boxTop": 474,
+      "gap": 10,
+      "ringGap": 7,
+      "dock": 248.5
+    },
+    "team-error-long@1024x725": {
+      "retryTop": 561,
+      "retryBottom": 589,
+      "boxTop": 599,
+      "gap": 10,
+      "ringGap": 7,
+      "dock": 284.5
+    },
+    "team-error-long@800x600": {
+      "retryTop": 436,
+      "retryBottom": 464,
+      "boxTop": 474,
+      "gap": 10,
+      "ringGap": 7,
+      "dock": 272
+    },
+    "team-selected@1024x725": {
+      "boxTop": 599,
+      "dock": 166
+    },
+    "team-selected@800x600": {
+      "boxTop": 474,
+      "dock": 166
+    }
+  }
+}
