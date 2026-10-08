@@ -84,8 +84,9 @@ deliberate:
   what makes the first row "the previous conversation", the Alt-Tab behaviour),
   archived rows (the sidebar's own rule - when the backend advertises
   `session_archive`, `visibleRows` keeps them out of the default lists, and the pin
-  follows it, so a conversation you archive leaves the pin even though the ring
-  still holds its id), and unread rows (they already sit in the Unread pin, and a
+  follows it - including a press the daemon has just answered, which settles an
+  archive fact before any catalogue read patches the row - so a conversation you
+  archive leaves the pin at once even though the ring still holds its id), and unread rows (they already sit in the Unread pin, and a
   row never appears twice). A remembered id with no live catalogue row - deleted or
   forgotten - draws nothing: rows come from the live catalogue, so the ring cannot
   resurrect a conversation.

@@ -1,4 +1,4 @@
-import { visibleRows } from "@features/chat/chat-archived";
+import { answeredArchiveRows, visibleRows } from "@features/chat/chat-archived";
 import {
 	panelSessionIdOfView,
 	useCanonicalSessionsStore,
@@ -89,25 +89,36 @@ export function visitedConversationId(
  * once by the caller and passed in because a staged draft leaves `activeSessionId`
  * pointing at the conversation the reader came FROM), which the pin leaves out.
  *
- * `archived` is the row's own archive fact, and it is the SIDEBAR'S own rule rather
- * than a second one: `visibleRows` (`chat-archived.ts`) is CALLED, so a backend
- * that advertises no `session_archive` capability partitions nothing and an
- * archived row stays eligible - exactly the arm in which `visibleRows` returns the
- * rows unfiltered. The Recents pin is its only reader (QA round 1, Q-1).
+ * `archived` is the SIDEBAR'S OWN MEMBERSHIP RULE, in the sidebar's own order
+ * (`chat-sidebar.tsx`: `answeredArchiveRows(sessions, archiveFacts)`, then
+ * `visibleRows(..., archiveEnabled)`), held in this one function so a node test can
+ * pin the whole decision. Both halves are required, and the first is the one that
+ * was missing (agent review round 2, R2-1; QA round 2, Q2-1): an accepted archive
+ * press does NOT patch the catalogue row - since D27 it settles
+ * `archiveFacts[sessionId]` only - so reading the row's raw `archived` leaves a
+ * conversation the reader has just archived pinned until the next catalogue GET,
+ * which on a real daemon can be a long time. `answeredArchiveRows` lays the
+ * ANSWERED facts over the row (an unanswered, still-in-flight press changes
+ * nothing, exactly as in the sidebar), and `visibleRows` is then CALLED, so a
+ * backend that advertises no `session_archive` capability partitions nothing and
+ * an archived row stays eligible. The Recents pin is the only reader; the palette's
+ * browse pool is deliberately still unfiltered for archived rows (pre-existing,
+ * out of scope here).
  */
 export function chatRecentsOfRow(
 	row: { session_id: string; archived?: boolean },
 	ring: readonly string[],
 	displayedSessionId: string | null | undefined,
 	archiveEnabled: boolean,
+	archiveFacts: Record<string, { archived: boolean; answered: boolean }>,
 ): { recentRank?: number; current: boolean; archived: boolean } {
 	const rank = ring.indexOf(row.session_id);
 	return {
 		recentRank: rank === -1 ? undefined : rank,
 		current: row.session_id === displayedSessionId,
-		/* The row is "archived out of view" precisely when the sidebar's own list
-		 * would drop it: `visibleRows` returns the row unfiltered with no capability
-		 * and drops it only when `archived === true` with the capability on. */
-		archived: visibleRows([row], archiveEnabled).length === 0,
+		/* "Archived out of view" precisely when the sidebar's list would drop it. */
+		archived:
+			visibleRows(answeredArchiveRows([row], archiveFacts), archiveEnabled)
+				.length === 0,
 	};
 }

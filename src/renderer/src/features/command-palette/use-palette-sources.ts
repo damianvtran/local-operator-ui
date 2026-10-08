@@ -270,7 +270,8 @@ export function usePaletteItems({
 	 * The archive capability, the same gate the sidebar's own list reads
 	 * (`chat-sidebar.tsx`'s `archiveEnabled`), so the palette's chat rows carry the
 	 * SAME archive fact the sidebar's membership filter uses. `use-palette-sources`
-	 * derives the fact for the Recents pin only (`chatRecentsOfRow`, below); the
+	 * derives the fact for the Recents pin only (`chatRecentsOfRow`, below, over the
+	 * answered `archiveFacts` as well as the row); the
 	 * palette's browse pool keeps offering archived rows, which is pre-existing and
 	 * out of this change's scope.
 	 */
@@ -493,6 +494,16 @@ export function usePaletteItems({
 			state.activeSessionId,
 		);
 	});
+	/*
+	 * THE ARCHIVE FACTS, read for the Recents pin's membership only. An accepted
+	 * archive press settles `archiveFacts[sessionId]` and patches no catalogue row
+	 * (D27), so the row's own `archived` goes stale until the next catalogue read;
+	 * the sidebar overlays these facts first (`answeredArchiveRows`), and the pin
+	 * must too or it keeps claiming a conversation the reader just archived (agent
+	 * review round 2, R2-1). Being a memo input is the whole point: without it the
+	 * memo would not rebuild when the fact settles.
+	 */
+	const archiveFacts = useCanonicalSessionsStore((state) => state.archiveFacts);
 	const chatItems = useMemo(() => {
 		if (!wantsChats) return [];
 		const { rows } = searchChats(sessions, terms, hits, {}, archiveView);
@@ -506,6 +517,7 @@ export function usePaletteItems({
 				conversationRecents,
 				displayedSessionId,
 				archiveEnabled,
+				archiveFacts,
 			);
 			/*
 			 * The marker says why the row is on screen. A row whose own title
@@ -584,6 +596,7 @@ export function usePaletteItems({
 		conversationRecents,
 		displayedSessionId,
 		archiveEnabled,
+		archiveFacts,
 	]);
 
 	/* -------------------------------- agents -------------------------------- */

@@ -204,7 +204,7 @@ test("the visit rule: a conversation is recorded, a draft with no session yet is
  */
 test("chatRecentsOfRow: a row out of the ring carries no rank and is not current", () => {
 	assert.deepEqual(
-		chatRecentsOfRow({ session_id: "s9" }, ["a", "b"], "a", true),
+		chatRecentsOfRow({ session_id: "s9" }, ["a", "b"], "a", true, {}),
 		{ recentRank: undefined, current: false, archived: false },
 	);
 });
@@ -212,27 +212,27 @@ test("chatRecentsOfRow: a row out of the ring carries no rank and is not current
 test("chatRecentsOfRow: a row in the ring carries its visit index, 0 the most recent", () => {
 	const ring = ["a", "b", "c"];
 	assert.equal(
-		chatRecentsOfRow({ session_id: "b" }, ring, null, true).recentRank,
+		chatRecentsOfRow({ session_id: "b" }, ring, null, true, {}).recentRank,
 		1,
 	);
 	assert.equal(
-		chatRecentsOfRow({ session_id: "c" }, ring, null, true).recentRank,
+		chatRecentsOfRow({ session_id: "c" }, ring, null, true, {}).recentRank,
 		2,
 	);
 });
 
 test("chatRecentsOfRow: the conversation on screen is current, whatever its rank", () => {
-	const here = chatRecentsOfRow({ session_id: "a" }, ["a", "b"], "a", true);
+	const here = chatRecentsOfRow({ session_id: "a" }, ["a", "b"], "a", true, {});
 	assert.equal(here.current, true);
 	assert.equal(here.recentRank, 0);
 	// A null or undefined displayed id is "nothing on screen" - a draft with no
 	// session yet, or a shell before one is open - and matches no row.
 	assert.equal(
-		chatRecentsOfRow({ session_id: "a" }, ["a"], null, true).current,
+		chatRecentsOfRow({ session_id: "a" }, ["a"], null, true, {}).current,
 		false,
 	);
 	assert.equal(
-		chatRecentsOfRow({ session_id: "a" }, ["a"], undefined, true).current,
+		chatRecentsOfRow({ session_id: "a" }, ["a"], undefined, true, {}).current,
 		false,
 	);
 });
@@ -242,11 +242,11 @@ test("chatRecentsOfRow: a duplicated id in a hand-edited ring keeps its FIRST, m
 	// not DEMOTE the row: the first occurrence is the visit that counts.
 	const row = { session_id: "a" };
 	assert.equal(
-		chatRecentsOfRow(row, ["a", "b", "a"], null, true).recentRank,
+		chatRecentsOfRow(row, ["a", "b", "a"], null, true, {}).recentRank,
 		0,
 	);
 	assert.equal(
-		chatRecentsOfRow(row, ["b", "a", "c", "a"], null, true).recentRank,
+		chatRecentsOfRow(row, ["b", "a", "c", "a"], null, true, {}).recentRank,
 		1,
 	);
 });
@@ -255,15 +255,63 @@ test("chatRecentsOfRow: the archived fact is the sidebar's own rule, gated on th
 	const archived = { session_id: "a", archived: true };
 	const live = { session_id: "a", archived: false };
 	// Capability ON: the archived row is out of view, the live one is not.
-	assert.equal(chatRecentsOfRow(archived, [], null, true).archived, true);
-	assert.equal(chatRecentsOfRow(live, [], null, true).archived, false);
+	assert.equal(chatRecentsOfRow(archived, [], null, true, {}).archived, true);
+	assert.equal(chatRecentsOfRow(live, [], null, true, {}).archived, false);
 	// Capability OFF: no partition at all - archived rows stay eligible, exactly as
 	// `visibleRows` returns the rows unfiltered for a backend with no archive store.
-	assert.equal(chatRecentsOfRow(archived, [], null, false).archived, false);
+	assert.equal(chatRecentsOfRow(archived, [], null, false, {}).archived, false);
 	// A row that does not state the fact is live under either gate ("absence is not
 	// a claim").
 	assert.equal(
-		chatRecentsOfRow({ session_id: "a" }, [], null, true).archived,
+		chatRecentsOfRow({ session_id: "a" }, [], null, true, {}).archived,
+		false,
+	);
+});
+
+test("chatRecentsOfRow: an ANSWERED archive fact is laid over the row first, as the sidebar's membership does (agent review round 2, R2-1)", () => {
+	const live = { session_id: "a", archived: false };
+	const archived = { session_id: "a", archived: true };
+	const answered = (value) => ({
+		a: { archived: value, at: 1, answered: true },
+	});
+	const unanswered = (value) => ({
+		a: { archived: value, at: 1, answered: false },
+	});
+	// THE MISSING CASE: an accepted archive press settles the fact and patches no
+	// row, so the row still says live and the fact says archived. Excluded.
+	assert.equal(
+		chatRecentsOfRow(live, ["a"], null, true, answered(true)).archived,
+		true,
+	);
+	// The way back: the row says archived, the answered fact says live. Eligible.
+	assert.equal(
+		chatRecentsOfRow(archived, ["a"], null, true, answered(false)).archived,
+		false,
+	);
+	// A press still in flight is only an intent: it changes nothing in either
+	// direction, exactly as in the sidebar.
+	assert.equal(
+		chatRecentsOfRow(live, ["a"], null, true, unanswered(true)).archived,
+		false,
+	);
+	assert.equal(
+		chatRecentsOfRow(archived, ["a"], null, true, unanswered(false)).archived,
+		true,
+	);
+	// A fact about ANOTHER conversation is not this row's.
+	assert.equal(
+		chatRecentsOfRow(live, ["a"], null, true, {
+			b: { archived: true, at: 1, answered: true },
+		}).archived,
+		false,
+	);
+	// No capability: nothing is partitioned, whatever the facts say.
+	assert.equal(
+		chatRecentsOfRow(live, ["a"], null, false, answered(true)).archived,
+		false,
+	);
+	assert.equal(
+		chatRecentsOfRow(archived, ["a"], null, false, {}).archived,
 		false,
 	);
 });
