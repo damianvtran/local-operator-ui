@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useId, useSyncExternalStore } from "react";
+import {
+	useCallback,
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 
 /**
  * The overlay/view-visibility policy. Design: docs/design/ui-browser-tab.md
@@ -29,8 +37,14 @@ import { useCallback, useEffect, useId, useSyncExternalStore } from "react";
  *   added next year does not silently become invisible over the browser.
  * - The browser feature's own menus and pickers register when they open.
  * - The panel rail's tooltips (`"panel-rail-tooltip"`, #872) register for as long
- *   as one is open. They open LEFT, into the pane, so with the Browser pane open
- *   they land inside the view's rect, unlike a tooltip in the chrome band.
+ *   as one is open AND ONLY IF IT REACHES THE VIEW. They open LEFT, into the pane,
+ *   and which of them lands inside the view's rect is a MEASUREMENT, not a list:
+ *   at 1280x900 with a run present only the Canvas item's tooltip does (23 of its
+ *   27px), the other three end above the view's top, and on a draft none does.
+ *   `useSuppressBrowserViewWhileReaching` below makes that measurement, against
+ *   the rect the browser surface registers with `registerBrowserViewRect` - the
+ *   very box it reports to main as the view's rect - so a consent banner that
+ *   pushes the page down is accounted for without a constant to update.
  *
  * TWO THINGS DELIBERATELY DO NOT REGISTER, and both would be visible as bugs if
  * they did:
@@ -94,6 +108,58 @@ export function suppressBrowserView(id: string): () => void {
 	};
 }
 
+/**
+ * The view's rectangle, as the renderer knows it.
+ *
+ * Main owns the native view and the renderer only SENDS it a rect
+ * (`useBrowserChrome.setContentRect`), so until now nothing in the renderer could
+ * ask "where is the page". An overlay that must decide whether it needs the view
+ * hidden - a tooltip that is sometimes over the page and sometimes not - needs
+ * exactly that, and it must be the SAME box the view is told to paint, not a
+ * second measurement of something nearby. The browser surface registers a getter
+ * for its content element (the one it measures for main), so this module reads the
+ * identical rect and cannot drift from it.
+ *
+ * A Set of getters rather than one slot because two surfaces can be mounted at
+ * once (the route and a pane); an overlay that reaches EITHER needs the view gone.
+ * Empty when no surface is mounted, which is the answer "there is no view to
+ * occlude", so nothing registers.
+ */
+export interface ViewRect {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+const viewRectSources = new Set<() => ViewRect | null>();
+
+/** Register a getter for the view's rect; returns the release. */
+export function registerBrowserViewRect(
+	source: () => ViewRect | null,
+): () => void {
+	viewRectSources.add(source);
+	return () => {
+		viewRectSources.delete(source);
+	};
+}
+
+/** Whether a box has positive-area overlap with any registered view rect. */
+export function overlapsBrowserView(box: ViewRect): boolean {
+	for (const source of viewRectSources) {
+		const view = source();
+		if (!view || view.width <= 0 || view.height <= 0) continue;
+		if (box.width <= 0 || box.height <= 0) continue;
+		const overlapX =
+			Math.min(box.x + box.width, view.x + view.width) -
+			Math.max(box.x, view.x);
+		const overlapY =
+			Math.min(box.y + box.height, view.y + view.height) -
+			Math.max(box.y, view.y);
+		if (overlapX > 0 && overlapY > 0) return true;
+	}
+	return false;
+}
+
 /** Whether anything is currently covering the content area. */
 export function browserViewSuppressed(): boolean {
 	return active.size > 0;
@@ -124,6 +190,118 @@ export function useSuppressBrowserView(on: boolean, name: string): void {
 		if (!on) return;
 		return suppressBrowserView(id);
 	}, [id, on]);
+}
+
+/**
+ * Frames to wait for Radix to place a tooltip before giving up on measuring it.
+ *
+ * A popper's wrapper sits at `translate(0, -200%)` until floating-ui has computed
+ * a position (a promise, so it lands within a frame or two). Measuring before that
+ * reads a rect that is nowhere near where the panel is painted. Eight frames is
+ * far past what placement takes; if it is still unplaced the tooltip is not on
+ * screen, so there is nothing to un-occlude and not registering is the right
+ * answer.
+ */
+const PLACEMENT_FRAMES = 8;
+
+/**
+ * Register while an overlay is open AND its painted box reaches the native view.
+ *
+ * WHY MEASURED. The first cut registered for every rail tooltip, and design
+ * measured what that bought (1280x900, run present): the Canvas tooltip reaches
+ * the view by 23 of its 27px, the Run, Browser and Console tooltips end above its
+ * top and need nothing, yet all four blanked the page; on a draft none reaches it.
+ * A position list would be wrong again as soon as the content rect moved (a
+ * consent banner pushes it down and makes even Canvas unnecessary), so the hook
+ * reads the overlay's own rect against `registerBrowserViewRect`'s.
+ *
+ * WHICH OVERLAY: `getOverlay` returns the tooltip's element; it is read once open
+ * and held in a ref so a fresh closure per render does not restart the measure.
+ *
+ * KEYBOARD FOCUS takes the same path as hover, deliberately. A focus-opened
+ * tooltip is the only visible label a sighted keyboard user gets, so hover-only
+ * suppression would leave exactly that user reading an occluded one. The measured
+ * rule keeps the cost where the occlusion is (the Canvas item) and removes it
+ * from the three whose tooltips never reach the page.
+ *
+ * RELEASED WITHOUT THE TOOLTIP CLOSING. Radix closes a hover tooltip on a later
+ * document `pointermove` outside its grace area, not on `pointerleave`, and the
+ * rail sits 5.5px from the window's trailing edge, so the likeliest exit from an
+ * item is out of the window - where Chromium sends no `pointermove`. The panel
+ * then stays "open", and a registration that followed it would hold the page blank
+ * until the pointer came back. So the registration also ends when the pointer
+ * leaves the document or the window loses focus, and is re-armed by the next
+ * pointer movement inside the window while the tooltip is still open.
+ */
+export function useSuppressBrowserViewWhileReaching(
+	open: boolean,
+	name: string,
+	getOverlay: () => Element | null,
+): void {
+	const [reaching, setReaching] = useState(false);
+	const [away, setAway] = useState(false);
+	const overlay = useRef(getOverlay);
+	overlay.current = getOverlay;
+
+	useLayoutEffect(() => {
+		if (!open) {
+			setReaching(false);
+			setAway(false);
+			return;
+		}
+		let frame = 0;
+		let waited = 0;
+		const measure = (): void => {
+			const element = overlay.current();
+			// The popper's wrapper carries the placement transform; the panel inside it
+			// is what is painted, and its rect already includes the wrapper's offset.
+			const wrapper = element?.closest("[data-radix-popper-content-wrapper]");
+			const placed =
+				element &&
+				!(
+					wrapper instanceof HTMLElement &&
+					wrapper.style.transform.includes("-200%")
+				);
+			if (!element || !placed) {
+				if (waited++ < PLACEMENT_FRAMES) {
+					frame = requestAnimationFrame(measure);
+					return;
+				}
+				setReaching(false);
+				return;
+			}
+			const rect = element.getBoundingClientRect();
+			setReaching(
+				overlapsBrowserView({
+					x: rect.left,
+					y: rect.top,
+					width: rect.width,
+					height: rect.height,
+				}),
+			);
+		};
+		measure();
+		return () => cancelAnimationFrame(frame);
+	}, [open]);
+
+	useEffect(() => {
+		if (!open) return;
+		const leave = (): void => setAway(true);
+		const back = (): void => setAway(false);
+		const root = document.documentElement;
+		root.addEventListener("pointerleave", leave);
+		root.addEventListener("mouseleave", leave);
+		window.addEventListener("blur", leave);
+		document.addEventListener("pointermove", back, true);
+		return () => {
+			root.removeEventListener("pointerleave", leave);
+			root.removeEventListener("mouseleave", leave);
+			window.removeEventListener("blur", leave);
+			document.removeEventListener("pointermove", back, true);
+		};
+	}, [open]);
+
+	useSuppressBrowserView(open && reaching && !away, name);
 }
 
 /** Subscribe to the policy: true when the native view must be hidden. */

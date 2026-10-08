@@ -171,7 +171,14 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 					    selected label, so the header read as two claims about what the pane is;
 					    the pane's own contents name it, and this step leaves the switch the
 					    bar's one assertion. */}
-					{/* SHED FIRST BELOW 300px OF PANE (design round 1, D5). The bar's
+					{/* SHED FIRST BELOW 330px OF PANE (design round 1, D5; threshold moved from
+					    300 in round 2, D12). The switch's labels need about 325px of pane to
+					    draw whole beside the title (measured: 325 whole, 320 truncated by 1px,
+					    310 by 8, 300 by 15), so a title shed at 300 left a 301-324 band where
+					    the title was drawn and the switch gave way - at the 900px window's
+					    320px pane that cost "This conversation" its last letters for a word
+					    the rail already names. 330 sheds the title before the labels pay.
+					    The original note follows. (D5) The bar's
 					    content is the title, the scope switch and the close control, and the
 					    switch alone is ~216px: at the 800px window floor the dock is 220px
 					    (the 44px panel rail takes its share), where the three summed to a
@@ -184,7 +191,7 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 					    Measured by the capture row `browser-narrow-800`. */}
 					<span
 						className={cn(
-							"shrink-0 text-meta text-ink-dim @max-[300px]/bpane:hidden",
+							"shrink-0 text-meta text-ink-dim @max-[330px]/bpane:hidden",
 						)}
 					>
 						Browser
@@ -249,7 +256,7 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 									// mounted panel may be named (`chat-tabs.tsx` states that rule).
 									aria-controls={PANE_SURFACE_ID}
 									data-tour-tag="browser-pane-scope-conversation"
-									className="min-w-0 @max-[300px]/bpane:px-2"
+									className="min-w-0 @max-[330px]/bpane:px-2"
 								>
 									<span className="truncate">This conversation</span>
 								</TabsTrigger>
@@ -257,7 +264,7 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 									value="all"
 									aria-controls={PANE_SURFACE_ID}
 									data-tour-tag="browser-pane-scope-all"
-									className="min-w-0 @max-[300px]/bpane:px-2"
+									className="min-w-0 @max-[330px]/bpane:px-2"
 								>
 									<span className="truncate">All tabs</span>
 								</TabsTrigger>

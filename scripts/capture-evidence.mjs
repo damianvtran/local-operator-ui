@@ -5822,7 +5822,7 @@ export const STORIES = [
 					return true;
 				})()`,
 				message:
-					"at 900 the browser dock is 320px and the bar's three members do not overlap or overflow: the title sheds below 300px of pane and the switch shrinks before the close control moves (#872, design D5)",
+					"at 900 the browser dock is 320px and the bar's three members do not overlap or overflow: the title sheds below 330px of pane and the switch shrinks before the close control moves (#872, design D5)",
 			},
 		},
 	],
@@ -5852,7 +5852,7 @@ export const STORIES = [
 					return true;
 				})()`,
 				message:
-					"at 800 the browser dock is 220px and the bar's three members do not overlap or overflow: the title sheds below 300px of pane and the switch shrinks before the close control moves (#872, design D5)",
+					"at 800 the browser dock is 220px and the bar's three members do not overlap or overflow: the title sheds below 330px of pane and the switch shrinks before the close control moves (#872, design D5)",
 			},
 		},
 	],
@@ -5976,6 +5976,7 @@ export const STORIES = [
 		{
 			dir: "run-panel-on-draft",
 			expect: {
+				pollMs: 3000,
 				expression: `(() => {
 					const lane = document.querySelector("[data-titlebar-lane]");
 					const column = document.querySelector('[data-tour-tag="chat-column"]');
@@ -6002,6 +6003,7 @@ export const STORIES = [
 		{
 			dir: "asks-on-draft",
 			expect: {
+				pollMs: 3000,
 				expression: `(() => {
 					const lane = document.querySelector("[data-titlebar-lane]");
 					const column = document.querySelector('[data-tour-tag="chat-column"]');
@@ -6039,6 +6041,7 @@ export const STORIES = [
 		{
 			dir: "asks-on-draft-1024",
 			expect: {
+				pollMs: 3000,
 				expression: `(() => {
 					const lane = document.querySelector("[data-titlebar-lane]");
 					const column = document.querySelector('[data-tour-tag="chat-column"]');
@@ -12646,10 +12649,33 @@ const main = async () => {
 			 * frame that claims a scroll the board never made.
 			 */
 			if (options?.expect) {
-				const { result } = await cdp.send("Runtime.evaluate", {
-					returnByValue: true,
-					expression: options.expect.expression,
-				});
+				/*
+				 * `pollMs` makes the read a BOUNDED POLL for the rows whose claim is about a
+				 * layout that SETTLES after the story mounts (#872, review R10). The panel
+				 * rail's host goes 0 -> 44px in a layout effect once the route publishes
+				 * `mounted`, which narrows the column, while the lane's `data-slot-edge` is
+				 * React state that follows the measured box one render later; a single read
+				 * landing between the two sees the column narrowed and the edge stale and
+				 * reports "the slot kept a band" for a state that is correct a frame on. A
+				 * persistent failure still fails: the poll ends at the bound and throws the
+				 * last reading, so this cannot turn a wrong layout into a pass.
+				 */
+				const readExpect = async () =>
+					(
+						await cdp.send("Runtime.evaluate", {
+							returnByValue: true,
+							expression: options.expect.expression,
+						})
+					).result;
+				let result = await readExpect();
+				for (
+					let waited = 0;
+					result.value !== true && waited < (options.expect.pollMs ?? 0);
+					waited += 100
+				) {
+					await sleep(100);
+					result = await readExpect();
+				}
 				if (result.value !== true) {
 					throw new Error(
 						`${story} @ ${theme}: ${options.expect.message} (read ${JSON.stringify(result.value)})`,
