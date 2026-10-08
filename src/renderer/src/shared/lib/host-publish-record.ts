@@ -35,34 +35,70 @@
  * the local feed resets everything or the app restarts. That residual is stated
  * on the PR.
  *
+ * A WIPE MUST NOT BE REPLAYED FROM THE FRAME THAT PREDATES IT (review R6). The
+ * header re-renders when a wipe lands (a stale lock would otherwise sit on screen
+ * until something else happened to render it), and the frame still painted at
+ * that moment is by definition older than the wipe, so it cannot vouch for the
+ * host that caused it - yet it still says "published". A write keyed on the
+ * record's own version re-noted from exactly that frame and undid every wipe.
+ * `noteFrame` therefore keys on the FRAME's identity: the first time a frame
+ * object is seen it is stamped with the wipe generation current at that moment,
+ * and only a frame first seen in the CURRENT generation may write. A frame that
+ * predates a wipe is refused for good; the next genuinely new frame (a snapshot
+ * or a replacement is a new object on the wire's parse) writes as usual. The
+ * stamp is held weakly, so it outlives nothing it describes.
+ *
  * WHY MODULE STATE WITH A SUBSCRIPTION. The writes come from a render's effect
- * and from the feed hook, in different components, with no common ancestor; the
- * header must re-render when a reset lands (a stale lock would otherwise sit on
- * screen until something else happened to render it), hence the version counter
- * a `useSyncExternalStore` reads. Nothing persists it: a restart re-learns it.
+ * and the wipes from the feed hook, in different components, with no common
+ * ancestor, hence the version counter a `useSyncExternalStore` reads. Nothing
+ * persists it: a restart re-learns it.
  */
 export function createHostPublishRecord() {
 	const seen = new Set<string>();
 	const listeners = new Set<() => void>();
 	let version = 0;
 	let processEpoch: string | null = null;
+	/** Counts wipes; a frame is stamped with the count at its first sighting. */
+	let generation = 0;
+	const stamped = new WeakMap<object, number>();
 	const bump = () => {
 		version += 1;
 		for (const listener of listeners) listener();
 	};
+	const wipe = () => {
+		generation += 1;
+		if (seen.size === 0) return;
+		seen.clear();
+		bump();
+	};
+	const note = (hostKey: string) => {
+		if (seen.has(hostKey)) return;
+		seen.add(hostKey);
+		bump();
+	};
 	return {
-		note: (hostKey: string) => {
-			if (seen.has(hostKey)) return;
-			seen.add(hostKey);
-			bump();
+		note,
+		/**
+		 * Record that `hostKey` published, vouched for by `frame` - the statement
+		 * object the header is holding. Refused when the frame predates the last
+		 * wipe (see the block above). Returns whether it wrote or was already
+		 * known.
+		 */
+		noteFrame: (hostKey: string | null, frame: object): boolean => {
+			const first = stamped.get(frame);
+			if (first === undefined) stamped.set(frame, generation);
+			if ((first ?? generation) !== generation) return false;
+			// A null key (producer unknown) still STAMPS the frame, so a frame that
+			// was on screen before a wipe cannot be mistaken for a new one by
+			// being first evaluated after it.
+			if (hostKey !== null) note(hostKey);
+			return true;
 		},
 		has: (hostKey: string) => seen.has(hostKey),
 		/** Wipe the record: the host may have changed, so fail open. */
 		reset: () => {
 			processEpoch = null;
-			if (seen.size === 0) return;
-			seen.clear();
-			bump();
+			wipe();
 		},
 		/**
 		 * Feed the record the epoch of a frame from this device's daemon. A change
@@ -72,11 +108,7 @@ export function createHostPublishRecord() {
 		observeProcess: (epoch: string) => {
 			const previous = processEpoch;
 			processEpoch = epoch;
-			if (previous !== null && previous !== epoch) {
-				if (seen.size === 0) return;
-				seen.clear();
-				bump();
-			}
+			if (previous !== null && previous !== epoch) wipe();
 		},
 		subscribe: (listener: () => void) => {
 			listeners.add(listener);
