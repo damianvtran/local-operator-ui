@@ -1961,7 +1961,8 @@ for (const [name, historyFaults, emptyPage] of [
  * fourth review round.
  *
  * Every cell: a pane that painted the journal's last 100 rows of 130 (the held
- * block, r31..r130) plus one of four live states; then ONE more flush.
+ * block, r31..r130; r30..r129 for the TOOL-top cell) plus one of four live
+ * states; then ONE more flush. The cell count is asserted below.
  *
  *  (i)   a flush with NO snapshot page never makes a durable row disappear;
  *  (ii)  a flush WITH a page disjoint from the held block drops only durable
@@ -1983,8 +1984,8 @@ const PANE_STATES = [
 const READ_OUTCOMES = ["ok", "empty page", "failed x3"];
 const PAGE_OLDEST = "r331"; // the tail page of a 430-row journal
 
-const heldIdsOf = (transcript) =>
-	transcript.rows.slice(HELD_FIRST - 1, HELD_LAST).map(recordIdOf);
+const heldIdsOf = (transcript, heldLast = HELD_LAST) =>
+	transcript.rows.slice(heldLast - REOPEN_PAGE, heldLast).map(recordIdOf);
 
 const liveSeedFor = (state) =>
 	state === "running tool"
@@ -2096,6 +2097,27 @@ const FLUSHES = {
 		events: () => [],
 		born: [],
 	},
+	/*
+	 * The gate does NOT defer on these (an older backend's page whose newest row
+	 * the pane never held), so the walk RUNS, and the batch's page touches the held
+	 * block through exactly one row - its top. That is the cell where
+	 * `batchTouchesHeld`, not the gate, is what must stop the seal. With the top
+	 * row a TOOL result (r129), the page's entry id and the held record key
+	 * (`tool:call-129`) differ, which is the shape every busy turn ends in
+	 * (review round 4, R4-1).
+	 */
+	"an older backend's page touching the held block only through its top row": {
+		page: "older-overlap",
+		events: () => [],
+		born: [],
+	},
+	"an older backend's page touching the held block only through its top TOOL row":
+		{
+			page: "older-overlap",
+			heldLast: 129,
+			events: () => [],
+			born: [],
+		},
 	"/clear while the walk is out": {
 		page: "disjoint",
 		clear: true,
@@ -2105,7 +2127,8 @@ const FLUSHES = {
 };
 
 async function driveInvariant({ state, flush, outcome }) {
-	const base = longConversation({ awayRows: 0, total: HELD_LAST });
+	const heldLast = flush.heldLast ?? HELD_LAST;
+	const base = longConversation({ awayRows: 0, total: heldLast });
 	const transcript = makeTranscript(base.rows);
 	reset({ transcript, historyFaults: [] });
 	const runtime = makeRuntime();
@@ -2119,7 +2142,7 @@ async function driveInvariant({ state, flush, outcome }) {
 	deliver(openFrame(1, true));
 	deliver(
 		snapshotFrame(2, {
-			cursor: "r30",
+			cursor: `r${heldLast - REOPEN_PAGE}`,
 			entries: transcript.tail(REOPEN_PAGE).entries,
 			liveEvents: seed,
 			coldReason: null,
@@ -2130,7 +2153,7 @@ async function driveInvariant({ state, flush, outcome }) {
 		paintPendingSend(SESSION_A, { id: "echo-x", text: "typed", images: [] });
 		await pump();
 	}
-	const heldDurable = heldIdsOf(transcript);
+	const heldDurable = heldIdsOf(transcript, heldLast);
 	const painted0 = ids(handle.transcript);
 	for (const id of heldDurable)
 		assert.ok(painted0.includes(id), `${id} painted before the flush`);
@@ -2163,16 +2186,32 @@ async function driveInvariant({ state, flush, outcome }) {
 		: answer;
 	if (outcome === "failed x3") globalThis.__gapHistoryFaults = [];
 
-	let journalTop = HELD_LAST;
+	let journalTop = heldLast;
 	if (flush.page) {
 		// Disjoint: the journal moved 300 rows on, so the page is r331..r430.
 		// Connected: it moved 20 rows on, so the page (r51..r150) overlaps the block.
-		const grown = flush.page === "disjoint" ? 300 : 20;
-		grow(transcript, HELD_LAST + 1, HELD_LAST + grown);
-		journalTop = HELD_LAST + grown;
+		// Older-overlap: it moved 100 rows on and the page is cut two rows short of
+		// the tail, ending on a row the pane never held.
+		const grown =
+			flush.page === "disjoint" ? 300 : flush.page === "connected" ? 20 : 100;
+		grow(transcript, heldLast + 1, heldLast + grown);
+		journalTop = heldLast + grown;
 	}
 	let seq = 3;
-	if (flush.page) {
+	if (flush.page === "older-overlap") {
+		deliver(openFrame(seq++, true));
+		deliver(
+			snapshotFrame(seq++, {
+				// A cursor that is not the page's newest row, and no `cold_reason`: the
+				// older backend's shape, which the gate answers by asking whether the
+				// newest row is already on screen.
+				cursor: `r${journalTop}`,
+				entries: transcript.page(`r${heldLast + REOPEN_PAGE - 1}`, REOPEN_PAGE)
+					.entries,
+				liveEvents: seed,
+			}),
+		);
+	} else if (flush.page) {
 		deliver(openFrame(seq++, true));
 		deliver(
 			snapshotFrame(seq++, {
@@ -2203,10 +2242,23 @@ async function driveInvariant({ state, flush, outcome }) {
 	};
 }
 
+/*
+ * THE CELL COUNT IS ASSERTED, so the number in the comments and in the commit
+ * text cannot drift from what runs (review round 4 found 105 where the reply
+ * said 109). Flushes with a `needs` apply to one pane state only.
+ */
+const TABLE_PAIRS = PANE_STATES.flatMap((state) =>
+	Object.entries(FLUSHES).filter(
+		([, flush]) => !flush.needs || flush.needs === state,
+	),
+).length;
+const TABLE_CELLS = TABLE_PAIRS * READ_OUTCOMES.length;
+let tableCellsRun = 0;
 for (const state of PANE_STATES) {
 	for (const [name, flush] of Object.entries(FLUSHES)) {
 		if (flush.needs && flush.needs !== state) continue;
 		for (const outcome of READ_OUTCOMES) {
+			tableCellsRun += 1;
 			test(`seal invariant: pane [${state}] x flush [${name}] x label read [${outcome}]`, async () => {
 				const r = await driveInvariant({ state, flush, outcome });
 				const cell = `[${state}] [${name}] [${outcome}]`;
@@ -2268,6 +2320,16 @@ for (const state of PANE_STATES) {
 						`${cell}: (iii) a connected page drops nothing`,
 					);
 					assert.equal(r.reads, 0, `${cell}: (iii) and costs no read`);
+				} else if (flush.page === "older-overlap") {
+					assert.ok(
+						r.reads >= 1,
+						`${cell}: the gate did not defer, so the walk ran (${r.reads} reads)`,
+					);
+					assert.deepEqual(
+						dropped,
+						[],
+						`${cell}: (iii) a page that touches the held block drops nothing, whether or not the walk reached further`,
+					);
 				} else {
 					assert.deepEqual(
 						dropped,
@@ -2280,6 +2342,15 @@ for (const state of PANE_STATES) {
 		}
 	}
 }
+
+test("the invariant table runs the cells it says it runs", () => {
+	// 13 flushes: 10 apply to every one of the 4 pane states (40 pairs) and 3
+	// apply to one state each (3 pairs) = 43 pairs x 3 read outcomes = 129. What
+	// is pinned is that the cells that RUN are the cells the product says, and
+	// what the product is: a new flush or state changes this number on purpose.
+	assert.equal(tableCellsRun, TABLE_CELLS);
+	assert.equal(TABLE_CELLS, 129, "update the comments and commit text with it");
+});
 
 /*
  * The specific shapes the reviews found, named so a failure says which one
@@ -2506,6 +2577,186 @@ test("Q3-2c: the backoff retry of a nothing-painted walk is not fired into a vie
 	await pump();
 	assert.equal(historyReads(), reads, "the cleared view is not read for again");
 	assert.equal(handle.transcript.records.length, 0, "and stays cleared");
+});
+
+/*
+ * TWO SNAPSHOT FRAMES IN ONE FLUSH (a reconnect's replay). The seal's edge is the
+ * OLDEST page's oldest row, which can only drop fewer rows than the newer page's
+ * would; and it cuts at all only when NEITHER page touches the held block.
+ * The held block is r31..r130; the journal grows to 430 and the two pages are
+ * r231..r330 (older) and r331..r430 (newer), both disjoint from it.
+ */
+async function driveTwoSnapshots({ olderTouchesHeld, newerTouchesHeld }) {
+	const base = longConversation({ awayRows: 0, total: HELD_LAST });
+	const transcript = makeTranscript(base.rows);
+	reset({ transcript });
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(SESSION_A, true);
+		return handle;
+	};
+	runtime.rerender();
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: "r30",
+			entries: transcript.tail(REOPEN_PAGE).entries,
+			coldReason: null,
+		}),
+	);
+	await pump();
+	const held = heldIdsOf(transcript);
+	grow(transcript, HELD_LAST + 1, 430);
+	globalThis.__gapTail = () => ({
+		entries: [],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const olderPage = olderTouchesHeld
+		? transcript.page("r229", REOPEN_PAGE) // r130..r229: touches the block at r130
+		: transcript.page("r330", REOPEN_PAGE); // r231..r330
+	const newerPage = newerTouchesHeld
+		? transcript.page("r229", REOPEN_PAGE)
+		: transcript.page("r430", REOPEN_PAGE); // r331..r430
+	deliver(openFrame(3, true));
+	deliver(
+		snapshotFrame(4, {
+			cursor: "r230",
+			entries: olderPage.entries,
+			coldReason: null,
+		}),
+	);
+	deliver(
+		snapshotFrame(5, {
+			cursor: "r330",
+			entries: newerPage.entries,
+			coldReason: null,
+		}),
+	);
+	await pump();
+	return { held, transcript: handle.transcript, after: ids(handle.transcript) };
+}
+
+test("two snapshots in one flush over a disjoint block: the seal cuts at the OLDER page's oldest row", async () => {
+	const r = await driveTwoSnapshots({
+		olderTouchesHeld: false,
+		newerTouchesHeld: false,
+	});
+	assert.equal(
+		r.transcript.oldestId,
+		"r231",
+		"the edge is the older page's first row, not the newer page's (r331)",
+	);
+	assert.equal(r.transcript.hasMore, true);
+	assert.deepEqual(
+		r.held.filter((id) => r.after.includes(id)),
+		[],
+		"the held block is sealed",
+	);
+	assert.ok(
+		r.after.includes("tool:call-231") && r.after.includes("tool:call-330"),
+		"and the older page, the one that was painted, is kept whole",
+	);
+});
+
+for (const [name, opts] of [
+	[
+		"the older page connects",
+		{ olderTouchesHeld: true, newerTouchesHeld: false },
+	],
+	[
+		"the newer page connects",
+		{ olderTouchesHeld: false, newerTouchesHeld: true },
+	],
+]) {
+	test(`two snapshots in one flush: no seal when ${name}`, async () => {
+		const r = await driveTwoSnapshots(opts);
+		assert.deepEqual(
+			r.held.filter((id) => !r.after.includes(id)),
+			[],
+			"a page that touches the held block means there is no disjoint block to seal",
+		);
+	});
+}
+
+test("R4-1: a walk's fetched page that overlaps the batch only through a TOOL row has connected, so the walk stops at one read", async () => {
+	// The walk's `joined` test compares a fetched entry with the batch's record
+	// keys; a tool entry is `r<n>` on the wire and `tool:call-<n>` as a record,
+	// so a raw-id comparison reads this overlap as no overlap and pages on.
+	const base = longConversation({ awayRows: 0, total: HELD_LAST });
+	const transcript = makeTranscript(base.rows);
+	reset({ transcript });
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(SESSION_A, true);
+		return handle;
+	};
+	runtime.rerender();
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: `r${HELD_LAST - REOPEN_PAGE}`,
+			entries: transcript.tail(REOPEN_PAGE).entries,
+			coldReason: null,
+		}),
+	);
+	await pump();
+	grow(transcript, HELD_LAST + 1, HELD_LAST + 30);
+	// r150 is a tool row; the batch's page is that one row, so the only thing
+	// the walk's first (tail) page shares with the batch is a tool entry.
+	const only = transcript.page("r150", 1).entries;
+	assert.equal(only.length, 1);
+	const reads0 = historyReads();
+	deliver(openFrame(3, true));
+	deliver(
+		snapshotFrame(4, { cursor: "r149", entries: only, coldReason: null }),
+	);
+	await pump();
+	assert.equal(historyReads() - reads0, 1, "one tail read joined and reached");
+});
+
+test("R4-3: /clear while a loadOlder read is in flight is not undone by the page it returns", async () => {
+	// `loadOlder`'s staleness test is the SESSION epoch, which `/clear` does not
+	// move, so the 100 rows the read returns used to repaint the cleared pane.
+	const base = longConversation({ awayRows: 0, total: 400 });
+	const transcript = makeTranscript(base.rows);
+	reset({ transcript });
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(SESSION_A, true);
+		return handle;
+	};
+	runtime.rerender();
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: transcript.rows.at(-101).id,
+			entries: transcript.tail(REOPEN_PAGE).entries,
+			coldReason: null,
+		}),
+	);
+	await pump();
+	assert.equal(handle.transcript.hasMore, true);
+	const release = [];
+	const real = globalThis.__gapTail;
+	globalThis.__gapTail = (request) =>
+		new Promise((resolve) => release.push(() => resolve(real(request))));
+	const pending = handle.loadOlder();
+	await pump();
+	assert.equal(release.length, 1, "the read is parked");
+	handle.clearView();
+	await pump();
+	release.shift()();
+	await pending;
+	await pump();
+	assert.equal(
+		handle.transcript.records.length,
+		0,
+		"the page does not repaint what /clear removed",
+	);
 });
 
 test("Q3-2: /clear while the reopen walk is in flight is not undone by the walk", async () => {
