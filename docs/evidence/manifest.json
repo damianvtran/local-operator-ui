@@ -1628,7 +1628,12 @@
       "chat-header-identity--older-host-agent-open",
       "shell-app-shell--run-panel-on-draft",
       "shell-app-shell--asks-on-draft",
-      "shell-app-shell--asks-on-draft-1024"
+      "shell-app-shell--asks-on-draft-1024",
+      "chat-header-identity--strict-team-catalogue-loading",
+      "chat-header-identity--strict-team-cold-frame-open",
+      "chat-header-identity--strict-team-focus",
+      "chat-header-identity--strict-team-long-speaker",
+      "chat-header-identity--strict-team-promoted-while-open"
     ],
     "refreshedThemes": [
       "localOperatorDark",
@@ -1673,7 +1678,7 @@
       "githubLight",
       "highContrastLight"
     ],
-    "addedFrames": 451,
+    "addedFrames": 461,
     "addedSurfaces": [
       "agent-hub-page/grid",
       "canvas-workspace/canvas-without-the-goal-lifecycle",
@@ -2199,7 +2204,12 @@
       "chat-header-identity/no-settable-agent",
       "shell-app-shell/run-panel-on-draft",
       "shell-app-shell/asks-on-draft",
-      "shell-app-shell/asks-on-draft-1024"
+      "shell-app-shell/asks-on-draft-1024",
+      "chat-header-identity/strict-team-catalogue-loading",
+      "chat-header-identity/strict-team-cold-frame-open",
+      "chat-header-identity/strict-team-focus",
+      "chat-header-identity/strict-team-long-speaker",
+      "chat-header-identity/strict-team-promoted-while-open"
     ],
     "addedSurfacesNote": "ONE NAME WAS DROPPED FROM THE LIST BESIDE THIS RATHER THAN RENAMED, AND WHY (agent review round 2, NIT 2). `provider-sign-in-onboarding/panel-succeeded-unverified` stood at index 113 of `addedSurfaces` and resolves to no directory under `docs/evidence/` on any branch. RENAMING IT IS NOT THE FIX: index 112 of this same list already names that surface as `provider-sign-in-onboarding/panel-succeeded-unconfirmed`, that directory exists, and `scripts/capture-evidence.mjs:528` ships the matching story id - so the rename the QA round suggested would have made the duplicate the finding was about. Nothing else refers to the dropped name, AND THE COMMAND THAT SAYS SO HAS TO ANSWER WITH ONE (agent review round 3, MINOR 2; CORRECTED IN ROUND 4): the version recorded here first claimed `git grep panel-succeeded-unverified` over every tracked file answered `zero hits`, which its own reader could refute in one run - it answers two. WHY TWO, AND WHERE THEY ARE (agent review round 4, MINOR 1): both are in THIS NOTE - once where it names the name it is about, and once inside the `git grep` command quoted just above, which spells it out. THE LIST BESIDE THIS NOTE DOES NOT HOLD IT, which is what the previous version of this clause got wrong: `addedSurfaces` carries the dropped name ZERO times, and the entry at its index 112 is `provider-sign-in-onboarding/panel-succeeded-unconfirmed`, the *unconfirmed* variant - a different name, on a directory that exists. What is true, and what `git grep -l` answers with a single path, is that no file BUT THIS MANIFEST names it anywhere else; `git grep -o` is what counts the two occurrences, and both are the two this note has already accounted for. AND THE DROP IS STABLE: this field is a union of the committed list and each pass's own additions (`...previous.partialCapture` in `scripts/capture-evidence.mjs`), so a name the committed list does not carry cannot come back on the next sweep.",
     "addedAt": "2026-10-08T01:28:13.104Z",
