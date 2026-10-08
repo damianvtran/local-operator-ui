@@ -121,6 +121,7 @@ const bundle = await build({
 			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { EMPTY_TRANSCRIPT, appendPendingUser, applyEvent, applyHistoryPage, sealDisjointBlock } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { paintPendingSend } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
 			export { __resetPendingSends } from "./src/renderer/src/shared/hooks/use-canonical-session";
 		`,
@@ -178,6 +179,7 @@ const {
 	applyEvent,
 	applyHistoryPage,
 	sealDisjointBlock,
+	paintPendingSend,
 } = hook;
 
 const SESSION_A = "aaaaaaaaaaaa";
@@ -1276,10 +1278,32 @@ function grow(transcript, from, to) {
 	}
 }
 
-async function driveCachedReopen({ away }) {
-	const base = longConversation({ awayRows: 0, total: REOPEN_TOTAL });
+/*
+ * The driver's knobs, each one a way the RETURN can differ from the plain
+ * journal-tail reopen:
+ *
+ *  - `total`: the journal's length when the window first looked at it;
+ *  - `historyFaults`: `/history` read indexes that reject (the visit-1 snapshot
+ *    reads nothing, so an index is a read of the RETURN's walk);
+ *  - `echoId`: a send admitted after the remount, before the snapshot, whose
+ *    owner row is the newest journal row (the send landed while away);
+ *  - `returnPage` / `visitPage`: the snapshot the return (or the first visit)
+ *    delivers, when it is not the plain journal-tail page (an older backend's
+ *    cut-at-cursor page, a seed with an unlabelled call), given the journal as
+ *    it stands at that moment. It returns `{ cursor, entries, coldReason?,
+ *    liveEvents? }`.
+ */
+async function driveCachedReopen({
+	away,
+	total = REOPEN_TOTAL,
+	historyFaults = [],
+	echoId = null,
+	returnPage = null,
+	visitPage = null,
+}) {
+	const base = longConversation({ awayRows: 0, total });
 	const transcript = makeTranscript(base.rows);
-	reset({ transcript });
+	reset({ transcript, historyFaults });
 
 	const runtime = makeRuntime();
 	let sessionId = SESSION_A;
@@ -1293,21 +1317,20 @@ async function driveCachedReopen({ away }) {
 
 	// Visit 1: a journal-tail page (the modern owner's shape), the published
 	// cursor behind it — the open that paints the tail without a second read.
-	const firstPage = transcript.tail(REOPEN_PAGE);
+	const firstPage = visitPage
+		? visitPage(transcript)
+		: {
+				cursor: transcript.rows[transcript.rows.length - REOPEN_PAGE - 1].id,
+				entries: transcript.tail(REOPEN_PAGE).entries,
+				coldReason: null,
+			};
 	deliver(openFrame(1, true));
-	deliver(
-		snapshotFrame(2, {
-			cursor: transcript.rows[transcript.rows.length - REOPEN_PAGE - 1].id,
-			entries: firstPage.entries,
-			liveEvents: [],
-			coldReason: null,
-		}),
-	);
+	deliver(snapshotFrame(2, { liveEvents: [], ...firstPage }));
 	await pump();
 	assert.deepEqual(
 		ids(handle.transcript),
 		firstPage.entries.map(recordIdOf),
-		"the first visit paints the tail page",
+		"the first visit paints its page",
 	);
 	const readsAfterVisit1 = historyReads();
 
@@ -1318,22 +1341,50 @@ async function driveCachedReopen({ away }) {
 	runtime.rerender();
 	await pump();
 	assert.equal(subscriptions[0].disposed, true, "leaving closes the stream");
-	grow(transcript, REOPEN_TOTAL + 1, REOPEN_TOTAL + away);
+	grow(transcript, total + 1, total + away);
+	if (echoId !== null) {
+		// The message the user sends after returning is journaled under the id the
+		// app minted for it (the admission request id), as the NEWEST row.
+		transcript.rows[transcript.rows.length - 1] = userRow(
+			echoId,
+			100 + total + away,
+			"sent after returning",
+		);
+	}
 
 	// Return: a fresh subscription, a fresh journal-tail page, and — when the
 	// away window is wider than that page — a seam between the page and the
 	// cached block that only a read reaching back to the block can close.
 	sessionId = SESSION_A;
 	runtime.rerender();
+	if (echoId !== null) {
+		// Painted through the app's own registry, as the composer's press does,
+		// and flushed by the stream's open frame so the pane's painted index
+		// holds the echo BEFORE the snapshot arrives - a stale cached paint with
+		// an unconfirmed send on top of it.
+		paintPendingSend(SESSION_A, {
+			id: echoId,
+			text: "sent after returning",
+			images: [],
+		});
+		deliver(openFrame(8, true));
+		await pump();
+		assert.ok(
+			handle.transcript.records.some(
+				(record) => record.id === echoId && record.local,
+			),
+			"the echo is painted and unconfirmed when the snapshot arrives",
+		);
+	}
 	deliver(openFrame(9, true));
-	deliver(
-		snapshotFrame(10, {
-			cursor: transcript.rows[transcript.rows.length - REOPEN_PAGE - 1].id,
-			entries: transcript.tail(REOPEN_PAGE).entries,
-			liveEvents: [],
-			coldReason: null,
-		}),
-	);
+	const page = returnPage
+		? returnPage(transcript)
+		: {
+				cursor: transcript.rows[transcript.rows.length - REOPEN_PAGE - 1].id,
+				entries: transcript.tail(REOPEN_PAGE).entries,
+				coldReason: null,
+			};
+	deliver(snapshotFrame(10, { liveEvents: [], ...page }));
 	await pump();
 	return {
 		transcript,
@@ -1549,6 +1600,34 @@ test("sealDisjointBlock drops a disjoint durable block and keeps every live row"
 		assert.equal(sealed.records[position].id, id, "and points at its row");
 });
 
+test("sealDisjointBlock never drops a row the walk itself fetched, whatever its instant", () => {
+	// A skewed journal clock stamps a fetched row BEFORE the chain's oldest entry.
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			assistantRow("r10", 110, "held, older"),
+			assistantRow("r11", 111, "fetched, stamped early"),
+			assistantRow("r50", 150, "the edge"),
+		],
+		has_more: true,
+		cursor_missing: false,
+	});
+	const sealed = sealDisjointBlock(
+		state,
+		{ id: "r50", ts: 150_000 },
+		new Set(["r11", "r50"]),
+	);
+	assert.deepEqual(
+		ids(sealed),
+		["r11", "r50"],
+		"r10 goes, the fetched r11 stays",
+	);
+	assert.deepEqual(
+		ids(sealDisjointBlock(state, { id: "r50", ts: 150_000 })),
+		["r50"],
+		"and without the guard r11 would go with it",
+	);
+});
+
 test("sealDisjointBlock is a no-op, by reference, when nothing is disjoint", () => {
 	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
 		entries: [
@@ -1574,6 +1653,200 @@ test("sealDisjointBlock is a no-op, by reference, when nothing is disjoint", () 
 		state,
 		"an edge with no instant orders nothing and seals nothing",
 	);
+});
+
+/*
+ * #876, REVIEW ROUND 1.
+ *
+ * THE ECHO IS NOT A HELD ROW. A send the user made after returning, while the
+ * stale cached paint was on screen, is an unconfirmed echo keyed by the
+ * admission request id - which is also the id the owner journals the message
+ * under. When that message is already the journal's newest row, the tail page
+ * contains the echo's id, and a held set built from every painted key reads
+ * that as "the page reaches what the pane held": the gate and the walk stand
+ * down over the whole hole, with no read. The rows below are asserted against
+ * the same journal-suffix invariant as the table.
+ */
+for (const away of [300, 600]) {
+	test(`a pending send whose owner row is the newest journal row does not make a disjoint page look connected (away ${away})`, async () => {
+		const echoId = "req-6f1c2d9e-0000-4000-8000-00000000e876";
+		const { transcript, painted, reads, hasMore, handle } =
+			await driveCachedReopen({ away, echoId });
+		const journal = transcript.rows.map(recordIdOf);
+		assert.equal(journal.at(-1), echoId, "the owner journaled the send last");
+		assertContiguousSuffix(painted, journal, `echo, away=${away}`);
+		assert.ok(
+			reads >= 4,
+			`the seam is read for (${reads} reads), not deferred`,
+		);
+		if (away <= 480) {
+			assert.deepEqual(
+				painted,
+				journal.slice(REOPEN_TOTAL - REOPEN_PAGE),
+				"the cached block, the rows written while away and the send, all painted",
+			);
+		} else {
+			assert.equal(hasMore, true, "a walk the bound ended leaves more above");
+		}
+		const mine = handle().transcript.records.filter(
+			(record) => record.id === echoId,
+		);
+		assert.equal(mine.length, 1, "the echo resolves onto the owner row once");
+		assert.ok(!mine[0].local, "and the owner's row has replaced the echo");
+	});
+}
+
+/*
+ * THE OLDER-BACKEND ARM KEYS A TOOL RESULT BY ITS ROW KEY. A page whose newest
+ * entry is a tool result and which the pane already holds (the row is
+ * `tool:<call_id>`, the entry's id is its own) is a page that connects: it must
+ * cost no read. The arm used to look the ENTRY id up among the held row keys,
+ * which a tool result never matches, so it paid a read every time.
+ */
+test("an older backend's page ending on a held tool result costs no read", async () => {
+	const cutAt = (transcript, id) => {
+		const page = transcript.page(id, REOPEN_PAGE);
+		// An older backend publishes a cursor AHEAD of the page it cut: the page's
+		// newest row is not the cursor, so the cut-at-cursor test does not refuse.
+		return { cursor: "r400", entries: page.entries };
+	};
+	const { transcript, painted, reads } = await driveCachedReopen({
+		away: 0,
+		visitPage: (transcript) => ({
+			cursor: "r400",
+			entries: transcript.page("r400", REOPEN_PAGE).entries,
+		}),
+		returnPage: (transcript) => cutAt(transcript, "r399"),
+	});
+	const journal = transcript.rows.map(recordIdOf);
+	assert.equal(
+		journal.at(-2),
+		"tool:call-399",
+		"the newest page entry is a tool result",
+	);
+	assert.equal(reads, 0, "the held tool row is recognised, so the page defers");
+	// The cached block r301..r400 plus the cut page's older rows (r300..r399).
+	assert.deepEqual(
+		painted,
+		journal.slice(REOPEN_TOTAL - REOPEN_PAGE - 1),
+		"and the pane still holds the whole cached block",
+	);
+});
+
+/*
+ * THE WALK'S FAILURE STAND-DOWN. A read that rejects ends the walk (one retry,
+ * then a quiet stand-down) with the held block still painted beside the tail:
+ * the same hole as a bound, reached by a different exit. Either shape of
+ * failure must leave one contiguous range and an affordance to page back, and
+ * paging must then recover everything.
+ */
+for (const [name, historyFaults] of [
+	["the walk's first read", [0, 1]],
+	["every read after the first page", [1, 2]],
+]) {
+	test(`a walk that stands down on a failed read (${name}) paints no hole and stays pageable`, async () => {
+		const { transcript, painted, hasMore, handle } = await driveCachedReopen({
+			away: 300,
+			historyFaults,
+		});
+		const journal = transcript.rows.map(recordIdOf);
+		assertContiguousSuffix(painted, journal, name);
+		assert.equal(hasMore, true, "more history is offered above the tail");
+		assert.ok(
+			painted.length < journal.length,
+			"the cached block behind the unread hole is not painted",
+		);
+		let pages = 0;
+		while (await handle().loadOlder()) {
+			await pump();
+			assert.ok(++pages < 40, "paging terminates");
+		}
+		await pump();
+		assert.deepEqual(
+			ids(handle().transcript),
+			journal,
+			"paging recovers the whole journal, contiguous and in order",
+		);
+	});
+}
+
+/*
+ * A BATCH THAT ALREADY TOUCHES THE HELD BLOCK IS ONE BLOCK WITH IT. The older
+ * backend's page (r351..r450, cut at its cursor) overlaps the cached block
+ * (r301..r400), and the journal has since moved to 520 rows. The walk's first
+ * read (r421..r520) joins that page without reaching the block, and its next
+ * read fails. Nothing is disjoint - cached block, page and tail are one range -
+ * so ending the walk there must not drop the block.
+ */
+test("a walk that ends joined to a page which touches the held block keeps the block", async () => {
+	const { transcript, painted } = await driveCachedReopen({
+		away: 120,
+		historyFaults: [1, 2],
+		returnPage: (transcript) => ({
+			cursor: "r450",
+			entries: transcript.page("r450", REOPEN_PAGE).entries,
+		}),
+	});
+	const journal = transcript.rows.map(recordIdOf);
+	assert.deepEqual(
+		painted,
+		journal.slice(REOPEN_TOTAL - REOPEN_PAGE),
+		"cached block + overlapping page + the tail it joined, none dropped",
+	);
+});
+
+test("a walk that read nothing keeps the held block when the batch's page touches it", async () => {
+	const { transcript, painted } = await driveCachedReopen({
+		away: 50,
+		historyFaults: [0, 1],
+		returnPage: (transcript) => ({
+			cursor: "r450",
+			entries: transcript.page("r450", REOPEN_PAGE).entries,
+		}),
+	});
+	const journal = transcript.rows.map(recordIdOf);
+	assert.deepEqual(
+		painted,
+		journal.slice(REOPEN_TOTAL - REOPEN_PAGE, 450),
+		"the batch's page overlaps the block, so the block is part of the range",
+	);
+});
+
+/*
+ * A LABEL FLOOR STOPS LABELLING, NOT THE WALK. The seed names a settled call no
+ * page can label, and every page of this journal carries a user row (the turn's
+ * opening, a label floor), so the first page reaches a floor. The walk still
+ * owes the held block, and must read back to it rather than stand down over the
+ * hole.
+ */
+test("a label walk that reaches its floor keeps reading until it reaches the held block", async () => {
+	const { transcript, painted, reads } = await driveCachedReopen({
+		away: 300,
+		returnPage: (transcript) => ({
+			cursor: transcript.rows[transcript.rows.length - REOPEN_PAGE - 1].id,
+			entries: transcript.tail(REOPEN_PAGE).entries,
+			coldReason: null,
+			liveEvents: [
+				{
+					type: "tool_execution_end",
+					tool_call_id: "toolu_SEEDED_NOT_IN_JOURNAL",
+					tool_name: "bash",
+					result: { content: [{ text: "seeded output" }], details: null },
+					duration_s: 0.2,
+					is_error: false,
+					started_at_epoch: 1_000_000,
+				},
+			],
+		}),
+	});
+	const journal = transcript.rows.map(recordIdOf);
+	assert.deepEqual(
+		// The seeded call's own live row rides at the tail; it is not the journal.
+		painted.filter((id) => id !== "tool:toolu_SEEDED_NOT_IN_JOURNAL"),
+		journal.slice(REOPEN_TOTAL - REOPEN_PAGE),
+		"the floor zeroed the label debt, not the connection to the cached block",
+	);
+	assert.ok(reads >= 2, `the walk read past its first page (${reads} reads)`);
 });
 
 test("replayed events paint even when the snapshot lands in a later batch", async () => {
