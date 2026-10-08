@@ -21,6 +21,14 @@
  * THE HEADER IS THE PRODUCTION COMPONENT in its production 56px band; the ground
  * under it is deliberately empty, because a gap is a fact about boxes and a
  * populated transcript would only be something else for the eye to go to.
+ *
+ * A SESSION ID IS PASSED (#893), because the overflow menu's `Copy session ID`
+ * item is drawn ONLY when `ChatHeader` receives one (`a draft has none`): a mount
+ * without it renders a menu that silently contradicts the feature, and the three
+ * captured menu dirs (`conversation-actions-open`, the two
+ * `transcript-display-submenu-*`) would show a first row that is the submenu
+ * rather than the id. The fixture id is 12 hex characters, the shape the app's
+ * own session ids take.
  */
 
 import { cn } from "@shared/lib/utils";
@@ -83,6 +91,7 @@ const Cluster = ({
 			<ChatHeader
 				agentName="Core"
 				description="Invoices workspace · on this machine"
+				sessionId="4b7f2c9a1e05"
 				onOpenOptions={() => undefined}
 				onToggleBrowser={() => undefined}
 				onOpenConsole={() => undefined}
