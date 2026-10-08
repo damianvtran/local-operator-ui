@@ -56,6 +56,7 @@ import type {
 } from "../../../../../../shared/desktop-session-contract";
 import type {
 	AskDraft,
+	AskOther,
 	AskOutcome,
 	AskPresentation,
 	AskQueueView,
@@ -65,13 +66,18 @@ import {
 	ASK_CHANGE_WINDOW_HINT,
 	EMPTY_DRAFT,
 	askAnswerMap,
+	askCellWith,
+	askOtherSeed,
+	askQuestionIsAnswered,
 	askRevisionDraft,
 	askSettledAnswers,
 	askStatusText,
 	askStatusWord,
+	askTicks,
 	draftFor,
 } from "../../ask-queue";
 import { AskRecommendedBadge, recommendedIndex } from "../ask-recommended";
+import { AskAnswerField } from "./ask-answer-field";
 
 /**
  * WHICH HALF OF THE LIST THE READER IS LOOKING AT (operator ask, 2026-10-05).
@@ -194,31 +200,115 @@ const askStatusMark = (
 };
 
 /**
+ * A drawn mark rather than a tick glyph: the tick and the dot this pair
+ * used to be read as emoji-adjacent decoration, and a filled shape is
+ * the same mark in a colour role the contrast gate already covers.
+ *
+ * THE SHAPE CARRIES THE CARDINALITY, and that is not decoration: a
+ * single-select question answers with ONE label and a multi-select
+ * with several, so a round mark on both is a radio that accepts a
+ * second press - an affordance stating the wrong input cardinality,
+ * which is the same class of defect as the inert option list this
+ * card replaced. Round reads "pick one", square reads "pick any",
+ * and both are the app's existing idiom for those two controls
+ * (`shared/components/ui/checkbox.tsx`).
+ * The ARIA roles already split (`role="radio"`/"checkbox"`), so
+ * this brings the pixels in line with what a screen reader is told.
+ *
+ * ONE COMPONENT FOR THE OPTION ROWS AND THE `Other` ROW, because the two must read as
+ * the same kind of choice: a second copy of this mark is how the `Other` row would drift
+ * from the rows above it (it did once - the readout row this replaced carried its own).
+ */
+const AskMark = ({ chosen, multi }: { chosen: boolean; multi: boolean }) => (
+	<span
+		aria-hidden="true"
+		className={cn(
+			"mt-1 h-3 w-3 shrink-0 border",
+			/*
+			 * `rounded-[2px]`, NOT `rounded-sm`: the token is 6px
+			 * (`styles/index.css`), which on a 12px box is a
+			 * perfect circle - so the class the design round
+			 * measured as "identical to the single-select mark"
+			 * really was identical, and the claim that it
+			 * differed was wrong (design round 1, D1).
+			 */
+			multi ? "rounded-[2px]" : "rounded-full",
+			chosen ? "border-accent bg-accent" : "border-control",
+		)}
+	/>
+);
+
+/**
+ * The first live control a question offers, in document order: an option row, the
+ * masked field, or an answer field. Shared by the change form's focus hand-off and by
+ * "Enter moves on to the next unanswered question", so the two cannot disagree about
+ * what a question's first control is.
+ */
+const LIVE_CONTROL =
+	"button[data-ask-option]:not([disabled]), input[data-ask-secret]:not([disabled]), textarea[data-ask-other]:not([disabled])";
+
+/**
  * One question's control.
  *
- * Three shapes, decided by the question itself rather than by the ask:
- * an option list (single- or multi-select), a free-text field (an option list is
- * never guaranteed exhaustive - the terminal picker's own rule is that its free
- * row can return a string that was never in `options`), and a masked field for a
- * secret. The secret case is a different DOOR rather than a variant of the text
- * field: its value must never be drafted, echoed, or sent as an answer.
+ * Three shapes, decided by the question itself rather than by the ask: an option list
+ * (single- or multi-select) that ENDS in an `Other` row, a free-text field (a question
+ * with no options), and a masked field for a secret. The secret case is a different
+ * DOOR rather than a variant of the text field: its value must never be drafted,
+ * echoed, or sent as an answer, and it gets no `Other` row on purpose - the masked
+ * field IS its free-form entry, and a plain text box beside a credential's field is
+ * the credential-in-an-ordinary-box failure the composer's secret refusal exists for.
+ *
+ * ## `Other` is explicit, always there, and written into the SAME draft
+ *
+ * An option list is never guaranteed exhaustive (the terminal picker's rule is that
+ * its free row can return a string that was never in `options`), so every non-secret
+ * option question ends in an `Other` row that reveals a field INSIDE the card. What
+ * the user types is written into the same `AskDraft` cell the option presses write
+ * (`askCellWith`), so `askAnswerMap`, the wire body and an old core are all unchanged.
+ * This replaces the main composer answering the ask (design 5.0's R7, reversed on
+ * 2026-10-07): the composer is an ordinary chat box and the card is where an ask is
+ * answered.
+ *
+ * The `Other` entry - whether it is selected and the text in it - is this card's own
+ * STATE, not a reading of the draft cell (see `AskOther` for the two failures that
+ * ruled the derivation out). The cell is seeded INTO that state on mount, so a draft
+ * that already holds out-of-list text opens with the field showing it.
  */
 const AskQuestionField = ({
 	question,
 	selected,
 	secret,
 	disabled,
-	onSelect,
-	onToggle,
+	onCell,
 	onSecret,
+	onAdvance,
+	focusOtherRef,
 }: {
 	question: PendingAskQuestion;
+	/** This question's draft cell: the ticked labels and, last, the `Other` text. */
 	selected: string[];
 	secret: string;
 	disabled: boolean;
-	onSelect: (label: string) => void;
-	onToggle: (label: string) => void;
+	/**
+	 * The question's NEW draft cell. One writer for every control on the question -
+	 * an option press, a tick, the `Other` row, the field - because each of them has to
+	 * rebuild the cell from the ticks AND the `Other` entry (`askCellWith`), and three
+	 * callbacks that each rebuilt part of it is how they would disagree.
+	 */
+	onCell: (cell: string[]) => void;
 	onSecret: (value: string) => void;
+	/**
+	 * Enter in an answer field. The ROW decides what committing means (send the ask when
+	 * it is complete, otherwise move to the next unanswered question), because only it
+	 * sees every question and the Send control's own gate.
+	 */
+	onAdvance: (questionId: string) => void;
+	/**
+	 * Armed by the user's own press on the `Other` row and spent by the field's layout
+	 * effect, so the field takes focus on THAT press and on no other commit: not on
+	 * mount, not on the drawer opening over a restored draft, not on a re-render.
+	 */
+	focusOtherRef: React.MutableRefObject<string | null>;
 }) => {
 	const options = question.options ?? [];
 	const multi = question.multi === true;
@@ -240,29 +330,49 @@ const AskQuestionField = ({
 	 */
 	const marked = recommendedIndex(question.recommended, options.length);
 	/*
-	 * A SOURCE OF THE DRAFT THAT IS NOT IN THE LIST IS DRAWN, AND DRAWN AS WHAT IT IS
-	 * (design round 1, D2's addendum incident). A draft cell can hold a string that is
-	 * not one of the labels - what the user typed into this question's `Other` field -
-	 * and a card that drew nothing for it showed every radio EMPTY beside a question
-	 * that was already answered, which made an answer from outside the list
-	 * indistinguishable from no answer. (The incident came from the retired composer
-	 * routing, which wrote raw typed text into the first unanswered question; the
-	 * writer is now this card's own `Other` field, and the derivation below is
-	 * unchanged.) The row below shows the value, labelled `Other` so it reads as a
-	 * value the list did not offer rather than as a missing selection, and it is a
-	 * real choice in the group (`aria-checked`, the same mark, the same ground).
+	 * THE `Other` ENTRY: card state, seeded from the draft (see `AskOther`).
 	 *
-	 * Only for the LIST shape: a free-text question (no options) already renders the
-	 * draft in its own field, and a secret is never drawn anywhere.
+	 * It is initialised ONCE, from whatever the draft already holds, so a draft that
+	 * outlives the card (the drawer collapsed and reopened; the change form seeded from
+	 * the log) mounts with the field OPEN and showing its text - and, because the seed
+	 * is state rather than an effect, nothing here focuses anything. A free-text-only
+	 * question has no row to open: its field is always shown, and it reads the draft cell
+	 * directly because there is no option for a typed word to be mistaken for.
+	 *
+	 * THE TEXT IS KEPT WHEN AN OPTION IS CHOSEN (single-select), so a mis-click does not
+	 * destroy a typed answer - within this card's life. Closing the drawer unmounts the
+	 * card and only the draft cell survives it, so a typed Other text that an option then
+	 * replaced is gone after a close and reopen. That asymmetry is deliberate: the draft
+	 * holds ANSWERS, and the answer is the option.
 	 */
-	const freeForm =
-		options.length > 0
-			? selected.filter(
-					(value) =>
-						value.trim().length > 0 &&
-						!options.some((option) => option.label === value),
-				)
-			: [];
+	const labels = options.map((option) => option.label);
+	const [other, setOther] = useState<AskOther>(() =>
+		askOtherSeed(selected, labels),
+	);
+	/** The option rows' own selections: the cell minus the entry `Other` put there. */
+	const ticks = askTicks(selected, labels, other);
+	const otherField = useRef<HTMLTextAreaElement>(null);
+	/*
+	 * FOCUS FOLLOWS THE USER'S OWN PRESS, and only that. `focusOtherRef` is armed inside
+	 * the click handler of the `Other` row and spent here, in a LAYOUT effect on the
+	 * commit that mounts the field - so no painted frame shows the page holding focus,
+	 * the same shape the change form's hand-off uses below. Nothing else arms it.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the open flag is the trigger, not a value read in the body
+	useLayoutEffect(() => {
+		if (focusOtherRef.current !== question.id) return;
+		focusOtherRef.current = null;
+		otherField.current?.focus();
+	}, [other.open]);
+	/*
+	 * Every write goes through ONE function so the cell can never disagree with the
+	 * card's own state: the ticks are read OUT of the current cell (`askTicks`) and the
+	 * cell is rebuilt from them and the next `Other` entry (`askCellWith`).
+	 */
+	const writeOther = (next: AskOther) => {
+		setOther(next);
+		onCell(askCellWith(ticks, multi, next));
+	};
 	return (
 		<div className="flex flex-col gap-1.5" data-lo-ask-question={question.id}>
 			<p className="text-ink text-sm">{question.question}</p>
@@ -289,7 +399,7 @@ const AskQuestionField = ({
 			) : options.length > 0 ? (
 				<div className="flex flex-col" role={multi ? "group" : "radiogroup"}>
 					{options.map((option, index) => {
-						const chosen = selected.includes(option.label);
+						const chosen = ticks.includes(option.label);
 						/*
 						 * THE RECOMMENDATION AND THE SELECTION ARE TWO STATES, and this row
 						 * is where that has to be visible rather than merely true: the row's
@@ -310,9 +420,32 @@ const AskQuestionField = ({
 								aria-pressed={multi ? chosen : undefined}
 								aria-checked={multi ? undefined : chosen}
 								role={multi ? "checkbox" : "radio"}
-								onClick={() =>
-									multi ? onToggle(option.label) : onSelect(option.label)
-								}
+								onClick={() => {
+									if (!multi) {
+										/*
+										 * SINGLE-SELECT: the option and `Other` are exclusive, so choosing
+										 * an option CLOSES `Other` - its text stays in `other.text` for a
+										 * mis-click, but it is no longer the answer.
+										 */
+										if (other.open) setOther({ ...other, open: false });
+										onCell([option.label]);
+										return;
+									}
+									/*
+									 * MULTI-SELECT is additive: toggle the label among the ticks and
+									 * leave `Other` exactly as it was, so a typed answer is neither
+									 * dropped nor moved in front of the options the user ticks later.
+									 */
+									onCell(
+										askCellWith(
+											chosen
+												? ticks.filter((label) => label !== option.label)
+												: [...ticks, option.label],
+											true,
+											other,
+										),
+									);
+								}}
 								className={cn(
 									"flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-left",
 									// Rows, not controls with edges of their own: this list sits
@@ -322,36 +455,7 @@ const AskQuestionField = ({
 									disabled ? "text-ink-dim" : "text-ink",
 								)}
 							>
-								{/* A drawn mark rather than a tick glyph: the tick and the dot this pair
-								 * used to be read as emoji-adjacent decoration, and a filled shape is
-								 * the same mark in a colour role the contrast gate already covers.
-								 *
-								 * THE SHAPE CARRIES THE CARDINALITY, and that is not decoration: a
-								 * single-select question answers with ONE label and a multi-select
-								 * with several, so a round mark on both is a radio that accepts a
-								 * second press - an affordance stating the wrong input cardinality,
-								 * which is the same class of defect as the inert option list this
-								 * card replaced. Round reads "pick one", square reads "pick any",
-								 * and both are the app's existing idiom for those two controls
-								 * (`shared/components/ui/checkbox.tsx`).
-								 * The ARIA roles already split (`role="radio"`/"checkbox"`), so
-								 * this brings the pixels in line with what a screen reader is told. */}
-								<span
-									aria-hidden="true"
-									className={cn(
-										"mt-1 h-3 w-3 shrink-0 border",
-										/*
-										 * `rounded-[2px]`, NOT `rounded-sm`: the token is 6px
-										 * (`styles/index.css`), which on a 12px box is a
-										 * perfect circle - so the class the design round
-										 * measured as "identical to the single-select mark"
-										 * really was identical, and the claim that it
-										 * differed was wrong (design round 1, D1).
-										 */
-										multi ? "rounded-[2px]" : "rounded-full",
-										chosen ? "border-accent bg-accent" : "border-control",
-									)}
-								/>
+								<AskMark chosen={chosen} multi={multi} />
 								<span className="min-w-0 flex-1">
 									{/*
 									 * THE MARK STAYS ON THE LABEL'S OWN FIRST LINE, which is the fix
@@ -407,47 +511,94 @@ const AskQuestionField = ({
 							</button>
 						);
 					})}
-					{freeForm.map((value) => (
-						<button
-							key={`other:${value}`}
-							type="button"
-							data-ask-option-other={value}
-							disabled={disabled}
-							aria-pressed={multi ? true : undefined}
-							aria-checked={multi ? undefined : true}
-							role={multi ? "checkbox" : "radio"}
-							onClick={() => (multi ? onToggle(value) : onSelect(value))}
-							className={cn(
-								"flex w-full items-baseline gap-2 rounded-sm bg-sunken px-2 py-1 text-left",
-								disabled ? "text-ink-dim" : "text-ink",
+					{/*
+					 * THE `Other` ROW: ALWAYS PRESENT, AND ALWAYS LAST (operator ask, 2026-10-07).
+					 *
+					 * Every non-secret option question ends in this row, in both select modes,
+					 * so how to give an answer the list did not offer is on the card rather than
+					 * something a user has to know. It is a member of the SAME group as the
+					 * option rows - a radio in a radiogroup, a checkbox in a group - with the
+					 * same mark, ground and focus outline, so it reads as one more choice and
+					 * a screen reader announces it as one.
+					 *
+					 * `Other` is the label and `Type your own answer` is the hint: the label
+					 * alone does not say what pressing it does, which was the operator's
+					 * complaint about the old design. The hint goes while the field is open,
+					 * because the field's own placeholder says the same thing there and the
+					 * two would print it twice.
+					 *
+					 * Pressing it selects it AND moves focus into the field - this is the user's
+					 * own press, the one place this change is allowed to take focus - and
+					 * pressing it again when it is already the selected radio re-focuses the
+					 * field rather than toggling it off (a radio does not deselect). A ticked
+					 * multi-select `Other` unticks, as any checkbox does.
+					 */}
+					<button
+						type="button"
+						data-ask-option-other=""
+						disabled={disabled}
+						aria-pressed={multi ? other.open : undefined}
+						aria-checked={multi ? undefined : other.open}
+						role={multi ? "checkbox" : "radio"}
+						onClick={() => {
+							if (multi && other.open) {
+								writeOther({ ...other, open: false });
+								return;
+							}
+							focusOtherRef.current = question.id;
+							if (other.open) otherField.current?.focus();
+							else writeOther({ ...other, open: true });
+						}}
+						className={cn(
+							"flex min-h-8 w-full items-baseline gap-2 rounded-sm px-2 py-1 text-left",
+							other.open ? "bg-sunken" : "hover:bg-sunken",
+							disabled ? "text-ink-dim" : "text-ink",
+						)}
+					>
+						<AskMark chosen={other.open} multi={multi} />
+						<span className="min-w-0 flex-1">
+							<span>Other</span>
+							{other.open ? null : (
+								<span className="ml-1.5 text-ink-muted text-xs">
+									Type your own answer
+								</span>
 							)}
-						>
-							{/* The same chosen mark the option rows use, so a reader cannot tell the
-							 * two kinds of row apart by their selection state - only by the word. */}
-							<span
-								aria-hidden="true"
-								className={cn(
-									"mt-1 h-3 w-3 shrink-0 border border-accent bg-accent",
-									multi ? "rounded-[2px]" : "rounded-full",
-								)}
+						</span>
+					</button>
+					{other.open ? (
+						<div className="pt-1 pr-1 pb-1 pl-7">
+							<AskAnswerField
+								questionId={question.id}
+								fieldRef={otherField}
+								value={other.text}
+								disabled={disabled}
+								ariaLabel={`Your own answer to: ${question.question}`}
+								placeholder="Type your answer"
+								onChange={(text) => writeOther({ open: true, text })}
+								onEnter={() => onAdvance(question.id)}
 							/>
-							<span className="min-w-0 flex-1">
-								{value}
-								{/* `Other` is the ROW's KIND, not part of the answer: it is what tells a
-								 * reader this text came from the composer rather than from the list. */}
-								<span className="ml-1.5 text-ink-muted text-xs">Other</span>
-							</span>
-						</button>
-					))}
+						</div>
+					) : null}
 				</div>
 			) : (
-				<input
-					type="text"
+				/*
+				 * A QUESTION WITH NO OPTIONS: the field IS the control, so it is open - a row
+				 * that only reveals the one possible input would be ceremony. It is the same
+				 * multi-line, text-only field the `Other` row opens (it replaces a bare
+				 * single-line input that gave no sign it accepted more than one line), named
+				 * by the question it answers so a first-time user - and a screen reader -
+				 * knows it is where to type. It reads the draft cell directly: with no option
+				 * list there is no label a typed word could be mistaken for.
+				 */
+				<AskAnswerField
+					questionId={question.id}
+					fieldRef={otherField}
+					value={other.text}
 					disabled={disabled}
-					value={selected[0] ?? ""}
-					onChange={(event) => onSelect(event.target.value)}
+					ariaLabel={`Your answer to: ${question.question}`}
 					placeholder="Type your answer"
-					className="w-full rounded-md border border-control bg-surface px-2 py-1.5 text-ink text-sm"
+					onChange={(text) => writeOther({ open: true, text })}
+					onEnter={() => onAdvance(question.id)}
 				/>
 			)}
 		</div>
@@ -616,15 +767,18 @@ const AskRow = ({
 		rowRef.current
 			?.querySelector<HTMLElement>(
 				/*
-				 * THE DRAWER'S OWN TWO SHAPES, and they are not the dock's: an option is a
-				 * button carrying `data-ask-option`, and the masked field wears
-				 * `data-ask-secret` ON THE `<input>` ITSELF (`ask-panel.tsx`'s
-				 * `AskQuestionField`). `question-dock.tsx` queries the same pair but its
-				 * secret attribute sits on a wrapping div, so its selector cannot be copied
-				 * verbatim — a `[data-ask-secret] input` here matches nothing, and the
-				 * hand-off would silently fall through to the body for a secret-only ask.
+				 * THE DRAWER'S OWN SHAPES, and they are not the dock's: an option is a
+				 * button carrying `data-ask-option`, the masked field wears
+				 * `data-ask-secret` ON THE `<input>` ITSELF, and an answer field is the
+				 * `textarea[data-ask-other]` (`LIVE_CONTROL`). `question-dock.tsx` queries a
+				 * similar pair but its secret attribute sits on a wrapping div, so its
+				 * selector cannot be copied verbatim - a `[data-ask-secret] input` here
+				 * matches nothing, and the hand-off would silently fall through to the body
+				 * for a secret-only ask. The answer field is in the list because a
+				 * free-text-only question has NO option and no secret: without it the change
+				 * form for such an ask lands on the body.
 				 */
-				"button[data-ask-option]:not([disabled]), input[data-ask-secret]:not([disabled])",
+				LIVE_CONTROL,
 			)
 			?.focus();
 	}, [changing]);
@@ -646,6 +800,65 @@ const AskRow = ({
 		? (updater: (current: AskDraft) => AskDraft) => setChangeDraft(updater)
 		: setDraft;
 	const fieldDisabled = changingNow ? busy : disabled;
+	/*
+	 * THE TWO SUBMITS, as functions, so the buttons and the answer field's Enter are the
+	 * SAME closure rather than two copies that could drift: Enter in a field "does what
+	 * `Send answer` does" because it calls this, with the same gate.
+	 */
+	const sendAnswer = () => {
+		const answers = askAnswerMap(ask, draft, secrets);
+		if (answers !== null) onAnswer(ask, answers);
+	};
+	const sendChange = () => {
+		if (onRevise === undefined) return;
+		const answers = askAnswerMap(ask, changeDraft, secrets);
+		if (answers !== null) onRevise(ask, answers);
+	};
+	/*
+	 * ENTER IN AN ANSWER FIELD (the shared composer's convention: Enter commits,
+	 * Shift+Enter is a newline).
+	 *
+	 *  - A field with NO answer in it commits nothing and stays: moving on from an empty
+	 *    answer would skip the question the user is in the middle of.
+	 *  - When the whole ask is complete, Enter is `Send answer` (or `Update answer` in the
+	 *    change form), through the same gate the button reads - so it cannot send what the
+	 *    button would refuse, and it does nothing while an answer is in flight.
+	 *  - Otherwise it moves to the next question that still needs an answer (the first one
+	 *    after this, wrapping), landing on its first live control. That focus is the
+	 *    user's own Enter, so it is allowed; it replaces the retired composer routing's
+	 *    "Enter fills the first unanswered question" without ever leaving the card.
+	 */
+	const advanceFrom = (questionId: string) => {
+		const index = ask.questions.findIndex((entry) => entry.id === questionId);
+		if (index < 0 || fieldDisabled) return;
+		if (!askQuestionIsAnswered(ask.questions[index], editDraft, secrets))
+			return;
+		if (changingNow) {
+			if (changeReady && onRevise !== undefined) sendChange();
+			else focusNextUnanswered(index);
+			return;
+		}
+		if (ready) sendAnswer();
+		else focusNextUnanswered(index);
+	};
+	const focusNextUnanswered = (from: number) => {
+		const count = ask.questions.length;
+		for (let step = 1; step < count; step++) {
+			const candidate = ask.questions[(from + step) % count];
+			if (askQuestionIsAnswered(candidate, editDraft, secrets)) continue;
+			// Compared by attribute value, not interpolated into a selector: a question id
+			// is the model's string and may carry a quote.
+			const block = [
+				...(rowRef.current?.querySelectorAll<HTMLElement>(
+					"[data-lo-ask-question]",
+				) ?? []),
+			].find((node) => node.dataset.loAskQuestion === candidate.id);
+			block?.querySelector<HTMLElement>(LIVE_CONTROL)?.focus();
+			return;
+		}
+	};
+	/** Which question's `Other` field the user's own press just asked to focus. */
+	const focusOtherRef = useRef<string | null>(null);
 
 	return (
 		<div
@@ -712,16 +925,47 @@ const AskRow = ({
 			 */}
 			{!canAnswer && !changingNow ? (
 				<div className="flex flex-col gap-1.5">
-					{askSettledAnswers(ask).map((entry) => (
-						<div key={entry.id} className="flex flex-col gap-0.5">
-							<span className="text-ink-muted text-xs">{entry.question}</span>
-							<span className="text-ink text-sm">
-								{entry.answers.length > 0
-									? entry.answers.join(", ")
-									: "No answer given"}
-							</span>
-						</div>
-					))}
+					{askSettledAnswers(ask).map((entry) => {
+						/*
+						 * THE ANSWER FRAME KEEPS WHAT WAS WRITTEN. An `Other` answer can be several
+						 * lines now, and a plain span collapsed its newlines into one run - so each
+						 * value keeps its line breaks (`whitespace-pre-wrap`) and wraps long words
+						 * (`break-words`) rather than overflowing the card.
+						 *
+						 * AND IT NAMES WHAT THE LIST DID NOT OFFER. A value that is none of the
+						 * question's labels is tagged with the muted `Other` word, the same word the
+						 * pending row carries, so a settled `prod` reads as the user's own answer
+						 * rather than as a label that happens to be missing from the list. A secret
+						 * question's recorded cell is its KEY NAME (`[deploy_key]`), never an answer
+						 * the user typed, so it is never tagged; a free-text-only question has no
+						 * list to be outside of.
+						 */
+						const source = ask.questions.find((q) => q.id === entry.id);
+						const offered = (source?.options ?? []).map((o) => o.label);
+						const tags = source?.secret !== true && offered.length > 0;
+						return (
+							<div key={entry.id} className="flex flex-col gap-0.5">
+								<span className="text-ink-muted text-xs">{entry.question}</span>
+								{entry.answers.length > 0 ? (
+									entry.answers.map((value, index) => (
+										<span
+											key={`${index}:${value}`}
+											className="whitespace-pre-wrap break-words text-ink text-sm"
+										>
+											{value}
+											{tags && !offered.includes(value) ? (
+												<span className="ml-1.5 text-ink-muted text-xs">
+													Other
+												</span>
+											) : null}
+										</span>
+									))
+								) : (
+									<span className="text-ink text-sm">No answer given</span>
+								)}
+							</div>
+						);
+					})}
 				</div>
 			) : null}
 			{canAnswer || changingNow
@@ -732,24 +976,14 @@ const AskRow = ({
 							selected={draftFor(editDraft, question.id)}
 							secret={secrets[question.id] ?? ""}
 							disabled={fieldDisabled}
-							onSelect={(label) =>
-								writeDraft((current) => ({
-									...current,
-									[question.id]: [label],
-								}))
-							}
-							onToggle={(label) =>
-								writeDraft((current) => {
-									const chosen = draftFor(current, question.id);
-									const next = chosen.includes(label)
-										? chosen.filter((value) => value !== label)
-										: [...chosen, label];
-									return { ...current, [question.id]: next };
-								})
+							onCell={(cell) =>
+								writeDraft((current) => ({ ...current, [question.id]: cell }))
 							}
 							onSecret={(value) =>
 								setSecrets((current) => ({ ...current, [question.id]: value }))
 							}
+							onAdvance={advanceFrom}
+							focusOtherRef={focusOtherRef}
 						/>
 					))
 				: null}
@@ -804,10 +1038,7 @@ const AskRow = ({
 					<button
 						type="button"
 						disabled={disabled || !ready}
-						onClick={() => {
-							const answers = askAnswerMap(ask, draft, secrets);
-							if (answers !== null) onAnswer(ask, answers);
-						}}
+						onClick={sendAnswer}
 						className={cn(
 							"rounded-md px-3 py-1.5 text-sm",
 							/*
@@ -883,10 +1114,7 @@ const AskRow = ({
 								<button
 									type="button"
 									disabled={busy || !changeReady}
-									onClick={() => {
-										const answers = askAnswerMap(ask, changeDraft, secrets);
-										if (answers !== null) onRevise(ask, answers);
-									}}
+									onClick={sendChange}
 									className={cn(
 										"rounded-md px-3 py-1.5 text-sm",
 										busy || !changeReady
