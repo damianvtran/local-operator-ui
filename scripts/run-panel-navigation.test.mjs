@@ -17,7 +17,7 @@
  *
  * WHAT IT DRIVES. The `InteractivePane` harness in `run-details.stories.tsx` -
  * the real `RunPanel` with real state, real callbacks and the production
- * `ChatHeader`, mounted the way `chat-content.tsx` mounts it. That harness
+ * `PanelRailFrame` beside the pane (the trigger moved there, #872). That harness
  * exists precisely because these rules are interaction-visible, and driving it
  * rather than a second reproduction is what keeps this test and the story from
  * drifting apart: the story's `onReaderChildChange` writes the state Back reads.
@@ -132,12 +132,14 @@ const bundle = await build({
 			export { InteractivePane } from "./${SOURCE}/run-details.stories";
 			export { RunPanel } from "./${SOURCE}/run-panel";
 			/*
-			 * The production header, because the focus rule's FALLBACK lands on its
-			 * trigger (section 5.5 of docs/run-sidebar.md) and a harness without one
-			 * could only assert the happy path. It is the same composition the stories
-			 * use, so the element the assertion names is the element a user presses.
+			 * The production panel rail, because the focus rule's FALLBACK lands on the
+			 * run trigger (section 5.5 of docs/run-sidebar.md) and a harness without one
+			 * could only assert the happy path. The trigger moved from the chat header to
+			 * the rail (#872) and keeps its \`data-run-panel-trigger\` hook; this is the
+			 * same composition the stories use, so the element the assertion names is
+			 * the element a user presses.
 			 */
-			export { ChatHeader } from "./src/renderer/src/features/chat/components/chat-header";
+			export { PanelRailFrame } from "./src/renderer/src/shared/components/navigation/panel-rail-frame";
 			export { deriveRunDetails } from "./${SOURCE}/run-detail-model";
 			export * as fixtures from "./${SOURCE}/run-details.fixtures";
 		`,
@@ -198,8 +200,13 @@ const bundle = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "pane.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { InteractivePane, RunPanel, ChatHeader, deriveRunDetails, fixtures } =
-	await import(pathToFileURL(bundlePath).href);
+const {
+	InteractivePane,
+	RunPanel,
+	PanelRailFrame,
+	deriveRunDetails,
+	fixtures,
+} = await import(pathToFileURL(bundlePath).href);
 const { QueryClient, QueryClientProvider } = await import(
 	"@tanstack/react-query"
 );
@@ -550,19 +557,13 @@ const crowdedHarness = () => {
 		 * target is the header's trigger (`§ 5.5`), and a harness without one could
 		 * only ever assert the case where a row is waiting to be focused.
 		 */
-		React.createElement(
-			"div",
-			{ className: "flex min-w-0 flex-1 flex-col" },
-			React.createElement(ChatHeader, {
-				agentName: "Core",
-				description: "Invoices workspace · on this machine",
-				onOpenOptions: () => undefined,
-				runDetails: details,
-				mcpServers: [],
-				listOnScreen: readerChildId === null,
-				readerChildId,
-			}),
-		),
+		React.createElement("div", { className: "flex min-w-0 flex-1 flex-col" }),
+		React.createElement(PanelRailFrame, {
+			runDetails: details,
+			mcpServers: [],
+			listOnScreen: readerChildId === null,
+			readerChildId,
+		}),
 		React.createElement(RunPanel, {
 			details,
 			mcpServers: [],

@@ -26,7 +26,7 @@
  * know the chrome MODE at all - it only knew the OS - so the native-frame fallback
  * had no way to switch the lane and the insets off.
  *
- * THE THREE CUSTOM PROPERTIES ARE THE ONLY PLACE `env()` IS READ. Every component
+ * THE CUSTOM PROPERTIES ARE THE ONLY PLACE `env()` IS READ. Every component
  * reads these instead, which is what lets a rig simulate any platform's geometry on
  * a mac host by overriding them on `:root` (a mac host has no WCO rect to measure).
  * `data-chrome-mode="native"` leaves all three at 0, so the app lays out exactly as
@@ -39,6 +39,9 @@
 	--chrome-strip-h: 0px;
 	--chrome-inset-start: 0px;
 	--chrome-inset-end: 0px;
+	/* The caption buttons' HEIGHT where they trail, for the panel rail's top
+	   clearance (#872). 0 wherever the OS draws no buttons over the app. */
+	--chrome-inset-end-h: 0px;
 }
 
 /*
@@ -71,6 +74,14 @@
 		0px,
 		calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw))
 	);
+	/*
+	 * THE BUTTONS' HEIGHT, for the panel rail's top (#872). The rail is the column
+	 * that now stands at the window's right edge, so the buttons are drawn over ITS
+	 * top: its first item starts below this. Read only where the buttons trail, the
+	 * same gate as the width above, so a leading Linux layout (buttons on the left,
+	 * over the sidebar) leaves the rail's top at its resting 4px.
+	 */
+	--chrome-inset-end-h: env(titlebar-area-height, 0px);
 }
 
 /*
@@ -94,6 +105,7 @@
 	--chrome-strip-h: 32px;
 	--chrome-inset-start: 80px;
 	--chrome-inset-end: 0px;
+	--chrome-inset-end-h: 0px;
 }
 
 /*
@@ -107,6 +119,7 @@
 	--chrome-strip-h: 0px;
 	--chrome-inset-start: 0px;
 	--chrome-inset-end: 0px;
+	--chrome-inset-end-h: 0px;
 }
 
 /*
@@ -212,7 +225,16 @@
  * case it is in.
  */
 @utility chrome-reserve-trailing {
-	width: var(--chrome-inset-end);
+	/*
+	 * `--chrome-inset-end-pane`, NOT `--chrome-inset-end` (#872). The panel rail now
+	 * stands at the window's right edge and covers the trailing 44px of the OS
+	 * buttons' ~138px, so the row that ends at the rail's left edge only has to clear
+	 * what is left. The shell publishes that remainder (`chat-layout.tsx`: the full
+	 * inset minus the rail's width, 0 where the rail is absent); the fallback keeps a
+	 * pane rendered outside the shell (a story) on the full inset, which is the safe
+	 * direction.
+	 */
+	width: var(--chrome-inset-end-pane, var(--chrome-inset-end));
 	flex: none;
 }
 

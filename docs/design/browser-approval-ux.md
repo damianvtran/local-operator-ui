@@ -70,7 +70,7 @@ conversation the app lists — or by a caller the host could not attribute light
 conversation's badge. The rail's count includes those, deliberately and by name in its
 own docstring.
 
-**4. The header's Globe trigger no longer unmounts with its pane.** The implementation
+**4. The Globe trigger (a header control until #872, now the panel rail's Browser item) no longer unmounts with its pane.** The implementation
 recorded that rule as a COST in `sidebar-conversation-browser.md` ("the header's Globe
 is unmounted while the pane is open" — the "one-line follow-up" that note said was
 "deliberately not implemented"), and the operator's report is that cost being paid: the
@@ -1160,3 +1160,18 @@ arrived, in the PR body, the way the last browser round's did.
   conversation; the rail's route is the global surface.
 - **Favicons**: the strip keeps its glyph marks (`browser-tab-strip.tsx:53-60`);
   a favicon fetcher is a network path this feature has no other use for.
+
+## Addendum (#872): where the trigger and its badge are drawn
+
+The header's Globe trigger moved to the **panel rail**, a 44px column at the window's
+right edge, and every reference above to "the header trigger", "the Globe in the
+chat header" or "the header's action cluster" describes where it WAS. What is
+unchanged: the trigger stays mounted while its pane is open (it is a toggle whose
+label flips), the badge counts THIS conversation's waiting approvals and is the only
+chrome that does, and its glyph is capped at `9+` while the tooltip and accessible
+name carry the exact number. What moved with it: the badge's ring is `ring-surface`
+(the rail's ground, where the header's was `ring-canvas`), it hangs 4px rather than
+10px past the control's corner (a 44px column has a 6px gutter, not a 12px gap to a
+neighbour), and the tooltip opens to the left. The historical frames under
+`docs/evidence/browser-approval-badges/` and `docs/evidence/chat-header-cluster*/`
+predate the move and are not re-shot.

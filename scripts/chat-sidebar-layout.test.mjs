@@ -34,6 +34,7 @@ const layoutBundle = await build({
 });
 const {
 	CHAT_PANE_WITH_DOCK_MIN_PX,
+	PANEL_RAIL_WIDTH_PX,
 	SIDEBAR_COLLAPSED_WIDTH,
 	SIDEBAR_DEFAULT_WIDTH,
 	SIDEBAR_DOCK_MIN_PX,
@@ -254,7 +255,7 @@ test("a docked sidebar yields to the canvas where the yield is what lets it dock
 
 	/* Where the docked sidebar already leaves the canvas its floor, nothing yields. */
 	assert.equal(sidebarYieldsToCanvas(1380, SIDEBAR_DEFAULT_WIDTH), false);
-	assert.equal(sidebarYieldsToCanvas(1140, SIDEBAR_DEFAULT_WIDTH), false);
+	assert.equal(sidebarYieldsToCanvas(1184, SIDEBAR_DEFAULT_WIDTH), false);
 	assert.equal(canvasPaneMode(1380 - SIDEBAR_DEFAULT_WIDTH), "docked");
 
 	/* The user's own narrower sidebar still yields - it is the mode that is short, not 260. */
@@ -272,5 +273,62 @@ test("a docked sidebar yields to the canvas where the yield is what lets it dock
 	assert.equal(
 		resolveSidebarLayout(1024, true, false, SIDEBAR_DEFAULT_WIDTH, true).mode,
 		"strip",
+	);
+});
+
+/*
+ * #872: THE PANEL RAIL IS PART OF THE ROW'S DEFICIT, so the yield's band moved up by
+ * the rail's 44px. The measured row the canvas docks in is window - sidebar - rail
+ * (the rail is a sibling after the measured column), and `sidebarYieldsToCanvas`
+ * predicts that row from the window alone. Without the subtraction the band
+ * 1140-1183 at the default 260 is the D24 defect again: the sidebar stays docked, the
+ * real row is 44px short of the canvas's floor, and the canvas OVERLAYS the chat.
+ */
+test("the yield counts the 44px panel rail: the band is 1024-1183 at the default sidebar", () => {
+	assert.equal(PANEL_RAIL_WIDTH_PX, 44);
+	for (const width of [1024, 1100, 1139, 1140, 1160, 1183]) {
+		const row = width - SIDEBAR_DEFAULT_WIDTH - PANEL_RAIL_WIDTH_PX;
+		assert.equal(
+			canvasPaneMode(row),
+			"overlay",
+			`${width}: the docked row (${row}) is short of the canvas floor`,
+		);
+		assert.equal(
+			canvasPaneMode(width - SIDEBAR_COLLAPSED_WIDTH - PANEL_RAIL_WIDTH_PX),
+			"docked",
+			`${width}: the strip would let it dock`,
+		);
+		assert.equal(
+			sidebarYieldsToCanvas(width, SIDEBAR_DEFAULT_WIDTH),
+			true,
+			`${width} must yield: the rail is taken out of the row`,
+		);
+		assert.equal(
+			resolveSidebarLayout(width, false, false, SIDEBAR_DEFAULT_WIDTH, true)
+				.mode,
+			"strip",
+		);
+	}
+	/* 1184 is the first width where the docked row (880) holds 400 + 480. */
+	assert.equal(
+		canvasDockWidth(1184 - SIDEBAR_DEFAULT_WIDTH - PANEL_RAIL_WIDTH_PX),
+		CANVAS_PANE_MIN_PX,
+	);
+	assert.equal(sidebarYieldsToCanvas(1184, SIDEBAR_DEFAULT_WIDTH), false);
+	assert.equal(
+		resolveSidebarLayout(1184, false, false, SIDEBAR_DEFAULT_WIDTH, true).mode,
+		"docked",
+	);
+	/*
+	 * NO RAIL, NO DEDUCTION: settings and agents mount no rail, and the fleet asks
+	 * pane still docks there. The shell passes 0, which restores the rail-less band
+	 * exactly, so the sidebar does not collapse for 44px nobody took.
+	 */
+	assert.equal(sidebarYieldsToCanvas(1140, SIDEBAR_DEFAULT_WIDTH, 0), false);
+	assert.equal(sidebarYieldsToCanvas(1139, SIDEBAR_DEFAULT_WIDTH, 0), true);
+	assert.equal(
+		resolveSidebarLayout(1140, false, false, SIDEBAR_DEFAULT_WIDTH, true, 0)
+			.mode,
+		"docked",
 	);
 });

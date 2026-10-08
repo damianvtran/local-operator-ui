@@ -20,6 +20,8 @@ import { SettingsPage } from "@features/settings/components/settings-page";
 import type { ReusableProfile } from "@shared/api/local-operator/profile-hooks";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { PaneSlot } from "@shared/components/common/pane-slot";
+import { PanelRail } from "@shared/components/navigation/panel-rail";
+import { InPanelRailHost } from "@shared/components/navigation/panel-rail-host";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { apiConfig } from "@shared/config/api-config";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
@@ -821,9 +823,6 @@ const ConversationStandIn = ({
 			description="Invoices workspace · on this machine"
 			onOpenOptions={() => undefined}
 			runDetails={details}
-			mcpServers={deriveMcpServers([], {}, [])}
-			listOnScreen={false}
-			readerChildId={null}
 		/>
 		<div className="flex min-h-0 grow flex-col gap-4 overflow-hidden bg-canvas p-6">
 			<p className="text-body text-ink">
@@ -911,7 +910,13 @@ const ChatShellFrame: FC<{
 	 * that cannot open (design review round 1, D2).
 	 */
 	details: ReturnType<typeof deriveRunDetails> | null;
-}> = ({ pane, details }) => {
+	/** The rail's attention marks, for the arms that photograph them. */
+	railProps?: {
+		browserAttentionCount?: number;
+		consoleUnseenCount?: number;
+		fileCount?: number;
+	};
+}> = ({ pane, details, railProps = {} }) => {
 	useFixtureFetch();
 	useMacChrome();
 
@@ -958,6 +963,27 @@ const ChatShellFrame: FC<{
 							<ConversationStandIn details={details} />
 							{pane?.(slotWidth)}
 						</div>
+						{/*
+						 * THE PANEL RAIL (#872), through the shell's own host exactly as
+						 * `chat-content` portals it, so every `ChatDock*` arm photographs the
+						 * rail where the app draws it: a 44px column at the window's edge,
+						 * beside the measured column. The inputs are the conversation
+						 * stand-in's (a draft has no run details and no session, so the rail
+						 * shows only Browser and Canvas there, as the app does).
+						 */}
+						<InPanelRailHost>
+							<PanelRail
+								sessionId={details ? "a1b2c3d4e5f6" : null}
+								runDetails={details}
+								mcpServers={deriveMcpServers([], {}, [])}
+								listOnScreen={false}
+								readerChildId={null}
+								browserAttentionCount={railProps.browserAttentionCount ?? 0}
+								consoleUnseenCount={railProps.consoleUnseenCount ?? 0}
+								consoleUnseenPulsing={false}
+								fileCount={railProps.fileCount ?? 0}
+							/>
+						</InPanelRailHost>
 					</main>
 				}
 			/>
