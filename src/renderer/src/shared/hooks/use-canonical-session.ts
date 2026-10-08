@@ -43,6 +43,7 @@ import {
 	applyHistoryPage,
 	applyLiveSeed,
 	clearTranscript,
+	isDurableOwnerRow,
 	labelGapCandidates,
 	labelTargetsBehind,
 	labelTargetsBehindIds,
@@ -56,6 +57,7 @@ import {
 	reconcileLimit,
 	reconcileWalkDone,
 	removeRecord,
+	sealDisjointBlock,
 	seedCallStarts,
 	seedCallsMissingLabels,
 	seedSettledCalls,
@@ -925,7 +927,20 @@ type LabelWalk = {
 	waiting: ReadonlySet<string>;
 };
 
-/** A reconcile that is not a label read: connect to the painted rows, nothing more. */
+/**
+ * What a walk leaves behind for `walkTail` to seal against (#876): the record
+ * keys of everything it fetched, the oldest entry it reached, whether the journal
+ * continues behind that entry, and which of the walk's two seams it reached.
+ */
+type WalkSeam = {
+	keys: Set<string>;
+	oldest: DesktopHistoryPage["entries"][number] | null;
+	hasMore: boolean;
+	joined: boolean;
+	reachedHeld: boolean;
+};
+
+/** A reconcile that is not a label read: connect to the painted rows and to what the pane held, nothing more. */
 const NO_LABEL_WALK: LabelWalk = {
 	targets: new Set(),
 	order: [],
@@ -2036,6 +2051,23 @@ function pageIsJournalTail(snapshot: DesktopSnapshot): boolean {
 	);
 }
 
+/**
+ * The id a durable page entry paints under in the transcript index (#876).
+ *
+ * A tool entry keys by its CALL id — the reducer mints `tool:<call_id>` so a
+ * live start and end for the same call coalesce onto one row — while every
+ * other entry keys by its own id. The reconcile gate and the walk compare
+ * page entries against held rows to decide whether a read is owed; without
+ * this key a held tool row reads as "not held", and the comparison could not
+ * recognise the very row its whole purpose is to reach.
+ */
+function entryRecordKey(entry: DesktopHistoryPage["entries"][number]): string {
+	const callId = entry.payload?.tool_call_id;
+	if (entry.payload?.role === "tool" && typeof callId === "string" && callId)
+		return `tool:${callId}`;
+	return entry.id;
+}
+
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
@@ -2334,8 +2366,9 @@ export function useCanonicalSessionStream(
 		};
 
 		/**
-		 * Read the durable tail back and merge it, walking further back until the
-		 * page CONNECTS to a row the snapshot painted.
+		 * Read the durable tail back and merge it, walking further back until a
+		 * fetched page has reached BOTH seams this walk owes: the rows the frame
+		 * batch painted, and the rows this pane held before it (#876).
 		 *
 		 * WHY A SNAPSHOT ALONE CANNOT BUY THIS READ. A snapshot's history page used to
 		 * be read `through_id=<the owner's published history_cursor>`, so its newest
@@ -2358,15 +2391,26 @@ export function useCanonicalSessionStream(
 		 * this read was written for — a page ending AT the cursor, and a page whose
 		 * newest row this viewer never painted.
 		 *
+		 * AND THAT SKIP IS BOUNDED BY THE SEAM, NOT THE FRAME (#876). "The page is
+		 * the journal's tail" is a fact about the journal; it says nothing about
+		 * whether the page CONNECTS to what this pane holds. A reopen whose cached
+		 * block sat hours behind the page took the skip as unconditional and lost
+		 * the five hours between them — so the journal-tail arm of the gate asks the
+		 * held question too (`pageIsPaintedTail` below), and the walk carries the
+		 * same seam as its second connection.
+		 *
 		 * THE BOUND, which is different in the two cases:
 		 *
 		 *  - something WAS painted (the common case): the first read is the tail,
-		 *    and it is the only one unless it does not reach back to a painted row —
-		 *    the walk then continues until it does, stopped by `has_more` or by
-		 *    `RECONCILE_WALK_MAX_ROWS` (500 rows, read in
-		 *    `RECONCILE_TAIL_ENTRIES`-sized pages). A snapshot whose page already
-		 *    reaches the tail costs exactly one page, which is what this path paid
-		 *    before the guard existed.
+		 *    and it is the only one unless it fails a CONNECTION — the walk then
+		 *    continues until both are made: to the rows this batch painted, and to
+		 *    the rows the pane HELD before it (`heldIds`, captured before this
+		 *    flush's own commits; a held set that included this batch's rows would
+		 *    make the test true by construction, which is #876's stand-down). The
+		 *    walk is stopped by `has_more` or by `RECONCILE_WALK_MAX_ROWS` (500
+		 *    rows, read in `RECONCILE_TAIL_ENTRIES`-sized pages). A snapshot whose
+		 *    page already connects costs exactly one page, which is what this path
+		 *    paid before the guard existed.
 		 *  - NOTHING was painted (a cold or cursor-less snapshot, an attention
 		 *    frame naming an unpainted anchor with no snapshot in the batch): no
 		 *    fetched page can ever satisfy the connection test, so a walk would run
@@ -2387,7 +2431,10 @@ export function useCanonicalSessionStream(
 		 * `painted` is built from the FRAMES, not from the painted view: an
 		 * updater runs lazily, so at this point the view may not hold what this
 		 * very flush painted, and a connection test against a stale view would
-		 * walk back on every open.
+		 * walk back on every open. `heldIds` is the opposite side of the same
+		 * capture, for the opposite reason: it must NOT include this flush's own
+		 * rows, so it is read from `paintedIds` before any commit this flush can
+		 * run.
 		 */
 		/**
 		 * Charge one read's worth of the per-call budget, and record that a read is IN
@@ -2547,6 +2594,23 @@ export function useCanonicalSessionStream(
 			 * (review round 1, R2).
 			 */
 			onSpend?: (rows: number) => void,
+			/**
+			 * The rows THIS PANE HELD before the batch, as record ids — the seam
+			 * BEHIND the fetched pages that the walk must also reach before it may
+			 * stand down (#876; `walkTail` carries both connections). Defaults to
+			 * `painted`: a caller with no separate held set (the retry paths, whose
+			 * connection target IS what is already on screen) means the two sets are
+			 * one.
+			 */
+			held: ReadonlySet<string> = painted,
+			/**
+			 * The oldest row the batch's own snapshot page DELIVERED, or `null` when
+			 * the batch carried none (every retry path, and any flush without a
+			 * snapshot). It is the only edge a seal may cut at when the walk itself
+			 * fetched nothing: a row the journal handed over, as opposed to a row that
+			 * merely happens to be new on the pane (#876, review round 3).
+			 */
+			batchEdge: { id: string; ts: number } | null = null,
 		) => {
 			/*
 			 * THIS WALK IS A READ THE PANE CAN PAINT (remote-load-hydration, U1): the
@@ -2589,6 +2653,8 @@ export function useCanonicalSessionStream(
 				handedOff = await walkTail(
 					generation,
 					painted,
+					held,
+					batchEdge,
 					labels,
 					historyAttempt,
 					onSpend,
@@ -2654,20 +2720,173 @@ export function useCanonicalSessionStream(
 			}
 		};
 
-		/** The body of `reconcileTail`; answers whether a timer now owns the walk. */
+		/**
+		 * The body of `reconcileTail`; answers whether a timer now owns the walk.
+		 *
+		 * THE ONE EXIT THAT SEALS (#876). `walkPages` has a dozen ways out, and the
+		 * hole this exists for is the same however the walk left: it fetched the
+		 * tail, never reached the rows the pane held, and stopped (a bound, the
+		 * failure stand-down, the label floor, a page budget). Each of those used
+		 * to leave the held block painted beside the fetched tail with the gap
+		 * between them unmarked, and the cursor still pointing BEFORE the held
+		 * block, so no later "load earlier" could ever page into the gap. Doing the
+		 * seal here, after `walkPages` returns, covers every exit with one
+		 * statement instead of one per `return`, and a new exit added to the walk
+		 * later is covered without anyone remembering to.
+		 *
+		 * WHICH EXITS DO NOT SEAL, and why each is not a hole:
+		 *  - a timer owns the walk (`handedOff`): the walk is not over, and the
+		 *    re-entry carries the same held set;
+		 *  - the generation moved: this pane no longer shows these rows;
+		 *  - the view was cleared under the walk (`viewEpoch`): sealing would set
+		 *    `hasMore` over a transcript the reader just emptied, offering the
+		 *    cleared history back;
+		 *  - the held seam was reached (`reachedHeld`), or nothing was held: the
+		 *    fetched chain is contiguous with every row the pane has;
+		 *  - the journal ran out (`!hasMore`): there is nothing behind the fetched
+		 *    chain to be missing, so a held row older than it is not a hole but a
+		 *    row the journal no longer has, which this change leaves to the
+		 *    behaviour it always had;
+		 *  - no page was fetched: there is no fetched edge to seal AT.
+		 */
 		const walkTail = async (
 			generation: number,
 			painted: ReadonlySet<string>,
+			held: ReadonlySet<string>,
+			batchEdge: { id: string; ts: number } | null,
 			labels: LabelWalk,
 			historyAttempt: number,
 			onSpend?: (rows: number) => void,
 		): Promise<boolean> => {
+			const seam: WalkSeam = {
+				keys: new Set(),
+				oldest: null,
+				hasMore: false,
+				joined: false,
+				reachedHeld: held.size === 0,
+			};
+			const epochAtStart = viewRef.current.transcript.viewEpoch;
+			const handedOff = await walkPages(
+				generation,
+				painted,
+				held,
+				batchEdge,
+				labels,
+				historyAttempt,
+				seam,
+				onSpend,
+			);
+			if (
+				handedOff ||
+				generationRef.current !== generation ||
+				seam.reachedHeld ||
+				viewRef.current.transcript.viewEpoch !== epochAtStart
+			)
+				return handedOff;
+			/*
+			 * A BATCH THAT ALREADY TOUCHES WHAT THE PANE HELD IS ONE BLOCK, so a chain
+			 * joined to it is joined to the held rows too, whatever else ended the walk.
+			 * `painted === held` is a caller with no separate batch (the retry paths),
+			 * where the intersection is the whole set and proves nothing.
+			 *
+			 * BOTH SIDES ARE RECORD KEYS (review round 4, R4-1): `painted` is built from
+			 * `entryRecordKey` of the batch's page entries and `held` from the view's
+			 * record ids, so a page that touches the held block only through a TOOL row
+			 * (`tool:<call_id>`, the top of every busy turn) is seen as touching it.
+			 */
+			const batchTouchesHeld =
+				painted !== held && [...painted].some((id) => held.has(id));
+			if (batchTouchesHeld && seam.joined) return handedOff;
+			let edge: { id: string; ts: number } | null;
+			if (seam.oldest) {
+				// A journal that ends at the fetched chain has nothing behind it to be
+				// missing: `hasMore` would be a claim the journal contradicts.
+				if (!seam.hasMore) return handedOff;
+				edge = {
+					id: seam.oldest.id,
+					ts: Math.round((seam.oldest.ts ?? 0) * 1000),
+				};
+			} else {
+				/*
+				 * No page of the walk arrived (an empty answer, or the read failed). A
+				 * seal needs an edge the journal DELIVERED and a held block provably
+				 * disjoint from it, and the only candidate left is the batch's own
+				 * snapshot page: its oldest entry (`batchEdge`), sealed only when that
+				 * page does not touch the held rows (`batchTouchesHeld`) and says the
+				 * journal goes on behind it. No snapshot page (`batchEdge` null) means
+				 * there is no proof of a disjoint block at all, so nothing is sealed.
+				 *
+				 * WHY NOT "THE OLDEST DURABLE ROW THE PANE DID NOT HOLD BEFORE". That was
+				 * the edge in rounds 1-2 and it was wrong three ways: a tool that settled
+				 * mid-flush (CI: 93 rows -> 2), a row born live in a flush that carried no
+				 * page (review round 3, R3-1: any tool that starts and ends in one flush),
+				 * and a pre-flush index that a walk's own commits never refreshed (QA
+				 * round 3, Q3-1). Each is a row that is NEW on the pane without being a
+				 * row the journal delivered, and its `ts` is the viewer's clock, newer
+				 * than the whole held block. Keying the edge to the page removes the
+				 * class rather than one member of it.
+				 */
+				if (batchTouchesHeld || !batchEdge) return handedOff;
+				edge = batchEdge;
+			}
+			if (!edge) return handedOff;
+			const sealed = commitView((current) => {
+				const transcript = sealDisjointBlock(
+					current.transcript,
+					edge,
+					seam.keys,
+				);
+				return transcript === current.transcript
+					? current
+					: { ...current, transcript };
+			});
+			// The ref is "the index the last commit left behind": the next flush asks
+			// it what the pane holds, and a dropped row it still listed would make a
+			// page "connect" to a row that is no longer on screen.
+			paintedIds.current = sealed.transcript.index;
+			return handedOff;
+		};
+
+		/** The walk itself; see `walkTail` for what happens when it ends. */
+		const walkPages = async (
+			generation: number,
+			painted: ReadonlySet<string>,
+			held: ReadonlySet<string>,
+			batchEdge: { id: string; ts: number } | null,
+			labels: LabelWalk,
+			historyAttempt: number,
+			seam: WalkSeam,
+			onSpend?: (rows: number) => void,
+		): Promise<boolean> => {
+			/*
+			 * THE VIEW THIS WALK WAS STARTED FOR (#876, QA round 3, Q3-2). A `/clear`
+			 * bumps `viewEpoch` and is view-only, so nothing else tells a walk that the
+			 * rows it is about to merge are the rows the reader just removed. The walk
+			 * is up to 500 rows / 6 requests wide now, so the window in which a page
+			 * could repaint a cleared history is no longer one request. Checked after
+			 * every await that precedes a commit (the failure arm and the page merge),
+			 * and by `walkTail` before it seals. A superseded walk commits nothing.
+			 */
+			const epochAtStart = viewRef.current.transcript.viewEpoch;
+			const cleared = () =>
+				viewRef.current.transcript.viewEpoch !== epochAtStart;
 			const fetchedIds = new Set<string>();
 			let beforeId: string | undefined;
 			let rows = 0;
 			let requests = 0;
 			/** Whether some page has overlapped the painted rows yet; latched. */
 			let joined = false;
+			/**
+			 * Whether some fetched page has reached the rows THIS PANE HELD before the
+			 * batch — the walk's second seam (#876). `joined` alone asked "does the
+			 * fetch meet what this BATCH painted", which the first tail fetch
+			 * satisfies by construction whenever the batch carried a snapshot page;
+			 * the seam behind that page — the cached block a reopen came back with —
+			 * needs its own reach, or the walk stands down over a hole. Nothing held
+			 * (a cold open) is satisfied by definition: no seam exists behind the page
+			 * for a walk to close.
+			 */
+			let reachedHeld = held.size === 0;
 			/** Whether a fetched page has reached the row this turn opened with. */
 			let reachedTurnStart = false;
 			/*
@@ -2773,6 +2992,10 @@ export function useCanonicalSessionStream(
 						limit: Math.min(limit, RECONCILE_WALK_MAX_ROWS - rows),
 					});
 				} catch {
+					// A cleared view has nothing left to read for: without this the
+					// nothing-painted branch below would take the emptied pane for a pane
+					// that never loaded, and retry the read that repaints the history.
+					if (cleared()) return false;
 					/*
 					 * The failure arm, where this branch's hardening meets #152's walk, and the
 					 * two cases here are not the same case:
@@ -2809,7 +3032,9 @@ export function useCanonicalSessionStream(
 					if (historyAttempt < HISTORY_RECONCILE_ATTEMPTS) {
 						reconcileTimer = window.setTimeout(() => {
 							reconcileTimer = 0;
-							if (generationRef.current !== generation) {
+							// The retry is for the view it was scheduled against: a `/clear` in
+							// the backoff gap must not be answered with the history it removed.
+							if (generationRef.current !== generation || cleared()) {
 								releaseLabelPending();
 								return;
 							}
@@ -2819,6 +3044,8 @@ export function useCanonicalSessionStream(
 								labels,
 								historyAttempt + 1,
 								onSpend,
+								held,
+								batchEdge,
 							);
 						}, streamRetryDelayMs(historyAttempt));
 						return true;
@@ -2873,7 +3100,7 @@ export function useCanonicalSessionStream(
 					 */
 					releaseLabelPending();
 				}
-				if (generationRef.current !== generation) return false;
+				if (generationRef.current !== generation || cleared()) return false;
 				/*
 				 * A PAGE ARRIVED, so the refusal is over: the route that refused is answering
 				 * again, and the rows it was refusing for are owed to a read once more. This
@@ -3053,9 +3280,29 @@ export function useCanonicalSessionStream(
 					joined ||
 					painted.size === 0 ||
 					page.entries.some(
-						(entry) => painted.has(entry.id) || fetchedIds.has(entry.id),
+						(entry) =>
+							painted.has(entryRecordKey(entry)) || fetchedIds.has(entry.id),
 					);
+				/*
+				 * The held seam, latched the same way and deliberately NOT through
+				 * `fetchedIds`: that arm says the chain is contiguous, which `beforeId`
+				 * already guarantees — only a page carrying a HELD row proves the chain
+				 * has reached what this pane had. `entryRecordKey` is what makes the
+				 * comparison exact for tool rows.
+				 */
+				reachedHeld =
+					reachedHeld ||
+					page.entries.some((entry) => held.has(entryRecordKey(entry)));
 				for (const entry of page.entries) fetchedIds.add(entry.id);
+				// What `walkTail` seals against if the walk ends short: the fetched
+				// chain's oldest edge and whether the journal goes on behind it. Pages
+				// are contiguous (`beforeId` is exclusive), so the last non-empty
+				// page's first entry IS the chain's oldest.
+				for (const entry of page.entries) seam.keys.add(entryRecordKey(entry));
+				if (oldest) seam.oldest = oldest;
+				seam.hasMore = page.has_more;
+				seam.joined = joined;
+				seam.reachedHeld = reachedHeld;
 				// The orphan results count as missing until their own rows are read.
 				const stillBehind = behind() + orphans.size;
 				/*
@@ -3098,6 +3345,18 @@ export function useCanonicalSessionStream(
 				 * and `labelling` gates both: a connecting walk may legitimately have to
 				 * pass either to reach the row the snapshot painted.
 				 */
+				/*
+				 * THE FLOORS STOP LABELLING, NOT THE WALK (#876). `pagePassedOldestStart`
+				 * and `reachedTurnStart` answer "no further page can NAME a target call" —
+				 * facts about the label goal. They used to return outright, which was also
+				 * a quiet exit for the CONNECTION duties the same walk carries: a label
+				 * walk that hit its floor before reaching the pane's held rows stood down
+				 * over the seam, and on a reopen that seam is the reported missing hours.
+				 * A floor therefore zeroes the label debt and the walk's own done test
+				 * decides — it keeps its remaining purpose (a connection still unmade)
+				 * until that test or a bound ends it.
+				 */
+				let labelFloor = false;
 				if (labelling) {
 					const behindTargets = behindIds();
 					const floored = pagePassedOldestStart(
@@ -3113,9 +3372,12 @@ export function useCanonicalSessionStream(
 							behindTargets.filter((callId) => labels.waiting.has(callId)),
 						),
 					);
-					if (floored || reachedTurnStart) return false;
+					labelFloor = floored || reachedTurnStart;
 				}
-				if (reconcileWalkDone(joined, stillBehind)) return false;
+				if (
+					reconcileWalkDone(joined && reachedHeld, labelFloor ? 0 : stillBehind)
+				)
+					return false;
 				if (!oldest || !page.has_more) return false;
 				beforeId = oldest.id;
 				// A further page is sized for what is still missing behind it; a walk
@@ -3138,6 +3400,63 @@ export function useCanonicalSessionStream(
 			pending.current = [];
 			if (frames.length === 0) return;
 			/*
+			 * WHAT THIS PANE HELD WHEN THE BATCH ARRIVED (#876), as record ids — the
+			 * seam behind the fetched pages that a reconcile must reach before it may
+			 * stand down. Captured BEFORE any commit this flush can run, and that is
+			 * the point rather than a detail: by the time the walk is asked, this
+			 * batch's own rows are in hand, and a held set that included them would
+			 * satisfy the connection by construction — which is how a reopen's walk
+			 * stood down over a hole it was already holding one end of.
+			 *
+			 * ONLY ROWS THE JOURNAL OWNS COUNT AS HELD (#876, review round 1). The
+			 * index also lists this app's own unconfirmed user echo, and an echo is
+			 * keyed by the admission request UUID — which is ALSO the id the owner
+			 * gives the durable row. A send that landed while a stale cached paint was
+			 * on screen therefore puts that id in the index, and when the owner has
+			 * already journaled it as the newest row the new tail page contains it:
+			 * "the page reaches a held row" would then be true of the ECHO alone, and
+			 * the gate and the walk would stand down over the very hole this exists
+			 * to close, with no read. An echo is evidence of a send, not of a journal
+			 * row the pane holds, so it (and every other row `sealDisjointBlock`
+			 * refuses to drop: a streaming answer, an unsettled call, the app's own
+			 * notices) is left out, by the SAME rule — one definition of "a row paging
+			 * can bring back" for what a seam is owed and what a seal may drop. A pane
+			 * holding only such rows has no seam to close, so it defers as a cold pane
+			 * does (`heldIds.size === 0`). Keyed by `record.id`, which for a tool row is
+			 * already `tool:<call_id>`, the key `entryRecordKey` gives its page entry.
+			 */
+			const heldIds = new Set<string>();
+			for (const record of viewRef.current.transcript.records)
+				if (isDurableOwnerRow(record)) heldIds.add(record.id);
+			/*
+			 * READ FROM THE LIVE VIEW, NOT FROM `paintedIds` (QA round 3, Q3-1).
+			 * `paintedIds` is "the index the last flush left behind" and is refreshed
+			 * only at a flush, a seal and a reset, so rows a walk's own pages, a
+			 * `loadOlder` or an echo committed in between are on the pane and absent
+			 * from it. This is what the pane holds at the instant before this flush's
+			 * commits, which `viewRef` is. (The gate's older-backend arm still reads
+			 * `paintedIds` for its own reason, below.)
+			 *
+			 * `heldIds` IS A CONNECTION PROOF AND NOTHING ELSE. The gate,
+			 * `reachedHeld`, `batchTouchesHeld` and the empty-set defer ask one
+			 * question - "does a fetched page overlap a row the JOURNAL owns that this
+			 * pane holds" - which is why the rows that are not journal rows are left
+			 * out. It is deliberately NOT the set a seal tests an edge against: a seal
+			 * cuts only at a row the journal delivered (`batchEdge`, below), so it has
+			 * no use for a set of what the pane held.
+			 */
+			let batchEdge: { id: string; ts: number } | null = null;
+			for (const frame of frames) {
+				if (frame.type !== "snapshot") continue;
+				const page = frame.payload.history;
+				const first = page.entries[0];
+				// A page that is the whole journal has nothing behind it to be missing.
+				if (!first || !page.has_more) continue;
+				const ts = Math.round((first.ts ?? 0) * 1000);
+				if (ts > 0 && (!batchEdge || ts < batchEdge.ts))
+					batchEdge = { id: first.id, ts };
+			}
+			/*
 			 * The off-record chunks first, and outside the state update: see
 			 * `applyAsideDeltas` for why they can be neither a reducer branch nor a write
 			 * from inside the updater.
@@ -3158,22 +3477,27 @@ export function useCanonicalSessionStream(
 			// the reason the receipt broke: the one cost that grows with load, and
 			// one that a reconnect loop multiplied.
 			//
-			// The proof that the page IS the tail is in the frame, and it has three
-			// parts, all of them required:
-			//   1. the page is non-empty (an empty page proves nothing and is the
-			//      contract's "reconcile through /history" case);
-			//   2. its NEWEST entry extends past the owner's own published
-			//      `history_cursor` — the one thing a page read `through_id=<cursor>`
-			//      can never do, so this cannot be a cursor-bounded page ending on a
-			//      stale watermark; and
-			//   3. that newest entry is a row this viewer already had on screen
-			//      (`paintedIds`, the index the LAST flush left behind — not the ids
-			//      this batch is painting, which would make the test true by
-			//      construction). A page whose newest row this viewer has never seen
-			//      is a row with something behind it, and reads.
+			// WHICH SNAPSHOTS DO — and #876 is why there are TWO regimes in the gate
+			// below, not one unconditional defer:
+			//
+			//   - A page from a backend that stamps `cold_reason` IS the journal's
+			//     tail by contract (`pageIsJournalTail`), so no cursor proof is owed.
+			//     It may still not stand down the read: the tail is the tail of the
+			//     JOURNAL, and this pane can hold a block disjoint from it — the
+			//     reopen in #876, whose cached rows ended five hours before the page
+			//     began. It defers only when it CONNECTS to the rows this pane held
+			//     (or nothing is held): an overlap is the page's own proof that
+			//     nothing lies between the two.
+			//   - An older backend's page proves less, so the pre-existing test
+			//     stands unchanged: non-empty, not ending ON the published cursor
+			//     (the one thing a `through_id=<cursor>` read can never do), and its
+			//     newest row already on screen (`paintedIds`, the index the LAST
+			//     flush left behind — not the ids this batch is painting, which would
+			//     make the test true by construction). A page whose newest row this
+			//     viewer has never seen is a row with something behind it, and reads.
 			// A cold snapshot, a cursor-less or `cursor_missing` one, an attention
 			// frame naming an unpainted anchor and a label-gap retry all still read:
-			// none of them passes the three, and for the first two nothing painted can
+			// none of them passes the gate, and for the first two nothing painted can
 			// satisfy any connection test anyway.
 			const pageIsPaintedTail = (
 				frame: Extract<DesktopSessionFrame, { type: "snapshot" }>,
@@ -3181,10 +3505,19 @@ export function useCanonicalSessionStream(
 				const entries = frame.payload.history.entries;
 				const newest = entries.at(-1);
 				if (!newest) return false;
-				if (pageIsJournalTail(frame.payload)) return true;
+				if (pageIsJournalTail(frame.payload)) {
+					// The seam behind the page, not the page itself: see the two regimes
+					// above and the #876 note on the journal-tail arm.
+					return (
+						heldIds.size === 0 ||
+						entries.some((entry) => heldIds.has(entryRecordKey(entry)))
+					);
+				}
 				if (newest.id === frame.payload.frontend.snapshot.history_cursor)
 					return false;
-				return paintedIds.current.has(newest.id);
+				// The same key the journal-tail arm uses: a tool result's entry id is
+				// not the `tool:<call_id>` its row is held under (#876, review round 1).
+				return heldIds.has(entryRecordKey(newest));
 			};
 			const paintedAnchor = (anchor: string | null | undefined) =>
 				anchor != null && paintedIds.current.has(anchor);
@@ -3244,15 +3577,21 @@ export function useCanonicalSessionStream(
 				viewRef.current.transcript.argsByCall.keys(),
 			);
 			const seedEvents: Record<string, unknown>[] = [];
-			// Every id the frames in this batch put on screen. A durable entry id
-			// and a live message id are the same id space (that is why the reducer
-			// coalesces on it), which is what makes this the connection proof
-			// `reconcileTail` tests a fetched page against.
+			// Every RECORD key the frames in this batch put on screen. A durable
+			// entry id and a live message id are the same id space (that is why the
+			// reducer coalesces on it), which is what makes this the connection proof
+			// `reconcileTail` tests a fetched page against - and "record key" is the
+			// point (#876, review round 4): a tool entry is held as `tool:<call_id>`,
+			// and every comparison between a page and what the pane holds must go
+			// through `entryRecordKey` on the page side or a page that connects
+			// through a tool row reads as disjoint. The retry paths already hand
+			// `reconcileTail` the view's index keys, which are record keys too, so the
+			// walk now compares one key space whoever called it.
 			const paintedEntryIds = new Set<string>();
 			for (const frame of frames) {
 				if (frame.type !== "snapshot") continue;
 				for (const entry of frame.payload.history.entries) {
-					paintedEntryIds.add(entry.id);
+					paintedEntryIds.add(entryRecordKey(entry));
 					const calls = entry.payload?.tool_calls;
 					if (!Array.isArray(calls)) continue;
 					for (const call of calls as Record<string, unknown>[]) {
@@ -4056,6 +4395,12 @@ export function useCanonicalSessionStream(
 								labelGapRef.current.settleRows += spent;
 							}
 						: undefined,
+					/*
+					 * The seam this batch cannot prove from its own rows: the held set,
+					 * captured before this flush's commits (see the top of `flush`). #876.
+					 */
+					heldIds,
+					batchEdge,
 				);
 			}
 		};
@@ -4450,6 +4795,20 @@ export function useCanonicalSessionStream(
 		// this hook, and the cleanup effect below is the only moment that always
 		// happens.
 		const seed = sessionId ? readPaint(sessionId) : null;
+		/*
+		 * THE SEED IS A PAINT LIKE ANY OTHER (#876). `paintedIds` is "the index
+		 * the LAST flush left behind", and for a conversation this window has shown
+		 * before, the cached rows ARE what it left behind; nothing else assigns the
+		 * ref before the first batch's own flush, so without this it read EMPTY on
+		 * a seeded mount, and every question of the form "does an arriving frame
+		 * connect to what this pane holds" — the reconcile gate, the walk's held
+		 * seam — was answered for a pane holding nothing. That is the state #876
+		 * was reported in: a window whose own cache said "you have five hours of
+		 * this conversation" got a reconnect that read back past none of them.
+		 */
+		paintedIds.current = sameSession
+			? viewRef.current.transcript.index
+			: (seed?.transcript ?? EMPTY_TRANSCRIPT).index;
 		commitView((current) => ({
 			...current,
 			frontend: null,
@@ -4830,6 +5189,16 @@ export function useCanonicalSessionStream(
 		const requested = sessionId;
 		const epoch = epochRef.current.epoch;
 		const stillHere = () => epochRef.current.epoch === epoch;
+		/*
+		 * A `/clear` is view-only and does not move the session epoch above, so
+		 * `stillHere` alone cannot tell this read that the rows it is about to merge
+		 * are the rows the reader just removed (#876, review round 4; the same
+		 * defect as the walk's, through the loader's arm). `viewEpoch` is the
+		 * counter `clearTranscript` bumps for exactly this.
+		 */
+		const viewEpochAtDispatch = viewRef.current.transcript.viewEpoch;
+		const notCleared = () =>
+			viewRef.current.transcript.viewEpoch === viewEpochAtDispatch;
 		// Single-flight is per VIEW for the same reason `isCurrent` is: a page left
 		// out for a previous visit to this conversation resolves `stale`, and handing
 		// that promise to the returning reader would answer their ask with a dropped
@@ -4843,7 +5212,7 @@ export function useCanonicalSessionStream(
 					beforeId,
 					limit: 100,
 				}),
-			isCurrent: stillHere,
+			isCurrent: () => stillHere() && notCleared(),
 			commit: (update) =>
 				commitView((current) => {
 					const transcript = update(current.transcript);
