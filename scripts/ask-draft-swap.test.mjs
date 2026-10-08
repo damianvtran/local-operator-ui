@@ -6,30 +6,33 @@ import { JSDOM } from "jsdom";
 import React, { act } from "react";
 
 /*
- * THE ASK-MODE DRAFT SWAP, driven through the shipped components and the shipped
- * store.
+ * THE ASKS DRAWER, driven through the shipped components and the shipped store.
  *
  * Why this file exists: the converged BLOCKER of round 1 was invisible to every
  * rig in the repo. `ask-queue.test.mjs` can assert the read model but not a
  * render; the composer suite predates these modules; and the store's own text
- * tests replace the composer with a stand-in. So the defect that mattered most -
+ * tests replace the composer with a stand-in. The defect that mattered most then -
  * a chat draft being submitted as the agent's ANSWER, and an answer being posted
- * as a chat message - had no possible signal in CI.
+ * as a chat message - came from the composer's old ask mode (design §5.0, R7),
+ * which swapped one box between a chat buffer and an answer buffer. That mode was
+ * retired on 2026-10-07 (the main composer is an ordinary chat box in every state;
+ * `ask-composer-no-routing.test.mjs` pins its absence), and with it the swap. What
+ * this file keeps is the part that outlived it: the drawer's own mount behaviour.
  *
  * WHAT THIS PINS
  *
  *  1. The door: a mount into a queue that is published but EMPTY must NOT fire the
  *     drawer's close door (a settle from the terminal or the phone, or a timeout)
- *     - reachable on every conversation switch, and firing there destroyed a
- *     draft, because the caller's swap moved the chat text into the ask buffer and
- *     wrote the empty ask buffer into the box. The old shape of this test also
+ *     - reachable on every conversation switch. The old shape of this test also
  *     pinned a door that said "collapsed" to an already-collapsed page; there is
  *     no collapsed mount any more (the drawer is mounted only while open, and the
  *     flag that decides it is the store's), so that half is gone with the state it
  *     described rather than weakened.
- *  2. The authority: the swap has to reach the BOX, and the store's revision is
- *     what the composer mirrors on. `setCurrentInput` (the keystroke writer) must
- *     not bump it; `setComposerText` (the app's writer) must.
+ *  2. The store's two writers: `setCurrentInput` (the keystroke writer) must not bump
+ *     the revision the composer mirrors on; `setComposerText` (the app's writer)
+ *     must. The ask lane no longer calls the second, but the contract is the
+ *     store's and its other callers (the agents config box, the canonical store's
+ *     held-draft return) rely on it.
  *
  * WHAT IT DOES NOT CLAIM: that a real keystroke produces the same state, or
  * anything about layout. The end-to-end wiring of the box is a frame-rig
@@ -429,6 +432,9 @@ test("the close door fires ONCE per emptying", async () => {
 /* ---------------------------------------------------------- the authority ---- */
 
 test("only the app's writer bumps the revision the composer mirrors on", () => {
+	// The ask lane no longer writes the box (the routing is retired), but the store
+	// contract stays: `setComposerText` is how the app moves the box's text at all.
+
 	const store = () => useConversationInputStore.getState();
 	const id = "sess-swap";
 	// The keystroke path: the composer calls this on every change, so it must stay
@@ -441,15 +447,14 @@ test("only the app's writer bumps the revision the composer mirrors on", () => {
 		afterKeystroke,
 		"the keystroke writer is not the box's author",
 	);
-	// The app's writer: this is what makes the swap reach the box at all.
+	// The app's writer: this is what makes an app-side write reach the box at all.
 	store().setComposerText(id, "answer draft");
 	assert.ok(
 		(store().inputByConversation[id].textRevision ?? 0) > afterKeystroke,
 		"the app's writer must bump the revision, or the box never adopts the swap",
 	);
 	assert.equal(store().inputByConversation[id].currentInput, "answer draft");
-	// An EMPTY value is an instruction here, not "no change": switching into an
-	// empty ask buffer means the box must be empty.
+	// An EMPTY value is an instruction here, not "no change": the box must be empty.
 	store().setComposerText(id, "");
 	assert.equal(store().inputByConversation[id].currentInput, "");
 	assert.equal(store().inputByConversation[id].unredactedChars, 0);
@@ -700,11 +705,22 @@ test("the bar counts what the surface shows, not only what the agent waits on (U
 	await view.unmount();
 });
 
-test("an answer that is not one of the labels is DRAWN as Other (design D2)", async () => {
-	// What the composer's door produces: `sendToAsk` writes the raw typed text into
-	// the first unanswered question's draft, so the value is a string no option row
-	// could have written.
-	const view = await mount(
+test("an answer that is not one of the labels is DRAWN as Other (design D2)", async (t) => {
+	/*
+	 * A draft value no option row could have written. The card's own `Other` field writes
+	 * the typed text into the question's draft (the retired composer routing used to), so
+	 * it arrives as a plain string - and the card has to SHOW it as the user's own answer
+	 * rather than draw an empty group beside a question that is already answered.
+	 *
+	 * What changed with the explicit `Other` row: the value is no longer a separate
+	 * readout row keyed by its text (`data-ask-option-other="prod"`); the trailing
+	 * `Other` row IS that readout. It mounts selected, with the field open and holding
+	 * the text, and takes no focus (the full matrix is `ask-other.test.mjs`).
+	 * `mountFor`, not `mount`: a failing assertion before a manual unmount leaves the
+	 * drawer's clock running and the file waits out its whole bound.
+	 */
+	const view = await mountFor(
+		t,
 		h(AskDrawer, {
 			frontend: frontend([radioAsk]),
 			scope: "session",
@@ -712,7 +728,7 @@ test("an answer that is not one of the labels is DRAWN as Other (design D2)", as
 			onDraftChange: () => undefined,
 		}),
 	);
-	const row = view.container.querySelector('[data-ask-option-other="prod"]');
+	const row = view.container.querySelector("[data-ask-option-other]");
 	assert.ok(row, "the free-form answer is on the card");
 	assert.equal(row.getAttribute("role"), "radio");
 	assert.equal(row.getAttribute("aria-checked"), "true");
@@ -720,13 +736,22 @@ test("an answer that is not one of the labels is DRAWN as Other (design D2)", as
 		(row.textContent ?? "").includes("Other"),
 		"and it is marked as the other kind",
 	);
+	assert.equal(
+		view.container.querySelector("textarea[data-ask-other]")?.value,
+		"prod",
+		"the value is shown in the field the row opened",
+	);
+	assert.equal(
+		document.activeElement,
+		document.body,
+		"and mounting it took no focus",
+	);
 	// The option rows are NOT selected: the value came from elsewhere, and the card
 	// says so rather than showing an empty group beside a question already answered.
 	const production = view.container.querySelector(
 		'[data-ask-option="production"]',
 	);
 	assert.equal(production?.getAttribute("aria-checked"), "false");
-	await view.unmount();
 });
 
 test("the recommendation survives the selection moving (operator ask, 2026-10-04)", async () => {
