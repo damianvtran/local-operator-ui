@@ -1093,17 +1093,17 @@ function EmptyPane({
 	 * composer inside a second bordered card - and beside a new chat (whose box is
 	 * centred on the 810px measure, §"Why 810" in `chat-measure.ts`) it read as a
 	 * different, unfinished composer. The numbers here are the chat column's own,
-	 * taken from the chat mount rather than chosen: `CHAT_COLUMN_CONTAINER` makes
-	 * this wrapper the query container and `CHAT_MEASURE` caps and centres the column
-	 * at the shared measure.
+	 * taken from the chat mount rather than chosen.
 	 *
-	 * ONE INSET, THE BAND'S (design spec s4, D13). The heading, the description and
-	 * the hand-add button used to add their own `CHAT_COLUMN_INSET` on top of the
-	 * pane's `p-6`, while the box got only the band's: the heading sat 24 px right of
-	 * the box at 1024 (L336 against L312) and the chip text 32 px. The pane is now
-	 * un-padded for this state (see its scroller), the composer's band supplies the
-	 * 24 px for the box, and the other three children take the same `CHAT_COLUMN_INSET`
-	 * ONCE, so heading, description, box, chip text and hand-add all start at one x.
+	 * ONE INSET AND ONE MEASURE, THE BAND'S (design spec s4, D13). The composer's
+	 * band is already `CHAT_COLUMN_CONTAINER` + `CHAT_COLUMN_INSET` + `CHAT_MEASURE`
+	 * around its own box, so it must NOT be wrapped in a measure of its own: the first
+	 * version of this pane did exactly that and the hero box came out 762 px at 1440
+	 * against the dock's 810 (the band measured the already-measured column, losing
+	 * its 24 px inset a second time on each side). So the box is a direct child of
+	 * the pane, and the heading and the hand-add button get the SAME three-class chain
+	 * the band has, as siblings of it. Heading, description, box, chip text and
+	 * hand-add then start at one x at every width (L312 at 1024, L459 at 1440).
 	 *
 	 * VERTICALLY CENTRED, with `pb-12` of optical lift, so the block sits near the
 	 * middle of the pane the way the new-chat splash does rather than hanging from
@@ -1114,15 +1114,11 @@ function EmptyPane({
 	 * paragraph to match a one-line greeting would trade the chat's alignment for
 	 * its mood. The column is centred; the prose keeps the column's left edge.
 	 */
+	const column = cn(CHAT_COLUMN_CONTAINER, CHAT_COLUMN_INSET);
 	return (
-		<div
-			className={cn(
-				CHAT_COLUMN_CONTAINER,
-				"flex min-h-full flex-col justify-center pb-12",
-			)}
-		>
-			<div className={cn(CHAT_MEASURE, "space-y-4")}>
-				<div className={cn(CHAT_COLUMN_INSET, "space-y-2")}>
+		<div className="flex min-h-full flex-col justify-center space-y-4 pb-12">
+			<div className={column}>
+				<div className={cn(CHAT_MEASURE, "space-y-2")}>
 					<h2 className="text-title">
 						{teamMode ? "Ask for a team" : "Ask for an agent"}
 					</h2>
@@ -1132,14 +1128,16 @@ function EmptyPane({
 							: "An agent is a reusable set of instructions you can start a chat with, or let other agents call on. Describe what you want and a configuration run sets it up."}
 					</p>
 				</div>
-				<ConfigComposer
-					run={run}
-					hero
-					about={run.about}
-					onClearAbout={() => run.setAbout(null)}
-				/>
-				{/* `-ml-3` cancels this `md` button's own `px-3` (the chips are `sm`, `px-2`, hence their `-ml-2`), so its TEXT is at the box's edge. */}
-				<div className={CHAT_COLUMN_INSET}>
+			</div>
+			<ConfigComposer
+				run={run}
+				hero
+				about={run.about}
+				onClearAbout={() => run.setAbout(null)}
+			/>
+			<div className={column}>
+				<div className={CHAT_MEASURE}>
+					{/* `-ml-3` cancels this `md` button's own `px-3` (the chips are `sm`, `px-2`, hence their `-ml-2`), so its TEXT is at the box's edge. */}
 					<Button variant="ghost" className="-ml-3" onClick={onAddManually}>
 						{teamMode ? "Or add a team by hand" : "Or add an agent by hand"}
 					</Button>
