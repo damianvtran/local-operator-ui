@@ -902,6 +902,37 @@ export type MessageInputProps = {
 	 */
 	transcriptless?: boolean;
 	/**
+	 * Whether this box may take the caret ON ITS OWN INITIATIVE - the mount, and
+	 * the moments a refused box becomes writable again (a session is picked in the
+	 * strip's "Send to", a busy turn ends, a secret answer is posted). Left unset
+	 * by the hosts whose composer is the page's primary action: the chat pane, the
+	 * mini view's quick-send popup, and the Agents tab's hero.
+	 *
+	 * FALSE IS FOR A HOST WHOSE COMPOSER IS A SECONDARY INTERACTION on a page that
+	 * scrolls. The projects detail's quick-send strip sits at the foot of a long
+	 * scroller, and the self-focus therefore moved the PAGE: taking focus scrolls
+	 * the element into view (HTML's focusing steps, centred), so the project
+	 * scrolled the reader down to a box they had not asked for the moment it
+	 * opened (operator, 2026-10-08: "for projects the composer is an optional
+	 * interaction, not the primary one, so ... it shouldn't [focus], and we should
+	 * stay scrolled at the top when clicking in").
+	 *
+	 * WHAT IT DELIBERATELY DOES NOT CHANGE: the dictation hand-back. A take moves
+	 * the caret to the mic control (a click, or the push-to-talk chord), and this
+	 * effect is what returns it to the box when the take ends - with the caret
+	 * left on the mic, Enter re-triggers a recording instead of sending. An
+	 * opted-out host keeps that hand-back and loses only the claim; the effect
+	 * below is written so the two cannot be collapsed into one `if (autoFocus)`.
+	 *
+	 * A boolean rather than a mode, because the guards below already skip the
+	 * claim when another text field holds focus, when nothing is connected, or
+	 * while a take is running - so an "always" value would be false about cases
+	 * that never reach the focus call. Default true, because that is the
+	 * primary-action case a shared component's default has to be; a host whose
+	 * composer is secondary says so by name.
+	 */
+	autoFocus?: boolean;
+	/**
 	 * Whether the `@` affordance may be offered at all — see
 	 * `UseAtPickerArgs.enabled` for the two states this folds and why it fails
 	 * closed.
@@ -1514,9 +1545,20 @@ export const composerHoldsFocusUntouched = (): boolean =>
 
 /**
  * Type for the imperative handle to expose focusInput method
+ *
+ * `preventScroll` is opt-in and off by default, because most callers are handing
+ * the caret over BECAUSE the user asked for this box (the transcript's quote
+ * toolkit stages a quote and wants the pen; a picker hands back after a
+ * completion) - and bringing the box into view is part of honouring that. The
+ * callers that set it are RESTORING a caret the user already had, where the
+ * scroll would be the page moving under them: the quick-send strip's post-send
+ * hand-back, where the reader may have scrolled away while the send was in
+ * flight. Only this one member is read - the options object is never forwarded
+ * to `focus()`, so no caller can reach the browser's other options through this
+ * door.
  */
 export type MessageInputHandle = {
-	focusInput: () => void;
+	focusInput: (options?: { preventScroll?: boolean }) => void;
 	/**
 	 * Focus the working-directory chip and open its menu.
 	 *
@@ -1670,6 +1712,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			ownGutter = false,
 			isHydrating = false,
 			transcriptless = false,
+			autoFocus = true,
 			unavailable = false,
 			mentionsEnabled = false,
 			mentionsUnsupported = false,
@@ -5394,10 +5437,22 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * handler registry below (see `composer-field.ts`) publish THIS function
 		 * rather than a copy, so a new call site cannot forget the reset.
 		 */
-		const focusInput = useCallback(() => {
-			composerPointerTouched = false;
-			textareaRef.current?.focus();
-		}, [textareaRef]);
+		const focusInput = useCallback(
+			(options?: { preventScroll?: boolean }) => {
+				composerPointerTouched = false;
+				/*
+				 * `preventScroll` is READ EXPLICITLY rather than forwarded: this is the
+				 * composer's focus door, not a channel to `focus()`'s option bag, and a
+				 * caller that passes an event object or a mode string (a natural mistake
+				 * for a handler bound straight to `focusInput`) must not reach the browser
+				 * through it. Everything else the dictionary could carry is dropped here.
+				 */
+				textareaRef.current?.focus({
+					preventScroll: options?.preventScroll === true,
+				});
+			},
+			[textareaRef],
+		);
 
 		/*
 		 * THE PRESS'S DRAFT-CONSUME (UX round 1, U4), guarded by the one predicate
@@ -5908,25 +5963,68 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			el.style.height = `${el.scrollHeight}px`;
 		}, [newMessage, textareaRef, isRecording, isTranscribing]);
 
+		/**
+		 * THE COMPOSER'S OWN INITIATIVE TO TAKE THE CARET: the mount, and every
+		 * moment a refused box becomes writable again (a target is picked, a turn
+		 * ends, a secret answer is posted). Three facts decide its shape.
+		 *
+		 * `preventScroll` ALWAYS, because the scroll is never what this call is for:
+		 * the composer asks for the caret, and the focusing steps centre the element
+		 * when it is off screen - which is how the projects strip moved the whole
+		 * page. Where a host WANTS the box on screen, its user says so with the
+		 * gesture that reaches it (the strip's row action, a click).
+		 *
+		 * `autoFocus` IS THE HOST'S ANSWER on whether the claim is welcome at all
+		 * (see the prop). It composes with - and does NOT replace - the guards
+		 * below, because a text field that already holds the caret, a box with
+		 * nothing connected, and a box that is refusing input all outrank it: the
+		 * claim is skipped in every one of those states whatever the host says.
+		 *
+		 * THE DICTATION HAND-BACK IS THE ONE CLAIM AN OPTED-OUT HOST KEEPS, and it
+		 * is why this is a falling edge rather than a second effect. A take ends with
+		 * the caret on the mic control (a click focused it, or the chord), and this
+		 * effect is what puts it back in the box - leaving it on the mic makes Enter
+		 * re-trigger a recording instead of sending, the wrong control in the middle
+		 * of the interaction this box owns. The ref is the previous render's answer,
+		 * so the edge survives the two `setState`s a take's end can take (recording
+		 * false while transcription is still true) and an opted-out host cannot be
+		 * short-circuited by a single `if (!autoFocus) return`.
+		 *
+		 * Every value the body reads is in the dep list (`autoFocus`, the two
+		 * dictation flags, the refusal gate, `noProvider`), so this needs no linter
+		 * suppression - the effect re-runs exactly when one of the facts it answers
+		 * to moves.
+		 */
+		const wasDictatingRef = useRef(false);
 		useEffect(() => {
-			if (!isInputDisabled && !isRecording && !isTranscribing) {
-				const activeElement = document.activeElement;
-				const isInputFocused =
-					activeElement &&
-					(activeElement.tagName === "INPUT" ||
-						activeElement.tagName === "TEXTAREA");
-				/*
-				 * Not while nothing is connected: the empty chat's headline invites a
-				 * question and the connect card asks for a provider, and autofocus put
-				 * the composer's accent outline on screen as a third, competing signal
-				 * (design round 1 D5). Typing is still allowed - the user clicks in when
-				 * they want to.
-				 */
-				if (!isInputFocused && !noProvider) {
-					textareaRef.current?.focus();
-				}
+			const dictating = isRecording || isTranscribing;
+			const dictationEnded = wasDictatingRef.current && !dictating;
+			wasDictatingRef.current = dictating;
+			if (!autoFocus && !dictationEnded) return;
+			if (isInputDisabled || dictating) return;
+			const activeElement = document.activeElement;
+			const isInputFocused =
+				activeElement &&
+				(activeElement.tagName === "INPUT" ||
+					activeElement.tagName === "TEXTAREA");
+			/*
+			 * Not while nothing is connected: the empty chat's headline invites a
+			 * question and the connect card asks for a provider, and autofocus put
+			 * the composer's accent outline on screen as a third, competing signal
+			 * (design round 1 D5). Typing is still allowed - the user clicks in when
+			 * they want to.
+			 */
+			if (!isInputFocused && !noProvider) {
+				textareaRef.current?.focus({ preventScroll: true });
 			}
-		}, [isInputDisabled, isRecording, isTranscribing, textareaRef, noProvider]);
+		}, [
+			autoFocus,
+			isInputDisabled,
+			isRecording,
+			isTranscribing,
+			textareaRef,
+			noProvider,
+		]);
 
 		useEffect(() => {
 			window.electron.ipcRenderer
