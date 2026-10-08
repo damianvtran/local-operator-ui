@@ -78,8 +78,11 @@ At the 1380x900 window the drawer's card is 510px wide (`run-after.json`'s probe
   (`askComposerHoldsSecret`, kept) exists for.
 - **The field is text-only, and says so.** A pasted image or file is REFUSED IN WORDS under
   the field and a dragged file gets the pointer's own "no drop"; no control accepts what it
-  then drops. Attachments in `Other` are NOT in this change: an answer is
-  `Record<string, string[]>` on the wire today, so attachments need a wire half first.
+  then drops. Attachments in `Other` are NOT in this change: on core's latest release
+  (v0.68.7) an answer is `Record<string, string[]>`. Core's `images` key on the answer
+  body (local-operator#2058) is merged to core's main after that tag, so it is unreleased,
+  and it is gated on a `features.ask_attachments` capability this renderer does not read
+  yet. The attach affordance follows in a later change that gates on it.
 - **Nothing here takes focus by itself.** The field takes focus only inside the handler of
   the user's own press on the `Other` row (`h1` reads `focused: true` after the press). On
   an option question the mount, the door landing and a re-render are pinned NOT to move
