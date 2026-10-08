@@ -48,7 +48,6 @@ import {
 	labelTargetsBehind,
 	labelTargetsBehindIds,
 	markLiveRecordsTruncated,
-	oldestDurableOutside,
 	pageLabels,
 	pageOpensTurn,
 	pageOrphanResultInstants,
@@ -2605,14 +2604,13 @@ export function useCanonicalSessionStream(
 			 */
 			held: ReadonlySet<string> = painted,
 			/**
-			 * EVERY row that was on the pane before the batch, live or durable — the
-			 * seal's "was this inside the walk's reach" set, which is not `held` (see
-			 * the note at the top of `flush`: `held` is a CONNECTION proof and leaves
-			 * out the rows a seal must not mistake for unreached ones). Defaults to
-			 * `painted` for the same reason `held` does: the retry paths pass the whole
-			 * index, so for them the three sets are one.
+			 * The oldest row the batch's own snapshot page DELIVERED, or `null` when
+			 * the batch carried none (every retry path, and any flush without a
+			 * snapshot). It is the only edge a seal may cut at when the walk itself
+			 * fetched nothing: a row the journal handed over, as opposed to a row that
+			 * merely happens to be new on the pane (#876, review round 3).
 			 */
-			onPane: ReadonlySet<string> = painted,
+			batchEdge: { id: string; ts: number } | null = null,
 		) => {
 			/*
 			 * THIS WALK IS A READ THE PANE CAN PAINT (remote-load-hydration, U1): the
@@ -2656,7 +2654,7 @@ export function useCanonicalSessionStream(
 					generation,
 					painted,
 					held,
-					onPane,
+					batchEdge,
 					labels,
 					historyAttempt,
 					onSpend,
@@ -2755,7 +2753,7 @@ export function useCanonicalSessionStream(
 			generation: number,
 			painted: ReadonlySet<string>,
 			held: ReadonlySet<string>,
-			onPane: ReadonlySet<string>,
+			batchEdge: { id: string; ts: number } | null,
 			labels: LabelWalk,
 			historyAttempt: number,
 			onSpend?: (rows: number) => void,
@@ -2772,7 +2770,7 @@ export function useCanonicalSessionStream(
 				generation,
 				painted,
 				held,
-				onPane,
+				batchEdge,
 				labels,
 				historyAttempt,
 				seam,
@@ -2804,25 +2802,27 @@ export function useCanonicalSessionStream(
 					ts: Math.round((seam.oldest.ts ?? 0) * 1000),
 				};
 			} else {
-				// No page arrived (the first read failed twice). A batch page that
-				// touches the held rows says nothing about a hole; one DISJOINT from
-				// them is the same open seam the gate reads for, and its oldest row is
-				// the chain's edge. `hasMore` is unknown here, which paging resolves
-				// itself (an empty older page clears it).
-				if (batchTouchesHeld) return handedOff;
 				/*
-				 * `onPane`, NOT `held` (#876, CI regression of review round 1). "Outside"
-				 * here means "arrived with this batch", i.e. a row that was not on the
-				 * pane before the flush; `held` is the CONNECTION set and leaves out every
-				 * row the pane had in a live state. The worked example is the load-
-				 * sequence case: the pane holds 93 durable rows and tool c91 RUNNING
-				 * (not durable, so not in `held`); the next flush's `tool_execution_end`
-				 * settles c91 and asks for its label, the page comes back empty, and with
-				 * `held` the now-`done` c91 read as a durable row outside the walk's
-				 * reach - the edge - so the seal dropped the 93 rows older than it. c91
-				 * was never outside anything: it changed STATE during the flush.
+				 * No page of the walk arrived (an empty answer, or the read failed). A
+				 * seal needs an edge the journal DELIVERED and a held block provably
+				 * disjoint from it, and the only candidate left is the batch's own
+				 * snapshot page: its oldest entry (`batchEdge`), sealed only when that
+				 * page does not touch the held rows (`batchTouchesHeld`) and says the
+				 * journal goes on behind it. No snapshot page (`batchEdge` null) means
+				 * there is no proof of a disjoint block at all, so nothing is sealed.
+				 *
+				 * WHY NOT "THE OLDEST DURABLE ROW THE PANE DID NOT HOLD BEFORE". That was
+				 * the edge in rounds 1-2 and it was wrong three ways: a tool that settled
+				 * mid-flush (CI: 93 rows -> 2), a row born live in a flush that carried no
+				 * page (review round 3, R3-1: any tool that starts and ends in one flush),
+				 * and a pre-flush index that a walk's own commits never refreshed (QA
+				 * round 3, Q3-1). Each is a row that is NEW on the pane without being a
+				 * row the journal delivered, and its `ts` is the viewer's clock, newer
+				 * than the whole held block. Keying the edge to the page removes the
+				 * class rather than one member of it.
 				 */
-				edge = oldestDurableOutside(viewRef.current.transcript, onPane);
+				if (batchTouchesHeld || !batchEdge) return handedOff;
+				edge = batchEdge;
 			}
 			if (!edge) return handedOff;
 			const sealed = commitView((current) => {
@@ -2847,12 +2847,24 @@ export function useCanonicalSessionStream(
 			generation: number,
 			painted: ReadonlySet<string>,
 			held: ReadonlySet<string>,
-			onPane: ReadonlySet<string>,
+			batchEdge: { id: string; ts: number } | null,
 			labels: LabelWalk,
 			historyAttempt: number,
 			seam: WalkSeam,
 			onSpend?: (rows: number) => void,
 		): Promise<boolean> => {
+			/*
+			 * THE VIEW THIS WALK WAS STARTED FOR (#876, QA round 3, Q3-2). A `/clear`
+			 * bumps `viewEpoch` and is view-only, so nothing else tells a walk that the
+			 * rows it is about to merge are the rows the reader just removed. The walk
+			 * is up to 500 rows / 6 requests wide now, so the window in which a page
+			 * could repaint a cleared history is no longer one request. Checked after
+			 * every await that precedes a commit (the failure arm and the page merge),
+			 * and by `walkTail` before it seals. A superseded walk commits nothing.
+			 */
+			const epochAtStart = viewRef.current.transcript.viewEpoch;
+			const cleared = () =>
+				viewRef.current.transcript.viewEpoch !== epochAtStart;
 			const fetchedIds = new Set<string>();
 			let beforeId: string | undefined;
 			let rows = 0;
@@ -2975,6 +2987,10 @@ export function useCanonicalSessionStream(
 						limit: Math.min(limit, RECONCILE_WALK_MAX_ROWS - rows),
 					});
 				} catch {
+					// A cleared view has nothing left to read for: without this the
+					// nothing-painted branch below would take the emptied pane for a pane
+					// that never loaded, and retry the read that repaints the history.
+					if (cleared()) return false;
 					/*
 					 * The failure arm, where this branch's hardening meets #152's walk, and the
 					 * two cases here are not the same case:
@@ -3011,7 +3027,9 @@ export function useCanonicalSessionStream(
 					if (historyAttempt < HISTORY_RECONCILE_ATTEMPTS) {
 						reconcileTimer = window.setTimeout(() => {
 							reconcileTimer = 0;
-							if (generationRef.current !== generation) {
+							// The retry is for the view it was scheduled against: a `/clear` in
+							// the backoff gap must not be answered with the history it removed.
+							if (generationRef.current !== generation || cleared()) {
 								releaseLabelPending();
 								return;
 							}
@@ -3022,7 +3040,7 @@ export function useCanonicalSessionStream(
 								historyAttempt + 1,
 								onSpend,
 								held,
-								onPane,
+								batchEdge,
 							);
 						}, streamRetryDelayMs(historyAttempt));
 						return true;
@@ -3077,7 +3095,7 @@ export function useCanonicalSessionStream(
 					 */
 					releaseLabelPending();
 				}
-				if (generationRef.current !== generation) return false;
+				if (generationRef.current !== generation || cleared()) return false;
 				/*
 				 * A PAGE ARRIVED, so the refusal is over: the route that refused is answering
 				 * again, and the rows it was refusing for are owed to a read once more. This
@@ -3403,24 +3421,35 @@ export function useCanonicalSessionStream(
 			 */
 			const heldIds = new Set<string>();
 			for (const record of viewRef.current.transcript.records)
-				if (paintedIds.current.has(record.id) && isDurableOwnerRow(record))
-					heldIds.add(record.id);
+				if (isDurableOwnerRow(record)) heldIds.add(record.id);
 			/*
-			 * `heldIds` IS A CONNECTION PROOF AND NOTHING ELSE (#876, CI regression of
-			 * review round 1). The gate, `reachedHeld`, `batchTouchesHeld` and the
-			 * empty-set defer ask one question - "does a fetched page overlap a row
-			 * the JOURNAL owns that this pane holds" - and answer it by leaving out
-			 * every row that is not one. The seal asks a different question of a
-			 * different set: "which rows were on the pane before this flush", so that a
-			 * row which merely CHANGED STATE during it (a running tool that settles, a
-			 * streaming answer that completes, an echo that the owner confirms) is
-			 * never mistaken for a durable row the walk failed to reach. That is
-			 * every key of the pre-flush index, captured at the same instant, before
-			 * any commit. One definition for both jobs was the bug: the durable-only
-			 * set made a running tool that settled mid-flush look like an unreached
-			 * durable row, and the seal cut at it.
+			 * READ FROM THE LIVE VIEW, NOT FROM `paintedIds` (QA round 3, Q3-1).
+			 * `paintedIds` is "the index the last flush left behind" and is refreshed
+			 * only at a flush, a seal and a reset, so rows a walk's own pages, a
+			 * `loadOlder` or an echo committed in between are on the pane and absent
+			 * from it. This is what the pane holds at the instant before this flush's
+			 * commits, which `viewRef` is. (The gate's older-backend arm still reads
+			 * `paintedIds` for its own reason, below.)
+			 *
+			 * `heldIds` IS A CONNECTION PROOF AND NOTHING ELSE. The gate,
+			 * `reachedHeld`, `batchTouchesHeld` and the empty-set defer ask one
+			 * question - "does a fetched page overlap a row the JOURNAL owns that this
+			 * pane holds" - which is why the rows that are not journal rows are left
+			 * out. It is deliberately NOT the set a seal tests an edge against: a seal
+			 * cuts only at a row the journal delivered (`batchEdge`, below), so it has
+			 * no use for a set of what the pane held.
 			 */
-			const onPaneBefore = new Set(paintedIds.current.keys());
+			let batchEdge: { id: string; ts: number } | null = null;
+			for (const frame of frames) {
+				if (frame.type !== "snapshot") continue;
+				const page = frame.payload.history;
+				const first = page.entries[0];
+				// A page that is the whole journal has nothing behind it to be missing.
+				if (!first || !page.has_more) continue;
+				const ts = Math.round((first.ts ?? 0) * 1000);
+				if (ts > 0 && (!batchEdge || ts < batchEdge.ts))
+					batchEdge = { id: first.id, ts };
+			}
 			/*
 			 * The off-record chunks first, and outside the state update: see
 			 * `applyAsideDeltas` for why they can be neither a reducer branch nor a write
@@ -4359,7 +4388,7 @@ export function useCanonicalSessionStream(
 					 * captured before this flush's commits (see the top of `flush`). #876.
 					 */
 					heldIds,
-					onPaneBefore,
+					batchEdge,
 				);
 			}
 		};

@@ -3187,24 +3187,6 @@ export function isDurableOwnerRow(record: TranscriptRecord): boolean {
 }
 
 /**
- * The oldest durable row this transcript holds that is NOT in `held`, as the
- * edge a seal cuts at when a walk ended before it fetched anything: the oldest
- * row the batch itself painted. `null` when there is none.
- */
-export function oldestDurableOutside(
-	state: Pick<TranscriptState, "records">,
-	held: ReadonlySet<string>,
-): { id: string; ts: number } | null {
-	let oldest: TranscriptRecord | null = null;
-	for (const record of state.records) {
-		if (held.has(record.id) || !isDurableOwnerRow(record) || record.ts <= 0)
-			continue;
-		if (!oldest || record.ts < oldest.ts) oldest = record;
-	}
-	return oldest && { id: oldest.id, ts: oldest.ts };
-}
-
-/**
  * Convert a HOLE into "more history above", so it is never painted (#876).
  *
  * THE INVARIANT. The durable rows on screen are always ONE contiguous journal
