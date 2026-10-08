@@ -365,13 +365,30 @@ test("each install script installs with uv and keeps the pip path it had", () =>
 		// The fallback is the path that shipped until now, and it has to survive:
 		// without it a build with no uv fails to install a backend at all.
 		assert.ok(
-			script.includes("python -m pip install --upgrade pip"),
-			`${path}: the pip fallback lost its pip upgrade`,
+			script.includes("-m pip install"),
+			`${path}: the pip fallback is gone`,
+		);
+		/*
+		 * AND IT NO LONGER UPGRADES PIP FIRST, nor runs `--verbose` (first-run
+		 * onboarding, Q13). This assertion used to pin the opposite. The
+		 * self-upgrade was a second resolve-and-download in front of the install
+		 * that changed nothing (both creation paths already leave pip 24.2+), and
+		 * removing it took the cold macOS fallback from 28.6 s to 25.0 s and the
+		 * Linux one from 30.7 s to 27.0 s (measured 2026-10-08, empty caches).
+		 */
+		// Code lines only: the scripts' own comments name the removed command to
+		// say why it is gone, and a comment is not an install.
+		const code = script
+			.split("\n")
+			.filter((line) => !/^\s*#/.test(line))
+			.join("\n");
+		assert.ok(
+			!code.includes("pip install --upgrade pip"),
+			`${path}: the pip fallback upgrades pip again`,
 		);
 		assert.ok(
-			script.indexOf("UV_") < script.indexOf("pip install --upgrade pip") ||
-				script.indexOf("Uv") < script.indexOf("pip install --upgrade pip"),
-			`${path}: the pip upgrade must sit on the fallback path, after the uv decision - the uv path skips it deliberately`,
+			!/pip install[^\n]*--verbose/.test(code),
+			`${path}: the pip fallback is verbose again`,
 		);
 		/*
 		 * pip stays in the venv: the app's backend-update path runs
@@ -408,7 +425,7 @@ test("each install script installs with uv and keeps the pip path it had", () =>
 		/*
 		 * And each script has to hold the result: macOS and Linux check `bin/pip`
 		 * after creation, and Windows - whose venv pip is reached as a module of the
-		 * venv's activated interpreter - runs `python -m pip`, which the fallback
+		 * venv's own interpreter - runs `<venv>\\Scripts\\python.exe -m pip`, which the fallback
 		 * assertion above pins to the pip path. A creation path that stopped leaving
 		 * pip behind fails on its own line rather than passing on the other path's
 		 * claim.
@@ -416,7 +433,14 @@ test("each install script installs with uv and keeps the pip path it had", () =>
 		const pipHeld = {
 			"src/main/backend/scripts/macos-install-script.sh": /bin\/pip/,
 			"src/main/backend/scripts/linux-install-script.sh": /bin\/pip/,
-			"src/main/backend/scripts/windows-install-script.ps1": /python -m pip/,
+			/*
+			 * The venv's own interpreter, by path, running pip (first-run onboarding,
+			 * Q13): stricter than the bare `python -m pip` this used to accept, which
+			 * resolved through PATH and so could install into whatever Python came
+			 * first rather than proving the created environment holds pip.
+			 */
+			"src/main/backend/scripts/windows-install-script.ps1":
+				/Scripts\\python\.exe" -m pip/,
 		}[path];
 		assert.ok(
 			pipHeld,
