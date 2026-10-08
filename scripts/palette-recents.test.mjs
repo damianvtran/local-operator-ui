@@ -54,8 +54,8 @@ memory.set(
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { pushConversationRecent, CONVERSATION_RECENTS_LIMIT, useUiPreferencesStore as store, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
-			'export { visitedConversationId } from "./src/renderer/src/features/command-palette/use-conversation-recents";',
+			'export { parseConversationRecents, pushConversationRecent, CONVERSATION_RECENTS_LIMIT, useUiPreferencesStore as store, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			'export { chatRecentsOfRow, visitedConversationId } from "./src/renderer/src/features/command-palette/use-conversation-recents";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
@@ -74,7 +74,9 @@ const bundle = await build({
 });
 
 const {
+	chatRecentsOfRow,
 	CONVERSATION_RECENTS_LIMIT,
+	parseConversationRecents,
 	persistedUiPreferences,
 	pushConversationRecent,
 	store,
@@ -184,4 +186,113 @@ test("the visit rule: a conversation is recorded, a draft with no session yet is
 	assert.equal(visitedConversationId(null, undefined, null), null);
 	assert.equal(visitedConversationId(null, undefined, undefined), null);
 	assert.equal(visitedConversationId(null, undefined, ""), null);
+});
+
+/* ------------------------------------------------------------------ *
+ * The row-to-ring join (agent review round 1, R1-1)
+ * ------------------------------------------------------------------ */
+
+/*
+ * `chatRecentsOfRow` is the ONLY place a catalogue row and the visited ring meet
+ * (`use-palette-sources.ts`'s `chatItems` memo calls it once per row), and that
+ * memo is a React hook this node harness cannot mount - so before the extraction
+ * the join was the one seam no unit test touched (deleting the `current` flag left
+ * every palette test green, and only the heavy `--scene` rig would have noticed).
+ * These are the cases the seam was missing: in the ring and out of it, a
+ * hand-edited duplicate, the conversation on screen, and the archived row with the
+ * archive capability on and off.
+ */
+test("chatRecentsOfRow: a row out of the ring carries no rank and is not current", () => {
+	assert.deepEqual(
+		chatRecentsOfRow({ session_id: "s9" }, ["a", "b"], "a", true),
+		{ recentRank: undefined, current: false, archived: false },
+	);
+});
+
+test("chatRecentsOfRow: a row in the ring carries its visit index, 0 the most recent", () => {
+	const ring = ["a", "b", "c"];
+	assert.equal(
+		chatRecentsOfRow({ session_id: "b" }, ring, null, true).recentRank,
+		1,
+	);
+	assert.equal(
+		chatRecentsOfRow({ session_id: "c" }, ring, null, true).recentRank,
+		2,
+	);
+});
+
+test("chatRecentsOfRow: the conversation on screen is current, whatever its rank", () => {
+	const here = chatRecentsOfRow({ session_id: "a" }, ["a", "b"], "a", true);
+	assert.equal(here.current, true);
+	assert.equal(here.recentRank, 0);
+	// A null or undefined displayed id is "nothing on screen" - a draft with no
+	// session yet, or a shell before one is open - and matches no row.
+	assert.equal(
+		chatRecentsOfRow({ session_id: "a" }, ["a"], null, true).current,
+		false,
+	);
+	assert.equal(
+		chatRecentsOfRow({ session_id: "a" }, ["a"], undefined, true).current,
+		false,
+	);
+});
+
+test("chatRecentsOfRow: a duplicated id in a hand-edited ring keeps its FIRST, most recent rank", () => {
+	// The ring's order is a most-recent-first contract, so a manual duplicate must
+	// not DEMOTE the row: the first occurrence is the visit that counts.
+	const row = { session_id: "a" };
+	assert.equal(
+		chatRecentsOfRow(row, ["a", "b", "a"], null, true).recentRank,
+		0,
+	);
+	assert.equal(
+		chatRecentsOfRow(row, ["b", "a", "c", "a"], null, true).recentRank,
+		1,
+	);
+});
+
+test("chatRecentsOfRow: the archived fact is the sidebar's own rule, gated on the capability", () => {
+	const archived = { session_id: "a", archived: true };
+	const live = { session_id: "a", archived: false };
+	// Capability ON: the archived row is out of view, the live one is not.
+	assert.equal(chatRecentsOfRow(archived, [], null, true).archived, true);
+	assert.equal(chatRecentsOfRow(live, [], null, true).archived, false);
+	// Capability OFF: no partition at all - archived rows stay eligible, exactly as
+	// `visibleRows` returns the rows unfiltered for a backend with no archive store.
+	assert.equal(chatRecentsOfRow(archived, [], null, false).archived, false);
+	// A row that does not state the fact is live under either gate ("absence is not
+	// a claim").
+	assert.equal(
+		chatRecentsOfRow({ session_id: "a" }, [], null, true).archived,
+		false,
+	);
+});
+
+/* ------------------------------------------------------------------ *
+ * The persisted ring is parsed on read (agent review round 1, R1-5)
+ * ------------------------------------------------------------------ */
+
+test("parseConversationRecents: a valid ring is returned as-is, anything else reads empty", () => {
+	const ring = ["a", "b"];
+	// The SAME reference: the palette's source hook selects this value and zustand
+	// compares references, so a fresh array per call would re-render every render.
+	assert.equal(parseConversationRecents(ring), ring);
+	for (const malformed of [null, undefined, "a,b", 7, { a: 1 }, true]) {
+		assert.deepEqual(parseConversationRecents(malformed), []);
+	}
+	// The malformed arm is ONE shared array, for the same re-render reason.
+	assert.equal(
+		parseConversationRecents(null),
+		parseConversationRecents("nope"),
+	);
+});
+
+test("a non-array persisted ring cannot throw in the store's own writer", () => {
+	// zustand rehydrates PAST the setters, so a blob shape this build never wrote
+	// can land in the state; the writer reads through the parser, so a string ring
+	// is treated as empty rather than reaching `pushConversationRecent`'s `.filter`.
+	store.setState({ conversationRecents: "not-an-array" });
+	const { rememberConversation } = store.getState();
+	assert.doesNotThrow(() => rememberConversation("s1"));
+	assert.deepEqual(store.getState().conversationRecents, ["s1"]);
 });

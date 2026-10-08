@@ -133,6 +133,13 @@
  *                          asserts the Recents section under Unread and the walk
  *                          across it; `before` records a base tree that predates
  *                          the section
+ *   --recents-full  (with --scene palette-recents) records the OTHER half of this
+ *                          set - one frame of the pin at its full five rows with a
+ *                          bound row's hint - and returns. Needs the stub's LARGE
+ *                          catalogue (`--catalogue=<n>`), because the set's own
+ *                          six-conversation fixture has neither enough rows to fill
+ *                          the pin nor a bound conversation to draw a hint from
+ *                          (design round 1, D4)
  *   --row-space-expect <after|before>  (with --scene row-space) which half of
  *                          the pair this run records: `after` (the default)
  *                          asserts the head tree's two claims - the row's acts
@@ -550,6 +557,19 @@ if (!["after", "before"].includes(RECENTS_EXPECT)) {
 		`--recents-expect must be after or before, got ${JSON.stringify(RECENTS_EXPECT)}`,
 	);
 }
+/**
+ * THE FULL-PIN HALF of the Recents set (design round 1, D4).
+ *
+ * The set's six-conversation fixture cannot show the pin at its full five rows with
+ * a binding hint: every one of its rows is unbound (`binding: {agent: null, team:
+ * null}`), and six rows cannot fill a five-row pin once one is unread and one is the
+ * conversation on screen. This half therefore runs against the stub's LARGE
+ * catalogue (`--catalogue=<n>`, the `sidebar-lazy-chats` fixture), whose rows are
+ * spread across two teams and two agents - and it shoots ONE frame and returns,
+ * because the rest of this scene's checks are written against the six-conversation
+ * fixture.
+ */
+const RECENTS_FULL = process.argv.includes("--recents-full");
 /**
  * WHICH HALF OF A BEFORE/AFTER PAIR THIS RUN IS (with --scene conversation-start).
  *
@@ -26736,6 +26756,20 @@ async function scenePaletteUnread(cdp) {
 async function scenePaletteRecents(cdp) {
 	const frames = [];
 	const AFTER = RECENTS_EXPECT === "after";
+	/*
+	 * The theme this run shoots in, and the tag its frame labels carry. Named once rather
+	 * than the literal `localOperatorDark` the scene used to hard-code: design round 1's D4
+	 * asked for one frame of this same scene in `localOperatorLight`, and a scene that
+	 * re-applied dark after `--theme` had set light would have photographed neither.
+	 */
+	const THEME_ID = THEME ?? "localOperatorDark";
+	/*
+	 * Lower-case, because a frame label is validated to lowercase letters, digits, dashes
+	 * and underscores (`dev-driver-capture`). The dark spelling is kept as `dark` so the
+	 * set's committed labels do not move.
+	 */
+	const THEME_TAG =
+		THEME_ID === "localOperatorDark" ? "dark" : THEME_ID.toLowerCase();
 	/* The fixture's conversations (`docs/evidence/sidebar-row-space/harness/stub-daemon.mjs`). */
 	const UNREAD_ID = "b3f1a09c7d52";
 	const OPEN_ID = "2d5ad5da0025"; // Invoice reconciliation: opened by the scene
@@ -26789,10 +26823,10 @@ async function scenePaletteRecents(cdp) {
 		})()`);
 
 	await verb(cdp, "navigate", "/chat");
-	await verb(cdp, "setTheme", "localOperatorDark");
+	await verb(cdp, "setTheme", THEME_ID);
 	await seedRing(VISITED);
 	await verb(cdp, "navigate", "/chat");
-	await verb(cdp, "setTheme", "localOperatorDark");
+	await verb(cdp, "setTheme", THEME_ID);
 	const state = await verb(cdp, "state");
 	check(
 		"the catalogue answered with this set's fixture",
@@ -26805,33 +26839,39 @@ async function scenePaletteRecents(cdp) {
 	 * OPEN A CONVERSATION THE WAY A USER DOES: the sidebar row's press, the path
 	 * `browser-composition` opens one with. Nothing here tells the ring; the hook has
 	 * to notice the displayed conversation changed.
+	 *
+	 * SKIPPED IN THE `--recents-full` HALF: that conversation belongs to the
+	 * six-conversation fixture, and this half runs against the LARGE catalogue, where
+	 * no such row exists to press.
 	 */
-	await verb(cdp, "press", {
-		selector: `[data-session-row="${OPEN_ID}"] [data-chat-row]`,
-	});
-	const opened = await waitForCondition(
-		cdp,
-		`document.querySelector('[data-session-row="${OPEN_ID}"]') !== null`,
-		30_000,
-	);
-	await wait(600);
-	const afterOpen = await verb(cdp, "state");
-	check(
-		"the fixture conversation is the one open on the pane",
-		opened.ok && afterOpen.activeSessionId === OPEN_ID,
-		`active=${afterOpen.activeSessionId}`,
-	);
-	const ring = await readRing();
-	note("the persisted visited ring after the open", JSON.stringify(ring));
-	if (AFTER) {
-		check(
-			"opening a conversation put it at the FRONT of the persisted ring, ahead of the seeded history, with no duplicate",
-			Array.isArray(ring) &&
-				ring[0] === OPEN_ID &&
-				ring.slice(1).join() === VISITED.join() &&
-				new Set(ring).size === ring.length,
-			JSON.stringify(ring),
+	if (!RECENTS_FULL) {
+		await verb(cdp, "press", {
+			selector: `[data-session-row="${OPEN_ID}"] [data-chat-row]`,
+		});
+		const opened = await waitForCondition(
+			cdp,
+			`document.querySelector('[data-session-row="${OPEN_ID}"]') !== null`,
+			30_000,
 		);
+		await wait(600);
+		const afterOpen = await verb(cdp, "state");
+		check(
+			"the fixture conversation is the one open on the pane",
+			opened.ok && afterOpen.activeSessionId === OPEN_ID,
+			`active=${afterOpen.activeSessionId}`,
+		);
+		const ring = await readRing();
+		note("the persisted visited ring after the open", JSON.stringify(ring));
+		if (AFTER) {
+			check(
+				"opening a conversation put it at the FRONT of the persisted ring, ahead of the seeded history, with no duplicate",
+				Array.isArray(ring) &&
+					ring[0] === OPEN_ID &&
+					ring.slice(1).join() === VISITED.join() &&
+					new Set(ring).size === ring.length,
+				JSON.stringify(ring),
+			);
+		}
 	}
 
 	const readList = async () =>
@@ -26896,6 +26936,79 @@ async function scenePaletteRecents(cdp) {
 	};
 	const idOf = (id) => `chat-${id}`;
 
+	/*
+	 * THE FULL PIN, WITH A BOUND ROW (design round 1, D4).
+	 *
+	 * WHY A FIXTURE OF ITS OWN. This set's six conversations are all unbound
+	 * (`binding: {agent: null, team: null}`), so no ring over them can show a binding
+	 * HINT - and six rows cannot fill the pin's five once one is unread and one is the
+	 * conversation on screen. This half therefore runs against the stub's LARGE
+	 * catalogue (`--catalogue=<n>`), whose rows are spread across two teams and two
+	 * agents, and it shoots ONE frame and returns: the checks below are written against
+	 * the six-conversation fixture.
+	 */
+	if (RECENTS_FULL) {
+		/*
+		 * p015..p034 carry the `minervadev` team; p035..p042 are bound to the `reviewer`
+		 * agent (`stub-daemon.mjs`'s `pagedCatalogue`). Six ids, deliberately one more
+		 * than the pin draws (`RECENTS_PIN_CAP`, five), so the frame shows both the full
+		 * pin and the sixth ring entry falling through to the Chats tier.
+		 */
+		const BOUND_RING = ["p016", "p017", "p018", "p035", "p036", "p019"];
+		await verb(cdp, "navigate", "/chat");
+		await verb(cdp, "setTheme", THEME_ID);
+		await seedRing(BOUND_RING);
+		await verb(cdp, "navigate", "/chat");
+		await drawAtLeast(cdp, 5);
+		const ringBack = await readRing();
+		check(
+			"the seeded bound ring hydrated into the app",
+			Array.isArray(ringBack) &&
+				BOUND_RING.every((id) => ringBack.includes(id)),
+			JSON.stringify(ringBack),
+		);
+		const full = await openSwitcher();
+		note("the full Recents pin over the bound catalogue", JSON.stringify(full));
+		if (full === null)
+			throw new Error("the switcher's list was not in the DOM");
+		const pinned = full.options.filter((row) => row.heading === "Recents");
+		check(
+			"the Recents pin is FULL: five rows, in ring order",
+			pinned.map((row) => row.id).join() ===
+				BOUND_RING.slice(0, 5).map(idOf).join(),
+			JSON.stringify(pinned.map((row) => row.id)),
+		);
+		check(
+			"the pin claims only FIVE of the six ring entries: the sixth is not in Recents",
+			pinned.length === 5 &&
+				!pinned.some((row) => row.id === idOf(BOUND_RING[5])) &&
+				full.options.filter((row) => row.id === idOf(BOUND_RING[5])).length <=
+					1,
+			JSON.stringify(full.options.map((row) => `${row.heading}:${row.id}`)),
+		);
+		note(
+			"the sixth ring entry sits past the Chats tier's own five-row cap in this fixture, so this frame does not draw it - it is not in Recents either (the pin's cap, not an exclusion)",
+			JSON.stringify(
+				full.options
+					.filter((row) => row.heading === "Chats")
+					.map((row) => row.id),
+			),
+		);
+		check(
+			"a Recents row carries its binding hint (the team or agent the conversation is bound to)",
+			pinned.some((row) => /minervadev|reviewer/.test(row.text)),
+			JSON.stringify(pinned.map((row) => row.text)),
+		);
+		check(
+			"no conversation is drawn twice across the sections",
+			new Set(full.options.map((row) => row.id)).size === full.options.length,
+			JSON.stringify(full.options.map((row) => row.id)),
+		);
+		frames.push(await captureSettled(cdp, `palette-recents-full-${THEME_TAG}`));
+		await closeSwitcher();
+		return frames;
+	}
+
 	/* ---- frame 1: the switcher on open ---- */
 	const switcher = await openSwitcher();
 	note("the switcher's empty (#) state", JSON.stringify(switcher));
@@ -26956,7 +27069,9 @@ async function scenePaletteRecents(cdp) {
 	frames.push(
 		await captureSettled(
 			cdp,
-			AFTER ? "palette-recents-dark" : "palette-recents-before-dark",
+			AFTER
+				? `palette-recents-${THEME_TAG}`
+				: `palette-recents-before-${THEME_TAG}`,
 		),
 	);
 
@@ -26984,7 +27099,9 @@ async function scenePaletteRecents(cdp) {
 	frames.push(
 		await captureSettled(
 			cdp,
-			AFTER ? "palette-recents-down-dark" : "palette-recents-before-down-dark",
+			AFTER
+				? `palette-recents-down-${THEME_TAG}`
+				: `palette-recents-before-down-${THEME_TAG}`,
 		),
 	);
 
@@ -27039,8 +27156,8 @@ async function scenePaletteRecents(cdp) {
 		await captureSettled(
 			cdp,
 			AFTER
-				? "palette-recents-empty-dark"
-				: "palette-recents-before-empty-dark",
+				? `palette-recents-empty-${THEME_TAG}`
+				: `palette-recents-before-empty-${THEME_TAG}`,
 		),
 	);
 	await closeSwitcher();

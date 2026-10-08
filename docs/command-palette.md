@@ -67,7 +67,12 @@ deliberate:
   switching to declare itself is what makes the rule complete: the palette, a
   sidebar click, a deep link and a notification click all move that one value, and
   none of them has to remember to call anything. A draft with no session yet shows
-  no conversation and is skipped.
+  no conversation and is skipped. Two consequences follow from that rule and are
+  stated rather than discovered: a launch that restores the open conversation
+  counts as a visit, and a switch whose read is later REFUSED records both the
+  attempted id and the rollback id (`open-conversation.ts` restores the previous
+  one), so one failed switch can spend two of the ring's twenty slots - the failed
+  id sitting at the front until twenty further visits push it off.
 - **The ring and the pin.** The store keeps the last **20** visited session ids,
   most recent first, persisted with the other UI preferences
   (`conversationRecents`, ordered by the pure `pushConversationRecent`: a revisit
@@ -76,9 +81,12 @@ deliberate:
   some of what it remembers is on screen, unread, or gone. A blob written before
   the key existed hydrates to an empty ring; no migration is needed.
 - **What is left out.** The conversation on screen (you are already in it; this is
-  what makes the first row "the previous conversation", the Alt-Tab behaviour) and
-  unread rows (they already sit in the Unread pin, and a row never appears twice).
-  A remembered id with no live catalogue row - deleted, archived out of view,
+  what makes the first row "the previous conversation", the Alt-Tab behaviour),
+  archived rows (the sidebar's own rule - when the backend advertises
+  `session_archive`, `visibleRows` keeps them out of the default lists, and the pin
+  follows it, so a conversation you archive leaves the pin even though the ring
+  still holds its id), and unread rows (they already sit in the Unread pin, and a
+  row never appears twice). A remembered id with no live catalogue row - deleted or
   forgotten - draws nothing: rows come from the live catalogue, so the ring cannot
   resurrect a conversation.
 - **Same budget.** Recents draws from the SAME running 48-row budget as Unread and
