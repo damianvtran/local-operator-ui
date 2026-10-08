@@ -139,9 +139,13 @@ the Electron process group reaped by exact pid before it returns).
   leaves.
 - `real-app-after-console-in-chrome-band.png`: with NO run-details item (the stub serves
   no run frames) the Console item is the SECOND in the rail and its tooltip sits at
-  y=114..142, inside the pane's DOM toolbar band, which is above the native view's rect;
-  that case was never occluded, and the frame is kept so nobody reads the canvas pair as
-  covering it.
+  y=78..106 (measured). With the run item present (the `--simulate-run-slot` run) it sits
+  at y=114..142 (measured). Both are inside the pane's DOM bar and tab strip, above the
+  native view, whose top edge is at about y=149 (read off the frames, not metered: the
+  harness's `viewRect` probe found no element by that tag and returned null). The Console
+  tooltip was therefore not occluded, and the frame is kept so nobody reads the canvas pair
+  as covering it. The Browser item's tooltip is higher still, in the bar (seen in
+  `before-browser`, not committed).
 
 **What the pair is, and is not.** The stub conversation has no Run details item, so the
 rail's items sit one item (36px) higher than in a real conversation. The canvas pair was
@@ -176,8 +180,9 @@ something); every `browser-pane/` story that renders the rail (`trigger-*`,
 `composed-*`); and every `chat-run-panel/` story that renders it. A scan of the 161
 stories under the five header-bearing titles (`chat-run-panel`, `browser-pane`,
 `chat-header-cluster`, `chat-header-identity`, `chat-device`, `session-archive`) found 97
-that now draw the rail; all 97 were re-captured except one (below), 2 frames each for the
-two-palette sets and 12 each for the multi-theme ones.
+that now draw the rail. 94 were re-captured (2 frames each for the two-palette sets, 12
+each for the multi-theme ones); 2 (`interactive-pane`, `interactive-late-page`) have no
+committed frames, so nothing of theirs is stale; 1 could not be captured (below).
 
 **Still stale, named:**
 
