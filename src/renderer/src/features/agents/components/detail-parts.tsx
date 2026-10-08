@@ -26,9 +26,13 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
  * two need different reading weights: the instructions are prose, the tools are
  * a list, and the provenance is a footnote.
  *
- * The hairline rule between sections is decorative (never `border-control`,
- * which is a control's only boundary), and the first section drops it so the
- * pane does not open with a rule under the header.
+ * NO RULES BETWEEN SECTIONS (design spec D11). A hairline over every block made a
+ * read view of three rules and three boxes; the page's `space-y-8` (32 px, the
+ * section tier of the spacing scale) between sections and `space-y-2` (8 px)
+ * between a heading and its content already say where one ends, which is the
+ * brand's "remove a border or a background" before "add one". The gap is owned by
+ * the CONTAINER, not by a margin here, so a section that is the first or last
+ * child needs no special case.
  */
 export function Section({
 	title,
@@ -44,12 +48,7 @@ export function Section({
 	className?: string;
 }) {
 	return (
-		<section
-			className={cn(
-				"space-y-2 border-hairline border-t pt-4 first:border-t-0 first:pt-0",
-				className,
-			)}
-		>
+		<section className={cn("space-y-2", className)}>
 			<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
 				<h3 className="text-heading">{title}</h3>
 				{actions}
@@ -69,16 +68,26 @@ export function Section({
  * instructions used to be a `<textarea disabled>`, which is not a reading
  * surface at all: the reviewer measured 206 of 699 px of the reviewer prompt
  * visible (29.5%), a keyboard user unable to scroll it (a disabled textarea is
- * not focusable), and — the part that made the whole read view a lie — a fill and
+ * not focusable), and - the part that made the whole read view a lie - a fill and
  * border identical to an editable field's, so a built-in's read view looked like
  * a form the user was not allowed to type into.
  *
- * `tabIndex={0}` on the scroller is what makes it readable without a pointer: the
- * block itself is the scroll container, so arrow keys and Page Down work when it
- * has focus, and the app's own `:focus-visible` outline says where focus is. The
- * bound is `max-h-64`: tall enough for a real instruction set's opening
- * paragraphs, short enough that a 1,900-character prompt does not push every
- * other section off screen.
+ * IT IS NOT A BOX AND NOT A SCROLLER ANY MORE (design spec D5, D11). The first
+ * replacement was a bordered, filled, `max-h-64` scroll container with a tab
+ * stop: it still looked like the input it replaced, and it nested a second scroll
+ * context inside the pane's (a wheel gesture was trapped in it, and its focus
+ * outline sat against a clipped box). Prose is now plain text at the column's own
+ * left edge, clamped to ten lines, with a link-style "Show all" that expands it
+ * IN FLOW - one scroll context per region. Keyboard reach is unchanged in the
+ * way that matters: the expand control is a real button, and expanded text is
+ * ordinary page content that the pane's own scroll reaches.
+ *
+ * WHY `line-clamp`, AND WHAT IT DOES TO THE MEASUREMENT. A clamped element keeps
+ * its full `scrollHeight` while its `clientHeight` is the clamped height, so the
+ * same `scrollHeight > clientHeight + 1` test that decided the old `max-h-64`
+ * still answers "is text hidden", with no character threshold (which would show
+ * "Show all" on text that fits at a wide window). Prose is NOT narrowed below the
+ * column's measure: a second, inner edge is what `chat-measure.ts` warns about.
  */
 export function ReadBlock({
 	text,
@@ -100,8 +109,8 @@ export function ReadBlock({
 	 * would show "Show all" on text that already fits at 1380px.
 	 *
 	 * The measurement is skipped while expanded ON PURPOSE, so `overflows` keeps
-	 * its last clamped value — which is what keeps "Show less" on screen once the
-	 * block has been expanded (an unbounded block never overflows, so re-measuring
+	 * its last clamped value - which is what keeps "Show less" on screen once the
+	 * block has been expanded (an unclamped block never overflows, so re-measuring
 	 * would hide the only control that can put it back).
 	 */
 	useEffect(() => {
@@ -111,7 +120,7 @@ export function ReadBlock({
 		// `text` is read by the MEASUREMENT rather than by the arithmetic: the
 		// bound has to be re-measured when the content changes, and this is the
 		// dependency that says so (the empty-text branch above returns before the
-		// scroller exists at all).
+		// element exists at all).
 		setOverflows(
 			Boolean(text) && element.scrollHeight > element.clientHeight + 1,
 		);
@@ -125,14 +134,9 @@ export function ReadBlock({
 		<div className="space-y-1">
 			<div
 				ref={ref}
-				// biome-ignore lint/a11y/noNoninteractiveTabindex: this is a scroll container, which is the one non-interactive role a tab stop is for - a disabled textarea (what this replaced) could not be focused or scrolled at all, and arrow/PageDown only reach a long prompt once the block itself has focus.
-				tabIndex={0}
-				aria-label="The full text"
 				className={cn(
-					"whitespace-pre-wrap rounded-sm border border-hairline bg-surface px-3 py-2 text-body-sm text-ink",
-					// A reading block is not a control: `hairline` bounds it, and the
-					// app's focus ring (not a border colour) is what says it has focus.
-					!expanded && "max-h-64 overflow-y-auto",
+					"whitespace-pre-wrap text-body text-ink",
+					!expanded && "line-clamp-10",
 					mono && "font-mono text-meta",
 				)}
 			>
@@ -142,6 +146,7 @@ export function ReadBlock({
 				<Button
 					variant="link"
 					size="sm"
+					aria-expanded={expanded}
 					onClick={() => setExpanded((value) => !value)}
 				>
 					{expanded ? "Show less" : "Show all"}
@@ -422,8 +427,10 @@ const SKELETON_ROWS = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
 /** A detail pane that is loading, shaped like the sections it will fill. */
 export function DetailSkeleton() {
+	// The same measure wrapper the settled panes use, so the column does not jump
+	// when the record lands (the page supplies it around every non-hero state).
 	return (
-		<div className="max-w-3xl space-y-6" aria-hidden="true">
+		<div className="space-y-8" aria-hidden="true">
 			<Skeleton className="h-7 w-64" />
 			<Skeleton className="h-5 w-40" />
 			<Skeleton className="h-28 w-full" />
