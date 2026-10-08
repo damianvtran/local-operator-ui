@@ -28,7 +28,8 @@
  * ONE LABEL FOR BOTH SURFACES. The row menu and the header menu are two doors on
  * one act, so they say one thing when it succeeds - a second spelling beside the
  * first is exactly how two surfaces come to describe one outcome two ways.
- * Sentence case, no trailing period: this app's toasts carry none.
+ * Sentence case, no trailing period, matching the existing copy confirmation
+ * (`File path copied to clipboard`).
  */
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 
