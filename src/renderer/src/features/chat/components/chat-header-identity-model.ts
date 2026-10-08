@@ -11,8 +11,12 @@
  * without a DOM, and the component only maps their answers onto pixels.
  */
 
+import type { CanonicalEffectiveIdentity } from "../../../../../shared/desktop-session-contract";
 import { teamDisplayName } from "../../../shared/api/local-operator/team-display";
-import { identityAgentSettable } from "./chat-header-identity-menu-model";
+import {
+	identityAgentClosedCaption,
+	identityAgentSettable,
+} from "./chat-header-identity-menu-model";
 
 /**
  * One team as the label resolver needs it: the name the binding uses, the
@@ -41,6 +45,75 @@ export type HeaderIdentityInput = {
 	boundTeam?: string | null;
 	/** The authored teams catalogue (`teams.list`), for the manager lookup. */
 	teams?: readonly HeaderIdentityTeam[] | undefined;
+	/**
+	 * The host's `effective_identity` statement (`canonical.frontend`), or
+	 * absent/`{}` from a host that predates it. See `effectiveIdentityPublished`
+	 * for the one predicate that tells the two apart.
+	 */
+	effectiveIdentity?: CanonicalEffectiveIdentity | null | undefined;
+};
+
+/**
+ * What a host that PUBLISHES `effective_identity` said, normalised: all three
+ * keys, strings. Produced only by `effectiveIdentityPublished`.
+ */
+export type PublishedEffectiveIdentity = {
+	speaker: string;
+	team: string;
+	role_of_speaker: string;
+};
+
+/**
+ * THE ONE PREDICATE for "this host publishes `effective_identity`" - the
+ * capability signal the strict rule is gated on.
+ *
+ * It is `true` when at least one of the three keys is a string. A host that
+ * publishes the field sends all three, with `""` for an empty value, so
+ * `{ speaker: "", team: "", role_of_speaker: "" }` (no team, no profile) IS
+ * published and means "nobody is attached". `{}`, `null` and an absent field
+ * are a host that PREDATES the field, and must not be read as that statement:
+ * the older runtime still accepts the manager and delegating profiles, so
+ * closing the agent control on its silence would withdraw a working control.
+ *
+ * Returns the normalised statement (a key that is not a string reads `""`,
+ * because a frame is untrusted wire data) or `null` for "not published".
+ */
+export function effectiveIdentityPublished(
+	identity: CanonicalEffectiveIdentity | null | undefined,
+): PublishedEffectiveIdentity | null {
+	if (!identity || typeof identity !== "object") return null;
+	const { speaker, team, role_of_speaker } = identity;
+	if (
+		typeof speaker !== "string" &&
+		typeof team !== "string" &&
+		typeof role_of_speaker !== "string"
+	) {
+		return null;
+	}
+	return {
+		speaker: typeof speaker === "string" ? speaker : "",
+		team: typeof team === "string" ? team : "",
+		role_of_speaker: typeof role_of_speaker === "string" ? role_of_speaker : "",
+	};
+}
+
+/**
+ * The strict rule in force on this chat: the runtime closed the agent slot
+ * because a team owns the session, and said who is speaking.
+ */
+export type HeaderSeatClosure = {
+	/** What the agent chip shows: the speaker, or the team's name when the host named none. */
+	speaker: string;
+	/**
+	 * Whether the host named a speaker distinct from the team. `false` is the
+	 * fallback rung (blank speaker, or the runtime's own team-name fallback for
+	 * a manager it cannot name), and the sentence then says `its manager`.
+	 */
+	speakerKnown: boolean;
+	/** The team slug the host reported. */
+	team: string;
+	/** The explanation the closed control states (chip title, accessible name, panel). */
+	sentence: string;
 };
 
 export type HeaderIdentityView = {
@@ -73,6 +146,13 @@ export type HeaderIdentityView = {
 	 * See `chat-header-identity-menu-model.ts`'s `identityAgentConstraint`.
 	 */
 	teamManager: string | null;
+	/**
+	 * Non-null when the host publishes `effective_identity` AND names a team: the
+	 * runtime's strict rule, under which no agent is settable (the manager's own
+	 * name included) and the agent control states why instead of listing rows.
+	 * `null` on an older host - the #866 behaviour, unchanged.
+	 */
+	seat: HeaderSeatClosure | null;
 };
 
 /**
@@ -130,7 +210,16 @@ export const DEFAULT_TEAM_MANAGER = "manager";
 export function resolveHeaderIdentity(
 	input: HeaderIdentityInput,
 ): HeaderIdentityView {
-	const teamValue = input.activeTeam || input.boundTeam || null;
+	const published = effectiveIdentityPublished(input.effectiveIdentity);
+	/*
+	 * THE STRICT RULE'S TEAM is the HOST'S statement of which team owns the
+	 * session. It is the last rung for the team value only (live and bound
+	 * values still win, so nothing that read a team before reads a different
+	 * one): a published identity naming a team that neither other source
+	 * carries would otherwise yield a closed seat over a "No team" chip.
+	 */
+	const strictTeam = published?.team ?? "";
+	const teamValue = input.activeTeam || input.boundTeam || strictTeam || null;
 	/*
 	 * The catalogue row, read ONCE for the two answers it holds: the team's
 	 * readable name (the label below) and the manager (the agent fallback). A
@@ -141,15 +230,42 @@ export function resolveHeaderIdentity(
 	const teamRow = teamValue
 		? input.teams?.find((team) => team.name === teamValue)
 		: undefined;
-	let agentValue = input.activeAgent || input.boundAgent || null;
+	const teamLabel = teamValue
+		? teamDisplayName(teamRow ?? { name: teamValue })
+		: NO_TEAM_LABEL;
+	/*
+	 * ONE STATEMENT OF WHO IS SPEAKING. Under the strict rule the agent slot
+	 * is the team's, so the label is the host's `speaker` and NOT
+	 * `active_agent`: the runtime replaces any earlier profile with the manager
+	 * when a team attaches, so a stale explicit agent is never the speaker and a
+	 * chip reading it would be the "team + agent pair" this rule retires. The
+	 * ladder when the host names no distinct speaker is the team's name - say
+	 * who owns the session rather than render a blank (the runtime itself falls
+	 * back to the team name for a manager it cannot name).
+	 */
+	let seat: HeaderSeatClosure | null = null;
+	if (published && strictTeam) {
+		const speakerKnown =
+			published.speaker !== "" && published.speaker !== strictTeam;
+		seat = {
+			speaker: published.speaker || strictTeam,
+			speakerKnown,
+			team: strictTeam,
+			sentence: identityAgentClosedCaption(
+				strictTeam,
+				speakerKnown ? published.speaker : null,
+			),
+		};
+	}
+	let agentValue = seat
+		? seat.speaker
+		: input.activeAgent || input.boundAgent || null;
 	if (!agentValue && teamValue) {
 		agentValue = teamRow?.manager || DEFAULT_TEAM_MANAGER;
 	}
 	return {
 		teamValue,
-		teamLabel: teamValue
-			? teamDisplayName(teamRow ?? { name: teamValue })
-			: NO_TEAM_LABEL,
+		teamLabel,
 		agentValue,
 		agentLabel: agentValue ?? NO_AGENT_LABEL,
 		/*
@@ -162,6 +278,7 @@ export function resolveHeaderIdentity(
 				? teamRow.manager || DEFAULT_TEAM_MANAGER
 				: null
 			: null,
+		seat,
 	};
 }
 
@@ -229,7 +346,17 @@ export function headerIdentityAgentFlagged(input: {
 	manager: string | null;
 	/** The explicit agent's `delegate` flag; `null` while it is not known. */
 	delegate: boolean | null;
+	/**
+	 * The strict rule is in force (`HeaderIdentityView.seat !== null`). THE CUE
+	 * STAYS DARK: the runtime normalises a team chat to the manager alone, so a
+	 * stale explicit agent is never the speaker and there is no "pair that needs
+	 * resolving" to flag. Short-circuited HERE rather than by calling
+	 * `identityAgentSettable` with the strict flag, which would answer "refused"
+	 * for every name and light the cue on exactly the chats it must not.
+	 */
+	teamOwnsSeat?: boolean;
 }): boolean {
+	if (input.teamOwnsSeat === true) return false;
 	if (
 		input.explicitAgent === null ||
 		input.manager === null ||

@@ -22,8 +22,12 @@ import { build } from "esbuild";
 
 const bundle = await build({
 	stdin: {
-		contents:
+		contents: [
 			'export * from "./src/renderer/src/features/chat/components/chat-header-identity-model";',
+			/* The menu model's predicate and constraint ride the same bundle: the
+			 * strict-rule matrix below is about the two modules AGREEING. */
+			'export { identityAgentClosedCaption, identityAgentConstraint, identityAgentSettable } from "./src/renderer/src/features/chat/components/chat-header-identity-menu-model";',
+		].join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -35,8 +39,12 @@ const {
 	DEFAULT_TEAM_MANAGER,
 	NO_AGENT_LABEL,
 	NO_TEAM_LABEL,
+	effectiveIdentityPublished,
 	headerIdentityAgentFlagged,
 	headerIdentityControlsShown,
+	identityAgentClosedCaption,
+	identityAgentConstraint,
+	identityAgentSettable,
 	resolveHeaderIdentity,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -328,4 +336,282 @@ test("the cue waits for its facts: no agent, no manager, no delegate datum is si
 	assert.equal(flagged({ explicitAgent: null }), false);
 	assert.equal(flagged({ manager: null }), false);
 	assert.equal(flagged({ delegate: null }), false);
+});
+
+/*
+ * ---------------------------------------------------------------- the
+ * runtime's STRICT rule (issue #861, second slice; core PR #2050 at f98240bd42)
+ *
+ * `effective_identity: { speaker, team, role_of_speaker }` is the capability
+ * signal: a host that publishes it refuses `/agent` for EVERY name while a team
+ * is attached, the manager's own included. A host that does not (absent or `{}`)
+ * is an OLDER runtime that still accepts the #866 set, and must keep getting
+ * exactly the #866 answers - which is why the first half of this section is
+ * the "unchanged" half.
+ */
+
+/* Hoisted: a literal inside a test is recompiled per call (lint rule). */
+const ITS_MANAGER = /its manager is the speaker/;
+const REPLACED_NOTICE = /replac/i;
+
+/** What a strict host publishes for a team chat, and for a chat with no team. */
+const STRICT_TEAM = {
+	speaker: "manager",
+	team: "lopdev",
+	role_of_speaker: "manager",
+};
+const STRICT_NO_TEAM = { speaker: "", team: "", role_of_speaker: "" };
+
+/** The four profiles the matrix tries to seat: the manager, a delegating profile, a leaf, and the manager's own name. */
+const SEATS = [
+	{ name: "manager", delegate: false, role: "the manager (flag reads false)" },
+	{ name: "ops-lead", delegate: true, role: "a delegating profile" },
+	{ name: "coder", delegate: false, role: "a leaf profile" },
+	{ name: "ops-lead", delegate: null, role: "a profile whose flag is unknown" },
+];
+
+test("one predicate decides whether the host publishes the field", () => {
+	// All three keys, empty strings included: a published statement of "no team".
+	assert.deepEqual(effectiveIdentityPublished(STRICT_NO_TEAM), STRICT_NO_TEAM);
+	assert.deepEqual(effectiveIdentityPublished(STRICT_TEAM), STRICT_TEAM);
+	// One string key is enough: a frame is untrusted wire data.
+	assert.deepEqual(effectiveIdentityPublished({ team: "lopdev" }), {
+		speaker: "",
+		team: "lopdev",
+		role_of_speaker: "",
+	});
+	// An older host: absent, null, `{}` and non-string keys are NOT a statement.
+	for (const older of [undefined, null, {}, { speaker: 3, team: null }, "x"]) {
+		assert.equal(effectiveIdentityPublished(older), null);
+	}
+});
+
+test("older host: {} and an absent field give exactly the #866 results, cue dark", () => {
+	for (const older of [undefined, null, {}]) {
+		const view = resolveHeaderIdentity({
+			activeAgent: "coder",
+			activeTeam: "lopdev",
+			teams: TEAMS,
+			effectiveIdentity: older,
+		});
+		assert.equal(view.seat, null);
+		// The explicit agent still labels the slot, as it did on main.
+		assert.equal(view.agentValue, "coder");
+		assert.equal(view.teamManager, "manager");
+		// The #866 predicate, unchanged: the manager and delegates are settable.
+		for (const seat of SEATS) {
+			assert.equal(
+				identityAgentSettable({
+					name: seat.name,
+					manager: view.teamManager,
+					delegate: seat.delegate,
+				}),
+				seat.name === "manager" || seat.delegate === true,
+				`${seat.role} on an older host`,
+			);
+		}
+		// The constraint is the exact two-field object #866 shipped.
+		assert.deepEqual(
+			identityAgentConstraint({
+				teamLabel: view.teamLabel,
+				manager: view.teamManager,
+				closure: view.seat,
+			}),
+			{
+				manager: "manager",
+				caption:
+					"lopdev is led by its manager; only the manager and profiles that can delegate may take this seat.",
+			},
+		);
+	}
+	// The #866 cue on the older host is EXACTLY what main shipped: lit for a
+	// refused explicit agent whose delegate flag is known, dark for an accepted
+	// seat and dark while the flag is unknown (no false cue from a name alone).
+	// The strict rule's closure never appears (`seat` is null above), so nothing
+	// new can light on a host that has not published the field.
+	assert.equal(
+		headerIdentityAgentFlagged({
+			explicitAgent: "coder",
+			manager: "manager",
+			delegate: null,
+		}),
+		false,
+	);
+	assert.equal(
+		headerIdentityAgentFlagged({
+			explicitAgent: "coder",
+			manager: "manager",
+			delegate: false,
+			teamOwnsSeat: false,
+		}),
+		true,
+	);
+	assert.equal(
+		headerIdentityAgentFlagged({
+			explicitAgent: "ops-lead",
+			manager: "manager",
+			delegate: true,
+		}),
+		false,
+	);
+});
+
+test("strict host + team attached: NO agent is settable, the manager's own name included", () => {
+	const view = resolveHeaderIdentity({
+		activeAgent: "",
+		activeTeam: "lopdev",
+		teams: TEAMS,
+		effectiveIdentity: STRICT_TEAM,
+	});
+	assert.notEqual(view.seat, null);
+	const constraint = identityAgentConstraint({
+		teamLabel: view.teamLabel,
+		manager: view.teamManager,
+		closure: view.seat,
+	});
+	assert.notEqual(constraint.closed, undefined);
+	for (const seat of SEATS) {
+		assert.equal(
+			identityAgentSettable({
+				name: seat.name,
+				manager: view.teamManager,
+				delegate: seat.delegate,
+				teamOwnsSeat: constraint.closed !== undefined,
+			}),
+			false,
+			`${seat.role} must be refused under the strict rule`,
+		);
+	}
+	// The manager's own name is the case #866 offered and the runtime refuses.
+	assert.equal(
+		identityAgentSettable({
+			name: view.teamManager,
+			manager: view.teamManager,
+			delegate: true,
+			teamOwnsSeat: true,
+		}),
+		false,
+	);
+});
+
+test("strict host, no team: the field changes nothing and the seat stays open", () => {
+	const view = resolveHeaderIdentity({
+		activeAgent: "coder",
+		activeTeam: "",
+		teams: TEAMS,
+		effectiveIdentity: { speaker: "coder", team: "", role_of_speaker: "" },
+	});
+	assert.equal(view.seat, null);
+	assert.equal(view.teamValue, null);
+	assert.equal(view.agentValue, "coder");
+	// "Nobody attached" is a statement, not an older host: no closure, no cue.
+	assert.equal(
+		identityAgentConstraint({
+			teamLabel: view.teamLabel,
+			manager: view.teamManager,
+			closure: view.seat,
+		}),
+		null,
+	);
+	const empty = resolveHeaderIdentity({
+		teams: TEAMS,
+		effectiveIdentity: STRICT_NO_TEAM,
+	});
+	assert.equal(empty.seat, null);
+	assert.equal(empty.agentValue, null);
+});
+
+test("strict host: one speaker statement, a stale explicit agent is never the speaker", () => {
+	// The runtime replaces an earlier /agent with the manager at attach, but the
+	// bound row (or a frame in flight) may still name it: the label is the
+	// host's speaker, and there is no team + agent pair on screen.
+	const view = resolveHeaderIdentity({
+		activeAgent: "coder",
+		boundAgent: "coder",
+		activeTeam: "lopdev",
+		teams: TEAMS,
+		effectiveIdentity: { ...STRICT_TEAM, speaker: "ops-lead" },
+	});
+	assert.equal(view.agentValue, "ops-lead");
+	assert.equal(view.agentLabel, "ops-lead");
+	assert.equal(view.seat.speaker, "ops-lead");
+	assert.equal(view.seat.speakerKnown, true);
+	assert.equal(view.teamLabel, "lopdev");
+});
+
+test("strict host: the cue stays dark where #866 would have lit it", () => {
+	const lit = {
+		explicitAgent: "coder",
+		manager: "manager",
+		delegate: false,
+	};
+	assert.equal(headerIdentityAgentFlagged(lit), true);
+	assert.equal(
+		headerIdentityAgentFlagged({ ...lit, teamOwnsSeat: true }),
+		false,
+	);
+	// And a would-be-lit pair through the view: the stale agent is not flagged.
+	const view = resolveHeaderIdentity({
+		activeAgent: "coder",
+		activeTeam: "lopdev",
+		teams: TEAMS,
+		effectiveIdentity: STRICT_TEAM,
+	});
+	assert.equal(
+		headerIdentityAgentFlagged({ ...lit, teamOwnsSeat: view.seat !== null }),
+		false,
+	);
+});
+
+test("strict host: the speaker ladder says who owns the session rather than render a blank", () => {
+	// Team set, speaker empty: the team's name stands in (the runtime's own
+	// fallback for a manager it cannot name), and the sentence says `its manager`.
+	const blank = resolveHeaderIdentity({
+		activeTeam: "lopdev",
+		teams: [],
+		effectiveIdentity: {
+			speaker: "",
+			team: "lopdev",
+			role_of_speaker: "manager",
+		},
+	});
+	assert.equal(blank.agentValue, "lopdev");
+	assert.equal(blank.seat.speakerKnown, false);
+	assert.match(blank.seat.sentence, ITS_MANAGER);
+	// Speaker equal to the team is the runtime's fallback rung too.
+	const fallback = resolveHeaderIdentity({
+		activeTeam: "lopdev",
+		teams: [],
+		effectiveIdentity: {
+			speaker: "lopdev",
+			team: "lopdev",
+			role_of_speaker: "manager",
+		},
+	});
+	assert.equal(fallback.seat.speakerKnown, false);
+	// The host's team stands in for a stream that has not named one yet.
+	const hostOnly = resolveHeaderIdentity({
+		teams: [],
+		effectiveIdentity: STRICT_TEAM,
+	});
+	assert.equal(hostOnly.teamValue, "lopdev");
+	assert.equal(hostOnly.agentValue, "manager");
+});
+
+test("the closure sentence is the runtime's refusal, pinned byte for byte", () => {
+	// Core PR #2050, `Session._team_agent_slot_refusal("attach")`, with <team>
+	// the chip's name for the team and <manager> the published speaker.
+	assert.equal(
+		identityAgentClosedCaption("lopdev", "manager"),
+		"team lopdev owns this session: manager is the speaker, so /agent is closed. Run /team clear to detach the team first.",
+	);
+	assert.equal(
+		identityAgentClosedCaption("lopdev", null),
+		"team lopdev owns this session: its manager is the speaker, so /agent is closed. Run /team clear to detach the team first.",
+	);
+	// No sentence about a silently replaced profile: core emits none (#2050).
+	assert.doesNotMatch(
+		identityAgentClosedCaption("lopdev", "manager"),
+		REPLACED_NOTICE,
+	);
 });

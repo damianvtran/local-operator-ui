@@ -1027,6 +1027,18 @@ export type CanonicalGoalHistoryEntry = {
 	reason?: string;
 };
 
+/**
+ * The runtime's `effective_identity` statement (see
+ * `CanonicalFrontendState.effective_identity` for the semantics and the
+ * older-host rule). Every key is optional here because `{}` is a legal value that
+ * means "this host does not publish the field".
+ */
+export type CanonicalEffectiveIdentity = {
+	speaker?: string;
+	team?: string;
+	role_of_speaker?: string;
+};
+
 export type CanonicalFrontendState = {
 	attention?: CompletionAttention;
 	state_version: number;
@@ -1055,6 +1067,29 @@ export type CanonicalFrontendState = {
 	goal_history_truncated?: boolean;
 	active_agent: string;
 	active_team: string;
+	/**
+	 * WHO is answering this session, as the runtime's one statement (local-operator
+	 * issue #2014, core PR #2050): `{ speaker, team, role_of_speaker }`.
+	 *
+	 * Optional, and the optionality is LOAD-BEARING like `goal_status`'s above: it
+	 * is the only capability signal a renderer gets for the runtime's STRICT rule
+	 * ("a team owns the agent slot, so `/agent` is closed for every name"). A host
+	 * that publishes the field sends ALL THREE keys:
+	 *
+	 * - a team attached: `{ speaker: <the manager, or the team name if the team
+	 *   cannot name one>, team: <team>, role_of_speaker: "manager" }`;
+	 * - no team: `{ speaker: <the /agent profile in force, or "">, team: "",
+	 *   role_of_speaker: "" }`.
+	 *
+	 * ABSENT AND `{}` BOTH MEAN A HOST THAT PREDATES THE FIELD, which is not "nobody
+	 * is speaking": a renderer that read an older host's silence as a statement
+	 * would close the agent control on a runtime that still accepts a pick. Read it
+	 * through `effectiveIdentityPublished` (chat-header-identity-model.ts), the one
+	 * place that distinction is drawn. The keys are typed optional for the same
+	 * reason - a frame is untrusted wire data, and a key that is not a string is
+	 * treated as not published.
+	 */
+	effective_identity?: CanonicalEffectiveIdentity;
 	selected_model: CanonicalModel | null;
 	effective_model: CanonicalModel | null;
 	streaming: boolean;

@@ -69,7 +69,7 @@ import { Popover, PopoverTrigger } from "@shared/components/ui/popover";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast, showWarningToast } from "@shared/utils/toast-manager";
-import { ChevronDown, TriangleAlert } from "lucide-react";
+import { ChevronDown, Lock, TriangleAlert } from "lucide-react";
 import {
 	type FC,
 	type MutableRefObject,
@@ -78,6 +78,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import type { CanonicalEffectiveIdentity } from "../../../../../shared/desktop-session-contract";
 import { useEntities } from "../pickers/destination-pickers";
 import type { PickerOption } from "../pickers/picker-host";
 import { errorText, useSessionCommand } from "../pickers/use-picker-backend";
@@ -104,6 +105,12 @@ export type HeaderIdentityData = {
 	/** The catalogue row's durable binding - the cold session's answer. */
 	boundAgent?: string | null;
 	boundTeam?: string | null;
+	/**
+	 * The host's `effective_identity` statement (`canonical.frontend`). Absent or
+	 * `{}` from a host that predates it - which keeps the #866 behaviour; see
+	 * `effectiveIdentityPublished`.
+	 */
+	effectiveIdentity?: CanonicalEffectiveIdentity | null;
 };
 
 /**
@@ -252,11 +259,16 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	swapRef,
 	markSwap,
 }) => {
+	/*
+	 * A CLOSED SEAT LISTS NOTHING (the runtime's strict rule): no row can be
+	 * picked, so the roster is not fetched for a panel that will not show it.
+	 */
+	const closedReason = constraint?.closed ?? null;
 	const rows = useEntities<HeaderEntityRow>(
 		sessionId,
 		kind,
 		undefined,
-		enabled,
+		enabled && closedReason === null,
 	);
 	const items = rows.data?.entities ?? [];
 	const assigned = current !== null;
@@ -276,6 +288,13 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	 * scrolls its active row by `getElementById`.
 	 */
 	const listId = `header-identity-${kind}-list`;
+	/*
+	 * The closed seat's note (see `IdentityMenu`'s `closedReason`): a disclosure
+	 * rather than a listbox, so the trigger names it with `aria-controls` while
+	 * it is up and claims `aria-haspopup="dialog"` (Radix's own default) rather
+	 * than `listbox` for a list that does not exist.
+	 */
+	const closedNoteId = `header-identity-${kind}-closed`;
 	/*
 	 * The chip element itself: the Tab contract's other half (UX round 1, U1)
 	 * needs to put focus back on it the moment the field asks to dismiss, and
@@ -344,6 +363,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 						name: row.value,
 						manager: constraint.manager,
 						delegate: row.delegate,
+						teamOwnsSeat: constraint.closed !== undefined,
 					});
 				return {
 					value: row.value,
@@ -417,6 +437,9 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					ref={triggerRef}
 					type="button"
 					data-header-identity={kind}
+					/* The capture rig's claim anchor for a CLOSED seat (the runtime's
+					 * strict rule), beside the cue's own hook. */
+					data-header-identity-closed={closedReason !== null ? "" : undefined}
 					className={cn(TRIGGER_BOX, !assigned && "text-ink-dim")}
 					aria-busy={busy || undefined}
 					/*
@@ -428,8 +451,16 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					 * so a loading, refused or empty panel does not point at a list that
 					 * is not there (UX round 1, U4).
 					 */
-					aria-haspopup="listbox"
-					aria-controls={listMounted ? listId : undefined}
+					aria-haspopup={closedReason === null ? "listbox" : "dialog"}
+					aria-controls={
+						closedReason !== null
+							? open
+								? closedNoteId
+								: undefined
+							: listMounted
+								? listId
+								: undefined
+					}
 					/* The swap guard's mark: every press on either trigger records
 					 * that the closure about to run is a SWAP, not a dismissal - see
 					 * `onCloseAutoFocus` on the menu below, and the pair's own note
@@ -444,35 +475,48 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					 * round 1, D6/NIT-1): read aloud, "Switch agent Local Operator Dev
 					 * is led by..." ran the action into the rule as one noun phrase.
 					 */
-					aria-label={`${triggerLabel}: ${label}. ${
-						assigned
-							? `Switch ${kind === "team" ? "team" : "agent"}`
-							: kind === "team"
-								? "Assign a team"
-								: "Assign an agent"
-					}${flagged && cueSentence ? `. ${cueSentence}` : ""}`}
+					aria-label={
+						closedReason !== null
+							? /* A closed control offers no "Switch": the name states the
+								 * role and the speaker, and the reason is its own clause. */
+								`${triggerLabel}: ${label}. ${closedReason}`
+							: `${triggerLabel}: ${label}. ${
+									assigned
+										? `Switch ${kind === "team" ? "team" : "agent"}`
+										: kind === "team"
+											? "Assign a team"
+											: "Assign an agent"
+								}${flagged && cueSentence ? `. ${cueSentence}` : ""}`
+					}
 					title={
-						flagged && cueSentence
+						closedReason !== null
 							? /*
-								 * The flagged chip's tooltip states the rule the pair breaks
-								 * (issue #861) - the label leads so the hover still says which
-								 * profile it is about, and the sentence is the panel's own
-								 * (`constraint.caption`), not a second paraphrase. The em dash
-								 * makes the two clauses read as two (review round 1, D6).
+								 * The closed chip's tooltip: the label leads (which profile this
+								 * is about), then the runtime's own closure sentence - the SAME
+								 * string the panel states, as the flagged chip does for its rule.
 								 */
-								`${label} — ${cueSentence}`
-							: assigned
+								`${label} — ${closedReason}`
+							: flagged && cueSentence
 								? /*
-									 * The identity in the tooltip, `Label (slug)` when the two differ
-									 * (design round 1, D2) — the one plain-text home for the slug
-									 * beside the sidebar row's tooltip, and the full label for a
-									 * capped chip too (D1). The ACTION words stay in the
-									 * `aria-label` above rather than repeating here.
+									 * The flagged chip's tooltip states the rule the pair breaks
+									 * (issue #861) - the label leads so the hover still says which
+									 * profile it is about, and the sentence is the panel's own
+									 * (`constraint.caption`), not a second paraphrase. The em dash
+									 * makes the two clauses read as two (review round 1, D6).
 									 */
-									`${label}${labelWon ? ` (${current})` : ""}`
-								: kind === "team"
-									? "Assign a team"
-									: "Assign an agent"
+									`${label} — ${cueSentence}`
+								: assigned
+									? /*
+										 * The identity in the tooltip, `Label (slug)` when the two differ
+										 * (design round 1, D2) — the one plain-text home for the slug
+										 * beside the sidebar row's tooltip, and the full label for a
+										 * capped chip too (D1). The ACTION words stay in the
+										 * `aria-label` above rather than repeating here.
+										 */
+										`${label}${labelWon ? ` (${current})` : ""}`
+									: kind === "team"
+										? "Assign a team"
+										: "Assign an agent"
 					}
 				>
 					{kind === "team" && assigned && (
@@ -552,6 +596,11 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					<span className={cn(GLYPH_SLOT)}>
 						{busy ? (
 							<Spinner size="xs" />
+						) : closedReason !== null ? (
+							/* A lock where the chevron was: the chevron promises a list to
+							 * choose from, and a closed seat has none. The press still
+							 * opens a panel, but it only states why. */
+							<Lock className={cn("size-3 text-ink-dim")} aria-hidden="true" />
 						) : (
 							<ChevronDown
 								className={cn("size-3 text-ink-dim")}
@@ -588,6 +637,8 @@ const IdentityControl: FC<IdentityControlProps> = ({
 				 * starts. `null` for the team control and while no manager is known.
 				 */
 				caption={constraint?.caption ?? null}
+				closedReason={closedReason}
+				closedNoteId={closedNoteId}
 				onPick={(value) => {
 					/* A pick is a decision, so the panel closes on it - the chip's own
 					 * busy spinner is what says the switch is in flight, and the label
@@ -650,6 +701,7 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 	activeTeam,
 	boundAgent,
 	boundTeam,
+	effectiveIdentity,
 }) => {
 	const rawTeam = activeTeam || boundTeam || null;
 	/*
@@ -665,7 +717,15 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 		boundAgent,
 		boundTeam,
 		teams: teams.data,
+		effectiveIdentity,
 	});
+	/*
+	 * THE STRICT RULE, decided once in the model (`view.seat`): the host
+	 * publishes `effective_identity` and a team owns the session. Every
+	 * consumer below reads this one value - the roster watch, the cue, the
+	 * constraint the chip and the panel share - so they cannot disagree.
+	 */
+	const teamOwnsSeat = view.seat !== null;
 	/*
 	 * THE EXPLICIT SEAT (issue #861): the agent the session was actually told
 	 * to run (`/agent`, live or bound) - never the manager the label falls back
@@ -687,7 +747,7 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 		sessionId,
 		"agent",
 		undefined,
-		Boolean(rawTeam && explicitAgent),
+		Boolean(rawTeam && explicitAgent) && !teamOwnsSeat,
 	);
 	const watchedDelegate = useMemo(() => {
 		if (!explicitAgent) return null;
@@ -713,6 +773,7 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 		explicitAgent,
 		manager: view.teamManager,
 		delegate: watchedDelegate,
+		teamOwnsSeat,
 	});
 	/*
 	 * The constraint is MEMOIZED (review round 1, MINOR-1): built inline it was a
@@ -726,8 +787,9 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 			identityAgentConstraint({
 				teamLabel: view.teamLabel,
 				manager: view.teamManager,
+				closure: view.seat,
 			}),
-		[view.teamLabel, view.teamManager],
+		[view.teamLabel, view.teamManager, view.seat],
 	);
 	/*
 	 * One open menu at a time, by hand: two independent Radix roots cannot see

@@ -545,6 +545,150 @@ export const IncompatiblePairLoading: Story = {
 	},
 };
 
+/**
+ * The runtime's STRICT rule (issue #861, second slice; core PR #2050): the host
+ * publishes `effective_identity` and a team owns the session, so the agent slot
+ * is closed for every name.
+ *
+ * WHAT THE FRAMES ARE. `strict-team-chip` is the speaker statement at rest -
+ * `manager` on the agent chip with the closed-seat lock, `Local Operator Dev` on
+ * the team chip, no cue; `strict-team-open` is the press: the panel is a note
+ * that states the runtime's own sentence and the way out (`/team clear`), with
+ * no field and no rows. The stale-agent arm below is the same host with a
+ * leftover `coder` still on the frame: it must read `manager` (the speaker),
+ * not `coder`, and the cue must be dark.
+ */
+const STRICT_TEAM_IDENTITY = {
+	speaker: "manager",
+	team: "lopdev",
+	role_of_speaker: "manager",
+};
+
+export const StrictTeam: Story = {
+	render: () => {
+		installBridge();
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="manager · lopdev"
+					identity={identity({
+						activeTeam: "lopdev",
+						effectiveIdentity: STRICT_TEAM_IDENTITY,
+					})}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/** The strict host at the app's full width, the band the operator's own screenshot was taken at. */
+export const StrictTeamWide: Story = {
+	render: () => {
+		installBridge();
+		return (
+			<Band width={1380}>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="manager · lopdev"
+					identity={identity({
+						activeTeam: "lopdev",
+						effectiveIdentity: STRICT_TEAM_IDENTITY,
+					})}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * A strict host whose frame still carries the earlier `coder` (the bound row or
+ * a frame in flight): the runtime has replaced it with the manager, so the
+ * header must name the SPEAKER and light no cue - the #866 cue's pair does not
+ * exist on this host.
+ */
+export const StrictTeamStaleAgent: Story = {
+	render: () => {
+		installBridge();
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="coder · lopdev"
+					identity={identity({
+						activeAgent: "coder",
+						activeTeam: "lopdev",
+						boundAgent: "coder",
+						effectiveIdentity: STRICT_TEAM_IDENTITY,
+					})}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * The speaker ladder's last rung: the host names a team but no distinct
+ * speaker (`speaker: ""`), so the chip says the team's name rather than a blank
+ * and the sentence reads `its manager`.
+ */
+export const StrictTeamNoSpeaker: Story = {
+	render: () => {
+		installBridge();
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="minerva"
+					identity={identity({
+						activeTeam: "minerva",
+						effectiveIdentity: {
+							speaker: "",
+							team: "minerva",
+							role_of_speaker: "manager",
+						},
+					})}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * AN OLDER HOST: `effective_identity` arrives as `{}`. The header must look and
+ * behave exactly as #866 shipped - this is the legacy pair arm
+ * (`IncompatiblePair`) with the empty object added, and its frames are read
+ * against that arm's: the cue lit, the constrained list, no lock.
+ */
+export const OlderHostEmptyIdentity: Story = {
+	render: () => {
+		installBridge();
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="coder · lopdev"
+					identity={identity({
+						activeAgent: "coder",
+						activeTeam: "lopdev",
+						effectiveIdentity: {},
+					})}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
 /** The half a pair needs: today's plain string, with nothing this branch adds. */
 export const Before: Story = {
 	render: () => {
