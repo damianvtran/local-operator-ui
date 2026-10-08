@@ -120,7 +120,7 @@ const bundle = await build({
 		contents: `
 			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor } from "./src/renderer/src/shared/store/canonical-sessions-store";
-			export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { EMPTY_TRANSCRIPT, appendPendingUser, applyEvent, applyHistoryPage, sealDisjointBlock } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
 			export { __resetPendingSends } from "./src/renderer/src/shared/hooks/use-canonical-session";
 		`,
@@ -173,6 +173,11 @@ const {
 	useCanonicalSessionsStore,
 	__resetPaintCache,
 	__resetPendingSends,
+	EMPTY_TRANSCRIPT,
+	appendPendingUser,
+	applyEvent,
+	applyHistoryPage,
+	sealDisjointBlock,
 } = hook;
 
 const SESSION_A = "aaaaaaaaaaaa";
@@ -1334,6 +1339,8 @@ async function driveCachedReopen({ away }) {
 		transcript,
 		painted: ids(handle.transcript),
 		reads: historyReads() - readsAfterVisit1,
+		hasMore: handle.transcript.hasMore,
+		handle: () => handle,
 	};
 }
 
@@ -1364,6 +1371,208 @@ test("a reopen whose journal-tail page already connects to the cached block stil
 		"the page's overlap with the cached block is the whole story",
 	);
 	assert.equal(reads, 0, "a connecting page is not re-read on the owner");
+});
+
+/*
+ * #876, THE BOUNDED WALK. The walk that closes the seam is bounded
+ * (`RECONCILE_WALK_MAX_ROWS` rows, `RECONCILE_WALK_MAX_REQUESTS` requests), so an
+ * absence wider than the bound ends it short of the cached block. What the pane
+ * paints then is the invariant under test: the durable rows on screen are ONE
+ * contiguous journal range ending at the tail. A hole is never painted - the
+ * block behind it is sealed off and the cursor points at the fetched chain's
+ * edge, so "load earlier" pages back through the hole instead of resuming from
+ * before a block it can no longer reach.
+ *
+ * Measured on the previous head (journal 400, snapshot page 100): away <= 480
+ * lost nothing; away=600 lost 100 rows and away=900 lost 400, silently.
+ */
+const AWAY_TABLE = [0, 99, 100, 101, 300, 480, 600, 900];
+/** Rows the walk can fetch before its bound ends it (`RECONCILE_WALK_MAX_ROWS`). */
+const WALK_ROWS = 500;
+
+/** One contiguous journal suffix, in order, no duplicates, ending at the tail. */
+function assertContiguousSuffix(painted, journal, label) {
+	assert.ok(painted.length > 0, `${label}: something is painted`);
+	assert.equal(
+		new Set(painted).size,
+		painted.length,
+		`${label}: no duplicates`,
+	);
+	const first = journal.indexOf(painted[0]);
+	assert.ok(first >= 0, `${label}: the first painted row is a journal row`);
+	assert.deepEqual(
+		painted,
+		journal.slice(first),
+		`${label}: the painted rows are one journal range ending at the tail (no hole)`,
+	);
+}
+
+for (const away of AWAY_TABLE) {
+	test(`a cached reopen after ${away} rows away paints one contiguous range, never a hole`, async () => {
+		const { transcript, painted, hasMore } = await driveCachedReopen({ away });
+		const journal = transcript.rows.map(recordIdOf);
+		assertContiguousSuffix(painted, journal, `away=${away}`);
+		if (away <= 480) {
+			// The cached block is the first visit's page (`REOPEN_PAGE` rows).
+			assert.deepEqual(
+				painted,
+				journal.slice(REOPEN_TOTAL - REOPEN_PAGE),
+				"the walk reached the cached block: every held row and every row away",
+			);
+		}
+		if (away > WALK_ROWS) {
+			assert.equal(
+				hasMore,
+				true,
+				"a walk that ended short of the block leaves 'more history above'",
+			);
+			assert.ok(
+				painted.length < journal.length,
+				"and the block behind the hole is not painted",
+			);
+		}
+	});
+}
+
+for (const away of [600, 900]) {
+	test(`what a bounded walk sealed is reachable: load earlier after ${away} rows away pages the whole journal back`, async () => {
+		const { transcript, handle } = await driveCachedReopen({ away });
+		const journal = transcript.rows.map(recordIdOf);
+		let pages = 0;
+		while (await handle().loadOlder()) {
+			await pump();
+			assert.ok(++pages < 40, "paging terminates");
+			assertContiguousSuffix(
+				ids(handle().transcript),
+				journal,
+				`away=${away} after page ${pages}`,
+			);
+		}
+		await pump();
+		assert.ok(pages > 0, "the sealed hole is pageable");
+		assert.deepEqual(
+			ids(handle().transcript),
+			journal,
+			"the full journal is present, in order, with nothing lost",
+		);
+		assert.equal(
+			handle().transcript.hasMore,
+			false,
+			"and history is exhausted",
+		);
+	});
+}
+
+/*
+ * `sealDisjointBlock`, pure. The row kinds that must SURVIVE a seal are the ones
+ * with no journal copy for paging to re-read.
+ */
+test("sealDisjointBlock drops a disjoint durable block and keeps every live row", () => {
+	const entries = (from, to) => {
+		const out = [];
+		for (let i = from; i <= to; i++)
+			out.push(
+				i % 3 === 0
+					? toolRow(`r${i}`, 100 + i, `call-${i}`, "read", `output ${i}`)
+					: assistantRow(`r${i}`, 100 + i, `Assistant row ${i}`),
+			);
+		return out;
+	};
+	// A held block (r10..r19), then a fetched tail (r50..r59) with a hole between.
+	let state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: entries(10, 19),
+		has_more: true,
+		cursor_missing: false,
+	});
+	state = applyHistoryPage(state, {
+		entries: entries(50, 59),
+		has_more: true,
+		cursor_missing: false,
+	});
+	// Live rows that sit among the held block: an echo, a streaming answer and
+	// a running call. None has a journal copy.
+	state = appendPendingUser(
+		state,
+		"echo-1",
+		"typed while away",
+		[],
+		100_000 + 12_000,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_start",
+			message: { id: "live-assistant", role: "assistant", content: [] },
+		},
+		100_000 + 13_000,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "call-live",
+			tool_name: "read",
+			args: {},
+		},
+		100_000 + 14_000,
+	);
+	const before = ids(state);
+	for (const id of ["echo-1", "live-assistant", "tool:call-live"])
+		assert.ok(before.includes(id), `${id} is painted before the seal`);
+
+	const edge = { id: "r50", ts: (100 + 50) * 1000 };
+	const sealed = sealDisjointBlock(state, edge);
+	const after = ids(sealed);
+
+	for (let i = 10; i <= 19; i++)
+		assert.ok(
+			!after.includes(i % 3 === 0 ? `tool:call-${i}` : `r${i}`),
+			`durable r${i} is dropped`,
+		);
+	for (const id of ["echo-1", "live-assistant", "tool:call-live"])
+		assert.ok(after.includes(id), `${id} survives the seal`);
+	for (let i = 50; i <= 59; i++)
+		assert.ok(
+			after.includes(i % 3 === 0 ? `tool:call-${i}` : `r${i}`),
+			`fetched r${i} stays`,
+		);
+	assert.equal(sealed.oldestId, "r50", "the cursor is the fetched edge");
+	assert.equal(sealed.oldestTs, edge.ts);
+	assert.equal(sealed.hasMore, true, "and history above it is offered");
+	assert.equal(
+		sealed.index.size,
+		sealed.records.length,
+		"the index is rebuilt over the surviving rows",
+	);
+	for (const [id, position] of sealed.index)
+		assert.equal(sealed.records[position].id, id, "and points at its row");
+});
+
+test("sealDisjointBlock is a no-op, by reference, when nothing is disjoint", () => {
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			assistantRow("r1", 101, "one"),
+			assistantRow("r2", 102, "two"),
+			assistantRow("r3", 103, "three"),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.equal(
+		sealDisjointBlock(state, { id: "r1", ts: 101_000 }),
+		state,
+		"the edge is the oldest row: nothing is older",
+	);
+	assert.equal(
+		sealDisjointBlock(EMPTY_TRANSCRIPT, { id: "r1", ts: 101_000 }),
+		EMPTY_TRANSCRIPT,
+		"an empty transcript has nothing to seal",
+	);
+	assert.equal(
+		sealDisjointBlock(state, { id: "r9", ts: 0 }),
+		state,
+		"an edge with no instant orders nothing and seals nothing",
+	);
 });
 
 test("replayed events paint even when the snapshot lands in a later batch", async () => {
