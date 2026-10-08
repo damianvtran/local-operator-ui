@@ -259,7 +259,14 @@ export const RunDetailsTrigger = ({
 			ref={triggerRef}
 			id="run"
 			label={label}
-			ariaLabel={label}
+			/*
+			 * The accessible name drops the Open/Close verb (UX round 1, U2): the item
+			 * exposes `aria-pressed`, and a name that flips to "Close run details" beside
+			 * a pressed state announces the one fact twice. The tooltip keeps the
+			 * model's sentence, which `run-detail-model.test.mjs` pins verbatim; the
+			 * clauses after the seam (counts, failures) are the name's real content.
+			 */
+			ariaLabel={label.replace(/^(Open|Close) run details/, "Run details")}
 			pressed={runPanelDrawn}
 			/*
 			 * The pressed GROUND, the hover ground and the lit bar are the rail item's

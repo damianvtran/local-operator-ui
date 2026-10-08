@@ -128,7 +128,11 @@ const LANE_GRADIENT_ALL = new RegExp(LANE_GRADIENT.source, "g");
 /* The panel rail host's own ground (#872), in the shell. */
 const RAIL_HOST_GROUND =
 	/data-panel-rail-host=""\s*className="[^"]*\b(bg-[\w-]+)\b[^"]*"/;
-const PANE_ROOT = /className=\{cn\("flex h-full flex-col (bg-[\w-]+)"\)\}/g;
+/* Trailing utilities are allowed after the ground: the browser pane's root carries its
+ * `@container/bpane` there (#872, D5), and the ground is still the token that follows
+ * `flex h-full flex-col`. */
+const PANE_ROOT =
+	/className=\{cn\("flex h-full flex-col (bg-[\w-]+)(?: [^"]*)?"\)\}/g;
 const PANE_BAR =
 	/"flex (h-\d+) shrink-0 items-center justify-between gap-2 ([^"]*?)px-2"/g;
 const SLOT_BOX =

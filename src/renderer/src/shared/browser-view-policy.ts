@@ -28,6 +28,9 @@ import { useCallback, useEffect, useId, useSyncExternalStore } from "react";
  * - EVERY dialog registers itself, in `BaseDialog` — one funnel, so a dialog
  *   added next year does not silently become invisible over the browser.
  * - The browser feature's own menus and pickers register when they open.
+ * - The panel rail's tooltips (`"panel-rail-tooltip"`, #872) register for as long
+ *   as one is open. They open LEFT, into the pane, so with the Browser pane open
+ *   they land inside the view's rect, unlike a tooltip in the chrome band.
  *
  * TWO THINGS DELIBERATELY DO NOT REGISTER, and both would be visible as bugs if
  * they did:

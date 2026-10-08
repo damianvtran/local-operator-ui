@@ -51,6 +51,8 @@ const bundle = await build({
 		contents: `
 			export { PanelRail } from "./${NAV}/panel-rail";
 			export { PanelRailFrame } from "./${NAV}/panel-rail-frame";
+			export { suppressedOverlayIds } from "./src/renderer/src/shared/browser-view-policy";
+			export { ChatLayout } from "./src/renderer/src/shared/components/common/chat-layout";
 			export { InPanelRailHost, PanelRailHostContext } from "./${NAV}/panel-rail-host";
 			export { browserRailLabels, canvasRailLabels, consoleRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
 			export { useUiPreferencesStore, resolveDrawnRightSlotPane } from "./src/renderer/src/shared/store/ui-preferences-store";
@@ -93,6 +95,8 @@ const bundlePath = join(CACHE, "rail.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
 const {
 	PanelRail,
+	suppressedOverlayIds,
+	ChatLayout,
 	InPanelRailHost,
 	PanelRailHostContext,
 	browserRailLabels,
@@ -468,52 +472,49 @@ test("a panel the route cannot draw is ABSENT, not disabled", async () => {
 	});
 });
 
-test("the item names are the header's, verbatim, with the new close states", async () => {
+test("the tooltips are the header's verbatim; the accessible names are stable nouns (U2)", async () => {
 	/* The model first: it is the one derivation the tooltip and the name share. */
 	assert.deepEqual(browserRailLabels(false, 0), {
 		tooltip: "Open browser",
-		aria: "Open browser",
+		aria: "Browser",
 	});
 	assert.deepEqual(browserRailLabels(false, 1), {
 		tooltip: "Open browser — 1 approval waiting",
-		aria: "Open browser, 1 waiting",
+		aria: "Browser, 1 waiting",
 	});
 	assert.deepEqual(browserRailLabels(false, 3), {
 		tooltip: "Open browser — 3 approvals waiting",
-		aria: "Open browser, 3 waiting",
+		aria: "Browser, 3 waiting",
 	});
 	assert.deepEqual(browserRailLabels(true, 0), {
 		tooltip: "Close browser",
-		aria: "Close browser",
+		aria: "Browser",
 	});
 	assert.deepEqual(browserRailLabels(true, 12), {
 		tooltip: "Close browser — 12 approvals waiting",
-		aria: "Close browser, 12 waiting",
+		aria: "Browser, 12 waiting",
 	});
 	assert.deepEqual(consoleRailLabels(false, 0), {
 		tooltip: "Open console",
-		aria: "Open console",
+		aria: "Console",
 	});
 	assert.deepEqual(consoleRailLabels(false, 2), {
 		tooltip: "Open console — 2 finished since you looked",
-		aria: "Open console, 2 finished since you looked",
+		aria: "Console, 2 finished since you looked",
 	});
-	assert.equal(consoleRailLabels(true, 0).aria, "Close console");
+	assert.equal(consoleRailLabels(true, 0).aria, "Console");
 	assert.equal(
 		consoleRailLabels(true, 2).tooltip,
 		"Close console — 2 finished since you looked",
 	);
-	assert.equal(canvasRailLabels(false, 0, "⌘⇧C").aria, "Open canvas (⌘⇧C)");
+	assert.equal(canvasRailLabels(false, 0, "⌘⇧C").aria, "Canvas (⌘⇧C)");
 	assert.equal(
 		canvasRailLabels(false, 1, "⌘⇧C").tooltip,
 		"Open canvas (⌘⇧C) — 1 file",
 	);
-	assert.equal(
-		canvasRailLabels(false, 4, "⌘⇧C").aria,
-		"Open canvas (⌘⇧C), 4 files",
-	);
-	assert.equal(canvasRailLabels(true, 0, "⌘⇧C").aria, "Close canvas (⌘⇧C)");
-	/* And the DOM: the accessible name flips with the drawn pane, in both directions. */
+	assert.equal(canvasRailLabels(false, 4, "⌘⇧C").aria, "Canvas (⌘⇧C), 4 files");
+	assert.equal(canvasRailLabels(true, 0, "⌘⇧C").aria, "Canvas (⌘⇧C)");
+	/* And the DOM: the NAME is stable and `aria-pressed` alone carries open/closed (U2). */
 	await mount(async (api) => {
 		reset(api);
 		await api.render(
@@ -521,31 +522,36 @@ test("the item names are the header's, verbatim, with the new close states", asy
 		);
 		assert.equal(
 			api.item("browser").getAttribute("aria-label"),
-			"Open browser, 2 waiting",
+			"Browser, 2 waiting",
 		);
 		assert.equal(
 			api.item("console").getAttribute("aria-label"),
-			"Open console, 1 finished since you looked",
+			"Console, 1 finished since you looked",
 		);
 		assert.match(
 			api.item("canvas").getAttribute("aria-label"),
-			/^Open canvas \(.+\), 3 files$/,
+			/^Canvas \(.+\), 3 files$/,
 		);
 		api.store({ isBrowserPaneOpen: true });
 		assert.equal(
 			api.item("browser").getAttribute("aria-label"),
-			"Close browser, 2 waiting",
+			"Browser, 2 waiting",
+		);
+		assert.equal(
+			api.item("browser").getAttribute("aria-pressed"),
+			"true",
+			"open is `aria-pressed`'s to say, once, and the name no longer repeats it",
 		);
 		/* One claim at a time, as `claimRightSlot` writes it. */
 		api.store({ isBrowserPaneOpen: false, isConsolePaneOpen: true });
 		assert.equal(
 			api.item("console").getAttribute("aria-label"),
-			"Close console, 1 finished since you looked",
+			"Console, 1 finished since you looked",
 		);
 		api.store({ isConsolePaneOpen: false, isCanvasOpen: true });
 		assert.match(
 			api.item("canvas").getAttribute("aria-label"),
-			/^Close canvas \(.+\), 3 files$/,
+			/^Canvas \(.+\), 3 files$/,
 		);
 	});
 });
@@ -833,5 +839,114 @@ test("only the shell host sizes the rail, from the route's `mounted` fact", () =
 	assert.ok(
 		column > 0 && host > column,
 		"the host follows the measured column",
+	);
+});
+
+/* ----------------------------------------------- the host's width, BEHAVIOURALLY */
+
+/*
+ * R1 (agent review round 1): the host's width gate on `mounted` was pinned only by a
+ * source regex, which a constant 44 still satisfies - three of four suites stayed
+ * green with an empty 44px strip on settings and agents. This drives the REAL shell
+ * (`ChatLayout`) and reads the host element's own width after each fact the chat
+ * surface publishes, so the gate fails by BEHAVIOUR. jsdom has no layout engine, so
+ * the number read is the width the shell COMMANDS (`style.width`), which is the
+ * quantity the gate decides; the painted 44 is the frames' claim.
+ */
+async function withShell(run, wrap = (node) => node) {
+	await mount(async (api) => {
+		reset(api, { mounted: false, runDetails: false, session: false });
+		const shell = (content) =>
+			wrap(
+				React.createElement(ChatLayout, {
+					sidebar: React.createElement("div", { "data-sidebar-stub": "" }),
+					content,
+				}),
+			);
+		await run(api, shell);
+	});
+}
+const hostWidth = (api) => api.$("[data-panel-rail-host]")?.style.width ?? null;
+
+test("the host is 0 with no chat surface, 44 with one, and follows the fact both ways", async () => {
+	await withShell(async (api, shell) => {
+		await api.render(shell(React.createElement("main", null, "settings")));
+		assert.equal(hostWidth(api), "0px", "no chat surface mounted: no strip");
+		api.store({ rightSlotRoute: DRAWABLE });
+		assert.equal(hostWidth(api), "44px", "a chat surface is mounted: 44");
+		api.store({
+			rightSlotRoute: { mounted: false, runDetails: false, session: false },
+		});
+		assert.equal(
+			hostWidth(api),
+			"0px",
+			"the route left the chat surface: 0 again",
+		);
+		/* The host element persists across the change: the portal target never goes away. */
+		assert.ok(api.$("[data-panel-rail-host]"));
+	});
+});
+
+test("the rail is drawn in the host while the chat surface is mounted, and the strip closes when it is not", async () => {
+	await withShell(async (api, shell) => {
+		const chat = React.createElement(InPanelRailHost, null, rail());
+		api.store({ rightSlotRoute: DRAWABLE });
+		await api.render(shell(chat));
+		assert.ok(
+			api.$("[data-panel-rail-host] [data-panel-rail]"),
+			"the portaled rail lands in the shell's host",
+		);
+		assert.equal(hostWidth(api), "44px");
+		await api.render(shell(React.createElement("main", null, "agents")));
+		api.store({
+			rightSlotRoute: { mounted: false, runDetails: false, session: false },
+		});
+		assert.equal(
+			api.$("[data-panel-rail]"),
+			null,
+			"no rail on a route with no chat surface",
+		);
+		assert.equal(hostWidth(api), "0px");
+	});
+});
+
+test("the host stays 44 across React StrictMode's double-mounted effects", async () => {
+	await withShell(
+		async (api, shell) => {
+			api.store({ rightSlotRoute: DRAWABLE });
+			await api.render(
+				shell(React.createElement(InPanelRailHost, null, rail())),
+			);
+			assert.equal(hostWidth(api), "44px");
+			assert.ok(api.$("[data-panel-rail-host] [data-panel-rail]"));
+		},
+		(node) => React.createElement(React.StrictMode, null, node),
+	);
+});
+
+/* ------------------------------------- D1: a rail tooltip hides the native view */
+
+test("a rail tooltip suppresses the native browser view for exactly as long as it is open", async () => {
+	await mount(async (api) => {
+		reset(api);
+		api.store({ isBrowserPaneOpen: true });
+		await api.render(rail());
+		const ours = () =>
+			suppressedOverlayIds().filter((id) =>
+				id.startsWith("panel-rail-tooltip"),
+			);
+		assert.deepEqual(ours(), [], "nothing is suppressed at rest");
+		/* Keyboard focus is the path Radix opens a tooltip on without a pointer. */
+		act(() => api.item("console").focus());
+		await act(async () => {});
+		assert.equal(ours().length, 1, "an open tooltip registers one suppression");
+		act(() => api.item("console").blur());
+		await act(async () => {});
+		assert.deepEqual(ours(), [], "closing it releases the suppression");
+	});
+	assert.deepEqual(
+		suppressedOverlayIds().filter((id) => id.startsWith("panel-rail-tooltip")),
+		[],
+		"and unmounting leaves nothing behind",
 	);
 });

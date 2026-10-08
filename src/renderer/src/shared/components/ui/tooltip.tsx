@@ -234,6 +234,17 @@ export type TooltipProps = {
 	 * transition, in the development build Storybook runs.
 	 */
 	suppressed?: boolean;
+	/**
+	 * Told every time the panel opens or closes, for a caller whose own state must
+	 * follow it (the panel rail suppresses the native browser view for exactly the
+	 * span a tooltip is painted over it - #872, design D1).
+	 *
+	 * It reports what the USER'S gestures did (hover, focus, Escape, leave), not a
+	 * `suppressed` override, and it never changes whether the root is controlled:
+	 * it is chained onto whichever path is already in force, so adding it to a call
+	 * site cannot trip Radix's uncontrolled-to-controlled warning.
+	 */
+	onOpenChange?: (open: boolean) => void;
 	/** Applied to the tooltip panel, not to the trigger. */
 	className?: string;
 	/* No `defaultOpen`: it was added here to photograph tooltip strings, then
@@ -254,6 +265,7 @@ export const Tooltip = ({
 	collisionPadding,
 	disabled = false,
 	suppressed,
+	onOpenChange,
 	className,
 }: TooltipProps) => {
 	const hasProvider = useContext(TooltipProviderPresence);
@@ -286,7 +298,14 @@ export const Tooltip = ({
 			 * hover/focus opens still go through `onOpenChange`.
 			 */
 			open={controlling ? (suppressed ? false : open) : undefined}
-			onOpenChange={controlling ? setOpen : undefined}
+			onOpenChange={
+				controlling || onOpenChange
+					? (next) => {
+							if (controlling) setOpen(next);
+							onOpenChange?.(next);
+						}
+					: undefined
+			}
 			delayDuration={delayDuration}
 			disableHoverableContent={disableHoverableContent}
 		>
