@@ -600,15 +600,17 @@ function answeredLateAsk(): PendingAsk {
 }
 
 /**
- * THE OTHER DOOR'S FREE-FORM ANSWER, DRAWN (design round 1, D2's addendum).
+ * A FREE-FORM ANSWER, DRAWN (design round 1, D2's addendum).
  *
- * The composer's Enter is routed to the ask (design §5.0), and `sendToAsk` writes the
- * RAW TYPED TEXT into the first unanswered question's draft - so a value the option
- * list never offered reaches this card as a plain string. Before this round the card
- * drew NOTHING for it: every radio empty beside a question that was already answered,
- * which made an answer that did not come from the list indistinguishable from no
- * answer at all. The marked row under the two options is the fix, and this frame is
- * what it looks like.
+ * A draft value that is none of the question's labels reaches the card as a plain
+ * string, and the card has to DRAW it: every radio empty beside a question that is
+ * already answered made an answer that did not come from the list indistinguishable
+ * from no answer at all. The marked row under the two options is that fix, and this
+ * frame is what it looks like.
+ *
+ * Where the value COMES from changed on 2026-10-07: it used to be written by the main
+ * composer's Enter (design §5.0's R7 routing, retired), and it is now typed into the
+ * card's own `Other` field. The readout row is unchanged either way.
  */
 export const OtherAnswer: Story = {
 	args: {
@@ -616,8 +618,8 @@ export const OtherAnswer: Story = {
 		scope: "session",
 		onClose: noop,
 		nowMs: NOW,
-		/* The state the composer's door produces: `prod` is not a label of `ONE`'s
-		 * staging/production question, so it arrives as the free-form value. */
+		/* `prod` is not a label of `ONE`'s staging/production question, so it
+		 * arrives as the free-form value. */
 		drafts: { "a-7f3c": { target: ["prod"] } },
 		onDraftChange: noop,
 		onAnswer: noop,

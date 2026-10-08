@@ -1863,15 +1863,16 @@ const GRAPHICS = [
 		 * to `surface` - which is exactly why it is asserted against `surface` and not
 		 * against the fill it accompanies.
 		 *
-		 * ROUND 2 (R8): the bar no longer stands beside the control on the rail's
-		 * ground. Design round 1 (D2/D7) moved it onto the rail's leading hairline
-		 * column so it clears the focus ring, which puts its outer edge against the
-		 * PANE's ground: `elevated` (the browser, console, run and asks slots) or
-		 * `canvas` (when no pane is open, the conversation column). Those two are
-		 * listed so a palette whose `accent` sits close to either fails here and not
-		 * on screen. The hairline itself is a decorative rule that owes
-		 * perceptibility rather than a contrast floor (section 2), and the bar
-		 * covers it, so it is not a ground for this row.
+		 * ROUND 2 (R8), restated when the rail's hairline came out: the bar no
+		 * longer stands beside the control on the rail's ground. Design round 1
+		 * (D2/D7) moved it to the rail's leading edge so it clears the focus
+		 * ring, which puts its outer edge against the PANE's ground: `elevated`
+		 * (the browser, console, run and asks slots) or `canvas` (when no pane is
+		 * open, the conversation column). Those two are listed so a palette whose
+		 * `accent` sits close to either fails here and not on screen. There is no
+		 * hairline left between the rail and the pane - the edge is the tone
+		 * step, and `scripts/pane-slot-ground.test.mjs` pins the rail root's
+		 * no-rule - so the bar's own 2px column is the whole mark at that edge.
 		 */
 		name: "panel rail lit glyph and bar",
 		on: ["rowSelected", "rowHover", "surface", "elevated", "canvas"],
