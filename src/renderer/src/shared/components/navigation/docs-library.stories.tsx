@@ -658,6 +658,28 @@ const ConversationColumn: FC<{
 };
 
 /**
+ * A route every right-slot pane can draw on: the three facts the app's own
+ * `chat-content` publishes on a conversation route. This shell mounts its pane
+ * directly rather than through `chat-content`, the app's only publisher, so it
+ * states the route it simulates - the same reason `shell.stories.tsx`'s frame
+ * does, and without it the lane's stop would fall back to 0. Both objects are
+ * inline rather than the store's constants because the before half of an
+ * evidence pair swaps `origin/main`'s store module under these stories; an
+ * import the old module lacks would fail that bundle (see
+ * `docs/evidence/shell-app-shell/slot-release-before/README.md`).
+ */
+const DRAWABLE_ROUTE = {
+	mounted: true,
+	runDetails: true,
+	session: true,
+} as const;
+const EMPTY_ROUTE = {
+	mounted: false,
+	runDetails: false,
+	session: false,
+} as const;
+
+/**
  * The app shell with the REAL sidebar, wrapping a conversation column and an
  * optional right pane - the `docs-hero` frame, parameterized.
  */
@@ -691,9 +713,13 @@ const AppShell: FC<{
 		useUiPreferencesStore.setState({
 			isRunPanelOpen: rightPane === "run",
 			rightSlotWidth: runPanelWidth,
+			rightSlotRoute: DRAWABLE_ROUTE,
 		});
 		return () => {
-			useUiPreferencesStore.setState({ isRunPanelOpen: false });
+			useUiPreferencesStore.setState({
+				isRunPanelOpen: false,
+				rightSlotRoute: EMPTY_ROUTE,
+			});
 		};
 	}, [rightPane, runPanelWidth]);
 	const slotWidth = useUiPreferencesStore((state) =>
@@ -1047,11 +1073,13 @@ const SubagentsScene = () => {
 		useUiPreferencesStore.setState({
 			isRunPanelOpen: true,
 			rightSlotWidth: 480,
+			rightSlotRoute: DRAWABLE_ROUTE,
 		});
 		return () => {
 			useUiPreferencesStore.setState({
 				isRunPanelOpen: false,
 				rightSlotWidth: 0,
+				rightSlotRoute: EMPTY_ROUTE,
 			});
 		};
 	}, []);
