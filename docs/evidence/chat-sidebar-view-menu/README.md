@@ -90,18 +90,45 @@ their rows below. The two `audit-order-*` plays gained the repository's
 presses, and the first re-shoot attempt had the rig refuse the run because the
 busy row was still on screen when its `expectGone` was read.
 
+TWO RULES THIS PASS LEARNT THE HARD WAY, both named by agent review round 1:
+
+- **A `-before` arm is never re-shot** (A2). These are historical captures and
+  are restored from the base (`15a7a4ed522`) when a sweep picks up their story.
+  This pass overwrote `section-gap-before/`'s six frames with their
+  `section-gap/` twins byte-for-byte and the restore is what makes the
+  16.0->8.0 readings below true again - the sweep's own command takes a
+  `--dirs` list, and the arm's story name is the only thing that keeps it out.
+- **A sweep re-shoots both BRAND HUES, and says so** (A4). The 2026-10-08 pass
+  re-took `localOperatorDark` and `localOperatorLight` for the states whose
+  drawing changed; the ten supplementary themes still carry the 2026-09-25
+  pass (except the two re-shot in round 1, below), and their drawn list order
+  predates the 2026-10-08 arrangement.
+
+  THE 2026-10-08 ROUND-1 RE-SHOOT (agent review A2/B1, UX C1). One pass, at
+  `e6956b51d`, re-took the seven panel states and the basis pair in both BRAND
+  hues (14 frames) plus `popover-basis-created` in `tokyoNight` and `radient` (2
+  more): B1's defect was that the dark frame had come back byte-identical to
+  `popover-basis-last-active`'s - the shutter fired before the story's `Created`
+  press landed - and those two non-brand hues carried the same wrongness. The
+  fix is in the story rather than the rig: `PopoverBasisCreated`'s play now takes
+  the same `capturePending` latch the audit plays use, so the shutter cannot fire
+  mid-press. C1's Time basis subtext moved every panel state's content height
+  (598 -> 621); the state rows above carry the new readings, and the re-shoot ran
+  twice - once while the remediation was landing and once at the amended head
+  this set ships - because a frame has to be a picture of the tree it ships in.
+
 ## What each frame is
 
 | story | what it is |
 | --- | --- |
 | `popover-open` | the panel on a fresh view: four labelled groups, one check per single-choice group, seven section rows with the rail. Re-shot by this pass (the four-group panel) and by round 1 (the `Created` row's action-less `Calendar` glyph, D3). The three-group panel it replaces is this set's previous revision in git. |
-| `time-order-mixed` | the ORDER pair's AFTER half (2026-10-08): a fourteen-row mixed catalogue - a Running section whose last-user/created/activity clocks disagree (`mix-run-stopped` waits on the reader, `mix-run-message` was messaged ten minutes ago, `mix-run-heartbeat` only has heartbeats) and a This-week section of idle, stopped, scheduled and remote rows - drawn at the 50-row rung so every row shows. The labels read `2h 12h 1d 4d 5d 6d` down This week and the zero-stamp remote row prints no label at all. |
+| `time-order-mixed` | the ORDER pair's AFTER half (2026-10-08): a fourteen-row mixed catalogue - a Running section whose last-user/created/activity clocks disagree (`mix-run-stopped` waits on the reader, `mix-run-message` was messaged ten minutes ago, `mix-run-heartbeat` only has heartbeats) and a This-week section of idle, stopped, scheduled and remote rows - drawn at the 50-row rung so every row shows. Read off the frame (round 1, A3): TODAY `1h 2h 3h 12h`, THIS WEEK `1d 4d 5d 6d`, OLDER `5w 7w` with the zero-stamp remote row unlabelled at the end. |
 | `time-order-mixed-before` | the same story and the same fixtures under unmodified `origin/main` (`15a7a4ed522`), captured in a detached worktree with this branch's story file staged in and its `src/` left alone: This week reads `1d 6d 4d 5d` (the array's arrival order) under its own activity labels, the approval row is buried third in Running, and the zero-stamp remote prints `56y`. The pair is the operator's report in one look. |
 | `popover-basis-last-active` | the basis fixture below under the DEFAULT basis: `Stored view: section/active/active-first`, `basis [active=true created=false]`. |
 | `popover-basis-created` | the same fixture with `Created` pressed: the check moves, the readout says `section/created/active-first`, and the sections, their ORDER and the labels below all re-read. Since 2026-10-08 the basis orders each section by its own clock (`chat-sidebar-view.ts`'s `pageOrder`); the story's play asserts that order, and it replaced the assertion of the opposite "never a re-sort" claim the same day. |
 | `reorder-edges` | the rail after D1 and round 1's m1/U1: Pinned and both entity rows draw NO pair; Running's pair is disabled on BOTH sides (its up-neighbour is Pinned, and an empty section's own press draws nothing either); Today's up is disabled (its shown neighbour, the empty Running, draws nothing) while `today:down` is live; Older's down is disabled. The legal press still moves the section in the panel and the column behind it. |
-| `popover-open-short` | D2's own capture: the same panel in an 800x600 window, where the fourth group pushed it past the floor, plus round 1's D1 inset: the cap is `calc(var(--radix-popover-content-available-height) - 16px)`, so the panel's own bottom edge - and its rounded corner - stays 16px above the window's instead of the box ending flush. What the fold clips is the NEXT SECTION'S TOP PADDING, not a sliver of its content: round 2 (D4) measured zero content pixels above the fold in six themes (the cut would have to land 8-12px lower to cross the glyphs), and the content-sliver cue is consciously not taken - the inset's visible claim is the panel's own edge, which is what the frame's numbers describe: `box 240x542 · bottom 584/600 · content 598 (scrolls)`. The first shot of this state clipped outright (the panel ran off the bottom; the Teams row was unreachable), and the earlier wording of this row promised a content sliver the pixels do not show. |
-| `popover-open-narrow` | the same state in the shape the APP can reach with a short window (round 1, Q-2): the popover does not exist below ~1024px - the nav rail collapses and the trigger is not drawn - so a docked width with a short height (1100x600) is the honest worst case. Same inset, same numbers (`box 240x542 · bottom 584/600`). |
+| `popover-open-short` | D2's own capture: the same panel in an 800x600 window, where the fourth group pushed it past the floor, plus round 1's D1 inset: the cap is `calc(var(--radix-popover-content-available-height) - 16px)`, so the panel's own bottom edge - and its rounded corner - stays 16px above the window's instead of the box ending flush. THE ROUND-1 SUBTEXT MOVED THE CUT (C1, 2026-10-08): the `Dates and ordering follow this clock.` line adds 23px of content, so this window now hides 79px (`content 621` against `box 240x542`, was 598) and the fold crosses the `Older` ROW - the frames draw its label with the row clipped below - where round 2 (D4) had measured the cut landing in the padding under the row (zero content pixels above the fold, six themes). That D4 reading described the pre-subtext height; the inset's own claim is unchanged, and design round 2 re-reads this state's delta. The first shot of this state clipped outright (the panel ran off the bottom; the Teams row was unreachable), and the earlier wording of this row promised a content sliver the pixels do not show. |
+| `popover-open-narrow` | the same state in the shape the APP can reach with a short window (round 1, Q-2): the popover does not exist below ~1024px - the nav rail collapses and the trigger is not drawn - so a docked width with a short height (1100x600) is the honest worst case. Same inset and the same numbers as the 800x600 state - `box 240x542 · bottom 584/600 · content 621 (scrolls)` - including the round-1 cut into the `Older` row. |
 | `popover-hidden-section`, `popover-reordered-pair`, `page-ladder-*`, `section-cap-*`, `expanded-agent-group`, `band-resting`, `band-*-hover`, `off-route-voice` | the states earlier passes added. The two panel states were re-shot in round 1 (the glyph and the rail rule are in their content); the rest are unchanged by this pass. |
 
 ## The Time basis pair, and what the sections say under each
@@ -132,6 +159,13 @@ The visible label stays terse (`1h`, `5w`); the sr-only tail under the row says
 guessing what the number measures. That is a DOM/AT read rather than a
 photograph; it is pinned in `scripts/chat-list-sections.test.mjs` (both bases)
 and visible in the readout's per-row lines where those stories print them.
+
+**THE RUNNING BAND DRAWS NO STAMP AT ALL, TODAY, BY DESIGN** (design review
+round 1, B3). Its rows are exempt from activity ordering (`runningOrderMs`), so
+a clock printed beside them would be a number the band is not sorted by; the
+honest label is the `last_user_at` seam itself - when core publishes that field,
+a stamp that reads it becomes a candidate for the band, and that is a design
+round of its own, not a silent addition here.
 
 ## The calendar-day rule, and the "2h under THIS WEEK" reading
 
@@ -254,11 +288,13 @@ nothing traded a header gap for a phantom scroll region.
   own. A design round that wants the pair side by side can ask for it.
 - **What sits below `popover-open-short`'s fold.** The panel scrolls, so what a
   tall window would show under the box's edge is not in the frame; the readout's
-  own numbers carry the claim instead (`content 598` against `box 240x542`), and
-  the story's play asserts all seven rows are present. The pre-remedy shot of the
-  same state - the clipped one - is described in the state's row above rather
-  than kept beside it: a frame that photographs a defect the same pass removed
-  belongs to the record of the reading, not the set.
+  own numbers carry the claim instead (`content 621` against `box 240x542` - 23px
+  of it the C1 subtext, and the fold's cut now crossing the `Older` row where
+  before it landed in the padding under it), and the story's play asserts all
+  seven rows are present. The pre-remedy shot of the same state - the clipped
+  one - is described in the state's row above rather than kept beside it: a
+  frame that photographs a defect the same pass removed belongs to the record of
+  the reading, not the set.
   - **THE COMPLETENESS LIMIT OF THE ARRANGEMENT.** The client holds the first
     50/100 rows by CREATION (`sessions.list`'s cursor pages, then `Show more`), so
     the order `time-order-mixed` photographs is exact over HELD rows only: a
