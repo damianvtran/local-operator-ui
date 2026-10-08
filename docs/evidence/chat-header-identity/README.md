@@ -359,3 +359,30 @@ The frames came from three narrowed runs against this worktree's Storybook
 a second pass for `constrained-agent-open`, and the before run's three states.
 Every claim was asserted at shutter time; the manifest's `partialCapture`
 records the runs.
+
+## The runtime's strict rule (issue #861, second slice)
+
+The runtime half (damianvtran/local-operator#2050, merged at `86c7e7aefa0`) is stricter
+than the rule above: while a team is attached, `/agent` is refused for EVERY
+name, the manager's own included, and the session's frontend state carries
+`effective_identity: {speaker, team, role_of_speaker}` (all three keys whenever
+the host knows the field; `{}` or absent is a host that predates it). The header
+reads that field and nothing else to decide: when it is published AND a team
+owns the session, the agent control is CLOSED (the speaker on the chip, a lock
+where the chevron was, a note instead of a list, no roster fetch), and the note
+is the runtime's own refusal sentence. An older host keeps the rule above
+exactly. The way out is `/team clear`: this app's team menu lists teams only and
+ships no detach row, so the sentence names the slash command and promises no
+button.
+
+| frame | what it is |
+| --- | --- |
+| `strict-team-chip`, `strict-team-wide` | The speaker statement at rest, 560 and 1380 bands: `manager` with the closed mark, the team chip beside it, no warning cue. |
+| `strict-team-open`, `strict-team-wide-open` | The press: the closure note, byte-for-byte the runtime's sentence, no field and no rows. |
+| `strict-team-stale-agent` | A leftover `coder` on the frame under a strict host: the chip names the speaker and the cue is dark. |
+| `strict-team-no-speaker-open` | The ladder's last rung: a team no catalogue row names a manager for reads `its manager` on the chip and in the sentence. |
+| `older-host-chip`, `older-host-agent-open` | `effective_identity: {}`: byte-identical to `conflict-chip` / `conflict-agent-open` (md5), the #866 behaviour. |
+| `before-strict/` | The same seven strict states rendered by `origin/main`'s identity modules (declared supplementary set): the constrained list that still offers `manager`, and the stale `coder` with its warning cue. |
+
+
+Round-1 remediation frames (both palettes): `strict-team-focus` (the closed chip with keyboard focus), `strict-team-long-speaker` (a 47-character speaker at 560, truncated with the lock still in its slot), `strict-team-catalogue-loading` (the closed note while `teams.list` has not answered), `strict-team-cold-frame-open` (a `{}` frame with only the durable binding, on a host the app has seen publish the field: still closed; its before is in `before-strict/`) and `strict-team-promoted-while-open` (an open #866 list replaced by the closed note mid-open: the rig asserts focus is on the chip afterwards - the same arm FAILS that assertion with the focus-return effect removed). `strict-team-open`, `strict-team-wide-open` and `strict-team-no-speaker-open` were re-taken for the note's lead line.

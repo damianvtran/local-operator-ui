@@ -75,6 +75,8 @@ const {
 	IDENTITY_MENU_NO_SETTABLE,
 	IDENTITY_MENU_NO_SETTABLE_TYPED,
 	PROFILE_RECENTS_LIMIT,
+	identityAgentClosedCaption,
+	identityAgentClosedTitle,
 	identityAgentConstraint,
 	identityAgentConstraintCaption,
 	identityAgentSettable,
@@ -703,5 +705,74 @@ test("the rule's copy is pinned as the design round's candidate", () => {
 	assert.equal(
 		IDENTITY_AGENT_NOT_SETTABLE_REASON,
 		"Needs a delegating profile here.",
+	);
+});
+
+test("the strict rule closes the seat for EVERY name, and only when the caller says so (issue #861, second slice)", () => {
+	/*
+	 * `teamOwnsSeat` is the runtime's `AgentSlotOwnedByTeam` (core PR #2050):
+	 * refused for every name while a team is attached, the manager's own
+	 * included. Absent or false is an OLDER host and must answer as the
+	 * #866 predicate did - the matrix below holds both halves on the same four
+	 * seats, so a change to either shows up as a cell.
+	 */
+	const seats = [
+		{ name: "manager", delegate: false, loose: true },
+		{ name: "ops-lead", delegate: true, loose: true },
+		{ name: "coder", delegate: false, loose: false },
+		{ name: "ops-lead", delegate: null, loose: false },
+	];
+	for (const seat of seats) {
+		const base = {
+			name: seat.name,
+			manager: "manager",
+			delegate: seat.delegate,
+		};
+		for (const older of [undefined, false]) {
+			assert.equal(
+				identityAgentSettable({ ...base, teamOwnsSeat: older }),
+				seat.loose,
+				`${seat.name}/${seat.delegate} on an older host`,
+			);
+		}
+		assert.equal(
+			identityAgentSettable({ ...base, teamOwnsSeat: true }),
+			false,
+			`${seat.name}/${seat.delegate} under the strict rule`,
+		);
+	}
+});
+
+test("a closure builds a constraint with no catalogue row, and carries the runtime's sentence", () => {
+	const sentence = identityAgentClosedCaption("lopdev", "manager");
+	assert.deepEqual(
+		identityAgentConstraint({
+			teamLabel: "lopdev",
+			manager: null,
+			closure: { speaker: "manager", sentence, title: "T" },
+		}),
+		{
+			manager: "manager",
+			caption: sentence,
+			closed: sentence,
+			closedTitle: "T",
+		},
+	);
+	// No closure and no manager: still nothing to apply (the #866 null).
+	assert.equal(
+		identityAgentConstraint({
+			teamLabel: "No team",
+			manager: null,
+			closure: null,
+		}),
+		null,
+	);
+});
+
+test("the closed note's lead line names the team as the chip does (design D2/D3)", () => {
+	// The label the chip shows, where the sentence under it keeps the slug.
+	assert.equal(
+		identityAgentClosedTitle("Local Operator Dev"),
+		"Agent seat closed by Local Operator Dev",
 	);
 });

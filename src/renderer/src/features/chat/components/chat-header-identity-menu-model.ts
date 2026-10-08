@@ -330,6 +330,14 @@ export function identityMenuFooter(input: {
  * and both the panel's per-row marks and the header's cue come through the
  * functions below so the two surfaces cannot drift.
  *
+ * THE RULE GOT STRICTER (core PR #2050, issue #861's second slice). The
+ * predicate above is what v0.32.13 shipped, and it offers rows the stricter
+ * runtime refuses: `AgentSlotOwnedByTeam` is raised for EVERY name while a team
+ * is attached, the manager's own included. The strict rule is therefore a
+ * branch INSIDE `identityAgentSettable` (`teamOwnsSeat`), gated by the caller on
+ * the host publishing `effective_identity`, so an older runtime that still
+ * accepts the #866 set keeps the #866 behaviour.
+ *
  * WHY THE PREDICATE IS ONE FUNCTION. `settable(name) = name === teamRow.manager
  * || row.delegate === true`, in one place, because two copies of it would
  * eventually disagree in exactly the case the rule exists for (the delegating
@@ -363,7 +371,25 @@ export function identityAgentSettable(input: {
 	name: string;
 	manager: string | null | undefined;
 	delegate: boolean | null | undefined;
+	/**
+	 * The runtime's STRICT rule is in force: the host publishes
+	 * `effective_identity` and a team is attached, so the team owns the agent
+	 * slot and `/agent` is refused for EVERY name - the manager's own included
+	 * (local-operator core PR #2050, `AgentSlotOwnedByTeam`). Optional and
+	 * absent-means-false on purpose: an older host does not publish the field,
+	 * and its runtime still accepts the manager and delegating profiles, so the
+	 * default must keep answering exactly as it did before the field existed.
+	 * See `headerSeatOwnership` for how the flag is derived and why it is gated
+	 * on the field rather than on the team alone.
+	 */
+	teamOwnsSeat?: boolean;
 }): boolean {
+	/*
+	 * THE STRICT GATE SITS HERE, NOT BESIDE THE CALLERS: the panel's per-row
+	 * marks and the chip's cue both call this function, so closing the seat in
+	 * one place closes it in both and they cannot disagree about who may take it.
+	 */
+	if (input.teamOwnsSeat === true) return false;
 	return input.name === input.manager || input.delegate === true;
 }
 
@@ -383,6 +409,16 @@ export type IdentityAgentConstraint = {
 	manager: string;
 	/** The rule, in the register the panel's own sentences use. */
 	caption: string;
+	/**
+	 * Present ONLY under the runtime's strict rule (see
+	 * `identityAgentSettable`'s `teamOwnsSeat`): the sentence a CLOSED control
+	 * states. Optional rather than `null`-valued so the older-host constraint is
+	 * the exact two-field object #866 shipped. When present, `manager` is the
+	 * SPEAKER and no row can take the seat; `caption` carries the same sentence.
+	 */
+	closed?: string;
+	/** The closed note's lead line (`identityAgentClosedTitle`); present with `closed`. */
+	closedTitle?: string;
 };
 
 /**
@@ -399,6 +435,61 @@ export type IdentityAgentConstraint = {
  */
 export function identityAgentConstraintCaption(teamLabel: string): string {
 	return `${teamLabel} is led by its manager; only the manager and profiles that can delegate may take this seat.`;
+}
+
+/**
+ * The sentence a CLOSED agent control states, for the runtime's strict rule
+ * (local-operator core PR #2050, `AgentSlotOwnedByTeam`).
+ *
+ * WHERE THE WORDS COME FROM. It is the runtime's own attach refusal,
+ * `Session._team_agent_slot_refusal("attach")`:
+ *
+ *   team <team> owns this session: <manager> is the speaker, so /agent is
+ *   closed. Run /team clear to detach the team first.
+ *
+ * byte for byte, with `<team>` the team's SLUG (what the runtime prints, and
+ * what the composer's own `/agent` refusal will print if one is typed) rather
+ * than the catalogue label the chip shows: the closed control and the notice a
+ * typed `/agent` returns are then the same words, and every word of this
+ * sentence has a source. The label is one hover away on the team chip. When the
+ * runtime cannot name a manager it says `its manager is the speaker`;
+ * `speaker: null` is that case, so a blank or team-named speaker reads `its
+ * manager` rather than "team lopdev owns this session: lopdev is the speaker".
+ *
+ * THE WAY OUT IS `/team clear`, NOT A CONTROL. This app ships no detach row
+ * in its team menu (the menu lists teams only, and its `No team` label is an
+ * assign affordance rather than a verb), so the only exit that exists is the
+ * slash command the runtime itself names, typed in the composer. The
+ * sentence does not promise a button.
+ *
+ * DELIBERATELY ABSENT: any sentence about the profile a team's attach
+ * silently REPLACES (`/team X` over an earlier `/agent`). Core WILL add a
+ * short notice for it (a clause naming the dropped profile and the new
+ * speaker, only when one was dropped), but its wording is not final, and a
+ * line written here now would be a paraphrase of words that do not exist yet.
+ * Add it only when core's wording lands, quoting core's words, never ours.
+ */
+export function identityAgentClosedCaption(
+	team: string,
+	speaker: string | null,
+): string {
+	return `team ${team} owns this session: ${speaker ?? "its manager"} is the speaker, so /agent is closed. Run /team clear to detach the team first.`;
+}
+
+/**
+ * The closed note's LEAD line: names the team the way the chip beside it does
+ * (its label when it has one) so the screen says what the screen says.
+ *
+ * WHY A LEAD LINE AND NOT A DIFFERENT SENTENCE (design D2/D3). The sentence
+ * under it is the runtime's refusal byte for byte and names the team by SLUG,
+ * which appears nowhere else on screen; the lead supplies the label (and the
+ * sentence-case statement a caption needs above it) without touching the
+ * runtime's words. `closed` is the runtime's own word for the state (`/agent is
+ * closed`). It also names the dialog (`aria-labelledby`), which Radix would
+ * otherwise announce with no name.
+ */
+export function identityAgentClosedTitle(teamLabel: string): string {
+	return `Agent seat closed by ${teamLabel}`;
 }
 
 /**
@@ -429,7 +520,23 @@ export const IDENTITY_AGENT_NOT_SETTABLE_REASON =
 export function identityAgentConstraint(input: {
 	teamLabel: string;
 	manager: string | null;
+	/**
+	 * The strict rule's closure, from `resolveHeaderIdentity`'s `seat`: when
+	 * present the constraint is built even with no catalogue row for the team,
+	 * because the host has already named the speaker and a closure that waited
+	 * for a query it does not need would leave the seat looking open while the
+	 * team list loads.
+	 */
+	closure?: { speaker: string; sentence: string; title: string } | null;
 }): IdentityAgentConstraint | null {
+	if (input.closure) {
+		return {
+			manager: input.closure.speaker,
+			caption: input.closure.sentence,
+			closed: input.closure.sentence,
+			closedTitle: input.closure.title,
+		};
+	}
 	if (input.manager === null) return null;
 	return {
 		manager: input.manager,
