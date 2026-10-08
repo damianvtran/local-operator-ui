@@ -35,7 +35,10 @@ const bundle = await build({
 				interruptTurn,
 				interruptUnavailableNotice,
 				sessionInterruptEnabled,
+				IDLE_STOP_NOTICE,
+				INTERRUPT_ACK_TIMEOUT_MS,
 			} from "./src/renderer/src/features/chat/interrupt-turn";
+			import { userFacingMessage } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 			import {
 				dispatchInterruptOnEscape,
 				ESCAPE_OWNING_FIELDS,
@@ -52,6 +55,9 @@ const bundle = await build({
 				interruptTurn,
 				interruptUnavailableNotice,
 				sessionInterruptEnabled,
+				IDLE_STOP_NOTICE,
+				INTERRUPT_ACK_TIMEOUT_MS,
+				userFacingMessage,
 				dispatchInterruptOnEscape,
 				ESCAPE_OWNING_FIELDS,
 				interruptEscapeApplies,
@@ -111,6 +117,9 @@ const {
 	interruptTurn,
 	interruptUnavailableNotice,
 	sessionInterruptEnabled,
+	IDLE_STOP_NOTICE,
+	INTERRUPT_ACK_TIMEOUT_MS,
+	userFacingMessage,
 	dispatchInterruptOnEscape,
 	ESCAPE_OWNING_FIELDS,
 	interruptEscapeApplies,
@@ -1105,8 +1114,18 @@ test("the common case says nothing at all", () => {
 		}),
 		null,
 	);
-	// `idle` is a SUCCESS - no turn was running, or the session was cold and was
-	// never engaged to answer this - and a sentence would invent an outcome.
+});
+
+test("a press that found nothing gets an answer, not silence (operator incident, 2026-10-07)", () => {
+	/*
+	 * `idle` used to answer with nothing, on the reasoning that "nothing was
+	 * running" is not an outcome to report. The operator's incident falsified
+	 * that premise: four presses, zero feedback, while HIS pane believed a turn
+	 * was up - so the silence read as "the press did nothing" rather than "there
+	 * was nothing to stop". The sentence is the press's answer, and it is the
+	 * exact provisional copy, pinned where the user meets it (pending the design
+	 * round).
+	 */
 	assert.equal(
 		interruptNotice({
 			status: "idle",
@@ -1115,8 +1134,52 @@ test("the common case says nothing at all", () => {
 			background_jobs: 2,
 			replayed: false,
 		}),
-		null,
+		IDLE_STOP_NOTICE,
 	);
+	assert.equal(
+		IDLE_STOP_NOTICE,
+		"Nothing was running — the stop changed nothing.",
+		"the copy is the provisional sentence the PR body flags for the design round",
+	);
+});
+
+test("a lost answer rejects at the bound, so the caller's catch can answer the press", async () => {
+	/*
+	 * The incident's other half: on a half-dead socket the request used to sit
+	 * on the transport's generic control deadline - up to 25 s, and unbounded on
+	 * the development proxy path - so the catch that owes the user a sentence
+	 * could be a quarter-minute away, with the stopped-turn claim latched the
+	 * whole time. `INTERRUPT_ACK_TIMEOUT_MS` bounds the promise to the runtime's
+	 * own 15 s answer envelope (the attach client's `ACK_TIMEOUT_S`), and a
+	 * never-settling transport must reject AT the bound with the standard abort
+	 * shape, because that is what routes the loss to the caller's existing catch
+	 * and its authored fallback sentence.
+	 */
+	const settled = globalThis.__interruptRequest;
+	globalThis.__interruptRequest = () => new Promise(() => {});
+	try {
+		const started = Date.now();
+		await assert.rejects(
+			interruptTurn(SESSION, REQUEST, 50),
+			/abort|Abort/i,
+			"a never-settling transport rejects rather than hanging",
+		);
+		assert.ok(
+			Date.now() - started < 2_000,
+			"and it rejects at the bound, not whenever the transport gives up",
+		);
+		// The sentence the chat page's catch renders for this rejection: the
+		// abort is not a `UserFacingError`, so `userFacingMessage` falls back to
+		// the authored copy the press has always owed a lost answer.
+		const error = await interruptTurn(SESSION, REQUEST, 50).catch((e) => e);
+		assert.equal(error.name, "AbortError");
+		assert.equal(
+			userFacingMessage(error, "Stop could not be confirmed."),
+			"Stop could not be confirmed.",
+		);
+	} finally {
+		globalThis.__interruptRequest = settled;
+	}
 });
 
 test("the notice names the number AND the lever that is still available", () => {

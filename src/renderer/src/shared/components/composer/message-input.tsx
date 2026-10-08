@@ -730,14 +730,15 @@ export type MessageInputProps = {
 	 */
 	canonicalStopAvailable?: boolean;
 	/**
-	 * What the last interrupt left running, or null for the common case.
+	 * The last interrupt's own answer, or null for the common silent case.
 	 *
 	 * Deliberately NOT the `sendError` alert, which is the failure register: this
-	 * sentence says a stop worked and names work that outlived it, so routed
-	 * through the alert it would read as an error and take `role="alert"`'s
-	 * assertive announcement for a press the user just made themselves. Muted ink
-	 * and its own line, which is what `heldNotice` and `refusedNotice` do in that
-	 * same region for the same reason.
+	 * sentence states the outcome of the user's own press - a stop that worked
+	 * (naming work that outlived it), or an answer of "nothing was running"
+	 * (operator incident, 2026-10-07) - so routed through the alert it would read
+	 * as an error and take `role="alert"`'s assertive announcement for a press
+	 * the user just made themselves. Muted ink and its own line, which is what
+	 * `heldNotice` and `refusedNotice` do in that same region for the same reason.
 	 */
 	interruptNotice?: string | null;
 	/**
@@ -7494,8 +7495,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * transient results of a press while the row above is ambient context.
 				 * It is a sibling rather than a child of the alert region because that
 				 * region is the FAILURE register: it carries `text-danger` and
-				 * `role="alert"`, and this sentence says a stop WORKED. Sharing the
-				 * region would both paint it as an error and inherit the alert's
+				 * `role="alert"`, and this sentence states the press's own ANSWER - a
+				 * stop that worked, or one that found nothing running. Sharing the
+				 * region would both paint the first as an error and inherit the alert's
 				 * assertive announcement for a press the user made themselves - which is
 				 * the same reason the notifier deliberately raises no banner for a
 				 * completed `interrupted`. An `<output>` instead: it implies the same
@@ -7504,7 +7506,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 *
 				 * Null in the common case by construction - see `interruptNotice` - so
 				 * a stopped turn with nothing under it leaves the band's height alone.
-				 * The padding steps are the alert's own, and they put this line one
+				 * The idle answer is one of the non-null cases now (a press that found
+				 * nothing to stop gets the sentence, not silence - operator incident,
+				 * 2026-10-07), and it belongs here for the same reason: it is the
+				 * outcome of the user's own action, which is what this `<output>` is
+				 * for. The padding steps are the alert's own, and they put this line one
 				 * padding step (16px at the default rung, 8 at the small one) inside
 				 * the box's OUTER edge - the same track the send-error alert resolves,
 				 * and NOT the textarea's text edge, which is that plus the textarea's
