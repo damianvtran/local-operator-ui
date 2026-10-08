@@ -18,6 +18,7 @@ import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { useCommandPaletteShortcut } from "@features/command-palette/use-command-palette-shortcut";
+import { useConversationRecents } from "@features/command-palette/use-conversation-recents";
 import { useConsoleAttention } from "@features/console/hooks/use-console-attention";
 /*
  * THE AMBIENT FEDERATED CATALOGUE (mesh §2.1's sidebar merge): mounted HERE, in
@@ -274,6 +275,14 @@ const App: FC = () => {
 	 * one is a chord that does nothing and says nothing.
 	 */
 	useCommandPaletteShortcut();
+
+	/*
+	 * The palette's Recents memory: every conversation that becomes the displayed
+	 * one is recorded, from the one value that every way of switching moves. Mounted
+	 * here for the same reason as the shortcut above - the palette is unmounted
+	 * while closed, and the ring has to be filling while it is.
+	 */
+	useConversationRecents();
 
 	/*
 	 * The navigation gestures (issue #675): Cmd/Ctrl+[ and Cmd/Ctrl+] move the

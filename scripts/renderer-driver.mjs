@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|hit-zones|route-tops|project-detail|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|none>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -128,6 +128,11 @@
  *                          the dispatcher's own sentence for each and no
  *                          picker - the base tree's half of the pair (issue
  *                          #625)
+ *   --recents-expect <after|before>  (with --scene palette-recents) which half
+ *                          of the pair this run records: `after` (the default)
+ *                          asserts the Recents section under Unread and the walk
+ *                          across it; `before` records a base tree that predates
+ *                          the section
  *   --row-space-expect <after|before>  (with --scene row-space) which half of
  *                          the pair this run records: `after` (the default)
  *                          asserts the head tree's two claims - the row's acts
@@ -527,6 +532,24 @@ const SLASH_EXPECT = argValue("--slash-expect", "open");
  * refused rather than defaulted, for the same reason the flags above are.
  */
 const ROW_SPACE_EXPECT = argValue("--row-space-expect", "after");
+/**
+ * WHICH HALF OF THE RECENTS PAIR THIS RUN IS (with --scene palette-recents).
+ *
+ * `after` (the default) asserts the head tree's claims: the visited ring is
+ * filled by the app itself, the switcher pins Recents under Unread, and the walk
+ * crosses Unread -> Recents -> Chats. `before` records the base tree (a build
+ * that predates the section) instead: the same seeded profile, the same fixture,
+ * and the switcher drawing Unread and Chats only. The pair exists so the "after"
+ * frames are read against a render of the same state rather than against memory,
+ * and a value the scene does not know is refused rather than defaulted, for the
+ * reason `ROW_SPACE_EXPECT` states.
+ */
+const RECENTS_EXPECT = argValue("--recents-expect", "after");
+if (!["after", "before"].includes(RECENTS_EXPECT)) {
+	throw new Error(
+		`--recents-expect must be after or before, got ${JSON.stringify(RECENTS_EXPECT)}`,
+	);
+}
 /**
  * WHICH HALF OF A BEFORE/AFTER PAIR THIS RUN IS (with --scene conversation-start).
  *
@@ -26686,6 +26709,376 @@ async function scenePaletteUnread(cdp) {
 	return frames;
 }
 
+/*
+ * ---- the switcher's Recents section ----
+ *
+ * WHY ITS OWN SCENE, and why it leans on `scenePaletteUnread`'s fixture. Recents
+ * is a claim about three things a unit test cannot show together: the app FILLS
+ * the visited ring itself (the hook reads the shell's displayed conversation, so
+ * this scene opens a conversation the way a user does and then reads the ring off
+ * the profile's own persisted preferences), the section sits UNDER Unread and
+ * ABOVE Chats with no row repeated, and the keyboard walks across the boundary
+ * between sections in order. The first is state, the second is a picture, the
+ * third is a sequence of `aria-activedescendant` readings; the frames carry the
+ * second and the log carries the other two.
+ *
+ * THE PROFILE IS SEEDED, NOT SCRIPTED: the ring is written into the profile's
+ * `ui-preferences-storage` and the page reloaded, so the app BOOTS with a
+ * history - the state a person who has used it for a week is in. The seed
+ * deliberately includes the fixture's UNREAD conversation (it must NOT appear
+ * under Recents: it is already in the Unread section) and, after the scene opens
+ * "Invoice reconciliation" by pressing its sidebar row, the conversation ON SCREEN
+ * (it must not appear either: you are already in it).
+ *
+ * Both halves of the pair run this same scene (`--recents-expect before|after`);
+ * the `before` half records a base tree that does not draw the section.
+ */
+async function scenePaletteRecents(cdp) {
+	const frames = [];
+	const AFTER = RECENTS_EXPECT === "after";
+	/* The fixture's conversations (`docs/evidence/sidebar-row-space/harness/stub-daemon.mjs`). */
+	const UNREAD_ID = "b3f1a09c7d52";
+	const OPEN_ID = "2d5ad5da0025"; // Invoice reconciliation: opened by the scene
+	const VISITED = [
+		"7c1b0f2a4d31", // Migration checklist: visited most recently before the open
+		"e059761608ae", // Release notes for 0.29
+		"c4e17b90a2f6", // AWS cost increase review...
+		UNREAD_ID, // unread AND visited: lives in the Unread section only
+	];
+	const PREFS_KEY = "ui-preferences-storage";
+
+	const hello = await verb(cdp, "hello");
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	/*
+	 * Seed the ring the way a returning user has it, then boot into it. A merge into
+	 * whatever blob the app already wrote (not a replacement), at the store's own
+	 * version, so hydration is zustand's and no migration runs.
+	 */
+	const seedRing = async (ring) => {
+		await cdp.evaluate(`(() => {
+			const key = ${JSON.stringify(PREFS_KEY)};
+			const raw = window.localStorage.getItem(key);
+			const parsed = raw === null ? { state: {}, version: 1 } : JSON.parse(raw);
+			parsed.state = { ...(parsed.state ?? {}), conversationRecents: ${JSON.stringify(ring)} };
+			window.localStorage.setItem(key, JSON.stringify(parsed));
+			return true;
+		})()`);
+		await cdp.send("Page.reload", { ignoreCache: false });
+		await waitForBridge(cdp);
+		await wait(500);
+	};
+	const readRing = () =>
+		cdp.evaluate(`(() => {
+			try {
+				const raw = window.localStorage.getItem(${JSON.stringify(PREFS_KEY)});
+				return raw ? (JSON.parse(raw)?.state?.conversationRecents ?? null) : null;
+			} catch {
+				return "(unreadable)";
+			}
+		})()`);
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await seedRing(VISITED);
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const state = await verb(cdp, "state");
+	check(
+		"the catalogue answered with this set's fixture",
+		state.sessionCount >= 5,
+		`sessionCount is ${state.sessionCount}`,
+	);
+	await drawAtLeast(cdp, 5);
+
+	/*
+	 * OPEN A CONVERSATION THE WAY A USER DOES: the sidebar row's press, the path
+	 * `browser-composition` opens one with. Nothing here tells the ring; the hook has
+	 * to notice the displayed conversation changed.
+	 */
+	await verb(cdp, "press", {
+		selector: `[data-session-row="${OPEN_ID}"] [data-chat-row]`,
+	});
+	const opened = await waitForCondition(
+		cdp,
+		`document.querySelector('[data-session-row="${OPEN_ID}"]') !== null`,
+		30_000,
+	);
+	await wait(600);
+	const afterOpen = await verb(cdp, "state");
+	check(
+		"the fixture conversation is the one open on the pane",
+		opened.ok && afterOpen.activeSessionId === OPEN_ID,
+		`active=${afterOpen.activeSessionId}`,
+	);
+	const ring = await readRing();
+	note("the persisted visited ring after the open", JSON.stringify(ring));
+	if (AFTER) {
+		check(
+			"opening a conversation put it at the FRONT of the persisted ring, ahead of the seeded history, with no duplicate",
+			Array.isArray(ring) &&
+				ring[0] === OPEN_ID &&
+				ring.slice(1).join() === VISITED.join() &&
+				new Set(ring).size === ring.length,
+			JSON.stringify(ring),
+		);
+	}
+
+	const readList = async () =>
+		cdp.evaluate(`(() => {
+			const list = document.querySelector("#command-palette-results");
+			if (!list) return null;
+			const box = list.getBoundingClientRect();
+			return {
+				box: { x: box.x, y: box.y, width: box.width, height: box.height },
+				headings: [...list.querySelectorAll('[role="presentation"]')].map((node) =>
+					(node.textContent || "").trim(),
+				),
+				/* Each row with the heading it sits under, in DOM order. */
+				options: [...list.querySelectorAll('[role="option"]')].map((row) => {
+					let heading = null;
+					for (let n = row.previousElementSibling; n; n = n.previousElementSibling) {
+						if (n.getAttribute("role") === "presentation") {
+							heading = (n.textContent || "").trim();
+							break;
+						}
+					}
+					return {
+						id: row.id,
+						heading,
+						selected: row.getAttribute("aria-selected") === "true",
+						text: (row.textContent || "").replace(/\s+/g, " ").trim().slice(0, 48),
+					};
+				}),
+				active:
+					document
+						.getElementById("command-palette-input")
+						?.getAttribute("aria-activedescendant") ?? null,
+			};
+		})()`);
+	const openSwitcher = async () => {
+		await verb(cdp, "press", "[data-command-palette-trigger]");
+		await waitForScene(
+			cdp,
+			`document.activeElement?.id === "command-palette-input"`,
+		);
+		await cdp.send("Input.insertText", { text: "#" });
+		await waitForScene(
+			cdp,
+			`document.querySelectorAll('#command-palette-results [role="option"]').length > 0`,
+		);
+		return readList();
+	};
+	const closeSwitcher = async () => {
+		for (const type of ["keyDown", "keyUp"]) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type,
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+				nativeVirtualKeyCode: 27,
+			});
+		}
+		return waitForScene(
+			cdp,
+			`!document.querySelector('[data-tour-tag="command-palette-dialog"]')`,
+		);
+	};
+	const idOf = (id) => `chat-${id}`;
+
+	/* ---- frame 1: the switcher on open ---- */
+	const switcher = await openSwitcher();
+	note("the switcher's empty (#) state", JSON.stringify(switcher));
+	if (switcher === null)
+		throw new Error(
+			"the switcher's list was not in the DOM after typing the seed",
+		);
+	const shape = switcher.options.map((row) => `${row.heading}:${row.id}`);
+	if (AFTER) {
+		check(
+			"the sections read Unread, Recents, Chats - Recents directly beneath Unread",
+			switcher.headings.join("|") === "Unread|Recents|Chats",
+			JSON.stringify(switcher.headings),
+		);
+		const recents = switcher.options.filter((row) => row.heading === "Recents");
+		check(
+			"Recents lists the visited ring in visit order, minus the unread row and minus the conversation on screen",
+			recents.map((row) => row.id).join() ===
+				[idOf(VISITED[0]), idOf(VISITED[1]), idOf(VISITED[2])].join(),
+			JSON.stringify(recents.map((row) => row.id)),
+		);
+		check(
+			"the conversation on screen is not in Recents (it sits in the Chats tier as an ordinary row)",
+			!recents.some((row) => row.id === idOf(OPEN_ID)) &&
+				switcher.options.some(
+					(row) => row.id === idOf(OPEN_ID) && row.heading === "Chats",
+				),
+			JSON.stringify(shape),
+		);
+		check(
+			"the unread conversation is in Unread only, though it is in the ring",
+			switcher.options.filter((row) => row.id === idOf(UNREAD_ID)).length ===
+				1 &&
+				switcher.options.find((row) => row.id === idOf(UNREAD_ID))?.heading ===
+					"Unread",
+			JSON.stringify(shape),
+		);
+		check(
+			"no conversation is drawn twice across the three sections",
+			new Set(switcher.options.map((row) => row.id)).size ===
+				switcher.options.length,
+			JSON.stringify(shape),
+		);
+	} else {
+		check(
+			"the base tree draws Unread and Chats only - no Recents heading",
+			switcher.headings.join("|") === "Unread|Chats",
+			JSON.stringify(switcher.headings),
+		);
+	}
+	check(
+		"the selection starts on the first row (the unread conversation)",
+		switcher.options[0]?.selected === true &&
+			switcher.active === switcher.options[0]?.id &&
+			switcher.options[0]?.id === idOf(UNREAD_ID),
+		`active is ${switcher.active}`,
+	);
+	frames.push(
+		await captureSettled(
+			cdp,
+			AFTER ? "palette-recents-dark" : "palette-recents-before-dark",
+		),
+	);
+
+	/* ---- frame 2: one ArrowDown across the Unread -> Recents boundary ---- */
+	const press = async (key, code, virtualKeyCode, modifiers = 0) => {
+		await pressChord(cdp, { key, code, virtualKeyCode, modifiers });
+		await wait(150);
+		return readList();
+	};
+	const down = () => press("ArrowDown", "ArrowDown", 40);
+	const crossed = await down();
+	note("after one ArrowDown", JSON.stringify(crossed));
+	const secondRow = switcher.options[1];
+	check(
+		AFTER
+			? "ArrowDown crossed from the last Unread row onto the FIRST Recents row"
+			: "ArrowDown moved onto the second row (the base tree has no Recents)",
+		crossed !== null &&
+			crossed.active === secondRow?.id &&
+			(AFTER
+				? secondRow?.heading === "Recents"
+				: secondRow?.heading === "Chats"),
+		`active ${switcher.active} -> ${crossed?.active}; second row ${JSON.stringify(secondRow)}`,
+	);
+	frames.push(
+		await captureSettled(
+			cdp,
+			AFTER ? "palette-recents-down-dark" : "palette-recents-before-down-dark",
+		),
+	);
+
+	/* ---- the full walk: every row, in list order, by ArrowDown and by Ctrl+N ---- */
+	if (AFTER) {
+		const order = switcher.options.map((row) => row.id);
+		const walked = [crossed.active];
+		for (let step = 2; step < order.length; step += 1) {
+			const next =
+				step % 2 === 0
+					? await down()
+					: await press("n", "KeyN", 78, MODIFIER.ctrl);
+			walked.push(next?.active ?? null);
+		}
+		note(
+			"the walk (ArrowDown, then alternating Ctrl+N / ArrowDown)",
+			JSON.stringify(walked),
+		);
+		check(
+			"Down and Ctrl+N visit every row in list order: Unread -> Recents (x3) -> Chats, with none skipped",
+			walked.join() === order.slice(1).join(),
+			`walked ${JSON.stringify(walked)} vs list ${JSON.stringify(order.slice(1))}`,
+		);
+		const draftAfter = await stagedDraft(cdp);
+		check(
+			"Ctrl+N stepped the palette and did NOT start a new chat",
+			draftAfter === null || draftAfter === undefined,
+			JSON.stringify(draftAfter),
+		);
+	}
+	check("Escape closed the palette", (await closeSwitcher()) === true);
+
+	/* ---- frame 3: an empty ring - no section, no heading ---- */
+	await seedRing([]);
+	await verb(cdp, "navigate", "/chat");
+	await drawAtLeast(cdp, 5);
+	/* Boot restores the open conversation, so the hook records it again: a ring of one,
+	 * and that one is the conversation on screen - excluded - so nothing is eligible. */
+	const ringAfterReboot = await readRing();
+	note(
+		"the ring after booting from an empty one",
+		JSON.stringify(ringAfterReboot),
+	);
+	const empty = await openSwitcher();
+	note("the switcher with no eligible recents", JSON.stringify(empty));
+	check(
+		"with no eligible visited conversation the switcher is Unread then Chats - no Recents heading, no empty section",
+		empty !== null && empty.headings.join("|") === "Unread|Chats",
+		JSON.stringify(empty?.headings),
+	);
+	frames.push(
+		await captureSettled(
+			cdp,
+			AFTER
+				? "palette-recents-empty-dark"
+				: "palette-recents-before-empty-dark",
+		),
+	);
+	await closeSwitcher();
+
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: stable ${frame.stable === true}, toast-free ${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map(
+				(f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`,
+			)
+			.join(" | "),
+	);
+	check(
+		"the first two frames are two renders, not one frame written twice",
+		!readFileSync(frames[0].path).equals(readFileSync(frames[1].path)),
+		`${frames[0].bytes}B vs ${frames[1].bytes}B`,
+	);
+	return frames;
+}
+
 // ---- the composer's @ mentions -------------------------------------------------
 
 /*
@@ -39759,6 +40152,11 @@ async function main() {
 			"--scene palette-unread needs --backend: the Unread pin is composed from the catalogue's own rows, so a run with no backend has no conversation the fixture could carry an unread fact on",
 		);
 	}
+	if (SCENE === "palette-recents" && BACKEND === null) {
+		throw new Error(
+			"--scene palette-recents needs --backend: Recents is composed from the catalogue's own rows, so a run with no backend has no conversation to visit",
+		);
+	}
 	if (SCENE === "question-dock" && BACKEND === null) {
 		throw new Error(
 			"--scene question-dock needs --backend: the card docks on a gate a live owner parks, and a run with none has no turn to pause",
@@ -40068,6 +40466,7 @@ async function main() {
 				await sceneProjectInlineEdit(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE === "palette-unread") await scenePaletteUnread(cdp);
+			else if (SCENE === "palette-recents") await scenePaletteRecents(cdp);
 			else if (SCENE === "scrollbar-fade") await sceneScrollbarFade(cdp);
 			else if (SCENE === "hit-zones") await sceneHitZones(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
