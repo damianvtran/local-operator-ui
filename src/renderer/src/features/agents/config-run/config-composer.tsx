@@ -183,9 +183,15 @@ const TRAILING_GHOST = "-mr-2";
  * still shows a few lines and capped at 5.5rem so a tall one does not hand the dock
  * back to the run.
  *
- * It is sized so the WORST dock - this block full plus Retry's 32 px row, the only
- * control that lives beneath it - stays under 300 px at 1024x725 and under 45% at
- * the app's 800x600 minimum (measured in the round-2 evidence, not derived here).
+ * What the bound does and does not promise (QA round 2, Q2). With an EMPTY box, the
+ * WORST dock - this block full plus Retry's row, the only control that lives
+ * beneath it - measured 278.5 px (38%) at 1024x725 and 266 px (44%) at the app's
+ * 800x600 minimum. That is the whole claim: the bound caps THIS block only. The
+ * box beneath it has its own, older max height, so a draft of 20 lines under the
+ * same error measured 356.5 px (49%) at 1024x725 and 344 px (57%) at 800x600; the
+ * dock is the sum of the two caps, and what holds there is that the last block of
+ * the pane stays reachable by scrolling, not that the dock stays under a share of
+ * the window. Measured in the round-2 evidence, not derived here.
  *
  * The block scrolls ITSELF rather than clamping text behind a "Show all": an error
  * must stay readable in full, and a clamp would need a second control on a row
@@ -206,6 +212,15 @@ const DETAIL_BOUND = "max-h-[clamp(3.5rem,10vh,5.5rem)]";
 function useOverflowing<T extends HTMLElement>() {
 	const ref = useRef<T>(null);
 	const [overflowing, setOverflowing] = useState(false);
+	/*
+	 * NO DEPENDENCY ARRAY, ON PURPOSE: the box can stay the same size while its
+	 * CHILDREN change (a settled summary replacing the live step, an error arriving
+	 * in a block that was already at its cap), and a ResizeObserver on the box says
+	 * nothing about that. Re-running after every render re-measures through
+	 * `measure()` below, which is the only thing that sees it; rebuilding the observer
+	 * is the cost, and it cannot loop because the setter bails out on an unchanged
+	 * boolean (agent review round 2, nit 3).
+	 */
 	useEffect(() => {
 		const element = ref.current;
 		if (!element) return;
@@ -248,6 +263,14 @@ function DetailRegion({ children }: { children: ReactNode }) {
 			tabIndex={overflowing ? 0 : undefined}
 			role={overflowing ? "region" : undefined}
 			aria-label={overflowing ? "Run details" : undefined}
+			/*
+			 * THE BOUND CUTS TEXT, SO IT SAYS SO (design review round 2 D2): measured,
+			 * 72.5 px of a 1,133 px answer sliced a line through its glyphs with only a
+			 * faint thumb to say more follows. `data-lo-region-cue` is the 12 px fade
+			 * `index.css` draws while the region is not scrolled to its end; it is a
+			 * pseudo-element, not a mask, because a mask would clip the focus ring.
+			 */
+			data-lo-region-cue={overflowing ? "" : undefined}
 			className={cn("mb-2 overflow-y-auto empty:hidden", DETAIL_BOUND)}
 		>
 			{children}
@@ -296,16 +319,22 @@ function ComposerStatus({
 	run,
 	about,
 	blockedReason,
+	hasDraft,
 	onClearAbout,
 	onDismiss,
 }: {
 	run: ConfigRunHandle;
 	/**
-	 * Why the page is refusing input, to be said IN THE ROW - set only while the
-	 * box holds a draft, because with an empty box the placeholder already says it
-	 * and the row keeps the standing promise (one carrier at a time).
+	 * Why the page is refusing input, and whether the box holds a draft. TOGETHER
+	 * they pick the one carrier that SAYS it on screen (agent review round 2, #1):
+	 * an empty box says it as its placeholder; a draft hides the placeholder, so the
+	 * row says it (idle strip) or a line under the row does (a run strip owns the
+	 * row). `MessageInput` stands its own copy down for a draft (`statedByNode`) on
+	 * the strength of that guarantee, so every branch below that is reached with a
+	 * draft must render the sentence VISIBLY.
 	 */
 	blockedReason?: string | null;
+	hasDraft: boolean;
 	about: { kind: "agent" | "team"; name: string } | null;
 	onClearAbout: () => void;
 	/** Wraps `run.dismiss` so the caret lands back in the box (UX U8). */
@@ -315,6 +344,19 @@ function ComposerStatus({
 	const stopRef = useRef<HTMLButtonElement>(null);
 	const live = run.status === "running" || run.status === "stopping";
 	const showsRun = run.enabled && run.status !== "idle";
+	/*
+	 * WHERE A DRAFT'S BLOCKED REASON IS VISIBLE (agent review round 2 #1). An idle
+	 * strip has a sentence slot in the row; a settled, stopped or errored strip has
+	 * none - the row is the run's title, time and buttons - so the reason gets a line
+	 * under it. A LIVE run gets neither: its title ("Working on your request") is
+	 * already the one visible statement of why the box refuses, and a second line
+	 * would grow the dock 25 px over the 166 px idle height (measured 191.4) for a
+	 * sentence about a state the run is already covering. The reason stays the box's
+	 * `sr-only` description there, so what the reader hears is still the true state.
+	 */
+	const reasonInRow = Boolean(blockedReason) && hasDraft && !showsRun;
+	const reasonBelowRow =
+		Boolean(blockedReason) && hasDraft && showsRun && !live;
 
 	/*
 	 * Escape focuses Stop while a run is live — the accelerator the chat composer
@@ -426,30 +468,65 @@ function ComposerStatus({
 				 * secondary text (5:1 on canvas in both brand palettes): it is a
 				 * footnote to the box and must not compete with the run's title.
 				 */}
-				{run.enabled ? (
-					<span
-						id={ASIDE_NOTICE_ID}
-						data-testid="config-composer-note"
-						className={
-							showsRun
-								? "sr-only"
-								: "min-w-0 flex-1 truncate text-meta text-ink-dim"
-						}
-					>
+				{run.enabled && !reasonBelowRow ? (
+					<>
 						{/*
-						 * A BLOCKED PAGE WITH A DRAFT SPEAKS HERE, ONCE (UX review round 1 U3).
-						 * The reason used to ride in `hostNotice.placeholder`, which the
-						 * composer ALSO prints as a meta line above this row whenever the box
-						 * holds a draft - so "Finish or cancel your edit first." appeared twice
-						 * within 26 px and the dock grew by that line. The row is the box's
-						 * `aria-describedby` target, so the reason is programmatic here too, and
-						 * it takes the place of the standing promise only in that state (the
-						 * promise is about what a SEND does, and nothing can be sent). With an
-						 * empty box the placeholder says it and this stays the promise.
+						 * THE STANDING SENTENCE, verbatim and permanent — not a placeholder and
+						 * not an invitation (U4): the page already hands work to a conversation
+						 * from "New chat", and without this line the reasonable reading of the
+						 * box is that it does the same. `ink-dim`, the palette's own floor for
+						 * secondary text (5:1 on canvas in both brand palettes): it is a
+						 * footnote to the box and must not compete with the run's title.
+						 *
+						 * IT IS THE BOX'S DESCRIPTION ONLY WHILE THE PAGE IS NOT BLOCKED (UX
+						 * review round 2, U4): "Runs in the background" is not what a refused
+						 * box does, and a reader on it heard that instead of why it refuses.
+						 * Blocked, the id moves to the reason's span below; this stays on screen
+						 * in the empty-box state so the dock's frame does not change, and gives
+						 * its place to the reason when the box holds a draft.
 						 */}
-						{blockedReason ??
-							"Runs in the background. This does not appear in your conversation."}
-					</span>
+						{reasonInRow ? null : (
+							<span
+								id={blockedReason ? undefined : ASIDE_NOTICE_ID}
+								data-testid={blockedReason ? undefined : "config-composer-note"}
+								className={
+									showsRun
+										? "sr-only"
+										: "min-w-0 flex-1 truncate text-meta text-ink-dim"
+								}
+							>
+								Runs in the background. This does not appear in your
+								conversation.
+							</span>
+						)}
+						{blockedReason ? (
+							<span
+								id={ASIDE_NOTICE_ID}
+								data-testid="config-composer-note"
+								className={
+									reasonInRow
+										? "min-w-0 flex-1 truncate text-meta text-ink-dim"
+										: "sr-only"
+								}
+							>
+								{/*
+								 * A BLOCKED PAGE SPEAKS ONCE, AND WHERE IT CAN BE SEEN (UX review
+								 * round 1 U3; agent review round 2 #1). The reason used to ride in
+								 * `hostNotice.placeholder`, which the composer ALSO prints as a meta
+								 * line above this row whenever the box holds a draft - the same
+								 * sentence twice within 26 px - so `statedByNode` stands that copy
+								 * down for a draft, and that is a promise this component keeps: with
+								 * a draft the sentence is VISIBLE in exactly one place. An idle strip:
+								 * here, taking the standing promise's place (nothing can be sent, so
+								 * the promise about a send has nothing to say). A settled strip: the
+								 * line under the row (`reasonBelowRow`); a live run: its own title. With
+								 * an EMPTY box the placeholder is the visible statement, and this span is
+								 * the `sr-only` description so the reader hears the reason too.
+								 */}
+								{blockedReason}
+							</span>
+						) : null}
+					</>
 				) : (
 					// An empty flexible slot keeps the row's 28 px and its right edge; the
 					// sentence itself is the paragraph BELOW the row (see `ComposerStatus`).
@@ -537,6 +614,15 @@ function ComposerStatus({
 					{run.disabledReason}
 				</p>
 			)}
+			{reasonBelowRow ? (
+				<p
+					id={ASIDE_NOTICE_ID}
+					data-testid="config-composer-note"
+					className="mb-2 text-meta text-ink-muted"
+				>
+					{blockedReason}
+				</p>
+			) : null}
 			{showsRun ? (
 				/*
 				 * THE DETAIL UNDER THE ROW, IN FLOW. Watch, the settled summary, a refused
@@ -618,7 +704,14 @@ function ComposerStatus({
 				</DetailRegion>
 			) : null}
 			{showsRun && run.status === "error" && run.error ? (
-				<div className="mb-1 flex items-center gap-2">
+				/*
+				 * `mb-2.5` (design review round 2 D3): Retry sat 4 px above the box and its
+				 * focus ring (offset 1 + width 2) left 1 px, so it read as part of the box.
+				 * Every other state leaves 9-10 px between the last line and the box; this
+				 * row ends in a 32 px button, so the clearance has to be its own margin.
+				 * The box does not move: the dock is the column's last child and grows UP.
+				 */
+				<div className="mb-2.5 flex items-center gap-2">
 					{/*
 					 * RETRY, WHEN THERE IS SOMETHING TO RETRY ON. The message-call failure is
 					 * the one error the page can act on - the run exists and the text is still
@@ -972,13 +1065,24 @@ export function ConfigComposer({
 	 * objects, and a change to the open definition first, is true on either tab. The
 	 * hero keeps its object-free words: it is a different arm, with the heading and
 	 * the chips standing beside it to say what the box is for.
+	 *
+	 * IT MUST FIT ON ONE LINE AT EVERY PANE WIDTH THE APP CAN PRODUCE (design review
+	 * round 2 D1 = QA Q1 = UX U3). The idle docked box is one row tall and does not
+	 * auto-grow, so a placeholder that wraps is clipped mid-sentence with a stray
+	 * scrollbar thumb in an empty box. The narrowest docked pane is 416 px: the
+	 * shell's sidebar docks from 1024 px at up to 320 px wide, and the roster is a
+	 * fixed 288 px. The box's text area is the pane less 88 px of insets (measured:
+	 * 328 px at 416, 388 px at 476). The previous 71-character sentence measured
+	 * 444 px and needed a 532 px pane; this one measures 301 px. It still names the job (a change) and, naming neither
+	 * object, cannot contradict whichever tab is open. Do not lengthen it without
+	 * re-running the pane-width sweep.
 	 */
 	const placeholder = about
 		? `Change ${about.name}…`
 		: run.enabled
 			? hero
 				? "Describe what you want…"
-				: "Ask for a change to this definition, or describe a new agent or team…"
+				: "Ask for a change, or describe something new…"
 			: DISABLED_GATE_LINE;
 
 	/*
@@ -1089,6 +1193,13 @@ export function ConfigComposer({
 					 */
 					blocksInput: !run.enabled || Boolean(blockedReason) || live,
 					placeholder: hostPlaceholder,
+					/*
+					 * TRUE WITH A DRAFT BECAUSE `ComposerStatus` KEEPS THE PROMISE THAT GOES
+					 * WITH IT: the sentence is visible in the row (idle), under it (settled,
+					 * stopped, errored) or is the live title. Do not widen this to a state
+					 * where the node renders the sentence `sr-only` - that was the round 2
+					 * regression (a blocked box with a draft and no reason on screen).
+					 */
 					statedByNode: hasDraft,
 					/*
 					 * THE STATUS ROW IS THE NOTICE NODE (design spec s2). The slot is the one
@@ -1102,7 +1213,8 @@ export function ConfigComposer({
 						<ComposerStatus
 							run={run}
 							about={about}
-							blockedReason={hasDraft ? blockedReason : null}
+							blockedReason={blockedReason}
+							hasDraft={hasDraft}
 							onClearAbout={clearAboutAndFocus}
 							onDismiss={dismissAndFocus}
 						/>

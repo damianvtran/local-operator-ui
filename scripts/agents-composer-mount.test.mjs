@@ -608,6 +608,23 @@ test("the invitation is true on both tabs: object-free in the hero, both objects
 			/agent/i.test(placeholder) === /team/i.test(placeholder),
 			`and names both objects or neither, never one (got ${placeholder})`,
 		);
+		/*
+		 * AND IT FITS ONE LINE (design D1 = QA Q1 = UX U3): the idle docked box does
+		 * not auto-grow, so a wrapped placeholder is clipped. 301 px at the box's font
+		 * is the measured width of the shipped words; 50 characters is the ceiling
+		 * (the narrowest docked text area is 328 px, ~6 px per character), and the
+		 * 71-character sentence this replaced measured 444 px. "Definition" is the run
+		 * counter's noun, not the page's (D5).
+		 */
+		assert.ok(
+			placeholder.length <= 50,
+			`short enough for one line at the narrowest pane (got ${placeholder.length}: ${placeholder})`,
+		);
+		assert.doesNotMatch(
+			placeholder,
+			/definition/i,
+			"and uses the page's nouns",
+		);
 	} finally {
 		await act(async () => root.unmount());
 	}
@@ -782,6 +799,115 @@ test("a blocked box that already holds a draft still says why", async () => {
 			),
 			"and not by an id whose node is not rendered",
 		);
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
+
+/**
+ * Whether a node (or an ancestor) is visually hidden by the `sr-only` utility.
+ * jsdom has no layout, so a class is the only thing it can see - which is why the
+ * round-2 regression (the reason rendered, but in an `sr-only` span) passed every
+ * `textContent` assertion in this file.
+ */
+const visuallyHidden = (node, within) => {
+	for (
+		let at = node;
+		at && at !== within.parentElement;
+		at = at.parentElement
+	) {
+		if ((at.getAttribute?.("class") ?? "").split(/\s+/).includes("sr-only"))
+			return true;
+	}
+	return false;
+};
+
+const BLOCKED = "Finish or cancel your edit first.";
+
+/**
+ * THE VISIBLE-STATEMENT RULE (agent review round 2, #1 = UX U4). With a draft in the
+ * box `MessageInput` stands its own copy of the reason down (`statedByNode`) on the
+ * promise that the host's node says it where a sighted reader can see it. This
+ * walks every run state that can sit beside a blocked page and asserts: ONE node
+ * carries the sentence, it is NOT `sr-only` when the box holds a draft (a live run
+ * excepted: its title is the visible statement), and the box is described by that node and
+ * not by the standing "Runs in the background" sentence.
+ */
+for (const status of ["idle", "running", "done", "stopped", "error"]) {
+	test(`a blocked box with a draft shows its reason on screen beside a ${status} strip`, async () => {
+		const { run } = handle({
+			status,
+			error: status === "error" ? "The provider timed out." : null,
+			results: [],
+			answer: status === "done" ? "Nothing needed changing." : "",
+		});
+		const { host, root, render } = await mountToggle(run);
+		try {
+			const box = await type(host, "half a request");
+			await render(BLOCKED);
+			const carriers = [...host.querySelectorAll("*")].filter(
+				(node) =>
+					node.children.length === 0 &&
+					(node.textContent ?? "").includes(BLOCKED),
+			);
+			assert.equal(carriers.length, 1, "one node carries the sentence");
+			if (status === "running") {
+				/*
+				 * A LIVE run's title is the visible statement (a second line would grow
+				 * the dock over its 166 px); the sentence stays the box's `sr-only`
+				 * description. Assert the title is there so "nothing visible" cannot hide.
+				 */
+				assert.ok(
+					(host.textContent ?? "").includes("Working on your request"),
+					"a live run says what it is doing on screen",
+				);
+			} else {
+				assert.equal(
+					visuallyHidden(carriers[0], host),
+					false,
+					`and a sighted reader can see it (strip: ${status})`,
+				);
+			}
+			const described = (box.getAttribute("aria-describedby") ?? "")
+				.split(/\s+/)
+				.map((id) => host.querySelector(`#${id}`)?.textContent ?? "");
+			assert.ok(
+				described.some((text) => text.includes(BLOCKED)),
+				`the box is described by the reason (got ${JSON.stringify(described)})`,
+			);
+			assert.ok(
+				!described.some((text) => /Runs in the background/.test(text)),
+				"and not by the standing promise, which is not what a blocked box does",
+			);
+		} finally {
+			await act(async () => root.unmount());
+		}
+	});
+}
+
+test("a blocked EMPTY box is described by its reason, not the standing promise", async () => {
+	/*
+	 * UX review round 2, U4. With nothing typed the PLACEHOLDER is the visible
+	 * statement, so the sentence node is `sr-only` - but it must still be what the
+	 * box is described by, or a screen-reader user hears "Runs in the background"
+	 * from a box that refuses input.
+	 */
+	const { run } = handle();
+	const { host, root } = await mountBlocked(run, BLOCKED);
+	try {
+		const box = host.querySelector("textarea");
+		const described = (box?.getAttribute("aria-describedby") ?? "")
+			.split(/\s+/)
+			.map((id) => host.querySelector(`#${id}`)?.textContent ?? "");
+		assert.ok(
+			described.some((text) => text.includes(BLOCKED)),
+			`described by the reason (got ${JSON.stringify(described)})`,
+		);
+		assert.ok(
+			!described.some((text) => /Runs in the background/.test(text)),
+			"and not by the standing promise",
+		);
+		assert.match(box?.getAttribute("placeholder") ?? "", /Finish or cancel/);
 	} finally {
 		await act(async () => root.unmount());
 	}
