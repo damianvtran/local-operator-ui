@@ -1,0 +1,3535 @@
+{
+  "label": "after",
+  "origin": "http://localhost:5322",
+  "frames": {
+    "a1-card": "after/a1-card/localOperatorDark.webp",
+    "a1-card-pane": "after/a1-card-pane/localOperatorDark.webp",
+    "a2-option-picked": "after/a2-option-picked/localOperatorDark.webp",
+    "a3-sent": "after/a3-sent/localOperatorDark.webp",
+    "b1-card": "after/b1-card/localOperatorDark.webp",
+    "b1-card-pane": "after/b1-card-pane/localOperatorDark.webp",
+    "h1-other-selected-empty": "after/h1-other-selected-empty/localOperatorDark.webp",
+    "h1-other-selected-empty-pane": "after/h1-other-selected-empty-pane/localOperatorDark.webp",
+    "b2-other-typed": "after/b2-other-typed/localOperatorDark.webp",
+    "b2-other-typed-pane": "after/b2-other-typed-pane/localOperatorDark.webp",
+    "b3-sent": "after/b3-sent/localOperatorDark.webp",
+    "c1-ticked": "after/c1-ticked/localOperatorDark.webp",
+    "c1-ticked-pane": "after/c1-ticked-pane/localOperatorDark.webp",
+    "c2-other-added": "after/c2-other-added/localOperatorDark.webp",
+    "c2-other-added-pane": "after/c2-other-added-pane/localOperatorDark.webp",
+    "c3-sent": "after/c3-sent/localOperatorDark.webp",
+    "d1-card": "after/d1-card/localOperatorDark.webp",
+    "d1-card-pane": "after/d1-card-pane/localOperatorDark.webp",
+    "d2-typed": "after/d2-typed/localOperatorDark.webp",
+    "d3-sent": "after/d3-sent/localOperatorDark.webp",
+    "e1-card": "after/e1-card/localOperatorDark.webp",
+    "e2-masked": "after/e2-masked/localOperatorDark.webp",
+    "e2-masked-pane": "after/e2-masked-pane/localOperatorDark.webp",
+    "f1-drawer-open": "after/f1-drawer-open/localOperatorDark.webp",
+    "f2-typed-in-composer": "after/f2-typed-in-composer/localOperatorDark.webp",
+    "f3-after-send": "after/f3-after-send/localOperatorDark.webp",
+    "g1-blocking-card": "after/g1-blocking-card/localOperatorDark.webp",
+    "g1-blocking-answered": "after/g1-blocking-answered/localOperatorDark.webp",
+    "g2a-answered-undelivered": "after/g2a-answered-undelivered/localOperatorDark.webp",
+    "g2b-change-form": "after/g2b-change-form/localOperatorDark.webp",
+    "g2b-change-form-pane": "after/g2b-change-form-pane/localOperatorDark.webp",
+    "g2c-change-edited": "after/g2c-change-edited/localOperatorDark.webp",
+    "g2c-change-edited-pane": "after/g2c-change-edited-pane/localOperatorDark.webp",
+    "g2d-updated": "after/g2d-updated/localOperatorDark.webp",
+    "g2xa-answered-undelivered": "after/g2xa-answered-undelivered/localOperatorDark.webp",
+    "g2xb-change-form": "after/g2xb-change-form/localOperatorDark.webp",
+    "g2xb-change-form-pane": "after/g2xb-change-form-pane/localOperatorDark.webp",
+    "g2xc-change-edited": "after/g2xc-change-edited/localOperatorDark.webp",
+    "g2xc-change-edited-pane": "after/g2xc-change-edited-pane/localOperatorDark.webp",
+    "g2xd-updated": "after/g2xd-updated/localOperatorDark.webp"
+  },
+  "probes": {
+    "a1": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BUTTON",
+        "attr": "Production"
+      },
+      "buttons": {
+        "send": {
+          "disabled": true,
+          "box": {
+            "x": 801,
+            "y": 299.1,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 299.1,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-405d",
+          "text": "Queued — the agent is continuing; expires in 59m Which environment should I deploy the release candidate to?Production▸RecommendedGo straight to production after the smoke tests.StagingShip it to staging and report back."
+        }
+      ],
+      "questions": [
+        {
+          "id": "deploy-target",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 176.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "Production",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 45.7
+              }
+            },
+            {
+              "label": "Staging",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 186.1,
+                "w": 510,
+                "h": 45.7
+              }
+            },
+            {
+              "label": "Hold off",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 231.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "false",
+            "text": "OtherType your own answer",
+            "box": {
+              "x": 801,
+              "y": 261.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": null,
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "a2": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BUTTON",
+        "attr": "Production"
+      },
+      "buttons": {
+        "send": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 299.1,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 299.1,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-405d",
+          "text": "Queued — the agent is continuing; expires in 59m Which environment should I deploy the release candidate to?Production▸RecommendedGo straight to production after the smoke tests.StagingShip it to staging and report back."
+        }
+      ],
+      "questions": [
+        {
+          "id": "deploy-target",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 176.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "Production",
+              "role": "radio",
+              "pressed": null,
+              "checked": "true",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 45.7
+              }
+            },
+            {
+              "label": "Staging",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 186.1,
+                "w": 510,
+                "h": 45.7
+              }
+            },
+            {
+              "label": "Hold off",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 231.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "false",
+            "text": "OtherType your own answer",
+            "box": {
+              "x": 801,
+              "y": 261.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": null,
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "a3": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BUTTON",
+        "attr": null
+      },
+      "buttons": {
+        "send": null,
+        "update": null,
+        "change": null,
+        "decline": null,
+        "cancel": null
+      },
+      "rows": [],
+      "questions": []
+    },
+    "b1": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BUTTON",
+        "attr": "eu-west"
+      },
+      "buttons": {
+        "send": {
+          "disabled": true,
+          "box": {
+            "x": 801,
+            "y": 267.1,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 267.1,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-09bb",
+          "text": "Queued — the agent is continuing; expires in 59m Which region should the canary run in?eu-westus-eastap-southOtherType your own answerSend answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "region",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 144.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "eu-west",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "us-east",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "ap-south",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "false",
+            "text": "OtherType your own answer",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": null,
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "h1": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        },
+        {
+          "cls": "w-full resize-y border border-control bg-surface text-ink pl",
+          "scrollHeight": 54,
+          "clientHeight": 54,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "TEXTAREA",
+        "attr": "region"
+      },
+      "buttons": {
+        "send": {
+          "disabled": true,
+          "box": {
+            "x": 801,
+            "y": 331.1,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 331.1,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-09bb",
+          "text": "Queued — the agent is continuing; expires in 59m Which region should the canary run in?eu-westus-eastap-southOtherSend answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "region",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 208.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "eu-west",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "us-east",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "ap-south",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "true",
+            "text": "Other",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": {
+            "box": {
+              "x": 829,
+              "y": 263.1,
+              "w": 478,
+              "h": 56
+            },
+            "focused": true,
+            "valueLength": 0,
+            "value": "",
+            "rows": 2,
+            "placeholder": "Type your answer",
+            "ariaLabel": "Your own answer to: Which region should the canary run in?",
+            "disabled": false
+          },
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "h2": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        },
+        {
+          "cls": "w-full resize-y border border-control bg-surface text-ink pl",
+          "scrollHeight": 54,
+          "clientHeight": 54,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "TEXTAREA",
+        "attr": "region"
+      },
+      "buttons": {
+        "send": {
+          "disabled": true,
+          "box": {
+            "x": 801,
+            "y": 331.1,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 331.1,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-09bb",
+          "text": "Queued — the agent is continuing; expires in 59m Which region should the canary run in?eu-westus-eastap-southOther Send answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "region",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 208.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "eu-west",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "us-east",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "ap-south",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "true",
+            "text": "Other",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": {
+            "box": {
+              "x": 829,
+              "y": 263.1,
+              "w": 478,
+              "h": 56
+            },
+            "focused": true,
+            "valueLength": 3,
+            "value": "   ",
+            "rows": 2,
+            "placeholder": "Type your answer",
+            "ariaLabel": "Your own answer to: Which region should the canary run in?",
+            "disabled": false
+          },
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "b2": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        },
+        {
+          "cls": "w-full resize-y border border-control bg-surface text-ink pl",
+          "scrollHeight": 54,
+          "clientHeight": 54,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "TEXTAREA",
+        "attr": "region"
+      },
+      "buttons": {
+        "send": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 331.1,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 331.1,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-09bb",
+          "text": "Queued — the agent is continuing; expires in 59m Which region should the canary run in?eu-westus-eastap-southOtherap-southeast-2 (Sydney)Send answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "region",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 208.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "eu-west",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "us-east",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "ap-south",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "true",
+            "text": "Other",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": {
+            "box": {
+              "x": 829,
+              "y": 263.1,
+              "w": 478,
+              "h": 56
+            },
+            "focused": true,
+            "valueLength": 23,
+            "value": "ap-southeast-2 (Sydney)",
+            "rows": 2,
+            "placeholder": "Type your answer",
+            "ariaLabel": "Your own answer to: Which region should the canary run in?",
+            "disabled": false
+          },
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "b3": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BUTTON",
+        "attr": null
+      },
+      "buttons": {
+        "send": null,
+        "update": null,
+        "change": null,
+        "decline": null,
+        "cancel": null
+      },
+      "rows": [],
+      "questions": []
+    },
+    "c1": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BUTTON",
+        "attr": "Smoke tests"
+      },
+      "buttons": {
+        "send": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 267.1,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 267.1,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-090d",
+          "text": "Queued — the agent is continuing; expires in 59m Which checks should run before the deploy?Unit testsIntegration testsSmoke testsOtherType your own answerSend answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "checks",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 144.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "Unit tests",
+              "role": "checkbox",
+              "pressed": "true",
+              "checked": null,
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Integration tests",
+              "role": "checkbox",
+              "pressed": "false",
+              "checked": null,
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Smoke tests",
+              "role": "checkbox",
+              "pressed": "true",
+              "checked": null,
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "checkbox",
+            "pressed": "false",
+            "checked": null,
+            "text": "OtherType your own answer",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": null,
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "c2": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        },
+        {
+          "cls": "w-full resize-y border border-control bg-surface text-ink pl",
+          "scrollHeight": 54,
+          "clientHeight": 54,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "TEXTAREA",
+        "attr": "checks"
+      },
+      "buttons": {
+        "send": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 331.1,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 331.1,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-090d",
+          "text": "Queued — the agent is continuing; expires in 59m Which checks should run before the deploy?Unit testsIntegration testsSmoke testsOtherLoad testsSend answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "checks",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 208.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "Unit tests",
+              "role": "checkbox",
+              "pressed": "true",
+              "checked": null,
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Integration tests",
+              "role": "checkbox",
+              "pressed": "false",
+              "checked": null,
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Smoke tests",
+              "role": "checkbox",
+              "pressed": "true",
+              "checked": null,
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "checkbox",
+            "pressed": "true",
+            "checked": null,
+            "text": "Other",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": {
+            "box": {
+              "x": 829,
+              "y": 263.1,
+              "w": 478,
+              "h": 56
+            },
+            "focused": true,
+            "valueLength": 10,
+            "value": "Load tests",
+            "rows": 2,
+            "placeholder": "Type your answer",
+            "ariaLabel": "Your own answer to: Which checks should run before the deploy?",
+            "disabled": false
+          },
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "d1": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        },
+        {
+          "cls": "w-full resize-y border border-control bg-surface text-ink pl",
+          "scrollHeight": 54,
+          "clientHeight": 54,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "TEXTAREA",
+        "attr": "release-name"
+      },
+      "buttons": {
+        "send": {
+          "disabled": true,
+          "box": {
+            "x": 801,
+            "y": 204.4,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 204.4,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-040a",
+          "text": "Queued — the agent is continuing; expires in 59m What should the release be called?Send answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "release-name",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 82
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [],
+          "otherRow": null,
+          "otherField": {
+            "box": {
+              "x": 801,
+              "y": 140.4,
+              "w": 510,
+              "h": 56
+            },
+            "focused": true,
+            "valueLength": 0,
+            "value": "",
+            "rows": 2,
+            "placeholder": "Type your answer",
+            "ariaLabel": "Your answer to: What should the release be called?",
+            "disabled": false
+          },
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "d2": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        },
+        {
+          "cls": "w-full resize-y border border-control bg-surface text-ink pl",
+          "scrollHeight": 54,
+          "clientHeight": 54,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "TEXTAREA",
+        "attr": "release-name"
+      },
+      "buttons": {
+        "send": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 204.4,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 204.4,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-040a",
+          "text": "Queued — the agent is continuing; expires in 59m What should the release be called?AuroraSend answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "release-name",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 82
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [],
+          "otherRow": null,
+          "otherField": {
+            "box": {
+              "x": 801,
+              "y": 140.4,
+              "w": 510,
+              "h": 56
+            },
+            "focused": true,
+            "valueLength": 6,
+            "value": "Aurora",
+            "rows": 2,
+            "placeholder": "Type your answer",
+            "ariaLabel": "Your answer to: What should the release be called?",
+            "disabled": false
+          },
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "d2enter": {
+      "answeredByEnter": true
+    },
+    "e1": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Answer the secret request in the asks panel",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "INPUT",
+        "attr": "Your answer to: Paste the deploy key so I can sign the release."
+      },
+      "buttons": {
+        "send": {
+          "disabled": true,
+          "box": {
+            "x": 801,
+            "y": 182.4,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 182.4,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-10ef",
+          "text": "Queued — the agent is continuing; expires in 59m Paste the deploy key so I can sign the release.Send answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "deploy_key",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 60
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [],
+          "otherRow": null,
+          "otherField": null,
+          "secretField": {
+            "type": "password",
+            "valueLength": 0,
+            "box": {
+              "x": 801,
+              "y": 140.4,
+              "w": 510,
+              "h": 34
+            },
+            "placeholder": "Your answer (never shown again)",
+            "focused": true
+          },
+          "bareInput": null
+        }
+      ]
+    },
+    "e2": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Answer the secret request in the asks panel",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "INPUT",
+        "attr": "Your answer to: Paste the deploy key so I can sign the release."
+      },
+      "buttons": {
+        "send": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 182.4,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 182.4,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-10ef",
+          "text": "Queued — the agent is continuing; expires in 59m Paste the deploy key so I can sign the release.Send answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "deploy_key",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 60
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [],
+          "otherRow": null,
+          "otherField": null,
+          "secretField": {
+            "type": "password",
+            "valueLength": 26,
+            "box": {
+              "x": 801,
+              "y": 140.4,
+              "w": 510,
+              "h": 34
+            },
+            "placeholder": "Your answer (never shown again)",
+            "focused": true
+          },
+          "bareInput": null
+        }
+      ]
+    },
+    "f1": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BUTTON",
+        "attr": "Yes, rotate them now"
+      },
+      "buttons": {
+        "send": {
+          "disabled": true,
+          "box": {
+            "x": 801,
+            "y": 237.5,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 237.5,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-0f5d",
+          "text": "Queued — the agent is continuing; expires in 59m Should I rotate the API keys before the deploy?Yes, rotate them nowNo, leave them as they areOtherType your own answerSend answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "rotate",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 115.1
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "Yes, rotate them now",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "No, leave them as they are",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "false",
+            "text": "OtherType your own answer",
+            "box": {
+              "x": 801,
+              "y": 199.8,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": null,
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "f2": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 62,
+        "focused": true,
+        "box": {
+          "x": 292,
+          "y": 820,
+          "w": 452,
+          "h": 28
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "TEXTAREA",
+        "attr": "Message"
+      },
+      "buttons": {
+        "send": {
+          "disabled": true,
+          "box": {
+            "x": 801,
+            "y": 237.5,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 237.5,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-0f5d",
+          "text": "Queued — the agent is continuing; expires in 59m Should I rotate the API keys before the deploy?Yes, rotate them nowNo, leave them as they areOtherType your own answerSend answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "rotate",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 115.1
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "Yes, rotate them now",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "No, leave them as they are",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "false",
+            "text": "OtherType your own answer",
+            "box": {
+              "x": 801,
+              "y": 199.8,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": null,
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "f3": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": true,
+        "box": {
+          "x": 292,
+          "y": 820,
+          "w": 452,
+          "h": 28
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "TEXTAREA",
+        "attr": "Message"
+      },
+      "buttons": {
+        "send": {
+          "disabled": true,
+          "box": {
+            "x": 801,
+            "y": 237.5,
+            "w": 108.9,
+            "h": 34
+          }
+        },
+        "update": null,
+        "change": null,
+        "decline": {
+          "disabled": false,
+          "box": {
+            "x": 917.9,
+            "y": 237.5,
+            "w": 74.1,
+            "h": 34
+          }
+        },
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-0f5d",
+          "text": "Queued — the agent is continuing; expires in 59m Should I rotate the API keys before the deploy?Yes, rotate them nowNo, leave them as they areOtherType your own answerSend answerDecline"
+        }
+      ],
+      "questions": [
+        {
+          "id": "rotate",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 115.1
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "Yes, rotate them now",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "No, leave them as they are",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "false",
+            "text": "OtherType your own answer",
+            "box": {
+              "x": 801,
+              "y": 199.8,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": null,
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "g1": {
+      "options": [
+        "1Popup is not open▸RecommendedWalk me through opening it first.",
+        "2Popup is open - generate the pairing codeI will read the code back to",
+        "3Something else"
+      ],
+      "otherRows": 0,
+      "composerPlaceholder": "Type your own answer…"
+    },
+    "g2a": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BODY",
+        "attr": null
+      },
+      "buttons": {
+        "send": null,
+        "update": null,
+        "change": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 160.4,
+            "w": 125.6,
+            "h": 34
+          }
+        },
+        "decline": null,
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-90a9",
+          "text": "Answered — delivering Which environment should the first deploy go to?StagingChange answer"
+        }
+      ],
+      "questions": []
+    },
+    "g2b": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BUTTON",
+        "attr": "Staging"
+      },
+      "buttons": {
+        "send": null,
+        "update": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 290.5,
+            "w": 123.1,
+            "h": 34
+          }
+        },
+        "change": null,
+        "decline": null,
+        "cancel": {
+          "disabled": false,
+          "box": {
+            "x": 932.1,
+            "y": 290.5,
+            "w": 70.4,
+            "h": 34
+          }
+        }
+      },
+      "rows": [
+        {
+          "id": "a-90a9",
+          "text": "Answered — delivering Which environment should the first deploy go to?StagingProductionHold offOtherType your own answerYou can change this until the agent is handed your answer.Update answerCancel"
+        }
+      ],
+      "questions": [
+        {
+          "id": "change",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 144.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "Staging",
+              "role": "radio",
+              "pressed": null,
+              "checked": "true",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Production",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Hold off",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "false",
+            "text": "OtherType your own answer",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": null,
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "g2c": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BUTTON",
+        "attr": "Production"
+      },
+      "buttons": {
+        "send": null,
+        "update": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 290.5,
+            "w": 123.1,
+            "h": 34
+          }
+        },
+        "change": null,
+        "decline": null,
+        "cancel": {
+          "disabled": false,
+          "box": {
+            "x": 932.1,
+            "y": 290.5,
+            "w": 70.4,
+            "h": 34
+          }
+        }
+      },
+      "rows": [
+        {
+          "id": "a-90a9",
+          "text": "Answered — delivering Which environment should the first deploy go to?StagingProductionHold offOtherType your own answerYou can change this until the agent is handed your answer.Update answerCancel"
+        }
+      ],
+      "questions": [
+        {
+          "id": "change",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 144.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "Staging",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Production",
+              "role": "radio",
+              "pressed": null,
+              "checked": "true",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Hold off",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "false",
+            "text": "OtherType your own answer",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": null,
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "g2xa": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BODY",
+        "attr": null
+      },
+      "buttons": {
+        "send": null,
+        "update": null,
+        "change": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 160.4,
+            "w": 125.6,
+            "h": 34
+          }
+        },
+        "decline": null,
+        "cancel": null
+      },
+      "rows": [
+        {
+          "id": "a-eb70",
+          "text": "Answered — delivering Which build should the canary start from?StagingChange answer"
+        }
+      ],
+      "questions": []
+    },
+    "g2xb": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "BUTTON",
+        "attr": "Staging"
+      },
+      "buttons": {
+        "send": null,
+        "update": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 290.5,
+            "w": 123.1,
+            "h": 34
+          }
+        },
+        "change": null,
+        "decline": null,
+        "cancel": {
+          "disabled": false,
+          "box": {
+            "x": 932.1,
+            "y": 290.5,
+            "w": 70.4,
+            "h": 34
+          }
+        }
+      },
+      "rows": [
+        {
+          "id": "a-eb70",
+          "text": "Answered — delivering Which build should the canary start from?StagingProductionHold offOtherType your own answerYou can change this until the agent is handed your answer.Update answerCancel"
+        }
+      ],
+      "questions": [
+        {
+          "id": "change-other",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 144.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "Staging",
+              "role": "radio",
+              "pressed": null,
+              "checked": "true",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Production",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Hold off",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "false",
+            "text": "OtherType your own answer",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": null,
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    },
+    "g2xc": {
+      "hash": "#/chat/aaaa11112222",
+      "composer": {
+        "placeholder": "Ask anything. @ adds files, / runs commands",
+        "valueLength": 0,
+        "focused": false,
+        "box": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34
+        }
+      },
+      "drawer": {
+        "box": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        }
+      },
+      "scrollers": [
+        {
+          "cls": "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+          "scrollHeight": 860,
+          "clientHeight": 860,
+          "scrolls": false
+        },
+        {
+          "cls": "w-full resize-y border border-control bg-surface text-ink pl",
+          "scrollHeight": 54,
+          "clientHeight": 54,
+          "scrolls": false
+        }
+      ],
+      "active": {
+        "tag": "TEXTAREA",
+        "attr": "change-other"
+      },
+      "buttons": {
+        "send": null,
+        "update": {
+          "disabled": false,
+          "box": {
+            "x": 801,
+            "y": 354.5,
+            "w": 123.1,
+            "h": 34
+          }
+        },
+        "change": null,
+        "decline": null,
+        "cancel": {
+          "disabled": false,
+          "box": {
+            "x": 932.1,
+            "y": 354.5,
+            "w": 70.4,
+            "h": 34
+          }
+        }
+      },
+      "rows": [
+        {
+          "id": "a-eb70",
+          "text": "Answered — delivering Which build should the canary start from?StagingProductionHold offOtherCanary (5% of traffic)You can change this until the agent is handed your answer.Update answerCancel"
+        }
+      ],
+      "questions": [
+        {
+          "id": "change-other",
+          "box": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 208.8
+          },
+          "prompt": {
+            "x": 801,
+            "y": 114.4,
+            "w": 510,
+            "h": 20
+          },
+          "options": [
+            {
+              "label": "Staging",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 140.4,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Production",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 170.1,
+                "w": 510,
+                "h": 29.7
+              }
+            },
+            {
+              "label": "Hold off",
+              "role": "radio",
+              "pressed": null,
+              "checked": "false",
+              "box": {
+                "x": 801,
+                "y": 199.8,
+                "w": 510,
+                "h": 29.7
+              }
+            }
+          ],
+          "otherRow": {
+            "role": "radio",
+            "pressed": null,
+            "checked": "true",
+            "text": "Other",
+            "box": {
+              "x": 801,
+              "y": 229.5,
+              "w": 510,
+              "h": 29.7
+            },
+            "minTarget": 29.6875
+          },
+          "otherField": {
+            "box": {
+              "x": 829,
+              "y": 263.1,
+              "w": 478,
+              "h": 56
+            },
+            "focused": true,
+            "valueLength": 22,
+            "value": "Canary (5% of traffic)",
+            "rows": 2,
+            "placeholder": "Type your answer",
+            "ariaLabel": "Your own answer to: Which build should the canary start from?",
+            "disabled": false
+          },
+          "secretField": null,
+          "bareInput": null
+        }
+      ]
+    }
+  },
+  "audits": {
+    "h1": {
+      "scanned": 62,
+      "findings": [
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 28x28px < 44px (touch recommendation)",
+          "selector": "div.relative.h-full:nth-of-type(3) > section.flex.h-full > div.flex.h-10:nth-of-type(1) > button.inline-flex.shrink-0",
+          "text": "",
+          "rect": {
+            "x": 1300,
+            "y": 6,
+            "w": 28,
+            "h": 28
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "fail",
+          "message": "target 48x21px < 24px (WCAG 2.5.8; check spacing/inline exceptions)",
+          "selector": "div.flex.min-h-0:nth-of-type(2) > div.flex.w-full > fieldset.m-0.flex > button.rounded-md.px-2:nth-of-type(1)",
+          "text": "All · 2",
+          "rect": {
+            "x": 792,
+            "y": 48,
+            "w": 48,
+            "h": 21
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "fail",
+          "message": "target 148x21px < 24px (WCAG 2.5.8; check spacing/inline exceptions)",
+          "selector": "div.flex.min-h-0:nth-of-type(2) > div.flex.w-full > fieldset.m-0.flex > button.rounded-md.px-2:nth-of-type(2)",
+          "text": "Waiting or moved on · 1",
+          "rect": {
+            "x": 844,
+            "y": 48,
+            "w": 148,
+            "h": 21
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "fail",
+          "message": "target 72x21px < 24px (WCAG 2.5.8; check spacing/inline exceptions)",
+          "selector": "div.flex.min-h-0:nth-of-type(2) > div.flex.w-full > fieldset.m-0.flex > button.rounded-md.px-2:nth-of-type(3)",
+          "text": "Settled · 1",
+          "rect": {
+            "x": 996,
+            "y": 48,
+            "w": 72,
+            "h": 21
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 510x30px < 44px (touch recommendation)",
+          "selector": "div.flex.flex-col:nth-of-type(1) > div.flex.flex-col:nth-of-type(2) > div.flex.flex-col > button.flex.w-full:nth-of-type(1)",
+          "text": "eu-west",
+          "rect": {
+            "x": 801,
+            "y": 140,
+            "w": 510,
+            "h": 30
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 510x30px < 44px (touch recommendation)",
+          "selector": "div.flex.flex-col:nth-of-type(1) > div.flex.flex-col:nth-of-type(2) > div.flex.flex-col > button.flex.w-full:nth-of-type(2)",
+          "text": "us-east",
+          "rect": {
+            "x": 801,
+            "y": 170,
+            "w": 510,
+            "h": 30
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 510x30px < 44px (touch recommendation)",
+          "selector": "div.flex.flex-col:nth-of-type(1) > div.flex.flex-col:nth-of-type(2) > div.flex.flex-col > button.flex.w-full:nth-of-type(3)",
+          "text": "ap-south",
+          "rect": {
+            "x": 801,
+            "y": 200,
+            "w": 510,
+            "h": 30
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 510x30px < 44px (touch recommendation)",
+          "selector": "div.flex.flex-col:nth-of-type(1) > div.flex.flex-col:nth-of-type(2) > div.flex.flex-col > button.flex.w-full:nth-of-type(4)",
+          "text": "Other",
+          "rect": {
+            "x": 801,
+            "y": 229,
+            "w": 510,
+            "h": 30
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 74x34px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(1) > div.flex.items-center:nth-of-type(3) > button.rounded-md.border:nth-of-type(2)",
+          "text": "Decline",
+          "rect": {
+            "x": 918,
+            "y": 331,
+            "w": 74,
+            "h": 34
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 536x32px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(2) > div > button.flex.w-full",
+          "text": "Answered Which environment should I deploy the re…",
+          "rect": {
+            "x": 788,
+            "y": 412,
+            "w": 536,
+            "h": 32
+          }
+        }
+      ]
+    },
+    "c2": {
+      "scanned": 72,
+      "findings": [
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 28x28px < 44px (touch recommendation)",
+          "selector": "div.relative.h-full:nth-of-type(3) > section.flex.h-full > div.flex.h-10:nth-of-type(1) > button.inline-flex.shrink-0",
+          "text": "",
+          "rect": {
+            "x": 1300,
+            "y": 6,
+            "w": 28,
+            "h": 28
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "fail",
+          "message": "target 48x21px < 24px (WCAG 2.5.8; check spacing/inline exceptions)",
+          "selector": "div.flex.min-h-0:nth-of-type(2) > div.flex.w-full > fieldset.m-0.flex > button.rounded-md.px-2:nth-of-type(1)",
+          "text": "All · 3",
+          "rect": {
+            "x": 792,
+            "y": 48,
+            "w": 48,
+            "h": 21
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "fail",
+          "message": "target 148x21px < 24px (WCAG 2.5.8; check spacing/inline exceptions)",
+          "selector": "div.flex.min-h-0:nth-of-type(2) > div.flex.w-full > fieldset.m-0.flex > button.rounded-md.px-2:nth-of-type(2)",
+          "text": "Waiting or moved on · 1",
+          "rect": {
+            "x": 844,
+            "y": 48,
+            "w": 148,
+            "h": 21
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "fail",
+          "message": "target 74x21px < 24px (WCAG 2.5.8; check spacing/inline exceptions)",
+          "selector": "div.flex.min-h-0:nth-of-type(2) > div.flex.w-full > fieldset.m-0.flex > button.rounded-md.px-2:nth-of-type(3)",
+          "text": "Settled · 2",
+          "rect": {
+            "x": 996,
+            "y": 48,
+            "w": 74,
+            "h": 21
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 510x30px < 44px (touch recommendation)",
+          "selector": "div.flex.flex-col:nth-of-type(1) > div.flex.flex-col:nth-of-type(2) > div.flex.flex-col > button.flex.w-full:nth-of-type(1)",
+          "text": "Unit tests",
+          "rect": {
+            "x": 801,
+            "y": 140,
+            "w": 510,
+            "h": 30
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 510x30px < 44px (touch recommendation)",
+          "selector": "div.flex.flex-col:nth-of-type(1) > div.flex.flex-col:nth-of-type(2) > div.flex.flex-col > button.flex.w-full:nth-of-type(2)",
+          "text": "Integration tests",
+          "rect": {
+            "x": 801,
+            "y": 170,
+            "w": 510,
+            "h": 30
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 510x30px < 44px (touch recommendation)",
+          "selector": "div.flex.flex-col:nth-of-type(1) > div.flex.flex-col:nth-of-type(2) > div.flex.flex-col > button.flex.w-full:nth-of-type(3)",
+          "text": "Smoke tests",
+          "rect": {
+            "x": 801,
+            "y": 200,
+            "w": 510,
+            "h": 30
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 510x30px < 44px (touch recommendation)",
+          "selector": "div.flex.flex-col:nth-of-type(1) > div.flex.flex-col:nth-of-type(2) > div.flex.flex-col > button.flex.w-full:nth-of-type(4)",
+          "text": "Other",
+          "rect": {
+            "x": 801,
+            "y": 229,
+            "w": 510,
+            "h": 30
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 109x34px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(1) > div.flex.items-center:nth-of-type(3) > button.rounded-md.px-3:nth-of-type(1)",
+          "text": "Send answer",
+          "rect": {
+            "x": 801,
+            "y": 331,
+            "w": 109,
+            "h": 34
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 74x34px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(1) > div.flex.items-center:nth-of-type(3) > button.rounded-md.border:nth-of-type(2)",
+          "text": "Decline",
+          "rect": {
+            "x": 918,
+            "y": 331,
+            "w": 74,
+            "h": 34
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 536x32px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(2) > div:nth-of-type(1) > button.flex.w-full",
+          "text": "Answered Which region should the canary run in?",
+          "rect": {
+            "x": 788,
+            "y": 412,
+            "w": 536,
+            "h": 32
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 536x32px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(2) > div:nth-of-type(2) > button.flex.w-full",
+          "text": "Answered Which environment should I deploy the re…",
+          "rect": {
+            "x": 788,
+            "y": 448,
+            "w": 536,
+            "h": 32
+          }
+        }
+      ]
+    },
+    "d2": {
+      "scanned": 61,
+      "findings": [
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 28x28px < 44px (touch recommendation)",
+          "selector": "div.relative.h-full:nth-of-type(3) > section.flex.h-full > div.flex.h-10:nth-of-type(1) > button.inline-flex.shrink-0",
+          "text": "",
+          "rect": {
+            "x": 1300,
+            "y": 6,
+            "w": 28,
+            "h": 28
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "fail",
+          "message": "target 48x21px < 24px (WCAG 2.5.8; check spacing/inline exceptions)",
+          "selector": "div.flex.min-h-0:nth-of-type(2) > div.flex.w-full > fieldset.m-0.flex > button.rounded-md.px-2:nth-of-type(1)",
+          "text": "All · 4",
+          "rect": {
+            "x": 792,
+            "y": 48,
+            "w": 48,
+            "h": 21
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "fail",
+          "message": "target 148x21px < 24px (WCAG 2.5.8; check spacing/inline exceptions)",
+          "selector": "div.flex.min-h-0:nth-of-type(2) > div.flex.w-full > fieldset.m-0.flex > button.rounded-md.px-2:nth-of-type(2)",
+          "text": "Waiting or moved on · 1",
+          "rect": {
+            "x": 844,
+            "y": 48,
+            "w": 148,
+            "h": 21
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "fail",
+          "message": "target 74x21px < 24px (WCAG 2.5.8; check spacing/inline exceptions)",
+          "selector": "div.flex.min-h-0:nth-of-type(2) > div.flex.w-full > fieldset.m-0.flex > button.rounded-md.px-2:nth-of-type(3)",
+          "text": "Settled · 3",
+          "rect": {
+            "x": 996,
+            "y": 48,
+            "w": 74,
+            "h": 21
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 109x34px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(1) > div.flex.items-center:nth-of-type(3) > button.rounded-md.px-3:nth-of-type(1)",
+          "text": "Send answer",
+          "rect": {
+            "x": 801,
+            "y": 204,
+            "w": 109,
+            "h": 34
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 74x34px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(1) > div.flex.items-center:nth-of-type(3) > button.rounded-md.border:nth-of-type(2)",
+          "text": "Decline",
+          "rect": {
+            "x": 918,
+            "y": 204,
+            "w": 74,
+            "h": 34
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 536x32px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(2) > div:nth-of-type(1) > button.flex.w-full",
+          "text": "Answered Which checks should run before the deplo…",
+          "rect": {
+            "x": 788,
+            "y": 285,
+            "w": 536,
+            "h": 32
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 536x32px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(2) > div:nth-of-type(2) > button.flex.w-full",
+          "text": "Answered Which region should the canary run in?",
+          "rect": {
+            "x": 788,
+            "y": 321,
+            "w": 536,
+            "h": 32
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 536x32px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(2) > div:nth-of-type(3) > button.flex.w-full",
+          "text": "Answered Which environment should I deploy the re…",
+          "rect": {
+            "x": 788,
+            "y": 358,
+            "w": 536,
+            "h": 32
+          }
+        }
+      ]
+    },
+    "e2": {
+      "scanned": 70,
+      "findings": [
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 28x28px < 44px (touch recommendation)",
+          "selector": "div.relative.h-full:nth-of-type(3) > section.flex.h-full > div.flex.h-10:nth-of-type(1) > button.inline-flex.shrink-0",
+          "text": "",
+          "rect": {
+            "x": 1300,
+            "y": 6,
+            "w": 28,
+            "h": 28
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "fail",
+          "message": "target 48x21px < 24px (WCAG 2.5.8; check spacing/inline exceptions)",
+          "selector": "div.flex.min-h-0:nth-of-type(2) > div.flex.w-full > fieldset.m-0.flex > button.rounded-md.px-2:nth-of-type(1)",
+          "text": "All · 5",
+          "rect": {
+            "x": 792,
+            "y": 48,
+            "w": 48,
+            "h": 21
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "fail",
+          "message": "target 148x21px < 24px (WCAG 2.5.8; check spacing/inline exceptions)",
+          "selector": "div.flex.min-h-0:nth-of-type(2) > div.flex.w-full > fieldset.m-0.flex > button.rounded-md.px-2:nth-of-type(2)",
+          "text": "Waiting or moved on · 1",
+          "rect": {
+            "x": 844,
+            "y": 48,
+            "w": 148,
+            "h": 21
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "fail",
+          "message": "target 75x21px < 24px (WCAG 2.5.8; check spacing/inline exceptions)",
+          "selector": "div.flex.min-h-0:nth-of-type(2) > div.flex.w-full > fieldset.m-0.flex > button.rounded-md.px-2:nth-of-type(3)",
+          "text": "Settled · 4",
+          "rect": {
+            "x": 996,
+            "y": 48,
+            "w": 75,
+            "h": 21
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 510x34px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(1) > div.flex.flex-col:nth-of-type(2) > input.w-full.rounded-md",
+          "text": "",
+          "rect": {
+            "x": 801,
+            "y": 140,
+            "w": 510,
+            "h": 34
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 109x34px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(1) > div.flex.items-center:nth-of-type(3) > button.rounded-md.px-3:nth-of-type(1)",
+          "text": "Send answer",
+          "rect": {
+            "x": 801,
+            "y": 182,
+            "w": 109,
+            "h": 34
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 74x34px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(1) > div.flex.items-center:nth-of-type(3) > button.rounded-md.border:nth-of-type(2)",
+          "text": "Decline",
+          "rect": {
+            "x": 918,
+            "y": 182,
+            "w": 74,
+            "h": 34
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 536x32px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(2) > div:nth-of-type(1) > button.flex.w-full",
+          "text": "Answered What should the release be called?",
+          "rect": {
+            "x": 788,
+            "y": 263,
+            "w": 536,
+            "h": 32
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 536x32px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(2) > div:nth-of-type(2) > button.flex.w-full",
+          "text": "Answered Which checks should run before the deplo…",
+          "rect": {
+            "x": 788,
+            "y": 299,
+            "w": 536,
+            "h": 32
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 536x32px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(2) > div:nth-of-type(3) > button.flex.w-full",
+          "text": "Answered Which region should the canary run in?",
+          "rect": {
+            "x": 788,
+            "y": 336,
+            "w": 536,
+            "h": 32
+          }
+        },
+        {
+          "check": "target-size",
+          "severity": "advisory",
+          "message": "target 536x32px < 44px (touch recommendation)",
+          "selector": "div.flex.w-full > div.flex.flex-col:nth-of-type(2) > div:nth-of-type(4) > button.flex.w-full",
+          "text": "Answered Which environment should I deploy the re…",
+          "rect": {
+            "x": 788,
+            "y": 372,
+            "w": 536,
+            "h": 32
+          }
+        }
+      ]
+    }
+  },
+  "log": {
+    "a": [
+      {
+        "kind": "queued",
+        "at": 1791462229362
+      },
+      {
+        "kind": "answered",
+        "at": 1791462231933,
+        "by": {
+          "surface": "desktop"
+        },
+        "answers": {
+          "deploy-target": [
+            "Production"
+          ]
+        }
+      }
+    ],
+    "step-a": "ok",
+    "b": [
+      {
+        "kind": "queued",
+        "at": 1791462233201
+      },
+      {
+        "kind": "answered",
+        "at": 1791462237375,
+        "by": {
+          "surface": "desktop"
+        },
+        "answers": {
+          "region": [
+            "ap-southeast-2 (Sydney)"
+          ]
+        }
+      }
+    ],
+    "step-b": "ok",
+    "c": [
+      {
+        "kind": "queued",
+        "at": 1791462238652
+      },
+      {
+        "kind": "answered",
+        "at": 1791462242366,
+        "by": {
+          "surface": "desktop"
+        },
+        "answers": {
+          "checks": [
+            "Unit tests",
+            "Smoke tests",
+            "Load tests"
+          ]
+        }
+      }
+    ],
+    "step-c": "ok",
+    "d": [
+      {
+        "kind": "queued",
+        "at": 1791462243700
+      },
+      {
+        "kind": "answered",
+        "at": 1791462246713,
+        "by": {
+          "surface": "desktop"
+        },
+        "answers": {
+          "release-name": [
+            "Aurora"
+          ]
+        }
+      }
+    ],
+    "step-d": "ok",
+    "e": [
+      {
+        "kind": "queued",
+        "at": 1791462249564
+      },
+      {
+        "kind": "declined",
+        "at": 1791462252503,
+        "by": {
+          "surface": "desktop"
+        }
+      }
+    ],
+    "step-e": "ok",
+    "f": [
+      {
+        "kind": "queued",
+        "at": 1791462252801
+      }
+    ],
+    "step-f": "ok",
+    "g1": {
+      "PAIRING": [
+        "Popup is not open"
+      ]
+    },
+    "step-g1": "ok",
+    "g2": [
+      {
+        "kind": "queued",
+        "at": 1791462264101
+      },
+      {
+        "kind": "answered",
+        "at": 1791462266383,
+        "by": {
+          "surface": "desktop"
+        },
+        "answers": {
+          "change": [
+            "Staging"
+          ]
+        }
+      },
+      {
+        "kind": "revised",
+        "at": 1791462268925,
+        "by": {
+          "surface": "desktop"
+        },
+        "answers": {
+          "change": [
+            "Production"
+          ]
+        }
+      }
+    ],
+    "step-g2": "ok",
+    "g2x": [
+      {
+        "kind": "queued",
+        "at": 1791462272572
+      },
+      {
+        "kind": "answered",
+        "at": 1791462274850,
+        "by": {
+          "surface": "desktop"
+        },
+        "answers": {
+          "change-other": [
+            "Staging"
+          ]
+        }
+      },
+      {
+        "kind": "revised",
+        "at": 1791462277993,
+        "by": {
+          "surface": "desktop"
+        },
+        "answers": {
+          "change-other": [
+            "Canary (5% of traffic)"
+          ]
+        }
+      }
+    ],
+    "step-g2x": "ok"
+  },
+  "otherPresent": {
+    "a1:deploy-target": true,
+    "b1:region": true,
+    "c1:checks": true,
+    "e1:deploy_key": false,
+    "g2xb:change-other": true
+  },
+  "providerCalls": {
+    "f": [
+      {
+        "call": 6,
+        "user_tail": [
+          "The user answered:\nchecks — Which checks should run before the deploy?\n  answer: Unit tests; Smoke tests; Load tests",
+          "The user answered:\nrelease-name — What should the release be called?\n  answer: Aurora",
+          "The user did not hand over the credential — do not run anything that needed it; report what was left undone. Do not ask again: a declined secret is an answer.",
+          "Before you rotate them: are the staging keys shared with prod?"
+        ]
+      }
+    ]
+  },
+  "history": {
+    "f": {
+      "status": 200,
+      "entries": 45,
+      "carryingTheMessage": [
+        {
+          "type": "message",
+          "role": "user",
+          "custom_type": null,
+          "text": "Before you rotate them: are the staging keys shared with prod?"
+        }
+      ],
+      "tail": [
+        {
+          "type": "message",
+          "role": "user",
+          "custom_type": null,
+          "text": "Before you rotate them: are the staging keys shared with prod?"
+        },
+        {
+          "type": "message",
+          "role": "assistant",
+          "custom_type": null,
+          "text": "Noted. I will carry on with that."
+        },
+        {
+          "type": "custom",
+          "role": null,
+          "custom_type": "frontend_state_checkpoint_v1",
+          "text": ""
+        },
+        {
+          "type": "custom",
+          "role": null,
+          "custom_type": "completion_attention",
+          "text": ""
+        }
+      ]
+    }
+  },
+  "errors": [],
+  "f4": {
+    "askStillOpenInTheUi": true
+  }
+}
