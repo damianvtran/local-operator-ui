@@ -65,7 +65,7 @@
  * round 1, M-1: the shipped build revealed the plate after 120ms of CSS while this
  * line waited 200ms, and the PR body claimed the delay was already there).
  *
- * THE CENSUS IS TWO READERS AND IT HAS SHRUNK BEFORE: the chat sidebar's collapse
+ * THE CENSUS IS ONE READER, and it has shrunk twice: the chat sidebar's collapse
  * cluster is no longer drawn (agent review round 1's M1; `chat-sidebar.tsx`
  * records that the cluster, the draggable boundary and the region swap are gone),
  * and the conversation column's measure handle was removed in #895. Re-count the

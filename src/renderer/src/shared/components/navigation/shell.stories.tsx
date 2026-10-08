@@ -11,6 +11,7 @@ import {
 } from "@features/chat/canonical/transcript-reducer";
 import { AskDrawer } from "@features/chat/components/asks/ask-drawer";
 import { Canvas } from "@features/chat/components/canvas";
+import { RUN_PANEL_MAX_PX } from "@features/chat/components/chat-content";
 import { ChatHeader } from "@features/chat/components/chat-header";
 import {
 	deriveMcpServers,
@@ -34,6 +35,7 @@ import { apiConfig } from "@shared/config/api-config";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
+	RUN_PANEL_MIN_PX,
 	resolveRightSlotOccupied,
 	resolveRightSlotWidth,
 	useUiPreferencesStore,
@@ -1483,6 +1485,10 @@ export const ChatMeasureEdges: Story = {
  */
 export const ChatMeasureEdgesRunPanel: Story = {
 	render: () => {
+		/* The write the arm's divider performs, through the app's own setter. */
+		const setRightSlotWidth = useUiPreferencesStore(
+			(state) => state.setRightSlotWidth,
+		);
 		useLayoutEffect(() => {
 			useUiPreferencesStore.setState({
 				isRunPanelOpen: true,
@@ -1502,16 +1508,35 @@ export const ChatMeasureEdgesRunPanel: Story = {
 				body={<MeasureTranscriptBody />}
 				pane={(slotWidth) => (
 					<>
-						{/* The pair chat-content.tsx mounts: the divider, then the slot. */}
+						{/*
+						 * The pair chat-content.tsx mounts, with ITS bounds rather than a
+						 * literal: `RUN_PANEL_MIN_PX` is the range's floor (420 is the pane's
+						 * DEFAULT width, and restating it as a floor announced a contract the
+						 * app does not have), `RUN_PANEL_MAX_PX` its ceiling, and both writes go
+						 * through the store's own setter exactly as the app's
+						 * `handleRunPanelWidthChange` / `handleRunPanelWidthReset` do - a reset
+						 * being a drag to UNSET rather than to a stored number (design review
+						 * round 1, D1; QA round 1, Q1).
+						 *
+						 * The slot carries no `minWidth` for the same reason the app's own mount
+						 * does not pass one: `min-width: 420` pinned the pane to its DEFAULT width,
+						 * so a drag to the floor the divider now announces rendered 420 anyway -
+						 * a promise the range could not keep (`RUN_PANEL_MIN_PX`'s own note states
+						 * the rule). The ceiling is stated raw here; the app narrows it by the
+						 * row's capacity (`Math.min(RUN_PANEL_MAX_PX, runPanelCapacity)`), and at
+						 * this frame's 1512px row the capacity is 728, so 640 is the value both
+						 * mounts use.
+						 */}
 						<ResizableDivider
 							sidebarWidth={slotWidth}
-							onSidebarWidthChange={() => undefined}
-							minWidth={420}
-							maxWidth={640}
+							onSidebarWidthChange={setRightSlotWidth}
+							minWidth={RUN_PANEL_MIN_PX}
+							maxWidth={RUN_PANEL_MAX_PX}
 							side="left"
+							onDoubleClick={() => setRightSlotWidth(0)}
 							label="Resize run details. Double-click resets the shared pane width."
 						/>
-						<PaneSlot width={slotWidth} minWidth={420} tourTag="run-panel-dock">
+						<PaneSlot width={slotWidth} tourTag="run-panel-dock">
 							<RunPanel
 								details={deriveRunDetails(runFixtures.bothInFlight())}
 								mcpServers={deriveMcpServers([], {}, [])}
