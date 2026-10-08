@@ -378,6 +378,19 @@ export const askOpenFacts = (
  * in direction: it can only HOLD a record that a complete reading would have settled, which
  * costs one missed re-open on a pathologically large ask and never forces a refused panel
  * open (the shared contract's clause b: an unknown list holds).
+ *
+ * WHAT THE WIRE CANNOT SAY, derived rather than assumed: `ask_wire` (core,
+ * `session/frontend_state.py`) counts `asks_open` over the rows `AskQueue.projection` has
+ * already clipped to `PROJECTION_CAP` (20, open first, then newest). Run over 25
+ * outstanding asks it published 20 rows beside `asks_open: 20` and no `asks_truncated`, so
+ * past 20 outstanding the surplus is on neither field and no client can name it. The tally
+ * arm above is therefore this surface's defence for a list that lags its tally by some other
+ * route, not a reading of that clip. The cost of the limit is bounded and points the
+ * harmless way: once the twenty named asks are gone the surplus surfaces as ids nobody
+ * waved off, which reads as a refill and opens the drawer once for asks the user was never
+ * shown (E2), and closing it records that batch again. Twenty outstanding asks needs
+ * `timed_out` ones to pile up (`OPEN_ASK_CAP` holds the genuinely open ones to 8), so it is
+ * a long-unanswered session, not an ordinary one.
  */
 export const askOutstandingReading = (
 	view: Pick<AskQueueView, "published" | "rows" | "open" | "truncated">,
