@@ -50,6 +50,8 @@ globalThis.localStorage = {
  * flush triggers. Both are taken over so a flush happens when the test says so
  * and never on a wall clock: `pump()` drains what `deliver()` scheduled.
  */
+globalThis.__gapTimers = [];
+globalThis.__gapTimerCallbacks = [];
 let rafQueue = [];
 let rafSeq = 0;
 let fallbackSeq = 0;
@@ -62,8 +64,11 @@ globalThis.cancelAnimationFrame = () => {};
 globalThis.window = {
 	// The hook only ever CLEARS this fallback; scheduling it for real would let
 	// a wall-clock flush race the assertions.
-	setTimeout: () => {
+	setTimeout: (_callback, delay) => {
 		fallbackSeq += 1;
+		// Kept so a case can ask whether a retry was SCHEDULED (never fired).
+		globalThis.__gapTimers.push(delay);
+		globalThis.__gapTimerCallbacks.push(_callback);
 		return fallbackSeq;
 	},
 	clearTimeout: () => {},
@@ -120,10 +125,10 @@ const bundle = await build({
 		contents: `
 			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor } from "./src/renderer/src/shared/store/canonical-sessions-store";
-			export { EMPTY_TRANSCRIPT, appendPendingUser, applyEvent, applyHistoryPage, oldestDurableOutside, sealDisjointBlock } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { EMPTY_TRANSCRIPT, appendPendingUser, applyEvent, applyHistoryPage, sealDisjointBlock } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { paintPendingSend } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
-			export { __resetPendingSends } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { __resetPendingSends, __resetLabelGapBookkeeping } from "./src/renderer/src/shared/hooks/use-canonical-session";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -174,12 +179,12 @@ const {
 	useCanonicalSessionsStore,
 	__resetPaintCache,
 	__resetPendingSends,
+	__resetLabelGapBookkeeping,
 	EMPTY_TRANSCRIPT,
 	appendPendingUser,
 	applyEvent,
 	applyHistoryPage,
 	sealDisjointBlock,
-	oldestDurableOutside,
 	paintPendingSend,
 } = hook;
 
@@ -331,7 +336,14 @@ const openFrame = (seq, gap) => ({
  */
 const snapshotFrame = (
 	seq,
-	{ cursor, entries, liveEvents = [], streaming = true, coldReason },
+	{
+		cursor,
+		entries,
+		liveEvents = [],
+		streaming = true,
+		coldReason,
+		hasMore = true,
+	},
 ) => ({
 	session_id: SESSION_A,
 	epoch: "bridge-epoch",
@@ -377,7 +389,7 @@ const snapshotFrame = (
 				attention: null,
 			},
 		},
-		history: { entries, has_more: true, cursor_missing: false },
+		history: { entries, has_more: hasMore, cursor_missing: false },
 		cold: false,
 		/*
 		 * Absent unless a case names it: an older backend sends no token, and the
@@ -489,9 +501,18 @@ function reset({ transcript, historyFaults = [] }) {
 	 * cache does.
 	 */
 	__resetPendingSends();
+	/*
+	 * The label read's attempt budget is the session-keyed `labelGaps` map (a
+	 * module-level Map holding `attempts: Map<callId, n>`), so a case that settles
+	 * a call id another case already asked for would spend no read at all. It
+	 * ships its own reset, for the same reason the two above do.
+	 */
+	__resetLabelGapBookkeeping();
 	subscriptions.length = 0;
 	requests.length = 0;
 	rafQueue = [];
+	globalThis.__gapTimers = [];
+	globalThis.__gapTimerCallbacks = [];
 	globalThis.__gapHistoryReads = 0;
 	globalThis.__gapHistoryFaults = historyFaults;
 	globalThis.__gapTail = (request) =>
@@ -1866,9 +1887,7 @@ for (const [name, historyFaults, emptyPage] of [
 	["the label walk's read fails", [0, 1, 2], false],
 ]) {
 	test(`a running tool that settles mid-flush does not become the edge of a seal (${name})`, async () => {
-		// A call id per variant: the label read's attempt budget is module state
-		// keyed by call id, so a second variant reusing one would spend no read.
-		const callId = `c-live-${historyFaults.length}`;
+		const callId = "c-live";
 		const base = longConversation({ awayRows: 0, total: 130 });
 		const transcript = makeTranscript(base.rows);
 		reset({ transcript, historyFaults });
@@ -1928,46 +1947,614 @@ for (const [name, historyFaults, emptyPage] of [
 }
 
 /*
- * `oldestDurableOutside`, pure: the pre-flush set is what is "inside". A row that
- * is a durable owner row NOW but was on the pane before as something else (a
- * running tool, a streaming answer, an unconfirmed echo) is not an edge when the
- * set names it - and is one when it does not, which is the bug the set closes.
+ * #876, REVIEW ROUND 3: THE SEAL'S INVARIANT, OVER THE WHOLE SPACE.
+ *
+ * Rounds 1 and 2 each fixed one path by which the seal fired WITHOUT PROOF of a
+ * disjoint block, and each fix was a point patch: a settled tool became the
+ * edge (CI), then a row born live in a flush that carried no page (R3-1), then
+ * a pre-flush index a walk's own commits never refreshed (Q3-1). The contract is
+ * now that a seal's edge is a row the journal DELIVERED - the walk's oldest
+ * fetched entry or the batch's own snapshot page - and that the held block is
+ * provably not connected to it. This table states that as an invariant and
+ * crosses what the pane holds, what the flush carries and how the label read
+ * answers, so a path nobody has thought of is a failing row rather than a
+ * fourth review round.
+ *
+ * Every cell: a pane that painted the journal's last 100 rows of 130 (the held
+ * block, r31..r130) plus one of four live states; then ONE more flush.
+ *
+ *  (i)   a flush with NO snapshot page never makes a durable row disappear;
+ *  (ii)  a flush WITH a page disjoint from the held block drops only durable
+ *        rows older than that page's oldest row, and then the cursor IS that
+ *        row with more history above; when the read reached the block it drops
+ *        nothing, and when it did not it drops exactly the held block;
+ *  (iii) a page connected to the held block drops nothing and costs no read;
+ *  (iv)  every live row, old or born in the flush, is present exactly once;
+ *  (v)   `/clear` mid-walk leaves the pane empty.
  */
-test("oldestDurableOutside never offers a row that was on the pane before as its edge", () => {
-	let state = applyHistoryPage(EMPTY_TRANSCRIPT, {
-		entries: [
-			assistantRow("r10", 110, "held"),
-			assistantRow("r11", 111, "held"),
+const HELD_FIRST = 31;
+const HELD_LAST = 130;
+const PANE_STATES = [
+	"bare",
+	"running tool",
+	"streaming answer",
+	"unconfirmed echo",
+];
+const READ_OUTCOMES = ["ok", "empty page", "failed x3"];
+const PAGE_OLDEST = "r331"; // the tail page of a 430-row journal
+
+const heldIdsOf = (transcript) =>
+	transcript.rows.slice(HELD_FIRST - 1, HELD_LAST).map(recordIdOf);
+
+const liveSeedFor = (state) =>
+	state === "running tool"
+		? [
+				{
+					type: "tool_execution_start",
+					tool_call_id: "c-run",
+					tool_name: "bash",
+					started_at_epoch: 100 + HELD_LAST + 1,
+				},
+			]
+		: state === "streaming answer"
+			? [liveAssistant("s-live", "streaming so far")]
+			: [];
+const liveIdFor = (state) =>
+	state === "running tool"
+		? "tool:c-run"
+		: state === "streaming answer"
+			? "s-live"
+			: state === "unconfirmed echo"
+				? "echo-x"
+				: null;
+
+const endFrameFor = (callId) => ({
+	type: "tool_execution_end",
+	tool_call_id: callId,
+	tool_name: "bash",
+	duration_s: 1,
+	result: { content: [{ text: "ok" }], details: null },
+	is_error: false,
+	started_at_epoch: 100 + HELD_LAST + 1,
+});
+const startFrameFor = (callId) => ({
+	type: "tool_execution_start",
+	tool_call_id: callId,
+	tool_name: "bash",
+	started_at_epoch: 100 + HELD_LAST + 1,
+});
+const assistantFrames = (id) => [
+	{ type: "message_start", message: { id, role: "assistant", content: [] } },
+	{
+		type: "message_end",
+		message: {
+			id,
+			role: "assistant",
+			content: [{ type: "text", text: `${id} done` }],
+			stop_reason: "stop",
+		},
+	},
+];
+
+/* What the flush carries. `needs` names the pane state it can only apply to. */
+const FLUSHES = {
+	"a new fast tool": {
+		events: () => [startFrameFor("c-new"), endFrameFor("c-new")],
+		born: ["tool:c-new"],
+	},
+	"a new assistant": {
+		events: () => assistantFrames("a-new"),
+		born: ["a-new"],
+	},
+	"the running tool settles": {
+		needs: "running tool",
+		events: () => [endFrameFor("c-run")],
+		born: [],
+	},
+	"the streaming answer settles": {
+		needs: "streaming answer",
+		events: () => [
+			{
+				type: "message_end",
+				message: {
+					id: "s-live",
+					role: "assistant",
+					content: [{ type: "text", text: "final" }],
+					stop_reason: "stop",
+				},
+			},
 		],
-		has_more: false,
-		cursor_missing: false,
-	});
-	// A row that was live on the pane and is durable now (settled mid-flush).
-	state = applyHistoryPage(state, {
-		entries: [toolRow("t20", 120, "c20", "bash", "done now")],
-		has_more: false,
-		cursor_missing: false,
-	});
-	state = applyHistoryPage(state, {
-		entries: [assistantRow("r30", 130, "arrived with this batch")],
-		has_more: false,
-		cursor_missing: false,
-	});
-	const before = new Set(["r10", "r11", "tool:c20"]);
-	assert.deepEqual(
-		oldestDurableOutside(state, before),
-		{ id: "r30", ts: 130_000 },
-		"only the row that arrived with the batch is outside",
+		born: [],
+	},
+	"settle + a new assistant": {
+		needs: "running tool",
+		events: () => [endFrameFor("c-run"), ...assistantFrames("a-new")],
+		born: ["a-new"],
+	},
+	"an unpainted attention frame": {
+		attention: true,
+		events: () => [],
+		born: [],
+	},
+	"an unpainted attention frame + a new assistant": {
+		attention: true,
+		events: () => assistantFrames("a-new"),
+		born: ["a-new"],
+	},
+	"a snapshot page disjoint from the held block": {
+		page: "disjoint",
+		events: () => [],
+		born: [],
+	},
+	"a disjoint page + a new fast tool": {
+		page: "disjoint",
+		events: () => [startFrameFor("c-new"), endFrameFor("c-new")],
+		born: ["tool:c-new"],
+	},
+	"a snapshot page connected to the held block": {
+		page: "connected",
+		events: () => [],
+		born: [],
+	},
+	"/clear while the walk is out": {
+		page: "disjoint",
+		clear: true,
+		events: () => [],
+		born: [],
+	},
+};
+
+async function driveInvariant({ state, flush, outcome }) {
+	const base = longConversation({ awayRows: 0, total: HELD_LAST });
+	const transcript = makeTranscript(base.rows);
+	reset({ transcript, historyFaults: [] });
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(SESSION_A, true);
+		return handle;
+	};
+	runtime.rerender();
+	const seed = liveSeedFor(state);
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: "r30",
+			entries: transcript.tail(REOPEN_PAGE).entries,
+			liveEvents: seed,
+			coldReason: null,
+		}),
 	);
-	assert.deepEqual(
-		oldestDurableOutside(state, new Set(["r10", "r11"])),
-		{ id: "tool:c20", ts: 120_000 },
-		"left out of the set, the settled row becomes the edge: the regression",
+	await pump();
+	if (state === "unconfirmed echo") {
+		paintPendingSend(SESSION_A, { id: "echo-x", text: "typed", images: [] });
+		await pump();
+	}
+	const heldDurable = heldIdsOf(transcript);
+	const painted0 = ids(handle.transcript);
+	for (const id of heldDurable)
+		assert.ok(painted0.includes(id), `${id} painted before the flush`);
+	const live = liveIdFor(state);
+	if (live) assert.ok(painted0.includes(live), `${live} on the pane before`);
+
+	// How the label walk's reads answer from here on.
+	const real = globalThis.__gapTail;
+	const reads0 = historyReads();
+	const parked = [];
+	const answer = (request) =>
+		outcome === "ok"
+			? real(request)
+			: outcome === "empty page"
+				? { entries: [], has_more: false, cursor_missing: false }
+				: (() => {
+						throw new Error("history unavailable");
+					})();
+	globalThis.__gapTail = flush.clear
+		? (request) =>
+				new Promise((resolve, reject) =>
+					parked.push(() => {
+						try {
+							resolve(answer(request));
+						} catch (error) {
+							reject(error);
+						}
+					}),
+				)
+		: answer;
+	if (outcome === "failed x3") globalThis.__gapHistoryFaults = [];
+
+	let journalTop = HELD_LAST;
+	if (flush.page) {
+		// Disjoint: the journal moved 300 rows on, so the page is r331..r430.
+		// Connected: it moved 20 rows on, so the page (r51..r150) overlaps the block.
+		const grown = flush.page === "disjoint" ? 300 : 20;
+		grow(transcript, HELD_LAST + 1, HELD_LAST + grown);
+		journalTop = HELD_LAST + grown;
+	}
+	let seq = 3;
+	if (flush.page) {
+		deliver(openFrame(seq++, true));
+		deliver(
+			snapshotFrame(seq++, {
+				cursor: `r${journalTop - REOPEN_PAGE}`,
+				entries: transcript.tail(REOPEN_PAGE).entries,
+				liveEvents: seed,
+				coldReason: null,
+			}),
+		);
+	}
+	if (flush.attention) deliver(attentionFrame(seq++));
+	for (const event of flush.events()) deliver(eventFrame(seq++, event));
+	await pump();
+	if (flush.clear) {
+		handle.clearView();
+		await pump();
+		for (let i = 0; i < 12 && parked.length; i++) {
+			parked.shift()();
+			await pump();
+		}
+	}
+	return {
+		heldDurable,
+		after: ids(handle.transcript),
+		transcript: handle.transcript,
+		reads: historyReads() - reads0,
+		journal: transcript.rows.map(recordIdOf),
+	};
+}
+
+for (const state of PANE_STATES) {
+	for (const [name, flush] of Object.entries(FLUSHES)) {
+		if (flush.needs && flush.needs !== state) continue;
+		for (const outcome of READ_OUTCOMES) {
+			test(`seal invariant: pane [${state}] x flush [${name}] x label read [${outcome}]`, async () => {
+				const r = await driveInvariant({ state, flush, outcome });
+				const cell = `[${state}] [${name}] [${outcome}]`;
+				const live = liveIdFor(state);
+				if (flush.clear) {
+					assert.equal(
+						r.after.filter((id) => r.heldDurable.includes(id)).length,
+						0,
+						`${cell}: (v) a cleared pane stays cleared`,
+					);
+					assert.equal(r.transcript.records.length, 0, `${cell}: and empty`);
+					return;
+				}
+				const kept = r.heldDurable.filter((id) => r.after.includes(id));
+				const dropped = r.heldDurable.filter((id) => !r.after.includes(id));
+				// (iv) every live row, old or born here, exactly once.
+				for (const id of [...(live ? [live] : []), ...flush.born])
+					assert.equal(
+						r.after.filter((x) => x === id).length,
+						1,
+						`${cell}: (iv) ${id} present exactly once`,
+					);
+				assert.equal(
+					new Set(r.after).size,
+					r.after.length,
+					`${cell}: no duplicates`,
+				);
+				if (flush.page === "disjoint") {
+					if (outcome === "ok") {
+						assert.deepEqual(
+							dropped,
+							[],
+							`${cell}: (ii) the read reached the block`,
+						);
+					} else {
+						assert.deepEqual(
+							dropped,
+							r.heldDurable,
+							`${cell}: (ii) the read did not reach it, so exactly the held block is sealed`,
+						);
+						assert.equal(
+							r.transcript.oldestId,
+							PAGE_OLDEST,
+							`${cell}: (ii) the cursor is the page's oldest row`,
+						);
+						assert.equal(
+							r.transcript.hasMore,
+							true,
+							`${cell}: (ii) and more is above`,
+						);
+					}
+					// Whatever remains of the journal is one suffix ending at its tail.
+					const journalRows = r.after.filter((id) => r.journal.includes(id));
+					assertContiguousSuffix(journalRows, r.journal, cell);
+				} else if (flush.page === "connected") {
+					assert.deepEqual(
+						dropped,
+						[],
+						`${cell}: (iii) a connected page drops nothing`,
+					);
+					assert.equal(r.reads, 0, `${cell}: (iii) and costs no read`);
+				} else {
+					assert.deepEqual(
+						dropped,
+						[],
+						`${cell}: (i) a flush with no page never drops a durable row`,
+					);
+					assert.equal(kept.length, r.heldDurable.length);
+				}
+			});
+		}
+	}
+}
+
+/*
+ * The specific shapes the reviews found, named so a failure says which one
+ * regressed. Each is also a cell of the table above; these state the claim.
+ */
+test("R3-1: a tool that starts and ends in ONE flush does not seal the pane when the label read fails", async () => {
+	const r = await driveInvariant({
+		state: "bare",
+		flush: FLUSHES["a new fast tool"],
+		outcome: "failed x3",
+	});
+	for (const id of r.heldDurable)
+		assert.ok(r.after.includes(id), `${id} survives`);
+	assert.equal(r.transcript.records.length, r.heldDurable.length + 1);
+});
+
+test("Q3-1: a tool that settles AFTER the reopen walk finished leaves the rows the walk reconnected", async () => {
+	const tool = {
+		type: "tool_execution_start",
+		tool_call_id: "c-late",
+		tool_name: "bash",
+		started_at_epoch: 9999,
+	};
+	const { handle, painted } = await driveCachedReopen({
+		away: 300,
+		returnPage: (t) => ({
+			cursor: t.rows[t.rows.length - REOPEN_PAGE - 1].id,
+			entries: t.tail(REOPEN_PAGE).entries,
+			coldReason: null,
+			liveEvents: [tool],
+		}),
+	});
+	const before = ids(handle().transcript);
+	assert.ok(
+		before.length >= 400,
+		`the walk reconnected the block (${painted.length})`,
 	);
+	globalThis.__gapTail = () => ({
+		entries: [],
+		has_more: false,
+		cursor_missing: false,
+	});
+	deliver(eventFrame(11, endFrameFor("c-late")));
+	await pump();
+	const after = ids(handle().transcript);
+	assert.deepEqual(
+		before.filter((id) => !after.includes(id)),
+		[],
+		"every previously painted row is still painted",
+	);
+});
+
+test("Q3-1b: what a walk's own commits painted counts as held when the next snapshot arrives", async () => {
+	// After the reopen walk the pane holds r301..r700, but the index the last FLUSH
+	// left behind holds only the snapshot page and the cached block. An older
+	// backend's page cut at r500 ends on a row only the walk painted: against the
+	// live view it connects (no read); against the stale index it looked disjoint,
+	// read, and - with the read failing - sealed the cached block away.
+	const { transcript, handle } = await driveCachedReopen({ away: 300 });
+	const before = ids(handle().transcript);
+	const reads0 = historyReads();
+	globalThis.__gapHistoryFaults = Array.from(
+		{ length: 20 },
+		(_, i) => globalThis.__gapHistoryReads + i,
+	);
+	const cut = transcript.page("r500", REOPEN_PAGE);
+	deliver(openFrame(20, true));
+	deliver(
+		snapshotFrame(21, {
+			cursor: "r600",
+			entries: cut.entries,
+			liveEvents: [],
+		}),
+	);
+	await pump();
 	assert.equal(
-		oldestDurableOutside(state, new Set(state.records.map((r) => r.id))),
-		null,
-		"a pane that held everything has nothing outside",
+		historyReads() - reads0,
+		0,
+		"the page ends on a held row, so no read",
+	);
+	assert.deepEqual(
+		before.filter((id) => !ids(handle().transcript).includes(id)),
+		[],
+		"nothing was dropped",
+	);
+});
+
+test("Q3-2b: a walk whose read fails after /clear does not schedule a retry of the history it cleared", async () => {
+	// An emptied pane reads, to the walk's failure arm, as a pane that never
+	// loaded: it would retry on the stream's backoff and repaint the history.
+	const base = longConversation({ awayRows: 0, total: 400 });
+	const transcript = makeTranscript(base.rows);
+	reset({ transcript });
+	const runtime = makeRuntime();
+	let sessionId = SESSION_A;
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(sessionId, Boolean(sessionId));
+		return handle;
+	};
+	runtime.rerender();
+	const page = () => ({
+		liveEvents: [],
+		cursor: transcript.rows.at(-101).id,
+		entries: transcript.tail(100).entries,
+		coldReason: null,
+	});
+	deliver(openFrame(1, true));
+	deliver(snapshotFrame(2, page()));
+	await pump();
+	sessionId = SESSION_B;
+	runtime.rerender();
+	await pump();
+	grow(transcript, 401, 700);
+	sessionId = SESSION_A;
+	runtime.rerender();
+	const release = [];
+	globalThis.__gapTail = () =>
+		new Promise((_resolve, reject) =>
+			release.push(() => reject(new Error("history unavailable"))),
+		);
+	deliver(openFrame(9, true));
+	deliver(snapshotFrame(10, page()));
+	await pump();
+	assert.ok(release.length > 0, "the walk has a read out");
+	handle.clearView();
+	await pump();
+	const timersBefore = globalThis.__gapTimers.length;
+	for (let i = 0; i < 10 && release.length; i++) {
+		release.shift()();
+		await pump();
+	}
+	assert.equal(handle.transcript.records.length, 0, "the pane stays cleared");
+	assert.equal(
+		globalThis.__gapTimers.length,
+		timersBefore,
+		"and no retry of the cleared history is scheduled",
+	);
+});
+
+test("a disjoint snapshot page that is the WHOLE journal seals nothing", async () => {
+	// The journal was replaced by a shorter one: the page has no `has_more`, so
+	// there is nothing behind it for the held block to be a hole in front of. A
+	// seal here would set `hasMore` over a journal that has nothing above.
+	const base = longConversation({ awayRows: 0, total: HELD_LAST });
+	const transcript = makeTranscript(base.rows);
+	reset({ transcript });
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(SESSION_A, true);
+		return handle;
+	};
+	runtime.rerender();
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: "r30",
+			entries: transcript.tail(REOPEN_PAGE).entries,
+			coldReason: null,
+		}),
+	);
+	await pump();
+	const held = ids(handle.transcript);
+	assert.equal(held.length, REOPEN_PAGE);
+	globalThis.__gapTail = () => ({
+		entries: [],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const fresh = [];
+	for (let i = 1; i <= 5; i++)
+		fresh.push(assistantRow(`new${i}`, 100 + HELD_LAST + 50 + i, `new ${i}`));
+	deliver(openFrame(3, true));
+	deliver(
+		snapshotFrame(4, {
+			cursor: "new5",
+			entries: fresh,
+			coldReason: null,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	const after = ids(handle.transcript);
+	assert.deepEqual(
+		held.filter((id) => !after.includes(id)),
+		[],
+		"the held block is not sealed away",
+	);
+});
+
+test("Q3-2c: the backoff retry of a nothing-painted walk is not fired into a view that was cleared meanwhile", async () => {
+	// The retry timer is armed on an EMPTY pane; rows can arrive during its
+	// backoff gap and a /clear can follow. Firing the retry then would answer the
+	// clear with the history it removed.
+	const base = longConversation({ awayRows: 0, total: 130 });
+	const transcript = makeTranscript(base.rows);
+	reset({ transcript, historyFaults: [0] });
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(SESSION_A, true);
+		return handle;
+	};
+	runtime.rerender();
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: null,
+			entries: [],
+			liveEvents: [],
+			coldReason: "no-runtime",
+		}),
+	);
+	await pump();
+	assert.ok(globalThis.__gapTimerCallbacks.length > 0, "a retry is armed");
+	for (const frame of assistantFrames("a-gap")) deliver(eventFrame(3, frame));
+	await pump();
+	assert.ok(handle.transcript.records.length > 0, "a row arrived in the gap");
+	handle.clearView();
+	await pump();
+	const reads = historyReads();
+	for (const fire of globalThis.__gapTimerCallbacks.splice(0)) fire();
+	await pump();
+	assert.equal(historyReads(), reads, "the cleared view is not read for again");
+	assert.equal(handle.transcript.records.length, 0, "and stays cleared");
+});
+
+test("Q3-2: /clear while the reopen walk is in flight is not undone by the walk", async () => {
+	const base = longConversation({ awayRows: 0, total: 400 });
+	const transcript = makeTranscript(base.rows);
+	reset({ transcript });
+	const runtime = makeRuntime();
+	let sessionId = SESSION_A;
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(sessionId, Boolean(sessionId));
+		return handle;
+	};
+	runtime.rerender();
+	const page = () => ({
+		liveEvents: [],
+		cursor: transcript.rows.at(-101).id,
+		entries: transcript.tail(100).entries,
+		coldReason: null,
+	});
+	deliver(openFrame(1, true));
+	deliver(snapshotFrame(2, page()));
+	await pump();
+	sessionId = SESSION_B;
+	runtime.rerender();
+	await pump();
+	grow(transcript, 401, 700);
+	sessionId = SESSION_A;
+	runtime.rerender();
+	const release = [];
+	const real = globalThis.__gapTail;
+	globalThis.__gapTail = (request) =>
+		request.beforeId === undefined
+			? real(request)
+			: new Promise((resolve) => release.push(() => resolve(real(request))));
+	deliver(openFrame(9, true));
+	deliver(snapshotFrame(10, page()));
+	await pump();
+	assert.ok(release.length > 0, "the walk has a read out");
+	handle.clearView();
+	await pump();
+	for (let i = 0; i < 10 && release.length; i++) {
+		release.shift()();
+		await pump();
+	}
+	assert.equal(
+		ids(handle.transcript).length,
+		0,
+		"nothing from the cleared history is painted back",
 	);
 });
 
