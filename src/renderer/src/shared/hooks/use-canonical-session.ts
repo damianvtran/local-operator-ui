@@ -43,6 +43,7 @@ import {
 	applyHistoryPage,
 	applyLiveSeed,
 	clearTranscript,
+	isDurableOwnerRow,
 	labelGapCandidates,
 	labelTargetsBehind,
 	labelTargetsBehindIds,
@@ -3356,8 +3357,28 @@ export function useCanonicalSessionStream(
 			 * batch's own rows are in hand, and a held set that included them would
 			 * satisfy the connection by construction — which is how a reopen's walk
 			 * stood down over a hole it was already holding one end of.
+			 *
+			 * ONLY ROWS THE JOURNAL OWNS COUNT AS HELD (#876, review round 1). The
+			 * index also lists this app's own unconfirmed user echo, and an echo is
+			 * keyed by the admission request UUID — which is ALSO the id the owner
+			 * gives the durable row. A send that landed while a stale cached paint was
+			 * on screen therefore puts that id in the index, and when the owner has
+			 * already journaled it as the newest row the new tail page contains it:
+			 * "the page reaches a held row" would then be true of the ECHO alone, and
+			 * the gate and the walk would stand down over the very hole this exists
+			 * to close, with no read. An echo is evidence of a send, not of a journal
+			 * row the pane holds, so it (and every other row `sealDisjointBlock`
+			 * refuses to drop: a streaming answer, an unsettled call, the app's own
+			 * notices) is left out, by the SAME rule — one definition of "a row paging
+			 * can bring back" for what a seam is owed and what a seal may drop. A pane
+			 * holding only such rows has no seam to close, so it defers as a cold pane
+			 * does (`heldIds.size === 0`). Keyed by `record.id`, which for a tool row is
+			 * already `tool:<call_id>`, the key `entryRecordKey` gives its page entry.
 			 */
-			const heldIds = new Set(paintedIds.current.keys());
+			const heldIds = new Set<string>();
+			for (const record of viewRef.current.transcript.records)
+				if (paintedIds.current.has(record.id) && isDurableOwnerRow(record))
+					heldIds.add(record.id);
 			/*
 			 * The off-record chunks first, and outside the state update: see
 			 * `applyAsideDeltas` for why they can be neither a reducer branch nor a write
@@ -3417,7 +3438,9 @@ export function useCanonicalSessionStream(
 				}
 				if (newest.id === frame.payload.frontend.snapshot.history_cursor)
 					return false;
-				return heldIds.has(newest.id);
+				// The same key the journal-tail arm uses: a tool result's entry id is
+				// not the `tool:<call_id>` its row is held under (#876, review round 1).
+				return heldIds.has(entryRecordKey(newest));
 			};
 			const paintedAnchor = (anchor: string | null | undefined) =>
 				anchor != null && paintedIds.current.has(anchor);

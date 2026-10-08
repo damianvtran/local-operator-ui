@@ -3173,7 +3173,7 @@ const LIVE_ONLY_ID = /^(?:local|notice|retry|subagent|compaction):/;
  * all LIVE — the journal has no copy to re-read, so removing one is data loss
  * rather than a repaint.
  */
-function isDurableOwnerRow(record: TranscriptRecord): boolean {
+export function isDurableOwnerRow(record: TranscriptRecord): boolean {
 	switch (record.kind) {
 		case "user":
 			return !record.local && !record.provisional;
@@ -3222,8 +3222,10 @@ export function oldestDurableOutside(
  * painted the journal's tail, the cached block, and nothing between. This drops
  * the block — every durable row older than `oldest`, the oldest entry the
  * fetched chain reached — and points the cursor at `oldest` with `hasMore`
- * set, so the ordinary paging path re-reads the block contiguously. Nothing is
- * lost: the dropped rows are journal rows, and paging fetches them again.
+ * set, so the ordinary paging path re-reads the block contiguously. No ROW is
+ * lost: the dropped rows are journal rows, and paging fetches them again through
+ * the ordinary path. (That is a statement about rows only; label bookkeeping for
+ * a dropped tool row is untouched here, and a re-fetched row clears it.)
  *
  * WHAT IT NEVER DROPS: a row in `fetched` (the record keys the walk itself
  * read), and anything `isDurableOwnerRow` refuses — echoes, streaming
