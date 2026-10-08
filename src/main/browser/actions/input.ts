@@ -549,6 +549,15 @@ function foldForComparison(value: string): string {
  *
  * Text with no letter or digit in it (empty, whitespace, `---`) folds to nothing,
  * which would match any field, so it is compared raw instead.
+ *
+ * ACCEPTED RESIDUALS, named so nobody reads `ok` as "the field changed":
+ * - The fold ignores case, spacing, punctuation and combining marks (that is what
+ *   lets masks and normalisers land). So a controlled field that reverts the
+ *   setter write not to `''` but to a PREVIOUS value that is fold-equal to the new
+ *   text (`John Smith` -> `john-smith`) is still reported typed. The reply's
+ *   `value` is the field's real content, so a caller can see it did not change.
+ * - The same applies to a field that already holds the text: typing `42` into a
+ *   field holding `4242` passes the substring test, as it did before the fold.
  */
 function holdsTypedText(readBack: string, text: string): boolean {
 	const folded = foldForComparison(text);
