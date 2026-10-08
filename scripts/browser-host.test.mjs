@@ -7108,6 +7108,197 @@ test("type refuses a setter write that does not stick instead of echoing it (#87
 	);
 });
 
+/**
+ * Fields that REWRITE what they are given (review round 1 of #871). Each really
+ * holds what was typed, in a different spelling, so `type` must report it landed
+ * with the field's own value - refusing them as "does not hold the text" is the
+ * false refusal the first cut of the fix shipped. `super.value` keeps the base
+ * class's private slot, which is why these also work when a test swaps an
+ * existing fake's prototype for one of them.
+ */
+class FakeMaskedInputElement extends FakeInputElement {
+	get value() {
+		return super.value;
+	}
+	set value(next) {
+		super.value = String(next)
+			.replace(/\s+/g, "")
+			.replace(/(.{4})(?=.)/g, "$1 ");
+	}
+}
+
+class FakeUppercasingInputElement extends FakeInputElement {
+	get value() {
+		return super.value;
+	}
+	set value(next) {
+		super.value = String(next).toUpperCase();
+	}
+}
+
+/** A `<textarea>` stores a CRLF as LF. */
+class FakeLfTextareaElement extends FakeInputElement {
+	tagName = "TEXTAREA";
+	get value() {
+		return super.value;
+	}
+	set value(next) {
+		super.value = String(next).replace(/\r\n/g, "\n");
+	}
+}
+
+/** A digits-only mask: it DROPS the characters it does not accept. */
+class FakeDigitsOnlyInputElement extends FakeInputElement {
+	get value() {
+		return super.value;
+	}
+	set value(next) {
+		super.value = String(next).replace(/\D/g, "");
+	}
+}
+
+/** Takes the write, then gives it back after `delayMs` of real time. */
+class FakeLateRevertInputElement extends FakeInputElement {
+	delayMs = 40;
+	get value() {
+		return super.value;
+	}
+	set value(next) {
+		super.value = String(next);
+		setTimeout(() => {
+			super.value = "";
+		}, this.delayMs);
+	}
+}
+
+const typeAtInput = async (input, text) => {
+	const { host, cdp } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	executingCdp(cdp, input);
+	return await host.dispatch(
+		"type",
+		{ ...owner, tab, selector: "input#f", text },
+		"type",
+	);
+};
+
+test("type lands a masking field and reports the field's own formatted value (#871 round 1)", async () => {
+	const input = new FakeMaskedInputElement();
+	const result = await typeAtInput(input, "4242424242424242");
+	assert.equal(result.via, "value_setter");
+	assert.equal(result.value, "4242 4242 4242 4242");
+	assert.equal(input.value, "4242 4242 4242 4242");
+});
+
+test("type lands an uppercasing field and reports the field's own value (#871 round 1)", async () => {
+	const input = new FakeUppercasingInputElement();
+	const result = await typeAtInput(input, "hello world");
+	assert.equal(result.value, "HELLO WORLD");
+	assert.equal(input.value, "HELLO WORLD");
+});
+
+test("type lands a textarea that stores a CRLF as LF (#871 round 1)", async () => {
+	const input = new FakeLfTextareaElement();
+	const result = await typeAtInput(input, "a\r\nb");
+	assert.equal(result.value, "a\nb");
+	assert.equal(input.value, "a\nb");
+});
+
+test("type still refuses a digits-only mask that dropped typed characters, quoting the read-back (#871 round 1)", async () => {
+	const input = new FakeDigitsOnlyInputElement();
+	await assert.rejects(
+		() => typeAtInput(input, "abc123"),
+		(error) => {
+			assert.equal(error.code, "element_not_found");
+			assert.match(error.message, /does not hold the text \(read back '123'\)/);
+			assert.match(error.message, /nothing was reported typed/);
+			return true;
+		},
+	);
+});
+
+test("type compares punctuation-only text raw: held lands, not held is refused (#871 round 1)", async () => {
+	const held = await typeAtInput(new FakeInputElement(), "---");
+	assert.equal(held.value, "---");
+	await assert.rejects(
+		() => typeAtInput(new FakeRevertingInputElement(), "---"),
+		(error) => /does not hold the text/.test(error.message),
+	);
+});
+
+test("type waits out a revert that lands a few frames after the write (#871 round 1)", async () => {
+	const input = new FakeLateRevertInputElement();
+	await assert.rejects(
+		() => typeAtInput(input, "4242"),
+		(error) => {
+			assert.equal(error.code, "element_not_found");
+			assert.match(error.message, /read back ''/);
+			return true;
+		},
+	);
+});
+
+test("type quotes at most 80 characters of a refused field's read-back (#871 round 1)", async () => {
+	class FakeUnrelatedContentInputElement extends FakeInputElement {
+		get value() {
+			return "z".repeat(500);
+		}
+		set value(_next) {}
+	}
+	await assert.rejects(
+		() => typeAtInput(new FakeUnrelatedContentInputElement(), "4242"),
+		(error) => {
+			assert.ok(error.message.includes(`'${"z".repeat(80)}…' (500 chars)`));
+			assert.ok(!error.message.includes("z".repeat(81)));
+			return true;
+		},
+	);
+});
+
+test("frames 4c: a masking field in the cross-site frame lands, and a dropping mask is refused (#871 round 1)", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const masked = cardPage();
+	Object.setPrototypeOf(masked.inputs[0], FakeMaskedInputElement.prototype);
+	const maskedPool = await framePool(masked.page);
+	const typed = await FRAMES_ACTIONS.type(
+		frameCtx(maskedPool.pool, maskedPool.contents),
+		{ tab: "t", selector: "#card", text: "4242424242424242" },
+	);
+	assert.equal(typed.value, "4242 4242 4242 4242");
+	assert.equal(typed.frame_origin, "https://pay.example");
+	assert.equal(masked.inputs[0].value, "4242 4242 4242 4242");
+
+	// The same frame, with `insertText` unable to reach it, so the setter
+	// fallback and its re-read run inside the frame's session.
+	const setterOnly = cardPage();
+	setterOnly.inputs[0].focus = () => {};
+	Object.setPrototypeOf(setterOnly.inputs[0], FakeMaskedInputElement.prototype);
+	const setterPool = await framePool(setterOnly.page);
+	const viaSetter = await FRAMES_ACTIONS.type(
+		frameCtx(setterPool.pool, setterPool.contents),
+		{ tab: "t", selector: "#card", text: "4242424242424242" },
+	);
+	assert.equal(viaSetter.via, "value_setter");
+	assert.equal(viaSetter.value, "4242 4242 4242 4242");
+
+	const dropping = cardPage();
+	dropping.inputs[0].focus = () => {};
+	Object.setPrototypeOf(
+		dropping.inputs[0],
+		FakeDigitsOnlyInputElement.prototype,
+	);
+	const droppingPool = await framePool(dropping.page);
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.type(frameCtx(droppingPool.pool, droppingPool.contents), {
+				tab: "t",
+				selector: "#card",
+				text: "abc123",
+			}),
+		(error) => /does not hold the text \(read back '123'\)/.test(error.message),
+	);
+});
+
 // ---- frames: reaching fields inside iframes (ARCH-1) -------------------------
 
 /**
