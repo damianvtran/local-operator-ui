@@ -422,7 +422,7 @@
 		 * would be faded to two thirds.
 		 */
 		animation-timeline: scroll(self);
-		animation-range: calc(100% - 24px) 100%;
+		animation-range: calc(100% - var(--lo-pane-footer-cue-h)) 100%;
 	}
 
 	@keyframes transcript-top-fade {
@@ -599,7 +599,7 @@
  * overflows (the timeline is then inactive and the base opacity of 0 stands).
  *
  * - `[data-lo-pane-footer]::before` sits on the footer's top edge, 24 px (the pane's
- *   own cue length) tall, and is gone at the end of the scroll;
+ *   own cue length) tall, above the footer's rule, and is gone at the end of the scroll;
  * - `[data-lo-region-cue]::after` is a sticky 12 px strip at the foot of the
  *   region, pulled back with a negative margin so it adds nothing to the scroll
  *   height. 12 px, not 24: the region is 56-88 px tall and a 24 px fade dims a third
@@ -614,11 +614,32 @@
 	opacity: 0;
 }
 
+/*
+ * THE FOOTER CUE'S LENGTH, ONE NUMBER FOR THREE READERS: the gradient's height, the
+ * scroll range over which it fades out, and the pane's `scroll-padding-bottom`
+ * (`agents-page.tsx`), which has to keep a focused control OUT of the band. It was a
+ * literal in the first two and absent from the third, so `scrollIntoView` landed the
+ * control it had just scrolled to flush on the bar - inside the band, where the cue
+ * took a focus ring from 7.5:1 to 1.2:1 (QA round 3 Q2 / design round 3 D1). On
+ * `:root` because the reader that needs it is the scroller, not a descendant of the
+ * footer.
+ */
+:root {
+	--lo-pane-footer-cue-h: 24px;
+}
+
 [data-lo-pane-footer]::before {
 	position: absolute;
 	inset-inline: 0;
-	bottom: 100%;
-	height: 24px;
+	/*
+	 * `100%` IS THE FOOTER'S PADDING BOX, which starts BELOW its 1 px `border-top`, so a
+	 * bare `bottom: 100%` painted the fade over the rule and the separator only
+	 * appeared at the end of the scroll (design round 3 D2: the rule's row read
+	 * canvas at rest, the hairline colour at the end). The extra pixel stands the
+	 * cue on top of the rule instead of over it.
+	 */
+	bottom: calc(100% + 1px);
+	height: var(--lo-pane-footer-cue-h);
 	background: linear-gradient(to top, var(--color-canvas), transparent);
 }
 
@@ -635,7 +656,7 @@
 	[data-lo-pane-footer]::before {
 		animation: lo-footer-cue linear both;
 		animation-timeline: scroll(nearest);
-		animation-range: calc(100% - 24px) 100%;
+		animation-range: calc(100% - var(--lo-pane-footer-cue-h)) 100%;
 	}
 
 	[data-lo-region-cue]::after {

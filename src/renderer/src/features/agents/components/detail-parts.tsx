@@ -257,20 +257,32 @@ export function sourceLabel(
 /**
  * WHETHER THE PAGE-LEVEL "Discard your unsaved changes?" BAR IS OPEN, owned by the
  * page (`agents-page.tsx` sets it while the bar renders) and read by a pane's
- * `useEscapeToCancel` AT KEY TIME. A roster click or a tab switch with a dirty edit
- * opens that bar; the pane has its own Cancel question, and both answer Escape.
- * One owner at a time: while the bar is open the pane stands down and the page
- * closes the bar.
+ * `useEscapeToCancel` and its footer's Cancel AT PRESS TIME. A roster click or a
+ * tab switch with a dirty edit opens that bar; the pane has its own Cancel
+ * question, and both answer Escape. One question at a time: while the bar is open
+ * the pane's Escape stands down and the page closes the bar, and a press on the
+ * pane's own Cancel withdraws the bar before the pane asks (UX review round 3, U4).
  *
  * A module flag rather than a prop or context, like `headingFocusPending` below:
  * the hook is called from two panes the page renders several levels apart, and it
  * is read inside the key handler so no re-registration or render ordering can
  * matter - the failure this replaces was exactly a race between two window
  * listeners.
+ *
+ * ONE OWNER: the flag is a boolean (and `withdrawPageDiscardBar` one callback), so
+ * it is only correct while a single `AgentsPage` is mounted - which the app
+ * guarantees (`app.tsx` mounts one route element; the stories mount one at a time).
+ * A second page instance would let the first one's bar closing clear the flag
+ * under the second's open bar, and the answer is then an owner-keyed counter or a
+ * context provided by the page, not a second module variable. Under Vite HMR a
+ * re-evaluated module hands a new pane a fresh `false` while an old effect clears
+ * the old module's variable: dev-only, one extra stacked question, self-healing.
  */
 let pageDiscardBarOpen = false;
-export function setPageDiscardBarOpen(open: boolean) {
+let withdrawPageDiscardBar: (() => void) | null = null;
+export function setPageDiscardBarOpen(open: boolean, withdraw?: () => void) {
 	pageDiscardBarOpen = open;
+	withdrawPageDiscardBar = open ? (withdraw ?? null) : null;
 }
 
 /**
@@ -518,7 +530,18 @@ export function EditFooter({
 			) : (
 				<Button
 					variant="ghost"
-					onClick={() => (dirty ? requestConfirming(true) : onCancel())}
+					onClick={() => {
+						/*
+						 * ONE QUESTION (UX review round 3, U4). With the page's discard bar up
+						 * - a roster click or a tab switch asked first - pressing THIS Cancel
+						 * raised a second, differently worded question under the first. The
+						 * press says what the operator wants now (end this edit), so the bar's
+						 * pending navigation is withdrawn and this footer asks.
+						 */
+						if (pageDiscardBarOpen) withdrawPageDiscardBar?.();
+						if (dirty) requestConfirming(true);
+						else onCancel();
+					}}
 					disabled={pending}
 				>
 					Cancel
