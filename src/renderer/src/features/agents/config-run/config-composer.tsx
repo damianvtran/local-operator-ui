@@ -36,7 +36,11 @@
  * the subagent reader shows per child.
  */
 
-import { CHAT_COLUMN_INSET, CHAT_MEASURE } from "@features/chat/chat-measure";
+import {
+	CHAT_COLUMN_CONTAINER,
+	CHAT_COLUMN_INSET,
+	CHAT_MEASURE,
+} from "@features/chat/chat-measure";
 import { draftPreviewQuery } from "@features/chat/draft-selection";
 import {
 	desktopFeatureEnabled,
@@ -921,10 +925,13 @@ export function ConfigComposer({
 			 * box's left edge rather than its padding box; the hover ground then reaches
 			 * 8 px outside the column, which a ground is allowed to do and text is not.
 			 * The inset wrapper is the band's own (`CHAT_COLUMN_INSET`, the value and not
-			 * a copy of it) so the three columns share an edge if that inset moves.
+			 * a copy of it) so the three columns share an edge if that inset moves. The
+			 * wrapper is its own query container, exactly as the band is, because the
+			 * hero's composer is a direct child of the pane (see `EmptyPane`) and nothing
+			 * above it supplies one for `CHAT_MEASURE`'s 750 px gate to resolve against.
 			 */}
 			{hero && run.enabled ? (
-				<div className={CHAT_COLUMN_INSET}>
+				<div className={cn(CHAT_COLUMN_CONTAINER, CHAT_COLUMN_INSET)}>
 					<div
 						className={cn(
 							CHAT_MEASURE,
