@@ -69,7 +69,10 @@ import {
 } from "../ask-queue";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
-import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
+import {
+	canonicalTranscriptSpeaks,
+	canonicalTranscriptTerminal,
+} from "../canonical/transcript-pane";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
 import {
 	workingLineClaimed,
@@ -329,7 +332,56 @@ type ChatContentProps = {
 	 */
 	canonical: {
 		view: CanonicalSessionHandle;
-		busy: boolean;
+		/**
+		 * Whether the owner's turn is still ALIVE - read through the hold:
+		 * `(frontend ?? heldFrontend)?.streaming`, defined once in the page that
+		 * owns the prop (`chat-page.tsx`).
+		 *
+		 * WHY THE PAIR, and who reads it: a receipt gap nulls `frontend` and keeps
+		 * the last reading in `heldFrontend` (both gap arms in
+		 * `use-canonical-session.ts`), and for a busy session that recurs every
+		 * ~1.5-4 s - so reading the raw field blanked the in-flight claim on every
+		 * reconnect, and for the whole stretch of a flapping link, while the work
+		 * on the far side ran the entire time (operator report, 2026-10-07).
+		 * Round 1 measured where the split it shipped kept biting: through a gap
+		 * the line claimed a running turn while Stop was absent, Esc sent nothing
+		 * (three presses, zero `/interrupt` requests on the wire), and Enter sent
+		 * the wire shape that PARKS a message sent during a live turn - so the
+		 * claims, the controls and the send mode all read this one pair now, and
+		 * the page's own note carries the worst case that accepts.
+		 *
+		 * The readers here: the transcript's working line and the composer's hint
+		 * (the claims), the Stop control the composer draws from
+		 * `canonicalStop.active`, the aside adopt gate, and the skew line on a
+		 * backend that cannot interrupt.
+		 */
+		turnAlive: boolean;
+		/**
+		 * The Stop press's own window: `"pending"` from the press until its
+		 * receipt or its bound; `"awaiting-end"` once a receipt confirmed the
+		 * cancel but the stream has not yet shown the turn ending (the rung must
+		 * not fall back to narrating `running bash` mid-teardown - design round
+		 * 1's D1); `"unconfirmed"` when the press ended with no answer at all
+		 * (the bound fired and the outcome is unknown); null otherwise.
+		 *
+		 * ONE fact with three phases rather than two booleans, because "pending
+		 * and unconfirmed" is not a state: a receipt resolves the press, and only
+		 * a lost answer leaves it unknown. The page owns the state machine
+		 * (`chat-page.tsx`); the readers here are the working line's `stopping`
+		 * rung and the stopped band's gate - a band must not claim a stopped turn
+		 * from a press whose outcome was never confirmed.
+		 */
+		stopOutcome?: "pending" | "awaiting-end" | "unconfirmed" | null;
+		/**
+		 * True while the sentence standing in the composer is the DISPUTED idle
+		 * one (UX round 2, U9): an `idle` receipt arrived while the pane's held
+		 * claim still said a turn was alive, so the claim stays - the work may be
+		 * real - but the rung withholds its clock for exactly as long as the pane
+		 * is admitting it cannot vouch for a duration. The page folds this from
+		 * the notice's own kind (`chat-page.tsx`), so the sentence and the
+		 * withheld clock are one fact with one lifetime.
+		 */
+		idleDisputed?: boolean;
 		admitting?: boolean;
 		/**
 		 * A send this conversation has admitted and that has produced nothing yet.
@@ -582,6 +634,31 @@ const canonicalSpeaking = (
 			}),
 	);
 
+/**
+ * The same question asked for the WORKING CLAIM: is the pane's statement one
+ * that ENDS a claim (a state the stream cannot revise), rather than the
+ * reconnecting window, which does not?
+ *
+ * The composer's hint and the transcript's rung must yield to the SAME
+ * statements (review round 2, R2-3 asked for exactly that agreement), so both
+ * read `canonicalTranscriptTerminal` and neither re-derives the exclusion; see
+ * its doc for why a reconnect is deliberately not among the states that stand
+ * the claim down (operator incident, 2026-10-07).
+ */
+const canonicalTerminal = (
+	canonical?: ChatContentProps["canonical"],
+	gone = false,
+): boolean =>
+	Boolean(
+		canonical &&
+			canonicalTranscriptTerminal({
+				status: canonical.view.status,
+				failure: canonical.view.failure,
+				stale: canonical.view.stale,
+				missing: canonical.view.missing || gone,
+			}),
+	);
+
 const defaultCanvasState = {
 	isOpen: false,
 	openTabs: [],
@@ -715,21 +792,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				}),
 			[queryClient],
 		);
-		/*
-		 * A MEMOISED STOP, for the reason the probe above is memoised at its source:
-		 * this object is handed to the composer, whose memo boundary compares props
-		 * shallowly, and it used to be rebuilt inline on every render of this
-		 * component — which is once per stream flush. Frozen on the three values it
-		 * is made of, so it is rebuilt exactly when one of them moves: `onStop` is
-		 * the page's `stop` callback, stable since its own `useCallback` fix.
-		 */
-		const canonicalStop = useMemo(
-			() =>
-				canonical?.stopAvailable
-					? { active: canonical.busy, onStop: canonical.onStop }
-					: undefined,
-			[canonical?.stopAvailable, canonical?.busy, canonical?.onStop],
-		);
 		const chatContainerRef = useRef<HTMLDivElement>(null);
 		const canvasContainerRef = useRef<HTMLDivElement>(null);
 		/*
@@ -841,6 +903,61 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			sessionGone || (canonical?.view.missing === true && !listedNow);
 		const conversationUnavailable =
 			sessionGone || canonical?.view.missing === true;
+		/*
+		 * A MEMOISED STOP, for the reason the credential probe above is memoised at
+		 * its source: this object is handed to the composer, whose memo boundary
+		 * compares props shallowly, and it used to be rebuilt inline on every
+		 * render of this component - which is once per stream flush. Frozen on the
+		 * values it is made of, so it is rebuilt exactly when one of them moves:
+		 * `onStop` is the page's `stop` callback, stable since its own `useCallback`
+		 * fix. It sits here, below `gone`, because one of its terms is the SAME
+		 * terminal predicate the rung and the hint read (`canonicalTerminal`),
+		 * which takes the membership half with it.
+		 *
+		 * THREE TERMS, each answering a round-1 finding: `stopAvailable` is the
+		 * capability (absent means no control at all); `!terminalPane` is U6 - on
+		 * a terminal pane (the failure notice, a conversation this machine no
+		 * longer has, a cached page) the red square stayed an armed control that
+		 * could only answer `nothing was running`, because the raw field kept
+		 * painting while the frontend did - so the same
+		 * `canonicalTranscriptTerminal` the rung and the hint yield to retires the
+		 * control too; and `active` reads `turnAlive`, the pair (D2), so a gap
+		 * no longer hides the control while the line claims the turn. `stopping`
+		 * rides along for the composer's pressed-step placeholder (D6).
+		 */
+		const stoppingTurn =
+			canonical?.stopOutcome === "pending" ||
+			canonical?.stopOutcome === "awaiting-end";
+		/*
+		 * U10: the composer's `Stopping the turn` and the square's pressed hold
+		 * yield the moment the FEED shows the turn over, not only at the receipt
+		 * or the bound. Measured: with the receipt withheld, the line went and the
+		 * band came up at +116 ms while the box kept saying `Stopping the turn`
+		 * for the full 15 s - two surfaces in one viewport disagreeing, with the
+		 * band's `Retry` directly above a box that claimed to still be stopping.
+		 * The rung needs no such term (its overlay sits on a live state, and a
+		 * live state cannot outlive the pair's fall); the placeholder has no live
+		 * state of its own, so it takes the pair's own reading explicitly.
+		 */
+		const stoppingShown = stoppingTurn && canonical?.turnAlive === true;
+		const terminalPane = canonicalTerminal(canonical, gone);
+		const canonicalStop = useMemo(
+			() =>
+				canonical?.stopAvailable && !terminalPane
+					? {
+							active: canonical.turnAlive,
+							stopping: stoppingShown,
+							onStop: canonical.onStop,
+						}
+					: undefined,
+			[
+				canonical?.stopAvailable,
+				terminalPane,
+				canonical?.turnAlive,
+				stoppingShown,
+				canonical?.onStop,
+			],
+		);
 		const setSessionArchived = useCanonicalSessionsStore(
 			(state) => state.setSessionArchived,
 		);
@@ -1826,11 +1943,28 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 * answered from `gate`.
 										 */
 										gate={gate}
-										waiting={canonical.busy}
+										/*
+										 * THE IN-FLIGHT CLAIM SURVIVES A RECEIPT GAP (operator
+										 * incident, 2026-10-07): read through the pair, so the
+										 * reconnects a busy session answers with do not blank the
+										 * line - the same pair the controls and the send mode now
+										 * read (round 1's D2; the prop's own note carries the
+										 * decision).
+										 */
+										waiting={canonical.turnAlive}
 										starting={canonical.starting === true}
 										startingAfterId={canonical.startingAfterId ?? null}
 										startingSession={canonical.startingSession === true}
 										startingSince={canonical.startingSince ?? null}
+										stopping={stoppingTurn}
+										/*
+										 * The disputed idle withholds the rung's clock (U9): the
+										 * label stands - the work may be real - but the ticking
+										 * number asserts a duration the pane just admitted it
+										 * cannot vouch for. One fact with the sentence; see
+										 * `idleDisputed` on the handle type.
+										 */
+										idleDisputed={canonical.idleDisputed === true}
 										loadingOlder={canonical.view.loadingOlder}
 										onLoadOlder={canonical.view.loadOlder}
 										onLoadOlderOutcome={canonical.view.loadOlderDetailed}
@@ -1987,38 +2121,61 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * the same echo and the same failure handling as a press on Enter — a second send
 						 * path would be the defect, not the fix.
 						 */}
-						{stoppedTurnAt !== null && (
-							<div
-								className={cn(
-									CHAT_COLUMN_CONTAINER,
-									CHAT_COLUMN_INSET,
-									"w-full shrink-0 pt-2",
-								)}
-							>
-								<p
-									data-stopped-turn
+						{/*
+						 * WHAT THE BAND IS GATED ON, and why each term is here (operator
+						 * incident, 2026-10-07; the sibling trace's fix 1):
+						 *
+						 * - `stoppedTurnAt !== null` is the fact the press wrote, which
+						 *   survives until the next turn so the reducer can classify a killed
+						 *   call's end event (see `stoppedTurns`).
+						 * - `!canonical.turnAlive` is the guarantee this band exists for:
+						 *   "Stopped · Retry" says a turn ENDED, so it must not render while
+						 *   the turn is still running. It reads the SAME pair the working
+						 *   line reads, because during a receipt gap the raw reading is false
+						 *   while the last reading still says "streaming" - the live-turn
+						 *   case, not the ended one.
+						 * - `canonical.stopOutcome !== "unconfirmed"` is the answer's own
+						 *   end: a press whose response was lost leaves the fact standing
+						 *   for classification but must not PAINT a stopped turn - nothing
+						 *   ever confirmed this turn stopped, and the composer carries the
+						 *   sentence saying so.
+						 */}
+						{stoppedTurnAt !== null &&
+							!canonical.turnAlive &&
+							canonical.stopOutcome !== "unconfirmed" && (
+								<div
 									className={cn(
-										"flex items-center gap-2 text-ink-dim text-meta",
-										CHAT_MEASURE,
+										CHAT_COLUMN_CONTAINER,
+										CHAT_COLUMN_INSET,
+										"w-full shrink-0 pt-2",
 									)}
 								>
-									<span>Stopped</span>
-									{stoppedRetryText !== null && (
-										<>
-											<span aria-hidden="true">·</span>
-											<button
-												type="button"
-												data-stopped-retry
-												onClick={() => void onSendMessage(stoppedRetryText, [])}
-												className="rounded-sm text-ink-muted underline-offset-2 transition-colors duration-fast ease-out-quart hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
-											>
-												Retry
-											</button>
-										</>
-									)}
-								</p>
-							</div>
-						)}
+									<p
+										data-stopped-turn
+										className={cn(
+											"flex items-center gap-2 text-ink-dim text-meta",
+											CHAT_MEASURE,
+										)}
+									>
+										<span>Stopped</span>
+										{stoppedRetryText !== null && (
+											<>
+												<span aria-hidden="true">·</span>
+												<button
+													type="button"
+													data-stopped-retry
+													onClick={() =>
+														void onSendMessage(stoppedRetryText, [])
+													}
+													className="rounded-sm text-ink-muted underline-offset-2 transition-colors duration-fast ease-out-quart hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+												>
+													Retry
+												</button>
+											</>
+										)}
+									</p>
+								</div>
+							)}
 						{/* Message input */}
 						{(canonical || !(isLoadingMessages && messages.length === 0)) && (
 							<MessageInput
@@ -2091,17 +2248,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								/*
 								 * Derived from the same expression the transcript's own line is, so
 								 * the two surfaces cannot disagree about whether work is being
-								 * claimed: a pending question and a dead transport both retire
-								 * this hint with the line (review round 2, R2-3; design round
-								 * 2, D5). Reading the latch directly is what let the composer
-								 * keep saying "Waiting for the agent" 46px below a pane that had
-								 * withdrawn exactly that claim.
+								 * claimed: a pending question and a TERMINAL transport statement
+								 * both retire this hint with the line (review round 2, R2-3;
+								 * design round 2, D5) - and, like the transcript's rung, NOT a
+								 * reconnect (operator incident, 2026-10-07: read raw, the hint
+								 * went dark on every ~1.5-4 s gap while the turn ran). Reading
+								 * the latch directly is what let the composer keep saying
+								 * "Waiting for the agent" 46px below a pane that had withdrawn
+								 * exactly that claim.
 								 */
 								awaitingReply={Boolean(
 									canonical &&
 										workingLineClaimed(
 											workingLineInputFor({
-												waiting: canonical.busy,
+												waiting: canonical.turnAlive,
 												// The compacting pass is claimed from the same transcript the line
 												// below reads, so the hint and the rung cannot disagree.
 												compacting:
@@ -2112,8 +2272,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 												startingAfterId: canonical.startingAfterId ?? null,
 												startingSession: canonical.startingSession === true,
 												startingSince: canonical.startingSince ?? null,
+												// The same press window the rung reads (one expression, see
+												// `stoppingTurn`), so a Stop press turns the hint into the
+												// cancel statement (and never a restarting clock - the
+												// rung's own test carries that rule).
+												stopping: stoppingTurn,
 												gate,
-												unavailable: canonicalSpeaking(canonical, gone),
+												unavailable: canonicalTerminal(canonical, gone),
 												records: canonical.view.transcript.records,
 											}),
 										),
@@ -2227,12 +2392,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * than as a handle to re-derive them from: the SESSION the panel is keyed by
 								 * (`sessionId` is the identity a backend route resolves, which is what
 								 * `sessions.aside` addresses) and whether that session is mid-turn — the
-								 * second term of the adopt gate, read from the same `canonical.busy` the Stop
-								 * control beside it uses so the two cannot disagree. Undefined on a pane with
-								 * no session, where no aside can be attached at all.
+								 * second term of the adopt gate, read from the same `canonical.turnAlive` the
+								 * Stop control beside it uses so the two cannot disagree (both read the pair
+								 * since round 1's D2). Undefined on a pane with no session, where no aside
+								 * can be attached at all.
 								 */
 								asideSessionId={sessionId}
-								asideStreaming={canonical.busy}
+								asideStreaming={canonical.turnAlive}
 								/*
 								 * The capability itself, not just its busy half: the composer
 								 * holds the control's SLOT while a turn runs and for a grace
