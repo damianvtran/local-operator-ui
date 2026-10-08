@@ -51,9 +51,12 @@
  * — "is there something in the pane I should look at".
  */
 
-import { Button, Tooltip } from "@shared/components/ui";
+import { PanelRailItem } from "@shared/components/navigation/panel-rail-item";
 import { cn } from "@shared/lib/utils";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import {
+	resolveDrawnRightSlotPane,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import { Info } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -110,6 +113,17 @@ export const RunDetailsTrigger = ({
 	readerChildId,
 }: RunDetailsTriggerProps) => {
 	const isRunPanelOpen = useUiPreferencesStore((state) => state.isRunPanelOpen);
+	/*
+	 * LIT AND NAMED FROM WHAT IS DRAWN, NOT FROM THE FLAG (#872). The flag is a
+	 * preference that outlives the route that can draw the panel; the rail's other
+	 * three items light from the same drawable-aware selector, and this one must
+	 * not be the exception that says "Close run details" for a panel nobody can
+	 * see. `isRunPanelOpen` stays for the focus-return effect and the toggle's
+	 * write, which are about the flag itself.
+	 */
+	const runPanelDrawn = useUiPreferencesStore(
+		(state) => resolveDrawnRightSlotPane(state) === "run",
+	);
 	const setRunPanelOpen = useUiPreferencesStore(
 		(state) => state.setRunPanelOpen,
 	);
@@ -207,7 +221,7 @@ export const RunDetailsTrigger = ({
 
 	const mcpProblems = unseenMcpProblems(mcpServers, seenMcp).length;
 	const label = runDetailTriggerLabel(details, seen, {
-		open: isRunPanelOpen,
+		open: runPanelDrawn,
 		mcpProblems,
 	});
 	const attention =
@@ -241,99 +255,55 @@ export const RunDetailsTrigger = ({
 	if (!details) return null;
 
 	return (
-		<Tooltip content={label} side="top">
-			<Button
-				ref={triggerRef}
-				variant="ghost"
-				size="icon"
+		<PanelRailItem
+			ref={triggerRef}
+			id="run"
+			label={label}
+			ariaLabel={label}
+			pressed={runPanelDrawn}
+			/*
+			 * The pressed GROUND, the hover ground and the lit bar are the rail item's
+			 * (`panel-rail-item.tsx`): this trigger used to carry its own
+			 * `bg-accent-wash` pair and its own shed class, and four triggers in one
+			 * column wearing four spellings of "open" is the drift the rail removes.
+			 */
+			onClick={() => setRunPanelOpen(!isRunPanelOpen)}
+			/*
+			 * Inert hook for the stories and for whatever drives this next. The
+			 * label is derived — it carries counts and flips with the pane — so it
+			 * is the wrong thing to select on, and an element a capture rig cannot
+			 * find is an element it photographs shut.
+			 */
+			data-run-panel-trigger=""
+		>
+			<Info aria-hidden={true} />
+			{(attention || activity) && (
 				/*
-				 * `relative` for the attention dot only; the cluster's geometry is
-				 * unchanged.
+				 * A single 8px dot at the button's top-right corner, in one of two inks
+				 * (the docblock above says which and why). It is not decoration and it is
+				 * not a count: `danger` says something needs attention and nobody has
+				 * looked (§ 3.4); `info` says the session is working while the pane is not
+				 * showing it. Both clear by themselves — the failure ledger clears while
+				 * the panel is open, the activity ink clears the moment the list is on
+				 * screen. `rounded-full` is reserved for avatars, status dots and pill
+				 * badges, which is exactly what this is.
 				 *
-				 * `aria-pressed` with an explicit pressed GROUND, and its own HOVER
-				 * ground beside it. The ghost variant's hover is already
-				 * `bg-accent-wash`, which made "a pointer resting on this button" and
-				 * "this pane is open" the same pixels — the press was legible only
-				 * from the glyph's ink, so the wash could not mean "open" and nothing
-				 * else. Hover therefore takes the NEUTRAL ground step the roster rows
-				 * already use (`bg-elevated`), and `accent-wash` + `text-accent` is
-				 * left to mean the pressed state alone. `text-accent` rides with the
-				 * wash because the wash alone is a tint at 4.5:1-ish over the header's
-				 * ground, where the accent ink is the pair the token set is authored
-				 * for; the hover steps the ink to full `ink` for the same reason on the
-				 * neutral ground.
-				 *
-				 * `hover:text-accent` is overridden in the pressed branch so that a
-				 * pointer resting on the OPEN button keeps the pressed ink rather than
-				 * stepping to `ink` — and `hover:bg-accent-wash` is overridden beside it
-				 * for the same reason, which is the half that was missing first time
-				 * (design review round 2, D2-1). Overriding only the ink left the
-				 * PRESSED GROUND to `hover:bg-elevated`: the wash meant "open" at rest
-				 * and "a pointer is here" under hover, so the ordinary gesture of
-				 * opening the pane replaced the state's own ground the moment the
-				 * pointer stayed where it was. Both halves of the pressed appearance
-				 * now survive hover, so the four states are four grounds — `canvas`
-				 * closed at rest, `elevated` closed hovered, `accent-wash` open, and
-				 * `accent-wash` open hovered, which is the point rather than a
-				 * collision.
+				 * `aria-hidden`, and no clause is added to the accessible name for the
+				 * activity case: the label ALREADY carries the child clause whenever there
+				 * is an open child (`runDetailTriggerLabel`, which spells the state the
+				 * mark shows — `running`, `queued` or `paused`), so a spoken word here
+				 * would be the same fact twice — while the failure case has no such clause
+				 * and is precisely why the dot is the only statement that one makes.
 				 */
-				className={cn(
-					/* THE FIRST CONTROL THE ROW SHEDS (agent review round 2, Q-1). It is the
-					 * most expendable of the cluster's controls for the same reason its own
-					 * gate already hides it while the canvas is open: everything it reports
-					 * is IN the transcript below it (the run's rows, its children, its jobs),
-					 * so losing the door loses no fact. It is also the only control whose
-					 * width the scene cannot measure - the driver's stub daemon has no run -
-					 * which is exactly why it carries the HIGHEST threshold of the three: at
-					 * 22.5rem (360px) it is gone well before the row has to pay for the browser
-					 * trigger and the title's floor, whatever a live run would have added - one
-					 * step (40px) above the canvas's own 320px threshold, which is what each
-					 * control in that cluster costs.
-					 */
-					"relative hidden @[22.5rem]/chathdr:inline-flex hover:bg-elevated hover:text-ink",
-					isRunPanelOpen &&
-						"bg-accent-wash text-accent hover:bg-accent-wash hover:text-accent",
-				)}
-				aria-pressed={isRunPanelOpen}
-				aria-label={label}
-				onClick={() => setRunPanelOpen(!isRunPanelOpen)}
-				/*
-				 * Inert hook for the stories and for whatever drives this next. The
-				 * label is derived — it carries counts and flips with the pane — so it
-				 * is the wrong thing to select on, and an element a capture rig cannot
-				 * find is an element it photographs shut.
-				 */
-				data-run-panel-trigger=""
-			>
-				<Info aria-hidden={true} />
-				{(attention || activity) && (
-					/*
-					 * A single 8px dot at the button's top-right corner, in one of two inks
-					 * (the docblock above says which and why). It is not decoration and it is
-					 * not a count: `danger` says something needs attention and nobody has
-					 * looked (§ 3.4); `info` says the session is working while the pane is not
-					 * showing it. Both clear by themselves — the failure ledger clears while
-					 * the panel is open, the activity ink clears the moment the list is on
-					 * screen. `rounded-full` is reserved for avatars, status dots and pill
-					 * badges, which is exactly what this is.
-					 *
-					 * `aria-hidden`, and no clause is added to the accessible name for the
-					 * activity case: the label ALREADY carries the child clause whenever there
-					 * is an open child (`runDetailTriggerLabel`, which spells the state the
-					 * mark shows — `running`, `queued` or `paused`), so a spoken word here
-					 * would be the same fact twice — while the failure case has no such clause
-					 * and is precisely why the dot is the only statement that one makes.
-					 */
-					<span
-						aria-hidden={true}
-						data-run-panel-dot=""
-						className={cn(
-							"absolute -top-0.5 -right-0.5 size-2 rounded-full",
-							attention ? "bg-danger" : "bg-info",
-						)}
-					/>
-				)}
-			</Button>
-		</Tooltip>
+				<span
+					aria-hidden={true}
+					data-run-panel-dot=""
+					className={cn(
+						"absolute -top-0.5 -right-0.5 size-2 rounded-full",
+						attention ? "bg-danger" : "bg-info",
+					)}
+				/>
+			)}
+		</PanelRailItem>
 	);
 };

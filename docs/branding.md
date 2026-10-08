@@ -382,6 +382,17 @@ control's only edge, effectively invisible. If you are adding a boundary, ask
 whether removing it entirely would lose information. If yes, it is structural
 and must clear 3:1. If no, delete it rather than reaching for `hairline`.
 
+**The panel rail is chrome (#872).** The 44px column at the window's right edge
+holds the four right-slot doors, and it stands on the sidebar's rung: `surface`,
+with a `border-l border-hairline` leading edge - the boundary the tone step to the
+slot's `elevated` cannot carry on its own, mirroring the sidebar's `border-r`. The
+lit item is the sidebar's selected-row pair, `rowSelected` ground and `accent`
+ink, plus a 2px `accent` bar on the panel-facing edge; the bar is there because
+an icon-only item has no weight to change (the sidebar's non-colour channel is
+`font-medium`), so it is the one mark that survives a theme whose `rowSelected`
+sits close to `surface`. No new role: `check-themes` carries the pairs as the
+`panel rail ...` rows of `scripts/contrast-contract.mjs`.
+
 **The composer is an object that leaves the flow.** Its ground is `elevated` on
 `canvas` (+4.89 L\* at worst, +6.64 at the median across the 59 palettes) and it
 draws **no border at rest**: the step is what separates it, and the accent ring

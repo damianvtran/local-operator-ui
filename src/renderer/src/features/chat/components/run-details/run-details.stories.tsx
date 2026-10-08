@@ -44,6 +44,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import "../../../../styles/index.css";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
+import { PanelRailFrame } from "@shared/components/navigation/panel-rail-frame";
 import type { DesktopChildTranscriptPage } from "../../../../../../shared/desktop-session-contract";
 import type { Message } from "../../types/message";
 import { ChatHeader } from "../chat-header";
@@ -303,9 +304,6 @@ const ChatColumn = ({
 					description="Invoices workspace · on this machine"
 					onOpenOptions={() => undefined}
 					runDetails={details}
-					mcpServers={rows}
-					listOnScreen={openPanel && readerChildId === null}
-					readerChildId={readerChildId}
 				/>
 				<TranscriptGround />
 			</div>
@@ -329,6 +327,12 @@ const ChatColumn = ({
 					pulses={pulses}
 				/>
 			)}
+			<PanelRailFrame
+				runDetails={details}
+				mcpServers={rows}
+				listOnScreen={openPanel && readerChildId === null}
+				readerChildId={readerChildId}
+			/>
 		</div>
 	);
 };
@@ -373,13 +377,16 @@ const SwapGround = ({
 					description="Invoices workspace · on this machine"
 					onOpenOptions={() => undefined}
 					runDetails={details}
-					mcpServers={[]}
-					listOnScreen={runOpen}
-					readerChildId={null}
 				/>
 				<TranscriptGround />
 			</div>
 			{runOpen && <RunPane details={details} width={panelWidth} />}
+			<PanelRailFrame
+				runDetails={details}
+				mcpServers={[]}
+				listOnScreen={runOpen}
+				readerChildId={null}
+			/>
 		</div>
 	);
 };
@@ -662,13 +669,16 @@ const DotAckGround = ({ stop }: { stop: "acknowledged" | "rearmed" }) => {
 					description="Invoices workspace · on this machine"
 					onOpenOptions={() => undefined}
 					runDetails={details}
-					mcpServers={rows}
-					listOnScreen={open}
-					readerChildId={null}
 				/>
 				<TranscriptGround />
 			</div>
 			{open && <RunPane details={details} mcpServers={raw} />}
+			<PanelRailFrame
+				runDetails={details}
+				mcpServers={rows}
+				listOnScreen={open}
+				readerChildId={null}
+			/>
 		</div>
 	);
 };
@@ -844,9 +854,6 @@ const InteractiveGround = () => {
 					description="Invoices workspace · on this machine"
 					onOpenOptions={() => undefined}
 					runDetails={details}
-					mcpServers={[]}
-					listOnScreen={open && readerChildId === null}
-					readerChildId={readerChildId}
 				/>
 				<TranscriptGround />
 			</div>
@@ -859,6 +866,12 @@ const InteractiveGround = () => {
 					onClose={() => setRunPanelOpen(false)}
 				/>
 			)}
+			<PanelRailFrame
+				runDetails={details}
+				mcpServers={[]}
+				listOnScreen={open && readerChildId === null}
+				readerChildId={readerChildId}
+			/>
 		</div>
 	);
 };
@@ -904,9 +917,6 @@ const LatePageGround = () => {
 					description="Invoices workspace · on this machine"
 					onOpenOptions={() => undefined}
 					runDetails={details}
-					mcpServers={[]}
-					listOnScreen={false}
-					readerChildId="job-audit"
 				/>
 				{/* The one thing the story adds: somewhere else to be typing. */}
 				<button
@@ -919,6 +929,12 @@ const LatePageGround = () => {
 				<TranscriptGround />
 			</div>
 			<RunPane details={details} readerChildId="job-audit" previewPage={page} />
+			<PanelRailFrame
+				runDetails={details}
+				mcpServers={[]}
+				listOnScreen={false}
+				readerChildId="job-audit"
+			/>
 		</div>
 	);
 };
@@ -1045,9 +1061,6 @@ const PaneFlowGround = ({
 					description="Invoices workspace · on this machine"
 					onOpenOptions={() => undefined}
 					runDetails={details}
-					mcpServers={[]}
-					listOnScreen={open && readerChildId === null}
-					readerChildId={readerChildId}
 				/>
 				<TranscriptGround />
 			</div>
@@ -1060,6 +1073,12 @@ const PaneFlowGround = ({
 					onClose={() => setRunPanelOpen(false)}
 				/>
 			)}
+			<PanelRailFrame
+				runDetails={details}
+				mcpServers={[]}
+				listOnScreen={open && readerChildId === null}
+				readerChildId={readerChildId}
+			/>
 		</div>
 	);
 };
