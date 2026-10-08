@@ -112,8 +112,38 @@ const RE_QUESTION_TEXT = /What changed\?/;
 const RE_CANT_ATTACH = /can't be attached/i;
 const RE_PRE_WRAP = /whitespace-pre-wrap/;
 const RE_BREAK_WORDS = /break-words/;
+const RE_WHITESPACE_RUN = /\s+/g;
+
+/**
+ * THE ONE SENTENCE the Other row's hint and both fields' placeholders say (round 1, D4):
+ * three phrasings of one prompt was copy drift. The literal is stated HERE, not imported
+ * from the component: a test that reads the component's own constant would pass for any
+ * sentence, including a regression back to two.
+ */
+const OTHER_HINT = "Type your answer";
 
 const h = React.createElement;
+
+/*
+ * NODE COMPARISONS GO THROUGH THESE TWO, NEVER `assert.equal(<node>, <node>)`.
+ *
+ * A FAILING `assert.equal` builds its message by inspecting both operands. MEASURED on
+ * 2026-10-08: with the focus guard removed from the Other field's layout effect, the
+ * first failing `assert.equal(document.activeElement, <field>)` exhausted a 2 GB heap and
+ * aborted the test process (SIGABRT) instead of reporting a failure; a probe that did the
+ * same comparison on a React-rendered tree (120 rows) died under a 512 MB cap, while the
+ * same comparison on plain jsdom nodes passed through and failed normally, and the
+ * boolean spelling below failed in under a millisecond on both. The React-owned
+ * properties on the node (`__reactFiber$...`, `__reactProps$...`) are the difference
+ * the probe found; that they are what inflates the inspection is the likely mechanism,
+ * not something the probe isolated. The consequence is what matters: a regression these
+ * tests exist to catch could crash the machine instead of being reported (a reviewer's
+ * mutation run of the focus tests was killed twice by the host's memory guard).
+ */
+const is = (actual, expected, message) =>
+	assert.ok(actual === expected, message);
+const isnt = (actual, unexpected, message) =>
+	assert.ok(actual !== unexpected, message);
 /** A session id the wire's own pattern accepts (`/^[a-f0-9]{12}$/`). */
 const SESSION = "0f9c1e2d3a4b";
 const TS = 1_760_000_000_000;
@@ -229,6 +259,24 @@ const type = async (el, text) => {
 		el.dispatchEvent(new window.Event("input", { bubbles: true }));
 	});
 };
+/**
+ * TYPING THE WAY A BROWSER DOES IT: the characters go in at the CARET and the caret ends
+ * after them. `type` above replaces the whole value, which is right for most states and
+ * says nothing about WHERE a keystroke lands - the one thing the caret findings are about.
+ */
+const typeAtCaret = async (el, chars) => {
+	await act(async () => {
+		const start = el.selectionStart;
+		const end = el.selectionEnd;
+		const setter = Object.getOwnPropertyDescriptor(
+			window.HTMLTextAreaElement.prototype,
+			"value",
+		).set;
+		setter.call(el, el.value.slice(0, start) + chars + el.value.slice(end));
+		el.setSelectionRange(start + chars.length, start + chars.length);
+		el.dispatchEvent(new window.Event("input", { bubbles: true }));
+	});
+};
 const key = async (el, name, init = {}) => {
 	const event = new window.KeyboardEvent("keydown", {
 		key: name,
@@ -255,9 +303,16 @@ test("askCellWith: single-select Other is the trimmed text alone, and an empty o
 	assert.deepEqual(askCellWith([], false, OPEN("prod")), ["prod"]);
 	// Whatever was chosen before, an open Other replaces it: the two are exclusive.
 	assert.deepEqual(askCellWith(["staging"], false, OPEN("prod")), ["prod"]);
-	// Selected but EMPTY (or only whitespace): not an answer, and never "".
-	assert.deepEqual(askCellWith([], false, OPEN("")), []);
-	assert.deepEqual(askCellWith([], false, OPEN("  \n ")), []);
+	// Selected but EMPTY (or only whitespace): the cell HOLDS ITS PLACE with a blank
+	// entry, and a blank entry is no answer (round 1, D1) - never a sendable string.
+	assert.deepEqual(askCellWith([], false, OPEN("")), [""]);
+	assert.deepEqual(askCellWith([], false, OPEN("  \n ")), [""]);
+	assert.equal(
+		askQuestionIsAnswered(question(), {
+			target: askCellWith([], false, OPEN("")),
+		}),
+		false,
+	);
 	// The text is trimmed into the draft and nowhere else.
 	assert.deepEqual(askCellWith([], false, OPEN("  prod \n")), ["prod"]);
 	// A CLOSED Other contributes nothing, even though it remembers its text.
@@ -274,12 +329,22 @@ test("askCellWith: multi-select Other is additive beside the ticks and goes LAST
 		askCellWith(["production", "staging"], true, OPEN("canary")),
 		["production", "staging", "canary"],
 	);
-	// An empty or closed Other leaves the ticks to answer the question alone.
-	assert.deepEqual(askCellWith(["staging"], true, OPEN("")), ["staging"]);
+	// A CLOSED Other leaves the ticks to answer the question alone.
 	assert.deepEqual(askCellWith(["staging"], true, CLOSED("canary")), [
 		"staging",
 	]);
-	assert.deepEqual(askCellWith([], true, OPEN("   ")), []);
+	// An OPEN but empty Other holds its place after the ticks (round 1, D1): the question
+	// is incomplete until text is typed or the row is unticked, so a selected control is
+	// never silently dropped from the answer that goes out.
+	assert.deepEqual(askCellWith(["staging"], true, OPEN("")), ["staging", ""]);
+	assert.deepEqual(askCellWith([], true, OPEN("   ")), [""]);
+	assert.equal(
+		askQuestionIsAnswered(question({ multi: true }), {
+			target: askCellWith(["staging"], true, OPEN("")),
+		}),
+		false,
+		"ticks beside an empty open Other are NOT a complete answer",
+	);
 });
 
 test("askTicks reads the option rows' selections OUT of the cell, the Other entry excluded", () => {
@@ -385,6 +450,14 @@ test("askOtherSeed: a draft that holds out-of-list text opens Other with it; a l
 	});
 	assert.deepEqual(askOtherSeed([], LABELS), { open: false, text: "" });
 	assert.deepEqual(askOtherSeed([" "], LABELS), { open: false, text: "" });
+	// The blank entry an open-but-empty Other writes seeds it OPEN again (round 1, D1):
+	// a card that restored the cell without it would show Other unticked beside a Send
+	// button that is disabled for a reason nothing on the card states.
+	assert.deepEqual(askOtherSeed([""], LABELS), { open: true, text: "" });
+	assert.deepEqual(askOtherSeed(["staging", ""], LABELS), {
+		open: true,
+		text: "",
+	});
 	// Several out-of-list values (a recorded answer from another surface) are all shown.
 	assert.deepEqual(askOtherSeed(["a", "staging", "b"], LABELS), {
 		open: true,
@@ -398,6 +471,17 @@ test("askQuestionIsAnswered is the one rule the submit gate and Enter both read"
 	assert.equal(askQuestionIsAnswered(plain, { target: [] }), false);
 	assert.equal(askQuestionIsAnswered(plain, { target: ["  "] }), false);
 	assert.equal(askQuestionIsAnswered(plain, { target: ["staging"] }), true);
+	// A blank ENTRY is an Other that is selected but empty: it holds the question open
+	// even when other entries would answer it (round 1, D1).
+	assert.equal(askQuestionIsAnswered(plain, { target: [""] }), false);
+	assert.equal(
+		askQuestionIsAnswered(plain, { target: ["staging", ""] }),
+		false,
+	);
+	assert.equal(
+		askQuestionIsAnswered(plain, { target: ["staging", "canary"] }),
+		true,
+	);
 	const secret = question({ id: "key", options: undefined, secret: true });
 	assert.equal(askQuestionIsAnswered(secret, {}, {}), false);
 	assert.equal(askQuestionIsAnswered(secret, {}, { key: "x" }), true);
@@ -435,15 +519,15 @@ test("single-select: Other is the LAST row of the radiogroup, labelled and hinte
 	assert.equal(row.getAttribute("aria-checked"), "false");
 	assert.ok(row.textContent.includes("Other"));
 	assert.ok(
-		row.textContent.includes("Type your own answer"),
+		row.textContent.includes(OTHER_HINT),
 		"a first-time user is told what the row is for",
 	);
 	const group = row.closest('[role="radiogroup"]');
 	assert.ok(group, "it is a member of the same radiogroup as the options");
 	const rows = [...group.children];
-	assert.equal(rows.at(-1), row, "trailing, after every option row");
+	is(rows.at(-1), row, "trailing, after every option row");
 	assert.equal(rows.length, 3, "two options and Other");
-	assert.equal(field(view), null, "no field until Other is chosen");
+	is(field(view), null, "no field until Other is chosen");
 });
 
 test("multi-select: Other is the LAST checkbox of the group", async () => {
@@ -455,18 +539,14 @@ test("multi-select: Other is the LAST checkbox of the group", async () => {
 	assert.equal(row.getAttribute("role"), "checkbox");
 	assert.equal(row.getAttribute("aria-pressed"), "false");
 	const group = row.closest('[role="group"]');
-	assert.equal([...group.children].at(-1), row);
+	is([...group.children].at(-1), row);
 });
 
 test("free-text-only: no Other row, the multi-line field is simply open and named", async () => {
 	const view = await mountPanel({
 		asks: [ask([question({ options: undefined, question: "What changed?" })])],
 	});
-	assert.equal(
-		other(view),
-		null,
-		"a row that reveals the only input is ceremony",
-	);
+	is(other(view), null, "a row that reveals the only input is ceremony");
 	const box = field(view);
 	assert.ok(box, "the field is open");
 	assert.equal(
@@ -474,11 +554,7 @@ test("free-text-only: no Other row, the multi-line field is simply open and name
 		"TEXTAREA",
 		"multi-line, not the old single-line input",
 	);
-	assert.equal(
-		q(view, 'input[type="text"]'),
-		null,
-		"the bare single-line input is gone",
-	);
+	is(q(view, 'input[type="text"]'), null, "the bare single-line input is gone");
 	assert.match(box.getAttribute("aria-label"), RE_QUESTION_TEXT);
 	assert.notEqual(box.getAttribute("aria-label"), "Message");
 	assert.equal(
@@ -498,8 +574,8 @@ test("secret: the masked field stays, and there is NO Other row and NO plain box
 		q(view, "input[data-ask-secret]").getAttribute("type"),
 		"password",
 	);
-	assert.equal(other(view), null);
-	assert.equal(
+	is(other(view), null);
+	is(
 		field(view),
 		null,
 		"a plain text box beside a credential's field is the failure this avoids",
@@ -550,13 +626,17 @@ test("single-select: choosing Other reveals the field, focuses it on the press, 
 	await press(other(view));
 	const box = field(view);
 	assert.ok(box, "the field is revealed inside the card");
-	assert.equal(
+	is(
 		document.activeElement,
 		box,
 		"the user's own press moves focus into the field it opened",
 	);
 	assert.equal(other(view).getAttribute("aria-checked"), "true");
-	assert.deepEqual(draftOf(view) ?? [], [], "nothing drafted yet");
+	assert.equal(
+		askQuestionIsAnswered(question(), { target: draftOf(view) ?? [] }),
+		false,
+		"nothing answered yet",
+	);
 	assert.equal(
 		sendButton(view).disabled,
 		true,
@@ -568,7 +648,10 @@ test("single-select: choosing Other reveals the field, focuses it on the press, 
 		true,
 		"whitespace is not an answer either",
 	);
-	assert.deepEqual(draftOf(view) ?? [], []);
+	assert.equal(
+		askQuestionIsAnswered(question(), { target: draftOf(view) ?? [] }),
+		false,
+	);
 });
 
 test("single-select: typed text becomes the whole answer, and Send posts exactly that map", async () => {
@@ -598,7 +681,7 @@ test("single-select: choosing an option deselects Other but KEEPS what was typed
 		q(view, '[data-ask-option="staging"]').getAttribute("aria-checked"),
 		"true",
 	);
-	assert.equal(field(view), null, "the field folds away");
+	is(field(view), null, "the field folds away");
 	await press(other(view));
 	assert.equal(field(view).value, "prod-eu", "the text is still there");
 	assert.deepEqual(
@@ -620,7 +703,11 @@ test("single-select: pressing Other over a chosen option clears the option until
 	});
 	assert.equal(sendButton(view).disabled, false, "answered by the option");
 	await press(other(view));
-	assert.deepEqual(draftOf(view), [], "the option no longer counts");
+	assert.equal(
+		askQuestionIsAnswered(question(), { target: draftOf(view) ?? [] }),
+		false,
+		"the option no longer counts",
+	);
 	assert.equal(sendButton(view).disabled, true);
 });
 
@@ -742,20 +829,33 @@ test("a REAL tick beside a typed sentence that starts with it: both answer, and 
 	);
 });
 
-test("multi-select: Other is additive beside ticks, last, and an empty one adds nothing", async () => {
+test("multi-select: Other is additive beside ticks and last; selected but empty it HOLDS THE QUESTION OPEN (D1)", async () => {
 	const view = await mountPanel({ asks: [ask([question({ multi: true })])] });
 	await press(q(view, '[data-ask-option="staging"]'));
 	assert.deepEqual(draftOf(view), ["staging"]);
+	assert.equal(sendButton(view).disabled, false, "complete on its tick");
 	await press(other(view));
 	assert.equal(other(view).getAttribute("aria-pressed"), "true");
-	assert.equal(document.activeElement, field(view), "focus follows the press");
-	assert.deepEqual(
-		draftOf(view),
-		["staging"],
-		"empty Other contributes nothing",
+	is(document.activeElement, field(view), "focus follows the press");
+	// THE FINDING: a ticked Other with an empty field used to leave Send ENABLED on the
+	// other ticks, so the control the user had just selected was silently dropped from
+	// the answer. It is incomplete now, and Send says so by being disabled.
+	assert.equal(
+		sendButton(view).disabled,
+		true,
+		"a selected-but-empty Other is not dropped: the question is incomplete",
 	);
-	assert.equal(sendButton(view).disabled, false, "complete on its tick");
+	assert.equal(
+		askAnswerMap(ask([question({ multi: true })]), view.state.drafts["a-7f3c"]),
+		null,
+		"and no map can be built from it",
+	);
+	// Another tick does not clear it: the empty Other is still selected.
+	await press(q(view, '[data-ask-option="production"]'));
+	assert.equal(sendButton(view).disabled, true);
+	await press(q(view, '[data-ask-option="production"]'));
 	await type(field(view), "canary");
+	assert.equal(sendButton(view).disabled, false, "text completes it");
 	assert.deepEqual(draftOf(view), ["staging", "canary"]);
 	// A tick AFTER the text still leaves Other last.
 	await press(q(view, '[data-ask-option="production"]'));
@@ -763,10 +863,21 @@ test("multi-select: Other is additive beside ticks, last, and an empty one adds 
 	// Unticking Other drops it from the answer but keeps the text for the next tick.
 	await press(other(view));
 	assert.deepEqual(draftOf(view), ["staging", "production"]);
-	assert.equal(field(view), null);
+	is(field(view), null);
 	await press(other(view));
 	assert.equal(field(view).value, "canary");
 	assert.deepEqual(draftOf(view), ["staging", "production", "canary"]);
+	// Erasing the text of a TICKED Other takes the question back to incomplete (D1)...
+	await type(field(view), "");
+	assert.equal(sendButton(view).disabled, true, "erased: incomplete again");
+	// ...and UNTICKING it is the way to send the ticks alone.
+	await press(other(view));
+	assert.equal(
+		sendButton(view).disabled,
+		false,
+		"unticked: the ticks answer it",
+	);
+	assert.deepEqual(draftOf(view), ["staging", "production"]);
 });
 
 test("multi-select: an Other that is the ONLY selection and is empty is not an answer", async () => {
@@ -792,8 +903,21 @@ test("free-text-only: typing writes the cell, keeps a typed space, and never sen
 	assert.equal(field(view).value, "hello ", "the space survives");
 	assert.deepEqual(draftOf(view, "note"), ["hello"]);
 	await type(field(view), "  ");
-	assert.deepEqual(draftOf(view, "note") ?? [], []);
+	assert.equal(
+		askQuestionIsAnswered(question({ options: undefined, id: "note" }), {
+			note: draftOf(view, "note") ?? [],
+		}),
+		false,
+		"whitespace is not an answer",
+	);
 	assert.equal(sendButton(view).disabled, true);
+	assert.equal(
+		askAnswerMap(ask([question({ options: undefined, id: "note" })]), {
+			note: draftOf(view, "note") ?? [],
+		}),
+		null,
+		"and no map - so no empty string - can be built from it",
+	);
 });
 
 test("a pre-filled draft mounts the Other field EXPANDED and UNFOCUSED, with its text", async () => {
@@ -809,7 +933,7 @@ test("a pre-filled draft mounts the Other field EXPANDED and UNFOCUSED, with its
 		"false",
 		"the option rows are not selected: the value came from the Other field",
 	);
-	assert.equal(document.activeElement, document.body, "focus was NOT taken");
+	is(document.activeElement, document.body, "focus was NOT taken");
 });
 
 /* ------------------------------------------------------------------- focus ---- */
@@ -819,13 +943,9 @@ test("F1: no mount, door landing or re-render moves focus into a field the user 
 	const view = await mountPanel({
 		asks: [ask([question({ options: undefined, id: "note" })])],
 	});
-	assert.equal(document.activeElement, document.body);
+	is(document.activeElement, document.body);
 	await act(async () => {});
-	assert.equal(
-		document.activeElement,
-		document.body,
-		"and a settled re-render too",
-	);
+	is(document.activeElement, document.body, "and a settled re-render too");
 	await view.unmount();
 	mounted.pop();
 	// A pre-filled Other behind a door: the door's landing is the first OPTION (#864's
@@ -840,20 +960,264 @@ test("F1: no mount, door landing or re-render moves focus into a field the user 
 		"staging",
 		"the door landing is unchanged and does not reach the Other field",
 	);
-	assert.notEqual(document.activeElement, field(door));
+	isnt(document.activeElement, field(door));
 });
 
 test("F1: pressing Other when it is already open focuses the field again (the user's own press)", async () => {
 	const view = await mountPanel({ asks: [ask([question()])] });
 	await press(other(view));
 	document.activeElement.blur();
-	assert.equal(document.activeElement, document.body);
+	is(document.activeElement, document.body);
 	await press(other(view));
-	assert.equal(document.activeElement, field(view));
+	is(document.activeElement, field(view));
 	assert.equal(
 		other(view).getAttribute("aria-checked"),
 		"true",
 		"a radio does not toggle off",
+	);
+});
+
+/* --------------------------------------- round 1: caret, pending Other, copy ---- */
+
+test("U1: pressing Other again after an option puts the caret at the END of the restored text, so typing continues it", async () => {
+	const view = await mountPanel({ asks: [ask([question()])] });
+	await press(other(view));
+	await type(field(view), "eu-central");
+	await press(q(view, '[data-ask-option="staging"]'));
+	await press(other(view));
+	const box = field(view);
+	is(document.activeElement, box, "the user's press focused the field");
+	assert.equal(box.value, "eu-central", "the text came back");
+	// THE FINDING: the caret landed at 0 in the restored text, so the next keystrokes
+	// PREPENDED to it (`NoNo, thanks` was sent as typed).
+	assert.equal(box.selectionStart, box.value.length, "caret at the end");
+	assert.equal(box.selectionEnd, box.value.length, "nothing selected");
+	await typeAtCaret(box, " (canary)");
+	assert.equal(field(view).value, "eu-central (canary)");
+	assert.deepEqual(draftOf(view), ["eu-central (canary)"]);
+});
+
+test("U1: the same in a multi-select - unticking and re-ticking Other restores the text with the caret after it", async () => {
+	const view = await mountPanel({ asks: [ask([question({ multi: true })])] });
+	await press(other(view));
+	await type(field(view), "canary");
+	await press(other(view));
+	is(field(view), null, "unticked: the field folds away");
+	await press(other(view));
+	const box = field(view);
+	is(document.activeElement, box);
+	assert.equal(box.selectionStart, box.value.length);
+	await typeAtCaret(box, " 5%");
+	assert.equal(field(view).value, "canary 5%");
+});
+
+test("U1: pressing an Other that is ALREADY open re-focuses the field with the caret at the end, even one mounted unfocused over a draft", async () => {
+	const view = await mountPanel({
+		asks: [ask([question()])],
+		initialDrafts: { "a-7f3c": { target: ["prod"] } },
+	});
+	is(document.activeElement, document.body, "mounted unfocused (F1)");
+	await press(other(view));
+	const box = field(view);
+	is(document.activeElement, box, "the user's own press focuses it");
+	assert.equal(
+		box.selectionStart,
+		"prod".length,
+		"after the text, not before it",
+	);
+	await typeAtCaret(box, "-eu");
+	assert.equal(field(view).value, "prod-eu");
+});
+
+test("D1: an Other that is selected but EMPTY is not dropped from a multi-select answer - Enter in its field sends nothing either", async () => {
+	const view = await mountPanel({ asks: [ask([question({ multi: true })])] });
+	await press(q(view, '[data-ask-option="staging"]'));
+	await press(other(view));
+	assert.equal(
+		sendButton(view).disabled,
+		true,
+		"Send is disabled, not silently lossy",
+	);
+	await key(field(view), "Enter");
+	assert.equal(
+		view.calls.answer.length,
+		0,
+		"Enter reads the same rule as the button",
+	);
+	// Typing completes it; erasing it takes it back; unticking is the way to send the ticks.
+	await type(field(view), "canary");
+	assert.equal(sendButton(view).disabled, false);
+	await type(field(view), " ");
+	assert.equal(
+		sendButton(view).disabled,
+		true,
+		"whitespace is still no answer",
+	);
+	await press(other(view));
+	assert.equal(
+		sendButton(view).disabled,
+		false,
+		"unticked: the ticks answer it",
+	);
+	await press(sendButton(view));
+	assert.deepEqual(view.calls.answer, [
+		{ id: "a-7f3c", answers: { target: ["staging"] } },
+	]);
+});
+
+test("D1: an open-but-empty Other SURVIVES a drawer close and reopen - open, empty, unfocused, Send still disabled", async () => {
+	const questions = [question({ multi: true })];
+	const first = await mountPanel({ asks: [ask(questions)] });
+	await press(q(first, '[data-ask-option="staging"]'));
+	await press(other(first));
+	const kept = first.state.drafts;
+	await first.unmount();
+	mounted.pop();
+	const second = await mountPanel({
+		asks: [ask(questions)],
+		initialDrafts: kept,
+	});
+	assert.ok(field(second), "the Other field is open again");
+	assert.equal(field(second).value, "");
+	assert.equal(other(second).getAttribute("aria-pressed"), "true");
+	assert.equal(
+		q(second, '[data-ask-option="staging"]').getAttribute("aria-pressed"),
+		"true",
+		"and the tick is kept",
+	);
+	assert.equal(
+		sendButton(second).disabled,
+		true,
+		"the gate and the card agree",
+	);
+	is(
+		document.activeElement,
+		document.body,
+		"restored without taking focus (F1)",
+	);
+});
+
+test("D1: the change form holds an emptied Other open too, so Update answer cannot silently drop it", async () => {
+	const view = await mountPanel({
+		asks: [
+			answeredUndelivered([question({ multi: true })], {
+				target: ["staging", "canary"],
+			}),
+		],
+	});
+	await press(
+		qa(view, "button").find((b) => b.textContent.trim() === "Change answer"),
+	);
+	assert.equal(field(view).value, "canary", "seeded from the log");
+	const update = () =>
+		qa(view, "button").find((b) => b.textContent.trim() === "Update answer");
+	assert.equal(update().disabled, false);
+	await type(field(view), "");
+	assert.equal(
+		update().disabled,
+		true,
+		"an emptied Other is incomplete, not dropped",
+	);
+	await press(other(view));
+	assert.equal(
+		update().disabled,
+		false,
+		"unticked: the tick alone is the revision",
+	);
+});
+
+test("D4: the Other row's hint and the field's placeholder are the SAME sentence, and the field is named by its question", async () => {
+	const view = await mountPanel({
+		asks: [ask([question({ question: "Which region?" })])],
+	});
+	const hint = other(view).textContent.replace("Other", "").trim();
+	assert.equal(hint, OTHER_HINT);
+	await press(other(view));
+	assert.equal(
+		field(view).getAttribute("placeholder"),
+		hint,
+		"one sentence, twice",
+	);
+	assert.equal(
+		field(view).getAttribute("aria-label"),
+		"Your answer to: Which region?",
+	);
+	const free = await mountPanel({
+		asks: [
+			ask(
+				[
+					question({
+						options: undefined,
+						id: "note",
+						question: "What changed?",
+					}),
+				],
+				{ ask_id: "a-free" },
+			),
+		],
+	});
+	const box = free.container.querySelector("textarea[data-ask-other]");
+	assert.equal(
+		box.getAttribute("placeholder"),
+		hint,
+		"the free-text-only field says it too",
+	);
+	assert.equal(box.getAttribute("aria-label"), "Your answer to: What changed?");
+});
+
+test("N1: what a drawer close KEEPS and what it DROPS - the live Other and its tick stay, text stashed off Other does not", async () => {
+	const questions = [question({ multi: true })];
+	// A live Other (ticked, with text) and a tick: both come back, Other open and unfocused.
+	const live = await mountPanel({ asks: [ask(questions)] });
+	await press(q(live, '[data-ask-option="staging"]'));
+	await press(other(live));
+	await type(field(live), "canary");
+	const keptLive = live.state.drafts;
+	await live.unmount();
+	mounted.pop();
+	const reopenedLive = await mountPanel({
+		asks: [ask(questions)],
+		initialDrafts: keptLive,
+	});
+	assert.equal(field(reopenedLive).value, "canary", "the live text came back");
+	assert.equal(
+		q(reopenedLive, '[data-ask-option="staging"]').getAttribute("aria-pressed"),
+		"true",
+		"and so did the tick",
+	);
+	await reopenedLive.unmount();
+	mounted.pop();
+	// Text STASHED after unticking Other lives in the card only: the draft holds answers,
+	// and an unticked Other is not one. A drawer close drops it; the tick stands.
+	const stashed = await mountPanel({ asks: [ask(questions)] });
+	await press(q(stashed, '[data-ask-option="staging"]'));
+	await press(other(stashed));
+	await type(field(stashed), "stashed words");
+	await press(other(stashed));
+	is(
+		field(stashed),
+		null,
+		"unticked: the field folds away, the text is stashed",
+	);
+	const keptStash = stashed.state.drafts;
+	await stashed.unmount();
+	mounted.pop();
+	const reopenedStash = await mountPanel({
+		asks: [ask(questions)],
+		initialDrafts: keptStash,
+	});
+	is(field(reopenedStash), null, "the stashed text did not survive the close");
+	assert.equal(
+		other(reopenedStash).getAttribute("aria-pressed"),
+		"false",
+		"Other is unticked, as the user left it",
+	);
+	assert.equal(
+		q(reopenedStash, '[data-ask-option="staging"]').getAttribute(
+			"aria-pressed",
+		),
+		"true",
+		"the tick stands",
 	);
 });
 
@@ -905,7 +1269,7 @@ test("Enter in an EMPTY Other field sends nothing and does not jump", async () =
 	await press(other(view));
 	await key(field(view), "Enter");
 	assert.equal(view.calls.answer.length, 0, "an empty Other is not an answer");
-	assert.equal(document.activeElement, field(view), "and focus stays");
+	is(document.activeElement, field(view), "and focus stays");
 });
 
 test("Enter on an incomplete ask moves to the next unanswered question instead of sending", async () => {
@@ -973,11 +1337,11 @@ test("pasting an image or file is REFUSED IN WORDS, and the draft is untouched",
 	const view = await mountPanel({ asks: [ask([question()])] });
 	await press(other(view));
 	const box = field(view);
-	assert.equal(
-		q(view, "output"),
-		null,
-		"no notice before there is anything to refuse",
-	);
+	is(q(view, "output"), null, "no notice before there is anything to refuse");
+	// The draft AS IT STANDS before the paste (an open, empty Other holds its place in
+	// the cell - round 1, D1), so "untouched" is a comparison and not a claim about how
+	// emptiness is encoded.
+	const beforePaste = JSON.stringify(draftOf(view) ?? null);
 	await act(async () => {
 		box.dispatchEvent(
 			filePaste([{ name: "screenshot.png", type: "image/png" }]),
@@ -986,13 +1350,18 @@ test("pasting an image or file is REFUSED IN WORDS, and the draft is untouched",
 	const notice = q(view, "output");
 	assert.ok(notice, "a visible, announced sentence: not a silent no-op");
 	assert.match(notice.textContent, RE_CANT_ATTACH);
-	assert.deepEqual(draftOf(view) ?? [], [], "nothing was added to the answer");
-	await type(field(view), "typed instead");
 	assert.equal(
-		q(view, "output"),
-		null,
-		"the sentence clears once the user types",
+		JSON.stringify(draftOf(view) ?? null),
+		beforePaste,
+		"nothing was added to the answer",
 	);
+	assert.equal(
+		askQuestionIsAnswered(question(), { target: draftOf(view) ?? [] }),
+		false,
+		"and the refused file did not make it an answer",
+	);
+	await type(field(view), "typed instead");
+	is(q(view, "output"), null, "the sentence clears once the user types");
 });
 
 test("a TEXT paste raises no refusal", async () => {
@@ -1008,7 +1377,7 @@ test("a TEXT paste raises no refusal", async () => {
 	await act(async () => {
 		field(view).dispatchEvent(event);
 	});
-	assert.equal(q(view, "output"), null);
+	is(q(view, "output"), null);
 });
 
 test("dragging a file over the field is answered with the pointer's own 'no drop'", async () => {
@@ -1123,8 +1492,17 @@ test("F5: a free-text-only change form lands focus in the field, not on the body
 	await press(
 		qa(view, "button").find((b) => b.textContent.trim() === "Change answer"),
 	);
-	assert.equal(document.activeElement, field(view));
+	is(document.activeElement, field(view));
 	assert.equal(field(view).value, "hello");
+	// U1's second door: the hand-off focuses a field that already holds text, and a
+	// browser puts the caret at offset 0 there, so the next keystrokes would PREPEND.
+	assert.equal(
+		field(view).selectionStart,
+		"hello".length,
+		"the caret is after the seeded text",
+	);
+	await typeAtCaret(field(view), " world");
+	assert.equal(field(view).value, "hello world");
 });
 
 /* -------------------------------------------------------- the answered card ---- */
@@ -1160,6 +1538,21 @@ test("an answered card keeps a multi-line answer's lines and tags only what the 
 		first.textContent.split("Other").length - 1,
 		1,
 		"and only the typed one, not the option label",
+	);
+	// D2: the tag is a LABEL, not the last word of the user's sentence - a separator
+	// stands between them, decoration only (a screen reader reads the word, not a dot).
+	const dot = first.querySelector('[aria-hidden="true"]');
+	assert.ok(dot, "a decorative separator precedes the tag");
+	assert.equal(dot.textContent.trim(), "\u00b7");
+	assert.equal(
+		dot.parentElement.textContent.replace(RE_WHITESPACE_RUN, " ").trim(),
+		"\u00b7 Other",
+		"separator then word, in the tag's own element",
+	);
+	assert.notEqual(
+		dot.parentElement,
+		value,
+		"the tag is its own element, not part of the value's text node",
 	);
 	assert.equal(
 		rows[1].textContent.includes("Other"),

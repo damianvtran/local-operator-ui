@@ -2365,11 +2365,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								/*
 								 * AND AN OPEN ASK THAT IS SECRET-ONLY REFUSES IT TOO (agent review
 								 * round 3, F3). With `asks` on the wire the mirrored gate is
-								 * suppressed, so this term was false while a secret ask waited -
-								 * and because such an ask is deliberately NOT the composer's ask
-								 * mode, the box would otherwise have been an ordinary conversation
-								 * field, which is where a typed credential becomes a chat message.
+								 * suppressed, so this term was false while a secret ask waited, and
+								 * the box would have stayed open while a credential was being asked
+								 * for - which is where a typed credential becomes a chat message.
 								 * The panel's masked field is the only door for it.
+								 *
+								 * THIS IS A CREDENTIAL-SAFETY RULE, NOT ROUTING. The composer no
+								 * longer answers an ask in any state (design 5.0's R7, reversed on
+								 * 2026-10-07), so nothing here says the box is "the answer box" or
+								 * "not the ask mode": a secret-only ask simply must not leave an
+								 * open box beside it. A question that is not secret leaves the box
+								 * an ordinary chat field.
 								 */
 								secretAnswer={
 									gateIsSecret(gate) ||

@@ -1480,6 +1480,19 @@ export const draftFor = (draft: AskDraft, questionId: string): string[] =>
 	draft[questionId] ?? [];
 
 /**
+ * The entry `askCellWith` writes for an `Other` that is SELECTED BUT EMPTY: the empty
+ * string, exactly. Writers trim, so it is the only blank a writer ever produces, and
+ * the one predicate below is the only place that names it - the gate
+ * (`askQuestionIsAnswered`) and the card's seed (`askOtherSeed`) both read it, so they
+ * cannot disagree about whether a pending `Other` is there. A whitespace-only entry is
+ * not this marker (no writer makes one); it is simply not answer text.
+ */
+const isOtherPending = (value: string): boolean => value === "";
+
+/** An entry that is text a user could be answering with. */
+const isAnswerText = (value: string): boolean => value.trim().length > 0;
+
+/**
  * Whether ONE question has an answer between the draft and the typed secrets.
  *
  * The per-question half of `askDraftIsComplete`, exported so a surface that has to ask
@@ -1488,17 +1501,29 @@ export const draftFor = (draft: AskDraft, questionId: string): string[] =>
  * submit is gated on rather than restating it - two copies of "what counts as an
  * answer" is how a field and its Send button come to disagree.
  *
- * A blank string is not an answer, which is what makes an `Other` that is selected
- * but empty an unanswered question.
+ * A PENDING `Other` IS NOT AN ANSWER, AND IT IS NOT NEUTRAL EITHER. It is written into
+ * the cell as an empty entry (`askCellWith`), and it HOLDS THE QUESTION OPEN even when
+ * the cell also carries ticks that would answer it on their own.
+ * That is design review round 1's D1: a multi-select with ticks and an `Other` the user
+ * had selected but not filled used to be complete on its ticks, so `Send answer` stayed
+ * enabled and the control the user had just chosen was silently dropped from the answer
+ * that went out. A question is answered when its cell holds at least one non-blank
+ * value and no pending entry; the user finishes it by typing, or unticks `Other` to
+ * send the ticks alone.
+ *
+ * Because every submit path reads this rule - the button, Enter, the change form and
+ * `askAnswerMap` - a blank can never reach the wire, and the card and its gate cannot
+ * disagree about whether the question is done.
  */
 export const askQuestionIsAnswered = (
 	question: PendingAskQuestion,
 	draft: AskDraft,
 	secrets: AskSecrets = {},
-): boolean =>
-	question.secret
-		? (secrets[question.id] ?? "").trim().length > 0
-		: draftFor(draft, question.id).some((value) => value.trim().length > 0);
+): boolean => {
+	if (question.secret) return (secrets[question.id] ?? "").trim().length > 0;
+	const cell = draftFor(draft, question.id);
+	return cell.some(isAnswerText) && !cell.some(isOtherPending);
+};
 
 /**
  * Whether every question in an ask has an answer between the draft and the
@@ -1536,7 +1561,7 @@ export const otherValuesOf = (
 	cell: readonly string[],
 	labels: readonly string[],
 ): string[] =>
-	cell.filter((value) => value.trim().length > 0 && !labels.includes(value));
+	cell.filter((value) => isAnswerText(value) && !labels.includes(value));
 
 /**
  * THE CARD'S OWN RECORD OF ITS `Other` ENTRY, kept beside the draft cell.
@@ -1564,6 +1589,14 @@ export type AskOther = { open: boolean; text: string };
  * a value the options did not offer. A text that equals an option's label seeds as that
  * option, which is the same answer on the wire.
  *
+ * A BLANK ENTRY SEEDS IT OPEN, EMPTY (round 1, D1): that is how a selected-but-empty
+ * `Other` is written into the cell, so a card re-mounted over it (the drawer closed and
+ * reopened, the change form) draws `Other` selected with its field open and nothing in
+ * it - the state the gate is holding the question open for. Seeding it closed would put
+ * `Other` back to unselected beside a `Send answer` that is disabled for a reason
+ * nothing on the card states. It seeds OPEN, never focused: the focus rule is the
+ * card's, and a mount takes none.
+ *
  * SEVERAL out-of-list values can only come from a recorded answer written by another
  * surface (a terminal picker adds at most one); they seed the field joined by newlines
  * so none is hidden, and the cell is rewritten as that one text only when the user
@@ -1574,7 +1607,10 @@ export const askOtherSeed = (
 	labels: readonly string[],
 ): AskOther => {
 	const values = otherValuesOf(cell, labels);
-	return { open: values.length > 0, text: values.join("\n") };
+	return {
+		open: values.length > 0 || cell.some(isOtherPending),
+		text: values.join("\n"),
+	};
 };
 
 /**
@@ -1619,10 +1655,24 @@ export const askTicks = (
  *   than collapsing, so removing it later removes the right one; `askAnswerMap`
  *   deduplicates at the wire.
  *
- * AN EMPTY `Other` IS NOT AN ANSWER, in either mode. Blank text contributes nothing -
- * not an empty string in the cell - so a single-select question whose only selection
- * is an empty `Other` stays incomplete and `Send answer` stays disabled, while a
- * multi-select with ticks and an empty `Other` is complete on its ticks.
+ * AN OPEN `Other` ALWAYS HOLDS ITS PLACE IN THE CELL, and an empty one is NOT AN ANSWER,
+ * in either mode (round 1, D1). While the row is selected the cell carries an entry for
+ * it - the trimmed text, or a blank when there is none yet - and a blank entry holds the
+ * question open (`askQuestionIsAnswered`), so:
+ *
+ *  - a single-select question whose only selection is an empty `Other` stays incomplete;
+ *  - a multi-select with ticks beside an empty `Other` stays incomplete too, where it
+ *    used to be complete on its ticks and so DROPPED the row the user had selected
+ *    without a word. `Send answer` is disabled until the field has text or the row is
+ *    unticked, the same rule single-select already had.
+ *
+ * The blank entry is a client-side marker and nothing else. It is never an answer: the
+ * gate refuses any cell that holds one, so `askAnswerMap` returns null for it and no
+ * empty string can reach the wire. It lives in the cell, rather than in a second
+ * structure beside it, so it survives the card unmounting the way a tick does
+ * (`askOtherSeed` reads it back) and every reader of the cell sees the same state.
+ *
+ * A CLOSED `Other` contributes nothing, whatever text it remembers.
  *
  * The text is trimmed on the way into the draft and nowhere else: the FIELD keeps what
  * was typed. The terminal picker strips the same way (`state.typed.strip()`).
@@ -1632,9 +1682,9 @@ export const askCellWith = (
 	multi: boolean,
 	other: AskOther,
 ): string[] => {
-	const entry = other.open ? other.text.trim() : "";
-	if (!multi) return entry === "" ? [] : [entry];
-	return entry === "" ? [...ticks] : [...ticks, entry];
+	if (!other.open) return multi ? [...ticks] : [];
+	const entry = other.text.trim();
+	return multi ? [...ticks, entry] : [entry];
 };
 
 /**
@@ -1662,14 +1712,13 @@ export const askAnswerMap = (
 				 * DEDUPLICATED, first occurrence kept: an `Other` text that equals a
 				 * ticked option's label is kept as a second cell entry (see
 				 * `askCellWith`), and on the wire it is the same answer once.
+				 *
+				 * NO BLANK IS LEFT TO FILTER HERE, and the filter stays regardless: the
+				 * completeness check above has already refused any cell that holds one
+				 * (a selected-but-empty `Other`), so this is the belt to that brace for
+				 * the rule that an empty string never reaches the wire.
 				 */
-				[
-					...new Set(
-						draftFor(draft, question.id).filter(
-							(value) => value.trim().length > 0,
-						),
-					),
-				];
+				[...new Set(draftFor(draft, question.id).filter(isAnswerText))];
 		if (values.length > 0) answers[question.id] = values;
 	}
 	return Object.keys(answers).length > 0 ? answers : null;
