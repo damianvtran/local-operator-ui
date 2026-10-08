@@ -114,3 +114,82 @@ exists to avoid.
 A sweep cannot re-derive these frames: a sweep captures the CURRENT tree, and these
 need `main`'s modules under the same arms. That is why the set is declared in
 `docs/evidence/manifest.json`.
+
+## Round 1 additions (design round 1, D1 / D5 / D6; PR #885)
+
+### The rail tooltip over the NATIVE browser view (D1): a real-app capture
+
+`panel-rail-tooltip-real-app/` is the one set in this PR photographed from the REAL
+window, because the question is a compositor fact: a native `WebContentsView` paints
+above all DOM (`browser-view-policy.ts`), so a rail tooltip that opens LEFT, into the
+Browser pane, may or may not be visible, and neither Storybook nor `capturePage()` can
+say. `harness/capture.mjs` is a single self-contained command (built app,
+`--window-mode=inactive`, the repo's own stub daemon on port 8080, scratch profile,
+mock keychain, every `CMUX_*`/`LOP_*` variable removed, `screencapture -x -l <windowid>`,
+the Electron process group reaped by exact pid before it returns).
+
+- `real-app-before-canvas.png`: the suppression REMOVED (the item's one
+  `useSuppressBrowserView` call replaced by a no-op for this capture only, restored and
+  verified byte-identical by md5). Hovering the Canvas item with the Browser pane open:
+  the tooltip's box is in the DOM and the native view's orange page paints over it, so
+  the tooltip is NOT on screen. This is the occlusion design predicted, now measured.
+- `real-app-after-canvas.png`: the shipped code. The same hover: `Open canvas (cmd+shift+C)`
+  is on screen, and the page beneath it is paused for the tooltip's lifetime (the view is
+  hidden, which is the policy's own paused state). The page repaints when the pointer
+  leaves.
+- `real-app-after-console-in-chrome-band.png`: with NO run-details item (the stub serves
+  no run frames) the Console item is the SECOND in the rail and its tooltip sits at
+  y=114..142, inside the pane's DOM toolbar band, which is above the native view's rect;
+  that case was never occluded, and the frame is kept so nobody reads the canvas pair as
+  covering it.
+
+**What the pair is, and is not.** The stub conversation has no Run details item, so the
+rail's items sit one item (36px) higher than in a real conversation. The canvas pair was
+therefore taken with `--simulate-run-slot`, which pads the rail's top by those 36px so the
+tooltip lands at y=150..178, where the real Canvas item's tooltip lands (inside the view's
+rect). That padding is a SIMULATION of position and is named as one; the rendering fact
+(a tooltip at that position is hidden by the native view without the suppression, and
+shown with it) is not simulated. Measured: with the suppression registered
+`data-suppressed-by` reads `panel-rail-tooltip::...`; without it, empty.
+Coverage this does NOT have: Windows and Linux compositors, a non-default display scale
+other than this host's 2x, and the page-flash cost the policy header calls probe P11
+(a still frame cannot show a flash; the policy header still lists it as unmeasured).
+
+### The 800px pane bar (D5)
+
+At the 800px window floor the Browser dock is 220px, and the pane's bar (title, scope
+switch, close) needed 278px: "Close browser" painted 15px over "This conversation" and
+"All tabs" fell out of the pane. The bar now sheds the title below 300px of pane
+(`@max-[300px]/bpane`) and lets the switch shrink and truncate before the close control
+moves. Measured at the same stories: 800 -> pane 220, bar scrollWidth 220 = clientWidth
+220, close at x=720..748 and the switch ending at 708 (was 810); 900 -> pane 320, no
+change. Frames: `browser-narrow-800/` and `browser-narrow-900/`, with shutter-time rows
+that assert no overlap, no overflow and the close control inside the pane.
+
+### Frames that predate the move, re-shot or named (D6, R2)
+
+Re-shot against this tree: `chat-dock-files/` and `chat-dock-run-panel/` (all seven
+themes each, so the five non-brand ones no longer show the removed header cluster); the
+three `windows-caption-*-SIMULATED/` sets (now with a labelled 138x40 block where the OS
+caption buttons would be, so the 94px reservation and the rail's top strut read against
+something); every `browser-pane/` story that renders the rail (`trigger-*`,
+`composed-*`); and every `chat-run-panel/` story that renders it. A scan of the 161
+stories under the five header-bearing titles (`chat-run-panel`, `browser-pane`,
+`chat-header-cluster`, `chat-header-identity`, `chat-device`, `session-archive`) found 97
+that now draw the rail; all 97 were re-captured except one (below), 2 frames each for the
+two-palette sets and 12 each for the multi-theme ones.
+
+**Still stale, named:**
+
+- `chat-run-panel/mcp-key-popout/`. Its story presses `[data-mcp-remedy="key"]`, a control
+  that does not exist: `deriveMcpServers(fixtures.mcpKeyAuth())` yields a `words` remedy
+  ("Manage this server's credentials in Settings") for every row, because the fixture
+  publishes no key names (read by running the model on this tree). The frame committed
+  on `main` before this branch (opened and viewed) shows the same: no dialog, the three
+  `words` rows, so the story has not been able to open its popout since the model and the
+  fixture drifted apart, independent of #872. The capture times out preparing it, so its
+  frames still show the header cluster this PR removes and must not be read as the shipped
+  UI. The three files that decide it (`run-detail-model.ts`, `run-detail-mcp.tsx`,
+  `run-details.fixtures.ts`) are not in this PR; fixing the fixture is outside this slice.
+- `chat-header-cluster*`, `browser-approval-badges` and the `chat-run-panel/` trigger rows
+  captured before the move (the PR #880 list): superseded by the rail frames above.
