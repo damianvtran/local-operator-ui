@@ -19,10 +19,16 @@
  *     query that says nothing has nothing to narrow.
  *   - ORDER (`orderAgentRows`): the reader's pins first, then most-recently
  *     used, never-used last in their original order. A stable PARTITION plus a
- *     single-key merge, never a multi-key `Array.sort` - the argument is
- *     `chat-sidebar-view.ts`'s `pageOrder`, which states why a comparator that
- *     grows a second key is the way "untouched rows keep their order" gets
- *     quietly inverted.
+ *     single-key merge, and the reason is the ROSTER's own: a comparator
+ *     carrying "is it used" and "how recent" as its keys is free to reorder
+ *     rows the partition did not intend to touch, so the merge makes the band
+ *     boundary and the tie rule structural rather than dependent on the
+ *     engine's sort stability. (The paragraph here used to cite
+ *     `chat-sidebar-view.ts`'s `pageOrder` as the argument; on 2026-10-08
+ *     `pageOrder` reversed its own stance - it sorts now, with a key that
+ *     states every term including the row's POSITION - so the roster stands on
+ *     its own rule instead. The two agree about what matters: no tie may be
+ *     broken by a value the row does not carry.)
  *   - PIN (`togglePinnedAgent`): one press, one field on `SidebarView`.
  *
  * PIN IDENTITY, which is a finding rather than an assumption. Pin keys are row
@@ -131,15 +137,16 @@ type DatedRow<T> = { row: T; at: number };
  * One band in draw order: used rows most-recent first, never-used last in the
  * order given.
  *
- * THE ORDERING IS A MERGE, NOT `Array.sort`. Same reason `pageOrder` gives, one
- * step further: a comparator carrying "is it used" and "how recent" as two keys
- * is free to reorder rows the lift did not intend to touch, and a later edit
- * that "improves" it is how the never-used tail starts interleaving with the
- * used rows. This inserts each used row before the first earlier row with an
- * OLDER time and after every equal one, so ties keep the caller's order by
- * construction - not by relying on the engine's sort stability, which V8
- * happens to provide today and which is exactly the kind of fact `pageOrder`
- * refused to build a contract on.
+ * THE ORDERING IS A MERGE, NOT `Array.sort`, and the reason is this band's own:
+ * a comparator over "is it used" and "how recent" is free to reorder rows the
+ * partition did not intend to touch, so the merge makes the band boundary and
+ * the tie rule (ties keep the caller's order BY CONSTRUCTION) structural rather
+ * than dependent on the engine's sort stability. (This note used to cite
+ * `pageOrder` as the argument and say pageOrder "refused" a comparator; on
+ * 2026-10-08 pageOrder reversed its stance and sorts with a TOTAL key whose
+ * last term is the row's position - see its own comment. What the two share is
+ * the rule that matters: a tie is never broken by a value the row does not
+ * carry.)
  */
 function orderBand<T>(band: readonly { row: T; at: number | null }[]): T[] {
 	const used: DatedRow<T>[] = [];
