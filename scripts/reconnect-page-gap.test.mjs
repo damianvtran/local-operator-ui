@@ -1384,9 +1384,10 @@ test("a reopen whose journal-tail page already connects to the cached block stil
  * before a block it can no longer reach.
  *
  * Measured on the previous head (journal 400, snapshot page 100): away <= 480
- * lost nothing; away=600 lost 100 rows and away=900 lost 400, silently.
+ * lost nothing; away=600 lost 100 rows and away=900 lost 400, silently. 1400 is
+ * the largest five-hour window measured in real sessions (1386 entries; p90 896).
  */
-const AWAY_TABLE = [0, 99, 100, 101, 300, 480, 600, 900];
+const AWAY_TABLE = [0, 99, 100, 101, 300, 480, 600, 900, 1400];
 /** Rows the walk can fetch before its bound ends it (`RECONCILE_WALK_MAX_ROWS`). */
 const WALK_ROWS = 500;
 
@@ -1434,7 +1435,7 @@ for (const away of AWAY_TABLE) {
 	});
 }
 
-for (const away of [600, 900]) {
+for (const away of [600, 900, 1400]) {
 	test(`what a bounded walk sealed is reachable: load earlier after ${away} rows away pages the whole journal back`, async () => {
 		const { transcript, handle } = await driveCachedReopen({ away });
 		const journal = transcript.rows.map(recordIdOf);
