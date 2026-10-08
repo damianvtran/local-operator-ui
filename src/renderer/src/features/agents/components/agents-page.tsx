@@ -412,12 +412,12 @@ export function AgentsPage() {
 				 * `output` carries the `status` role, which is what this is.
 				 *
 				 * IT WEARS ITS NEIGHBOURS' MEASUREMENTS. The panel above it and the pane
-				 * below it are both `max-w-3xl`, so on a page wider than 48rem an
-				 * uncapped notice stretches past both of them and reads as a third,
-				 * unrelated block; its bottom margin is the panel's own `mb-6` for the
-				 * same reason (design review round 4, R4-M1).
+				 * below it all sit in the page's one measure wrapper now (they used to
+				 * be `max-w-3xl` each, which a notice outside that cap stretched past),
+				 * so it takes the wrapper's width and the panel's own `mb-8` - the
+				 * section tier - for the same reason (design review round 4, R4-M1).
 				 */
-				<output className="mb-6 block max-w-3xl rounded-md border border-warning-border px-3 py-2 text-meta text-ink-muted">
+				<output className="mb-8 block rounded-md border border-warning-border px-3 py-2 text-meta text-ink-muted">
 					The hub updated this definition while you were editing, and the form
 					below now shows the merged version. Edits you had not saved were
 					replaced.
