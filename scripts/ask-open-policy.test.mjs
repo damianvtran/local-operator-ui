@@ -500,6 +500,33 @@ test("U2 - a list that lags its own tally HOLDS even with no truncation flag: th
 	assert.equal(dismissals.has("c-a"), false);
 });
 
+test("a close over nothing refused nothing: only a close over asks, named or not, is a record", () => {
+	/*
+	 * The close watch never hands the record a complete, empty reading (it records only when
+	 * something is outstanding), so this is pinned on the API itself: `record` is an exported
+	 * seam, and a record made out of nothing would be a dismissal that holds until the next
+	 * complete frame for no ask at all.
+	 */
+	const dismissals = createAskDismissals();
+	dismissals.record("c-a", reading([]));
+	assert.equal(
+		dismissals.has("c-a"),
+		false,
+		"complete and empty: nothing waved off",
+	);
+	assert.equal(dismissals.size, 0);
+	/* An empty but INCOMPLETE reading is the tally-only close: asks existed, none was named. */
+	dismissals.record("c-a", reading([], false));
+	assert.equal(
+		dismissals.has("c-a"),
+		true,
+		"asks were turned away, whichever ids",
+	);
+	/* A draft has no conversation to hold a record against. */
+	dismissals.record("", reading([ask("open")]));
+	assert.equal(dismissals.size, 1);
+});
+
 test("U3 - a second close over a different set UNIONS into the record, it never replaces it", () => {
 	const dismissals = createAskDismissals();
 	const a = ask("open");
