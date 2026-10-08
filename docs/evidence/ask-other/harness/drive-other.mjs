@@ -608,6 +608,60 @@ async function paneClip() {
 	return b;
 }
 
+/** A 2x crop of one element's own box, with a little air for a focus ring. */
+async function elementClip(selector) {
+	const b = await evaluate(
+		`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x - 8, y: r.y - 8, width: r.width + 16, height: r.height + 16 }; })()`,
+	);
+	return b;
+}
+
+/**
+ * The name a BROWSER computes for a node, from its own accessibility tree - not
+ * from `textContent`. The D8/U6 finding lives exactly in the difference: two spans
+ * with a margin and no space between them make both read `OtherType your answer`,
+ * and only the AX tree says which one a screen reader gets.
+ */
+async function axName(selector) {
+	await send("Accessibility.enable");
+	const { root } = await send("DOM.getDocument", { depth: 0 });
+	const { nodeId } = await send("DOM.querySelector", {
+		nodeId: root.nodeId,
+		selector,
+	});
+	if (!nodeId) return { role: null, name: null, missing: true };
+	const { nodes } = await send("Accessibility.getPartialAXTree", {
+		nodeId,
+		fetchRelatives: false,
+	});
+	const node = nodes?.[0] ?? null;
+	return { role: node?.role?.value ?? null, name: node?.name?.value ?? null };
+}
+
+/**
+ * The text runs assistive tech receives under a node: child text nodes joined,
+ * `aria-hidden="true"` subtrees skipped. The D2 separator is hidden from the tree,
+ * so this is the visible readout MINUS the dot - the string D9 and agent round 2
+ * predicted fuses `...traffic)` with `Other`.
+ */
+async function announcedText(selector) {
+	return evaluate(`(() => {
+		const root = document.querySelector(${JSON.stringify(selector)});
+		if (!root) return null;
+		let out = "";
+		const walk = (node) => {
+			for (const child of node.childNodes) {
+				if (child.nodeType === 3) { out += child.textContent; continue; }
+				if (child.nodeType !== 1) continue;
+				if (child.getAttribute("aria-hidden") === "true") continue;
+				walk(child);
+			}
+		};
+		walk(root);
+		return out;
+	})()`);
+}
+
 /* -------------------------------------------------------------------- the steps ---- */
 
 async function navigate(run, hash) {
@@ -939,8 +993,17 @@ step("g1", "legacy blocking ask card", async (run) => {
  * delivery is held (see `serve-other.py`, item 4) so the answered-but-undelivered
  * window is on screen long enough to press in. g2x then exercises the NEW row inside
  * that same window, in the branch only.
+ *
+ * `capture: false` runs the same presses without this flow's own frames - the
+ * round-2 row set needs the held window's readout, not five more stills - and
+ * `afterUpdate` measures inside the window before the `finally` lifts the hold.
  */
-async function changeFlow(run, name, id, { viaOther }) {
+async function changeFlow(
+	run,
+	name,
+	id,
+	{ viaOther, afterUpdate, capture = true },
+) {
 	// The hold is lifted in `finally`: a step that throws inside it must not leave the
 	// marker behind for the next step to inherit (the first full run did exactly that,
 	// and every later ask then sat undelivered with its controls disabled).
@@ -952,13 +1015,15 @@ async function changeFlow(run, name, id, { viaOther }) {
 		await press(inAsk(askId, "[data-ask-option='Staging']"));
 		await sendAnswer(run, askId);
 		run.record.probes[`${id}a`] = await probe();
-		await shot(run, `${id}a-answered-undelivered`);
+		if (capture) await shot(run, `${id}a-answered-undelivered`);
 		await press(inAsk(askId, "button"), "Change answer");
 		await wait(500);
 		if (viaOther) await checkOther(run, name, `${id}b`);
 		run.record.probes[`${id}b`] = await probe();
-		await shot(run, `${id}b-change-form`);
-		await shot(run, `${id}b-change-form-pane`, { clip: await paneClip() });
+		if (capture) {
+			await shot(run, `${id}b-change-form`);
+			await shot(run, `${id}b-change-form-pane`, { clip: await paneClip() });
+		}
 		if (viaOther) {
 			await press(inAsk(askId, otherSelector));
 			await wait(400);
@@ -967,8 +1032,10 @@ async function changeFlow(run, name, id, { viaOther }) {
 			await press(inAsk(askId, "[data-ask-option='Production']"));
 		}
 		run.record.probes[`${id}c`] = await probe();
-		await shot(run, `${id}c-change-edited`);
-		await shot(run, `${id}c-change-edited-pane`, { clip: await paneClip() });
+		if (capture) {
+			await shot(run, `${id}c-change-edited`);
+			await shot(run, `${id}c-change-edited-pane`, { clip: await paneClip() });
+		}
 		await press(inAsk(askId, "button"), "Update answer");
 		await until(
 			settledKind(run, askId, "revised"),
@@ -976,7 +1043,10 @@ async function changeFlow(run, name, id, { viaOther }) {
 			20_000,
 		);
 		await wait(700);
-		await shot(run, `${id}d-updated`);
+		if (capture) await shot(run, `${id}d-updated`);
+		// Runs INSIDE the held window (the `finally` below lifts the hold after), which
+		// is where the answered readout is on screen.
+		if (afterUpdate) await afterUpdate(askId);
 	} finally {
 		untrigger(run, "hold-delivery");
 	}
@@ -1062,6 +1132,47 @@ step("k", "the answered readout's Other tag", async (run) => {
 	if (!run.expectOther) return;
 	await changeFlow(run, "change-other", "k", { viaOther: true });
 });
+
+/* m. the row's fresh still and accessible name, and the announced readout
+ * (round 2, design D8 / UX U6, plus the announced-readout re-measure). */
+step(
+	"m",
+	"the Other row's still, its accessible name and the announced readout",
+	async (run) => {
+		if (!run.expectOther) return;
+		const askId = await enqueue(run, "region");
+		await openDrawer(run);
+		await checkOther(run, "region", "m1");
+		await wait(400);
+		run.record.probes.m1 = await probe();
+		run.record.ax ??= {};
+		run.record.ax.m1Row = await axName(inAsk(askId, otherSelector));
+		await shot(run, "m1-row-pane", {
+			clip: await elementClip(inAsk(askId, otherSelector)),
+		});
+		await press(`[data-lo-ask-row=${JSON.stringify(askId)}] button`, "Decline");
+		await until(settledKind(run, askId, "declined"), "the decline", 20_000);
+		await wait(600);
+		// The readout's announced text is measured inside the answered-but-undelivered
+		// window `changeFlow` holds open; `capture: false` keeps that flow's own frames
+		// out of this set.
+		await changeFlow(run, "change-other", "m2", {
+			viaOther: true,
+			capture: false,
+			afterUpdate: async (changeAskId) => {
+				const card = `[data-lo-ask-row=${JSON.stringify(changeAskId)}]`;
+				run.record.announced = {
+					readoutAnnounced: await announcedText(card),
+					readoutVisible: await evaluate(
+						`(() => { const el = document.querySelector(${JSON.stringify(card)}); return el ? el.textContent : null; })()`,
+					),
+				};
+				await shot(run, "m2-readout", { clip: await paneClip() });
+			},
+		});
+		run.record.log.m = askEvents(run, askId);
+	},
+);
 
 /* ------------------------------------------------------------------------ main ---- */
 
