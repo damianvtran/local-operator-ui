@@ -448,6 +448,37 @@ try {
     await endTurn(sid);
   }
 
+  /* dblesc (r2): Escape twice on a lagging stream: the 2nd press answers idle because the 1st worked */
+  if (want("dblesc")) {
+    const sid = await newSession(45);
+    await uiRunning(sid);
+    await sleep(2000);
+    px.freeze = true;
+    await pressEscape();
+    await sleep(800); await snap(`${LABEL}-dblesc-1-first+0.8s`, "first Escape, receipt in, stream frozen");
+    await pressEscape();
+    await sleep(900); await snap(`${LABEL}-dblesc-2-second+0.9s`, "second Escape (double-tap)");
+    await sleep(2500); await snap(`${LABEL}-dblesc-3-+3.4s`, "still frozen");
+    unfreeze(); await sleep(1500); await snap(`${LABEL}-dblesc-4-unfrozen`, "stream caught up");
+    await endTurn(sid);
+  }
+
+  /* rungflap (r2): press unanswered (swallowed), link flaps, restores: the rung must hold, not fall to the tool name */
+  if (want("rungflap")) {
+    const sid = await newSession(60);
+    await uiRunning(sid);
+    await sleep(2000);
+    px.interrupt = "swallow";
+    await aimAndPress(STOP);
+    await sleep(1000); await snap(`${LABEL}-rungflap-0-pressed+1s`, "pressed, answer never comes");
+    px.holdEvents = true; injectGap(sid);
+    await sleep(1500); await snap(`${LABEL}-rungflap-1-gap+1.5s`, "gap open");
+    await sleep(3000); await snap(`${LABEL}-rungflap-2-gap+4.5s`, "gap still open");
+    releaseHold(); await sleep(1000); await snap(`${LABEL}-rungflap-3-restored+1s`, "stream restored, press unanswered");
+    await sleep(3000); await snap(`${LABEL}-rungflap-4-restored+4s`, "still unanswered");
+    await endTurn(sid);
+  }
+
   /* S3: Stop pressed, the answer never comes (swallowed) -> the latched band / the 15s bound */
   if (want("lost")) {
     const sid = await newSession(60);
