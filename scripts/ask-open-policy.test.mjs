@@ -67,6 +67,7 @@ try {
 const {
 	ASK_ARRIVAL_SKEW_MS,
 	ASK_OPEN_WINDOW_MS,
+	askOpenAnnouncement,
 	askOpenFacts,
 	askQueueView,
 	createAskDismissals,
@@ -921,6 +922,8 @@ test("a policy-opened drawer carried onto a DISMISSED conversation is closed", (
 		dismissed: dismissals,
 		sessionDrawerOpen: true,
 		openedByPolicy: true,
+		/* Something still outstanding, so the dismissal arm is the ONLY one that can fire. */
+		landing: reading([ask("open")]),
 		...over,
 	});
 	assert.equal(shouldCloseCarriedDrawer(facts()), true);
@@ -938,12 +941,67 @@ test("a policy-opened drawer carried onto a DISMISSED conversation is closed", (
 	assert.equal(
 		shouldCloseCarriedDrawer(facts({ conversationId: "c-b" })),
 		false,
-		"another conversation was not dismissed",
+		"another conversation was not dismissed (and this landing still carries an ask)",
 	);
 	assert.equal(
 		shouldCloseCarriedDrawer(facts({ conversationId: undefined })),
 		false,
 		"a draft has no conversation to have dismissed",
+	);
+});
+
+test("U3 - a policy-opened drawer carried onto a landing with NOTHING outstanding is closed", () => {
+	const dismissalFacts = () => ({
+		conversationId: "c-b",
+		dismissed: createAskDismissals(),
+		sessionDrawerOpen: true,
+		openedByPolicy: true,
+	});
+	const facts = (landing, over = {}) => ({
+		...dismissalFacts(),
+		landing,
+		...over,
+	});
+	assert.equal(
+		shouldCloseCarriedDrawer(facts(reading([]))),
+		true,
+		"settled on arrival: nothing to show, so the carried drawer is closed (agent review round 1, U3)",
+	);
+	assert.equal(
+		shouldCloseCarriedDrawer(facts(reading([ask("open")]))),
+		false,
+		"an outstanding ask keeps the carried drawer up: there IS something to show",
+	);
+	assert.equal(
+		shouldCloseCarriedDrawer(facts(reading([], false))),
+		false,
+		"an unread or clipped frame proves nothing (listComplete false): it closes nothing, fail closed",
+	);
+	assert.equal(
+		shouldCloseCarriedDrawer(facts(reading([]), { openedByPolicy: false })),
+		false,
+		"the gate holds for this arm too: a drawer the user opened is theirs",
+	);
+	assert.equal(
+		shouldCloseCarriedDrawer(facts(reading([]), { sessionDrawerOpen: false })),
+		false,
+		"and nothing is closed when the session drawer is not the one up",
+	);
+});
+
+test("D1 - the announcement is ONE sentence built from the chip's own count", () => {
+	assert.equal(
+		askOpenAnnouncement(askQueueView(withRows([ask("open")]))),
+		"Opened your questions: 1 question waiting.",
+	);
+	assert.equal(
+		askOpenAnnouncement(askQueueView(withRows([ask("open"), ask("open")]))),
+		"Opened your questions: 2 questions waiting.",
+	);
+	/* Without a knowable split the chip says `N outstanding`, and so must the sentence. */
+	assert.equal(
+		askOpenAnnouncement(askQueueView(prefixOf([ask("open")], 3))),
+		"Opened your questions: 3 outstanding.",
 	);
 });
 
