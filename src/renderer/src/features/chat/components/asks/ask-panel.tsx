@@ -550,7 +550,7 @@ const AskQuestionField = ({
 							else writeOther({ ...other, open: true });
 						}}
 						className={cn(
-							"flex min-h-8 w-full items-baseline gap-2 rounded-sm px-2 py-1 text-left",
+							"flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-left",
 							other.open ? "bg-sunken" : "hover:bg-sunken",
 							disabled ? "text-ink-dim" : "text-ink",
 						)}
