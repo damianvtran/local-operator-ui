@@ -476,6 +476,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures the mesh panel's rendered DOM for the operator-report pair - overlapping boxes, clipped spans and the chips' visible sides - one private headless Chrome per run through the same helper (QA round 1 added this row: the harness launched Chrome while unregistered, which failed Desktop Tests in CI)",
 	),
 	guarded(
+		"docs/evidence/right-slot-memory/harness/rig-lib.mjs",
+		"spawn",
+		1,
+		"the #894 right-slot per-conversation memory pair: one private headless Chrome per pass, shared by the case driver and the per-animation-frame hop probe, over the daemon's two conversations (registered with its own row, which is what this table asks of every rig that launches Chrome - the two harnesses above record what happens when one is not)",
+	),
+	guarded(
 		"docs/evidence/read-ack-skew/harness/readack-skew.mjs",
 		"spawn",
 		2,
