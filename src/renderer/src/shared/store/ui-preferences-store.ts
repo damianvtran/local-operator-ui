@@ -355,11 +355,12 @@ type UiPreferencesState = {
 	 * Whether the ASKS drawer is open (the FIFTH occupant of the right slot).
 	 *
 	 * IT IS THE ASK LANE'S ONE FLAG, and that is why it lives here rather than in
-	 * `chat-page`: three readers have to agree about it or the surface contradicts
-	 * itself - the composer chip that opens it (`composer-status-row.tsx`), the
-	 * composer's routing rule ("while the answer surface is expanded the box
-	 * answers the ask", `ask-nonblocking.md` §5.0), and the drawer itself. A second
-	 * copy is exactly how the chip and the surface it opens end up disagreeing.
+	 * `chat-page`: the readers have to agree about it or the surface contradicts
+	 * itself - the status-row chip that opens it (`composer-status-row.tsx`), the
+	 * header door, the Escape claim and the drawer itself. A second copy is exactly
+	 * how the chip and the surface it opens end up disagreeing. It does NOT put the
+	 * composer into any mode: the routing that once did (`ask-nonblocking.md` §5.0,
+	 * R7) was retired on 2026-10-07.
 	 *
 	 * ONE AT A TIME WITH ITS FOUR SIBLINGS, through `claimRightSlot`: opening the
 	 * asks drawer closes the canvas, the run panel, the browser and the console, and
@@ -374,23 +375,22 @@ type UiPreferencesState = {
 	 * one - relaunching into a drawer nobody opened, over the asks of a session that
 	 * has not loaded yet, is a surface the user has to dismiss.
 	 *
-	 * AND IT SURVIVES A CONVERSATION SWITCH, WITH THE COMPOSER'S ANSWER MODE RIDING IT
-	 * (agent review round 1, M2). `SessionPanel` is keyed by the conversation, so the
-	 * old in-component `useState` reset to closed on every switch; a store flag does
-	 * not. So switching A -> B with the drawer open shows B's queue in a surface that
-	 * was opened for A, and if B's head ask is answerable the composer comes up in
-	 * answer mode for a question nobody opened.
+	 * AND IT SURVIVES A CONVERSATION SWITCH (agent review round 1, M2).
+	 * `SessionPanel` is keyed by the conversation, so the old in-component `useState`
+	 * reset to closed on every switch; a store flag does not. So switching A -> B with
+	 * the drawer open shows B's queue in a surface that was opened for A. (That used
+	 * to ALSO put B's composer into answer mode for a question nobody opened, which
+	 * was the sharp edge of keeping it; with the routing retired the composer is
+	 * unaffected and what remains is a drawer the user can see and close.)
 	 *
 	 * IT IS KEPT, deliberately, and since issue #894 the drawer is the ONLY one of the
 	 * five that follows the user across conversations: the four durable panes are
 	 * per-conversation memory now, while a DRAWER is a reading of the queue you have
 	 * right now rather than a document you keep open (the same distinction that keeps
-	 * this flag out of persistence). The mount-time swap stashes rather than loses
-	 * B's chat draft, the chip and the drawer both show the mode on screen, and the
-	 * ask buffer is per conversation - so the hazard is visible rather than silent.
-	 * The design note's §4.4 sentence ("opening from inside a session can never
-	 * present another session's questions") is about the ENTRY POINT rather than the
-	 * flag: what the chip opens is always this conversation's queue.
+	 * this flag out of persistence). The design note's §4.4 sentence ("opening from
+	 * inside a session can never present another session's questions") is about the
+	 * ENTRY POINT rather than the flag: what the chip opens is always this
+	 * conversation's queue.
 	 *
 	 * AND IT BORROWS THE SLOT RATHER THAN TAKING IT (UX round 1, U6). The exclusivity
 	 * above means opening the drawer writes `isCanvasOpen: false`, so the pane it
