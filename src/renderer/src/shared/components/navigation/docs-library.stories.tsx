@@ -673,7 +673,11 @@ const DRAWABLE_ROUTE = {
 	runDetails: true,
 	session: true,
 } as const;
-const EMPTY_ROUTE = { mounted: false, runDetails: false, session: false } as const;
+const EMPTY_ROUTE = {
+	mounted: false,
+	runDetails: false,
+	session: false,
+} as const;
 
 /**
  * The app shell with the REAL sidebar, wrapping a conversation column and an

@@ -5277,6 +5277,75 @@ export const STORIES = [
 	 */
 	["shell-app-shell--chat-dock-files", 1280, 900],
 	["shell-app-shell--chat-dock-run-panel", 1280, 900],
+	/*
+	 * #868: THE SLOT RELEASED WHERE THE ROUTE CANNOT DRAW ITS PANE.
+	 *
+	 * One row per flag that outlives its route - the run panel's, handed back by
+	 * the asks drawer's close, and the drawer's own, left open on a session
+	 * scope - carried onto a draft, where neither pane can mount. The claim is
+	 * read at shutter time: no pane beside the column, the column reaching the
+	 * row's own edge, and the lane's stop (`data-slot-edge`, the same fact the
+	 * canvas's mode is) on the column's right edge. A frame with the empty
+	 * elevated band this issue reports fails the run rather than shipping.
+	 *
+	 * The BEFORE half of each pair is
+	 * `docs/evidence/shell-app-shell/slot-release-before/`, taken by the recipe
+	 * its README carries (this branch's story under `origin/main`'s store and
+	 * `chat-content` modules); it is NOT a row here, because a sweep of this tree
+	 * can never take it.
+	 */
+	[
+		"shell-app-shell--chat-dock-run-panel-on-draft",
+		1280,
+		900,
+		{
+			dir: "run-panel-on-draft",
+			expect: {
+				expression: `(() => {
+					const lane = document.querySelector("[data-titlebar-lane]");
+					const column = document.querySelector('[data-tour-tag="chat-column"]');
+					const row = document.querySelector('[data-tour-tag="pane-row"]');
+					const pane = document.querySelector('[data-tour-tag="canvas-dock"], [data-tour-tag="ask-drawer-slot"]');
+					if (!lane || !column || !row) return "the frame is missing the lane, the column or the row";
+					if (pane) return "a pane is mounted on a route that cannot draw one";
+					const edge = Number(lane.getAttribute("data-slot-edge"));
+					const columnRight = column.getBoundingClientRect().right;
+					const rowRight = row.getBoundingClientRect().right;
+					if (Math.abs(columnRight - rowRight) > 1) return "the column stops at " + columnRight + ", the row ends at " + rowRight + " - the slot kept its width";
+					if (Math.abs(edge - columnRight) > 1) return "the lane's stop is at " + edge + ", the column's edge is " + columnRight + " - the slot kept a band";
+					return true;
+				})()`,
+				message:
+					"on a draft with the run panel's flag up, the slot must release: the column must reach the row's edge and the lane's stop must sit on the column (#868)",
+			},
+		},
+	],
+	[
+		"shell-app-shell--chat-dock-asks-on-draft",
+		1280,
+		900,
+		{
+			dir: "asks-on-draft",
+			expect: {
+				expression: `(() => {
+					const lane = document.querySelector("[data-titlebar-lane]");
+					const column = document.querySelector('[data-tour-tag="chat-column"]');
+					const row = document.querySelector('[data-tour-tag="pane-row"]');
+					const pane = document.querySelector('[data-tour-tag="canvas-dock"], [data-tour-tag="ask-drawer-slot"]');
+					if (!lane || !column || !row) return "the frame is missing the lane, the column or the row";
+					if (pane) return "a pane is mounted on a route that cannot draw one";
+					const edge = Number(lane.getAttribute("data-slot-edge"));
+					const columnRight = column.getBoundingClientRect().right;
+					const rowRight = row.getBoundingClientRect().right;
+					if (Math.abs(columnRight - rowRight) > 1) return "the column stops at " + columnRight + ", the row ends at " + rowRight + " - the slot kept its width";
+					if (Math.abs(edge - columnRight) > 1) return "the lane's stop is at " + edge + ", the column's edge is " + columnRight + " - the slot kept a band";
+					return true;
+				})()`,
+				message:
+					"on a draft with the session-scoped drawer's flag up, the slot must release: the column must reach the row's edge and the lane's stop must sit on the column (#868)",
+			},
+		},
+	],
 
 	/*
 	 * Settings, Application updates and info, in the state the operator reported:
