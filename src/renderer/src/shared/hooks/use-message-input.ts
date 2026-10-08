@@ -433,22 +433,6 @@ export const composerPlaceholder = (state: {
 	 * ABSENT MEANS NOTHING CHANGES: no chat mount passes it.
 	 */
 	hostLine?: string | null;
-	/**
-	 * The ASK lane's own sentence, while the composer is answering a queued ask.
-	 *
-	 * Ranked ABOVE `awaitingAnswer`/`sendingUnsettled`/`awaitingReply`, and that is
-	 * the point rather than a preference: in ask mode this box's Enter posts the
-	 * ANSWER whatever the turn is doing, so the turn's own sentences ("Steer the
-	 * agent. Enter sends now. Esc stops.") name actions the key does not perform and
-	 * omit the one it does - a live turn does not change where the text goes (UX
-	 * round 1, U2, measured: the box held `restart it` under the steer sentence and
-	 * the press posted `/answers`).
-	 *
-	 * Still BELOW the refusals above it: an unreachable conversation, a masked
-	 * capture and a refused box are facts about the box itself, and a mode sentence
-	 * printed over them would invite a press the box cannot take.
-	 */
-	askMode?: string;
 }): string => {
 	if (state.unavailable) return COMPOSER_PLACEHOLDER.unavailable;
 	if (state.secretAnswer) return COMPOSER_PLACEHOLDER.secretAnswer;
@@ -458,7 +442,6 @@ export const composerPlaceholder = (state: {
 	)
 		return state.hostLine;
 	if (state.inputDisabled) return COMPOSER_PLACEHOLDER.busy;
-	if (state.askMode) return state.askMode;
 	if (state.awaitingAnswer) return COMPOSER_PLACEHOLDER.answer;
 	if (state.asideAttached) return COMPOSER_PLACEHOLDER.aside;
 	if (state.stopping) return COMPOSER_PLACEHOLDER.stopping;
