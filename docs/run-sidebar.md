@@ -211,17 +211,26 @@ room its content actually needs (a roster *and* a conversation).
 ### 3.2 Placement and the swap
 
 ```
-[ rail ] [ chat column                                            ] [ right pane ]
-          avatar  name / description      [run details][canvas]     ...
+[ sidebar ] [ chat column                              ] [ right pane ] [ rail ]
+             avatar  name / description         ...                      info
+                                                                         globe
+                                                                         terminal
+                                                                         file
 ```
 
-- The trigger stays in the chat header's existing action cluster, immediately
-  left of the canvas button (`chat-header.tsx:107-135`, cluster is
-  `ml-auto flex items-center gap-2`, both buttons `variant="ghost" size="icon"`).
-  It does **not** become the panel's own header: the operator's ask places it
-  "at the top right of the chat", and it has to remain reachable and clickable
-  while the pane is open — which is what makes the swap a toggle rather than a
-  one-way door.
+- **The trigger lives on the panel rail (#872), not in the chat header.** The
+  rail is a permanent 44px column at the window's right edge holding the four
+  right-slot doors in a fixed order (Run details, Browser, Console, Canvas), so
+  the trigger is the first item of that column. It keeps the properties this
+  section argued for in the header: it does **not** become the panel's own
+  header, and it stays reachable and clickable while the pane is open, which is
+  what makes the swap a toggle rather than a one-way door - the lit item is the
+  answer to "which panel is this". What the move removed is the header's shed
+  ladder: the trigger used to be the FIRST control the header's row dropped as it
+  narrowed, and a permanent column has nothing to shed. The header's `...` menu
+  still lists the four entries (the keyboard door; the rail is not an F6 region).
+  The history below - the cluster, the segmented control it rejected - is the
+  reasoning of the version before the rail and is kept for what it records.
 - **One right pane at a time.** `isRunPanelOpen` and `isCanvasOpen`
   (`shared/store/ui-preferences-store.ts:51-57`, `:236-240`) become mutually
   exclusive **by construction**: each setter clears the other. Two booleans whose
@@ -240,7 +249,7 @@ room its content actually needs (a roster *and* a conversation).
   the run panel and would leave the two panes' handles indistinguishable to a
   screen reader. One required prop on an existing shared component — the
   smallest interface change in this document.
-- **Rejected: a segmented control in the header.** It would read the swap
+- **Rejected (before the rail): a segmented control in the header.** It would read the swap
   correctly, but it restructures the canvas button, which carries its own
   `data-tour-tag`, its own tooltip and its own deliberate hide-when-open rule
   (`chat-header.tsx:120-134`), and it introduces an icon-only two-cell group into
@@ -1804,7 +1813,7 @@ exact steps inside a stated range are the implementation's to choose.
 | MCP row segments | mark 16px (the roster's own box), then the name with a FLOOR and an ellipsis, then the status word, the tool count and the scope | The roster's segment grammar, so the two lists read as one panel. **The rule the code implements was replaced in round 2 (D6) and this row stated the old one**: the name is no longer the only segment allowed to shrink. It keeps a floor (`MCP_ROW_NAME_FLOOR_PX`, 44px, capped by what the line has left) and the trailing segments SHED from the right — scope first, then the tool count, the status word last, because that is why a problem row is a problem row — because `min-w-0 flex-1` with no floor is not "the name shrinks", it is "the name disappears": measured at the app's window floor with the rail expanded (79px pane, 71px region) every row's name was `clientWidth 0` with `scrollWidth` 60-133, gone rather than elided and reachable by no gesture. The numbers rule of § 9 still holds and is what decides the ORDER: a value is never cut mid-figure — it is dropped whole, and only the name (which carries a `title` with its whole string) and the trailing scope (which carries one too, and is a qualifier rather than a figure) may truncate. |
 | MCP section | last in the panel's scroll region; its own section header with the tally; no separate scroll container, no hover ground, no cap | § 7.2's fixed order; the panel's single scroll region (the `Scroll owner` row below) is the roster's, so a section with its own container would put two scrollbars in one pane. |
 | Scroll owner | the roster area in the roster view; the transcript in the reader view — never both | Two nested scroll containers is the defect the old doc's `min(60vh, 480px)` ceiling existed to avoid; with a full-height pane the roster scrolls in the pane, and the cap that used to be a popover artefact is gone. |
-| Narrow width | The panel renders the width the row has left; 320px is the DIVIDER’s floor (`minWidth={RUN_PANEL_MIN_PX}`), i.e. the width the user may drag the preference down to, and the width the panel grows back to when the row has room. Measured (run-panel-reveal evidence, `--expect=region-only`): at 1024x673 the panel renders 419px with the rail collapsed and 303px with it expanded; at the window floor (800px, `window-mode.ts:47`) it renders 251px collapsed and **79px** expanded. `isSmallView` is on below 550px (`chat-content.tsx:210-224`). **This row used to claim "the panel takes its 320px floor ... No overflow" and was wrong on both counts**: its arithmetic omitted the chat list’s own 280px, and the shipped panel pinned its PREFERENCE (420px) as a floor, so 116px (1024, rail expanded), 340px (800, expanded) and 168px (800, collapsed) of it sat outside the window with the row’s `overflow-hidden` hiding it and no gesture that reached it (round 1, D1/U1). With the rail expanded at the window floor, rail + list + the column’s 220px floor already spend 720px of an 800px window, so no arrangement of the panel’s own floors can fit it: which of the three gives is a CHROME decision this record states as open rather than pretends to have made. | Stated because "a pane and a column" has a floor, and the floor is what the two widths must respect. The panel does **not** auto-hide at narrow widths — the operator asked for persistence, and a pane that disappears below a breakpoint is the current defect in a new costume. |
+| Narrow width | The panel renders the width the row has left; 320px is the DIVIDER’s floor (`minWidth={RUN_PANEL_MIN_PX}`), i.e. the width the user may drag the preference down to, and the width the panel grows back to when the row has room. Measured (run-panel-reveal evidence, `--expect=region-only`): at 1024x673 the panel renders 419px with the rail collapsed and 303px with it expanded; at the window floor (800px, `window-mode.ts:47`) it renders 251px collapsed and **79px** expanded. `isSmallView` is on below 550px (`chat-content.tsx:210-224`). **Since the panel rail (#872) every figure above loses a further 44px: the row is the window minus the sidebar (or strip) minus the rail, so at the window floor the panel renders 207px with the rail collapsed (was 251) and 35px expanded (was 79), and at 1024x673 it renders 375px collapsed (was 419) and 259px expanded (was 303). The panel is still never an overlay and still does not auto-hide: the overlay-for-all-four rule that would change this is a recorded deferral of #872, not a decision.** **This row used to claim "the panel takes its 320px floor ... No overflow" and was wrong on both counts**: its arithmetic omitted the chat list’s own 280px, and the shipped panel pinned its PREFERENCE (420px) as a floor, so 116px (1024, rail expanded), 340px (800, expanded) and 168px (800, collapsed) of it sat outside the window with the row’s `overflow-hidden` hiding it and no gesture that reached it (round 1, D1/U1). With the rail expanded at the window floor, rail + list + the column’s 220px floor already spend 720px of an 800px window, so no arrangement of the panel’s own floors can fit it: which of the three gives is a CHROME decision this record states as open rather than pretends to have made. | Stated because "a pane and a column" has a floor, and the floor is what the two widths must respect. The panel does **not** auto-hide at narrow widths — the operator asked for persistence, and a pane that disappears below a breakpoint is the current defect in a new costume. |
 | Ground step | the panel's `surface` against the column's `canvas` | The step `chat-content.tsx:299-350` establishes between list panel and working surface, unchanged. |
 
 ---

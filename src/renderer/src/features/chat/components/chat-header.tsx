@@ -40,7 +40,7 @@ import {
 import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
 import type { AskScope } from "../ask-queue";
 import { askHeaderToggleLabel } from "../ask-queue";
-import { canvasToggleCap, isCanvasTogglePress } from "../canvas-shortcut";
+import { isCanvasTogglePress } from "../canvas-shortcut";
 import { archiveControlLabel } from "../chat-archived";
 import { useSessionCommand } from "../pickers/use-picker-backend";
 import {
@@ -52,8 +52,7 @@ import {
 	ChatHeaderIdentity,
 	type HeaderIdentityData,
 } from "./chat-header-identity";
-import type { McpServerRow, RunDetails } from "./run-details";
-import { RunDetailsTrigger } from "./run-details";
+import type { RunDetails } from "./run-details";
 
 /**
  * ChatHeaderProps
@@ -62,16 +61,13 @@ import { RunDetailsTrigger } from "./run-details";
  * @property onOpenOptions - Optional callback for opening options/canvas.
  * @property runDetails - The session's derived subagent and to-do view model, or
  * `null`/absent when the session has none.
- * @property fileCount - How many files the conversation has been seen to mention.
  *
  * `runDetails` is passed by `chat-page.tsx`, which owns the canonical stream and
  * derives the model per wire frame (`run-details.md` § 8); stories pass a fixture
  * instead. It stays OPTIONAL because its absence is a real state: `ChatContent`
  * also renders this header for a session with no canonical stream, where there
- * is nothing to derive from and the trigger must not appear. The trigger's own
- * visibility rule (has work, and the canvas closed) lives inside
- * `RunDetailsTrigger`, because both halves are facts about that surface rather
- * than about where the header puts it.
+ * is nothing to derive from and the menu's Run details entry must not appear. The
+ * run trigger itself lives on the panel rail (#872), which is handed the same model.
  */
 type ChatHeaderProps = {
 	agentName?: string;
@@ -137,36 +133,6 @@ type ChatHeaderProps = {
 	onOpenOptions?: () => void;
 	runDetails?: RunDetails | null;
 	/**
-	 * How many files the conversation has been seen to mention.
-	 *
-	 * The header carries it because it is the only surface visible before the
-	 * canvas is ever opened: with 32 files on screen-worth of conversation the
-	 * feature used to announce itself nowhere, so a user had to already know the
-	 * canvas existed to find them. Not "unseen" - there is no read receipt here -
-	 * just "this conversation has files".
-	 */
-	fileCount?: number;
-	/**
-	 * The session's configured MCP servers, for the trigger's attention dot.
-	 *
-	 * Threaded through the header rather than fetched inside the trigger for the
-	 * reason `docs/run-sidebar.md` § 3.4 gives: the dot's rule is "while the panel
-	 * is open, what the panel RENDERS is acknowledged", so the trigger and the
-	 * panel have to answer from ONE list. An empty list is what a caller passes
-	 * when the MCP section is not on screen, which is what makes an unrendered
-	 * section acknowledge nothing.
-	 */
-	mcpServers?: readonly McpServerRow[];
-	/**
-	 * Whether the pane is showing its list, and which child's reader is open.
-	 *
-	 * Both are the pane's own view state, reported up by `chat-content.tsx` because
-	 * the dot's rule is about what is ON SCREEN (`§ 3.4`) and this is the only place
-	 * that renders both the trigger and the pane.
-	 */
-	listOnScreen?: boolean;
-	readerChildId?: string | null;
-	/**
 	 * Whether THIS header is the element the OS's caption buttons sit over, and so
 	 * must reserve their width at its trailing end.
 	 *
@@ -218,30 +184,6 @@ type ChatHeaderProps = {
 	 * which pane is showing.
 	 */
 	onOpenConsole?: () => void;
-	/**
-	 * How many completions THIS conversation's console has produced that the user has
-	 * not looked at (design 12.2), and whether any of them is still fresh enough to
-	 * pulse.
-	 *
-	 * A COUNT IS PASSED AND A DOT IS DRAWN, which is the one place this trigger
-	 * agrees with the canvas button rather than the browser one: "here the only job is
-	 * to say 'there is something' before the user has opened it". The count is not
-	 * rendered — it is what the tooltip and the `aria-label` read, which is where an
-	 * exact number belongs for a control this size.
-	 */
-	consoleUnseenCount?: number;
-	/** Whether those marks are still pulsing, i.e. whether the dot is `accent` or has
-	 * come to rest in `inkMuted` (design 12.2's two states). */
-	consoleUnseenPulsing?: boolean;
-	/**
-	 * How many approvals THIS conversation is waiting on, for the trigger's badge.
-	 *
-	 * The count and not a dot, which is the one place this header differs from the
-	 * canvas button beside it: a canvas dot says "there is something in there", and a
-	 * pending approval is an ASK — an agent is stopped until the user answers — so
-	 * the number is the whole information the badge carries (spec 5.1, 7.3).
-	 */
-	browserAttentionCount?: number;
 	/**
 	 * THE ASKS ENTRY POINT (operator ask, 2026-10-05): open (or close) the asks
 	 * surface, and how much it is carrying right now.
@@ -296,7 +238,7 @@ type ChatHeaderProps = {
 	 * backend can hold archived conversations at all.
 	 *
 	 * `archived` is a plain boolean rather than a lookup here for the reason the
-	 * header takes `fileCount`: the pane owns the canonical stream and the session
+	 * header takes `archived`: the pane owns the canonical stream and the session
 	 * store, and this component is rendered by stories with fixtures and by the
 	 * legacy path with nothing. `archiveEnabled` is the capability, passed down
 	 * rather than re-read, so the pill and the sidebar's control cannot gate on two
@@ -343,34 +285,19 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	renameSessionId,
 	onOpenOptions,
 	runDetails = null,
-	fileCount = 0,
-	mcpServers = [],
-	listOnScreen = false,
-	readerChildId = null,
 	reserveTrailingChrome = false,
 	onToggleBrowser,
-	browserAttentionCount = 0,
 	archived = false,
 	archiveEnabled = false,
 	onSetArchived,
 	deleteEnabled = false,
 	onRequestDelete,
 	onOpenConsole,
-	consoleUnseenCount = 0,
-	consoleUnseenPulsing = false,
 	onToggleAsks,
 	asksAttentionCount = 0,
 	asksScope = "session",
 	asksOpen = false,
 }) => {
-	/*
-	 * What the badge SHOWS, which is not always what it counts (design round 1, D5):
-	 * a badge fixed to a 16px icon cannot grow past its own corner, so from the
-	 * tenth request on it reads `9+` while the tooltip and the `aria-label` keep the
-	 * exact number. Only the glyph is capped - a user who needs the count reads it,
-	 * and a user who needs to know it is a lot sees that too.
-	 */
-	const badgeText = countLabel(browserAttentionCount, 9);
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
 	/*
@@ -395,11 +322,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		(s) => s.setTranscriptDisplayMode,
 	);
 	/*
-	 * The run panel's setter, read here for the OVERFLOW MENU rather than for the
-	 * cluster's own trigger (`RunDetailsTrigger` owns that button and its
-	 * focus-return). The menu is the row's escape hatch at the widths where the
-	 * cluster sheds the trigger, and both paths write the same store field, so they
-	 * cannot disagree about whether the pane is up.
+	 * The run panel's setter, read here for the OVERFLOW MENU. The rail's run item
+	 * (`RunDetailsTrigger`) owns the button and its focus-return; both paths write the
+	 * same store field, so they cannot disagree about whether the pane is up.
 	 */
 	const setRunPanelOpen = useUiPreferencesStore((s) => s.setRunPanelOpen);
 	/*
@@ -435,23 +360,19 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	// The console's own field, read for the same reason and from the same place.
 	const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
 
-	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-	// The cap and the predicate share one module, so the promise this string prints
-	// and the press that answers it cannot drift (UX round 2, U14).
-	const shortcut = canvasToggleCap(isMac);
-
 	/*
-	 * THE CHORD THIS CONTROL PRINTS IS BOUND HERE (UX round 2, U14).
+	 * THE CANVAS CHORD IS STILL BOUND HERE (UX round 2, U14), though the control
+	 * that prints it moved to the panel rail (#872).
 	 *
-	 * The name advertised `⌘⇧C` and nothing answered it: four recorded presses left
-	 * the pane closed while `⌘B`, `⌘N` and `⌘K` all acted. The listener lives with
-	 * the control rather than in the shell because the control is what makes the
-	 * promise, and it is bound wherever the control's own gate (`onOpenOptions`, the
-	 * prop that decides whether this pane can offer the canvas at all) is answered -
-	 * the same condition the button renders under, so the chord cannot outlive the
-	 * cap it is printed from. It TOGGLES: while the canvas is open the button is
-	 * unmounted, and the reader who opened it with the chord must be able to close
-	 * it with the chord.
+	 * The canvas item's name advertises `⌘⇧C` and something has to answer it. The
+	 * listener stays where it was - bound wherever this header's `onOpenOptions` gate
+	 * is answered, the prop that decides whether this pane can offer the canvas at
+	 * all - rather than moving with the button, because moving it is a behaviour
+	 * change on a chord (it would bind on the rail's mount instead, which exists on
+	 * drafts the header's gate may not), and #872 adds no chord and changes none. It
+	 * TOGGLES, so the reader who opened the canvas with the chord can close it with
+	 * the chord. The printed cap and this predicate still share `canvas-shortcut.ts`,
+	 * which is what keeps the promise and the press from drifting.
 	 *
 	 * The state is read through `getState()` at press time, the shape the shell's own
 	 * chord uses: a listener that closes over `isCanvasOpen` would be re-registered
@@ -468,38 +389,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		return () => document.removeEventListener("keydown", onKeyDown);
 	}, [onOpenOptions, setCanvasOpen]);
 
-	/*
-	 * Three facts about the cluster's children, read once because the CLUSTER's
-	 * spacing and each child's own render gate are decisions from the same set.
-	 *
-	 * The badge is anchored 10px past the browser button's corner and paints a 2px
-	 * ring, so a drawn badge needs 12px before the CANVAS BUTTON's box begins
-	 * (design round 1, D5: below that the ring is painted inside a 32px control's
-	 * hover target). That room is the CONTAINER's to give - `docs/branding.md`
-	 * section 5, "a component does not own its outer margin" - so the cluster widens
-	 * its own gap while an overhanging badge is on screen and pays nothing when there
-	 * is none. A `mr-1` on the button used to carry it and could not be conditional
-	 * without being the same anti-pattern: a margin on a component's root element
-	 * stacks with whatever container it is dropped into, which is exactly the
-	 * silent-mis-spacing failure that rule exists to prevent.
-	 *
-	 * Each fact is about a CHILD rather than about the badge alone, and the canvas
-	 * half is why: while the canvas is open the canvas button is unmounted, so the
-	 * badge has no neighbour's box to land in and the room would be spent on a
-	 * control that is not rendered. (THE BROWSER HALF OF THIS PARAGRAPH IS HISTORY:
-	 * the browser button used to unmount with its pane, which is the state the
-	 * operator reported as a missing badge - see `onToggleBrowser`. It stays mounted
-	 * now, so the room its badge earned is never paid for nothing.)
-	 */
-	const browserButtonShown = Boolean(onToggleBrowser);
-	/* THE BADGE IS DRAWN WHENEVER THIS CONVERSATION IS WAITING ON SOMETHING. It used
-	 * to be gated on the button's own visibility (`browserButtonShown &&
-	 * browserAttentionCount > 0`), which was inert only while the button never hid
-	 * with its pane. With the trigger staying mounted that gate would be the second
-	 * way to lose the count, so it is gone rather than left as a remainder. */
-	const browserBadgeDrawn = browserAttentionCount > 0;
-	const canvasButtonShown = Boolean(onOpenOptions) && !isCanvasOpen;
-	const consoleButtonShown = Boolean(onOpenConsole) && !isConsolePaneOpen;
 	/*
 	 * THE ASKS TRIGGER'S OWN THREE FACTS, computed here beside the browser
 	 * trigger's for the reason that block gives: the count a badge SHOWS is capped
@@ -541,70 +430,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		scope: asksScope,
 		count: asksAttentionCount,
 	});
-
-	/*
-	 * Closing the canvas put focus back on `<body>`, which is the top of the
-	 * document: a keyboard user who left the panel lost their place entirely. The
-	 * control they came from is this button, and it only exists while the canvas
-	 * is closed - so the focus move has to happen on the true->false transition,
-	 * after the button is back in the DOM, and never on the first mount (which
-	 * would pull focus out of whatever the user was doing when the app opened).
-	 */
-	const canvasButtonRef = useRef<HTMLButtonElement | null>(null);
-	const previouslyOpen = useRef(isCanvasOpen);
-	useEffect(() => {
-		if (
-			previouslyOpen.current &&
-			!isCanvasOpen &&
-			// Only when focus was actually LOST. Closing the canvas from inside it
-			// unmounts the control that had focus and leaves `body` active; closing
-			// it from the command palette while the composer has focus must not pull
-			// the caret out of the message being typed.
-			document.activeElement === document.body
-		)
-			canvasButtonRef.current?.focus();
-		previouslyOpen.current = isCanvasOpen;
-	}, [isCanvasOpen]);
-
-	/*
-	 * The same four lines for the browser pane, which had none of them (UX round 1,
-	 * U2): its two neighbours put the caret back on their own trigger when they
-	 * close, and the third occupant of the slot left it on `<body>` - so `Enter` on
-	 * the Globe was a one-way trip to the top of the document's tab order for a
-	 * keyboard user. `run-details-trigger.tsx` carries the identical refocus for the
-	 * identical reason, and the guard is the same one: only when focus was actually
-	 * lost, and never on first mount.
-	 */
-	const browserButtonRef = useRef<HTMLButtonElement | null>(null);
-	const browserPaneWasOpen = useRef(isBrowserPaneOpen);
-	useEffect(() => {
-		if (
-			browserPaneWasOpen.current &&
-			!isBrowserPaneOpen &&
-			document.activeElement === document.body
-		)
-			browserButtonRef.current?.focus();
-		browserPaneWasOpen.current = isBrowserPaneOpen;
-	}, [isBrowserPaneOpen]);
-
-	/*
-	 * And the same again for the console, which is the fourth occupant of the same
-	 * slot (design 6.1) and would otherwise be the second one to drop a keyboard
-	 * user at the top of the document's tab order - the exact defect UX round 1 (U2)
-	 * found on the browser trigger. Same guard: only when focus was actually lost,
-	 * and never on first mount.
-	 */
-	const consoleButtonRef = useRef<HTMLButtonElement | null>(null);
-	const consolePaneWasOpen = useRef(isConsolePaneOpen);
-	useEffect(() => {
-		if (
-			consolePaneWasOpen.current &&
-			!isConsolePaneOpen &&
-			document.activeElement === document.body
-		)
-			consoleButtonRef.current?.focus();
-		consolePaneWasOpen.current = isConsolePaneOpen;
-	}, [isConsolePaneOpen]);
 
 	/*
 	 * THE INLINE RENAME (the operator's report, 2026-09-26): "the rename
@@ -1230,24 +1055,19 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				{deviceSlot}
 			</div>
 			{/*
-			 * The header's action cluster: the run-panel trigger, the browser pane's trigger,
-			 * then the canvas button, as one group at the end of the bar. The cluster carries
-			 * the `ml-auto` the canvas button used to carry, so the actions sit 8px apart
-			 * instead of being pinned to opposite ends of whatever else the bar happens to
-			 * hold.
+			 * The header's action cluster: the `...` menu and the Asks trigger, as one
+			 * group at the end of the bar. The cluster carries the `ml-auto` so the actions
+			 * sit together instead of being pinned to opposite ends of whatever else the
+			 * bar holds.
 			 *
-			 * THESE ARE THE RIGHT PANE'S THREE CHOICES, and they are mutually exclusive in
-			 * the STORE rather than here: each setter clears the other two
-			 * (`claimRightSlot`), so this cluster never has to know which pane is up. The
-			 * canvas and browser buttons keep their own render gates
-			 * (`onOpenOptions && !isCanvasOpen`, `onToggleBrowser`), because a button that
-			 * re-opens the pane already on screen is a no-op with a tooltip; the run trigger
-			 * and the browser trigger stay, because each is a TOGGLE whose own ground or
-			 * badge says which way it goes, and that is exactly what makes the swap
-			 * reversible. THE BROWSER TRIGGER'S OWN STAY is the operator's fix (2026-09-23),
-			 * and the asymmetry with the canvas button is deliberate rather than an
-			 * oversight: its badge is a count this header is the only chrome to carry, and
-			 * hiding it with the pane is how the count disappeared.
+			 * THE FOUR PANEL TRIGGERS ARE NOT HERE ANY MORE (#872). Run details, Browser,
+			 * Console and Canvas moved to the panel rail at the window's right edge
+			 * (`shared/components/navigation/panel-rail.tsx`), and so did the shed ladder
+			 * that dropped them one by one as this row narrowed: a permanent column has
+			 * nothing to shed. What stays is the `...` menu below, which still lists all
+			 * four - it is now the keyboard and narrow-window door to them rather than the
+			 * overflow of a ladder - and the Asks trigger, which is a different surface
+			 * (a queue, in one of two scopes) with its own badge.
 			 */}
 			<div
 				data-titlebar-no-drag=""
@@ -1256,47 +1076,17 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					/*
 					 * THE RULE THIS APPLIES. The container pays only for ink that would
 					 * otherwise land in a NEIGHBOUR'S BOX - not for every child that paints
-					 * outside itself. The browser badge earns 12px because without it its ring
-					 * is painted inside the canvas button's hover target (design round 1, D5);
-					 * the ask mark earns the same 12px one control over, for the same reason -
-					 * its box ends 10px out from the asks trigger's corner, so at the ordinary
-					 * 8px it entered the browser trigger's hover target by 2px (design round 1,
-					 * D1, remediated here); the run trigger's own attention dot overhangs its
-					 * box by 2px and earns nothing, because 6px of the ordinary 8px gap still
-					 * separates it from the next box. So 12px is owed while either mark is
-					 * drawn - the browser mark only while the box it has to clear is on screen
-					 * (its clause below), and the ask mark whenever it is, because the control
-					 * it hangs toward (the browser trigger) sits immediately after it and
-					 * stays mounted in every arrangement the asks door is drawn for.
+					 * outside itself. The ask mark hangs 10px past the Asks trigger's corner and
+					 * the 8px gap would let its box enter the next control's hover target (design
+					 * round 1, D1), so 12px is owed while the mark is drawn. 8px is the
+					 * within-a-component step of branding.md's 4px ramp; the room is the
+					 * CONTAINER's (branding.md section 5), never a margin on the control.
 					 *
-					 * 8px is the within-a-component step of branding.md's 4px ramp, and it is
-					 * the state the operator photographed: a `mr-1` on the browser button paid
-					 * the badge's 12px whether or not a badge was drawn, so the badge-free
-					 * cluster read 8px against 12px. The room is the CONTAINER's now
-					 * (branding.md section 5), so neither state is a margin on a component.
-					 *
-					 * WHAT A BADGE COSTS, in the two comparisons that are easy to conflate:
-					 *
-					 *  - THE BADGE APPEARING, this tree against itself. `gap` resolves from 8
-					 *    to 12, and all five of the cluster's gaps ARE that one property (six
-					 *    controls), so each widens by 4px: cluster width 232 -> 252 (+20px),
-					 *    the run trigger's left edge 352 -> 336 (-16px), the browser button
-					 *    432 -> 424 (-8px), and the canvas button pinned at 512 by the
-					 *    `ml-auto` right edge (0px). The browser's -8px is the MECHANISM that
-					 *    keeps D5 rather than a detail: its right edge moves 464 -> 456, so the
-					 *    badge's painted ring ends exactly on the console box's left edge, at
-					 *    0px clearance. "The browser and canvas buttons do not move" is NOT
-					 *    what happens here.
-					 *  - THE FIX AGAINST `main`, the OTHER comparison: it moved the badge-free
-					 *    states too, because main paid the badge's room whether or not a badge
-					 *    was drawn. Its figures were measured on this comment's three-control
-					 *    cluster and cannot be re-derived from this tree (main carries the fix
-					 *    now); the 4px figures this change is otherwise tempted to quote belong
-					 *    to THAT comparison, not the one above.
+					 * The `...` menu is the only neighbour the mark can reach now that the
+					 * browser, console and canvas buttons left for the rail (#872), so the
+					 * widened step is paid only toward the menu's side, exactly as before.
 					 */
-					(browserBadgeDrawn && canvasButtonShown) || asksBadgeDrawn
-						? "gap-3"
-						: "gap-2",
+					asksBadgeDrawn ? "gap-3" : "gap-2",
 				)}
 			>
 				{/*
@@ -1509,19 +1299,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							{/*
 							 * THE RIGHT-SLOT ACTIONS, SO NOTHING IS UNREACHABLE AT 800.
 							 *
-							 * The cluster beside this menu SHEDS its controls as the row
-							 * narrows - the run trigger first, then the canvas button, then
-							 * the console - because a header with the right pane up is 220px
-							 * wide at the app's own 800px window minimum and cannot hold four
-							 * icon buttons, a title and a path. What the shed must not do is
-							 * make an action disappear: this menu holds EVERY one of the four
-							 * in EVERY state, which is what makes the row's overflow truthful
-							 * rather than merely tidy. The items are not duplicates of the
-							 * buttons - a duplicate would be a second way to do what the row
-							 * already does; these are the same door for the widths where the
-							 * row cannot carry a button for it.
+							 * The four panels have a permanent rail at the window's right edge
+							 * (#872), and this menu is their KEYBOARD AND MENU DOOR: the rail is not
+							 * an F6 region (`CHAT_REGIONS`), so this is how a reader who is working
+							 * in the header reaches a panel without leaving it. It holds EVERY one
+							 * of the four in EVERY state, the property that made it the overflow of
+							 * the old shed ladder and still makes it a complete second door.
 							 *
-							 * They open through the SAME store fields the buttons write
+							 * They open through the SAME store fields the rail's items write
 							 * (`claimRightSlot` clears the other panes), so the two paths
 							 * cannot disagree about which pane is up. The labels state the
 							 * ACTION in the pane's own direction: a toggle that said only
@@ -1554,7 +1339,16 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								</DropdownMenuItem>
 							)}
 							{onOpenOptions && (
-								<DropdownMenuItem onSelect={() => onOpenOptions()}>
+								/*
+								 * THE CANVAS ROW WRITES THE CANVAS FLAG, NOT `onOpenOptions` (QA
+								 * round 1, Q1). `onOpenOptions` is the page's legacy slash-command
+								 * chips toggle (`setOptions`), so the row used to open that chip
+								 * row and never the canvas, at any width, on main as well. The
+								 * prop stays as the GATE for whether this pane offers the canvas
+								 * (and for the chord's listener above); the press is the same
+								 * store write the rail's canvas item and the chord make.
+								 */
+								<DropdownMenuItem onSelect={() => setCanvasOpen(!isCanvasOpen)}>
 									<FileText aria-hidden="true" />
 									<span>{isCanvasOpen ? "Close canvas" : "Open canvas"}</span>
 								</DropdownMenuItem>
@@ -1562,12 +1356,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						</DropdownMenuContent>
 					</DropdownMenu>
 				)}
-				<RunDetailsTrigger
-					details={runDetails}
-					mcpServers={mcpServers}
-					listOnScreen={listOnScreen}
-					readerChildId={readerChildId}
-				/>
 				{/*
 				 * THE ASKS TRIGGER (operator ask, 2026-10-05), moved here from the sidebar's
 				 * top-level `All asks` row.
@@ -1670,248 +1458,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 										{asksBadgeText}
 									</Badge>
 								</span>
-							)}
-						</Button>
-					</Tooltip>
-				)}
-				{/* The conversation's browser, fourth in the cluster. `ghost`/`icon` like its
-				    neighbours, and it carries the count when this conversation has a request
-				    outstanding — see `browserAttentionCount` for why a count here and a dot on
-				    the canvas button. It TOGGLES and stays mounted while its pane is open:
-				    `onToggleBrowser` is where that rule and its reason live. */}
-				{browserButtonShown && (
-					<Tooltip
-						content={
-							isBrowserPaneOpen
-								? browserAttentionCount > 0
-									? `Close browser — ${browserAttentionCount} ${browserAttentionCount === 1 ? "approval" : "approvals"} waiting`
-									: "Close browser"
-								: browserAttentionCount > 0
-									? `Open browser — ${browserAttentionCount} ${browserAttentionCount === 1 ? "approval" : "approvals"} waiting`
-									: "Open browser"
-						}
-						side="top"
-					>
-						<Button
-							ref={browserButtonRef}
-							variant="ghost"
-							size="icon"
-							onClick={onToggleBrowser}
-							/* The count rides the NAME in both directions, so a screen reader hears
-							   the number whether the pane is open or closed (spec 5.1) — and the verb
-							   matches what the press does, which is the whole change. */
-							aria-label={
-								isBrowserPaneOpen
-									? browserAttentionCount > 0
-										? `Close browser, ${browserAttentionCount} waiting`
-										: "Close browser"
-									: browserAttentionCount > 0
-										? `Open browser, ${browserAttentionCount} waiting`
-										: "Open browser"
-							}
-							aria-expanded={isBrowserPaneOpen}
-							data-tour-tag="browser-pane-trigger"
-							/*
-							 * `relative` for the badge only; the SPACING that makes room for it is the
-							 * cluster's, which is where branding.md section 5 puts it. The reservation
-							 * used to be a `mr-1` here and was paid in every state, badge or not, which
-							 * is the 12px-against-8px asymmetry the operator saw; see the cluster's own
-							 * comment for the two numbers and the reasoning.
-							 */
-							className={cn("relative")}
-						>
-							<Globe aria-hidden={true} />
-							{/*
-							 * The same badge the URL bar carries, offset for an ICON control rather than
-							 * for a labelled one. The Approvals control reserves `pr-5` for its badge and
-							 * keeps it at the corner; a 32px `icon` button has no such reserve, and at that
-							 * offset a 16px badge sat across the Globe's own corner — two glyphs on top of
-							 * each other, which is the one thing a badge must not be (measured in the first
-							 * capture of `docs/evidence/browser-pane/trigger-*`). So the offset is OUTWARD,
-							 * far enough for the badge's box to clear the 16px glyph's box, and
-							 * `ring-canvas` still names the ground behind it so it reads as an object
-							 * sitting on the corner rather than a notch cut out of the control.
-
-								 *
-								 * `-2.5` RATHER THAN `-2`, because the BOX clearing the glyph was not the whole
-								 * claim (design round 1, D5): the ring paints 2px further out on every side, and
-								 * measured at `-2` the ring's inner edge landed at x=210 while the glyph's
-								 * top-right arc still had ink at 209-210, so the badge cut the stroke it was
-								 * supposed to sit beside. One spacing step buys those two pixels back, and the
-								 * cluster widens its own gap so the badge's outward move is paid for on the
-								 * other side (the cluster's own comment carries that half).
-								 *
-								 * THE VISUAL IS CAPPED, THE LABEL IS NOT. `min-w-4 px-1` grows with every digit
-								 * and the badge is right-anchored, so three digits reach ~23px against the 12px
-								 * of room the offset above leaves - it would have walked back over the glyph the
-								 * moment a tenth request arrived, which is a state the operator asked for a
-								 * QUEUE and will therefore reach. `9+` is the badge's own grammar; the exact
-								 * ordinal stays in the tooltip and the `aria-label`, which are read rather than
-								 * glanced at (spec 5.1).
-							 */}
-							{browserBadgeDrawn && (
-								<span
-									className={cn(
-										"pointer-events-none absolute -top-2.5 -right-2.5",
-									)}
-								>
-									<Badge
-										variant="attention"
-										shape="pill"
-										size="count"
-										className="ring-2 ring-canvas"
-										data-tour-tag="browser-pane-badge"
-									>
-										{badgeText}
-									</Badge>
-								</span>
-							)}
-						</Button>
-					</Tooltip>
-				)}
-				{/*
-				 * The conversation's console, the fifth pane in the cluster (design
-				 * 6.1). `ghost`/`icon` like its neighbours, and it hides while the pane
-				 * is up for the same reason the browser button does — the pane carries its
-				 * own close, and a trigger for a pane already on screen is a no-op with a
-				 * tooltip.
-				 *
-				 * THE BLIP IS A DOT, NOT A COUNT (§12.2), and its two colours are the
-				 * whole of what it says: `accent` while the completion is fresh, because
-				 * something IS unread and the accent is earned (the canvas button's
-				 * `ink-muted` dot is the opposite case), and the resting `ink-muted` step
-				 * once the pulse has had its moment, so an unread mark never becomes a
-				 * permanent animation.
-				 *
-				 * `SquareTerminal` RATHER THAN `Terminal`, and the distinction is
-				 * load-bearing at 16px: `bash`'s bare `Terminal` is the shell the agent
-				 * ran, and this is the app's own framed surface (§6.1, §14.4). Two
-				 * terminals told apart at a glance in one 56px bar is the whole
-				 * requirement.
-				 */}
-				{consoleButtonShown && (
-					<Tooltip
-						content={
-							consoleUnseenCount > 0
-								? `Open console — ${consoleUnseenCount} finished since you looked`
-								: "Open console"
-						}
-						side="top"
-					>
-						<Button
-							ref={consoleButtonRef}
-							variant="ghost"
-							size="icon"
-							onClick={onOpenConsole}
-							aria-label={
-								consoleUnseenCount > 0
-									? `Open console, ${consoleUnseenCount} finished since you looked`
-									: "Open console"
-							}
-							data-tour-tag="console-pane-trigger"
-							/* THE THIRD CONTROL THE ROW SHEDS, BELOW THE CANVAS (agent review
-							 * round 2, Q-1). At 220px - the pane-open header at a 900px window -
-							 * the row cannot hold the menu, both pane triggers and a title, and
-							 * the console is the younger of the two pane doors: the browser's
-							 * trigger carries the attention badge and is what the operator
-							 * reported about, so it does not yield. Hiding this one costs
-							 * reachability of the console ONLY while the row is that narrow, and
-							 * the pane it opens is still named in the transcript's own rows.
-							 *
-							 * 17.5rem (280px) is the middle rung of the ladder the canvas's own
-							 * comment states: a control here costs 32px plus `gap-3` (12), so the
-							 * measured step is 44px, and this threshold is one 40px rung below the
-							 * canvas's. The query is read against the header's CONTENT box - its
-							 * `px-4` sits outside the container's inline size - which is why the
-							 * window that photographs this band is 1460 and not 1420. The widths
-							 * each rung was measured at are in ONE place, the width table in
-							 * `docs/evidence/browser-approval-badges/README.md`; this comment
-							 * states the rule rather than restating numbers a gap change would
-							 * invalidate. */
-							className={cn("relative hidden @[17.5rem]/chathdr:inline-flex")}
-						>
-							<SquareTerminal aria-hidden={true} />
-							{consoleUnseenCount > 0 && (
-								<span
-									aria-hidden="true"
-									className={cn(
-										"absolute top-1 right-1 size-1.5 rounded-full",
-										consoleUnseenPulsing
-											? "bg-accent animate-pulse-visible"
-											: "bg-ink-muted",
-									)}
-									data-tour-tag="console-pane-blip"
-								/>
-							)}
-						</Button>
-					</Tooltip>
-				)}
-				{canvasButtonShown && (
-					<Tooltip
-						content={
-							fileCount > 0
-								? `Open canvas (${shortcut}) — ${fileCount} ${fileCount === 1 ? "file" : "files"}`
-								: `Open canvas (${shortcut})`
-						}
-						side="top"
-					>
-						<Button
-							ref={canvasButtonRef}
-							variant="ghost"
-							/* 32px `icon`, the size every other header action in the app
-							 * uses. `icon-lg` (36px) made this one button the outlier. */
-							size="icon"
-							onClick={() => setCanvasOpen(true)}
-							aria-label={
-								fileCount > 0
-									? `Open canvas (${shortcut}), ${fileCount} ${fileCount === 1 ? "file" : "files"}`
-									: `Open canvas (${shortcut})`
-							}
-							data-tour-tag="open-canvas-button"
-							/* THE SECOND CONTROL TO YIELD, and the order it yields in is the
-							 * row's (agent review round 2, Q-1; design round 2, D8).
-							 *
-							 * The canvas is the one of the cluster's controls the app can lose
-							 * without losing a capability: it is also reachable from the
-							 * transcript's own file tiles and the `shortcut` this control
-							 * prints. `hidden`/`inline-flex` rather than a second render gate
-							 * because the question is the ROW's width, not the pane's state -
-							 * `chat-header-cluster`'s stories pin the same arrangement at a wide
-							 * viewport, where nothing sheds.
-							 *
-							 * THE RULE: a control in this cluster costs 32px plus the gap beside
-							 * it, and the gap that resolves while the badge and the canvas are
-							 * drawn is `gap-3` - measured on the frames at 1600 as 44px per step
-							 * (cluster 164 = 4x32 + 3x12, and every box gap reads 12: `...`
-							 * 780..812, globe 824..856, console 868..900, canvas 912..944). The
-							 * class below is one step of that ladder (320 = the console's 280 +
-							 * 40), which is 4px tighter than the measured 44: the difference is
-							 * taken out of the TITLE's fragment, never out of the row, and the
-							 * margin above where a control strictly fits is what keeps that
-							 * fragment readable rather than the two-character floor. The
-							 * measurements themselves live in ONE place - the width table in
-							 * `docs/evidence/browser-approval-badges/README.md` - so a change to
-							 * the gap cannot leave a number stale here: this comment states the
-							 * rule and points at that table. (The comment it replaces carried a
-							 * 15rem rule beside a 23rem class - design round 2's D8 - and a 96px
-							 * floor beside a 40px one, F10.) */
-							className={cn("relative hidden @[20rem]/chathdr:inline-flex")}
-						>
-							<FileText aria-hidden={true} />
-							{/*
-							 * A dot, not a count. The number belongs on the Files segment, where
-							 * there is room to read it; here the only job is to say "there is
-							 * something in the canvas" before the user has opened it. `ink-muted`
-							 * rather than an accent: nothing is unread, and the accent is spent on
-							 * actions the app is asking for.
-							 */}
-							{fileCount > 0 && (
-								<span
-									aria-hidden="true"
-									className={cn(
-										"absolute top-1 right-1 size-1.5 rounded-full bg-ink-muted",
-									)}
-								/>
 							)}
 						</Button>
 					</Tooltip>

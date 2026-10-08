@@ -78,6 +78,22 @@ export const SIDEBAR_DOCK_MIN_PX = 1024;
 export const CHAT_PANE_MIN_PX = 480;
 
 /**
+ * The width of the right-edge panel rail, in pixels (#872): the column of four
+ * triggers (Run details, Browser, Console, Canvas) at the window's trailing edge.
+ *
+ * 44 IS A 32px CONTROL IN A 6px GUTTER EACH SIDE, the same box the chat header's
+ * `icon` buttons occupy, so a trigger moving from the header to the rail changes
+ * neither its size nor its hit target. The rail is a SIBLING of the measured
+ * content column (`chat-layout.tsx`), not a child, which is why this constant has
+ * exactly two readers: the shell, which gives the host this width while a chat
+ * surface is mounted, and `sidebarYieldsToCanvas`, which has to predict the
+ * measured row from the window alone and so must know the rail is taken out of it.
+ * The width resolver, `canvasDockWidth` and `CHAT_PANE_MIN_PX` need no edit - they
+ * are handed the measured column, which the rail has already narrowed.
+ */
+export const PANEL_RAIL_WIDTH_PX = 44;
+
+/**
  * The narrowest a DOCKED canvas may be, in pixels: §I's "if there is still not room
  * for a 400px pane, the canvas overlays the chat pane instead of docking".
  *
@@ -174,11 +190,29 @@ export function canvasPaneMode(rowWidth: number): "docked" | "overlay" {
 export function sidebarYieldsToCanvas(
 	viewportWidth: number,
 	storedWidth: number = SIDEBAR_DEFAULT_WIDTH,
+	railWidth: number = PANEL_RAIL_WIDTH_PX,
 ): boolean {
+	/*
+	 * THE RAIL IS PART OF THE ROW'S DEFICIT (#872). The measured row the canvas
+	 * actually docks in is the window minus the sidebar MINUS the 44px panel rail
+	 * at its right edge (`PANEL_RAIL_WIDTH_PX`), and this function exists to
+	 * predict that row's mode from the window alone. Left on the rail-less
+	 * arithmetic it would be wrong for the 44px band just above the old boundary
+	 * (1140-1183 at the default 260): the sidebar would stay docked, the real row
+	 * would be 44px short of the canvas's floor, and the canvas would OVERLAY the
+	 * chat - the D24 defect, re-opened by a sum. The rail is subtracted from both
+	 * rows because it is present beside both sidebar shapes. `railWidth` is a
+	 * parameter only because the rail exists solely while a chat surface is
+	 * mounted: the fleet asks pane also docks on settings and agents, where no
+	 * rail stands, and the shell passes 0 there so the sidebar does not collapse
+	 * for 44px that are not taken.
+	 */
 	return (
-		canvasPaneMode(viewportWidth - clampSidebarWidth(storedWidth)) ===
-			"overlay" &&
-		canvasPaneMode(viewportWidth - SIDEBAR_COLLAPSED_WIDTH) === "docked"
+		canvasPaneMode(
+			viewportWidth - clampSidebarWidth(storedWidth) - railWidth,
+		) === "overlay" &&
+		canvasPaneMode(viewportWidth - SIDEBAR_COLLAPSED_WIDTH - railWidth) ===
+			"docked"
 	);
 }
 
@@ -244,13 +278,14 @@ export function resolveSidebarLayout(
 	sheetRequested: boolean,
 	storedWidth: number = SIDEBAR_DEFAULT_WIDTH,
 	canvasOpen = false,
+	railWidth: number = PANEL_RAIL_WIDTH_PX,
 ): SidebarLayout {
 	const docked = viewportWidth >= SIDEBAR_DOCK_MIN_PX;
 	if (docked) {
 		const yields =
 			!collapsedPref &&
 			canvasOpen &&
-			sidebarYieldsToCanvas(viewportWidth, storedWidth);
+			sidebarYieldsToCanvas(viewportWidth, storedWidth, railWidth);
 		return {
 			mode: collapsedPref || yields ? "strip" : "docked",
 			width:

@@ -367,6 +367,26 @@ test("U-9 a CSS comment is prose, and the rules that act on the chrome are decla
 	assert.match(css, /--chrome-strip-h:\s*env\(titlebar-area-height/);
 	assert.match(css, /--chrome-inset-start:\s*env\(titlebar-area-x/);
 	assert.match(css, /--chrome-inset-end:\s*max\(/);
+	/*
+	 * THE PANEL RAIL'S TOP CLEARANCE (#872): the caption buttons' HEIGHT, published
+	 * beside their width, read from the same `env()` and gated by the same trailing
+	 * attribute, so the rail's first item starts below them. It is 0 at `:root`, on
+	 * macOS and in full screen - everywhere the OS draws no buttons at the trailing
+	 * edge - so nothing moves there.
+	 */
+	assert.match(
+		css,
+		/\[data-chrome-mode="integrated"\]\[data-chrome-trailing="true"\]\s*\{[\s\S]*?--chrome-inset-end-h:\s*env\(titlebar-area-height/,
+	);
+	assert.match(css, /:root\s*\{[\s\S]*?--chrome-inset-end-h:\s*0px;/);
+	assert.match(
+		css,
+		/\[data-chrome-platform="mac"\]\s*\{[\s\S]*?--chrome-inset-end-h:\s*0px;/,
+	);
+	assert.match(
+		css,
+		/\[data-chrome-fullscreen="true"\]\s*\{[\s\S]*?--chrome-inset-end-h:\s*0px;/,
+	);
 	assert.match(
 		css,
 		/\[data-chrome-mode="integrated"\]\[data-chrome-platform="mac"\]\s*\{[\s\S]*?--chrome-strip-h:\s*32px;/,
@@ -459,9 +479,19 @@ test("U-9 a CSS comment is prose, and the rules that act on the chrome are decla
 		/\[data-chrome-mode="integrated"\]\[data-chrome-platform="mac"\]\s+\[data-titlebar-lane\],?\s*\[data-chrome-mode="integrated"\]\[data-chrome-leading="true"\]\s+\[data-titlebar-lane\]\s*\{[\s\S]*?height:\s*var\(--chrome-strip-h\);/,
 	);
 
-	/* The trailing reservation, as one utility both owners wear. */
+	/*
+	 * The trailing reservation, as one utility, now reading the SHELL's remainder
+	 * (#872): the caption buttons are ~138px wide and the panel rail covers 44 of
+	 * them, so the row that ends at the rail's left edge clears only
+	 * `--chrome-inset-end - rail`, which `chat-layout.tsx` publishes as
+	 * `--chrome-inset-end-pane`. The fallback is the FULL inset, the safe direction
+	 * for a pane rendered outside the shell.
+	 */
 	assert.match(css, /@utility\s+chrome-reserve-trailing\s*\{/);
-	assert.match(css, /width:\s*var\(--chrome-inset-end\)/);
+	assert.match(
+		css,
+		/width:\s*var\(--chrome-inset-end-pane,\s*var\(--chrome-inset-end\)\)/,
+	);
 });
 
 test("the shell carries the fact, and no chrome module raises a window", () => {
@@ -575,5 +605,53 @@ test("the shell renders the lane above the columns, and exactly one of it", () =
 		shell.split('data-titlebar-lane=""').length - 1,
 		1,
 		"one shell tree, one lane - a second branch is how the overlay once dropped the pane",
+	);
+});
+
+test("the shell publishes the inset the panel rail leaves, and every trailing row reads it (#872)", () => {
+	/*
+	 * The Windows/Linux caption buttons are ~138px (`src/shared/window-chrome.ts`'s
+	 * trailing reservation) and the rail is 44, so the rail clears only the buttons'
+	 * trailing part. The row that ends at the rail's left edge - the chat header
+	 * with no pane, or an open pane's toolbar - still has to clear the rest, and the
+	 * shell is the one element that knows the rail's width, so it publishes the
+	 * remainder. THE FLEET ASKS DRAWER ON SETTINGS/AGENTS HAS NO RAIL beside it, so
+	 * there the remainder must be the FULL inset: the width is `0` when the chat
+	 * surface is not mounted and the subtraction is of that number.
+	 */
+	const layout = readSource(
+		"src/renderer/src/shared/components/common/chat-layout.tsx",
+	);
+	assert.match(
+		layout,
+		/const railWidth = railMounted \? PANEL_RAIL_WIDTH_PX : 0;/,
+		"no chat surface, no rail: the width is 0 and the inset is the full one",
+	);
+	assert.match(
+		layout,
+		/"--chrome-inset-end-pane": `max\(0px, calc\(var\(--chrome-inset-end\) - \$\{railWidth\}px\)\)`/,
+		"the remainder is the OS inset less the rail's actual width",
+	);
+	for (const file of [
+		"src/renderer/src/features/chat/components/canvas/index.tsx",
+		"src/renderer/src/features/chat/components/run-details/run-panel.tsx",
+		"src/renderer/src/features/browser/components/browser-pane.tsx",
+		"src/renderer/src/features/console/components/console-pane.tsx",
+		"src/renderer/src/features/chat/components/asks/ask-drawer.tsx",
+	]) {
+		const source = readSource(file);
+		assert.match(
+			source,
+			/\[padding-inline-end:max\(0\.5rem,var\(--chrome-inset-end-pane,var\(--chrome-inset-end\)\)\)\]/,
+			`${file}: the toolbar must reserve the shell's remainder, falling back to the full inset`,
+		);
+	}
+	const rail = readSource(
+		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
+	);
+	assert.match(
+		rail,
+		/pt-\[calc\(var\(--chrome-inset-end-h\)\+0\.25rem\)\]/,
+		"the rail's top clears the caption buttons' height, as padding (no flow gap after it: design D3)",
 	);
 });

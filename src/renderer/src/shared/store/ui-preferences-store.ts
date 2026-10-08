@@ -1195,6 +1195,32 @@ export function resolveRightSlotOccupied(state: UiPreferencesState): boolean {
 }
 
 /**
+ * WHICH pane is drawn in the right slot, or null - the question the panel rail's
+ * lit state asks (#872).
+ *
+ * The sibling of `resolveRightSlotOccupied` that answers WHICH rather than
+ * WHETHER, built from the same two inputs (`activeRightSlotPane` and
+ * `rightSlotPaneDrawable`) and not from a copy of their disjunction - a copy is
+ * what #868 caught disagreeing with the width resolver. A pane that is CLAIMED
+ * but that the route cannot draw (the run panel on a draft, any pane on a
+ * settings route) answers null here, so the rail lights nothing for it: a lit
+ * item is a statement that this is what is on screen, and a claim that outlived
+ * its route is not on screen.
+ *
+ * It returns the short name, a primitive, so a `useUiPreferencesStore(selector)`
+ * subscriber re-renders only when the answer changes. `"ask"` is a legitimate
+ * answer: the rail reads it as "the slot is held by the drawer", lights none of
+ * its four items, and leaves the borrowed pane's own flag (`askDrawerEvictedPane`)
+ * out of it - lighting the covered pane would say something false.
+ */
+export function resolveDrawnRightSlotPane(
+	state: UiPreferencesState,
+): RightSlotPane | null {
+	const pane = activeRightSlotPane(state);
+	return pane !== null && rightSlotPaneDrawable(pane, state) ? pane : null;
+}
+
+/**
  * Whether the pane DRAWN in the right slot is one of the two that size
  * themselves like the canvas - the canvas itself and the asks drawer - which is
  * the question the sidebar's yield is asking (agent review round 1, R2).

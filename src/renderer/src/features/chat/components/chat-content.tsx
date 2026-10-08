@@ -17,6 +17,8 @@ import {
 	MessageInput,
 	type MessageInputHandle,
 } from "@shared/components/composer/message-input";
+import { PanelRail } from "@shared/components/navigation/panel-rail";
+import { InPanelRailHost } from "@shared/components/navigation/panel-rail-host";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
@@ -1771,26 +1773,24 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							renameSessionId={renameSessionId}
 							onOpenOptions={onOpenOptions}
 							runDetails={runDetails}
-							fileCount={mentionedFileCount}
-							mcpServers={mcpServers}
-							listOnScreen={listOnScreen}
-							readerChildId={readerChildId}
 							/*
 							 * EXACTLY ONE OWNER, DERIVED FROM THE STORE RATHER THAN MEASURED (chat
 							 * redesign §J4). The right slot is exclusive - `claimRightSlot` clears the
 							 * other panes when one opens - so either this header or an open pane's
-							 * toolbar reaches the window's right edge, and the two are never both true.
-							 * That is the whole reason the reservation needs no measurement and no
-							 * `ResizeObserver`: this component is the only one that renders both
+							 * toolbar reaches the panel rail's left edge, and the two are never both
+							 * true. That is the whole reason the reservation needs no measurement and
+							 * no `ResizeObserver`: this component is the only one that renders both
 							 * candidates, and the store already holds the fact. A pane's own toolbar
-							 * reserves the corner in its own row (see the toolbars' note).
+							 * reserves the corner in its own row (see the toolbars' note). The width
+							 * reserved is what the OS buttons extend PAST the rail (#872), which the
+							 * spacer's utility reads from the shell.
 							 */
 							reserveTrailingChrome={!rightSlotOccupied}
-							/* THE ONE PLACE A USER'S BROWSER TOGGLE IS DECLARED, the same shape as the
-							   console's below: the header owns the badge and the button, the pane's slot
-							   is the window's, and this is the one field both answer from. */
+							/* THE PANELS' MENU DOOR: the four rail triggers moved to the panel rail
+							   (rendered below through `InPanelRailHost`), and the header's `...` menu
+							   keeps its four entries. The browser toggle is declared here for that
+							   menu; the rail declares its own press from the same store field. */
 							onToggleBrowser={() => setBrowserPaneOpen(!isBrowserPaneOpen)}
-							browserAttentionCount={browserAttentionCount}
 							/*
 							 * THE ASKS DOOR: absent where the scope's backend offers no asks, and
 							 * otherwise a toggle onto the drawer in the scope this conversation
@@ -1852,8 +1852,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 */
 										undefined
 							}
-							consoleUnseenCount={consoleUnseenMarks.length}
-							consoleUnseenPulsing={consoleUnseenPulsing}
 						/>
 						{/*
 						 * WHAT THE LAST MOVE DID, directly under the header that issued it: the notice
@@ -2796,6 +2794,32 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						</PaneSlot>
 					</>
 				)}
+				{/*
+				 * THE PANEL RAIL (#872), rendered here and drawn at the window's edge. This
+				 * component owns every input the four triggers need (the conversation, the
+				 * run view model and its acknowledgement context, the approvals count, the
+				 * console's unseen marks, the file count), and the shell owns the element
+				 * that sits beside the measured column; the portal joins the two without
+				 * either importing the other's tree. It renders NOTHING when no shell host
+				 * is provided, so a story that mounts this component alone is unchanged.
+				 *
+				 * It is mounted with the chat surface and unmounts with it, which is also
+				 * what the `mounted` route fact says (the shell sizes the host from it), so
+				 * the host's width and the rail's presence cannot disagree.
+				 */}
+				<InPanelRailHost>
+					<PanelRail
+						sessionId={sessionId ?? null}
+						runDetails={runDetails ?? null}
+						mcpServers={mcpServers}
+						listOnScreen={listOnScreen}
+						readerChildId={readerChildId}
+						browserAttentionCount={browserAttentionCount}
+						consoleUnseenCount={consoleUnseenMarks.length}
+						consoleUnseenPulsing={consoleUnseenPulsing}
+						fileCount={mentionedFileCount}
+					/>
+				</InPanelRailHost>
 			</div>
 		);
 	},

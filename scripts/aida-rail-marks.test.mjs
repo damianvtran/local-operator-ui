@@ -708,7 +708,8 @@ const NAV =
  * they "still wear" the bordered mark while nothing read them. Each is asserted by
  * matching the `variant="attention"` pass in the file that renders it.
  */
-const HEADER = "src/renderer/src/features/chat/components/chat-header.tsx";
+const PANEL_RAIL =
+	"src/renderer/src/shared/components/navigation/panel-rail.tsx";
 const URL_BAR =
 	"src/renderer/src/features/browser/components/browser-url-bar.tsx";
 const APPROVALS_DOCK =
@@ -792,9 +793,10 @@ test("the rail draws the quiet register, and the bordered mark is left where the
 	assert.match(quiet, /text-meta-sm/, "and the smaller numeral");
 	assert.match(quiet, /font-normal/, "at the quieter weight");
 	/*
-	 * THE BORDERED MARK IS INTACT, byte for byte: the header's globe and the URL
-	 * bar still wear it, and their ring (`ring-2 ring-canvas`) is what keeps a
-	 * 16px mark legible against the glyph it overlaps. A change to that edge is
+	 * THE BORDERED MARK IS INTACT, byte for byte: the panel rail's browser item
+	 * (the header's globe until #872) and the URL bar still wear it, and their ring
+	 * (`ring-2 ring-surface` on the rail, `ring-canvas` on the URL bar) is what
+	 * keeps a 16px mark legible against the glyph it overlaps. A change to that edge is
 	 * a different change, and this is where it would show up.
 	 */
 	assert.match(
@@ -808,7 +810,7 @@ test("the rail draws the quiet register, and the bordered mark is left where the
 	 * `attentionQuiet` would leave the primitive pin green and the screen wrong.
 	 */
 	for (const [path, what] of [
-		[HEADER, "the chat header's globe"],
+		[PANEL_RAIL, "the panel rail's browser item"],
 		[URL_BAR, "the browser route's URL bar"],
 		[APPROVALS_DOCK, "the browser approvals dock"],
 	]) {

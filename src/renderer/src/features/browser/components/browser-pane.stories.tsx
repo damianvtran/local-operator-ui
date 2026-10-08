@@ -2,6 +2,7 @@ import { ChatHeader } from "@features/chat/components/chat-header";
 import { deriveRunDetails } from "@features/chat/components/run-details/run-detail-model";
 import { PaneSlot } from "@shared/components/common/pane-slot";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
+import { PanelRailFrame } from "@shared/components/navigation/panel-rail-frame";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
@@ -361,11 +362,6 @@ const CompositionGround: FC<{
 						description="Quarterly reporting · on this machine"
 						onOpenOptions={() => undefined}
 						onToggleBrowser={() => undefined}
-						browserAttentionCount={count}
-						/* The run trigger, so the cluster really does carry all three of
-						   the right slot's choices (design round 1, D6): the badge's corner
-						   and the room the CLUSTER reserves for it are about the neighbours
-						   it sits between. */
 						runDetails={details}
 					/>
 					<div className="flex min-h-0 grow flex-col gap-3 p-4">
@@ -392,6 +388,12 @@ const CompositionGround: FC<{
 						</PaneSlot>
 					</>
 				)}
+				{/* The rail (#872): the browser trigger and its badge live here now. */}
+				<PanelRailFrame
+					runDetails={details}
+					browserAttentionCount={count}
+					sessionId={THIS_CONVERSATION}
+				/>
 			</div>
 		</SessionTitles>
 	);
@@ -563,21 +565,17 @@ export const RouteForComparison: Story = {
 };
 
 /**
- * The chat header's trigger, at the three counts it can carry.
+ * The browser trigger on the panel rail, at the counts it can carry (#872).
  *
- * A story rather than only a live frame because the header needs a conversation
- * to sit in and the count is a prop: `chat-header.tsx` renders it, the badge's
- * grammar is §5.1's, and what has to be judged here is the corner offset and the
- * ring against the header's own ground.
+ * It was the chat header's trigger; it is the rail's item now, and what has to be
+ * judged here is the badge's corner offset and its `ring-surface` ring against the
+ * rail's own ground (the header's `canvas` is no longer behind it).
  */
 const HeaderStory: FC<{ count: number }> = ({ count }) => (
-	<div className="flex h-14 w-[560px] shrink-0 items-center">
-		<ChatHeader
-			agentName="Reports agent"
-			description="Quarterly reporting"
-			onOpenOptions={() => {}}
-			onToggleBrowser={() => {}}
+	<div className="flex h-56 w-[560px] shrink-0 items-stretch justify-end bg-canvas">
+		<PanelRailFrame
 			browserAttentionCount={count}
+			sessionId={THIS_CONVERSATION}
 		/>
 	</div>
 );

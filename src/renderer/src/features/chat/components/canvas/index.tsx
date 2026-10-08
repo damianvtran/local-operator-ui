@@ -755,9 +755,12 @@ const CanvasComponent: FC<CanvasProps> = ({
 					 * padding because its action cluster is `ml-auto` inside a row that can wrap,
 					 * and padding there would spend the buttons' width on the wrapped line too.
 					 * `max(0.5rem, ...)` keeps the row's own 8px at rest, which is where
-					 * `--chrome-inset-end` is 0 (macOS, and every native-frame launch).
+					 * `--chrome-inset-end` is 0 (macOS, and every native-frame launch). The inset
+					 * is the shell's `--chrome-inset-end-pane` - the OS buttons' width LESS the 44px
+					 * panel rail that now stands under their trailing part (#872) - with the full
+					 * inset as the fallback for a pane rendered outside the shell.
 					 */
-					"[padding-inline-end:max(0.5rem,var(--chrome-inset-end))]",
+					"[padding-inline-end:max(0.5rem,var(--chrome-inset-end-pane,var(--chrome-inset-end)))]",
 				)}
 			>
 				<ViewSwitcher
