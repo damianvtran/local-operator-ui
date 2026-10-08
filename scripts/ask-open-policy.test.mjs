@@ -461,6 +461,45 @@ test("U2 - an id list that cannot be named in full HOLDS: a truncated prefix, a 
 	assert.equal(completeClosed.has("c-a"), false);
 });
 
+test("U2 - a list that lags its own tally HOLDS even with no truncation flag: the fold's own cap", () => {
+	/*
+	 * The fold caps the list at `PROJECTION_CAP` (20 rows, outstanding first), and that cap
+	 * is NOT the wire bound: it sets no `asks_truncated`. A conversation with 25 outstanding
+	 * asks therefore publishes 20 rows beside `asks_open: 25` and says nothing else, and the
+	 * tally is the only evidence that five ids were left out. Every other incomplete frame in
+	 * this file carries the flag, so this is the case that pins the tally arm on its own.
+	 */
+	const rows = Array.from({ length: 20 }, () => ask("open"));
+	const capped = { asks: rows, asks_open: 25, asks_truncated: null };
+	const facts = askOpenFacts(askQueueView(capped), T0);
+	assert.equal(facts.outstandingIds.length, 20);
+	assert.equal(facts.listComplete, false, "25 outstanding, 20 named");
+	/* The same frame without the shortfall IS complete: the comparison is the whole signal. */
+	const whole = askOpenFacts(
+		askQueueView({ asks: rows, asks_open: 20, asks_truncated: null }),
+		T0,
+	);
+	assert.equal(whole.listComplete, true);
+	/* A tally BELOW the rows (stale) names every id, so it does not make the list unknown. */
+	const stale = askOpenFacts(
+		askQueueView({ asks: rows, asks_open: 3, asks_truncated: null }),
+		T0,
+	);
+	assert.equal(stale.listComplete, true);
+
+	/* And it is what the record does with it: a close over the capped frame HOLDS. */
+	const dismissals = createAskDismissals();
+	dismissOver(dismissals, capped);
+	assert.equal(dismissals.has("c-a"), true);
+	assert.equal(
+		returnTo(dismissals, withRows([ask("open")])).reason,
+		"dismissed",
+		"five waved-off asks were never named, so a fresh id does not prove them gone",
+	);
+	createAskOpenView(dismissals, T0).observe(frame(liveEmpty()));
+	assert.equal(dismissals.has("c-a"), false);
+});
+
 test("U3 - a second close over a different set UNIONS into the record, it never replaces it", () => {
 	const dismissals = createAskDismissals();
 	const a = ask("open");
