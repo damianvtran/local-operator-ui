@@ -1239,11 +1239,12 @@ test("the ... menu's Open canvas row opens the CANVAS, not the slash-command chi
 
 /*
  * THE RAIL'S GEOMETRY IS A PIXEL CLAIM, AND JSDOM HAS NO LAYOUT, so these pin the
- * SPELLINGS the measured frames depend on (design round 1, D2/D3/D4). The numbers
+ * SPELLINGS the measured frames depend on (design round 1, D2/D3/D4; the bar's
+ * spelling re-measured when the rail's hairline came out, #1008). The numbers
  * they stand for were read from the rendered stories, not from this file, and are
  * in the PR thread: first glyph centre y=52 (= the `...`, the pane close and the
- * scope switch), bar x=88-90 against ring x=91.5-93.5, badge 14px with its ring
- * 1.5px inside the host.
+ * scope switch), bar x=88-90 against ring x=91-93, badge 14px with its ring 2px
+ * inside the host.
  */
 test("the first item's top is padding, not a strut plus a gap (D3)", () => {
 	const rail = read(
@@ -1266,17 +1267,21 @@ test("the first item's top is padding, not a strut plus a gap (D3)", () => {
 	);
 });
 
-test("the lit bar is clear of the focus ring, on the hairline column (D2)", () => {
+test("the lit bar is clear of the focus ring, flush with the rail's leading edge (D2)", () => {
 	const item = read(
 		"src/renderer/src/shared/components/navigation/panel-rail-item.tsx",
 	);
 	assert.ok(
-		item.includes("before:-left-[6.5px]"),
-		"the bar overlays the rail's leading hairline",
+		item.includes("before:-left-[6px]"),
+		"the bar is 6px outside the 32px control - the item is centred in the 44px rail, so the gutter is 6px a side - and its 2px width therefore starts ON the rail's leading edge",
+	);
+	assert.ok(
+		!item.includes("before:-left-[6.5px]"),
+		"the 6.5px offset belonged to the 5.5px gutter the 1px border left plus the border: with the border gone it would put the bar half a pixel outside the rail, straddling the pane",
 	);
 	assert.ok(
 		item.includes("focus-visible:outline-offset-1!"),
-		"the ring sits at a 1px offset, so it starts 1px outside the control and the bar ends 4.5px outside it",
+		"the ring sits at a 1px offset, so it occupies 1px-3px outside the control and the bar ends 4px outside it: a 1px gap",
 	);
 });
 
