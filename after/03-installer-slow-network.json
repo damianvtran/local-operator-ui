@@ -21,16 +21,16 @@
       "scrollHeight": 480,
       "clientHeight": 480,
       "clipped": false,
-      "text": "Local OperatorThis usually takes less than a minute.Step 3 of 4 \u00b7 0:41 elapsed \u00b7 taking longer than usualGetting ready - finishedSetting up Local Operator - finishedDownloading what it needs - in progressStarting it up -"
+      "text": "Local OperatorThis usually takes less than a minute.Step 3 of 4 · 0:41 elapsed · taking longer than usualGetting ready - finishedSetting up Local Operator - finishedDownloading what it needs - in progressStarting it up -"
     },
     "dialog": null,
     "dialogBody": null,
     "installStatus": {
-      "left": 173.4,
-      "right": 466.5,
+      "left": 163.3,
+      "right": 476.8,
       "top": 124.5,
       "bottom": 144.5,
-      "width": 293.1,
+      "width": 313.5,
       "height": 20,
       "border": "0px 0px 0px 0px",
       "padding": "0px 0px 0px 0px",
@@ -40,7 +40,7 @@
       "scrollHeight": 20,
       "clientHeight": 20,
       "clipped": false,
-      "text": "Step 3 of 4 \u00b7 0:41 elapsed \u00b7 taking longer than usual"
+      "text": "Step 3 of 4 · 0:41 elapsed · taking longer than usual"
     },
     "installLive": {
       "left": 165.3,
@@ -57,7 +57,7 @@
       "scrollHeight": 40,
       "clientHeight": 40,
       "clipped": false,
-      "text": "Downloading what it needs: Downloading the packages Local Operator runs on.0 of 1 large downloads done \u00b7 55 packages in all."
+      "text": "Downloading what it needs: Downloading the packages Local Operator runs on.Fetching the large files..."
     },
     "installRail": {
       "left": 0,
@@ -84,6 +84,57 @@
     "transcriptRegion": null
   },
   "installRailRows": [
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "0px 0px 0px 0px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Missing Context/Providers: You can use decorators to supply specific contexts or providers, which are sometimes necessary for components to render correctly. For detailed instructions on using decorators, please visit th"
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "12px 0px 0px 0px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Misconfigured Webpack or Vite: Verify that Storybook picks up all necessary settings for loaders, plugins, and other relevant parameters. You can find step-by-step guides for configuring Webpack or Vite with Storybook."
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "12px 0px 0px 0px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Missing Environment Variables: Your Storybook may require specific environment variables to function as intended. You can set up custom environment variables as outlined in the Environment Variables documentation."
+    },
     {
       "left": 224.4,
       "right": 415.6,
@@ -156,6 +207,57 @@
   "gridRows": [],
   "buttons": [
     {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "10px 16px 10px 16px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0.1)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Set string"
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "10px 16px 10px 16px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0.1)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Set string"
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "top": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "border": "0px 0px 0px 0px",
+      "padding": "10px 16px 10px 16px",
+      "radius": "0px",
+      "bg": "rgba(0, 0, 0, 0.1)",
+      "overflowY": "visible",
+      "scrollHeight": 0,
+      "clientHeight": 0,
+      "clipped": false,
+      "text": "Set string"
+    },
+    {
       "left": 266.5,
       "right": 373.5,
       "top": 392.5,
@@ -179,5 +281,5 @@
     "scrollHeight": 480,
     "clientHeight": 480
   },
-  "text": "Local Operator\n\nThis usually takes less than a minute.\n\nStep 3 of 4 \u00b7 0:41 elapsed \u00b7 taking longer than usual\n\nGetting ready\n- finished\nSetting up Local Operator\n- finished\nDownloading what it needs\n- in progress\nStarting it up\n- waiting\nDownloading what it needs:\nDownloading the packages Local Operator runs on.\n0 of 1 large downloads done \u00b7 55 packages in all.\nCancel setup\n\nYou can minimize this window and keep working. Closing it stops setup."
+  "text": "Local Operator\n\nThis usually takes less than a minute.\n\nStep 3 of 4 · 0:41 elapsed · taking longer than usual\n\nGetting ready\n- finished\nSetting up Local Operator\n- finished\nDownloading what it needs\n- in progress\nStarting it up\n- waiting\nDownloading what it needs:\nDownloading the packages Local Operator runs on.\nFetching the large files...\nCancel setup\n\nYou can minimize this window and keep working. Closing it stops setup."
 }
