@@ -25,6 +25,7 @@ import {
 	Archive,
 	ArchiveRestore,
 	Check,
+	Copy,
 	FileText,
 	Globe,
 	Info,
@@ -42,6 +43,11 @@ import type { AskScope } from "../ask-queue";
 import { askHeaderToggleLabel } from "../ask-queue";
 import { isCanvasTogglePress } from "../canvas-shortcut";
 import { archiveControlLabel } from "../chat-archived";
+/*
+ * THE ACT'S OWN WRITE (#893), the same module the sidebar row menu calls: one
+ * door per surface, one implementation of what is copied and what it says.
+ */
+import { copySessionId } from "../copy-session-id";
 import { useSessionCommand } from "../pickers/use-picker-backend";
 import {
 	TRANSCRIPT_DISPLAY_MODE_OPTIONS,
@@ -130,6 +136,26 @@ type ChatHeaderProps = {
 	 * draft, the session it would need) instead of rendering a dead pencil.
 	 */
 	renameSessionId?: string;
+	/**
+	 * The conversation's own id, copied by the overflow menu's "Copy session ID"
+	 * item (#893) - a DIFFERENT prop from `renameSessionId` above, and the two do
+	 * not collapse into one.
+	 *
+	 * `renameSessionId` is the inline-rename WRITE path and is threaded only under
+	 * the page's `commands` capability (a backend that cannot rename withholds the
+	 * pencil and the id together), where this is a read of the id that needs no
+	 * capability at all: copying an id writes nothing, and a conversation exists to
+	 * be copied in exactly the states this header already offers archive and delete
+	 * in. It is the same value `chat-content.tsx` holds as `sessionId` ("the
+	 * canonical session this pane is showing, or undefined for a draft"), passed
+	 * through unchanged - so the header copies what the pane is showing rather than
+	 * a second reading of it.
+	 *
+	 * ABSENT ON A DRAFT: a draft has no session to name, so the item is simply not
+	 * drawn (the same shape as `onSetArchived` / `onRequestDelete` above, which
+	 * `chat-content.tsx` also leaves undefined there).
+	 */
+	sessionId?: string;
 	onOpenOptions?: () => void;
 	runDetails?: RunDetails | null;
 	/**
@@ -283,6 +309,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	identity,
 	deviceSlot,
 	renameSessionId,
+	sessionId,
 	onOpenOptions,
 	runDetails = null,
 	reserveTrailingChrome = false,
@@ -1177,11 +1204,44 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="min-w-45">
 							{/*
+							 * COPY SESSION ID (#893), AT THE TOP - above the transcript-display submenu
+							 * and therefore above the first separator.
+							 *
+							 * WHY THE FIRST SLOT: this menu's other items are PANE options (how the
+							 * transcript is drawn, which pane is open) and the destroy pair below the
+							 * separator, where the session's own IDENTITY is the one fact the
+							 * conversation has independently of every option here. A separator is the
+							 * menu's own "these are different kinds" mark, so the id belongs ABOVE it
+							 * rather than in the destroy pair's group; the transcript-display submenu
+							 * follows because it changes how everything under this row is drawn, and
+							 * identity precedes presentation.
+							 *
+							 * NOT IN `renameSessionId`'s GATE, deliberately: rename is a capability-gated
+							 * WRITE path, and copying an id writes nothing - see the prop's own note.
+							 * NO CHORD: nothing binds a copy-session-id gesture, and a printed hint for
+							 * one that does nothing is the rule the row menu's Fork item states.
+							 *
+							 * THE TRIGGER'S OWN GATE NEEDS NO `sessionId` TERM, and this is the decision
+							 * rather than an omission: the item is conditional on `sessionId`, so a
+							 * header without one simply does not draw it, and the gate's six existing
+							 * terms (`chat-content.tsx` passes `onOpenOptions` unconditionally) mean
+							 * there is no state where this menu would be drawn EMPTY - which is the
+							 * only thing adding the term would buy.
+							 */}
+							{sessionId && (
+								<DropdownMenuItem
+									onSelect={() => void copySessionId(sessionId)}
+								>
+									<Copy aria-hidden="true" />
+									<span>Copy session ID</span>
+								</DropdownMenuItem>
+							)}
+							{/*
 							 * THE TRANSCRIPT DISPLAY MODE (issue #756). The reader asked for the choice
 							 * to be surfaced where they read the conversation rather than only in
 							 * Settings, and this menu is the session's options surface (see the note
-							 * below) - so the mode lives here, first, because it changes how
-							 * everything under this row is drawn.
+							 * below) - so the mode lives here, high in the menu behind the session's own
+							 * identity, because it changes how everything under this row is drawn.
 							 *
 							 * A RADIO SUBMENU rather than one toggling item: the trigger is a stable
 							 * name, and the radio dot states the ACTIVE mode, where an item whose label
