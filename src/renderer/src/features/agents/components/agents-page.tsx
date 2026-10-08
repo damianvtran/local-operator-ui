@@ -22,7 +22,8 @@
  * page — so the same `Tabs` component and the same counts live where the thing
  * they switch is, which is the one place the two surfaces deliberately differ.
  * Everything else is taken from the hub rather than invented: `TabsList` with
- * `aria-label`, the count slot, and the `Showing` + `aria-pressed` chip group
+ * `aria-label`, the count slot, and the `aria-pressed` scope segments (named by
+ * an `sr-only` legend, with no visible "Showing" label)
  * (design consult § 5, "build to the same contract").
  *
  * WHAT IS NOT HERE. No delete: no `profiles.*`/`teams.*` desktop op deletes
@@ -107,7 +108,7 @@ const LegacyAgentsPage = lazy(() =>
 	})),
 );
 
-/** The scope chips, in the hub's `Showing` register: who owns the definition. */
+/** The scope segments, in the hub's register: who owns the definition. */
 type Scope = "all" | "custom" | "installed" | "builtin";
 
 /** The settings keys that name an effort tier: `subagents.models.<tier>`. */
@@ -458,12 +459,26 @@ export function AgentsPage() {
 			if (event.key !== "Escape" || event.defaultPrevented) return;
 			if (!window.matchMedia("(max-width: 999px)").matches) return;
 			if (!selected && !creating) return;
+			/*
+			 * AN UNSAVED EDIT OWNS ESCAPE (UX review round 1 U5). The pane asks its own
+			 * "Discard this team?" and the second press means "keep editing", but the
+			 * pane's listener re-registers on every render (`useEscapeToCancel`), so
+			 * after the first press it sits BEHIND this one and `defaultPrevented` is
+			 * not yet set when this runs: the second press also raised the page-level
+			 * "Discard your unsaved changes?" bar under the first question - two
+			 * differently-worded questions for one intent. Reproduced identically on
+			 * origin/main at 800 px, so it predates this branch; the guard that matters
+			 * (a click or tab switch asking before it discards) is `requestGo`'s and is
+			 * untouched. Order-independent on purpose: it reads the state, not the
+			 * listener order.
+			 */
+			if (editDirty) return;
 			event.preventDefault();
 			requestGo({ name: null });
 		};
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
-	}, [requestGo, selected, creating]);
+	}, [requestGo, selected, creating, editDirty]);
 
 	/*
 	 * THE TARGET FOLLOWS THE SELECTION (review round 1, U6 / D2).
@@ -777,10 +792,18 @@ export function AgentsPage() {
 						 * NO BOTTOM PADDING: the edit footer sticks to the scroller's foot, and a
 						 * padding under it left a band where sections scrolled through beneath
 						 * the bar. The status row above the box is the breathing room.
+						 *
+						 * SCROLL PADDING INSTEAD, SIZED FROM THE FOOTER (UX review round 1 U1).
+						 * Focus and `scrollIntoView` treat the sticky footer as part of the
+						 * viewport, so a control behind it was never scrolled into view. The
+						 * footer publishes its own height as `--lo-pane-footer-h` (`EditFooter`);
+						 * the `calc` is INVALID when the property is absent, which computes to
+						 * `auto`, so a read view gets no padding without a conditional here. The
+						 * 4 px is the focus ring's offset-and-width, so the ring clears the bar.
 						 */
 						showsEmptyPane
 							? undefined
-							: "px-4 pt-6 [scrollbar-gutter:stable_both-edges]",
+							: "px-4 pt-6 [scroll-padding-bottom:calc(var(--lo-pane-footer-h)+4px)] [scrollbar-gutter:stable_both-edges]",
 					)}
 				>
 					{showsEmptyPane ? (
@@ -1180,6 +1203,14 @@ function Roster({
 }) {
 	const refs = useRef(new Map<string, HTMLButtonElement>());
 	const [focused, setFocused] = useState<string | null>(name);
+	/*
+	 * The READABLE name for a row: a team's label, or her configured name for the
+	 * seat; every other agent row renders its own name unchanged. Identity stays
+	 * `row.name` - the testid, the selection and the URL all read it. One function
+	 * because the visible name and the tooltip must be the same words.
+	 */
+	const rowLabel = (row: ReusableProfile | ReusableTeam) =>
+		"members" in row ? teamDisplayName(row) : printName(row.name);
 
 	const move = (from: string, delta: number) => {
 		const index = rows.findIndex((row) => row.name === from);
@@ -1217,6 +1248,19 @@ function Roster({
 							aria-current={row.name === name ? "true" : undefined}
 							tabIndex={row.name === (focused ?? rows[0]?.name) ? 0 : -1}
 							data-testid={`roster-row-${row.name}`}
+							/*
+							 * THE FULL NAME AND DESCRIPTION AS A TOOLTIP (design review round 1
+							 * D4 = UX U4). The count shares line one with the name and is the
+							 * part that is protected (`shrink-0`), so a long name ellipsizes at
+							 * 160 px of a 256 px row; `title` is the cheapest way to keep the
+							 * identifier reachable without giving the count its own line back,
+							 * which is what made rows 57 px.
+							 */
+							title={
+								row.description
+									? `${rowLabel(row)} - ${row.description}`
+									: rowLabel(row)
+							}
 							className={cn(
 								"flex min-h-12 w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-row-hover",
 								/*
@@ -1255,13 +1299,7 @@ function Roster({
 							 */}
 							<span className="flex w-full items-center gap-2">
 								<span className="min-w-0 truncate text-body-sm text-ink">
-									{/* The READABLE name for a row: a team's label, or her configured
-									    name for the seat; every other agent row renders its own name
-									    unchanged. Identity stays `row.name` - the testid, the
-									    selection and the URL all read it. */}
-									{"members" in row
-										? teamDisplayName(row)
-										: printName(row.name)}
+									{rowLabel(row)}
 								</span>
 								{mark !== undefined ? (
 									<Badge variant="attention" data-testid="roster-row-updated">
@@ -1306,16 +1344,26 @@ function Roster({
 										data-testid="roster-row-proactive"
 									>
 										<span className="text-ink">{CLASS_LABEL.proactive}</span>
-										{row.description ? (
-											<span className="text-ink-dim"> ·</span>
-										) : null}
+										{/* Always: the line now always has a second part ("No description"). */}
+										<span className="text-ink-dim"> ·</span>
 									</span>
 								) : null}
 								{row.description ? (
 									<span className="min-w-0 flex-1 truncate">
 										{row.description}
 									</span>
-								) : null}
+								) : (
+									/*
+									 * A ROW WITH NO DESCRIPTION SAYS SO (design review round 1 D4 =
+									 * UX U4). The empty second line read as a missing row, and a row
+									 * still loading looked identical. `ink-dim` (the palette's floor
+									 * for secondary text) in the SAME line box, so the row height does
+									 * not move.
+									 */
+									<span className="min-w-0 flex-1 truncate text-ink-dim">
+										No description
+									</span>
+								)}
 							</span>
 						</button>
 					</li>
