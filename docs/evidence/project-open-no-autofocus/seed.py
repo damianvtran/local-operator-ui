@@ -29,6 +29,7 @@ run recipe and the scene's `--project` flag quote.
 """
 
 import json
+import os
 import pathlib
 import urllib.error
 import urllib.request
@@ -36,7 +37,13 @@ import uuid
 
 BASE = "http://127.0.0.1:8080"
 PROJECT = "rig-open"
-TOKEN = pathlib.Path(__file__).parent.joinpath("token.hex").read_text().strip()
+#: The token comes from the environment when the runner exports it, else from a
+#: `token.hex` beside this script (the run recipe in the set's README does the
+#: former, the neighbour sets' seeds the latter - both spellings are one local
+#: read, so neither has to be kept in step with the other).
+TOKEN = os.environ.get("LOCAL_OPERATOR_DESKTOP_TOKEN") or (
+    pathlib.Path(__file__).parent.joinpath("token.hex").read_text().strip()
+)
 
 #: Multi-line on purpose: each renders as paragraphs in the updates feed, and
 #: three of them push the strip (and the linked-sessions list above it) under
@@ -138,11 +145,9 @@ for _ in range(2):
 status, view = call("GET", f"/v1/desktop/projects/{PROJECT}")
 assert status == 200, status
 result = view["result"]
+project = result.get("project", {})
 print(f"project: {PROJECT}")
-print(
-    "milestones:",
-    [milestone["name"] for milestone in result.get("milestones", [])],
-)
-print("updates:", len(result.get("project", {}).get("updates", [])))
+print("milestones:", [milestone["name"] for milestone in project.get("milestones", [])])
+print("updates:", len(project.get("updates", [])))
 print("linked sessions:", [link["session_id"] for link in result.get("links", [])])
 print("seeded links:", links)
