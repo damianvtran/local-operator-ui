@@ -2068,6 +2068,19 @@ function entryRecordKey(entry: DesktopHistoryPage["entries"][number]): string {
 	return entry.id;
 }
 
+/**
+ * A journal page named these entries, so they are journal rows the pane holds
+ * and stop being "only a reconnect replay delivered them" (`replayBornIds`).
+ * Module-level so the effects that call it need no dependency on it.
+ */
+function forgetReplayBorn(
+	replayBorn: Set<string>,
+	entries: DesktopHistoryPage["entries"],
+): void {
+	if (replayBorn.size === 0) return;
+	for (const entry of entries) replayBorn.delete(entryRecordKey(entry));
+}
+
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
@@ -2245,6 +2258,34 @@ export function useCanonicalSessionStream(
 	// Read outside the React updater (see the flush comment), so the painted set
 	// is tracked here rather than through the view state itself.
 	const paintedIds = useRef<TranscriptState["index"]>(EMPTY_TRANSCRIPT.index);
+	/*
+	 * Record ids a RECONNECT REPLAY put on the pane and no journal page has named
+	 * since (#876, review round 4's R4-2). They are on screen and they are NOT
+	 * evidence that the pane holds a journal row.
+	 *
+	 * THE INVARIANT. Rows born live on a CONTINUOUS stream are contiguous with
+	 * what the pane held: the stream had no gap, so each is the next row after the
+	 * last. Rows born by a REPLAY across a reconnect gap are not - the replay is
+	 * exactly the discontinuity, and its newest row can sit hundreds of rows past
+	 * the pane's newest held one. `heldIds` (the connection proof in `flush`) is
+	 * "does a fetched page overlap a journal row this pane holds"; a replayed
+	 * `message_end` is durable by `isDurableOwnerRow`, so when the replay and the
+	 * snapshot fall in DIFFERENT flushes a journal-tail page ending on that row
+	 * "connected" through it, the gate deferred with no read, and the pane painted
+	 * the cached block, then the tail, with the rows between missing and no
+	 * `hasMore`. In the SAME flush the proof is captured before the batch's
+	 * commits and so never saw the replayed row; this set makes the split flush
+	 * behave identically.
+	 *
+	 * Written only where a flush folds replay events with no snapshot beside them
+	 * (the updater's `!snapshotted && replayTranscript` branch); events AFTER a
+	 * snapshot ride a continuous stream and are deliberately not tracked, or an
+	 * up-to-date pane would stop deferring a connecting page. Cleared of an id when
+	 * a journal page names it (then it IS a journal row the pane holds), pruned of
+	 * ids no longer on the pane, and emptied at a session change. A missed deletion
+	 * costs one extra read and can never paint a hole: the safe direction.
+	 */
+	const replayBornIds = useRef<Set<string>>(new Set());
 	/*
 	 * Call ids a mid-turn snapshot's seed could not label, how many times we have
 	 * read back for each, how deep that read had to go, and the seed order a
@@ -3114,6 +3155,7 @@ export function useCanonicalSessionStream(
 				onSpend?.(page.entries.length);
 				// Merged even when it is the page we already have: durable rows win
 				// by id, so a repeat is free and a partial one is completed.
+				forgetReplayBorn(replayBornIds.current, page.entries);
 				commitView((state) => {
 					const transcript = applyHistoryPage(state.transcript, page);
 					/*
@@ -3426,8 +3468,18 @@ export function useCanonicalSessionStream(
 			 * already `tool:<call_id>`, the key `entryRecordKey` gives its page entry.
 			 */
 			const heldIds = new Set<string>();
+			/*
+			 * A row only a reconnect replay delivered is not a held JOURNAL row until a
+			 * page names it (`replayBornIds`). Pruned first, from the same live index
+			 * the loop reads, so a `/clear` or a dropped row cannot leave an id behind
+			 * to shadow a real row that later arrives under it.
+			 */
+			for (const id of replayBornIds.current)
+				if (!viewRef.current.transcript.index.has(id))
+					replayBornIds.current.delete(id);
 			for (const record of viewRef.current.transcript.records)
-				if (isDurableOwnerRow(record)) heldIds.add(record.id);
+				if (isDurableOwnerRow(record) && !replayBornIds.current.has(record.id))
+					heldIds.add(record.id);
 			/*
 			 * READ FROM THE LIVE VIEW, NOT FROM `paintedIds` (QA round 3, Q3-1).
 			 * `paintedIds` is "the index the last flush left behind" and is refreshed
@@ -3957,6 +4009,11 @@ export function useCanonicalSessionStream(
 							let transcript = replayTranscript ?? next.transcript;
 							if (!snapshot.history.cursor_missing) {
 								transcript = applyHistoryPage(transcript, snapshot.history);
+								// The page names these rows, so they are journal rows now.
+								forgetReplayBorn(
+									replayBornIds.current,
+									snapshot.history.entries,
+								);
 							}
 							/*
 							 * AND A SNAPSHOT RESOLVES A HELD SEND (§F2's last bullet, UX round 1's
@@ -4256,6 +4313,17 @@ export function useCanonicalSessionStream(
 				 * and holding it when the batch boundary falls inside the replay.
 				 */
 				if (!snapshotted && replayTranscript) {
+					/*
+					 * What the replay ADDED, noted before it is assigned: these rows were
+					 * delivered across the gap, so they prove nothing about the journal
+					 * rows the pane held (see `replayBornIds`). An id the pane already had
+					 * (a replayed `message_end` on a held row) is not new and stays held.
+					 * A ref write inside the updater is safe: `commitView` runs it once,
+					 * synchronously, outside React's own updater queue - which is also why
+					 * `paintedIds.current` is assigned from here a few lines below.
+					 */
+					for (const id of replayTranscript.index.keys())
+						if (!next.transcript.index.has(id)) replayBornIds.current.add(id);
 					next = { ...next, transcript: replayTranscript };
 				}
 				performance.mark("lop:transcript:flush:end");
@@ -4769,6 +4837,7 @@ export function useCanonicalSessionStream(
 		// The transcript is replaced below, so a previous session's anchors must
 		// not suppress the first reconcile of the new one.
 		paintedIds.current = EMPTY_TRANSCRIPT.index;
+		replayBornIds.current = new Set();
 		/*
 		 * Kept when the state already belongs to THIS session. The panel that
 		 * mounts on the New-chat flip is exactly that case: it mounted with the id
@@ -5300,6 +5369,7 @@ export function useCanonicalSessionStream(
 						keepPaging: true,
 					}),
 				}));
+				forgetReplayBorn(replayBornIds.current, page.entries);
 				/*
 				 * Scoped to THIS pass: an outcome written at or after the receipt that
 				 * scheduled the read. An older pass's row — any session's whose last 100
