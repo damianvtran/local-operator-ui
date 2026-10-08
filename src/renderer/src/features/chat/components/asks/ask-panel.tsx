@@ -613,7 +613,15 @@ const AskQuestionField = ({
 						<AskMark chosen={other.open} multi={multi} />
 						<span className="min-w-0 flex-1">
 							<span>Other</span>
-							{other.open ? null : (
+							{/*
+							 * A REAL SPACE between the label and the hint, not just the `ml-1.5`
+							 * margin: a margin is invisible to the accessible-name computation,
+							 * which concatenated the two spans into one announced word -
+							 * `OtherType your answer` - as measured in Chrome's own AX tree
+							 * (round 2, design D8 / UX U6). The space is what puts the boundary
+							 * in the name; the margin stays for the visual gap, which the stills
+							 * judge.
+							 */} {other.open ? null : (
 								<span className="ml-1.5 text-ink-muted text-xs">
 									{OTHER_PROMPT}
 								</span>
@@ -819,25 +827,39 @@ const AskRow = ({
 	useLayoutEffect(() => {
 		if (!armChangeFocus.current) return;
 		armChangeFocus.current = false;
+		const row = rowRef.current;
+		/*
+		 * U7: pressing `Change answer` is a press to EDIT this answer, so when the
+		 * answer's own entry is the `Other` field (seeded open from the log), that
+		 * field is where the keystrokes go - with the caret at the end, `focusAtEnd`.
+		 * It is preferred over the option rows because those cannot be where the
+		 * keystrokes were headed: the user is here to revise, and the seeded field
+		 * holds the answer they wrote. A question answered by an option has no open
+		 * field, so it falls through to the first live control, as before.
+		 */
+		const seededOther = row?.querySelector<HTMLElement>(
+			"textarea[data-ask-other]:not([disabled])",
+		);
 		focusAtEnd(
-			rowRef.current?.querySelector<HTMLElement>(
-				/*
-				 * THE DRAWER'S OWN SHAPES, and they are not the dock's: an option is a
-				 * button carrying `data-ask-option`, the masked field wears
-				 * `data-ask-secret` ON THE `<input>` ITSELF, and an answer field is the
-				 * `textarea[data-ask-other]` (`LIVE_CONTROL`). `question-dock.tsx` queries a
-				 * similar pair but its secret attribute sits on a wrapping div, so its
-				 * selector cannot be copied verbatim - a `[data-ask-secret] input` here
-				 * matches nothing, and the hand-off would silently fall through to the body
-				 * for a secret-only ask. The answer field is in the list because a
-				 * free-text-only question has NO option and no secret: without it the change
-				 * form for such an ask lands on the body.
-				 *
-				 * `focusAtEnd`, not `.focus()`: a free-text field seeded from the log holds
-				 * text, and a bare focus puts the caret in front of it (round 1, U1).
-				 */
-				LIVE_CONTROL,
-			),
+			seededOther ??
+				row?.querySelector<HTMLElement>(
+					/*
+					 * THE DRAWER'S OWN SHAPES, and they are not the dock's: an option is a
+					 * button carrying `data-ask-option`, the masked field wears
+					 * `data-ask-secret` ON THE `<input>` ITSELF, and an answer field is the
+					 * `textarea[data-ask-other]` (`LIVE_CONTROL`). `question-dock.tsx` queries a
+					 * similar pair but its secret attribute sits on a wrapping div, so its
+					 * selector cannot be copied verbatim - a `[data-ask-secret] input` here
+					 * matches nothing, and the hand-off would silently fall through to the body
+					 * for a secret-only ask. The answer field is in the list because a
+					 * free-text-only question has NO option and no secret: without it the change
+					 * form for such an ask lands on the body.
+					 *
+					 * `focusAtEnd`, not `.focus()`: a free-text field seeded from the log holds
+					 * text, and a bare focus puts the caret in front of it (round 1, U1).
+					 */
+					LIVE_CONTROL,
+				),
 		);
 	}, [changing]);
 	/*
