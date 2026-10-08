@@ -1314,6 +1314,12 @@ function grow(transcript, from, to) {
  *    cut-at-cursor page, a seed with an unlabelled call), given the journal as
  *    it stands at that moment. It returns `{ cursor, entries, coldReason?,
  *    liveEvents? }`.
+ *  - `replay`: `{ kind, split, id? }` - the reconnect replay of the journal's
+ *    NEWEST row (`kind` assistant | user | tool), delivered as live events
+ *    between the open frame and the snapshot; `split` puts it in a flush of its
+ *    own BEFORE the snapshot (the shape #876's R4-2 measured), otherwise both
+ *    ride one flush. `id` names a row the pane ALREADY holds instead (a replayed
+ *    event on a held row), which leaves the journal as it was.
  */
 async function driveCachedReopen({
 	away,
@@ -1322,6 +1328,7 @@ async function driveCachedReopen({
 	echoId = null,
 	returnPage = null,
 	visitPage = null,
+	replay = null,
 }) {
 	const base = longConversation({ awayRows: 0, total });
 	const transcript = makeTranscript(base.rows);
@@ -1364,6 +1371,47 @@ async function driveCachedReopen({
 	await pump();
 	assert.equal(subscriptions[0].disposed, true, "leaving closes the stream");
 	grow(transcript, total + 1, total + away);
+	let replayFrames = [];
+	if (replay) {
+		const at = total + away;
+		const stamp = 100 + at;
+		if (replay.id) {
+			// A replayed event on a row the pane already holds: nothing new on the pane.
+			replayFrames = assistantFrames(replay.id);
+		} else if (replay.kind === "assistant") {
+			transcript.rows[transcript.rows.length - 1] = assistantRow(
+				"a-live",
+				stamp,
+				"a-live done",
+			);
+			replayFrames = assistantFrames("a-live");
+		} else if (replay.kind === "user") {
+			transcript.rows[transcript.rows.length - 1] = userRow(
+				"u-live",
+				stamp,
+				"u-live text",
+			);
+			replayFrames = [
+				{
+					type: "message_start",
+					message: {
+						id: "u-live",
+						role: "user",
+						content: [{ type: "text", text: "u-live text" }],
+					},
+				},
+			];
+		} else {
+			transcript.rows[transcript.rows.length - 1] = toolRow(
+				"r-tool-live",
+				stamp,
+				"c-live",
+				"bash",
+				"ok",
+			);
+			replayFrames = [startFrameFor("c-live"), endFrameFor("c-live")];
+		}
+	}
 	if (echoId !== null) {
 		// The message the user sends after returning is journaled under the id the
 		// app minted for it (the admission request id), as the NEWEST row.
@@ -1399,6 +1447,9 @@ async function driveCachedReopen({
 		);
 	}
 	deliver(openFrame(9, true));
+	let seq = 10;
+	for (const event of replayFrames) deliver(eventFrame(seq++, event));
+	if (replay?.split) await pump();
 	const page = returnPage
 		? returnPage(transcript)
 		: {
@@ -1406,7 +1457,7 @@ async function driveCachedReopen({
 				entries: transcript.tail(REOPEN_PAGE).entries,
 				coldReason: null,
 			};
-	deliver(snapshotFrame(10, { liveEvents: [], ...page }));
+	deliver(snapshotFrame(seq, { liveEvents: [], ...page }));
 	await pump();
 	return {
 		transcript,
@@ -1444,6 +1495,355 @@ test("a reopen whose journal-tail page already connects to the cached block stil
 		"the page's overlap with the cached block is the whole story",
 	);
 	assert.equal(reads, 0, "a connecting page is not re-read on the owner");
+});
+
+/*
+ * #876 R4-2: A ROW ONLY A RECONNECT REPLAY DELIVERED IS NOT A HELD JOURNAL ROW.
+ *
+ * The pane holds r301..r400 from a cached visit; while away the journal grows
+ * and its NEWEST row is delivered by the reconnect REPLAY as live events. When
+ * the replay and the snapshot fall in different flushes, the journal-tail page
+ * ended on that replayed row, which the pane "held", so the gate deferred with
+ * no read and the pane painted r301..r400 then the tail with the rows between
+ * missing and no `hasMore`. Identical on the base before this change.
+ */
+const replayJournal = (r) => r.transcript.rows.map(recordIdOf);
+
+for (const kind of ["assistant", "user", "tool"]) {
+	test(`a reopen whose newest row a SPLIT replay delivered still reads back to the cached block (${kind})`, async () => {
+		const r = await driveCachedReopen({
+			away: 300,
+			replay: { kind, split: true },
+		});
+		const journal = replayJournal(r);
+		assertContiguousSuffix(r.painted, journal, `split replay ${kind}`);
+		assert.ok(r.reads > 0, "the page did not connect to a held JOURNAL row");
+		assert.equal(
+			r.painted.length,
+			journal.length - (REOPEN_TOTAL - REOPEN_PAGE),
+		);
+	});
+}
+
+test("the named repro: replay in its own flush, then the journal-tail snapshot, 600 away", async () => {
+	const r = await driveCachedReopen({
+		away: 600,
+		replay: { kind: "assistant", split: true },
+	});
+	assertContiguousSuffix(r.painted, replayJournal(r), "600 away, split replay");
+	assert.ok(r.reads > 0);
+	assert.equal(
+		r.hasMore,
+		true,
+		"the walk's bound ended short, so more is above",
+	);
+});
+
+/*
+ * The table: away x (replay in the snapshot's flush | in an earlier flush) x
+ * newest row. The pane must paint ONE contiguous journal suffix whichever way
+ * the replay fell; `away` <= 480 reaches the cached block, beyond it the seal
+ * leaves `hasMore`.
+ */
+let replayCells = 0;
+for (const away of [50, 300, 480, 600, 900])
+	for (const split of [false, true])
+		for (const kind of ["assistant", "user", "tool"]) {
+			replayCells += 1;
+			test(`replay table: away ${away} x ${split ? "split" : "same-flush"} replay x newest ${kind}`, async () => {
+				const r = await driveCachedReopen({ away, replay: { kind, split } });
+				const journal = replayJournal(r);
+				assertContiguousSuffix(
+					r.painted,
+					journal,
+					`away ${away} ${split ? "split" : "same"} ${kind}`,
+				);
+				if (away <= 480) {
+					assert.equal(
+						r.painted.length,
+						journal.length - (REOPEN_TOTAL - REOPEN_PAGE),
+						"nothing missing back to the cached block",
+					);
+				} else assert.equal(r.hasMore, true, "sealed: more history above");
+				if (away > 100)
+					assert.ok(r.reads > 0, "a disjoint page is read through");
+			});
+		}
+test("the replay table runs the cells it says it runs", () => {
+	assert.equal(replayCells, 30);
+});
+
+/*
+ * COST PINS: the exclusion must not turn an ordinary reconnect into reads.
+ */
+test("a replay of a row the pane ALREADY holds, plus a connecting snapshot, costs no read", async () => {
+	// r400 is the pane's newest held row (an assistant at 400 % 3 == 1? use the
+	// journal's own id so the replay lands on a held id, not a new one).
+	const held = `r${REOPEN_TOTAL - 1}`; // r399: an assistant row (399 % 3 === 0 is a tool; 398 is assistant)
+	const r = await driveCachedReopen({
+		away: 50,
+		replay: { id: "r398", split: true },
+	});
+	assert.equal(r.reads, 0, `replaying a held row (not ${held}) is not new`);
+	assertContiguousSuffix(r.painted, replayJournal(r), "held replay");
+});
+
+test("a replay of a held row in the snapshot's own flush costs no read", async () => {
+	const r = await driveCachedReopen({
+		away: 50,
+		replay: { id: "r398", split: false },
+	});
+	assert.equal(r.reads, 0);
+});
+
+test("a cold pane (nothing held) with a split replay still defers with no read", async () => {
+	// Nothing was painted by a first visit: the page is the whole coverage.
+	const base = longConversation({ awayRows: 0, total: 150 });
+	const transcript = makeTranscript(base.rows);
+	reset({ transcript });
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(SESSION_A, true);
+		return handle;
+	};
+	runtime.rerender();
+	deliver(openFrame(1, true));
+	for (const event of assistantFrames("a-live")) deliver(eventFrame(2, event));
+	await pump();
+	const reads0 = historyReads();
+	deliver(
+		snapshotFrame(3, {
+			cursor: "r50",
+			entries: transcript.tail(REOPEN_PAGE).entries,
+			coldReason: null,
+		}),
+	);
+	await pump();
+	assert.equal(historyReads() - reads0, 0, "held.size === 0 defers");
+	assert.ok(handle.transcript.records.length >= REOPEN_PAGE);
+});
+
+/*
+ * THE TOOL CELLS ARE CONTIGUITY PINS, NOT BITES ON THE CONNECTION TEST: a
+ * replayed settled tool also starts a label-gap read of its own, which reaches
+ * back and closes the seam whatever `heldIds` says (measured on main: 1-2 reads
+ * for the tool cells, contiguous). The assistant and user cells are the ones the
+ * exclusion is for.
+ */
+
+/*
+ * A replayed `history_delta` row: the replay can carry the journal's newest row
+ * as a delta rather than as message events. It is added through
+ * `applyHistoryPage` inside the reducer, which is why the exclusion is computed
+ * from the INDEX DIFF of the replay fold and not from the event types.
+ */
+test("a replayed history_delta row is not a held journal row either", async () => {
+	const base = longConversation({ awayRows: 0, total: REOPEN_TOTAL });
+	const transcript = makeTranscript(base.rows);
+	reset({ transcript });
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(SESSION_A, true);
+		return handle;
+	};
+	runtime.rerender();
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: transcript.rows.at(-REOPEN_PAGE - 1).id,
+			entries: transcript.tail(REOPEN_PAGE).entries,
+			coldReason: null,
+		}),
+	);
+	await pump();
+	grow(transcript, REOPEN_TOTAL + 1, REOPEN_TOTAL + 299);
+	transcript.rows.push(assistantRow("hd-1", 100 + REOPEN_TOTAL + 300, "delta"));
+	const reads0 = historyReads();
+	deliver(openFrame(3, true));
+	deliver(
+		eventFrame(4, {
+			type: "history_delta",
+			messages: [
+				{
+					id: "hd-1",
+					role: "assistant",
+					content: [{ type: "text", text: "delta" }],
+				},
+			],
+		}),
+	);
+	await pump();
+	deliver(
+		snapshotFrame(5, {
+			cursor: "r399",
+			entries: transcript.tail(REOPEN_PAGE).entries,
+			coldReason: null,
+		}),
+	);
+	await pump();
+	const journal = transcript.rows.map(recordIdOf);
+	assertContiguousSuffix(
+		ids(handle.transcript),
+		journal,
+		"history_delta replay",
+	);
+	assert.ok(
+		historyReads() - reads0 > 0,
+		"the page did not connect through the delta row",
+	);
+});
+
+/*
+ * THE OTHER DIRECTION: what must STILL count as held. Each scene below hands the
+ * reconnect a page that overlaps the pane ONLY through the row under test, and
+ * expects the gate to defer with no read. They bound the exclusion from the
+ * other side: tracking too much (a continuous stream's rows), or never
+ * forgetting (a clear, a session switch), turns an ordinary reconnect into a
+ * walk. Every one of them reads 0 on main as well.
+ */
+async function openOn(transcript, sessionRef) {
+	reset({ transcript });
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(sessionRef.id, Boolean(sessionRef.id));
+		return handle;
+	};
+	runtime.rerender();
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: transcript.rows.at(-REOPEN_PAGE - 1).id,
+			entries: transcript.tail(REOPEN_PAGE).entries,
+			coldReason: null,
+		}),
+	);
+	await pump();
+	return { runtime, handle: () => handle };
+}
+const tailFrame = (seq, transcript, n) =>
+	snapshotFrame(seq, {
+		cursor: transcript.rows.at(-n - 1).id,
+		entries: transcript.tail(n).entries,
+		coldReason: null,
+	});
+
+test("a page that connects only through rows born on a CONTINUOUS stream costs no read", async () => {
+	const transcript = makeTranscript(
+		longConversation({ awayRows: 0, total: REOPEN_TOTAL }).rows,
+	);
+	const { handle } = await openOn(transcript, { id: SESSION_A });
+	// 20 rows arrive live after the snapshot: the stream had no gap.
+	let seq = 3;
+	for (let i = 1; i <= 20; i++) {
+		transcript.rows.push(
+			assistantRow(`l${i}`, 100 + REOPEN_TOTAL + i, `l${i}`),
+		);
+		for (const event of assistantFrames(`l${i}`))
+			deliver(eventFrame(seq++, event));
+	}
+	await pump();
+	const reads0 = historyReads();
+	deliver(openFrame(seq++, true));
+	deliver(tailFrame(seq++, transcript, 20)); // l1..l20: held through the stream alone
+	await pump();
+	assert.equal(historyReads() - reads0, 0, "continuous-born rows are held");
+	assert.equal(ids(handle().transcript).length, REOPEN_PAGE + 20);
+});
+
+test("a /clear forgets what a replay delivered, so the same id arriving on a continuous stream is held", async () => {
+	const transcript = makeTranscript(
+		longConversation({ awayRows: 0, total: REOPEN_TOTAL }).rows,
+	);
+	const { handle } = await openOn(transcript, { id: SESSION_A });
+	let seq = 3;
+	deliver(openFrame(seq++, true));
+	for (const event of assistantFrames("a-live"))
+		deliver(eventFrame(seq++, event));
+	await pump(); // replay in its own flush: a-live is replay-born
+	handle().clearView();
+	await pump();
+	deliver(tailFrame(seq++, transcript, REOPEN_PAGE)); // does not name a-live
+	await pump();
+	// a-live now truly arrives on the continuous stream and becomes the journal's tail.
+	transcript.rows.push(
+		assistantRow("a-live", 100 + REOPEN_TOTAL + 1, "a-live done"),
+	);
+	for (const event of assistantFrames("a-live"))
+		deliver(eventFrame(seq++, event));
+	await pump();
+	const reads0 = historyReads();
+	deliver(openFrame(seq++, true));
+	deliver(tailFrame(seq++, transcript, 1)); // [a-live]: overlaps only through it
+	await pump();
+	assert.equal(
+		historyReads() - reads0,
+		0,
+		"the stale id did not outlive the clear",
+	);
+});
+
+test("a session switch forgets what a replay delivered, so the cached row counts as held on return", async () => {
+	const transcript = makeTranscript(
+		longConversation({ awayRows: 0, total: REOPEN_TOTAL }).rows,
+	);
+	const ref = { id: SESSION_A };
+	const { runtime, handle } = await openOn(transcript, ref);
+	transcript.rows.push(
+		assistantRow("a-live", 100 + REOPEN_TOTAL + 1, "a-live done"),
+	);
+	let seq = 3;
+	deliver(openFrame(seq++, true));
+	for (const event of assistantFrames("a-live"))
+		deliver(eventFrame(seq++, event));
+	await pump(); // replay-born, never named by a page
+	ref.id = SESSION_B;
+	runtime.rerender();
+	await pump();
+	ref.id = SESSION_A;
+	runtime.rerender();
+	await pump();
+	assert.ok(
+		ids(handle().transcript).includes("a-live"),
+		"the paint cache brought the row back with the rest of the block",
+	);
+	const reads0 = historyReads();
+	deliver(openFrame(seq++, true));
+	deliver(tailFrame(seq++, transcript, 1));
+	await pump();
+	assert.equal(
+		historyReads() - reads0,
+		0,
+		"cached rows count as held on a new visit",
+	);
+});
+
+test("a page that NAMES a replayed row makes it held again: the next reconnect defers", async () => {
+	const r = await driveCachedReopen({
+		away: 50,
+		replay: { kind: "assistant", split: true },
+	});
+	// a-live is the journal's newest row (r450) and the first page named it. The
+	// journal moves 99 rows on; the new tail page is a-live + 99 rows, overlapping
+	// the pane through a-live alone.
+	grow(r.transcript, REOPEN_TOTAL + 51, REOPEN_TOTAL + 149);
+	const reads0 = historyReads();
+	deliver(openFrame(40, true));
+	deliver(
+		snapshotFrame(41, {
+			cursor: r.transcript.rows.at(-REOPEN_PAGE - 1).id,
+			entries: r.transcript.tail(REOPEN_PAGE).entries,
+			coldReason: null,
+		}),
+	);
+	await pump();
+	assert.equal(
+		historyReads() - reads0,
+		0,
+		"a page named it, so it is a journal row",
+	);
 });
 
 /*
