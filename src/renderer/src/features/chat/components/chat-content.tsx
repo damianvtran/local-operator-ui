@@ -330,41 +330,46 @@ type ChatContentProps = {
 	 */
 	canonical: {
 		view: CanonicalSessionHandle;
-		busy: boolean;
 		/**
-		 * Whether the owner's turn is still ALIVE - the same question `busy`
-		 * answers, but read through the hold: `(frontend ?? heldFrontend)?.streaming`.
+		 * Whether the owner's turn is still ALIVE - read through the hold:
+		 * `(frontend ?? heldFrontend)?.streaming`, defined once in the page that
+		 * owns the prop (`chat-page.tsx`).
 		 *
-		 * WHY THE PAIR, and why only for the two CLAIM surfaces (the transcript's
-		 * working line and the composer's hint): a receipt gap nulls `frontend` and
-		 * keeps the last reading in `heldFrontend` (both gap arms in
+		 * WHY THE PAIR, and who reads it: a receipt gap nulls `frontend` and keeps
+		 * the last reading in `heldFrontend` (both gap arms in
 		 * `use-canonical-session.ts`), and for a busy session that recurs every
 		 * ~1.5-4 s - so reading the raw field blanked the in-flight claim on every
 		 * reconnect, and for the whole stretch of a flapping link, while the work
 		 * on the far side ran the entire time (operator report, 2026-10-07).
+		 * Round 1 measured where the split it shipped kept biting: through a gap
+		 * the line claimed a running turn while Stop was absent, Esc sent nothing
+		 * (three presses, zero `/interrupt` requests on the wire), and Enter sent
+		 * the wire shape that PARKS a message sent during a live turn - so the
+		 * claims, the controls and the send mode all read this one pair now, and
+		 * the page's own note carries the worst case that accepts.
 		 *
-		 * CONTROLS DELIBERATELY KEEP `busy` (the steer-vs-prompt mode, the Stop
-		 * control's availability, the references chip): a control that acts on a
-		 * turn must read the authoritative stream, not a held reading, or a press
-		 * made during a gap would act on a state the transport has not confirmed.
-		 * Only the surfaces that CLAIM progress read this pair, so the claim is as
-		 * durable as the last reading and no more.
+		 * The readers here: the transcript's working line and the composer's hint
+		 * (the claims), the Stop control the composer draws from
+		 * `canonicalStop.active`, the aside adopt gate, and the skew line on a
+		 * backend that cannot interrupt.
 		 */
 		turnAlive: boolean;
 		/**
 		 * The Stop press's own window: `"pending"` from the press until its
-		 * receipt or its bound; `"unconfirmed"` when the press ended with no
-		 * answer at all (the bound fired and the outcome is unknown); null
-		 * otherwise.
+		 * receipt or its bound; `"awaiting-end"` once a receipt confirmed the
+		 * cancel but the stream has not yet shown the turn ending (the rung must
+		 * not fall back to narrating `running bash` mid-teardown - design round
+		 * 1's D1); `"unconfirmed"` when the press ended with no answer at all
+		 * (the bound fired and the outcome is unknown); null otherwise.
 		 *
-		 * ONE fact with three states rather than two booleans, because "pending
+		 * ONE fact with three phases rather than two booleans, because "pending
 		 * and unconfirmed" is not a state: a receipt resolves the press, and only
 		 * a lost answer leaves it unknown. The page owns the state machine
 		 * (`chat-page.tsx`); the readers here are the working line's `stopping`
 		 * rung and the stopped band's gate - a band must not claim a stopped turn
 		 * from a press whose outcome was never confirmed.
 		 */
-		stopOutcome?: "pending" | "unconfirmed" | null;
+		stopOutcome?: "pending" | "awaiting-end" | "unconfirmed" | null;
 		admitting?: boolean;
 		/**
 		 * A send this conversation has admitted and that has produced nothing yet.
@@ -775,21 +780,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				}),
 			[queryClient],
 		);
-		/*
-		 * A MEMOISED STOP, for the reason the probe above is memoised at its source:
-		 * this object is handed to the composer, whose memo boundary compares props
-		 * shallowly, and it used to be rebuilt inline on every render of this
-		 * component — which is once per stream flush. Frozen on the three values it
-		 * is made of, so it is rebuilt exactly when one of them moves: `onStop` is
-		 * the page's `stop` callback, stable since its own `useCallback` fix.
-		 */
-		const canonicalStop = useMemo(
-			() =>
-				canonical?.stopAvailable
-					? { active: canonical.busy, onStop: canonical.onStop }
-					: undefined,
-			[canonical?.stopAvailable, canonical?.busy, canonical?.onStop],
-		);
 		const chatContainerRef = useRef<HTMLDivElement>(null);
 		const canvasContainerRef = useRef<HTMLDivElement>(null);
 		/*
@@ -901,6 +891,49 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			sessionGone || (canonical?.view.missing === true && !listedNow);
 		const conversationUnavailable =
 			sessionGone || canonical?.view.missing === true;
+		/*
+		 * A MEMOISED STOP, for the reason the credential probe above is memoised at
+		 * its source: this object is handed to the composer, whose memo boundary
+		 * compares props shallowly, and it used to be rebuilt inline on every
+		 * render of this component - which is once per stream flush. Frozen on the
+		 * values it is made of, so it is rebuilt exactly when one of them moves:
+		 * `onStop` is the page's `stop` callback, stable since its own `useCallback`
+		 * fix. It sits here, below `gone`, because one of its terms is the SAME
+		 * terminal predicate the rung and the hint read (`canonicalTerminal`),
+		 * which takes the membership half with it.
+		 *
+		 * THREE TERMS, each answering a round-1 finding: `stopAvailable` is the
+		 * capability (absent means no control at all); `!terminalPane` is U6 - on
+		 * a terminal pane (the failure notice, a conversation this machine no
+		 * longer has, a cached page) the red square stayed an armed control that
+		 * could only answer `nothing was running`, because the raw field kept
+		 * painting while the frontend did - so the same
+		 * `canonicalTranscriptTerminal` the rung and the hint yield to retires the
+		 * control too; and `active` reads `turnAlive`, the pair (D2), so a gap
+		 * no longer hides the control while the line claims the turn. `stopping`
+		 * rides along for the composer's pressed-step placeholder (D6).
+		 */
+		const stoppingTurn =
+			canonical?.stopOutcome === "pending" ||
+			canonical?.stopOutcome === "awaiting-end";
+		const terminalPane = canonicalTerminal(canonical, gone);
+		const canonicalStop = useMemo(
+			() =>
+				canonical?.stopAvailable && !terminalPane
+					? {
+							active: canonical.turnAlive,
+							stopping: stoppingTurn,
+							onStop: canonical.onStop,
+						}
+					: undefined,
+			[
+				canonical?.stopAvailable,
+				terminalPane,
+				canonical?.turnAlive,
+				stoppingTurn,
+				canonical?.onStop,
+			],
+		);
 		const setSessionArchived = useCanonicalSessionsStore(
 			(state) => state.setSessionArchived,
 		);
@@ -1839,15 +1872,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 * THE IN-FLIGHT CLAIM SURVIVES A RECEIPT GAP (operator
 										 * incident, 2026-10-07): read through the pair, so the
 										 * reconnects a busy session answers with do not blank the
-										 * line; the CONTROLS keep the raw `canonical.busy` (see
-										 * the prop's own note for the split).
+										 * line - the same pair the controls and the send mode now
+										 * read (round 1's D2; the prop's own note carries the
+										 * decision).
 										 */
 										waiting={canonical.turnAlive}
 										starting={canonical.starting === true}
 										startingAfterId={canonical.startingAfterId ?? null}
 										startingSession={canonical.startingSession === true}
 										startingSince={canonical.startingSince ?? null}
-										stopping={canonical.stopOutcome === "pending"}
+										stopping={stoppingTurn}
 										loadingOlder={canonical.view.loadingOlder}
 										onLoadOlder={canonical.view.loadOlder}
 										onLoadOlderOutcome={canonical.view.loadOlderDetailed}
@@ -2155,10 +2189,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 												startingAfterId: canonical.startingAfterId ?? null,
 												startingSession: canonical.startingSession === true,
 												startingSince: canonical.startingSince ?? null,
-												// The same press window the rung reads, so a Stop press turns
-												// the hint into the cancel statement (and never a restarting
-												// clock - the rung's own test carries that rule).
-												stopping: canonical.stopOutcome === "pending",
+												// The same press window the rung reads (one expression, see
+												// `stoppingTurn`), so a Stop press turns the hint into the
+												// cancel statement (and never a restarting clock - the
+												// rung's own test carries that rule).
+												stopping: stoppingTurn,
 												gate,
 												unavailable: canonicalTerminal(canonical, gone),
 												records: canonical.view.transcript.records,
@@ -2274,12 +2309,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * than as a handle to re-derive them from: the SESSION the panel is keyed by
 								 * (`sessionId` is the identity a backend route resolves, which is what
 								 * `sessions.aside` addresses) and whether that session is mid-turn — the
-								 * second term of the adopt gate, read from the same `canonical.busy` the Stop
-								 * control beside it uses so the two cannot disagree. Undefined on a pane with
-								 * no session, where no aside can be attached at all.
+								 * second term of the adopt gate, read from the same `canonical.turnAlive` the
+								 * Stop control beside it uses so the two cannot disagree (both read the pair
+								 * since round 1's D2). Undefined on a pane with no session, where no aside
+								 * can be attached at all.
 								 */
 								asideSessionId={sessionId}
-								asideStreaming={canonical.busy}
+								asideStreaming={canonical.turnAlive}
 								/*
 								 * The capability itself, not just its busy half: the composer
 								 * holds the control's SLOT while a turn runs and for a grace

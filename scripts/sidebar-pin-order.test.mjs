@@ -898,7 +898,7 @@ test("round 1's fixes are where they are written", () => {
  * shipped one, not a copy), and the shipped handler's own `preventDefault`.
  */
 test("Escape mid-drag cancels the drag and cannot reach the turn", () => {
-	const idle = { sessionId: "s", busy: true, available: true };
+	const idle = { sessionId: "s", turnAlive: true, available: true };
 	const press = (defaultPrevented) => ({
 		key: "Escape",
 		defaultPrevented,

@@ -87,13 +87,20 @@ import { COMPOSER_TEXTAREA_SELECTOR } from "../composer-field";
 /**
  * What the predicate reads.
  *
- * `busy` is the SAME `canonical.frontend?.streaming === true` the Stop control
- * reads, because a key and a button that answer the same question from two
- * readings is a pair that will eventually disagree.
+ * `turnAlive` is the SAME turn-alive pair the Stop control reads -
+ * `(frontend ?? heldFrontend)?.streaming`, defined once in `chat-page.tsx` -
+ * because a key and a button that answer the same question from two readings is
+ * a pair that will eventually disagree. It reads the PAIR rather than the raw
+ * frontend since round 1's D2: through a receipt gap the raw field is false
+ * while the pane still claims a running turn, and the key measured zero
+ * `/interrupt` requests on the wire across three presses there while the
+ * composer said `Esc stops`. The control's other term, the terminal gate, is
+ * folded into `available` by the caller so this predicate and the button read
+ * the same two facts.
  */
 export type InterruptEscapeState = {
 	sessionId: string | null | undefined;
-	busy: boolean;
+	turnAlive: boolean;
 	/** Whether this backend advertises `session_interrupt` at all. */
 	available: boolean;
 	/**
@@ -175,7 +182,7 @@ export function interruptEscapeApplies(
 		!event.isComposing &&
 		!(state.recording?.() ?? false) &&
 		Boolean(state.sessionId) &&
-		state.busy &&
+		state.turnAlive &&
 		state.available &&
 		!ownsEscapeOutsideComposer(event.target)
 	);
@@ -231,7 +238,7 @@ export function dispatchInterruptOnEscape(
  */
 export function useInterruptOnEscape({
 	sessionId,
-	busy,
+	turnAlive,
 	available,
 	recording,
 	onInterrupt,
@@ -240,10 +247,10 @@ export function useInterruptOnEscape({
 		const onKeyDown = (event: KeyboardEvent) =>
 			void dispatchInterruptOnEscape(
 				event,
-				{ sessionId, busy, available, recording },
+				{ sessionId, turnAlive, available, recording },
 				onInterrupt,
 			);
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [sessionId, busy, available, recording, onInterrupt]);
+	}, [sessionId, turnAlive, available, recording, onInterrupt]);
 }

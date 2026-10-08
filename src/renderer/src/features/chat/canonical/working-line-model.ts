@@ -453,14 +453,18 @@ export type WorkingLineInput = {
 	 */
 	startingSince?: number | null;
 	/**
-	 * A Stop press is in flight for this conversation, from the press until its
-	 * receipt or its bound.
+	 * A Stop press is in flight for this conversation - or its receipt has
+	 * confirmed the cancel and the stream has not yet shown the turn ending.
 	 *
-	 * The page owns it (`chat-page.tsx` sets it in the same handler that writes
-	 * the stopped-turn fact) and it is here because this line is the surface that
-	 * already speaks for in-flight facts on this pane. Absent means false, so
-	 * every caller that predates this field derives exactly what it derived
-	 * before.
+	 * Those are the two phases of the page's press machine
+	 * (`chat-page.tsx`'s `stopOutcome`: `pending` and `awaiting-end`) in which
+	 * the rung must stand: from the press until the turn itself is confirmed
+	 * over, because dropping back to `running bash Ns` between the two was the
+	 * measured regression (a receipt delivered inside a gap) - the rung is the
+	 * one surface that says the cancel the user asked for is still being
+	 * carried out. It is here because this line already speaks for in-flight
+	 * facts on this pane. Absent means false, so every caller that predates
+	 * this field derives exactly what it derived before.
 	 */
 	stopping?: boolean;
 	/** A question is pending; it outranks every working state (branding § 7). */

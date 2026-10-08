@@ -3156,15 +3156,19 @@ test("a Stop press in flight relabels the line and withholds its clock, without 
 	assert.equal(workingLineClaimed(stoppingInput()), true);
 });
 
-test("the two claim surfaces read the pair while the controls keep the raw reading", () => {
+test("the line, the hint and every control read the one pair", () => {
 	/*
-	 * The wiring half of the same incident, pinned in source because
+	 * The wiring half of the incident, pinned in source because
 	 * `chat-content.tsx` is a page component this suite cannot mount (the
 	 * sibling guards, `stopped-row-measure.test.mjs` among them, read it the
-	 * same way). The split is the fix: the transcript's line and the composer's
-	 * hint read `canonical.turnAlive` (the pair, defined once in `chat-page.tsx`),
-	 * while the controls keep `canonical.busy` - a control acts on the
-	 * authoritative stream, not on a held reading.
+	 * same way). Round 1's D2 extended the pair from the two claim surfaces to
+	 * every consumer that acts on the turn: through a gap the raw field is
+	 * false while the pane still claims a running turn, and the split it
+	 * replaced left the line saying `running bash 6s` while Stop was absent, Esc
+	 * sent nothing (three presses, zero `/interrupt` requests on the wire), and
+	 * Enter sent `mode:"prompt"` - the wire shape that parks a message sent
+	 * during a live turn. One predicate, so a promise and the control that
+	 * answers it cannot disagree.
 	 */
 	const strip = (source) =>
 		source
@@ -3187,6 +3191,7 @@ test("the two claim surfaces read the pair while the controls keep the raw readi
 		/const turnAlive =\s*\n\s*\(canonical\.frontend \?\? canonical\.heldFrontend\)\?\.streaming === true;/,
 		"turnAlive is the pair, defined once in the page that owns the prop",
 	);
+	// The two CLAIMS.
 	assert.match(
 		content,
 		/waiting=\{canonical\.turnAlive\}/,
@@ -3197,14 +3202,105 @@ test("the two claim surfaces read the pair while the controls keep the raw readi
 		/waiting: canonical\.turnAlive,/,
 		"the composer's hint reads the pair",
 	);
-	// Neither claim surface may go back to the raw field - that is the blanking
-	// defect this split exists to remove.
-	assert.doesNotMatch(content, /waiting=\{canonical\.busy\}/);
-	assert.doesNotMatch(content, /waiting: canonical\.busy,/);
-	// And the controls the split deliberately keeps on the raw reading: the Stop
-	// control's availability and the aside adopt gate.
-	assert.match(content, /active: canonical\.busy, onStop: canonical\.onStop/);
-	assert.match(content, /asideStreaming=\{canonical\.busy\}/);
+	// The CONTROLS and the SEND MODE, on the same pair (D2): the Stop control
+	// the composer draws, the aside adopt gate that must not disagree with it,
+	// and the steer-vs-prompt mode the send path posts.
+	assert.match(
+		content,
+		/active: canonical\.turnAlive,/,
+		"the Stop control is drawn from the pair",
+	);
+	assert.match(
+		content,
+		/asideStreaming=\{canonical\.turnAlive\}/,
+		"the aside adopt gate reads the pair the Stop control reads",
+	);
+	assert.match(
+		page,
+		/mode: turnAlive \? "steer" : "prompt",/,
+		"the send mode reads the pair",
+	);
+	// NOTHING may go back to the raw field - that is the blanking defect this
+	// pair exists to remove, in every one of its consumers.
+	assert.doesNotMatch(content, /canonical\.busy/);
+	assert.doesNotMatch(page, /mode: busy \?/);
+	assert.doesNotMatch(page, /busy: canonical\.frontend\?\.streaming === true;/);
+});
+
+test("the press window's resolutions are pinned (round 1's R1-2)", () => {
+	/*
+	 * The strand class the fix is about: an outcome that can be SET but never
+	 * resolved leaves the rung standing, the band suppressed, or an alert with
+	 * no state that clears it. Each resolution is pinned as source here (the
+	 * page cannot be mounted in this suite), the way the band's own terms are
+	 * pinned in `stopped-row-measure.test.mjs` - and the two guards that make
+	 * them PRESS-SCOPED are pinned with them, because round 1 measured what
+	 * their absence does (a dropped first press's late bound retracting a
+	 * second press's confirmed band).
+	 */
+	const strip = (source) =>
+		source
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+	const page = strip(
+		readFileSync(
+			"src/renderer/src/features/chat/components/chat-page.tsx",
+			"utf8",
+		),
+	);
+	// Every answer is keyed to its press and a superseded one writes nothing.
+	assert.match(
+		page,
+		/if \(pressId !== pressSeq\.current\) return;/,
+		"a superseded press must not write",
+	);
+	// A receipt: a confirmed cancel keeps the rung until the stream shows the
+	// end; every other answer closes the window.
+	assert.match(
+		page,
+		/receipt\.status === "interrupted" \? "awaiting-end" : null/,
+		"the receipt resolves the press (and keeps the rung through teardown)",
+	);
+	// The bound: stated as unconfirmed ONLY while the turn is still alive; an
+	// end the feed already showed resolves clean instead.
+	assert.match(
+		page,
+		/if \(!turnAliveRef\.current\) \{/,
+		"the bound must not unconfirm a turn the feed showed over",
+	);
+	assert.match(page, /setStopOutcome\("unconfirmed"\)/);
+	// The alert is remembered as THIS machinery's sentence so its retirement
+	// cannot erase someone else's.
+	assert.match(
+		page,
+		/stopAlertSentence\.current = sentence;/,
+		"the bound's sentence is remembered for its own retirement",
+	);
+	// The two edges that retire the window: a new turn's first reading and a
+	// session change - and the first is the PAIR's own edge, never `busy`
+	// (a reconnect must not fire it; the incident's premise).
+	assert.match(page, /pressSeq\.current \+= 1;/);
+	assert.match(
+		page,
+		/if \(!previous && turnAlive\) \{/,
+		"the new-turn retire is the pair's own edge (a reconnect cannot fake it)",
+	);
+	assert.match(
+		page,
+		/\} else if \(previous && !turnAlive\) \{/,
+		"and the turn's end retires the waiting phases",
+	);
+	assert.match(
+		page,
+		/current === "awaiting-end" \|\| current === "unconfirmed"/,
+		"the turn's end resolves the waiting phases",
+	);
+	// And the disputed idle asks the conversation again (U1).
+	assert.match(
+		page,
+		/if \(receipt\.status === "idle" && claimAlive\) canonical\.retry\(\);/,
+		"an idle receipt under a live claim triggers a re-read",
+	);
 });
 
 /* ---------------------------------- which send is "unsettled" (the box's claim) */
