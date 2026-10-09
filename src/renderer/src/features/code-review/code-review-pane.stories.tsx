@@ -39,7 +39,13 @@ import { CodeReviewPaneBody } from "./components/code-review-pane";
  * capture's own instant cannot be compared with the next one.
  */
 const meta: Meta = {
-	title: "Code review/Code review pane",
+	/*
+	 * THE SINGLE TITLE, not `Code review/Code review pane`: the id becomes both the
+	 * story's handle and the frame SET's name (`docs/evidence/<set>/<state>/`), and
+	 * a grouped title would spell it `code-review-code-review-pane` - the console's
+	 * set is `console-pane`, and one component is one set.
+	 */
+	title: "Code review pane",
 	parameters: { layout: "fullscreen" },
 };
 
@@ -62,7 +68,7 @@ const Frame: FC<{ height: number; children: ReactNode }> = ({
 /** The populated ledger: mixed lanes and states (§6's "every rung once"). */
 export const Populated: Story = {
 	render: () => (
-		<Frame height={644}>
+		<Frame height={960}>
 			<CodeReviewPaneBody
 				phase="ready"
 				data={list(populatedRows())}
