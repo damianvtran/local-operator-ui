@@ -39,7 +39,7 @@ globalThis.localStorage = {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { useUiPreferencesStore, persistedUiPreferences, mergePersistedUiPreferences, migrateUiPreferences, resolveRightSlotWidth, resolveDrawnRightSlotPane, EMPTY_RIGHT_SLOT_ROUTE, EMPTY_RIGHT_SLOT_MEMORY, DEFAULT_RUN_PANEL_WIDTH } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			'export { useUiPreferencesStore, persistedUiPreferences, mergePersistedUiPreferences, migrateUiPreferences, resolveRightSlotWidth, resolveDrawnRightSlotPane, EMPTY_RIGHT_SLOT_ROUTE, EMPTY_RIGHT_SLOT_MEMORY, DEFAULT_RIGHT_SLOT_WIDTH } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 			'export { installRightSlotMemoryFollower, rightSlotKeyForView, admittedFromFor } from "./src/renderer/src/shared/store/right-slot-follower";',
 			'export { RIGHT_SLOT_MEMORY_CAP, memoryPut, memoryCarry, memoryProject, memoryRemove, memorySanitize, memoryPruneKeys } from "./src/renderer/src/shared/store/right-slot-memory";',
@@ -72,7 +72,7 @@ const {
 	resolveDrawnRightSlotPane,
 	EMPTY_RIGHT_SLOT_ROUTE,
 	EMPTY_RIGHT_SLOT_MEMORY,
-	DEFAULT_RUN_PANEL_WIDTH,
+	DEFAULT_RIGHT_SLOT_WIDTH,
 	useCanonicalSessionsStore,
 	installRightSlotMemoryFollower,
 	rightSlotKeyForView,
@@ -637,7 +637,10 @@ test("(H) setActiveSession then an open writes only the conversation named", () 
 /*
  * (I) THE #868 REGRESSION PIN. A remembered run panel on a conversation with no
  * run details still resolves to NOTHING DRAWN and a zero width: the claim is not a
- * promise, and the memory must not re-open the reserved band #868 closed.
+ * promise, and the memory must not re-open the reserved band #868 closed. When the
+ * route CAN draw it, the width is the slot's one default (`DEFAULT_RIGHT_SLOT_WIDTH`,
+ * #910's #872 follow-up: unset resolves to one number for every pane, not the old
+ * per-pane `DEFAULT_RUN_PANEL_WIDTH`).
  */
 test("(I) a remembered run panel on a conversation without details draws nothing (#868)", () => {
 	reset();
@@ -658,7 +661,7 @@ test("(I) a remembered run panel on a conversation without details draws nothing
 		rightSlotRoute: { mounted: true, runDetails: true, session: true },
 	});
 	assert.equal(resolveDrawnRightSlotPane(prefs()), "run");
-	assert.equal(resolveRightSlotWidth(1400, prefs()), DEFAULT_RUN_PANEL_WIDTH);
+	assert.equal(resolveRightSlotWidth(1400, prefs()), DEFAULT_RIGHT_SLOT_WIDTH);
 });
 
 /*
