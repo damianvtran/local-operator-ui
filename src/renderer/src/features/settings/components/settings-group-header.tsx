@@ -131,8 +131,20 @@ export const SettingsGroupHeader = ({
 							the title keeps its rail because the cluster beside it still hugs
 						the left. */
 				<span className="flex w-full min-w-0 items-center gap-2">
-					<span className="flex min-w-0 items-center gap-2">
-						<span className="truncate text-heading text-ink">{title}</span>
+					{/*
+					 * `flex-wrap` and `gap-y-0`: a long TITLE ("Delegated work: subagents and
+					 * background sessions") used to be squeezed by its `shrink-0` count and
+					 * scope marks until it read `Dele...` at a 420px column. Wrapped, the
+					 * marks drop to a second line, and a title that is itself wider than the
+					 * column wraps rather than truncates (a name cut to `Dele...` is a name
+					 * lost). A header whose cluster fits on one line is unchanged, which is
+					 * every other header on the page; `min-h-10` on the row is a floor, so a
+					 * two-line header grows.
+					 */}
+					<span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0">
+						<span className="min-w-0 break-words text-heading text-ink">
+							{title}
+						</span>
 						{/* The count is stated only when there is one to state: a section whose
 							   rows the tier filter is holding back reads `14 advanced`, not
 						    `0 settings, 14 advanced`. */}

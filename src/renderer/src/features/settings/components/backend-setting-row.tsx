@@ -43,7 +43,9 @@ import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { RotateCcw, Undo2 } from "lucide-react";
 import type { FC } from "react";
+import { presentSetting } from "../backend-setting-copy";
 import type { SettingTier } from "../backend-settings-tiers";
+import { durationSpec } from "../retention-duration";
 import {
 	type SettingDraft,
 	isDraftDirty,
@@ -92,7 +94,7 @@ export type BackendSettingRowProps = {
 };
 
 export const BackendSettingRow: FC<BackendSettingRowProps> = ({
-	setting,
+	setting: wireSetting,
 	draft,
 	tier,
 	gate,
@@ -103,11 +105,25 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 	onReset,
 	effectiveHosting = "",
 }) => {
+	/*
+	 * The desktop's own words for the few rows whose registry copy is written for
+	 * the terminal (`backend-setting-copy.ts`). Applied HERE, once, so the label,
+	 * the help, the reset button's accessible name and the control's `aria-label`
+	 * cannot disagree; the key, value and every write stay the registry's.
+	 */
+	const setting = presentSetting(wireSetting);
 	const gatedOff = Boolean(gate && !gate.on);
 	const dirty = isDraftDirty(setting, draft);
+	/*
+	 * The retention window's control is a row of stops plus an exact field, which
+	 * needs the row's WIDTH the way a list editor does: nine stops in a 112px
+	 * `int` slot would wrap into a column.
+	 */
+	const durationRow = durationSpec(setting) !== null;
 	const disabled = saving || gatedOff;
 	/** The kinds whose control is a multi-line editor rather than a field. */
-	const wideControl = setting.kind === "list" || setting.kind === "cascade";
+	const wideControl =
+		setting.kind === "list" || setting.kind === "cascade" || durationRow;
 
 	/**
 	 * The label, plus the marks that belong beside it.
@@ -125,7 +141,11 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 	 */
 	const marks = (
 		<span className="flex min-w-0 flex-col gap-0.5">
-			<span className="truncate text-body-sm text-ink">{setting.label}</span>
+			{/* Wraps rather than truncates: the desktop's own label for the delegated
+			    switch is a full sentence ("Remove delegated sessions automatically"),
+			    which a stacked 420px row cut to `Remove delegated sess...` - the row
+			    losing its name is the failure the warning note below already refuses. */}
+			<span className="break-words text-body-sm text-ink">{setting.label}</span>
 			{setting.kind === "readonly" && (
 				// Why this value has no control, said in the row rather than only
 				// behind its reveal: a value a reader cannot edit and cannot
@@ -187,7 +207,14 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 						 * rather than from a wider slot. Everything else keeps the label
 						 * as the flexible column and the control at its kind's size.
 						 */
-						wideControl ? "shrink-0 basis-2/5" : "flex-1",
+						wideControl
+							? durationRow
+								? /* The stops need the room a list editor does not: at the 40% a
+								     list gets, `Use default` beside nine stops orphaned `30d` on a
+								     second line. A third leaves the label a readable column. */
+									"shrink-0 basis-1/3"
+								: "shrink-0 basis-2/5"
+							: "flex-1",
 					)}
 				>
 					{tier === "advanced" && setting.help ? (
@@ -243,6 +270,14 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 						// on a line the control has to itself.
 						"flex shrink-0 items-center gap-2 self-center",
 						wideControl && "min-w-0 flex-1 items-start",
+						/*
+						 * A floor, so the row's WRAP takes over: without one the control is a
+						 * flex-1 shrinking to whatever the label leaves (100px at a 420px
+						 * column, which stacked nine stops into two columns beside the label).
+						 * With it the control drops beneath the label at the column's left
+						 * edge, the same shape the row already uses for every other control.
+						 */
+						durationRow && "min-w-72",
 					)}
 				>
 					{/* Off the default: a dot and the way back. Both are on screen only
@@ -292,7 +327,12 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 					 * off-default row was focused on its reset button instead of its field
 					 * (review round 1, n4).
 					 */}
-					<div className={controlSlot(setting.kind)} data-setting-control="">
+					<div
+						className={
+							durationRow ? "w-full min-w-0" : controlSlot(setting.kind)
+						}
+						data-setting-control=""
+					>
 						{setting.redacted ? (
 							// The value is withheld, not the row: a reader who searched
 							// for this key has to be able to see that it exists and why

@@ -360,7 +360,9 @@ test(
 		await type(search(), "");
 		assert.equal(
 			openSections(),
-			4,
+			// Model, approvals, fork, web tools, plus `session` and `session_delegated`
+			// (see ARRIVAL_FOCUSABLE_BUDGET in backend-settings-tiers.test.mjs).
+			6,
 			"clearing the query restores the arrival layout, not a query-shaped one",
 		);
 		assert.ok(rowShown("hosting"), "and Model's own row is on screen again");

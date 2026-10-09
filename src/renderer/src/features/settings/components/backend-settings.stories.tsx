@@ -117,6 +117,7 @@ const installBridge = (
 	payload: BackendSettings,
 	mode: BridgeMode = "ok",
 	catalogueMode: CatalogueMode = "ok",
+	failMessage = "The server refused the write.",
 ) => {
 	const ok = (result: unknown): DesktopResponse => ({
 		status: 200,
@@ -174,7 +175,7 @@ const installBridge = (
 						body: {
 							detail: {
 								code: "write_refused",
-								message: "The server refused the write.",
+								message: failMessage,
 							},
 						},
 					};
@@ -239,8 +240,38 @@ const REDACTED_KEY = /base_url|baseUrl|endpoint/;
 const redactedKey = (settings: Setting[]) =>
 	settings.find((setting) => REDACTED_KEY.test(setting.key))?.key;
 
+/**
+ * The delegated-retention states, as overrides on the committed fresh payload.
+ *
+ * Values are written the way the registry would store them (`is_default`
+ * follows the value), so the frames show the "Use default" affordance exactly
+ * where the product would.
+ */
+const DELEGATED_STATES: Record<string, Record<string, unknown>> = {
+	"delegated-off": { "session.cleanup.delegated.enabled": false },
+	"delegated-min": { "session.cleanup.delegated.max_age_hours": 2 },
+	"delegated-max": { "session.cleanup.delegated.max_age_hours": 720 },
+	"delegated-custom": { "session.cleanup.delegated.max_age_hours": 100 },
+	"delegated-week": { "session.cleanup.delegated.max_age_hours": 168 },
+};
+
 /** The payload for one state, derived from the committed projection. */
 function payloadFor(state: string): BackendSettings {
+	const overrides = DELEGATED_STATES[state];
+	if (overrides) {
+		return {
+			...FRESH,
+			settings: FRESH.settings.map((setting) =>
+				setting.key in overrides
+					? {
+							...setting,
+							value: overrides[setting.key],
+							is_default: overrides[setting.key] === setting.default,
+						}
+					: setting,
+			),
+		};
+	}
 	const base = state === "changed" ? CONFIGURED : FRESH;
 	if (state !== "redacted") return base;
 	const key = redactedKey(base.settings);
@@ -480,9 +511,51 @@ const REDACTED: Script = {
 const GATED: Script = {
 	run: async () => {
 		await ensureAdvanced();
-		await openHeader("Session storage");
+		// The cleanup rows moved out of "Session storage" into their own section.
+		await openHeader("Your conversations");
 	},
 	expect: () => Boolean(rowsOf("session.cleanup.max_sessions")),
+};
+
+/* ---- delegated-work retention ------------------------------------- */
+
+const AGE_KEY = "session.cleanup.delegated.max_age_hours";
+const EXACT_FIELD = `[data-setting-key="${AGE_KEY}"] input[type="text"]`;
+const exactField = () => document.querySelector<HTMLInputElement>(EXACT_FIELD);
+
+/** Only the two cleanup groups open, so a frame is about them and nothing else. */
+const openCleanupGroups = async () => {
+	await clickAll(sectionHeaderTriggers(true));
+	await openHeader("Your conversations");
+	await openHeader("Delegated work");
+};
+
+const DELEGATED: Script = {
+	run: openCleanupGroups,
+	expect: () => Boolean(exactField()),
+};
+
+/** Type a value into the exact field, as a person does, and let it settle. */
+const typeExact = (text: string): Script => ({
+	run: async () => {
+		await openCleanupGroups();
+		await waitFor(() => Boolean(exactField()));
+		const field = exactField();
+		if (!field) throw new Error("no exact-entry field rendered");
+		field.focus();
+		setFieldValue(field, text);
+		await sleep(40);
+	},
+	expect: () => exactField()?.value === text,
+});
+
+/** Type an in-range value and press the row's own Save, to a server that refuses. */
+const SAVE_REFUSED: Script = {
+	run: async () => {
+		await typeExact("500").run();
+		rowButton(AGE_KEY, SAVE_IDLE)?.click();
+	},
+	expect: () => Boolean(document.querySelector('[role="alert"]')),
 };
 
 const DEEP_LINK: Script = {
@@ -585,6 +658,7 @@ const mount = ({
 	script,
 	mode,
 	catalogueMode,
+	failMessage,
 }: {
 	state?: string;
 	initialFilter?: string;
@@ -592,8 +666,9 @@ const mount = ({
 	script?: Script;
 	mode?: BridgeMode;
 	catalogueMode?: CatalogueMode;
+	failMessage?: string;
 } = {}) => {
-	installBridge(payloadFor(state), mode, catalogueMode);
+	installBridge(payloadFor(state), mode, catalogueMode, failMessage);
 	if (script) {
 		return (
 			<Driven
@@ -933,4 +1008,76 @@ export const Saving: Story = {
  */
 export const SaveFailed: Story = {
 	render: () => mount({ state: "changed", script: SAVE_FAILED, mode: "fail" }),
+};
+
+/* ------------------------------------------------------------------ */
+/* Delegated-work retention                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The two cleanup groups side by side, at the registry default.
+ *
+ * "Your conversations" (off by default, closed-tier rows behind the advanced
+ * reveal) above "Delegated work: subagents and background sessions" (on, 48
+ * hours). The explainer under the second title is the desktop's own three lines.
+ */
+export const DelegatedDefault: Story = {
+	render: () => mount({ script: DELEGATED }),
+};
+
+/** The switch off: the window is greyed and says which switch it needs. */
+export const DelegatedSwitchOff: Story = {
+	render: () => mount({ state: "delegated-off", script: DELEGATED }),
+};
+
+/** The floor of the range: 2 hours. */
+export const DelegatedAtMinimum: Story = {
+	render: () => mount({ state: "delegated-min", script: DELEGATED }),
+};
+
+/** The ceiling of the range: 720 hours, spoken as 1 month. */
+export const DelegatedAtMaximum: Story = {
+	render: () => mount({ state: "delegated-max", script: DELEGATED }),
+};
+
+/** A stored value that is not a stop: no segment is selected, the field says 100 hours. */
+export const DelegatedCustomValue: Story = {
+	render: () => mount({ state: "delegated-custom", script: DELEGATED }),
+};
+
+/** A whole number of days above three: shown and entered as days. */
+export const DelegatedSevenDays: Story = {
+	render: () => mount({ state: "delegated-week", script: DELEGATED }),
+};
+
+/**
+ * Typing 9999: the inline sentence and the nearest-value offer. `Save` is still
+ * on the row (the draft is dirty), and pressing it answers with the same range
+ * sentence from `editOutcome` rather than sending anything.
+ */
+export const DelegatedInvalidEntry: Story = {
+	render: () => mount({ script: typeExact("9999") }),
+};
+
+/**
+ * A write the server refuses anyway, with the draft kept.
+ *
+ * The client never sends an out-of-range value (`editOutcome`), so this is the
+ * defence in depth: a server whose bounds differ from the registry row it sent
+ * still gets its own sentence shown, verbatim, beside the row.
+ */
+export const DelegatedWriteRefused: Story = {
+	render: () =>
+		mount({
+			script: SAVE_REFUSED,
+			mode: "fail",
+			// A server whose bound is tighter than the registry row it sent (here 480),
+			// so a value the client allowed (500) is still refused by the authority.
+			failMessage: "max_age_hours must be between 2 and 480 (20 days); got 500",
+		}),
+};
+
+/** The same group in the narrow column. */
+export const DelegatedNarrow: Story = {
+	render: () => mount({ script: DELEGATED }),
 };
