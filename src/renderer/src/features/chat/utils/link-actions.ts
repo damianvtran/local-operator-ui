@@ -257,6 +257,13 @@ export type ProbeFunction = (paths: string[]) => Promise<
 		resolved?: string;
 		sizeBytes?: number | null;
 		mtimeMs?: number | null;
+		/**
+		 * Present when the probe could not answer - a deadline under load, a
+		 * stale mount. The answer is UNKNOWN rather than missing, and this
+		 * module leaves such a spelling uncached (remediation round 1, R1-2;
+		 * QA round 1, Q1).
+		 */
+		error?: string;
 	}[]
 >;
 
@@ -265,6 +272,8 @@ export type ProbeFunction = (paths: string[]) => Promise<
  * later, and `use-mentioned-files` covers that case for the Files panel with a
  * growth trigger); here the recovery is the click that failed, which forgets the
  * entry and re-probes rather than leaving the reader with a stale "No file".
+ * A FAULT is not an answer and is never cached at all - see the `error` arm in
+ * `probeTargets` below.
  */
 const probeCache = new Map<string, ProbedTarget>();
 
@@ -440,6 +449,16 @@ export async function probeTargets(
 			chunk.forEach((target, index) => {
 				const answer = answers[index];
 				if (!answer) return;
+				/*
+				 * A FAULT IS NOT A NEGATIVE (remediation round 1, R1-2; QA round 1,
+				 * Q1). A probe that could not answer - a deadline under load, a
+				 * stale mount - leaves the spelling UNKNOWN, exactly as a throwing
+				 * chunk leaves it, rather than caching `exists: false` as a fact: the
+				 * toolbar's null state offers its full matrix instead of a "No file
+				 * at ..." strip, and the next ask (a reveal, a re-render) re-probes
+				 * rather than reading a lie.
+				 */
+				if (answer.error !== undefined) return;
 				probeCache.set(target, {
 					exists: answer.exists,
 					isFile: answer.isFile,

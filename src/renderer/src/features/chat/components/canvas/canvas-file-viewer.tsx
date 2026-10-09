@@ -384,7 +384,20 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 					? ((await window.api.probeFiles([normalizedPath]))[0] ?? null)
 					: null;
 			const onDisk = Boolean(probe?.exists && probe.isFile);
-			if (fileDoc.availability === "missing" && !onDisk) {
+			/*
+			 * A probe that could not answer is UNKNOWN, not gone (remediation round 1,
+			 * R1-2; QA round 1, Q1): a deadline fault under load fires on files that
+			 * are there, so refusing the click on one would report "File no longer
+			 * exists" on the strength of a stat that never happened. Unknown falls
+			 * through to the open attempt below, which fails on its own terms if the
+			 * file really is unreadable. A `null` probe (no bridge) still refuses a
+			 * known-missing row as before.
+			 */
+			if (
+				fileDoc.availability === "missing" &&
+				!onDisk &&
+				probe?.error === undefined
+			) {
 				showErrorToast(
 					`File no longer exists at ${probe?.resolved ?? normalizedPath}`,
 					{
