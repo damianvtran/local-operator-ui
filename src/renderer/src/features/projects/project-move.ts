@@ -36,12 +36,14 @@ export type StatusMoveInput = {
 	/** The daemon advertises `projects_force_done` (the capability gate). */
 	forceDoneOffered: boolean;
 	/**
-	 * Whether a done-gate question is ALREADY on screen, read AT SETTLE TIME
-	 * (the dialog is one slot; a second refusal answers as a toast so the open
-	 * question is never overwritten). A function rather than a value because
-	 * two overlapping moves settle at different moments.
+	 * CLAIMS the single question slot and reports whether the claim landed,
+	 * in ONE synchronous call (agent review R2-1). The check and the claim
+	 * must be the same operation: two refusals can settle in one microtask
+	 * checkpoint, and a caller that only CHECKS here and claims later (in its
+	 * own `.then`) lets both decisions read an unclaimed slot - the second
+	 * question then overwrites the first and the first refusal goes silent.
 	 */
-	questionOpen: () => boolean;
+	claimQuestion: () => boolean;
 };
 
 /** How a failure is classified, for the two branches the caller renders. */
@@ -57,9 +59,11 @@ export async function runStatusMove(
 		 * The question needs BOTH halves: the coded refusal (an older daemon
 		 * would 422 the forced retry, so its sentence-only refusal is spoken,
 		 * never offered a force) and the capability that says this daemon can
-		 * answer it.
+		 * answer it. The slot is CLAIMED HERE, synchronously with the decision
+		 * (R2-1): a claim deferred to the caller's reaction loses a same-tick
+		 * second refusal.
 		 */
-		if (refusal?.coded && input.forceDoneOffered && !input.questionOpen())
+		if (refusal?.coded && input.forceDoneOffered && input.claimQuestion())
 			return { kind: "question", refusal };
 		return {
 			kind: "spoken",
