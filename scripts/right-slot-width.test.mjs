@@ -28,7 +28,7 @@ globalThis.localStorage = {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { useUiPreferencesStore, persistedUiPreferences, migrateUiPreferences, UI_PREFERENCES_VERSION, resolveRightSlotWidth, resolveRightSlotOccupied, resolveRightSlotYieldsSidebar, resolveDrawnRightSlotPane, EMPTY_RIGHT_SLOT_ROUTE, DEFAULT_CANVAS_WIDTH, DEFAULT_RUN_PANEL_WIDTH, DEFAULT_BROWSER_PANEL_WIDTH, DEFAULT_CONSOLE_PANEL_WIDTH, RUN_PANEL_MIN_PX, BROWSER_PANEL_MIN_PX, CONSOLE_PANEL_MIN_PX } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			'export { useUiPreferencesStore, persistedUiPreferences, migrateUiPreferences, UI_PREFERENCES_VERSION, resolveRightSlotWidth, resolveRightSlotOccupied, resolveRightSlotYieldsSidebar, resolveDrawnRightSlotPane, EMPTY_RIGHT_SLOT_ROUTE, DEFAULT_RIGHT_SLOT_WIDTH, RUN_PANEL_MIN_PX, BROWSER_PANEL_MIN_PX, CONSOLE_PANEL_MIN_PX } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { CHAT_PANE_MIN_PX, CANVAS_PANE_MIN_PX, canvasDockWidth, resolveSidebarLayout, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_COLLAPSED_WIDTH, SIDEBAR_DOCK_MIN_PX } from "./src/renderer/src/features/chat/chat-sidebar-layout";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -59,10 +59,7 @@ const {
 	resolveRightSlotYieldsSidebar,
 	resolveDrawnRightSlotPane,
 	EMPTY_RIGHT_SLOT_ROUTE,
-	DEFAULT_CANVAS_WIDTH,
-	DEFAULT_RUN_PANEL_WIDTH,
-	DEFAULT_BROWSER_PANEL_WIDTH,
-	DEFAULT_CONSOLE_PANEL_WIDTH,
+	DEFAULT_RIGHT_SLOT_WIDTH,
 	RUN_PANEL_MIN_PX,
 	BROWSER_PANEL_MIN_PX,
 	CONSOLE_PANEL_MIN_PX,
@@ -110,24 +107,46 @@ test("a dragged width is what every pane renders: switching surfaces stops resiz
 	);
 });
 
-test("unset opens each pane at its own seed, so a fresh profile is unchanged", () => {
-	assert.equal(
-		resolveRightSlotWidth(ROW, withPane("run", 0)),
-		DEFAULT_RUN_PANEL_WIDTH,
+test("unset opens every pane at the ONE default, so switching panes never re-sizes the slot (#872 follow-up)", () => {
+	// The defect: with nothing dragged, run opened at 420, browser at 640, the
+	// console at 796 and the canvas at 800, so the slot (and the chat column
+	// beside it) moved on every switch. One number now, for the three panes
+	// that draw it as-is.
+	const values = ["run", "browser", "console"].map((pane) =>
+		resolveRightSlotWidth(ROW, withPane(pane, 0)),
 	);
-	assert.equal(
-		resolveRightSlotWidth(ROW, withPane("browser", 0)),
-		DEFAULT_BROWSER_PANEL_WIDTH,
+	assert.deepEqual(values, [
+		DEFAULT_RIGHT_SLOT_WIDTH,
+		DEFAULT_RIGHT_SLOT_WIDTH,
+		DEFAULT_RIGHT_SLOT_WIDTH,
+	]);
+	// 640 is the number the browser already shipped and 80 console columns at the
+	// shipped face (`console-pane.test.mjs` pins the column arithmetic); stated
+	// here so a retune is a visible edit to a test, not a drift.
+	assert.equal(DEFAULT_RIGHT_SLOT_WIDTH, 640);
+	// The canvas and the asks drawer start from the same default and are then
+	// capped by the dock (560 at this row), so they are unchanged in practice.
+	for (const pane of ["canvas", "ask"]) {
+		assert.equal(
+			resolveRightSlotWidth(ROW, withPane(pane, 0)),
+			Math.min(DEFAULT_RIGHT_SLOT_WIDTH, canvasDockWidth(ROW)),
+		);
+		assert.equal(resolveRightSlotWidth(ROW, withPane(pane, 0)), 560);
+	}
+});
+
+test("the one default is still bounded by the row: the conversation's floor wins (#872 follow-up)", () => {
+	// A row that cannot host 640 beside the 480 chat floor gives the pane the
+	// leftover, identically for the three panes - the default is a preference.
+	const row = CHAT_PANE_MIN_PX + 560;
+	const values = ["run", "browser", "console"].map((pane) =>
+		resolveRightSlotWidth(row, withPane(pane, 0)),
 	);
+	assert.deepEqual(values, [560, 560, 560]);
+	// Before the row is measured (0) the preference is the honest answer.
 	assert.equal(
-		resolveRightSlotWidth(ROW, withPane("console", 0)),
-		DEFAULT_CONSOLE_PANEL_WIDTH,
-	);
-	// The canvas's old 450 zero-read is retired with the four slots: unset is the
-	// fresh-profile 800, capped by the dock like any dragged width.
-	assert.equal(
-		resolveRightSlotWidth(ROW, withPane("canvas", 0)),
-		Math.min(DEFAULT_CANVAS_WIDTH, canvasDockWidth(ROW)),
+		resolveRightSlotWidth(0, withPane("run", 0)),
+		DEFAULT_RIGHT_SLOT_WIDTH,
 	);
 });
 
@@ -255,15 +274,15 @@ test("the drawable half is untouched: a pane the route mounts still holds the sl
 	// the column would be no better than the first.
 	assert.equal(
 		resolveRightSlotWidth(ROW, claimed("run", route(true, true, true))),
-		DEFAULT_RUN_PANEL_WIDTH,
+		DEFAULT_RIGHT_SLOT_WIDTH,
 	);
 	assert.equal(
 		resolveRightSlotWidth(ROW, claimed("canvas", route(true, false, false))),
-		Math.min(DEFAULT_CANVAS_WIDTH, canvasDockWidth(ROW)),
+		Math.min(DEFAULT_RIGHT_SLOT_WIDTH, canvasDockWidth(ROW)),
 	);
 	assert.equal(
 		resolveRightSlotWidth(ROW, claimed("ask", route(true, false, true))),
-		Math.min(DEFAULT_CANVAS_WIDTH, canvasDockWidth(ROW)),
+		Math.min(DEFAULT_RIGHT_SLOT_WIDTH, canvasDockWidth(ROW)),
 	);
 	// The fleet drawer's home is the shell, which every route has - it needs no
 	// conversation, and it is drawable even where the chat surface is not.
@@ -272,7 +291,7 @@ test("the drawable half is untouched: a pane the route mounts still holds the sl
 			ROW,
 			claimed("ask", route(false, false, false), "fleet"),
 		),
-		Math.min(DEFAULT_CANVAS_WIDTH, canvasDockWidth(ROW)),
+		Math.min(DEFAULT_RIGHT_SLOT_WIDTH, canvasDockWidth(ROW)),
 	);
 	assert.equal(
 		resolveRightSlotOccupied(claimed("run", route(true, true, true))),
@@ -444,14 +463,26 @@ test("the store's setter and reset move the one shared value", () => {
 	assert.equal("consolePanelWidth" in persisted, false);
 });
 
+/*
+ * THE FOUR v0 DEFAULTS, AS LITERALS. They are the numbers a v0 build stored for a
+ * slot nobody dragged - a fact about the blob's writer - so they are restated here
+ * rather than read from the live store, whose one default (640) is a different
+ * number. A migration that compared against the live default would read every
+ * legacy untouched 420 / 800 / 796 as a drag (#872 follow-up, D5).
+ */
+const V0_DEFAULTS = {
+	canvasWidth: 800,
+	runPanelWidth: 420,
+	browserPanelWidth: 640,
+	consolePanelWidth: 796,
+};
+
 test("a v0 blob seeds the shared width from the first dragged slot", () => {
 	const migrated = migrateUiPreferences(
 		{
 			themeName: "dracula",
-			canvasWidth: DEFAULT_CANVAS_WIDTH,
-			runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
+			...V0_DEFAULTS,
 			browserPanelWidth: 700,
-			consolePanelWidth: DEFAULT_CONSOLE_PANEL_WIDTH,
 		},
 		0,
 	);
@@ -483,10 +514,7 @@ test("a blob with nothing dragged seeds unset, not some default", () => {
 	// opening at its own seed.
 	const migrated = migrateUiPreferences(
 		{
-			canvasWidth: DEFAULT_CANVAS_WIDTH,
-			runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
-			browserPanelWidth: DEFAULT_BROWSER_PANEL_WIDTH,
-			consolePanelWidth: DEFAULT_CONSOLE_PANEL_WIDTH,
+			...V0_DEFAULTS,
 		},
 		0,
 	);
@@ -496,6 +524,32 @@ test("a blob with nothing dragged seeds unset, not some default", () => {
 	assert.equal(
 		migrateUiPreferences({ themeName: "dracula" }, 0).rightSlotWidth,
 		0,
+	);
+});
+
+test("a legacy blob's untouched OLD defaults never read as a drag, whatever the live default is (#872 follow-up, D5)", () => {
+	// The run panel's 420 and the console's 796 are no longer anything the live
+	// store opens at. Were the migration to compare against the live default, a
+	// profile that never dragged anything would have 420 frozen onto all four panes.
+	for (const [key, value] of Object.entries(V0_DEFAULTS)) {
+		// The browser's v0 default IS 640, so for it the cell cannot discriminate
+		// old from new; the other three are the ones that can, and are asserted.
+		if (key !== "browserPanelWidth") {
+			assert.notEqual(
+				value,
+				DEFAULT_RIGHT_SLOT_WIDTH,
+				`${key}: the cell is vacuous if the old default equals the new one`,
+			);
+		}
+		const migrated = migrateUiPreferences({ [key]: value }, 0);
+		assert.equal(migrated.rightSlotWidth, 0, `${key}=${value} is not a drag`);
+	}
+	// And a width the live default happens to equal IS a drag for a slot whose v0
+	// default was something else: a canvas stored at 640 was dragged there.
+	assert.equal(
+		migrateUiPreferences({ canvasWidth: DEFAULT_RIGHT_SLOT_WIDTH }, 0)
+			.rightSlotWidth,
+		DEFAULT_RIGHT_SLOT_WIDTH,
 	);
 });
 
@@ -545,10 +599,8 @@ test("a v0 blob gets both the #677 fold and the chatMeasureWidth drop (#895)", (
 		{
 			themeName: "dracula",
 			chatMeasureWidth: 520,
-			canvasWidth: DEFAULT_CANVAS_WIDTH,
-			runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
+			...V0_DEFAULTS,
 			browserPanelWidth: 700,
-			consolePanelWidth: DEFAULT_CONSOLE_PANEL_WIDTH,
 		},
 		0,
 	);
@@ -617,7 +669,7 @@ test("the asks drawer wears the canvas family's width, and takes the slot alone"
 	);
 	assert.equal(
 		resolveRightSlotWidth(ROW, withPane("ask", 0)),
-		Math.min(DEFAULT_CANVAS_WIDTH, canvasDockWidth(ROW)),
+		Math.min(DEFAULT_RIGHT_SLOT_WIDTH, canvasDockWidth(ROW)),
 	);
 	// Below the dock's own floor the answer is zero and the MODE overlays the
 	// conversation instead (`canvasPaneMode`) - never a negative box with a divider

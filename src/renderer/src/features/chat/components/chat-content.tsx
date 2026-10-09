@@ -35,9 +35,7 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import {
 	BROWSER_PANEL_MIN_PX,
 	CONSOLE_PANEL_MIN_PX,
-	DEFAULT_BROWSER_PANEL_WIDTH,
-	DEFAULT_CONSOLE_PANEL_WIDTH,
-	DEFAULT_RUN_PANEL_WIDTH,
+	DEFAULT_RIGHT_SLOT_WIDTH,
 	EMPTY_RIGHT_SLOT_ROUTE,
 	RUN_PANEL_MIN_PX,
 	resolveRightSlotOccupied,
@@ -90,6 +88,7 @@ import {
 	CHAT_PANE_MIN_PX,
 	canvasDockWidth,
 	canvasPaneMode,
+	rightSlotDividerContract,
 } from "../chat-sidebar-layout";
 import type {
 	DraftPickerDestination,
@@ -673,8 +672,9 @@ const defaultCanvasState = {
 };
 
 /**
- * The run pane's own contract floor, in pixels: the design's 320/420/640 range
- * (`docs/run-sidebar.md` § 8) starts at 320.
+ * The run pane's own contract floor, in pixels: the design's range
+ * (`docs/run-sidebar.md` § 8) is 320..640 and starts at 320 (it used to carry a
+ * 420 default between them; the slot's one default is 640 now).
  *
  * ONE home for that number, because it is the floor of THREE different things:
  * the width the divider lets the user DRAG the pane's preference down to, the
@@ -701,6 +701,16 @@ const defaultCanvasState = {
  * arm's claim true only by accident.
  */
 export const RUN_PANEL_MAX_PX = 640;
+
+/**
+ * The drag ceilings the browser and console separators share: 1200, the range the
+ * two draw-only panes have had since their dividers existed. Named beside the run
+ * pane's 640 because the separator contract builds each pane's announced maximum
+ * from its own ceiling and the row's capacity, so the number is read here rather
+ * than restated at the call site.
+ */
+const BROWSER_PANEL_MAX_PX = 1200;
+const CONSOLE_PANEL_MAX_PX = 1200;
 
 /**
  * The chat column's own floor, in pixels, as a fallback for the measured one.
@@ -1037,8 +1047,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * THE RIGHT SLOT'S ONE WIDTH (#677), declared here because this is the
 		 * first of the four panes to read it and every later cluster below reads
 		 * the same value: one column, one width, whichever pane is on screen.
-		 * `rightSlotWidth` in the store carries the rule (0 = unset, each pane's
-		 * own `DEFAULT_*_WIDTH` is its first-open seed).
+		 * `rightSlotWidth` in the store carries the rule (0 = unset, and unset opens
+		 * every pane at the one `DEFAULT_RIGHT_SLOT_WIDTH`).
 		 */
 		const rightSlotWidth = useUiPreferencesStore((s) => s.rightSlotWidth);
 		const setRightSlotWidth = useUiPreferencesStore((s) => s.setRightSlotWidth);
@@ -1181,15 +1191,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const mentionedFileCount = (canvasState ?? defaultCanvasState)
 			.mentionedFiles.length;
 
-		// The run panel's own SEED, not the canvas's 800: the panes are
-		// deliberately different first-open widths, and an unset slot should land
-		// the run panel on the design's default. Once any pane has been dragged,
-		// the shared width is what every pane renders — that is #677 — held up to
-		// THIS pane's floor so a width dragged from a smaller pane can never draw
-		// this one under its own contract range (review round 1, D2).
+		// The slot's ONE default while nothing has been dragged
+		// (`DEFAULT_RIGHT_SLOT_WIDTH`, #872 follow-up): the run panel opens at the
+		// same width as the browser and the console, so switching panes does not
+		// re-size the slot. Once any pane has been dragged, the shared width is
+		// what every pane renders — that is #677 — held up to THIS pane's floor so
+		// a width dragged from a smaller pane can never draw this one under its own
+		// contract range (review round 1, D2). `resolveRightSlotWidth` reads the
+		// same two inputs for the canvas and for the lane above the row.
 		const effectiveRunPanelWidth = Math.max(
 			RUN_PANEL_MIN_PX,
-			rightSlotWidth === 0 ? DEFAULT_RUN_PANEL_WIDTH : rightSlotWidth,
+			rightSlotWidth === 0 ? DEFAULT_RIGHT_SLOT_WIDTH : rightSlotWidth,
 		);
 
 		/*
@@ -1205,15 +1217,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const setBrowserPaneOpen = useUiPreferencesStore(
 			(s) => s.setBrowserPaneOpen,
 		);
-		// Same seed shape as its neighbours above, and the same reason: an unset
-		// slot should land the browser on the design's 640 (a page's room) rather
-		// than on whichever pane's number happens to be first — and, like them,
-		// held up to this pane's 480 floor: a shared width dragged down from the
-		// run pane's 320 must never draw a page as a mobile column again
-		// (review round 1, D2), and the separator below announces the same 480.
+		// Same shape as the run panel's above, and the same one default — held up
+		// to this pane's 480 floor: a shared width dragged down from the run pane's
+		// 320 must never draw a page as a mobile column again (review round 1, D2),
+		// and the separator below announces the same 480.
 		const effectiveBrowserPanelWidth = Math.max(
 			BROWSER_PANEL_MIN_PX,
-			rightSlotWidth === 0 ? DEFAULT_BROWSER_PANEL_WIDTH : rightSlotWidth,
+			rightSlotWidth === 0 ? DEFAULT_RIGHT_SLOT_WIDTH : rightSlotWidth,
 		);
 
 		/*
@@ -1222,12 +1232,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * trigger and the pane must answer "is it up" from ONE field, or the trigger
 		 * and what is on screen can disagree.
 		 *
-		 * The SEED is that same shape and a different number on purpose: the
-		 * console's default is DERIVED from the measured advance of the shipped mono
-		 * face times the design's 100-column grid (see `DEFAULT_CONSOLE_PANEL_WIDTH`), so
-		 * an unset slot lands the pane on the grid the design names rather than on
-		 * whichever sibling's number happens to be first — and a dragged width, once
-		 * there is one, is the shared one every pane renders (#677).
+		 * The default is that same shape and the same number: the slot's one 640
+		 * (`DEFAULT_RIGHT_SLOT_WIDTH`), which at the shipped face is exactly 80
+		 * columns of the console's grid. The design's 100-column default (796) is
+		 * gone: it drew only at windows past ~1580px, where a row had the room, and
+		 * a dragged width, once there is one, is the shared one every pane renders
+		 * (#677) - so the user can still reach 100 columns by dragging.
 		 */
 		const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
 		/*
@@ -1407,7 +1417,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		);
 		const effectiveConsolePanelWidth = Math.max(
 			CONSOLE_PANEL_MIN_PX,
-			rightSlotWidth === 0 ? DEFAULT_CONSOLE_PANEL_WIDTH : rightSlotWidth,
+			rightSlotWidth === 0 ? DEFAULT_RIGHT_SLOT_WIDTH : rightSlotWidth,
 		);
 
 		/*
@@ -1555,13 +1565,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		/*
 		 * §I's two canvas rules, from the one measured number: the pane DOCKED is
 		 * `min(560, available - 480)`, and where that leaves less than the pane's own
-		 * 400px floor it stops docking and overlays the chat instead. `canvasDocked`
+		 * 400px floor it stops docking and draws at the leftover (`canvasPaneMode`
+		 * states what the `overlay` literal draws today). `canvasDocked`
 		 * is the mode (the divider and `data-canvas-mode` read it); the WIDTH is the
 		 * slot resolver's own answer (`resolveRightSlotWidth`, `ui-preferences-store`),
 		 * which is also what the chrome lane above the row calls — one number for the
 		 * pane's leading edge rather than two that can disagree. The resolver's note
-		 * carries the arithmetic, the overlay case and the unmeasured frame, all three
-		 * of which used to be restated here.
+		 * carries the arithmetic, the stopped-dock case and the unmeasured frame, all
+		 * three of which used to be restated here.
 		 */
 		const canvasDocked =
 			canvasPaneMode(paneRowWidth || Number.MAX_SAFE_INTEGER) === "docked";
@@ -1569,38 +1580,40 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			resolveRightSlotWidth(paneRowWidth, state),
 		);
 		/*
-		 * THE DIVIDER'S CONTRACT, in one place: what the separator announces and
-		 * accepts is what the pane renders.
+		 * THE DIVIDER'S CONTRACT, the shared one now (`rightSlotDividerContract`,
+		 * `chat-sidebar-layout.ts`): what the separator announces and accepts is what
+		 * the pane renders. The browser and console read the same function - they
+		 * derive their capacity from the measured row where this pane measures it from
+		 * its own elements - and their call sites record the defect it fixes there.
 		 *
-		 * `runPanelResizable` is false when the row cannot host even the pane's own
+		 * `runDivider.resizable` is false when the row cannot host even the pane's own
 		 * 320px contract floor — at 1024x673 with the rail expanded the row is 524px
 		 * and the column's 480px floor leaves the pane 44px, so no preference the
 		 * control is allowed to store (320..640) could render as itself. Resizing is
-		 * then not a no-op that lies, it is not offered: the value
-		 * below is the drawn width, the range collapses onto it, and a write is
-		 * refused so the user's stored preference survives intact for a window that
-		 * can honour it. Otherwise the range ends at the capacity, which is what makes
-		 * the stored preference and the drawn width the same number after any drag.
+		 * then not a no-op that lies, it is not offered: the value is the drawn
+		 * width, the range collapses onto it, and a write is refused so the user's
+		 * stored preference survives intact for a window that can honour it.
+		 * Otherwise the range ends at the capacity, which is what makes the stored
+		 * preference and the drawn width the same number after any drag.
 		 */
-		const runPanelResizable = runPanelCapacity >= RUN_PANEL_MIN_PX;
-		const runPanelDividerValue = runPanelResizable
-			? Math.min(
-					Math.max(renderedRunPanelWidth, RUN_PANEL_MIN_PX),
-					runPanelCapacity,
-				)
-			: renderedRunPanelWidth;
+		const runDivider = rightSlotDividerContract({
+			capacity: runPanelCapacity,
+			min: RUN_PANEL_MIN_PX,
+			max: RUN_PANEL_MAX_PX,
+			drawn: renderedRunPanelWidth,
+		});
 		const handleRunPanelWidthChange = useCallback(
 			(width: number) => {
-				if (runPanelCapacity < RUN_PANEL_MIN_PX) return;
+				if (!runDivider.resizable) return;
 				setRightSlotWidth(width);
 			},
-			[runPanelCapacity, setRightSlotWidth],
+			[runDivider.resizable, setRightSlotWidth],
 		);
 		/*
 		 * A RESET IS A DRAG, to the shared width's UNSET state — the separator's
 		 * double-click, and its Enter, both land here — so it goes through the SAME
 		 * clamped write a drag does. Since #677 the reset means "forget the shared
-		 * width": every pane goes back to opening at its own seed, which is the
+		 * width": every pane goes back to opening at the slot's one default, which is the
 		 * only reading of "this pane back to how it opens" that does not hand this
 		 * pane's default to its three siblings. The store's own reset writes the
 		 * preference directly and knows nothing about the row, which is round 2's
@@ -1609,11 +1622,70 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * number the control hands back would be one the pane does not use. Routing
 		 * UNSET through the clamp leaves the stored preference alone in that state —
 		 * the same refusal a drag gets — and forgets it wherever the row can host
-		 * the pane's seed.
+		 * the pane's default.
 		 */
 		const handleRunPanelWidthReset = useCallback(() => {
 			handleRunPanelWidthChange(0);
 		}, [handleRunPanelWidthChange]);
+
+		/*
+		 * THE BROWSER'S AND CONSOLE'S SEPARATORS (D4), on the same contract as the
+		 * block above. THE DEFECT THIS REPLACES: both separators were handed the
+		 * PREFERENCE (`effectiveBrowserPanelWidth`) with `minWidth={480}
+		 * maxWidth={1200}`, so at rows that cannot host the pane's floor - windows
+		 * ~800-1024 once the panel rail takes its 44px - the separator announced
+		 * aria-valuenow=640 / min 480 / max 1200 while the pane was drawn at 220.
+		 * That is the round-2 U6 class the run panel fixed for itself; the contract
+		 * hands over the DRAWN width and a range the row can honour, and the write
+		 * (a drag or the reset) is refused where it cannot.
+		 *
+		 * The capacity is derived from the already-measured `paneRowWidth` - the same
+		 * subtraction the run panel measures from its elements (row minus the
+		 * conversation's floor) - and before the row's first measurement the pane's
+		 * preference stands, the run panel's own convention (its capacity state
+		 * starts there and the first measurement corrects it).
+		 */
+		const browserSlotCapacity =
+			paneRowWidth > 0
+				? Math.max(0, paneRowWidth - CHAT_PANE_MIN_PX)
+				: effectiveBrowserPanelWidth;
+		const browserDivider = rightSlotDividerContract({
+			capacity: browserSlotCapacity,
+			min: BROWSER_PANEL_MIN_PX,
+			max: BROWSER_PANEL_MAX_PX,
+			drawn: Math.min(effectiveBrowserPanelWidth, browserSlotCapacity),
+		});
+		const handleBrowserPanelWidthChange = useCallback(
+			(width: number) => {
+				if (!browserDivider.resizable) return;
+				setRightSlotWidth(width);
+			},
+			[browserDivider.resizable, setRightSlotWidth],
+		);
+		const handleBrowserPanelWidthReset = useCallback(() => {
+			handleBrowserPanelWidthChange(0);
+		}, [handleBrowserPanelWidthChange]);
+
+		const consoleSlotCapacity =
+			paneRowWidth > 0
+				? Math.max(0, paneRowWidth - CHAT_PANE_MIN_PX)
+				: effectiveConsolePanelWidth;
+		const consoleDivider = rightSlotDividerContract({
+			capacity: consoleSlotCapacity,
+			min: CONSOLE_PANEL_MIN_PX,
+			max: CONSOLE_PANEL_MAX_PX,
+			drawn: Math.min(effectiveConsolePanelWidth, consoleSlotCapacity),
+		});
+		const handleConsolePanelWidthChange = useCallback(
+			(width: number) => {
+				if (!consoleDivider.resizable) return;
+				setRightSlotWidth(width);
+			},
+			[consoleDivider.resizable, setRightSlotWidth],
+		);
+		const handleConsolePanelWidthReset = useCallback(() => {
+			handleConsolePanelWidthChange(0);
+		}, [handleConsolePanelWidthChange]);
 
 		const handleChangeActiveDocument = useCallback(
 			(documentId: string) => setSelectedTab(conversationId, documentId),
@@ -2518,9 +2590,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					<>
 						{/*
 						 * THE DIVIDER EXISTS ONLY WHILE THE CANVAS DOCKS (§I). In the overlay mode
-						 * there is nothing drawing a flow boundary to drag: the pane is over the chat
-						 * at a width its own preference decides, so a separator here would be a control
-						 * for a layout that is not on screen.
+						 * there is nothing drawing a flow boundary to drag: the pane has stopped
+						 * docking and draws at the slot's leftover (`canvasPaneMode` carries the
+						 * mode's note), so a separator here would be a control for a layout that is
+						 * not on screen.
 						 */}
 						{canvasDocked && (
 							<ResizableDivider
@@ -2552,10 +2625,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							tourTag="canvas-dock"
 							/*
 							 * THE MODE AS A FACT ON THE ELEMENT, rather than something a reader has to
-							 * infer from a width. §I's two shapes - docked beside the chat, or over it
-							 * once the row cannot give it 400 - are what the driver scene and the capture
-							 * meter assert against, and a mode reverse-engineered from a number is a mode
-							 * a test gets subtly wrong.
+							 * infer from a width. §I's two shapes - docked beside the chat, or stopped
+							 * docking once the row cannot give it 400 - are what the driver scene and
+							 * the capture meter assert against, and a mode reverse-engineered from a
+							 * number is a mode a test gets subtly wrong.
 							 */
 							data-canvas-mode={canvasDocked ? "docked" : "overlay"}
 						>
@@ -2708,7 +2781,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				 * occupant's. The divider takes its own label: two separators named
 				 * "Resize canvas" 8px apart are indistinguishable to a screen reader.
 				 *
-				 * The width range is the design's (320/420/640), narrower than the canvas's
+				 * The width range is the design's (320..640, opening at the slot's one
+				 * default), narrower than the canvas's
 				 * because a roster and a prose transcript do not need a document pane's
 				 * room, and the pane does NOT auto-hide at narrow widths: the operator
 				 * asked for persistence, and a pane that disappears below a breakpoint is
@@ -2717,16 +2791,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				{isRunPanelOpen && runDetails && (
 					<>
 						<ResizableDivider
-							sidebarWidth={runPanelDividerValue}
+							sidebarWidth={runDivider.value}
 							onSidebarWidthChange={handleRunPanelWidthChange}
-							minWidth={
-								runPanelResizable ? RUN_PANEL_MIN_PX : runPanelDividerValue
-							}
-							maxWidth={
-								runPanelResizable
-									? Math.min(RUN_PANEL_MAX_PX, runPanelCapacity)
-									: runPanelDividerValue
-							}
+							minWidth={runDivider.minWidth}
+							maxWidth={runDivider.maxWidth}
 							side="left"
 							onDoubleClick={handleRunPanelWidthReset}
 							label="Resize run details. Double-click resets the shared pane width."
@@ -2802,12 +2870,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				{isBrowserPaneOpen && (
 					<>
 						<ResizableDivider
-							sidebarWidth={effectiveBrowserPanelWidth}
-							onSidebarWidthChange={setRightSlotWidth}
-							minWidth={BROWSER_PANEL_MIN_PX}
-							maxWidth={1200}
+							sidebarWidth={browserDivider.value}
+							onSidebarWidthChange={handleBrowserPanelWidthChange}
+							minWidth={browserDivider.minWidth}
+							maxWidth={browserDivider.maxWidth}
 							side="left"
-							onDoubleClick={restoreDefaultRightSlotWidth}
+							onDoubleClick={handleBrowserPanelWidthReset}
 							label="Resize browser. Double-click resets the shared pane width."
 						/>
 						<PaneSlot
@@ -2844,12 +2912,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				{isConsolePaneOpen && (
 					<>
 						<ResizableDivider
-							sidebarWidth={effectiveConsolePanelWidth}
-							onSidebarWidthChange={setRightSlotWidth}
-							minWidth={CONSOLE_PANEL_MIN_PX}
-							maxWidth={1200}
+							sidebarWidth={consoleDivider.value}
+							onSidebarWidthChange={handleConsolePanelWidthChange}
+							minWidth={consoleDivider.minWidth}
+							maxWidth={consoleDivider.maxWidth}
 							side="left"
-							onDoubleClick={restoreDefaultRightSlotWidth}
+							onDoubleClick={handleConsolePanelWidthReset}
 							label="Resize console. Double-click resets the shared pane width."
 						/>
 						<PaneSlot

@@ -70,7 +70,6 @@ import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigat
 import { apiConfig } from "@shared/config/api-config";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import {
-	DEFAULT_RUN_PANEL_WIDTH,
 	resolveRightSlotWidth,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
@@ -691,7 +690,12 @@ const AppShell: FC<{
 	children?: ReactNode;
 }> = ({
 	records,
-	runPanelWidth = DEFAULT_RUN_PANEL_WIDTH,
+	/*
+	 * 0 is the shared width's UNSET state, i.e. the slot's one default
+	 * (`DEFAULT_RIGHT_SLOT_WIDTH`) - what a profile that never dragged a divider
+	 * sees. It used to be the run panel's own 420 default, stored as if dragged.
+	 */
+	runPanelWidth = 0,
 	rightPane = null,
 	details = deriveRunDetails(runFixtures.bothInFlight()),
 	children,
@@ -1097,8 +1101,8 @@ const SubagentsScene = () => {
 		};
 	}, []);
 	/*
-	 * 480 rather than the 420 default: the run pane IS this row's subject, so it
-	 * takes the wider width, the same one `media-in-conversation` passes.
+	 * 480 rather than the slot's default: the run pane IS this row's subject, so it
+	 * is held at one narrower width, the same one `media-in-conversation` passes.
 	 */
 	return (
 		<AppShell

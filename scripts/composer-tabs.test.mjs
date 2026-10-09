@@ -2625,15 +2625,16 @@ test("the pane's floor is its contract minimum, not the user's preference", () =
 	 * number a second reader - the slot's resolver, which holds the shared
 	 * width up to this pane's floor - and the resolver cannot import the
 	 * component, so the store is the declaration's home. Everything asserted
-	 * against `chat-content.tsx` below stays: the divider's range and
-	 * `runPanelResizable` still consume the imported constant.
+	 * against `chat-content.tsx` below stays: the divider's range now comes from
+	 * the shared `rightSlotDividerContract`, and the contract call still consumes
+	 * the imported constant as its `min`.
 	 */
 	assert.match(prefs, /export const RUN_PANEL_MIN_PX = 320;/);
-	assert.match(
-		content,
-		/minWidth=\{\s*runPanelResizable \? RUN_PANEL_MIN_PX : runPanelDividerValue,?\s*\}/,
-	);
-	assert.match(content, /sidebarWidth=\{runPanelDividerValue\}/);
+	assert.match(content, /min: RUN_PANEL_MIN_PX,/);
+	assert.match(content, /rightSlotDividerContract\(\{/);
+	assert.match(content, /sidebarWidth=\{runDivider\.value\}/);
+	assert.match(content, /minWidth=\{runDivider\.minWidth\}/);
+	assert.match(content, /maxWidth=\{runDivider\.maxWidth\}/);
 	assert.match(slot, /minWidth = 0,/);
 	assert.match(slot, /style=\{\{ minWidth, width \}\}/);
 	assert.doesNotMatch(content, /minWidth: effectiveRunPanelWidth/);
