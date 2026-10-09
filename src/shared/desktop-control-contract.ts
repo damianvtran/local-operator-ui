@@ -625,16 +625,52 @@ export type DesktopAidaState = {
 	session_id: string | null;
 	/** Whether the proactive cadence is paused (R13); flipped by pause/resume. */
 	paused: boolean;
-	/** Whether the first-run greeting has been delivered (PR 2's gate). */
+	/**
+	 * Whether the first-run greeting has been DELIVERED (PR 2's gate).
+	 *
+	 * It used to mean "armed"; on the ledger's backend it is true only once a
+	 * message actually reached the conversation, so a `greeted: false` after a
+	 * `greet` no longer means "she has not been asked yet" - `greeting_state` is
+	 * the field for that (backend #2071's round-1 addendum). Read it for
+	 * settledness, which is the one question it still answers.
+	 */
 	greeted: boolean;
+	/**
+	 * The greeting ledger's state word: ``owed`` / ``requested`` / ``armed`` /
+	 * ``delivered`` / ``skipped``.
+	 *
+	 * ON THE READ AS WELL AS THE POST (backend #2071 head ``dbe513397e``). A
+	 * surface that has not asked for anything yet - step 3 of the wizard, before
+	 * its button is pressed - can only learn it here, and it is what decides
+	 * whether this install still owes the user a hello from her: `owed` says she
+	 * has never been offered, `delivered`/`skipped` say she will not speak first
+	 * again. Absent on a backend that predates the ledger.
+	 */
+	greeting_state?: string | null;
+	/**
+	 * Whether a LIVE session on this machine owns her rows, so a call's effect is
+	 * carried out by that owner rather than here — the greeting arrives in the
+	 * other window. A fact about WHO acts next, never an error: every answer
+	 * carrying it is a 200 and the operation is in effect.
+	 */
+	held?: boolean | null;
 };
 
 /**
  * The POST's answer: the freeze's subset of the state — `session_id`, `paused`,
- * `greeted`. `enabled` is deliberately not typed here even though the
- * implemented route carries it (agent review round 1, NIT-1): extra fields are
- * ignored at this boundary, and a control that inferred the install's switch
- * from "the call succeeded" would be answering a question nobody asked it —
- * which is why the field is read from the READ wherever the UI needs it.
+ * `greeted`, and the ledger's two fields, which the READ now carries as well.
+ * `enabled` is deliberately not typed here even though the implemented route
+ * carries it (agent review round 1, NIT-1): extra fields are ignored at this
+ * boundary, and a control that inferred the install's switch from "the call
+ * succeeded" would be answering a question nobody asked it — which is why the
+ * field is read from the READ wherever the UI needs it.
+ *
+ * BOTH LEDGER FIELDS ARE OPTIONAL, and that is the contract rather than caution:
+ * the route defaulted them (``greeting_state="owed"``, ``held=False``) so a
+ * backend older than the ledger answers the same three fields it always did, and
+ * this client must render that payload exactly as it did before — the tolerant
+ * path every reader of them keeps. Read them off the payload, never out of a
+ * refusal's prose — the same rule the error path follows
+ * (`aidaControlFailureCopy`).
  */
 export type DesktopAidaControlResult = Omit<DesktopAidaState, "enabled">;

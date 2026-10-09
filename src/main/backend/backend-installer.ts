@@ -18,16 +18,21 @@ import {
 	dialog as electronDialog,
 	ipcMain,
 } from "electron";
+import RUNTIME_LAYOUT from "../../shared/bundled-runtime-layout.json";
 import type {
 	InstallFailure,
 	InstallPhase,
 	InstallProgressPayload,
+	InstallSubProgress,
 } from "../../shared/install-progress";
 import {
+	EMPTY_SUB_PROGRESS,
 	INSTALL_IPC_CHANNELS,
 	INSTALL_WINDOW_CANVAS,
+	foldInstallLine,
 	installFailureReason,
 	installFailureSentence,
+	installPlatform,
 	parseInstallMarker,
 	splitLines,
 } from "../../shared/install-progress";
@@ -230,6 +235,18 @@ export class BackendInstaller {
 	 */
 	private lastPhase: InstallPhase | null = null;
 	private failureOnScreen = false;
+	/*
+	 * The clock and the sub-progress the window's step line is computed from
+	 * (first-run onboarding, U8/Q5/D9): when this attempt started, when the
+	 * current phase was announced, and what the install child has said inside
+	 * it. Main-process instants rather than the renderer's, because the window
+	 * mounts AFTER the first phase on macOS and would otherwise time the run from
+	 * its own first paint. Reset per attempt (`startAttemptClock`), so a Retry's
+	 * elapsed starts at zero rather than counting the failed run.
+	 */
+	private attemptStartedAt = Date.now();
+	private phaseStartedAt = Date.now();
+	private subProgress: InstallSubProgress | null = null;
 
 	/**
 	 * Record a phase announced by the preparation layer, and pass it on when there is
@@ -245,7 +262,44 @@ export class BackendInstaller {
 	private rememberInstallPhase(phase: InstallPhase): void {
 		if (phase === this.lastPhase) return;
 		this.lastPhase = phase;
-		this.sendInstallProgress({ kind: "phase", phase });
+		this.phaseStartedAt = Date.now();
+		this.subProgress = null;
+		this.sendPhase();
+	}
+
+	/** The current phase with its timing, the one shape every phase send takes. */
+	private sendPhase(phase: InstallPhase | null = this.lastPhase): void {
+		this.sendInstallProgress({
+			kind: "phase",
+			phase,
+			startedAt: this.attemptStartedAt,
+			phaseStartedAt: this.phaseStartedAt,
+			platform: installPlatform(process.platform),
+			sub: this.subProgress,
+		});
+	}
+
+	/** A new attempt: the first run, or a Retry from the failure state. */
+	private startAttemptClock(): void {
+		this.attemptStartedAt = Date.now();
+		this.phaseStartedAt = this.attemptStartedAt;
+		this.subProgress = null;
+	}
+
+	/**
+	 * Fold the install child's output into the `components` sub-progress, and
+	 * send only when a line actually moved it. Read from BOTH streams: uv writes
+	 * its `Resolved`/`Downloading` narration to stderr, pip writes `Collecting` to
+	 * stdout. Outside `components` nothing is counted - a `Resolved` line from
+	 * `uv venv --seed` is the seed, not the package install.
+	 */
+	private foldSubProgress(lines: string[]): void {
+		if (this.lastPhase !== "components") return;
+		let next = this.subProgress ?? EMPTY_SUB_PROGRESS;
+		for (const line of lines) next = foldInstallLine(next, line);
+		if (next === (this.subProgress ?? EMPTY_SUB_PROGRESS)) return;
+		this.subProgress = next;
+		this.sendPhase();
 	}
 
 	/**
@@ -552,6 +606,7 @@ export class BackendInstaller {
 	 * in-window failure state.
 	 */
 	async install(show: WindowShow): Promise<boolean> {
+		this.startAttemptClock();
 		try {
 			for (;;) {
 				this.runActive = true;
@@ -1157,7 +1212,7 @@ export class BackendInstaller {
 
 		const replayHandler = () => {
 			if (this.lastPhase === null) return;
-			this.sendInstallProgress({ kind: "phase", phase: this.lastPhase });
+			this.sendPhase();
 		};
 
 		const retryHandler = () => {
@@ -1186,10 +1241,8 @@ export class BackendInstaller {
 			 * user who has just pressed the only button on the screen would watch
 			 * nothing happen and press it again.
 			 */
-			this.sendInstallProgress({
-				kind: "phase",
-				phase: this.lastPhase ?? "python",
-			});
+			this.startAttemptClock();
+			this.sendPhase(this.lastPhase ?? "python");
 			this.retryFromWindow();
 		};
 
@@ -1479,6 +1532,8 @@ export class BackendInstaller {
 			 * the stdout handler so the exit handler can flush what is left.
 			 */
 			let markerCarry = "";
+			/** The same, for stderr: uv's progress narration arrives there. */
+			let subCarry = "";
 			const settle = (ok: boolean, exitCode: number | null) => {
 				if (settled) return;
 				settled = true;
@@ -1526,6 +1581,14 @@ export class BackendInstaller {
 				 * whichever attempt ran last.
 				 */
 				env[VENV_PATH_ENV] = venvPath;
+				/*
+				 * The interpreter version a script may PROVISION when it was handed none
+				 * (today the Windows script's uv arm; first-run onboarding Q4). Read from
+				 * the one runtime layout definition the macOS seed is built from, so the
+				 * two platforms install the same Python and a bump moves both - a version
+				 * spelled in the PowerShell would be a second pin to forget.
+				 */
+				env.LOCAL_OPERATOR_PYTHON_VERSION = RUNTIME_LAYOUT.python.version;
 				// Hand down Electron's actual paths, not an assumed HOME, including
 				// the scripts' hardcoded support boundary during isolated native tests.
 				env.HOME = app.getPath("home");
@@ -1618,6 +1681,7 @@ export class BackendInstaller {
 							const phase = parseInstallMarker(line);
 							if (phase !== null) this.rememberInstallPhase(phase);
 						}
+						this.foldSubProgress(split.lines);
 						console.log(`Installation stdout: ${output}`);
 						logger.info(
 							`Installation stdout: ${output}`,
@@ -1630,6 +1694,10 @@ export class BackendInstaller {
 					this.installProcess.stderr.on("data", (data) => {
 						const output = data.toString();
 						capturedErrors += output;
+						// Sub-progress only: markers are stdout's alone (see above).
+						const split = splitLines(subCarry, output);
+						subCarry = split.carry;
+						this.foldSubProgress(split.lines);
 						console.error(`Installation stderr: ${output}`);
 						logger.error(
 							`Installation stderr: ${output}`,

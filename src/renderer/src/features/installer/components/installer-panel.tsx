@@ -3,13 +3,18 @@ import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { Check, CircleAlert } from "lucide-react";
 import type React from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+	INSTALL_EXPECTATION,
 	INSTALL_PHASES,
 	INSTALL_PHASE_DETAILS,
 	INSTALL_PHASE_LABELS,
 	type InstallFailure,
 	type InstallPhase,
+	type InstallTiming,
+	formatElapsed,
+	installEta,
+	installSubProgressLine,
 } from "../../../../../shared/install-progress";
 
 /**
@@ -56,9 +61,11 @@ import {
  * WHAT THIS PANEL KNOWS, AND WHAT IT THEREFORE SHOWS. The install reports stage
  * BOUNDARIES and nothing else: the scripts print one marker per phase
  * (`shared/install-progress.ts`), and the gap between two of them is the
- * expected shape rather than a stall. No byte count and no time estimate cross
- * that boundary at all. So the only determinate thing on this screen is how many
- * stages are behind us, and the rail is drawn to say exactly that and no more: a
+ * expected shape rather than a stall. No byte count crosses that boundary, so
+ * the only determinate PROGRESS on this screen is how many stages are behind us
+ * (the time estimate in the status line is a measured prior, said as "about",
+ * and the sub-progress is counts - see `installStatusLine`), and the rail is
+ * drawn to say exactly that and no more: a
  * connector is `accent` only when the step above it is COMPLETE, so the fill can
  * only ever end at a stage boundary - there is no state in which it stops
  * part-way through one. Within a stage the panel is indeterminate by
@@ -76,9 +83,60 @@ export type InstallPanelProps = {
 	phase: InstallPhase | null;
 	installed: boolean;
 	failure: InstallFailure | null;
+	/**
+	 * The run's clock and sub-progress, when the main process sent them. Null is
+	 * an older main process (or the instant before the first payload), and the
+	 * panel then shows the step counter alone rather than a clock it cannot
+	 * stand behind.
+	 */
+	timing?: InstallTiming | null;
+	/**
+	 * The instant the panel reads as "now". Defaults to a ticking `Date.now()`;
+	 * a story or a test pins it so the frame is reproducible.
+	 */
+	now?: number;
 	onCancel: () => void;
 	onRetry: () => void;
 };
+
+/**
+ * The status line over the rail: `Step 2 of 4 · 0:07 · about 10 s left`.
+ *
+ * WHY IT EXISTS (first-run onboarding, U8/Q5/D10). The rail says WHERE the run
+ * is and nothing about how long, and the line that used to answer that said
+ * "a few minutes" for an install that now measures 15-25 s - so a user walked
+ * away from a screen that finished before they came back, or watched one that
+ * gave no sign of moving. The step count is the rail's own fact, in words; the
+ * clock is the main process's (see `InstallTiming`); the estimate is the
+ * measured per-OS baselines and turns into "taking longer than usual" rather
+ * than counting past zero.
+ *
+ * Tabular figures so the ticking clock does not move the line sideways.
+ */
+export function installStatusLine(
+	phase: InstallPhase | null,
+	timing: InstallTiming | null | undefined,
+	now: number,
+): string | null {
+	if (phase === null) return null;
+	const step = `Step ${INSTALL_PHASES.indexOf(phase) + 1} of ${INSTALL_PHASES.length}`;
+	if (!timing) return step;
+	const elapsed = formatElapsed(now - timing.startedAt);
+	const eta = installEta(timing.platform, phase, now - timing.phaseStartedAt);
+	return `${step} \u00b7 ${elapsed} elapsed \u00b7 ${eta}`;
+}
+
+/** One tick a second while the run is live, so the clock moves. */
+function useTick(live: boolean, pinned: number | undefined): number {
+	const [now, setNow] = useState(() => pinned ?? Date.now());
+	useEffect(() => {
+		if (pinned !== undefined || !live) return;
+		setNow(Date.now());
+		const id = window.setInterval(() => setNow(Date.now()), 1000);
+		return () => window.clearInterval(id);
+	}, [live, pinned]);
+	return pinned ?? now;
+}
 
 /** How one phase row reads: its marker and its ink both follow from this. */
 type PhaseState = "done" | "active" | "waiting" | "failed";
@@ -413,10 +471,20 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 	phase,
 	installed,
 	failure,
+	timing,
+	now: pinnedNow,
 	onCancel,
 	onRetry,
 }) => {
 	const reasonRef = useRef<HTMLParagraphElement | null>(null);
+	const running = !installed && failure === null;
+	const now = useTick(running && Boolean(timing), pinnedNow);
+	const statusLine = running ? installStatusLine(phase, timing, now) : null;
+	/* Only the long step has sub-progress, and only once the child said something. */
+	const subLine =
+		running && phase === "components"
+			? installSubProgressLine(timing?.sub)
+			: null;
 
 	/*
 	 * Move the reader to the reason when the install fails.
@@ -515,11 +583,47 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 			{!failure && (
 				<p
 					className={cn(
-						"mt-2 text-body text-ink-muted",
+						/*
+						 * DEMOTED, so the live line above it reads first (design round 1, D2):
+						 * this sentence is identical on every frame, and it used to hold the
+						 * body size and `ink-muted` while the step/clock/estimate below sat a
+						 * rank under it at `text-meta`/`ink-dim`. Liveliness sets the rank now
+						 * - the status line takes this line's old weight and this one steps
+						 * down - rather than length.
+						 */
+						"mt-2 text-body text-ink-dim",
 						installed && "invisible",
 					)}
 				>
-					This takes a few minutes the first time, on this computer.
+					{INSTALL_EXPECTATION}
+				</p>
+			)}
+			{/*
+			 * THE STEP, THE CLOCK AND THE ESTIMATE (see `installStatusLine`). One meta
+			 * line, always in the flow while the panel is not failed, so the column
+			 * does not move when the first phase arrives or when the run finishes - the
+			 * same reserved-height discipline the expectation line above keeps.
+			 * `aria-hidden`: it changes every second, and the live region below
+			 * already announces each step; a ticking clock read aloud is noise.
+			 */}
+			{!failure && (
+				<p
+					aria-hidden="true"
+					data-install-status=""
+					className={cn(
+						/*
+						 * The rank the requirement asks for (design round 1, D2): the moved
+						 * fact - step, elapsed, estimate - is the one the operator asked the
+						 * installer to broadcast, and it sat a size and a colour below the
+						 * static sentence above it. `text-body-sm text-ink-muted` is where
+						 * that sentence used to be, and it is still under the rail's row ink
+						 * so the rail stays the map.
+						 */
+						"mt-1 min-h-5 text-body-sm text-ink-muted tabular-nums",
+						!statusLine && "invisible",
+					)}
+				>
+					{statusLine ?? "\u00a0"}
 				</p>
 			)}
 
@@ -556,6 +660,18 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 				>
 					{liveLabel && <span className="sr-only">{liveLabel}: </span>}
 					{liveDetail}
+					{/*
+					 * The sub-progress, on its own line inside the reserved two: uv's own
+					 * counts (`3 large downloads finished`), never a fraction it does not
+					 * have (D9, and D3 removed the one that could grow). Hidden from the
+					 * live region's announcement for the same reason as the clock - it
+					 * moves several times a second.
+					 */}
+					{subLine && (
+						<span aria-hidden="true" className="block tabular-nums">
+							{subLine}
+						</span>
+					)}
 				</output>
 			)}
 
