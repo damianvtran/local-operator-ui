@@ -1069,7 +1069,12 @@ test("a live artifact frame maps the same way as the durable row", () => {
 	assert.equal(tool.images[0].sourceUrl, null);
 });
 
-test("video artifacts ride the same array with their kind and metadata", () => {
+test("video artifacts do not enter the view array yet", () => {
+	// The render path is kind-blind: a video entry would be fetched by the
+	// image pipeline and fail `<img>` decode into a false "unavailable"
+	// receipt (review round 1, F2). The model still carries the block — this
+	// array mounts PICTURES only until players land, the same call the
+	// harness/TUI half makes.
 	const video = {
 		kind: "video",
 		content_type: "video/mp4",
@@ -1097,10 +1102,114 @@ test("video artifacts ride the same array with their kind and metadata", () => {
 		cursor_missing: false,
 	});
 	const tool = state.records.find((r) => r.kind === "tool");
-	assert.equal(tool.images.length, 1);
-	assert.equal(tool.images[0].kind, "video");
-	assert.equal(tool.images[0].durationS, 6.5);
-	assert.equal(tool.images[0].mimeType, "video/mp4");
+	assert.equal(tool.images.length, 0);
+});
+
+test("a durable row's metadata lands over a bare live frame", () => {
+	// Review round 1, F1: the coalesce pinned ANY non-empty live array, so a
+	// producer that only knew kind + digest at emit time never had its
+	// durable dimensions/name arrive — the enrichment must win when it lands.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-gen",
+			tool_name: "generate_image",
+			result: {
+				content: [
+					{
+						kind: "image",
+						content_type: "image/png",
+						attachment: DIGEST,
+					},
+				],
+				details: {},
+			},
+			duration_s: 1,
+		},
+		1,
+	);
+	const live = state.records.find((r) => r.kind === "tool");
+	assert.equal(live.images.length, 1);
+	assert.equal(live.images[0].width, null, "the live frame knew no dimensions");
+
+	state = applyHistoryPage(state, {
+		entries: [
+			{
+				id: "t-art-durable",
+				ts: 1,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-gen",
+					tool_name: "generate_image",
+					content: [durableArtifact],
+					provider_payload: { details: {} },
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const merged = state.records.filter((r) => r.kind === "tool");
+	assert.equal(merged.length, 1, "the durable row replaces, never duplicates");
+	assert.equal(merged[0].images[0].width, 1024, "the durable metadata landed");
+	assert.equal(merged[0].images[0].name, "flux-dev-01.png");
+});
+
+test("a bare replay never demotes a metadata-carrying row", () => {
+	// The other direction of the same rule (F1): a replayed end whose fields
+	// the relay dropped must not strip what the row already shows.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-gen",
+			tool_name: "generate_image",
+			result: {
+				content: [
+					{
+						kind: "image",
+						content_type: "image/png",
+						attachment: DIGEST,
+						width: 640,
+						height: 360,
+						name: "rich.png",
+					},
+				],
+				details: {},
+			},
+			duration_s: 1,
+		},
+		1,
+	);
+	const rich = state.records.find((r) => r.kind === "tool");
+	assert.equal(rich.images[0].name, "rich.png");
+
+	// The same call settles again from a relay that lost the metadata.
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-gen",
+			tool_name: "generate_image",
+			result: {
+				content: [
+					{ kind: "image", content_type: "image/png", attachment: DIGEST },
+				],
+				details: {},
+			},
+			duration_s: 1,
+		},
+		2,
+	);
+	const after = state.records.find((r) => r.kind === "tool");
+	assert.equal(
+		after.images[0].name,
+		"rich.png",
+		"metadata must not be demoted",
+	);
+	assert.equal(after.images[0].width, 640);
 });
 
 test("a bare `kind` with no media fact is not an artifact", () => {
