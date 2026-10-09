@@ -1,14 +1,12 @@
 # Local Operator Backend Installation Script for Windows
-# This script installs pyenv-win, Python 3.12, and sets up a virtual environment for the Local Operator backend.
+# This script finds or installs Python 3.12+ inside the app's own folder and sets up a virtual environment for the Local Operator backend.
 
 # Configuration
 $AppName = "Local Operator"
-$PythonVersion = "3.12.0"
 $VenvName = "local-operator-venv"
 $AppDataDir = "$env:APPDATA\\$AppName"
 $VenvPath = "$AppDataDir\\$VenvName"
 $LogFile = "$AppDataDir\\backend-install-shell.log"
-$PyenvDir = "$env:USERPROFILE\\.pyenv"
 
 # Which environment this installs into - the app's decision, handed in rather
 # than re-derived. A packaged install and an unpackaged one must not share an
@@ -54,10 +52,10 @@ Write-Output "$(Get-Date): Starting Local Operator backend installation..."
 # into `$AppDataDir\bin`. Nothing in the app or in `local-operator` ever executed
 # it. Tooling a task actually needs is acquired later, on demand, through the
 # app's Console with the user's approval; this script's job is the environment
-# below and nothing else. (pyenv-win's source archive below is the one remaining
-# third-party fetch, and it is a source archive the Windows install cannot do
-# without - see `scripts/install-scripts-network.test.mjs`, which keeps that list
-# down to the fetches each platform genuinely needs.)
+# below and nothing else. The script itself names no download URL at all now:
+# the one third-party fetch it used to make, pyenv-win's unpinned source archive,
+# is gone (see "Which Python the environment is built on" below), and
+# `scripts/install-scripts-network.test.mjs` keeps it that way.
 
 # Function to check if a command exists
 function Test-CommandExists {
@@ -73,167 +71,82 @@ function Test-CommandExists {
     }
 }
 
-# Install pyenv-win if not installed
-if (-not (Test-Path $PyenvDir)) {
-    Write-Output "Installing pyenv-win..."
-    
-    # Create temporary directory
-    $TempDir = "$env:TEMP\\pyenv-win"
-    if (Test-Path $TempDir) {
-        Remove-Item -Path $TempDir -Recurse -Force
-    }
-    New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
-    
-    # Download and extract pyenv-win
-    $PyenvZip = "$TempDir\\pyenv-win.zip"
-    # Bounded, and the bound FAILS LOUDLY. An unbounded request here holds a
-    # first-run install open behind the progress bar forever on a black-hole
-    # network; and without -ErrorAction Stop a fired -TimeoutSec is a
-    # NON-TERMINATING error, so the script would walk straight into
-    # Expand-Archive with an absent or partial zip and report an archive error
-    # instead of "the download timed out". The partial file is removed in the
-    # failure branch so a later run cannot expand what this one failed to fetch
-    # (the next run clears $TempDir before it downloads at all, which is the
-    # `if (Test-Path $TempDir) { Remove-Item ... }` above - named rather than
-    # cited by line, because a line number in a script that keeps changing is
-    # what a stale citation is made of).
-    # 120 seconds is a payload bound rather than the 30-second stall bound the PyPI
-    # probes use: this downloads a source archive instead of answering an API
-    # call, so it only has to stop an indefinite hang.
-    #
-    # WHICH BOUND `-TimeoutSec` ACTUALLY IS DEPENDS ON THE POWERSHELL, and that is
-    # a trap worth naming because the two paths differ here. The app spawns this
-    # script with `powershell.exe` (Windows PowerShell 5.1, see
-    # backend-installer.ts), where -TimeoutSec is the REQUEST's timeout - 120
-    # seconds to complete the transfer. On PowerShell 7.4+ it was renamed to
-    # -OperationTimeoutSeconds and -TimeoutSec survives only as an ALIAS of
-    # -ConnectionTimeoutSeconds, i.e. a connect bound, so on a 7.x host (the CI
-    # runner is one) a mirror that accepts and then stalls is not ended by this.
-    # Do not "fix" that by adding the 7.x spelling: 5.1 does not know
-    # -OperationTimeoutSeconds, and an unknown parameter is a binding error which
-    # the catch below turns into `exit 1` on every install. The version-agnostic
-    # answer is a bound on the transfer itself (a BITS job or a size/rate check),
-    # which is a larger change than this one and is recorded rather than made.
+# --- Which Python the environment is built on ---------------------------------
+#
+# WHAT THIS REPLACED (first-run onboarding, Q4). The script used to download
+# pyenv-win's `master.zip` - an UNPINNED branch head, so every install ran
+# whatever that repository's default branch said that day - install Python
+# 3.12.0 through it, and persist User-scope `PYENV`/`PYENV_HOME` plus two `PATH`
+# prepends on the user's account: changes to the machine outside this app's own
+# folder, before the step most likely to fail. It also ignored `PYTHON_BIN`, the
+# interpreter the app resolves and hands every platform's script. It cost ~77 s
+# of the Windows CI run before the package install started.
+#
+# THE ORDER NOW, first usable wins, and every arm stays inside this app's folder:
+#
+#  1. `PYTHON_BIN` - the app's own answer (`findPython` in backend-installer.ts),
+#     honoured exactly as the macOS and Linux scripts honour it. On an existing
+#     install that is the pyenv-win 3.12.0 it already has, so an upgrade does not
+#     move an environment it does not need to.
+#  2. The bundled uv's own managed Python, at the version the app pins
+#     (`LOCAL_OPERATOR_PYTHON_VERSION`, from `bundled-runtime-layout.json` - the
+#     same definition the macOS seed is built from, so the two platforms run the
+#     same interpreter). uv verifies the download against checksums compiled into
+#     the pinned uv, installs it under `$AppDataDir\python`, and `--no-bin`
+#     `--no-registry` keep it off PATH and out of the registry: nothing outside
+#     the folder changes.
+#  3. A Python 3.12+ already on this process's PATH (`py -3`, then `python`) - the
+#     shape of a dev checkout or an artifact built before uv was bundled.
+#
+# None of them writes to the user's environment variables.
+# THE VERSION IS NOT SPELLED HERE (code review round 1, R5). It used to fall
+# back to a literal "3.14.7", which is a second copy of
+# `src/shared/bundled-runtime-layout.json`'s `python.version` - exactly the
+# duplication this file's own note above forbids, and nothing would have caught
+# it drifting. The app always sets the variable; a hand-run that does not gets a
+# loud sentence naming what to set, inside the branch that actually needs it (a
+# machine whose PYTHON_BIN or PATH Python answers never reads it at all).
+$PythonVersion = $env:LOCAL_OPERATOR_PYTHON_VERSION
+$ManagedPythonDir = "$AppDataDir\python"
+
+# Is this a Python 3.12+ executable we can run? The floor is local-operator's own
+# `requires-python`; an older interpreter fails the install much later with
+# pip's "from versions: none", which is the least helpful place to learn it.
+function Test-PythonUsable {
+    param ($Candidate)
+    if (-not $Candidate) { return $false }
     try {
-        Invoke-WebRequest -Uri "https://github.com/pyenv-win/pyenv-win/archive/master.zip" -OutFile $PyenvZip -TimeoutSec 120 -ErrorAction Stop
+        & $Candidate -c "import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)" 2>$null | Out-Null
+        return ($LASTEXITCODE -eq 0)
     } catch {
-        Remove-Item -Path $PyenvZip -Force -ErrorAction SilentlyContinue
-        Write-Error "Failed to download pyenv-win from https://github.com/pyenv-win/pyenv-win/archive/master.zip within 120 seconds: $($_.Exception.Message)"
-        exit 1
-    }
-    # -ErrorAction Stop for the same reason as the download: a truncated archive
-    # must fail here rather than half-copy into $PyenvDir.
-    Expand-Archive -Path $PyenvZip -DestinationPath $TempDir -ErrorAction Stop
-    
-    # Create .pyenv directory
-    New-Item -ItemType Directory -Path $PyenvDir -Force | Out-Null
-    
-    # Copy pyenv-win files
-    Copy-Item -Path "$TempDir\\pyenv-win-master\\*" -Destination $PyenvDir -Recurse
-    
-    # Set environment variables
-    [System.Environment]::SetEnvironmentVariable("PYENV", "$PyenvDir\\pyenv-win", "User")
-    [System.Environment]::SetEnvironmentVariable("PYENV_HOME", "$PyenvDir\\pyenv-win", "User")
-    
-    # Update PATH - ensure both bin and shims are added separately for better compatibility
-    $Path = [System.Environment]::GetEnvironmentVariable("PATH", "User")
-    $PyenvBinPath = "$PyenvDir\\pyenv-win\\bin"
-    $PyenvShimsPath = "$PyenvDir\\pyenv-win\\shims"
-    
-    # Add bin path if not already in PATH
-    if ($Path -notlike "*$PyenvBinPath*") {
-        [System.Environment]::SetEnvironmentVariable("PATH", "$PyenvBinPath;$Path", "User")
-        $Path = [System.Environment]::GetEnvironmentVariable("PATH", "User")
-    }
-    
-    # Add shims path if not already in PATH
-    if ($Path -notlike "*$PyenvShimsPath*") {
-        [System.Environment]::SetEnvironmentVariable("PATH", "$PyenvShimsPath;$Path", "User")
-    }
-    
-    # Set PYENV environment variables
-    [System.Environment]::SetEnvironmentVariable("PYENV", "$PyenvDir\\pyenv-win", "User")
-    [System.Environment]::SetEnvironmentVariable("PYENV_HOME", "$PyenvDir\\pyenv-win", "User")
-    
-    # Update current session PATH
-    $env:PYENV = "$PyenvDir\\pyenv-win"
-    $env:PYENV_HOME = "$PyenvDir\\pyenv-win"
-    $env:PATH = "$PyenvDir\\pyenv-win\\bin;$PyenvDir\\pyenv-win\\shims;$env:PATH"
-    
-    # Refresh environment variables for the current process
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "User") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "Machine")
-    
-    # Clean up
-    Remove-Item -Path $TempDir -Recurse -Force
-}
-
-# Refresh environment variables for current session
-$env:PYENV = "$PyenvDir\\pyenv-win"
-$env:PYENV_HOME = "$PyenvDir\\pyenv-win"
-$env:PATH = "$PyenvDir\\pyenv-win\\bin;$PyenvDir\\pyenv-win\\shims;$env:PATH"
-
-# Install Python 3.12 if not installed
-$PythonInstalled = $false
-try {
-    $InstalledVersions = & pyenv versions
-    if ($InstalledVersions -like "*$PythonVersion*") {
-        $PythonInstalled = $true
-    }
-} catch {
-    $PythonInstalled = $false
-}
-
-if (-not $PythonInstalled) {
-    Write-Output "Installing Python $PythonVersion..."
-    & pyenv install $PythonVersion
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Failed to install Python $PythonVersion"
-        exit 1
+        return $false
     }
 }
 
-# Set Python 3.12 as the local version
-& pyenv local $PythonVersion
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Failed to set Python $PythonVersion as local version"
-    exit 1
+# THE `python` STAGE IS ANNOUNCED HERE, ON THIS PLATFORM TOO (code review round 1,
+# R1). macOS gets it from `managed-python.ts` when it copies the managed runtime;
+# nothing ever announced it on win32, so the panel painted with no step, no clock
+# and no estimate through the whole CPython download and the first line a Windows
+# user saw was "Step 2 of 4" - while the rail still showed four rows and the
+# win32 baseline this PR measured was dead input.
+#
+# IT BRACKETS THE STAGE, NOT ONLY ITS uv BRANCH: this is where the interpreter is
+# found, and fetched only if it is not already here. Announcing inside
+# provisioning alone would leave a machine whose PYTHON_BIN or PATH Python
+# answers without any phase 1 at all, which is the same hole one branch over. The
+# phase's own words are "Getting ready / Finding the copy of Python Local
+# Operator runs on", so finding is what it means - and `$PythonVersion` above is
+# read inside the branch that needs it, never to decide this marker.
+Write-Output "|LO1:python"
+$PythonExe = $null
+if ($env:PYTHON_BIN -and (Test-Path $env:PYTHON_BIN) -and (Test-PythonUsable $env:PYTHON_BIN)) {
+    $PythonExe = $env:PYTHON_BIN
+    Write-Output "Using Python provided by the app: $PythonExe"
+} elseif ($env:PYTHON_BIN) {
+    Write-Output "WARNING: PYTHON_BIN ($env:PYTHON_BIN) is not a runnable Python 3.12+; looking for another."
 }
 
-# Create virtual environment if it doesn't exist
-if (-not (Test-Path $VenvPath)) {
-    Write-Output "|LO1:environment"
-    Write-Output "Creating virtual environment at $VenvPath..."
-    
-    # Ensure the directory exists
-    if (-not (Test-Path $AppDataDir)) {
-        New-Item -ItemType Directory -Path $AppDataDir -Force | Out-Null
-        Write-Output "Created directory: $AppDataDir"
-    }
-    
-    # Use the full path to python from pyenv
-    $PythonExe = "$PyenvDir\\pyenv-win\\versions\\$PythonVersion\\python.exe"
-    
-    if (Test-Path $PythonExe) {
-        Write-Output "Using Python at: $PythonExe"
-        & $PythonExe -m venv $VenvPath
-    } else {
-        Write-Output "Using system Python"
-        & python -m venv $VenvPath
-    }
-    
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Failed to create virtual environment"
-        exit 1
-    }
-}
-
-# Verify the virtual environment was created
-if (-not (Test-Path "$VenvPath\\Scripts\\Activate.ps1")) {
-    Write-Error "Virtual environment activation script not found at $VenvPath\\Scripts\\Activate.ps1"
-    exit 1
-}
-
-# --- The package install: uv when there is one, pip otherwise ------------------
+# --- The installer this script prefers: the app's own bundled uv ---------------
 #
 # Same shape as the macOS and Linux scripts, and for the same reasons: uv resolves
 # and fetches in parallel - measured on macOS, cold cache, three runs each, same
@@ -244,11 +157,11 @@ if (-not (Test-Path "$VenvPath\\Scripts\\Activate.ps1")) {
 # unchanged and runs whenever uv is absent or cannot do the job, and pip STAYS in
 # the venv because the app's backend-update path runs `pip install --upgrade
 # local-operator` inside this same environment - which is why the environment must
-# keep pip, and NOT a reason to avoid `uv venv`: the note that stood here said
-# `uv venv` leaves no pip at all, which is true of bare `uv venv` and false of
-# `uv venv --seed`, and this script's creation path is still `python -m venv` only
-# because moving it has been measured on macOS and not on this platform yet (see
-# the macOS script for the numbers and the proof).
+# keep pip, and NOT a reason to avoid `uv venv`: bare `uv venv` leaves no pip,
+# `uv venv --seed` does, and `--seed` is what the creation below passes.
+#
+# RESOLVED ABOVE THE ENVIRONMENT, because uv now provisions the interpreter and
+# builds the environment too (first-run onboarding, Q4/Q13).
 #
 # Nothing here searches PATH for a uv: an installed uv is a version and a
 # configuration nobody in this repository chose. `LOCAL_OPERATOR_UV_BIN` is the
@@ -322,6 +235,96 @@ $env:UV_PYTHON_DOWNLOADS = "never"
 $env:UV_CACHE_DIR = $UvCacheDir
 $env:UV_SYSTEM_CERTS = "1"
 
+if (-not $PythonExe -and (Test-UvUsable)) {
+    if (-not $PythonVersion) {
+        Write-Error "ERROR: no Python version was handed down (LOCAL_OPERATOR_PYTHON_VERSION is unset), so the bundled uv has nothing to install. Launch setup from the app, or set that variable to the version src/shared/bundled-runtime-layout.json pins."
+        exit 1
+    }
+    Write-Output "Installing Python $PythonVersion with uv..."
+    # `UV_PYTHON_DOWNLOADS=manual` for THIS call alone: the global `never` above is
+    # what keeps every later uv call on the interpreter it was handed, and an
+    # explicit `python install` is the one place a download is the point.
+    $env:UV_PYTHON_DOWNLOADS = "manual"
+    & $UvBin python install $PythonVersion --install-dir $ManagedPythonDir --no-bin --no-registry
+    $UvPythonStatus = $LASTEXITCODE
+    $env:UV_PYTHON_DOWNLOADS = "never"
+    if ($UvPythonStatus -eq 0) {
+        $env:UV_PYTHON_INSTALL_DIR = $ManagedPythonDir
+        $Found = (& $UvBin python find --managed-python $PythonVersion 2>$null | Select-Object -First 1)
+        Remove-Item env:UV_PYTHON_INSTALL_DIR -ErrorAction SilentlyContinue
+        if ($Found -and (Test-PythonUsable $Found)) {
+            $PythonExe = $Found.Trim()
+            Write-Output "Using Python installed by uv: $PythonExe"
+        }
+    }
+    if (-not $PythonExe) {
+        Write-Output "WARNING: the bundled uv could not install Python $PythonVersion (exit $UvPythonStatus); looking for one on PATH."
+    }
+}
+
+if (-not $PythonExe) {
+    foreach ($Candidate in @("py", "python")) {
+        if (-not (Test-CommandExists $Candidate)) { continue }
+        if ($Candidate -eq "py") {
+            $Resolved = (& py -3 -c "import sys; print(sys.executable)" 2>$null | Select-Object -First 1)
+        } else {
+            $Resolved = (& python -c "import sys; print(sys.executable)" 2>$null | Select-Object -First 1)
+        }
+        if ($Resolved -and (Test-PythonUsable $Resolved.Trim())) {
+            $PythonExe = $Resolved.Trim()
+            Write-Output "Using Python found on PATH: $PythonExe"
+            break
+        }
+    }
+}
+
+if (-not $PythonExe) {
+    Write-Error "ERROR: No Python 3.12+ is available: the app handed none, the bundled uv could not install one, and none is on PATH. Install Python 3.12 or newer from https://www.python.org/downloads/ and try again."
+    exit 1
+}
+
+# Create virtual environment if it doesn't exist
+if (-not (Test-Path $VenvPath)) {
+    Write-Output "|LO1:environment"
+    Write-Output "Creating virtual environment at $VenvPath..."
+
+    # Ensure the directory exists
+    if (-not (Test-Path $AppDataDir)) {
+        New-Item -ItemType Directory -Path $AppDataDir -Force | Out-Null
+        Write-Output "Created directory: $AppDataDir"
+    }
+
+    # uv first, `--seed` so the environment keeps pip (the app's backend-update
+    # path runs `pip install --upgrade local-operator` inside it); the venv
+    # module is the fallback, as on macOS and Linux. Removing a failed attempt is
+    # safe: the guard above proved the path absent a moment ago.
+    $VenvCreated = $false
+    if (Test-UvUsable) {
+        & $UvBin venv --seed --python $PythonExe $VenvPath
+        if ($LASTEXITCODE -eq 0) {
+            $VenvCreated = $true
+        } else {
+            Write-Output "WARNING: the bundled uv could not create the environment (exit $LASTEXITCODE); retrying with the interpreter's own venv module."
+            Remove-Item -Path $VenvPath -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+    if (-not $VenvCreated) {
+        & $PythonExe -m venv $VenvPath
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Failed to create virtual environment"
+            exit 1
+        }
+    }
+}
+
+# Verify the virtual environment was created
+if (-not (Test-Path "$VenvPath\\Scripts\\Activate.ps1")) {
+    Write-Error "Virtual environment activation script not found at $VenvPath\\Scripts\\Activate.ps1"
+    exit 1
+}
+
+# --- The package install: uv when there is one, pip otherwise ------------------
+
 # Activate virtual environment and install local-operator
 # --- Progress markers -------------------------------------------------------
 # One whole line per phase, read by the app and shown in the setup window. The
@@ -364,8 +367,12 @@ if (Test-UvUsable) {
 }
 
 if (-not $UvInstalled) {
-    & python -m pip install --upgrade pip
-    & python -m pip install --upgrade local-operator
+    # No pip self-upgrade (first-run onboarding, Q13): an extra resolve and
+    # download that changes nothing, since the environment's pip is already
+    # 24.2+ on both creation paths. The venv's own interpreter by path, not
+    # `python` off PATH: activation in a child `&` call is not guaranteed to have
+    # put the venv first, and a PATH python would install into the wrong place.
+    & "$VenvPath\Scripts\python.exe" -m pip install --upgrade local-operator
 
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Failed to install packages in virtual environment"

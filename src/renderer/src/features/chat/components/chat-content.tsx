@@ -692,8 +692,14 @@ const defaultCanvasState = {
  * (`docs/run-sidebar.md` § 8). Named here beside the floor because the divider's
  * range is now built from both, and because the ceiling is what a drag is
  * refused at once the row cannot host it.
+ *
+ * EXPORTED for the shell story that mounts this arm's own pair
+ * (`shell.stories.tsx`'s `ChatMeasureEdgesRunPanel`): a frame of the divider has
+ * to carry the range the app gives it, and a literal restated in the story is
+ * the drift this constant exists to prevent - a bound moved here would leave the
+ * arm's claim true only by accident.
  */
-const RUN_PANEL_MAX_PX = 640;
+export const RUN_PANEL_MAX_PX = 640;
 
 /**
  * The chat column's own floor, in pixels, as a fallback for the measured one.
@@ -1988,9 +1994,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										onLoadOlderOutcome={canonical.view.loadOlderDetailed}
 										olderFailed={canonical.view.olderFailed}
 										containerRef={messagesContainerRef}
-										/* The chat page is the one mount that owns the measure; the run pane's
-										 * child reader deliberately does not opt in (see the prop's note). */
-										measureHandle
 										isSmallView={isSmallView}
 										status={canonical.view.status}
 										failure={canonical.view.failure}

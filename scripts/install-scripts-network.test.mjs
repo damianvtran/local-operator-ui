@@ -176,16 +176,14 @@ const URL_USE = new Map([
 				"pip's own bootstrap script, fetched only when a venv came up with no pip at all (the Linux script's last-resort fallback), into the app data directory where the script's own cleanup trap removes it",
 		},
 	],
-	[
-		"https://github.com/pyenv-win/pyenv-win/archive/master.zip",
-		{
-			scripts: [WINDOWS_SCRIPT],
-			reason:
-				"Windows' Python provisioning, and nothing else: a SOURCE archive rather than a binary payload - the archive's own contents are what downloads the platform's Python - and the fetch the Windows install genuinely cannot do without",
-			admittedPayload:
-				"the archive extension list bans `.zip`; this URL is the one entry allowed to match it, for the WINDOWS script alone",
-		},
-	],
+	/*
+	 * NO WINDOWS ENTRY ANY MORE (first-run onboarding, Q4). pyenv-win's unpinned
+	 * `master.zip` was the one URL this table admitted for the Windows script, and
+	 * the one admitted payload shape. The script now provisions Python through the
+	 * app's pinned, checksummed uv (`uv python install`), which names no URL in the
+	 * script at all - so the entry is removed rather than left as a justification a
+	 * future fetch could borrow, and `github.com` left `HOSTS` with it.
+	 */
 	[
 		"https://${server}",
 		{
@@ -197,14 +195,12 @@ const URL_USE = new Map([
 ]);
 
 /**
- * Hosts these scripts may name on a code line. `github.com` is here only for
- * pyenv-win's source archive; a release asset from it, or from anywhere else, is
+ * Hosts these scripts may name on a code line. A release asset from any host is
  * banned by shape above and cannot be admitted by adding it to `URL_USE`.
  */
 const HOSTS = new Map([
 	["pypi.org", "the index the install installs from"],
 	["bootstrap.pypa.io", "pip's bootstrap script"],
-	["github.com", "pyenv-win's source archive on Windows only (see URL_USE)"],
 ]);
 
 /**
