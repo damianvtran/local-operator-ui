@@ -3597,31 +3597,47 @@ export type DesktopCodeRequestRelation =
  */
 export type DesktopCodeRequestLane = {
 	lane: string;
-	round: number;
+	/**
+	 * The round the lane's LATEST comment carries, or absent/null when no
+	 * number could be parsed. The backend omits the key in that case
+	 * (`rounds.py`'s `to_payload` writes it only when not None) - a lane with
+	 * no placeable round still draws its state word and NO segments, because
+	 * a segment count is a claim about how many rounds ran.
+	 */
+	round?: number | null;
 	/** The header's parenthetical qualifier (`delta`, `fix verification`), if any. */
-	qualifier: string | null;
+	qualifier?: string | null;
 	state: string;
+	/** The backend's own derived sentence (`remediation posted, fresh`). */
+	state_copy?: string | null;
 	freshness: string;
+	/** `findings_open` | `clean` | `terminal` | `unstated`, the parser's class. */
+	verdict_class?: string | null;
 	/** The head the lane's latest comment reviewed, when its own Scope stated one. */
-	reviewed_head: string | null;
-	reviewer: string | null;
-	verdict: string | null;
-	open_findings: number | null;
+	reviewed_head?: string | null;
+	reviewer?: string | null;
+	verdict?: string | null;
 };
 
 /**
  * The CI figures for one row's head, as the adapter normalised them.
  *
- * Counts rather than a sentence: the clause (`23/23 passed` / `2 failing`) is
- * built in one place (`code-review-model.ts`), and `total === 0` with
- * `status: "none"` is "No checks yet" rather than "0/0 passed".
+ * `status` is the word every host can answer (`success` | `failure` |
+ * `pending` | `unknown` | `none`); the COUNT counters are nullable because
+ * GitLab pipeline state carries no job counts at all (`adapters/gitlab.py`
+ * returns null for all four) and GitHub leaves them null when the host did
+ * not carry them. The clause is built in one place (`code-review-model.ts`),
+ * and `total === 0` with `status: "none"` is "No checks yet" rather than
+ * "0/0 passed".
  */
 export type DesktopCodeRequestCi = {
 	status: string;
-	passed: number;
-	failed: number;
-	pending: number;
-	total: number;
+	passed: number | null;
+	failed: number | null;
+	pending: number | null;
+	total: number | null;
+	/** The host's own raw status word, when it sent one (GitLab pipelines do). */
+	raw_status?: string | null;
 	/**
 	 * The checks page, when the host reported one. OPTIONAL for the same reason
 	 * `comments` is: the design's row sketch (§D.6) does not list it, and a
@@ -3636,14 +3652,20 @@ export type DesktopCodeRequestSummary = {
 	draft: boolean;
 	title: string;
 	head_sha: string;
-	ci: DesktopCodeRequestCi;
+	/**
+	 * The CI half, present-and-null when the fetched entry has no ci record
+	 * yet. Nullable rather than optional because the backend writes the key
+	 * with `entry.get("ci")` - a value that can be None - and a guard on
+	 * `row.summary?.ci?.status` is what keeps one such row from throwing
+	 * inside `ChatContent`'s render.
+	 */
+	ci?: DesktopCodeRequestCi | null;
 	updated_at: number;
 	/**
 	 * How many comments the record carries, when the host reported it (§1's
-	 * comment clause, `6 comments`). OPTIONAL because the design's row sketch
-	 * (§D.6) does not list it: the clause is omitted when the count is absent,
-	 * never rendered as 0, so a backend that does not carry it degrades to no
-	 * clause rather than to a false "0 comments".
+	 * comment clause, `6 comments`). null means "not reported": the clause is
+	 * omitted, never rendered as 0, and the backend sends the key with null
+	 * rather than omitting it (`service.py`'s summary projection).
 	 */
 	comments?: number | null;
 };
@@ -3667,7 +3689,7 @@ export type DesktopCodeRequestVia = {
 export type DesktopCodeRequestMention = {
 	sources: string[];
 	count: number;
-	last_at: number;
+	last_at: number | null;
 };
 
 /** One row of the ledger: the identity half is always present, the rest gated. */
@@ -3675,15 +3697,33 @@ export type DesktopCodeRequestRow = {
 	key: string;
 	url: string;
 	forge: string;
+	host?: string;
 	project: string;
 	number: number;
 	relation: DesktopCodeRequestRelation;
+	/** Every relation the ref accumulated, strongest first (the audit half). */
+	relations?: string[];
 	via?: DesktopCodeRequestVia | null;
 	/** The acts this session performed on the ref (`comment`, `merge`, ...). */
 	acted: string[];
 	mention: DesktopCodeRequestMention;
-	/** No credential for this host: the row opens, and shows `Link only`. */
+	/** No credential for this host: the row opens, and shows its remedy line. */
 	link_only: boolean;
+	/**
+	 * The backend's own remedy sentence for a link-only row (`Link only -
+	 * sign in with the gh CLI to track this one.` / `... this host isn't
+	 * tracked yet.`), per FORGE - a gitea row is not "sign in with gh".
+	 * Rendered VERBATIM instead of the client deriving a CLI from `forge`
+	 * (agent review F8 / design D8 / UX U5).
+	 */
+	link_only_hint?: string | null;
+	/**
+	 * Why the row is only a link, when there is something to say (an
+	 * unconfirmed host, a failed refresh, the scanner's note). Shown
+	 * verbatim; never a guess.
+	 */
+	reason?: string | null;
+	inherited_from?: string | null;
 	summary?: DesktopCodeRequestSummary | null;
 	lanes?: DesktopCodeRequestLane[] | null;
 	fetched_at?: number | null;
@@ -3702,10 +3742,39 @@ export type DesktopCodeRequestRow = {
  * the host and row-level repetition of one host's window would be noise.
  */
 export type DesktopCodeRequestsList = {
+	session_id?: string;
 	revision: number;
 	rows: DesktopCodeRequestRow[];
 	tool_output_only_count: number;
+	/**
+	 * True when the collapsed count is CAPPED - the scan stops listing tool-only
+	 * refs past a bound, and the model then renders the count with a `+` rather
+	 * than presenting a truncated list as exact.
+	 */
+	tool_output_truncated?: boolean;
+	/** Per-host cooling windows: host → epoch seconds the window lifts. */
 	cooling?: Record<string, number>;
+	/**
+	 * The transcript scan's own state: `ready` when the index is current for the
+	 * journal, `refreshing` while a scan is owed or running, `missing` when
+	 * there is no journal to scan. The pane keeps its LOADING state while
+	 * `refreshing` and the rows are empty - an empty answer mid-scan is not yet
+	 * a claim that the session has no code requests (UX round 1, U2).
+	 */
+	scan_state?: string;
+	updated_at?: number | null;
+};
+
+/**
+ * `code_requests.refresh`'s 202 receipt: the scan half ran, the fetch half is
+ * queued. `note` is the backend's own sentence about both halves.
+ */
+export type DesktopCodeRequestRefreshReceipt = {
+	session_id?: string;
+	accepted: boolean;
+	keys?: string[];
+	force?: boolean;
+	note?: string;
 };
 
 /**

@@ -104,7 +104,7 @@ export function codeRailLabels(
 	open: boolean,
 	opened: number,
 	mentioned: number,
-	attention: boolean,
+	attention: string | null,
 ): { tooltip: string; aria: string } {
 	const verb = open ? "Close" : "Open";
 	const halves = [
@@ -112,12 +112,22 @@ export function codeRailLabels(
 		mentioned > 0 ? `${mentioned} mentioned` : null,
 	].filter((half): half is string => half !== null);
 	const details = halves.length > 0 ? halves.join(", ") : "";
-	const mark = attention ? ", findings open" : "";
+	/*
+	 * THE CAUSE, NAMED IN BOTH REGISTERS (design round 1, D5 / UX U6): the
+	 * marker used to say "findings open" for a red pipeline, and the sighted
+	 * tooltip did not carry it at all - the dot had no visible explanation.
+	 * `attention` is the cause string (`checks failing` / `findings open` /
+	 * both), not a boolean.
+	 */
+	const mark = attention ? `, ${attention}` : "";
 	if (details === "") {
-		return { tooltip: `${verb} code review`, aria: `Code review${mark}` };
+		return {
+			tooltip: `${verb} code review${mark}`,
+			aria: `Code review${mark}`,
+		};
 	}
 	return {
-		tooltip: `${verb} code review — ${details}`,
+		tooltip: `${verb} code review — ${details}${mark}`,
 		aria: `Code review, ${details}${mark}`,
 	};
 }

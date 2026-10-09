@@ -638,6 +638,27 @@ type UiPreferencesState = {
 	revealRunPanelSection: (section: RunPanelSection) => void;
 
 	/**
+	 * A one-shot request to bring the CODE REVIEW pane to attention (UX round 1,
+	 * U11). The chip's press while the pane is already open behaves like the
+	 * monitors chip's reveal rather than a no-op: the request re-runs, and the
+	 * pane's own effect answers it by taking focus (its root is `tabIndex={-1}`)
+	 * - the code pane has no sections to scroll, so focus is the whole of what a
+	 * reveal can be here.
+	 */
+	codeReviewReveal: CodeReviewReveal | null;
+
+	/** Open the code review pane and ask it to take attention; see the field. */
+	revealCodeReviewPane: () => void;
+
+	/**
+	 * Retires a request the pane has acted on.
+	 *
+	 * @param nonce - The request's own nonce. An effect finishing older work must
+	 * not consume a newer request that arrived while it ran.
+	 */
+	clearCodeReviewReveal: (nonce: number) => void;
+
+	/**
 	 * Retires a request the pane has acted on.
 	 *
 	 * @param nonce - The request's own nonce. An effect that is finishing work for
@@ -1086,15 +1107,18 @@ const rightSlotPaneDrawable = (
 	}
 	if (!state.rightSlotRoute.mounted) return false;
 	/*
-	 * The code review pane's mount needs a CONVERSATION (the same term
-	 * `chat-content` mounts the pane behind): its subject is one session's ledger,
-	 * and a draft has no ledger to draw. The gate is the route fact rather than a
-	 * second derivation here, so the pane's mount and the slot's answer cannot
-	 * drift - the console's sibling rule (`sessionId !== null` at ITS rail item)
-	 * decides its DOOR, while this one decides the drawn pane, because a flag
-	 * restored on a draft must release the slot rather than claim it.
+	 * The code review pane's mount needs a CONVERSATION and the capability (the
+	 * same two terms `chat-content` mounts the pane behind): its subject is one
+	 * session's ledger, and against an older backend the routes it reads do not
+	 * exist. Both are route facts rather than second derivations here, so the
+	 * pane's mount and the slot's answer cannot drift - a flag restored on a
+	 * draft or on a downgraded backend releases the slot instead of claiming it
+	 * (agent review F6: a remembered pane reserved an empty 640px column with
+	 * no rail door, because the door is gated on the same capability).
 	 */
-	if (pane === "code") return state.rightSlotRoute.session;
+	if (pane === "code") {
+		return state.rightSlotRoute.session && state.rightSlotRoute.codeReview;
+	}
 	/*
 	 * The run panel's mount gate is `runDetails`; the canvas, browser and console
 	 * mount whenever their flags are set on a chat route, so `mounted` is the
@@ -1248,6 +1272,13 @@ export type RightSlotRouteFacts = {
 	mounted: boolean;
 	runDetails: boolean;
 	session: boolean;
+	/**
+	 * The route's backend serves `features.code_requests` (agent review F6). The
+	 * code pane's mount condition reads this fact, and so does the slot's
+	 * drawability: a remembered pane on a backend that lost the capability must
+	 * not reserve an empty column with no door to close it (`rightSlotPaneDrawable`).
+	 */
+	codeReview: boolean;
 };
 
 /**
@@ -1258,6 +1289,7 @@ export const EMPTY_RIGHT_SLOT_ROUTE: RightSlotRouteFacts = Object.freeze({
 	mounted: false,
 	runDetails: false,
 	session: false,
+	codeReview: false,
 });
 
 /**
@@ -1475,6 +1507,15 @@ export function resolveRightSlotYieldsSidebar(
 		(pane === "canvas" || pane === "ask") && rightSlotPaneDrawable(pane, state)
 	);
 }
+
+/**
+ * A one-shot request to bring the code review pane to attention (UX round 1,
+ * U11): the chip's press while the pane is open re-requests, and the pane
+ * answers by focusing its own root. A nonce so two presses are two requests.
+ */
+export type CodeReviewReveal = {
+	nonce: number;
+};
 
 /**
  * A one-shot request to bring one of the pane's sections into view.
@@ -1759,6 +1800,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			rightSlotRoute: EMPTY_RIGHT_SLOT_ROUTE,
 			consoleOpenIntent: null,
 			runPanelReveal: null,
+			codeReviewReveal: null,
 			browserPaneScope: "conversation",
 			consoleActiveSurface: null,
 			consoleUnseen: EMPTY_CONSOLE_UNSEEN,
@@ -1892,6 +1934,25 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 								...releasedMemory(state, "code"),
 							},
 				);
+			},
+
+			clearCodeReviewReveal: (nonce: number) => {
+				set((state) =>
+					state.codeReviewReveal?.nonce === nonce
+						? { codeReviewReveal: null }
+						: {},
+				);
+			},
+
+			revealCodeReviewPane: () => {
+				set((state) => ({
+					// The claim is spread rather than restated: see `claimRightSlot`.
+					...claimRightSlot("isCodeReviewPaneOpen"),
+					...claimedMemory(state, "code"),
+					codeReviewReveal: {
+						nonce: (state.codeReviewReveal?.nonce ?? 0) + 1,
+					},
+				}));
 			},
 
 			setAskDrawerOpen: (open: boolean, scope: AskScope) => {
@@ -2372,6 +2433,7 @@ export function parseConversationRecents(value: unknown): string[] {
 export function persistedUiPreferences<
 	T extends {
 		runPanelReveal: unknown;
+		codeReviewReveal: unknown;
 		consoleOpenIntent: unknown;
 		isAskDrawerOpen: unknown;
 		askDrawerScope: unknown;
@@ -2390,6 +2452,7 @@ export function persistedUiPreferences<
 ): Omit<
 	T,
 	| "runPanelReveal"
+	| "codeReviewReveal"
 	| "consoleOpenIntent"
 	| "isAskDrawerOpen"
 	| "askDrawerScope"
@@ -2404,6 +2467,7 @@ export function persistedUiPreferences<
 > {
 	const {
 		runPanelReveal: _pending,
+		codeReviewReveal: _reveal,
 		consoleOpenIntent: _intent,
 		/*
 		 * THE ASKS DRAWER IS NOT PERSISTED, and it is excluded here rather than in the

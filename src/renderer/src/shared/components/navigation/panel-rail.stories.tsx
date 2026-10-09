@@ -60,7 +60,7 @@ const Rail: FC<{
 	codeOffered?: boolean;
 	codeOpened?: number;
 	codeMentioned?: number;
-	codeAttention?: boolean;
+	codeAttention?: string | null;
 	/*
 	 * The frame's height, defaulting to the four-door 184 the other frames hold.
 	 * The five-door rail needs its own: 5 x 32px items + 4 x 4px gaps + the
@@ -80,7 +80,7 @@ const Rail: FC<{
 	codeOffered = false,
 	codeOpened = 0,
 	codeMentioned = 0,
-	codeAttention = false,
+	codeAttention = null,
 	height = 184,
 }) => {
 	useLayoutEffect(() => {
@@ -247,14 +247,14 @@ export const CodeItem: Story = {
 	),
 };
 
-/** Offered with the attention dot: an open row has findings open or CI failing. */
+/** Offered with the attention dot: an open row's checks are failing (U6's cause). */
 export const CodeAttention: Story = {
 	render: () => (
 		<Rail
 			codeOffered={true}
 			codeOpened={2}
 			codeMentioned={1}
-			codeAttention={true}
+			codeAttention={"checks failing"}
 			height={220}
 		/>
 	),

@@ -17,11 +17,14 @@
  *   invalidates this key for the session the frame names;
  * - the app's global `refetchOnWindowFocus` re-reads the pane the moment the
  *   operator looks back at the window;
- * - a 60 s interval runs ONLY while a surface showing rows is on screen AND
- *   (the session is live OR a row has CI pending), and `refetchIntervalInBackground`
- *   stays false. A settled, idle session costs nothing; a running one keeps its
- *   CI figures moving at a cadence the design measured against GitHub's own
- *   `max-age=60`.
+ * - a 60 s interval runs ONLY while the PANE is on screen AND (a turn is
+ *   RUNNING on the session OR a row has CI pending), and
+ *   `refetchIntervalInBackground` stays false. A settled, idle session costs
+ *   nothing; a running one keeps its CI figures moving at a cadence the design
+ *   measured against GitHub's own `max-age=60`. The chip and the rail item are
+ *   DOORS whose counts ride the frame and the window-focus refetch, never this
+ *   timer (the amended rule QA round 1's Q-2 forced: `sessionLive` used to
+ *   mean transport-attached, which is true for every open window).
  *
  * CAPABILITY-GATED, FAIL-CLOSED: `features.code_requests` absent means the
  * query is disabled entirely, exactly as `projects.list` states for its own
@@ -41,10 +44,16 @@ import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import type {
+	DesktopCodeRequestRefreshReceipt,
 	DesktopCodeRequestRow,
 	DesktopCodeRequestsList,
 } from "../../../../../shared/desktop-contract";
-import { chipLabel, groupRows, needsAttention } from "../code-review-model";
+import {
+	attentionCause,
+	chipLabel,
+	groupRows,
+	rowHasPendingCi,
+} from "../code-review-model";
 
 export const codeRequestsKeys = {
 	/** One session's ledger. The prefix the refresh and the feed drop. */
@@ -54,38 +63,101 @@ export const codeRequestsKeys = {
 
 export type CodeRequestsPoll = {
 	/**
-	 * Whether a surface showing this list is ON SCREEN. The rail item - ambient
-	 * chrome whose counts ride the feed and the focus refetch - passes `false`;
-	 * the pane and the chip pass `true`. A list with no rows is never polled:
-	 * discovery of a session's FIRST row is the feed frame's and the focus
-	 * refetch's job, and a 60 s timer on every empty session would be the chrome
-	 * this design refused.
+	 * Whether a surface that WANTS the refresh timer is on screen: the PANE
+	 * passes `true`, and nothing else does (§D.5, as amended by QA round 1's
+	 * Q-2/F5). The chip and the rail item are DOORS whose counts ride the
+	 * desktop-feed frame and the window-focus refetch - a closed pane's chip
+	 * polling every 60 s was the defect: an idle session with a chip and no
+	 * open pane cost a local GET forever, and each GET could trigger a forge
+	 * refetch through the backend's own TTL pass.
 	 */
 	visible: boolean;
 	/**
-	 * The session is live - a turn is running, or its transport is attached.
-	 * Either reading is the same answer to the interval's question ("might the
-	 * ledger be moving right now?"); the call sites take the one their own data
-	 * holds, and the union of observers means the pane's answer wins while the
-	 * pane is open.
+	 * True while the session is ACTIVELY RUNNING A TURN (`canonical.turnAlive`,
+	 * the same reading the Stop control takes), not merely transport-attached.
+	 * An open window on an idle conversation is not a reason to poll; a turn in
+	 * flight is, because the ledger is being written under it.
 	 */
 	sessionLive: boolean;
 	/** The caller's own gate, beyond the session and the capability. */
 	enabled?: boolean;
 };
 
-/** Whether the owner should poll right now, from the freshest data. */
-function intervalFor(
-	rows: readonly DesktopCodeRequestRow[],
+/**
+ * How long a scan that has not settled waits before the next read: the
+ * backend's own `scan_state: "refreshing"` is the signal, and the cadence is
+ * short because the scan is local and settles in seconds (UX round 1, U2's
+ * "poll slowly while scanning" - no frame, no 75 s stuck on a stale empty).
+ */
+export const SCAN_POLL_MS = 5_000;
+
+/**
+ * Whether the owner should poll right now, from the freshest data.
+ *
+ * THE RULE (manager decision 4 as amended by QA Q-2 / review F5): 60 s ONLY
+ * while the PANE is visible AND (a turn is running OR a row has CI pending);
+ * `false` otherwise. A scan the backend has not settled polls at
+ * `SCAN_POLL_MS` regardless of rows, because the index under the pane is
+ * about to be replaced.
+ */
+export function intervalFor(
+	data: DesktopCodeRequestsList | undefined,
 	poll: CodeRequestsPoll,
 ): number | false {
-	if (!poll.visible || rows.length === 0) return false;
-	const ciPending = rows.some(
-		(row) =>
-			row.summary?.ci.status === "pending" ||
-			(row.summary?.ci.pending ?? 0) > 0,
+	if (!poll.visible) return false;
+	if (data?.scan_state === "refreshing") return SCAN_POLL_MS;
+	const rows = data?.rows ?? [];
+	if (poll.sessionLive || rows.some(rowHasPendingCi)) return 60_000;
+	return false;
+}
+
+/**
+ * Whether the ledger read may run at all. Pure so the enablement rules are
+ * pinned by a test rather than by a render: a read fires only with a session,
+ * the capability, the caller's own gate and a real query client (the mini
+ * view's document supplies none - `useOptionalQueryClient`).
+ */
+export function codeRequestsEnabled(input: {
+	sessionId: string | null;
+	capable: boolean;
+	pollEnabled: boolean;
+	provided: boolean;
+}): boolean {
+	return (
+		Boolean(input.sessionId) &&
+		input.capable &&
+		input.pollEnabled &&
+		input.provided
 	);
-	return poll.sessionLive || ciPending ? 60_000 : false;
+}
+
+/**
+ * The applied-frame ledger's next value: the frame when it names THIS session
+ * and is not the one already spent, the previous value otherwise. Pure so the
+ * invalidation rule (including "a frame for another session is ignored") is
+ * pinned directly; the effect below spends it.
+ *
+ * A duplicate delivery is free because the pair matches what is already applied
+ * - and the ref is initialised to `null` rather than to the frame (agent review
+ * round 1, N2: `useDesktopFeed`'s state is per-call and starts null, so the old
+ * `useRef(codeRequestsRevision)` initialiser was vacuous, and a hook that
+ * mounts while a frame is current simply treats that frame as new, which is the
+ * correct answer for a query that has not read yet anyway).
+ */
+export function appliedAfterFrame(
+	applied: { sessionId: string; revision: number } | null,
+	frame: { sessionId: string; revision: number } | null,
+	sessionId: string | null,
+): { sessionId: string; revision: number } | null {
+	if (!frame || !sessionId) return applied;
+	if (frame.sessionId !== sessionId) return applied;
+	if (
+		applied &&
+		applied.sessionId === frame.sessionId &&
+		applied.revision === frame.revision
+	)
+		return applied;
+	return frame;
 }
 
 /**
@@ -113,12 +185,16 @@ export function useCodeRequests(
 	const { client, provided } = useOptionalQueryClient();
 	const capabilities = useDesktopCapabilities();
 	const capable = desktopFeatureEnabled(capabilities.data, "code_requests");
-	useCodeRequestsFeedInvalidation(sessionId);
+	useCodeRequestsFeedInvalidation(sessionId, provided);
 	return useQuery(
 		{
 			queryKey: codeRequestsKeys.session(sessionId ?? ""),
-			enabled:
-				Boolean(sessionId) && capable && (poll.enabled ?? true) && provided,
+			enabled: codeRequestsEnabled({
+				sessionId,
+				capable,
+				pollEnabled: poll.enabled ?? true,
+				provided,
+			}),
 			queryFn: () =>
 				desktopResult<DesktopCodeRequestsList>({
 					op: "code_requests.list",
@@ -128,7 +204,7 @@ export function useCodeRequests(
 			staleTime: 10_000,
 			refetchInterval: (query) =>
 				intervalFor(
-					(query.state.data as DesktopCodeRequestsList | undefined)?.rows ?? [],
+					query.state.data as DesktopCodeRequestsList | undefined,
 					poll,
 				),
 			refetchIntervalInBackground: false,
@@ -143,40 +219,35 @@ export function useCodeRequests(
  * to this module, so the effect that spends it lives beside the key, exactly as
  * `useAuthoringRefresh` states the split for the authoring lists.
  *
- * A FRAME FOR ANOTHER SESSION IS IGNORED: the ledger is per conversation, and
- * invalidating this session's key because a DIFFERENT conversation's index
- * moved would refetch a list nothing changed. The pane mounts for one session
- * at a time, so last-frame-wins is the whole state this needs; a switch
- * remounts the query and fetches fresh regardless.
- *
- * The applied ref makes a duplicate delivery free, and is initialised from the
- * frame on first render so a hook that mounts AFTER a frame does not.
+ * A FRAME FOR ANOTHER SESSION IS IGNORED (`appliedAfterFrame`): the ledger is
+ * per conversation, and invalidating this session's key because a DIFFERENT
+ * conversation's index moved would refetch a list nothing changed. The pane
+ * mounts for one session at a time, so last-frame-wins is the whole state this
+ * needs; a switch remounts the query and fetches fresh regardless.
  */
-function useCodeRequestsFeedInvalidation(sessionId: string | null) {
+function useCodeRequestsFeedInvalidation(
+	sessionId: string | null,
+	provided: boolean,
+) {
 	const { codeRequestsRevision } = useDesktopFeed();
 	/*
-	 * The provider gate, same reason as `useCodeRequests`' own: a document with no
-	 * `QueryClientProvider` (the mini view) must not throw on the client read NOR
-	 * run an invalidation against a client nobody reads - there is no query to
-	 * invalidate there, and `provided` false short-circuits both.
+	 * The invalidation's own provider gate, same reason as `useCodeRequests`':
+	 * a document with no `QueryClientProvider` (the mini view) must not run an
+	 * invalidation against a client nobody reads - `provided` false
+	 * short-circuits the client read and the effect.
 	 */
-	const { client: queryClient, provided } = useOptionalQueryClient();
-	const applied = useRef<{ sessionId: string; revision: number } | null>(
-		codeRequestsRevision,
-	);
+	const { client: queryClient } = useOptionalQueryClient();
+	const applied = useRef<{ sessionId: string; revision: number } | null>(null);
 	useEffect(() => {
 		if (!provided) return;
+		const next = appliedAfterFrame(
+			applied.current,
+			codeRequestsRevision,
+			sessionId,
+		);
+		if (next === applied.current) return;
+		applied.current = next;
 		if (!sessionId) return;
-		if (!codeRequestsRevision) return;
-		if (codeRequestsRevision.sessionId !== sessionId) return;
-		const previous = applied.current;
-		if (
-			previous &&
-			previous.sessionId === codeRequestsRevision.sessionId &&
-			previous.revision === codeRequestsRevision.revision
-		)
-			return;
-		applied.current = codeRequestsRevision;
 		void queryClient.invalidateQueries({
 			queryKey: codeRequestsKeys.session(sessionId),
 		});
@@ -199,13 +270,17 @@ export function useRefreshCodeRequests(sessionId: string | null) {
 	const { client: queryClient, provided } = useOptionalQueryClient();
 	return useMutation(
 		{
-			mutationFn: async () => {
-				await desktopResult<unknown>({
+			/*
+			 * The 202 receipt is RETURNED rather than discarded: its `accepted` and
+			 * `note` are the backend's own sentence about the two halves, and the
+			 * pane's quiet cue after a press reads them (UX round 1, U3).
+			 */
+			mutationFn: async () =>
+				desktopResult<DesktopCodeRequestRefreshReceipt>({
 					op: "code_requests.refresh",
 					sessionId: sessionId ?? "",
 					force: true,
-				});
-			},
+				}),
 			onSuccess: () => {
 				if (!provided) return;
 				if (!sessionId) return;
@@ -229,19 +304,18 @@ export function useRefreshCodeRequests(sessionId: string | null) {
  * `mounted` is false there and the chip cannot appear; a control whose press
  * opens nothing is the dead affordance this codebase refuses elsewhere.
  *
- * VISIBLE IS `true` FOR THE CALLER'S OWN REASON: the chip renders ONLY when
- * rows exist, so "the chip is visible" and "the list has rows" are the same
- * admission; before that, the feed frame and the focus refetch are what
- * announce the first row.
+ * THE CHIP NEVER POLLS (QA round 1, Q-2 / review F5). It passes
+ * `visible: false`: its count rides the desktop-feed frame and the
+ * window-focus refetch, and a closed pane's chip running a 60 s timer was the
+ * defect - an idle conversation paid a local GET forever. `sessionLive` is not
+ * a parameter at all any more: with no timer it decided nothing, and the one
+ * caller passed a transport reading that was always true.
  */
-export function useCodeRequestsChip(
-	sessionId: string | null,
-	sessionLive: boolean,
-) {
+export function useCodeRequestsChip(sessionId: string | null) {
 	const hosted = useUiPreferencesStore((s) => s.rightSlotRoute.mounted);
 	const query = useCodeRequests(sessionId, {
-		visible: true,
-		sessionLive,
+		visible: false,
+		sessionLive: false,
 		/*
 		 * A WINDOW WITH NO SLOT READS NOTHING: with `hosted` false the query is
 		 * DISABLED rather than merely hidden, so the mini quick-send window does not
@@ -250,20 +324,38 @@ export function useCodeRequestsChip(
 		 */
 		enabled: hosted,
 	});
-	const rows = query.data?.rows ?? [];
+	return chipState(hosted, query.data?.rows ?? []);
+}
+
+/**
+ * The chip's whole derived state, pure (`useCodeRequestsChip` is the wrapper):
+ * whether the chip shows, the counts that name it, and the one label its
+ * tooltip and announced name share.
+ *
+ * SHOW = a slot to open into AND ≥1 VISIBLE ROW (manager decision 2): the
+ * rows the backend collapsed into `tool_output_only_count` never arrive in
+ * this list, so `rows.length` IS the count of visible rows - a `gh pr list`
+ * dump does not raise the chip.
+ */
+export function chipState(hosted: boolean, rows: DesktopCodeRequestRow[]) {
 	const groups = groupRows(rows);
-	const attention = needsAttention(rows);
+	/*
+	 * THE CAUSE, not a boolean (D5/U6): "findings open" was stated when the only
+	 * cause was a red pipeline.
+	 */
+	const cause = attentionCause(rows);
 	return {
 		show: hosted && rows.length > 0,
 		count: rows.length,
 		opened: groups.opened.length,
 		mentioned: groups.mentioned.length,
-		attention,
+		attention: cause !== null,
+		cause,
 		label: chipLabel(
 			rows.length,
 			groups.opened.length,
 			groups.mentioned.length,
-			attention,
+			cause,
 		),
 	};
 }

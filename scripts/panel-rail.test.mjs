@@ -271,8 +271,23 @@ async function mount(render) {
 	}
 }
 
-const DRAWABLE = { mounted: true, runDetails: true, session: true };
-const DRAFT = { mounted: true, runDetails: false, session: false };
+const DRAWABLE = {
+	mounted: true,
+	runDetails: true,
+	session: true,
+	/*
+	 * The capability is a route fact since remediation round 1 (F6): the code
+	 * item's `aria-pressed` reads `resolveDrawnRightSlotPane`, whose `code`
+	 * branch requires it, so a narrative route without it would light nothing.
+	 */
+	codeReview: true,
+};
+const DRAFT = {
+	mounted: true,
+	runDetails: false,
+	session: false,
+	codeReview: false,
+};
 const NO_PANES = {
 	isRunPanelOpen: false,
 	isCanvasOpen: false,
@@ -305,7 +320,7 @@ const rail = (overrides = {}) => {
 		codeOffered: sessionId !== null,
 		codeOpened: 0,
 		codeMentioned: 0,
-		codeAttention: false,
+		codeAttention: null,
 		...rest,
 	});
 };

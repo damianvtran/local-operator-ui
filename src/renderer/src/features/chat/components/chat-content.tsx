@@ -1,8 +1,8 @@
 import { BrowserPane } from "@features/browser/components/browser-pane";
 import { useConversationApprovals } from "@features/browser/hooks/use-conversation-approvals";
 import {
+	attentionCause,
 	groupRows,
-	needsAttention,
 } from "@features/code-review/code-review-model";
 import { CodeReviewPane } from "@features/code-review/components/code-review-pane";
 import { useCodeRequests } from "@features/code-review/hooks/use-code-requests";
@@ -1351,8 +1351,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				mounted: true,
 				runDetails: hasRunDetails,
 				session: hasSession,
+				/*
+				 * THE CAPABILITY IS A ROUTE FACT (agent review F6): the code pane's mount
+				 * reads `codeReviewEnabled`, so the slot's drawability must read the same
+				 * answer - a remembered pane on a backend that lost the feature otherwise
+				 * reserves an empty column whose rail door is absent too.
+				 */
+				codeReview: codeReviewEnabled,
 			});
-		}, [setRightSlotRoute, hasRunDetails, hasSession]);
+		}, [setRightSlotRoute, hasRunDetails, hasSession, codeReviewEnabled]);
 		/*
 		 * The unmount reset: a route with no chat surface draws none of the five.
 		 *
@@ -1483,23 +1490,27 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * THE CODE REQUEST LEDGER, read here for the rail item's name and its
 		 * attention dot. THE RAIL IS AMBIENT CHROME and declares itself NOT visible
 		 * to the poll gate (its counts ride the desktop-feed frame and the
-		 * window-focus refetch, §D.5); the pane and the chip are the surfaces whose
-		 * presence turns the 60 s interval on. The query is the same key every
-		 * surface reads, so the pane's mount, the chip and this read share one cache
-		 * entry rather than three.
-		 *
-		 * `sessionLive` is the page's own reading of the transport - the same
-		 * expression the run panel's `olderTransportDown` uses, with the same
-		 * fallback (a window with no canonical session has no stream to be down and
-		 * reads as live).
+		 * window-focus refetch, §D.5); the PANE is the one surface whose presence
+		 * turns the 60 s interval on (as amended by QA round 1, Q-2: the chip is a
+		 * door, not a timer). The query is the same key every surface reads, so the
+		 * pane's mount, the chip and this read share one cache entry rather than
+		 * three.
 		 */
 		const codeRequestsQuery = useCodeRequests(sessionId ?? null, {
+			/*
+			 * THE RAIL DOES NOT POLL. It is ambient chrome whose counts ride the feed
+			 * frame and the window-focus refetch (§D.5); `sessionLive` is irrelevant
+			 * with `visible: false`, so it is stated as the false it is rather than
+			 * read from the transport - "live" now means A TURN IS RUNNING (the
+			 * amended rule QA round 1's Q-2 forced), and only the pane's timer reads
+			 * it.
+			 */
 			visible: false,
-			sessionLive: (canonical?.view.status ?? "live") === "live",
+			sessionLive: false,
 		});
 		const codeRows = codeRequestsQuery.data?.rows ?? [];
 		const codeGroups = groupRows(codeRows);
-		const codeAttention = needsAttention(codeRows);
+		const codeAttentionCause = attentionCause(codeRows);
 
 		/*
 		 * How many approvals THIS conversation's agent is waiting on, for the header
@@ -2066,6 +2077,24 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 * is there for that case.
 										 */
 										undefined
+							}
+							onOpenCodeReview={
+								codeReviewEnabled && hasSession
+									? /*
+										 * THE CODE REVIEW ENTRY (agent review round 1, N1): the `...` menu is
+										 * the keyboard door every other pane has ("so nothing is unreachable
+										 * at 800"), and its absence here left the pane rail-only. The write
+										 * toggles, and the header's own label reads the same store field, so
+										 * the two cannot disagree - `getState` rather than a rendered value
+										 * because the press must see the CURRENT pane, exactly as the canvas
+										 * row's own write does. Gated on the capability and a conversation,
+										 * the same pair the pane's mount is gated on (F6).
+										 */
+										() =>
+											setCodeReviewPaneOpen(
+												!useUiPreferencesStore.getState().isCodeReviewPaneOpen,
+											)
+									: undefined
 							}
 						/>
 						{/*
@@ -2646,12 +2675,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								cwdReadOnlyReason={cwdReadOnlyReason}
 								sendError={sendError}
 								sessionStatus={sessionStatus}
-								/*
-								 * The code request chip's poll gate (§D.5): the moment the session's
-								 * transport is live, the ledger may be moving, so the chip's 60 s
-								 * interval is allowed to run while the chip is on screen.
-								 */
-								sessionLive={(canonical?.view.status ?? "live") === "live"}
 								onSlashCommand={onSlashCommand}
 								onSlashNote={onSlashNote}
 								/*
@@ -3049,7 +3072,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							>
 								<CodeReviewPane
 									sessionId={sessionId}
-									sessionLive={(canonical?.view.status ?? "live") === "live"}
+									/*
+									 * THE POLL GATE'S "live", the Stop control's own reading (`turnAlive`, the
+									 * frontend's `streaming` flag through the held frame): a turn is RUNNING.
+									 * The transport-attached reading this replaced was true for every open
+									 * window, so an idle conversation with the pane open polled forever (QA
+									 * round 1, Q-2 / review F5).
+									 */
+									sessionLive={canonical?.turnAlive === true}
 									onClose={() => setCodeReviewPaneOpen(false)}
 								/>
 							</PaneSlot>
@@ -3082,7 +3112,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						codeOffered={codeReviewEnabled && hasSession}
 						codeOpened={codeGroups.opened.length}
 						codeMentioned={codeGroups.mentioned.length}
-						codeAttention={codeAttention}
+						codeAttention={codeAttentionCause}
 					/>
 				</InPanelRailHost>
 			</div>

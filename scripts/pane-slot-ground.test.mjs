@@ -155,8 +155,9 @@ const ASK_SLOT_MODE = /data-ask-mode=\{canvasDocked \? "docked" : "overlay"\}/;
 const RIGHT_SLOT_OCCUPIED = /const rightSlotOccupied =([\s\S]{0,400}?);/;
 /* #868's publisher and mount-gate reads, at module scope for the same reason. */
 const ROUTE_PUBLISH =
-	/setRightSlotRoute\(\{\s*mounted: true,\s*runDetails: hasRunDetails,\s*session: hasSession,\s*\}\)/;
-const ROUTE_PUBLISH_DEPS = /\[setRightSlotRoute, hasRunDetails, hasSession\]/;
+	/setRightSlotRoute\(\{\s*mounted: true,\s*runDetails: hasRunDetails,\s*session: hasSession,\s*codeReview: codeReviewEnabled,\s*\}\)/;
+const ROUTE_PUBLISH_DEPS =
+	/\[setRightSlotRoute, hasRunDetails, hasSession, codeReviewEnabled\]/;
 const HAS_RUN_DETAILS = /const hasRunDetails = Boolean\(runDetails\);/;
 const HAS_SESSION = /const hasSession = Boolean\(sessionId\);/;
 const SESSION_ASKS_GATE =
@@ -167,6 +168,8 @@ const DRAWABLE_ASK =
 const DRAWABLE_MOUNTED = /if \(!state\.rightSlotRoute\.mounted\) return false;/;
 const DRAWABLE_RUN =
 	/return pane !== "run" \|\| state\.rightSlotRoute\.runDetails;/;
+const DRAWABLE_CODE =
+	/if \(pane === "code"\) \{\s*return state\.rightSlotRoute\.session && state\.rightSlotRoute\.codeReview;\s*\}/;
 const FLEET_GATE =
 	/const fleetAsksOpen = askDrawerOpen && askDrawerScope === "fleet";/;
 /* The yield is the fifth argument and the rail's width (#872) the sixth, so the
@@ -549,7 +552,7 @@ test("the drawer's slot is readable, and the header's OS corner is reserved for 
 
 test("the published route facts are the mount gates' own terms (#868)", () => {
 	/*
-	 * THE LINK THE FIX RESTS ON, pinned. `rightSlotRoute` is a COPY of three
+	 * THE LINK THE FIX RESTS ON, pinned. `rightSlotRoute` is a COPY of four
 	 * conditions that live in `chat-content`'s JSX; the store answers from the
 	 * copy, so a gate that grew a term the copy does not know would draw (or fail
 	 * to draw) a pane the lane, the column and the header disagree about - the
@@ -567,7 +570,15 @@ test("the published route facts are the mount gates' own terms (#868)", () => {
 	);
 	assert.ok(
 		ROUTE_PUBLISH.test(content) && ROUTE_PUBLISH_DEPS.test(content),
-		`${CHAT_CONTENT} no longer publishes { mounted: true, runDetails, session } keyed on the booleans. Keying on the \`runDetails\` object re-publishes identical facts on every frame of a live run.`,
+		`${CHAT_CONTENT} no longer publishes { mounted: true, runDetails, session, codeReview } keyed on the booleans. Keying on the \`runDetails\` object re-publishes identical facts on every frame of a live run.`,
+	);
+	// The code pane's mount gate is the capability AND the session (F6), the
+	// two terms `rightSlotPaneDrawable`'s own `code` branch encodes.
+	assert.ok(
+		/isCodeReviewPaneOpen &&[\s\S]{0,160}?codeReviewEnabled &&[\s\S]{0,80}?sessionId !== undefined/.test(
+			content,
+		),
+		`${CHAT_CONTENT}'s code review mount gate is no longer \`isCodeReviewPaneOpen && codeReviewEnabled && sessionId !== undefined\`. \`rightSlotPaneDrawable\` encodes that condition as \`session && codeReview\`; change both together.`,
 	);
 	// Each pane's mount condition, exactly as `rightSlotPaneDrawable` encodes it.
 	for (const [pane, gate] of [
@@ -597,8 +608,9 @@ test("the published route facts are the mount gates' own terms (#868)", () => {
 	);
 	for (const [name, shape] of [
 		["asks: fleet always, session on mounted && session", DRAWABLE_ASK],
-		["the other four need the chat surface mounted", DRAWABLE_MOUNTED],
+		["the other five need the chat surface mounted", DRAWABLE_MOUNTED],
 		["only the run panel needs runDetails", DRAWABLE_RUN],
+		["the code pane needs the session AND the capability", DRAWABLE_CODE],
 	]) {
 		assert.ok(
 			shape.test(drawable[0]),

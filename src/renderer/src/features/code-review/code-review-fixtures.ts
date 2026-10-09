@@ -37,7 +37,6 @@ const lane = (
 	reviewed_head: null,
 	reviewer: null,
 	verdict: null,
-	open_findings: null,
 	...partial,
 });
 
@@ -90,9 +89,47 @@ export const populatedRows = (): DesktopCodeRequestRow[] => [
 				state: "remediation_posted",
 				reviewed_head: "3f2a91b7",
 				reviewer: "reviewer (a model)",
-				open_findings: 2,
 			}),
 			lane({ lane: "qa", round: 1, state: "clean", reviewed_head: "3f2a91b7" }),
+		],
+	}),
+	row({
+		/*
+		 * THE GITLAB SHAPE (QA round 1, Q-1 / design D2 / agent review F1): a
+		 * real pipeline answer carries NO job counts (`passed`/`failed`/`pending`/
+		 * `total` all null) and an `!N` identity (D6); the lane carries NO round
+		 * (F2's absent-round shape). One row proves both clauses.
+		 */
+		key: "gl:57",
+		number: 57,
+		relation: "mentioned",
+		forge: "gitlab",
+		project: "minervaai/minerva-skills",
+		url: "https://gitlab.com/minervaai/minerva-skills/-/merge_requests/57",
+		mention: { sources: ["assistant"], count: 1, last_at: at(30) },
+		summary: {
+			state: "merged",
+			draft: false,
+			title: "feat(skills): the code review skill",
+			head_sha: "7c4a1e9f22",
+			ci: {
+				status: "success",
+				passed: null,
+				failed: null,
+				pending: null,
+				total: null,
+				url: "https://gitlab.com/minervaai/minerva-skills/-/pipelines/2924686797",
+			},
+			updated_at: at(50),
+			comments: null,
+		},
+		lanes: [
+			lane({
+				lane: "agent",
+				round: null,
+				state: "clean",
+				reviewed_head: "7c4a1e9f22",
+			}),
 		],
 	}),
 	row({
@@ -114,7 +151,6 @@ export const populatedRows = (): DesktopCodeRequestRow[] => [
 				round: 1,
 				state: "findings_open",
 				reviewed_head: "b41c07aa93",
-				open_findings: 3,
 			}),
 		],
 	}),
@@ -256,7 +292,9 @@ export const list = (
 	revision: 7,
 	rows,
 	tool_output_only_count: 0,
+	tool_output_truncated: false,
 	cooling: {},
+	scan_state: "ready",
 	...extra,
 });
 
@@ -274,14 +312,34 @@ export const linkOnlyList = (): DesktopCodeRequestsList =>
 			project: "minervaai/minerva",
 			url: "https://gitlab.com/minervaai/minerva/-/merge_requests/8812",
 			link_only: true,
+			link_only_hint:
+				"Link only — sign in with the glab CLI to track this one.",
 			summary: null,
 			mention: { sources: ["assistant"], count: 1, last_at: at(5) },
+		}),
+		row({
+			/*
+			 * THE UNTRACKED-HOST SHAPE (link-only_hint's own third branch): a host
+			 * no adapter reaches gets the backend's "isn't tracked yet" sentence,
+			 * never a CLI that cannot help it (agent review F8 / design D8 / UX U5).
+			 */
+			key: "codeberg:88",
+			number: 88,
+			relation: "mentioned",
+			forge: "gitea",
+			project: "somebody/notes",
+			url: "https://codeberg.org/somebody/notes/pulls/88",
+			link_only: true,
+			link_only_hint: "Link only — this host isn't tracked yet.",
+			summary: null,
+			mention: { sources: ["assistant"], count: 1, last_at: at(12) },
 		}),
 		row({
 			key: "gh:2090",
 			number: 2090,
 			relation: "mentioned",
 			link_only: true,
+			link_only_hint: "Link only — sign in with the gh CLI to track this one.",
 			summary: null,
 			mention: { sources: ["user"], count: 1, last_at: at(30) },
 		}),
@@ -311,7 +369,6 @@ export const rateLimitedList = (): DesktopCodeRequestsList =>
 						round: 1,
 						state: "findings_open",
 						reviewed_head: "b41c07aa93",
-						open_findings: 3,
 					}),
 				],
 			}),
@@ -355,6 +412,12 @@ export const couldNotRefreshList = (): DesktopCodeRequestsList =>
 			.map((entry) => ({
 				...entry,
 				stale: true,
-				refresh_error: "rate limited",
+				/*
+				 * The backend's own sentence, verbatim (UX round 1, U5): QA's real
+				 * bad-token run produced exactly this string, and the row renders it
+				 * after `Couldn't refresh —` rather than paraphrasing the cause.
+				 */
+				refresh_error:
+					"credential rejected — sign in again with gh/glab, then refresh.",
 			})),
 	);

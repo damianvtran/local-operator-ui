@@ -1,6 +1,6 @@
 import { Badge } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { GitPullRequest } from "lucide-react";
+import { ArrowUpRight, GitPullRequest } from "lucide-react";
 import type { FC } from "react";
 import { openUrlTarget } from "../../chat/utils/link-open";
 import {
@@ -8,8 +8,11 @@ import {
 	actedTag,
 	ciClause,
 	commentClause,
+	forgeSigil,
+	linkOnlyRemedy,
 	refreshCaption,
 	relationTag,
+	rowAriaLabel,
 	statePill,
 	updatedClause,
 } from "../code-review-model";
@@ -66,46 +69,77 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({ row, nowMs }) => {
 	const caption = refreshCaption(row);
 	const canShowMeta = !row.link_only && Boolean(row.summary);
 	/*
-	 * The link-only caption's own sentence, host-aware: the pane cannot refresh
-	 * without a credential, and the two CLIs are the two credentials this app
-	 * resolves. A host that is neither still gets the gh sentence - the only
-	 * rung the design names - and `forgeDisplayName` is not involved because
-	 * this is about a login, not a brand.
+	 * The link-only row's one visible line: the BACKEND'S OWN remedy sentence,
+	 * rendered verbatim (agent review F8 / design D8 / UX U5). The old
+	 * `forge === "gitlab" ? glab : gh` derivation named a CLI that does not
+	 * exist for a detect-and-link host; the sentence already leads with `Link
+	 * only`, so the caption and the remedy are one line, and the `title`
+	 * carries the whole of it where the line truncates.
 	 */
-	const tool = row.forge === "gitlab" ? "glab" : "gh";
+	const remedy = row.link_only ? linkOnlyRemedy(row) : null;
 	return (
 		<li data-code-request-row={row.key} className={cn("list-none")}>
 			<button
 				type="button"
+				aria-label={rowAriaLabel(row)}
 				onClick={() => void openUrlTarget(row.url)}
 				className={cn(
 					"group/row flex w-full items-start gap-2 px-3 py-1 text-left cursor-pointer",
-					"hover:bg-row-hover focus-visible:outline-offset-1!",
+					/*
+					 * THE ROW'S HOVER IS THE RUN-DETAIL ROW'S TOKEN: a step DOWN to
+					 * `bg-surface`, never up to `elevated` (UX round 1, U4 measured
+					 * `bg-row-hover` at a 1.001:1 step - imperceptible). `duration-fast`
+					 * matches the sibling list's transition.
+					 */
+					"transition-colors duration-fast hover:bg-surface",
+					/*
+					 * AN INSET RING: the app's default 2px outline sits outside the box and
+					 * the list's `overflow-y-auto` clips its left and right edges at the
+					 * pane's padding, which read as a divider rather than a focus ring (U4).
+					 * `outline-offset-[-2px]` is the house inset spelling
+					 * (`mesh-canvas.tsx`, `canvas-file-viewer.tsx`).
+					 */
+					"focus-visible:outline-offset-[-2px]!",
 				)}
 			>
 				<span className={cn("pt-0.5 text-ink-dim")}>
-					<GitPullRequest size-4 aria-hidden={true} />
+					{/*
+					 * `size-4` AS A CLASS, not the `size-4` JSX attribute (agent review
+					 * F4 / design D1): the attribute spelling rendered a 24px glyph and
+					 * React's `non-boolean attribute` warning; 16px matches the sibling
+					 * lists' marks.
+					 */}
+					<GitPullRequest className={cn("size-4")} aria-hidden={true} />
 				</span>
 				<span className={cn("flex min-w-0 flex-1 flex-col gap-0.5")}>
 					{/*
-					 * LINE A - identity, the disambiguating tag, the state pill. The
-					 * identity truncates first (it is the longest and the least load-bearing:
-					 * the tooltip carries it whole), the tag and pill never truncate - a state
-					 * cut mid-word is a broken claim. The pill sits at the right edge via
-					 * `ml-auto` so it lands in the same column on every row, truncate or not.
+					 * LINE A - identity, the disambiguating tag, the state pill.
+					 *
+					 * THE NUMBER NEVER TRUNCATES (design D3 / UX U8): at the 320px floor
+					 * the merged rows all read `damianvtran/local-operator #2…` and were
+					 * indistinguishable. The project truncates; the `#N` (`!N` on GitLab,
+					 * D6) is `shrink-0`; the relation tag yields before either.
 					 */}
 					<span className={cn("flex w-full min-w-0 items-center gap-2")}>
-						<span
-							className={cn(
-								"min-w-0 flex-1 truncate text-meta text-ink-muted tabular-nums",
-							)}
-							title={`${row.project} #${row.number}`}
-						>
-							{row.project} #{row.number}
+						<span className={cn("flex min-w-0 flex-1 items-baseline gap-1")}>
+							<span
+								className={cn(
+									"min-w-0 truncate text-meta text-ink-muted tabular-nums",
+								)}
+								title={`${row.project} ${forgeSigil(row)}${row.number}`}
+							>
+								{row.project}
+							</span>
+							<span
+								className={cn("shrink-0 text-meta text-ink-muted tabular-nums")}
+							>
+								{forgeSigil(row)}
+								{row.number}
+							</span>
 						</span>
 						{relation && (
 							<span
-								className={cn("shrink-0 text-meta text-ink-dim")}
+								className={cn("min-w-0 truncate text-meta text-ink-dim")}
 								title={
 									row.relation === "unknown"
 										? "Possibly opened by this session; the evidence did not prove it was."
@@ -124,6 +158,21 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({ row, nowMs }) => {
 								{pill.label}
 							</Badge>
 						)}
+						{/*
+						 * THE PRESS'S AFFORDANCE (UX round 1, U4): a trailing arrow the
+						 * row's hover or keyboard focus reveals, `aria-hidden` because the
+						 * accessible name already says where the press goes. `ExternalLink`
+						 * is the family's "leaves this surface" glyph (the chip register
+						 * keeps one glyph one meaning), and `ArrowUpRight` is that meaning
+						 * in a row's compact register (`wake-conversation-row.tsx`).
+						 */}
+						<ArrowUpRight
+							aria-hidden={true}
+							className={cn(
+								"size-3.5 shrink-0 text-ink-dim opacity-0 transition-opacity duration-fast",
+								"group-hover/row:opacity-100 group-focus-visible/row:opacity-100",
+							)}
+						/>
 					</span>
 					{/* LINE B - the title, in `ink` (the row's loudest run). */}
 					<span
@@ -151,12 +200,16 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({ row, nowMs }) => {
 						</span>
 					)}
 					{/* LINE E - the captions, one line, conditional. */}
-					{row.link_only ? (
+					{remedy ? (
 						<span
-							className={cn("text-meta text-ink-dim")}
-							title={`Link only — sign in with ${tool} to track this one.`}
+							className={cn("truncate text-meta text-ink-dim")}
+							title={
+								row.reason && row.reason !== remedy
+									? `${remedy} ${row.reason}`
+									: remedy
+							}
 						>
-							Link only
+							{remedy}
 						</span>
 					) : (
 						caption && (
