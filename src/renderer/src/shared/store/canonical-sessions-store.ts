@@ -55,6 +55,7 @@ import {
 	DESKTOP_LOST_SIGHT_CODE,
 	DESKTOP_REFUSAL_CODE,
 	DESKTOP_REFUSAL_SENTENCE,
+	type DelegatedCleanupNotice,
 	type DesktopModelSelection,
 	type DesktopRequest,
 	RUNTIME_BUSY_CODE,
@@ -5408,6 +5409,18 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 */
 								next_cursor?: string | null;
 								cursor_missing?: boolean;
+								/**
+								 * The one-time "delegated sessions were cleaned up" notice, typed
+								 * with the rest of the list's wire fields. NOTHING HERE READS IT,
+								 * deliberately: `desktopResult` lifts it out of every
+								 * `sessions.list` answer into `delegated-cleanup-notice-store`
+								 * (one place, so whichever of the five callers is served it, it
+								 * is kept), and the server serves the field on EVERY answer until
+								 * the dismissal acknowledges it. It is declared so the next reader
+								 * of this type can see the field the wire carries rather than
+								 * discovering it in a cast.
+								 */
+								delegated_cleanup_notice?: DelegatedCleanupNotice | null;
 								/**
 								 * The census, present only when the request asked for it. Validated
 								 * before it is stored (`catalogueCountsFrom`) because the daemon
