@@ -17,10 +17,21 @@ WHAT IS CARRIED OVER UNCHANGED, AND WHY IT MATTERS HERE
 * A SEED PER OWNER (`--ask`). The unit under test is the ASKS DOOR - where it
   lives and what it opens - so the two conversations have to be plainly different
   from each other and otherwise ordinary: distinct titles, distinct opening
-  exchanges, and (on B only) a live queued-ask engine, which is what lets the door
-  be offered, pressed and photographed with a real pending ask behind it. A has no
-  ask engine at all, so the door must be ABSENT on it - its frames carry no ask
-  chrome to argue about.
+  exchanges, and a seed on B whose pending ask is raised mid-view through the
+  command channel, so every frame that shows one shows an ask that arrived while
+  its view was up. THE TRUE CAST, CORRECTED IN ROUND 1 (QA round 1, Q3): the
+  earlier sentence here - "A has no ask engine at all, so the door must be
+  ABSENT on it" - is FALSE for this rig's served path, because the serving
+  layer installs its own ask gate by DEFAULT (`ServingSessionHandle`,
+  `install_gates: bool = True` -> `session.set_ask_handler(ask_gate)`), so
+  BOTH owners serve a live queued-ask engine. A is a live but ORDINARY empty
+  queue: its wire carries `asks_open: 0` (measured from the daemon directly and
+  through the app's own stream), the door IS offered on it, and its settled
+  paint (`This conversation · All asks settled`) is wire-faithful; no ask is
+  ever raised there. What `--ask` fronts is the seed - B's queue is touched and
+  published at startup so the frame exists before a view opens it - and the
+  rig's stub handler below, which the serving gate replaces when the handle
+  assembles.
 * A COMMAND CHANNEL (`<scratch>/cmd/<session_id>/*.json`). "An ask arrives after
   the view is up" can only be shown by raising one AFTER a view has mounted, and
   the owner is a separate process the driver cannot call. The driver drops a JSON
@@ -60,9 +71,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--ask",
         action="store_true",
-        # The ask engine is OFF by default: a conversation with no queued-ask
-        # capability at all is the shape A has, and the arm that needs one names it.
-        help="install the queued-ask host hook on this conversation",
+        # THE FLAG DOES NOT TURN THE ENGINE ON (round-1 Q3): the serving layer
+        # installs its own ask gate for every session it serves
+        # (`ServingSessionHandle(install_gates=True)`), so A carries a
+        # live-but-empty wire either way. What this names is the SEED: B's queue
+        # is touched and published at startup, and the stub below is set before
+        # the handle assembles (which replaces it with the serving gate).
+        help="seed this conversation as the one the rig raises its pending ask on",
     )
     parser.add_argument("--port", type=int, default=0)
     return parser.parse_args()
@@ -302,8 +317,11 @@ async def main() -> None:
     )
     if args.title:
         session.set_conversation_name(args.title, user_set=True)
-    # THE HOST HOOK: without it `ask_queue()` is None and the ask tool does not
-    # exist. A conversation WITHOUT it is the ordinary shape and is left that way.
+    # THE RIG'S STUB HOOK (`--ask`). Set before the handle assembles, and
+    # replaced by the serving layer's own gate at construction
+    # (`ServingSessionHandle(install_gates=True)` -> `set_ask_handler(ask_gate)`,
+    # round-1 Q3), so it is the SEED's marker rather than what makes
+    # `ask_queue()` non-None - both owners serve a live queue.
     if args.ask:
         session.set_ask_handler(stub_ask_user)
 
@@ -333,8 +351,10 @@ async def main() -> None:
     await append("assistant", opening[1])
 
     if args.ask:
-        # Touch the queue so the engine is live: `asks_open: 0` is published, which
-        # is the live-but-empty shape (capability present, nothing queued). The
+        # Touch and publish the SEED's queue: the engine is live either way (the
+        # serving gate installs for every served session; round-1 Q3), and this
+        # startup touch is what makes B's live-but-empty frame (`asks_open: 0`)
+        # exist before any view opens it. The
         # pending ask a case needs is raised LATER, through the command channel, so
         # every frame that shows one shows an ask that arrived while its view was up.
         session.ask_queue()

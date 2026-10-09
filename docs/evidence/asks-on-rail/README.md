@@ -37,7 +37,7 @@ palettes read the same structure; every number below is in the four
 | --- | --- | --- |
 | renderer tree | this branch - the frames were shot at head **`f5dd12d41e9`** (the code commit; the evidence commit that follows adds only this set and the manifest entry) | `origin/main` @ **`bb095dca28c`** (the branch's merge-base; #916's 0.33.11 release line) |
 | served from | this checkout | a throwaway worktree of `origin/main` (`SLOT_RIG_BEFORE_REPO`), with this checkout's `node_modules` symlinked in by absolute path |
-| backend | the rig's daemon, TWO owner processes: A `Deploy checklist` (`aaaa11112222`, no ask engine) and B `Review notes` (`bbbb11112222`, live queued-ask engine) | the same daemon, the same two owners |
+| backend | the rig's daemon, TWO owner processes: A `Deploy checklist` (`aaaa11112222` - a live but ORDINARY empty queue: the serving layer installs its ask gate by default, so the door is offered on it and its settled paint is wire-faithful; round-1 Q3) and B `Review notes` (`bbbb11112222`, the same engine plus the seed the pending ask is raised on) | the same daemon, the same two owners |
 | what differs | the asks trigger (header → rail, as `PanelRailItem` id `ask`), the rail's `PANEL_RAIL_ORDER` and lit contract (five items, `ask` lit while the drawer holds the slot), the `…` menu's asks row, `ASK_HEADER_ITEM_SELECTOR` → `ASK_RAIL_ITEM_SELECTOR` (naming only; the tag value is unchanged) | - |
 
 `drive-asks.mjs` refuses to drive both arms in one invocation, and each arm is

@@ -1273,6 +1273,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const sessionAsksOpen =
 			isAskDrawerOpen && askDrawerScope === "session" && Boolean(sessionId);
 		const setAskDrawerOpen = useUiPreferencesStore((s) => s.setAskDrawerOpen);
+		const requestAskOpen = useUiPreferencesStore((s) => s.requestAskOpen);
 		/*
 		 * Whether a right-slot pane occupies the window's right edge, which is what
 		 * decides whether the CHAT HEADER has to reserve the OS controls' corner (chat
@@ -1935,11 +1936,32 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							 * toggle onto the drawer in the scope this conversation resolves to (see
 							 * the block above). The press TOGGLES rather than only opening, so the
 							 * row is the same door in both directions - the browser row's own idiom
-							 * beside it.
+							 * beside it - and its OPEN arm also writes the lane's open request
+							 * (round-1 Q1): the row cannot signal its press through focus, so the
+							 * request is what tells the drawer the open was the user's own (see the
+							 * handler below).
 							 */
 							onToggleAsks={
 								headerAsksOffered
-									? () => setAskDrawerOpen(!headerAsksOpen, headerAsksScope)
+									? () => {
+											/*
+											 * THE MENU ROW IS A TOGGLE IN THIS CONVERSATION'S SCOPE, and its
+											 * OPEN is where the request is written (round-1 Q1). The row cannot
+											 * signal its press through focus — Radix hands the keyboard back
+											 * to this menu's own trigger when it closes — so `askOpenIntent`
+											 * is what tells the drawer it was pressed, exactly as a door's
+											 * focus does for the chip and the rail item (`ask-drawer.tsx`'s
+											 * entry move). Written after the open, in the console trigger's
+											 * own order one control over: the claim is what shows the pane;
+											 * the request is what marks the open as the user's.
+											 */
+											if (headerAsksOpen) {
+												setAskDrawerOpen(false, headerAsksScope);
+												return;
+											}
+											setAskDrawerOpen(true, headerAsksScope);
+											requestAskOpen(headerAsksScope);
+										}
 									: undefined
 							}
 							asksScope={headerAsksScope}

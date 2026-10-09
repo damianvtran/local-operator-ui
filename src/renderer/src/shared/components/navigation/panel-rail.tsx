@@ -209,14 +209,31 @@ export const PanelRail: FC<PanelRailProps> = ({
 	 * starts at the current answer), and only when the slot is now EMPTY: a swap to
 	 * another pane or to the Asks drawer is the user choosing, not a close.
 	 *
-	 * RUN DETAILS IS EXCLUDED: its trigger owns the identical effect (with a second
-	 * guard for focus left inside the pane) because it also owns the ledger.
+	 * TWO PANES ARE EXCLUDED FROM THIS EFFECT, and in both cases the reason is
+	 * that each runs the identical return from its OWN owner: the RUN trigger
+	 * (which also owns the ledger, and adds a second guard for focus left inside
+	 * the pane), and the ASKS DRAWER. The drawer is the one whose door may be the
+	 * composer chip, it keeps its own record of the door it was opened by, and
+	 * this effect cannot see which door that was - so since #896 put an ask item
+	 * on the rail this effect found SOMETHING to focus (the item) whenever the
+	 * drawer closed under the keyboard, and pre-empted the drawer's own return
+	 * for the chip door (round-1 F1/Q2: focus landed on the rail item instead of
+	 * the chip). React runs this effect's focus write inside the same commit in
+	 * which the drawer's cleanup queues its return microtask, and microtasks
+	 * cannot run between the two, so the drawer's return can never win while
+	 * this effect is allowed to act.
 	 */
 	const previouslyDrawn = useRef(drawn);
 	useEffect(() => {
 		const before = previouslyDrawn.current;
 		previouslyDrawn.current = drawn;
-		if (drawn !== null || before === null || before === "run") return;
+		if (
+			drawn !== null ||
+			before === null ||
+			before === "run" ||
+			before === "ask"
+		)
+			return;
 		if (document.activeElement !== document.body) return;
 		rootRef.current
 			?.querySelector<HTMLElement>(`[data-panel-rail-item="${before}"]`)
@@ -225,7 +242,21 @@ export const PanelRail: FC<PanelRailProps> = ({
 
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	const browser = browserRailLabels(drawn === "browser", browserAttentionCount);
-	const ask = askRailLabels(drawn === "ask", askScope, askCount);
+	/*
+	 * THE VERB IS THE ITEM'S OWN SCOPE, THE LIT STATE IS THE SLOT'S (#896,
+	 * round-1 N1). While the OTHER scope's drawer is carried onto this
+	 * conversation the item is the lit one (the drawer holds the slot, so
+	 * `pressed` reads `drawn === "ask"`) - but its press RE-SCOPES rather than
+	 * closes, so the tooltip must read `Open` (the action the press will take,
+	 * which is the header trigger's own semantics before the move) even while
+	 * `aria-pressed` says "this surface is up". The two readings are passed
+	 * deliberately as two different facts.
+	 */
+	const ask = askRailLabels(
+		isAskDrawerOpen && askDrawerScope === askScope,
+		askScope,
+		askCount,
+	);
 	const terminal = consoleRailLabels(drawn === "console", consoleUnseenCount);
 	const canvas = canvasRailLabels(
 		drawn === "canvas",

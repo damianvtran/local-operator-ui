@@ -5,9 +5,13 @@
 #   * TWO owner processes, and that is the whole cast. The unit under test is the
 #     ASKS DOOR - where it lives (header before #896, panel rail after) and what it
 #     opens - so the rig needs exactly two conversations that are plainly different:
-#     A with no ask engine at all (the door must be OFFERED nowhere on it), and B
-#     with a live queued-ask engine, where the pending ask is raised mid-view
-#     through the command channel. Every case drives one of those two, or a draft.
+#     A and B, whose wires differ only by the SEED the driver raises on B mid-view
+#     through the command channel. ROUND-1 Q3, THE TRUE CAST: an earlier sentence
+#     here claimed A had "no ask engine at all"; the SERVING layer installs its ask
+#     gate by default (`ServingSessionHandle(install_gates=True)`), so A is a live
+#     but ORDINARY empty queue - its wire carries `asks_open: 0`, the door is offered
+#     on it, and its settled paint is wire-faithful. See `serve-asks.py`'s seed
+#     bullet for the full correction.
 #   * TWO Vite servers over ONE backend, so ONE rig-up can serve either arm - but
 #     DRIVE ONLY ONE ARM PER RIG-UP. The before arm is `origin/main`
 #     (`SLOT_RIG_BEFORE_REPO`, a checkout of that commit), the after arm is this
@@ -91,8 +95,10 @@ start routes --mode routes
 for _ in $(seq 1 240); do [ -s "$SCRATCH/routes-port" ] && break; sleep 0.5; done
 [ -s "$SCRATCH/routes-port" ] || { echo "routes never started"; tail -20 "$LOG/routes.log"; exit 1; }
 
-# A: no ask engine (the ordinary conversation). B: a live queued-ask engine, so the
-# drawer can be opened by hand over a conversation that also remembers a panel.
+# A: the ordinary conversation - a live but EMPTY queue (the serving gate is
+# installed by default; round-1 Q3). B: the same engine PLUS the seed, so the
+# drawer can be opened by hand over a conversation that also remembers a panel and
+# carries the pending ask the cases raise.
 start owner-aaaa11112222 --mode owner --session-id aaaa11112222 --title "Deploy checklist"
 start owner-bbbb11112222 --mode owner --session-id bbbb11112222 --title "Review notes" --ask
 

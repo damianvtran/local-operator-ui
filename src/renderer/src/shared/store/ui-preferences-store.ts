@@ -469,6 +469,65 @@ type UiPreferencesState = {
 	setAskDrawerOpen: (open: boolean, scope: AskScope) => void;
 
 	/**
+	 * THE QUEUE the user has just asked to open from the header's `…` menu, and
+	 * which the drawer has not answered yet. `null` when there is no request.
+	 *
+	 * A CONSUMED-ONCE REQUEST, NOT A PREFERENCE — `consoleOpenIntent`'s shape one
+	 * pane over, and excluded from persistence beside it for the same reason. The
+	 * drawer opens for four reasons — the user's press on the chip, the user's
+	 * press on the rail item, the user's pick of the menu's asks row, the policy's
+	 * auto-open (and a carried flag surviving a switch) — and the first two
+	 * announce themselves through FOCUS: the mount finds the pressed door under
+	 * the keyboard. The menu row is the one door that cannot. Radix hands the
+	 * keyboard back to the menu's own trigger when it closes, so the press leaves
+	 * focus on a control that says nothing about the drawer — and QA round 1 (Q1)
+	 * measured the cost: the row was a NO-OP over a live-but-empty queue, and over
+	 * a full one it opened a drawer the keyboard never entered (the U1/F1-class
+	 * Escape fall-through the lane's door latch exists to prevent). So the row's
+	 * open writes this request, and the drawer that mounts for it reads the
+	 * request where it reads a door: latch the mount as the user's own (skip the
+	 * empty-queue auto-close), wait the same frame for the queue, land the
+	 * keyboard in the list, and — on a stranded close — give it back to the
+	 * trigger that was pressed. Non-user opens write no request, so they neither
+	 * latch nor move the keyboard.
+	 *
+	 * IT NAMES THE SCOPE rather than being a boolean: the two queues share one
+	 * flag and one container, so a request must be answered by the queue it asked
+	 * for and no other.
+	 *
+	 * IT LIVES IN THE STORE rather than in a prop for the reason
+	 * `consoleOpenIntent` does: the drawer is REMOUNTED across a conversation
+	 * switch (and a scope swap swaps the mount), so a flag held in a mount would
+	 * either be forgotten by the remount it was set just before, or re-fire on
+	 * the remount it survived into. Here the drawer consumes it on the commit
+	 * that answers it — and clears it again on close, so a request that was never
+	 * answered cannot be inherited by the next mount.
+	 */
+	askOpenIntent: AskScope | null;
+
+	/**
+	 * Ask the drawer, on its next mount, to take a user's open of the asks
+	 * surface from the `…` menu's asks row: treat the mount as a press (skip the
+	 * empty auto-close), land the keyboard in the list, and remember the menu's
+	 * trigger as the close's return. See `askOpenIntent`.
+	 *
+	 * ONE CALLER: the menu row's OPEN press (`chat-content.tsx`). The row's close
+	 * arm is a plain `setAskDrawerOpen(false, scope)` with no request; the chip and
+	 * the rail item deliberately do not call it (their presses are read off
+	 * focus), and the open policy must not (its opens move no keyboard — the
+	 * lane's no-focus-steal promise).
+	 */
+	requestAskOpen: (scope: AskScope) => void;
+
+	/** The drawer has answered the request FOR THIS SCOPE, and only that one —
+	 * the guard `clearConsoleOpenIntent` keeps one pane over: an unconditional
+	 * clear would throw away a request the user made for the other queue. The
+	 * drawer calls it once on the bootstrap that acts on the request, and once
+	 * on unmount, so a request left unanswered by a close cannot outlive its
+	 * open. */
+	clearAskOpenIntent: (scope: AskScope) => void;
+
+	/**
 	 * The conversation whose console the user has just asked to open, and which the
 	 * pane has not answered yet. `null` when there is no request.
 	 *
@@ -1685,6 +1744,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			isAskDrawerOpen: false,
 			askDrawerScope: "session",
 			askDrawerEvictedPane: null,
+			askOpenIntent: null,
 			rightSlotRoute: EMPTY_RIGHT_SLOT_ROUTE,
 			consoleOpenIntent: null,
 			runPanelReveal: null,
@@ -1864,6 +1924,20 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 							: { [state.askDrawerEvictedPane]: true }),
 					};
 				});
+			},
+
+			requestAskOpen: (scope: AskScope) => {
+				set({ askOpenIntent: scope });
+			},
+
+			clearAskOpenIntent: (scope: AskScope) => {
+				// Guarded like the console's, and for the same two reasons: an answer
+				// belongs to the request it answers (a drawer serving one scope cannot
+				// clear the other queue's request), and a no-op clear writes no new
+				// state object - the unmount cleanup calls this on every close.
+				set((state) =>
+					state.askOpenIntent === scope ? { askOpenIntent: null } : {},
+				);
 			},
 
 			setConsoleActiveSurface: (surface: string | null) => {
@@ -2167,6 +2241,11 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			 * and a launch that restored it would run a shell in a conversation every
 			 * time the app started — which is exactly the difference between the pane
 			 * being restored and the user opening it.
+			 *
+			 * `askOpenIntent` is the third (round-1 Q1): the menu row's open request,
+			 * answered by the drawer's own mount, so a launch that restored it would
+			 * open the asks drawer — and move the keyboard into it — on a press nobody
+			 * made in this run.
 			 */
 			partialize: persistedUiPreferences,
 
@@ -2263,10 +2342,13 @@ export function parseConversationRecents(value: unknown): string[] {
  * and the test asserts the shipped function itself instead of a runtime handle on it.
  *
  * `runPanelReveal` is a request to open the run pane at a section; `consoleOpenIntent`
- * names the conversation a request to give a terminal and the keyboard was made for.
- * Both are consumed by the pane that answers them, so persisting either would outlive the event it describes
- * — a launch would restore a request nobody made and act on it, which for the console
- * means running a shell in a conversation every time the app started.
+ * names the conversation a request to give a terminal and the keyboard was made for;
+ * `askOpenIntent` names the queue a request to open the asks drawer was made for.
+ * All three are consumed by the surface that answers them, so persisting any would
+ * outlive the event it describes — a launch would restore a request nobody made and act
+ * on it, which for the console means running a shell in a conversation every time the
+ * app started, and for the asks drawer means opening it (and moving the keyboard into
+ * it) with no press behind it.
  *
  * THE FOUR DURABLE FLAGS LEAVE THE BLOB ENTIRELY (issue #894). They used to be the
  * preference — "the window had a canvas open" — and they are now the bound
@@ -2288,6 +2370,7 @@ export function persistedUiPreferences<
 	T extends {
 		runPanelReveal: unknown;
 		consoleOpenIntent: unknown;
+		askOpenIntent: unknown;
 		isAskDrawerOpen: unknown;
 		askDrawerScope: unknown;
 		askDrawerEvictedPane: unknown;
@@ -2305,6 +2388,7 @@ export function persistedUiPreferences<
 	T,
 	| "runPanelReveal"
 	| "consoleOpenIntent"
+	| "askOpenIntent"
 	| "isAskDrawerOpen"
 	| "askDrawerScope"
 	| "askDrawerEvictedPane"
@@ -2318,6 +2402,10 @@ export function persistedUiPreferences<
 	const {
 		runPanelReveal: _pending,
 		consoleOpenIntent: _intent,
+		/* The menu row's open request (round-1 Q1): the drawer consumes it on the
+		 * commit that answers it, so a restored copy would open a surface nobody
+		 * pressed a door for. Excluded beside the console's for the same reason. */
+		askOpenIntent: _askIntent,
 		/*
 		 * THE ASKS DRAWER IS NOT PERSISTED, and it is excluded here rather than in the
 		 * flag's own note because this is where the decision is executed (see
