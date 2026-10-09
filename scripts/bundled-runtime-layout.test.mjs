@@ -94,6 +94,38 @@ const appResolvers = await (async () => {
 	);
 })();
 
+/*
+ * A PYTHON VERSION LITERAL, in the one shape a script PINS rather than mentions
+ * (code review round 2, M-1): a quoted token that is the version and nothing
+ * else. Prose that names the floor ("not a runnable Python 3.12+") is not a pin
+ * and must stay writable - which is why the pattern anchors on the quote instead
+ * of matching dotted numbers anywhere.
+ */
+const PYTHON_VERSION_TOKEN = /["']3\.\d[\w.]*["']/;
+
+test("the Python-version guard catches every spelling of a pin", () => {
+	/*
+	 * The four forms a re-pin actually takes, mutation-checked here rather than in
+	 * a reviewer's throwaway script: the three-part literal the old guard caught,
+	 * and the two-part, wildcard and pre-release-part spellings it did not.
+	 */
+	for (const literal of ['"3.14.7"', '"3.14"', '"3.14.x"', '"3.14.7b1"'])
+		assert.ok(
+			PYTHON_VERSION_TOKEN.test(literal),
+			`${literal} is a pin the guard must catch`,
+		);
+	/*
+	 * And it stays quiet on what a script may legitimately carry: the floor as a
+	 * tuple in a version probe, and the prose the shipped Windows script prints.
+	 */
+	for (const innocent of [
+		"(3, 12)",
+		"$PythonVersion = $env:LOCAL_OPERATOR_PYTHON_VERSION",
+		'"WARNING: ... is not a runnable Python 3.12+; looking for another."',
+	])
+		assert.ok(!PYTHON_VERSION_TOKEN.test(innocent), `${innocent} is not a pin`);
+});
+
 test("the Tcl/Tk token expands from the declaration, and the seed directory it names is required", () => {
 	// Review R2-5: `{tkver}`'s only other consumer is an OPTIONAL prune entry
 	// (`lib/tk{tkver}/demos`), whose absence is the accepted outcome - so the token
@@ -400,9 +432,27 @@ test("each install script installs with uv and keeps the pip path it had", () =>
 		 */
 		if (path.endsWith(".ps1")) {
 			assert.ok(
-				!/\b3\.\d+\.\d+\b/.test(code),
+				!PYTHON_VERSION_TOKEN.test(code),
 				`${path}: a Python version literal is a second pin - pass LOCAL_OPERATOR_PYTHON_VERSION instead`,
 			);
+			/*
+			 * AND EVERY ASSIGNMENT IS THE ENV READ, checked line by line (code
+			 * review round 2, M-1): the old guard was a three-part dotted literal,
+			 * so a re-pin written as `"3.14"`, `"3.14.x"` or `"3.14.7b1"` - or as a
+			 * conditional whose fallback branch is a literal - passed it silently.
+			 * A pin the script ACTS on is always this assignment, so requiring its
+			 * right-hand side to be exactly the app's variable is the check that
+			 * cannot be spelled around.
+			 */
+			for (const line of code.split("\n")) {
+				const assignment = /^\s*\$PythonVersion\s*=\s*(.*?)\s*$/.exec(line);
+				if (assignment === null) continue;
+				assert.equal(
+					assignment[1],
+					"$env:LOCAL_OPERATOR_PYTHON_VERSION",
+					`${path}: $PythonVersion must read the app's variable, not a literal`,
+				);
+			}
 			assert.ok(
 				code.includes("LOCAL_OPERATOR_PYTHON_VERSION"),
 				`${path}: the version must come from the app`,
