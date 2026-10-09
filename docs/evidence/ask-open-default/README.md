@@ -31,8 +31,9 @@ between a before frame and an after frame is this branch's renderer delta (`git 
 1a1d416559 3786c85ec62 --stat -- src` = 4 files, 1164 insertions, 2 deletions: the two new
 policy files, 44 lines in `chat-content.tsx` and 27 in the drawer's close microtask).
 `after/` is this branch's renderer at `3786c85ec62`; every later commit touches only
-`docs/evidence/` and `scripts/` (`git diff 3786c85ec62 HEAD -- src package.json` is empty),
-so the frames still picture the shipped renderer. Each arm ran against its OWN freshly
+`docs/evidence/` and `scripts/`, plus one formatter-only wrap of the region's JSX
+attributes whose diff changes no rendered content (`git diff 3786c85ec62 HEAD -- src` is
+that single hunk), so the frames still picture the shipped renderer. Each arm ran against its OWN freshly
 started backend (a routes daemon plus one owner process per conversation, real `Session`s
 and a real `AskQueue`), one headless Chrome per run, one browser context per case, 1380x900
 unless a case names another size. 39 frames: 11 before, 28 after; 37 Dark and 2 Light
@@ -181,8 +182,9 @@ committed frames show. Both suites are registered in `test:desktop`;
 `harness/mutate.py` is the fail-on-old reading, per rule. M0 is the old tree in one line (the
 hook returns before doing anything); M1-M24 are one exact-text replacement each in shipped
 source, asserted to match exactly once, restored byte-for-byte, and run against both suites.
-`harness/mutation-results.json` is its output at `a8252aca05e` (whose `src/`, `scripts/` and
-`package.json` are identical to every commit above it here - each touches only `docs/evidence/`):
+`harness/mutation-results.json` is its output at `a8252aca05e`; every commit above it here
+touches only `docs/evidence/` and scripts-free files (the one later `src` change is the
+formatter's wrap in `chat-content.tsx`, which no mutant in the table edits):
 the control passes 81 of 81, and every one of the 25 mutants fails at least one test, with no
 survivor. M22-M24 pin this round's three rules (the carried close's second arm, the live region's
 sentence, the composer fallback after an auto-opened close), dying by 3, 2 and 1 tests. The old
