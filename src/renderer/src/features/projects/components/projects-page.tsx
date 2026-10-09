@@ -62,7 +62,7 @@ import { Alert, Button, Skeleton } from "@shared/components/ui";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { FolderKanban, Plus, RefreshCw } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type {
 	DesktopProject,
@@ -469,6 +469,26 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 		document.addEventListener("keydown", onKeyDown);
 		return () => document.removeEventListener("keydown", onKeyDown);
 	}, [enabled, projectId]);
+	/*
+	 * THE DETAIL SCROLLER STARTS AT THE TOP ON EVERY ENTRY (UX round 1, U1;
+	 * operator: "we should stay scrolled at the top when clicking in"). The list
+	 * and the detail return a `div` at the same position from this component, so
+	 * React REUSES one DOM node across `/projects` <-> `/projects/:projectId` —
+	 * and the scroll offset is a property of that NODE, not of the route: a
+	 * reader who left the detail scrolled re-opened the same project at the
+	 * abandoned offset (measured: 200 / 800 / 1096), which is exactly what "land
+	 * at the top" promises not to happen. A LAYOUT effect rather than a passive
+	 * one so the reset lands before paint (no frame ever shows the old offset),
+	 * keyed on `projectId` because entry to any project — the same one again
+	 * (`undefined -> id` is a change) or a different one — is what it answers.
+	 */
+	const detailScrollerRef = useRef<HTMLDivElement | null>(null);
+	useLayoutEffect(() => {
+		if (!projectId) return;
+		const scroller = detailScrollerRef.current;
+		if (scroller === null) return;
+		scroller.scrollTop = 0;
+	}, [projectId]);
 	const details = useProjectMilestones(
 		view === "timeline" ? projects.map((project) => project.id) : [],
 		enabled,
@@ -622,7 +642,10 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 			 * `mx-auto`, and a one-sided reservation would centre it 4px left of
 			 * the view (that file's own measurement).
 			 */
-			<div className="flex h-full min-h-0 flex-col overflow-y-auto overflow-x-hidden p-6 [scrollbar-gutter:stable_both-edges]">
+			<div
+				ref={detailScrollerRef}
+				className="flex h-full min-h-0 flex-col overflow-y-auto overflow-x-hidden p-6 [scrollbar-gutter:stable_both-edges]"
+			>
 				<ProjectDetailScreen projectKey={projectId} nowMs={nowMs} />
 			</div>
 		);
