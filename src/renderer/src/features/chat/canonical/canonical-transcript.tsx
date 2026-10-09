@@ -143,6 +143,8 @@ import { visibleRecords } from "./cross-session-visibility";
 import { isRecordReachable } from "./failed-row-jump";
 import { FoldMedia } from "./fold-media";
 import { type FoldOpenEntry, foldOpenOf, withFoldOpen } from "./fold-open";
+import { ImageGenCard } from "./image-gen-card";
+import { imageGenCardView, isImageGenTool } from "./image-gen-card-model";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
 import { forkEntryId } from "./message-actions";
@@ -374,6 +376,26 @@ export type CanonicalTranscriptProps = {
 	 * clock.
 	 */
 	stopping?: boolean;
+	/**
+	 * The image-gen card's Cancel path: the page's turn-interrupt press
+	 * (`chat-page.tsx`'s `stop`, as `chat-content.tsx` folds it into
+	 * `canonicalStop`), handed down so a running generation can be cancelled
+	 * from its own card.
+	 *
+	 * THE SAME WRITE PATH the composer's Stop and Escape already take - never a
+	 * second interrupt mechanism - which is why it arrives as the callback and
+	 * is not re-derived here. PROVIDED ONLY WHERE A PRESS CAN WORK: the call
+	 * site passes it when the backend advertises `session_interrupt` and the
+	 * pane is not terminal (`canonicalStop`'s own two terms), so an absent prop
+	 * means the card renders no Cancel control at all - never a button whose
+	 * every press would answer "nothing was running".
+	 *
+	 * The restart and steer affordances are DELIBERATELY not wired: the named
+	 * op for a regenerate press is not defined yet (the image-gen programme's
+	 * frozen facts), so integration provides Cancel alone and the slots are
+	 * demonstrated in stories until the op is named.
+	 */
+	onInterruptTurn?: () => void;
 	/**
 	 * The disputed idle is standing (the page's own fact): an `idle` receipt
 	 * arrived while the pane still claimed a live turn.
@@ -1503,6 +1525,8 @@ const ToolRow = memo(function ToolRow({
 	labelPending = false,
 	labelHoldLate = false,
 	labelMarked = false,
+	stopping = false,
+	onInterruptTurn,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
@@ -1513,7 +1537,32 @@ const ToolRow = memo(function ToolRow({
 	labelHoldLate?: boolean;
 	/** A refusal ended this row's hold: the mark stands in the hold's place. */
 	labelMarked?: boolean;
+	/** The pane's stop is in flight; see `TranscriptRow`'s copy of this prop. */
+	stopping?: boolean;
+	/** The pane's interrupt press, for the card's Cancel; absent = no control. */
+	onInterruptTurn?: () => void;
 }) {
+	/*
+	 * THE IMAGE-GEN CARD IS THE ROW for a call in the detection set. It owns
+	 * the whole lifecycle - the progress while unsettled, the artifact and its
+	 * quiet receipt when settled - so it REPLACES the ledger row and its media
+	 * block rather than rendering beside them: two renderings of one call is
+	 * the second component § 9 opens with, and a ledger line above a card would
+	 * state the call twice. The predicate is the model module's one exported
+	 * constant, adjustable in one place when the harness freezes the tool-name
+	 * set.
+	 */
+	if (isImageGenTool(record.toolName)) {
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<ImageGenCard
+					view={imageGenCardView(record, { stopping })}
+					scope={scope}
+					actions={onInterruptTurn ? { onCancel: onInterruptTurn } : undefined}
+				/>
+			</MessageContainer>
+		);
+	}
 	const running = record.phase !== "done";
 	const composing = record.phase === "composing";
 	/*
@@ -2324,6 +2373,8 @@ const TranscriptRow = memo(function TranscriptRow({
 	undelivered = null,
 	labelHoldLate = false,
 	labelMarked = false,
+	stopping = false,
+	onInterruptTurn,
 }: {
 	row: Row;
 	isSmallView: boolean;
@@ -2355,6 +2406,18 @@ const TranscriptRow = memo(function TranscriptRow({
 	labelHoldLate?: boolean;
 	/** A refusal ended this row's hold: the mark stands in the hold's place. */
 	labelMarked?: boolean;
+	/**
+	 * The pane's stop is in flight (the transcript's own `stopping`): the
+	 * image-gen card draws its cancelling step from this. A per-row BOOLEAN for
+	 * the same reason `labelHoldLate` is one - the rows are memoised, and a fact
+	 * that changes once per press is cheaper compared than threaded as state.
+	 */
+	stopping?: boolean;
+	/**
+	 * The pane's interrupt press (`CanonicalTranscriptProps.onInterruptTurn`),
+	 * for the card's Cancel. Undefined means no control, by rule.
+	 */
+	onInterruptTurn?: () => void;
 }) {
 	rowRenderCount.current += 1;
 	const { record } = row;
@@ -2401,6 +2464,8 @@ const TranscriptRow = memo(function TranscriptRow({
 					labelPending={labelPending}
 					labelHoldLate={labelHoldLate}
 					labelMarked={labelMarked}
+					stopping={stopping}
+					onInterruptTurn={onInterruptTurn}
 				/>
 			);
 			break;
@@ -2516,6 +2581,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	startingSession,
 	startingSince,
 	stopping,
+	onInterruptTurn,
 	idleDisputed,
 	workingLine,
 	loadingOlder,
@@ -4328,6 +4394,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						closingLineSuppressed={suppressClosingLine}
 						undelivered={undelivered}
 						answerRail={answerRail}
+						stopping={stopping === true}
+						onInterruptTurn={onInterruptTurn}
 					/>
 				))}
 			</TraceFold>
@@ -4353,6 +4421,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				closingLineSuppressed={suppressClosingLine}
 				undelivered={undelivered}
 				answerRail={answerRail}
+				stopping={stopping === true}
+				onInterruptTurn={onInterruptTurn}
 			/>
 		);
 
