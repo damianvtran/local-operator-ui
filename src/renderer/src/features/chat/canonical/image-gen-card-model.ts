@@ -23,34 +23,44 @@
  * itself when the receipt answers or the record settles — a local "pressed"
  * flag in the card would latch forever when a press found nothing to stop.
  *
- * FROZEN-FIELD SLOTS, and what is deliberately absent today. The live progress
- * fields — queue position, progress fraction, log lines, provider error
- * payload, artifact ref — are not frozen on the wire yet, and nothing in the
- * frames this app receives today carries them. So the mapping renders the
- * REDUCED state honestly instead of guessing: `progress` is all-absence
- * (`null` / empty), and the generated image arrives through `record.images` —
- * the attachments lane's existing extraction, which is also what the fold's
- * media counting reads. When the fields freeze they are read HERE and nowhere
- * else; the stories drive those shapes through the view type until then.
+ * FROZEN-FIELD SLOTS, NOW WIRED (harness PR #2089, 2026-10-09). The live
+ * progress fields arrive in the canonical payload the record carries as
+ * `details` (`transcript-reducer.ts`'s tool record — written from the live
+ * `tool_execution_update` frames, a settling result's own details, and the
+ * durable row's `provider_payload.details`): `stage`, `queue_position`,
+ * `progress_fraction`, `log_lines`, `error`, `error_type`, every key present
+ * on every frame with `null` where no producer supplied one. THE FIELD-NAME
+ * KNOWLEDGE LIVES HERE — `canonicalProgress` below is the surface's one
+ * reader, and the mapping renders the REDUCED state honestly when a frame
+ * states nothing (a `null` fraction draws no bar, no log lines draw no tail,
+ * no position states none): absence is rendered, never filled in. The
+ * generated image still arrives through `record.images` — the attachments
+ * lane's extraction, which is also what the fold's media counting reads.
  *
- * THE PROVIDER-ERROR SHAPE IS FROZEN (manager, 2026-10-08), and its read is
- * the one that lives here today as a best-available source. A failed
- * generation carries `error` — a stable platform sentence that is safe to
- * render as-is — plus `error_type` (FAL's own structured code where one
- * exists, otherwise one of `media_rejected | media_failed |
- * media_rate_limited | media_unavailable`). The card renders `error`
- * VERBATIM: it never layers a substituted sentence of its own over the text.
- * Until `error` lands on the record, the mapping reads the tool result's own
- * output, which is the only error text that exists today; `error_type` is
- * carried on the view (`errorType`) for structure but stays `null` until the
- * field has a home on the wire.
+ * THREE WIRE FACTS THIS READ HONOURS, each from the frozen semantics:
+ *
+ *   - `progress_fraction` stays `null` until a provider reports one —
+ *     deliberately never synthesized (elapsed-vs-budget is a TIMEOUT, not
+ *     progress). So the determinate bar branch remains story-driven in
+ *     practice; the read is here for the day a fraction lands.
+ *   - `stage: null` is a MID-WALK FAILURE (a rung failed; the next rung's
+ *     `queued` will replace it), and its semantics ride `error`/`error_type`
+ *     — "the pair the surfaces branch on". An unsettled call whose latest
+ *     frame carries the pair therefore paints the failure's text VERBATIM in
+ *     the failed presentation and flips back when the next frame arrives;
+ *     the design round ruled the SETTLED failure's copy, not this live arm's,
+ *     so it is recorded in the PR body rather than treated as ruled.
+ *   - the error sentence renders VERBATIM (a stable platform sentence that is
+ *     safe to read as-is; `error_type` is carried for structure, not display).
  *
  * AND ONE CODE IS A RECEIPT RATHER THAN AN ERROR: a cancel against an
  * already-finished job comes back as a conflict with `error_type:
- * media_already_completed`, and the card must state "already finished" rather
- * than paint a failure. That is the done state's `already-finished` receipt
- * below — the guard is a two-line arm at this file's error mapping once the
- * field lands, and the stories carry the receipt's render today.
+ * media_already_completed` (plus the platform's sentence), and the card
+ * states "already finished" rather than painting a failure — the done
+ * state's `already-finished` receipt, which the mapping's error arm now
+ * routes to. A plain cancel's result states `stage: "cancelled"` with NO
+ * `error_type`, and maps to the cancelled state; the receipt text rides the
+ * result's own content either way.
  */
 
 import type { TranscriptImage, TranscriptRecord } from "./transcript-reducer";
@@ -92,6 +102,83 @@ export type ImageGenProgress = {
 	logs: readonly string[];
 	queuePosition: number | null;
 };
+
+/**
+ * The canonical payload, as this adapter reads it — THE ONE PLACE its field
+ * names are spelled. Every value is normalised to its absence: a key that is
+ * not the type the contract states (a free-form-JSON stray) reads as `null`,
+ * never as a value the mapping could render.
+ */
+type CanonicalProgress = {
+	stage: string | null;
+	fraction: number | null;
+	logs: readonly string[];
+	queuePosition: number | null;
+	error: string | null;
+	errorType: string | null;
+};
+
+/** The `log_lines` messages, in order — malformed entries dropped, not guessed. */
+function logMessages(value: unknown): readonly string[] {
+	if (!Array.isArray(value)) return [];
+	const lines: string[] = [];
+	for (const entry of value) {
+		if (!entry || typeof entry !== "object") continue;
+		const message = (entry as Record<string, unknown>).message;
+		if (typeof message === "string" && message) lines.push(message);
+	}
+	return lines;
+}
+
+/**
+ * The record's `details` carrier, read into the contract's vocabulary. The
+ * negativeable shape every fact shares: anything the frame did not state is
+ * `null` (or an empty list), and the card's reduced branches render that
+ * absence rather than a stand-in.
+ */
+function canonicalProgress(
+	details: Record<string, unknown> | null | undefined,
+): CanonicalProgress {
+	const frame = details ?? {};
+	return {
+		stage: typeof frame.stage === "string" ? frame.stage : null,
+		fraction:
+			typeof frame.progress_fraction === "number" &&
+			Number.isFinite(frame.progress_fraction)
+				? frame.progress_fraction
+				: null,
+		logs: logMessages(frame.log_lines),
+		queuePosition:
+			typeof frame.queue_position === "number" &&
+			Number.isInteger(frame.queue_position)
+				? frame.queue_position
+				: null,
+		error: typeof frame.error === "string" && frame.error ? frame.error : null,
+		errorType:
+			typeof frame.error_type === "string" && frame.error_type
+				? frame.error_type
+				: null,
+	};
+}
+
+/**
+ * The progress facts a view carries, with the all-absence case returned as the
+ * one shared frozen reference (`NO_PROGRESS`) — a card that renders on every
+ * stream flush allocates nothing while a frame states nothing.
+ */
+function progressFrom(canonical: CanonicalProgress): ImageGenProgress {
+	if (
+		canonical.fraction === null &&
+		canonical.logs.length === 0 &&
+		canonical.queuePosition === null
+	)
+		return NO_PROGRESS;
+	return {
+		fraction: canonical.fraction,
+		logs: canonical.logs,
+		queuePosition: canonical.queuePosition,
+	};
+}
 
 /**
  * One shared all-absence progress, so "nothing to report" is always the same
@@ -198,6 +285,8 @@ export function imageGenCardView(
 	record: ImageGenToolRecord,
 	{ stopping = false }: { stopping?: boolean } = {},
 ): ImageGenCardView {
+	/* The canonical payload, read once for every arm below that branches on it. */
+	const canonical = canonicalProgress(record.details);
 	/*
 	 * ARM 1, the interrupts. `stopped` is the call that was running when the
 	 * turn was aborted; `skipped`/`aborted` are the harness's verdicts that the
@@ -228,17 +317,39 @@ export function imageGenCardView(
 	 */
 	if (record.neverSent === true) return { state: "cancelled" };
 	/*
-	 * ARM 4, the tool's own error result. The message is the frozen `error`
-	 * field once it lands on the record; until then it is the result's output
-	 * VERBATIM — the error text as it reached the transcript — and `null` when
-	 * the result carried none, which the card renders as its own absence
-	 * sentence rather than a substitute for supplied text. `stopping` does NOT
-	 * override a settled failure: the interrupt's overlay belongs to an
-	 * unsettled call (below), and a receipt answering `idle` over a failed
-	 * record must not reopen it.
+	 * ARM 4, the tool's own error result — three readings, in this order:
+	 *
+	 *   - the CONFLICT receipt: `media_already_completed` is a cancel that lost
+	 *     its race with the finish, so the card states the finish (the done
+	 *     state's `already-finished` receipt) rather than painting a failure;
+	 *   - a PLAIN CANCEL: the result states `stage: "cancelled"` with no
+	 *     `error_type` — the wire's own line between "stopped" and "failed" —
+	 *     and maps to the cancelled state (the interrupt arms above catch the
+	 *     stopped records; this arm catches the result's own self-description);
+	 *   - a FAILURE: the message is the frozen `error` field VERBATIM, falling
+	 *     back to the result's output — the error text as it reached the
+	 *     transcript — and `null` when the result carried neither, which the
+	 *     card renders as its own absence sentence rather than a substitute for
+	 *     supplied text. `stopping` does NOT override a settled failure: the
+	 *     interrupt's overlay belongs to an unsettled call (below), and a
+	 *     receipt answering `idle` over a failed record must not reopen it.
 	 */
-	if (record.isError === true)
-		return { state: "failed", message: record.output, errorType: null };
+	if (record.isError === true) {
+		if (canonical.errorType === "media_already_completed")
+			return {
+				state: "done",
+				images: record.images ?? [],
+				durationS: record.durationS ?? null,
+				receipt: "already-finished",
+			};
+		if (canonical.stage === "cancelled" && canonical.errorType === null)
+			return { state: "cancelled" };
+		return {
+			state: "failed",
+			message: canonical.error ?? record.output,
+			errorType: canonical.errorType,
+		};
+	}
 	/*
 	 * ARM 5, the unsettled phases. `stopping` (the pane's stop in flight) turns
 	 * both into the cancelling step — for `running` the call is still executing
@@ -262,12 +373,11 @@ export function imageGenCardView(
 				composing: record.phase === "composing",
 				argumentBytes: record.argumentBytes ?? 0,
 				/*
-				 * The frozen-field slot (see the header): nothing on today's records
-				 * carries a queue position, so the mapping states the absence — the
-				 * record's field names stop at this module, and when the wire freezes
-				 * the field its read is HERE.
+				 * The live field's one render (see the header): the last frame's stated
+				 * position, or `null` — which the card's datum slot renders as the byte
+				 * count's absence rather than a stand-in number.
 				 */
-				queuePosition: null,
+				queuePosition: canonical.queuePosition,
 			};
 		}
 		case "running": {
@@ -277,9 +387,29 @@ export function imageGenCardView(
 					state: "cancelling",
 					generating: true,
 					startedAtMs,
-					progress: NO_PROGRESS,
+					progress: progressFrom(canonical),
 				};
-			return { state: "running", startedAtMs, progress: NO_PROGRESS };
+			/*
+			 * THE MID-WALK FAILURE — the wire's `stage: null` frame, whose semantics
+			 * ride the `error`/`error_type` pair ("the pair the surfaces branch
+			 * on"): a rung failed and the walk continues, so the card states the
+			 * failure's text VERBATIM in the failed presentation and the next
+			 * frame (the next rung's `queued`, or the terminal result) replaces it.
+			 * The design round ruled the SETTLED failure's copy, not this live arm's
+			 * (recorded in the PR body, not treated as ruled); the stopping overlay
+			 * above outranks it because the stop is the newer fact.
+			 */
+			if (canonical.error !== null)
+				return {
+					state: "failed",
+					message: canonical.error,
+					errorType: canonical.errorType,
+				};
+			return {
+				state: "running",
+				startedAtMs,
+				progress: progressFrom(canonical),
+			};
 		}
 		case "done":
 			/*
