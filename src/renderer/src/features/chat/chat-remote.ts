@@ -1,8 +1,7 @@
 /**
  * The remote row's own facts, as pure functions: WHAT the row is called when the
- * list speaks about it (its device label, its network name), the ONE sentence
- * both channels read (the flyout line and the accessible name), and the ORDER
- * the sidebar draws remote rows in.
+ * list speaks about it (its device label, its network name), and the ONE
+ * sentence both channels read (the flyout line and the accessible name).
  *
  * WHY ITS OWN MODULE: the sidebar is a nine-thousand-line component whose inner
  * helpers no suite can execute; these rules ARE the feature's copy and its
@@ -10,17 +9,21 @@
  * them rows with no DOM. The SENTENCE IS BUILT ONCE and read twice - a second
  * spelling beside the `sr-only` span is exactly how the two channels come to
  * disagree about which device a row is on.
+ *
+ * WHAT LEFT THIS MODULE (2026-10-08). It used to carry a third job - the
+ * ORDER remote rows re-enter the list in (`mergeRemoteRowsByActivity`, a stable
+ * insertion by `updated_at`) - because the wire appends the peer half after the
+ * page and the old list drew the array as it stood. The arrangement now sorts
+ * every row by the clock the reader chose (`chat-sidebar-view.ts`'s `pageOrder`,
+ * applied to the list and the nested groups alike), so a remote row's position
+ * is decided by the same key as every local row's and the merge had no reader
+ * left: its rule - "a row with no usable time sorts last, not first", and a
+ * zero stamp is no usable time - lives on in the arrangement's `byNewest` and
+ * in the tests that moved with it.
  */
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import { deviceName } from "./device/chat-device-model";
-
-/** Epoch seconds, or 0. Local to this module so the chat feature owes the mesh
- * feature no runtime import for one coercion (its type import above is erased). */
-const seconds = (value: unknown): number =>
-	typeof value === "number" && Number.isFinite(value) ? value : 0;
-
-/**
- * The device a remote row is spoken of by: the wire's own name when it carried
+/** The device a remote row is spoken of by: the wire's own name when it carried
  * one, else the id's tail - `deviceName`'s ONE rule, shared with the header's
  * chip so two surfaces can never name one device two ways. `"another device"`
  * is the floor for a row whose wire carried neither; the canonical shape always
@@ -109,45 +112,4 @@ export function remoteUnreachableClause(row: CanonicalSessionRow): string {
 			? row.unreachable_reason.trim()
 			: "";
 	return `unreachable · ${reason || "it did not answer"}`;
-}
-
-/**
- * THE ORDER THE SIDEBAR DRAWS: remote rows re-enter the sequence where their own
- * clock says, instead of at the array's tail.
- *
- * WHY THIS IS NEEDED AT ALL. Remote rows arrive APPENDED - the wire concatenates
- * its page, its pinned extras and then the peer half, and the store preserves
- * that - and every plain catalogue poll re-sinks every held row after the page
- * (`headAnswerRows` keeps survivors in their own order AFTER the new page), so
- * the store's array order can never be what the list reads. Left alone, a remote
- * conversation from this morning would sit below two hundred local rows: outside
- * the sidebar's first page entirely, inside the same bin as rows it has nothing
- * to do with. The operator asked for one list; this is the merge that makes the
- * order read as one.
- *
- * THE RULE, exactly: a stable INSERTION, never a sort. Local rows keep their
- * relative order byte for byte; the remote rows are first ordered among
- * THEMSELVES (newest first - the wire's fan-out order is per-device, and two
- * devices' rows must not interleave by which relay answered first), then each
- * one is inserted before the first row whose clock it outranks. A row with no
- * usable time sorts last rather than first: "no clock" is not "now".
- */
-export function mergeRemoteRowsByActivity(
-	rows: readonly CanonicalSessionRow[],
-): CanonicalSessionRow[] {
-	const local: CanonicalSessionRow[] = [];
-	const remote: CanonicalSessionRow[] = [];
-	for (const row of rows)
-		(row.locality === "remote" ? remote : local).push(row);
-	if (remote.length === 0) return [...rows];
-	remote.sort((a, b) => seconds(b.updated_at) - seconds(a.updated_at));
-	const merged = [...local];
-	for (const row of remote) {
-		const at = merged.findIndex(
-			(existing) => seconds(existing.updated_at) < seconds(row.updated_at),
-		);
-		if (at === -1) merged.push(row);
-		else merged.splice(at, 0, row);
-	}
-	return merged;
 }
