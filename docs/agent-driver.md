@@ -112,7 +112,13 @@ controls the change must not move: the strip still takes a click and types, a
 pointer Send is admitted (read back from the daemon's `history` route), the
 Send-to target switches through the real Radix Select without moving the page,
 the chat pane's composer still takes the caret on open, and `history.back()`
-returns to a page that stayed put. It uses CDP
+returns to a page that stayed put. It also leaves the detail WHILE SCROLLED -
+through the sidebar's `Projects` row, which lands at any offset, where the
+header's own escape must be wheeled to first - and re-opens the SAME project:
+the detail scroller's DOM node is reused across the list and the detail views,
+so the offset can only survive a leave that happens scrolled (UX round 1's U1),
+and the `stay` half asserts the landing at the top while the base half records
+where it lands. It uses CDP
 `Emulation.setFocusEmulationEnabled` because a never-shown window cannot show
 `:focus` rings, and says so in its README. Its frames are committed under
 `docs/evidence/project-open-no-autofocus/`, the base tree's half under
