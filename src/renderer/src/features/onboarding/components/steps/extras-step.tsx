@@ -28,9 +28,22 @@ type ExtrasStepProps = {
 	 * never answer is worse than saying nothing.
 	 */
 	aidaName?: string | null;
+	/**
+	 * Whether her first-run greeting is still OWED (`aidaOwesGreeting`, read off
+	 * the status document). The sentence below promises that she speaks first, and
+	 * that promise is only true while this is: on an install whose greeting was
+	 * delivered or skipped, the step describes what the button does instead.
+	 *
+	 * DEFAULTS TRUE so a caller that has not read the state yet (and every story)
+	 * keeps the shipped copy rather than silently promising nothing.
+	 */
+	oweGreeting?: boolean;
 };
 
-export const ExtrasStep: FC<ExtrasStepProps> = ({ aidaName = null }) => (
+export const ExtrasStep: FC<ExtrasStepProps> = ({
+	aidaName = null,
+	oweGreeting = true,
+}) => (
 	<div className="flex flex-col gap-8">
 		<SearchApiStep showCredentialDescription={false} />
 		{aidaName ? (
@@ -47,21 +60,18 @@ export const ExtrasStep: FC<ExtrasStepProps> = ({ aidaName = null }) => (
 					Next: meet {aidaName}
 				</h3>
 				{/*
-				 * The promise is about a greeting she still OWES, and this screen
-				 * cannot check that: the ledger's state word (`greeting_state`) is on
-				 * the POST's answer, and the status document this step reads carries
-				 * only `enabled`/`greeted`/`name`. So the sentence is the tolerant
-				 * path — true for a fresh install and for an older backend, and the
-				 * one shape it does not cover is an install whose greeting was already
-				 * delivered or skipped, where she has met the user somewhere else. If
-				 * the read grows that field, gating this on
-				 * `greeting_state === "owed"` is one line (code review round 1's
-				 * contract addendum, point 1).
+				 * TWO SENTENCES, ONE TRUE AT A TIME (code review round 1's contract
+				 * addendum, point 1). The first promises a greeting she still owes;
+				 * the second does not, and is what an install says when her hello has
+				 * already been delivered or skipped - where the promise would describe
+				 * a first meeting the user has already had. Which one is owed comes
+				 * from the ledger's state word read off the status document
+				 * (`aidaOwesGreeting`), never inferred here.
 				 */}
 				<p className="text-body text-ink-muted">
-					{aidaName} is your chief of staff. She will say hello first, ask what
-					to call you and what you would like help with, and show you around.
-					You can also skip straight to a new chat.
+					{oweGreeting
+						? `${aidaName} is your chief of staff. She will say hello first, ask what to call you and what you would like help with, and show you around. You can also skip straight to a new chat.`
+						: `${aidaName} is your chief of staff. Her conversation is where you pick up with her, and it is one keystroke away in the sidebar. You can also skip straight to a new chat.`}
 				</p>
 			</section>
 		) : null}

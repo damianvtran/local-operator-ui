@@ -79,9 +79,16 @@ export const Extras: Story = { args: { step: OnboardingStep.EXTRAS } };
  */
 const AidaBridge = ({
 	name,
+	greetingState,
 	children,
 }: {
 	name: string;
+	/**
+	 * The ledger's state word, when the story is about it. OMITTED BY DEFAULT so
+	 * the fixtures that predate the ledger photograph the tolerant path - an older
+	 * backend's payload keeps the sentence that shipped.
+	 */
+	greetingState?: string | null;
 	children: ReactNode;
 }): ReactNode => {
 	useLayoutEffect(() => {
@@ -107,7 +114,8 @@ const AidaBridge = ({
 							enabled: true,
 							session_id: null,
 							paused: false,
-							greeted: false,
+							greeted: greetingState === "delivered",
+							...(greetingState ? { greeting_state: greetingState } : {}),
 							name,
 						});
 					case "providers.list":
@@ -122,7 +130,7 @@ const AidaBridge = ({
 		return () => {
 			api.desktop = previous;
 		};
-	}, [name]);
+	}, [name, greetingState]);
 	return children;
 };
 
@@ -137,6 +145,22 @@ export const ExtrasMeetAida: Story = {
 	args: { step: OnboardingStep.EXTRAS },
 	render: ({ step }) => (
 		<AidaBridge name="Ada">
+			<OnboardingFrame step={step} />
+		</AidaBridge>
+	),
+};
+
+/**
+ * Step 3 on an install whose greeting is already SETTLED - delivered, or skipped
+ * by someone who chose not to be greeted: the preview states what the button
+ * does and does not promise a first hello the user has already had (code review
+ * round 1's contract addendum, point 1; `aidaOwesGreeting`). The ledger word
+ * arrives on the same status document the name does.
+ */
+export const ExtrasMeetAidaDelivered: Story = {
+	args: { step: OnboardingStep.EXTRAS },
+	render: ({ step }) => (
+		<AidaBridge name="Ada" greetingState="delivered">
 			<OnboardingFrame step={step} />
 		</AidaBridge>
 	),
