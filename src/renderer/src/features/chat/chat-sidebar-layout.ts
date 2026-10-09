@@ -134,22 +134,84 @@ export function canvasDockWidth(rowWidth: number): number {
 }
 
 /**
- * How the canvas occupies the row at this width: docked beside the chat, or over it.
+ * How the canvas occupies the row at this width: docked beside the chat, or
+ * stopped docking - the mode the `overlay` literal names.
+ *
+ * WHAT `overlay` DRAWS TODAY, stated once and here, because several comments had
+ * drifted into describing it as a pane that covers the conversation: the mode
+ * withholds the divider and writes `data-canvas-mode`/`data-ask-mode`; it does NOT
+ * position the pane over the chat. `f0f974ef0a3` drew one (`absolute inset-y-0
+ * right-0 z-20`), but `1e88f7fc167` (#564, the PaneSlot refactor) removed that
+ * class without its message saying so, and the pane is a flex dock beside the
+ * 480px conversation at the row's leftover. Restoring a true overlay is an OPEN
+ * design decision, not an accident to fix here: it needs positioning; a width
+ * rule that does not fight the one-width resolver; Escape/focus handling (there
+ * is no scrim); a lane-gradient stop; and - for the Browser - main-process bounds
+ * for the native view.
  *
  * §I's order of yielding, in one predicate. The sidebar yields first (§B1: below
- * 1024 it is the 56px strip, which `resolveSidebarLayout` already does), and if the
- * canvas's own 400px floor still does not fit beside the chat's 480 the canvas
- * stops docking and **overlays** the pane instead - "full pane width, scrim absent,
- * its own toolbar at the top row's trailing corner".
+ * 1024 it is the 56px strip, which `resolveSidebarLayout` already does), and if
+ * the canvas's own 400px floor still does not fit beside the chat's 480 the canvas
+ * stops docking and switches to the `overlay` literal.
  *
- * The run panel deliberately has no such mode: §I is explicit that it "is never an
- * overlay (it is a reading pane, not a document); it obeys the same 480 floor and
- * closes itself rather than squeezing the chat below it" - which is what
- * `chat-content.tsx`'s `runPanelResizable` already does against the measured
- * capacity.
+ * The run panel has no such mode: §I says it "is never an overlay (it is a reading
+ * pane, not a document); it obeys the same 480 floor and closes itself rather than
+ * squeezing the chat below it" - which is what the run pane's own separator
+ * contract does against the measured capacity. With the positioning
+ * removed above, "never an overlay" is no longer a contrast between it and the
+ * canvas: no pane covers the conversation today, and the mode is the withheld
+ * divider and the data attribute.
  */
 export function canvasPaneMode(rowWidth: number): "docked" | "overlay" {
 	return canvasDockWidth(rowWidth) >= CANVAS_PANE_MIN_PX ? "docked" : "overlay";
+}
+
+/**
+ * The separator's contract for a right-slot pane, in one function so the run
+ * panel, the browser and the console cannot drift into three spellings (this
+ * change's D4 - the browser and console separators used to be handed the
+ * PREFERENCE with `minWidth={480} maxWidth={1200}`, so at rows that cannot host
+ * the pane's floor the separator announced aria-valuenow=640 while the pane was
+ * drawn at 220).
+ *
+ * THE PROPERTY IT ENCODES: what the separator announces and accepts is what the
+ * pane renders. `capacity` is what the ROW can give the pane (the measured row
+ * minus the conversation's floor - the run panel measures it from its own
+ * elements, the browser and console derive it from `paneRowWidth`); `drawn` is
+ * the width the pane draws; `min`/`max` are the pane's own drag range. Where the
+ * row cannot host the pane's FLOOR, resizing is not a no-op that lies, it is not
+ * offered: the value and both range ends collapse onto the drawn width, and the
+ * call sites refuse the write so a stored preference survives intact for a
+ * window that can honour it.
+ *
+ * `value` CAN LEGITIMATELY EXCEED `maxWidth`: a stored shared width wider than
+ * the pane's own ceiling is still drawn (the run panel at a 1600px window with a
+ * stored 1000 draws 816 against its 640 ceiling), and clamping either number
+ * would lie about the other. That case is measured in
+ * `docs/evidence/right-slot-one-default/` and recorded on the PR as
+ * found-not-fixed, not silently reshaped here.
+ */
+export function rightSlotDividerContract({
+	capacity,
+	min,
+	max,
+	drawn,
+}: {
+	capacity: number;
+	min: number;
+	max: number;
+	drawn: number;
+}): { resizable: boolean; value: number; minWidth: number; maxWidth: number } {
+	const resizable = capacity >= min;
+	if (!resizable) {
+		return { resizable, value: drawn, minWidth: drawn, maxWidth: drawn };
+	}
+	return {
+		resizable,
+		value: Math.min(Math.max(drawn, min), capacity),
+		minWidth: min,
+		maxWidth: Math.min(max, capacity),
+	};
 }
 
 /**
@@ -161,14 +223,14 @@ export function canvasPaneMode(rowWidth: number): "docked" | "overlay" {
  * 400px pane, the canvas OVERLAYS the chat pane instead of docking". Step 1 was
  * only ever applied by the window's own width (below 1024 the sidebar is a strip
  * whatever the user chose), so at 1024 with the sidebar the user's own 260px and
- * the canvas open, the module went straight to step 2: the pane covered the
- * whole conversation, with no scrim, no edge and no sliver, which is round 1's
+ * the canvas open, the module went straight to step 2: the pane floated over the
+ * conversation, with no scrim, no edge and no sliver, which is round 1's
  * D2 impression ("it looks like the app has lost its content") on the other
  * pane.
  *
  * The arithmetic at 1024 is the whole argument: the docked row is
  * `1024 - 260 = 764`, and `canvasDockWidth(764)` is `min(560, 764 - 480) = 284`,
- * below the pane's own 400px floor, so the canvas overlays. Had the sidebar
+ * below the pane's own 400px floor, so the canvas stops docking. Had the sidebar
  * taken step 1 the row would be `1024 - 56 = 968` and the canvas would dock at
  * 488 with the chat keeping its 480 beside it.
  *
@@ -199,8 +261,8 @@ export function sidebarYieldsToCanvas(
 	 * predict that row's mode from the window alone. Left on the rail-less
 	 * arithmetic it would be wrong for the 44px band just above the old boundary
 	 * (1140-1183 at the default 260): the sidebar would stay docked, the real row
-	 * would be 44px short of the canvas's floor, and the canvas would OVERLAY the
-	 * chat - the D24 defect, re-opened by a sum. The rail is subtracted from both
+	 * would be 44px short of the canvas's floor, and the canvas would stop docking -
+	 * the D24 defect, re-opened by a sum. The rail is subtracted from both
 	 * rows because it is present beside both sidebar shapes. `railWidth` is a
 	 * parameter only because the rail exists solely while a chat surface is
 	 * mounted: the fleet asks pane also docks on settings and agents, where no

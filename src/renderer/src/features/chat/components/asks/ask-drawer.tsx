@@ -11,7 +11,8 @@
  *
  * The fix is the container, not the symptom: the panel is now a member of the
  * CANVAS FAMILY - right-docked, a 40px chrome bar, its own scroller, the family's
- * width arithmetic (`min(560, row - 480)`, floor 400, overlay below the floor; see
+ * width arithmetic (`min(560, row - 480)`, floor 400, the `overlay` literal below
+ * the floor - a flex dock, not a cover, since the positioning was removed; see
  * `chat-sidebar-layout.ts`). The card can no longer be the widest thing on the
  * screen because it fills a pane the family sizes, which is also why there is no
  * separate width rule here for it to fight with.

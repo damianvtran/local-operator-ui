@@ -10564,8 +10564,10 @@ async function sceneQuestionDock(cdp) {
  * WHY THIS IS A SCENE OF ITS OWN, and why it needs no backend. §I is a set of
  * statements about BOXES: the chat pane keeps a 480px floor; the canvas docks at
  * `min(560, available - 480)`; where that leaves less than the canvas's own 400px
- * floor the canvas stops docking and overlays the chat instead; the sidebar yields
- * to the 56px strip first. Nothing in that list is about data, so the run does not
+ * floor the canvas stops docking - the `overlay` literal, which draws a flex dock
+ * at the row's leftover rather than covering the chat (`canvasPaneMode` carries
+ * the note); the sidebar yields to the 56px strip first. Nothing in that list is
+ * about data, so the run does not
  * need one - and the driver's own isolate (`openCanvasDocument` stages a draft,
  * because a run with no backend cannot open the New chat gate) is exactly what makes
  * a canvas dockable without a session.
@@ -10743,7 +10745,7 @@ async function sceneFloors(cdp) {
 			check(
 				"a docked canvas is at least its own 400px contract floor",
 				canvas.width >= 400,
-				`canvas.width=${canvas.width} in a row of ${row.width}: below 400 the pane must overlay instead of docking`,
+				`canvas.width=${canvas.width} in a row of ${row.width}: below 400 the pane stops docking (the overlay literal)`,
 			);
 			check(
 				"a docked canvas is no wider than §I's 560px ceiling",
@@ -10757,21 +10759,29 @@ async function sceneFloors(cdp) {
 				`row ${row.width} = chat ${chatColumn.width} + canvas ${canvas.width} + ${row.width - (chatColumn.width + canvas.width)} unaccounted`,
 			);
 		} else {
+			/*
+			 * THE `overlay` LITERAL DOES NOT COVER THE CHAT TODAY (`canvasPaneMode` states
+			 * it): the positioning was removed with the PaneSlot refactor and the pane is a
+			 * flex dock at the row's leftover, so this branch asserts adjacency rather than
+			 * overlap. Restoring a true overlay is an open design decision - and it would
+			 * fail here on purpose, because it is a behaviour change this scene should
+			 * notice.
+			 */
 			check(
-				"an overlaying canvas covers the chat column's trailing edge",
-				canvas.x < chatColumn.x + chatColumn.width,
-				`canvas.x=${canvas.x} against the column's ${chatColumn.x}+${chatColumn.width}`,
+				"the stopped-dock pane draws beside the chat column, not over it",
+				Math.abs(canvas.x - (chatColumn.x + chatColumn.width)) <= 2,
+				`canvas.x=${canvas.x} against the column's ${chatColumn.x}+${chatColumn.width}: the overlay literal withholds the divider and draws a flex dock; it does not cover the column`,
 			);
 			check(
-				"an overlaying canvas stays inside the row",
+				"the stopped-dock pane stays inside the row",
 				canvas.x >= row.x - 1 &&
 					canvas.x + canvas.width <= row.x + row.width + 1,
 				`canvas ${canvas.x}+${canvas.width} against row ${row.x}+${row.width}`,
 			);
 			check(
-				"the chat column keeps its floor behind the overlay",
+				"the chat column keeps its floor beside the stopped-dock pane",
 				chatColumn.width >= 480,
-				`chatColumn.width=${chatColumn.width} behind a ${canvas.width}px overlay`,
+				`chatColumn.width=${chatColumn.width} beside a ${canvas.width}px pane`,
 			);
 		}
 	}
