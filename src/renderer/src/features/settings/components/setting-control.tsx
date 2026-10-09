@@ -51,7 +51,9 @@ import {
 } from "../../../mini-view/mini-copy";
 import { rendererPlatform } from "../../../mini-view/renderer-platform";
 import { settingComboSource } from "../backend-setting-combos";
+import { durationSpec } from "../retention-duration";
 import { CASCADE_SENTINEL, serialize } from "./backend-settings-drafts";
+import { RetentionDurationControl } from "./retention-duration-control";
 import { SettingCombobox } from "./setting-combobox";
 
 /**
@@ -393,6 +395,25 @@ export const SettingControl = ({
 				disabled={disabled}
 				onValueChange={onValueChange}
 				effectiveHosting={effectiveHosting}
+				helpId={helpId}
+			/>
+		);
+	}
+
+	/*
+	 * A bounded duration, keyed like the combobox above and for the same reason:
+	 * the wire says `int`, and the registry's `unit`/`minimum`/`maximum` are what
+	 * make a stepped control possible (`retention-duration.ts`). Placed before the
+	 * kind switch so the plain number field is only the fallback for a row this
+	 * control does not understand.
+	 */
+	if (durationSpec(setting)) {
+		return (
+			<RetentionDurationControl
+				setting={setting}
+				value={value}
+				disabled={disabled}
+				onValueChange={onValueChange}
 				helpId={helpId}
 			/>
 		);

@@ -1291,6 +1291,33 @@ test("a registry row deep-links to its own key", () => {
 	assert.equal(row.hint, "Tools");
 });
 
+test("the palette's registry rows are PRESENTED with the desktop's copy (agent review round 1, F4)", () => {
+	/*
+	 * An anchor, not a driven case: the settings source is a React hook this
+	 * harness cannot mount. What CAN be pinned is the call itself - the rows are
+	 * folded through `presentSetting` before they are built, the same fold the
+	 * settings page's row list and search apply. Without it the palette showed
+	 * and searched the registry's terminal copy ("Delegated cleanup", the "↳"
+	 * child idiom) while the page showed the desktop's copy, so the two surfaces
+	 * disagreed about a setting's own name and the page's search reach (agent
+	 * review round 1, F4).
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/command-palette/use-palette-sources.ts",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/buildSettingKeyItems\(\s*\(registry\.data\?\.settings \?\? \[\]\)\.map\(presentSetting\)/,
+		"the palette's key rows must be presented before they are built",
+	);
+	assert.match(
+		source,
+		/import \{ presentSetting \} from "@features\/settings\/backend-setting-copy"/,
+		"and the fold must be the settings page's own, not a re-implementation",
+	);
+});
+
 test("a settings section deep-links to its own section", () => {
 	const [row] = buildSettingsSectionItems([
 		{ id: "appearance", label: "Appearance" },

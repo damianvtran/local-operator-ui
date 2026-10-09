@@ -45,8 +45,20 @@
 		{
 			"name": "session",
 			"title": "Session storage",
-			"scope": "new launch",
-			"description": "Autosave and the cleanup policy."
+			"description": "Autosave. The cleanup policies have their own sections below.",
+			"scope": "new launch"
+		},
+		{
+			"name": "session_cleanup",
+			"title": "Your conversations",
+			"description": "Session cleanup for the conversations you started and the workstreams in your sidebar. Off by default; nothing here runs until you switch it on.",
+			"scope": "new launch"
+		},
+		{
+			"name": "session_delegated",
+			"title": "Delegated work",
+			"description": "Delegated work: subagent and background-session transcripts and their scratch folders. On by default: they are removed after the age below. Your conversations, sidebar workstreams, anything running, waiting on a wake or monitor, linked to an open project, still in use by an active parent, or holding unpushed or uncommitted git work are kept.",
+			"scope": "new launch"
 		},
 		{
 			"name": "subagents",
@@ -1615,7 +1627,7 @@
 		},
 		{
 			"key": "session.cleanup.enabled",
-			"section": "session",
+			"section": "session_cleanup",
 			"label": "Session cleanup",
 			"kind": "bool",
 			"help": "Off: nothing is ever removed. On: limits below run at launch, sparing the newest 10 + live.",
@@ -1642,14 +1654,14 @@
 		},
 		{
 			"key": "session.cleanup.max_sessions",
-			"section": "session",
+			"section": "session_cleanup",
 			"label": "↳ max sessions",
 			"kind": "int",
 			"help": "Needs cleanup on. Keep N newest /resume sessions; 0 = no cap.",
 			"value": 0,
 			"default": 0,
 			"is_default": true,
-			"minimum": 0,
+			"minimum": 0.0,
 			"maximum": null,
 			"members": [],
 			"choices": [],
@@ -1659,14 +1671,14 @@
 		},
 		{
 			"key": "session.cleanup.max_inactive_days",
-			"section": "session",
+			"section": "session_cleanup",
 			"label": "↳ max inactive days",
 			"kind": "int",
 			"help": "Needs cleanup on. Remove sessions idle this many days; 0 = never.",
 			"value": 0,
 			"default": 0,
 			"is_default": true,
-			"minimum": 0,
+			"minimum": 0.0,
 			"maximum": null,
 			"members": [],
 			"choices": [],
@@ -1676,14 +1688,14 @@
 		},
 		{
 			"key": "session.cleanup.max_total_bytes",
-			"section": "session",
+			"section": "session_cleanup",
 			"label": "↳ max total bytes",
 			"kind": "int",
 			"help": "Needs cleanup on. Trim oldest past this many bytes; 0 = no cap.",
 			"value": 0,
 			"default": 0,
 			"is_default": true,
-			"minimum": 0,
+			"minimum": 0.0,
 			"maximum": null,
 			"members": [],
 			"choices": [],
@@ -1693,7 +1705,7 @@
 		},
 		{
 			"key": "session.cleanup.remove_empty",
-			"section": "session",
+			"section": "session_cleanup",
 			"label": "↳ remove empty",
 			"kind": "bool",
 			"help": "Needs cleanup on. Remove dirs that never got a transcript.",
@@ -1718,6 +1730,51 @@
 			"empty_unsets": false,
 			"redacted": false,
 			"gated_by": "session.cleanup.enabled"
+		},
+		{
+			"key": "session.cleanup.delegated.enabled",
+			"section": "session_delegated",
+			"label": "Delegated cleanup",
+			"kind": "bool",
+			"help": "Remove subagent and background-session transcripts after the age below; never your conversations or anything in use.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "remove delegated work after the age below"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "keep all delegated work"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "session.cleanup.delegated.max_age_hours",
+			"section": "session_delegated",
+			"label": "↳ remove after (hours)",
+			"kind": "int",
+			"help": "Hours idle before removal: 2 to 720 (30 days). Default 48.",
+			"value": 48,
+			"default": 48,
+			"is_default": true,
+			"minimum": 2.0,
+			"maximum": 720.0,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"gated_by": "session.cleanup.delegated.enabled",
+			"unit": "hours"
 		},
 		{
 			"key": "runtime.unattended_gate_timeout",
