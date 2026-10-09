@@ -97,6 +97,7 @@ import type {
 } from "../draft-selection";
 import { useFleetAsks } from "../fleet-asks";
 import type { Message } from "../types/message";
+import { useAskOpenPolicy } from "../use-ask-open-policy";
 import { AskDrawer } from "./asks/ask-drawer";
 import { Canvas } from "./canvas";
 import { documentsForCanvas } from "./canvas/document-buffers";
@@ -1364,6 +1365,26 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			[canonical?.view.frontend],
 		);
 		/*
+		 * OPEN BY DEFAULT over pending asks (the open policy; `ask-open-policy.ts` states
+		 * the six-rule contract it shares with the TUI, the relay and the native app).
+		 *
+		 * HERE, AND NOT IN `chat-page.tsx`, because this is the one mount that owns the
+		 * drawer's lifetime: `sessionAsksOpen` below is what draws it, `handleCloseAskDrawer`
+		 * is its close door, and this component is keyed by conversation (`SessionPanel
+		 * key={identity}`), so a mount IS a "view" and coming back to a conversation is a
+		 * new one. `chat-page.tsx` owns the composer's answer-mode routing, which this does
+		 * not touch: the hook writes the same store flag a press on the chip writes, through
+		 * the same writer, and nothing else. IT ALSO RETURNS the one sentence a policy open
+		 * speaks to assistive tech (design review round 1, D1), rendered by the `<output>`
+		 * the row mounts below - the hook owns both edges of it, so the region here is
+		 * mounted before it ever has text and only its CONTENT changes.
+		 */
+		const asksAnnouncement = useAskOpenPolicy({
+			sessionId,
+			composerId: conversationId,
+			view: sessionAsksView,
+		});
+		/*
 		 * The same `FLEET_ASKS_QUERY_KEY` read the sidebar and the sessions list already
 		 * make (react-query dedupes it), so the top-level count adds no second poll.
 		 */
@@ -1704,6 +1725,33 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				data-tour-tag="pane-row"
 				className="relative flex h-full w-full flex-row overflow-hidden"
 			>
+				{/*
+				 * THE OPEN POLICY'S LIVE REGION (design review round 1, D1), and it is
+				 * mounted HERE, on every commit of this pane, NOT inside `AskDrawer`: a
+				 * region that mounts together with its content is frequently not
+				 * announced, so the element exists with EMPTY text from the pane's first
+				 * paint and only its CONTENT changes when the policy opens the drawer.
+				 * The hook owns both edges (`useAskOpenPolicy`'s return): it writes one
+				 * sentence on a policy open and clears it on close; a press on the chip
+				 * or the header trigger - the reader's own act - writes neither, and a
+				 * queue refresh is not an appearance. `sr-only`, so the visual surface
+				 * is unchanged. On a draft (no `sessionId`) the hook waits forever and
+				 * the sentence stays empty, which is correct: there is no conversation
+				 * whose asks could open.
+				 *
+				 * `data-ask-open-announcer` NAMES THIS REGION FOR RIGS, the same way
+				 * `data-condense-announcement` names the transcript's (its comment states
+				 * the rule): `output[aria-live="polite"]` matches several regions on this
+				 * route, so a rig reading "the first one" reads whichever happens to
+				 * precede it and says nothing about this region (remediation round 1, D1).
+				 */}
+				<output
+					data-ask-open-announcer=""
+					className="sr-only"
+					aria-live="polite"
+				>
+					{asksAnnouncement}
+				</output>
 				<div
 					ref={chatColumnRef}
 					data-tour-tag="chat-column"
