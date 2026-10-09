@@ -625,6 +625,8 @@ type StubState = {
 		capability: boolean;
 		forcedFailure?: string;
 		forcedHang?: boolean;
+		/** The forced retry answers 404: the row was deleted under the dialog. */
+		forcedGone?: boolean;
 	};
 	/**
 	 * `projects.request_update`'s scripted answer (the check-in states). `null`
@@ -817,7 +819,11 @@ const answer = (request: {
 				request.fields.status === "done"
 			) {
 				const gate = stub.doneGate;
-				const sentence = `cannot set status 'done': ${gate.names.length} milestone${gate.names.length === 1 ? "" : "s"} still incomplete (${gate.names.map((name) => `'${name}'`).join(", ")}) \u2014 complete them, or pass force_done=true to close with them open`;
+				/* The daemon prints Python reprs: a name holding a single quote
+				 * flips that entry to double quotes. */
+				const repr = (name: string) =>
+					name.includes("'") && !name.includes('"') ? `"${name}"` : `'${name}'`;
+				const sentence = `cannot set status 'done': ${gate.names.length} milestone${gate.names.length === 1 ? "" : "s"} still incomplete (${gate.names.map(repr).join(", ")}) \u2014 complete them, or pass force_done=true to close with them open`;
 				if (request.force_done !== true) {
 					return {
 						status: 422,
@@ -833,6 +839,16 @@ const answer = (request: {
 					};
 				}
 				if (gate.forcedHang) return new Promise(() => {});
+				if (gate.forcedGone)
+					return {
+						status: 404,
+						body: {
+							detail: {
+								code: "project_not_found",
+								message: `no project with id or name '${"0".repeat(32)}'`,
+							},
+						},
+					};
 				if (gate.forcedFailure)
 					return {
 						status: 422,
@@ -3572,6 +3588,17 @@ export const BoardDoneRefusedNoCapability: Story = {
 			() => toastText().includes("This can't be marked done yet"),
 			"the refusal toast",
 		);
+		/*
+		 * THE DEGRADED TOAST FOLLOWS THE DIALOG'S CONVENTION (UX round 1, U4):
+		 * count, three names, "and 4 more", then the remedy - not the daemon's
+		 * 62-word line - and it carries the door to the project (design D10).
+		 */
+		if (!toastText().includes("and 4 more"))
+			throw new Error("the toast did not fold the names");
+		if (toastText().includes("decommission v1"))
+			throw new Error("the toast recited every name, uncapped");
+		if (!toastText().includes("View project"))
+			throw new Error("the refusal toast has no way to the project");
 		if (doneDialog() !== null)
 			throw new Error("a daemon without the capability must not offer a force");
 		// Longer than the mutation retry's backoff, so a second send would show.
@@ -3591,7 +3618,7 @@ export const BoardDoneForceDialog: Story = {
 		const text = doneDialog()?.textContent ?? "";
 		for (const expected of [
 			"Mark done with open milestones?",
-			"7 milestones are still open (dashboard cutover, beta cut, load test and 4 more). Mark done anyway?",
+			"7 milestones are still open (dashboard cutover, beta cut, load test and 4 more).",
 			"milestones stay open",
 		])
 			if (!text.includes(expected))
@@ -3620,12 +3647,33 @@ export const BoardDoneForceSubmitting: Story = {
 		boardGate({ names: OPEN_MILESTONES, capability: true, forcedHang: true }),
 	play: playOnce("board-done-force-submitting", async () => {
 		await openForceDialog();
-		const confirm = dialogButton("Mark done anyway");
-		if (!confirm) throw new Error("no Mark done anyway button");
+		const confirm = need<HTMLElement>("[data-project-force-done]");
 		await userEvent.click(confirm);
 		await poll(() => dialogButton("Cancel")?.disabled === true, "busy state");
-		// A second press and Escape must neither send nor close.
-		await userEvent.click(confirm);
+		/*
+		 * THE SECOND PRESS IS A KEYBOARD ONE. The busy primary refuses the
+		 * POINTER (`aria-disabled:pointer-events-none`, so a disabled-looking
+		 * control cannot be clicked); the keyboard path stays live - that is
+		 * what lets the reader's next Enter retry after an error - and the
+		 * in-flight latch is what makes a press while busy a no-op.
+		 */
+		await userEvent.keyboard("{Enter}");
+		/*
+		 * THE BUSY CONTROL KEEPS THE CARET (QA round 1, Q2): a really-disabled
+		 * button cannot hold focus, so the primary states its condition with
+		 * `aria-disabled` instead and the reader's next Enter stays armed.
+		 */
+		await poll(
+			() => document.activeElement === confirm,
+			"focus retained on the busy primary",
+		);
+		if (confirm.getAttribute("aria-disabled") !== "true")
+			throw new Error("the busy primary must state aria-disabled");
+		if (confirm.hasAttribute("disabled"))
+			throw new Error(
+				"the busy primary must stay focusable: aria-disabled, not disabled",
+			);
+		// Escape must neither send nor close.
 		await userEvent.keyboard("{Escape}");
 		await new Promise((resolve) => setTimeout(resolve, 300));
 		if (doneDialog() === null) throw new Error("Escape closed a pending write");
@@ -3643,19 +3691,177 @@ export const BoardDoneForceError: Story = {
 		boardGate({
 			names: OPEN_MILESTONES,
 			capability: true,
-			forcedFailure: "no such project",
+			forcedFailure: "The request has invalid fields.",
 		}),
 	play: playOnce("board-done-force-error", async () => {
 		await openForceDialog();
 		await userEvent.click(need<HTMLElement>("[data-project-force-done]"));
 		await poll(
-			() => (doneDialog()?.textContent ?? "").includes("no such project"),
+			() =>
+				(doneDialog()?.textContent ?? "").includes(
+					"The request has invalid fields.",
+				),
 			"the failure sentence inside the dialog",
 		);
 		if (dialogButton("Mark done anyway")?.disabled)
 			throw new Error("the press must be repeatable after a failure");
 		if (dialogButton("Cancel")?.disabled)
 			throw new Error("Cancel must be available after a failure");
+		/*
+		 * THE NEXT ENTER RETRIES (QA round 1, Q2): the focus stayed on the
+		 * primary through the failure, so a second Enter re-presses it - and the
+		 * second forced write reaching the bridge is what proves it.
+		 */
+		await poll(
+			() =>
+				document.activeElement ===
+				document.querySelector("[data-project-force-done]"),
+			"focus retained on the primary after the failure",
+		);
+		await userEvent.keyboard("{Enter}");
+		await poll(
+			() =>
+				updateOps().filter((entry) => entry.request.force_done === true)
+					.length === 2,
+			"the retry's forced write",
+		);
+	}),
+};
+
+/**
+ * THE ROW IS GONE UNDER THE DIALOG: the forced retry answers 404, so the
+ * question cannot be answered any more - the footer swaps its primary for
+ * Close and drops the secondary, which would navigate to a row that is not
+ * there (design round 1, D9).
+ */
+export const BoardDoneForceGone: Story = {
+	render: () =>
+		boardGate({
+			names: OPEN_MILESTONES,
+			capability: true,
+			forcedGone: true,
+		}),
+	play: playOnce("board-done-force-gone", async () => {
+		await openForceDialog();
+		await userEvent.click(need<HTMLElement>("[data-project-force-done]"));
+		/*
+		 * NOT `doneDialog()` HERE: the swap REPLACES the primary, and
+		 * `doneDialog()` is keyed on `[data-project-force-done]` - the state
+		 * this story measures is exactly the one where that anchor is gone.
+		 */
+		const goneDialog = () =>
+			document.querySelector<HTMLElement>('[role="dialog"]');
+		await poll(
+			() =>
+				(goneDialog()?.textContent ?? "").includes(
+					"This project could not be found. It may have been deleted.",
+				),
+			"the gone sentence inside the dialog",
+		);
+		if (goneDialog()?.querySelector("[data-project-force-done]") !== null)
+			throw new Error("the close press must not be offered again");
+		if (dialogButton("Open project"))
+			throw new Error("a gone project must not keep its Open project action");
+		const close = goneDialog()?.querySelector("[data-project-force-close]");
+		if (!close) throw new Error("the gone state has no Close action");
+		await userEvent.click(close as HTMLElement);
+		await poll(() => goneDialog() === null, "the dialog to close");
+	}),
+};
+
+/**
+ * THE COPY AT ITS EDGES (design round 1, D6/D7; agent review F6/F4): seven
+ * names that carry a quote, a comma and CJK text, plus one 80-character
+ * unbroken token. The sentence folds at three plus "and 4 more", the body
+ * never scrolls sideways, and the full list renders verbatim.
+ */
+const HOSTILE_MILESTONES = [
+	"it's late",
+	"scope, revisited",
+	"データ移行",
+	"A".repeat(80),
+	"vendor sign-off",
+	"data backfill",
+	"decommission v1",
+];
+
+export const BoardDoneForceHostileNames: Story = {
+	parameters: { toastDuration: Number.POSITIVE_INFINITY },
+	render: () => boardGate({ names: HOSTILE_MILESTONES, capability: true }),
+	play: playOnce("board-done-force-hostile-names", async () => {
+		await openForceDialog();
+		const text = doneDialog()?.textContent ?? "";
+		if (!text.includes("7 milestones are still open ("))
+			throw new Error("the count sentence is missing");
+		if (!text.includes("and 4 more"))
+			throw new Error("the sentence did not fold at three names");
+		const body = doneDialog()?.querySelector<HTMLElement>(".overflow-y-auto");
+		if (body && body.scrollWidth > body.clientWidth + 1)
+			throw new Error(
+				`the body scrolls sideways: ${body.scrollWidth} > ${body.clientWidth}`,
+			);
+		await userEvent.click(need<HTMLElement>('[role="dialog"] [aria-expanded]'));
+		await poll(
+			() =>
+				document.querySelectorAll("[data-project-open-milestones] li")
+					.length === 7,
+			"the full milestone list",
+		);
+		const names = [
+			...document.querySelectorAll("[data-project-open-milestones] li"),
+		].map((li) => li.textContent);
+		if (names[0] !== "it's late" || names[3] !== "A".repeat(80))
+			throw new Error(`the list rendered: ${JSON.stringify(names)}`);
+	}),
+};
+
+/**
+ * FOUR NAMES IS NOT A FOLD (design round 1, D6): the sentence lists all four
+ * and no disclosure is drawn, because there is nothing left to show.
+ */
+export const BoardDoneForceFourNames: Story = {
+	render: () =>
+		boardGate({
+			names: OPEN_MILESTONES.slice(0, 4),
+			capability: true,
+		}),
+	play: playOnce("board-done-force-four-names", async () => {
+		await openForceDialog();
+		const text = doneDialog()?.textContent ?? "";
+		for (const name of OPEN_MILESTONES.slice(0, 4))
+			if (!text.includes(name))
+				throw new Error(`the sentence hid the fourth name: ${name}`);
+		if (text.includes("more)"))
+			throw new Error("four names must not fold to 'and 1 more'");
+		if (doneDialog()?.querySelector("[aria-expanded]"))
+			throw new Error("nothing is hidden, so no disclosure belongs here");
+	}),
+};
+
+/** ONE NAME: the singular copy, and the same door. */
+export const BoardDoneForceSingular: Story = {
+	render: () => boardGate({ names: [OPEN_MILESTONES[0]], capability: true }),
+	play: playOnce("board-done-force-singular", async () => {
+		await openForceDialog();
+		const text = doneDialog()?.textContent ?? "";
+		if (!text.includes("1 milestone is still open (dashboard cutover)."))
+			throw new Error(`the singular sentence is wrong: ${text.slice(0, 200)}`);
+	}),
+};
+
+/** TWO NAMES: "a and b", no fold. */
+export const BoardDoneForceTwoNames: Story = {
+	render: () =>
+		boardGate({ names: OPEN_MILESTONES.slice(0, 2), capability: true }),
+	play: playOnce("board-done-force-two-names", async () => {
+		await openForceDialog();
+		const text = doneDialog()?.textContent ?? "";
+		if (
+			!text.includes(
+				"2 milestones are still open (dashboard cutover and beta cut).",
+			)
+		)
+			throw new Error(`the pair sentence is wrong: ${text.slice(0, 200)}`);
 	}),
 };
 
@@ -3801,16 +4007,82 @@ export const DetailDoneForceConfirm: Story = {
 
 /** The forced retry fails on the detail: sentence in the dialog, field still held. */
 export const DetailDoneForceError: Story = {
-	render: () => detailGate(true, { forcedFailure: "no such project" }),
+	render: () =>
+		detailGate(true, { forcedFailure: "The request has invalid fields." }),
 	play: playOnce("detail-done-force-error", async () => {
 		await pickDetailDone();
 		await clickWhen("[data-project-force-done-door]");
 		await poll(() => doneDialog() !== null, "the done-anyway dialog");
 		await userEvent.click(need<HTMLElement>("[data-project-force-done]"));
 		await poll(
-			() => (doneDialog()?.textContent ?? "").includes("no such project"),
+			() =>
+				(doneDialog()?.textContent ?? "").includes(
+					"The request has invalid fields.",
+				),
 			"the failure sentence inside the dialog",
 		);
+		await poll(
+			() =>
+				document.activeElement ===
+				document.querySelector("[data-project-force-done]"),
+			"focus retained on the primary after the failure",
+		);
+	}),
+};
+
+/**
+ * "REVIEW MILESTONES" DELIVERS (design round 1, D2; agent review F2; UX round
+ * 1, U3): the dialog closes, the milestones section ends up in the viewport,
+ * and the caret is on its heading - not back on the status pencil, which is
+ * where the field's own cancel hand-back used to put it.
+ */
+export const DetailDoneForceReviewMilestones: Story = {
+	render: () => detailGate(true),
+	play: playOnce("detail-done-force-review-milestones", async () => {
+		await pickDetailDone();
+		await clickWhen("[data-project-force-done-door]");
+		await poll(() => doneDialog() !== null, "the done-anyway dialog");
+		await userEvent.click(dialogButton("Review milestones") as HTMLElement);
+		await poll(() => doneDialog() === null, "the dialog to close");
+		await poll(
+			() =>
+				document.activeElement ===
+				document.querySelector("[data-project-milestones-heading]"),
+			"the milestones heading to take the caret",
+		);
+		const section = need<HTMLElement>("[data-project-milestones]");
+		/*
+		 * A diagnostic loop rather than a bare poll: if the delivery misses,
+		 * the failure has to carry the NUMBERS (the section's box, the scroll
+		 * container's own top) - a poll that only says "never arrived" is the
+		 * shape that cost this story two runs.
+		 */
+		const deadline = Date.now() + 3000;
+		/*
+		 * A subpixel tolerance on the top edge: the scroll lands at whatever
+		 * `scrollIntoView` computes for a fractional layout, and a box at
+		 * -0.4px is in view by any reading (measured: it landed at -0.4 and
+		 * failed a `>= 0` check while the rounded number read 0).
+		 */
+		const inView = (top: number) => top >= -2 && top < window.innerHeight;
+		let box = section.getBoundingClientRect();
+		while (Date.now() < deadline && !inView(box.top)) {
+			await new Promise((resolve) => setTimeout(resolve, 40));
+			box = section.getBoundingClientRect();
+		}
+		if (!inView(box.top)) {
+			const scroller = (() => {
+				let node = section.parentElement;
+				while (node && node !== document.body) {
+					if (getComputedStyle(node).overflowY === "auto") return node;
+					node = node.parentElement;
+				}
+				return null;
+			})();
+			throw new Error(
+				`delivery missed: top=${Math.round(box.top)} inner=${window.innerHeight} scrollTop=${scroller?.scrollTop ?? "n/a"} scrollH=${scroller?.scrollHeight ?? "n/a"} active=${document.activeElement?.getAttribute("data-project-milestones-heading") !== null}`,
+			);
+		}
 	}),
 };
 

@@ -518,7 +518,17 @@ export function retryDesktopMutation(
 		error instanceof DesktopControlError &&
 		error.status !== null &&
 		error.status >= 400 &&
-		error.status < 500
+		error.status < 500 &&
+		/*
+		 * 408 (request timeout), 425 (too early) and 429 (too many requests)
+		 * are transient by definition: the request was not refused on its
+		 * merits, so the single retry is still worth spending on them (agent
+		 * review F7). Everything else in the 4xx class is the daemon's
+		 * considered answer to this exact body and is not re-sent.
+		 */
+		error.status !== 408 &&
+		error.status !== 425 &&
+		error.status !== 429
 	)
 		return false;
 	return failureCount < 1;

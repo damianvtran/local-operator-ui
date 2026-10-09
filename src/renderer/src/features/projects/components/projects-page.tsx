@@ -119,12 +119,12 @@ import { todayUtcMs } from "../timeline-model";
  * and the skeleton is six identical rows whose only identity is their slot.
  */
 const LOADING_SKELETON_ROWS = ["r1", "r2", "r3", "r4", "r5", "r6"] as const;
+import { runStatusMove } from "../project-move";
 import { BoardWindowSelect } from "./board-window-select";
 import { ProjectBoard, useMoveFocusHandoff } from "./project-board";
 import { ProjectDeleteDialog } from "./project-delete-dialog";
 import { ProjectDetailScreen } from "./project-detail";
 import { ProjectDoneAnywayDialog } from "./project-done-anyway-dialog";
-import { doneGateRefusalOf, projectMoveErrorCopy } from "./project-editors";
 import { ProjectFormDialog } from "./project-form-dialog";
 import { ProjectList } from "./project-list";
 import { ProjectTimeline } from "./project-timeline";
@@ -598,6 +598,27 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 		status: string;
 		refusal: DoneGateRefusal;
 	} | null>(null);
+	/*
+	 * Whether a question is ALREADY on screen. The dialog is a single slot -
+	 * one modal at a time - so a second refusal that arrives while the first
+	 * question is up answers as a toast instead of overwriting the open
+	 * question (agent review F3; UX round 1, U1: two overlapping moves used to
+	 * end with one question and one silent refusal). A ref beside the state
+	 * because the read and the write happen in one tick.
+	 */
+	const forceOpen = useRef(false);
+	const dismissForceQuestion = () => {
+		forceOpen.current = false;
+		setForceTarget(null);
+	};
+	/*
+	 * WHICH MOVES ARE IN FLIGHT, per card, as page state rather than the
+	 * mutation's own `variables`: with two moves overlapping, the shared
+	 * mutation remembers only the last one's variables, so the first card's
+	 * spinner vanished while its write was still in flight (UX round 1, U2).
+	 * Keyed by project id, cleared per call in the finally below.
+	 */
+	const [movingKeys, setMovingKeys] = useState<string[]>([]);
 	const forceDoneOffered = desktopFeatureEnabled(
 		capabilities.data,
 		"projects_force_done",
@@ -611,15 +632,31 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	 * can honour a forced close) or an error toast with the route's own sentence
 	 * through the app's copy.
 	 */
+	/*
+	 * A MOVE THAT DID NOT HAPPEN IS NEVER SILENT, PER CALL (agent review F3;
+	 * UX round 1, U1): the decision - moved, question, or a sentence for a
+	 * toast - lives in `runStatusMove`, a pure module driven per call with
+	 * `mutateAsync`, because the shared mutation's callbacks are displaced by
+	 * an overlapping second move. This wiring owns only the side effects: the
+	 * per-card busy signal (U2), the question slot (one dialog at a time), the
+	 * toasts, and the focus hand-off.
+	 */
 	const moveTo = (project: DesktopProject, status: string) => {
-		update.mutate(
-			{
-				key: project.id,
-				fields: { status: status as DesktopProjectStatus },
-			},
-			{
-				onSuccess: () => {
-					showSuccessToast(`Moved to ${projectStatusMeta(status).label}`);
+		const key = project.id;
+		const label = projectStatusMeta(status).label;
+		setMovingKeys((keys) => (keys.includes(key) ? keys : [...keys, key]));
+		void runStatusMove({
+			move: () =>
+				update.mutateAsync({
+					key,
+					fields: { status: status as DesktopProjectStatus },
+				}),
+			forceDoneOffered,
+			questionOpen: () => forceOpen.current,
+		})
+			.then((outcome) => {
+				if (outcome.kind === "moved") {
+					showSuccessToast(`Moved to ${label}`);
 					/*
 					 * THE CARET COMES BACK AFTER THE LIST SETTLES, from here rather than
 					 * from the card: the refetch re-parents the card into its new column,
@@ -629,25 +666,36 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					 * signal, and `useMoveFocusHandoff` focuses the trigger wherever the
 					 * card now lives.
 					 */
-					void list.refetch().then(() => handOffFocus(project.id));
-				},
-				onError: (error) => {
-					const refusal = doneGateRefusalOf(error);
-					if (refusal?.coded && forceDoneOffered) {
-						// The question takes the focus; its close hands it back.
-						setForceTarget({ project, status, refusal });
-						return;
-					}
-					showErrorToast(projectMoveErrorCopy(error));
-					/*
-					 * The card did not move, so nothing re-parents - but the menu that
-					 * held the press has closed, and the caret goes back to its trigger
-					 * rather than being left to the menu's own unmount.
-					 */
-					handOffFocus(project.id);
-				},
-			},
-		);
+					void list.refetch().then(() => handOffFocus(key));
+					return;
+				}
+				if (outcome.kind === "question") {
+					// The question takes the focus; its close hands it back.
+					forceOpen.current = true;
+					setForceTarget({ project, status, refusal: outcome.refusal });
+					return;
+				}
+				showErrorToast(
+					outcome.copy,
+					outcome.refusal
+						? {
+								action: {
+									label: "View project",
+									onClick: () => void navigate(`/projects/${key}`),
+								},
+							}
+						: undefined,
+				);
+				/*
+				 * The card did not move, so nothing re-parents - but the menu that
+				 * held the press has closed, and the caret goes back to its trigger
+				 * rather than being left to the menu's own unmount.
+				 */
+				handOffFocus(key);
+			})
+			.finally(() => {
+				setMovingKeys((keys) => keys.filter((k) => k !== key));
+			});
 	};
 
 	/*
@@ -1054,11 +1102,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 							onDelete={setDeleting}
 							onMove={moveTo}
 							teamLabelFor={teamLabelFor}
-							movingKeys={
-								update.isPending && update.variables
-									? [update.variables.key]
-									: []
-							}
+							movingKeys={movingKeys}
 						/>
 					)}
 
@@ -1150,7 +1194,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					// Every exit (Cancel, Escape, scrim, X, success) hands the caret back
 					// to the card's trigger; none of them but the confirm wrote anything.
 					if (forceTarget) handOffFocus(forceTarget.project.id);
-					setForceTarget(null);
+					dismissForceQuestion();
 				}}
 				onConfirm={async () => {
 					if (!forceTarget) return;
@@ -1172,7 +1216,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 				secondaryLabel="Open project"
 				onSecondary={() => {
 					const id = forceTarget?.project.id;
-					setForceTarget(null);
+					dismissForceQuestion();
 					if (id) void navigate(`/projects/${id}`);
 				}}
 			/>
