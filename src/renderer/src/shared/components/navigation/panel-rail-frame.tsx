@@ -35,6 +35,10 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 	consoleUnseenCount = 0,
 	consoleUnseenPulsing = false,
 	fileCount = 0,
+	codeOffered = false,
+	codeOpened = 0,
+	codeMentioned = 0,
+	codeAttention = false,
 }) => {
 	const setRightSlotRoute = useUiPreferencesStore((s) => s.setRightSlotRoute);
 	const hasRunDetails = runDetails !== null;
@@ -64,6 +68,10 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 				consoleUnseenCount={consoleUnseenCount}
 				consoleUnseenPulsing={consoleUnseenPulsing}
 				fileCount={fileCount}
+				codeOffered={codeOffered}
+				codeOpened={codeOpened}
+				codeMentioned={codeMentioned}
+				codeAttention={codeAttention}
 			/>
 		</div>
 	);

@@ -867,6 +867,14 @@ export type MessageInputProps = {
 	askOutcomes?: Readonly<Record<string, AskOutcome | undefined>>;
 
 	/**
+	 * The session's transport is attached, forwarded to the status row's code
+	 * request chip as its poll gate. See `ComposerStatusRowProps.sessionLive`; a
+	 * host with no canonical session leaves it absent, which the chip reads as
+	 * "poll only while a row's CI is pending".
+	 */
+	sessionLive?: boolean;
+
+	/**
 	 * THE HOST PROVIDES ITS OWN HORIZONTAL GUTTER (mini restyle, design D1/D2).
 	 *
 	 * `CHAT_COLUMN_INSET` exists to put the composer's outer edge on the SAME line
@@ -1702,6 +1710,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			askExpanded,
 			onAskToggle,
 			askOutcomes,
+			sessionLive = false,
 			ownGutter = false,
 			isHydrating = false,
 			transcriptless = false,
@@ -7389,6 +7398,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						askExpanded={askExpanded}
 						onAskToggle={onAskToggle}
 						askOutcomes={askOutcomes}
+						sessionLive={sessionLive}
 						/*
 						 * The judge stalling is a state the user cannot read off 0px of ink, so the
 						 * row writes one sentence about it to the transcript (design D2) — through

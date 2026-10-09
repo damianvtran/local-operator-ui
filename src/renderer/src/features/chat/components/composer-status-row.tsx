@@ -114,6 +114,7 @@ import {
 	AlarmClock,
 	Check,
 	CircleCheck,
+	GitPullRequest,
 	HelpCircle,
 	Info,
 	Repeat,
@@ -133,6 +134,8 @@ import {
 	goalCapability,
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
+import { chipClause } from "../../code-review/code-review-model";
+import { useCodeRequestsChip } from "../../code-review/hooks/use-code-requests";
 import {
 	type AskOutcome,
 	askChipCountClause,
@@ -1292,6 +1295,17 @@ export type ComposerStatusRowProps = {
 	 */
 	onFocusComposer?: () => void;
 	/**
+	 * The session's transport is attached - the code request chip's poll gate.
+	 *
+	 * The design's cadence is `60 s ONLY while the pane or chip is visible AND
+	 * (session live OR a row has CI pending)` (§D.5), and "session live" is a fact
+	 * the composer's host holds (`canonical.view.status`) rather than one this row
+	 * can re-derive. Optional, and ABSENT MEANS UNKNOWN, which is the safe
+	 * direction: the chip then polls only while a row's own CI is pending, and
+	 * every other refresh rides the feed frame and the window-focus refetch.
+	 */
+	sessionLive?: boolean;
+	/**
 	 * Say one sentence in the composer's own note idiom.
 	 *
 	 * THE ROW WRITES ONE NOTE and it is why this prop exists: the judge deciding to
@@ -1317,6 +1331,7 @@ export const ComposerStatusRow = ({
 	onFocusComposer,
 	onNote,
 	nowMs,
+	sessionLive = false,
 }: ComposerStatusRowProps) => {
 	/*
 	 * CONTROLLED WHEN THE CALLER SUPPLIES IT (see `askExpanded` on the props). The
@@ -1333,6 +1348,9 @@ export const ComposerStatusRow = ({
 	};
 	const revealPlan = useUiPreferencesStore(
 		(state) => state.revealRunPanelSection,
+	);
+	const setCodeReviewPaneOpen = useUiPreferencesStore(
+		(state) => state.setCodeReviewPaneOpen,
 	);
 	/*
 	 * ONE command channel PER CONTROL, and it is the pickers' own hook rather than a
@@ -1493,6 +1511,23 @@ export const ComposerStatusRow = ({
 	 */
 	const monitors = runDetails?.monitors ?? [];
 	const showMonitors = monitors.length > 0;
+	/*
+	 * The CODE REQUEST chip's gate and counts, in one hook (§M.2): at least one
+	 * VISIBLE row, off the same ledger query the pane reads - tool-output-only
+	 * mentions are collapsed by the backend and do not count, and a session whose
+	 * window has no right slot (the mini quick-send window) is not offered the
+	 * chip at all, because its press would open nothing. The label is ONE derived
+	 * string for the tooltip and the announced name, the monitors chip's rule.
+	 *
+	 * The chip is NOT a toggle: its press ensures the pane is open and never
+	 * closes it ("a chip reveals, it does not toggle", cst.md §5.2; a genuine
+	 * click still focuses the button by the browser's own rule).
+	 */
+	const codeChip = useCodeRequestsChip(
+		frontend?.session_id ?? null,
+		sessionLive,
+	);
+	const showCode = codeChip.show;
 	/*
 	 * The ask item's gate: a host that WIRES the lane, the lane is bounded by the WIRE,
 	 * and the queue must actually carry a row.
@@ -1875,6 +1910,7 @@ export const ComposerStatusRow = ({
 		!showAsks &&
 		!showWakes &&
 		!showMonitors &&
+		!showCode &&
 		!children &&
 		!jobs
 	)
@@ -1963,7 +1999,8 @@ export const ComposerStatusRow = ({
 	const asksFirst = groupIsFirst && !showPlan;
 	const wakesFirst = asksFirst && !showAsks;
 	const monitorsFirst = wakesFirst && !showWakes;
-	const subagentsFirst = monitorsFirst && !showMonitors;
+	const codeFirst = monitorsFirst && !showMonitors;
+	const subagentsFirst = codeFirst && !showCode;
 	/*
 	 * ...and the jobs chip is first only when NONE of the chips ahead of it
 	 * rendered, which is a different question from "the subagents chip is not the
@@ -2666,6 +2703,7 @@ export const ComposerStatusRow = ({
 				showAsks ||
 				showWakes ||
 				showMonitors ||
+				showCode ||
 				children ||
 				jobs) && (
 				<div
@@ -2988,6 +3026,38 @@ export const ComposerStatusRow = ({
 									className={cn("size-3.5 shrink-0")}
 								/>
 								{monitorClause(monitors.length)}
+							</button>
+						</Tooltip>
+					)}
+
+					{/*
+					 * THE CODE REQUEST chip, after the monitors chip in the counts group (§7):
+					 * one press CLAIMS the slot for the Code review pane (ensure open, never
+					 * closes - a chip reveals, it does not toggle), and it moves no focus into
+					 * the pane. The glyph is the pane's own (`GitPullRequest`, the rail item's),
+					 * so it means "code review" on both surfaces; the label is the one derived
+					 * string `useCodeRequestsChip` built, serving the tooltip and the announced
+					 * name at once.
+					 *
+					 * `data-status-code-requests` is the story/test hook (the neighbours' own
+					 * `data-status-*` convention), and the count rides the visible clause - "3
+					 * code requests" - never a bare number, because the row's grammar reads
+					 * `[mark] [clause]` for every chip on it.
+					 */}
+					{showCode && (
+						<Tooltip content={codeChip.label} side="top">
+							<button
+								type="button"
+								data-status-code-requests=""
+								aria-label={codeChip.label}
+								onClick={() => setCodeReviewPaneOpen(true)}
+								className={cn(CHIP_CONTROL, codeFirst ? FIRST_CHIP : undefined)}
+							>
+								<GitPullRequest
+									aria-hidden={true}
+									className={cn("size-3.5 shrink-0")}
+								/>
+								{chipClause(codeChip.count)}
 							</button>
 						</Tooltip>
 					)}
