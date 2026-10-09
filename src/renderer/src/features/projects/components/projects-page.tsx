@@ -662,7 +662,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 			},
 		})
 			.then((outcome) => {
-				if (outcome.kind === "moved") {
+				if (outcome.kind === "accepted") {
 					showSuccessToast(`Moved to ${label}`);
 					/*
 					 * THE CARET COMES BACK AFTER THE LIST SETTLES, from here rather than

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, unlinkSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -477,7 +477,7 @@ test("overlapping moves each settle their own outcome (the U1 reproduction)", as
 	});
 	okDeferred.resolve("row");
 	const first = await ok;
-	assert.equal(first.kind, "moved");
+	assert.equal(first.kind, "accepted");
 	badDeferred.reject(codedRefusal());
 	const second = await bad;
 	assert.equal(second.kind, "question");
@@ -672,7 +672,7 @@ test("the detail field's force door reads the capability before it renders", () 
  * F1 reproduced at hook level.
  */
 
-const { writeFile: writeFileAsync, unlink } = await import("node:fs/promises");
+const { writeFile: writeFileAsync } = await import("node:fs/promises");
 const { JSDOM } = await import("jsdom");
 const React = await import("react");
 const { act } = React;
@@ -910,10 +910,17 @@ const componentsPath = new URL(
 );
 await writeFileAsync(componentsPath, componentBundle.outputFiles[0].text);
 const components = await import(componentsPath.href);
+/*
+ * SYNCHRONOUS, deliberately (agent review round 3, R3-2): the promisified
+ * `unlink` this used to call queues work on the libuv loop that the process
+ * never drains once an `exit`/signal handler has run - it raced, and leaked
+ * the scratch bundles across ordinary runs. `unlinkSync` is a syscall in the
+ * handler itself, so the files are gone before the process leaves the stage.
+ */
 const removeScratchBundles = () => {
 	for (const path of [toastStubPath, componentsPath.pathname, muiStubPath]) {
 		try {
-			unlink(path);
+			unlinkSync(path);
 		} catch {
 			// already gone
 		}
