@@ -32,6 +32,7 @@
 
 import { useDesktopCapabilities } from "@shared/api/local-operator/desktop-hooks";
 import { Button } from "@shared/components/ui";
+import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query";
 import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
 import {
 	openConsolePage,
@@ -55,6 +56,16 @@ export const RadientCreditsGuidance: FC<{
 	});
 	const capabilities = useDesktopCapabilities();
 	/*
+	 * The advertised grant, for a pending/expired capture whose own
+	 * `grant_amount` the backend left out: the same fallback the settings
+	 * callout reads, so the two surfaces cannot put different figures on one
+	 * fact (agent review round 1, R1-2). The read is shared and cached; while it
+	 * is in flight or absent the amount degrades to the phrase that promises no
+	 * number (`grantAmountText`), and it can only refine that phrase - never
+	 * flip which state the row claims.
+	 */
+	const { prices } = useRadientPricesQuery();
+	/*
 	 * "Not answered yet" is two things: the account read in flight, and the
 	 * capability probe that opens the read's gate still in flight (a gated-off
 	 * query reads as `signed-out`, and a neutral sentence painted for that first
@@ -67,6 +78,7 @@ export const RadientCreditsGuidance: FC<{
 		? null
 		: outOfCreditsGuidance(
 				accountRead === "ready" ? user?.verification : undefined,
+				prices?.default_new_credits,
 			);
 	return (
 		<div className="mt-1 flex flex-col items-start gap-2 pl-6">

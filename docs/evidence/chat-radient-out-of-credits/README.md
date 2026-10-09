@@ -41,8 +41,23 @@ clientWidth` is 0 for every state).
 | account-unreadable | 150 | 529 x 89 | 206, 28 (three buttons in one line) |
 | non-radient-rate-limit | 54 | none | 110, 28 |
 
-At 420 wide the unreadable state's buttons wrap onto their own lines (y 247 / 283
-/ 319, x=64) and nothing overflows (box 316 wide, overflow 0).
+At 420 wide, re-measured with the probe below (`scripts/radient-credits-geometry.mjs`; it reproduced the unreadable state's committed readings - box 316 wide, buttons at x=64, overflow 0): the unreadable state's three buttons wrap onto their own lines (y 247.4 / 283.4 / 319.4, x=64); `unverified-pending` and `unverified-expired` - the longest copy - keep their two buttons ON one line (pending: CTA 64..212.8, ghost 220.8..365 at y 247.4; expired: CTA 64..189.9, ghost 197.9..342.1 at y 286.4). Every box is 316 wide - the narrow column's own measure; the longest copy wraps rather than widening - and nothing overflows (`scrollWidth - clientWidth` is 0 for the box, the action row and the document). Pending's box is 108 tall over 3+1 text lines, expired's 147 over 3+3, unreadable's 108 over 3+1.
+
+## The pre-settle row's insertion shift (design round 1, D1; measured, not read off a frame)
+
+The guidance box renders only after the account read settles, and it is inserted above and before the action row - so a read that lands after the row's first paint displaces the ghost action ("Open Radient account"). That is a number about an edge moving, which neither endpoint's still can show, so it is measured: `node scripts/radient-credits-geometry.mjs <storybook-origin>` wraps the story's stubbed bridge before the page's own scripts run, holds the account read, measures the pre-settle row, lets the read land, and measures again in the same page. At 1280, `localOperatorLight`:
+
+| State | box (w x h) | ghost shift (right, down) |
+| --- | --- | --- |
+| `unverified-pending` | 529.1 x 88.5 | +156.8, +96.5 |
+| `unverified-expired` | 529.1 x 108 | +133.9, +116 |
+| `unverified-none` | 529.1 x 65 | +156.8, +73 |
+| `verified-bonus-available` | 392.4 x 69 | +174.5, +77 |
+| `verified-bonus-received` | 366.8 x 45.5 | +174.5, +53.5 |
+| `verified-older-backend` | 366.8 x 45.5 | +174.5, +53.5 |
+| `account-unreadable` | 529.1 x 88.5 | +331.3, +96.5 |
+
+Before the read lands the row is boxless and the ghost sits on the actions line at x=259; the right shift is the inserted CTA's own width plus the row's 8px gap (`Open verification page` 148.8, `Request a new link` 125.9, `Top up in Radient console` 166.5; the unreadable arm inserts two, hence 331.3), and the down shift is the box's height plus that gap.
 
 ## What to look for
 

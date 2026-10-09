@@ -125,6 +125,18 @@ const installBridge = (verification: Verification) => {
 						},
 					});
 				}
+				if (request?.control?.operation === "prices")
+					/*
+					 * The advertised grant the guidance reads when a capture has
+					 * no `grant_amount` of its own (agent review round 1, R1-2) -
+					 * the same pair the settings callout's story answers.
+					 */
+					return ok({
+						data: {
+							msg: "ok",
+							result: { default_new_credits: 5 },
+						},
+					});
 				break;
 			default:
 				break;

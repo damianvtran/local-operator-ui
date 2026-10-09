@@ -17,6 +17,10 @@ import React, { act } from "react";
  *    backend that predates `first_topup` still shows the top-up link;
  *  - the guidance re-reads the account when the row appears, so a user who has
  *    just verified or topped up is not shown the state from before they did.
+ * The amount has one extra rule (agent review round 1, R1-2): a capture with no
+ * `grant_amount` takes the prices endpoint's advertised default - the fallback
+ * the copy module documents - and with neither source naming a figure the
+ * sentence promises no number.
  *
  * The data is synthetic throughout (`*.example.test` addresses, invented ids).
  */
@@ -49,20 +53,36 @@ const opened = [];
 let accountReads = 0;
 /** What the stubbed desktop bridge answers an `account` read with. */
 let bridgeAccount = null;
+/**
+ * What the stubbed prices read answers; `{}` is an older payload that names no
+ * advertised default. The guidance reads it for the amount fallback (R1-2), so
+ * every mount is served rather than 503-ing into the query's own retries.
+ */
+let bridgePrices = { default_new_credits: 5 };
+/**
+ * The bridge's default answers. Tests that replace the whole request for their
+ * own shape delegate the operations they do not own back here, so a read added
+ * to the component later is served rather than silently retried.
+ */
+const bridgeRequest = async (request) => {
+	if (request?.control?.operation === "account") {
+		accountReads += 1;
+		return {
+			status: 200,
+			body: { result: { data: { result: bridgeAccount } } },
+		};
+	}
+	if (request?.control?.operation === "prices") {
+		return {
+			status: 200,
+			body: { result: { data: { result: bridgePrices } } },
+		};
+	}
+	return { status: 503, body: { detail: "seeded fixture" } };
+};
 globalThis.window.api = {
 	openExternal: (url) => opened.push(url),
-	desktop: {
-		request: async (request) => {
-			if (request?.control?.operation === "account") {
-				accountReads += 1;
-				return {
-					status: 200,
-					body: { result: { data: { result: bridgeAccount } } },
-				};
-			}
-			return { status: 503, body: { detail: "seeded fixture" } };
-		},
-	},
+	desktop: { request: bridgeRequest },
 };
 
 globalThis.__RIG_ENV__ = {};
@@ -301,6 +321,42 @@ test("unverified: an expired link asks for a new one; none promises no amount", 
 	}
 });
 
+test("a pending grant with no captured amount quotes the advertised default, and neither source means no figure", async () => {
+	/*
+	 * The backend can answer a pending grant with no `grant_amount` (an older
+	 * capture); the prices endpoint's advertised default is the fallback the
+	 * copy module documents, and this is the read that keeps it firing (agent
+	 * review round 1, R1-2) - the same pair the settings callout reads.
+	 */
+	const noAmount = { ...UNVERIFIED, grant_amount: undefined };
+	bridgeAccount = account(noAmount);
+	let view = await mount(seededClient({ data: account(noAmount) }));
+	try {
+		assert.ok(
+			view.text().includes("Verify to claim $5 in free credits"),
+			view.text(),
+		);
+	} finally {
+		await view.unmount();
+	}
+	/*
+	 * With neither source naming a figure, the sentence degrades to the phrase
+	 * that promises no number rather than inventing one (`grantAmountText`).
+	 */
+	bridgePrices = {};
+	view = await mount(seededClient({ data: account(noAmount) }));
+	try {
+		assert.ok(
+			view.text().includes("Verify to claim your free credits"),
+			view.text(),
+		);
+		assert.ok(!view.text().includes("$"), "no figure when none was reported");
+	} finally {
+		await view.unmount();
+		bridgePrices = { default_new_credits: 5 };
+	}
+});
+
 test("verified: top up in the console, with the first-top-up line while it is on offer", async () => {
 	bridgeAccount = account(VERIFIED);
 	opened.length = 0;
@@ -369,7 +425,7 @@ test("an account the app could not read gets the neutral message and BOTH links,
 						},
 					},
 				}
-			: { status: 503, body: { detail: "seeded fixture" } };
+			: bridgeRequest(request);
 	opened.length = 0;
 	const view = await mount(seededClient({}));
 	try {
@@ -394,16 +450,8 @@ test("the row re-reads the account when it appears, so a just-verified user is n
 	// The cache still says unverified, 30 s old (older than the guidance's
 	// window); the console has since verified the account. The row must repair
 	// its own sentence rather than wait for the settings page's 30 s staleness.
-	globalThis.window.api.desktop.request = async (request) => {
-		if (request?.control?.operation === "account") {
-			accountReads += 1;
-			return {
-				status: 200,
-				body: { result: { data: { result: bridgeAccount } } },
-			};
-		}
-		return { status: 503, body: { detail: "seeded fixture" } };
-	};
+	// (Reset to the default bridge: the previous test replaced the request.)
+	globalThis.window.api.desktop.request = bridgeRequest;
 	bridgeAccount = account(VERIFIED);
 	accountReads = 0;
 	const view = await mount(
