@@ -1,0 +1,485 @@
+{
+ "head": "a8252aca05e11b63e461954cc572bf3b91425717",
+ "treeClean": true,
+ "results": [
+  {
+   "id": "C",
+   "title": "shipped code",
+   "rc": 0,
+   "tally": {
+    "tests": 81,
+    "pass": 81,
+    "fail": 0
+   },
+   "fails": []
+  },
+  {
+   "id": "M0",
+   "title": "OLD TREE: the hook does nothing (no auto-open, no dismissal watch)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 54,
+    "fail": 27
+   },
+   "fails": [
+    "ask-open-render.test.mjs:: state 2 - pending on open: the drawer opens by itself, once",
+    "ask-open-render.test.mjs:: state 4 - dismissed while pending: stays closed through a re-render, a refresh, an arrival, and a switch away and back",
+    "ask-open-render.test.mjs:: Escape inside the drawer is a dismissal too: the watch is on the flag, not on a button",
+    "ask-open-render.test.mjs:: another pane taking the slot is read as a dismissal: the user chose something else for it",
+    "ask-open-render.test.mjs:: the drawer's own close over a queue that emptied is NOT a dismissal",
+    "ask-open-render.test.mjs:: a settled-only queue keeps the drawer open (#864), and closing it records nothing",
+    "ask-open-render.test.mjs:: an unresolved frame opens nothing; the frame landing later opens once",
+    "ask-open-render.test.mjs:: opening never takes the keyboard: the composer keeps focus and the drawer takes none",
+    "ask-open-render.test.mjs:: the focus is still where it was after an auto-open that happens while the composer is focused",
+    "ask-open-render.test.mjs:: U1 - closing an auto-opened drawer hands a stranded caret back to the composer",
+    "ask-open-render.test.mjs:: U1 - a close that leaves focus somewhere real moves nothing",
+    "ask-open-render.test.mjs:: StrictMode's second effect pass is not a second 'once'",
+    "ask-open-render.test.mjs:: the policy opens through the store's one writer, borrowing a durable pane the close gives back",
+    "ask-open-render.test.mjs:: a policy-opened drawer carried onto a dismissed conversation is closed before it paints",
+    "ask-open-render.test.mjs:: U3 - a policy-opened drawer carried onto a conversation with nothing outstanding is closed",
+    "ask-open-render.test.mjs:: U3 - the same close when the landing frame arrives a beat late",
+    "ask-open-render.test.mjs:: U3 - a carried drawer STAYS over a landing that has its own pending ask",
+    "ask-open-render.test.mjs:: E1 - a partial resolve holds, through the carried drawer: the same waved-off ask keeps c-a shut",
+    "ask-open-render.test.mjs:: E2/E3 - resolved while away and a new batch queued: c-a opens a fresh view, frame landing after the mount",
+    "ask-open-render.test.mjs:: E2/E3 - the same, when the pane mounts with the frame already resolved",
+    "ask-open-render.test.mjs:: E2/E3 - settling the record at mount means the carried drawer is never closed and re-opened",
+    "ask-open-render.test.mjs:: U2 - a truncated frame cannot prove a record stale, so a refill beside it stays shut",
+    "ask-open-render.test.mjs:: U2 - a sticky asks_truncated flag does not mute the conversation: the record clears on the frame that shows nothing outstanding",
+    "ask-open-render.test.mjs:: a drawer the USER opened follows them onto a dismissed conversation, as it always did",
+    "ask-open-render.test.mjs:: provenance does not outlive the flag: a policy open, a close, then a hand-open is the user's",
+    "ask-open-render.test.mjs:: D1 - a policy open speaks one sentence in the live region; a door press and a refresh do not",
+    "ask-open-render.test.mjs:: D1 - the drawer's own empty close clears the sentence, and a fresh view re-announces"
+   ]
+  },
+  {
+   "id": "M1",
+   "title": "over-eager: open over a queue with nothing pending (breaks states 1 and 3)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 66,
+    "fail": 15
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: state 1 - no asks on open: closed, and an ask that arrives later does not open it",
+    "ask-open-policy.test.mjs:: state 3 - all addressed on open: closed, and settling never re-opens",
+    "ask-open-policy.test.mjs:: a tally with no rows behind it opens nothing, says so truthfully, and keeps waiting inside the window",
+    "ask-open-policy.test.mjs:: a tally that never gets its rows stops waiting when the window closes",
+    "ask-open-policy.test.mjs:: the reason a verdict names is the first thing that kept the drawer shut",
+    "ask-open-policy.test.mjs:: an ask that arrives on the view's first resolved frame is an arrival, not pending on open",
+    "ask-open-policy.test.mjs:: the arrival boundary: queued before the view or within the skew counts as on open",
+    "ask-open-policy.test.mjs:: a timed-out ask that arrived during the view is an arrival too",
+    "ask-open-render.test.mjs:: state 1 - no asks on open: the drawer stays closed, and an arriving ask does not open it",
+    "ask-open-render.test.mjs:: state 3 - all addressed on open: closed, and settling never re-opens",
+    "ask-open-render.test.mjs:: an unresolved frame opens nothing; the frame landing later opens once",
+    "ask-open-render.test.mjs:: U3 - a policy-opened drawer carried onto a conversation with nothing outstanding is closed",
+    "ask-open-render.test.mjs:: U2 - a sticky asks_truncated flag does not mute the conversation: the record clears on the frame that shows nothing outstanding",
+    "ask-open-render.test.mjs:: a drawer the USER opened follows them onto a dismissed conversation, as it always did",
+    "ask-open-render.test.mjs:: provenance does not outlive the flag: a policy open, a close, then a hand-open is the user's"
+   ]
+  },
+  {
+   "id": "M2",
+   "title": "dismissal never recorded (breaks state 4)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 60,
+    "fail": 21
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: state 4 - dismissed while pending: stays closed, including after switching away and back",
+    "ask-open-policy.test.mjs:: E1 - a partial resolve holds: the dismissal stands while ANY waved-off ask is still outstanding",
+    "ask-open-policy.test.mjs:: E3 - a queue that emptied and refilled while the user was away needs no 'seen empty' frame",
+    "ask-open-policy.test.mjs:: U2 - an id list that cannot be named in full HOLDS: a truncated prefix, a tally with no rows",
+    "ask-open-policy.test.mjs:: U2 - a tally above the rows beside it HOLDS even with no truncation flag: the list can lag its tally",
+    "ask-open-policy.test.mjs:: U2 - the wire's truncation flag is STICKY, so the record never reads it: the four frames the shipped ask_wire published",
+    "ask-open-policy.test.mjs:: U3 - the union is what the real second close writes: dismiss, hand-open, close again",
+    "ask-open-policy.test.mjs:: a close over rows the frame could not show still counts as a dismissal",
+    "ask-open-policy.test.mjs:: a close over an arrived ask is still a dismissal: asks remained",
+    "ask-open-render.test.mjs:: state 4 - dismissed while pending: stays closed through a re-render, a refresh, an arrival, and a switch away and back",
+    "ask-open-render.test.mjs:: Escape inside the drawer is a dismissal too: the watch is on the flag, not on a button",
+    "ask-open-render.test.mjs:: another pane taking the slot is read as a dismissal: the user chose something else for it",
+    "ask-open-render.test.mjs:: a policy-opened drawer carried onto a dismissed conversation is closed before it paints",
+    "ask-open-render.test.mjs:: E1 - a partial resolve holds, through the carried drawer: the same waved-off ask keeps c-a shut",
+    "ask-open-render.test.mjs:: E2/E3 - resolved while away and a new batch queued: c-a opens a fresh view, frame landing after the mount",
+    "ask-open-render.test.mjs:: E2/E3 - the same, when the pane mounts with the frame already resolved",
+    "ask-open-render.test.mjs:: E2/E3 - settling the record at mount means the carried drawer is never closed and re-opened",
+    "ask-open-render.test.mjs:: U2 - a truncated frame cannot prove a record stale, so a refill beside it stays shut",
+    "ask-open-render.test.mjs:: U2 - a sticky asks_truncated flag does not mute the conversation: the record clears on the frame that shows nothing outstanding",
+    "ask-open-render.test.mjs:: a drawer the USER opened follows them onto a dismissed conversation, as it always did",
+    "ask-open-render.test.mjs:: provenance does not outlive the flag: a policy open, a close, then a hand-open is the user's"
+   ]
+  },
+  {
+   "id": "M3",
+   "title": "an ask that ARRIVES after the view began counts as pending-on-open (rule 4's second half)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 78,
+    "fail": 3
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: an ask that arrives on the view's first resolved frame is an arrival, not pending on open",
+    "ask-open-policy.test.mjs:: the arrival boundary: queued before the view or within the skew counts as on open",
+    "ask-open-policy.test.mjs:: a timed-out ask that arrived during the view is an arrival too"
+   ]
+  },
+  {
+   "id": "M4",
+   "title": "acts on a frame that has not answered (rule 5, unresolved/unpublished)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 70,
+    "fail": 11
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: state 4 - dismissed while pending: stays closed, including after switching away and back",
+    "ask-open-policy.test.mjs:: E3 - a queue that emptied and refilled while the user was away needs no 'seen empty' frame",
+    "ask-open-policy.test.mjs:: an unresolved frame opens nothing and spends nothing",
+    "ask-open-policy.test.mjs:: the reason a verdict names is the first thing that kept the drawer shut",
+    "ask-open-policy.test.mjs:: a late view stays decided: a long wait does not reopen the question",
+    "ask-open-policy.test.mjs:: a cold conversation that warms inside the window still opens on its pending ask",
+    "ask-open-render.test.mjs:: an unresolved frame opens nothing; the frame landing later opens once",
+    "ask-open-render.test.mjs:: the focus is still where it was after an auto-open that happens while the composer is focused",
+    "ask-open-render.test.mjs:: U3 - the same close when the landing frame arrives a beat late",
+    "ask-open-render.test.mjs:: E2/E3 - resolved while away and a new batch queued: c-a opens a fresh view, frame landing after the mount",
+    "ask-open-render.test.mjs:: D1 - a policy open speaks one sentence in the live region; a door press and a refresh do not"
+   ]
+  },
+  {
+   "id": "M5",
+   "title": "ignores a composer that holds text (rule 5, no focus theft)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 78,
+    "fail": 3
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: opening never takes the user's keyboard: a held draft and a focused door both keep it shut",
+    "ask-open-policy.test.mjs:: the reason a verdict names is the first thing that kept the drawer shut",
+    "ask-open-render.test.mjs:: the composer holding text keeps the drawer shut, and sending/clearing later does not open it"
+   ]
+  },
+  {
+   "id": "M6",
+   "title": "opens while the keyboard is on a door (rule 6, an auto-open is not a press)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 77,
+    "fail": 4
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: opening never takes the user's keyboard: a held draft and a focused door both keep it shut",
+    "ask-open-policy.test.mjs:: the reason a verdict names is the first thing that kept the drawer shut",
+    "ask-open-render.test.mjs:: U1 - a drawer opened from a door still returns the keyboard to that door",
+    "ask-open-render.test.mjs:: the keyboard on a door keeps the drawer shut: an open there would read as a press"
+   ]
+  },
+  {
+   "id": "M7",
+   "title": "never closes the policy's own drawer carried onto a dismissed conversation (rule 4 across the window-wide flag)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 80,
+    "fail": 1
+   },
+   "fails": [
+    "ask-open-render.test.mjs:: E2/E3 - resolved while away and a new batch queued: c-a opens a fresh view, frame landing after the mount"
+   ]
+  },
+  {
+   "id": "M8",
+   "title": "ids ignored: a dismissal is forgotten by ANY resolved frame (the old 'bare flag' behaviour on a partial resolve)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 64,
+    "fail": 17
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: state 4 - dismissed while pending: stays closed, including after switching away and back",
+    "ask-open-policy.test.mjs:: E1 - a partial resolve holds: the dismissal stands while ANY waved-off ask is still outstanding",
+    "ask-open-policy.test.mjs:: E3 - a queue that emptied and refilled while the user was away needs no 'seen empty' frame",
+    "ask-open-policy.test.mjs:: U2 - an id list that cannot be named in full HOLDS: a truncated prefix, a tally with no rows",
+    "ask-open-policy.test.mjs:: U3 - a second close over a different set UNIONS into the record, it never replaces it",
+    "ask-open-policy.test.mjs:: U3 - the union is what the real second close writes: dismiss, hand-open, close again",
+    "ask-open-policy.test.mjs:: a close over an arrived ask is still a dismissal: asks remained",
+    "ask-open-render.test.mjs:: state 4 - dismissed while pending: stays closed through a re-render, a refresh, an arrival, and a switch away and back",
+    "ask-open-render.test.mjs:: Escape inside the drawer is a dismissal too: the watch is on the flag, not on a button",
+    "ask-open-render.test.mjs:: another pane taking the slot is read as a dismissal: the user chose something else for it",
+    "ask-open-render.test.mjs:: a policy-opened drawer carried onto a dismissed conversation is closed before it paints",
+    "ask-open-render.test.mjs:: E1 - a partial resolve holds, through the carried drawer: the same waved-off ask keeps c-a shut",
+    "ask-open-render.test.mjs:: E2/E3 - resolved while away and a new batch queued: c-a opens a fresh view, frame landing after the mount",
+    "ask-open-render.test.mjs:: E2/E3 - the same, when the pane mounts with the frame already resolved",
+    "ask-open-render.test.mjs:: E2/E3 - settling the record at mount means the carried drawer is never closed and re-opened",
+    "ask-open-render.test.mjs:: a drawer the USER opened follows them onto a dismissed conversation, as it always did",
+    "ask-open-render.test.mjs:: provenance does not outlive the flag: a policy open, a close, then a hand-open is the user's"
+   ]
+  },
+  {
+   "id": "M9",
+   "title": "a record is never forgotten by a frame: refilled-while-away never re-opens (E2/E3)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 73,
+    "fail": 8
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: E2 - resolve both, leave and return, and a NEW batch opens a fresh view",
+    "ask-open-policy.test.mjs:: E3 - a queue that emptied and refilled while the user was away needs no 'seen empty' frame",
+    "ask-open-policy.test.mjs:: U2 - an id list that cannot be named in full HOLDS: a truncated prefix, a tally with no rows",
+    "ask-open-policy.test.mjs:: U3 - a second close over a different set UNIONS into the record, it never replaces it",
+    "ask-open-policy.test.mjs:: U3 - the union is what the real second close writes: dismiss, hand-open, close again",
+    "ask-open-render.test.mjs:: E2/E3 - resolved while away and a new batch queued: c-a opens a fresh view, frame landing after the mount",
+    "ask-open-render.test.mjs:: E2/E3 - the same, when the pane mounts with the frame already resolved",
+    "ask-open-render.test.mjs:: E2/E3 - settling the record at mount means the carried drawer is never closed and re-opened"
+   ]
+  },
+  {
+   "id": "M10",
+   "title": "a bounded prefix / tally-only frame is read as COMPLETE (the tally is ignored; clause b: unknown must hold)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 75,
+    "fail": 6
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: U2 - an id list that cannot be named in full HOLDS: a truncated prefix, a tally with no rows",
+    "ask-open-policy.test.mjs:: U2 - a tally above the rows beside it HOLDS even with no truncation flag: the list can lag its tally",
+    "ask-open-policy.test.mjs:: U2 - the wire's truncation flag is STICKY, so the record never reads it: the four frames the shipped ask_wire published",
+    "ask-open-policy.test.mjs:: a close over rows the frame could not show still counts as a dismissal",
+    "ask-open-policy.test.mjs:: the facts are read off the shipped view: published, rows, and the wire's tally",
+    "ask-open-render.test.mjs:: U2 - a truncated frame cannot prove a record stale, so a refill beside it stays shut"
+   ]
+  },
+  {
+   "id": "M11",
+   "title": "THE FIRST CUT: the sticky asks_truncated flag is read again, so a record over a dropped row can never clear",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 78,
+    "fail": 3
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: U2 - the wire's truncation flag is STICKY, so the record never reads it: the four frames the shipped ask_wire published",
+    "ask-open-policy.test.mjs:: the policy never reads the wire's truncation flag: it is not in the facts' input type and not in the module's code",
+    "ask-open-render.test.mjs:: U2 - a sticky asks_truncated flag does not mute the conversation: the record clears on the frame that shows nothing outstanding"
+   ]
+  },
+  {
+   "id": "M12",
+   "title": "a second close REPLACES the record instead of unioning (clause c)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 80,
+    "fail": 1
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: U3 - a second close over a different set UNIONS into the record, it never replaces it"
+   ]
+  },
+  {
+   "id": "M13",
+   "title": "the record is as complete as the LAST close, not the least complete (clause c)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 80,
+    "fail": 1
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: U3 - a second close over a different set UNIONS into the record, it never replaces it"
+   ]
+  },
+  {
+   "id": "M14",
+   "title": "an incomplete record is cleared by ANY complete frame, not only an empty one (clause b)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 76,
+    "fail": 5
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: U2 - an id list that cannot be named in full HOLDS: a truncated prefix, a tally with no rows",
+    "ask-open-policy.test.mjs:: U2 - a tally above the rows beside it HOLDS even with no truncation flag: the list can lag its tally",
+    "ask-open-policy.test.mjs:: U2 - the wire's truncation flag is STICKY, so the record never reads it: the four frames the shipped ask_wire published",
+    "ask-open-policy.test.mjs:: U3 - a second close over a different set UNIONS into the record, it never replaces it",
+    "ask-open-render.test.mjs:: U2 - a truncated frame cannot prove a record stale, so a refill beside it stays shut"
+   ]
+  },
+  {
+   "id": "M15",
+   "title": "a frame that cannot name every ask settles the record anyway (clause b, the other direction)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 75,
+    "fail": 6
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: state 4 - dismissed while pending: stays closed, including after switching away and back",
+    "ask-open-policy.test.mjs:: E3 - a queue that emptied and refilled while the user was away needs no 'seen empty' frame",
+    "ask-open-policy.test.mjs:: U2 - an id list that cannot be named in full HOLDS: a truncated prefix, a tally with no rows",
+    "ask-open-policy.test.mjs:: a close over rows the frame could not show still counts as a dismissal",
+    "ask-open-render.test.mjs:: E1 - a partial resolve holds, through the carried drawer: the same waved-off ask keeps c-a shut",
+    "ask-open-render.test.mjs:: E2/E3 - resolved while away and a new batch queued: c-a opens a fresh view, frame landing after the mount"
+   ]
+  },
+  {
+   "id": "M16",
+   "title": "the record is not settled against the frame before the decision reads it (E3)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 74,
+    "fail": 7
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: E2 - resolve both, leave and return, and a NEW batch opens a fresh view",
+    "ask-open-policy.test.mjs:: E3 - a queue that emptied and refilled while the user was away needs no 'seen empty' frame",
+    "ask-open-policy.test.mjs:: U2 - an id list that cannot be named in full HOLDS: a truncated prefix, a tally with no rows",
+    "ask-open-policy.test.mjs:: U2 - a tally above the rows beside it HOLDS even with no truncation flag: the list can lag its tally",
+    "ask-open-policy.test.mjs:: U2 - the wire's truncation flag is STICKY, so the record never reads it: the four frames the shipped ask_wire published",
+    "ask-open-policy.test.mjs:: U3 - the union is what the real second close writes: dismiss, hand-open, close again",
+    "ask-open-render.test.mjs:: E2/E3 - resolved while away and a new batch queued: c-a opens a fresh view, frame landing after the mount"
+   ]
+  },
+  {
+   "id": "M17",
+   "title": "the mounting frame does not settle the record before the carried-drawer check (E2 through the real mount)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 80,
+    "fail": 1
+   },
+   "fails": [
+    "ask-open-render.test.mjs:: E2/E3 - settling the record at mount means the carried drawer is never closed and re-opened"
+   ]
+  },
+  {
+   "id": "M18",
+   "title": "the passive effect reads the drawer flags from the render, so the policy's own close reads as the user's",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 80,
+    "fail": 1
+   },
+   "fails": [
+    "ask-open-render.test.mjs:: E2/E3 - resolved while away and a new batch queued: c-a opens a fresh view, frame landing after the mount"
+   ]
+  },
+  {
+   "id": "M19",
+   "title": "a close over a complete EMPTY reading records a dismissal (the drawer's own auto-close read as a refusal)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 80,
+    "fail": 1
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: a close over nothing refused nothing: only a close over asks, named or not, is a record"
+   ]
+  },
+  {
+   "id": "M20",
+   "title": "the view never reads its own decision, so every later frame decides again (rule 2: once)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 71,
+    "fail": 10
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: state 1 - no asks on open: closed, and an ask that arrives later does not open it",
+    "ask-open-policy.test.mjs:: state 2 - pending on open: opens, once, and then lets go",
+    "ask-open-policy.test.mjs:: state 3 - all addressed on open: closed, and settling never re-opens",
+    "ask-open-policy.test.mjs:: opening never takes the user's keyboard: a held draft and a focused door both keep it shut",
+    "ask-open-policy.test.mjs:: a close before the queue answered spends the decision and records nothing",
+    "ask-open-policy.test.mjs:: the reason a verdict names is the first thing that kept the drawer shut",
+    "ask-open-policy.test.mjs:: an ask that arrives on the view's first resolved frame is an arrival, not pending on open",
+    "ask-open-policy.test.mjs:: a late view stays decided: a long wait does not reopen the question",
+    "ask-open-render.test.mjs:: the composer holding text keeps the drawer shut, and sending/clearing later does not open it",
+    "ask-open-render.test.mjs:: StrictMode's second effect pass is not a second 'once'"
+   ]
+  },
+  {
+   "id": "M21",
+   "title": "the view never records that it decided, so the latch is never set (the other half of 'once')",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 71,
+    "fail": 10
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: state 1 - no asks on open: closed, and an ask that arrives later does not open it",
+    "ask-open-policy.test.mjs:: state 2 - pending on open: opens, once, and then lets go",
+    "ask-open-policy.test.mjs:: state 3 - all addressed on open: closed, and settling never re-opens",
+    "ask-open-policy.test.mjs:: state 4 - dismissed while pending: stays closed, including after switching away and back",
+    "ask-open-policy.test.mjs:: opening never takes the user's keyboard: a held draft and a focused door both keep it shut",
+    "ask-open-policy.test.mjs:: an ask that arrives on the view's first resolved frame is an arrival, not pending on open",
+    "ask-open-policy.test.mjs:: a late view stays decided: a long wait does not reopen the question",
+    "ask-open-render.test.mjs:: a settled-only queue keeps the drawer open (#864), and closing it records nothing",
+    "ask-open-render.test.mjs:: the composer holding text keeps the drawer shut, and sending/clearing later does not open it",
+    "ask-open-render.test.mjs:: StrictMode's second effect pass is not a second 'once'"
+   ]
+  },
+  {
+   "id": "M22",
+   "title": "the carried close loses its second arm: a landing frame that proves NOTHING outstanding no longer closes (U3)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 78,
+    "fail": 3
+   },
+   "fails": [
+    "ask-open-policy.test.mjs:: U3 - a policy-opened drawer carried onto a landing with NOTHING outstanding is closed",
+    "ask-open-render.test.mjs:: U3 - a policy-opened drawer carried onto a conversation with nothing outstanding is closed",
+    "ask-open-render.test.mjs:: U3 - the same close when the landing frame arrives a beat late"
+   ]
+  },
+  {
+   "id": "M23",
+   "title": "a policy open never writes the live region's sentence: the surface appears silently (D1)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 79,
+    "fail": 2
+   },
+   "fails": [
+    "ask-open-render.test.mjs:: D1 - a policy open speaks one sentence in the live region; a door press and a refresh do not",
+    "ask-open-render.test.mjs:: D1 - the drawer's own empty close clears the sentence, and a fresh view re-announces"
+   ]
+  },
+  {
+   "id": "M24",
+   "title": "closing an auto-opened drawer strands the caret on <body> again: the composer fallback is gone (U1)",
+   "rc": 1,
+   "tally": {
+    "tests": 81,
+    "pass": 80,
+    "fail": 1
+   },
+   "fails": [
+    "ask-open-render.test.mjs:: U1 - closing an auto-opened drawer hands a stranded caret back to the composer"
+   ]
+  }
+ ]
+}
