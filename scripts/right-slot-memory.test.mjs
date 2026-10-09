@@ -170,6 +170,79 @@ test("(B) a draft's entry is carried to the session it becomes, and the draft en
 });
 
 /*
+ * (R) THE ABANDON (agent review round 1, F1; UX round 1, U1). Clicking an
+ * existing conversation while a New-chat draft is open moves the key exactly as
+ * an admission does — `draft:<uuid>` -> `<sessionId>` — but it is NOT one: the
+ * draft's pane must not travel, and the destination keeps its own answer.
+ */
+test("(R) leaving a draft for an existing conversation does not carry its pane", () => {
+	reset();
+	sessions().setActiveSession("R-OTHER");
+	prefs().setBrowserPaneOpen(true);
+	assert.deepEqual(prefs().rightSlotMemory, [["R-OTHER", "browser"]]);
+
+	const draftKey = sessions().stageDraft();
+	prefs().setCanvasOpen(true);
+	assert.deepEqual(
+		prefs().rightSlotMemory,
+		[
+			["R-OTHER", "browser"],
+			[draftKey, "canvas"],
+		],
+		"the draft's own entry lives under the draft key",
+	);
+
+	sessions().setActiveSession("R-OTHER");
+	assert.equal(prefs().rightSlotKey, "R-OTHER");
+	assert.equal(
+		prefs().isBrowserPaneOpen,
+		true,
+		"the destination keeps ITS OWN pane — no overwrite, no erasure",
+	);
+	assert.equal(
+		prefs().isCanvasOpen,
+		false,
+		"the draft's canvas did not travel",
+	);
+	assert.deepEqual(
+		prefs().rightSlotMemory,
+		[
+			["R-OTHER", "browser"],
+			[draftKey, "canvas"],
+		],
+		"both entries stand exactly as they were",
+	);
+});
+
+/*
+ * (S) THE SAME ABANDON onto a destination that never opened a pane (U1's second
+ * shape): it stays empty rather than inheriting the draft's canvas.
+ */
+test("(S) the same abandon leaves a conversation with no memory empty", () => {
+	reset();
+	sessions().setActiveSession("S-PLAIN");
+	const draftKey = sessions().stageDraft();
+	prefs().setCanvasOpen(true);
+	assert.deepEqual(prefs().rightSlotMemory, [[draftKey, "canvas"]]);
+
+	sessions().setActiveSession("S-PLAIN");
+	assert.equal(prefs().rightSlotKey, "S-PLAIN");
+	assert.equal(
+		prefs().isCanvasOpen,
+		false,
+		"nothing paints on the destination",
+	);
+	assert.equal(prefs().isBrowserPaneOpen, false);
+	assert.equal(prefs().isRunPanelOpen, false);
+	assert.equal(prefs().isConsolePaneOpen, false);
+	assert.deepEqual(
+		prefs().rightSlotMemory,
+		[[draftKey, "canvas"]],
+		"the draft's entry still lives under its draft key",
+	);
+});
+
+/*
  * (C) FAIL-ON-MAIN. The drawer is the one occupant that travels: opened over A's
  * canvas and closed over B it must give B its own pane back, not A's.
  */
@@ -349,6 +422,26 @@ test("(E) the memory persists without drafts, migrates from the global flags, an
 	assert.equal(hydrated.rightSlotLegacySeed, "canvas");
 	assert.equal(hydrated.rightSlotKey, undefined, "the bind is not restored");
 	assert.equal(hydrated.isCanvasOpen, false, "a flag in the blob is refused");
+
+	/*
+	 * THE SEED IS DISK TOO (agent review round 1, F2): a hand-edited blob's
+	 * `rightSlotLegacySeed` must not survive the merge, or the first bind would
+	 * plant it; a real pane name still applies.
+	 */
+	const hostileSeed = mergePersistedUiPreferences(
+		{ rightSlotLegacySeed: "bogus" },
+		prefs(),
+	);
+	assert.equal(
+		hostileSeed.rightSlotLegacySeed,
+		null,
+		"a value that is not one of the four panes is dropped",
+	);
+	const realSeed = mergePersistedUiPreferences(
+		{ rightSlotLegacySeed: "console" },
+		prefs(),
+	);
+	assert.equal(realSeed.rightSlotLegacySeed, "console", "a real seed persists");
 });
 
 /*
@@ -406,6 +499,35 @@ test("(F) the legacy seed lands once, on a session, and never on a draft", () =>
 		"the profile's own choice outranks a flag from before the memory",
 	);
 	assert.equal(prefs().rightSlotLegacySeed, "browser");
+
+	/*
+	 * AND A HOSTILE SEED PLANTS NOTHING (agent review round 1, F2): the merge's
+	 * drop is what the bind reads, so a hand-edited blob cannot turn "bogus" into
+	 * an entry — where the same path with a real value still plants.
+	 */
+	reset();
+	const hostile = mergePersistedUiPreferences(
+		{ rightSlotLegacySeed: "bogus" },
+		prefs(),
+	);
+	useUiPreferencesStore.setState({
+		rightSlotLegacySeed: hostile.rightSlotLegacySeed,
+	});
+	prefs().bindRightSlotKey("f-5");
+	assert.equal(prefs().isCanvasOpen, false);
+	assert.deepEqual(prefs().rightSlotMemory, [], "nothing was planted");
+
+	reset();
+	const real = mergePersistedUiPreferences(
+		{ rightSlotLegacySeed: "console" },
+		prefs(),
+	);
+	useUiPreferencesStore.setState({
+		rightSlotLegacySeed: real.rightSlotLegacySeed,
+	});
+	prefs().bindRightSlotKey("f-6");
+	assert.equal(prefs().isConsolePaneOpen, true, "a real seed still applies");
+	assert.deepEqual(prefs().rightSlotMemory, [["f-6", "console"]]);
 });
 
 /*
@@ -669,12 +791,26 @@ test("(Q) the follower's key is the pane's identity, and only an admission carri
 		}),
 		null,
 	);
-	assert.equal(admittedFromFor("draft:z", "s-9"), "draft:z");
 	assert.equal(
-		admittedFromFor("s-1", "s-2"),
+		admittedFromFor("draft:z", "s-9", "s-9"),
+		"draft:z",
+		"the row's own session id is what makes the flip an admission",
+	);
+	assert.equal(
+		admittedFromFor("draft:z", "s-9", undefined),
+		undefined,
+		"leaving a draft for a conversation is an ABANDON, not an admission",
+	);
+	assert.equal(
+		admittedFromFor("draft:z", "s-9", "s-other"),
+		undefined,
+		"and the draft's id must be exactly the key being entered",
+	);
+	assert.equal(
+		admittedFromFor("s-1", "s-2", undefined),
 		undefined,
 		"a switch is not an admission",
 	);
-	assert.equal(admittedFromFor("draft:z", "draft:w"), undefined);
-	assert.equal(admittedFromFor(null, "s-9"), undefined);
+	assert.equal(admittedFromFor("draft:z", "draft:w", undefined), undefined);
+	assert.equal(admittedFromFor(null, "s-9", undefined), undefined);
 });

@@ -37,10 +37,16 @@
  */
 
 import {
+	type ArchiveFact,
+	type ForgottenFact,
 	panelIdentityOfView,
 	useCanonicalSessionsStore,
 } from "./canonical-sessions-store";
-import { isDraftMemoryKey, memoryPruneKeys } from "./right-slot-memory";
+import {
+	type RightSlotMemory,
+	isDraftMemoryKey,
+	memoryPruneKeys,
+} from "./right-slot-memory";
 import { useUiPreferencesStore } from "./ui-preferences-store";
 
 /**
@@ -76,16 +82,31 @@ export function rightSlotKeyForView(input: {
  * plain switch, and the destination's own entry (or its absence) is the whole
  * answer.
  *
+ * ADMISSION IS RECOGNISED BY THE ROW'S OWN ANSWER, NOT BY THE KEY'S SHAPE (agent
+ * review round 1, F1). The transition `draft:<uuid>` -> `<sessionId>` ALSO
+ * happens when the user clicks an existing conversation while a New-chat draft
+ * is open: `setActiveSession` clears `activeDraftKey` and the draft's row stays
+ * in the roster, so the key moves straight from the draft to the clicked
+ * session. Reading that flip as an admission carried the draft's pane onto the
+ * destination — overwriting the destination's own entry, or planting a pane on a
+ * conversation that never opened one, which is the very defect #894 exists to
+ * close. The keys alone cannot tell the two apart, so the caller supplies the
+ * fact the admission itself writes: `drafts[previousKey].sessionId`, which
+ * equals `key` only when the draft really just became that session. Left
+ * undefined on an abandon, no carry happens whatever the key shapes are.
+ *
  * `undefined` rather than null for the no-carry case, because that is the
  * optional field `bindRightSlotKey` reads.
  */
 export function admittedFromFor(
 	previousKey: string | null,
 	key: string | null,
+	draftSessionId: string | undefined,
 ): string | undefined {
 	if (previousKey === null || key === null) return undefined;
 	if (!isDraftMemoryKey(previousKey)) return undefined;
 	if (isDraftMemoryKey(key)) return undefined;
+	if (draftSessionId !== key) return undefined;
 	return previousKey;
 }
 
@@ -96,21 +117,63 @@ let installed = false;
 let boundKey: string | null | undefined;
 
 /**
+ * The three values a prune pass evaluates, held by IDENTITY so the guard below
+ * can skip a pass whose inputs have not moved — the common case, because this
+ * runs on every conversations-store mutation while the memory only moves when
+ * the ui store writes.
+ */
+let prunedForgotten: Readonly<Record<string, ForgottenFact>> | null = null;
+let prunedArchiveFacts: Readonly<Record<string, ArchiveFact>> | null = null;
+let prunedMemory: RightSlotMemory | null = null;
+
+/**
  * Drop the memory of conversations the conversations store has declared gone.
  *
- * Guarded on an actual change: `persist` serialises the whole preferences blob
- * after every `set`, and this runs on every conversation-store mutation, so an
- * unconditional write would rewrite `localStorage` on each stream tick.
+ * GUARDED TWICE, at two different costs (agent review round 1, F6):
+ *
+ * - the identity guard first: a pass whose inputs — `forgotten`, `archiveFacts`
+ *   and the memory list — are all reference-equal to the last evaluated pass
+ *   cannot change anything, so it returns BEFORE `memoryPruneKeys` builds its
+ *   Set. The memory list is part of the comparison, not just the two records
+ *   (a deliberate narrowing of the review's suggestion): an entry CAN be written
+ *   for a key already in the drop set — a pane opened by hand on a still-viewable
+ *   archived conversation does exactly that — and the tick after that write must
+ *   still prune it, or the guard would have silently redefined prune;
+ * - the write guard second: even when the inputs moved, the write happens only
+ *   when the memory actually holds a dropped key, because `persist` serialises
+ *   the whole preferences blob after every `set` and an unconditional write
+ *   would rewrite `localStorage` on each stream tick.
+ *
+ * AND IT DOES NOT RE-PROJECT THE ACTIVE KEY'S FLAGS, deliberately (agent review
+ * round 1, F4). A settled archive of the conversation the user is sitting on
+ * drops its entry but leaves the pane drawn: re-projecting here would CLOSE the
+ * pane under the user mid-archive, and QA measured the surviving pane as the
+ * intended shape ("not closing the user's visible panel under them", Q2). The
+ * invariant is therefore "the flags are the projection of the active key's
+ * entry" ON THE BIND PATH rather than at every instant: the next bind (any
+ * switch, any identity change) re-projects the pruned memory, and the delete
+ * path clears the active session in the same step it tombstones the
+ * conversation — so an empty-memory-with-lit-flags state is only ever the one
+ * the user is looking at, never one they can navigate back to.
  */
 function prune(
 	sessions: ReturnType<typeof useCanonicalSessionsStore.getState>,
 ): void {
+	const { rightSlotMemory } = useUiPreferencesStore.getState();
+	if (
+		sessions.forgotten === prunedForgotten &&
+		sessions.archiveFacts === prunedArchiveFacts &&
+		rightSlotMemory === prunedMemory
+	)
+		return;
+	prunedForgotten = sessions.forgotten;
+	prunedArchiveFacts = sessions.archiveFacts;
+	prunedMemory = rightSlotMemory;
 	const drop = memoryPruneKeys({
 		forgotten: sessions.forgotten,
 		archiveFacts: sessions.archiveFacts,
 	});
 	if (drop.size === 0) return;
-	const { rightSlotMemory } = useUiPreferencesStore.getState();
 	if (!rightSlotMemory.some(([key]) => drop.has(key))) return;
 	useUiPreferencesStore.setState({
 		rightSlotMemory: rightSlotMemory.filter(([key]) => !drop.has(key)),
@@ -128,8 +191,24 @@ function follow(
 		activeSessionId: sessions.activeSessionId,
 	});
 	if (key !== boundKey) {
+		/*
+		 * THE DRAFT'S ROW is asked for its own answer rather than the key's shape
+		 * being read as one: an admission patches `drafts[boundKey].sessionId` to
+		 * exactly the key being entered, while an ABANDON (clicking an existing
+		 * conversation while the draft is open) leaves it unset — only the former
+		 * carries. The rule is stated on `admittedFromFor` (agent review round 1,
+		 * F1).
+		 */
 		const admittedFrom =
-			boundKey === undefined ? undefined : admittedFromFor(boundKey, key);
+			boundKey === undefined
+				? undefined
+				: admittedFromFor(
+						boundKey,
+						key,
+						typeof boundKey === "string"
+							? sessions.drafts[boundKey]?.sessionId
+							: undefined,
+					);
 		useUiPreferencesStore
 			.getState()
 			.bindRightSlotKey(key, admittedFrom ? { admittedFrom } : undefined);
