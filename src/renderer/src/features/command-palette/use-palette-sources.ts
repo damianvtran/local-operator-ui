@@ -53,9 +53,14 @@ import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import {
 	LEGACY_CATALOGUE_PAGE,
+	panelSessionIdOfView,
 	unreadMarkKind,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
+import {
+	parseConversationRecents,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
 import type { SessionSearchHit } from "../../../../shared/desktop-session-contract";
@@ -70,6 +75,7 @@ import {
 	buildSettingsSectionItems,
 	parsePaletteQuery,
 } from "./palette-search";
+import { chatRecentsOfRow } from "./use-conversation-recents";
 
 /**
  * The agent roster's page size.
@@ -261,6 +267,19 @@ export function usePaletteItems({
 		2,
 	);
 	/*
+	 * The archive capability, the same gate the sidebar's own list reads
+	 * (`chat-sidebar.tsx`'s `archiveEnabled`), so the palette's chat rows carry the
+	 * SAME archive fact the sidebar's membership filter uses. `use-palette-sources`
+	 * derives the fact for the Recents pin only (`chatRecentsOfRow`, below, over the
+	 * answered `archiveFacts` as well as the row); the
+	 * palette's browse pool keeps offering archived rows, which is pre-existing and
+	 * out of this change's scope.
+	 */
+	const archiveEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"session_archive",
+	);
+	/*
 	 * The team catalogue, for the CHAT ROWS' hint labels AND for the palette's own
 	 * team rows (issue #849). Widened from `wantsChats` to the roster scope so the
 	 * `@` view can draw teams: before this the call was made only to resolve a
@@ -422,18 +441,27 @@ export function usePaletteItems({
 		() => ({
 			/*
 			 * The palette asks its own search and does not widen it, so an archived
-			 * conversation is not in a palette answer. THE SIDEBAR IS NOT ALWAYS
-			 * NARROWER THAN THIS, which is the correction agent review round 3 (N3)
-			 * asked for: with `chat-search.tsx`'s `Include archived` toggle ON and a
-			 * query typed, the sidebar lists the archived conversation the palette will
-			 * not, so the two DO disagree for as long as the toggle is on. That is a
-			 * deliberate scope difference - the palette has no toggle and offering
-			 * archived rows in it, with no control saying so, would be the silent
-			 * widening the brief forbids - but the earlier sentence here ("a scope that
-			 * offered archived conversations would have to say so") read as though the
-			 * palette could never be the narrower of the two. It can, and the honest
-			 * statement is that this view declares its own scope rather than inheriting
-			 * the sidebar's.
+			 * conversation is not in a palette SEARCH answer. IT IS IN THE BROWSE
+			 * POOL: an empty query returns the catalogue rows as they came (this
+			 * module's join is the sidebar's, and `searchChats`'s empty-query arm
+			 * applies no archive filter), so the `#` switcher's browse list has always
+			 * offered archived conversations - the base tree draws them under Chats.
+			 * That is pre-existing on both trees (QA round 1, Q-1 measured it) and out
+			 * of this change's scope; what this change does is stop the Recents pin
+			 * from CLAIMING one (`palette-search.ts`, on the row's `archived` fact).
+			 * THE SIDEBAR IS NOT ALWAYS NARROWER THAN THIS, which is the correction
+			 * agent review round 3 (N3) asked for: with `chat-search.tsx`'s `Include
+			 * archived` toggle ON and a query typed, the sidebar lists the archived
+			 * conversation the palette's search will not, so the two DO disagree for as
+			 * long as the toggle is on. That is a deliberate scope difference - the
+			 * palette has no toggle and offering archived rows in it, with no control
+			 * saying so, would be the silent widening the brief forbids - but the
+			 * earlier sentence here ("a scope that offered archived conversations would
+			 * have to say so") read as though the palette could never be the narrower
+			 * of the two, and the sentence it replaced read as though an archived row
+			 * could never be in a palette list at all. The honest statement is that
+			 * this view declares its own scope - for the SEARCH - rather than
+			 * inheriting the sidebar's, and that the BROWSE arm inherits nothing.
 			 */
 			include: false,
 			facts: {},
@@ -445,6 +473,37 @@ export function usePaletteItems({
 		}),
 		[forgotten],
 	);
+	/*
+	 * THE VISITED RING and the conversation on screen, the two facts the Recents
+	 * pin is built from (`conversationRecents`, `ui-preferences-store.ts`). The
+	 * displayed id is the shell's own rule (`panelSessionIdOfView`, the same call
+	 * `app.tsx` records visits from) rather than `activeSessionId`, which a staged
+	 * draft leaves pointing at the conversation the reader came FROM: reading that
+	 * field would exclude the wrong row while a draft is on screen.
+	 */
+	const conversationRecents = parseConversationRecents(
+		useUiPreferencesStore((state) => state.conversationRecents),
+	);
+	const displayedSessionId = useCanonicalSessionsStore((state) => {
+		const draft = state.activeDraftKey
+			? state.drafts[state.activeDraftKey]
+			: undefined;
+		return panelSessionIdOfView(
+			state.activeDraftKey,
+			draft?.sessionId,
+			state.activeSessionId,
+		);
+	});
+	/*
+	 * THE ARCHIVE FACTS, read for the Recents pin's membership only. An accepted
+	 * archive press settles `archiveFacts[sessionId]` and patches no catalogue row
+	 * (D27), so the row's own `archived` goes stale until the next catalogue read;
+	 * the sidebar overlays these facts first (`answeredArchiveRows`), and the pin
+	 * must too or it keeps claiming a conversation the reader just archived (agent
+	 * review round 2, R2-1). Being a memo input is the whole point: without it the
+	 * memo would not rebuild when the fact settles.
+	 */
+	const archiveFacts = useCanonicalSessionsStore((state) => state.archiveFacts);
 	const chatItems = useMemo(() => {
 		if (!wantsChats) return [];
 		const { rows } = searchChats(sessions, terms, hits, {}, archiveView);
@@ -453,6 +512,13 @@ export function usePaletteItems({
 			const hit = byId.get(row.session_id);
 			const labelMatch = matchesLabel(row, terms);
 			const item = buildChatItem(row, teamLabels);
+			const recents = chatRecentsOfRow(
+				row,
+				conversationRecents,
+				displayedSessionId,
+				archiveEnabled,
+				archiveFacts,
+			);
 			/*
 			 * The marker says why the row is on screen. A row whose own title
 			 * contains the query is already explained by what is on screen, so it
@@ -507,9 +573,31 @@ export function usePaletteItems({
 				 * cannot draw.
 				 */
 				unread: unreadMarkKind(row) !== null,
+				/*
+				 * The Recents pin's three facts (see `PaletteItem.recentRank`, `.current`
+				 * and `.archived`), derived by `chatRecentsOfRow` from the row, the
+				 * visited ring and the displayed-session value - ALL THREE derived from
+				 * the same live catalogue row as everything above, so an id in the ring
+				 * whose conversation is gone has no item here to carry a rank, and the
+				 * ring can never resurrect one.
+				 */
+				recentRank: recents.recentRank,
+				current: recents.current,
+				archived: recents.archived,
 			} satisfies PaletteItem;
 		});
-	}, [sessions, terms, hits, wantsChats, archiveView, teamLabels]);
+	}, [
+		sessions,
+		terms,
+		hits,
+		wantsChats,
+		archiveView,
+		teamLabels,
+		conversationRecents,
+		displayedSessionId,
+		archiveEnabled,
+		archiveFacts,
+	]);
 
 	/* -------------------------------- agents -------------------------------- */
 
