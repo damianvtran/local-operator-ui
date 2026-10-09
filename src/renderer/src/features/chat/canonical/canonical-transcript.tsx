@@ -84,13 +84,8 @@ import type {
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
-import {
-	CHAT_COLUMN_CONTAINER,
-	CHAT_MEASURE,
-	readShippedChatMeasurePx,
-} from "../chat-measure";
+import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
 import { CHAT_REGION_LABEL } from "../chat-regions";
-import { ChatMeasureHandle } from "../components/chat-measure-handle";
 import {
 	MarkdownRenderer,
 	StreamingMarkdown,
@@ -631,18 +626,6 @@ export type CanonicalTranscriptProps = {
 	 * replaces it.
 	 */
 	labelMarked?: ReadonlySet<string>;
-	/**
-	 * Mount the measure's drag handles on this column.
-	 *
-	 * Opt-in, and only the chat page passes it: the width a handle writes is a
-	 * document-root property shared by every chat surface, so a second mount
-	 * (the run pane's child reader) would let a drag there resize the main
-	 * column (review, finding 2). A transcript without it is indistinguishable
-	 * from the state before the handles existed - they are absolutely
-	 * positioned children of this column, and the `relative` on the column is
-	 * theirs.
-	 */
-	measureHandle?: boolean;
 	/**
 	 * Re-arm the session's stream and history read.
 	 *
@@ -2605,7 +2588,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	undelivered = null,
 	labelHoldLate,
 	labelMarked,
-	measureHandle = false,
 	onReconnect,
 }) => {
 	// A crash-recovered outcome has no durable row of its own, so it is
@@ -3613,26 +3595,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const [perf, setPerf] = useState("");
 
 	/*
-	 * The conversation column's width, and the two writes that change it.
-	 *
-	 * The READ is the reader's own width when they have one and the shipped
-	 * default otherwise - never the width on screen, which a narrow pane may have
-	 * clamped (`chat-measure-drag.ts` argues that distinction). `useMemo` with no
-	 * dependencies because the shipped value is a property lookup on the document
-	 * and the stylesheet has loaded by the time this component mounts; reading it
-	 * per render would put a `getComputedStyle` on the streaming transcript's hot
-	 * path for a number that cannot change while the app runs.
-	 */
-	const chatMeasureWidth = useUiPreferencesStore(
-		(state) => state.chatMeasureWidth,
-	);
-	const setChatMeasureWidth = useUiPreferencesStore(
-		(state) => state.setChatMeasureWidth,
-	);
-	const restoreDefaultChatMeasureWidth = useUiPreferencesStore(
-		(state) => state.restoreDefaultChatMeasureWidth,
-	);
-	/*
 	 * The reader's transcript display mode (issue #756): read as the RAW stored
 	 * value and parsed at the one call site that consumes it (`collapsePlan`
 	 * below), so a tampered or future token is judged where it is used rather
@@ -3641,8 +3603,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const transcriptDisplayMode = useUiPreferencesStore(
 		(state) => state.transcriptDisplayMode,
 	);
-	const shippedMeasurePx = useMemo(() => readShippedChatMeasurePx(), []);
-	const measurePx = chatMeasureWidth ?? shippedMeasurePx;
 	useLayoutEffect(() => {
 		commits.current += 1;
 		performance.mark("lop:transcript:render", {
@@ -4704,47 +4664,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * and the centred splash is unaffected. And a transcript shorter than the
 						 * pane never scrolls, so the mask stays inert (the ramp note in
 						 * `styles/index.css`).
-						 *
-						 * `relative` is here for the measure handles and for nothing else: they are
-						 * positioned against the CONTENT column rather than against the scroller,
-						 * which is what makes them track the column's edge for free as the measure
-						 * changes and as the pane resizes. They are absolutely positioned, so they
-						 * are out of flow and the rows cannot move because of them, and they sit in
-						 * the 24px gutter the measure already insets its content by
-						 * (`chat-measure.ts`: `p-4` + the 8px scrollbar gutter), so they never cover
-						 * text and cannot swallow a click meant for it.
 						 */
-						className={cn("mb-auto relative flex flex-col", CHAT_MEASURE)}
+						className={cn("mb-auto flex flex-col", CHAT_MEASURE)}
 					>
-						{/*
-						 * One handle per edge of the measure, where the mount opts in
-						 * (`measureHandle` - only the chat page does) AND there is a measure to
-						 * resize: `readShippedChatMeasurePx` answers `null` in a host with no
-						 * stylesheet, where the column has no cap at all and a control
-						 * offering to resize it would be inventing one.
-						 *
-						 * `width` is the CAP - the reader's own width, else the shipped
-						 * default - and never the width on screen: see `chat-measure-drag.ts`
-						 * for why that distinction is the difference between a drag and a bug.
-						 */}
-						{measureHandle && measurePx !== null && (
-							<>
-								<ChatMeasureHandle
-									edge="left"
-									width={measurePx}
-									onWidthChange={setChatMeasureWidth}
-									onReset={restoreDefaultChatMeasureWidth}
-									label="Widen or narrow the conversation column (left edge). Arrow keys adjust the width; Home and End go to the limits; Enter restores the default."
-								/>
-								<ChatMeasureHandle
-									edge="right"
-									width={measurePx}
-									onWidthChange={setChatMeasureWidth}
-									onReset={restoreDefaultChatMeasureWidth}
-									label="Widen or narrow the conversation column (right edge). Arrow keys adjust the width; Home and End go to the limits; Enter restores the default."
-								/>
-							</>
-						)}
 						{/* The state this element exists for: the frame BEFORE the conversation's
 				    first page, when there is nothing of it to paint yet - either because
 				    the pane holds no records at all, or because every record it holds is
