@@ -196,15 +196,14 @@ function StateLine({
 			 * then the dictation's byte count when there is one, then nothing —
 			 * every branch negativeable, like the progress facts themselves
 			 * (round-1 QA Q-1: the slot existed with no consumer before this).
-			 */
-			/*
+			 *
 			 * THE COPY STATES WHAT THE NUMBER COUNTS. `queue_position` is the
 			 * count of requests AHEAD of this one (FAL's own semantics; 0 means
 			 * nothing is ahead), so "position 3" would read one off — the TUI's
 			 * design ruling D3 ("N requests ahead"). "N ahead" is the same
 			 * meaning in this card's terse register: the state line already says
-			 * "Queued", so the datum only needs the count and its unit-less
-			 * direction, not the noun again.
+			 * "Queued", so the datum only needs the count and its direction, not
+			 * the noun again.
 			 */
 			detail =
 				view.queuePosition !== null

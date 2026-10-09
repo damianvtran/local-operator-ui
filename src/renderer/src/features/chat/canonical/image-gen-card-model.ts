@@ -33,7 +33,7 @@
  * KNOWLEDGE LIVES HERE — `canonicalProgress` below is the surface's one
  * reader, and the mapping renders the REDUCED state honestly when a frame
  * states nothing (a `null` fraction draws no bar, no log lines draw no tail,
- * no position states none): absence is rendered, never filled in. The
+ * no queue depth states none): absence is rendered, never filled in. The
  * generated image still arrives through `record.images` — the attachments
  * lane's extraction, which is also what the fold's media counting reads.
  *
@@ -273,11 +273,11 @@ export type ImageGenCardView =
 			 */
 			message: string | null;
 			/**
-			 * The frozen `error_type` once the field lands (FAL's structured code or
-			 * a `media_*` platform code), carried for structure rather than display.
-			 * `null` when no frame states one. The field is wired (harness PR #2089;
-			 * `canonicalProgress` reads `error_type`): it is not display copy, but
-			 * `media_already_completed` / a plain cancel decide the state above.
+			 * The frozen `error_type` (FAL's structured code or a `media_*` platform
+			 * code), carried for structure rather than display; `null` when no frame
+			 * states one. The field is wired (harness PR #2089; `canonicalProgress`
+			 * reads it): `media_already_completed` and a plain cancel's absent type
+			 * are what decide the state above.
 			 */
 			errorType: string | null;
 	  }
