@@ -2281,16 +2281,28 @@ export function persistedUiPreferences<
 }
 
 /**
- * The memory entries that go to disk: everything but the `draft:` ones.
+ * The memory entries that go to disk: everything but the `draft:` ones, and an
+ * empty list for a state that has no memory at all to filter.
  *
  * A draft key is a LAUNCH's row — the canonical store mints a fresh `draft:<uuid>`
  * per launch — so a persisted entry under one would restore a panel onto a
  * conversation that no longer exists. Filtered here, at the write, because that is
  * the only boundary a draft entry crosses; `memorySanitize` drops them again on the
  * way back for symmetry, so neither direction depends on the other having run.
+ *
+ * THE ABSENT MEMORY IS ANSWERED, NOT THROWN ON (the desktop suite found this on
+ * CI: the header-identity fixture builds the slice from a partial state, and
+ * reading `.filter` off the missing field threw). A fixture, or a reconstructed
+ * snapshot, has no memory; the honest persisted output is an empty one, and a
+ * serializer must not treat "we could not find out" as fatal. The store's own
+ * state always carries the field, so the app's output is unchanged.
  */
-function persistableRightSlotMemory(memory: RightSlotMemory): RightSlotMemory {
-	return memory.filter(([key]) => !isDraftMemoryKey(key));
+function persistableRightSlotMemory(
+	memory: RightSlotMemory | undefined,
+): RightSlotMemory {
+	return (memory ?? EMPTY_RIGHT_SLOT_MEMORY).filter(
+		([key]) => !isDraftMemoryKey(key),
+	);
 }
 
 /**
