@@ -14,46 +14,45 @@ import type {
 } from "electron";
 import {
 	type PopupVerdict,
+	type Verdict,
+	downloadVerdict,
 	frameNavigationVerdict,
-	isPreviewDocumentRequest,
+	isStaticServeRequest,
 	permissionVerdict,
+	popupNavigationVerdict,
 	withPreviewPolicy,
 } from "./window-guards";
 
 type Log = (message: string) => void;
 
+/** One navigation event, as Electron hands it to the listeners below. */
+interface NavigationEvent {
+	url: string;
+	isMainFrame: boolean;
+	isSameDocument: boolean;
+	preventDefault: () => void;
+}
+
 /**
- * Refuse navigations of the main window's contents that are not the app's own
- * document (main frame) or one of its two real framings (child frames).
- *
- * `will-frame-navigate` fires for the main frame as well as subframes (verified
- * on Electron 44.3.0, scripts/window-guards-electron.test.mjs: the child-frame
- * `location=` case and the main-frame `location=` case are both observed here),
- * and `will-redirect` covers a server-side hop that a vetted first request
- * takes. `will-navigate` is deliberately NOT also listened for: it is the
- * main-frame-only subset of `will-frame-navigate`, so a second listener would be
- * a second answer to one question.
- *
- * `trustedUrls` is a thunk because the mini view's document is created after
- * this window, and a list captured at construction would miss it.
+ * Install a navigation verdict on `contents`: `decide` answers for one URL and
+ * a refusal cancels the navigation, with the reason logged. `will-frame-
+ * navigate` fires for the main frame as well as subframes (verified on
+ * Electron 44.3.0, scripts/window-guards-electron.test.mjs: the child-frame
+ * `location=` case and the main-frame `location=` case are both observed
+ * there), and `will-redirect` covers a server-side hop that a vetted first
+ * request takes; `will-navigate` is deliberately NOT also listened for (it is
+ * the main-frame-only subset, so a second listener would be a second answer to
+ * one question).
  */
-export function guardNavigation(
+function installNavigationVerdict(
 	contents: WebContents,
-	trustedUrls: () => readonly string[],
+	decide: (url: string, isMainFrame: boolean) => Verdict,
 	log: Log,
 ): void {
-	const onNavigation = (event: {
-		url: string;
-		isMainFrame: boolean;
-		isSameDocument: boolean;
-		preventDefault: () => void;
-	}): void => {
+	const onNavigation = (event: NavigationEvent): void => {
 		// Fragment and history-API changes (the HashRouter) replace no document.
 		if (event.isSameDocument) return;
-		const verdict = frameNavigationVerdict(
-			{ url: event.url, isMainFrame: event.isMainFrame },
-			trustedUrls(),
-		);
+		const verdict = decide(event.url, event.isMainFrame);
 		if (verdict.allowed) return;
 		event.preventDefault();
 		log(
@@ -65,9 +64,32 @@ export function guardNavigation(
 }
 
 /**
- * Install the `window.open` policy. `authWindowOptions` is the popup's
- * unchanged window configuration, supplied by the caller so this file does not
- * restate it.
+ * Refuse navigations of the main window's contents that are not the app's own
+ * document (main frame) or one of its two real framings (child frames); see
+ * `frameNavigationVerdict` for the rules.
+ *
+ * `trustedUrls` is a thunk because the mini view's document is created after
+ * this window, and a list captured at construction would miss it.
+ */
+export function guardNavigation(
+	contents: WebContents,
+	trustedUrls: () => readonly string[],
+	log: Log,
+): void {
+	installNavigationVerdict(
+		contents,
+		(url, isMainFrame) =>
+			frameNavigationVerdict({ url, isMainFrame }, trustedUrls()),
+		log,
+	);
+}
+
+/**
+ * Install the `window.open` policy: auth URLs get the sandboxed popup (whose
+ * own webContents is guarded at creation, below), every other URL is
+ * scheme-gated before the injected OS door or denied. `authWindowOptions` is
+ * the popup's unchanged window configuration, supplied by the caller so this
+ * file does not restate it.
  */
 export function guardWindowOpen(
 	contents: WebContents,
@@ -89,6 +111,31 @@ export function guardWindowOpen(
 		} else {
 			log(`[window-guard] denied window.open: ${verdict.reason}`);
 		}
+		return { action: "deny" };
+	});
+	/*
+	 * The popup's own webContents exists only once the window is created, so the
+	 * auth branch's window gets its navigation guard here (security review S-2).
+	 * Nothing else can reach this hook: every non-auth window.open is denied
+	 * above, and the hook runs on the opener's contents, which is the only place
+	 * a popup can come from.
+	 */
+	contents.on("did-create-window", (window) => {
+		guardPopupNavigation(window.webContents, log);
+	});
+}
+
+/**
+ * The popup half of the navigation guard (security review S-2): a created
+ * sign-in window may travel only the hosts and relay schemes its door was
+ * vetted against, and may not open windows of its own - no flow this door
+ * serves opens a second window, and an unguarded descendant is exactly how
+ * this class re-opens.
+ */
+export function guardPopupNavigation(contents: WebContents, log: Log): void {
+	installNavigationVerdict(contents, (url) => popupNavigationVerdict(url), log);
+	contents.setWindowOpenHandler(() => {
+		log("[window-guard] denied window.open from the sign-in popup");
 		return { action: "deny" };
 	});
 }
@@ -138,14 +185,17 @@ export function guardPermissions(
 }
 
 /**
- * Put the preview policy on every response for the backend's HTML preview route.
+ * Put the preview policy on every response of the backend's static serve
+ * family (`isStaticServeRequest`: decoded prefix, any port). The HTML preview
+ * is the member that gets framed; every sibling inherits the same policy so
+ * none can serve a scriptable document without the CSP (security review S-1).
  *
  * `webRequest.onHeadersReceived` has one listener per session, so this must be
  * the only caller on the session it is given.
  */
 export function guardPreviewResponses(ses: Session): void {
 	ses.webRequest.onHeadersReceived((details, callback) => {
-		if (!isPreviewDocumentRequest(details.url)) {
+		if (!isStaticServeRequest(details.url)) {
 			callback({});
 			return;
 		}
@@ -154,5 +204,30 @@ export function guardPreviewResponses(ses: Session): void {
 				(details.responseHeaders ?? {}) as Record<string, string[]>,
 			),
 		});
+	});
+}
+
+/**
+ * The app session's download policy (security review S-4): deny by default,
+ * allow only the app's own export blobs (`downloadVerdict`'s rules). The
+ * `webContents` is the contents that STARTED the download; its current URL is
+ * the only initiator fact a `will-download` listener receives.
+ */
+export function guardDownloads(
+	ses: Session,
+	trustedUrls: () => readonly string[],
+	log: Log,
+): void {
+	ses.on("will-download", (event, item, webContents) => {
+		const verdict = downloadVerdict(
+			item.getURL(),
+			webContents?.getURL() ?? "",
+			trustedUrls(),
+		);
+		if (verdict.allowed) return;
+		event.preventDefault();
+		log(
+			`[window-guard] blocked a download from ${item.getURL().slice(0, 200)}: ${verdict.reason}`,
+		);
 	});
 }

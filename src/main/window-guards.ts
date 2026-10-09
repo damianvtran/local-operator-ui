@@ -66,6 +66,91 @@ const EXTERNAL_SCHEMES: ReadonlySet<string> = new Set([
 /** A URL longer than this is not a link a person clicked. */
 const MAX_EXTERNAL_URL_LENGTH = 16_384;
 
+/** One dot-separated part of an IPv4 literal. */
+const IPV4_PART = /^\d{1,3}$/;
+
+/** The IPv4-mapped IPv6 prefix, with the rest of the literal captured. */
+const IPV6_MAPPED_PREFIX = /^::ffff:(.+)$/;
+
+/** A hostname's trailing root dot (as in `localhost.`). */
+const TRAILING_DOT = /\.$/;
+
+/**
+ * True for a dotted-quad IPv4 literal inside a loopback or private range:
+ * 0/8 (this network), 127/8 (loopback), 10/8, 172.16/12 and 192.168/16
+ * (RFC1918), 169.254/16 (link-local).
+ */
+function isPrivateIpv4(host: string): boolean {
+	const parts = host.split(".");
+	if (parts.length !== 4) return false;
+	const octets: number[] = [];
+	for (const part of parts) {
+		if (!IPV4_PART.test(part)) return false;
+		const value = Number(part);
+		if (value > 255) return false;
+		octets.push(value);
+	}
+	const [a, b] = octets;
+	if (a === 0 || a === 127) return true;
+	if (a === 10) return true;
+	if (a === 172 && b >= 16 && b <= 31) return true;
+	if (a === 192 && b === 168) return true;
+	if (a === 169 && b === 254) return true;
+	return false;
+}
+
+/**
+ * True for an IPv6 literal in ::/::1, ::ffff:<v4> (unwrapped), fe80::/10
+ * (link-local) or fc00::/7 (unique-local). `host` is bracket-stripped and
+ * lowercased; an unparseable literal refuses.
+ */
+function isPrivateIpv6(host: string): boolean {
+	if (host === "::" || host === "::1") return true;
+	const mapped = IPV6_MAPPED_PREFIX.exec(host);
+	if (mapped) {
+		const rest = mapped[1];
+		if (rest.includes(".")) return isPrivateIpv4(rest);
+		const groups = rest.split(":");
+		if (groups.length === 2) {
+			const hi = Number.parseInt(groups[0], 16);
+			const lo = Number.parseInt(groups[1], 16);
+			if (Number.isFinite(hi) && Number.isFinite(lo)) {
+				return isPrivateIpv4(
+					[hi >> 8, hi & 0xff, lo >> 8, lo & 0xff].join("."),
+				);
+			}
+		}
+		return true;
+	}
+	const first = Number.parseInt(host.split(":")[0] || "0", 16);
+	if (!Number.isFinite(first)) return true;
+	if ((first & 0xffc0) === 0xfe80) return true;
+	if ((first & 0xfe00) === 0xfc00) return true;
+	return false;
+}
+
+/**
+ * Whether a URL host names the user's own machine or their local network.
+ *
+ * WHY THIS EXISTS (security review S-5): the vetted external door hands
+ * http(s) to the user's own browser, and a renderer-side script picks the URL.
+ * Without this, app content could make the USER's browser issue requests at
+ * the loopback daemon, a router console or a dev server - with the browser's
+ * cookies, outside the app's trust model. Nothing in the renderer legitimately
+ * opens the daemon in a browser, so these targets are refused.
+ *
+ * The WHATWG URL parser has already canonicalized the host when the verdict
+ * sees it: `2130706433`, `0x7f.1` and `127.1` all arrive as `127.0.0.1`, so
+ * these checks are over names, not spellings.
+ */
+export function isLocalOrPrivateHost(hostname: string): boolean {
+	const host = hostname.toLowerCase().replace(TRAILING_DOT, "");
+	if (host === "localhost" || host.endsWith(".localhost")) return true;
+	if (host.startsWith("[") && host.endsWith("]"))
+		return isPrivateIpv6(host.slice(1, -1));
+	return isPrivateIpv4(host);
+}
+
 export type ExternalVerdict =
 	| { allowed: true; url: string }
 	| { allowed: false; reason: string };
@@ -98,6 +183,11 @@ export function externalUrlVerdict(raw: unknown): ExternalVerdict {
 		if (url.username || url.password)
 			return { allowed: false, reason: "URL carries credentials" };
 		if (!url.hostname) return { allowed: false, reason: "URL has no host" };
+		if (isLocalOrPrivateHost(url.hostname))
+			return {
+				allowed: false,
+				reason: "URL names a loopback or private-network host",
+			};
 	} else if (/(^|[?&])attach(ment)?=/i.test(url.search)) {
 		// Some mail clients attach a local file named in the query.
 		return { allowed: false, reason: "mailto: names an attachment" };
@@ -167,6 +257,23 @@ const AUTH_SCHEMES: ReadonlySet<string> = new Set([
 	"msftauth:",
 ]);
 
+/**
+ * Whether `url` is one of the sign-in hosts: https, no credentials, the exact
+ * host or a subdomain of it, default port only. The port test is deliberately
+ * exact (security review S-2): `accounts.google.com:8443` carries the right
+ * NAME but is not the provider's origin, and `URL` drops the default port
+ * anyway, so requiring `port === ""` costs nothing real.
+ */
+function isAuthPopupUrl(url: URL): boolean {
+	if (url.protocol !== "https:") return false;
+	if (url.username || url.password) return false;
+	if (url.port !== "") return false;
+	const host = url.hostname.toLowerCase();
+	return AUTH_HOSTS.some(
+		(domain) => host === domain || host.endsWith(`.${domain}`),
+	);
+}
+
 export type PopupVerdict =
 	| { action: "auth" }
 	| { action: "external"; url: string }
@@ -197,19 +304,37 @@ export function popupVerdict(raw: string): PopupVerdict {
 	} catch {
 		// Falls through to the external check, which refuses it by name.
 	}
-	if (url) {
-		const host = url.hostname.toLowerCase();
-		const authHost =
-			url.protocol === "https:" &&
-			!url.username &&
-			!url.password &&
-			AUTH_HOSTS.some((d) => host === d || host.endsWith(`.${d}`));
-		if (authHost || AUTH_SCHEMES.has(url.protocol)) return { action: "auth" };
-	}
+	if (url && (isAuthPopupUrl(url) || AUTH_SCHEMES.has(url.protocol)))
+		return { action: "auth" };
 	const external = externalUrlVerdict(raw);
 	return external.allowed
 		? { action: "external", url: external.url }
 		: { action: "deny", reason: external.reason };
+}
+
+/**
+ * What a CREATED sign-in popup's own webContents may navigate to.
+ *
+ * WHY (security review S-2): the popup is a real BrowserWindow with its own
+ * webContents, and after creation the opener - or any page it loads - can
+ * steer it; before this guard an `about:blank` popup accepted
+ * `file:///etc/hosts` (accepted and observed). It may travel the hosts and
+ * relay schemes the popup door was vetted against, and nothing else.
+ *
+ * `about:blank` stays allowed: MSAL opens its popup there, a blank document
+ * carries no origin and no privilege, and refusing it would break the
+ * starting hop of the one flow this door exists for.
+ */
+export function popupNavigationVerdict(rawUrl: string): Verdict {
+	if (rawUrl === "about:blank") return ALLOW;
+	let url: URL;
+	try {
+		url = new URL(rawUrl);
+	} catch {
+		return deny("not a URL");
+	}
+	if (isAuthPopupUrl(url) || AUTH_SCHEMES.has(url.protocol)) return ALLOW;
+	return deny(`the sign-in window may not navigate to ${url.protocol}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -357,31 +482,71 @@ export function permissionVerdict(
 }
 
 // ---------------------------------------------------------------------------
-// The HTML preview's response policy
+// The static serve family's response policy
 // ---------------------------------------------------------------------------
 
 /**
- * The backend route the canvas HTML preview frames. It is served by the daemon
- * (`server/routes/static.py`) with no policy headers at all, and that route
- * belongs to another repository, so this app imposes the policy on the response
- * it receives.
+ * The backend's static serve family (`html`, `images`, `videos`, `audio` in
+ * `server/routes/static.py`): served by the daemon with no policy headers at
+ * all, and that module belongs to another repository, so this app imposes the
+ * policy on the responses it receives.
  */
-export const PREVIEW_DOCUMENT_PATH = "/v1/static/html";
 
 /**
- * Whether `rawUrl` is a request for a preview document: loopback host, exact
- * path. Any port, any resource type - an XHR for the same URL getting the
- * policy too is harmless, and keying on the resource type would make the policy
- * depend on how a frame happened to be requested.
+ * Decode a URL path until it stops changing - the way the server stack will
+ * before it routes. WHY: uvicorn/Starlette match on the DECODED path, so
+ * `/v1/static/htm%6c` serves the same handler as `/v1/static/html` while a
+ * literal string comparison does not see it; that gap was the live bypass of
+ * security review S-1. Bounded because the input can be encoded more than
+ * once; try/catch because a malformed escape (`%zz`) must only stop the
+ * unwrapping, never break a response hook.
  */
-export function isPreviewDocumentRequest(rawUrl: string): boolean {
+function decodedPathname(pathname: string): string {
+	let current = pathname;
+	for (let round = 0; round < 3; round += 1) {
+		let next: string;
+		try {
+			next = decodeURIComponent(current);
+		} catch {
+			break;
+		}
+		if (next === current) break;
+		current = next;
+	}
+	return current;
+}
+
+/**
+ * Whether `rawUrl` is a request the preview response policy must cover: a
+ * loopback URL whose decoded path lands anywhere in the static serve family.
+ *
+ * WHY THE WHOLE FAMILY AND NOT THE ONE ROUTE (security review S-1): comparing
+ * the LITERAL pathname against `/v1/static/html` let a sandboxed preview
+ * self-navigate to `/v1/static/htm%6c` and land on a document with no CSP at
+ * all - restoring the file and loopback reads the sandbox drop was for - and
+ * any other document-capable route in the family re-opened the same class
+ * without an encoding trick (`/v1/static/images` serves `image/svg+xml`, which
+ * a navigated frame executes). A decoded-prefix rule is what makes a sibling
+ * route - today's or one added later - inherit the policy instead of silently
+ * becoming a second door.
+ *
+ * The match is deliberately loose in the direction that can only ADD the
+ * policy: a false positive puts a CSP on a response nothing loads as a
+ * document (a CSP constrains documents, not data consumers), while a false
+ * negative is the bypass this function exists to close. The case fold and a
+ * literal `+` are both in that adds-only bucket: no consumer loads those
+ * spellings as documents, and the headers are inert if something did. Any
+ * port, any resource type: keying on either would make the policy depend on
+ * how a request happened to be made.
+ */
+export function isStaticServeRequest(rawUrl: string): boolean {
 	try {
 		const url = new URL(rawUrl);
-		return (
-			(url.protocol === "http:" || url.protocol === "https:") &&
-			LOOPBACK_HOSTS.has(url.hostname) &&
-			url.pathname === PREVIEW_DOCUMENT_PATH
-		);
+		if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+		if (!LOOPBACK_HOSTS.has(url.hostname)) return false;
+		return decodedPathname(url.pathname)
+			.toLowerCase()
+			.startsWith(STATIC_FRAME_PREFIX);
 	} catch {
 		return false;
 	}
@@ -444,4 +609,40 @@ export function withPreviewPolicy(headers: ResponseHeaders): ResponseHeaders {
 	if (!existing("x-content-type-options"))
 		out["X-Content-Type-Options"] = ["nosniff"];
 	return out;
+}
+
+// ---------------------------------------------------------------------------
+// Downloads
+// ---------------------------------------------------------------------------
+
+/**
+ * Whether a download attempt on the app's own (default) session may proceed.
+ *
+ * WHY (security review S-4): Electron runs an unhandled `will-download`
+ * through the save routine, so any script that reaches an app document could
+ * start a download. The one legitimate class is the app's own exports (the
+ * mermaid SVG and the agent zips): a `blob:` the renderer just minted and
+ * clicked through an `<a download>`, which keeps the browser's ordinary save
+ * dialog. Everything else is refused.
+ *
+ * The initiator test uses the starting webContents' current URL because
+ * Electron's `will-download` carries no frame. The sandboxed preview cannot
+ * start a download at all (no `allow-downloads`), so what this has to sort is
+ * a script inside an app document - and for that, the only write worth
+ * allowing is the export blob.
+ */
+export function downloadVerdict(
+	itemUrl: string,
+	initiatorUrl: string,
+	trustedRendererUrls: readonly string[],
+): Verdict {
+	if (!itemUrl.startsWith("blob:"))
+		return deny("only the app's own blob: exports may write files");
+	if (
+		!trustedRendererUrls.some((trusted) =>
+			trustedDesktopFrame(initiatorUrl, trusted),
+		)
+	)
+		return deny("the download was not started by one of the app's documents");
+	return ALLOW;
 }
