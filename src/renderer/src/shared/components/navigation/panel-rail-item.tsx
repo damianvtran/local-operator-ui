@@ -40,7 +40,7 @@ export type PanelRailItemProps = Omit<
 	ButtonHTMLAttributes<HTMLButtonElement>,
 	"aria-label" | "aria-pressed" | "children"
 > & {
-	/** The item's identity in the rail's order: `run`, `browser`, `console`, `canvas`. */
+	/** The item's identity in the rail's order: `run`, `browser`, `console`, `canvas`, `code`. */
 	id: string;
 	/** The tooltip body: the sentence a pointer reads. */
 	label: ReactNode;

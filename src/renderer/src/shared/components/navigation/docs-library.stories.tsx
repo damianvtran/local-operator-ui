@@ -782,6 +782,10 @@ const AppShell: FC<{
 								consoleUnseenCount={0}
 								consoleUnseenPulsing={false}
 								fileCount={0}
+								codeOffered={false}
+								codeOpened={0}
+								codeMentioned={0}
+								codeAttention={false}
 							/>
 						</InPanelRailHost>
 					</main>

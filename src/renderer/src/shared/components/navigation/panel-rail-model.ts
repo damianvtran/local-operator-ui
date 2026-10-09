@@ -24,12 +24,13 @@
  * reader hears and the tooltip a pointer reads carry the exact number.
  */
 
-/** The four triggers, in the rail's fixed top-to-bottom order. */
+/** The triggers, in the rail's fixed top-to-bottom order. */
 export const PANEL_RAIL_ORDER = [
 	"run",
 	"browser",
 	"console",
 	"canvas",
+	"code",
 ] as const;
 
 export type PanelRailItemId = (typeof PANEL_RAIL_ORDER)[number];
@@ -84,5 +85,39 @@ export function canvasRailLabels(
 	return {
 		tooltip: `${verb} canvas (${cap}) — ${fileCount} ${noun}`,
 		aria: `Canvas (${cap}), ${fileCount} ${noun}`,
+	};
+}
+
+/**
+ * The code review item's tooltip and accessible name (§8).
+ *
+ * APPENDED LAST, which is why the item may appear mid-session without moving
+ * anything above it (the rail's own order note). The counts are `opened` and
+ * `mentioned` - the two groups the pane draws - and a zero half is dropped,
+ * because "0 mentioned" beside a count of everything states nothing; the mark
+ * for attention adds its own clause ("findings open"), the chip's own tail.
+ *
+ * The CAP is never applied here (the file's own rule): the name a screen reader
+ * hears carries the exact numbers.
+ */
+export function codeRailLabels(
+	open: boolean,
+	opened: number,
+	mentioned: number,
+	attention: boolean,
+): { tooltip: string; aria: string } {
+	const verb = open ? "Close" : "Open";
+	const halves = [
+		opened > 0 ? `${opened} opened` : null,
+		mentioned > 0 ? `${mentioned} mentioned` : null,
+	].filter((half): half is string => half !== null);
+	const details = halves.length > 0 ? halves.join(", ") : "";
+	const mark = attention ? ", findings open" : "";
+	if (details === "") {
+		return { tooltip: `${verb} code review`, aria: `Code review${mark}` };
+	}
+	return {
+		tooltip: `${verb} code review — ${details}`,
+		aria: `Code review, ${details}${mark}`,
 	};
 }
