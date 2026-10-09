@@ -135,6 +135,13 @@
  *                          edge cues track the clipped end; `before` records the
  *                          base tree's readings of the same moments instead
  *                          (issues #840 and #845)
+ *   --imagegen-expect <after|before>  (with --scene imagegen-card) which half of
+ *                          the pair this run records: `after` (the default)
+ *                          asserts the card at each generating call, the image
+ *                          it decoded over the attachment route, and the
+ *                          platform sentence on the failed one; `before`
+ *                          records the base tree's rendering of the SAME seeded
+ *                          calls - the ledger's own tool rows - instead
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -191,6 +198,13 @@ import { basename, join, resolve, sep } from "node:path";
 import sharp from "sharp";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { EVIDENCE_TZ } from "./evidence-tz.mjs";
+import {
+	IMAGEGEN_CALL_CANCELLED,
+	IMAGEGEN_CALL_DONE,
+	IMAGEGEN_CALL_FAILED,
+	IMAGEGEN_CALL_FOLD,
+	IMAGEGEN_FIXTURE_SESSION,
+} from "./imagegen-card-fixture.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 /*
  * Every python this harness starts is handed an environment it has decided about,
@@ -527,6 +541,18 @@ const SLASH_EXPECT = argValue("--slash-expect", "open");
  * refused rather than defaulted, for the same reason the flags above are.
  */
 const ROW_SPACE_EXPECT = argValue("--row-space-expect", "after");
+/**
+ * WHICH HALF OF A BEFORE/AFTER PAIR THIS RUN IS (with --scene imagegen-card).
+ *
+ * `after` (the default) asserts the card's own claims against the head tree;
+ * `before` runs the same steps against a tree without the card and RECORDS
+ * the same four moments, because the card's presence is the change and failing
+ * on its absence there would only restate that the base tree is the base tree.
+ * The base tree's rendering of the same seeded calls is the ledger's own tool
+ * rows, so the before half asserts exactly that instead. A value the scene
+ * does not know is refused rather than defaulted, like every flag above.
+ */
+const IMAGEGEN_EXPECT = argValue("--imagegen-expect", "after");
 /**
  * WHICH HALF OF A BEFORE/AFTER PAIR THIS RUN IS (with --scene conversation-start).
  *
@@ -12537,6 +12563,333 @@ async function sceneTranscriptRail(cdp) {
 		);
 		await capture(cdp, `transcript-rail-building-${suffix}`);
 		await parkPointer(cdp);
+	}
+}
+
+/**
+ * THE GENERATING-IMAGE CARD, driven in the built app against a fixture daemon.
+ *
+ * WHY A SCENE AND NOT ONLY THE STORY SET. The stories photograph the component
+ * the design round reviews; they cannot show the ROW it becomes. Only the real
+ * transcript can: the records come from durable journal rows this run's own
+ * daemon serves (the fixture below writes them before the daemon starts, the
+ * rail's own pattern), the reducer maps them, the card stands at the call's
+ * position among its neighbours, the generated image is fetched over the real
+ * attachment route (`GET /v1/desktop/sessions/<id>/attachments/<digest>`, the
+ * shipped path the durable digest exists for), and the turn's own condensers
+ * (the settled bar's media strip, the fold's count line) are the shipped ones.
+ * A stubbed transcript would photograph this scene's arithmetic instead.
+ *
+ * THE HONEST SPLIT, stated here because it shapes what the frames can carry.
+ * A durable row is SETTLED by construction, so the scene's four seeded moments
+ * are: DONE (a real 1024x640 image through the attachment route, with the
+ * backend's own 12.4s duration), FAILED (the frozen platform sentence on the
+ * result - rendered verbatim, which is the whole point of that sentence),
+ * CANCELLED (the runtime's `__fault: aborted` marker, the same classification
+ * the live end event would have made), and one CONDENSED settled run whose
+ * collapsed surface carries the run's pictures. QUEUED, RUNNING and CANCELLING
+ * are LIVE states - produced by `tool_execution_start` frames and the pane's
+ * own stop fact - and no producer on this wire generates them for this tool
+ * yet; those frames are the story set's (`image-gen-card.stories.tsx`), and
+ * this scene asserts their ABSENCE from the durable page rather than staging
+ * them.
+ *
+ * THE BEFORE HALF (`--imagegen-expect before`) runs the same bytes against the
+ * base tree, where the same seeded calls render as the ledger's own tool rows:
+ * no card anywhere, the image under the settled row, the same four frames.
+ * The pair is what the design round reads - one rendering replaced by another,
+ * not two renderings of two different fixtures.
+ *
+ * THE COMMAND (the fixture daemon, then the driver; `$RIG` is a scratch root):
+ *
+ *   node scripts/imagegen-card-fixture.mjs "$RIG/config"
+ *   printf 'values:\n  hosting: test\n  model_name: mock-model\n' > "$RIG/config/config.yml"
+ *   LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
+ *     HOME="$RIG/home" LOCAL_OPERATOR_CONFIG_DIR="$RIG/config" \
+ *     local-operator serve --host 127.0.0.1 --port <port> --hosting test --model mock-model &
+ *   VITE_LOCAL_OPERATOR_API_URL="http://127.0.0.1:<port>" pnpm build
+ *   LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
+ *     node scripts/renderer-driver.mjs --scene imagegen-card \
+ *     --backend "http://127.0.0.1:<port>" --backend-records "$RIG/config/run/serve" \
+ *     --seed-onboarding-complete --out "$RIG/frames"
+ *
+ * The rendered rows are the FIXTURE's, and every frame's log says so: the
+ * synthetic half is the INPUT (the journal `scripts/imagegen-card-fixture.mjs`
+ * mints), the disclosure the staged-input verbs owe their evidence.
+ */
+async function sceneImageGenCard(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const after = IMAGEGEN_EXPECT === "after";
+	const evaluate = (expression) => cdp.evaluate(expression);
+	const rowSelector = (callId) =>
+		`[data-record-id="tool:${callId}"]:not([data-turn-summary])`;
+
+	/* ---------------------------------------------------------------- open the
+	 * fixture conversation, the way the rail scene opens its own. */
+	await verb(cdp, "navigate", "/chat");
+	const listed = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-session-row="${IMAGEGEN_FIXTURE_SESSION}"]'))`,
+		30_000,
+	);
+	check(
+		"the fixture conversation is listed by the daemon this run owns",
+		listed.ok,
+		`no row for ${IMAGEGEN_FIXTURE_SESSION} after ${listed.waitedMs}ms`,
+		`row listed after ${listed.waitedMs}ms`,
+	);
+	await verb(cdp, "press", {
+		selector: `[data-session-row="${IMAGEGEN_FIXTURE_SESSION}"] [data-chat-row]`,
+	});
+	const hydrated = await waitForCondition(
+		cdp,
+		`document.querySelectorAll("[data-record-id]").length > 0`,
+		30_000,
+	);
+	check(
+		"the conversation's rows hydrate from the daemon this run owns",
+		hydrated.ok,
+		`no rows after ${hydrated.waitedMs}ms`,
+		`rows mounted after ${hydrated.waitedMs}ms`,
+	);
+
+	/**
+	 * Bring one call's row on screen, opening whatever condenses it.
+	 *
+	 * A settled turn collapses behind its `[data-turn-summary]` bar and the
+	 * collapsed bar's rows are NOT in the DOM (`failed-row-jump.ts`), so a frame
+	 * of a card inside one would photograph the bar. The reveal is the walk the
+	 * failure jump performs: press the bar that names this record in its
+	 * `data-run-ids` - the bar's own disclosure, an actual press - and the rows
+	 * are back. A row already standing (this turn was left open) makes the whole
+	 * helper a no-op, and the press is only sent when the row is absent for the
+	 * same reason: pressing an open bar would collapse it again.
+	 */
+	const reveal = async (callId) => {
+		const selector = rowSelector(callId);
+		const query = JSON.stringify(selector);
+		if (!(await evaluate(`Boolean(document.querySelector(${query}))`))) {
+			const pressed = await verb(cdp, "press", {
+				selector: `[data-turn-summary][data-run-ids~="tool:${callId}"] button[aria-expanded]`,
+			}).catch((error) => ({ error: String(error) }));
+			note(
+				`the condensed bar naming ${callId} was pressed to reveal its rows`,
+				JSON.stringify(pressed).slice(0, 240),
+			);
+		}
+		const visible = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector(${query}))`,
+			10_000,
+		);
+		await evaluate(
+			`(() => { const row = document.querySelector(${query}); if (row) row.scrollIntoView({ block: "center" }); return Boolean(row); })()`,
+		);
+		await wait(450);
+		return visible.ok;
+	};
+
+	/** The card state the row currently draws, or null when no card stands. */
+	const cardState = (callId) =>
+		evaluate(`(() => {
+			const row = document.querySelector(${JSON.stringify(rowSelector(callId))});
+			const card = row === null ? null : row.querySelector("[data-imagegen-card]");
+			return card === null ? null : card.getAttribute("data-imagegen-card");
+		})()`);
+
+	/** One call's rendered text, card or ledger row, for the copy checks. */
+	const rowText = (callId) =>
+		evaluate(`(() => {
+			const row = document.querySelector(${JSON.stringify(rowSelector(callId))});
+			return row === null ? null : row.textContent;
+		})()`);
+
+	/**
+	 * The picture inside one call's row, as the DOM answers: src scheme,
+	 * natural (decoded) size and shown size.
+	 *
+	 * ONE reading for both halves of the pair, deliberately: the card draws its
+	 * image through `CanonicalImage` (the established path), so "an img inside
+	 * the call's row" is the fact both renderings share, and the interesting
+	 * difference between them is the copy and the chrome around it, not a second
+	 * way to find a picture.
+	 */
+	const imageReading = (callId) =>
+		evaluate(`(() => {
+			const row = document.querySelector(${JSON.stringify(rowSelector(callId))});
+			if (row === null) return null;
+			const img = row.querySelector("img");
+			if (img === null) return null;
+			const rect = img.getBoundingClientRect();
+			return {
+				scheme: String(img.getAttribute("src") || "").split(":")[0] || null,
+				natural: img.naturalWidth + "x" + img.naturalHeight,
+				shown: Math.round(rect.width) + "x" + Math.round(rect.height),
+				decoded: Boolean(img.complete && img.naturalWidth > 0),
+			};
+		})()`);
+
+	/** Wait until that picture has decoded, or say it never did. */
+	const imageDecoded = (callId) =>
+		waitForCondition(
+			cdp,
+			`(() => {
+				const row = document.querySelector(${JSON.stringify(rowSelector(callId))});
+				const img = row === null ? null : row.querySelector("img");
+				return Boolean(img && img.complete && img.naturalWidth > 0);
+			})()`,
+			15_000,
+		);
+
+	for (const theme of sceneThemes()) {
+		const suffix = theme === "localOperatorDark" ? "dark" : "light";
+		await verb(cdp, "setTheme", theme);
+
+		const revealed = {
+			done: await reveal(IMAGEGEN_CALL_DONE),
+			failed: await reveal(IMAGEGEN_CALL_FAILED),
+			cancelled: await reveal(IMAGEGEN_CALL_CANCELLED),
+		};
+		check(
+			`all three seeded calls' rows stand on screen (${theme})`,
+			revealed.done && revealed.failed && revealed.cancelled,
+			JSON.stringify(revealed),
+			JSON.stringify(revealed),
+		);
+
+		if (after) {
+			const states = {
+				done: await cardState(IMAGEGEN_CALL_DONE),
+				failed: await cardState(IMAGEGEN_CALL_FAILED),
+				cancelled: await cardState(IMAGEGEN_CALL_CANCELLED),
+			};
+			check(
+				`each settled call renders the card's own state (${theme})`,
+				states.done === "done" &&
+					states.failed === "failed" &&
+					states.cancelled === "cancelled",
+				JSON.stringify(states),
+				JSON.stringify(states),
+			);
+			const liveOnly = await evaluate(
+				'document.querySelectorAll(\'[data-imagegen-card="queued"], [data-imagegen-card="running"], [data-imagegen-card="cancelling"]\').length',
+			);
+			check(
+				`no live-only card state is invented on a durable page (${theme})`,
+				liveOnly === 0,
+				`${liveOnly} live-only card(s) on a durable page`,
+				"queued/running/cancelling cards: 0 - those frames are the story set's",
+			);
+			await reveal(IMAGEGEN_CALL_DONE);
+			const decoded = await imageDecoded(IMAGEGEN_CALL_DONE);
+			const image = await imageReading(IMAGEGEN_CALL_DONE);
+			check(
+				`the done card's image decoded over the attachment route (${theme})`,
+				decoded.ok &&
+					image !== null &&
+					image.scheme === "blob" &&
+					image.natural === "1024x640",
+				`no decoded image after ${decoded.waitedMs}ms: ${JSON.stringify(image)}`,
+				JSON.stringify(image),
+			);
+			const failedText = await rowText(IMAGEGEN_CALL_FAILED);
+			check(
+				`the failed card states the platform sentence verbatim (${theme})`,
+				typeof failedText === "string" &&
+					failedText.includes(
+						"This generation failed before producing output.",
+					),
+				`the sentence is not on the row: ${JSON.stringify(failedText)}`,
+				"the platform `error` sentence, rendered as-is",
+			);
+			const cancelledText = await rowText(IMAGEGEN_CALL_CANCELLED);
+			check(
+				`the cancelled card states the plain cancellation (${theme})`,
+				typeof cancelledText === "string" &&
+					cancelledText.includes("Cancelled"),
+				`the cancellation line is not on the row: ${JSON.stringify(cancelledText)}`,
+				"cancelled, with no error sentence claimed for it",
+			);
+		} else {
+			const cards = await evaluate(
+				'document.querySelectorAll("[data-imagegen-card]").length',
+			);
+			check(
+				`the base tree renders no image-gen card (${theme})`,
+				cards === 0,
+				`${cards} card(s) on the base tree's page`,
+				"no [data-imagegen-card] anywhere - the calls render as the ledger's rows",
+			);
+			const decoded = await imageDecoded(IMAGEGEN_CALL_DONE);
+			const image = await imageReading(IMAGEGEN_CALL_DONE);
+			check(
+				`the base tree renders the same generated image under its row (${theme})`,
+				decoded.ok && image !== null && image.natural === "1024x640",
+				`no decoded image after ${decoded.waitedMs}ms: ${JSON.stringify(image)}`,
+				JSON.stringify(image),
+			);
+		}
+
+		/*
+		 * THE FRAMES, the same four scrolls and labels in both halves: one per
+		 * settled state at its call's position, and the condensed run whose
+		 * collapsed surface carries the run's pictures.
+		 */
+		await reveal(IMAGEGEN_CALL_DONE);
+		await imageDecoded(IMAGEGEN_CALL_DONE);
+		await parkPointer(cdp);
+		await captureSettled(cdp, `imagegen-done-${suffix}`);
+		await reveal(IMAGEGEN_CALL_FAILED);
+		await parkPointer(cdp);
+		await captureSettled(cdp, `imagegen-failed-${suffix}`);
+		await reveal(IMAGEGEN_CALL_CANCELLED);
+		await parkPointer(cdp);
+		await captureSettled(cdp, `imagegen-cancelled-${suffix}`);
+
+		/*
+		 * The condensed surface: after the three reveals above, the only
+		 * `[data-fold-media]` left on screen belongs to the settled run of three
+		 * calls (turn four), which never needed opening - its strip IS the claim
+		 * that the fold counts the finished image. The strip's own arm, the one a
+		 * frame cannot read, is the tile's decoded size: 896x576 is the SECOND
+		 * fixture candidate, so the picture in the strip is provably the run's
+		 * own product and not the hero image borrowed from turn one.
+		 */
+		const strip = await waitForCondition(
+			cdp,
+			`(() => {
+				const media = document.querySelector("[data-fold-media]");
+				if (media === null) return null;
+				const img = media.querySelector("img");
+				if (img === null || !img.complete || img.naturalWidth === 0) return null;
+				return {
+					label: media.getAttribute("aria-label"),
+					natural: img.naturalWidth + "x" + img.naturalHeight,
+				};
+			})()`,
+			15_000,
+		);
+		check(
+			`the condensed run's strip carries its own generated image (${theme})`,
+			strip.ok &&
+				strip.last?.label === "1 image from this run" &&
+				strip.last?.natural === "896x576",
+			`no decoded strip image after ${strip.waitedMs}ms: ${JSON.stringify(strip.last)}`,
+			JSON.stringify(strip.last),
+		);
+		await evaluate(
+			`(() => { const media = document.querySelector("[data-fold-media]"); if (media) media.scrollIntoView({ block: "center" }); return Boolean(media); })()`,
+		);
+		await wait(450);
+		await parkPointer(cdp);
+		await captureSettled(cdp, `imagegen-condensed-${suffix}`);
 	}
 }
 
@@ -39842,6 +40195,25 @@ async function main() {
 			`--row-space-expect takes after or before (got ${JSON.stringify(ROW_SPACE_EXPECT)}): the two are different claims about the same moments, and a defaulted typo would silently answer the other one`,
 		);
 	}
+	if (
+		SCENE === "imagegen-card" &&
+		IMAGEGEN_EXPECT !== "after" &&
+		IMAGEGEN_EXPECT !== "before"
+	) {
+		throw new Error(
+			`--imagegen-expect takes after or before (got ${JSON.stringify(IMAGEGEN_EXPECT)}): the two are different renderings of the same seeded calls, and a defaulted typo would silently answer the other one`,
+		);
+	}
+	if (SCENE === "imagegen-card" && BACKEND === null) {
+		throw new Error(
+			"--scene imagegen-card needs --backend: the card's states are read from durable transcript rows, and with no backend the chat route draws its refusal surface and no conversation opens",
+		);
+	}
+	if (SCENE === "imagegen-card" && BACKEND_RECORDS === null) {
+		throw new Error(
+			"--scene imagegen-card needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
+		);
+	}
 	if (SCENE === "route-tops" && BACKEND === null) {
 		throw new Error(
 			"--scene route-tops needs --backend: settings, agents, projects, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
@@ -40079,6 +40451,7 @@ async function main() {
 			else if (SCENE === "mentions") await sceneMentions(cdp);
 			else if (SCENE === "shell-evidence") await sceneShellEvidence(cdp);
 			else if (SCENE === "transcript-rail") await sceneTranscriptRail(cdp);
+			else if (SCENE === "imagegen-card") await sceneImageGenCard(cdp);
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
