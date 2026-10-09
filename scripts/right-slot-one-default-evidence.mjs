@@ -12,8 +12,10 @@
  * asserts and which folder it writes; the measuring and the shooting are the
  * same code on both trees, and it imports nothing the change deletes, which is
  * what makes the two folders a like-for-like comparison. `before` is run from a
- * Storybook served by the unmodified base commit (`origin/main` at this
- * branch's base); `after` from this branch's.
+ * Storybook served by the base commit plus the fixture patch this set ships
+ * (`base-fixture/shell.stories.patch`, the hand restatement of the base's own
+ * separator wiring that a tree without `rightSlotDividerContract` can load);
+ * `after` from this branch's.
  *
  * WHAT THE RUN LOADS. The four shell arms the committed `shell-app-shell`
  * frames come from - `chat-dock-run-panel`, `chat-dock-browser`,
@@ -21,8 +23,8 @@
  * (0 unless a cell says otherwise), which is exactly the fresh-profile arm the
  * issue is about: the width ANYONE WHO NEVER DRAGGED A DIVIDER sees.
  *
- * WHAT IT READS, AND WHAT IT ASSERTS (a wrong reading fails the run; it never
- * prints a table instead):
+ * WHAT IT READS, AND WHAT IT ASSERTS (a wrong reading fails the run with exit
+ * 1; the printed table is never a substitute for the check):
  *
  *   - for window widths 800, 900, 1024, 1180, 1280, 1380, 1440 and 1600 with
  *     the width UNSET: the row, the conversation column's width and the open
@@ -47,8 +49,10 @@
  *     would announce a width the pane is not drawn at; lifting the ceiling
  *     would let a run-panel drag store past its design max).
  *
- * FRAMES (16 per tree): the four panes at 1380x900 and 1280x900, light and
- * dark, each through `assertFramePaints` before it is written.
+ * FRAMES (24 per tree): the four panes at 1280x900, 1380x900 and 1440x900,
+ * light and dark, each through `assertFramePaints` before it is written. The
+ * 1440 row is where the console's old seed visibly binds (656 -> 640, design
+ * round 1's D1), so the set shows that delta rather than only recording it.
  *
  * Raw CDP against ONE private headless Chrome (mock-keychain switch, a scratch
  * `--user-data-dir`, its own process group, reaped by exact pid), the launch
@@ -149,8 +153,9 @@ const D4_WIDTHS = [800, 900];
 /** The run divider's found-not-fixed cell. */
 const RUN_ANOMALY = { width: 1600, stored: 1000 };
 const FRAME_SIZES = [
-	{ width: 1380, height: 900 },
 	{ width: 1280, height: 900 },
+	{ width: 1380, height: 900 },
+	{ width: 1440, height: 900 },
 ];
 const THEMES = ["localOperatorLight", "localOperatorDark"];
 

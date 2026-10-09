@@ -1,0 +1,184 @@
+diff --git a/src/renderer/src/shared/components/navigation/shell.stories.tsx b/src/renderer/src/shared/components/navigation/shell.stories.tsx
+index 4e81a97348c..6d584e3967f 100644
+--- a/src/renderer/src/shared/components/navigation/shell.stories.tsx
++++ b/src/renderer/src/shared/components/navigation/shell.stories.tsx
+@@ -3,6 +3,7 @@ import "../../../styles/index.css";
+ import "@features/chat/components/story-electron-shim";
+ import { AgentsPage } from "@features/agents/components/agents-page";
+ import { BrowserPane } from "@features/browser/components/browser-pane";
++import { CHAT_PANE_MIN_PX } from "@features/chat/chat-sidebar-layout";
+ import { AskDrawer } from "@features/chat/components/asks/ask-drawer";
+ import { Canvas } from "@features/chat/components/canvas";
+ import { ChatHeader } from "@features/chat/components/chat-header";
+@@ -22,11 +23,16 @@ import { SettingsPage } from "@features/settings/components/settings-page";
+ import type { ReusableProfile } from "@shared/api/local-operator/profile-hooks";
+ import { ChatLayout } from "@shared/components/common/chat-layout";
+ import { PaneSlot } from "@shared/components/common/pane-slot";
++import { ResizableDivider } from "@shared/components/common/resizable-divider";
+ import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
+ import { apiConfig } from "@shared/config/api-config";
+ import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
+ import { useCanvasStore } from "@shared/store/canvas-store";
+ import {
++	BROWSER_PANEL_MIN_PX,
++	CONSOLE_PANEL_MIN_PX,
++	DEFAULT_BROWSER_PANEL_WIDTH,
++	DEFAULT_CONSOLE_PANEL_WIDTH,
+ 	resolveRightSlotOccupied,
+ 	resolveRightSlotWidth,
+ 	useUiPreferencesStore,
+@@ -1016,8 +1022,15 @@ const ChatShellFrame: FC<{
+ 	 * records: a harness copy of a removed seam). The width the two arms used to
+ 	 * pass (`560`, `420`) was a literal the app never draws at the capture's 1280px
+ 	 * frame; the dock now draws at the app's number for the row it is in.
++	 *
++	 * THIS FILE IS THE BASE-WIRED FIXTURE the `right-slot-one-default` set's
++	 * `before/` half ships (docs/evidence/right-slot-one-default/base-fixture/
++	 * shell.stories.patch). The row's width rides along because the run
++	 * separator's restated range is built from it: the base `chat-content.tsx`
++	 * arithmetic, transcribed by hand because this tree predates
++	 * `rightSlotDividerContract`.
+ 	 */
+-	pane?: (slotWidth: number) => ReactNode;
++	pane?: (slotWidth: number, rowWidth: number) => ReactNode;
+ 	/**
+ 	 * The conversation's run details, or null for a DRAFT - which has none in the
+ 	 * app, so `RunDetailsTrigger` renders nothing there. The draft arms pass null
+@@ -1085,7 +1098,7 @@ const ChatShellFrame: FC<{
+ 								railProps={railProps}
+ 								asksCount={asksCount}
+ 							/>
+-							{pane?.(slotWidth)}
++							{pane?.(slotWidth, rowWidth)}
+ 						</div>
+ 						<ShellStoryRail details={details} railProps={railProps} />
+ 					</main>
+@@ -1289,8 +1302,30 @@ export const ChatDockRunPanel: Story = {
+ 		return (
+ 			<ChatShellFrame
+ 				details={deriveRunDetails(runFixtures.bothInFlight())}
+-				pane={(slotWidth) => (
+-					<PaneSlot width={slotWidth} minWidth={420} tourTag="run-panel-dock">
++				pane={(slotWidth, rowWidth) => {
++					/*
++					 * THE BASE TREE'S OWN RUN-SEPARATOR WIRING, restated: value = the
++					 * drawn width held to the range, min 320, max min(640, capacity)
++					 * where capacity is the row minus the conversation's 480px floor.
++					 * Its announced value can exceed its own max (a stored 1000 at 1600
++					 * draws 816 against the 640 ceiling): the found-not-fixed cell.
++					 */
++					const capacity = Math.max(0, rowWidth - CHAT_PANE_MIN_PX);
++					const resizable = capacity >= 320;
++					const value = resizable
++						? Math.min(Math.max(slotWidth, 320), capacity)
++						: slotWidth;
++					return (
++						<>
++							<ResizableDivider
++								sidebarWidth={value}
++								onSidebarWidthChange={() => undefined}
++								minWidth={resizable ? 320 : value}
++								maxWidth={resizable ? Math.min(640, capacity) : value}
++								side="left"
++								label="Resize run details. Double-click resets the shared pane width."
++							/>
++							<PaneSlot width={slotWidth} tourTag="run-panel-dock">
+ 						<RunPanel
+ 							details={deriveRunDetails(runFixtures.bothInFlight())}
+ 							mcpServers={deriveMcpServers([], {}, [])}
+@@ -1309,7 +1344,9 @@ export const ChatDockRunPanel: Story = {
+ 							onClose={() => undefined}
+ 						/>
+ 					</PaneSlot>
+-				)}
++						</>
++					);
++				}}
+ 			/>
+ 		);
+ 	},
+@@ -1537,11 +1574,37 @@ export const ChatDockBrowser: Story = {
+ 			<ChatShellFrame
+ 				details={deriveRunDetails(runFixtures.settled())}
+ 				railProps={{ browserAttentionCount: 2 }}
+-				pane={(slotWidth) => (
+-					<PaneSlot width={slotWidth} tourTag="browser-pane-slot">
+-						<BrowserPane sessionId="a1b2c3d4e5f6" onClose={() => undefined} />
+-					</PaneSlot>
+-				)}
++				pane={(slotWidth) => {
++					/*
++					 * THE BASE TREE'S OWN BROWSER-SEPARATOR WIRING, restated: the value is
++					 * the PREFERENCE (the stored width, or the base default when unset)
++					 * with a fixed 480..1200 range - so at a row that cannot host the
++					 * pane's floor it announces a width the pane is not drawn at. That is
++					 * the D4 defect this half photographs.
++					 */
++					const value = Math.max(
++						BROWSER_PANEL_MIN_PX,
++						rightSlotWidth === 0 ? DEFAULT_BROWSER_PANEL_WIDTH : rightSlotWidth,
++					);
++					return (
++						<>
++							<ResizableDivider
++								sidebarWidth={value}
++								onSidebarWidthChange={() => undefined}
++								minWidth={BROWSER_PANEL_MIN_PX}
++								maxWidth={1200}
++								side="left"
++								label="Resize browser. Double-click resets the shared pane width."
++							/>
++							<PaneSlot width={slotWidth} tourTag="browser-pane-slot">
++								<BrowserPane
++									sessionId="a1b2c3d4e5f6"
++									onClose={() => undefined}
++								/>
++							</PaneSlot>
++						</>
++					);
++				}}
+ 			/>
+ 		);
+ 	},
+@@ -1571,11 +1634,36 @@ export const ChatDockConsole: Story = {
+ 			<ChatShellFrame
+ 				details={deriveRunDetails(runFixtures.settled())}
+ 				railProps={{ consoleUnseenCount: 1 }}
+-				pane={(slotWidth) => (
+-					<PaneSlot width={slotWidth} tourTag="console-pane-slot">
+-						<ConsolePane sessionId="a1b2c3d4e5f6" onClose={() => undefined} />
+-					</PaneSlot>
+-				)}
++				pane={(slotWidth) => {
++					/*
++					 * THE BASE TREE'S OWN CONSOLE-SEPARATOR WIRING, restated: the browser
++					 * arm's comment states the shape; the console's differs only in its
++					 * default (the base's 100-column design width, measured from the
++					 * shipped face in the browser) and its selector.
++					 */
++					const value = Math.max(
++						CONSOLE_PANEL_MIN_PX,
++						rightSlotWidth === 0 ? DEFAULT_CONSOLE_PANEL_WIDTH : rightSlotWidth,
++					);
++					return (
++						<>
++							<ResizableDivider
++								sidebarWidth={value}
++								onSidebarWidthChange={() => undefined}
++								minWidth={CONSOLE_PANEL_MIN_PX}
++								maxWidth={1200}
++								side="left"
++								label="Resize console. Double-click resets the shared pane width."
++							/>
++							<PaneSlot width={slotWidth} tourTag="console-pane-slot">
++								<ConsolePane
++									sessionId="a1b2c3d4e5f6"
++									onClose={() => undefined}
++								/>
++							</PaneSlot>
++						</>
++					);
++				}}
+ 			/>
+ 		);
+ 	},
