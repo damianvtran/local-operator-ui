@@ -8709,9 +8709,33 @@ export const STORIES = [
 	 * DIRECT-mount stories (the progress fields and the affordance matrix) are
 	 * captured at 640 wide so their 560px stack fills the column rather than
 	 * floating in a 1280 canvas.
+	 *
+	 * THE `reduced-motion` CELL is the SAME running story with
+	 * `prefers-reduced-motion: reduce` emulated at the viewport (the app's cap
+	 * is a media block, which a story cannot set), at the running entry's own
+	 * size so the pair reads as one state animating and parked. It exists
+	 * because the parking span is the part of this card that ONLY pixels can
+	 * settle: the class-presence check could not see that a repeated image
+	 * puts the band back on-tile at every `±200%` position (design round 1,
+	 * D1), and this cell is the frame that fails if `bg-no-repeat` ever
+	 * leaves the span.
+	 *
+	 * SAY PLAINLY WHAT THE FRAME IS: the rig settles animations before every
+	 * shutter, and this card adds no reduced-motion-specific pixels besides the
+	 * cap's own parking, so the pair of cells is BYTE-IDENTICAL when the fix
+	 * holds (`running` and `reduced-motion`, each palette - same sha256). What
+	 * the cell evidences is the media state itself and the resting phase: a
+	 * span whose rest is on-tile (the pre-D1 classes) makes THIS frame carry
+	 * the sheen, in both spots at once, which is why one cell is enough.
 	 */
 	["chat-image-generation--queued", 1280, 220],
 	["chat-image-generation--running", 1280, 420],
+	[
+		"chat-image-generation--running",
+		1280,
+		420,
+		{ dir: "reduced-motion", reducedMotion: true },
+	],
 	["chat-image-generation--progress-fields", 640, 600],
 	["chat-image-generation--cancelling", 1280, 420],
 	["chat-image-generation--done", 1280, 560],

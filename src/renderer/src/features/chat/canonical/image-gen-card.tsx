@@ -40,14 +40,17 @@
  * up with stub handlers so the design round can review them.
  *
  * THE MOTION BUDGET, stated because this file spends it. The shimmer sweep is
- * the surface's indeterminate element: `background-position` only, never a
- * layout property, and its END frame is also the span's RESTING position
- * (`bg-[position:-200%_50%]`, so where the sweep stops is off the tile) —
- * `styles/index.css` caps rather than cancels animation under reduced motion,
- * and the cap parks an animation on its end frame, so a reduced-motion reader
- * gets the band parked off the tile with the `sunken` ground still reading —
- * not the static half-band a bare base `0% 0%` drew (round-1 review F2;
- * `--animate-shimmer` carries the same reasoning). PROVISIONAL, pending the design round: while no fraction is
+ * the surface's ONE indefinite element (a fraction-less card draws no bar —
+ * design round 1, D2): `background-position` only, never a layout property,
+ * and its END frame is also the span's RESTING position
+ * (`bg-[position:-200%_50%]`, `bg-no-repeat`) — `styles/index.css` caps rather
+ * than cancels animation under reduced motion, and the cap parks an animation
+ * on its end frame, so a reduced-motion reader gets the band parked off the
+ * tile with the `sunken` ground still reading. Both halves are load-bearing
+ * and were bought with measurements: a base of `0%` parks a static half-band,
+ * and an un-repeated image makes every `±200%` position one image width — the
+ * `0%` phase again — so the band crosses the tile TWICE per loop (design
+ * round 1, D1; `--animate-shimmer` carries the same reasoning). PROVISIONAL, pending the design round: while no fraction is
  * known the Progress primitive's indeterminate pulse runs beside the tile's
  * sweep, two motions on one card; if the round reads that as one element too
  * many, the tile's sweep is the one to drop — the bar states the call's
@@ -128,8 +131,10 @@ function useElapsedSeconds(startedAtMs: number | null): number | null {
  * frame. The sweep's band is `elevated` — an authored ground step, not a hex —
  * over a `background-size` of twice the tile so the band travels in from one
  * edge and out the other; the span's RESTING position is the sweep's end
- * frame (`bg-[position:-200%_50%]`), which is what makes the reduced-motion
- * cap's parked state the bare tile rather than a half-band (header; F2).
+ * frame (`bg-[position:-200%_50%]`) and the image does NOT repeat
+ * (`bg-no-repeat`), which together are what make the reduced-motion cap's
+ * parked state the bare tile rather than a sheen — and the loop carry ONE
+ * crossing instead of two (header; design round 1, D1).
  *
  * `aria-hidden`: the state line beside it is the announcement, and a decorative
  * field a screen reader cannot describe is not worth announcing (the same rule
@@ -151,13 +156,18 @@ function GeneratingTile() {
 					"bg-gradient-to-r from-transparent via-elevated to-transparent",
 					"bg-[length:200%_100%]",
 					/*
-					 * The RESTING position, equal to the sweep's END frame: the
-					 * reduced-motion cap parks the animation on its `to` frame, and a
-					 * bare base `0% 0%` would leave a static half-band across the tile
-					 * instead of the bare `sunken` ground (round-1 review F2; the
-					 * contract `--animate-pulse-visible`'s end-opaque keyframe keeps).
+					 * THE RESTING POSITION IS THE SWEEP'S END FRAME, AND THE IMAGE DOES
+					 * NOT REPEAT. Both halves are the fix, measured in pixels (design
+					 * round 1, D1): with the inherited `background-repeat: repeat`, the
+					 * image is twice the tile, so every `±200%` position is one image
+					 * width — the `0%` phase again — and the "rest" was a static sheen
+					 * crossing twice per loop; un-repeated, `-200%` is genuinely off the
+					 * tile (the bare `sunken` ground) and the loop carries ONE crossing.
+					 * The reduced-motion cap parks an animation on its `to` frame — the
+					 * contract `--animate-pulse-visible`'s end-opaque keyframe keeps.
 					 */
 					"bg-[position:-200%_50%]",
+					"bg-no-repeat",
 				)}
 			/>
 		</div>
@@ -304,26 +314,26 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 		>
 			{generatingBody ? <GeneratingTile /> : null}
 			<StateLine view={view} elapsed={elapsed} />
-			{generatingBody ? (
+			{generatingBody && view.progress.fraction !== null ? (
 				/*
-				 * One bar, two modes, both the shared primitive's: no fraction
-				 * states the absence (`value={null}` is the primitive's indeterminate
-				 * state, and Radix reports it to assistive tech as exactly that); a
-				 * fraction fills it. It caps at the tile's width so the card's media
-				 * column reads as one edge. It follows the tile's own predicate
-				 * (`generatingBody`), so a cancelling call that never generated
-				 * wears no bar (round-1 F3).
+				 * ONE bar, ONE mode: the DETERMINATE fill, drawn only when the
+				 * frame carries a fraction. The indeterminate state is deliberately
+				 * NOT rendered (design round 1, D2): the tile's sweep is the
+				 * surface's one indefinite element (kit section 5), and a
+				 * fraction-less full-width bar doubles the rhythm twelve pixels
+				 * from the tile while wearing a complete bar's shape - the one
+				 * state of the pair that actively misreads when the cap parks it.
+				 * The cancelling body loses its bar the same way; it follows the
+				 * tile's predicate (`generatingBody`) besides, so a call that never
+				 * generated wears neither (round-1 F3). It caps at the tile's width
+				 * so the card's media column reads as one edge.
 				 */
 				<Progress
 					aria-label="Image generation progress"
 					className={cn("max-w-[240px]")}
-					value={
-						view.progress.fraction === null
-							? null
-							: Math.round(
-									Math.min(1, Math.max(0, view.progress.fraction)) * 100,
-								)
-					}
+					value={Math.round(
+						Math.min(1, Math.max(0, view.progress.fraction)) * 100,
+					)}
 				/>
 			) : null}
 			{logTail === null ? null : <LogTail line={logTail} />}
