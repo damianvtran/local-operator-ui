@@ -1,0 +1,337 @@
+{
+  "scenario": "cancel",
+  "tree": "/Users/damian/local-operator-ui-worktrees/wake-cancel-pane",
+  "api": "http://127.0.0.1:8080",
+  "scratch": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/wake-cancel-rig-BPcnJ6",
+  "steps": [
+    {
+      "label": "hello",
+      "body": {
+        "apiBaseUrl": "http://127.0.0.1:8080",
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      }
+    },
+    {
+      "label": "press [data-rig-skip]",
+      "body": {
+        "target": "button \"Skip for now\"",
+        "hitTest": true,
+        "disabled": false
+      }
+    },
+    {
+      "label": "onboarding dismissed",
+      "body": {
+        "control": "[data-rig-skip]"
+      }
+    },
+    {
+      "label": "chip overlay probe",
+      "body": {
+        "at": {
+          "x": 462,
+          "y": 754
+        },
+        "stack": [
+          "button#.inline-flex h-6 min-w-0 shrink-0 items-c|pe=auto|pos=static|z=auto",
+          "div#.flex min-w-0 flex-wrap items-center gap-|pe=auto|pos=static|z=auto",
+          "div#.w-full @min-[750px]/chatcol:max-w-[var(-|pe=auto|pos=static|z=auto",
+          "form#.w-full|pe=auto|pos=static|z=auto",
+          "div#.w-full|pe=auto|pos=static|z=auto"
+        ]
+      }
+    },
+    {
+      "label": "capture debug-before-chip",
+      "body": {
+        "file": "/Users/damian/local-operator-ui-worktrees/wake-cancel-pane/docs/evidence/wake-cancel-live/frames/debug-before-chip.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      }
+    },
+    {
+      "label": "press [data-status-wakes]",
+      "body": {
+        "target": "button \"Open the wakes in run details — 4 wakes armed\"",
+        "hitTest": true,
+        "disabled": false
+      }
+    },
+    {
+      "label": "capture cancel-before",
+      "body": {
+        "file": "/Users/damian/local-operator-ui-worktrees/wake-cancel-pane/docs/evidence/wake-cancel-live/frames/cancel-before.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      }
+    },
+    {
+      "label": "direct check before press",
+      "body": {
+        "ids": [
+          "w1",
+          "w3",
+          "w4",
+          "w2"
+        ],
+        "href": "file:///Users/damian/local-operator-ui-worktrees/wake-cancel-pane/out/renderer/index.html#/chat"
+      }
+    },
+    {
+      "label": "press [data-wake-cancel=\"w2\"]",
+      "body": {
+        "target": "button \"Cancel wake: Sweep the ingest queue for stuck rows\"",
+        "hitTest": true,
+        "disabled": false
+      }
+    },
+    {
+      "label": "writing window seen",
+      "body": {
+        "writing": true
+      }
+    },
+    {
+      "label": "capture cancel-writing",
+      "body": {
+        "file": "/Users/damian/local-operator-ui-worktrees/wake-cancel-pane/docs/evidence/wake-cancel-live/frames/cancel-writing.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      }
+    },
+    {
+      "label": "delete answered (relay log)",
+      "body": {
+        "deleteLanded": true
+      }
+    },
+    {
+      "label": "churn trace",
+      "body": [
+        {
+          "at": 1791584515274,
+          "rows": 3,
+          "note": null,
+          "card": false
+        },
+        {
+          "at": 1791584515355,
+          "rows": 3,
+          "note": null,
+          "card": false
+        },
+        {
+          "at": 1791584515437,
+          "rows": 3,
+          "note": null,
+          "card": false
+        },
+        {
+          "at": 1791584515519,
+          "rows": 3,
+          "note": null,
+          "card": false
+        },
+        {
+          "at": 1791584515601,
+          "rows": 3,
+          "note": null,
+          "card": false
+        },
+        {
+          "at": 1791584515682,
+          "rows": 3,
+          "note": null,
+          "card": false
+        },
+        {
+          "at": 1791584515762,
+          "rows": 3,
+          "note": null,
+          "card": false
+        },
+        {
+          "at": 1791584515844,
+          "rows": 3,
+          "note": null,
+          "card": false
+        },
+        {
+          "at": 1791584515925,
+          "rows": 3,
+          "note": null,
+          "card": false
+        },
+        {
+          "at": 1791584516007,
+          "rows": 3,
+          "note": null,
+          "card": false
+        },
+        {
+          "at": 1791584516088,
+          "rows": 3,
+          "note": null,
+          "card": false
+        },
+        {
+          "at": 1791584516170,
+          "rows": 3,
+          "note": null,
+          "card": false
+        },
+        {
+          "at": 1791584516252,
+          "rows": 3,
+          "note": null,
+          "card": false
+        },
+        {
+          "at": 1791584516334,
+          "rows": 3,
+          "note": null,
+          "card": false
+        },
+        {
+          "at": 1791584516415,
+          "rows": 3,
+          "note": null,
+          "card": false
+        }
+      ]
+    },
+    {
+      "label": "page trace (secondary)",
+      "body": {
+        "ticks": 38,
+        "last": {
+          "t": 1791584516477,
+          "row": null,
+          "mark": null,
+          "rows": 3,
+          "cancel": 3,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "href": "file:///Users/damian/local-operator-ui-worktrees/wake-cancel-pane/out/renderer/index.html#/chat",
+          "ready": "complete"
+        }
+      }
+    },
+    {
+      "label": "row dropped by the re-read",
+      "body": {
+        "gone": true
+      }
+    },
+    {
+      "label": "capture cancel-gone",
+      "body": {
+        "file": "/Users/damian/local-operator-ui-worktrees/wake-cancel-pane/docs/evidence/wake-cancel-live/frames/cancel-gone.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      }
+    },
+    {
+      "label": "relay log",
+      "body": [
+        "GET /v1/desktop/sessions/d02c4b26212c/events?frontend_replace=1 -> 200",
+        "GET /v1/desktop/skills?cwd=%2FUsers%2Fdamian%2F.local-operator%2Fsessions%2F9949d35bf79e%2Fscratchpad%2Fiso-backend%2Fsession-cwd -> 200",
+        "GET /v1/desktop/sessions?limit=50&include_archived=true -> 200",
+        "GET /v1/desktop/sessions/d02c4b26212c/mcp -> 200",
+        "GET /v1/desktop/sessions/d02c4b26212c/command-entities?command=effort -> 200",
+        "POST /v1/desktop/sessions/d02c4b26212c/watch -> 200",
+        "GET /v1/desktop/sessions/d02c4b26212c/checkpoints -> 200",
+        "DELETE /v1/desktop/wakes/d02c4b26212c/w2 -> 200 (held 1200ms)"
+      ]
+    },
+    {
+      "label": "cancel delete (daemon log)",
+      "body": [
+        "INFO:     127.0.0.1:60678 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK"
+      ]
+    },
+    {
+      "label": "isolation",
+      "body": {
+        "apiBaseUrl": "http://127.0.0.1:8080"
+      }
+    }
+  ],
+  "appLog": [
+    "mini-view: not registered (window mode headless)",
+    "18:21:51.744 › [discovery] record directory /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/wake-cancel-rig-BPcnJ6/.local-operator/run/serve (0 record(s))",
+    "18:21:51.792 › [discovery] rejected http://127.0.0.1:8080: identity-mismatch (a daemon answered but no serve record describes http://127.0.0.1:8080, so it cannot be proven to be the one this app found)",
+    "18:21:51.792 › [discovery] no valid daemon among 0 record(s) (directory absent)",
+    "18:21:51.792 › Deprecated: no serve records found. Falling back to the fixed-port probe at http://127.0.0.1:8080/health for a daemon predating the record format. This fallback is scheduled for removal (design §8).",
+    "18:21:51.815 › Adopted a pre-record daemon at http://127.0.0.1:8080 (v0.68.19) through the deprecated fallback.",
+    "18:21:51.816 › Discovered a daemon; the backend manager is configured not to spawn or kill one.",
+    "18:21:51.842 › Update service initialized. Dev mode: true, NPX install: false",
+    "18:21:51.843 › Unpackaged instance: no packaged install state to leave alone.",
+    "18:21:51.843 › Periodic update checks scheduled (every 5 minutes)",
+    "18:21:51.844 › macOS auto-update requires app signing",
+    "18:21:51.844 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure",
+    "18:21:51.850 › [browser] denied a media permission request from (unknown origin)",
+    "18:21:51.850 › [browser] denied a media permission request from (unknown origin)",
+    "18:21:51.850 › [browser] denied a web-app-installation permission request from (unknown origin)",
+    "18:21:51.850 › [browser] denied a geolocation permission request from (unknown origin)",
+    "18:21:52.367 › [browser] denied a media permission request from (unknown origin)",
+    "18:21:52.367 › [browser] denied a media permission request from (unknown origin)",
+    "18:21:52.367 › [browser] denied a web-app-installation permission request from (unknown origin)",
+    "18:21:52.367 › [browser] denied a geolocation permission request from (unknown origin)",
+    "Error occurred in handler for 'mini-view:registration-get': Error: This window cannot read the hotkey registration.",
+    "    at /Users/damian/local-operator-ui-worktrees/wake-cancel-pane/out/main/index.js:43638:13",
+    "    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)",
+    "    at Session.emit (node:events:514:28)",
+    "18:21:52.499 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin:/Users/damian/.cargo/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin",
+    "18:21:52.500 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)",
+    "18:21:52.500 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin:/Users/damian/.cargo/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin",
+    "18:21:52.502 › [browser] host on 127.0.0.1:60644 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/wake-cancel-rig-BPcnJ6/profile/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))",
+    "18:21:52.816 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf",
+    "18:21:52.817 › Checking for UI updates...",
+    "18:21:52.817 › Skip checkForUpdates because application is not packed and dev update config is not forced",
+    "18:21:52.892 › [browser] tab 1 navigated to about:blank",
+    "(node:3114) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit",
+    "(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)",
+    "[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900",
+    "18:21:54.845 › Checking for updates... (silent mode: true)",
+    "18:21:54.846 › Skip checkForUpdates because application is not packed and dev update config is not forced",
+    "18:21:54.846 › Checking for backend updates... (silent mode: true)",
+    "18:21:54.846 › Skip backend update check in dev mode unless forced",
+    ""
+  ]
+}
