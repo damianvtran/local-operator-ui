@@ -45,6 +45,7 @@ import {
 	preferDeliveryState,
 	preferDiff,
 	preferDiffCounts,
+	preferProgressDetails,
 } from "../components/trace/tool-row-model";
 import { isHarnessChromeText } from "./harness-chrome";
 import { freezeRecordDeep } from "./record-immutability";
@@ -420,6 +421,26 @@ export type TranscriptRecord =
 			 * stories) need not state it; absent reads exactly as `null`.
 			 */
 			delivery?: SendDeliveryState | null;
+			/**
+			 * The canonical progress payload the call's frames carried last, raw -
+			 * the imagegen lane's `progress_details` shape on harness PR #2089
+			 * (`stage`, `queue_position`, `progress_fraction`, `log_lines`, `error`,
+			 * `error_type`; every key present on every frame, `null` when no producer
+			 * supplied one). Written from three producers, one rule
+			 * (`preferProgressDetails`): live `tool_execution_update` frames (the live
+			 * half, self-replacing by contract), a settling result whose `details`
+			 * carry the shape, and the durable row's
+			 * `payload.provider_payload.details` - so a reloaded transcript and a live
+			 * one read the same facts. A frame whose details the live-event budget
+			 * stripped says nothing and keeps what the row held.
+			 *
+			 * THE REDUCER DOES NOT INTERPRET ITS KEYS. The one consumer is the
+			 * generating card's adapter (`image-gen-card-model.ts`, the surface's
+			 * single field-name reader); nothing else in the transcript paints from
+			 * this. Optional so hand-built records (fixtures, stories) need not state
+			 * it; absent reads exactly as `null`.
+			 */
+			details?: Record<string, unknown> | null;
 	  }
 	| {
 			kind: "notice";
@@ -2887,6 +2908,14 @@ function durableRecord(
 				providerPayload.details,
 				previous?.kind === "tool" ? previous.delivery : null,
 			),
+			// The durable half of the same carrier (`preferProgressDetails`): a
+			// reloaded transcript reads the cancelled/conflict/refusal states from
+			// the same payload the live frames painted them from, and a row whose
+			// page carries no details keeps what it held.
+			details: preferProgressDetails(
+				providerPayload.details,
+				previous?.kind === "tool" ? (previous.details ?? null) : null,
+			),
 		};
 	}
 	return null;
@@ -4442,8 +4471,33 @@ export function applyEvent(
 				added: 0,
 				removed: 0,
 				diff: current?.kind === "tool" ? current.diff : null,
+				// The live progress payload survives a replayed/reviving start: the
+				// update frames are self-replacing, but a replay between two of them
+				// must not blank what the row already showed (the same rule the diff
+				// and images guards above state).
+				details: current?.kind === "tool" ? (current.details ?? null) : null,
 				stopped: false,
 			});
+		}
+		case "tool_execution_update": {
+			const callId = String(event.tool_call_id ?? "");
+			if (!callId) return state;
+			const id = `tool:${callId}`;
+			const current = state.records[state.index.get(id) ?? -1];
+			/*
+			 * A progress frame with no row to land on says nothing this state keeps:
+			 * the start that would have mounted the row has not arrived (or was
+			 * evicted), and the frame is self-replacing by contract
+			 * (`session/runtime/types.py`: the first frame after unmute carries the
+			 * whole accumulated state again), so dropping it here loses a frame the
+			 * next one re-states - the same reading every arm above gives a frame
+			 * about a call this viewer never met.
+			 */
+			if (!current || current.kind !== "tool") return state;
+			const partial = (event.partial_result ?? {}) as Record<string, unknown>;
+			const details = preferProgressDetails(partial.details, current.details);
+			if (details === (current.details ?? null)) return state;
+			return upsert(state, { ...current, details });
 		}
 		case "tool_execution_end": {
 			const callId = String(event.tool_call_id ?? "");
@@ -4701,6 +4755,12 @@ export function applyEvent(
 				// `details` the live-event budget stripped must not blank a state the
 				// durable row already carried.
 				delivery: preferDeliveryState(result.details, base.delivery),
+				// The settling frame's canonical progress payload, under the same
+				// absent-vs-stated rule as `delivery` beside it: the cancel and
+				// unable-to-generate results carry it (the conflict pair included),
+				// a success result carries the last live frame's facts forward, and
+				// a budget-stripped frame keeps what the row held.
+				details: preferProgressDetails(result.details, base.details),
 			});
 		}
 		case "notice": {

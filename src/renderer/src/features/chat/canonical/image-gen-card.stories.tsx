@@ -5,11 +5,13 @@
  * (the convention `tool-row.stories.tsx` sets), so what is judged is what
  * ships: the detection predicate, the adapter and the row placement all run.
  * Two shapes deliberately mount `ImageGenCard` directly, and the reason is in
- * each story: the live-progress fields (fraction, logs, queue position) are
- * not frozen on the wire yet, so the adapter emits the reduced state and a
- * hand-built view is the only place those branches can be rendered today; and
- * the restart/steer slots, which integration deliberately does not wire yet,
- * are demonstrated with stub handlers for the design round.
+ * each story: the live-progress fields ARE frozen now (harness PR #2089) and
+ * flow through the record's `details` carrier, but `progress_fraction` stays
+ * `null` until a provider reports one - by the wire's own rule, never
+ * synthesized - so the determinate-bar branch has no producer and a
+ * hand-built view is the only place it renders; and the restart/steer slots,
+ * which integration deliberately does not wire yet, are demonstrated with
+ * stub handlers for the design round.
  *
  * WHAT TO LOOK FOR, since these frames are part of the review:
  *
@@ -92,6 +94,26 @@ const genTool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
 	removed: 0,
 	diff: null,
 	stopped: false,
+	details: null,
+	...over,
+});
+
+/**
+ * The canonical progress payload as the wire emits it (harness PR #2089):
+ * EVERY key present on every frame, `null` where no producer supplied one - so
+ * a fixture that omits a key is not a canonical shape. `over` supplies the
+ * facts a given frame states.
+ */
+const canonical = (
+	over: Partial<Record<string, unknown>> = {},
+): Record<string, unknown> => ({
+	tool_name: "generate_image",
+	stage: null,
+	queue_position: null,
+	progress_fraction: null,
+	log_lines: null,
+	error: null,
+	error_type: null,
 	...over,
 });
 
@@ -167,18 +189,23 @@ const CardFrame = ({ children }: { children: ReactNode }) => (
 const noop = () => {};
 
 /**
- * A hand-built running view, because the live-progress fields are not on the
- * wire yet — THE FIXTURE IS THE POINT: the adapter emits all-absence today,
- * and these branches are exercised here until the fields freeze and the
- * adapter is the one place that changes. The clock is anchored to NOW minus
- * 12s so the state line reads its natural `12s`, not a year of fixture skew:
- * `Date.now()` runs once at module load, and the card's own tick continues
- * from there.
+ * A hand-built running view for the branches the wire cannot produce: the
+ * determinate bar (no provider reports a fraction - `progress_fraction` stays
+ * `null`, deliberately) and the log tail's full range. THE FIXTURE IS THE
+ * POINT: the adapter reads real canonical frames elsewhere in this file, and
+ * these mounts exercise the view type's own branches directly. The clock is
+ * anchored to NOW minus 12s so the state line reads its natural `12s`, not a
+ * year of fixture skew: `Date.now()` runs once at module load, and the card's
+ * own tick continues from there.
  */
 const runningView = (progress: ImageGenProgress): ImageGenCardView => ({
 	state: "running",
 	startedAtMs: Date.now() - 12_000,
 	progress,
+	// The interim's account slot: the `MidWalkFailure` story below carries the
+	// live note through the real record path; these mounts exercise the
+	// progress slots, where no frame states one.
+	note: null,
 });
 
 const meta: Meta = {
@@ -196,7 +223,12 @@ export const Queued: Story = {
 			height={220}
 			records={[
 				genTool({ id: "tool:q1", phase: "composing", argumentBytes: 2480 }),
-				genTool({ id: "tool:q2", phase: "queued", argumentBytes: 2480 }),
+				genTool({
+					id: "tool:q2",
+					phase: "queued",
+					argumentBytes: 2480,
+					details: canonical({ stage: "queued", queue_position: 2 }),
+				}),
 			]}
 		/>
 	),
@@ -205,7 +237,9 @@ export const Queued: Story = {
 /**
  * The running card, with and without a clock: the second row's call stated no
  * start, so the line keeps its words and drops the number rather than
- * inventing one.
+ * inventing one. The first carries the canonical frame's `log_lines` - the
+ * tail renders the LAST line, its one-line slot - while the second states
+ * none and draws none.
  */
 export const Running: Story = {
 	render: () => (
@@ -216,6 +250,19 @@ export const Running: Story = {
 					id: "tool:r1",
 					phase: "running",
 					startedAt: Date.now() - 42_000,
+					details: canonical({
+						stage: "in_progress",
+						log_lines: [
+							{
+								message: "provider: request accepted",
+								timestamp: 1_760_000_000,
+							},
+							{
+								message: "provider: rendering 1024x1024, step 14/28",
+								timestamp: 1_760_000_006,
+							},
+						],
+					}),
 				}),
 				genTool({ id: "tool:r2", phase: "running", startedAt: null }),
 			]}
@@ -224,13 +271,16 @@ export const Running: Story = {
 };
 
 /**
- * The progress branches the wire cannot carry yet: no lines, a log tail, a
- * known fraction drawing the bar — the determinate fill is the bar's one
- * mode (design round 1, D2: a fraction-less card draws no bar; the tile's
- * sweep is the surface's one indefinite element) — and the queue position,
- * which renders on the QUEUED state, the wait it describes (a running line's
- * one datum slot is the clock, and its position slot is carried but not
- * drawn). Mounted directly; see the file header.
+ * The progress branches, hand-built: no lines, a log tail, a known fraction
+ * drawing the bar - the determinate fill is the bar's one mode (design round
+ * 1, D2: a fraction-less card draws no bar; the tile's sweep is the surface's
+ * one indefinite element) - and the queue position, which renders on the
+ * QUEUED state, the wait it describes (a running line's one datum slot is the
+ * clock, and its position slot is carried but not drawn). The wire carries
+ * logs and positions now (the Running/Queued cells read them from canonical
+ * frames); the FRACTION cell stays hand-built because `progress_fraction`
+ * remains `null` until a provider reports one - the wire's own rule, never
+ * synthesized. Mounted directly; see the file header.
  */
 export const ProgressFields: Story = {
 	render: () => (
@@ -290,6 +340,9 @@ export const Cancelling: Story = {
 					id: "tool:c1",
 					phase: "running",
 					startedAt: Date.now() - 8_000,
+					// The wire's own cancelling frame: the stage stated, every other key
+					// null - the overlay's progress facts are all-absence by construction.
+					details: canonical({ stage: "cancelling" }),
 				}),
 				genTool({ id: "tool:c2", phase: "queued", argumentBytes: 1900 }),
 			]}
@@ -319,29 +372,125 @@ export const Done: Story = {
 };
 
 /**
- * The frozen failure shape in both arms, both verbatim: the platform's own
+ * The frozen failure shape in all three arms, verbatim: the platform's own
  * sentence for a failed generation (authored to be read as-is — no vendor
- * text is expected, and no sentence of this app's is layered over it), and
- * the harness's verdict for a call that never reached a provider.
+ * text is expected, and no sentence of this app's is layered over it), the
+ * harness's verdict for a call that never reached a provider, and the
+ * canonical settled failure a walked-out cascade returns - `error` +
+ * `error_type` with NO `stage`, that shape's own signature (the wire's rule:
+ * no canonical stage names a walk's failure).
+ *
+ * ONE FRAME PER ARM, deliberately (design round 1, D3): three consecutive tool
+ * records in one frame trip the transcript's aggregation, so the default frame
+ * rendered the fold (`› 3 generate_image`) with none of the arms' text visible
+ * until a press; split, every arm renders by default, which is what this cell
+ * exists to show.
  */
 export const Failed: Story = {
 	render: () => (
+		<div className="flex flex-col gap-4">
+			<Frame
+				height={140}
+				records={[
+					genTool({
+						id: "tool:f1",
+						isError: true,
+						durationS: 1.2,
+						output: "This generation failed before producing output.",
+					}),
+				]}
+			/>
+			<Frame
+				height={140}
+				records={[
+					genTool({
+						id: "tool:f2",
+						phase: "queued",
+						notRunReason:
+							"invalid arguments for generate_image: 'prompt' is required",
+						notRunKind: "invalid_arguments",
+						neverSent: true,
+					}),
+				]}
+			/>
+			<Frame
+				height={140}
+				records={[
+					genTool({
+						id: "tool:f3",
+						isError: true,
+						durationS: 9.1,
+						output: "Radient: out of credits · FAL: rate limited",
+						details: canonical({
+							error: "Radient: out of credits · FAL: rate limited",
+							error_type: "insufficient_credits",
+						}),
+					}),
+				]}
+			/>
+		</div>
+	),
+};
+
+/**
+ * The MID-WALK failure: the wire's `stage: null` frame - a rung failed and the
+ * walk continues - whose semantics ride the `error`/`error_type` pair ("the
+ * pair the surfaces branch on", harness PR #2089). RULED by design round 1
+ * (D1): the call keeps its LIVE presentation (tile, state line, clock,
+ * Cancel) and the pair's sentence rides as the interim's note under the body,
+ * verbatim; the next frame (the next rung's `queued`, or the terminal result)
+ * replaces the note with no state-level change and no control flicker - a
+ * note, never a failure latch.
+ */
+export const MidWalkFailure: Story = {
+	render: () => (
 		<Frame
-			height={460}
+			// 360, not 300: the interim note line and the Cancel row both sit under
+			// the tile at this width, and the shorter frame cropped the control
+			// (measured on the first recapture of this cell).
+			height={360}
+			// The acceptance (design round 1, D1) names Cancel as part of the live
+			// presentation this cell must show, so the story wires the interrupt
+			// the way integration does (the composer's own Stop path).
+			onInterruptTurn={noop}
 			records={[
 				genTool({
-					id: "tool:f1",
-					isError: true,
-					durationS: 1.2,
-					output: "This generation failed before producing output.",
+					id: "tool:m1",
+					phase: "running",
+					startedAt: Date.now() - 21_000,
+					details: canonical({
+						error: "out of credits",
+						error_type: "insufficient_credits",
+					}),
 				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * The conflict receipt: a cancel that lost its race with the finish comes back
+ * as an error-shaped result whose `error_type` is `media_already_completed`
+ * (the platform's sentence beside it) - a FINISH, never a failure - so the
+ * card states "Already finished." and withholds the duration (that number
+ * belongs to the receipt that watched the run). The record carries the
+ * canonical pair exactly as the wire writes it.
+ */
+export const AlreadyFinished: Story = {
+	render: () => (
+		<Frame
+			height={260}
+			records={[
 				genTool({
-					id: "tool:f2",
-					phase: "queued",
-					notRunReason:
-						"invalid arguments for generate_image: 'prompt' is required",
-					notRunKind: "invalid_arguments",
-					neverSent: true,
+					id: "tool:a1",
+					isError: true,
+					output: "not cancelled — it had already completed",
+					details: canonical({
+						stage: "cancelled",
+						error:
+							"The generation had already completed when the cancel arrived; its result was discarded.",
+						error_type: "media_already_completed",
+					}),
 				}),
 			]}
 		/>
@@ -395,9 +544,10 @@ export const Affordances: Story = {
 				actions={{ onCancel: noop, onRestart: noop, onEditRestart: noop }}
 			/>
 			{/* The frozen `media_already_completed` receipt (a cancel that lost its
-			 * race with the finish): a direct mount, because no record carries the
-			 * code until `error_type` lands on the wire — it must read as a finish,
-			 * never an error, and the adapter's done state owns it. */}
+			 * race with the finish): the record-driven shape has its own story now
+			 * (`AlreadyFinished`); this direct mount stays for the matrix's reading
+			 * order — it must read as a finish, never an error, and the adapter's
+			 * done state owns it either way. */}
 			<ImageGenCard
 				view={{
 					state: "done",

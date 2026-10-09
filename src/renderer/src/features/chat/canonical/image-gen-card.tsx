@@ -272,6 +272,24 @@ function LogTail({ line }: { line: string }) {
 }
 
 /**
+ * The interim's account under a live body (design round 1, D1): the last
+ * frame's own sentence, verbatim — the failed arm's text, not a second
+ * sentence of this app's layered over it — in the quiet ink a fact beside a
+ * live state takes. It wraps rather than truncating, like the failed arm's
+ * own sentence: the text is authored to be read whole.
+ */
+function NoteLine({ line }: { line: string }) {
+	return (
+		<p
+			data-imagegen-note=""
+			className={cn("min-w-0 text-body-sm text-ink-dim")}
+		>
+			{line}
+		</p>
+	);
+}
+
+/**
  * What each control is called, and it can depend on the state: the same
  * restart slot is `Retry` after a failure and `Restart` after a cancel.
  */
@@ -317,6 +335,17 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 		>
 			{generatingBody ? <GeneratingTile /> : null}
 			<StateLine view={view} elapsed={elapsed} />
+			{/*
+			 * THE INTERIM'S ACCOUNT (design round 1, D1): the mid-walk failure's
+			 * sentence under the live body, verbatim — the call keeps its tile,
+			 * clock and Cancel while the walk continues, and the note simply
+			 * disappears with the frame that carried it (a note, never a latch:
+			 * nothing the wire does not claim is painted). Only the running state
+			 * carries one; the type-guard tolerates hand-built views too.
+			 */}
+			{view.state === "running" && typeof view.note === "string" ? (
+				<NoteLine line={view.note} />
+			) : null}
 			{generatingBody && view.progress.fraction !== null ? (
 				/*
 				 * ONE bar, ONE mode: the DETERMINATE fill, drawn only when the
