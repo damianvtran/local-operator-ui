@@ -46,18 +46,19 @@
  * (`bg-[position:-200%_50%]`, `bg-no-repeat`) — `styles/index.css` caps rather
  * than cancels animation under reduced motion, and the cap parks an animation
  * on its end frame, so a reduced-motion reader gets the band parked off the
- * tile with the `sunken` ground still reading. Both halves are load-bearing
- * and were bought with measurements: a base of `0%` parks a static half-band,
- * and an un-repeated image makes every `±200%` position one image width — the
- * `0%` phase again — so the band crosses the tile TWICE per loop (design
- * round 1, D1; `--animate-shimmer` carries the same reasoning). PROVISIONAL, pending the design round: while no fraction is
- * known the Progress primitive's indeterminate pulse runs beside the tile's
- * sweep, two motions on one card; if the round reads that as one element too
- * many, the tile's sweep is the one to drop — the bar states the call's
- * progress and the tile is only the picture it stands in for.
+ * tile with the `sunken` ground still reading. Both halves were bought with
+ * measurements (design round 1, D1): a base of `0%` paints a static half-band,
+ * and a REPEATED image — every `±200%` position one image width, the `0%`
+ * phase again — both sheens at rest and crosses the tile twice per loop;
+ * un-repeated, the band crosses ONCE and its rest is genuinely off the tile.
+ * The round's rulings stand: ONE indefinite element per surface, and the
+ * sweep is the element that stays — the bar draws only against a carried
+ * fraction (D2; `--animate-shimmer` carries the same reasoning).
  *
- * PROVISIONAL COPY throughout the state lines (the register is settled; the
- * exact words are the design round's to set).
+ * THE COPY IS THE ROUND'S, ACCEPTED AS SHIPPED (design round 1): sentence
+ * case, the datum register — the words live in the state lines below. The
+ * round left one record for the wiring round: when Retry wires, the fallback
+ * sentence is where a remedy clause lands (branding section 8).
  */
 
 import { Button, Progress } from "@shared/components/ui";
@@ -232,7 +233,9 @@ function StateLine({
 			 * platform `error` is authored to be read as-is, so no sentence of
 			 * this app's is layered over it. The fallback covers only a record
 			 * whose text is ABSENT entirely — it is the absence's sentence, not
-			 * a substitute for supplied text. PROVISIONAL fallback copy.
+			 * a substitute for supplied text. The fallback is the round's accepted
+			 * copy too, and the seat its remedy clause lands on when Retry wires
+			 * (branding section 8).
 			 */
 			text = view.message ?? "The image could not be generated.";
 			emphasis = true;
