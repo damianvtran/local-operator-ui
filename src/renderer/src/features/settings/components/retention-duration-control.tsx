@@ -40,6 +40,7 @@ import { cn } from "@shared/lib/utils";
 import { type FC, useEffect, useId, useState } from "react";
 import {
 	type DurationUnit,
+	WHOLE_NUMBER_TEXT,
 	durationSpec,
 	entryToDraft,
 	formatHours,
@@ -61,9 +62,26 @@ export type RetentionDurationControlProps = {
 
 /** The exact-entry fields for a draft: a number splits into count and unit. */
 const entryFromDraft = (value: string): { text: string; unit: DurationUnit } =>
-	/^\d+$/.test(value.trim())
+	WHOLE_NUMBER_TEXT.test(value.trim())
 		? splitEntry(Number(value))
 		: { text: value, unit: "hours" };
+
+/**
+ * The ACTIVE segment takes the disabled ink too (design round 1, D2).
+ *
+ * The primitive paints `data-[state=active]:text-ink` and
+ * `data-[disabled]:text-ink-disabled` with ONE attribute selector each, so on a
+ * disabled+selected trigger the active rule is the one that wins: the design
+ * round measured the selected 48h chip at the enabled pair (ink on the pill's
+ * own fill) while its eight siblings stepped to the disabled ink, so the one
+ * chip that cannot be pressed out-read the row it was greyed with, starkest in
+ * the light frame. Chaining the two attributes out-specifies either
+ * single-attribute rule; the selection stays identifiable by the pill's own
+ * fill (`bg-surface`), which does not step - disabled changes colour, never
+ * opacity (branding § 6).
+ */
+const DISABLED_ACTIVE_INK =
+	"data-[disabled]:data-[state=active]:text-ink-disabled";
 
 export const RetentionDurationControl: FC<RetentionDurationControlProps> = ({
 	setting,
@@ -120,7 +138,7 @@ export const RetentionDurationControl: FC<RetentionDurationControlProps> = ({
 									? `${formatHours(hours)} (default)`
 									: formatHours(hours)
 							}
-							className="px-2.5"
+							className={cn("px-2.5", DISABLED_ACTIVE_INK)}
 						>
 							{/* Spoken in words: "48h" read aloud is "forty-eight h". */}
 							<span aria-hidden="true">{shortLabel(hours)}</span>

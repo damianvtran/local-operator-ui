@@ -5,9 +5,12 @@
  * The notice is the VIEW, rendered in the pane's own gutter (`shrink-0 px-6
  * py-1`) the way `backend-compatibility-banner.stories.tsx` renders its band.
  * `message` is the shape the backend actually sends
- * (`delegated_retention.format_delegated_notice`): the "so far" suffix is its
- * rendering of `in_progress`, so the two stories differ by the backend's own
- * sentence, not by anything this file made up.
+ * (`delegated_retention.format_delegated_notice`), byte for byte - including
+ * the grouped count its f-string writes (`{count:,}`) - and the "so far"
+ * suffix is its rendering of `in_progress`, so the two states differ by the
+ * backend's own sentence, not by anything this file made up. The record line
+ * is the one the view re-renders structurally, so these frames carry the mono
+ * path treatment too.
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
@@ -18,7 +21,7 @@ const RECORD = "~/.local-operator/sessions/cleanup.log";
 
 const finished: DelegatedCleanupNotice = {
 	message: [
-		"Cleaned up 17579 delegated sessions (subagents and background runs) older than 48 hours to save disk space.",
+		"Cleaned up 17,579 delegated sessions (subagents and background runs) older than 48 hours to save disk space.",
 		"Your own conversations were not touched.",
 		"Change or turn this off in Settings > Delegated work.",
 		`Record: ${RECORD}`,
@@ -31,12 +34,17 @@ const finished: DelegatedCleanupNotice = {
 	record: RECORD,
 };
 
+/*
+ * The draining reading: the same shape with the backend's own transforms
+ * applied - `removed` moves and the f-string groups it, `draining` gates the
+ * " so far" insertion - so the message and the structured fields cannot
+ * disagree about the count.
+ */
 const draining: DelegatedCleanupNotice = {
 	...finished,
-	message: finished.message.replace(
-		"sessions (subagents",
-		"sessions so far (subagents",
-	),
+	message: finished.message
+		.replace("17,579", "3,100")
+		.replace("sessions (subagents", "sessions so far (subagents"),
 	removed: 3100,
 	in_progress: true,
 	freed_bytes_estimate: null,

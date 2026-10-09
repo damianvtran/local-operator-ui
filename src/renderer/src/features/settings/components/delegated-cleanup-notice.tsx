@@ -4,18 +4,22 @@
  * WHY IT EXISTS. Delegated retention is ON by default, so the first launch on a
  * long-lived store removes thousands of subagent and background-run sessions the
  * reader never asked about. Silence would make that look like data loss. The
- * backend announces it once (`delegated_cleanup_notice` on the sessions list)
- * and this is where it is read.
+ * backend announces it on the sessions list (`delegated_cleanup_notice`) and this
+ * is where it is read.
  *
  * THE COPY IS THE BACKEND'S. `message` is finished sentences the terminal
  * prints too, rendered line by line and never re-worded, so the two surfaces
  * cannot say different things about the same removal. What this adds is the
- * way out: `Open settings` lands on the retention rows, and `Dismiss` is the
- * only thing that removes the notice (it is not time-limited: the server will
- * never send it again, see `delegated-cleanup-notice-store.ts`).
+ * way out: `Open settings` lands on the retention rows, and `Dismiss` clears
+ * the held copy AND acknowledges the notice for the store
+ * (`dismissDelegatedCleanupNotice`; the route keeps serving the field until
+ * that write lands, so a failed ack only means the band may reappear - there is
+ * nothing to tell the reader about it).
  *
- * `in_progress` is the backlog still draining. It changes one thing here, the
- * eyebrow, because the message already carries "so far"; the band must not
+ * `in_progress` is the backlog still draining. It does not change a word here -
+ * the message already carries "so far" - and its one effect is the
+ * `data-delegated-cleanup-notice` attribute ("draining" vs "done"), which is
+ * what the capture rigs and the stories read the state by. The band must not
  * read as a final tally while removals continue on later launches.
  *
  * Split into a view and a container for the reason the compatibility banner is
@@ -23,6 +27,7 @@
  * a story; the container owns the store and the navigation.
  */
 
+import { dismissDelegatedCleanupNotice } from "@shared/api/local-operator/desktop-api";
 import { NOTICE_BAND } from "@shared/components/common/notice-band";
 import { Alert, Button } from "@shared/components/ui";
 import { useDelegatedCleanupNoticeStore } from "@shared/store/delegated-cleanup-notice-store";
@@ -35,6 +40,16 @@ import { DELEGATED_SECTION } from "../retention-duration";
 /** Where `Open settings` lands: the section's own rows, via the page's deep link. */
 export const DELEGATED_SETTINGS_HREF =
 	"/settings?setting=session.cleanup.delegated.max_age_hours";
+
+/**
+ * The backend's own record-line label, mirrored from
+ * `delegated_retention.format_delegated_notice` ("Record: {record}").
+ *
+ * Used only to RECOGNISE the message's record line: recognition is
+ * byte-for-byte, so a backend that rewords the label simply falls back to
+ * rendering the line verbatim like every other line.
+ */
+const RECORD_LINE_PREFIX = "Record: ";
 
 export type DelegatedCleanupNoticeViewProps = {
 	notice: DelegatedCleanupNotice;
@@ -63,15 +78,31 @@ export const DelegatedCleanupNoticeView: FC<
 			<Alert variant="info" className={NOTICE_BAND}>
 				<div className="flex w-full min-w-0 items-start gap-3">
 					<div className="flex min-w-0 flex-1 flex-col gap-0.5 text-body-sm text-ink">
-						{lines.map((line, index) => (
-							// The first line is the fact; the rest are what to do about it.
-							<span
-								key={line}
-								className={index === 0 ? "text-ink" : "text-ink-muted"}
-							>
-								{line}
-							</span>
-						))}
+						{lines.map((line, index) =>
+							/*
+							 * The record line gets the machine voice its path is owed
+							 * (branding §4: paths are monospace - the same treatment `lop exec`
+							 * gets in the retention copy). Rendered from the structured field
+							 * so the path is the wire's, with the label the backend wrote; the
+							 * line is recognised byte-for-byte, so a reworded backend falls back
+							 * to the verbatim rendering below rather than being rewritten here.
+							 */
+							notice.record &&
+							line === `${RECORD_LINE_PREFIX}${notice.record}` ? (
+								<span key={line} className="text-ink-muted">
+									{RECORD_LINE_PREFIX}
+									<code className="font-mono">{notice.record}</code>
+								</span>
+							) : (
+								// The first line is the fact; the rest are what to do about it.
+								<span
+									key={line}
+									className={index === 0 ? "text-ink" : "text-ink-muted"}
+								>
+									{line}
+								</span>
+							),
+						)}
 					</div>
 					<span className="flex shrink-0 items-center gap-1">
 						<Button variant="ghost" size="sm" onClick={onOpenSettings}>
@@ -95,13 +126,12 @@ export const DelegatedCleanupNoticeView: FC<
 /** Mounted in the conversation pane beside the other notice bands. */
 export const DelegatedCleanupNoticeBand: FC = () => {
 	const notice = useDelegatedCleanupNoticeStore((state) => state.notice);
-	const dismiss = useDelegatedCleanupNoticeStore((state) => state.dismiss);
 	const navigate = useNavigate();
 	if (!notice) return null;
 	return (
 		<DelegatedCleanupNoticeView
 			notice={notice}
-			onDismiss={dismiss}
+			onDismiss={dismissDelegatedCleanupNotice}
 			onOpenSettings={() => navigate(DELEGATED_SETTINGS_HREF)}
 		/>
 	);

@@ -14,8 +14,9 @@
  *
  * Keyed by registry key, so a rename on the server makes the override stop
  * applying (the row falls back to the registry's own words) instead of
- * attaching our copy to the wrong row. `scripts/backend-settings-copy.test.mjs`
- * asserts every key named here is one the fixture carries.
+ * attaching our copy to the wrong row. `scripts/retention-duration.test.mjs`'s
+ * "copy overrides name real keys" arm asserts every key named here is one the
+ * fixture's rows carry.
  *
  * THE HELP SENTENCES CARRY THE WORDS A READER SEARCHES FOR ("retention",
  * "subagent", "delegated"): search matches label, help, key and section NAME, not

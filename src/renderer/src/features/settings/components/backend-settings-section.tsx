@@ -586,11 +586,27 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		// A filter that the destination does not match would leave the row
 		// unmounted, so the deep link wins over it: the navigation named a key,
 		// and a key that cannot be seen is not a destination.
+		//
+		// The copy folded here is the PRESENTED one (`presentSetting`), the same
+		// copy the row list and its search fold: folding the raw wire copy let a
+		// filter on a word only the registry's phrasing carries ("720" in the
+		// age row's raw help) test as a match, while the row list - which shows
+		// the desktop's wording - excluded the destination, so the reveal chased
+		// a row that never rendered (agent review round 1, F2). Warning is folded
+		// too, because the row list folds it: the two folds must admit exactly
+		// the same rows or this test contradicts the list it is about.
+		const targetShown = presentSetting(target);
 		const needle = fold(filter.trim());
 		const matchesQuery =
 			!needle ||
 			fold(
-				[target.label, target.help, target.key, target.section].join(" "),
+				[
+					targetShown.label,
+					targetShown.help,
+					target.key,
+					target.section,
+					target.warning ?? "",
+				].join(" "),
 			).includes(needle);
 		if (!matchesQuery) setFilter("");
 		setModifiedOnly(false);
@@ -623,8 +639,22 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		if (tierFor(target) === "advanced" && !showAdvanced) return false;
 		const needle = fold(filter.trim());
 		if (!needle) return true;
+		/*
+		 * The PRESENTED copy, folded exactly as `matching` and the navigation
+		 * effect above fold it - otherwise a filter that the row list DOES admit
+		 * the destination under (the desktop's wording, "retention") could read
+		 * as "not on screen yet" here and the reveal would never fire (agent
+		 * review round 1, F2).
+		 */
+		const shown = presentSetting(target);
 		return fold(
-			[target.label, target.help, target.key, target.section].join(" "),
+			[
+				shown.label,
+				shown.help,
+				target.key,
+				target.section,
+				target.warning ?? "",
+			].join(" "),
 		).includes(needle);
 	}, [focusKey, settings, filter, showAdvanced]);
 
