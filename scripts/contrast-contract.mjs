@@ -3918,7 +3918,7 @@ const inkStepPinSeen = new Set();
  *
  * @type {{control: string, ground: string, theme: string, got: number}[]}
  */
- const CONTROL_EDGE_PINNED = [];
+const CONTROL_EDGE_PINNED = [];
 const controlEdgeSeen = new Set();
 
 /**
