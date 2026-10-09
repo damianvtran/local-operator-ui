@@ -626,6 +626,8 @@ export type WakeRow = {
 	 * a write (the cancellation marks) has to tell the successor from the
 	 * predecessor, and `created_at` is what the wire carries for that
 	 * (`WakeState.created_at`, the schedule's own field).
+	 */
+	createdAt: number | null;
 	/** Deliveries left, or `null` when the recurrence is not limit-bounded. */
 	remaining: number | null;
 	/**
