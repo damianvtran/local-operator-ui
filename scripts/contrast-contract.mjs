@@ -1186,8 +1186,11 @@ const CONTROLS = [
 		 * THE RAIL'S QUIET COUNT (operator ask, 2026-09-30) — the borderless
 		 * register of the approval mark, worn by the sidebar's Browser row and by
 		 * Aida's, i.e. on the same four grounds the row above lists, and since
-		 * 2026-10-05 also by the conversation header's ask-count badge (whose ground
-		 * the row above already names: the header is `canvas`). It is a
+		 * 2026-10-05 also by the conversation header's ask-count badge — which #896
+		 * REMOVED: the asks door and its badge moved to the panel rail, where the
+		 * count wears the BORDERED `attention` register (the rail's sibling count,
+		 * per the issue), so the quiet register's wearers are the marks this row
+		 * lists and not the asks count. It is a
 		 * separate row rather than a `fill`/`border` change to the row above,
 		 * because the two marks differ in what carries them: the bordered mark's
 		 * edge WAS its boundary (its wash measured 1.00-1.19:1 on the grounds), so

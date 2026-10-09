@@ -62,11 +62,33 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
-	packages: "external",
 	jsx: "automatic",
-	// The renderer's own alias, so the bundle reads the real modules rather than a
-	// stand-in - the same alias the sibling component rigs declare.
-	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
+	/*
+	 * EVERYTHING IS BUNDLED EXCEPT THE REACT FAMILY. The drawer reads the shared
+	 * store since round-1 Q1 (`askOpenIntent`), and the store reaches `base-theme`,
+	 * which imports `@mui/material/styles` - a directory import that Node's ESM
+	 * loader refuses when it is left external; `ask-open-render.test.mjs` carries
+	 * this same list and its derivation. React stays external so the hooks inside
+	 * the bundle and the `react-dom/client` this file mounts with are ONE copy.
+	 */
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/client",
+		"react/jsx-runtime",
+		"react/jsx-dev-runtime",
+	],
+	/* A CJS module inside the bundle calls `require("react")`, which an ESM bundle
+	 * cannot satisfy on its own; the banner lets it reach the same React. */
+	banner: {
+		js: 'import { createRequire as __createRequire } from "node:module"; const require = __createRequire(import.meta.url);',
+	},
+	// The renderer's own aliases, so the bundle reads the real modules rather than a
+	// stand-in.
+	alias: {
+		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+		"@features": `${process.cwd()}/src/renderer/src/features`,
+	},
 	write: false,
 	logLevel: "silent",
 });
@@ -173,9 +195,9 @@ test("a mount over a queue with nothing to show closes itself, unless a door ope
 	 * THE DOOR: the fleet trigger is offered at ZERO outstanding asks, so a press on
 	 * it opens this surface over an empty queue ON PURPOSE - closing that mount would
 	 * be a control refusing its own door. The signal is the lane's own: the entry move
-	 * accepts the composer chip (`ASK_ITEM_SELECTOR`) or the header trigger
-	 * (`ASK_HEADER_ITEM_SELECTOR`), so the rig puts focus on the header door before
-	 * mounting, which is the state a press leaves behind.
+	 * accepts the composer chip (`ASK_ITEM_SELECTOR`) or the rail item
+	 * (`ASK_RAIL_ITEM_SELECTOR`, the header trigger until #896), so the rig puts focus
+	 * on the rail door before mounting, which is the state a press leaves behind.
 	 */
 	const pressed = [];
 	const door = document.createElement("button");

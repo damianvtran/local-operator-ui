@@ -781,6 +781,12 @@ const AppShell: FC<{
 								listOnScreen={false}
 								readerChildId={null}
 								browserAttentionCount={0}
+								/* The asks item is not offered in this frame (#896): a docs board
+								   mounts the rail with explicit inputs, and this one does not
+								   simulate a host that publishes a queue. */
+								askOffered={false}
+								askCount={0}
+								askScope="session"
 								consoleUnseenCount={0}
 								consoleUnseenPulsing={false}
 								fileCount={0}

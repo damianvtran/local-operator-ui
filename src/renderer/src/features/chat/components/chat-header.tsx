@@ -13,8 +13,6 @@ import {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 	Skeleton,
-	Tooltip,
-	countLabel,
 } from "@shared/components/ui";
 import { useHomeDirectory } from "@shared/hooks";
 import { cn } from "@shared/lib/utils";
@@ -30,8 +28,6 @@ import {
 	GitPullRequest,
 	Globe,
 	Info,
-	MessageCircleQuestion,
-	MessagesSquare,
 	MoreHorizontal,
 	Pencil,
 	Rows3,
@@ -41,7 +37,6 @@ import {
 } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
 import type { AskScope } from "../ask-queue";
-import { askHeaderToggleLabel } from "../ask-queue";
 import { isCanvasTogglePress } from "../canvas-shortcut";
 import { archiveControlLabel } from "../chat-archived";
 /*
@@ -55,6 +50,7 @@ import {
 	parseTranscriptDisplayMode,
 	transcriptDisplayModeLabel,
 } from "../transcript-display-mode";
+import { AsksScopeIcon } from "./asks/asks-scope-icon";
 import {
 	ChatHeaderIdentity,
 	type HeaderIdentityData,
@@ -224,53 +220,37 @@ type ChatHeaderProps = {
 	 */
 	onOpenCodeReview?: () => void;
 	/**
-	 * THE ASKS ENTRY POINT (operator ask, 2026-10-05): open (or close) the asks
-	 * surface, and how much it is carrying right now.
+	 * THE ASKS DOOR, AS THIS HEADER CARRIES IT NOW (#896): the control it used to
+	 * render - a trigger beside the `...` menu, badge and all - moved to the panel
+	 * rail with the four panel doors, and this prop is what the menu's asks entry
+	 * toggles (the entry's own comment argues why parity puts it there). It is the
+	 * header's remaining door to the queue, and the only one a narrow window has.
 	 *
-	 * IT OPENS A SURFACE RATHER THAN NAVIGATING, which is why it lives in this
-	 * cluster at all. The row it replaces in the sidebar was a destination-shaped
-	 * row whose press already opened a pane (`paneDoor`), and the small panel glyph
-	 * it carried beside the label was the tell the operator read: it was always
-	 * meant to OPEN a surface rather than BE one. A header control that toggles the
-	 * drawer says that directly, and the pane it opens is the family's second scope
+	 * IT OPENS A SURFACE RATHER THAN NAVIGATING, which is why it was in this cluster
+	 * at all. The row it replaced in the sidebar was a destination-shaped row whose
+	 * press already opened a pane (`paneDoor`), and the small panel glyph it carried
+	 * beside the label was the tell the operator read: it was always meant to OPEN a
+	 * surface rather than BE one. The pane it opens is the family's second scope
 	 * (`AskScope`), so one control serves both queues rather than a route for one.
 	 *
-	 * `asksScope` is what the CONTROL reports, not a second door: it rides the same
-	 * `setAskDrawerOpen(open, scope)` the store already keeps, so the surface paints
-	 * the queue the door promised. `asksAttentionCount` is the outstanding count for
-	 * THAT scope - the only difference between the two readings is which queue is
-	 * counted, which is exactly the operator's own split ("in a session... the asks
-	 * for that session; if you go back up, the total").
-	 *
-	 * WHAT THE BADGE COUNTS IS THE OUTSTANDING SET, decided rather than inherited
-	 * (design round 1, D3). The operator's words were "how many asks there are", and
-	 * the number here is `open` plus `timed_out` - the backend's outstanding fold -
-	 * rather than the session's total ask count. The reason is that the badge is an
-	 * ATTENTION mark and every row in that fold is still the user's to act on: a
-	 * timed-out ask takes a late answer and a decline exactly as an open one does
-	 * (`AskPresentation.canAnswer`), so a badge that dropped those rows would hide
-	 * work the surface behind it still offers. A settled ask offers nothing, and the
-	 * settled count is on the filter inside the surface - which is where a history
-	 * number belongs, not on a door. The tooltip and the announced name therefore say
-	 * "waiting or moved on" (the outstanding population, in the phrase the removed
-	 * rail row used) rather than "waiting", which this module reserves for the
-	 * agent-still-waiting subset that excludes a moved-on ask.
+	 * `asksScope` is what the header still REPORTS, not a second door: it rides the
+	 * same `setAskDrawerOpen(open, scope)` the store already keeps, so the surface
+	 * paints the queue the door promised - and it picks the menu row's glyph, the
+	 * control's only remaining state mark (`AsksScopeIcon`).
 	 *
 	 * ABSENT means the host has no asks to offer (a backend that publishes none, or
-	 * a draft on a backend that answers no aggregate route), and the control is then
-	 * not rendered at all - the same fail-closed rule the row it replaces kept, and
-	 * the same one the composer chip follows: no affordance that can never be
-	 * satisfied.
+	 * a draft on a backend that answers no aggregate route), and the menu entry is
+	 * then not rendered at all - the same fail-closed rule the trigger it replaces
+	 * kept, and the same one the composer chip follows: no affordance that can never
+	 * be satisfied.
 	 */
 	onToggleAsks?: () => void;
-	asksAttentionCount?: number;
-	/** Which queue that count belongs to, so the tooltip and the announced name say
-	 * which set the number describes - the sidebar row's `All asks` label and
-	 * `across all conversations` sentence, now spoken by the control. */
+	/** Which queue the asks door opens, so the menu row's glyph says which set it
+	 * will show - the sidebar row's `All asks` label and `across all conversations`
+	 * sentence, now spoken by the rail item and this row. */
 	asksScope?: AskScope;
-	/** Whether the asks surface is up, so the trigger reports `aria-expanded` and the
-	 * tooltip can say `Close asks` rather than `Open asks` - the toggle idiom the
-	 * browser trigger beside it already keeps (its count stays visible while open). */
+	/** Whether the asks surface is up, so the menu row can say `Close asks` rather
+	 * than `Open asks` - the toggle idiom the browser row beside it already keeps. */
 	asksOpen?: boolean;
 	/**
 	 * Whether THIS conversation is archived, as the pane knows it, and whether the
@@ -335,7 +315,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	onOpenConsole,
 	onOpenCodeReview,
 	onToggleAsks,
-	asksAttentionCount = 0,
 	asksScope = "session",
 	asksOpen = false,
 }) => {
@@ -437,48 +416,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		document.addEventListener("keydown", onKeyDown);
 		return () => document.removeEventListener("keydown", onKeyDown);
 	}, [onOpenOptions, setCanvasOpen]);
-
-	/*
-	 * THE ASKS TRIGGER'S OWN THREE FACTS, computed here beside the browser
-	 * trigger's for the reason that block gives: the count a badge SHOWS is capped
-	 * while the sentence that reads it is not, and the control is present whenever
-	 * a host offered a door (see `onToggleAsks`).
-	 */
-	const asksButtonShown = Boolean(onToggleAsks);
-	const asksBadgeDrawn = asksAttentionCount > 0;
-	const asksBadgeText = countLabel(asksAttentionCount, 9);
-	/*
-	 * THE SCOPE IS LEGIBLE ON THE CONTROL, not only under the pointer (UX round 1,
-	 * U3). Two controls that open two different queues used to render identical
-	 * chrome - one glyph, one number - so which queue the badge described could only
-	 * be learned by hovering. The GLYPH now carries it, because a control in this
-	 * cluster has one mark to spend and a second line of chrome would be a new idiom
-	 * in a row of icon buttons: a conversation's asks keep the single question bubble
-	 * and the top level's take a stack of them, which is the same "one conversation"
-	 * against "all conversations" distinction the tooltip and the drawer's bar make in
-	 * words. Nothing else moves - the count, the offset and the ring are the browser
-	 * trigger's, so the two scopes still read as one control in two contexts.
-	 */
-	const AsksScopeIcon =
-		asksScope === "fleet" ? MessagesSquare : MessageCircleQuestion;
-	/* ONE DERIVATION, TWO READERS: the tooltip and the announced name print the same
-	 * sentence, so the hover text and what a screen reader hears cannot disagree about
-	 * the verb, the scope or the number.
-	 *
-	 * THE SENTENCE ITSELF IS THE CONTRACT MODULE'S (QA round 2, Q2-1). It used to be
-	 * composed here, which left the one string this lane makes a promise about - "the
-	 * two controls can never be one string" - with no CI instrument (the only `Open
-	 * asks` under `scripts/` was a stand-in's `textContent`). `askHeaderToggleLabel`
-	 * is now that composition beside every other sentence of the lane's copy, and
-	 * `scripts/ask-queue.test.mjs` pins its four shapes; this block keeps only the
-	 * reason the two readers share it. The `\u2014` and the subject's own words are the
-	 * function's, so the tooltip and the bar cannot drift into two names for one queue.
-	 */
-	const asksLabel = askHeaderToggleLabel({
-		open: asksOpen,
-		scope: asksScope,
-		count: asksAttentionCount,
-	});
 
 	/*
 	 * THE INLINE RENAME (the operator's report, 2026-09-26): "the rename
@@ -1104,39 +1041,35 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				{deviceSlot}
 			</div>
 			{/*
-			 * The header's action cluster: the `...` menu and the Asks trigger, as one
-			 * group at the end of the bar. The cluster carries the `ml-auto` so the actions
-			 * sit together instead of being pinned to opposite ends of whatever else the
-			 * bar holds.
+			 * The header's action cluster: the `...` menu, as one group at the end of the
+			 * bar. The cluster carries the `ml-auto` so the actions sit together instead
+			 * of being pinned to opposite ends of whatever else the bar holds.
 			 *
-			 * THE FOUR PANEL TRIGGERS ARE NOT HERE ANY MORE (#872). Run details, Browser,
-			 * Console and Canvas moved to the panel rail at the window's right edge
-			 * (`shared/components/navigation/panel-rail.tsx`), and so did the shed ladder
-			 * that dropped them one by one as this row narrowed: a permanent column has
-			 * nothing to shed. What stays is the `...` menu below, which still lists all
-			 * four - it is now the keyboard and narrow-window door to them rather than the
-			 * overflow of a ladder - and the Asks trigger, which is a different surface
-			 * (a queue, in one of two scopes) with its own badge.
+			 * THE FIFTH DOOR LEFT THIS CLUSTER IN #896. Run details, Browser, Console and
+			 * Canvas moved to the panel rail at the window's right edge (#872,
+			 * `shared/components/navigation/panel-rail.tsx`) with the shed ladder that
+			 * dropped them one by one as this row narrowed - a permanent column has
+			 * nothing to shed - and the Asks trigger, the last of the five, followed them
+			 * (#896): it opened the same right slot through the same swap, so it belongs
+			 * where the slot's other doors are. What stays is the `...` menu below, which
+			 * lists all five in every state: it is now the keyboard and narrow-window
+			 * door to the rail's family rather than the overflow of a ladder, and its
+			 * asks row is the header's remaining asks door (#896).
 			 */}
 			<div
 				data-titlebar-no-drag=""
-				className={cn(
-					"ml-auto flex items-center",
-					/*
-					 * THE RULE THIS APPLIES. The container pays only for ink that would
-					 * otherwise land in a NEIGHBOUR'S BOX - not for every child that paints
-					 * outside itself. The ask mark hangs 10px past the Asks trigger's corner and
-					 * the 8px gap would let its box enter the next control's hover target (design
-					 * round 1, D1), so 12px is owed while the mark is drawn. 8px is the
-					 * within-a-component step of branding.md's 4px ramp; the room is the
-					 * CONTAINER's (branding.md section 5), never a margin on the control.
-					 *
-					 * The `...` menu is the only neighbour the mark can reach now that the
-					 * browser, console and canvas buttons left for the rail (#872), so the
-					 * widened step is paid only toward the menu's side, exactly as before.
-					 */
-					asksBadgeDrawn ? "gap-3" : "gap-2",
-				)}
+				/*
+				 * THE CLUSTER'S STEP IS THE 8px WITHIN-COMPONENT STEP, FLAT (#896). It used
+				 * to widen to 12px while the ask mark's 10px corner overhang was drawn: the
+				 * rule is that the container pays only for ink that would otherwise land in
+				 * a NEIGHBOUR'S BOX, and not for every child that paints outside itself. The
+				 * mark moved to the rail with its trigger, and nothing left here paints
+				 * outside its own box (the archived pill and the menu trigger both stay
+				 * inside theirs), so no widened step is owed - and the room for a control's
+				 * surroundings is the CONTAINER's (branding.md section 5), never a margin on
+				 * the control.
+				 */
+				className="ml-auto flex items-center gap-2"
 			>
 				{/*
 				 * THE ARCHIVED STATE, and its restore control, as a PAIR.
@@ -1203,6 +1136,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				{(archiveEnabled ||
 					deleteEnabled ||
 					runDetails ||
+					onToggleAsks ||
 					onToggleBrowser ||
 					onOpenConsole ||
 					onOpenOptions) && (
@@ -1381,12 +1315,18 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							{/*
 							 * THE RIGHT-SLOT ACTIONS, SO NOTHING IS UNREACHABLE AT 800.
 							 *
-							 * The four panels have a permanent rail at the window's right edge
+							 * The five panels have a permanent rail at the window's right edge
 							 * (#872), and this menu is their KEYBOARD AND MENU DOOR: the rail is not
 							 * an F6 region (`CHAT_REGIONS`), so this is how a reader who is working
 							 * in the header reaches a panel without leaving it. It holds EVERY one
-							 * of the four in EVERY state, the property that made it the overflow of
+							 * of the five in EVERY state, the property that made it the overflow of
 							 * the old shed ladder and still makes it a complete second door.
+							 *
+							 * ASKS JOINED IN #896, when its trigger left the header for the rail.
+							 * Parity is why: this menu is documented as holding every rail item in
+							 * every state, and with the trigger gone this row is the ONLY asks door
+							 * the header has - without it the header would offer no way to reach
+							 * the queue at all, and the narrow window has no rail to fall back on.
 							 *
 							 * They open through the SAME store fields the rail's items write
 							 * (`claimRightSlot` clears the other panes), so the two paths
@@ -1395,6 +1335,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 * "Browser" would make a screen reader ask what pressing it does.
 							 */}
 							{(runDetails ||
+								onToggleAsks ||
 								onToggleBrowser ||
 								onOpenConsole ||
 								onOpenCodeReview ||
@@ -1403,6 +1344,20 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								<DropdownMenuItem onSelect={() => setRunPanelOpen(true)}>
 									<Info aria-hidden="true" />
 									<span>Run details</span>
+								</DropdownMenuItem>
+							)}
+							{onToggleAsks && (
+								/*
+								 * THE ASKS ROW (#896): the trigger's move onto the rail (see the rail's
+								 * contract comment) leaves the header this one door, and it is offered
+								 * on the same `onToggleAsks` presence the trigger was - absent, never
+								 * disabled, where the host offers no asks. The glyph is the scope's own
+								 * mark (`AsksScopeIcon`, the single pairing the rail item also draws),
+								 * and the label states the ACTION in the pane's direction.
+								 */
+								<DropdownMenuItem onSelect={() => onToggleAsks()}>
+									<AsksScopeIcon scope={asksScope} aria-hidden={true} />
+									<span>{asksOpen ? "Close asks" : "Open asks"}</span>
 								</DropdownMenuItem>
 							)}
 							{onToggleBrowser && (
@@ -1453,112 +1408,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							)}
 						</DropdownMenuContent>
 					</DropdownMenu>
-				)}
-				{/*
-				 * THE ASKS TRIGGER (operator ask, 2026-10-05), moved here from the sidebar's
-				 * top-level `All asks` row.
-				 *
-				 * WHY IT MOVED, in the operator's own terms: the nav column already carried
-				 * ten rows competing for it, so this is a SPACE GAIN on an over-subscribed
-				 * column, not a tidy-up. And the row was already a disclosure wearing a
-				 * destination's clothes - it carried a panel glyph beside its label and its
-				 * press opened a pane (`paneDoor`), which the operator read as "it was always
-				 * meant to OPEN a surface rather than be one". This cluster is where the
-				 * controls that open the window's right panes already live, so the control
-				 * joins that family rather than minting a third idiom for one action.
-				 *
-				 * IT CARRIES THE COUNT FOR WHICHEVER QUEUE ITS SCOPE NAMES (`asksScope`), which
-				 * is the operator's own split: inside a conversation the count and the pane are
-				 * THAT conversation's; back up at the top level (a draft, with no conversation
-				 * open) they are the whole fleet's. One control, one store flag, two scopes -
-				 * the same `AskScope` seam the drawer already reads, reused rather than a
-				 * second scope written for the header.
-				 *
-				 * NO CONTAINER-QUERY YIELD, deliberately: the badge is an ATTENTION mark, and a
-				 * control that vanished at the width where a reader is likeliest to be working
-				 * in a narrow window would hide the number the mark exists to show. It sits at
-				 * the always-visible end of the cluster, left of the console and canvas buttons
-				 * that do shed at narrow widths.
-				 */}
-				{asksButtonShown && (
-					<Tooltip content={asksLabel} side="top">
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={onToggleAsks}
-							/* The name carries the verb, the scope and the number, for the same
-							   reason the browser trigger's does: the badge is the glance, the label is
-							   what a screen reader is told. */
-							aria-label={asksLabel}
-							aria-expanded={asksOpen}
-							/*
-							 * THE DOOR'S OWN ANCHOR (`ASK_HEADER_ITEM_SELECTOR`). The drawer's
-							 * entry move runs only when the mount finds focus ALREADY on the control
-							 * the user pressed, so this tag is what lets Escape be consumed inside the
-							 * pane when the surface was opened from the header rather than from the
-							 * composer chip - without it the press reaches the interrupt ladder and
-							 * stops the running turn (UX round 1, U1 / agent review round 1, F1).
-							 */
-							data-tour-tag="ask-pane-trigger"
-							/*
-							 * WHICH QUEUE THIS DOOR OPENS, on the element, so the scope-legibility claim
-							 * (UX round 1, U3) is assertable rather than read off pixels: a rig compares
-							 * this attribute AND the glyph between the two stories, which is what "the
-							 * scope is on the control" means.
-							 */
-							data-ask-scope={asksScope}
-							className={cn("relative")}
-						>
-							{/* The scope's own mark: see `AsksScopeIcon` for why the glyph carries it,
-							    and the tooltip/announced name for the same distinction in words. */}
-							<AsksScopeIcon aria-hidden={true} />
-							{/* THE QUIET COUNT REGISTER, MEASURED TO FIT THE BAND (operator defect,
-							    2026-10-05: the "3" clipped at the top by its container). The
-							    mark wore the bordered `attention` pill, whose box topped out
-							    2.3px above the band's edge and whose ring reached 4.3px above
-							    it - the sliver the operator's screenshot shows cut - and it read
-							    as a heavier variant beside the sidebar's own counts. It is now
-							    the same `attentionQuiet` register the rail's notification count
-							    and the team mark wear (borderless, `elevated` fill, `ink-dim`,
-							    `text-meta-sm`), with its offset lowered so the whole box sits
-							    INSIDE the band: box top -2.3 -> +2 at `-top-0.5`, the wrapper
-							    `flex` and shrink-wrapping the badge so the offset IS the
-							    placement - the old `-top-1.5` only landed at +2 by borrowing
-							    ~4px of the trigger's inherited line box, so a typography change
-							    there could have moved the mark (design round 1, D5, remediated
-							    here). `-right-2.5` is unchanged, so the mark still hangs on
-							    the corner, and the row's height is untouched. The ring is gone,
-							    so the box IS the painted edge; the contrast pairs are the quiet
-							    row's own in `scripts/contrast-contract.mjs` (`inkDim` on
-							    `elevated`, and the header's ground is that row's `canvas`).
-							    The browser trigger KEEPS the bordered mark: its ring is what
-							    separates it from neighbouring icons and the wash is the
-							    feature's "an agent is blocked on you" meaning (the rail's own
-							    note carries that split), so the cluster now wears the two
-							    registers on purpose rather than by drift.
-							    THE ROOM THE MARK COSTS (design round 1, D1, remediated here):
-							    its corner overhang is 10px, which is 2px past an 8px gap, so
-							    while it is drawn the cluster widens its step rather than letting
-							    the box enter the browser trigger's hover target - see the
-							    cluster's own comment for the rule and the price. */}
-							{asksBadgeDrawn && (
-								<span
-									className={cn(
-										"pointer-events-none absolute -top-0.5 -right-2.5 flex",
-									)}
-								>
-									<Badge
-										variant="attentionQuiet"
-										shape="pill"
-										size="count"
-										data-tour-tag="ask-pane-badge"
-									>
-										{asksBadgeText}
-									</Badge>
-								</span>
-							)}
-						</Button>
-					</Tooltip>
 				)}
 			</div>
 			{/*

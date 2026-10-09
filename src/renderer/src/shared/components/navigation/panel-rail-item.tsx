@@ -40,7 +40,7 @@ export type PanelRailItemProps = Omit<
 	ButtonHTMLAttributes<HTMLButtonElement>,
 	"aria-label" | "aria-pressed" | "children"
 > & {
-	/** The item's identity in the rail's order: `run`, `browser`, `console`, `canvas`, `code`. */
+	/** The item's identity in the rail's order: `run`, `ask`, `browser`, `console`, `canvas`, `code`. */
 	id: string;
 	/** The tooltip body: the sentence a pointer reads. */
 	label: ReactNode;
@@ -105,10 +105,14 @@ export const PanelRailItem = forwardRef<HTMLButtonElement, PanelRailItemProps>(
 		 * on close, on unmount, and when the item goes absent. The cost is the page
 		 * flash the policy header names as unmeasured (probe P11).
 		 *
-		 * AND ONLY WHEN IT REACHES THE VIEW (design round 2, D11). At 1280x900 only the
-		 * Canvas item's tooltip overlaps the view's rect; the other three end above it,
-		 * and on a draft none does, so registering for all four blanked the page for a
-		 * hint that never touched it. `useSuppressBrowserViewWhileReaching` measures the
+		 * AND ONLY WHEN IT REACHES THE VIEW (design round 2, D11). At the 1280x900
+		 * geometry the round measured (the four-item rail), only the LAST item's tooltip
+		 * (Canvas) overlapped the view's rect; the others ended above it, and on a draft
+		 * none does, so registering for all of them blanked the page for a hint that never
+		 * touched it. #896 added a FIFTH item above the lower three, which shifts each
+		 * lower tooltip down by one pitch: which items cross the view's top edge is the
+		 * measurement's to say (the evidence pass re-derives the numbers), and the
+		 * mechanism below never assumed a fixed count. `useSuppressBrowserViewWhileReaching` measures the
 		 * open tooltip's painted box against the rect the browser surface reports to
 		 * main, and ends the registration on pointer-leave / window blur as well as on
 		 * close (a tooltip left open by an exit through the window edge would otherwise

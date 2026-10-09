@@ -53,10 +53,12 @@ const bundle = await build({
 			export { PanelRailFrame } from "./${NAV}/panel-rail-frame";
 			export { suppressedOverlayIds, registerBrowserViewRect, overlapsBrowserView } from "./src/renderer/src/shared/browser-view-policy";
 			export { ChatHeader } from "./src/renderer/src/features/chat/components/chat-header";
+			export { AskDrawer } from "./src/renderer/src/features/chat/components/asks/ask-drawer";
 			export { Tooltip, TooltipProvider } from "./src/renderer/src/shared/components/ui/tooltip";
 			export { ChatLayout } from "./src/renderer/src/shared/components/common/chat-layout";
 			export { InPanelRailHost, PanelRailHostContext } from "./${NAV}/panel-rail-host";
-			export { browserRailLabels, canvasRailLabels, consoleRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
+			export { askRailLabels, browserRailLabels, canvasRailLabels, consoleRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
+			export { askRailToggleLabel, askScopeSubject, ASK_RAIL_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";
 			export { useUiPreferencesStore, resolveDrawnRightSlotPane } from "./src/renderer/src/shared/store/ui-preferences-store";
 			export { deriveRunDetails } from "./${RUN}/run-detail-model";
 			export * as fixtures from "./${RUN}/run-details.fixtures";
@@ -103,9 +105,13 @@ const {
 	Tooltip,
 	TooltipProvider,
 	ChatHeader,
+	AskDrawer,
 	ChatLayout,
 	InPanelRailHost,
 	PanelRailHostContext,
+	askRailLabels,
+	askRailToggleLabel,
+	ASK_RAIL_ITEM_SELECTOR,
 	browserRailLabels,
 	canvasRailLabels,
 	consoleRailLabels,
@@ -295,10 +301,22 @@ const NO_PANES = {
 	isConsolePaneOpen: false,
 	isCodeReviewPaneOpen: false,
 	isAskDrawerOpen: false,
+	askDrawerScope: "session",
 	askDrawerEvictedPane: null,
 };
 const details = () => deriveRunDetails(fixtures.settled());
 
+/*
+ * The rail as the chat surface mounts it (#896): the asks item is OFFERED by
+ * default, because that is the app's normal state where a host publishes a queue -
+ * the cells that need it absent (proving offered-gating) pass `askOffered: false`,
+ * and the cells that need a count pass it. A draft was never reachable with an
+ * unoffered item before this, so offering it here is what keeps the fifth item
+ * under test in the same mounts as its four siblings.
+ *
+ * The code door's own harness contract (#927) keeps the `sessionId` override the
+ * draft cells use, and derives the offer from the session as `chat-content` does.
+ */
 const rail = (overrides = {}) => {
 	const { sessionId = "session-1", ...rest } = overrides;
 	return React.createElement(PanelRail, {
@@ -308,6 +326,9 @@ const rail = (overrides = {}) => {
 		listOnScreen: false,
 		readerChildId: null,
 		browserAttentionCount: 0,
+		askOffered: true,
+		askCount: 0,
+		askScope: "session",
 		consoleUnseenCount: 0,
 		consoleUnseenPulsing: false,
 		fileCount: 0,
@@ -342,12 +363,21 @@ test("the rail is ONE vertical toolbar with a name, in the fixed order", async (
 		assert.equal(toolbar.getAttribute("aria-label"), "Panels");
 		assert.deepEqual(api.ids(), [
 			"run",
+			"ask",
 			"browser",
 			"console",
 			"canvas",
 			"code",
 		]);
+
 		assert.deepEqual(api.ids(), [...PANEL_RAIL_ORDER]);
+		/* The asks item sits SECOND (#896), its historical slot: the pre-#872 header
+		   ran Run -> Asks -> Browser -> Console -> Canvas. */
+		assert.equal(
+			api.ids()[1],
+			"ask",
+			"the fifth door returned to its old position",
+		);
 	});
 });
 
@@ -362,7 +392,7 @@ test("one tab stop: exactly one item is tabbable, and it follows focus", async (
 		assert.equal(
 			api.items().filter((item) => item.getAttribute("tabindex") === "-1")
 				.length,
-			4,
+			5,
 		);
 		/* Focus entering on another item (a click, a pointer) moves the stop with it. */
 		act(() => api.item("console").focus());
@@ -379,13 +409,15 @@ test("ArrowUp/ArrowDown walk the items, Home/End take the ends, and the walk is 
 		const active = () => api.document.activeElement?.dataset?.panelRailItem;
 		act(() => api.item("run").focus());
 		await api.key(api.item("run"), "ArrowDown");
+		assert.equal(active(), "ask", "the ask item is the second stop (#896)");
+		await api.key(api.item("ask"), "ArrowDown");
 		assert.equal(active(), "browser");
 		await api.key(api.item("browser"), "ArrowDown");
 		assert.equal(active(), "console");
 		await api.key(api.item("console"), "ArrowUp");
 		assert.equal(active(), "browser");
 		await api.key(api.item("browser"), "End");
-		assert.equal(active(), "code", "the fifth item is the last");
+		assert.equal(active(), "code", "the sixth item is the last");
 		await api.key(api.item("code"), "ArrowDown");
 		assert.equal(active(), "code", "bounded at the end, not wrapping");
 		await api.key(api.item("code"), "Home");
@@ -408,13 +440,16 @@ test("ArrowUp/ArrowDown walk the items, Home/End take the ends, and the walk is 
 	});
 });
 
-test("aria-pressed follows each of the five store flags, one at a time", async () => {
+test("aria-pressed follows each of the six store flags, one at a time", async () => {
 	await mount(async (api) => {
 		for (const [flag, id] of [
 			["isRunPanelOpen", "run"],
 			["isBrowserPaneOpen", "browser"],
 			["isConsolePaneOpen", "console"],
 			["isCanvasOpen", "canvas"],
+			/* The fifth state (#896): the drawer holds the slot, so the ASKS item is the
+			   lit one - the fix the issue names, where the rail used to light nothing. */
+			["isAskDrawerOpen", "ask"],
 			["isCodeReviewPaneOpen", "code"],
 		]) {
 			reset(api);
@@ -456,6 +491,47 @@ test("pressing an item claims the slot: the others are cleared, and a second pre
 		);
 		await api.click(api.item("run"));
 		assert.deepEqual(api.pressed(), ["run"]);
+		/* THE ASKS ITEM IS THE HEADER TRIGGER'S OLD DOOR (#896), verbatim: a toggle in
+		   ITS scope - it closes when this scope is open, replaces the OTHER scope's open
+		   (open=true for this one), and claims the slot from any sibling. */
+		await api.click(api.item("ask"));
+		assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, true);
+		assert.equal(useUiPreferencesStore.getState().askDrawerScope, "session");
+		assert.deepEqual(
+			api.pressed(),
+			["ask"],
+			"the open drawer lights its own item, not its neighbours",
+		);
+		await api.click(api.item("ask"));
+		assert.equal(
+			useUiPreferencesStore.getState().isAskDrawerOpen,
+			false,
+			"a second press closes its own drawer",
+		);
+		assert.deepEqual(
+			api.pressed(),
+			["run"],
+			"and the borrowed slot is HANDED BACK: the drawer closed itself and the run panel it displaced returned (the store's borrow rule, unchanged by the move)",
+		);
+		/* Open in the OTHER scope: the press REPLACES the scope rather than closing. */
+		api.store({ isAskDrawerOpen: true, askDrawerScope: "fleet" });
+		await api.click(api.item("ask"));
+		assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, true);
+		assert.equal(
+			useUiPreferencesStore.getState().askDrawerScope,
+			"session",
+			"the press re-opens in this item's scope",
+		);
+		assert.deepEqual(api.pressed(), ["ask"]);
+		/* And the drawer's claim is cleared by a sibling's press, as `claimRightSlot`
+		   writes it: pressing any other item is a swap. */
+		await api.click(api.item("browser"));
+		assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, false);
+		assert.deepEqual(
+			api.pressed(),
+			["browser"],
+			"a swap clears the drawer's claim",
+		);
 	});
 });
 
@@ -467,6 +543,7 @@ test("a claimed pane the route cannot draw lights NOTHING (the drawable-aware se
 			"isBrowserPaneOpen",
 			"isConsolePaneOpen",
 			"isCanvasOpen",
+			"isAskDrawerOpen",
 			"isCodeReviewPaneOpen",
 		]) {
 			reset(api, { mounted: false, runDetails: false, session: false });
@@ -501,8 +578,8 @@ test("a panel the route cannot draw is ABSENT, not disabled", async () => {
 		await api.render(rail({ runDetails: null, sessionId: null }));
 		assert.deepEqual(
 			api.ids(),
-			["browser", "canvas"],
-			"Run details and Console are absent on {mounted, !runDetails, !session}",
+			["ask", "browser", "canvas"],
+			"Run details and Console are absent on {mounted, !runDetails, !session}; the asks item is present because THIS host offers it - its rule is the host's, not the route's (see its own cell below)",
 		);
 		for (const item of api.items()) {
 			assert.equal(item.disabled, false);
@@ -514,7 +591,142 @@ test("a panel the route cannot draw is ABSENT, not disabled", async () => {
 		   (and the code review door, which needs only the session - §M.1). */
 		reset(api, { mounted: true, runDetails: false, session: true });
 		await api.render(rail({ runDetails: null }));
-		assert.deepEqual(api.ids(), ["browser", "console", "canvas", "code"]);
+		assert.deepEqual(api.ids(), [
+			"ask",
+			"browser",
+			"console",
+			"canvas",
+			"code",
+		]);
+	});
+});
+
+/*
+ * THE ASKS ITEM'S OWN RULE (#896): PRESENT iff a host offers a door - the header
+ * trigger's old "offered" gate (`published`/`answered`, resolved by `chat-content`)
+ * - and its two labels carry the scope and the count. Asserted on BOTH scopes,
+ * because the scope is the one fact that makes two renders of one control describe
+ * two different queues (UX round 1, U3), and on the tag, because the drawer's
+ * focus-return anchor and Escape door attach to it (#820/#835's contract, moved with
+ * the control).
+ */
+test("the asks item follows the host's offer, and its labels carry the scope and the count", async () => {
+	await mount(async (api) => {
+		reset(api);
+		await api.render(rail({ askOffered: false }));
+		assert.equal(
+			api.item("ask"),
+			null,
+			"absent, not disabled, where no host offers a door",
+		);
+		assert.deepEqual(api.ids(), [
+			"run",
+			"browser",
+			"console",
+			"canvas",
+			"code",
+		]);
+		await api.render(
+			rail({ askOffered: true, askCount: 3, askScope: "session" }),
+		);
+		const offered = api.item("ask");
+		assert.ok(offered, "offered: the item is present");
+		assert.equal(offered.getAttribute("data-tour-tag"), "ask-pane-trigger");
+		assert.ok(
+			offered.matches(ASK_RAIL_ITEM_SELECTOR),
+			"the drawer's entry/return path resolves to this item's tag",
+		);
+		assert.equal(offered.getAttribute("data-ask-scope"), "session");
+		assert.equal(
+			offered.getAttribute("aria-label"),
+			"Asks, This conversation, 3 waiting or moved on",
+			"the name is the stable noun + scope + count (U2); no verb",
+		);
+		assert.equal(
+			offered.getAttribute("aria-pressed"),
+			"false",
+			"open/closed is `aria-pressed`'s to say, once",
+		);
+		await api.render(
+			rail({ askOffered: true, askCount: 11, askScope: "fleet" }),
+		);
+		assert.equal(
+			api.item("ask").getAttribute("aria-label"),
+			"Asks, All conversations, 11 waiting or moved on",
+		);
+		assert.equal(api.item("ask").getAttribute("data-ask-scope"), "fleet");
+		/* Zero still names its subject (U3): the scope word is what says WHICH queue
+		   the quiet door opens. */
+		await api.render(
+			rail({ askOffered: true, askCount: 0, askScope: "fleet" }),
+		);
+		assert.equal(
+			api.item("ask").getAttribute("aria-label"),
+			"Asks, All conversations",
+		);
+	});
+});
+
+/*
+ * THE VERB IS THE ITEM'S OWN SCOPE, THE LIT STATE IS THE SLOT'S (round-1 N1).
+ * While the OTHER scope's drawer is carried onto this conversation the item is
+ * the lit one - the drawer holds the slot, so `aria-pressed` reads true - but
+ * its press RE-SCOPES rather than closes, so the tooltip must read `Open` while
+ * the light stays on; same scope, the press closes and the verb flips. This is
+ * the header trigger's reading before the move, restored in the one state where
+ * the two facts genuinely differ. The tooltip is read OPEN (focus, the app's
+ * own keyboard path), because that is the string a reader actually gets - the
+ * accessible name deliberately carries no verb (U2).
+ */
+test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows the slot (N1)", async () => {
+	await mount(async (api) => {
+		reset(api);
+		await api.render(
+			rail({ askOffered: true, askCount: 2, askScope: "session" }),
+		);
+		const tooltip = () => api.$('[role="tooltip"]')?.textContent ?? null;
+		act(() => api.item("ask").focus());
+		await frames(30);
+		assert.equal(
+			tooltip(),
+			"Open asks — This conversation, 2 waiting or moved on",
+			"closed: the item offers the open",
+		);
+		assert.equal(api.item("ask").getAttribute("aria-pressed"), "false");
+
+		/* The carried cross-scope state: a fleet drawer is up over this conversation. */
+		api.store({ isAskDrawerOpen: true, askDrawerScope: "fleet" });
+		await frames(2);
+		assert.equal(
+			tooltip(),
+			"Open asks — This conversation, 2 waiting or moved on",
+			"cross-scope: the press re-scopes, so the verb stays the action it will take",
+		);
+		assert.equal(
+			api.item("ask").getAttribute("aria-pressed"),
+			"true",
+			"while the slot-wide light says a drawer is up",
+		);
+
+		/* Same scope: the press closes this scope's drawer. */
+		api.store({ isAskDrawerOpen: true, askDrawerScope: "session" });
+		await frames(2);
+		assert.equal(
+			tooltip(),
+			"Close asks — This conversation, 2 waiting or moved on",
+			"same-scope: the press closes, and now the verb says so",
+		);
+		assert.equal(api.item("ask").getAttribute("aria-pressed"), "true");
+
+		/* Closed again. */
+		api.store({ isAskDrawerOpen: false });
+		await frames(2);
+		assert.equal(
+			tooltip(),
+			"Open asks — This conversation, 2 waiting or moved on",
+		);
+		assert.equal(api.item("ask").getAttribute("aria-pressed"), "false");
+		act(() => api.item("ask").blur());
 	});
 });
 
@@ -560,6 +772,36 @@ test("the tooltips are the header's verbatim; the accessible names are stable no
 	);
 	assert.equal(canvasRailLabels(false, 4, "⌘⇧C").aria, "Canvas (⌘⇧C), 4 files");
 	assert.equal(canvasRailLabels(true, 0, "⌘⇧C").aria, "Canvas (⌘⇧C)");
+	/*
+	 * THE ASKS ITEM (#896): the tooltip is the DOOR'S OWN SENTENCE from `ask-queue.ts`
+	 * and the name is the stable noun + scope + count. The third shape is the U3
+	 * promise restated on the rail: at ZERO it still names its scope, which is what
+	 * keeps it distinct from the drawer's own `Close asks` dismiss.
+	 */
+	assert.deepEqual(askRailLabels(false, "session", 1), {
+		tooltip: "Open asks — This conversation, 1 waiting or moved on",
+		aria: "Asks, This conversation, 1 waiting or moved on",
+	});
+	assert.deepEqual(askRailLabels(true, "fleet", 2), {
+		tooltip: "Close asks — All conversations, 2 waiting or moved on",
+		aria: "Asks, All conversations, 2 waiting or moved on",
+	});
+	assert.deepEqual(askRailLabels(false, "session", 0), {
+		tooltip: "Open asks — This conversation",
+		aria: "Asks, This conversation",
+	});
+	assert.notEqual(
+		askRailLabels(true, "session", 0).tooltip,
+		"Close asks",
+		"the rail door must never be the same string as the pane's own dismiss",
+	);
+	/* THE TOOLTIP IS THE REUSE ITSELF, not a second spelling: `askRailLabels` prints
+	   `ask-queue.ts`'s composer for the same state, so the two cannot drift. */
+	assert.equal(
+		askRailLabels(true, "session", 0).tooltip,
+		askRailToggleLabel({ open: true, scope: "session", count: 0 }),
+		"one derivation: the rail's tooltip IS ask-queue's sentence",
+	);
 	/* And the DOM: the NAME is stable and `aria-pressed` alone carries open/closed (U2). */
 	await mount(async (api) => {
 		reset(api);
@@ -632,11 +874,44 @@ test("the browser badge: the count, capped at 9+ on the glyph, ringed in the rai
 	});
 });
 
-test("while the Asks drawer holds the slot NOTHING is lit, and a press is a swap", async () => {
+test("the ask badge (#896): the count, capped at 9+ on the glyph, styled like the browser's", async () => {
+	await mount(async (api) => {
+		reset(api);
+		await api.render(rail({ askCount: 0 }));
+		assert.equal(
+			api.$("[data-tour-tag=ask-pane-badge]"),
+			null,
+			"no badge at 0",
+		);
+		await api.render(rail({ askCount: 1 }));
+		assert.equal(api.$("[data-tour-tag=ask-pane-badge]").textContent, "1");
+		await api.render(rail({ askCount: 12 }));
+		const capped = api.$("[data-tour-tag=ask-pane-badge]");
+		assert.equal(capped.textContent, "9+", "the glyph is capped");
+		assert.match(
+			api.item("ask").getAttribute("aria-label"),
+			/12 waiting or moved on/,
+			"the name keeps the exact number",
+		);
+		assert.ok(
+			capped.className.includes("ring-surface"),
+			"the ring names the rail's ground, as the browser mark's does",
+		);
+		assert.ok(!capped.className.includes("ring-canvas"));
+		/* The mark draws while the item is LIT: the count must not disappear with the
+		   pane it opened (the shape the operator asked for on the header trigger). */
+		api.store({ isAskDrawerOpen: true, askDrawerScope: "session" });
+		assert.equal(api.item("ask").getAttribute("aria-pressed"), "true");
+		assert.equal(api.$("[data-tour-tag=ask-pane-badge]").textContent, "9+");
+	});
+});
+
+test("while the Asks drawer holds the slot the ASK ITEM is lit, and a press on another item is a swap", async () => {
 	await mount(async (api) => {
 		reset(api);
 		/* The drawer borrowed the slot from the browser: the borrow is recorded, and
-		   lighting the covered pane would say something false. */
+		   lighting the covered pane would say something false. #896: the ask item is
+		   the one that lights, because the drawer is what is drawn. */
 		api.store({
 			isBrowserPaneOpen: false,
 			isAskDrawerOpen: true,
@@ -648,7 +923,11 @@ test("while the Asks drawer holds the slot NOTHING is lit, and a press is a swap
 			resolveDrawnRightSlotPane(useUiPreferencesStore.getState()),
 			"ask",
 		);
-		assert.deepEqual(api.pressed(), [], "zero items lit while Asks is drawn");
+		assert.deepEqual(
+			api.pressed(),
+			["ask"],
+			"the drawer's own item is the lit one, and only it - before #896 this was []",
+		);
 		await api.click(api.item("canvas"));
 		const state = useUiPreferencesStore.getState();
 		assert.equal(
@@ -703,6 +982,134 @@ test("focus returns to the item whose panel closed under the keyboard, and never
 	});
 });
 
+/*
+ * THE RAIL STANDS DOWN FOR THE ASKS DRAWER TOO (round-1 F1/Q2). The rail's
+ * focus-return effect and the drawer's own return are the two mechanisms that can
+ * each claim the keyboard when the drawer closes. For the CHIP door the drawer
+ * must win: it knows which door was pressed and the rail effect cannot see that -
+ * and since #896 put an ask item on the rail, the rail effect's lookup FOUND one
+ * (pre-#896 there was nothing to find), so it pre-empted the drawer's return and
+ * the keyboard went to the rail item instead of the chip. The matrix below is the
+ * reviewer's, in-test: railless chip (the committed outcome), railed chip (was
+ * WRONG before the fix), railed rail-item (the control), and a rail without the
+ * ask item (which pins the item as the cause, not a pre-existing race).
+ */
+const F1_TS = 1_760_000_000_000;
+const F1_ASK = {
+	ask_id: "a-f1",
+	created_at: F1_TS,
+	expires_at: F1_TS + 3_600_000,
+	timeout_s: 3600,
+	status: "open",
+	delivered: false,
+	questions: [
+		{
+			id: "target",
+			question: "Which environment?",
+			options: [{ label: "staging" }],
+		},
+	],
+};
+const F1_FRAME = { asks: [F1_ASK], asks_open: 1, asks_truncated: null };
+
+/** The drawer as `chat-content` gates it: mounted off the store flag, closed by its own door. */
+const RailDrawerHarness = ({ railMounted, askOffered = true }) => {
+	const open = useUiPreferencesStore((s) => s.isAskDrawerOpen);
+	return React.createElement(
+		React.Fragment,
+		null,
+		railMounted ? rail({ askOffered }) : null,
+		open
+			? React.createElement(AskDrawer, {
+					frontend: F1_FRAME,
+					scope: "session",
+					onClose: () =>
+						useUiPreferencesStore.getState().setAskDrawerOpen(false, "session"),
+				})
+			: null,
+	);
+};
+
+/** One cell: press a door, open, Escape on the landing, read where focus landed. */
+async function f1Cell(api, { railMounted, askOffered = true, door }) {
+	reset(api);
+	const chip = api.document.createElement("button");
+	chip.setAttribute("data-lo-ask-item-toggle", "");
+	chip.setAttribute("data-test-chip", "");
+	api.document.body.append(chip);
+	await api.render(
+		React.createElement(RailDrawerHarness, { railMounted, askOffered }),
+	);
+	const doorEl = door === "chip" ? chip : api.item("ask");
+	assert.ok(doorEl, "the door this cell presses is present");
+	act(() => doorEl.focus());
+	act(() => {
+		useUiPreferencesStore.getState().setAskDrawerOpen(true, "session");
+	});
+	await act(async () => {});
+	const surface = api.$("[data-lo-ask-surfaces]");
+	assert.ok(
+		surface?.contains(api.document.activeElement),
+		"the entry move put the keyboard in the drawer before the close",
+	);
+	act(() => {
+		api.document.activeElement.dispatchEvent(
+			new api.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+		);
+	});
+	await act(async () => {});
+	assert.equal(
+		api.$("[data-lo-ask-surfaces]"),
+		null,
+		"Escape closed the drawer",
+	);
+	/*
+	 * READ FOCUS BEFORE THE CHIP IS REMOVED: the close path returns the keyboard to
+	 * the chip, and jsdom drops `document.activeElement` to `<body>` the moment the
+	 * focused node is detached - removing it first would report `body` for a return
+	 * that actually happened.
+	 */
+	const afterClose = api.document.activeElement;
+	chip.remove();
+	return { chip, doorEl, afterClose };
+}
+
+test("a drawer opened from the CHIP returns focus to the chip with the rail mounted (F1/Q2)", async () => {
+	await mount(async (api) => {
+		const railless = await f1Cell(api, { railMounted: false, door: "chip" });
+		assert.equal(
+			railless.afterClose,
+			railless.chip,
+			"baseline: the chip is the door focus goes back to",
+		);
+
+		const railed = await f1Cell(api, { railMounted: true, door: "chip" });
+		assert.equal(
+			railed.afterClose,
+			railed.chip,
+			"the rail effect must not pre-empt the drawer's return for the chip door",
+		);
+
+		const control = await f1Cell(api, { railMounted: true, door: "rail" });
+		assert.equal(
+			control.afterClose,
+			control.doorEl,
+			"the rail-item door returns to the rail item",
+		);
+
+		const unoffered = await f1Cell(api, {
+			railMounted: true,
+			askOffered: false,
+			door: "chip",
+		});
+		assert.equal(
+			unoffered.afterClose,
+			unoffered.chip,
+			"without the ask item the chip return was never in question (pins the item as the cause)",
+		);
+	});
+});
+
 test("never on first mount: a rail that appears over an empty slot takes no focus", async () => {
 	await mount(async (api) => {
 		reset(api);
@@ -718,6 +1125,7 @@ test("every legacy hook the tour, the proofs and the driver find the controls by
 		await api.render(
 			rail({
 				browserAttentionCount: 1,
+				askCount: 1,
 				consoleUnseenCount: 1,
 				consoleUnseenPulsing: true,
 				fileCount: 2,
@@ -727,6 +1135,11 @@ test("every legacy hook the tour, the proofs and the driver find the controls by
 			"[data-run-panel-trigger]",
 			'[data-tour-tag="browser-pane-trigger"]',
 			'[data-tour-tag="browser-pane-badge"]',
+			/* The asks item's tag and badge (#896): the drawer's entry/return path and
+			   the tour attach to the first; the second is the mark the issue asked to
+			   carry over from the header. */
+			'[data-tour-tag="ask-pane-trigger"]',
+			'[data-tour-tag="ask-pane-badge"]',
 			'[data-tour-tag="console-pane-trigger"]',
 			'[data-tour-tag="console-pane-blip"]',
 			'[data-tour-tag="open-canvas-button"]',
@@ -809,7 +1222,7 @@ test("the host is inert outside a shell and portals into the shell's element ins
 
 /* ----------------------------------------------------------------- source pins */
 
-test("the header no longer renders the four triggers or their shed ladder", () => {
+test("the header no longer renders the five triggers or their shed ladder", () => {
 	const header = read(
 		"src/renderer/src/features/chat/components/chat-header.tsx",
 	);
@@ -819,6 +1232,11 @@ test("the header no longer renders the four triggers or their shed ladder", () =
 		"console-pane-trigger",
 		"console-pane-blip",
 		"open-canvas-button",
+		/* The asks trigger is the LAST to leave (#896), and its badge goes with it:
+		   both tags live on the rail's item now, and a header that kept one would be
+		   the defect the issue names - two doors of one kind in two places. */
+		"ask-pane-trigger",
+		"ask-pane-badge",
 	]) {
 		assert.ok(
 			!header.includes(`data-tour-tag="${tag}"`),
@@ -841,16 +1259,41 @@ test("the header no longer renders the four triggers or their shed ladder", () =
 		!header.includes("@[20rem]/chathdr"),
 		"the canvas's shed rung is gone",
 	);
-	/* What stays: the Asks door, the menu with its four entries, and the chord. */
-	assert.ok(header.includes('data-tour-tag="ask-pane-trigger"'));
+	/* What stays: the menu with all FIVE entries - its asks row is the header's only
+	   asks door now (#896) - the chord, and the asks item's tag where it moved TO.
+	   The rail source carries the tag because the drawer's focus-return anchor and
+	   Escape door attach to the control, not to a file. */
+	const railSource = read(
+		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
+	);
+	assert.ok(
+		railSource.includes('data-tour-tag="ask-pane-trigger"'),
+		"the asks item's tag must live on the rail item: it is the drawer's anchor",
+	);
 	for (const label of [
 		"Run details",
+		"Close asks",
 		"Open browser",
 		"Open console",
 		"Open canvas",
 	]) {
 		assert.ok(header.includes(label), `the ... menu lost its "${label}" entry`);
 	}
+	/* The asks row's label is the sibling toggle spelling, and its PLACEMENT mirrors
+	   the rail's order (between Run details and Open browser). */
+	assert.ok(
+		header.includes('{asksOpen ? "Close asks" : "Open asks"}'),
+		"the asks row must be the same toggle sentence as the browser row's",
+	);
+	const runAt = header.indexOf("<span>Run details</span>");
+	const asksAt = header.indexOf('{asksOpen ? "Close asks" : "Open asks"}');
+	const browserAt = header.indexOf(
+		'{isBrowserPaneOpen ? "Close browser" : "Open browser"}',
+	);
+	assert.ok(
+		runAt >= 0 && asksAt > runAt && browserAt > asksAt,
+		"the asks row sits between Run details and Open browser, mirroring the rail (#896)",
+	);
 	assert.ok(
 		header.includes("isCanvasTogglePress(event)"),
 		"the existing chord is still bound, exactly as before",
@@ -977,8 +1420,12 @@ test("the host stays 44 across React StrictMode's double-mounted effects", async
  * jsdom has no layout, so the rect of the open tooltip is STATED by the case - the
  * instrument is the policy's own decision (does this box overlap the registered view
  * rect), not a pixel. The measured positions the numbers come from (1280x900, run
- * present): the view's rect is [740,150,496,750]; Canvas's tooltip is at y=150..178
+ * present, the FOUR-item rail the round measured): the view's rect is
+ * [740,150,496,750]; Canvas's tooltip is at y=150..178
  * (23px inside), Console's at y=114..142 and Browser's and Run's higher still.
+ * #896's asks item moves every box below the first down one pitch, so WHICH items
+ * reach the view at 1280x900 is re-derived by the evidence pass; these cases pin the
+ * PREDICATE, not a layout.
  */
 const VIEW = { x: 740, y: 150, width: 496, height: 750 };
 const ours = () =>
@@ -1271,6 +1718,424 @@ test("the ... menu's Open canvas row opens the CANVAS, not the slash-command chi
 			"the row flips the canvas flag",
 		);
 		assert.equal(chipsToggled, 0, "and does not toggle the legacy chips row");
+	});
+});
+
+/*
+ * AND THE CONTRASTING DOOR FOR ASKS (#896). The asks row speaks through a PROP
+ * (`onToggleAsks`) rather than reaching into the store, because the scope fact is
+ * the caller's: this pins the three things that makes true - the row is offered
+ * exactly where a host offers a door, its label states the action the press takes
+ * (`Open asks` / `Close asks`, the browser row's toggle idiom), and pressing it
+ * fires the host's toggle and nothing else.
+ */
+test("the ... menu's asks row is the header's remaining door: gated, verb-labelled, wired to the prop", async () => {
+	await mount(async (api) => {
+		reset(api);
+		let toggles = 0;
+		const header = (key, asks) =>
+			React.createElement(
+				TooltipProvider,
+				null,
+				React.createElement(ChatHeader, {
+					key,
+					agentName: "Core",
+					onOpenOptions: () => {},
+					runDetails: details(),
+					...asks,
+				}),
+			);
+		const openMenu = async () => {
+			const trigger = api.$('[aria-label="Conversation actions"]');
+			act(() => {
+				trigger.dispatchEvent(
+					new api.window.KeyboardEvent("keydown", {
+						key: "Enter",
+						bubbles: true,
+						cancelable: true,
+					}),
+				);
+			});
+			await act(async () => {});
+		};
+		const rowNamed = (text) =>
+			api
+				.$$('[role="menuitem"]')
+				.find((item) => item.textContent.trim() === text);
+		/* Offered, closed: the row reads `Open asks`, and pressing it fires the prop. */
+		await api.render(
+			header("offered", {
+				onToggleAsks: () => {
+					toggles += 1;
+				},
+			}),
+		);
+		await openMenu();
+		const open = rowNamed("Open asks");
+		assert.ok(open, "the menu offers the asks row where a host offers a door");
+		await api.click(open);
+		assert.equal(toggles, 1, "the row presses the host's toggle, once");
+		/* Offered, open: the same row flips to `Close asks`. */
+		await api.render(
+			header("open", { onToggleAsks: () => {}, asksOpen: true }),
+		);
+		await openMenu();
+		assert.ok(
+			rowNamed("Close asks"),
+			"the label states the action the press will take, as the browser row's does",
+		);
+		/* Not offered: no asks row at all - absent, never disabled. */
+		await api.render(header("none", {}));
+		await openMenu();
+		assert.equal(
+			api
+				.$$('[role="menuitem"]')
+				.filter((item) => /asks/i.test(item.textContent)).length,
+			0,
+			"no asks row where no host offers a door",
+		);
+	});
+});
+
+/*
+ * THE MENU DOOR'S FULL WALK (round-1 Q1). The `…` menu's asks row is the third
+ * door to the drawer, and the one that cannot signal its press through focus -
+ * Radix hands the keyboard back to the menu's own trigger when it closes, so
+ * the mount's door read finds nothing. Its open writes the store's
+ * `askOpenIntent` instead, and this drives the real header + drawer + store
+ * together: the row OPENS over a live-but-empty queue and the keyboard lands in
+ * the pane; the request is CONSUMED by the mount that answers it; while this
+ * scope is open the row still CLOSES with no request written; a stranded close
+ * returns the keyboard to the trigger; and a later NON-USER open over the empty
+ * queue still auto-closes - the "consumed, not inheritable" half.
+ *
+ * The handler below is `chat-content.tsx`'s own expression (its source shape is
+ * pinned in `fleet-asks.test.mjs`); this file pins what it DOES.
+ */
+test("the ... menu's asks row opens the drawer over an empty queue, and its doors behave (Q1)", async () => {
+	await mount(async (api) => {
+		reset(api);
+		const emptyFrame = { asks: [], asks_open: 0, asks_truncated: null };
+		let closes = 0;
+		const Harness = () => {
+			const asksOpen = useUiPreferencesStore(
+				(s) => s.isAskDrawerOpen && s.askDrawerScope === "session",
+			);
+			const drawerOpen = useUiPreferencesStore((s) => s.isAskDrawerOpen);
+			return React.createElement(
+				React.Fragment,
+				null,
+				React.createElement(
+					TooltipProvider,
+					null,
+					React.createElement(ChatHeader, {
+						agentName: "Core",
+						onOpenOptions: () => {},
+						runDetails: details(),
+						asksScope: "session",
+						asksOpen,
+						onToggleAsks: () => {
+							const state = useUiPreferencesStore.getState();
+							if (state.isAskDrawerOpen && state.askDrawerScope === "session") {
+								state.setAskDrawerOpen(false, "session");
+								return;
+							}
+							state.setAskDrawerOpen(true, "session");
+							state.requestAskOpen("session");
+						},
+					}),
+				),
+				drawerOpen
+					? React.createElement(AskDrawer, {
+							frontend: emptyFrame,
+							scope: "session",
+							onClose: () => {
+								closes += 1;
+								useUiPreferencesStore
+									.getState()
+									.setAskDrawerOpen(false, "session");
+							},
+						})
+					: null,
+			);
+		};
+		const openMenu = async () => {
+			const trigger = api.$('[aria-label="Conversation actions"]');
+			assert.ok(trigger, "the menu trigger is in the header");
+			act(() => {
+				trigger.dispatchEvent(
+					new api.window.KeyboardEvent("keydown", {
+						key: "Enter",
+						bubbles: true,
+						cancelable: true,
+					}),
+				);
+			});
+			await act(async () => {});
+		};
+		const rowNamed = (text) =>
+			api
+				.$$('[role="menuitem"]')
+				.find((item) => item.textContent.trim() === text);
+
+		await api.render(React.createElement(Harness));
+
+		/* (a) THE ROW OPENS over the empty queue: stays up, keyboard inside, request gone. */
+		await openMenu();
+		const openRow = rowNamed("Open asks");
+		assert.ok(openRow, "the menu offers Open asks");
+		await api.click(openRow);
+		await act(async () => {});
+		assert.equal(
+			useUiPreferencesStore.getState().isAskDrawerOpen,
+			true,
+			"the row opened the drawer over the live-but-empty queue",
+		);
+		assert.equal(
+			useUiPreferencesStore.getState().askOpenIntent,
+			null,
+			"the request is consumed by the mount that answers it",
+		);
+		const surface = api.$("[data-lo-ask-surfaces]");
+		assert.ok(
+			surface,
+			"a door-opened mount is not auto-closed over the empty queue (the empty state keeps its door)",
+		);
+		/*
+		 * THE MENU'S TEARDOWN WRITES LAND IN THEIR OWN MACROTASK, so at the instant
+		 * this read, the keyboard can be mid-flight - on `body`, the menu item just
+		 * detached - while the restore (the trigger write the drawer's claim answers
+		 * into the pane) is still queued: measured in a jsdom probe against these
+		 * components, it was delivered AFTER the click's own awaited act in 5 of 10
+		 * runs, and reading that transient is what made this cell flake under load.
+		 * The contract is the SETTLED state - the claim answers the restore whenever
+		 * it is delivered - so the pin waits for the keyboard to land, bounded; a
+		 * regression that leaves it on the trigger or `body` still fails it (the
+		 * late-write fixture, in the Q1/M1 case below, stages that deterministically).
+		 */
+		for (
+			let i = 0;
+			i < 8 && !surface.contains(api.document.activeElement);
+			i += 1
+		)
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		assert.ok(
+			surface.contains(api.document.activeElement),
+			"the entry move put the keyboard in the pane (the empty chain's last resort is the surface)",
+		);
+
+		/* (d) STRANDED CLOSE: Escape on the landing returns the keyboard to the trigger. */
+		act(() => {
+			api.document.activeElement.dispatchEvent(
+				new api.window.KeyboardEvent("keydown", {
+					key: "Escape",
+					bubbles: true,
+				}),
+			);
+		});
+		await act(async () => {});
+		assert.equal(
+			useUiPreferencesStore.getState().isAskDrawerOpen,
+			false,
+			"Escape closed it",
+		);
+		assert.equal(
+			api.document.activeElement,
+			api.$('[aria-label="Conversation actions"]'),
+			"a stranded close returns the keyboard to the trigger that was pressed",
+		);
+
+		/* (c) WHILE OPEN, THE ROW CLOSES - plain close, no request written. */
+		await openMenu();
+		await api.click(rowNamed("Open asks"));
+		await act(async () => {});
+		assert.equal(
+			useUiPreferencesStore.getState().isAskDrawerOpen,
+			true,
+			"reopened",
+		);
+		await openMenu();
+		const closeRow = rowNamed("Close asks");
+		assert.ok(
+			closeRow,
+			"while this scope's drawer is open the row flips to Close asks",
+		);
+		await api.click(closeRow);
+		await act(async () => {});
+		assert.equal(
+			useUiPreferencesStore.getState().isAskDrawerOpen,
+			false,
+			"the close arm closed it",
+		);
+		assert.equal(
+			useUiPreferencesStore.getState().askOpenIntent,
+			null,
+			"the close arm writes no request",
+		);
+
+		/* (b) THE REQUEST IS NOT INHERITABLE: a non-user open over the empty queue still closes. */
+		closes = 0;
+		act(() => {
+			useUiPreferencesStore.getState().setAskDrawerOpen(true, "session");
+		});
+		await act(async () => {});
+		assert.equal(
+			closes,
+			1,
+			"the policy-shaped open over the empty queue fired the auto-close, once",
+		);
+		assert.equal(
+			useUiPreferencesStore.getState().isAskDrawerOpen,
+			false,
+			"and the drawer did not stay",
+		);
+	});
+});
+
+/*
+ * THE CLAIM ANSWERS A RESTORE THAT LANDS AFTER IT WOULD HAVE SETTLED (round-2
+ * M1), and once settled it is the user's, not the drawer's (round-2 N2).
+ *
+ * WHY IT EXISTS. The settle used to be "one macrotask of quiet after the last
+ * write landed the keyboard inside" - and the restore the menu performs is
+ * itself a `setTimeout(0)` its teardown queues, so on a loaded host the
+ * delivery can land AFTER that beat: the claim settled, the late write put the
+ * keyboard back on the `…` trigger, and the drawer stayed open with the
+ * keyboard outside it - the exact state the Q1 case above exists to prevent.
+ * This stages the loaded ordering deterministically (a scratch probe reproduced
+ * the old failure 3/3 under it): the restore is deferred one macrotask, with a
+ * second write one macrotask behind the first - the burst shape the teardown
+ * itself produces (two trigger writes in a StrictMode pass). The claim must
+ * answer both writes and end with the keyboard in the pane; then, with the
+ * claim settled, a deliberate focus on the trigger must STICK - the disarm is
+ * what stops the claim fighting a user's Tab (N2).
+ */
+test("a restore that lands after the drawer's own settle still ends inside, and a later move to the trigger sticks (Q1/M1)", async () => {
+	await mount(async (api) => {
+		reset(api);
+		const emptyFrame = { asks: [], asks_open: 0, asks_truncated: null };
+		const Harness = () => {
+			const asksOpen = useUiPreferencesStore(
+				(s) => s.isAskDrawerOpen && s.askDrawerScope === "session",
+			);
+			const drawerOpen = useUiPreferencesStore((s) => s.isAskDrawerOpen);
+			return React.createElement(
+				React.Fragment,
+				null,
+				React.createElement(
+					TooltipProvider,
+					null,
+					React.createElement(ChatHeader, {
+						agentName: "Core",
+						onOpenOptions: () => {},
+						runDetails: details(),
+						asksScope: "session",
+						asksOpen,
+						onToggleAsks: () => {
+							const state = useUiPreferencesStore.getState();
+							if (state.isAskDrawerOpen && state.askDrawerScope === "session") {
+								state.setAskDrawerOpen(false, "session");
+								return;
+							}
+							state.setAskDrawerOpen(true, "session");
+							state.requestAskOpen("session");
+						},
+					}),
+				),
+				drawerOpen
+					? React.createElement(AskDrawer, {
+							frontend: emptyFrame,
+							scope: "session",
+							onClose: () => {
+								useUiPreferencesStore
+									.getState()
+									.setAskDrawerOpen(false, "session");
+							},
+						})
+					: null,
+			);
+		};
+		const openMenu = async () => {
+			const trigger = api.$('[aria-label="Conversation actions"]');
+			assert.ok(trigger, "the menu trigger is in the header");
+			act(() => {
+				trigger.dispatchEvent(
+					new api.window.KeyboardEvent("keydown", {
+						key: "Enter",
+						bubbles: true,
+						cancelable: true,
+					}),
+				);
+			});
+			await act(async () => {});
+		};
+		const rowNamed = (text) =>
+			api
+				.$$('[role="menuitem"]')
+				.find((item) => item.textContent.trim() === text);
+		const turns = async (n) => {
+			for (let i = 0; i < n; i += 1)
+				await new Promise((resolve) => setTimeout(resolve, 0));
+		};
+
+		await api.render(React.createElement(Harness));
+
+		await openMenu();
+		const trigger = api.$('[aria-label="Conversation actions"]');
+		assert.ok(trigger, "the menu trigger is in the header");
+		/*
+		 * THE LOADED ORDERING, STAGED: the restore - the trigger's own focus write
+		 * on the menu's way out - is deferred one macrotask, and a second write
+		 * follows one macrotask behind the first. Under the old single-beat settle
+		 * this ends with the keyboard ON THE TRIGGER, drawer open.
+		 */
+		const restore = trigger.focus.bind(trigger);
+		let deferred = false;
+		trigger.focus = () => {
+			if (deferred) return restore();
+			deferred = true;
+			setTimeout(() => {
+				restore();
+				setTimeout(() => restore(), 0);
+			}, 0);
+		};
+		await api.click(rowNamed("Open asks"));
+		await act(async () => {});
+		await turns(12);
+		assert.ok(
+			deferred,
+			"the fixture engaged: the teardown wrote focus to the trigger, deferred",
+		);
+		const surface = api.$("[data-lo-ask-surfaces]");
+		assert.equal(
+			useUiPreferencesStore.getState().isAskDrawerOpen,
+			true,
+			"the row opened the drawer over the empty queue",
+		);
+		assert.ok(surface, "the door-opened mount is not auto-closed");
+		assert.ok(
+			surface.contains(api.document.activeElement),
+			"the late restore was answered: the keyboard is in the pane, never back on the trigger with the drawer open",
+		);
+		/*
+		 * AND THE DISARM IS REAL (N2): the claim's chain is all macrotasks and all
+		 * of them are delivered above, so it has settled - a deliberate focus on
+		 * the trigger is the user's and must stick. A claim still armed would
+		 * bounce it into the pane.
+		 */
+		const triggerNow = api.$('[aria-label="Conversation actions"]');
+		triggerNow.focus();
+		await turns(4);
+		assert.equal(
+			api.document.activeElement,
+			triggerNow,
+			"a settled claim does not bounce a deliberate move to the trigger",
+		);
+		assert.equal(
+			useUiPreferencesStore.getState().isAskDrawerOpen,
+			true,
+			"and the drawer stays up",
+		);
 	});
 });
 

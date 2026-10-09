@@ -18,9 +18,10 @@ import React, { act } from "react";
  *
  * WHAT IT PROVES, in order:
  *
- *  1. focus ENTERS the pane when the door is the conversation header's asks trigger —
+ *  1. focus ENTERS the pane when the door is the panel rail's asks item —
  *     the drawer's entry move accepts either door, including the one whose press
- *     leaves the trigger's own DOM out of the pane entirely;
+ *     leaves the trigger's own DOM out of the pane entirely (the conversation
+ *     header's trigger until #896 moved the control);
  *  2. an Escape pressed anywhere while the pane is open CLOSES it and calls
  *     `preventDefault`, and that `defaultPrevented` answer is exactly what makes
  *     the app's interrupt ladder stand down — so the agent's running turn
@@ -174,7 +175,7 @@ const bundle = await build({
 		contents: [
 			'export { FleetAskDrawer } from "../src/renderer/src/features/chat/components/asks/fleet-ask-drawer";',
 			'export { interruptEscapeApplies } from "../src/renderer/src/features/chat/hooks/use-interrupt-on-escape";',
-			'export { ASK_HEADER_ITEM_SELECTOR, ASK_ITEM_SELECTOR } from "../src/renderer/src/features/chat/ask-queue";',
+			'export { ASK_RAIL_ITEM_SELECTOR, ASK_ITEM_SELECTOR } from "../src/renderer/src/features/chat/ask-queue";',
 			'export { createRoot } from "react-dom/client";',
 			'export { QueryClient, QueryClientProvider } from "@tanstack/react-query";',
 		].join("\n"),
@@ -211,7 +212,7 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	FleetAskDrawer,
 	interruptEscapeApplies,
-	ASK_HEADER_ITEM_SELECTOR,
+	ASK_RAIL_ITEM_SELECTOR,
 	ASK_ITEM_SELECTOR,
 	QueryClient,
 	QueryClientProvider,
@@ -256,11 +257,9 @@ document.body.append(door);
 door.focus();
 
 say(
-	`door selector: ${ASK_HEADER_ITEM_SELECTOR}   chip selector: ${ASK_ITEM_SELECTOR}`,
+	`door selector: ${ASK_RAIL_ITEM_SELECTOR}   chip selector: ${ASK_ITEM_SELECTOR}`,
 );
-say(
-	`door matches the header selector: ${door.matches(ASK_HEADER_ITEM_SELECTOR)}`,
-);
+say(`door matches the rail selector: ${door.matches(ASK_RAIL_ITEM_SELECTOR)}`);
 say(
 	`door holds focus before the pane opens: ${document.activeElement === door}`,
 );
