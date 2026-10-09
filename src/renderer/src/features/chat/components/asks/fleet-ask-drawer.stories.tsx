@@ -8,8 +8,8 @@
  * `asks.list` is refused, which is the honest state of a story whose subject is
  * one read. Everything above that seam is real - the real `ChatLayout` (whose
  * right slot the fleet pane is docked in), the real `SidebarNavigation` (which no
- * longer draws an asks row - the entry point is the conversation header's, drawn by
- * `chat-header-cluster.stories.tsx`), the real `FleetAskDrawer`, the real `AskDrawer`
+ * longer draws an asks row - the entry point is the panel rail's asks item, drawn by
+ * `panel-rail.stories.tsx`, with its menu half by `chat-header-cluster.stories.tsx`), the real `FleetAskDrawer`, the real `AskDrawer`
  * in both scopes, and the real scope line both chrome bars compose from
  * `ask-queue.ts`. The payload is a fixture shaped like `GET /v1/desktop/asks` -
  * the row shape is the wire's (`PendingAsk` plus `session_id`/`cwd`, read from
@@ -375,7 +375,7 @@ export default meta;
 type Story = StoryObj;
 
 /**
- * THE TOP-LEVEL CONTEXT: the conversation header's asks trigger carries the FLEET
+ * THE TOP-LEVEL CONTEXT: the panel rail's asks item carries the FLEET
  * total (11) and the pane it opens is docked in the shell's own right slot, so the press
  * works on every route. Every card carries the name the sessions list gives its
  * conversation - the title from the catalogue, not the directory basename

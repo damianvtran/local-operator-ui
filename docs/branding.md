@@ -382,8 +382,9 @@ control's only edge, effectively invisible. If you are adding a boundary, ask
 whether removing it entirely would lose information. If yes, it is structural
 and must clear 3:1. If no, delete it rather than reaching for `hairline`.
 
-**The panel rail is chrome (#872).** The 44px column at the window's right edge
-holds the four right-slot doors, and it stands on the sidebar's rung: `surface`,
+**The panel rail is chrome (#872, #896).** The 44px column at the window's right
+edge holds the right-slot doors - the four panel triggers since #872, and the asks
+drawer's door since #896 - and it stands on the sidebar's rung: `surface`,
 with **no drawn rule** at its leading edge - the boundary is the tone step alone,
 following the left sidebar's own edge (there is no line between it and the chat
 pane either). That is a choice to match the sidebar, not a sufficiency claim: the

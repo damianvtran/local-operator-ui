@@ -499,7 +499,7 @@ type ChatContentProps = {
 		askOutcomes?: Record<string, AskOutcome | undefined>;
 		/*
 		 * THE ASKS DRAWER'S LANE. `askExpanded` is the one flag the status-row chip, the
-		 * header door and the drawer all read, and the page owns it rather than the ask
+		 * asks door and the drawer all read, and the page owns it rather than the ask
 		 * surfaces so they cannot disagree about whether the drawer is open. It says
 		 * nothing about the composer: the main box is an ordinary conversation box
 		 * whether the drawer is open or not (the reversal of design §5.0, R7), so
@@ -1291,6 +1291,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const sessionAsksOpen =
 			isAskDrawerOpen && askDrawerScope === "session" && Boolean(sessionId);
 		const setAskDrawerOpen = useUiPreferencesStore((s) => s.setAskDrawerOpen);
+		const requestAskOpen = useUiPreferencesStore((s) => s.requestAskOpen);
 		/*
 		 * Whether a right-slot pane occupies the window's right edge, which is what
 		 * decides whether the CHAT HEADER has to reserve the OS controls' corner (chat
@@ -1362,10 +1363,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			[setRightSlotRoute],
 		);
 		/*
-		 * THE HEADER'S ASKS DOOR (operator ask, 2026-10-05): the entry point the
-		 * sidebar's `All asks` row used to be, moved into this conversation's header
-		 * because the nav column was over-subscribed and a control that OPENS a surface
-		 * belongs with the cluster that opens the window's other right panes.
+		 * THE ASKS DOOR: the entry point the sidebar's `All asks` row used to be.
+		 * #820/#835 moved it into this conversation's header, and #896 moved it again,
+		 * onto the panel rail beside the four panel doors that open the same right
+		 * slot - the rail item below and the header's `...` menu row are the two
+		 * controls these derivations describe.
 		 *
 		 * THE SCOPE IS THE OPERATOR'S OWN SPLIT: inside a conversation the door and its
 		 * count are THAT conversation's; at the top level - a draft, with no
@@ -1373,7 +1375,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * so the count and the queue the press opens can never disagree about which set
 		 * they describe, and the scope rides the SAME store seam the drawer already
 		 * reads (`setAskDrawerOpen(open, scope)`) rather than a second scope written for
-		 * the header.
+		 * the door.
 		 *
 		 * THE SESSION COUNT IS THE DRAWER'S OWN VIEW (`askQueueView`), not a second
 		 * tally: a badge counting one set over a pane drawing another is the
@@ -1823,7 +1825,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				 * paint and only its CONTENT changes when the policy opens the drawer.
 				 * The hook owns both edges (`useAskOpenPolicy`'s return): it writes one
 				 * sentence on a policy open and clears it on close; a press on the chip
-				 * or the header trigger - the reader's own act - writes neither, and a
+				 * or the asks door - the reader's own act - writes neither, and a
 				 * queue refresh is not an appearance. `sr-only`, so the visual surface
 				 * is unchanged. On a draft (no `sessionId`) the hook waits forever and
 				 * the sentence stays empty, which is correct: there is no conversation
@@ -1939,22 +1941,47 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							reserveTrailingChrome={!rightSlotOccupied}
 							/* THE PANELS' MENU DOOR: the four rail triggers moved to the panel rail
 							   (rendered below through `InPanelRailHost`), and the header's `...` menu
-							   keeps its four entries. The browser toggle is declared here for that
+							   keeps their four entries - now five, the asks row joining in #896 when
+							   its trigger left the header for the rail (the menu's own comment states
+							   why parity requires it). The browser toggle is declared here for that
 							   menu; the rail declares its own press from the same store field. */
 							onToggleBrowser={() => setBrowserPaneOpen(!isBrowserPaneOpen)}
 							/*
-							 * THE ASKS DOOR: absent where the scope's backend offers no asks, and
-							 * otherwise a toggle onto the drawer in the scope this conversation
-							 * resolves to (see the block above). The press TOGGLES rather than only
-							 * opening, so the control is the same door in both directions - the
-							 * browser trigger's own idiom beside it.
+							 * THE ASKS DOOR, AS THE HEADER CARRIES IT NOW (#896): the trigger became
+							 * the rail's item (rendered below), and this prop feeds the menu's asks
+							 * row - absent where the scope's backend offers no asks (the same
+							 * `headerAsksOffered` gate the rail's `askOffered` uses), and otherwise a
+							 * toggle onto the drawer in the scope this conversation resolves to (see
+							 * the block above). The press TOGGLES rather than only opening, so the
+							 * row is the same door in both directions - the browser row's own idiom
+							 * beside it - and its OPEN arm also writes the lane's open request
+							 * (round-1 Q1): the row cannot signal its press through focus, so the
+							 * request is what tells the drawer the open was the user's own (see the
+							 * handler below).
 							 */
 							onToggleAsks={
 								headerAsksOffered
-									? () => setAskDrawerOpen(!headerAsksOpen, headerAsksScope)
+									? () => {
+											/*
+											 * THE MENU ROW IS A TOGGLE IN THIS CONVERSATION'S SCOPE, and its
+											 * OPEN is where the request is written (round-1 Q1). The row cannot
+											 * signal its press through focus — Radix hands the keyboard back
+											 * to this menu's own trigger when it closes — so `askOpenIntent`
+											 * is what tells the drawer it was pressed, exactly as a door's
+											 * focus does for the chip and the rail item (`ask-drawer.tsx`'s
+											 * entry move). Written after the open, in the console trigger's
+											 * own order one control over: the claim is what shows the pane;
+											 * the request is what marks the open as the user's.
+											 */
+											if (headerAsksOpen) {
+												setAskDrawerOpen(false, headerAsksScope);
+												return;
+											}
+											setAskDrawerOpen(true, headerAsksScope);
+											requestAskOpen(headerAsksScope);
+										}
 									: undefined
 							}
-							asksAttentionCount={headerAsksCount}
 							asksScope={headerAsksScope}
 							asksOpen={headerAsksOpen}
 							archiveEnabled={archiveEnabled}
@@ -2772,7 +2799,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * arrive on this session's frame and its answers go to this session.
 								 * The fleet scope is the other half and lives in the SHELL
 								 * (`chat-layout.tsx`) - it spans conversations, and its entry point
-								 * (the header's asks trigger at the top level) is drawn on every route, so a
+								 * (the panel rail's asks item at the top level; the conversation header's
+								 * trigger before #896) is drawn wherever the chat surface is, so a
 								 * mount here
 								 * would leave that door opening nothing wherever the user happened to
 								 * be. One container, two homes, one flag: the scope is what picks,
@@ -2955,10 +2983,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					</>
 				)}
 				{/*
-				 * THE PANEL RAIL (#872), rendered here and drawn at the window's edge. This
-				 * component owns every input the four triggers need (the conversation, the
+				 * THE PANEL RAIL (#872, #896), rendered here and drawn at the window's edge.
+				 * This component owns every input the five items need (the conversation, the
 				 * run view model and its acknowledgement context, the approvals count, the
-				 * console's unseen marks, the file count), and the shell owns the element
+				 * asks door's offered rule, count and scope, the console's unseen marks, the
+				 * file count), and the shell owns the element
 				 * that sits beside the measured column; the portal joins the two without
 				 * either importing the other's tree. It renders NOTHING when no shell host
 				 * is provided, so a story that mounts this component alone is unchanged.
@@ -2975,6 +3004,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						listOnScreen={listOnScreen}
 						readerChildId={readerChildId}
 						browserAttentionCount={browserAttentionCount}
+						/* THE ASKS INPUTS (#896): the door's offered rule, count and scope, from
+						   the same `headerAsks*` derivations the header's menu entry reads - one
+						   expression per fact, so the rail item and the menu row cannot disagree
+						   about which queue a press opens or how many are outstanding. */
+						askOffered={headerAsksOffered}
+						askCount={headerAsksCount}
+						askScope={headerAsksScope}
 						consoleUnseenCount={consoleUnseenMarks.length}
 						consoleUnseenPulsing={consoleUnseenPulsing}
 						fileCount={mentionedFileCount}

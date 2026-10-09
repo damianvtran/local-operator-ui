@@ -470,6 +470,12 @@ const CHROME_LAUNCH_SITES = [
 		"the #894 right-slot per-conversation memory pair: one private headless Chrome per pass, shared by the case driver and the per-animation-frame hop probe, over the daemon's two conversations (registered with its own row, which is what this table asks of every rig that launches Chrome - the two harnesses above record what happens when one is not)",
 	),
 	guarded(
+		"docs/evidence/asks-on-rail/harness/rig-lib.mjs",
+		"spawn",
+		1,
+		"the #896 asks-door pair: one private headless Chrome per pass, shared by the seven cases over the daemon's two conversations, one browser context per case (registered with its own row, which is what this table asks of every rig that launches Chrome - the two harnesses above record what happens when one is not)",
+	),
+	guarded(
 		"docs/evidence/read-ack-skew/harness/readack-skew.mjs",
 		"spawn",
 		2,
