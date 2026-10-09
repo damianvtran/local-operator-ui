@@ -448,6 +448,26 @@ test("(E) the memory persists without drafts, migrates from the global flags, an
 });
 
 /*
+ * (E2) A PARTIAL STATE PERSISTS AN EMPTY MEMORY RATHER THAN THROWING (#906 CI).
+ * The header-identity fixture builds the slice from exactly three fields — no
+ * memory exists in that state — and the write filter used to read `.filter` off
+ * the missing field, which took the desktop suite down on CI (its esbuild
+ * data:URL stack frames then stalled the job's log until the cap). A serializer
+ * must not treat "we could not find out" as fatal: a state with no memory has no
+ * entries to write, and the honest persisted output is an empty memory.
+ */
+test("(E2) a partial state without a memory persists an empty one rather than throwing (#906 CI)", () => {
+	const persisted = persistedUiPreferences({
+		profileRecents: { agent: ["coder"], team: [] },
+		runPanelReveal: { section: "todos" },
+		consoleOpenIntent: "abc",
+	});
+	assert.equal("runPanelReveal" in persisted, false);
+	assert.equal("consoleOpenIntent" in persisted, false);
+	assert.deepEqual(persisted.rightSlotMemory, []);
+});
+
+/*
  * (F) THE SEED. Applied once, on a session with no entry, never on a draft, and
  * held across a bind with no conversation.
  */
