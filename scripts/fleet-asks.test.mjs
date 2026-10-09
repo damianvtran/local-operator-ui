@@ -37,7 +37,7 @@ const bundle = await build({
 			'export { fleetAskRows, fleetAskFrontend, fleetAsksOutstanding, fleetAsksBySession, fleetAskSessionFor, fleetAskConversationLabel, fleetAskConversationLabels, FLEET_ASKS_QUERY_KEY, FLEET_ASKS_POLL_MS } from "./src/renderer/src/features/chat/fleet-asks";',
 			'export { useUiPreferencesStore, persistedUiPreferences, resolveRightSlotWidth } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";',
-			'export { askScopeLine, ASK_ITEM_SELECTOR, ASK_HEADER_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { askScopeLine, ASK_ITEM_SELECTOR, ASK_RAIL_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
@@ -71,7 +71,7 @@ const {
 	desktopRequestSchema,
 	askScopeLine,
 	ASK_ITEM_SELECTOR,
-	ASK_HEADER_ITEM_SELECTOR,
+	ASK_RAIL_ITEM_SELECTOR,
 } = mod;
 
 /** One aggregate row, in the route's own shape: frozen `PendingAsk` + identity. */
@@ -446,6 +446,60 @@ test("the scope travels with the flag and is never persisted", () => {
 	/* Closing leaves the scope alone; it is meaningless while nothing is open. */
 	store.setAskDrawerOpen(false, "fleet");
 	assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, false);
+	/*
+	 * THE MENU'S OPEN REQUEST IS AN EVENT TOO (round-1 Q1): it is consumed by the
+	 * drawer's own mount, so a persisted copy would open the surface - and move
+	 * the keyboard into it - with no press behind it, the same reason the console
+	 * request one pane over is excluded. Checked as a key on the filtered blob,
+	 * like the scope above.
+	 */
+	assert.equal(
+		"askOpenIntent" in
+			persistedUiPreferences({ ...opened, askOpenIntent: "fleet" }),
+		false,
+		"the request must not be persistable: restored, it would open a drawer nobody opened",
+	);
+	/* Its two writers, and the scope guard on the answer: an answer belongs to the
+	 * request it answers (the console's own clearing rule, one control over). */
+	store.requestAskOpen("fleet");
+	assert.equal(useUiPreferencesStore.getState().askOpenIntent, "fleet");
+	store.clearAskOpenIntent("session");
+	assert.equal(
+		useUiPreferencesStore.getState().askOpenIntent,
+		"fleet",
+		"a clear for the other queue cannot throw this request away",
+	);
+	store.clearAskOpenIntent("fleet");
+	assert.equal(useUiPreferencesStore.getState().askOpenIntent, null);
+	/*
+	 * A CLOSE CLEARS A PENDING REQUEST, AND SO DOES ANY OPEN (round-2 N1): the
+	 * request names an open that is about to happen, and every `setAskDrawerOpen`
+	 * write - the close that ends one open, the open of either scope that begins
+	 * the next - is a newer statement about the drawer than the request it races.
+	 * The menu row's own order (open first, request second; its source shape is
+	 * pinned above) is what keeps its pair intact through its own open.
+	 */
+	store.requestAskOpen("fleet");
+	store.setAskDrawerOpen(false, "fleet");
+	assert.equal(
+		useUiPreferencesStore.getState().askOpenIntent,
+		null,
+		"the close write clears a request that was never answered",
+	);
+	store.requestAskOpen("session");
+	store.setAskDrawerOpen(true, "fleet");
+	assert.equal(
+		useUiPreferencesStore.getState().askOpenIntent,
+		null,
+		"an open for the OTHER scope supersedes it: a later mount of the queue it named cannot inherit it",
+	);
+	assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, true);
+	/* The row's own order - open, then request - leaves ITS request standing. */
+	store.setAskDrawerOpen(true, "session");
+	store.requestAskOpen("session");
+	assert.equal(useUiPreferencesStore.getState().askOpenIntent, "session");
+	store.setAskDrawerOpen(false, "session");
+	assert.equal(useUiPreferencesStore.getState().askOpenIntent, null);
 });
 
 test("the drawer wears the canvas family's width in either scope", () => {
@@ -533,7 +587,7 @@ test("the fleet drawer answers by looking the row's session up", () => {
  * of fact a refactor loses silently: the pane's Escape claim, the selector the
  * drawer's entry move accepts, and the key that keeps two `/chat` rows apart.
  */
-test("the fleet pane claims Escape at the window, and the drawer accepts the header door", () => {
+test("the fleet pane claims Escape at the window, and the drawer accepts the rail door", () => {
 	const drawer = read(
 		"src/renderer/src/features/chat/components/asks/fleet-ask-drawer.tsx",
 	);
@@ -556,10 +610,10 @@ test("the fleet pane claims Escape at the window, and the drawer accepts the hea
 		"src/renderer/src/features/chat/components/asks/ask-drawer.tsx",
 	);
 	assert.ok(
-		container.includes("ASK_HEADER_ITEM_SELECTOR"),
-		"the drawer's entry move no longer accepts the header door, so focus never enters the pane when it is opened from the header trigger.",
+		container.includes("ASK_RAIL_ITEM_SELECTOR"),
+		"the drawer's entry move no longer accepts the rail door, so focus never enters the pane when it is opened from the rail item.",
 	);
-	assert.equal(ASK_HEADER_ITEM_SELECTOR, '[data-tour-tag="ask-pane-trigger"]');
+	assert.equal(ASK_RAIL_ITEM_SELECTOR, '[data-tour-tag="ask-pane-trigger"]');
 });
 
 test("the nav list is keyed by the row's own tag, not the shared route", () => {
@@ -578,14 +632,17 @@ test("the nav list is keyed by the row's own tag, not the shared route", () => {
 });
 
 /*
- * THE ENTRY POINT LIVES IN THE HEADER (operator ask, 2026-10-05). The row this
- * lane used to be opened from was removed from the sidebar because that column
- * was over-subscribed, so the door moved into the conversation header's own
- * cluster - and this pins the move at the source, because the failure mode is
- * silent: the fleet scope would simply have no door, and every read behind it
- * would keep working while the surface became unreachable.
+ * THE ENTRY POINT LIVES ON THE PANEL RAIL (#896; the conversation header before the
+ * move, the sidebar's `All asks` row before #820/#835). The row this lane used to be
+ * opened from was removed from the sidebar because that column was over-subscribed,
+ * so the door moved into the conversation header's own cluster, and then - with the
+ * four panel triggers - onto the rail at the window's right edge. This pins the
+ * move at the source, because the failure mode is silent: the fleet scope would
+ * simply have no door, and every read behind it would keep working while the
+ * surface became unreachable. TWO SURFACES SPELL THE DOOR NOW: the rail item's own
+ * press, and the header's `onToggleAsks` prop that its `...` menu row fires.
  */
-test("the asks door left the sidebar for the conversation header", () => {
+test("the asks door left the sidebar for the conversation header, and then for the panel rail", () => {
 	const nav = read(
 		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
 	);
@@ -596,23 +653,35 @@ test("the asks door left the sidebar for the conversation header", () => {
 	const header = read(
 		"src/renderer/src/features/chat/components/chat-header.tsx",
 	);
-	assert.match(
-		header,
-		/data-tour-tag="ask-pane-trigger"/,
-		"the header cluster no longer carries the asks trigger, which is the door the selector above names.",
+	assert.ok(
+		!header.includes('data-tour-tag="ask-pane-trigger"'),
+		"the header cluster still carries the asks trigger: #896 moved the control to the rail, and a second door of the same kind in the old place is the defect the issue names.",
 	);
 	assert.match(
 		header,
 		/onToggleAsks/,
-		"the header must take the asks door as a prop rather than reach into the store: it is rendered for a draft too, where the scope is the fleet's.",
+		"the header must take the asks door as a prop rather than reach into the store: its menu row is rendered for a draft too, where the scope is the fleet's.",
+	);
+	const rail = read(
+		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
+	);
+	assert.match(
+		rail,
+		/data-tour-tag="ask-pane-trigger"/,
+		"the rail no longer carries the asks item, which is the door the selector above names.",
+	);
+	assert.match(
+		rail,
+		/setAskDrawerOpen\(\s*!\(isAskDrawerOpen && askDrawerScope === askScope\),\s*askScope,/,
+		"the rail press must be the header trigger's old door: a toggle in the ITEM's own scope (this scope open closes; the other scope's open is replaced).",
 	);
 	const content = read(
 		"src/renderer/src/features/chat/components/chat-content.tsx",
 	);
 	assert.match(
 		content,
-		/setAskDrawerOpen\(!headerAsksOpen, headerAsksScope\)/,
-		"the header door must open the drawer in the scope its own conversation resolves to (session inside a session, fleet at the top level).",
+		/if \(headerAsksOpen\) \{\s*setAskDrawerOpen\(false, headerAsksScope\);\s*return;\s*\}\s*setAskDrawerOpen\(true, headerAsksScope\);\s*requestAskOpen\(headerAsksScope\);/,
+		"the header's menu row must toggle in the scope its own conversation resolves to (session inside a session, fleet at the top level) and, on the OPEN arm, write the lane's open request - the row cannot signal its press through focus, and without the request the drawer's empty state is unreachable from this door (round-1 Q1).",
 	);
 	assert.match(
 		content,
@@ -711,6 +780,11 @@ test("the drawer's entry move is a bounded one-shot", () => {
 	 * commit and `root === null` no longer names "the read has not answered". The
 	 * state the wait is for is the frame's absence, so the frame is what it reads.
 	 *
+	 * AND THE WINDOW CARRIES THE MENU'S REQUEST (round-1 Q1): `requested` is the
+	 * third door's signal, folded into the same pair because it is the same KIND of
+	 * fact - the user's own press - and it must backstop the same state (the drawer
+	 * its row opened over a live-but-empty queue).
+	 *
 	 * THIS IS THE STRUCTURAL HALF AND IT HAS A BEHAVIOURAL COMPANION, which is the
 	 * answer to "does this assert a string or a fact" (agent review round 1, R4):
 	 * `scripts/ask-draft-swap.test.mjs`'s `the entry move waits for the frame and moves
@@ -722,20 +796,20 @@ test("the drawer's entry move is a bounded one-shot", () => {
 	 * commit, and driving every commit's timing through jsdom would be a weaker reading
 	 * than the two-line property it already states. */
 	assert.ok(
-		block.includes("if (door !== null && frameUnread) return;"),
-		"the entry move no longer bounds its retry to the awaiting-read window (a door under focus while the frame that carries its surface is unread).",
+		block.includes("if ((door !== null || requested) && frameUnread) return;"),
+		"the entry move no longer bounds its retry to the awaiting-read window (a user's signal - the door under focus, or the menu row's request - while the frame that carries its surface is unread).",
 	);
 	const consume = block.indexOf("wasBootstrapped.current = true;");
-	/* 3. The flag is spent before the door is required, and focus can move only
-	 * after both checks - so a mount with nothing focused resolves, and the bounded
-	 * wait cannot move anything either. */
-	const resolved = block.indexOf("if (door === null) return;");
+	/* 3. The flag is spent before the user's signal is required, and focus can move
+	 * only after both checks - so a mount with nothing focused resolves, and the
+	 * bounded wait cannot move anything either. */
+	const resolved = block.indexOf("if (door === null && !requested) return;");
 	assert.ok(
 		consume !== -1 && resolved !== -1 && consume < resolved,
-		"the one-shot is spent only after the door check; a mounted pane with no door under focus never resolves and a later Tab onto the rail row can steal focus.",
+		"the one-shot is spent only after the door-or-request check; a mounted pane with no user press under focus never resolves and a later Tab onto the rail row can steal focus.",
 	);
 	assert.ok(
 		block.indexOf("landing.focus();") > resolved,
-		"focus can move before the door check has resolved.",
+		"focus can move before the door-or-request check has resolved.",
 	);
 });
