@@ -18,25 +18,33 @@ whose scroller is the `overflow-y-auto` region in `projects-page.tsx` (~line
 scroller's port, and its accent outline showing (measured: the focused
 textarea's centre lands on the port's own centre, 466.2 vs 466).
 The head tree (PR #902) gives `MessageInput` a documented `autoFocus` prop (the
-strip passes it off; chat, mini and the agents page keep today's behaviour) and
-the composer's own self-initiated focus passes `{ preventScroll: true }`.
+strip passes it off; chat, mini and the agents page keep the caret CLAIM and
+lose only its scroll - the composer's own self-initiated focus passes
+`{ preventScroll: true }` for every host).
 
 ## The pair
 
-Twelve frames from `scripts/renderer-driver.mjs`'s `project-open` scene,
+Fourteen frames from `scripts/renderer-driver.mjs`'s `project-open` scene,
 photographed through the app's own `capturePage()` in the `headless` window mode
-at a 1380x900 window, run four times - one launch per palette per tree:
+at a 1380x900 window: one launch per palette per tree, with the head half
+re-shot for the remediation round (UX round 1's U1, design round 1's D1) on the
+scene revision named below.
 
 | tree | flag | committed frames | what the half records |
 | --- | --- | --- | --- |
 | `before/` | `--autofocus-expect jump` | `first-dark`, `first-light`, `settled-dark`, `settled-light`, `typed-dark`, `chat-focus-dark` | the defect: the page lands scrolled down with the box focused and in view |
-| `after/` | `--autofocus-expect stay` | the same six | the claim: scrollTop 0, unfocused, the strip below the fold |
+| `after/` | `--autofocus-expect stay` | the same six, plus `rest-dark`, `rest-light` | the claim: scrollTop 0, unfocused, the strip below the fold; `rest` is the strip reached by the reader's own wheel, empty and unfocused |
 
-The SAME scene bytes drive both halves - the base tree is `origin/main` + this
-scene commit, the head tree is PR #902's head + the same commit rebased onto it
-- so the pair's difference is the app and never the rig. A run that disagrees
-with its flag fails by name: the four runs are `jump` on `before/` and `stay` on
-`after/`, and each printed `ALL CHECKS PASSED`.
+Each half is one scene's bytes, and the logs say which: the base tree is
+`origin/main` + the scene as of `68e99336b28`, the head tree is PR #902's head,
+whose scene's last change is `b9ce7d118e4` (unchanged through this round's
+fold). `before/`'s runs walked the leg set as of `68e99336b28` - the
+base-capture commit `70aa00e41ef`'s driver predates the "All projects control
+is reachable" leg its own logs carry, so re-running from that commit would
+throw there - and `after/`'s runs are the remediation round's re-shoot, on the
+scene that adds the rest frame and the leave-scrolled re-entry leg. A run that
+disagrees with its flag fails by name: the runs are `jump` on `before/` and
+`stay` on `after/`, and each printed `ALL CHECKS PASSED`.
 
 The two control frames (`typed-*`, `chat-focus-*`) are committed in
 `localOperatorDark` only: they are the same two interaction claims on both
@@ -140,11 +148,20 @@ Each run's count and verdict line, from the committed logs:
 | --- | --- |
 | `before/before-dark-run.log` (jump) | **35 PASS / 0 FAIL**, `ALL CHECKS PASSED` |
 | `before/before-light-run.log` (jump) | **35 PASS / 0 FAIL**, `ALL CHECKS PASSED` |
-| `after/after-dark-run.log` (stay) | **37 PASS / 0 FAIL**, `ALL CHECKS PASSED` |
-| `after/after-light-run.log` (stay) | **37 PASS / 0 FAIL**, `ALL CHECKS PASSED` |
+| `after/after-dark-run.log` (stay) | **42 PASS / 0 FAIL**, `ALL CHECKS PASSED` |
+| `after/after-light-run.log` (stay) | **42 PASS / 0 FAIL**, `ALL CHECKS PASSED` |
 
-(The `stay` branch carries two extra checks - re-entry from the list and the
-return from the chat are asserts there and recorded notes on `jump`.)
+(The `stay` branch carries the extra checks - re-entry from the list, the
+return from the chat, the rest capture and its palette, and the leave-scrolled
+re-entry - where `jump` records notes or skips; the base half's own committed
+runs predate the last two, per the revision note above.)
+
+The leave-scrolled re-entry's discrimination is not carried by a committed
+base frame: it was proven by a probe run on the HEAD tree with the scroll-reset
+hunk reverted (the scene kept), in which the page was left at `scrollTop 520`
+and re-opened the same project at `520` - 41 PASS / 1 FAIL, with
+`[FAIL] re-opening the same project while scrolled still lands at the top,
+unfocused (stay)` - and the restored tree re-ran `ALL CHECKS PASSED`.
 
 The load-bearing lines, quoted from the dark runs (the light runs print the
 same, with `local-operator-light` in the frame names):
@@ -159,6 +176,10 @@ after:  [PASS] the sampler records no movement at all: every sampled frame sits 
 after:  [PASS] the settled page is still at the top, unfocused, with the strip under the fold
 after:  [PASS] re-entering from the list opens at the top with the box unfocused (stay)
 after:  [PASS] returning from the chat leaves the project page at the top, unfocused (stay)
+after:  [PASS] the strip is on screen, empty and unfocused at rest (the frame D1 asks for)
+after:  [PASS] the page can be left while scrolled (a real wheel gesture, strip in view)
+after:  [PASS] the sidebar's Projects row returns to the list
+after:  [PASS] re-opening the same project while scrolled still lands at the top, unfocused (stay)
 both:   [PASS] switching the target neither moves the page nor hands the box the keyboard
 both:   [PASS] a real pointer press puts the caret in the strip's box
 both:   [PASS] the typed message lands in the box that took the caret
@@ -196,6 +217,7 @@ scrollTop 0:
 | `textarea.matches(":focus")` | true | false |
 | re-entry from the list (scrollTop) | 705 | 0 |
 | after `history.back()` from the chat (scrollTop) | 705 | 0 |
+| leave-while-scrolled re-entry (scrollTop) | not walked by the committed base runs (see the revision note); the reverted-reset probe read 520 in, 520 back | 0 |
 | chat composer focused on open | yes | yes |
 
 The page's own viewport reads **1380x900 at dpr 2** in this headless mode (the
@@ -217,8 +239,8 @@ whose computed `overflow-y` is auto/scroll, never by class). Its window runs to
 | --- | --- |
 | `before/before-dark-sampler.json` | `sawStrip` at t=349ms; the very next sample is `scrollTop 705`, `activeElement "textarea \"Message\""` - the jump and the caret land in the frame the strip appears; max 705, 4 samples, `stopped` |
 | `before/before-light-sampler.json` | same shape: strip at t=105ms, first non-zero scrollTop at t=105ms (705), max 705, 4 samples |
-| `after/after-dark-sampler.json` | strip at t=84ms; max scrollTop **0**, first non-zero **never**, 2 samples (the pre-press frame and the strip's arrival) |
-| `after/after-light-sampler.json` | strip at t=95ms; max 0, first non-zero never, 4 samples |
+| `after/after-dark-sampler.json` | strip at t=195ms; max scrollTop **0**, first non-zero **never**, 2 samples (the pre-press frame and the strip's arrival) |
+| `after/after-light-sampler.json` | strip at t=76ms; max 0, first non-zero never, 2 samples |
 
 On the base tree there is no frame that shows the strip at scrollTop 0: the
 focus call runs in the mount effect and the first sampled frame that contains
@@ -235,6 +257,7 @@ scroller reads 0.
 | `before/chat-focus-dark.png` | the linked session's conversation, carrying the delivered message and the mock provider's answer, with the CHAT composer focused (accent outline, caret) - the control |
 | `after/first-dark.png`, `after/first-light.png` | the detail page at the TOP: "All projects", "Rig open" with the Active chip and the `rig-open` key, the description, the Properties block, the four milestones, "0 of 4 complete" - no composer in view, nothing focused |
 | `after/settled-dark.png`, `after/settled-light.png` | the same top-of-page state, held (`stable=true`) - nothing scrolls it later |
+| `after/rest-dark.png`, `after/rest-light.png` | the strip at rest, reached by the reader's own wheel: "Send to" set to the run's first linked session (`ea5d9e369aa5`), the box EMPTY and UNFOCUSED (no accent outline, no caret; `:focus=false`), attach / working-directory / model / dictation / Send at their resting weights, with the Milestones block above and the linked-session rows in view - the affordance the operator asked to keep, which the top-of-page frames cannot show |
 | `after/typed-dark.png` | the strip reached by the same wheel gesture, the box pressed and typed, target switched, Send armed - the page at that scroll position because the USER scrolled it, which is the whole difference from the `before/` twin |
 | `after/chat-focus-dark.png` | the chat with the delivered message and the mock answer, chat composer focused - unchanged on the new tree |
 

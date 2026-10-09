@@ -1,17 +1,17 @@
 renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
-[build] current: assets 2026-10-08T21:48:18.702Z >= sources 2026-10-08T21:46:30.203Z
+[build] current: assets 2026-10-09T01:07:44.268Z >= sources 2026-10-09T00:58:39.638Z
 [note] abandoned scratch trees
-        2 seen, 0 owned by a live pid (kept), 0 younger than 30m (kept), 2 removed: lo-renderer-driver-46570, lo-renderer-driver-7546
+        6 seen, 0 owned by a live pid (kept), 2 younger than 30m (kept), 4 removed: lo-renderer-driver-42809, lo-renderer-driver-57539, lo-renderer-driver-62278, lo-renderer-driver-66419
 [note] csp for this run's backend
         out/renderer/index.html: http://127.0.0.1:8080 added to frame-src, media-src, img-src (build output only; src/ untouched)
-  serve records 1 linked from /Users/damian/.local-operator/sessions/05ebc67a456f/scratchpad/project-open-after/daemon/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+  serve records 1 linked from /Users/damian/.local-operator/sessions/ffa1f970cfd2/scratchpad/project-open-head/daemon/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
 local-operator-ui renderer driver
-  repo          /Users/damian/local-operator-ui-worktrees/project-composer-evidence
-  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-56409
-  frames        /Users/damian/.local-operator/sessions/05ebc67a456f/scratchpad/project-open-after/out-localOperatorDark
-  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-56409/cwd   (scratch: the repo's .env is not read)
+  repo          /Users/damian/local-operator-ui-worktrees/project-composer-autofocus
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-25584
+  frames        /Users/damian/.local-operator/sessions/ffa1f970cfd2/scratchpad/project-open-head/head-localOperatorDark/out
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-25584/cwd   (scratch: the repo's .env is not read)
   backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
-  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/project-composer-evidence/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/project-composer-autofocus/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
   electron pin  44.3.0   (package.json optionalDependencies)
 [PASS] the harness is driving the Electron this branch pins
 [PASS] the scratch backend port is dead
@@ -38,7 +38,7 @@ local-operator-ui renderer driver
 [PASS] project-open-first-1380x900-local-operator-dark draws the dark palette its name claims
         DOM localOperatorDark #22201c; mean luma 37.6 vs 32.1 own / 237.3 other
 [note] first frame
-        scrollTop=0 scrollHeight=1784 clientHeight=868 card=1078.2..1276.2 (198px) textarea=1154.2..1188.2 (34px) naturalTop card=1046.2 textarea=1122.2 activeElement="body" :focus=false viewport=1380x900@2 | frame=project-open-first-1380x900-local-operator-dark 278598 bytes, pressed 228ms before
+        scrollTop=0 scrollHeight=1784 clientHeight=868 card=1078.2..1276.2 (198px) textarea=1154.2..1188.2 (34px) naturalTop card=1046.2 textarea=1122.2 activeElement="body" :focus=false viewport=1380x900@2 | frame=project-open-first-1380x900-local-operator-dark 280671 bytes, pressed 354ms before
 [PASS] the strip starts below the fold at scrollTop 0 (the defect's precondition)
 [PASS] the page opens at scrollTop 0 with the box unfocused (the change's claim, first frame)
 [PASS] project-open-settled-1380x900-local-operator-dark draws the dark palette its name claims
@@ -46,17 +46,22 @@ local-operator-ui renderer driver
 [note] settled frame
         scrollTop=0 scrollHeight=1784 clientHeight=868 card=1078.2..1276.2 (198px) textarea=1154.2..1188.2 (34px) naturalTop card=1046.2 textarea=1122.2 activeElement="body" :focus=false viewport=1380x900@2 | frame=project-open-settled-1380x900-local-operator-dark stable=true toastFree=true
 [note] the sampler's trace
-        sawStrip=true at t=84ms, 2 sample(s); maxScrollTop=0; first non-zero scrollTop never
+        sawStrip=true at t=195ms, 2 sample(s); maxScrollTop=0; first non-zero scrollTop never
 [PASS] the sampler records no movement at all: every sampled frame sits at scrollTop 0
 [PASS] the settled page is still at the top, unfocused, with the strip under the fold
 [PASS] the strip can be reached by the page's own scrolling (a real wheel gesture)
+[PASS] the strip is on screen, empty and unfocused at rest (the frame D1 asks for)
+[PASS] project-open-rest-1380x900-local-operator-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 39.3 vs 32.1 own / 237.3 other
+[note] rest frame
+        frame=project-open-rest-1380x900-local-operator-dark stable=true
 [PASS] the Send-to control opens its listbox
 [PASS] switching the target neither moves the page nor hands the box the keyboard
 [PASS] the pressed option names one of the seeded links
 [PASS] a real pointer press puts the caret in the strip's box
 [PASS] the typed message lands in the box that took the caret
 [PASS] project-open-typed-1380x900-local-operator-dark draws the dark palette its name claims
-        DOM localOperatorDark #22201c; mean luma 39.7 vs 32.1 own / 237.3 other
+        DOM localOperatorDark #22201c; mean luma 39.8 vs 32.1 own / 237.3 other
 [note] typed frame
         frame=project-open-typed-1380x900-local-operator-dark stable=true
 [PASS] a pointer press of Send admits the message into the linked session's transcript (daemon read)
@@ -70,15 +75,18 @@ local-operator-ui renderer driver
 [PASS] the linked session's row was pressed
 [PASS] opening a conversation still puts the caret in the chat's composer (the control this change must not move)
 [PASS] project-open-chat-focus-1380x900-local-operator-dark draws the dark palette its name claims
-        DOM localOperatorDark #22201c; mean luma 37.3 vs 32.1 own / 237.3 other
+        DOM localOperatorDark #22201c; mean luma 37.6 vs 32.1 own / 237.3 other
 [note] chat-focus frame
         frame=project-open-chat-focus-1380x900-local-operator-dark stable=true
 [PASS] returning from the chat leaves the project page at the top, unfocused (stay)
+[PASS] the page can be left while scrolled (a real wheel gesture, strip in view)
+[PASS] the sidebar's Projects row returns to the list
+[PASS] re-opening the same project while scrolled still lands at the top, unfocused (stay)
 [PASS] no process from this run outlived its boot
 
-frames: project-open-chat-focus-1380x900-local-operator-dark.png, project-open-first-1380x900-local-operator-dark.png, project-open-settled-1380x900-local-operator-dark.png, project-open-typed-1380x900-local-operator-dark.png
-frames directory: /Users/damian/.local-operator/sessions/05ebc67a456f/scratchpad/project-open-after/out-localOperatorDark
-app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-56409/app-scene.log
+frames: project-open-chat-focus-1380x900-local-operator-dark.png, project-open-first-1380x900-local-operator-dark.png, project-open-rest-1380x900-local-operator-dark.png, project-open-settled-1380x900-local-operator-dark.png, project-open-typed-1380x900-local-operator-dark.png
+frames directory: /Users/damian/.local-operator/sessions/ffa1f970cfd2/scratchpad/project-open-head/head-localOperatorDark/out
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-25584/app-scene.log
 scratch removed (--clean)
 
 ALL CHECKS PASSED

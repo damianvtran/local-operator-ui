@@ -61,19 +61,19 @@
  },
  "sampler": {
   "sawStrip": true,
-  "sawAt": 84,
+  "sawAt": 195,
   "stopped": true,
   "maxScrollTop": 0,
   "samples": [
    {
-    "t": 1,
+    "t": 6,
     "strip": false,
     "scrollTop": null,
     "stripTop": null,
     "activeElement": "body"
    },
    {
-    "t": 85,
+    "t": 195,
     "strip": true,
     "scrollTop": 0,
     "stripTop": 1078,
