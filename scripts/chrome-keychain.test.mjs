@@ -506,6 +506,12 @@ const CHROME_LAUNCH_SITES = [
 		"the frame-level bound on the drawer's auto-close - sampling on every animation frame across a conversation switch to separate a paint-phase artifact from the unread window the close has to wait for - one private headless Chrome per run through the same helper",
 	),
 	guarded(
+		"scripts/right-slot-one-default-evidence.mjs",
+		"spawn",
+		1,
+		"the right slot's one-default pair - the four shell pane arms on two trees in two runs (before and after the #872 follow-up), reading the drawn widths, the conversation column's width and the separators' announced valuenow/min/max from the live DOM and photographing both halves - one private headless Chrome per run through the same helper",
+	),
+	guarded(
 		"docs/evidence/ask-other/harness/drive-other.mjs",
 		"spawn",
 		1,

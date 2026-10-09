@@ -1,4 +1,4 @@
-import { DEFAULT_CONSOLE_PANEL_WIDTH } from "@shared/store/ui-preferences-store";
+import { DEFAULT_RIGHT_SLOT_WIDTH } from "@shared/store/ui-preferences-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect } from "@storybook/test";
@@ -48,12 +48,13 @@ const toBase64 = (text: string): string => {
 /**
  * THE PANE'S OWN DEFAULT WIDTH, imported rather than typed.
  *
- * The frames used to be captured at a literal `843`, which is not the default the
- * store ships (`DEFAULT_CONSOLE_PANEL_WIDTH`, derived from the shipped face at
- * `TERMINAL_FONT_SIZE`) and not the design's 100-column grid either: measured off the
- * frame it was ~108 columns at 7.79px, so the frames showed a pane three to eight
- * columns wider than a user's, while the PR body quoted the default's arithmetic.
- * One number, from the code that ships it, is the fix (design round 1, D2).
+ * The frames used to be captured at a literal `843`, which was not the width the
+ * store shipped for the console: measured off the frame it was ~108 columns at
+ * 7.79px, so the frames showed a pane three to eight columns wider than a user's,
+ * while the PR body quoted the default's arithmetic. One number, from the code that
+ * ships it, is the fix (design round 1, D2). That number is the slot's one default
+ * now (`DEFAULT_RIGHT_SLOT_WIDTH`, 640 = 80 columns), no longer a console-only
+ * 100-column derivation; the frames follow it.
  */
 const NOW = Math.floor(Date.now() / 1000);
 
@@ -272,7 +273,7 @@ const Frame: FC<{
 	return (
 		<div
 			className="bg-surface p-0"
-			style={{ width: DEFAULT_CONSOLE_PANEL_WIDTH, height }}
+			style={{ width: DEFAULT_RIGHT_SLOT_WIDTH, height }}
 		>
 			<ConsolePane sessionId={sessionId} onClose={() => {}} />
 		</div>
