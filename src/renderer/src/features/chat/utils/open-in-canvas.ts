@@ -95,6 +95,16 @@ async function askFresh(path: string): Promise<ProbedTarget> {
 	try {
 		const [answer] = await ask([path]);
 		if (!answer) return null;
+		/*
+		 * A FAULT is not an answer (remediation round 1, R1-2; QA round 1, Q1):
+		 * the probe could not look - a deadline under load - so this returns the
+		 * same `null` a missing bridge returns, and the caller falls back to the
+		 * cache, which is this file's documented behaviour for an ask that
+		 * "cannot happen at all". Treating it as `exists: false` refused the
+		 * canvas for a file that is there and dropped the cache entry as if the
+		 * press had disproved it.
+		 */
+		if (answer.error !== undefined) return null;
 		return {
 			exists: answer.exists,
 			isFile: answer.isFile,

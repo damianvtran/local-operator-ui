@@ -88,6 +88,8 @@ import {
 	destinationNeedsSession,
 	draftStageForSource,
 } from "@features/chat/pickers/picker-registry";
+import { modelAccessReading } from "@features/chat/session-status/session-model";
+import { SessionModelAccessBand } from "@features/chat/session-status/session-model-access";
 import { SessionStatusStrip } from "@features/chat/session-status/session-status-strip";
 import type { Message } from "@features/chat/types/message";
 import {
@@ -7321,6 +7323,46 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		/*
+		 * THE SESSION'S MODEL-ACCESS BAND: the runtime says the model this session
+		 * runs is not signed in (`model_access: signed_out`), so the session cannot
+		 * answer until a credential exists. It sits in the band with the other
+		 * STANDING statements rather than beside the transient send alert — the
+		 * state outlives any one send — and it renders NOTHING unless the host
+		 * published the field and it says `signed_out`: an older host's silence is
+		 * not a state (`modelAccessReading`, the one place that rule lives).
+		 *
+		 * A DRAFT is excluded, deliberately: a draft pane's snapshot is a
+		 * `sessions.preview` resolution for a session that does not exist yet, so a
+		 * `signed_out` there could only describe a model the draft would run —
+		 * which is the PICKER's question, answerable by its own scope control, not
+		 * this band's. The two actions keep their one entrance each (`/model` via
+		 * the dispatcher, Connect via the connect store), so this block cannot
+		 * become a second way to reach either.
+		 */
+		const modelAccess =
+			sessionStatus && sessionStatus.draft !== true
+				? modelAccessReading(sessionStatus.frontend)
+				: null;
+		const modelAccessBlock = modelAccess ? (
+			<output className={cn(CHAT_MEASURE, "block pb-2")}>
+				<SessionModelAccessBand
+					access={modelAccess}
+					isSmallView={isSmallView}
+					onSwitchModel={
+						sessionStatus?.onCommand
+							? () => sessionStatus.onCommand?.({ name: "model", args: "" })
+							: undefined
+					}
+					onConnect={() =>
+						useConnectProviderStore
+							.getState()
+							.openConnect({ providerId: modelAccess.provider })
+					}
+				/>
+			</output>
+		) : null;
+
+		/*
 		 * THE ACKNOWLEDGMENT'S TWO HALVES, ON ONE PREDICATE, AND ONE OF THEM IS
 		 * LOAD-BEARING (agent review round 2 minor b, UX round 2's U7). The caption is
 		 * a SIBLING of the control, so both read this: they cannot desync into an
@@ -7421,6 +7463,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * compacted 4px (design round 1, D1).
 				 */}
 				{radientIssueBlock}
+				{/*
+				 * The session's own model-access band, beside the Radient issue for the same
+				 * reason: both are STANDING statements about the session's ability to run,
+				 * and a state of the session outlives the outcome of one send. The block
+				 * renders nothing unless the host published `model_access: signed_out`.
+				 */}
+				{modelAccessBlock}
 				{/*
 				 * THE MOVE HOLD, outboard of the box and inside the band: §2.4's strip, which
 				 * names why the runtime cannot admit anything while the handoff runs. It sits

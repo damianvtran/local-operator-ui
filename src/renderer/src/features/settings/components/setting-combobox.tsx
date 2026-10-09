@@ -118,13 +118,15 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 	 * immediately as a field with its placeholder, and the list arrives inside
 	 * the gesture that asked for it.
 	 *
-	 * The key is the CHAT PICKER'S OWN (`["desktop", "models", false]`), so a
-	 * session that has already opened the picker and the settings page share one
-	 * cache entry instead of fetching the catalogue twice. `live: false` always:
-	 * a live re-list is a measured 2.33 s, and this field is a boot preference
-	 * rather than a listing. The prefix is `desktopKeys.catalogue` — the same
-	 * binding the picker builds its two keys from — and only the trailing flag is
-	 * written here, because a `live` flag is not a key this reader owns.
+	 * The key lives UNDER the chat picker's own prefix (`desktopKeys.catalogue`),
+	 * so one invalidation at a credential change still drops this document with
+	 * the picker's. It is deliberately NOT the picker's own entry any more: the
+	 * picker's keys carry a `scope` (`["desktop", "models", live, scope]`, see
+	 * `scopeCatalogue`), and this reader wants the unfiltered registry — a
+	 * settings field must offer a provider the user intends to sign into later,
+	 * which is exactly what the picker's default `usable` view withholds. `live:
+	 * false` always: a live re-list is a measured 2.33 s, and this field is a
+	 * boot preference rather than a listing.
 	 */
 	const modelsEnabled =
 		kind !== "provider" &&

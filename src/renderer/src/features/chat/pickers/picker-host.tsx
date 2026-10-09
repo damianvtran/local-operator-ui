@@ -127,6 +127,17 @@ export type PickerHostProps = {
 
 	/** Text shown when the (filtered) list is empty. */
 	emptyText?: string;
+	/**
+	 * An action under `emptyText`, for an empty state whose way out is a
+	 * gesture rather than a sentence.
+	 *
+	 * Rendered ONLY in the empty branch — a control that rode the footer would
+	 * advertise itself in every other state of the dialog — and optional, so
+	 * every picker that has nothing to offer here renders byte-identically to
+	 * before. The model picker is the first caller: its empty state is "nothing
+	 * is connected", whose way out is the connect dialog (`Connect a provider`).
+	 */
+	emptyAction?: ReactNode;
 	searchPlaceholder?: string;
 	/** Called with the picked option's value. */
 	onPick?: (value: string, option: PickerOption) => void | Promise<void>;
@@ -799,6 +810,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	notice = null,
 	noticeDetail = null,
 	emptyText = "Nothing matches.",
+	emptyAction,
 	searchPlaceholder = "Search",
 	onPick,
 	form,
@@ -1330,7 +1342,21 @@ export const PickerHost: FC<PickerHostProps> = ({
 						) : bodyKind === "error" ? (
 							<p className="px-2 py-3 text-body-sm text-danger">{loadError}</p>
 						) : bodyKind === "empty" ? (
-							<p className="px-2 py-3 text-body-sm text-ink-dim">{emptyText}</p>
+							emptyAction ? (
+								/*
+								 * A block rather than a bare sentence when the state carries an action:
+								 * the paragraph keeps its own inset, and the control sits under it on
+								 * the reading column, so the two read as one message.
+								 */
+								<div className="flex flex-col items-start gap-2 px-2 py-3">
+									<p className="text-body-sm text-ink-dim">{emptyText}</p>
+									{emptyAction}
+								</div>
+							) : (
+								<p className="px-2 py-3 text-body-sm text-ink-dim">
+									{emptyText}
+								</p>
+							)
 						) : (
 							<div
 								ref={listRef}

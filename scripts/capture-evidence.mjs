@@ -5343,6 +5343,33 @@ export const STORIES = [
 	/* Accepted and refused effort picks with the opt-in new-session default. */
 	["chat-model-picker--effort-set-as-default", 900, 620],
 	["chat-model-picker--effort-refused-does-not-save-default", 900, 620],
+	/*
+	   THE ACCESS-SCOPE STATES, added with the scope union itself.
+
+	   `show-all-wire` is a NEW backend's answer driven end to end: the resting
+	   view lists only rows this machine can run (no GLM row anywhere in it), the
+	   control prints the backend's own count `(2 need sign-in)`, and the frame is
+	   the state AFTER the press - both needs-sign-in rows under their heading.
+	   `show-all-fallback` is the same press against an OLD backend (neither
+	   `scope` nor `hidden` on the wire): the filter is the client's and the
+	   control carries no count, which is the pair a reader needs to see the two
+	   paths agree on the rows while differing honestly in what they promise.
+	   `no-usable-models` is nothing-signed-in: the empty state is the way out
+	   (`Connect a provider`), not a dead list, and it is short (560) for the
+	   reason `empty` is - a spinner-sized state at 900 tall is mostly ground,
+	   which crosses the uniformity ceiling.
+	*/
+	["chat-model-picker--usable-only-wire", 900, 760],
+	["chat-model-picker--show-all-wire", 900, 760],
+	["chat-model-picker--show-all-fallback", 900, 760],
+	["chat-model-picker--no-usable-models", 900, 560],
+	/*
+	   THE SESSION BAND'S MODEL-ACCESS STATEMENT (`model_access: signed_out`):
+	   the sentence naming the provider and the two ways out, at the composer
+	   column's width and at the narrow-view inset where the sentence wraps.
+	*/
+	["chat-session-model-access-band--signed-out", 900, 280],
+	["chat-session-model-access-band--signed-out-narrow", 460, 260],
 
 	/*
 	 * `/move`: NO SWEPT ENTRY, and the absence is the honest state of this
