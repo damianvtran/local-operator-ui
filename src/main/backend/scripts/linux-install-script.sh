@@ -148,10 +148,21 @@ check_connectivity() {
   fi
 }
 
-# Call connectivity check
+# The `python` stage (code review round 1, R1): this script owns the same stage
+# macOS gets from `managed-python.ts` and Windows from its own marker - finding
+# (and, where there is none, refusing to guess about) the interpreter everything
+# below runs on. Without it the panel opened on "Step 2 of 4" with the rail's
+# first row never lit. `|LO1:` lines are the app's milestone vocabulary
+# (`src/shared/install-progress.ts`), matched on the WHOLE line.
+#
+# THE MARKER PRECEDES THE CONNECTIVITY PROBE (code review round 2, N-2, whose
+# whole complaint was that the stage is announced after it): that probe can spend
+# up to 2 x 30 s on a dead network, and it is the first work this stage does - so
+# the panel says "Getting ready" while it waits instead of showing a step with no
+# clock and no estimate for a minute.
+echo "|LO1:python"
 check_connectivity
 
-# Check if PYTHON_BIN is already set by the installer
 if [ -n "${PYTHON_BIN:-}" ]; then
   log "Using Python executable provided by installer: ${PYTHON_BIN}"
   # Verify the provided Python binary works on this architecture
@@ -304,6 +315,93 @@ if [ $VENV_AVAILABLE -ne 0 ]; then
   fi
 fi
 
+# --- The installer this script prefers: the app's own bundled uv ---------------
+#
+# Same shape as the macOS script, and for the same reasons: uv resolves and
+# fetches in parallel - measured there, cold cache, three runs each, same
+# interpreter: uv's package install is 12.8-16.1 s against pip's 33.0-40.7 s,
+# plus the 2.3-2.8 s pip self-upgrade this path skips, so 1.5-2.8x across two
+# operators rather than the "14.8 s against 128.9 s" quoted here before that
+# reading was withdrawn (`docs/BUILD.md` has the full set). The pip path below is
+# unchanged and runs whenever uv is absent or cannot do the job, and pip STAYS in
+# the venv because the app's backend-update path runs `<venv>/bin/python -m pip
+# install --upgrade local-operator` inside this same environment - which is why
+# the environment must keep pip, and NOT a reason to avoid `uv venv`: bare
+# `uv venv` leaves no pip at all, `uv venv --seed` does, and `--seed` is what the
+# creation below passes.
+#
+# RESOLVED HERE, ABOVE THE ENVIRONMENT, because uv builds the environment too
+# now (first-run onboarding, Q13), exactly as it already did on macOS: the
+# creation below tries `uv venv --seed` first and falls through to the venv
+# module, then virtualenv, then the minimal bootstrap - every path that shipped
+# before is still behind it.
+#
+# Nothing here searches PATH for a uv: an installed uv is a version and a
+# configuration nobody in this repository chose. `LOCAL_OPERATOR_UV_BIN` is the
+# app's own answer (`src/main/backend/uv-tool.ts`).
+UV_BIN="${LOCAL_OPERATOR_UV_BIN:-}"
+
+# Drop every UV_* variable the launching environment carried. Measured on uv
+# 0.12.17: a user-level `uv.toml` naming an unreachable index is obeyed by
+# `uv pip install` and ignored with `UV_NO_CONFIG=1`; an ambient `UV_INDEX_URL`
+# changes where packages come from, while `PIP_INDEX_URL` does not affect uv at
+# all. A name list would drift the day uv adds a variable - the namespace cannot.
+#
+# IT RUNS BEFORE THE SETTINGS BELOW ARE SET: a sweep after them takes them away,
+# and an empty `UV_CACHE_DIR` makes uv exit 2 with `a value is required for
+# '--cache-dir <CACHE_DIR>'` rather than falling back to a default.
+for uv_ambient in $(env | sed -n 's/^\(UV_[A-Za-z0-9_]*\)=.*/\1/p'); do
+  unset "$uv_ambient"
+done
+
+# The cache lives under the app's own support directory rather than the user's
+# shared `~/.cache/uv`, and is handed to uv per invocation rather than exported.
+# It persists (~118 MB for a full install, measured on macOS) and nothing else
+# reads it today; it is what makes a retry converge in seconds rather than tens
+# of seconds.
+UV_CACHE_DIR="${APP_DATA_DIR}/uv-cache"
+
+# Is the handed-down uv something we can actually run?
+uv_is_usable() {
+  [ -n "${UV_BIN}" ] && [ -x "${UV_BIN}" ] && "${UV_BIN}" --version >/dev/null 2>&1
+}
+
+# UV_NO_CONFIG: never read `pyproject.toml`/`uv.toml`, wherever they are.
+# UV_PYTHON_DOWNLOADS=never: this install uses the interpreter it was handed and
+# never fetches another.
+# UV_SYSTEM_CERTS: trust the PLATFORM trust store, not only the root bundle uv
+# ships. Off by default, which is the default this line changes; `--system-certs`
+# is the same setting spelled as a flag in the bundled uv 0.12.17.
+#
+# WHY: on a network that inspects TLS the root lives in the platform store (here,
+# `/etc/ssl/certs`), and uv does not read that store by default - it fails the
+# handshake against the roots compiled into it. uv names this remedy itself when
+# it fails: "Consider enabling use of system TLS certificates with the
+# `--system-certs` command-line flag". Nothing here passed it, so the failure
+# went to the fallback and the user was told to check a network that was working
+# for every other application on the machine.
+#
+# AND WHY THE PIP FALLBACK IS HANDED NO CA SETTING: pip 24.2 and newer read the
+# platform store by default, in addition to the Mozilla bundle they ship
+# (`truststore`, "always on since 24.2"), and every pip these installs produce
+# is newer than that - uv's own seed and the bundled interpreter's ensurepip
+# alike - so a root added to `/etc/ssl/certs` is trusted by BOTH clients and no
+# `PIP_CERT`/`SSL_CERT_FILE` is needed. The note this replaces claimed the
+# opposite (the fallback "resolves against certifi"; "neither client" would see
+# the store), which was true only of pip before 24.2; corrected rather than
+# deleted so it is not restored (review round 1, R1-2). The one shape it does
+# not cover is a dev checkout on a system python old enough to predate
+# truststore.
+#
+# IT CANNOT MAKE THINGS WORSE: every uv call below is already followed by the pip
+# fallback on a non-zero exit, so a platform store that cannot be read costs one
+# failed uv attempt and then the path that shipped before uv was bundled.
+uv_run() {
+  UV_NO_CONFIG=1 UV_PYTHON_DOWNLOADS=never UV_SYSTEM_CERTS=1 \
+    UV_CACHE_DIR="${UV_CACHE_DIR}" \
+    "${UV_BIN}" "$@"
+}
+
 # Create virtual environment if it doesn't exist
 if [ ! -d "$VENV_PATH" ]; then
   echo "|LO1:environment"
@@ -320,8 +418,27 @@ if [ ! -d "$VENV_PATH" ]; then
   # Try different methods to create a virtual environment
   VENV_CREATE_STATUS=1
   
-  # First try with venv if available
-  if [ $VENV_AVAILABLE -eq 0 ] && [ $ENSUREPIP_AVAILABLE -eq 0 ]; then
+  # uv first (first-run onboarding, Q13): `uv venv --seed` builds the
+  # environment AND seeds pip from uv's cache in about a second, where the venv
+  # module runs ensurepip's bundled wheel through a full pip install. Measured on
+  # macOS with the same pinned uv: 1.2 s for the whole environment phase. The
+  # interpreter is the one this script already validated, and `uv_run` keeps
+  # UV_PYTHON_DOWNLOADS=never, so uv cannot swap in a Python of its own.
+  # A uv that cannot run or fails falls through to every path below, unchanged;
+  # the `rm` removes only what this attempt made (the guard above proved the
+  # path absent a moment ago).
+  if uv_is_usable; then
+    echo "Creating virtual environment with uv ($("${UV_BIN}" --version 2>/dev/null || echo 'version unavailable'))..."
+    if uv_run venv --seed --python "$PYTHON_BIN" "$VENV_PATH"; then
+      VENV_CREATE_STATUS=0
+    else
+      echo "WARNING: the bundled uv could not create the environment (exit $?); retrying with the interpreter's own venv module."
+      rm -rf "$VENV_PATH"
+    fi
+  fi
+
+  # Then the venv module, if available
+  if [ $VENV_CREATE_STATUS -ne 0 ] && [ $VENV_AVAILABLE -eq 0 ] && [ $ENSUREPIP_AVAILABLE -eq 0 ]; then
     echo "Creating virtual environment using venv module..."
     "$PYTHON_BIN" -m venv "$VENV_PATH"
     VENV_CREATE_STATUS=$?
@@ -424,87 +541,7 @@ echo "Virtual environment structure verified"
 
 # --- The package install: uv when there is one, pip otherwise ------------------
 #
-# Same shape as the macOS script, and for the same reasons: uv resolves and
-# fetches in parallel - measured there, cold cache, three runs each, same
-# interpreter: uv's package install is 12.8-16.1 s against pip's 33.0-40.7 s,
-# plus the 2.3-2.8 s pip self-upgrade this path skips, so 1.5-2.8x across two
-# operators rather than the "14.8 s against 128.9 s" quoted here before that
-# reading was withdrawn (`docs/BUILD.md` has the full set). The pip path below is
-# unchanged and runs whenever uv is absent or cannot do the job, and pip STAYS in
-# the venv because the app's backend-update path runs `<venv>/bin/python -m pip
-# install --upgrade local-operator` inside this same environment - which is why
-# the environment must keep pip, and NOT a reason to avoid `uv venv`: the note
-# that stood here said `uv venv` leaves no pip at all, which is true of bare
-# `uv venv` and false of `uv venv --seed`, and this script's own creation path is
-# still `python -m venv` only because moving it has been measured on macOS and
-# not on this platform yet (see the macOS script for the numbers and the proof).
-#
-# Nothing here searches PATH for a uv: an installed uv is a version and a
-# configuration nobody in this repository chose. `LOCAL_OPERATOR_UV_BIN` is the
-# app's own answer (`src/main/backend/uv-tool.ts`).
-UV_BIN="${LOCAL_OPERATOR_UV_BIN:-}"
-
-# Drop every UV_* variable the launching environment carried. Measured on uv
-# 0.12.17: a user-level `uv.toml` naming an unreachable index is obeyed by
-# `uv pip install` and ignored with `UV_NO_CONFIG=1`; an ambient `UV_INDEX_URL`
-# changes where packages come from, while `PIP_INDEX_URL` does not affect uv at
-# all. A name list would drift the day uv adds a variable - the namespace cannot.
-#
-# IT RUNS BEFORE THE SETTINGS BELOW ARE SET: a sweep after them takes them away,
-# and an empty `UV_CACHE_DIR` makes uv exit 2 with `a value is required for
-# '--cache-dir <CACHE_DIR>'` rather than falling back to a default.
-for uv_ambient in $(env | sed -n 's/^\(UV_[A-Za-z0-9_]*\)=.*/\1/p'); do
-  unset "$uv_ambient"
-done
-
-# The cache lives under the app's own support directory rather than the user's
-# shared `~/.cache/uv`, and is handed to uv per invocation rather than exported.
-# It persists (~118 MB for a full install, measured on macOS) and nothing else
-# reads it today; it is what makes a retry converge in seconds rather than tens
-# of seconds.
-UV_CACHE_DIR="${APP_DATA_DIR}/uv-cache"
-
-# Is the handed-down uv something we can actually run?
-uv_is_usable() {
-  [ -n "${UV_BIN}" ] && [ -x "${UV_BIN}" ] && "${UV_BIN}" --version >/dev/null 2>&1
-}
-
-# UV_NO_CONFIG: never read `pyproject.toml`/`uv.toml`, wherever they are.
-# UV_PYTHON_DOWNLOADS=never: this install uses the interpreter it was handed and
-# never fetches another.
-# UV_SYSTEM_CERTS: trust the PLATFORM trust store, not only the root bundle uv
-# ships. Off by default, which is the default this line changes; `--system-certs`
-# is the same setting spelled as a flag in the bundled uv 0.12.17.
-#
-# WHY: on a network that inspects TLS the root lives in the platform store (here,
-# `/etc/ssl/certs`), and uv does not read that store by default - it fails the
-# handshake against the roots compiled into it. uv names this remedy itself when
-# it fails: "Consider enabling use of system TLS certificates with the
-# `--system-certs` command-line flag". Nothing here passed it, so the failure
-# went to the fallback and the user was told to check a network that was working
-# for every other application on the machine.
-#
-# AND WHY THE PIP FALLBACK IS HANDED NO CA SETTING: pip 24.2 and newer read the
-# platform store by default, in addition to the Mozilla bundle they ship
-# (`truststore`, "always on since 24.2"), and every pip these installs produce
-# is newer than that - uv's own seed and the bundled interpreter's ensurepip
-# alike - so a root added to `/etc/ssl/certs` is trusted by BOTH clients and no
-# `PIP_CERT`/`SSL_CERT_FILE` is needed. The note this replaces claimed the
-# opposite (the fallback "resolves against certifi"; "neither client" would see
-# the store), which was true only of pip before 24.2; corrected rather than
-# deleted so it is not restored (review round 1, R1-2). The one shape it does
-# not cover is a dev checkout on a system python old enough to predate
-# truststore.
-#
-# IT CANNOT MAKE THINGS WORSE: every uv call below is already followed by the pip
-# fallback on a non-zero exit, so a platform store that cannot be read costs one
-# failed uv attempt and then the path that shipped before uv was bundled.
-uv_run() {
-  UV_NO_CONFIG=1 UV_PYTHON_DOWNLOADS=never UV_SYSTEM_CERTS=1 \
-    UV_CACHE_DIR="${UV_CACHE_DIR}" \
-    "${UV_BIN}" "$@"
-}
-
+# uv was resolved above the environment (see there); pip is the fallback.
 # Activate virtual environment and install local-operator
 echo "Installing local-operator in virtual environment..."
 source "$VENV_PATH/bin/activate"
@@ -601,14 +638,11 @@ else
 fi
 
 if [ "${UV_INSTALLED}" != true ]; then
-  echo "Upgrading pip..."
-  python -m pip install --upgrade pip || {
-    echo "WARNING: Failed to upgrade pip. Will try to continue with existing pip version."
-    pip --version
-  }
-
+  # No pip self-upgrade and no `--verbose`, for the reasons the macOS script
+  # gives beside the same lines (first-run onboarding, Q4/Q13): an extra
+  # resolve-and-download that changes nothing, and output nobody reads.
   echo "Installing local-operator package..."
-  python -m pip install --verbose local-operator || {
+  python -m pip install --upgrade local-operator || {
     echo "ERROR: Failed to install local-operator package. Exit code: $?"
     echo "Python version:"
     python --version
