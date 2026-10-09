@@ -259,7 +259,26 @@ const probeSource = () => {
 		 * sentence after a policy open. That is the whole of the visual claim this feature can
 		 * make, stated as a reading instead of a frame.
 		 */
-		liveRegion: q('output[aria-live="polite"]')?.textContent ?? null,
+		/*
+		 * THE REGION THE POLICY OWNS, read BY ITS OWN NAME. `output[aria-live="polite"]`
+		 * matches several regions on this route and `querySelector` answers with the
+		 * first in document order, so the first run of this probe read a reading from
+		 * whichever region happened to precede this one (remediation round 1, D1) -
+		 * the region's own attribute is the only unambiguous handle. `liveRegions`
+		 * keeps every match, in order, so a record can show what the selector saw.
+		 */
+		liveRegion: q("[data-ask-open-announcer]")?.textContent ?? null,
+		liveRegions: [...document.querySelectorAll('output[aria-live="polite"]')].map(
+			(el, i) => ({
+				i,
+				owner: el.getAttribute("data-ask-open-announcer") !== null
+					? "ask-open"
+					: el.getAttribute("data-condense-announcement") !== null
+						? "condense"
+						: null,
+				text: (el.textContent ?? "").slice(0, 80),
+			}),
+		),
 		scope: q("[data-ask-drawer] [data-ask-scope]")?.textContent ?? null,
 		canvas: count('[data-tour-tag="canvas-container"]'),
 		other: {
@@ -316,6 +335,37 @@ const samplerSource = (durationMs) => {
 	const S = { t0: performance.now(), marks: [] };
 	window.__timeline = S;
 	const q = (selector) => document.querySelector(selector);
+	/*
+	 * WHICH BOX MOVED, for the D3/U5 reflow question: the composer's own geometry is
+	 * already read per frame, but the 436 -> 452 settle (design D3, UX U5) cannot be
+	 * ATTRIBUTED from the composer alone - the drawer slot, a divider insert and a
+	 * scrollbar all change the box the composer sits in. Six ancestors with their own
+	 * names (the rig's `data-tour-tag` where one exists) turn "the width changed" into
+	 * "this box changed it". Fixed depth, so the marks stay small enough to carry in the
+	 * run JSON.
+	 */
+	const ancestorChain = (el) => {
+		const chain = [];
+		let node = el ? el.parentElement : null;
+		while (node && chain.length < 6) {
+			const r = node.getBoundingClientRect();
+			const cls =
+				typeof node.className === "string"
+					? (node.className.trim().split(" ").find(Boolean) ?? "")
+					: "";
+			chain.push({
+				n:
+					node.getAttribute("data-tour-tag") ||
+					(node.hasAttribute("data-ask-drawer")
+						? "ask-drawer"
+						: `${node.tagName.toLowerCase()}${cls ? `.${cls}` : ""}`),
+				x: Math.round(r.left),
+				w: Math.round(r.width),
+			});
+			node = node.parentElement;
+		}
+		return chain;
+	};
 	const tick = () => {
 		const c = q('textarea[aria-label="Message"]');
 		const r = c ? c.getBoundingClientRect() : null;
@@ -328,6 +378,15 @@ const samplerSource = (durationMs) => {
 			rows: document.querySelectorAll("[data-lo-ask-row]").length,
 			chip: Boolean(q("[data-lo-ask-item-toggle]")),
 			composer: r ? { x: Math.round(r.left), w: Math.round(r.width) } : null,
+			chain: r ? ancestorChain(c) : null,
+			/*
+			 * The page's own scrollbar budget: inner vs client width, so a gutter cannot be
+			 * mistaken for a pane opening or an overlay scrollbar for a layout shift.
+			 */
+			scrollbar: {
+				inner: window.innerWidth,
+				client: document.documentElement.clientWidth,
+			},
 		});
 		if (performance.now() - S.t0 < durationMs) requestAnimationFrame(tick);
 	};
@@ -630,6 +689,14 @@ function summariseTimeline(marks) {
 			m.rows,
 			m.chip,
 			m.composer,
+			/*
+			 * The D3/U5 attribution fields are part of the KEY, not only of the payload:
+			 * a frame where ONLY the ancestor chain or the scrollbar budget moved is
+			 * exactly the frame the reflow question is about, and a key that ignored
+			 * them would drop that frame from `transitions` and read as "nothing moved".
+			 */
+			m.chain,
+			m.scrollbar,
 		]);
 	const transitions = [];
 	let last = null;
@@ -703,6 +770,37 @@ function backendReading(key, needle) {
 
 /* ------------------------------------------------------------------- the cases ---- */
 
+/*
+ * THE RIG'S SERVER IS A PRECONDITION, NOT A CASE INPUT (remediation round 1, E1). The
+ * first full run of this driver after the round-1 edits recorded ELEVEN case failures
+ * that were one dead Vite server: from `s9a` on every page loaded Chrome's
+ * ERR_CONNECTION_REFUSED, and the run still wrote eleven `failure-*` frames and a report
+ * that read like eleven broken cases while the server's own log held nothing (a silent
+ * kill under the shared host's memory pressure; the process was gone with no shutdown
+ * line). A failure must not wear a verdict's clothes: if the origin stops answering, the
+ * run is VOID - say so once and stop, so nobody reads eleven failures about a tree that
+ * was never loaded.
+ */
+const assertRigAlive = async (origin) => {
+	let alive = false;
+	try {
+		const res = await fetch(origin, {
+			method: "HEAD",
+			signal: AbortSignal.timeout(4000),
+		});
+		alive = res.status > 0;
+	} catch {
+		alive = false;
+	}
+	if (!alive) {
+		const error = new Error(
+			`the rig's server at ${origin} is not answering - the rig died mid-run, so this run is VOID`,
+		);
+		error.rigDead = true;
+		throw error;
+	}
+};
+
 const SETTLE = 2500;
 const ready = async (page) => {
 	await page.waitFor(
@@ -711,6 +809,8 @@ const ready = async (page) => {
 	);
 };
 const open = async (page, arm, key) => {
+	/* Before anything else: is the tree under test even reachable? See assertRigAlive. */
+	await assertRigAlive(arm === "before" ? BEFORE : AFTER);
 	await page.navigate(
 		`${arm === "before" ? BEFORE : AFTER}/#/chat/${SESSION[key]}`,
 	);
@@ -787,12 +887,21 @@ const CASES = [
 				`document.querySelector(${JSON.stringify(CHIP)}) !== null`,
 				"the chip",
 			);
+			let probeAtOpen = null;
 			if (arm === "after") {
 				await page.waitFor(
 					`document.querySelector(${JSON.stringify(DRAWER)}) !== null`,
 					"the auto-opened drawer",
 					15_000,
 				);
+				/*
+				 * THE REGION'S OWN READING AT THE OPEN FRAME, before the settle wait: the
+				 * live region's sentence is written when the policy opens and survives
+				 * until the close, but the shutter below reads 900 ms later, and a pair of
+				 * readings is what lets the record show the sentence's own moment and its
+				 * later state (remediation round 1, D1).
+				 */
+				probeAtOpen = await page.probe();
 				await wait(900);
 			} else {
 				await wait(SETTLE);
@@ -802,6 +911,7 @@ const CASES = [
 			await wait(3500);
 			return {
 				probe,
+				probeAtOpen,
 				frame,
 				tap: await page.tap(),
 				timeline: await page.timeline(),
@@ -1759,6 +1869,22 @@ try {
 						...result,
 					};
 				} catch (error) {
+					if (error?.rigDead) {
+						/*
+						 * VOID, NOT A CASE FAILURE. Recorded once, the arm stops, and no failure frame
+						 * is written - that frame would be Chrome's error page, which says nothing about
+						 * the tree under test and is exactly the artifact that made one rig death read
+						 * as eleven broken cases. See assertRigAlive.
+						 */
+						report.arms[arm][testCase.name] = {
+							title: testCase.title,
+							ok: false,
+							rigDead: true,
+							error: String(error.message ?? error),
+						};
+						report.notes.rigDied = String(error.message ?? error);
+						break;
+					}
 					report.arms[arm][testCase.name] = {
 						title: testCase.title,
 						ok: false,
@@ -1788,6 +1914,18 @@ try {
 	report.fatal = String(error?.stack ?? error);
 } finally {
 	console.log(JSON.stringify(report, null, 2));
+	/*
+	 * THE EXIT CODE IS PART OF THE RECORD (remediation round 1, E1). This driver used to
+	 * exit 0 through a run with eleven failed cases, so the wrapper around it had to read
+	 * the JSON to know anything was wrong. Now: 2 when the run is VOID or died before
+	 * producing a matrix (a rig death, a fatal), 1 when any case genuinely failed, 0 only
+	 * when every case that ran passed.
+	 */
+	const failed = Object.values(report.arms).some((cases) =>
+		Object.values(cases).some((entry) => entry.ok === false),
+	);
+	if (report.notes?.rigDied || report.fatal) process.exitCode = 2;
+	else if (failed) process.exitCode = 1;
 	try {
 		await raw("Browser.close");
 	} catch {
