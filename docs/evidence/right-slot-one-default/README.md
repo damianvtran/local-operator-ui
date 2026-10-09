@@ -12,22 +12,23 @@ exactly 80 console columns at the shipped face), and it gives the Browser and
 Console separators the run panel's own D4 treatment: they announce the width the
 row actually draws and refuse a write the row cannot host.
 
-`before/` is the tree this branch started from (`f6d9bfc0a0f`: `origin/main` at
-the branch's base, plus the fixture edits below). `after/` is this branch's
-worktree at `fed628067`, plus the same fixture edits. Each half is **8 states x 2
-palettes** - the four panes at 1280x900 and 1380x900, `localOperatorLight` and
-`localOperatorDark` - one webp per cell under `<pane>-<WxH>/<palette>.webp`, with
-`readings.json` beside them counting every number below.
+`before/` is a worktree at `f6d9bfc0a0f` (the branch's base) carrying the fixture
+patch this set ships (`base-fixture/shell.stories.patch`); `after/` is this
+branch's worktree (re-shot at `27a79880718`, the head this round lands on). Each
+half is **12 states x 2 palettes** - the four panes at 1280x900, 1380x900 and
+1440x900, `localOperatorLight` and `localOperatorDark` - one webp per cell under
+`<pane>-<WxH>/<palette>.webp`, with `readings.json` beside them counting every
+number below.
 
 ## How to reproduce
 
 ```sh
 # A Storybook per tree. The BEFORE tree is a detached worktree of the base commit
-# carrying the same fixture edits this commit applies to shell.stories.tsx (the
-# pane arms render the pane's real separator with each tree's wiring, and the run
-# arm's fixture floor - minWidth 420 - is dropped so the story follows the app's
-# own shrink); apply this commit's diff of that file to the detached tree first.
+# with this set's fixture patch applied - the hand restatement of the base's own
+# separator wiring, which a tree without `rightSlotDividerContract` can load.
+BR=$(pwd)   # this branch's checkout, where the set lives
 git worktree add --detach ~/local-operator-ui-worktrees/right-slot-one-default-base f6d9bfc0a0f
+git -C ~/local-operator-ui-worktrees/right-slot-one-default-base apply "$BR"/docs/evidence/right-slot-one-default/base-fixture/shell.stories.patch
 (cd ~/local-operator-ui-worktrees/right-slot-one-default-base && ./node_modules/.bin/storybook dev -p 6395 --ci --no-open)
 ./node_modules/.bin/storybook dev -p 6396 --ci --no-open
 # One rig, run once per tree: the label picks the folder and the expectations.
@@ -35,9 +36,27 @@ env TZ=America/New_York node scripts/right-slot-one-default-evidence.mjs --label
 env TZ=America/New_York node scripts/right-slot-one-default-evidence.mjs --label after  --origin http://localhost:6396
 ```
 
+The patch is the whole before-tree fixture, verified at this commit by re-running
+the rig on a fresh base worktree: it reproduces `before/readings.json` field for
+field (the re-shoot that added the 1440 frames also re-derived it). Its three
+restated prop sets are, verbatim:
+
+- **Run**: `value = resizable ? min(max(drawn, 320), capacity) : drawn`,
+  `min = resizable ? 320 : value`, `max = resizable ? min(640, capacity) : value`,
+  `capacity = row - 480`, `resizable = capacity >= 320` - the base's own run
+  wiring, transcribed.
+- **Browser**: `value = max(480, raw === 0 ? DEFAULT_BROWSER_PANEL_WIDTH : raw)`
+  (= 640 at the recorded cells), `min = 480`, `max = 1200`.
+- **Console**: the same with `DEFAULT_CONSOLE_PANEL_WIDTH` (= 799 off the shipped
+  face in the browser, 796 by the no-DOM ratio), `min = 480`, `max = 1200`.
+
+where `drawn` is the slot width the frame's own resolver hands the arm (`raw` is
+the stored shared width before the resolver's clamp).
+
 The rig launches ONE private headless Chrome per run (mock-keychain switch, its
 own scratch `--user-data-dir`, its own process group, reaped by exact pid), and
-it **fails rather than printing a table** if a reading is wrong: the drawn widths
+it **fails with exit 1** on any wrong reading - the table it prints is never a
+substitute for the check: the drawn widths
 are asserted against each tree's own arithmetic (`min(seed', row - 480)` for the
 three panes, `min(seed, min(560, row - 480))` for the canvas), the row must
 tile, the separators must announce the drawn width, and every frame passes
@@ -130,6 +149,9 @@ above its own maximum before and after this change:
   Browser 496, Console 496 at 1280 (the column 556 / 480 / 480), Run 420 vs
   Console 656 at 1440 - which is the re-wrap the issue reports, now measured
   rather than described.
+- **The 1440 row (design round 1's D1)**: the console's first VISIBLE shrink -
+  656 -> 640 - is in the frames; at 1280 and 1380 the console is cap-bound, so
+  its pairs there are the unchanged control and the delta lives only here.
 - **The console's default in a browser** is the store's own `measureCell()`
   derivation, not a fixed number: the base tree draws it at 799 here (the no-DOM
   ratio the tests pin computes 796), and the rig allows the split on that one
@@ -143,7 +165,7 @@ above its own maximum before and after this change:
   ceiling would let a run-panel drag store past its 640 contract maximum - a
   design call, recorded here and on the PR rather than reshaped in this change.
 - **Nothing stored changes meaning**: the 350 and 1000 cells read identically on
-  both halves, and the persist version is untouched (1).
+  both halves, and the persist version is untouched by this change (2).
 
 ## What this set does not claim
 
