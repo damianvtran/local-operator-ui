@@ -8687,6 +8687,69 @@ export const STORIES = [
 	["chat-interrupted-rows--turn-counts", 1280, 800],
 	["chat-interrupted-rows--skip-durable-narrow", 720, 800],
 	["chat-interrupted-rows--skip-durable-narrow-expanded", 720, 800],
+	/*
+	 * THE GENERATING-IMAGE CARD'S STATES (the image-gen programme's surfaces
+	 * lane, round-1 shell). The card is mounted directly from the view-model
+	 * adapter (`image-gen-card.stories.tsx`), because the states it must show
+	 * are the ones a durable transcript cannot honestly carry: `queued`,
+	 * `running` (with and without the frozen-in-later progress fields) and
+	 * `cancelling` are LIVE states, and no producer on today's wire generates
+	 * them for this tool - the daemon-side half of the pair is the
+	 * `imagegen-card` driver scene, whose fixture rows can only be settled
+	 * (done/failed/cancelled), so THESE stories are the live states' frames.
+	 * `done`, `failed` and `cancelled` are re-shown here through the same view
+	 * type so the design round can compare the story's chrome against the real
+	 * app's frames, and `affordances` is the actions matrix (cancel only vs
+	 * all three slots - restart/steer are deliberately unwired in integration
+	 * until the regenerate op is named).
+	 *
+	 * THE VIEWPORTS ARE THE STORIES' OWN FRAME HEIGHTS, not a fixed canvas:
+	 * each mount is content-sized, and a taller capture would photograph the
+	 * card adrift in ground - the exact frame the paint floor exists to refuse
+	 * (the same reading `tool-row.stories.tsx`'s Frame carries; the trace-fold
+	 * cells are captured at their own 130px for this reason). The two
+	 * DIRECT-mount stories (the progress fields and the affordance matrix) are
+	 * captured at 640 wide so their 560px stack fills the column rather than
+	 * floating in a 1280 canvas.
+	 *
+	 * THE `reduced-motion` CELL is the SAME running story with
+	 * `prefers-reduced-motion: reduce` emulated at the viewport (the app's cap
+	 * is a media block, which a story cannot set), at the running entry's own
+	 * size so the pair reads as one state animating and parked. It exists
+	 * because the parking span is the part of this card that ONLY pixels can
+	 * settle: the class-presence check could not see that a repeated image
+	 * puts the band back on-tile at every `±200%` position (design round 1,
+	 * D1), and this cell is the frame that fails if `bg-no-repeat` ever
+	 * leaves the span.
+	 *
+	 * SAY PLAINLY WHAT THE FRAME IS: the rig settles animations before every
+	 * shutter, and this card adds no reduced-motion-specific pixels besides the
+	 * cap's own parking, so the pair of cells is BYTE-IDENTICAL when the fix
+	 * holds (`running` and `reduced-motion`, each palette - same sha256). What
+	 * the cell evidences is the media state itself and the resting phase: a
+	 * span whose rest is on-tile (the pre-D1 classes) makes THIS frame carry
+	 * the sheen, in both spots at once, which is why one cell is enough.
+	 */
+	["chat-image-generation--queued", 1280, 220],
+	["chat-image-generation--running", 1280, 420],
+	[
+		"chat-image-generation--running",
+		1280,
+		420,
+		{ dir: "reduced-motion", reducedMotion: true },
+	],
+	["chat-image-generation--progress-fields", 640, 600],
+	["chat-image-generation--cancelling", 1280, 420],
+	["chat-image-generation--done", 1280, 560],
+	["chat-image-generation--failed", 1280, 460],
+	/*
+	 * 640 wide, alone among the Frame captures: the cancelled story's one
+	 * interrupted row is a column of ink a 1280 frame buries - measured
+	 * 98.84% ground against the floor's 98.50% - and the card is a 560px
+	 * object, so the narrower frame is also the truer one.
+	 */
+	["chat-image-generation--cancelled", 640, 300],
+	["chat-image-generation--affordances", 640, 640],
 	/* THE PRE-MARKER CONTINUATION ROWS. A goal-continuation row written before
 	   the `harness_injected` stamp existed carries no marker to read - and one
 	   still arrives from an owner on an older build - so hiding only stamped
