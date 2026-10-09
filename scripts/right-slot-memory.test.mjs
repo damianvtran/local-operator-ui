@@ -99,7 +99,7 @@ const prefs = () => useUiPreferencesStore.getState();
 /**
  * A reset to the store's own initial slot state, with the bind left UNBOUND.
  *
- * The four flags are set from `EMPTY_RIGHT_SLOT_MEMORY`'s projection by hand,
+ * The slot's flags are set from `EMPTY_RIGHT_SLOT_MEMORY`'s projection by hand,
  * because the point of a reset is a known starting point rather than a bind: a
  * cell that wants the bound path says so with `setActiveSession`, which is also
  * what moves the follower.
@@ -113,6 +113,7 @@ const reset = (overrides = {}) =>
 		isRunPanelOpen: false,
 		isBrowserPaneOpen: false,
 		isConsolePaneOpen: false,
+		isCodeReviewPaneOpen: false,
 		isAskDrawerOpen: false,
 		askDrawerEvictedPane: null,
 		rightSlotRoute: EMPTY_RIGHT_SLOT_ROUTE,
@@ -750,12 +751,14 @@ test("(P) the memory algebra: carry moves, remove is pane-scoped, project is the
 		isRunPanelOpen: true,
 		isBrowserPaneOpen: false,
 		isConsolePaneOpen: false,
+		isCodeReviewPaneOpen: false,
 	});
 	assert.deepEqual(memoryProject(base, "x", true), {
 		isCanvasOpen: false,
 		isRunPanelOpen: false,
 		isBrowserPaneOpen: false,
 		isConsolePaneOpen: false,
+		isCodeReviewPaneOpen: false,
 	});
 	assert.deepEqual(
 		memoryProject(base, null, false),

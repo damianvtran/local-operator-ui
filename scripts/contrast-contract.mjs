@@ -1637,6 +1637,70 @@ const CONTROLS = [
 		border: "borderControl",
 		ink: "inkMuted",
 	},
+	/*
+	 * THE CODE REVIEW PANE'S STATE PILL (built spec §3, §12): the `Badge` variant
+	 * the row's right edge carries for the forge's own state - the state never
+	 * truncates, so it is a control's claim in a label's box.
+	 *
+	 * FOUR ROWS, one per variant, because the VARIANT is the state. The grounds
+	 * are the row's two: `elevated` at rest, `rowHover` under the pointer (the
+	 * row button's own `hover:bg-row-hover`). MEASURED across the 59 palettes,
+	 * and the honest shape of it: every ink clears its own fill (`info` on
+	 * `infoWash` 4.60:1 at worst, kanagawaLotus; `success` on `successWash`
+	 * 4.53:1, everforestLight; `ink` on both grounds far above its floor), and
+	 * every edge clears on `elevated` - but the semantic BORDERS sit just under
+	 * the 3:1 edge floor against `rowHover` on a handful of palettes (2.949-2.998
+	 * raw; the washes behind them are ~1.1 and cannot carry an edge at all).
+	 * Each such (control, ground, palette) is pinned in `CONTROL_EDGE_PINNED`
+	 * with its measurement rather than the border role being re-authored here:
+	 * the variant is the app's shared `Badge`, the shortfall is a few hundredths
+	 * at the fleet's worst, and the pin records a known, bounded gap the way this
+	 * file's pin doctrine asks. A design round that wants a floored boundary
+	 * instead has a role change to make; the pin is what makes that decision
+	 * visible rather than silent.
+	 */
+	{
+		name: "code review state pill (open)",
+		on: ["elevated", "rowHover"],
+		fill: "infoWash",
+		border: "infoBorder",
+		ink: "info",
+	},
+	{
+		name: "code review state pill (merged)",
+		on: ["elevated", "rowHover"],
+		fill: "successWash",
+		border: "successBorder",
+		ink: "success",
+	},
+	{
+		name: "code review state pill (draft)",
+		on: ["elevated", "rowHover"],
+		fill: null,
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The CLOSED record's pill is the shared `Badge`'s `neutral` variant
+		 * (`border-hairline bg-sunken text-ink-muted`), and its boundary is
+		 * declared DECORATIVE on purpose: the hairline is § 2's decorative rule
+		 * (no contrast floor owed), the `sunken` step under it measures
+		 * 1.04-1.34:1 across the fleet, and a closed record is the one state this
+		 * pane states quietly - the load-bearing claim is the INK floor
+		 * (`inkMuted` on `sunken` 5.53:1 at worst, kanagawaLotus), and the
+		 * boundary is the same quiet-mark register as the rail's `attentionQuiet`
+		 * count. `edge: false` records that decision rather than muting a
+		 * measurement nobody took: the step and the hairline are both under any
+		 * boundary floor, and no amount of pinning would make them a boundary.
+		 */
+		name: "code review state pill (closed)",
+		on: ["elevated", "rowHover"],
+		fill: "sunken",
+		border: "hairline",
+		ink: "inkMuted",
+		edge: false,
+	},
 ];
 
 /**
@@ -2008,6 +2072,42 @@ const GRAPHICS = [
 		name: "search result active bar (accent)",
 		on: ["accentWash"],
 		fg: "accent",
+	},
+	/*
+	 * THE CODE REVIEW PANE'S ROUND MARKS (built spec §2): the segmented strip
+	 * beside each lane, one segment per review round, drawn on the row ground
+	 * (`elevated` at rest, `rowHover` under the pointer) with the lane's latest
+	 * state as its tone.
+	 *
+	 * THREE FILLS AND ONE OUTLINE. `warning` (findings open), `inkMuted`
+	 * (remediation posted) and `success` (clean/terminal) clear the 3:1 graphic
+	 * floor on both grounds fleet-wide (4.52:1 at worst, rosePine's `success` on
+	 * `elevated`). `borderControl` - the mark for "a round happened, nothing
+	 * stated" - clears `elevated` (3.006:1 at worst, catppuccinMocha) and sits
+	 * just under on `rowHover` in five palettes (2.918-2.998 raw), each pinned in
+	 * `EXCEPTIONS` with its measurement. The outline tone is what the design's
+	 * "claims nothing" state calls for: a border-only mark is the one that
+	 * cannot be read as a verdict.
+	 */
+	{
+		name: "code review round mark (findings open)",
+		on: ["elevated", "rowHover"],
+		fg: "warning",
+	},
+	{
+		name: "code review round mark (remediation posted)",
+		on: ["elevated", "rowHover"],
+		fg: "inkMuted",
+	},
+	{
+		name: "code review round mark (clean)",
+		on: ["elevated", "rowHover"],
+		fg: "success",
+	},
+	{
+		name: "code review round mark (verdict not stated)",
+		on: ["elevated", "rowHover"],
+		fg: "borderControl",
 	},
 ];
 
@@ -3427,7 +3527,8 @@ const TERMINAL_ANSI = [
  */
 const EXCEPTIONS = [
 	/*
-	 * EMPTY - and the emptiness is a MEASURED state, not a tidy-up.
+	 * EMPTY NO LONGER, AND THE CHANGE IS A MEASURED FACT rather than a tidy-up
+	 * reversing.
 	 *
 	 * This table carried one entry for most of this pass: `catppuccinMacchiato`'s
 	 * `inkDim` on `rowSelected`, recorded at 4.98:1 against the 5.0 ink floor. The
@@ -3443,11 +3544,50 @@ const EXCEPTIONS = [
 	 * and this one did not. It has it now: an entry that is never asked about
 	 * fails the run with "delete the pin, the palette clears it now".
 	 *
-	 * So the honest headline is the stronger one: **59 of 59 palettes hold every
-	 * ink floor with no exemption at all.** Add an entry only with its measured
-	 * ratio and its reason, and expect the run to fail the moment the palette
-	 * stops needing it.
+	 * THE FIVE ENTRIES BELOW arrive with the code review round marks (built spec
+	 * §2): the "verdict not stated" segment is an OUTLINE in `borderControl`, it
+	 * clears the 3:1 graphic floor on `elevated` in every palette (3.006:1 at
+	 * worst) and sits just under on `rowHover` in five (raw 2.918-2.998). The
+	 * mark's ground under the pointer is genuinely `rowHover` - the segment is
+	 * drawn inside the row whose own hover is `hover:bg-row-hover` - so the five
+	 * are recorded here rather than the row being written against a ground the
+	 * component cannot occupy. Two entries store `got: 3` while their raws sit
+	 * under the floor (`tokyoNight` 2.9978, and its sibling in
+	 * `CONTROL_EDGE_PINNED`): the match is made at the DISPLAYED precision
+	 * (`r2`), which is the precision the failure printed, and the raw is in the
+	 * entry's own comment. Add an entry only with its measured ratio and its
+	 * reason, and expect the run to fail the moment the palette stops needing it.
 	 */
+	{
+		theme: "catppuccinMocha",
+		fg: "borderControl",
+		bg: "rowHover",
+		got: 2.92, // raw 2.9180 - code review round mark (verdict not stated)
+	},
+	{
+		theme: "lavender",
+		fg: "borderControl",
+		bg: "rowHover",
+		got: 2.99, // raw 2.9900
+	},
+	{
+		theme: "neonNoir",
+		fg: "borderControl",
+		bg: "rowHover",
+		got: 2.96, // raw 2.9622
+	},
+	{
+		theme: "tokyoNight",
+		fg: "borderControl",
+		bg: "rowHover",
+		got: 3, // raw 2.9978; matched at r2 (see the block comment)
+	},
+	{
+		theme: "vaporwave",
+		fg: "borderControl",
+		bg: "rowHover",
+		got: 2.95, // raw 2.9459
+	},
 ];
 
 /**
@@ -3775,8 +3915,23 @@ const inkStepSeen = new Set();
 const inkStepPinSeen = new Set();
 
 /*
- * NO CONTROL EDGE IS PINNED TODAY, and what the list held is kept here because the
- * machinery is not specific to the control that needed it.
+ * THE LIST HOLDS THE CODE REVIEW PANE'S THREE PILL BORDERS, and what it held
+ * before that is kept here because the machinery is not specific to the control
+ * that needed it.
+ *
+ * THE CURRENT ENTRIES arrive with the pane's state pills (built spec §3): the
+ * `Badge`'s `infoBorder` (open), `successBorder` (merged) and `borderControl`
+ * (draft) each clear the 3:1 edge floor against `elevated` and sit just under
+ * against `rowHover` in a handful of palettes (raw 2.949-2.998; the washes
+ * behind the borders are ~1.1 and cannot carry an edge at all). The pill really
+ * occupies `rowHover` - it sits inside the row button whose hover is
+ * `hover:bg-row-hover` - so the pins record the known, bounded gap at the
+ * displayed precision. Two entries store `got: 3` while their raws sit under
+ * the floor; that is the `r2` match `EXCEPTIONS`' block explains. A design
+ * round that wants a floored boundary instead has a role change to make, and
+ * the pins are what make that decision visible rather than silent.
+ *
+ * WHAT IT HELD BEFORE, AND WHAT THIS MACHINERY DOES NOT OUTLIVE:
  *
  * It held three entries: the attention badge's `borderControl` edge on the `highlight`
  * ground, in catppuccinMocha (2.85), duskfox (2.91) and gruvbox (2.81), all under the
@@ -3799,19 +3954,82 @@ const inkStepPinSeen = new Set();
  * `name`, which is the identity `CONTROLS` carries; a pin that names a control or
  * ground nothing measures fails the stale check below rather than passing quietly.
  *
- * RE-MEASURED ON THE FOLD ONTO `origin/main` (`10926b782`), and this branch's own
- * re-derivation of `highlight` is what moved them: the badge's edge is measured
- * against that role, so `duskfox` went 2.91 -> 2.94 and `everforest` arrives at
- * 2.84, newly under the floor. Both are still the class this list already holds -
- * `borderControl` against a lifted `highlight` on a dark palette - and both of the
- * app-wide fixes the paragraph above refuses would invalidate the same two
- * measurement sets, so they are pinned at their measured precision. The pin is
- * still a claim the gate re-checks: a palette re-authored out of the floor fails
- * until its entry is deleted.
- *
  * @type {{control: string, ground: string, theme: string, got: number}[]}
  */
-const CONTROL_EDGE_PINNED = [];
+const CONTROL_EDGE_PINNED = [
+	{
+		control: "code review state pill (open)",
+		ground: "rowHover",
+		theme: "autumn",
+		got: 2.99, // raw 2.9910 - infoBorder
+	},
+	{
+		control: "code review state pill (open)",
+		ground: "rowHover",
+		theme: "catppuccinMocha",
+		got: 2.99, // raw 2.9889
+	},
+	{
+		control: "code review state pill (open)",
+		ground: "rowHover",
+		theme: "neonNoir",
+		got: 2.98, // raw 2.9819
+	},
+	{
+		control: "code review state pill (open)",
+		ground: "rowHover",
+		theme: "vaporwave",
+		got: 2.95, // raw 2.9493
+	},
+	{
+		control: "code review state pill (merged)",
+		ground: "rowHover",
+		theme: "catppuccinMocha",
+		got: 2.98, // raw 2.9828 - successBorder
+	},
+	{
+		control: "code review state pill (merged)",
+		ground: "rowHover",
+		theme: "neonNoir",
+		got: 2.95, // raw 2.9501
+	},
+	{
+		control: "code review state pill (merged)",
+		ground: "rowHover",
+		theme: "vaporwave",
+		got: 2.95, // raw 2.9495
+	},
+	{
+		control: "code review state pill (draft)",
+		ground: "rowHover",
+		theme: "catppuccinMocha",
+		got: 2.92, // raw 2.9180 - borderControl
+	},
+	{
+		control: "code review state pill (draft)",
+		ground: "rowHover",
+		theme: "lavender",
+		got: 2.99, // raw 2.9900
+	},
+	{
+		control: "code review state pill (draft)",
+		ground: "rowHover",
+		theme: "neonNoir",
+		got: 2.96, // raw 2.9622
+	},
+	{
+		control: "code review state pill (draft)",
+		ground: "rowHover",
+		theme: "tokyoNight",
+		got: 3, // raw 2.9978; matched at r2
+	},
+	{
+		control: "code review state pill (draft)",
+		ground: "rowHover",
+		theme: "vaporwave",
+		got: 2.95, // raw 2.9459
+	},
+];
 const controlEdgeSeen = new Set();
 
 /**
