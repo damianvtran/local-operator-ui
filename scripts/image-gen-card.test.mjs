@@ -619,7 +619,9 @@ test("a queued card states how many are ahead only when a count exists (Q-1)", (
 	});
 	// The field counts requests AHEAD, so the copy says so: "2 ahead", never
 	// "position 2" (which would read one off — the TUI's D3 ruling).
-	assert.equal(withPosition.includes("2 ahead"), true);
+	// Anchored on the datum span's own edges (`>` ... `<`): a bare substring
+	// would also pass for "12 ahead".
+	assert.equal(withPosition.includes(">· 2 ahead<"), true);
 	assert.equal(withPosition.includes("position"), false);
 
 	// Zero is a real reading (nothing ahead), not an absent field.
@@ -629,7 +631,7 @@ test("a queued card states how many are ahead only when a count exists (Q-1)", (
 		argumentBytes: 1900,
 		queuePosition: 0,
 	});
-	assert.equal(nothingAhead.includes("0 ahead"), true);
+	assert.equal(nothingAhead.includes(">· 0 ahead<"), true);
 
 	const without = markupOf({
 		state: "queued",
