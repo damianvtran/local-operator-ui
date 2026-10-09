@@ -864,13 +864,17 @@ const ConversationStandIn = ({
 	const occupied = useUiPreferencesStore(resolveRightSlotOccupied);
 	/*
 	 * PROPS THE RAIL TREE'S HEADER DOES NOT DECLARE, spread loosely on purpose (the
-	 * same device #868's before half used for `rightSlotRoute`). On this tree they
-	 * are inert - `ChatHeader` reads none of them, the four triggers having moved to
-	 * the rail - but the BEFORE half of this change's evidence swaps `origin/main`'s
-	 * `chat-header.tsx` under these arms (see
-	 * `docs/evidence/shell-app-shell/panel-rail-before/README.md`), and that header
-	 * reads exactly these to draw its four triggers and their marks. One scene under
-	 * two readers is what makes the pair a comparison.
+	 * same device #868's before half used for `rightSlotRoute`). On this tree the
+	 * SEVEN rail props - `mcpServers`, `listOnScreen`, `readerChildId`, `fileCount`,
+	 * `browserAttentionCount`, `consoleUnseenCount`, `consoleUnseenPulsing` - are
+	 * inert: `ChatHeader` reads none of them, the four triggers having moved to the
+	 * rail. `reserveTrailingChrome` below is NOT one of them and is NOT inert - it
+	 * is LIVE on both arms: the head's header reads it for its trailing spacer
+	 * (`chat-header.tsx`), and so does `origin/main`'s. The BEFORE half of this
+	 * change's evidence swaps `origin/main`'s `chat-header.tsx` under these arms
+	 * (see `docs/evidence/shell-app-shell/panel-rail-before/README.md`), and that
+	 * header reads the seven to draw its four triggers and their marks. One scene
+	 * under two readers is what makes the pair a comparison.
 	 */
 	const legacyHeaderProps: Record<string, unknown> = {
 		mcpServers: deriveMcpServers([], {}, []),

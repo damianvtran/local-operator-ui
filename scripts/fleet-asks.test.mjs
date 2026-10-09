@@ -446,6 +446,31 @@ test("the scope travels with the flag and is never persisted", () => {
 	/* Closing leaves the scope alone; it is meaningless while nothing is open. */
 	store.setAskDrawerOpen(false, "fleet");
 	assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, false);
+	/*
+	 * THE MENU'S OPEN REQUEST IS AN EVENT TOO (round-1 Q1): it is consumed by the
+	 * drawer's own mount, so a persisted copy would open the surface - and move
+	 * the keyboard into it - with no press behind it, the same reason the console
+	 * request one pane over is excluded. Checked as a key on the filtered blob,
+	 * like the scope above.
+	 */
+	assert.equal(
+		"askOpenIntent" in
+			persistedUiPreferences({ ...opened, askOpenIntent: "fleet" }),
+		false,
+		"the request must not be persistable: restored, it would open a drawer nobody opened",
+	);
+	/* Its two writers, and the scope guard on the answer: an answer belongs to the
+	 * request it answers (the console's own clearing rule, one control over). */
+	store.requestAskOpen("fleet");
+	assert.equal(useUiPreferencesStore.getState().askOpenIntent, "fleet");
+	store.clearAskOpenIntent("session");
+	assert.equal(
+		useUiPreferencesStore.getState().askOpenIntent,
+		"fleet",
+		"a clear for the other queue cannot throw this request away",
+	);
+	store.clearAskOpenIntent("fleet");
+	assert.equal(useUiPreferencesStore.getState().askOpenIntent, null);
 });
 
 test("the drawer wears the canvas family's width in either scope", () => {
@@ -626,8 +651,8 @@ test("the asks door left the sidebar for the conversation header, and then for t
 	);
 	assert.match(
 		content,
-		/setAskDrawerOpen\(!headerAsksOpen, headerAsksScope\)/,
-		"the header's menu row must open the drawer in the scope its own conversation resolves to (session inside a session, fleet at the top level).",
+		/if \(headerAsksOpen\) \{\s*setAskDrawerOpen\(false, headerAsksScope\);\s*return;\s*\}\s*setAskDrawerOpen\(true, headerAsksScope\);\s*requestAskOpen\(headerAsksScope\);/,
+		"the header's menu row must toggle in the scope its own conversation resolves to (session inside a session, fleet at the top level) and, on the OPEN arm, write the lane's open request - the row cannot signal its press through focus, and without the request the drawer's empty state is unreachable from this door (round-1 Q1).",
 	);
 	assert.match(
 		content,
@@ -726,6 +751,11 @@ test("the drawer's entry move is a bounded one-shot", () => {
 	 * commit and `root === null` no longer names "the read has not answered". The
 	 * state the wait is for is the frame's absence, so the frame is what it reads.
 	 *
+	 * AND THE WINDOW CARRIES THE MENU'S REQUEST (round-1 Q1): `requested` is the
+	 * third door's signal, folded into the same pair because it is the same KIND of
+	 * fact - the user's own press - and it must backstop the same state (the drawer
+	 * its row opened over a live-but-empty queue).
+	 *
 	 * THIS IS THE STRUCTURAL HALF AND IT HAS A BEHAVIOURAL COMPANION, which is the
 	 * answer to "does this assert a string or a fact" (agent review round 1, R4):
 	 * `scripts/ask-draft-swap.test.mjs`'s `the entry move waits for the frame and moves
@@ -737,20 +767,20 @@ test("the drawer's entry move is a bounded one-shot", () => {
 	 * commit, and driving every commit's timing through jsdom would be a weaker reading
 	 * than the two-line property it already states. */
 	assert.ok(
-		block.includes("if (door !== null && frameUnread) return;"),
-		"the entry move no longer bounds its retry to the awaiting-read window (a door under focus while the frame that carries its surface is unread).",
+		block.includes("if ((door !== null || requested) && frameUnread) return;"),
+		"the entry move no longer bounds its retry to the awaiting-read window (a user's signal - the door under focus, or the menu row's request - while the frame that carries its surface is unread).",
 	);
 	const consume = block.indexOf("wasBootstrapped.current = true;");
-	/* 3. The flag is spent before the door is required, and focus can move only
-	 * after both checks - so a mount with nothing focused resolves, and the bounded
-	 * wait cannot move anything either. */
-	const resolved = block.indexOf("if (door === null) return;");
+	/* 3. The flag is spent before the user's signal is required, and focus can move
+	 * only after both checks - so a mount with nothing focused resolves, and the
+	 * bounded wait cannot move anything either. */
+	const resolved = block.indexOf("if (door === null && !requested) return;");
 	assert.ok(
 		consume !== -1 && resolved !== -1 && consume < resolved,
-		"the one-shot is spent only after the door check; a mounted pane with no door under focus never resolves and a later Tab onto the rail row can steal focus.",
+		"the one-shot is spent only after the door-or-request check; a mounted pane with no user press under focus never resolves and a later Tab onto the rail row can steal focus.",
 	);
 	assert.ok(
 		block.indexOf("landing.focus();") > resolved,
-		"focus can move before the door check has resolved.",
+		"focus can move before the door-or-request check has resolved.",
 	);
 });
