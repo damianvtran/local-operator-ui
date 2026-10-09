@@ -166,7 +166,7 @@ Each directory holds one Dark frame (`localOperatorDark.webp`); `state-2-pending
 | `state-16a-truncated-prefix-opens` | A | `s16` | eight ~900-char asks: a seven-row prefix opens the drawer |
 | `state-16b-unknown-list-holds` | A | `s16` | the seven it named answered: the unnamed eighth keeps it shut |
 | `state-16c-complete-empty-frame-then-new-batch-opens` | A | `s16` | a complete empty frame forgets the record; a new batch opens |
-| `state-17-carried-onto-settled-closed` | A | `s17` | a policy-opened drawer carried onto a SETTLED conversation: closed at the switch (U3), composer back to 778px |
+| `state-17-carried-onto-settled-closed` | A | `s17` | a policy-opened drawer carried onto a SETTLED conversation: closed on C's first readable settled frame (U3) - 4 of the 262 sampled frames (~77 ms) carried the rowless drawer while C's queue frame was unread (t=362: `drawer: true`, rows 0, chip absent, composer 300/400; t=376: 292/416; t=439: `drawer: false`, `chip: true`), composer back to 778px by t=450 |
 
 ## Tests: one per state, and which old behaviour each fails
 
