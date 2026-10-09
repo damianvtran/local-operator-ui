@@ -61,13 +61,32 @@ import { freezeRecordDeep } from "./record-immutability";
  * URL.
  */
 export type TranscriptImage = {
-	/** Stable key: `${recordId}:${index}`, indexed among IMAGE blocks only. */
+	/** Stable key: `${recordId}:${index}`, indexed among IMAGE-ish blocks only
+	 *  (inline images and output artifacts; a text block never shifts it). */
 	id: string;
 	/** Base64 payload when the event carried it inline. Live path. */
 	data: string | null;
 	/** Attachment-store digest when the row referenced it. Durable path. */
 	attachment: string | null;
 	mimeType: string;
+	// --- output-attachment metadata (additive; absent = legacy image block) ---
+	/** Media family from an artifact block. Absent on legacy image blocks,
+	 *  which are images by definition; "video"/"audio" ride the same fields
+	 *  and are the surfaces' follow-on (players) — the model already carries
+	 *  them so a player can be added without another wire change. */
+	kind?: "image" | "video" | "audio";
+	/** Pixel dimensions where known (artifact metadata) — reserved-box sizing
+	 *  before any bytes decode. Null when the artifact did not know them. */
+	width?: number | null;
+	height?: number | null;
+	/** Decoded byte count where known. */
+	sizeBytes?: number | null;
+	/** Seconds; audio/video only. */
+	durationS?: number | null;
+	/** Short display handle ("flux-dev-01.png"). Never a filesystem path. */
+	name?: string | null;
+	/** Provider URL — the re-fetch fallback only; the digest route is primary. */
+	sourceUrl?: string | null;
 };
 
 /**
@@ -833,17 +852,32 @@ type ContentBlock = {
 	text?: string;
 	/** Inline base64. Live events always; durable rows only under 1 KiB. */
 	data?: string;
-	/** Attachment-store digest. Durable rows over 1 KiB. */
+	/** Attachment-store digest. Durable rows over 1 KiB; on an ARTIFACT block
+	 *  this is a declared field (the local copy), not an encoding detail. */
 	attachment?: string;
 	mime_type?: string;
+	// --- output-artifact fields (AttachmentContent) ---
+	/** "image" | "video" | "audio". REQUIRED on an artifact, so it is always
+	 *  present on durable rows (the encoder drops only defaults). */
+	kind?: string;
+	/** MIME of the cached bytes; the artifact's mime_type equivalent. */
+	content_type?: string;
+	/** Provider URL (provenance / re-fetch fallback). */
+	source_url?: string;
+	size_bytes?: number;
+	width?: number;
+	height?: number;
+	duration_s?: number;
+	/** Short display handle. Never a filesystem path. */
+	name?: string;
 };
 
 /**
  * Whether a content block is an image, on EITHER wire shape.
  *
  * `type` cannot be the discriminant. The transcript encoder dumps with
- * `exclude_defaults=True` and `type` IS the pydantic default on both content
- * models, so it is absent from every durable row — the encoder's own comment
+ * `exclude_defaults=True` and `type` IS the pydantic default on every content
+ * model, so it is absent from every durable row — the encoder's own comment
  * (`session/transcript.py:215-218`) says to identify an image by `data`, never
  * by `type`. A durable image block is therefore one of exactly
  * `{attachment, mime_type}` (the normal case, over the 1 KiB externalisation
@@ -865,18 +899,57 @@ function isImageBlock(block: ContentBlock | undefined): boolean {
 	return typeof block.data === "string" && block.data.length > 0;
 }
 
+/**
+ * The media family of an OUTPUT ARTIFACT block, or null for anything else.
+ *
+ * The same durable-detection rule as `isImageBlock`, one layer up: `type` is
+ * absent from every durable row, so an artifact is identified by a `kind` in
+ * the contract's vocabulary PLUS at least one media fact
+ * (`content_type`/`attachment`/`source_url`). The companion rule lives in the
+ * harness (`harness.types.coerce_content_blocks`, which routes exactly these
+ * shapes to `AttachmentContent` before the wire models parse) — the two must
+ * agree on the shape or the row renders one way in the app and another in
+ * the harness.
+ *
+ * A bare `kind` with no media fact is NOT an artifact: tool arguments and
+ * details payloads are free-form JSON, and a stray `kind` field must not
+ * turn a text block into a phantom picture.
+ */
+function artifactKind(
+	block: ContentBlock | undefined,
+): "image" | "video" | "audio" | null {
+	if (!block) return null;
+	const kind = block.kind;
+	if (kind !== "image" && kind !== "video" && kind !== "audio") return null;
+	if (
+		typeof block.content_type === "string" ||
+		typeof block.attachment === "string" ||
+		typeof block.source_url === "string"
+	)
+		return kind;
+	return null;
+}
+
+/** A finite number from the wire, or null: free-form JSON admits anything. */
+function numberOrNull(value: unknown): number | null {
+	return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 /** Text of a canonical message: concatenated text blocks. */
 export function messageText(message: Record<string, unknown> | undefined) {
 	const content = message?.content;
 	if (!Array.isArray(content)) return "";
 	return (
 		(content as ContentBlock[])
-			// Excluded explicitly rather than by the `type` default. A typeless
-			// durable image used to pass this filter and contribute `""`, which was
-			// harmless only by accident; now that `isImageBlock` exists, relying on
-			// that accident is a defect waiting for the first image block that also
-			// carries a text key.
-			.filter((block) => block && !isImageBlock(block))
+			// Excluded explicitly rather than by the `type` default, for BOTH block
+			// families. A typeless durable image used to pass this filter and
+			// contribute `""`, which was harmless only by accident; an artifact
+			// block has no `text` and no `type` either, so the same accident would
+			// repeat for it. Excluding both here is the shared fix.
+			.filter(
+				(block) =>
+					block && !isImageBlock(block) && artifactKind(block) === null,
+			)
 			.filter((block) => (block.type ?? "text") === "text")
 			.map((block) => block.text ?? "")
 			.join("")
@@ -903,10 +976,13 @@ function extractImages(
 		return previous?.length ? previous : EMPTY_IMAGES;
 	const images: TranscriptImage[] = [];
 	for (const block of content as ContentBlock[]) {
-		if (!isImageBlock(block)) continue;
-		images.push({
-			// Position among IMAGE blocks only, so a text block appearing between
-			// two images cannot renumber them and remount both.
+		const kind = artifactKind(block);
+		if (kind === null && !isImageBlock(block)) continue;
+		const entry: TranscriptImage = {
+			// Position among IMAGE-ish blocks only, so a text block appearing
+			// between two pictures cannot renumber them and remount both. An
+			// artifact counts in the same walk (its id would otherwise collide
+			// with the next image's).
 			id: `${recordId}:${images.length}`,
 			data: typeof block.data === "string" && block.data ? block.data : null,
 			attachment:
@@ -914,10 +990,27 @@ function extractImages(
 					? block.attachment
 					: null,
 			mimeType:
-				typeof block.mime_type === "string" && block.mime_type
-					? block.mime_type
-					: "image/png",
-		});
+				(typeof block.content_type === "string" && block.content_type) ||
+				(typeof block.mime_type === "string" && block.mime_type) ||
+				"image/png",
+		};
+		if (kind !== null) {
+			// Artifact metadata, additive over the legacy shape. `kind` set here
+			// and ONLY here: its absence is the legacy-image signal every
+			// consumer already handles.
+			entry.kind = kind;
+			entry.width = numberOrNull(block.width);
+			entry.height = numberOrNull(block.height);
+			entry.sizeBytes = numberOrNull(block.size_bytes);
+			entry.durationS = numberOrNull(block.duration_s);
+			entry.name =
+				typeof block.name === "string" && block.name ? block.name : null;
+			entry.sourceUrl =
+				typeof block.source_url === "string" && block.source_url
+					? block.source_url
+					: null;
+		}
+		images.push(entry);
 	}
 	if (images.length === 0) return EMPTY_IMAGES;
 	if (previous && sameImages(previous, images)) return previous;
@@ -953,7 +1046,18 @@ function sameImages(a: TranscriptImage[], b: TranscriptImage[]) {
 			a[i].id !== b[i].id ||
 			a[i].data !== b[i].data ||
 			a[i].attachment !== b[i].attachment ||
-			a[i].mimeType !== b[i].mimeType
+			a[i].mimeType !== b[i].mimeType ||
+			// Artifact metadata participates in equality: a live frame that
+			// lacked dimensions must be REPLACED by the durable row that
+			// carries them (the reserved box would otherwise stay stale), and
+			// identity is what decides whether the view repaints at all.
+			a[i].kind !== b[i].kind ||
+			a[i].width !== b[i].width ||
+			a[i].height !== b[i].height ||
+			a[i].sizeBytes !== b[i].sizeBytes ||
+			a[i].durationS !== b[i].durationS ||
+			a[i].name !== b[i].name ||
+			a[i].sourceUrl !== b[i].sourceUrl
 		)
 			return false;
 	}
