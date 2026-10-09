@@ -21,7 +21,7 @@
       "scrollHeight": 480,
       "clientHeight": 480,
       "clipped": false,
-      "text": "Local OperatorThis usually takes less than a minute.Step 3 of 4 · 0:41 elapsed · taking longer than usualGetting ready - finishedSetting up Local Operator - finishedDownloading what it needs - in progressStarting it up -"
+      "text": "Local OperatorThis usually takes less than a minute.Step 3 of 4 \u00b7 0:41 elapsed \u00b7 taking longer than usualGetting ready- finishedSetting up Local Operator- finishedDownloading what it needs- in progressStarting it up- waitingDownloading what it needs:Downloading the packages Local Operator runs on.Fetching the large files\u2026Cancel setupYou can minimize this window and keep working. Closing it stops setup."
     },
     "dialog": null,
     "dialogBody": null,
@@ -40,7 +40,7 @@
       "scrollHeight": 20,
       "clientHeight": 20,
       "clipped": false,
-      "text": "Step 3 of 4 · 0:41 elapsed · taking longer than usual"
+      "text": "Step 3 of 4 \u00b7 0:41 elapsed \u00b7 taking longer than usual"
     },
     "installLive": {
       "left": 165.3,
@@ -57,7 +57,7 @@
       "scrollHeight": 40,
       "clientHeight": 40,
       "clipped": false,
-      "text": "Downloading what it needs: Downloading the packages Local Operator runs on.Fetching the large files..."
+      "text": "Downloading what it needs: Downloading the packages Local Operator runs on.Fetching the large files\u2026"
     },
     "installRail": {
       "left": 0,
@@ -281,5 +281,5 @@
     "scrollHeight": 480,
     "clientHeight": 480
   },
-  "text": "Local Operator\n\nThis usually takes less than a minute.\n\nStep 3 of 4 · 0:41 elapsed · taking longer than usual\n\nGetting ready\n- finished\nSetting up Local Operator\n- finished\nDownloading what it needs\n- in progress\nStarting it up\n- waiting\nDownloading what it needs:\nDownloading the packages Local Operator runs on.\nFetching the large files...\nCancel setup\n\nYou can minimize this window and keep working. Closing it stops setup."
+  "text": "Local Operator\n\nThis usually takes less than a minute.\n\nStep 3 of 4 \u00b7 0:41 elapsed \u00b7 taking longer than usual\n\nGetting ready\n- finished\nSetting up Local Operator\n- finished\nDownloading what it needs\n- in progress\nStarting it up\n- waiting\nDownloading what it needs:\nDownloading the packages Local Operator runs on.\nFetching the large files\u2026\nCancel setup\n\nYou can minimize this window and keep working. Closing it stops setup."
 }

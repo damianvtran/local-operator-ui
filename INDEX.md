@@ -83,9 +83,14 @@ The last two rows are the A4 proof in numbers: the row the marker removes is
 
 ## Round 1 remediation readings
 
-Frames `07`/`08` were re-taken at the SHIPPED window (1380x900, previously
-1280x1000/1100) so D1's claim is checkable rather than argued. Read out of
-`08`'s geometry JSON, same render as the frame:
+The EXPANDED frame `08` is at the SHIPPED window (1380x900), which is what makes
+D1's claim checkable rather than argued; the collapsed frame `07` is at the
+Storybook default **1280x900** (the round-2 re-shot one), and the box numbers
+below were measured on the round-1 render at 1380x900 - the dialog is a
+fixed-width modal whose height is content-driven, and design round 3 re-measured
+the re-shot `07`'s box as identical (532.5 CSS including borders, rows 368..1432
+device), so the numbers describe both. Read out of `08`'s geometry JSON, same
+render as the frame:
 
 | reading | value |
 | --- | --- |
@@ -108,6 +113,20 @@ The download line is monotonic in the re-shot `02`/`03`: `3 large downloads
 finished \u00b7 55 packages in all.` where the old shape read `3 of 6 ... done`
 and, on the pip fallback, `0 of N` over a growing denominator (D3/R2).
 
+## What the JSONs' text snapshots are, and are not
+
+Each frame's `.json` carries a `text` snapshot and a set of measured boxes. The
+TEXT snapshots beside the re-shot frames (`01`-`04`, `07`, `08`, `10`) were
+refreshed on 2026-10-09 from the round-2 captures, so they read what the frame
+reads - frame `01`'s status line is `about 30 s left`, frame `03`'s live line
+carries the real ellipsis (`Fetching the large files\u2026`) rather than the ASCII
+dots it used to, and no snapshot in this directory still quotes a retired shape
+(`3 of 6 large downloads done`, `a few minutes`, the old trigger order). The BOXES were measured on the round-1 render
+and were not re-measured: design round 3 verified they are unchanged across
+rounds (see the frame table below), and the one number that was not - `07`'s
+viewport, which the round-2 frame took at the Storybook default - is corrected in
+its JSON.
+
 ## Round 2 remediation frames
 
 `after/` was re-shot again on 2026-10-08 for the round-2 batch, and three frames
@@ -119,10 +138,10 @@ are CARRIED rather than re-shot:
 | `02` | re-shot | its only pixel delta was the spinner's ANIMATION PHASE (a 26 x 27 px box on the ring; the status line and sub-progress text are byte-identical), so the round-1 frame was equally true - the re-shot one is carried here for uniformity |
 | `03` | re-shot | `Fetching the large files…` - the ellipsis (D12) |
 | `04` | re-shot | spinner phase only, as `02` |
-| `07`, `08` | re-shot | the intro lost its self-describing clause (D11) and the trigger now names the groups in the order the panel paints them (D8). The dialog is one copy line shorter, so the geometry JSON beside these two (a round-1 measurement, `dialog 640x531.8`) describes the previous render; the frames are the evidence for the new one |
+| `07`, `08` | re-shot | the intro lost its self-describing clause (D11) and the trigger now names the groups in the order the panel paints them (D8). NO REFLOW: the only deltas are those two text lines (design round 3 measured `07`'s box at rows 368..1432 device = 532.5 CSS including borders, and `08`'s at 64..1735 = 836.0 CSS, identical in both rounds, with the intro still wrapping to three lines), so the geometry JSONs beside them still describe the frames and the readings above stand. `07`'s JSON `viewport` is now `1280x900`, which is the viewport its frame was actually taken at |
 | `10` | re-shot | byte-differs from round 1 in one 20 px text band with the SAME text and the same dialog box: the paragraph became a single interpolated string, and the text run re-shapes under it. Not a copy change - recorded so nobody hunts for one |
 | `05`, `06`, `09`, `11`, `12` | CARRIED | byte-identical surfaces (`05`, `09`) or untouched ones (`06`, `11`, `12`) |
-| `13` | new | the settled-greeting copy. No geometry JSON: the capture ran without a measuring pass, and the host was under a disk/swap hold, so its dialog box is not quoted here rather than guessed |
+| `13` | new | the settled-greeting copy. No geometry JSON: the capture ran without a measuring pass and the host was under a disk/swap hold, so I quote no box of my own. Design round 3 measured it at **513.0 CSS px, identical to frame `10`** - so the missing JSON costs nothing for the copy judgement, and the box claim is theirs, not mine |
 
 ## Measured install timings
 
