@@ -134,6 +134,15 @@ const {
 	installFailureReason,
 	installFailureSentence,
 	isInstallProgressPayload,
+	EMPTY_SUB_PROGRESS,
+	INSTALL_EXPECTATION,
+	INSTALL_OVERRUN_FACTOR,
+	INSTALL_PHASE_BASELINE_MS,
+	foldInstallLine,
+	formatElapsed,
+	installEta,
+	installPlatform,
+	installSubProgressLine,
 } = progress;
 
 /**
@@ -178,6 +187,14 @@ const SCRIPT_MARKERS = [
 	[
 		"src/main/backend/scripts/linux-install-script.sh",
 		{
+			/*
+			 * The stage's first work: the connectivity probe, which can spend up to
+			 * 2 x 30 s on a dead network and therefore runs INSIDE the stage rather
+			 * than before it (code review round 2, N-2). Linux has no managed
+			 * runtime to copy, so this is its "Getting ready" - the same work macOS
+			 * reports from `managed-python.ts`.
+			 */
+			python: "check_connectivity",
 			environment: "Creating virtual environment at $VENV_PATH",
 			components: "UV_INSTALLED=false",
 		},
@@ -185,6 +202,12 @@ const SCRIPT_MARKERS = [
 	[
 		"src/main/backend/scripts/windows-install-script.ps1",
 		{
+			/*
+			 * Resolution into `$PythonExe`, which on a clean machine fetches the
+			 * interpreter through the bundled uv - the arm that used to run with no
+			 * phase announced at all.
+			 */
+			python: "$PythonExe = $null",
 			environment: "Creating virtual environment at $VenvPath",
 			components: "Installing local-operator in virtual environment",
 		},
@@ -295,8 +318,10 @@ test("the milestones of a real completing run arrive in order", () => {
 		"components",
 		"verify",
 	]);
-	assert.equal(INSTALL_PHASE_LABELS.python, "Preparing the runtime");
-	assert.equal(INSTALL_PHASE_LABELS.verify, "Checking the installation");
+	// Plain-language labels (first-run onboarding, D9/U8): the user's nouns,
+	// not ours - no "runtime", no "components".
+	assert.equal(INSTALL_PHASE_LABELS.python, "Getting ready");
+	assert.equal(INSTALL_PHASE_LABELS.verify, "Starting it up");
 });
 
 test("a chunk split mid-line does not lose or invent a milestone", () => {
@@ -366,10 +391,19 @@ test("each shipped script announces the phases it actually runs, in order", () =
 				return [index, quoted ? parseInstallMarker(quoted[1]) : null];
 			})
 			.filter(([, phase]) => phase !== null);
+		/*
+		 * THREE SCRIPT-OWNED PHASES on the two platforms that have no managed
+		 * runtime: they announce `python` themselves because nothing else does
+		 * (code review round 1, R1 - `managed-python.ts` is macOS-only, so the
+		 * panel used to open on "Step 2 of 4" with the rail's first row never lit).
+		 * macOS still announces two, because its `python` comes from the app.
+		 */
 		assert.deepEqual(
 			found.map(([, phase]) => phase),
-			["environment", "components"],
-			`${file} must announce exactly its two script-owned phases, in order`,
+			named.python
+				? ["python", "environment", "components"]
+				: ["environment", "components"],
+			`${file} must announce exactly its script-owned phases, in order`,
 		);
 		for (const [index, phase] of found) {
 			// The line after the marker is the work it names: a marker emitted
@@ -403,8 +437,10 @@ test("the shipped script's ordinary narration is never read as a milestone", () 
 		"components",
 		"verify",
 	]);
-	assert.equal(INSTALL_PHASE_LABELS.python, "Preparing the runtime");
-	assert.equal(INSTALL_PHASE_LABELS.verify, "Checking the installation");
+	// Plain-language labels (first-run onboarding, D9/U8): the user's nouns,
+	// not ours - no "runtime", no "components".
+	assert.equal(INSTALL_PHASE_LABELS.python, "Getting ready");
+	assert.equal(INSTALL_PHASE_LABELS.verify, "Starting it up");
 	/*
 	 * Every phase has BOTH strings, and the two are different: the label is the
 	 * row, the detail is the line under the bar that says what the row means
@@ -440,7 +476,13 @@ test("a run that recorded nothing yields no line, and a sentence instead", () =>
 	);
 	assert.equal(
 		installFailureSentence("components"),
-		"Setup stopped while downloading components.",
+		"Setup stopped while downloading what it needs.",
+	);
+	// The product's name keeps its capitals inside the sentence: a lowercased
+	// label printed "setting up local operator" here.
+	assert.equal(
+		installFailureSentence("environment"),
+		"Setup stopped while setting up Local Operator.",
 	);
 	// The sentence is always derivable, whatever the phase, because it is what the
 	// panel leads with when the causes table recognises nothing.
@@ -1139,5 +1181,260 @@ test("a probe's answer never becomes the reason a setup failed", () => {
 	assert.equal(
 		installFailureReason("HTTP/2 200\ncontent-length: 27965\n", ""),
 		null,
+	);
+});
+
+/* ---------------------------------------------- first-run onboarding (U8/D9) */
+
+/**
+ * The bundled uv's own narration of a real cold install, verbatim from a run of
+ * the shipped macOS script on 2026-10-08 (uv 0.12.17, empty cache): the lines
+ * the sub-progress is folded from. Taken from a run rather than written, for the
+ * reason the fixture above gives - a parser pinned to invented lines proves
+ * nothing about the client that prints them.
+ */
+/** The word the old expectation line used for a wait that now takes seconds. */
+const MINUTES_WORD = /minutes/;
+
+const UV_COLD_RUN = [
+	"Installing local-operator with uv (uv 0.12.17 (635500036 2026-09-18 aarch64-apple-darwin))...",
+	"Using Python 3.14.3 environment at: support/managed-venv",
+	"Resolved 55 packages in 888ms",
+	"Downloading pydantic-core (1.9MiB)",
+	"Downloading local-operator (13.5MiB)",
+	"Downloading cryptography (3.7MiB)",
+	"Downloading pillow (4.6MiB)",
+	"Downloading pygments (1.2MiB)",
+	"Downloading pillow-heif (4.1MiB)",
+	" Downloaded pygments",
+	" Downloaded pydantic-core",
+	" Downloaded cryptography",
+	" Downloaded pillow-heif",
+	" Downloaded pillow",
+	" Downloaded local-operator",
+	"Prepared 55 packages in 6.11s",
+	"Installed 55 packages in 73ms",
+	" + annotated-doc==0.0.5",
+];
+
+test("uv's own narration folds into counts, and the line only moves forward", () => {
+	/*
+	 * Consecutive repeats are collapsed: a new `Downloading X` line moves the fold
+	 * (the started count is real) without changing the sentence, so what this
+	 * asserts is the sequence a READER sees rather than the sequence of sends.
+	 * The collapse is what makes "monotonic" checkable - a repeat can hide a
+	 * regression, a changed line cannot.
+	 */
+	const seen = [];
+	let sub = EMPTY_SUB_PROGRESS;
+	for (const line of UV_COLD_RUN) {
+		const next = foldInstallLine(sub, line);
+		if (next !== sub) {
+			const rendered = installSubProgressLine(next);
+			if (rendered !== seen[seen.length - 1]) seen.push(rendered);
+		}
+		sub = next;
+	}
+	/*
+	 * EVERY LINE HERE IS MONOTONIC, which is the property design round 1 (D3) and
+	 * code review round 1 (R2) both filed against: the old shape printed a
+	 * fraction whose denominator grew with the work uv was still discovering.
+	 * The count of finished files only ever rises, and the sentence under it
+	 * carries the constant `Resolved N` rather than a second moving number.
+	 */
+	assert.deepEqual(seen, [
+		"Found 55 packages to fetch.",
+		"Fetching the large files\u2026",
+		"1 large download finished \u00b7 55 packages in all.",
+		"2 large downloads finished \u00b7 55 packages in all.",
+		"3 large downloads finished \u00b7 55 packages in all.",
+		"4 large downloads finished \u00b7 55 packages in all.",
+		"5 large downloads finished \u00b7 55 packages in all.",
+		"6 large downloads finished \u00b7 55 packages in all.",
+		"Unpacking and finishing up.",
+	]);
+	// A line that says nothing returns the SAME object, which is what lets the
+	// main process skip a send for every `+ package==x` line.
+	assert.equal(foldInstallLine(sub, " + anyio==4.15.1"), sub);
+	// pip's narration counts too, when uv is absent.
+	let pip = foldInstallLine(EMPTY_SUB_PROGRESS, "Collecting local-operator");
+	pip = foldInstallLine(pip, "Collecting httpx>=0.28");
+	assert.equal(installSubProgressLine(pip), "Fetched 2 packages so far.");
+
+	/*
+	 * THE SHAPE THE OLD CODE GOT WRONG, folded from pip's real narration (the
+	 * repro in code review round 1, R2): pip prints `Downloading X (size)` and NO
+	 * `Downloaded X` line, so `downloadsDone` stays 0 forever while
+	 * `downloadsStarted` climbs. The old line read `0 of 1`, `0 of 2`, ... `0 of
+	 * 10 large downloads done` - a growing denominator over a stuck zero, on the
+	 * screen whose whole job is to prove the install is moving. The collected
+	 * count is the honest fact pip does give, and it is what the line now falls
+	 * back to; the test above could not catch this because it fed bare
+	 * `Collecting` lines with no download line in front of them.
+	 */
+	const pipRealNarration = [
+		"Collecting local-operator",
+		"  Downloading local_operator-0.30.6-py3-none-any.whl (13.5 MB)",
+		"Collecting pydantic",
+		"  Downloading pydantic-2.11.9-py3-none-any.whl (444 kB)",
+		"Collecting cryptography",
+		"  Downloading cryptography-45.0.7-cp39-abi3-macosx_10_12_universal2.whl (4.2 MB)",
+		"Installing collected packages: local-operator, pydantic, cryptography",
+		"Successfully installed cryptography-45.0.7 local-operator-0.30.6 pydantic-2.11.9",
+	];
+	const pipLines = [];
+	let pipSub = EMPTY_SUB_PROGRESS;
+	for (const line of pipRealNarration) {
+		const next = foldInstallLine(pipSub, line);
+		if (next !== pipSub) {
+			const rendered = installSubProgressLine(next);
+			if (rendered !== pipLines[pipLines.length - 1]) pipLines.push(rendered);
+		}
+		pipSub = next;
+	}
+	assert.deepEqual(pipLines, [
+		"Fetched 1 package so far.",
+		"Fetched 2 packages so far.",
+		"Fetched 3 packages so far.",
+		"Unpacking and finishing up.",
+	]);
+	// And nothing in the whole narration ever prints a zero denominator.
+	assert.ok(
+		pipLines.every((line) => !/\b0 of\b/.test(line ?? "")),
+		"the pip fallback still prints a stuck zero",
+	);
+	assert.equal(installSubProgressLine(EMPTY_SUB_PROGRESS), null);
+	assert.equal(installSubProgressLine(null), null);
+});
+
+test("the estimate is the measured baselines, rounded, and never negative", () => {
+	const mac = INSTALL_PHASE_BASELINE_MS.darwin;
+	// Every platform has a baseline for every phase, and the cold total the
+	// window promises fits the operator's <30 s target with headroom on macOS.
+	for (const platform of ["darwin", "win32", "linux"])
+		for (const phase of INSTALL_PHASES)
+			assert.ok(INSTALL_PHASE_BASELINE_MS[platform][phase] > 0);
+	const total = INSTALL_PHASES.reduce((sum, phase) => sum + mac[phase], 0);
+	assert.ok(total < 30_000, `macOS baselines sum to ${total} ms`);
+	// At the start of `components`: its own baseline plus `verify`, to 5 s.
+	/*
+	 * `components` + `verify` at the start of `components`. It moved from 15 s
+	 * when QA's cold 8.08 s reading for that phase showed the old 8 s baseline had
+	 * no headroom at all (Q-1) - the number is the measured figure plus headroom,
+	 * so this expectation moves with it.
+	 */
+	assert.equal(installEta("darwin", "components", 0), "about 20 s left");
+	// Small numbers are exact, so the last seconds count down one by one.
+	assert.equal(installEta("darwin", "verify", 0), "about 4 s left");
+	// Outrunning a phase is said in words, never as a negative count - and the
+	// sentence needs INSTALL_OVERRUN_FACTOR times the budget, not one millisecond
+	// past it (QA round 2, Q2-1): at the budget itself the estimate is only the
+	// later phases' time, because the budget already carries headroom.
+	assert.equal(
+		installEta("darwin", "components", mac.components),
+		"about 4 s left",
+	);
+	assert.equal(
+		installEta("darwin", "components", mac.components * INSTALL_OVERRUN_FACTOR),
+		"about 4 s left",
+	);
+	assert.equal(
+		installEta(
+			"darwin",
+			"components",
+			mac.components * INSTALL_OVERRUN_FACTOR + 1,
+		),
+		"taking longer than usual",
+	);
+	/*
+	 * AND THE FACTOR'S VALUE IS PINNED BY ABSOLUTE CASES, not only by the edge
+	 * cases above (code review round 3, R3-1): those compare against the constant,
+	 * so a mutant moved the boundary with them - 1.0 kept the suite green (QA's
+	 * loaded 15.56 s reading would print the sentence again, the behaviour Q2-1
+	 * removed) and 5.0 did too. These two cannot move with it: a reading inside a
+	 * 1.5x rule must stay a number, and one DOUBLE the budget must be the sentence.
+	 */
+	assert.equal(installEta("darwin", "components", 15_560), "about 4 s left");
+	assert.equal(
+		installEta("darwin", "components", mac.components * 2),
+		"taking longer than usual",
+	);
+	/*
+	 * And the value itself, because it is a decision rather than a derived
+	 * quantity: the two cases above bound it to (1.11, 2.0] - QA's loaded reading
+	 * over the budget is the lower bound and twice the budget the upper - and this
+	 * says which point in that band was chosen, so changing the factor means
+	 * changing this line deliberately, in the same commit.
+	 */
+	assert.equal(INSTALL_OVERRUN_FACTOR, 1.5);
+	assert.equal(installPlatform("freebsd"), "linux");
+	assert.equal(formatElapsed(0), "0:00");
+	assert.equal(formatElapsed(67_400), "1:07");
+	assert.doesNotMatch(INSTALL_EXPECTATION, MINUTES_WORD);
+});
+
+test("every baseline that can overrun carries headroom over its own measurement", () => {
+	/*
+	 * THE TABLE'S PROVENANCE CLAIM AS DATA (code review round 2, M-3): the comment
+	 * over `INSTALL_PHASE_BASELINE_MS` says the overrun-capable entries are the
+	 * measured figure plus 1.5x-or-more, and half of them were not - a datacentre
+	 * runner's own time is a measurement, not a budget. The measured figures are
+	 * the ones the comment names, so a re-pin to a measurement fails here rather
+	 * than in the field.
+	 */
+	const measured = {
+		darwin: { environment: 1_900, components: 8_080 },
+		win32: { environment: 6_400, components: 8_900 },
+		linux: { environment: 3_200, components: 7_600 },
+	};
+	for (const [platform, phases] of Object.entries(measured))
+		for (const [phase, ms] of Object.entries(phases))
+			assert.ok(
+				INSTALL_PHASE_BASELINE_MS[platform][phase] >= ms * 1.5,
+				`${platform} ${phase}: ${INSTALL_PHASE_BASELINE_MS[platform][phase]} ms is not 1.5x the measured ${ms} ms`,
+			);
+});
+
+test("a phase payload's timing is admitted whole or not at all", () => {
+	const timing = {
+		startedAt: 1,
+		phaseStartedAt: 2,
+		platform: "darwin",
+		sub: null,
+	};
+	assert.ok(
+		isInstallProgressPayload({ kind: "phase", phase: "components", ...timing }),
+	);
+	assert.ok(
+		isInstallProgressPayload({
+			kind: "phase",
+			phase: "components",
+			...timing,
+			sub: foldInstallLine(EMPTY_SUB_PROGRESS, "Resolved 3 packages in 1ms"),
+		}),
+	);
+	// Half a clock would render "about NaN s left"; refused rather than painted.
+	assert.ok(
+		!isInstallProgressPayload({
+			kind: "phase",
+			phase: "components",
+			startedAt: 1,
+		}),
+	);
+	assert.ok(
+		!isInstallProgressPayload({
+			kind: "phase",
+			phase: "components",
+			...timing,
+			platform: "plan9",
+		}),
+	);
+	assert.ok(
+		!isInstallProgressPayload({
+			kind: "phase",
+			phase: "components",
+			...timing,
+			sub: { resolved: "many" },
+		}),
 	);
 });
