@@ -441,8 +441,8 @@ test("the slot's box is spelled once, and every mount site uses that one", () =>
 	const app = withoutComments(read(CHAT_CONTENT));
 	assert.equal(
 		[...app.matchAll(/<PaneSlot\b/g)].length,
-		5,
-		`expected the app's five mount sites in ${CHAT_CONTENT} to use \`<PaneSlot>\` (canvas, run panel, browser, console, asks drawer). A sixth pane, or one that went back to a bare div, changes where the slot's ground and seam are decided.`,
+		6,
+		`expected the app's six mount sites in ${CHAT_CONTENT} to use \`<PaneSlot>\` (canvas, run panel, browser, console, asks drawer, code review pane). A seventh pane, or one that went back to a bare div, changes where the slot's ground and seam are decided.`,
 	);
 });
 

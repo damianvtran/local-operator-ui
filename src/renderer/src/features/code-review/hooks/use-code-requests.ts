@@ -36,8 +36,9 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import type {
 	DesktopCodeRequestRow,
@@ -94,31 +95,46 @@ function intervalFor(
  * pattern (`use-projects-queries.ts` states the division): retries only where
  * the failure carries a status to retry AGAINST, and a ten-second window so a
  * remount does not re-read what the last surface just read.
+ *
+ * THE PROVIDER GATE, through `useOptionalQueryClient` (`useDesktopCapabilities`'
+ * own pattern): the shared composer mounts in the mini view's document, which
+ * carries no `QueryClientProvider`, and `useQuery` cannot be called without a
+ * client at all - it throws before any option is read. A document with no
+ * provider gets the inert fallback client and `provided: false`, the query is
+ * DISABLED (never fetched from a client nobody reads, and `enabled` reads
+ * absence as "this surface is not offered here"), and no state whatsoever is
+ * written: the mini window, and any bare test harness, mount the composer
+ * exactly as they did before this feature.
  */
 export function useCodeRequests(
 	sessionId: string | null,
 	poll: CodeRequestsPoll,
 ) {
+	const { client, provided } = useOptionalQueryClient();
 	const capabilities = useDesktopCapabilities();
 	const capable = desktopFeatureEnabled(capabilities.data, "code_requests");
 	useCodeRequestsFeedInvalidation(sessionId);
-	return useQuery({
-		queryKey: codeRequestsKeys.session(sessionId ?? ""),
-		enabled: Boolean(sessionId) && capable && (poll.enabled ?? true),
-		queryFn: () =>
-			desktopResult<DesktopCodeRequestsList>({
-				op: "code_requests.list",
-				sessionId: sessionId ?? "",
-			}),
-		retry: retryDesktopQuery,
-		staleTime: 10_000,
-		refetchInterval: (query) =>
-			intervalFor(
-				(query.state.data as DesktopCodeRequestsList | undefined)?.rows ?? [],
-				poll,
-			),
-		refetchIntervalInBackground: false,
-	});
+	return useQuery(
+		{
+			queryKey: codeRequestsKeys.session(sessionId ?? ""),
+			enabled:
+				Boolean(sessionId) && capable && (poll.enabled ?? true) && provided,
+			queryFn: () =>
+				desktopResult<DesktopCodeRequestsList>({
+					op: "code_requests.list",
+					sessionId: sessionId ?? "",
+				}),
+			retry: retryDesktopQuery,
+			staleTime: 10_000,
+			refetchInterval: (query) =>
+				intervalFor(
+					(query.state.data as DesktopCodeRequestsList | undefined)?.rows ?? [],
+					poll,
+				),
+			refetchIntervalInBackground: false,
+		},
+		client,
+	);
 }
 
 /**
@@ -138,11 +154,18 @@ export function useCodeRequests(
  */
 function useCodeRequestsFeedInvalidation(sessionId: string | null) {
 	const { codeRequestsRevision } = useDesktopFeed();
-	const queryClient = useQueryClient();
+	/*
+	 * The provider gate, same reason as `useCodeRequests`' own: a document with no
+	 * `QueryClientProvider` (the mini view) must not throw on the client read NOR
+	 * run an invalidation against a client nobody reads - there is no query to
+	 * invalidate there, and `provided` false short-circuits both.
+	 */
+	const { client: queryClient, provided } = useOptionalQueryClient();
 	const applied = useRef<{ sessionId: string; revision: number } | null>(
 		codeRequestsRevision,
 	);
 	useEffect(() => {
+		if (!provided) return;
 		if (!sessionId) return;
 		if (!codeRequestsRevision) return;
 		if (codeRequestsRevision.sessionId !== sessionId) return;
@@ -157,7 +180,7 @@ function useCodeRequestsFeedInvalidation(sessionId: string | null) {
 		void queryClient.invalidateQueries({
 			queryKey: codeRequestsKeys.session(sessionId),
 		});
-	}, [codeRequestsRevision, sessionId, queryClient]);
+	}, [codeRequestsRevision, sessionId, queryClient, provided]);
 }
 
 /**
@@ -173,22 +196,26 @@ function useCodeRequestsFeedInvalidation(sessionId: string | null) {
  * success is not a claim that data arrived - the feed is what says that.
  */
 export function useRefreshCodeRequests(sessionId: string | null) {
-	const queryClient = useQueryClient();
-	return useMutation({
-		mutationFn: async () => {
-			await desktopResult<unknown>({
-				op: "code_requests.refresh",
-				sessionId: sessionId ?? "",
-				force: true,
-			});
+	const { client: queryClient, provided } = useOptionalQueryClient();
+	return useMutation(
+		{
+			mutationFn: async () => {
+				await desktopResult<unknown>({
+					op: "code_requests.refresh",
+					sessionId: sessionId ?? "",
+					force: true,
+				});
+			},
+			onSuccess: () => {
+				if (!provided) return;
+				if (!sessionId) return;
+				void queryClient.invalidateQueries({
+					queryKey: codeRequestsKeys.session(sessionId),
+				});
+			},
 		},
-		onSuccess: () => {
-			if (!sessionId) return;
-			void queryClient.invalidateQueries({
-				queryKey: codeRequestsKeys.session(sessionId),
-			});
-		},
-	});
+		queryClient,
+	);
 }
 
 /**

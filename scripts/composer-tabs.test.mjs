@@ -2053,18 +2053,16 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * The first-chip chain, which had to grow an item: the loop chip is the second
 	 * ITEM on the row (its own chip plus its dismiss, one wrapper), so the count group
 	 * is first only when neither the goal nor the loop rendered, and the group's own
-	 * leading chip is decided inside the group - plan, ask, wakes, watches, subagents
-	 * and jobs, in that order.
+	 * leading chip is decided inside the group - plan, ask, wakes, watches, code,
+	 * subagents and jobs, in that order.
 	 */
 	assert.match(source, /const loopFirst = !showGoal;/);
 	assert.match(source, /const groupIsFirst = !showGoal && !showLoop;/);
 	assert.match(source, /const asksFirst = groupIsFirst && !showPlan;/);
 	assert.match(source, /const wakesFirst = asksFirst && !showAsks;/);
 	assert.match(source, /const monitorsFirst = wakesFirst && !showWakes;/);
-	assert.match(
-		source,
-		/const subagentsFirst = monitorsFirst && !showMonitors;/,
-	);
+	assert.match(source, /const codeFirst = monitorsFirst && !showMonitors;/);
+	assert.match(source, /const subagentsFirst = codeFirst && !showCode;/);
 	assert.match(source, /const jobsFirst = subagentsFirst && !children;/);
 
 	/*
