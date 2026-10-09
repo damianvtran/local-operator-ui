@@ -368,6 +368,32 @@ never cut mid-word, the unbounded one has a second home.
   file's footer sentence: "To stop a wake, ask the agent to cancel it" is false
   there, so it says what the user can do instead.
 
+  **Amendment — the wakes control slice (the pane, ACROSS `8`).** The first
+  half of this bullet is now false in general and stays true only of the rows it
+  describes: the pane's rows carry controls, and the stopgap sentence that stood
+  in for one is retired (the monitors' own retirement, one slice later). What
+  changed, and why the rule above is superseded rather than modified:
+
+  - **The operator asked for it, and the monitors' slice set the precedent.**
+    The same field that moved the Monitors section to a row-level cancel
+    applies here ("a surface that can arm but not stop is half a control" is
+    not true of a pane watching a turn, but a wake app calls the agent about
+    while its row says nothing is).
+  - **One press for an ordinary wake**, which is the operator's own words, on
+    the one-press path that is a WAKE's rather than a monitor's.
+  - **A confirmation remains for the chief of staff's rows and ONLY for them**
+    (her check-ins are long-lived and must not be one stray click from gone),
+    and the engine's own `aida-*` rows carry NO control at all: the engine
+    re-arms them, and the desktop route refuses those ids before any handler
+    (see `wake-controls-model.ts` and the PR for the full arm-by-arm rule).
+  - **The sentence's replacement is the control, not new copy.** A one-press
+    refusal renders its own sentence ON the row (there is no dialog on that
+    path), which is the one place this amendment adds text to a row.
+
+  The decision record for the classification, the copy, the churn and the
+  evidence lives in the PR that ships it; `docs/run-sidebar.md` is untouched
+  because the section order is.
+
 ## 9. Evidence
 
 | Frame set | What it is |

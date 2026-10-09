@@ -1,0 +1,266 @@
+{
+  "scenario": "aida",
+  "tree": "/Users/damian/local-operator-ui-worktrees/wake-cancel-pane",
+  "api": "http://127.0.0.1:8080",
+  "scratch": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/wake-cancel-rig-mJMOsD",
+  "steps": [
+    {
+      "label": "hello",
+      "body": {
+        "apiBaseUrl": "http://127.0.0.1:8080",
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      }
+    },
+    {
+      "label": "press [data-rig-skip]",
+      "body": {
+        "target": "button \"Skip for now\"",
+        "hitTest": true,
+        "disabled": false
+      }
+    },
+    {
+      "label": "onboarding dismissed",
+      "body": {
+        "control": "[data-rig-skip]"
+      }
+    },
+    {
+      "label": "chip overlay probe",
+      "body": {
+        "at": {
+          "x": 462,
+          "y": 754
+        },
+        "stack": [
+          "button#.inline-flex h-6 min-w-0 shrink-0 items-c|pe=auto|pos=static|z=auto",
+          "div#.flex min-w-0 flex-wrap items-center gap-|pe=auto|pos=static|z=auto",
+          "div#.w-full @min-[750px]/chatcol:max-w-[var(-|pe=auto|pos=static|z=auto",
+          "form#.w-full|pe=auto|pos=static|z=auto",
+          "div#.w-full|pe=auto|pos=static|z=auto"
+        ]
+      }
+    },
+    {
+      "label": "capture debug-before-chip",
+      "body": {
+        "file": "/Users/damian/local-operator-ui-worktrees/wake-cancel-pane/docs/evidence/wake-cancel-live/frames/debug-before-chip.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      }
+    },
+    {
+      "label": "press [data-status-wakes]",
+      "body": {
+        "target": "button \"Open the wakes in run details — 2 wakes armed\"",
+        "hitTest": true,
+        "disabled": false
+      }
+    },
+    {
+      "label": "her pane",
+      "body": {
+        "section": true,
+        "rows": [
+          {
+            "id": "w1",
+            "text": "5:58 PM EDT· every 4h4-hourly proactive check-in (operator-set cadence)4-hourly proactive check-in (operator-set cadence)Cancel"
+          },
+          {
+            "id": "aida-cadence",
+            "text": "Oct 10 8:30 AM EDT· onceDaily proactive check-in. Review the operator's current state — active and stale sessions, projects and workstreams, scheduled wakes, usage signals, and anything you started ea"
+          }
+        ],
+        "cancels": [
+          {
+            "wake": "w1",
+            "state": null,
+            "label": "Cancel",
+            "disabled": false
+          }
+        ],
+        "notes": [],
+        "managed": [
+          "managed by AidaThis wake is managed by Aida: her engine re-arms it, so the app does not offer a cancel here. To stop her check-ins, pause her with /aida pause."
+        ],
+        "retiredFooter": false
+      }
+    },
+    {
+      "label": "engine row sends nothing",
+      "body": {
+        "controlPresent": false
+      }
+    },
+    {
+      "label": "capture aida-managed",
+      "body": {
+        "file": "/Users/damian/local-operator-ui-worktrees/wake-cancel-pane/docs/evidence/wake-cancel-live/frames/aida-managed.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      }
+    },
+    {
+      "label": "press [data-wake-cancel=\"w1\"]",
+      "body": {
+        "target": "button \"Cancel wake: 4-hourly proactive check-in (operator-set caden\"",
+        "hitTest": true,
+        "disabled": false
+      }
+    },
+    {
+      "label": "card",
+      "body": {
+        "label": "Cancel Aida's check-in?",
+        "text": "Cancel Aida's check-in?“4-hourly proactive check-in (operator-set…” will not fire again, and nothing re-creates it. Aida's own cadence is unaffected.KeepCancel check-in",
+        "refusal": "",
+        "open": true
+      }
+    },
+    {
+      "label": "capture aida-confirm",
+      "body": {
+        "file": "/Users/damian/local-operator-ui-worktrees/wake-cancel-pane/docs/evidence/wake-cancel-live/frames/aida-confirm.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      }
+    },
+    {
+      "label": "press [data-wake-confirm-keep]",
+      "body": {
+        "target": "button \"Keep\"",
+        "hitTest": true,
+        "disabled": false
+      }
+    },
+    {
+      "label": "keep sent nothing",
+      "body": {
+        "deletesInDaemonLog": 7
+      }
+    },
+    {
+      "label": "press [data-wake-cancel=\"w1\"]",
+      "body": {
+        "target": "button \"Cancel wake: 4-hourly proactive check-in (operator-set caden\"",
+        "hitTest": true,
+        "disabled": false
+      }
+    },
+    {
+      "label": "press [data-wake-confirm-action]",
+      "body": {
+        "target": "button \"Cancelling…\"",
+        "hitTest": true,
+        "disabled": false
+      }
+    },
+    {
+      "label": "her wake cancelled",
+      "body": {
+        "gone": false
+      }
+    },
+    {
+      "label": "capture aida-cancelled",
+      "body": {
+        "file": "/Users/damian/local-operator-ui-worktrees/wake-cancel-pane/docs/evidence/wake-cancel-live/frames/aida-cancelled.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      }
+    },
+    {
+      "label": "her cancel delete (daemon log)",
+      "body": [
+        "INFO:     127.0.0.1:55499 - \"DELETE /v1/desktop/wakes/1701e6fc975c/nope HTTP/1.1\" 422 Unprocessable Content",
+        "INFO:     127.0.0.1:55726 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:56210 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:56868 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:57467 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:59409 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:60352 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:60900 - \"DELETE /v1/desktop/wakes/1701e6fc975c/w1 HTTP/1.1\" 200 OK"
+      ]
+    },
+    {
+      "label": "isolation",
+      "body": {
+        "apiBaseUrl": "http://127.0.0.1:8080"
+      }
+    }
+  ],
+  "appLog": [
+    "14:11:00.753 › Unpackaged instance: no packaged install state to leave alone.",
+    "14:11:00.753 › Periodic update checks scheduled (every 5 minutes)",
+    "14:11:00.754 › macOS auto-update requires app signing",
+    "14:11:00.754 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure",
+    "14:11:00.767 › [browser] denied a media permission request from (unknown origin)",
+    "14:11:00.768 › [browser] denied a media permission request from (unknown origin)",
+    "14:11:00.768 › [browser] denied a web-app-installation permission request from (unknown origin)",
+    "14:11:00.768 › [browser] denied a geolocation permission request from (unknown origin)",
+    "Error occurred in handler for 'mini-view:registration-get': Error: This window cannot read the hotkey registration.",
+    "    at /Users/damian/local-operator-ui-worktrees/wake-cancel-pane/out/main/index.js:43614:13",
+    "    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)",
+    "    at Session.emit (node:events:514:28)",
+    "14:11:01.599 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf",
+    "14:11:01.602 › Checking for UI updates...",
+    "14:11:01.602 › Skip checkForUpdates because application is not packed and dev update config is not forced",
+    "Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'",
+    "    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)",
+    "    at Session.emit (node:events:514:28)",
+    "Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'",
+    "    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)",
+    "    at Session.emit (node:events:514:28)",
+    "14:11:01.610 › [browser] denied a media permission request from (unknown origin)",
+    "14:11:01.610 › [browser] denied a media permission request from (unknown origin)",
+    "14:11:01.610 › [browser] denied a web-app-installation permission request from (unknown origin)",
+    "14:11:01.611 › [browser] denied a geolocation permission request from (unknown origin)",
+    "14:11:01.621 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)",
+    "14:11:01.623 › [browser] host on 127.0.0.1:60922 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/wake-cancel-rig-mJMOsD/profile/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))",
+    "(node:18663) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit",
+    "(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)",
+    "14:11:02.258 › [browser] tab 1 navigated to about:blank",
+    "[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900",
+    "14:11:03.759 › Checking for updates... (silent mode: true)",
+    "14:11:03.759 › Skip checkForUpdates because application is not packed and dev update config is not forced",
+    "14:11:03.760 › Checking for backend updates... (silent mode: true)",
+    "14:11:03.760 › Skip backend update check in dev mode unless forced",
+    "14:11:10.729 › Backend health check response status: 200",
+    "14:11:15.758 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.",
+    "14:11:20.768 › Backend health check response status: 200",
+    "14:11:30.750 › Backend health check response status: 200",
+    ""
+  ]
+}

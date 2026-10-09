@@ -102,7 +102,26 @@ const bundle = await build({
 			export const renderRow = (props) =>
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
 			export const renderWakes = (props) =>
-				renderToStaticMarkup(createElement(RunDetailWakes, props));
+				renderToStaticMarkup(
+					/*
+					 * The pane body's wake cancel interaction, stubbed: these cases are about
+					 * the list's markup, and the interaction itself is driven against the real
+					 * panel by script/wake-cancel-panel.test.mjs. The identity is the
+					 * all-unknown reading (no capability, nothing resolved), which is the
+					 * pane's own fail-open direction for a caller that did not ask.
+					 */
+					createElement(RunDetailWakes, {
+						sessionId: null,
+						cancel: { request: () => undefined, stateFor: () => undefined },
+						identity: {
+							capability: false,
+							statusResolved: false,
+							sessionId: null,
+							name: "Aida",
+						},
+						...props,
+					}),
+				);
 			export const renderMonitors = (props) =>
 				renderToStaticMarkup(
 					/*
@@ -1683,10 +1702,19 @@ test("the section's tally is the chip's own clause, and its cap is a statement",
 	assert.doesNotMatch(over, /1 more wakes/);
 	assert.match(over, /data-run-panel-row="o16"/);
 	assert.doesNotMatch(over, /data-run-panel-row="o17"/, "the cap holds");
-	assert.match(
+	/*
+	 * The rows carry the control that acts on them (the wakes control slice),
+	 * and the stopgap sentence that stood in for it is retired: a sentence
+	 * pointing at the agent, beside a button that cancels, would send a reader
+	 * around it. The old pin asserted the sentence; this one asserts its absence
+	 * AND the control's presence, so a revert has to fail here and say what
+	 * replaced it.
+	 */
+	assert.match(over, /data-wake-cancel="o1"/, "the rows carry their cancel");
+	assert.doesNotMatch(
 		over,
 		/ask the agent to cancel it/i,
-		"the list names who can act on it",
+		"the stopgap's sentence is retired with the control it stood in for",
 	);
 });
 
@@ -1700,9 +1728,15 @@ test("wakes are absent rather than empty: no section without armed wakes", () =>
 	 */
 	const panel = code(SECTION_LIST);
 	assert.match(panel, /if \(details\.wakes\.length > 0\) \{/);
+	/*
+	 * The section is handed its own facts as well as the list (the wakes control
+	 * slice): the conversation id, the body's cancel interaction and the identity
+	 * the guard reads. `\s+` between the attributes because the tag is wrapped
+	 * across lines by the formatter.
+	 */
 	assert.match(
 		panel,
-		/<RunDetailWakes details=\{details\} sectionRef=\{wakesSectionRef\} \/>/,
+		/<RunDetailWakes\s+details=\{details\}\s+sectionRef=\{wakesSectionRef\}\s+sessionId=\{sessionId\}\s+cancel=\{wakeCancel\.section\}\s+identity=\{wakeAida\}/,
 	);
 	/*
 	 * ...and the section is in the panel's fixed order: after the tool jobs and
@@ -1781,7 +1815,7 @@ test("nothing about the wakes ticks: no clock and no relative time", () => {
 	 * ...and the panel hands it the untimed model, beside the plan, rather than the
 	 * re-measured one the roster and the jobs list take.
 	 */
-	assert.match(code(SECTION_LIST), /<RunDetailWakes details=\{details\}/);
+	assert.match(code(SECTION_LIST), /<RunDetailWakes\s+details=\{details\}/);
 });
 
 test("the plan chip files a one-shot request that both opens the pane and clears the canvas", () => {
@@ -5384,7 +5418,9 @@ test("the section's tally is the chip's clause, and its cap is a statement", () 
 	 * row. That control is what the stopgap's "ask the agent to cancel it" sentence
 	 * retired for (the monitors controls pass) — a sentence pointing at the agent,
 	 * beside a button that cancels, would send a reader around it; the Wakes
-	 * section keeps its own sentence because wakes kept theirs. Both facts are
+	 * section followed one slice later (the wakes control slice), retiring the same
+	 * sentence there once its own rows carried a control and the same
+	 * `data-wake-cancel` assertion moved to that section's test. Both facts are
 	 * pinned below, and the sentence is pinned ABSENT so the pair cannot drift
 	 * back.
 	 */
