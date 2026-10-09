@@ -419,7 +419,7 @@ test("a coded refusal with the capability becomes a question; without it, a sent
 			throw codedRefusal();
 		},
 		forceDoneOffered: true,
-		questionOpen: () => false,
+		claimQuestion: () => true,
 	});
 	assert.equal(first.kind, "question");
 	assert.equal(first.refusal.coded, true);
@@ -429,7 +429,7 @@ test("a coded refusal with the capability becomes a question; without it, a sent
 			throw codedRefusal();
 		},
 		forceDoneOffered: false,
-		questionOpen: () => false,
+		claimQuestion: () => true,
 	});
 	assert.equal(second.kind, "spoken");
 	assert.match(second.copy, /^This can't be marked done yet:/);
@@ -446,7 +446,7 @@ test("an older daemon's sentence-only refusal is spoken, never offered a force",
 			);
 		},
 		forceDoneOffered: true,
-		questionOpen: () => false,
+		claimQuestion: () => true,
 	});
 	assert.equal(outcome.kind, "spoken");
 	assert.equal(outcome.refusal.coded, false);
@@ -458,15 +458,22 @@ test("overlapping moves each settle their own outcome (the U1 reproduction)", as
 	const okDeferred = deferred();
 	const badDeferred = deferred();
 	let held = false;
+	/* The caller's claim, exactly as the page passes it: the read and the set
+	 * are ONE call, so whoever runs first owns the slot. */
+	const claimQuestion = () => {
+		if (held) return false;
+		held = true;
+		return true;
+	};
 	const ok = runStatusMove({
 		move: () => okDeferred.promise,
 		forceDoneOffered: true,
-		questionOpen: () => held,
+		claimQuestion,
 	});
 	const bad = runStatusMove({
 		move: () => badDeferred.promise,
 		forceDoneOffered: true,
-		questionOpen: () => held,
+		claimQuestion,
 	});
 	okDeferred.resolve("row");
 	const first = await ok;
@@ -483,21 +490,77 @@ test("overlapping moves each settle their own outcome (the U1 reproduction)", as
 	const q1 = runStatusMove({
 		move: () => one.promise,
 		forceDoneOffered: true,
-		questionOpen: () => held,
+		claimQuestion,
 	});
 	const q2 = runStatusMove({
 		move: () => two.promise,
 		forceDoneOffered: true,
-		questionOpen: () => held,
+		claimQuestion,
 	});
 	one.reject(codedRefusal());
 	const o1 = await q1;
 	assert.equal(o1.kind, "question");
-	held = true; // the caller's reaction: the dialog slot is now occupied
+	/* No manual `held = true` here any more: the CLAIM sets it, inside the
+	 * first decision - that is the invariant R2-1 established. */
+	assert.equal(
+		held,
+		true,
+		"the question slot was claimed by the first decision",
+	);
 	two.reject(codedRefusal());
 	const o2 = await q2;
 	assert.equal(o2.kind, "spoken");
 	assert.match(o2.copy, /^This can't be marked done yet:/);
+});
+
+test("two refusals settling in one microtask: one question, one toast (R2-1)", async () => {
+	/*
+	 * THE SAME-TICK DOUBLE REFUSAL (agent review round 2, R2-1): both PATCHes
+	 * reject in one microtask checkpoint, so both `catch` blocks decide before
+	 * either caller's `.then` could react. With a claim deferred to the
+	 * reaction, both decisions saw a free slot, both returned "question", and
+	 * the second overwrote the first - the first refusal went silent. The
+	 * claim is part of the decision now, so the second refusal is SPOKEN.
+	 */
+	let held = false;
+	const claimQuestion = () => {
+		if (held) return false;
+		held = true;
+		return true;
+	};
+	const first = deferred();
+	const second = deferred();
+	const a = runStatusMove({
+		move: () => first.promise,
+		forceDoneOffered: true,
+		claimQuestion,
+	});
+	const b = runStatusMove({
+		move: () => second.promise,
+		forceDoneOffered: true,
+		claimQuestion,
+	});
+	await new Promise((resolve) =>
+		queueMicrotask(() => {
+			first.reject(codedRefusal());
+			second.reject(codedRefusal());
+			resolve();
+		}),
+	);
+	const [oa, ob] = await Promise.all([a, b]);
+	const kinds = [oa.kind, ob.kind].sort();
+	assert.deepEqual(
+		kinds,
+		["question", "spoken"],
+		"exactly one question and one spoken outcome, never two questions",
+	);
+	const spoken = [oa, ob].find((outcome) => outcome.kind === "spoken");
+	assert.match(
+		spoken.copy,
+		/^This can't be marked done yet:/,
+		"the refusal that did not take the slot is SPOKEN, not silent",
+	);
+	assert.equal(held, true, "the slot stayed claimed once");
 });
 
 test("a transport failure and a non-gate refusal are sentences, with their own copy", async () => {
@@ -506,7 +569,7 @@ test("a transport failure and a non-gate refusal are sentences, with their own c
 			throw new DesktopControlError(null, "");
 		},
 		forceDoneOffered: true,
-		questionOpen: () => false,
+		claimQuestion: () => true,
 	});
 	assert.equal(transport.kind, "spoken");
 	assert.match(transport.copy, /^The project was not moved\./);
@@ -515,7 +578,7 @@ test("a transport failure and a non-gate refusal are sentences, with their own c
 			throw new DesktopControlError(422, "bad date");
 		},
 		forceDoneOffered: true,
-		questionOpen: () => false,
+		claimQuestion: () => true,
 	});
 	assert.equal(other.kind, "spoken");
 	assert.equal(other.copy, "bad date");
@@ -575,6 +638,10 @@ test("the page routes every move through runStatusMove and per-call promises", (
 		page.includes('"projects_force_done"'),
 		"the page's force gate names the capability key",
 	);
+	assert.ok(
+		page.includes("claimQuestion:") && !page.includes("questionOpen"),
+		"the question slot is CLAIMED in the decision, never read-then-claimed a microtask later (R2-1)",
+	);
 });
 
 test("the detail field's force door reads the capability before it renders", () => {
@@ -627,6 +694,40 @@ for (const key of Object.getOwnPropertyNames(dom.window)) {
 }
 for (const name of ["Event", "CustomEvent", "MouseEvent", "KeyboardEvent"]) {
 	if (dom.window[name]) globalThis[name] = dom.window[name];
+}
+/*
+ * Node carries its own `localStorage` global (undefined unless its webstorage
+ * flag is on), so the copy loop above SKIPS the jsdom one and every bare
+ * `localStorage` read in the app sees Node's undefined ("Failed to rehydrate
+ * onboarding store" was the first casualty). Point them at the jsdom window.
+ */
+globalThis.localStorage = dom.window.localStorage;
+globalThis.sessionStorage = dom.window.sessionStorage;
+/* Frames and media queries, the two other globals the page's tree reaches for
+ * (jsdom ships the first on its window; the copy loop above cannot bind a
+ * method that must keep its receiver). */
+/*
+ * jsdom only ships `requestAnimationFrame` under `pretendToBeVisual`, and this
+ * dom does not want the visual machinery; a timer shim answers both spellings
+ * (the bare global the page uses and `window.`).
+ */
+const frameShim = (callback) => setTimeout(() => callback(Date.now()), 16);
+const cancelShim = (id) => clearTimeout(id);
+globalThis.requestAnimationFrame = frameShim;
+globalThis.cancelAnimationFrame = cancelShim;
+dom.window.requestAnimationFrame = frameShim;
+dom.window.cancelAnimationFrame = cancelShim;
+if (!dom.window.matchMedia) {
+	dom.window.matchMedia = () => ({
+		matches: false,
+		media: "",
+		onchange: null,
+		addEventListener() {},
+		removeEventListener() {},
+		addListener() {},
+		removeListener() {},
+		dispatchEvent: () => false,
+	});
 }
 dom.window.Element.prototype.scrollIntoView = () => {};
 dom.window.Element.prototype.hasPointerCapture = () => false;
@@ -685,8 +786,31 @@ export const showErrorToast = record("error");
 export const showWarningToast = record("warning");
 export const showInfoToast = record("info");
 export const showLoadingToast = record("loading");
+export const replaceErrorToast = record("replace-error");
 export const dismissToast = () => {};
 export const resetToastDedup = () => {};
+`,
+);
+
+/*
+ * MUI's styles entry is STUBBED for this harness. The page's graph reaches it
+ * through the legacy theme provider, and bundling MUI's CJS entry drags a
+ * dynamic `require("@babel/runtime/...")` that ES modules cannot resolve
+ * (esbuild's own `__require` shim throws). The graph only needs
+ * `createTheme`/`ThemeProvider` to exist - the visible styling is Tailwind -
+ * so a two-export stub is the honest seam.
+ */
+const muiStubPath = new URL(
+	`./_force-done-mui-${process.pid}.mjs`,
+	import.meta.url,
+).pathname;
+await writeFileAsync(
+	muiStubPath,
+	`export const createTheme = (options) => options ?? {};
+export const ThemeProvider = ({ children }) => children;
+export const alpha = (color) => color;
+export const useTheme = () => ({});
+export default { createTheme, ThemeProvider, alpha, useTheme };
 `,
 );
 
@@ -698,6 +822,7 @@ const componentBundle = await build({
 			import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 			import { MemoryRouter } from "react-router-dom";
 			import { ProjectStatusField } from "./src/renderer/src/features/projects/components/project-editors";
+			import { ProjectsPage } from "./src/renderer/src/features/projects/components/projects-page";
 			import { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 			export function mount(container, project, commit) {
 				const client = new QueryClient({
@@ -722,6 +847,24 @@ const componentBundle = await build({
 				render(project);
 				return { root, client, render };
 			}
+			export function mountBoard(container) {
+				const client = new QueryClient({
+					defaultOptions: { queries: { retry: false, gcTime: 0 } },
+				});
+				const root = createRoot(container);
+				root.render(
+					createElement(
+						QueryClientProvider,
+						{ client },
+						createElement(
+							MemoryRouter,
+							{ initialEntries: ["/projects"] },
+							createElement(ProjectsPage, null),
+						),
+					),
+				);
+				return { root, client };
+			}
 			export { DesktopControlError };
 			export { toastCalls } from "@shared/utils/toast-manager";
 		`,
@@ -733,12 +876,32 @@ const componentBundle = await build({
 	platform: "node",
 	packages: "external",
 	jsx: "automatic",
-	loader: { ".css": "empty" },
 	alias: {
 		"@shared": `${ROOT}/src/renderer/src/shared`,
 		"@features": `${ROOT}/src/renderer/src/features`,
 		"@shared/utils/toast-manager": toastStubPath,
+		/*
+		 * The PAGE's graph reaches the legacy MUI theme provider through the
+		 * shared theme (Tailwind migration in progress). esbuild's
+		 * `packages: "external"` leaves bare imports for node, and node refuses
+		 * the bare DIRECTORY import `@mui/material/styles` under ESM; pinning it
+		 * to the concrete entry lets esbuild bundle the (CJS) module instead.
+		 */
+		"@mui/material/styles": muiStubPath,
+		/*
+		 * The page's masthead carries a brand mark; `@assets` is a vite alias
+		 * esbuild has to be told about, and the bitmaps answer as data URLs.
+		 */
+		"@assets": `${ROOT}/src/renderer/src/assets`,
 	},
+	loader: { ".css": "empty", ".png": "dataurl", ".svg": "dataurl" },
+	/*
+	 * `import.meta.env` is vite's, not esbuild's: without it the shared
+	 * config loader (`Object.entries(import.meta.env)`) throws the moment the
+	 * page's graph imports the app config. Every env schema field is optional,
+	 * so an empty object is a valid environment.
+	 */
+	define: { "import.meta.env": "{}" },
 	write: false,
 });
 const componentsPath = new URL(
@@ -748,7 +911,7 @@ const componentsPath = new URL(
 await writeFileAsync(componentsPath, componentBundle.outputFiles[0].text);
 const components = await import(componentsPath.href);
 const removeScratchBundles = () => {
-	for (const path of [toastStubPath, componentsPath.pathname]) {
+	for (const path of [toastStubPath, componentsPath.pathname, muiStubPath]) {
 		try {
 			unlink(path);
 		} catch {
@@ -796,8 +959,26 @@ const byText = (selector, text) =>
 		(element) => element.textContent?.trim() === text,
 	);
 
-/* The desktop bridge: capabilities answer with the current feature list. */
+/* The desktop bridge: capabilities answer with the current feature list, and -
+ * for the BOARD tests below, which drive the real `ProjectsPage` - the listing
+ * read and the status write answer from fixtures. `holdDoneRefusals` holds a
+ * refused `projects.update` open so a test can settle TWO of them in one
+ * microtask checkpoint (the R2-1 ordering). */
 let features = {};
+let boardRows = [];
+const boardUpdateRequests = [];
+let holdDoneRefusals = false;
+const pendingDoneRefusals = [];
+const refusalResponse = () => ({
+	status: 422,
+	body: {
+		detail: {
+			code: PROJECT_DONE_INCOMPLETE_CODE,
+			message: SENTENCE,
+			incomplete: ["dashboard cutover", "beta cut"],
+		},
+	},
+});
 dom.window.api = {
 	desktop: {
 		request: async (request) => {
@@ -813,6 +994,31 @@ dom.window.api = {
 						},
 					},
 				};
+			if (request.op === "projects.list")
+				return { status: 200, body: { result: { projects: boardRows } } };
+			if (request.op === "projects.update") {
+				boardUpdateRequests.push({
+					key: request.key,
+					fields: request.fields,
+					force_done: request.force_done,
+				});
+				if (request.fields?.status === "done" && request.force_done !== true) {
+					if (holdDoneRefusals)
+						return new Promise((resolve) => pendingDoneRefusals.push(resolve));
+					return refusalResponse();
+				}
+				return {
+					status: 200,
+					body: {
+						result: {
+							project: {
+								...(boardRows.find((row) => row.id === request.key) ?? PROJECT),
+								status: request.fields?.status,
+							},
+						},
+					},
+				};
+			}
 			return { status: 500, body: { detail: "unexpected op in this harness" } };
 		},
 	},
@@ -1111,6 +1317,180 @@ test("Escape closes the dialog without a write", async () => {
 		);
 		assert.equal(call, 1, "Escape wrote nothing");
 	} finally {
+		await unmountField(app, container);
+	}
+});
+
+/* ------------------------------------- the BOARD's own capability gate -- */
+
+/*
+ * R2-2: the BOARD path's gate was pinned only by a source-string check, so
+ * `forceDoneOffered,` could become `forceDoneOffered: true,` with every test
+ * still green. These drive the real page: absent the capability, a done-gate
+ * refusal is SPOKEN (toast only, exactly one PATCH, no dialog); with it, the
+ * same refusal takes the question. Flipping the gate fails the first test.
+ */
+
+const mountBoardPage = async () => {
+	dom.window.localStorage.setItem("projects-view", "board");
+	dom.window.localStorage.setItem("projects-board-window", "all");
+	const container = document.createElement("div");
+	document.body.append(container);
+	const app = components.mountBoard(container);
+	await flush();
+	return { app, container };
+};
+
+/*
+ * A radix MENU trigger opens on POINTERDOWN, unlike the Select trigger the
+ * field tests click (which opens on click): a synthetic `.click()` alone fires
+ * no pointerdown, so the menu never appears. Dispatch the pointer pair a mouse
+ * would, then the click.
+ */
+const pointerClick = async (selector) => {
+	const element = typeof selector === "string" ? need(selector) : selector;
+	await act(() => {
+		element.dispatchEvent(
+			new dom.window.MouseEvent("pointerdown", { bubbles: true, button: 0 }),
+		);
+		element.dispatchEvent(
+			new dom.window.MouseEvent("pointerup", { bubbles: true, button: 0 }),
+		);
+		element.click();
+	});
+	await flush();
+};
+
+/** Drive the card's own menu: the trigger, `Set status`, then `Done`. */
+const driveDoneFromCard = async (id) => {
+	await poll(
+		() => document.querySelector(`[data-project-menu="${id}"]`) !== null,
+		`the card ${id}`,
+	);
+	await pointerClick(`[data-project-menu="${id}"]`);
+	await poll(
+		() => byText('[role="menuitem"]', "Set status") !== undefined,
+		"the card menu",
+	);
+	await clickIt(byText('[role="menuitem"]', "Set status"));
+	await poll(
+		() => byText('[role="menuitemradio"]', "Done") !== undefined,
+		"the status submenu",
+	);
+	await clickIt(byText('[role="menuitemradio"]', "Done"));
+};
+
+test("the board without the capability speaks the refusal: one PATCH, toast only, no dialog", async () => {
+	features = { projects: 2 };
+	boardRows = [{ ...PROJECT }];
+	boardUpdateRequests.length = 0;
+	components.toastCalls.length = 0;
+	const { app, container } = await mountBoardPage();
+	try {
+		await driveDoneFromCard("p1");
+		await poll(() => boardUpdateRequests.length >= 1, "the refused PATCH");
+		await poll(
+			() => components.toastCalls.some((entry) => entry.kind === "error"),
+			"the spoken refusal",
+		);
+		assert.equal(
+			boardUpdateRequests.length,
+			1,
+			"a 4xx refusal is sent once, never retried",
+		);
+		assert.equal(boardUpdateRequests[0].fields?.status, "done");
+		assert.equal(
+			boardUpdateRequests[0].force_done,
+			undefined,
+			"an older daemon must never be offered a forced write",
+		);
+		const toast = components.toastCalls.find((entry) => entry.kind === "error");
+		assert.match(
+			toast.message,
+			/^This can't be marked done yet:/,
+			"the refusal is SPOKEN, never silent",
+		);
+		assert.equal(
+			document.querySelector('[role="dialog"]'),
+			null,
+			"NO force dialog without the capability",
+		);
+	} finally {
+		await unmountField(app, container);
+	}
+});
+
+test("the board with the capability: the same refusal takes the question", async () => {
+	features = { projects: 2, projects_force_done: 1 };
+	boardRows = [{ ...PROJECT }];
+	boardUpdateRequests.length = 0;
+	components.toastCalls.length = 0;
+	const { app, container } = await mountBoardPage();
+	try {
+		await driveDoneFromCard("p1");
+		await poll(
+			() => document.querySelector('[role="dialog"]') !== null,
+			"the question",
+		);
+		assert.equal(
+			components.toastCalls.length,
+			0,
+			"the question replaces the toast",
+		);
+		need("[data-project-force-done]");
+	} finally {
+		await unmountField(app, container);
+	}
+});
+
+test("two refusals settling in one microtask surface BOTH outcomes at the page (R2-1)", async () => {
+	features = { projects: 2, projects_force_done: 1 };
+	boardRows = [
+		{ ...PROJECT },
+		{ ...PROJECT, id: "p2", name: "beta-migration", title: "Beta migration" },
+	];
+	boardUpdateRequests.length = 0;
+	components.toastCalls.length = 0;
+	holdDoneRefusals = true;
+	pendingDoneRefusals.length = 0;
+	const { app, container } = await mountBoardPage();
+	try {
+		await driveDoneFromCard("p1");
+		await poll(() => boardUpdateRequests.length === 1, "the first PATCH");
+		await driveDoneFromCard("p2");
+		await poll(() => boardUpdateRequests.length === 2, "the second PATCH");
+		/*
+		 * Both PATCHes reject in ONE microtask checkpoint - the ordering agent
+		 * review round 2 reproduced in plain Node: both decisions run before
+		 * either caller's `.then`, so a claim deferred to the reaction let both
+		 * become questions and the second overwrote the first.
+		 */
+		await act(async () => {
+			queueMicrotask(() => {
+				for (const resolve of [...pendingDoneRefusals])
+					resolve(refusalResponse());
+			});
+		});
+		await flush();
+		await poll(
+			() =>
+				document.querySelector('[role="dialog"]') !== null &&
+				components.toastCalls.some((entry) => entry.kind === "error"),
+			"one question AND one spoken refusal",
+		);
+		assert.equal(
+			document.querySelectorAll('[role="dialog"]').length,
+			1,
+			"exactly one question is up",
+		);
+		assert.equal(
+			components.toastCalls.filter((entry) => entry.kind === "error").length,
+			1,
+			"the refusal that did not take the slot is SPOKEN, not silent",
+		);
+	} finally {
+		holdDoneRefusals = false;
+		pendingDoneRefusals.length = 0;
 		await unmountField(app, container);
 	}
 });

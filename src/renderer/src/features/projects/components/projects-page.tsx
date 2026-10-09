@@ -603,8 +603,11 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	 * one modal at a time - so a second refusal that arrives while the first
 	 * question is up answers as a toast instead of overwriting the open
 	 * question (agent review F3; UX round 1, U1: two overlapping moves used to
-	 * end with one question and one silent refusal). A ref beside the state
-	 * because the read and the write happen in one tick.
+	 * end with one question and one silent refusal). The slot is CLAIMED inside
+	 * the move decision (`runStatusMove` calls `claimQuestion` synchronously),
+	 * not by this component's reaction to it: two refusals can settle in one
+	 * microtask checkpoint, and a reaction that lands a microtask later would
+	 * let both decisions read an unclaimed slot (agent review R2-1).
 	 */
 	const forceOpen = useRef(false);
 	const dismissForceQuestion = () => {
@@ -652,7 +655,11 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					fields: { status: status as DesktopProjectStatus },
 				}),
 			forceDoneOffered,
-			questionOpen: () => forceOpen.current,
+			claimQuestion: () => {
+				if (forceOpen.current) return false;
+				forceOpen.current = true;
+				return true;
+			},
 		})
 			.then((outcome) => {
 				if (outcome.kind === "moved") {
@@ -670,8 +677,12 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					return;
 				}
 				if (outcome.kind === "question") {
-					// The question takes the focus; its close hands it back.
-					forceOpen.current = true;
+					/*
+					 * The slot was already CLAIMED inside the decision (R2-1) - the
+					 * dialog only opens here, so a second refusal settling in the same
+					 * microtask has already been spoken as a toast instead of
+					 * overwriting this question.
+					 */
 					setForceTarget({ project, status, refusal: outcome.refusal });
 					return;
 				}
