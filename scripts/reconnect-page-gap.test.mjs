@@ -126,6 +126,7 @@ const bundle = await build({
 			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { EMPTY_TRANSCRIPT, appendPendingUser, applyEvent, applyHistoryPage, sealDisjointBlock } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { openFrameFacts } from "./src/renderer/src/features/chat/canonical/open-frame";
 			export { paintPendingSend } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
 			export { __resetPendingSends, __resetLabelGapBookkeeping } from "./src/renderer/src/shared/hooks/use-canonical-session";
@@ -186,6 +187,7 @@ const {
 	applyHistoryPage,
 	sealDisjointBlock,
 	paintPendingSend,
+	openFrameFacts,
 } = hook;
 
 const SESSION_A = "aaaaaaaaaaaa";
@@ -3977,5 +3979,96 @@ test("an open-frame page that attests its start still walks to the cached block 
 		reads,
 		4,
 		"the facts attest the page's start, not the pane's block - the walk runs as it does without them",
+	);
+});
+
+/*
+ * THE COLD-INDEX PAIR (`docs/DESKTOP_API.md`, "Why `building` rather than a scan
+ * on the hot path"): a journal with no resident index answers `runs_state:
+ * "building"` on the snapshot - today's page, no facts - and `ready` with facts
+ * on the `/history` that follows within the same open. That transition is the
+ * one a client could turn into an extra painted state, and the reason it cannot
+ * here is the wiring this case pins: the pane's facts come from the page
+ * EMBEDDED IN THE FRAME it applied and from nothing else. `view.history` is
+ * written on the snapshot arm alone, while every `/history` read merges its rows
+ * into the transcript through `applyHistoryPage` - so a bar drawn from the
+ * fallback stays drawn from the fallback and the later answer's facts cannot
+ * move it after the paint.
+ */
+test("a `/history` answer that carries facts cannot re-condense the page the frame painted (`building` -> `ready`)", async () => {
+	const plan = conversation({ withSteer: false, awayRows: 0 });
+	const transcript = makeTranscript(plan.rows);
+	reset({ transcript });
+	const pane = await mount();
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: plan.cursor,
+			entries: transcript.tail(SNAPSHOT_PAGE).entries,
+			coldReason: null,
+			openFrame: { runs_state: "building", head_cut: false },
+		}),
+	);
+	await pump();
+	assert.ok(pane.ids().length > 0, "the frame painted its page");
+	assert.equal(
+		pane.handle().history?.runs_state,
+		"building",
+		"the pane's page is the frame's, and it says the facts are not ready",
+	);
+	assert.equal(
+		pane.handle().history?.runs,
+		undefined,
+		"and it carries no facts to read",
+	);
+	/*
+	 * The follow-up read, from the same reader one moment later: facts, and for a
+	 * run the page the pane painted does not describe.
+	 */
+	globalThis.__gapTail = (request) => ({
+		...transcript.tail(request.limit),
+		runs_state: "ready",
+		head_cut: false,
+		runs: [
+			{
+				run_key: "a-runs-own-answer",
+				opening_user_id: "a-runs-own-opening-row",
+				closing_answer_id: "a-runs-own-answer",
+				settled: true,
+				action_count: 300,
+				failed_count: 4,
+				worked_seconds: 5793.695,
+				complete: true,
+			},
+		],
+	});
+	const readsBefore = historyReads();
+	await pane.handle().loadOlder();
+	await pump();
+	assert.equal(
+		historyReads(),
+		readsBefore + 1,
+		"the follow-up read really happened, facts and all",
+	);
+	assert.equal(
+		pane.handle().history?.runs_state,
+		"building",
+		"and the page the pane reads its facts from is STILL the frame's",
+	);
+	assert.equal(
+		pane.handle().history?.runs,
+		undefined,
+		"so no fact reached the view",
+	);
+	/*
+	 * And the SHIPPED adapter, asked the way the transcript asks it
+	 * (`open-frame.ts`), reads nothing from that page - which is the plan-level
+	 * form of the claim: the bar the frame painted cannot be re-drawn from facts
+	 * that arrived later.
+	 */
+	assert.equal(
+		openFrameFacts(pane.handle().history),
+		null,
+		"nothing can re-condense after the paint",
 	);
 });

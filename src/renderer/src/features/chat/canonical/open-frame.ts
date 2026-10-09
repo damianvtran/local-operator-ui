@@ -49,7 +49,25 @@ import type { RunFact, RunFactLookup } from "./turn-collapse-model";
 
 /** What a page's open-frame fields give this client, or nothing. */
 export type OpenFrameFacts = {
-	/** `run_key` -> the fact, SETTLED runs with whole counts only (rules 2-3). */
+	/**
+	 * The facts, reachable under EVERY id the contract lets a client match them
+	 * by: `run_key`, `opening_user_id` and `closing_answer_id` all map to the same
+	 * fact.
+	 *
+	 * WHY ALIASES AND NOT JUST `run_key` (docs/DESKTOP_API.md, the two
+	 * `head_cut` consequences). The contract states the match as `run_key`,
+	 * `opening_user_id` OR `closing_answer_id`, and the three are NOT the same
+	 * string in the case this whole lane exists for: a head-cut run's client key
+	 * is the answer row the LOADED span elected, while the wire's `run_key` is the
+	 * run's own closing answer - a row the page may not carry at all. A lookup
+	 * keyed by `run_key` alone therefore misses exactly the run whose bar most
+	 * needs the facts, which was measured: on the S3 fixture the walk kept
+	 * fetching against a page that already stated the run's size.
+	 *
+	 * The aliases cost one map entry each and no behaviour: a client looks a run
+	 * up by an id it is holding, and an id it is not holding cannot be hit by
+	 * accident (`Row` ids are unique).
+	 */
 	runs: RunFactLookup;
 	/**
 	 * Whether the turn-aligned extension was refused by the hard cap, so the
@@ -93,12 +111,30 @@ export function openFrameFacts(
 		if (typeof run.run_key !== "string" || run.run_key.length === 0) continue;
 		const actions = wireCount(run.action_count);
 		if (actions === null) continue;
-		lookup.set(run.run_key, {
+		const fact: RunFact = {
 			actions,
 			workedSeconds: wireSeconds(run.worked_seconds),
 			failed: wireCount(run.failed_count) ?? 0,
 			complete: run.complete !== false,
-		});
+			/*
+			 * NORMALISED TO NULL, NOT TO "": the model's whole use of this field is the
+			 * question "is the row my span opens at the run's OWN opener?", and an empty
+			 * string would answer it with a `false` that means the same thing as null
+			 * while reading like an id. One spelling for "the wire did not name one".
+			 */
+			openingUserId:
+				typeof run.opening_user_id === "string" &&
+				run.opening_user_id.length > 0
+					? run.opening_user_id
+					: null,
+		};
+		lookup.set(run.run_key, fact);
+		if (fact.openingUserId !== null) lookup.set(fact.openingUserId, fact);
+		if (
+			typeof run.closing_answer_id === "string" &&
+			run.closing_answer_id.length > 0
+		)
+			lookup.set(run.closing_answer_id, fact);
 	}
 	if (lookup.size === 0) return null;
 	return { runs: lookup, headCut: page.head_cut === true };

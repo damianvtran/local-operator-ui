@@ -240,6 +240,22 @@ export type RunFact = {
 	failed: number;
 	/** False: `actions` is a lower bound (see above). */
 	complete: boolean;
+	/**
+	 * The run's opening USER row, as the wire names it, or null for a run that
+	 * opens off a non-user row.
+	 *
+	 * THE MODEL'S ONLY WAY TO TELL "the span in hand IS the run" FROM "the span
+	 * in hand is a fragment", and it is load-bearing for a case the row list
+	 * cannot express on its own: a page can begin at a STEER. A steer is an
+	 * ordinary user row on the wire, the client's own partition folds it into the
+	 * run it interrupted (`walkTurns`), and a page whose oldest kept row is that
+	 * steer therefore looks to this model exactly like a run that opens with its
+	 * own user row - while the run's real head, and every row of work above the
+	 * steer, are off-page. `docs/DESKTOP_API.md` states the consequence directly:
+	 * "`head_cut: false` does not mean 'every run on the page is whole' either".
+	 * This field is what the model compares against the row its span opens at.
+	 */
+	openingUserId: string | null;
 };
 
 /** The facts an open-frame page carries, by `run_key` (`TurnRun.key`). */
@@ -763,7 +779,7 @@ export function collapsePlanOptionsKey(options: {
 			facts.push(
 				`${key}:${fact.actions}:${fact.workedSeconds ?? ""}:${
 					fact.complete ? "c" : "p"
-				}:${fact.failed}`,
+				}:${fact.failed}:${fact.openingUserId ?? ""}`,
 			);
 		}
 		parts.push(`facts:${facts.join(",")}`);
@@ -1536,6 +1552,42 @@ function planRun(
 	 * the turn's own beginning.
 	 */
 	const from = run.opensWithUserRow ? 1 : 0;
+	/*
+	 * THE RUN'S FACT, CONSULTED BEFORE THE SPANS ARE BUILT, because the facts no
+	 * longer only patch a span's NUMBERS (the block below the map): they also say
+	 * whether the span at the loaded edge is a fragment at all. See
+	 * `headLoadedIsTheRunsOwn` for the case that made this necessary, and
+	 * `open-frame.ts` for why the lookup answers to three ids.
+	 */
+	const fact = runFacts?.get(run.key) ?? null;
+	/*
+	 * WHETHER THE PLAN'S OPENING ROW IS THE RUN'S OWN HEAD, which is the only
+	 * question a fragment's figures hang on.
+	 *
+	 * WITH NO FACT the client's own partition is the only opinion available and it
+	 * is the one today's behaviour already rests on: `opensWithUserRow` true means
+	 * the span opens at a user row (a whole head), false means the loaded list
+	 * begins inside the run.
+	 *
+	 * WITH A FACT the wire's `opening_user_id` outranks it, and that is the STEER
+	 * case `docs/DESKTOP_API.md` names: a page may begin at a steer row, so the
+	 * model sees a user row at the top and would otherwise call the span whole
+	 * while every row above the steer - the run's actual head included - is
+	 * off-page. The fact says where the run actually starts; a span whose opening
+	 * row is anything else is a fragment, and takes the fact's figures below.
+	 *
+	 * `null` from the wire is NOT "unknown": it states that the run opens off a
+	 * non-user row, so a user row at the top of the span is not its opener either.
+	 * The direction is deliberate - the facts win every disagreement with the
+	 * local partition, and where they are merely the same answer the subtraction
+	 * below reproduces the loaded fold exactly.
+	 */
+	const headLoadedIsTheRunsOwn =
+		fact === null
+			? run.opensWithUserRow
+			: run.opensWithUserRow &&
+				fact.openingUserId !== null &&
+				rows[run.openingIndex]?.record.id === fact.openingUserId;
 	const partition = partitionRun(records, {
 		from,
 		paints: paintsSomething,
@@ -1585,11 +1637,20 @@ function planRun(
 			}`;
 
 			/*
-			 * A span whose head is the loaded edge (the head-cut run's first span) states
-			 * no duration; every other span states the worked time of ITS OWN rows, so
-			 * the pre-answer bars add up to the foot's figure.
+			 * A span whose head is the LOADED EDGE - the run's first span - states no
+			 * duration, and it is the one the facts complete; every other span states the
+			 * worked time of ITS OWN rows, so the pre-answer bars add up to the foot's
+			 * figure.
+			 *
+			 * THE EDGE IS `from`, NOT 0. `from` is where the run's hidden rows start - 0
+			 * for a run whose head is off-page, 1 for one whose opening user row is on
+			 * hand - and the two agree only while `headLoadedIsTheRunsOwn` is true. A
+			 * page that begins at a STEER (clarity 2) opens with a user row the model
+			 * excludes, so the span that needs the facts starts at 1: testing for 0 there
+			 * would leave the fragment looking whole, which is the defect this rule was
+			 * added for.
 			 */
-			const headLoaded = !(span.from === 0 && !run.opensWithUserRow);
+			const headLoaded = !(span.from === from && !headLoadedIsTheRunsOwn);
 			if (!headLoaded) cutSpan = i;
 
 			const label = labelOfSegment(records, partition.cycles, span);
@@ -1645,7 +1706,6 @@ function planRun(
 	 * carries no fact, or a fact this build cannot read, keeps every loaded-rows
 	 * answer it had - the fallback is the point, not a degradation.
 	 */
-	const fact = cutSpan >= 0 ? (runFacts?.get(run.key) ?? null) : null;
 	const cutSegment = cutSpan >= 0 ? segments[cutSpan] : null;
 	if (fact !== null && cutSegment !== null) {
 		let knownActions = 0;
@@ -1694,8 +1754,8 @@ function planRun(
 	 * rows above them are not hidden by any bar.
 	 */
 	const turnFacts = factsOf(turnRows, {
-		partial: !run.opensWithUserRow,
-		headLoaded: run.opensWithUserRow,
+		partial: !headLoadedIsTheRunsOwn,
+		headLoaded: headLoadedIsTheRunsOwn,
 	});
 	const ladder = (() => {
 		if (fact === null || cutSpan < 0) return null;

@@ -2257,6 +2257,13 @@ const fact = (actions, workedSeconds, extra = {}) => ({
 	workedSeconds,
 	failed: 0,
 	complete: true,
+	/*
+	 * NULL BY DEFAULT, and that is the honest default for these fixtures: a run
+	 * whose opening user row the wire did not name is a fragment to the model the
+	 * moment its span opens at a user row (see `headLoadedIsTheRunsOwn`). A test
+	 * about a HEADED run therefore has to name the opener it means.
+	 */
+	openingUserId: null,
 	...extra,
 });
 
@@ -2386,7 +2393,7 @@ test("facts never reach a run whose head is loaded: the rows in hand are already
 	const plain = planOf(rows).runs[0];
 	const withFacts = collapsePlan(rows, {
 		live: false,
-		runFacts: new Map([["a1", fact(999, 9_999)]]),
+		runFacts: new Map([["a1", fact(999, 9_999, { openingUserId: "u1" })]]),
 	}).runs[0];
 	assert.deepEqual(
 		withFacts.facts,
@@ -2501,7 +2508,18 @@ test("openFrameFacts: only `ready` carries facts, and only a SETTLED run's are r
 		workedSeconds: 90,
 		failed: 1,
 		complete: true,
+		/*
+		 * Carried through for the model's own use (clarity 2's rule), and the same
+		 * fact answers to all three ids the contract names - which is what the
+		 * assertion below the loop is about.
+		 */
+		openingUserId: "u1",
 	});
+	assert.equal(
+		ready.runs.get("u1"),
+		ready.runs.get("a1"),
+		"and the same fact is reachable by the run's opening user row",
+	);
 	assert.equal(ready.headCut, true, "and the cap's own flag rides along");
 	/*
 	 * A live tail carries `settled: false` and no counts: a number taken
@@ -2533,9 +2551,9 @@ test("openFrameFacts: only `ready` carries facts, and only a SETTLED run's are r
 		page({ runs_state: "ready", runs: [noCount, live, settled] }),
 	);
 	assert.deepEqual(
-		[...mixed.runs.keys()],
-		["a1"],
-		"the readable run still lands",
+		[...mixed.runs.keys()].sort(),
+		["a1", "u1"],
+		"the readable run still lands - under its key AND its opening user row (the aliases)",
 	);
 });
 
@@ -2716,5 +2734,167 @@ test("openFrameCoversHeld: a held row INSIDE an attested span is covered; anythi
 		),
 		false,
 		"a start the facts do not attest is no start",
+	);
+});
+
+/* --------- the two contract clarifications the core lane added ---------- */
+
+/*
+ * `docs/DESKTOP_API.md` states two consequences of the cut that a client gets
+ * wrong if it reads `head_cut` as "this page is incomplete" and `!head_cut` as
+ * "this page is whole". Both are asserted through the shipped adapter, so the
+ * rule is exercised by the same reading of the wire the app performs.
+ */
+
+test("clarity 1: a `head_cut` page whose facts cover the run is the FINAL layout, and the fact answers to any of the three ids", () => {
+	/*
+	 * The S3 fixture's real shape, captured from the core at `105411ca3f`: the
+	 * page is EXACTLY `limit` paintable rows - the run's head is hundreds of rows
+	 * above and the cut's budget refused to pay for it, so `head_cut: true` - and
+	 * `runs` states the 600-row run the page starts inside, in full.
+	 *
+	 * The contract's rule is that this page plus these facts ARE the final layout:
+	 * draw the bar from `action_count` / `worked_seconds` and do NOT walk. The
+	 * client's own key for the span it holds is the answer row the LOADED span
+	 * elects, which is the wire's `closing_answer_id` only while that answer is on
+	 * the page - hence the aliases: the fact is reachable under `run_key`, under
+	 * `opening_user_id` (a row the page does not carry at all) and under
+	 * `closing_answer_id`.
+	 */
+	const page = {
+		entries: [
+			{
+				id: "t9",
+				ts: 100,
+				type: "message",
+				payload: { kind: "message", role: "tool", tool_call_id: "c9" },
+			},
+			{
+				id: "a9",
+				ts: 101,
+				type: "message",
+				payload: { kind: "message", role: "assistant", stop_reason: "stop" },
+			},
+		],
+		has_more: true,
+		cursor_missing: false,
+		runs_state: "ready",
+		head_cut: true,
+		runs: [
+			{
+				run_key: "a9",
+				opening_user_id: "the-runs-own-opening-user-row",
+				closing_answer_id: "a9",
+				settled: true,
+				action_count: 300,
+				failed_count: 4,
+				worked_seconds: 5793.695,
+				complete: true,
+			},
+		],
+	};
+	const facts = openFrameFacts(page);
+	assert.ok(facts, "a `ready` page carries facts whatever `head_cut` says");
+	assert.equal(
+		facts.headCut,
+		true,
+		"the flag is reported, and nothing here refuses the facts on it",
+	);
+	for (const id of ["a9", "the-runs-own-opening-user-row"]) {
+		const matched = facts.runs.get(id);
+		assert.ok(matched, `the fact is reachable by \`${id}\``);
+		assert.equal(matched.actions, 300, "and it is the same fact");
+		assert.equal(matched.failed, 4);
+		assert.equal(matched.workedSeconds, 5793.695);
+	}
+	const rows = [
+		tool("t9", { ts: 100, durationS: 5 }, "trace"),
+		answer("a9", { ts: 101 }),
+	];
+	const plan = collapsePlan(rows, { live: false, runFacts: facts.runs });
+	const run = plan.runs[0];
+	assert.equal(
+		run.segments[0].facts.actions,
+		300,
+		"the bar states the run's own count, not the one row the page carries",
+	);
+	assert.equal(run.segments[0].facts.durationS, 5793.695);
+	assert.equal(run.facts.actions, 300, "the turn's own figure moves with it");
+	assert.equal(
+		alignWalkRunKeyConfirmed(plan, null, undefined, facts.runs),
+		null,
+		"the walk is retired: the page and the facts ARE the final layout",
+	);
+	assert.equal(
+		alignWalkRunKeyConfirmed(plan, null, undefined, undefined),
+		"a9",
+		"and without the facts it is armed, so this test discriminates",
+	);
+});
+
+test("clarity 2: a page that begins at a STEER still states the run's whole figures", () => {
+	/*
+	 * A steer is an ordinary user row on the wire, and the client's own partition
+	 * folds it into the run it interrupted (`walkTurns`). So a page whose oldest
+	 * kept row IS the steer looks to this model exactly like a run that opens with
+	 * its own user row - while the run's real head, and every row of work above
+	 * the steer, are off-page. `opening_user_id` is how the model is told that the
+	 * row it opens at is not the run's opener; `head_cut: false` on such a page is
+	 * the contract's own warning that this case exists.
+	 */
+	const rows = [
+		user("the-steer", { ts: TS }),
+		tool("t1", { ts: TS + 1, durationS: 20 }),
+		tool("t2", { ts: TS + 2, durationS: 30 }, "trace"),
+		answer("a2", { ts: TS + 5_000 }),
+	];
+	const plain = planOf(rows).runs[0];
+	assert.equal(
+		plain.run.opensWithUserRow,
+		true,
+		"fixture: the client's own partition says this span opens a run",
+	);
+	assert.equal(
+		plain.segments[0].facts.actions,
+		2,
+		"and without facts the fragment reads as the whole turn",
+	);
+	const withFacts = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			["a2", fact(423, 8_639, { openingUserId: "the-runs-real-head" })],
+		]),
+	}).runs[0];
+	assert.equal(
+		withFacts.segments[0].facts.actions,
+		423,
+		"with them the bar states the run's own count, the steer row included",
+	);
+	assert.equal(withFacts.segments[0].facts.durationS, 8_639);
+	assert.equal(
+		withFacts.facts.actions,
+		423,
+		"and the turn's own figure moves with it",
+	);
+	/*
+	 * The discriminating direction: when the fact names the row the span DOES
+	 * open at, the span IS the run and its own rows are already exact - the
+	 * subtraction must reproduce them rather than double-count.
+	 */
+	const whole = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			["a2", fact(423, 8_639, { openingUserId: "the-steer" })],
+		]),
+	}).runs[0];
+	assert.equal(
+		whole.segments[0].facts.actions,
+		2,
+		"a run whose head is on hand keeps its loaded fold",
+	);
+	assert.deepEqual(
+		whole.facts,
+		plain.facts,
+		"and the turn's figures are untouched",
 	);
 });
