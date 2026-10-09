@@ -231,3 +231,34 @@ export function aidaGreetHeldNotice(
 		return `${name} is paused, so she will say hello when you resume her: type /aida resume.`;
 	return null;
 }
+
+/**
+ * Does this install still OWE the user her hello - the question step 3's copy
+ * turns on?
+ *
+ * The wizard's last step promises "she will say hello first", which is only true
+ * while the ledger says so: `owed` means she has never been offered. `delivered`
+ * and `skipped` mean she will not speak first again, so the step describes what
+ * its button does instead of promising a greeting the user has already had. The
+ * gap this closes was recorded when step 3 shipped: the state word lived only on
+ * the POST's answer, and the wizard reads the GET (code review round 1's contract
+ * addendum, point 1; the READ carries the field as of backend #2071 head
+ * `dbe513397e`).
+ *
+ * ONLY `owed` PROMISES. `requested` and `armed` mean the request is already out,
+ * and the neutral sentence stays true for them, so the rule needs no third
+ * wording.
+ *
+ * ABSENT IS OWED, and the frozen `greeted` is deliberately NOT consulted: on a
+ * backend that predates the ledger it meant ARMED rather than delivered, so
+ * reading it here would let an armed-but-undelivered greeting suppress a promise
+ * that was still true. An install that predates the field therefore keeps the
+ * copy that shipped, which is the tolerant direction - one sentence too warm,
+ * never a promise the user can catch out.
+ */
+export function aidaOwesGreeting(
+	state: { greeting_state?: string | null } | null | undefined,
+): boolean {
+	const word = state?.greeting_state;
+	return word == null || word === "owed";
+}

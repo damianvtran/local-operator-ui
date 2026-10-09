@@ -21,6 +21,7 @@
 import {
 	aidaGreetFailure,
 	aidaGreetHeldNotice,
+	aidaOwesGreeting,
 } from "@features/aida/aida-control";
 import { useAidaControl, useAidaTarget } from "@features/aida/use-aida-target";
 import { openConversation } from "@features/chat/open-conversation";
@@ -158,6 +159,12 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 * back to the shipped default here, exactly as the sidebar's row does.
 	 */
 	const aidaName = aida.data?.name?.trim() || "Aida";
+	/*
+	 * Whether step 3 may promise that she speaks first. Read from the same status
+	 * document as the name, off the ledger's state word; a backend that predates
+	 * the field returns `owed`'s behaviour rather than silence (`aidaOwesGreeting`).
+	 */
+	const aidaOwesHello = aidaOwesGreeting(aida.data);
 	const aidaControl = useAidaControl();
 	/*
 	 * One resolved title table for the panel and the track, so the two cannot
@@ -331,7 +338,12 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 					/>
 				);
 			case OnboardingStep.EXTRAS:
-				return <ExtrasStep aidaName={aidaAvailable ? aidaName : null} />;
+				return (
+					<ExtrasStep
+						aidaName={aidaAvailable ? aidaName : null}
+						oweGreeting={aidaOwesHello}
+					/>
+				);
 			default:
 				return null;
 		}
@@ -342,6 +354,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		registerStepBlock,
 		aidaAvailable,
 		aidaName,
+		aidaOwesHello,
 	]);
 
 	const isFirst = currentStep === OnboardingStep.CONNECT_PROVIDER;

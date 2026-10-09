@@ -65,6 +65,7 @@ const {
 	aidaControlReceipt,
 	aidaGreetFailure,
 	aidaGreetHeldNotice,
+	aidaOwesGreeting,
 	aidaMessageText,
 	aidaReservedAction,
 	DesktopControlError,
@@ -546,6 +547,35 @@ test("first-run greet refusals land in the chat with a sentence keyed on the cod
 		),
 		null,
 	);
+});
+
+test("step 3 promises her hello only while the ledger says she owes it", () => {
+	/*
+	 * The wizard's last step reads the GET, which is where the ledger's state word
+	 * had to arrive for this to be answerable at all (code review round 1's
+	 * contract addendum, point 1; the READ carries the field as of backend #2071
+	 * head `dbe513397e`). `owed` promises; every settled or in-flight word does
+	 * not; a payload from a backend without the field keeps the sentence that
+	 * shipped.
+	 */
+	assert.equal(aidaOwesGreeting({ greeting_state: "owed" }), true);
+	assert.equal(aidaOwesGreeting({ greeting_state: "delivered" }), false);
+	assert.equal(aidaOwesGreeting({ greeting_state: "skipped" }), false);
+	// The two in-flight words: the request is already out, so the step describes
+	// its button rather than promising a greeting that is on its way.
+	assert.equal(aidaOwesGreeting({ greeting_state: "requested" }), false);
+	assert.equal(aidaOwesGreeting({ greeting_state: "armed" }), false);
+	// Tolerant: a payload from before the ledger, and the states before either a
+	// status query has answered or a backend has ever spoken.
+	assert.equal(aidaOwesGreeting({}), true);
+	assert.equal(aidaOwesGreeting({ greeting_state: null }), true);
+	assert.equal(aidaOwesGreeting(undefined), true);
+	/*
+	 * `greeted` IS NOT CONSULTED, and this assertion is what pins that: on a
+	 * backend that predates the ledger it meant ARMED, so reading it as "she has
+	 * already said hello" would suppress a promise that was still true.
+	 */
+	assert.equal(aidaOwesGreeting({ greeted: true }), true);
 });
 
 test("setup's last step greets through the control op, never before the press", () => {
