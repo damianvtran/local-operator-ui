@@ -69,13 +69,6 @@ export type OpenFrameFacts = {
 	 * accident (`Row` ids are unique).
 	 */
 	runs: RunFactLookup;
-	/**
-	 * Whether the turn-aligned extension was refused by the hard cap, so the
-	 * page is the plain `limit`-row tail and its oldest run has no opening user
-	 * row. Read by the reconciliation gate, which needs a page whose START is
-	 * attested before it may compare a held row against it.
-	 */
-	headCut: boolean;
 };
 
 /** A count off the wire, or null when the field is not a whole number. */
@@ -127,6 +120,24 @@ export function openFrameFacts(
 				run.opening_user_id.length > 0
 					? run.opening_user_id
 					: null,
+			/*
+			 * The run's ELECTED ANSWER, kept because it is the identity a RE-KEYED run is
+			 * still recognisable by (agent review round 1, F3): the run keeps growing
+			 * after it answers, so `TurnRun.key` moves while this row does not.
+			 */
+			closingAnswerId:
+				typeof run.closing_answer_id === "string" &&
+				run.closing_answer_id.length > 0
+					? run.closing_answer_id
+					: null,
+			/*
+			 * Null when the wire stays silent, and that null is a REFUSAL the model acts
+			 * on rather than a zero (agent review round 1, F2): a reader who hides
+			 * cross-session rows cannot split a count the backend never split, so the
+			 * loaded fold stands instead of a figure that includes rows the bar hides.
+			 */
+			crossSessionActions: wireCount(run.cross_session_action_count),
+			crossSessionWorkedSeconds: wireSeconds(run.cross_session_worked_seconds),
 		};
 		lookup.set(run.run_key, fact);
 		if (fact.openingUserId !== null) lookup.set(fact.openingUserId, fact);
@@ -137,7 +148,7 @@ export function openFrameFacts(
 			lookup.set(run.closing_answer_id, fact);
 	}
 	if (lookup.size === 0) return null;
-	return { runs: lookup, headCut: page.head_cut === true };
+	return { runs: lookup };
 }
 
 /**
@@ -163,9 +174,24 @@ export function openFrameAttestedStart(
 	if (page.head_cut === true) return null;
 	const runs: DesktopOpenFrameRun[] | undefined = page.runs;
 	const first = page.entries[0];
-	const oldest = runs?.[0];
-	if (!first || !oldest) return null;
-	if (oldest.opening_user_id !== first.id) return null;
+	if (!first || !runs || runs.length === 0) return null;
+	/*
+	 * THE RUN WHOSE OPENING ROW IS THE PAGE'S FIRST ENTRY - searched for, not
+	 * assumed to be `runs[0]` (agent review round 1, F4).
+	 *
+	 * The backend publishes ONE RUN EARLY on purpose
+	 * (`test_publish_runs_starts_one_run_early_so_a_straddle_is_covered`,
+	 * `open_frame.py`): the page's window can begin inside a run, and a reader that
+	 * only knows the runs which START on the page would then have no run to hang
+	 * that straddle on. So `runs[0]` is normally the run BEFORE the page, and
+	 * reading `runs[0]` here made the whole reconciliation arm unreachable against
+	 * the real core - the failure is safe (the walk runs, as on base) but the arm
+	 * never fired. `find` is also the contract's own reading: the facts describe
+	 * the runs the page INTERSECTS, and the page's start belongs to exactly one of
+	 * them.
+	 */
+	const oldest = runs.find((run) => run.opening_user_id === first.id);
+	if (!oldest) return null;
 	const tsMs = Math.round((first.ts ?? 0) * 1000);
 	if (!(tsMs > 0)) return null;
 	return { id: first.id, tsMs };
@@ -209,7 +235,20 @@ export function openFrameAttestedStart(
  */
 export function openFrameCoversHeld(
 	page: DesktopHistoryPage | null | undefined,
-	held: ReadonlyMap<string, number>,
+	/**
+	 * EVERY held row, mapped to its instant **when that instant is the journal's**
+	 * and to `null` when it is not (a row that arrived live carries a receipt stamp
+	 * instead - agent review round 1, F7).
+	 *
+	 * WHY THE POPULATION IS COMPLETE AND ONLY THE INSTANT IS OPTIONAL. The arm's
+	 * question is "is EVERY held row inside this page's span?", so a row it does not
+	 * look at is a row it silently blesses - and the row it must not bless is
+	 * exactly the one whose clock cannot be compared: a live row journaled before
+	 * the attested start but receipted after it would read as "inside" and skip a
+	 * walk the pane owes (#883's dropped range). `null` therefore makes the arm
+	 * decline, which is the conservative direction: today's walk, today's rows.
+	 */
+	held: ReadonlyMap<string, number | null>,
 	/**
 	 * The record keys of the page's own entries, as `entryRecordKey` spells them
 	 * (`use-canonical-session` owns that mapping — a tool entry keys by its CALL
@@ -224,6 +263,7 @@ export function openFrameCoversHeld(
 	if (!(end > start.tsMs)) return false;
 	for (const [id, ts] of held) {
 		if (carried.has(id)) continue;
+		if (ts === null) return false;
 		if (!(ts > start.tsMs) || !(ts < end)) return false;
 	}
 	return true;

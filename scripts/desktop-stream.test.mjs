@@ -312,3 +312,40 @@ test("CRLF frames, split terminators and folded data fields all parse", async ()
 	relay.dispose();
 	globalThis.fetch = original;
 });
+
+/*
+ * THE OPEN-FRAME NEGOTIATION AT THE RELAY (agent review round 1, F6). This is
+ * the main process's own request builder for the SSE subscribe, and the flag
+ * changes the unit of `limit` on the page the renderer later reads - so it may
+ * ride only when the RENDERER says it understands that page, and never on a
+ * value it did not send. `undefined`, a literal `false` and a truthy string are
+ * all "the renderer did not negotiate this", and each must leave the request
+ * byte-for-byte what an old backend has always been served.
+ */
+test("the open-frame flag rides the subscribe only on the renderer's own `true` (F6)", async () => {
+	const original = globalThis.fetch;
+	const urls = [];
+	globalThis.fetch = async (url) => {
+		urls.push(String(url));
+		return new Response(null, { status: 404 });
+	};
+	try {
+		const relay = new DesktopStreamRelay("http://127.0.0.1:9/", "token");
+		for (const openFrame of [true, false, undefined, "1"]) {
+			relay.subscribe({ sessionId: SESSION, openFrame }, () => {});
+			await sleep(40);
+		}
+		assert.deepEqual(
+			urls.map((url) => url.includes("open_frame=1")),
+			[true, false, false, false],
+			"only the literal `true` asks for the open frame",
+		);
+		assert.ok(
+			urls.every((url) => url.includes("frontend_replace=1")),
+			"and the flag this relay DOES fix on the renderer's behalf is untouched",
+		);
+		relay.dispose();
+	} finally {
+		globalThis.fetch = original;
+	}
+});

@@ -2110,33 +2110,48 @@ export function useCanonicalSessionStream(
 	 */
 	identity: string | undefined = sessionId,
 	/**
-	 * THE OPEN-FRAME NEGOTIATION (`docs/DESKTOP_API.md`, "The open frame"), read
-	 * by the CALLER off the backend's capabilities and passed in rather than
-	 * looked up here.
+	 * THE REST OF THIS PANE'S NEGOTIATION, as one object so that `identity` above
+	 * stays the LAST positional argument (agent review round 1, F1).
 	 *
-	 * WHY A PARAMETER. This module is the one the renderer's load rigs bundle
-	 * with a React stand-in and no query client (`session-load-sequence`,
-	 * `reconnect-page-gap`), so it must not import the capability hook: the
-	 * capability is the PANE's question (its own `chat-page` already resolves it,
-	 * from cache, before this hook is called), and this hook's job is to act on
-	 * the answer.
-	 *
-	 * WHY IT IS COPIED INTO A REF. Gating the stream on it as a dependency would
-	 * RESUBSCRIBE this pane the moment it flipped false -> true - a second open
-	 * frame, a second snapshot, a second commit: exactly the extra painted state
-	 * the contract is being adopted to remove. The ref is written on every render
-	 * and read at the moment each request is built (the subscription's own open,
-	 * and every `/history` read the walk or the pager issues later), so a request
-	 * carries the answer that was known when it was made.
-	 *
-	 * FALSE IS THE FAIL-CLOSED DEFAULT and every caller that has no capability
-	 * read to hand keeps it: today's page, today's condensation, the align walk
-	 * included. An open that races the capability read is false for the same
-	 * reason - never a page whose unit changed under a reader that has not read
-	 * `runs`. Every read AFTER that picks the flag up, so nothing stays stuck.
+	 * WHY AN OBJECT. The identity is the key of the echo registry and of the
+	 * first-frame seed, and `scripts/warm-session.test.mjs` pins that the panel
+	 * hands it as the fourth argument. Adding a fifth positional input behind it
+	 * turned that pin red for a reason that has nothing to do with what the pin
+	 * protects, and every future input would repeat the mistake. The object is also
+	 * where a caller states what it does NOT know: an omitted field is the
+	 * fail-closed default, not an invitation.
 	 */
-	openFrame = false,
+	options: {
+		/**
+		 * THE OPEN-FRAME NEGOTIATION (`docs/DESKTOP_API.md`, "The open frame"), read
+		 * by the CALLER off the backend's capabilities and passed in rather than
+		 * looked up here.
+		 *
+		 * WHY A PARAMETER. This module is the one the renderer's load rigs bundle
+		 * with a React stand-in and no query client (`session-load-sequence`,
+		 * `reconnect-page-gap`), so it must not import the capability hook: the
+		 * capability is the PANE's question (its own `chat-page` already resolves it,
+		 * from cache, before this hook is called), and this hook's job is to act on
+		 * the answer.
+		 *
+		 * WHY IT IS COPIED INTO A REF. Gating the stream on it as a dependency would
+		 * RESUBSCRIBE this pane the moment it flipped false -> true - a second open
+		 * frame, a second snapshot, a second commit: exactly the extra painted state
+		 * the contract is being adopted to remove. The ref is written on every render
+		 * and read at the moment each request is built (the subscription's own open,
+		 * and every `/history` read the walk or the pager issues later), so a request
+		 * carries the answer that was known when it was made.
+		 *
+		 * FALSE IS THE FAIL-CLOSED DEFAULT and every caller that has no capability
+		 * read to hand keeps it: today's page, today's condensation, the align walk
+		 * included. An open that races the capability read is false for the same
+		 * reason - never a page whose unit changed under a reader that has not read
+		 * `runs`. Every read AFTER that picks the flag up, so nothing stays stuck.
+		 */
+		openFrame?: boolean;
+	} = {},
 ): CanonicalSessionHandle {
+	const openFrame = options.openFrame === true;
 	const openFrameRef = useRef(openFrame);
 	openFrameRef.current = openFrame;
 	const [view, setView] = useState<CanonicalSessionView>(() => {
@@ -2335,6 +2350,22 @@ export function useCanonicalSessionStream(
 	 * Not exercised by a test: the seed row path, which is argued from the code.
 	 */
 	const replayBornIds = useRef<Set<string>>(new Set());
+	/**
+	 * The rows a PAGE delivered (`/history` or a snapshot), by record key - the only
+	 * rows whose instant is the JOURNAL's (agent review round 1, F7).
+	 *
+	 * WHY THE DISTINCTION IS LOAD-BEARING. `record.ts` is `entry.ts * 1000` for a row
+	 * a page carried - the journal's own clock - but `Date.now()` at receipt for a
+	 * row that arrived live (`applyEvent`). The open-frame arm of the tail gate
+	 * compares a held row's instant against the attested start of a page whose
+	 * instants are the journal's, and that comparison is the arm's whole safety
+	 * argument: a live row receipted after the start but journaled before it would
+	 * read as "inside" and skip a walk the pane owes. So only page-born rows may
+	 * carry an instant into that arm. A row that arrived live and has NOT been
+	 * carried by a page since is simply left out, which makes the arm fall back to
+	 * the walk - the conservative direction, never a dropped range.
+	 */
+	const pageBornIds = useRef<Set<string>>(new Set());
 	/*
 	 * Call ids a mid-turn snapshot's seed could not label, how many times we have
 	 * read back for each, how deep that read had to go, and the seed order a
@@ -3523,10 +3554,12 @@ export function useCanonicalSessionStream(
 			 * of the tail gate below: a held row is placed relative to the page by the
 			 * journal's clock, because the ids are opaque and a page that starts at a
 			 * run's opening user row is the only datum that lets "behind it" be asked
-			 * at all. Populated from the same loop as `heldIds`, so a row cannot be in
-			 * one and not the other.
+			 * at all. POPULATED ONLY FROM ROWS A PAGE DELIVERED (`pageBornIds`) - the
+			 * one population whose `ts` IS that clock - so a live row's receipt stamp can
+			 * never stand in for a journal instant (agent review round 1, F7). A row the
+			 * page did not deliver simply has no instant here, and the arm declines.
 			 */
-			const heldInstants = new Map<string, number>();
+			const heldInstants = new Map<string, number | null>();
 			/*
 			 * A row only a reconnect replay delivered is not a held JOURNAL row until a
 			 * page names it (`replayBornIds`). Pruned first, from the same live index
@@ -3536,13 +3569,19 @@ export function useCanonicalSessionStream(
 			for (const id of replayBornIds.current)
 				if (!viewRef.current.transcript.index.has(id))
 					replayBornIds.current.delete(id);
+			for (const id of pageBornIds.current)
+				if (!viewRef.current.transcript.index.has(id))
+					pageBornIds.current.delete(id);
 			for (const record of viewRef.current.transcript.records)
 				if (
 					isDurableOwnerRow(record) &&
 					!replayBornIds.current.has(record.id)
 				) {
 					heldIds.add(record.id);
-					heldInstants.set(record.id, record.ts);
+					heldInstants.set(
+						record.id,
+						pageBornIds.current.has(record.id) ? record.ts : null,
+					);
 				}
 			/*
 			 * READ FROM THE LIVE VIEW, NOT FROM `paintedIds` (QA round 3, Q3-1).
@@ -3729,6 +3768,8 @@ export function useCanonicalSessionStream(
 				if (frame.type !== "snapshot") continue;
 				for (const entry of frame.payload.history.entries) {
 					paintedEntryIds.add(entryRecordKey(entry));
+					// The page's own rows, for `pageBornIds`' journal-clock rule (F7).
+					pageBornIds.current.add(entryRecordKey(entry));
 					const calls = entry.payload?.tool_calls;
 					if (!Array.isArray(calls)) continue;
 					for (const call of calls as Record<string, unknown>[]) {
@@ -4980,6 +5021,14 @@ export function useCanonicalSessionStream(
 		for (const id of restoredReplayBorn)
 			if (!seededIndex.has(id)) restoredReplayBorn.delete(id);
 		replayBornIds.current = restoredReplayBorn;
+		/*
+		 * AND THE PAGE-BORN SET DOES NOT TRAVEL AT ALL (agent review round 1, F7):
+		 * the ids a session's page mints recur across sessions (`u1`, `a1`), so a set
+		 * carried over a switch would certify a LIVE row's receipt stamp as a journal
+		 * instant under an id its own page never delivered. A fresh session starts
+		 * empty, which only ever costs the arm a walk.
+		 */
+		if (!sameSession) pageBornIds.current = new Set();
 		commitView((current) => ({
 			...current,
 			frontend: null,

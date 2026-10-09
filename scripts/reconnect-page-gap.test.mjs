@@ -4072,3 +4072,70 @@ test("a `/history` answer that carries facts cannot re-condense the page the fra
 		"nothing can re-condense after the paint",
 	);
 });
+
+/*
+ * THE OPEN-FRAME NEGOTIATION ON THE WIRE (agent review round 1, F6). Both halves
+ * of the contract's "an old core keeps today's page" claim are asserted here
+ * rather than left to inspection: the pane asks for the open frame on its
+ * subscription AND on every `/history` read when the capability says the backend
+ * serves one, and asks for nothing when it does not.
+ *
+ * WHY THE HOOK'S OPTION IS THE CAPABILITY'S ANSWER. `chat-page.tsx` passes
+ * `desktopFeatureEnabled(panelCapabilities.data, "open_frame")`, which is
+ * `=== "enabled"` - so an old backend, which advertises no such capability,
+ * answers false and every request below carries the flag off. That projection is
+ * pinned in `warm-session.test.mjs` (the panel's own text); this case pins what
+ * the hook then does with it.
+ */
+test("the pane asks for the open frame exactly when the capability says so (F6)", async () => {
+	const plan = conversation({ withSteer: false, awayRows: 6 });
+	for (const negotiated of [true, false]) {
+		const transcript = makeTranscript(plan.rows);
+		reset({ transcript });
+		const runtime = makeRuntime();
+		let handle;
+		runtime.render = () => {
+			handle = useCanonicalSessionStream(
+				SESSION_A,
+				true,
+				true,
+				"pane-identity",
+				{ openFrame: negotiated },
+			);
+			return handle;
+		};
+		runtime.rerender();
+		const subscribed = subscriptions.at(-1).args;
+		assert.equal(
+			subscribed.openFrame,
+			negotiated,
+			`the subscribe carries the negotiation (${negotiated})`,
+		);
+		deliver(openFrame(1, true));
+		deliver(
+			snapshotFrame(2, {
+				cursor: plan.cursor,
+				entries: transcript.tail(SNAPSHOT_PAGE).entries,
+				openFrame: { runs_state: "unsupported" },
+			}),
+		);
+		await pump();
+		/*
+		 * One read, which is the only way this case can speak for the reads the
+		 * walk and the pager issue later: the flag is read from a ref at the moment
+		 * each request is built, so what it carries is the capability's answer for
+		 * THIS request, never a snapshot taken at mount.
+		 */
+		await handle.loadOlder();
+		await pump();
+		const reads = requests.filter(
+			(request) => request.op === "sessions.history",
+		);
+		assert.ok(reads.length > 0, "a read really was issued");
+		assert.deepEqual(
+			reads.map((request) => request.openFrame),
+			reads.map(() => negotiated),
+			`every read carries the negotiation (${negotiated})`,
+		);
+	}
+});

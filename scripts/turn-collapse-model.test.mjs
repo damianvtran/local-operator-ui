@@ -2264,6 +2264,15 @@ const fact = (actions, workedSeconds, extra = {}) => ({
 	 * about a HEADED run therefore has to name the opener it means.
 	 */
 	openingUserId: null,
+	/*
+	 * The re-key identity and the cross-session split (agent review round 1, F2
+	 * and F3). NULL is "the wire said nothing": the model refuses a fact it cannot
+	 * split when the reader hides cross-session rows, and treats an un-named
+	 * closing answer as "no stable identity to find this run by".
+	 */
+	closingAnswerId: null,
+	crossSessionActions: null,
+	crossSessionWorkedSeconds: null,
 	...extra,
 });
 
@@ -2407,7 +2416,7 @@ test("facts never reach a run whose head is loaded: the rows in hand are already
 	);
 });
 
-test("alignWalkRunKeyConfirmed: a run the facts already answer retires the walk", () => {
+test("alignWalkRunKeyConfirmed: a run whose bar TOOK the facts retires the walk", () => {
 	/*
 	 * The walk is the pane's post-paint fetch, up to `ALIGN_WALK_MAX_PAGES`
 	 * serial `/history` reads, and its whole purpose is to make the bar's figure
@@ -2426,28 +2435,47 @@ test("alignWalkRunKeyConfirmed: a run the facts already answer retires the walk"
 		"a1",
 		"without facts the walk is armed, exactly as before",
 	);
+	const withFacts = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([["a1", fact(423, 8_639)]]),
+	});
 	assert.equal(
-		alignWalkRunKeyConfirmed(
-			plan,
-			null,
-			undefined,
-			new Map([["a1", fact(423, 8_639)]]),
-		),
+		alignWalkRunKeyConfirmed(withFacts, null),
 		null,
 		"with them, no read is owed",
 	);
 	/*
-	 * And a fact for a DIFFERENT run leaves it armed: the gate is the run's own
-	 * key, never the presence of a map.
+	 * AND A FACT THE PLAN COULD NOT USE LEAVES IT ARMED (agent review round 1,
+	 * F5): the gate reads the plan's own `factApplied`, never the presence of a
+	 * map, so the two can never disagree about whether the bar is whole. The
+	 * reader below hides cross-session rows and the wire states no split, which
+	 * is the refusal the model makes rather than a count that includes rows the
+	 * bar does not show.
 	 */
 	assert.equal(
-		alignWalkRunKeyConfirmed(
-			plan,
-			null,
-			undefined,
-			new Map([["a2", fact(1, 1)]]),
-		),
+		alignWalkRunKeyConfirmed(plan, null),
 		"a1",
+		"a plan that took no facts is not a reason to stand the walk down",
+	);
+	const refused = collapsePlan(rows, {
+		live: false,
+		hideCrossSession: true,
+		runFacts: new Map([["a1", fact(423, 8_639)]]),
+	});
+	assert.equal(
+		refused.runs[0].factApplied,
+		false,
+		"the fact is refused, so nothing was applied",
+	);
+	assert.equal(
+		refused.runs[0].segments[0].facts.partial,
+		true,
+		"so the bar keeps the `+` the walk exists to complete",
+	);
+	assert.equal(
+		alignWalkRunKeyConfirmed(refused, null),
+		"a1",
+		"and the walk stays armed to complete it",
 	);
 });
 
@@ -2514,13 +2542,15 @@ test("openFrameFacts: only `ready` carries facts, and only a SETTLED run's are r
 		 * assertion below the loop is about.
 		 */
 		openingUserId: "u1",
+		closingAnswerId: "a1",
+		crossSessionActions: null,
+		crossSessionWorkedSeconds: null,
 	});
 	assert.equal(
 		ready.runs.get("u1"),
 		ready.runs.get("a1"),
 		"and the same fact is reachable by the run's opening user row",
 	);
-	assert.equal(ready.headCut, true, "and the cap's own flag rides along");
 	/*
 	 * A live tail carries `settled: false` and no counts: a number taken
 	 * mid-turn is one the client would have to correct after the paint, which is
@@ -2795,10 +2825,17 @@ test("clarity 1: a `head_cut` page whose facts cover the run is the FINAL layout
 	};
 	const facts = openFrameFacts(page);
 	assert.ok(facts, "a `ready` page carries facts whatever `head_cut` says");
+	/*
+	 * `head_cut` is NOT reported on the facts (agent review round 1, F8): the one
+	 * reader that needs it reads the PAGE (`openFrameAttestedStart`), because the
+	 * question it answers - did the turn-aligned extension run? - is about the
+	 * page's own window, not about any run on it. A second copy here would be a
+	 * claim nothing checks.
+	 */
 	assert.equal(
-		facts.headCut,
-		true,
-		"the flag is reported, and nothing here refuses the facts on it",
+		"headCut" in facts,
+		false,
+		"the page's `head_cut` is not re-stated on the facts",
 	);
 	for (const id of ["a9", "the-runs-own-opening-user-row"]) {
 		const matched = facts.runs.get(id);
@@ -2821,12 +2858,13 @@ test("clarity 1: a `head_cut` page whose facts cover the run is the FINAL layout
 	assert.equal(run.segments[0].facts.durationS, 5793.695);
 	assert.equal(run.facts.actions, 300, "the turn's own figure moves with it");
 	assert.equal(
-		alignWalkRunKeyConfirmed(plan, null, undefined, facts.runs),
+		alignWalkRunKeyConfirmed(plan, null),
 		null,
 		"the walk is retired: the page and the facts ARE the final layout",
 	);
+	const noFacts = collapsePlan(rows, { live: false });
 	assert.equal(
-		alignWalkRunKeyConfirmed(plan, null, undefined, undefined),
+		alignWalkRunKeyConfirmed(noFacts, null),
 		"a9",
 		"and without the facts it is armed, so this test discriminates",
 	);
@@ -2896,5 +2934,267 @@ test("clarity 2: a page that begins at a STEER still states the run's whole figu
 		whole.facts,
 		plain.facts,
 		"and the turn's figures are untouched",
+	);
+});
+
+/* ===================================================================== *
+ * AGENT REVIEW ROUND 1 (`#925`): the three findings the model owns.
+ *
+ * F2 - the facts count rows the reader HIDES (`send`, peer receipts) when
+ *      `hide_cross_session` is on, so a subtraction from the server's total put
+ *      them back into the bar. F3 - the fact was looked up by the run's LIVE
+ *      key, so a follow-up after the answer re-keyed the run and the bar fell
+ *      back to a fragment, arming the post-paint walk. F4 - the attested start
+ *      read `runs[0]`, which the core publishes ONE RUN EARLY on purpose.
+ * ===================================================================== */
+
+test("a fact is split by the hidden cross-session work, or refused (F2)", () => {
+	const rows = [
+		tool("t1", { ts: TS, durationS: 20 }),
+		/* The `send` row itself is already GONE: the caller filters the plan's rows
+		 * (`visibleRecords(records, hide)`), which is exactly why the client cannot
+		 * do this subtraction itself - only the server counted the row it never
+		 * sent. */
+		tool("t2", { ts: TS + 1, durationS: 30 }),
+		answer("a1", { ts: TS + 5_000 }),
+	];
+	/*
+	 * Shown, the server's totals ARE the reader's: three rows measured, nothing
+	 * hidden, nothing to subtract.
+	 */
+	const shown = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([["a1", fact(3, 55, { crossSessionActions: 1 })]]),
+	}).runs[0];
+	assert.equal(
+		shown.segments[0].facts.actions,
+		3,
+		"with the setting off, the fact's own count stands",
+	);
+	/*
+	 * Hidden, the same fact must lose the hidden row - and the bar states what is
+	 * on screen, which is the invariant `hidden cross-session rows never reach the
+	 * bar` pins for the loaded fold.
+	 */
+	const hidden = collapsePlan(rows, {
+		live: false,
+		hideCrossSession: true,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(3, 55, { crossSessionActions: 1, crossSessionWorkedSeconds: 5 }),
+			],
+		]),
+	}).runs[0];
+	assert.equal(
+		hidden.segments[0].facts.actions,
+		2,
+		"the visible span's count, not the server's three",
+	);
+	assert.equal(
+		hidden.segments[0].facts.durationS,
+		50,
+		"and the visible worked time",
+	);
+	assert.equal(hidden.factApplied, true, "the fact was applied, split");
+	/*
+	 * NO SPLIT FROM THE WIRE IS A REFUSAL, not a zero: the count may include rows
+	 * this reader never receives, so the loaded fold stands, the `+` stays, and
+	 * the walk keeps something to complete.
+	 */
+	const unsplit = collapsePlan(rows, {
+		live: false,
+		hideCrossSession: true,
+		runFacts: new Map([["a1", fact(3, 55)]]),
+	}).runs[0];
+	assert.equal(unsplit.factApplied, false, "no split, no fact");
+	assert.equal(
+		unsplit.segments[0].facts.actions,
+		2,
+		"the loaded rows' own count",
+	);
+	assert.equal(unsplit.segments[0].facts.partial, true, "with the `+` intact");
+	/*
+	 * AND A DURATION THAT CANNOT BE SPLIT IS DROPPED, count kept: the count's
+	 * subtrahend is known (one hidden row), the seconds' is not. `hidden === 0`
+	 * is the other half - nothing hidden means nothing to split, so the seconds
+	 * stand.
+	 */
+	const halfSplit = collapsePlan(rows, {
+		live: false,
+		hideCrossSession: true,
+		runFacts: new Map([["a1", fact(3, 55, { crossSessionActions: 1 })]]),
+	}).runs[0];
+	assert.equal(halfSplit.segments[0].facts.actions, 2, "the count splits");
+	assert.equal(
+		halfSplit.segments[0].facts.durationS,
+		null,
+		"and the duration refuses rather than including hidden work",
+	);
+	const noneHidden = collapsePlan(rows, {
+		live: false,
+		hideCrossSession: true,
+		runFacts: new Map([["a1", fact(2, 50, { crossSessionActions: 0 })]]),
+	}).runs[0];
+	assert.equal(
+		noneHidden.segments[0].facts.durationS,
+		50,
+		"nothing hidden means nothing to split, so the seconds stand",
+	);
+});
+
+test("a re-keyed run keeps its fact, and the follow-up is added on top (F3)", () => {
+	const rows = [
+		tool("t1", { ts: TS, durationS: 10 }),
+		tool("t2", { ts: TS + 1, durationS: 20 }),
+		answer("a1", { ts: TS + 5_000 }),
+		/* A wake and its follow-up work: no user row, so the run continues - and it
+		 * now ENDS on a tool row, which is the case `electAnswer` refuses to call an
+		 * answer (`transcript-rows.ts`), so the run's key moves from `a1` to `t4`. */
+		row("w1", "wake", { text: "a wake delivery" }),
+		tool("t3", { ts: TS + 6_000, durationS: 5 }),
+		tool("t4", { ts: TS + 7_000, durationS: 5 }),
+	];
+	const facts = new Map([
+		[
+			"a1",
+			fact(2, 30, { closingAnswerId: "a1", openingUserId: "the-run-head" }),
+		],
+	]);
+	const plan = collapsePlan(rows, { live: false, runFacts: facts });
+	const run = plan.runs[0];
+	assert.equal(
+		run.key,
+		"t4",
+		"the run re-keys to its newest row once it has no closing answer",
+	);
+	assert.equal(
+		run.factApplied,
+		true,
+		"and the fact is still found, by the run's own rows rather than its key",
+	);
+	/*
+	 * THE FIGURES: the fact's span (2 actions, 30s) PLUS the follow-up's own rows,
+	 * which the client holds in full and the server's total does not cover - then
+	 * minus every other bar's loaded work, exactly as before. The cut span here is
+	 * the first bar, which hides `t1, t2`; the wake splits the run, so the
+	 * follow-up's two calls sit in the second bar and are subtracted back out.
+	 */
+	assert.equal(
+		run.segments[0].facts.actions,
+		2,
+		"the head-cut bar states the run's own pre-answer count",
+	);
+	assert.equal(
+		run.facts.actions,
+		4,
+		"the turn's figure carries the follow-up: two in the fact's span, two after it",
+	);
+	assert.equal(
+		run.facts.partial,
+		false,
+		"exact, because the fact and the rows together are the whole run",
+	);
+	/*
+	 * A failed call after the answer is the run's, too (F9): the run-level figure
+	 * counts the span its `actions` above count, so the two cannot disagree.
+	 */
+	const failedRows = [
+		tool("t1", { ts: TS, durationS: 10 }),
+		answer("a1", { ts: TS + 5_000 }),
+		row("w1", "wake", { text: "a wake delivery" }),
+		tool("t3", { ts: TS + 6_000, durationS: 5, isError: true }),
+	];
+	const failedPlan = collapsePlan(failedRows, {
+		live: false,
+		runFacts: new Map([
+			["a1", fact(1, 10, { closingAnswerId: "a1", failed: 0 })],
+		]),
+	}).runs[0];
+	assert.equal(
+		failedPlan.facts.failed,
+		1,
+		"the follow-up's failure is inside the span the run-level count describes",
+	);
+	/*
+	 * AND THE WALK IS RETIRED FOR THAT RE-KEYED RUN: the whole point of keeping the
+	 * fact attached is that the bar is exact, so no read is owed - which is what
+	 * the base did by WALKING (the walk it retired in this lane).
+	 */
+	assert.equal(
+		alignWalkRunKeyConfirmed(plan, null),
+		null,
+		"the re-keyed run's bar is whole, so the walk stands down",
+	);
+});
+
+test("openFrameAttestedStart finds the run the page BEGINS in, one run early or not (F4)", () => {
+	/*
+	 * THE CORE'S OWN SHAPE. `publish_runs` starts one run early on purpose
+	 * (`test_publish_runs_starts_one_run_early_so_a_straddle_is_covered`,
+	 * `open_frame.py`): `runs[0]` is the run BEFORE the page, because the page's
+	 * window can begin inside it and a reader that knew only the runs starting on
+	 * the page would have nowhere to hang that straddle. Reading `runs[0]` here
+	 * made the reconciliation arm unreachable against the real backend - the
+	 * failure is safe, but the arm never fired.
+	 */
+	const entries = [
+		{ id: "u2", ts: 200, type: "message", payload: {} },
+		{ id: "t1", ts: 201, type: "tool", payload: {} },
+	];
+	const runs = [
+		{
+			run_key: "a0",
+			opening_user_id: "u1",
+			closing_answer_id: "a0",
+			settled: true,
+			action_count: 1,
+		},
+		{
+			run_key: "a2",
+			opening_user_id: "u2",
+			closing_answer_id: "a2",
+			settled: true,
+			action_count: 1,
+		},
+	];
+	const early = openFrameAttestedStart({
+		entries,
+		runs,
+		runs_state: "ready",
+		head_cut: false,
+		has_more: true,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		early,
+		{ id: "u2", tsMs: 200_000 },
+		"the run whose opening row is the page's first entry, not the one before it",
+	);
+	/*
+	 * The exact-window shape (what the bench's stub served) attests the same
+	 * start, so both readings of the wire agree - and a page whose first entry is
+	 * NO run's opening row still attests nothing.
+	 */
+	const exact = openFrameAttestedStart({
+		entries,
+		runs: [runs[1]],
+		runs_state: "ready",
+		head_cut: false,
+		has_more: true,
+		cursor_missing: false,
+	});
+	assert.deepEqual(exact, { id: "u2", tsMs: 200_000 });
+	assert.equal(
+		openFrameAttestedStart({
+			entries: [{ id: "t1", ts: 201, type: "tool", payload: {} }],
+			runs,
+			runs_state: "ready",
+			head_cut: false,
+			has_more: true,
+			cursor_missing: false,
+		}),
+		null,
+		"a page that begins inside a run attests no run boundary",
 	);
 });

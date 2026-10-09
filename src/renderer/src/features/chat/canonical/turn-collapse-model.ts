@@ -256,6 +256,33 @@ export type RunFact = {
 	 * This field is what the model compares against the row its span opens at.
 	 */
 	openingUserId: string | null;
+	/**
+	 * The run's elected answer, or null while it has none - the run's OTHER
+	 * stable identity, and the one a re-keyed run is still recognisable by
+	 * (agent review round 1, F3). See `factForRun`.
+	 */
+	closingAnswerId: string | null;
+	/**
+	 * Tool rows inside this run that the reader HIDES with `hide_cross_session`
+	 * (a `send`, a peer receipt), or null when the backend did not state the
+	 * split.
+	 *
+	 * WHY THE SERVER HAS TO STATE IT (agent review round 1, F2): `action_count`
+	 * counts every tool row in the run, while the plan runs over
+	 * `visibleRecords(records, hide)` - so with the setting on, the fact's total
+	 * and the rows the bar hides are different populations, and subtracting one
+	 * from the other put the hidden `send` calls back into the bar (measured: `3
+	 * actions` where the visible span holds `2`). The subtrahend is the server's
+	 * to state because only it counts the rows the client never receives.
+	 */
+	crossSessionActions: number | null;
+	/**
+	 * The hidden rows' worked seconds, when the wire states them. Used only to
+	 * keep the duration honest under `hide_cross_session`; when it is absent and
+	 * `crossSessionActions` is non-zero the duration cannot be split, and a
+	 * fragment's `Took` would silently include work the bar does not show.
+	 */
+	crossSessionWorkedSeconds: number | null;
 };
 
 /** The facts an open-frame page carries, by `run_key` (`TurnRun.key`). */
@@ -393,6 +420,20 @@ export type RunCollapsePlan = {
 	stampTs: number | null;
 	/** Ordered, disjoint bars (see `SegmentPlan`). */
 	segments: SegmentPlan[];
+	/**
+	 * Whether a bar of this run took its figures from the server's fact.
+	 *
+	 * THE WALK'S OWN GATE, and the reason it lives on the plan (agent review
+	 * round 1, F5): the walk exists to make a fragment bar whole, so it must stand
+	 * down exactly when the bar IS whole - and "the map has a fact for this run"
+	 * is a different question from "this plan could use it". A reader with
+	 * `hide_cross_session` on and no split from the backend, a fact the model
+	 * refuses, a run whose loaded edge is a pinned row rather than a fragment:
+	 * each leaves the fact UNUSED, and a walk retired on the map alone would leave
+	 * that bar stating `N+` with nothing left to complete it. One predicate, read
+	 * by both, is the only way they cannot disagree.
+	 */
+	factApplied: boolean;
 };
 
 export type CollapsePlan = {
@@ -494,6 +535,20 @@ export function collapsePlan(
 		 * and never a position. Omitted or empty is every old backend, every
 		 * `building` answer and every peer's conversation, and changes nothing.
 		 */
+		/**
+		 * Whether the reader hides cross-session rows (`hide_cross_session`).
+		 *
+		 * IN THE PLAN because the facts state the SERVER's totals, which count the
+		 * `send` rows and peer receipts this reader filters out before the plan ever
+		 * sees them; `factTotalsFor` has to subtract them, and refuses to guess when
+		 * it cannot (agent review round 1, F2).
+		 */
+		hideCrossSession?: boolean;
+		/*
+		 * The facts carry a run one the page does not paint (`runs[0]` is a run
+		 * early on purpose, `open_frame.py`), a `building` answer and every peer's
+		 * conversation, and changes nothing.
+		 */
 		runFacts?: RunFactLookup;
 	},
 ): CollapsePlan {
@@ -520,6 +575,7 @@ export function collapsePlan(
 				openRuns,
 				options.mode,
 				options.runFacts,
+				options.hideCrossSession === true,
 			),
 		),
 	};
@@ -753,11 +809,17 @@ export function collapsePlanOptionsKey(options: {
 	 * than once per render, and a re-created-but-equal map cannot buy a re-plan.
 	 */
 	runFacts?: RunFactLookup;
+	/**
+	 * In the key for the same reason the facts are: it moves the figures a cut
+	 * span states (agent review round 1, F2).
+	 */
+	hideCrossSession?: boolean;
 }): string {
 	const parts: string[] = [
 		options.live ? "live" : "settled",
 		options.mode ?? "",
 		options.focusHold ?? "",
+		options.hideCrossSession ? "hide" : "show",
 	];
 	if (options.openRuns) {
 		for (const key of [...options.openRuns].sort()) parts.push(`open:${key}`);
@@ -779,7 +841,9 @@ export function collapsePlanOptionsKey(options: {
 			facts.push(
 				`${key}:${fact.actions}:${fact.workedSeconds ?? ""}:${
 					fact.complete ? "c" : "p"
-				}:${fact.failed}:${fact.openingUserId ?? ""}`,
+				}:${fact.failed}:${fact.openingUserId ?? ""}:${fact.closingAnswerId ?? ""}:${
+					fact.crossSessionActions ?? ""
+				}:${fact.crossSessionWorkedSeconds ?? ""}`,
 			);
 		}
 		parts.push(`facts:${facts.join(",")}`);
@@ -1073,21 +1137,23 @@ export function alignWalkRunKeyConfirmed(
 	 * the window covers the whole list. */
 	storeTopRun: TurnRun | null,
 	openRuns?: ReadonlySet<string>,
-	/**
-	 * The server's facts for the page's runs, or nothing (`RunFact`). A run here
-	 * has ALREADY been answered - its counts are the turn's own - so the walk has
-	 * nothing left to fetch for it and this returns null: the reads stay unspent
-	 * and the bar the reader is looking at is exact on the frame it was painted
-	 * on. Absent or empty (an old backend, a `building` answer, a peer's
-	 * conversation, a live tail - a fact is only ever offered for a SETTLED run)
-	 * is every case where the walk is still the only way the figure is ever
-	 * completed, and there today's decision stands unchanged.
-	 */
-	runFacts?: RunFactLookup,
 ): string | null {
 	const key = alignWalkRunFromPlan(plan, openRuns);
 	if (key === null) return null;
-	if (runFacts?.has(key)) return null;
+	/*
+	 * THE SAME GATE THE BAR ITSELF READ (agent review round 1, F5). The walk
+	 * exists to make a fragment bar whole, so it stands down exactly when the bar
+	 * IS whole - and this asks the PLAN rather than the fact map, because "the map
+	 * has a fact for this run" and "this plan could use it" are different
+	 * questions. A reader with `hide_cross_session` on and no split from the
+	 * backend, a fact the model refuses, a run whose loaded edge is a pinned row
+	 * rather than a fragment: the fact is on hand and UNUSED, and retiring the walk
+	 * on the map alone would leave that bar stating `N+` with nothing left to
+	 * complete it. `factApplied` is the model's own answer to "did these figures
+	 * come from the fact", so the two cannot drift.
+	 */
+	const runPlan = plan.runs.find((run) => run.key === key);
+	if (runPlan?.factApplied) return null;
 	if (storeTopRun === null) return key;
 	return !storeTopRun.opensWithUserRow && storeTopRun.key === key ? key : null;
 }
@@ -1520,6 +1586,127 @@ function settledCloseOf(
 	return settled;
 }
 
+/**
+ * The fact for this run, found by its STABLE identity rather than by the run's
+ * live key (agent review round 1, F3).
+ *
+ * WHY `runFacts.get(run.key)` IS NOT ENOUGH. `TurnRun.key` is derived from the
+ * rows in hand, and a run keeps GROWING after it has answered: a wake, a job
+ * result or a peer follow-up is not a user row, so it continues the run, and
+ * the client re-keys the run to whatever its last row (or last answer) now is.
+ * The fact was read once, from the page the frame carried, and is keyed by the
+ * run's identity AT THAT MOMENT - so a direct lookup misses exactly the runs
+ * that are most likely to be head-cut in the first place (a huge tail run that
+ * is still being woken) and the bar drops back to a fragment, arming the walk
+ * after the paint. On the base, where there were no facts to lose, the open's
+ * own walk had already completed that bar.
+ *
+ * SO THE RUN'S ROWS ARE ASKED INSTEAD: every id the map answers to (`run_key`,
+ * `closing_answer_id`, `opening_user_id` - `open-frame.ts` indexes all three) is
+ * a row of THIS run, and row ids are unique, so a hit is the run's own fact
+ * however the run has been re-keyed since. The direct lookup stays first because
+ * it is the common case and costs nothing.
+ */
+function factForRun(
+	rows: readonly Row[],
+	run: TurnRun,
+	facts?: RunFactLookup,
+): RunFact | null {
+	if (!facts || facts.size === 0) return null;
+	const direct = facts.get(run.key);
+	if (direct !== undefined) return direct;
+	for (let i = run.openingIndex; i <= run.endIndex; i += 1) {
+		const hit = facts.get(rows[i]?.record.id ?? "");
+		if (hit !== undefined) return hit;
+	}
+	return null;
+}
+
+/** Where the fact's own span ends in this run's rows, or -1 when it names none. */
+function factAnswerAt(rows: readonly Row[], fact: RunFact): number {
+	if (fact.closingAnswerId === null) return -1;
+	for (let i = rows.length - 1; i >= 0; i -= 1)
+		if (rows[i].record.id === fact.closingAnswerId) return i;
+	return -1;
+}
+
+/** A run's own totals, as `factTotalsFor` states them for one reader. */
+type FactTotals = {
+	actions: number;
+	workedSeconds: number | null;
+	failed: number;
+	complete: boolean;
+};
+
+/**
+ * The run's totals AS THIS READER COUNTS THEM, or null when the fact cannot be
+ * applied to this reader's rows at all.
+ *
+ * TWO CORRECTIONS, both of them the difference between the server's population
+ * and the client's:
+ *
+ * - THE FOLLOW-UP IS ADDED. The server's run ends at its elected answer; the
+ *   client's run continues through a wake, a job result or a peer follow-up
+ *   (F3), and those rows' work is on screen inside the very spans the bar
+ *   stands for. So the totals are the fact's span PLUS everything after its
+ *   answer, which the client holds in full - and the subtraction below then
+ *   removes the siblings' loaded work exactly as it did before.
+ * - THE HIDDEN CROSS-SESSION WORK IS SUBTRACTED (F2). With `hide_cross_session`
+ *   on, the plan runs over `visibleRecords(records, true)`, which drops the
+ *   `send` tool rows and the peer receipts; the server's `action_count` counts
+ *   them. Subtracting the filtered siblings from the unfiltered total put them
+ *   back into the bar (measured: `3 actions` where the visible span holds `2`).
+ *
+ * AND WHEN IT CANNOT SPLIT THEM IT REFUSES, rather than guessing: with the
+ * setting on and no `crossSessionActions` from the backend, the fact's count
+ * may include rows this reader never sees, so there is no honest figure to state
+ * - the loaded fold stands, the bar keeps its `+`, and the walk stays armed to
+ * complete it (`alignWalkRunKeyConfirmed` reads the same refusal). The duration
+ * follows the same rule one step further: it is kept when the hidden rows are
+ * provably absent (`crossSessionActions === 0`) or when the backend states their
+ * seconds, and dropped otherwise, because a `Took` that includes work the bar
+ * does not show is the same class of lie as a count that does.
+ */
+function factTotalsFor(
+	fact: RunFact | null,
+	runRows: readonly Row[],
+	hideCrossSession: boolean,
+): FactTotals | null {
+	if (fact === null) return null;
+	let factActions = fact.actions;
+	let factWorked = fact.workedSeconds;
+	if (hideCrossSession) {
+		const hidden = fact.crossSessionActions;
+		if (hidden === null) return null;
+		factActions = Math.max(0, factActions - hidden);
+		if (factWorked !== null) {
+			const hiddenWorked = fact.crossSessionWorkedSeconds;
+			if (hiddenWorked !== null)
+				factWorked = Math.max(0, factWorked - hiddenWorked);
+			else if (hidden > 0) factWorked = null;
+		}
+	}
+	/*
+	 * THE FOLLOW-UP, and `-1` (the wire named no closing answer) means NONE rather
+	 * than "everything": a fact without a closing answer cannot say where its own
+	 * span ends, so the client adds nothing and the fact's total stands as the
+	 * run's - which is the shape a run with no answer at all has anyway (an
+	 * interrupted run), and the one the pre-F3 subtraction always assumed.
+	 */
+	const answerAt = factAnswerAt(runRows, fact);
+	const after = answerAt < 0 ? [] : runRows.slice(answerAt + 1);
+	let actions = factActions;
+	let worked = factWorked === null ? null : factWorked;
+	let failed = fact.failed;
+	for (const row of after) {
+		if (row.record.kind !== "tool") continue;
+		actions += 1;
+		if (isFailedCall(row.record)) failed += 1;
+		if (worked !== null) worked += workedSeconds([row]) ?? 0;
+	}
+	return { actions, workedSeconds: worked, failed, complete: fact.complete };
+}
+
 function planRun(
 	rows: Row[],
 	run: TurnRun,
@@ -1540,6 +1727,14 @@ function planRun(
 	 * fully-loaded run is deliberately left to the rows it already has.
 	 */
 	runFacts?: RunFactLookup,
+	/**
+	 * Whether the reader hides cross-session rows, threaded to `factTotalsFor`
+	 * and nowhere else: the plan's rows are already filtered by the caller, so the
+	 * only thing this flag may move is the arithmetic on the SERVER's totals
+	 * (agent review round 1, F2). Defaults to today's answer - visible - so a rig
+	 * that predates the setting keeps its figures.
+	 */
+	hideCrossSession = false,
 ): RunCollapsePlan {
 	const runRows = rows.slice(run.openingIndex, run.endIndex + 1);
 	const records = runRows.map((row) => row.record);
@@ -1559,22 +1754,29 @@ function planRun(
 	 * `headLoadedIsTheRunsOwn` for the case that made this necessary, and
 	 * `open-frame.ts` for why the lookup answers to three ids.
 	 */
-	const fact = runFacts?.get(run.key) ?? null;
+	const fact = factForRun(rows, run, runFacts);
+	/*
+	 * WHAT THE FACTS STATE FOR THIS RUN, as this reader counts rows - and null
+	 * when they cannot be applied at all, which the head rule below and the walk's
+	 * gate both read. See `factTotalsFor` for the two corrections and why a
+	 * refusal is the honest answer rather than a guess.
+	 */
+	const factTotals = factTotalsFor(fact, runRows, hideCrossSession);
 	/*
 	 * WHETHER THE PLAN'S OPENING ROW IS THE RUN'S OWN HEAD, which is the only
 	 * question a fragment's figures hang on.
 	 *
-	 * WITH NO FACT the client's own partition is the only opinion available and it
-	 * is the one today's behaviour already rests on: `opensWithUserRow` true means
-	 * the span opens at a user row (a whole head), false means the loaded list
-	 * begins inside the run.
+	 * WITH NO USABLE FACT the client's own partition is the only opinion available
+	 * and it is the one today's behaviour already rests on: `opensWithUserRow` true
+	 * means the span opens at a user row (a whole head), false means the loaded
+	 * list begins inside the run.
 	 *
-	 * WITH A FACT the wire's `opening_user_id` outranks it, and that is the STEER
-	 * case `docs/DESKTOP_API.md` names: a page may begin at a steer row, so the
-	 * model sees a user row at the top and would otherwise call the span whole
-	 * while every row above the steer - the run's actual head included - is
-	 * off-page. The fact says where the run actually starts; a span whose opening
-	 * row is anything else is a fragment, and takes the fact's figures below.
+	 * WITH ONE the wire's `opening_user_id` outranks it, and that is the STEER case
+	 * `docs/DESKTOP_API.md` names: a page may begin at a steer row, so the model
+	 * sees a user row at the top and would otherwise call the span whole while
+	 * every row above the steer - the run's actual head included - is off-page. The
+	 * fact says where the run actually starts; a span whose opening row is anything
+	 * else is a fragment, and takes the fact's figures below.
 	 *
 	 * `null` from the wire is NOT "unknown": it states that the run opens off a
 	 * non-user row, so a user row at the top of the span is not its opener either.
@@ -1583,10 +1785,10 @@ function planRun(
 	 * below reproduces the loaded fold exactly.
 	 */
 	const headLoadedIsTheRunsOwn =
-		fact === null
+		factTotals === null
 			? run.opensWithUserRow
 			: run.opensWithUserRow &&
-				fact.openingUserId !== null &&
+				fact?.openingUserId != null &&
 				rows[run.openingIndex]?.record.id === fact.openingUserId;
 	const partition = partitionRun(records, {
 		from,
@@ -1707,7 +1909,7 @@ function planRun(
 	 * answer it had - the fallback is the point, not a degradation.
 	 */
 	const cutSegment = cutSpan >= 0 ? segments[cutSpan] : null;
-	if (fact !== null && cutSegment !== null) {
+	if (factTotals !== null && cutSegment !== null) {
 		let knownActions = 0;
 		let knownWorked = 0;
 		for (const [i, segment] of segments.entries()) {
@@ -1715,11 +1917,11 @@ function planRun(
 			knownActions += segment.facts.actions;
 			knownWorked += workedSeconds(segment.rows) ?? 0;
 		}
-		const actions = Math.max(0, fact.actions - knownActions);
+		const actions = Math.max(0, factTotals.actions - knownActions);
 		const worked =
-			fact.workedSeconds === null
+			factTotals.workedSeconds === null
 				? null
-				: Math.max(0, fact.workedSeconds - knownWorked);
+				: Math.max(0, factTotals.workedSeconds - knownWorked);
 		segments[cutSpan] = {
 			...cutSegment,
 			facts: {
@@ -1736,7 +1938,7 @@ function planRun(
 				 * `complete: false` is the server saying the index dropped a row body
 				 * inside this run, so the count is a FLOOR - the bar's `+`.
 				 */
-				partial: !fact.complete,
+				partial: !factTotals.complete,
 			},
 		};
 	}
@@ -1758,7 +1960,7 @@ function planRun(
 		headLoaded: headLoadedIsTheRunsOwn,
 	});
 	const ladder = (() => {
-		if (fact === null || cutSpan < 0) return null;
+		if (factTotals === null || cutSpan < 0) return null;
 		let actions = 0;
 		let worked = 0;
 		for (const segment of segments) {
@@ -1766,12 +1968,24 @@ function planRun(
 			actions += segment.facts.actions;
 			worked += segment.facts.durationS ?? 0;
 		}
-		return { actions, worked, partial: !fact.complete, failed: fact.failed };
+		return {
+			actions,
+			worked,
+			partial: !factTotals.complete,
+			/*
+			 * The run-level `failed` describes the SAME span its `actions` above do
+			 * (agent review round 1, F9): `factTotals.failed` counts the fact's
+			 * failures plus the follow-up's own, so the two figures cannot describe
+			 * different spans when this grows a reader.
+			 */
+			failed: factTotals.failed,
+		};
 	})();
 	const hidden = segments.flatMap((segment) => segment.rows);
 	return {
 		key: run.key,
 		run,
+		factApplied: factTotals !== null && cutSpan >= 0,
 		/*
 		 * A bar renders iff there is something to hide, this is not the run a live
 		 * turn is being written in, and the run can be honestly summarised: its

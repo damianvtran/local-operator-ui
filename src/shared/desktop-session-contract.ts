@@ -1408,6 +1408,28 @@ export type DesktopOpenFrameRun = {
 	ended_ts?: number | null;
 	/** False: a count below is a lower bound, not the run's figure. */
 	complete?: boolean;
+	/**
+	 * Tool rows in this run the renderer HIDES under `hide_cross_session` (a
+	 * `send` call, a peer receipt), or null while the backend does not state the
+	 * split.
+	 *
+	 * WHY THE SERVER OWES THIS SPLIT: `action_count` counts every tool row in the
+	 * run, and a renderer with the setting on plans over `visibleRecords(records,
+	 * true)`, which drops the cross-session rows before they reach it. Without the
+	 * split, a bar that takes the fact states a count including rows it hides
+	 * (measured on the reviewer's probe: `3 actions` where the visible span holds
+	 * `2`). The subtrahend is the server's to state because only it counts rows the
+	 * renderer never receives. A reader that has the setting on and no field here
+	 * must NOT use the count - the fallback is the honest answer.
+	 */
+	cross_session_action_count?: number | null;
+	/**
+	 * The hidden rows' worked seconds, when the backend states them. A client
+	 * keeps a fact's duration under `hide_cross_session` only when this is stated
+	 * or `cross_session_action_count` is zero; otherwise the duration would include
+	 * work the bar does not show.
+	 */
+	cross_session_worked_seconds?: number | null;
 };
 /**
  * One page of a SUBAGENT's transcript (`docs/run-sidebar.md` § 10.1).

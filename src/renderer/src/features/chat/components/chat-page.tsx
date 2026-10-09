@@ -266,11 +266,20 @@ function SessionPanel({
 		 */
 		identity,
 		/*
-		 * Fail-closed: an unanswered capability leaves today's page exactly as it
-		 * was, and the pane's later `/history` reads pick the flag up the moment the
-		 * answer is there.
+		 * THE REST OF THE PANE'S NEGOTIATION, as one object (agent review round 1,
+		 * F1): `identity` stays the LAST POSITIONAL argument, which is what
+		 * `warm-session.test.mjs` pins and what the echo registry's keying actually
+		 * depends on. Future inputs join this object rather than shifting a fifth
+		 * positional argument past the identity every call site repeats.
 		 */
-		desktopFeatureEnabled(panelCapabilities.data, "open_frame"),
+		{
+			/*
+			 * Fail-closed: an unanswered capability leaves today's page exactly as it
+			 * was, and the pane's later `/history` reads pick the flag up the moment the
+			 * answer is there.
+			 */
+			openFrame: desktopFeatureEnabled(panelCapabilities.data, "open_frame"),
+		},
 	);
 	useDesktopWatchLease(streamId, canonical.subscriptionId);
 	// Fired from the composer's first keystroke, never from this mount - see

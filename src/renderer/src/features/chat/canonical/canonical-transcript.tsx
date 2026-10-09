@@ -3853,10 +3853,19 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * `openFrame` leaves the option exactly as absent as it was.
 			 */
 			runFacts: openFrame?.runs,
+			/*
+			 * WHETHER THIS READER HIDES CROSS-SESSION ROWS (agent review round 1, F2).
+			 * The plan's rows are already filtered by `visibleRecords(…, hide)` above;
+			 * this tells the model that the SERVER's totals count rows this reader does
+			 * not have on screen, so a fact's count cannot be taken as-is and, where it
+			 * cannot be split, must not be taken at all.
+			 */
+			hideCrossSession: hide,
 		}),
 		[
 			focusedRecordId,
 			gate,
+			hide,
 			openFrame,
 			openRuns,
 			transcriptDisplayMode,
@@ -3918,14 +3927,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * otherwise), which is exactly when the walk has something to decide.
 	 */
 	const alignWalkKey = useMemo(
-		() =>
-			alignWalkRunKeyConfirmed(
-				collapse,
-				storeTopRun,
-				openRuns,
-				openFrame?.runs,
-			),
-		[collapse, storeTopRun, openRuns, openFrame],
+		() => alignWalkRunKeyConfirmed(collapse, storeTopRun, openRuns),
+		[collapse, storeTopRun, openRuns],
 	);
 	/*
 	 * The walk's clock wake (agent review round 1, R2): `mayAutoWalk` is a stable
