@@ -3776,6 +3776,34 @@ export const STORIES = [
 	["chat-run-panel--monitor-cancel-refused", 1280, 820],
 	["chat-run-panel--monitor-cancel-cancelled", 1280, 820],
 	["chat-run-panel--monitor-cancel-refusal-record", 1280, 820],
+	/*
+	 * The WAKES section's cancel affordance (the wakes control slice), the
+	 * monitors' block one list over and deliberately the same shape: the control
+	 * under the pointer, the point's `:focus-visible` ring, the `Cancelled`
+	 * receipt a one-press write leaves, the refusal's sentence as the row's own
+	 * note (there is no card on the one-press path), the managed row with the
+	 * visible lever (`/aida pause`), the chief of staff's confirmation and its
+	 * refused state, and four 320px-floor frames the width budget is read off —
+	 * the refused floor is the state design round 1's D1 was measured in. The
+	 * one-press cells hold their own shutter until the state lands; the hover
+	 * goes through the rig's real pointer.
+	 */
+	[
+		"chat-run-panel--wake-cancel-hover",
+		1280,
+		820,
+		{ hover: '[data-wake-cancel="w1"]', hoverSettleMs: 400 },
+	],
+	["chat-run-panel--wake-cancel-focus", 1280, 820],
+	["chat-run-panel--wake-cancel-cancelled", 1280, 820],
+	["chat-run-panel--wake-cancel-refused", 1280, 820],
+	["chat-run-panel--wake-managed", 1280, 820],
+	["chat-run-panel--wake-chief-confirm", 1280, 820],
+	["chat-run-panel--wake-chief-refused", 1280, 820],
+	["chat-run-panel--wakes-controls-floor-320", 1280, 700],
+	["chat-run-panel--wakes-controls-floor-320-refused", 1280, 700],
+	["chat-run-panel--wakes-controls-floor-320-managed", 1280, 700],
+	["chat-run-panel--wakes-controls-floor-320-chief", 1280, 700],
 	/* The trigger's activity blip: the pane is CLOSED and a child is running, so
 	   the dot is drawn in `info`. Read against `trigger-idle` (nothing to say) and
 	   `panel-empty` (pane open, no activity ink) — the ink switch is the whole claim

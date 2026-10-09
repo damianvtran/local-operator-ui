@@ -36,16 +36,20 @@
  * - `refusal` renders in the open confirmation in the danger ink and is cleared
  *   on close AND on open, so reopening a refused row never shows a sentence
  *   about an attempt the reader has not made yet (U5).
- * - `cancelledIds` is the settling acknowledgement: a receipt of `ok` marks the
+ * - `cancelledKeys` is the settling acknowledgement: a receipt of `ok` marks the
  *   row `Cancelled` immediately, and the re-read that drops the row is what
  *   ends the mark (U4's rule, monitors'). A row whose cancel is refused keeps
- *   its place and its own record instead.
- * - `refusedIds` is the quiet record a refused attempt leaves on its row
- *   (`Cancel refused`, the whole sentence on `title`), cleared on the next
- *   attempt against that row (U8's "cleared on the next change"). For a
- *   ONE-CLICK refusal the sentence has no other home — there is no dialog to
- *   hold it — so the row renders it in full beside the control (the section
- *   reads `stateFor` and draws it).
+ *   its place and its own record instead. The key is the handle PLUS the
+ *   schedule's `created_at` (`wakeRowKey`), because the backend re-mints the
+ *   lowest free handle: a successor `w1` must not inherit its predecessor's
+ *   mark (F2 / Q1).
+ * - `refusedKeys` is the record a refused attempt leaves on its row — the whole
+ *   sentence, drawn as the row's own note line — cleared on the next attempt
+ *   against that row (U8's "cleared on the next change"). A ONE-CLICK refusal
+ *   has no dialog to hold the sentence, which is why it renders on the row; the
+ *   short `Cancel refused` tag that used to sit beside it is retired (design
+ *   round 1, D5: one statement, and the control beside it is still the next
+ *   attempt).
  *
  * Everything resets when the SESSION changes: wake handles are per-session
  * (`w1`..), so a pending row or a mark from one conversation must not be read
@@ -54,7 +58,7 @@
 import { wakePromptHead } from "@features/schedules/scheduled-task-model";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { WakeRow } from "./run-detail-model";
-import type { WakeControls } from "./wake-controls-model";
+import { type WakeControls, wakeRowKey } from "./wake-controls-model";
 
 /** The pressed control's viewport box, frozen at press time. */
 export type WakeAnchorRect = {
@@ -120,6 +124,8 @@ export const useWakeCancel = ({
 }): WakeCancelInteraction => {
 	const [pending, setPending] = useState<{
 		id: string;
+		/** The row's identity beyond its handle, for the marks (`wakeRowKey`). */
+		key: string;
 		head: string;
 		named: boolean;
 	} | null>(null);
@@ -132,10 +138,19 @@ export const useWakeCancel = ({
 	 */
 	const [refusalSeq, setRefusalSeq] = useState(0);
 	const [busy, setBusy] = useState(false);
-	const [cancelledIds, setCancelledIds] = useState<ReadonlySet<string>>(
+	/*
+	 * The marks are keyed by `wakeRowKey` — the handle PLUS the schedule's
+	 * `created_at` — and not by the bare id. The backend mints the LOWEST FREE
+	 * handle, so a wake cancelled and re-armed in the same conversation comes
+	 * back as the same `w1`; keyed by the handle alone, the successor wore its
+	 * predecessor's `Cancelled` and could not be cancelled (F2 / Q1). The key
+	 * also survives the canonical re-read's churn: the row's key does not move
+	 * while the list is momentarily empty.
+	 */
+	const [cancelledKeys, setCancelledKeys] = useState<ReadonlySet<string>>(
 		new Set(),
 	);
-	const [refusedIds, setRefusedIds] = useState<ReadonlyMap<string, string>>(
+	const [refusedKeys, setRefusedKeys] = useState<ReadonlyMap<string, string>>(
 		new Map(),
 	);
 	/*
@@ -155,6 +170,11 @@ export const useWakeCancel = ({
 	 * (`w1`..).
 	 */
 	const lastPressedIdRef = useRef<string | null>(null);
+	/*
+	 * The same press's KEY (see the marks above): the writing window's predicate
+	 * must not match a re-minted row that inherited the pressed handle.
+	 */
+	const lastPressedKeyRef = useRef<string | null>(null);
 
 	/*
 	 * A switch to another conversation closes everything this interaction holds.
@@ -167,9 +187,10 @@ export const useWakeCancel = ({
 		setAnchor(null);
 		setRefusal(null);
 		setBusy(false);
-		setCancelledIds(new Set());
-		setRefusedIds(new Map());
+		setCancelledKeys(new Set());
+		setRefusedKeys(new Map());
 		lastPressedIdRef.current = null;
+		lastPressedKeyRef.current = null;
 	}, [sessionId]);
 
 	/*
@@ -184,28 +205,36 @@ export const useWakeCancel = ({
 		const id = lastPressedIdRef.current;
 		if (id === null) return;
 		if (document.activeElement !== document.body) return;
-		document.querySelector<HTMLElement>(`[data-wake-cancel="${id}"]`)?.focus();
+		/*
+		 * The id goes into a SELECTOR, so it is escaped: the client schema admits
+		 * any string up to 64 characters, and a handle that is not selector-safe
+		 * must not make this effect throw (N2; `CSS.escape` is the pane's own
+		 * idiom).
+		 */
+		document
+			.querySelector<HTMLElement>(`[data-wake-cancel="${CSS.escape(id)}"]`)
+			?.focus();
 	}, [pending]);
 
 	/** Drop a row's refusal record, if it has one. */
-	const clearRefused = useCallback((id: string) => {
-		setRefusedIds((map) => {
-			if (!map.has(id)) return map;
+	const clearRefused = useCallback((key: string) => {
+		setRefusedKeys((map) => {
+			if (!map.has(key)) return map;
 			const next = new Map(map);
-			next.delete(id);
+			next.delete(key);
 			return next;
 		});
 	}, []);
 
 	/** One attempt's shared tail: mark the row, or record its refusal. */
 	const settle = useCallback(
-		(id: string, ok: boolean, detail: string) => {
+		(key: string, ok: boolean, detail: string) => {
 			if (ok) {
-				setCancelledIds((ids) => new Set(ids).add(id));
-				clearRefused(id);
+				setCancelledKeys((keys) => new Set(keys).add(key));
+				clearRefused(key);
 				return;
 			}
-			setRefusedIds((map) => new Map(map).set(id, detail));
+			setRefusedKeys((map) => new Map(map).set(key, detail));
 		},
 		[clearRefused],
 	);
@@ -213,14 +242,16 @@ export const useWakeCancel = ({
 	const request = useCallback(
 		(row: WakeRow, intent: WakeCancelIntent) => {
 			if (busy) return;
+			const key = wakeRowKey(row);
 			lastPressedIdRef.current = row.id;
+			lastPressedKeyRef.current = key;
 			/*
 			 * A fresh press is a FRESH question: the previous refusal's sentence
 			 * is cleared (U5) and so is that row's record of it — U8's "cleared on
 			 * the next change", where the next change is the next attempt.
 			 */
 			setRefusal(null);
-			clearRefused(row.id);
+			clearRefused(key);
 			if (intent.mode === "one-click") {
 				/*
 				 * THE OPERATOR'S ONE PRESS: no question, one write. The row's own
@@ -231,12 +262,13 @@ export const useWakeCancel = ({
 				void (async () => {
 					const outcome = await controls.cancel(row.id);
 					setBusy(false);
-					settle(row.id, outcome.ok, outcome.ok ? "" : outcome.detail);
+					settle(key, outcome.ok, outcome.ok ? "" : outcome.detail);
 				})();
 				return;
 			}
 			setPending({
 				id: row.id,
+				key,
 				head: wakePromptHead(row.message),
 				named: intent.named,
 			});
@@ -272,8 +304,8 @@ export const useWakeCancel = ({
 			if (pendingRef.current?.id !== pressed.id) return;
 			setBusy(false);
 			if (outcome.ok) {
-				setCancelledIds((ids) => new Set(ids).add(pressed.id));
-				clearRefused(pressed.id);
+				setCancelledKeys((keys) => new Set(keys).add(pressed.key));
+				clearRefused(pressed.key);
 				setPending(null);
 				setAnchor(null);
 				setRefusal(null);
@@ -285,7 +317,7 @@ export const useWakeCancel = ({
 			 * hands the keyboard back to Keep (`refusalSeq`). The row also records
 			 * it, invisible behind the card now, read after a dismissal.
 			 */
-			setRefusedIds((map) => new Map(map).set(pressed.id, outcome.detail));
+			setRefusedKeys((map) => new Map(map).set(pressed.key, outcome.detail));
 			setRefusal(outcome.detail);
 			setRefusalSeq((seq) => seq + 1);
 		})();
@@ -293,18 +325,19 @@ export const useWakeCancel = ({
 
 	const stateFor = useCallback(
 		(row: WakeRow): WakeRowCancelState | undefined => {
-			if (cancelledIds.has(row.id)) return { kind: "cancelled" };
+			const key = wakeRowKey(row);
+			if (cancelledKeys.has(key)) return { kind: "cancelled" };
 			/*
 			 * The ONE-PRESS write's in-flight window, which only the row it was
 			 * pressed on shows: a confirmation's in-flight window is the card's (both
 			 * its buttons disable), so `pending !== null` is excluded here.
 			 */
-			if (busy && pending === null && lastPressedIdRef.current === row.id)
+			if (busy && pending === null && lastPressedKeyRef.current === key)
 				return { kind: "writing" };
-			const detail = refusedIds.get(row.id);
+			const detail = refusedKeys.get(key);
 			return detail === undefined ? undefined : { kind: "refused", detail };
 		},
-		[busy, cancelledIds, pending, refusedIds],
+		[busy, cancelledKeys, pending, refusedKeys],
 	);
 
 	return {

@@ -132,82 +132,109 @@ export const WakeRowView = ({
 	/** A row-level line under the message (a one-press refusal's sentence). */
 	note?: ReactNode;
 }) => (
+	/*
+	 * The li is a COLUMN of two lines — the facts row, then the note — because
+	 * the note (a refusal's sentence, a managed row's explanation) must span the
+	 * row rather than wrap in the strip beside the control column: measured at
+	 * the 420px pane, the old placement gave a 154-character sentence a
+	 * 221x82px box, and at the 320px floor roughly nine lines while the facts
+	 * line lost its tail (design round 1, D1). The facts row keeps the mark
+	 * column, the text column and the control column where they were.
+	 */
 	<li
 		data-run-panel-row={row.id}
-		className={cn("group/wake flex items-start gap-2 px-3 py-0.5")}
+		className={cn("group/wake flex flex-col px-3 py-0.5")}
 	>
-		<span className={cn("pt-0.5")}>
-			<span
-				aria-hidden={true}
-				className={cn(
-					"flex size-4 shrink-0 items-center justify-center text-ink-dim",
-				)}
-			>
-				<AlarmClock className={cn("size-4")} />
-			</span>
-		</span>
-		<div className={cn("flex min-w-0 flex-1 flex-col")}>
-			<div className={cn("flex items-baseline gap-1.5")}>
-				{/*
-				 * The due label first, which is the TUI band's own order
-				 * (`wake_panel.py`: `due_label · every — message`) and the order of the
-				 * question a reader arrives with.
-				 *
-				 * `min-w-0 truncate` here and `shrink-0` on the cadence is the row's
-				 * recorded yield order one line down: the label is the longer string and
-				 * the one that can clip, so it is the one that gives, and the cadence —
-				 * a bounded figure — is never cut mid-word. The label's whole text has a
-				 * second home in the `title`, which is the app's rule for a value that
-				 * can be clipped (`session-status-strip.tsx` states it for the model
-				 * name); it is clipped only at the pane's 320px floor, where a full
-				 * `Sep 15 2026 9:26 AM EDT · every 1h30m` no longer fits beside the
-				 * mark column.
-				 */}
-				{row.dueLabel && (
-					<span
-						className={cn("min-w-0 truncate text-ink-muted text-meta")}
-						title={row.dueLabel}
-					>
-						{row.dueLabel}
-					</span>
-				)}
-				<span className={cn("shrink-0 text-ink-dim text-meta")}>
-					{row.dueLabel ? `· ${row.cadence}` : row.cadence}
-					{trailingClause ? ` · ${trailingClause}` : ""}
+		<div className={cn("flex items-start gap-2")}>
+			<span className={cn("pt-0.5")}>
+				<span
+					aria-hidden={true}
+					className={cn(
+						"flex size-4 shrink-0 items-center justify-center text-ink-dim",
+					)}
+				>
+					<AlarmClock className={cn("size-4")} />
 				</span>
-			</div>
-			{/*
-			 * The prompt, on the row's second line, which is the TUI's own layout for
-			 * a wake's message (`— {message}` after the schedule's facts).
-			 *
-			 * `line-clamp-2` with an `sr-only` twin and a `title`, rather than the
-			 * single clipped line this could have been: the message is the one
-			 * unbounded, authored string on the row, and the pane's convention for
-			 * those is exactly this pair (`run-detail-todos.tsx`'s blocked reason, the
-			 * roster's activity line). The row grows with it — 16px per line — and a
-			 * message longer than two lines still exists in full for assistive tech and
-			 * on hover, so a mouse is not the only way to read what a wake will say.
-			 *
-			 * `ink-muted` rather than the row's `ink-dim`: this is the part that says
-			 * WHAT the wake is for, and it is the part a reader is deciding about.
-			 */}
-			{row.message && (
-				<>
-					<span
-						aria-hidden={true}
-						className={cn("line-clamp-2 text-ink-muted text-meta leading-4")}
-						title={row.message}
-					>
-						{row.message}
+			</span>
+			<div className={cn("flex min-w-0 flex-1 flex-col")}>
+				<div className={cn("flex items-baseline gap-1.5")}>
+					{/*
+					 * The due label first, which is the TUI band's own order
+					 * (`wake_panel.py`: `due_label · every — message`) and the order of the
+					 * question a reader arrives with.
+					 *
+					 * `min-w-0 truncate` here and `shrink-0` on the cadence is the row's
+					 * recorded yield order one line down: the label is the longer string and
+					 * the one that can clip, so it is the one that gives, and the cadence —
+					 * a bounded figure — is never cut mid-word. The label's whole text has a
+					 * second home in the `title`, which is the app's rule for a value that
+					 * can be clipped (`session-status-strip.tsx` states it for the model
+					 * name); it is clipped only at the pane's 320px floor, where a full
+					 * `Sep 15 2026 9:26 AM EDT · every 1h30m` no longer fits beside the
+					 * mark column.
+					 */}
+					{row.dueLabel && (
+						<span
+							className={cn("min-w-0 truncate text-ink-muted text-meta")}
+							title={row.dueLabel}
+						>
+							{row.dueLabel}
+						</span>
+					)}
+					<span className={cn("shrink-0 text-ink-dim text-meta")}>
+						{row.dueLabel ? `· ${row.cadence}` : row.cadence}
+						{trailingClause ? ` · ${trailingClause}` : ""}
 					</span>
-					<span className={cn("sr-only")}>{row.message}</span>
-				</>
+				</div>
+				{/*
+				 * The prompt, on the row's second line, which is the TUI's own layout for
+				 * a wake's message (`— {message}` after the schedule's facts).
+				 *
+				 * `line-clamp-2` with an `sr-only` twin and a `title`, rather than the
+				 * single clipped line this could have been: the message is the one
+				 * unbounded, authored string on the row, and the pane's convention for
+				 * those is exactly this pair (`run-detail-todos.tsx`'s blocked reason, the
+				 * roster's activity line). The row grows with it — 16px per line — and a
+				 * message longer than two lines still exists in full for assistive tech and
+				 * on hover, so a mouse is not the only way to read what a wake will say.
+				 *
+				 * `ink-muted` rather than the row's `ink-dim`: this is the part that says
+				 * WHAT the wake is for, and it is the part a reader is deciding about.
+				 */}
+				{row.message && (
+					<>
+						<span
+							aria-hidden={true}
+							className={cn("line-clamp-2 text-ink-muted text-meta leading-4")}
+							title={row.message}
+						>
+							{row.message}
+						</span>
+						<span className={cn("sr-only")}>{row.message}</span>
+					</>
+				)}
+			</div>
+			{action && (
+				/*
+				 * The control column YIELDS (`min-w-0 shrink-[3]`), the monitors' own
+				 * rule one list over: a `shrink-0` column of this size is what pushed
+				 * the facts line out from under itself there (design round 1, D1), and
+				 * the wake row's refusal/mark states make that column wider still. What
+				 * gives first is the message's `line-clamp`, then this column's own
+				 * truncation; the 24px control height is never what shrinks.
+				 */
+				<div className={cn("flex min-w-0 shrink-[3] items-center gap-1.5")}>
+					{action}
+				</div>
 			)}
-			{note}
 		</div>
-		{action && (
-			<div className={cn("flex shrink-0 items-center gap-0.5")}>{action}</div>
-		)}
+		{/*
+		 * The note, on its own line under the facts: full width, which is what
+		 * lets a long refusal sentence wrap as a paragraph rather than as a
+		 * strip. `pl-6` aligns it with the message column (the 16px mark + the
+		 * 8px gap), so the row still reads as one object.
+		 */}
+		{note && <div className={cn("pl-6 pt-0.5")}>{note}</div>}
 	</li>
 );
 
@@ -221,15 +248,37 @@ export const WakeRowView = ({
  * `title` and its `sr-only` twin.
  */
 export const WakeManagedState = ({ name }: { name: string }) => (
+	/*
+	 * The state word in the control column, with the full sentence on `title`
+	 * only: the sentence itself is rendered VISIBLY as the row's note
+	 * (`WakeManagedNote`, below — design round 1's D2), so the sr-only twin this
+	 * span used to carry would have been the same sentence twice.
+	 */
 	<span
 		data-wake-managed=""
-		className={cn("flex min-w-0 items-center text-meta text-ink-dim")}
+		className={cn("min-w-0 truncate text-meta text-ink-dim")}
 		title={managedWakeNote(name)}
 	>
-		<span aria-hidden={true} className={cn("truncate")}>
-			{managedWakeShortLabel(name)}
-		</span>
-		<span className={cn("sr-only")}>{managedWakeNote(name)}</span>
+		{managedWakeShortLabel(name)}
+	</span>
+);
+
+/**
+ * The managed row's sentence, visible: why there is no cancel, and the lever
+ * that works (`/aida pause`).
+ *
+ * It rides the row's NOTE line — full width under the message, the same line a
+ * one-press refusal's sentence uses — so the lever is readable without hover at
+ * the 320px floor instead of hiding in a `title` on a non-focusable span (design
+ * round 1, D2: a sighted keyboard or touch reader never saw it). Dim ink: it is
+ * an explanation, not an alarm.
+ */
+export const WakeManagedNote = ({ name }: { name: string }) => (
+	<span
+		data-wake-managed-note=""
+		className={cn("text-meta text-ink-dim leading-4 text-pretty")}
+	>
+		{managedWakeNote(name)}
 	</span>
 );
 
@@ -251,13 +300,17 @@ const wakeCancelControlLabel = (row: WakeRow): string => {
 /**
  * One row's control column, or the state an attempt left there.
  *
- * The layout and every state word are the monitors' (`run-detail-monitors.tsx`),
+ * The layout and the state words are the monitors' (`run-detail-monitors.tsx`),
  * one list over, so the two columns read as one species: `Cancelled` is the
- * disabled receipt once a write lands, `Cancelling…` is the one-press write's
- * own in-flight window, and `Cancel refused` sits beside the live control until
- * the next attempt on that row clears it. The control is VISIBLE AT REST at the
- * 24px hit floor — the `h-6` and the reason are the monitors' own (U6) — and the
- * danger wash on hover is the wake line's own cancel ink on the page.
+ * disabled receipt once a write lands and `Cancelling…` is the one-press write's
+ * own in-flight window. A refusal, though, is NOT a word here: the row already
+ * carries the backend's whole sentence on its own note line (there is no card on
+ * the one-press path), and the short `Cancel refused` tag beside it said the same
+ * thing a second time — one statement, per design round 1's D5. The control
+ * stays live next to it, which is the next attempt. The control is VISIBLE AT
+ * REST at the 24px hit floor — the `h-6` and the reason are the monitors' own
+ * (U6) — and the danger wash on hover is the wake line's own cancel ink on the
+ * page.
  */
 const WakeRowAction = ({
 	row,
@@ -274,16 +327,7 @@ const WakeRowAction = ({
 	state: WakeRowCancelState | undefined;
 	cancel: WakeCancelSection;
 }) => (
-	<div className={cn("flex min-w-0 items-center gap-1.5")}>
-		{state?.kind === "refused" && (
-			<span
-				className={cn("min-w-0 max-w-40 truncate text-meta text-ink-dim")}
-				title={state.detail}
-				data-wake-cancel-state="refused"
-			>
-				Cancel refused
-			</span>
-		)}
+	<div className={cn("flex min-w-0 shrink-[3] items-center gap-1.5")}>
 		<Button
 			variant="ghost"
 			size="sm"
@@ -439,19 +483,30 @@ export const RunDetailWakes = ({
 								)
 							}
 							note={
-								state?.kind === "refused" && mode === "one-click" ? (
+								mode === "managed" ? (
 									/*
-									 * The one-press refusal's full sentence, ON the row: there is no
-									 * card on that path for it to live in, and it must be visible
-									 * without hover and announced — `<output>` is the semantic
-									 * element for that (role `status`, a polite live region), and
-									 * the sentence itself is the visible text. The control column
-									 * still carries the short `Cancel refused`.
+									 * The managed row's sentence, visible: it names the lever that
+									 * works (`/aida pause`) rather than hiding it in a `title` on a
+									 * non-focusable span (D2), and it is the SAME string the state
+									 * word's `title` carries (`managedWakeNote`), so the two cannot
+									 * drift.
+									 */
+									<WakeManagedNote name={identity.name} />
+								) : state?.kind === "refused" && mode === "one-click" ? (
+									/*
+									 * The one-press refusal's full sentence, ON the row and as its
+									 * own full-width line: there is no card on that path for it to
+									 * live in, and it must be visible without hover and announced
+									 * — `<output>` is the semantic element for that (role
+									 * `status`, a polite live region), and the sentence itself is
+									 * the visible text. It is the ONLY record of the refusal on
+									 * the row (the short tag retired, D5); the control beside it
+									 * is the next attempt.
 									 */
 									<output
 										data-wake-cancel-note=""
 										className={cn(
-											"block pt-0.5 text-danger text-meta leading-4",
+											"block pt-0.5 text-danger text-meta leading-4 text-pretty",
 										)}
 									>
 										{state.detail}
