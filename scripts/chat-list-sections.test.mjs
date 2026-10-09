@@ -299,7 +299,7 @@ test("the long form is a sentence, and it NAMES the basis it read", () => {
 	);
 });
 
-test("the partition keeps the catalogue's order and loses no row", () => {
+test("the partition keeps the order it is GIVEN and loses no row", () => {
 	const rows = [
 		row({ session_id: "a", ...at(NOW - 2 * DAY) }),
 		row({ session_id: "b", ...BUSY, ...at(NOW - 100 * DAY) }),
@@ -320,7 +320,14 @@ test("the partition keeps the catalogue's order and loses no row", () => {
 	assert.deepEqual(
 		parts.week.map((r) => r.session_id),
 		["a", "e"],
-		"the catalogue's own order survives inside a section",
+		/*
+		 * THE SEQUENCE INSIDE A SECTION IS THE CALLER'S (2026-10-08): this module is
+		 * a `filter`, and the order a reader sees is `pageOrder`'s - sorted by the
+		 * basis's clock - applied BEFORE this call. The assertion is that the
+		 * partition preserves the order it is given byte for byte, which is the half
+		 * that keeps the arrangement the single ordering authority.
+		 */
+		"the order the caller arranged survives the partition",
 	);
 	assert.deepEqual(
 		parts.older.map((r) => r.session_id),
