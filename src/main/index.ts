@@ -11,6 +11,7 @@ import {
 	globalShortcut,
 	ipcMain,
 	nativeImage,
+	session,
 	shell,
 	webContents,
 } from "electron";
@@ -111,6 +112,13 @@ import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
 import { attachWindowChrome, resolveLaunchWindowChrome } from "./window-chrome";
+import { openVettedExternal, popupVerdict } from "./window-guards";
+import {
+	guardNavigation,
+	guardPermissions,
+	guardPreviewResponses,
+	guardWindowOpen,
+} from "./window-guards-electron";
 import {
 	LAUNCHER_EXIT_DEADLINE_MS,
 	LAUNCHER_POLL_INTERVAL_MS,
@@ -701,6 +709,39 @@ const ownLaunchRequest = (): RaiseRequest => ({
 	trigger: "initial-present",
 });
 
+/**
+ * The ONE trusted renderer URL: the dev server while developing, the packaged
+ * document otherwise. Module scope because `createWindow` (which installs the
+ * navigation guard) lives here while `registerDesktopIPC` (which checks the same
+ * value against a sender's frame) lives inside `whenReady`; two spellings of "the
+ * trusted frame" is how one of them drifts.
+ */
+const rendererDocumentUrl = (): string =>
+	process.env.ELECTRON_RENDERER_URL ||
+	pathToFileURL(join(__dirname, "../renderer/index.html")).href;
+
+/**
+ * Every document of this app's own renderer that the main window's session may
+ * show: the app and the Quick send mini view (a second document of the same
+ * bundle with the same preload, whose composer asks for the microphone).
+ */
+const trustedRendererDocuments = (): readonly string[] => [
+	rendererDocumentUrl(),
+	miniViewUrlFor(rendererDocumentUrl()),
+];
+
+/**
+ * The single door from a renderer-reachable code path to the OS's URL handlers
+ * (`window.open` and the `open-external` IPC both land here). The scheme and
+ * shape rules are `window-guards.ts`'s; this binds them to `shell`.
+ */
+const openExternalVetted = (raw: unknown): Promise<boolean> =>
+	openVettedExternal(
+		raw,
+		(url) => shell.openExternal(url),
+		(message) => logger.warn(message, LogFileType.BACKEND),
+	);
+
 function createWindow(
 	initialSession: string | null = null,
 	openCatalogue = false,
@@ -966,87 +1007,49 @@ function createWindow(
 		}, 1500);
 	});
 
-	mainWindow.webContents.setWindowOpenHandler((details) => {
-		// Allow popups from authentication providers
-		const url = new URL(details.url);
-
-		// Expanded list of trusted authentication domains
-		const trustedAuthDomains = [
-			// Google auth domains
-			"accounts.google.com",
-			"oauth.googleusercontent.com",
-			"content.googleapis.com",
-			"ssl.gstatic.com",
-
-			// Microsoft auth domains
-			"login.microsoftonline.com",
-			"login.live.com",
-			"login.windows.net",
-			"login.microsoft.com",
-			"microsoftonline.com",
-			"msauth",
-			"msftauth",
-
-			// Auth relay domains
-			"storagerelay",
-
-			// Special case for initial blank page
-			"about:blank",
-		];
-
-		// Check if the URL is from a trusted authentication provider
-		const isTrustedAuthDomain =
-			// Special case for about:blank which is used by MSAL to initialize the popup
-			details.url === "about:blank" ||
-			// Check other trusted domains
-			trustedAuthDomains.some(
-				(domain) =>
-					url.hostname.includes(domain) ||
-					url.protocol.includes(domain) ||
-					// Special case for storage relay URLs
-					details.url.startsWith("storagerelay:") ||
-					details.url.includes("storagerelay"),
-			);
-
-		if (isTrustedAuthDomain) {
-			// Allow the popup for authentication with improved features.
-			//
-			// `overrideBrowserWindowOptions` is the key Electron reads here. This
-			// block used to be `features`, which is a property of the handler's
-			// ARGUMENT (the parsed `window.open()` feature string) and not of the
-			// response, so every option below — including `sandbox: true` — was
-			// silently ignored and the popup got Electron's own defaults. The
-			// options are unchanged; only the key is now the one that is honoured.
-			return {
-				action: "allow",
-				overrideBrowserWindowOptions: {
-					width: 800,
-					height: 700, // Increased height for better visibility
-					minWidth: 600,
-					minHeight: 500,
-					center: true,
-					frame: true,
-					autoHideMenuBar: false,
-					backgroundColor: "#FFFFFF",
-					webPreferences: {
-						contextIsolation: true,
-						nodeIntegration: false,
-						webSecurity: true,
-						allowRunningInsecureContent: false,
-						sandbox: true, // Enable sandbox for additional security
-						// Disable various features that aren't needed for auth
-						enableWebSQL: false,
-						navigateOnDragDrop: false,
-						spellcheck: false,
-					},
-				},
-			};
-		}
-
-		// For all other URLs, open in external browser and deny the popup
-		shell.openExternal(details.url);
-		return { action: "deny" };
-	});
+	/*
+	 * THE MAIN WINDOW'S HOST-POWER GUARDS (UI security lane U-a; the rules and
+	 * their rationale are `window-guards.ts`, the wiring is `window-guards-
+	 * electron.ts`). Navigation, `window.open` and permissions were all unguarded
+	 * for renderer-side content, which includes agent-generated HTML in the canvas
+	 * preview. Registered BEFORE the first load below so the initial navigation is
+	 * already under the rule.
+	 *
+	 * The popup branch keeps the sandboxed sign-in window exactly as it was; what
+	 * changed is WHICH urls reach it (host match, not substring) and that every
+	 * other url is scheme-gated before `shell.openExternal` instead of passed
+	 * through as a raw string.
+	 */
+	guardNavigation(mainWindow.webContents, trustedRendererDocuments, (m) =>
+		logger.warn(m, LogFileType.BACKEND),
+	);
+	guardWindowOpen(
+		mainWindow.webContents,
+		popupVerdict,
+		openExternalVetted,
+		{
+			width: 800,
+			height: 700, // Increased height for better visibility
+			minWidth: 600,
+			minHeight: 500,
+			center: true,
+			frame: true,
+			autoHideMenuBar: false,
+			backgroundColor: "#FFFFFF",
+			webPreferences: {
+				contextIsolation: true,
+				nodeIntegration: false,
+				webSecurity: true,
+				allowRunningInsecureContent: false,
+				sandbox: true, // Enable sandbox for additional security
+				// Disable various features that aren't needed for auth
+				enableWebSQL: false,
+				navigateOnDragDrop: false,
+				spellcheck: false,
+			},
+		},
+		(m) => logger.warn(m, LogFileType.BACKEND),
+	);
 
 	// HMR for renderer base on electron-vite cli.
 	// Load the remote URL for development or the local html file for production.
@@ -1932,6 +1935,23 @@ app
 		// Set app user model id for windows
 		electronApp.setAppUserModelId("com.local-operator");
 
+		/*
+		 * SESSION-LEVEL GUARDS, installed once before any window exists (UI
+		 * security lane U-a). The default session is shared by the main window, the
+		 * Quick send mini view and every iframe they host, so a policy set here
+		 * covers the canvas preview's frame too; the driven browser and the console
+		 * capture use their own partitions and are unaffected.
+		 *
+		 * - permissions: deny by default (Electron otherwise approves EVERYTHING,
+		 *   for any frame), granting only what the app's own documents use.
+		 * - the HTML preview route gets a CSP and nosniff on its RESPONSE, because
+		 *   the daemon serves it bare and that route is another repository's.
+		 */
+		guardPermissions(session.defaultSession, trustedRendererDocuments, (m) =>
+			logger.warn(m, LogFileType.BACKEND),
+		);
+		guardPreviewResponses(session.defaultSession);
+
 		// Smoke-test hook for the npx sanity check in CI. Reaching this point
 		// proves what the old check only assumed: the main bundle actually loaded
 		// and executed under the resolved Electron. Issue #88 shipped because the
@@ -2157,9 +2177,7 @@ app
 		// document otherwise. Named rather than inlined because a second consumer
 		// (the browser IPC namespace) checks the same value, and two spellings of
 		// "the trusted frame" is how one of them drifts.
-		const rendererUrl =
-			process.env.ELECTRON_RENDERER_URL ||
-			pathToFileURL(join(__dirname, "../renderer/index.html")).href;
+		const rendererUrl = rendererDocumentUrl();
 		/*
 		 * The capture view's own document, derived from the trusted renderer URL rather than
 		 * spelled a second time: in development it is the same dev server with a different
@@ -2773,12 +2791,15 @@ app
 			},
 		);
 
+		/*
+		 * Vetted, not forwarded: the renderer's `window.api.openExternal` takes any
+		 * string, and `shell.openExternal` launches whatever the OS maps the scheme
+		 * to. Every caller in the renderer passes an http(s) link (or an update
+		 * remedy's page); a refusal is logged and resolves quietly, which is what a
+		 * failed open did before.
+		 */
 		ipcMain.handle("open-external", async (_, url) => {
-			try {
-				await shell.openExternal(url);
-			} catch (error) {
-				console.error("Error opening URL:", error);
-			}
+			await openExternalVetted(url);
 		});
 
 		ipcMain.handle(
