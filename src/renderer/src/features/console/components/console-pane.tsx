@@ -652,8 +652,10 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				 * the terminal used to start at the pane's own edge, so the width
 				 * allowance was spent as a right-hand gutter of ground rather than as
 				 * chrome: measured, 780 px of grid inside an 804 px pane, with column 0
-				 * at x=1 against the title's x=9. One gutter, one width, and the
-				 * default width (`CONSOLE_PANE_CHROME_PX`) is now exactly these two.
+				 * at x=1 against the title's x=9. One gutter, one width, and the 16 px
+				 * of chrome in the slot's default (`DEFAULT_RIGHT_SLOT_WIDTH` is 80
+				 * columns plus those 16, pinned by `scripts/console-pane.test.mjs`) is
+				 * now exactly these two.
 				 */}
 				<div className={cn("relative flex min-h-0 grow flex-col px-2")}>
 					{/*
