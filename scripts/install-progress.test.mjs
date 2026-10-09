@@ -1346,6 +1346,27 @@ test("the estimate is the measured baselines, rounded, and never negative", () =
 		),
 		"taking longer than usual",
 	);
+	/*
+	 * AND THE FACTOR'S VALUE IS PINNED BY ABSOLUTE CASES, not only by the edge
+	 * cases above (code review round 3, R3-1): those compare against the constant,
+	 * so a mutant moved the boundary with them - 1.0 kept the suite green (QA's
+	 * loaded 15.56 s reading would print the sentence again, the behaviour Q2-1
+	 * removed) and 5.0 did too. These two cannot move with it: a reading inside a
+	 * 1.5x rule must stay a number, and one DOUBLE the budget must be the sentence.
+	 */
+	assert.equal(installEta("darwin", "components", 15_560), "about 4 s left");
+	assert.equal(
+		installEta("darwin", "components", mac.components * 2),
+		"taking longer than usual",
+	);
+	/*
+	 * And the value itself, because it is a decision rather than a derived
+	 * quantity: the two cases above bound it to (1.11, 2.0] - QA's loaded reading
+	 * over the budget is the lower bound and twice the budget the upper - and this
+	 * says which point in that band was chosen, so changing the factor means
+	 * changing this line deliberately, in the same commit.
+	 */
+	assert.equal(INSTALL_OVERRUN_FACTOR, 1.5);
 	assert.equal(installPlatform("freebsd"), "linux");
 	assert.equal(formatElapsed(0), "0:00");
 	assert.equal(formatElapsed(67_400), "1:07");
