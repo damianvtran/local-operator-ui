@@ -22,8 +22,18 @@ import { doneGateRefusalOf, projectMoveErrorCopy } from "./project-refusals";
 
 /** What one finished move amounts to, for the caller to speak or act on. */
 export type StatusMoveOutcome =
-	/** The daemon accepted the PATCH. */
-	| { kind: "moved" }
+	/**
+	 * The daemon accepted the PATCH.
+	 *
+	 * DELIBERATELY NOT the transfers' movement kind: `scripts/draft-selection.test.mjs`
+	 * scans `src/renderer/src` for the transfer outcome's own comparison and
+	 * demands `settlePlacement(` beside it - that shape names the CHAT's
+	 * transfer outcomes, whose every site must settle the row a move lands on.
+	 * A projects status move answers no transfer receipt, so it must not wear
+	 * the transfers' vocabulary (it tripped that guard: agent review round 3,
+	 * R3-1; the literal is spelled out in the guard, not here).
+	 */
+	| { kind: "accepted" }
 	/** The done-gate refusal, and this daemon can honour a forced close. */
 	| { kind: "question"; refusal: DoneGateRefusal }
 	/** Everything else: the sentence belongs in a toast. */
@@ -52,7 +62,7 @@ export async function runStatusMove(
 ): Promise<StatusMoveOutcome> {
 	try {
 		await input.move();
-		return { kind: "moved" };
+		return { kind: "accepted" };
 	} catch (error) {
 		const refusal = doneGateRefusalOf(error);
 		/*
