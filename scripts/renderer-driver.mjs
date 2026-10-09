@@ -105,7 +105,8 @@
  *                          detail page down and hands the box the caret;
  *                          `stay` is the head tree, where the page opens at
  *                          scrollTop 0, unfocused, with the strip below the
- *                          fold. *   --gate-state <label>   (with --scene settings-gate) what this run's backend
+ *                          fold.
+ *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
  *                          runs against two backends can be told apart
  *   --integration-command <cmd> (with --scene settings-integrations) the stdio
@@ -36813,6 +36814,13 @@ const PROJECT_OPEN_TARGET = `${PROJECT_OPEN_STRIP} button[aria-label="Select the
 /** The chat pane's own composer - the control the change must not move. */
 const PROJECT_OPEN_CHAT_TEXTAREA =
 	'[data-tour-tag="chat-input-textarea"] textarea';
+/**
+ * The sidebar's always-visible `Projects` row: the leaving control for the U1
+ * re-entry leg, which needs a press that lands at ANY scroll offset - the
+ * header's "All projects" escape sits inside the scroller and must be wheeled
+ * to first (which is how the first round's leg missed the defect).
+ */
+const PROJECT_OPEN_SIDEBAR = '[data-tour-tag="nav-item-projects"]';
 /** The key `projects-view-switcher.tsx` persists the view under (`PROJECTS_VIEW_STORAGE_KEY`). */
 const PROJECTS_VIEW_STORAGE_KEY = "projects-view";
 
@@ -37032,15 +37040,20 @@ async function wheelUntilInScroller(
  * head tree: scrollTop 0 in the first frame, at every sampled frame and when
  * settled, with the box unfocused and still under the fold. The flag changes
  * which CLAIM the checks assert, never what the scene drives - and the control
- * legs (click-in, pointer send, target switch, chat autofocus, back) run under
- * both, because a change that fixes the jump by breaking the composer is not a
+ * legs (click-in, pointer send, target switch, chat autofocus, back, and the
+ * leave-scrolled re-entry UX round 1's U1 was found through) run under both,
+ * because a change that fixes the jump by breaking the composer is not a
  * fix.
  *
  * WHAT IT NEEDS: `--backend` and `--backend-records` (the seeded row and its
  * two linked sessions are read from the daemon this run owns), `--project`
  * (the seed's key), and `--theme` one palette per launch. It captures four
- * frames per palette: `first` and `settled` (the pair), `typed` and
- * `chat-focus` (the two controls the change must not move).
+ * frames per palette - `first` and `settled` (the pair), `typed` and
+ * `chat-focus` (the two controls the change must not move) - plus a fifth,
+ * `rest` (the strip scrolled into view, empty and unfocused), under `stay`
+ * only: on the base tree the defect focuses the strip on the way in, so
+ * "unfocused at rest" is a claim only the head tree can carry (design review
+ * round 1, D1).
  *
  * WHAT IT USES THAT IS NOT THE PRODUCT: `Emulation.setFocusEmulationEnabled`
  * over CDP, because a window that is never shown cannot be focused and a page
@@ -37393,6 +37406,37 @@ async function sceneProjectOpen(cdp) {
 	await wait(200);
 
 	/*
+	 * THE REST FRAME (design review round 1, D1). `after/first-*` is the page at
+	 * scrollTop 0, where the strip is BELOW THE FOLD - so the committed pair
+	 * never shows the thing the operator asked to keep as an available option:
+	 * the strip as a clear affordance, EMPTY and UNFOCUSED, reached by the
+	 * reader's own scrolling. This is the moment after the wheel reach and
+	 * before anything is clicked. The frame is `stay`-only because on the base
+	 * tree the strip is focused by the defect on the way in, so "unfocused at
+	 * rest" is a claim only the head tree can carry; the check beside it gives
+	 * the frame its numbers.
+	 */
+	if (AUTOFOCUS_EXPECT === "stay") {
+		const atRest = await projectOpenReading(cdp);
+		const empty = await cdp.evaluate(
+			`document.querySelector(${JSON.stringify(PROJECT_OPEN_TEXTAREA)})?.value === ""`,
+		);
+		check(
+			"the strip is on screen, empty and unfocused at rest (the frame D1 asks for)",
+			inScroller(atRest) &&
+				atRest.textareaFocused === false &&
+				atRest.textareaMatchesFocus === false &&
+				empty === true,
+			`valueEmpty=${empty}; ${projectOpenSummary(atRest)}`,
+		);
+		const restFrame = await captureSettled(cdp, label("rest"));
+		note(
+			"rest frame",
+			`frame=${restFrame.label} stable=${restFrame.stable === true}`,
+		);
+	}
+
+	/*
 	 * THE TARGET SWITCH, one short leg: the strip's Send-to control is the app's
 	 * own Radix `Select`, so the option is picked with a real pointer press on
 	 * the option's own box. The claim recorded is the change's own - switching
@@ -37668,6 +37712,66 @@ async function sceneProjectOpen(cdp) {
 				!back.textareaFocused &&
 				!back.textareaMatchesFocus,
 			`expected scrollTop === 0 and no focus; ${projectOpenSummary(back)} hash=${backHash}`,
+		);
+	}
+
+	/*
+	 * (c) LEAVE WHILE SCROLLED, RE-OPEN THE SAME PROJECT (UX round 1, U1). The
+	 * leg above cannot catch this: it wheels back to the TOP before leaving
+	 * through the header's "All projects", so the offset is already 0 when the
+	 * node reuse gets its chance. The detail scroller's DOM node is REUSED for
+	 * the list and the detail (`projects-page.tsx` returns one `div` shape from
+	 * both branches), so an offset can only survive a leave that happens WHILE
+	 * SCROLLED - and the leaving control is the SIDEBAR's "Projects" row,
+	 * outside the scroller and visible at every offset, where the header's
+	 * escape sits inside the scroller and would have to be wheeled to first.
+	 * Re-opening the SAME project is then the discriminating read: the head
+	 * tree resets the reused node to the top (the layout effect keyed on
+	 * `projectId`), the base tree has no reset at all - so the base half
+	 * RECORDS where it lands rather than asserting a number that is the
+	 * defect's own reading.
+	 */
+	const leftScrolled = await wheelUntilInScroller(cdp, stripFinder);
+	const abandoned = await projectOpenReading(cdp);
+	check(
+		"the page can be left while scrolled (a real wheel gesture, strip in view)",
+		leftScrolled.ok && abandoned !== null && abandoned.scrollTop > 0,
+		`left at ${projectOpenSummary(abandoned)}`,
+	);
+	await clickAt(cdp, PROJECT_OPEN_SIDEBAR);
+	const toList = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector(${JSON.stringify(listRow)}))`,
+		20_000,
+	);
+	check(
+		"the sidebar's Projects row returns to the list",
+		toList.ok,
+		`after ${toList.waitedMs}ms`,
+	);
+	await wait(150);
+	await clickAt(cdp, listRow);
+	const reopened = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector(${JSON.stringify(PROJECT_OPEN_TEXTAREA)}))`,
+		30_000,
+	);
+	if (reopened.ok) await twoAnimationFrames(cdp);
+	const reentryScrolled = await projectOpenReading(cdp);
+	if (AUTOFOCUS_EXPECT === "jump") {
+		note(
+			"re-entry while scrolled (base)",
+			`${projectOpenSummary(reentryScrolled)} (left at ${abandoned?.scrollTop})`,
+		);
+	} else {
+		check(
+			"re-opening the same project while scrolled still lands at the top, unfocused (stay)",
+			reopened.ok &&
+				reentryScrolled !== null &&
+				reentryScrolled.scrollTop === 0 &&
+				!reentryScrolled.textareaFocused &&
+				!reentryScrolled.textareaMatchesFocus,
+			`expected scrollTop === 0 and no focus; ${projectOpenSummary(reentryScrolled)} (left at ${abandoned?.scrollTop})`,
 		);
 	}
 }
