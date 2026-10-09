@@ -216,10 +216,10 @@ are shown - the cluster the deleted arrow buttons used to make 108/136.
   mounted gate (`chat-row-hover-intent.tsx`) only after the app's
   `HOVER_INTENT_MS` (200ms) has elapsed, and cleared on `pointerleave` so a
   re-entering pointer waits a fresh interval. The constant is imported from the
-  panel divider rather than restated - it is the one the panel's divider and the
-  chat's measure handle already reveal on (the sidebar's collapse cluster used to
-  be named here as a third; it is no longer drawn, agent review round 1's M1) -
-  and it is deliberately
+  panel divider rather than restated - it is the one the panel's divider already
+  reveals on (the sidebar's collapse cluster and the chat's measure handle used to
+  be named here as well; neither is drawn any more, agent review round 1's M1 and
+  #895) - and it is deliberately
   NOT the pan's `TOOLTIP_DELAY_MS` (400ms): the order between the two is
   load-bearing, because the pan measures the HOVERED box and so must run after
   the acts have taken their 56px. The keyboard's door is
