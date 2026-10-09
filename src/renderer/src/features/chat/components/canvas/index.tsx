@@ -492,6 +492,18 @@ const CanvasComponent: FC<CanvasProps> = ({
 			 */
 			if (event.key === "Escape" && conversationId) {
 				/*
+				 * STAND DOWN ON A CLAIM SOMEBODY ELSE ALREADY MADE (UX round 1, U2).
+				 * The asks drawer's own Escape closes it with `preventDefault`, and the
+				 * drawer's close re-projects the memory, which re-mounts THIS pane inside
+				 * the same dispatch — so without this guard the single press that gave
+				 * the canvas back would also close it, and closing is a WRITE: the
+				 * conversation's own entry would be deleted. This is the same claim
+				 * signal `chat-page.tsx`'s ladder and `askClaimsEscape` read — a surface
+				 * that already claimed the press keeps it — so the ladder keeps one
+				 * consumer per press rather than two.
+				 */
+				if (event.defaultPrevented) return;
+				/*
 				 * The same overlay test the app-level binding asks, from the same module: a
 				 * second hand-written copy of the four roles is a fifth one waiting to drift.
 				 */

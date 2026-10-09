@@ -39,6 +39,7 @@ import {
 	type MemoryPane,
 	type RightSlotMemory,
 	isDraftMemoryKey,
+	isMemoryPane,
 	memoryCarry,
 	memoryPaneFlag,
 	memoryProject,
@@ -2339,11 +2340,15 @@ function persistableRightSlotMemory(memory: RightSlotMemory): RightSlotMemory {
 /**
  * What a hydrated blob is allowed to say about the slot (issue #894).
  *
- * `merge` rather than the default shallow spread, for ONE field and one guard:
+ * `merge` rather than the default shallow spread, for what disk is allowed to say:
  *
  * - `rightSlotMemory` is read back through `memorySanitize`, because `localStorage`
  *   is not a trusted input — a hand edit, a downgrade or a half-written blob must not
  *   put a key nothing can reach or a pane the store does not have into the memory;
+ * - `rightSlotLegacySeed` is read through `isMemoryPane` for the same reason (agent
+ *   review round 1, F2): `...rest` used to carry any value a hand-edited blob held
+ *   straight to the first bind, which planted it as an entry the projection can
+ *   never draw. The seed is a pane name or nothing;
  * - the four flag keys are dropped if a blob still carries one. The migration
  *   deletes them, so this only fires for a blob that never went through it (a hand
  *   edit, or a build-order accident), and what it prevents is the one thing the
@@ -2370,6 +2375,9 @@ export function mergePersistedUiPreferences(
 		...rest,
 		rightSlotKey: current.rightSlotKey,
 		rightSlotMemory: memorySanitize(blob.rightSlotMemory),
+		rightSlotLegacySeed: isMemoryPane(blob.rightSlotLegacySeed)
+			? blob.rightSlotLegacySeed
+			: null,
 	};
 }
 
