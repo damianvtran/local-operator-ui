@@ -78,6 +78,9 @@ export const forest: ThemeDefinition = {
 		// measures 3.38 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
 		messageSurface: "#27352c",
+		// The media slot's well: `sunken` itself, which already clears the
+		// role's floor off this canvas (measured ΔE00 4.36, 3.30 L*).
+		mediaSurface: "#1C211E",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
