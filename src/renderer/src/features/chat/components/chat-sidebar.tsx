@@ -84,6 +84,7 @@ import {
 	ChevronDown,
 	ChevronRight,
 	ChevronUp,
+	Copy,
 	FileText,
 	FolderPlus,
 	GitFork,
@@ -226,6 +227,12 @@ import {
 } from "../chat-sidebar-view";
 import { useStripSpeaksConnection } from "../chat-status-presence";
 import { clearSearch } from "../clear-search";
+/*
+ * THE ACT'S OWN WRITE (#893): copying a conversation's session id, in the one
+ * module both of this feature's doors call - so the sidebar's row menu and the
+ * header's overflow menu cannot drift about what is copied or what it says.
+ */
+import { copySessionId } from "../copy-session-id";
 import {
 	discardDraftLabel,
 	discardSuccessorIndex,
@@ -5781,13 +5788,14 @@ export function ChatSidebar({
 				 * THE ITEMS, and the ORDER rule that places them: the mirrored pair first, in the
 				 * strip's own measured order (the archive glyph is `order-first`, so the menu reads
 				 * Archive then Pin and the two surfaces cannot present the same acts backwards);
-				 * then Fork, the UNCONDITIONAL singleton; then the CONDITIONAL block, which is the
-				 * Move pair. Rows 1-2 are the pair, and the third slot therefore keeps one identity
-				 * in every state - Fork on an ordinary row and Fork on a pinned one - instead of
-				 * changing which act a reader finds there (round-1 design review, D2; this replaces
-				 * the fold's append, under which the third slot was Fork only where no Move was
-				 * offered). Everything the two Move items need to stay adjacent to each other is
-				 * unaffected: the block trails as a unit.
+				 * then the UNCONDITIONAL run - Fork and, since #893, Copy session ID, both drawn on
+				 * every row the menu is drawn on; then the CONDITIONAL block, which is the Move pair.
+				 * Rows 1-2 are the pair and rows 3-4 are the unconditional run, so each of those
+				 * slots keeps one identity in every state - Fork on an ordinary row and Fork on a
+				 * pinned one - instead of changing which act a reader finds there (round-1 design
+				 * review, D2; this replaces the fold's append, under which the third slot was Fork
+				 * only where no Move was offered). Everything the two Move items need to stay
+				 * adjacent to each other is unaffected: the block trails as a unit.
 				 *
 				 * Drawn from THE SAME PREDICATES the row's own controls read (`archiveEnabled`,
 				 * `row.pinned !== undefined`, `offersMove`), so the two cannot disagree about
@@ -5809,7 +5817,7 @@ export function ChatSidebar({
 				 * to spend.
 				 *
 				 * FORK IS THE THIRD ROW (#739, re-ordered by the round-1 design review, D2), and
-				 * it differs from the four around it in mechanism: there is no row control to
+				 * it differs from the five around it in mechanism: there is no row control to
 				 * press, so it opens the register's own `session.fork` picker for THIS row's
 				 * conversation through the panel-presentation store (see its `onSelect`). It
 				 * carries NO chord, because fork has none - `/fork` and the palette are its other
@@ -5817,19 +5825,28 @@ export function ChatSidebar({
 				 * chord would be a hint for a gesture that does nothing. It is drawn from the
 				 * sidebar's own `unstarted` statement (`forkable`, above).
 				 *
-				 * THE MENU'S CAP IS FIVE ROWS, and the rule - not a number - is what the design
+				 * THE MENU'S CAP IS SIX ROWS, and the rule - not a number - is what the design
 				 * record now concludes with: a row earns its place by being an act on THIS row
 				 * that has NO OTHER DOOR THE USER CAN FIND. Archive and Pin qualify (the strip's
 				 * pair is `tabIndex={-1}` and reachable only through chords the row prints
 				 * nowhere); the Move pair qualifies as WCAG 2.5.7's single-pointer path, which the
 				 * deleted arrow buttons used to carry; Fork qualifies because it is the only door
 				 * that names the ROW's conversation - neither `/fork` nor the palette can, as both
-				 * act on the pane's. A sixth act is admitted only by passing that test; otherwise
-				 * it replaces a row or finds another surface. The cap costs **296 × 184** in its
-				 * widest state (a pinned row, where the Move rows draw their full chords) at a
-				 * 280px sidebar, and around eight rows or ~280px tall is where the answer changes
-				 * from "grow" to "submenu or another surface". `scripts/chat-sidebar-row-menu.test.mjs`
-				 * counts the items and pins their order, so a sixth is a failing assertion rather
+				 * act on the pane's; and COPY SESSION ID (#893) is the sixth, admitted by the same
+				 * test - the row's own id has NO other door TODAY (the header's overflow menu names
+				 * the PANE's conversation, which is generally not the row's, and nothing on the row
+				 * reveals the id), so the number moved rather than a row being replaced. A seventh
+				 * act is admitted only by passing that test; otherwise it replaces a row or finds
+				 * another surface. The cap's widest state is a pinned row, where the Move rows draw
+				 * their full chords - it now draws SIX rows, so the pinned-row frame and its
+				 * measurement are re-derived in the evidence pass
+				 * (`docs/evidence/chat-sidebar-row-context-menu/README.md`); the five-row panel this
+				 * note used to carry (296 × 184 at a 280px sidebar) no longer describes it, and no
+				 * replacement figure is written here, because a number this file cannot render is a
+				 * number it must not claim. Around eight rows or ~280px tall is where the answer
+				 * changes from "grow" to "submenu or another surface".
+				 * `scripts/chat-sidebar-row-menu.test.mjs`
+				 * counts the items and pins their order, so a seventh is a failing assertion rather
 				 * than a quiet addition.
 				 */}
 				<ContextMenuContent
@@ -5973,6 +5990,34 @@ export function ChatSidebar({
 							<span>Fork conversation</span>
 						</ContextMenuItem>
 					)}
+					{/*
+					 * COPY SESSION ID (#893): the row's own id, onto the clipboard, so it can be
+					 * handed to a `sessions`/`send` call naming this device or run as a `lop` command
+					 * - which is also why a REMOTE row is no different here (the copied value IS the
+					 * owning device's id; see `copy-session-id.ts`).
+					 *
+					 * SLOT 4, between Fork and the Move pair, and it OBEYS the ordering rule §1
+					 * states rather than bending it: rows 1-2 are the mirrored pair, row 3 is the
+					 * menu's UNCONDITIONAL singleton, and the CONDITIONAL block (the Move pair)
+					 * trails as a unit. This item is unconditional too, so it takes its place
+					 * beside Fork in the unconditional run and keeps one identity in every state -
+					 * a conditional act does not take a slot above an unconditional one, and none of
+					 * the two acts above it is displaced.
+					 *
+					 * UNCONDITIONAL LIKE FORK, on purpose: copying an id works on EVERY row the menu
+					 * is drawn on, including a row whose pin state is unknown and a row behind the
+					 * archived list, so it carries no predicate of its own. It works on a remote row
+					 * for the same reason the menu exists there at all - the menu's gate is the PANEL's
+					 * capabilities (`menuEnabled`), not row locality, and the id it copies is
+					 * well-defined on both.
+					 *
+					 * NO CHORD, the same rule the Fork item states: a `KeyboardShortcut` here would
+					 * print a hint for a gesture the app does not bind.
+					 */}
+					<ContextMenuItem onSelect={() => void copySessionId(row.session_id)}>
+						<Copy aria-hidden="true" />
+						<span>Copy session ID</span>
+					</ContextMenuItem>
 					{offersMove && (
 						<>
 							{/*

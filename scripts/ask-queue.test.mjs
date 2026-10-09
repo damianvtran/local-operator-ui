@@ -929,13 +929,14 @@ test("the item's name never doubles a mark, and its clause is the model's one sp
 	assert.ok(name.includes(queue.askChipClause(questionless, TS)));
 });
 
-/* --------------------------------------------------- the composer's mode ---- */
+/* ------------------------------------------- the composer and a secret ask ---- */
 
-test("an ask with a fillable question is the composer's mode; a SECRET-ONLY one is not", () => {
-	// Agent review round 3, F3: `askAnswering` asked only `canAnswer`, so a
-	// secret-only open ask promised an answer the Enter key cannot send - and,
-	// because such an ask is deliberately not the composer's mode, an ordinary box
-	// would have been the place a typed credential became a chat message.
+test("a SECRET-ONLY ask refuses the main box; any fillable question leaves it ordinary", () => {
+	// A credential-safety rule, not routing (the routing is retired - the main box is
+	// an ordinary chat box in every state; `ask-composer-no-routing.test.mjs`). With a
+	// secret-only ask open, an ordinary box is where a typed credential would become a
+	// chat message, so the box refuses instead and the panel's masked field is the only
+	// door for the value.
 	const fillable = queue.askQueueView({
 		asks: [
 			single({
@@ -943,7 +944,6 @@ test("an ask with a fillable question is the composer's mode; a SECRET-ONLY one 
 			}),
 		],
 	});
-	assert.equal(queue.askComposerAnswers(fillable), true);
 	assert.equal(queue.askComposerHoldsSecret(fillable), false);
 
 	const secretOnly = queue.askQueueView({
@@ -954,18 +954,14 @@ test("an ask with a fillable question is the composer's mode; a SECRET-ONLY one 
 		],
 	});
 	assert.equal(
-		queue.askComposerAnswers(secretOnly),
-		false,
-		"a plaintext box cannot fill it",
-	);
-	assert.equal(
 		queue.askComposerHoldsSecret(secretOnly),
 		true,
-		"so the box must refuse instead",
+		"the box must refuse",
 	);
 
-	// Mixed: the fillable question is what the composer is for; the secret one is
-	// the panel's.
+	// Mixed: the secret question has its own masked field in the panel; the box
+	// stays ordinary because the ask has a fillable question the user can answer
+	// without it.
 	const mixed = queue.askQueueView({
 		asks: [
 			single({
@@ -976,42 +972,25 @@ test("an ask with a fillable question is the composer's mode; a SECRET-ONLY one 
 			}),
 		],
 	});
-	assert.equal(queue.askComposerAnswers(mixed), true);
 	assert.equal(queue.askComposerHoldsSecret(mixed), false);
-});
 
-test("the mode STOPS answering when the last open ask settles (the F1 delta)", () => {
-	// The defect: the swap keyed on the panel flag while the mode keyed on
-	// answerability, so a queue that settled under an OPEN panel flipped the mode
-	// without swapping - and the ask-buffer answer went out as a chat message.
-	// Both now read THIS predicate, so the transition is one event.
-	const open = queue.askQueueView({ asks: [single({ status: "open" })] });
-	assert.equal(queue.askComposerAnswers(open), true);
-	// Settled from the phone while the panel is open: `late` is terminal. `delivered`
-	// is stated rather than left to the default (false) because the two are now
-	// independent: since §10, a `late` answer that has NOT been handed to the model is
-	// still the user's to change (`presentAsk`'s `delivering`), so only a delivered one
-	// is the settled state this fixture means.
+	// A settled ask has nothing left to protect, and an emptied queue never refuses.
 	const settled = queue.askQueueView({
 		asks: [
 			single({
 				status: "late",
 				delivered: true,
 				answers: { target: ["staging"] },
+				questions: [{ id: "k", question: "Paste the key", secret: true }],
 			}),
 		],
 	});
+	assert.equal(queue.askComposerHoldsSecret(settled), false);
 	assert.equal(
-		queue.askComposerAnswers(settled),
-		false,
-		"the mode's transition",
-	);
-	// An emptied queue reaches the same state.
-	assert.equal(
-		queue.askComposerAnswers(queue.askQueueView({ asks: [] })),
+		queue.askComposerHoldsSecret(queue.askQueueView({ asks: [] })),
 		false,
 	);
-	assert.equal(queue.askComposerAnswers(queue.askQueueView(null)), false);
+	assert.equal(queue.askComposerHoldsSecret(queue.askQueueView(null)), false);
 });
 
 /* ------------------------------------------------------------- the claim ---- */
@@ -1059,7 +1038,7 @@ test("the Escape claim is ours over the ask panel, the item that opens it, and t
 			target: targetInside(queue.COMPOSER_TEXTAREA_SELECTOR),
 		}),
 		true,
-		"the composer box is ours - it is the box this lane answers from",
+		"the composer box is ours - Escape there collapses the drawer rather than falling through to the turn's interrupt",
 	);
 	// A deeper owner that cancels on Escape without calling `preventDefault` - the
 	// sidebar's search, the directory indicator, the dictation cancel - must not
