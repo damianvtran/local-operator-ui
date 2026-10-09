@@ -213,14 +213,16 @@ room its content actually needs (a roster *and* a conversation).
 ```
 [ sidebar ] [ chat column                              ] [ right pane ] [ rail ]
              avatar  name / description         ...                      info
+                                                                         question
                                                                          globe
                                                                          terminal
                                                                          file
 ```
 
 - **The trigger lives on the panel rail (#872), not in the chat header.** The
-  rail is a permanent 44px column at the window's right edge holding the four
-  right-slot doors in a fixed order (Run details, Browser, Console, Canvas), so
+  rail is a permanent 44px column at the window's right edge holding the five
+  right-slot doors in a fixed order (Run details, Asks, Browser, Console, Canvas -
+  the asks item returned to its historical second slot in #896), so
   the trigger is the first item of that column. It keeps the properties this
   section argued for in the header: it does **not** become the panel's own
   header, and it stays reachable and clickable while the pane is open, which is
@@ -228,7 +230,8 @@ room its content actually needs (a roster *and* a conversation).
   answer to "which panel is this". What the move removed is the header's shed
   ladder: the trigger used to be the FIRST control the header's row dropped as it
   narrowed, and a permanent column has nothing to shed. The header's `...` menu
-  still lists the four entries (the keyboard door; the rail is not an F6 region).
+  still lists all five entries - the asks row joined it in #896, when that door
+  left the header (the keyboard door; the rail is not an F6 region).
   The history below - the cluster, the segmented control it rejected - is the
   reasoning of the version before the rail and is kept for what it records.
 - **One right pane at a time.** `isRunPanelOpen` and `isCanvasOpen`
