@@ -13,8 +13,9 @@
  * THE SIX STATES, from `ImageGenCardView` (`image-gen-card-model.ts` — the one
  * module that knows the record's fields):
  *
- *   queued     an honest state line — its datum slot states the queue position
- *              when the live field carries one, never an invented number — and
+ *   queued     an honest state line — its datum slot states how many requests
+ *              are ahead ("2 ahead") when the live field carries one, never an
+ *              invented number — and
  *              NO generating tile, because nothing is being generated yet and
  *              the tile would borrow running's claim.
  *   running    the media-scale tile with the shimmer sweep, the state line
@@ -190,15 +191,24 @@ function StateLine({
 		case "queued":
 			text = view.composing ? "Writing the request…" : "Queued";
 			/*
-			 * The datum slot, one precedence: a STATED queue position wins (the
+			 * The datum slot, one precedence: a STATED queue depth wins (the
 			 * live field's only render, and the fact a waiting reader wants),
 			 * then the dictation's byte count when there is one, then nothing —
 			 * every branch negativeable, like the progress facts themselves
 			 * (round-1 QA Q-1: the slot existed with no consumer before this).
 			 */
+			/*
+			 * THE COPY STATES WHAT THE NUMBER COUNTS. `queue_position` is the
+			 * count of requests AHEAD of this one (FAL's own semantics; 0 means
+			 * nothing is ahead), so "position 3" would read one off — the TUI's
+			 * design ruling D3 ("N requests ahead"). "N ahead" is the same
+			 * meaning in this card's terse register: the state line already says
+			 * "Queued", so the datum only needs the count and its unit-less
+			 * direction, not the noun again.
+			 */
 			detail =
 				view.queuePosition !== null
-					? `position ${view.queuePosition}`
+					? `${view.queuePosition} ahead`
 					: view.argumentBytes > 0
 						? formatBytes(view.argumentBytes)
 						: null;
