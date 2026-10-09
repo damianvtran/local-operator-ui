@@ -70,7 +70,11 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 	};
 
 	return (
-		<section className="flex flex-col gap-3">
+		<section
+			/* The status field's "Review milestones" lands the reader here. */
+			data-project-milestones=""
+			className="flex flex-col gap-3"
+		>
 			<div className="flex items-baseline justify-between gap-3">
 				<h2 className="text-title text-ink">Milestones</h2>
 				{summary && milestones.length > 0 && (

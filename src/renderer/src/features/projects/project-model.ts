@@ -1275,3 +1275,150 @@ export function refusalCopy(message: string): string {
 	if (!message.includes(DONE_GATE_TAIL)) return message;
 	return message.replace(DONE_GATE_TAIL, DONE_GATE_TAIL_COPY);
 }
+
+/* ------------------------- the done-gate refusal, as a choice to make ---- */
+
+/**
+ * The daemon's machine code for "done refused: milestones still open"
+ * (`detail.code` on the 422). It is its own code rather than the generic
+ * `project_invalid` because the remedy is a deliberate choice - resend with
+ * `force_done` - and a client can only offer that if it can tell this refusal
+ * from a malformed value without reading prose.
+ */
+export const PROJECT_DONE_INCOMPLETE_CODE = "project_done_incomplete";
+
+/**
+ * A refused `status: done`, narrowed to what the confirm dialog needs.
+ *
+ * `coded` is the load-bearing field: it is true ONLY when the daemon declared
+ * `project_done_incomplete`, i.e. it is new enough to accept `force_done`. A
+ * refusal recognised from the sentence alone (`coded: false`) comes from an
+ * older daemon that says `project_invalid`; that daemon would 422 a forced
+ * retry as an unknown body key, so the caller must NOT offer the force door
+ * for it - the refusal is spoken, nothing more.
+ */
+export type DoneGateRefusal = {
+	/** How many milestones are open (the names' count, or the sentence's own). */
+	count: number;
+	/** The open milestones' names, store order; may be empty if none were readable. */
+	names: string[];
+	coded: boolean;
+};
+
+/**
+ * Python `repr()` of each name in the daemon's sentence: `'a', "it's b"`.
+ * Quote style flips when the name itself holds a single quote, so both are read.
+ */
+const REPR_STRING = /'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"/g;
+
+function namesFromGateSentence(list: string): string[] {
+	const names: string[] = [];
+	for (const match of list.matchAll(REPR_STRING)) {
+		names.push((match[1] ?? match[2] ?? "").replace(/\\(.)/g, "$1"));
+	}
+	return names;
+}
+
+/**
+ * Classify a failed status write as the done-gate refusal, or `null`.
+ *
+ * Takes the error's parts structurally (`DesktopControlError` carries `code`,
+ * `message` and the body object as `detail`) so this stays a pure function the
+ * node tests can execute without the transport. The CODE is the classifier;
+ * the sentence is only a fallback that lets an older daemon's refusal still
+ * be recognised - and still be spoken - without ever being offered a force
+ * (see {@link DoneGateRefusal.coded}).
+ */
+export function doneGateRefusal(input: {
+	code?: string | null;
+	message: string;
+	detail?: unknown;
+}): DoneGateRefusal | null {
+	const sentence = input.message.match(DONE_GATE_HEAD);
+	const coded = input.code === PROJECT_DONE_INCOMPLETE_CODE;
+	if (!coded && !sentence) return null;
+	const declared =
+		typeof input.detail === "object" &&
+		input.detail !== null &&
+		Array.isArray((input.detail as { incomplete?: unknown }).incomplete)
+			? ((input.detail as { incomplete: unknown[] }).incomplete.filter(
+					(name) => typeof name === "string",
+				) as string[])
+			: null;
+	const names =
+		declared && declared.length > 0
+			? declared
+			: sentence
+				? namesFromGateSentence(sentence[2])
+				: [];
+	const count =
+		names.length > 0 ? names.length : sentence ? Number(sentence[1]) : 0;
+	return { count, names, coded };
+}
+
+/** How many names the dialog's sentence spells out before "and N more". */
+export const DONE_GATE_NAMES_SHOWN = 3;
+
+/**
+ * The names as one clause: `a, b, c and 4 more`, `a and b`, or `a`.
+ *
+ * Truncated because the real case is a long, all-overdue plan (seven
+ * milestones) and a sentence that recites all of them buries the question it
+ * is asking; the dialog offers the full list one press away instead.
+ */
+export function doneGateNamesClause(names: string[]): string {
+	if (names.length <= DONE_GATE_NAMES_SHOWN) {
+		if (names.length <= 1) return names.join("");
+		return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+	}
+	const hidden = names.length - DONE_GATE_NAMES_SHOWN;
+	return `${names.slice(0, DONE_GATE_NAMES_SHOWN).join(", ")} and ${hidden} more`;
+}
+
+/** `1 milestone is` / `7 milestones are`: the count agrees with its verb. */
+function milestonesAre(count: number): string {
+	return `${count} milestone${count === 1 ? " is" : "s are"}`;
+}
+
+/**
+ * The dialog's question, in the app's voice. The parenthesis is omitted when no
+ * names could be read (a coded refusal whose list was absent) rather than
+ * printing an empty pair.
+ */
+export function doneGateQuestion(refusal: DoneGateRefusal): string {
+	const clause = doneGateNamesClause(refusal.names);
+	return `${milestonesAre(refusal.count)} still open${clause ? ` (${clause})` : ""}. Mark done anyway?`;
+}
+
+/**
+ * The success toast for a forced close - it SAYS the close left work open, so
+ * the board's quiet "Moved to Done" is never a claim the plan was finished.
+ *
+ * The count comes from the PATCH answer's own row (`total - completed`), the
+ * state the daemon actually wrote; `fallbackCount` (what the dialog showed) is
+ * used only if the row is unreadable. `forced_done` false means nothing was
+ * left open by the time the write landed (the milestones were completed
+ * elsewhere meanwhile), which is an ordinary move.
+ */
+export function forcedCloseToastText(
+	result: {
+		forced_done?: boolean;
+		milestones_total?: number;
+		milestones_completed?: number;
+	} | null,
+	fallbackCount: number,
+	statusLabel: string,
+): string {
+	if (!result || result.forced_done !== true) return `Moved to ${statusLabel}`;
+	const fromRow =
+		typeof result.milestones_total === "number" &&
+		typeof result.milestones_completed === "number"
+			? result.milestones_total - result.milestones_completed
+			: fallbackCount;
+	const open = fromRow > 0 ? fromRow : fallbackCount;
+	return `Moved to ${statusLabel} with ${open} milestone${open === 1 ? "" : "s"} still open`;
+}
+
+/** The sentence shown when a refused move arrives with no message at all. */
+export const PROJECT_NOT_MOVED_COPY =
+	"The project was not moved. Try again, or open it to change its status.";
