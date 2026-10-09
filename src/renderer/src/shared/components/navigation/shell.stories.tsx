@@ -9,6 +9,10 @@ import {
 	type TranscriptRecord,
 	type TranscriptState,
 } from "@features/chat/canonical/transcript-reducer";
+import {
+	CHAT_PANE_MIN_PX,
+	rightSlotDividerContract,
+} from "@features/chat/chat-sidebar-layout";
 import { AskDrawer } from "@features/chat/components/asks/ask-drawer";
 import { Canvas } from "@features/chat/components/canvas";
 import { RUN_PANEL_MAX_PX } from "@features/chat/components/chat-content";
@@ -35,6 +39,8 @@ import { apiConfig } from "@shared/config/api-config";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
+	BROWSER_PANEL_MIN_PX,
+	CONSOLE_PANEL_MIN_PX,
 	RUN_PANEL_MIN_PX,
 	resolveRightSlotOccupied,
 	resolveRightSlotWidth,
@@ -1040,8 +1046,14 @@ const ChatShellFrame: FC<{
 	 * records: a harness copy of a removed seam). The width the two arms used to
 	 * pass (`560`, `420`) was a literal the app never draws at the capture's 1280px
 	 * frame; the dock now draws at the app's number for the row it is in.
+	 *
+	 * The row's own width rides along because the pane's SEPARATOR is built from
+	 * it: the browser and console arms render the pane's real divider through
+	 * `rightSlotDividerContract` (the function `chat-content.tsx` itself passes
+	 * the row's capacity to), so what those arms announce is what the app
+	 * announces.
 	 */
-	pane?: (slotWidth: number) => ReactNode;
+	pane?: (slotWidth: number, rowWidth: number) => ReactNode;
 	/**
 	 * The conversation's run details, or null for a DRAFT - which has none in the
 	 * app, so `RunDetailsTrigger` renders nothing there. The draft arms pass null
@@ -1119,7 +1131,7 @@ const ChatShellFrame: FC<{
 								asksCount={asksCount}
 								body={body}
 							/>
-							{pane?.(slotWidth)}
+							{pane?.(slotWidth, rowWidth)}
 						</div>
 						<ShellStoryRail details={details} railProps={railProps} />
 					</main>
@@ -1130,7 +1142,7 @@ const ChatShellFrame: FC<{
 };
 
 /**
- * The dock in its Files view, at the shell's own default pane width.
+ * The dock in its Files view, at the slot's one default pane width.
  *
  * `rightSlotWidth` is a story ARG (default 0, the fresh-profile arm this story
  * has always shown) rather than a literal because the #677 evidence needs the
@@ -1299,8 +1311,8 @@ export const WindowsCaptionFleetAsksOnSettings: Story = {
  * The width is an ARG for the same reason `ChatDockFiles`' is: the #677
  * evidence photographs the shared-width arm (`?args=rightSlotWidth:700` — the
  * run pane reads the full 700 at row 1180) against this story's 0, where the
- * run pane reads its 420 seed. That pair is what shows switching surfaces
- * stops resizing.
+ * run pane reads the slot's one default (640). That pair is what shows switching
+ * surfaces stops resizing.
  */
 export const ChatDockRunPanel: Story = {
 	args: { rightSlotWidth: 0 },
@@ -1323,27 +1335,52 @@ export const ChatDockRunPanel: Story = {
 		return (
 			<ChatShellFrame
 				details={deriveRunDetails(runFixtures.bothInFlight())}
-				pane={(slotWidth) => (
-					<PaneSlot width={slotWidth} minWidth={420} tourTag="run-panel-dock">
-						<RunPanel
-							details={deriveRunDetails(runFixtures.bothInFlight())}
-							mcpServers={deriveMcpServers([], {}, [])}
-							mcpGrantRunning={mcpGrantInFlight([])}
-							mcpRemedy={INERT_REMEDY}
-							monitorControls={INERT_MONITOR_CONTROLS}
-							sessionId="a1b2c3d4e5f6"
-							pulses={{}}
-							childrenOpenable
-							/* No session stream behind this board: the transport-up case. */
-							olderTransportDown={false}
-							paneWidth={slotWidth}
-							readerChildId={null}
-							previewPage={null}
-							onReaderChildChange={() => undefined}
-							onClose={() => undefined}
-						/>
-					</PaneSlot>
-				)}
+				pane={(slotWidth, rowWidth) => {
+					/*
+					 * THE PANE'S OWN SEPARATOR, through the app's shared contract. The run
+					 * pane's divider exists whenever the pane is open (the app renders it
+					 * unconditionally), and its range collapses where the row cannot host
+					 * the pane's own 320px floor; the 320/640 are the range `chat-content.tsx`
+					 * declares for this pane.
+					 */
+					const divider = rightSlotDividerContract({
+						capacity: Math.max(0, rowWidth - CHAT_PANE_MIN_PX),
+						min: 320,
+						max: 640,
+						drawn: slotWidth,
+					});
+					return (
+						<>
+							<ResizableDivider
+								sidebarWidth={divider.value}
+								onSidebarWidthChange={() => undefined}
+								minWidth={divider.minWidth}
+								maxWidth={divider.maxWidth}
+								side="left"
+								label="Resize run details. Double-click resets the shared pane width."
+							/>
+							<PaneSlot width={slotWidth} tourTag="run-panel-dock">
+								<RunPanel
+									details={deriveRunDetails(runFixtures.bothInFlight())}
+									mcpServers={deriveMcpServers([], {}, [])}
+									mcpGrantRunning={mcpGrantInFlight([])}
+									mcpRemedy={INERT_REMEDY}
+									monitorControls={INERT_MONITOR_CONTROLS}
+									sessionId="a1b2c3d4e5f6"
+									pulses={{}}
+									childrenOpenable
+									/* No session stream behind this board: the transport-up case. */
+									olderTransportDown={false}
+									paneWidth={slotWidth}
+									readerChildId={null}
+									previewPage={null}
+									onReaderChildChange={() => undefined}
+									onClose={() => undefined}
+								/>
+							</PaneSlot>
+						</>
+					);
+				}}
 			/>
 		);
 	},
@@ -1783,11 +1820,40 @@ export const ChatDockBrowser: Story = {
 			<ChatShellFrame
 				details={deriveRunDetails(runFixtures.settled())}
 				railProps={{ browserAttentionCount: 2 }}
-				pane={(slotWidth) => (
-					<PaneSlot width={slotWidth} tourTag="browser-pane-slot">
-						<BrowserPane sessionId="a1b2c3d4e5f6" onClose={() => undefined} />
-					</PaneSlot>
-				)}
+				pane={(slotWidth, rowWidth) => {
+					/*
+					 * THE PANE'S OWN SEPARATOR, through the app's shared contract and
+					 * the app's own capacity subtraction (`chat-content.tsx` builds
+					 * its browser contract from `paneRowWidth - CHAT_PANE_MIN_PX`,
+					 * and this arm reads the same row the resolver above does). The
+					 * 1200 is the pane's shipped drag ceiling - a fixture edge, like
+					 * the frames' own.
+					 */
+					const divider = rightSlotDividerContract({
+						capacity: Math.max(0, rowWidth - CHAT_PANE_MIN_PX),
+						min: BROWSER_PANEL_MIN_PX,
+						max: 1200,
+						drawn: slotWidth,
+					});
+					return (
+						<>
+							<ResizableDivider
+								sidebarWidth={divider.value}
+								onSidebarWidthChange={() => undefined}
+								minWidth={divider.minWidth}
+								maxWidth={divider.maxWidth}
+								side="left"
+								label="Resize browser. Double-click resets the shared pane width."
+							/>
+							<PaneSlot width={slotWidth} tourTag="browser-pane-slot">
+								<BrowserPane
+									sessionId="a1b2c3d4e5f6"
+									onClose={() => undefined}
+								/>
+							</PaneSlot>
+						</>
+					);
+				}}
 			/>
 		);
 	},
@@ -1817,11 +1883,34 @@ export const ChatDockConsole: Story = {
 			<ChatShellFrame
 				details={deriveRunDetails(runFixtures.settled())}
 				railProps={{ consoleUnseenCount: 1 }}
-				pane={(slotWidth) => (
-					<PaneSlot width={slotWidth} tourTag="console-pane-slot">
-						<ConsolePane sessionId="a1b2c3d4e5f6" onClose={() => undefined} />
-					</PaneSlot>
-				)}
+				pane={(slotWidth, rowWidth) => {
+					// The browser arm's own comment states the wiring; the console's
+					// contract differs only in its floor and its selector.
+					const divider = rightSlotDividerContract({
+						capacity: Math.max(0, rowWidth - CHAT_PANE_MIN_PX),
+						min: CONSOLE_PANEL_MIN_PX,
+						max: 1200,
+						drawn: slotWidth,
+					});
+					return (
+						<>
+							<ResizableDivider
+								sidebarWidth={divider.value}
+								onSidebarWidthChange={() => undefined}
+								minWidth={divider.minWidth}
+								maxWidth={divider.maxWidth}
+								side="left"
+								label="Resize console. Double-click resets the shared pane width."
+							/>
+							<PaneSlot width={slotWidth} tourTag="console-pane-slot">
+								<ConsolePane
+									sessionId="a1b2c3d4e5f6"
+									onClose={() => undefined}
+								/>
+							</PaneSlot>
+						</>
+					);
+				}}
 			/>
 		);
 	},
