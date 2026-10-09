@@ -34,7 +34,7 @@ on none, and the destination's column takes the room back (516 → 1076 px).
 
 | | AFTER | BEFORE |
 | --- | --- | --- |
-| renderer tree | this branch — the frames were shot at head **`fcaf1df0b49`** (round 1's remediation commit); the folds onto **#901** and **#899 + v0.33.7** that followed change none of the photographed surfaces (delta analysis and spot-check below) | `origin/main` @ **`15a7a4ed522`** (#891) |
+| renderer tree | this branch — the frames were shot at head **`fcaf1df0b49`** (round 1's remediation commit); the folds onto **#901** and **#899 + v0.33.7** that followed change none of the photographed surfaces (delta analysis below) | `origin/main` @ **`15a7a4ed522`** (#891) |
 | served from | this checkout (`RIG_REPO`) | a throwaway worktree of `origin/main` (`SLOT_RIG_BEFORE_REPO`), with this checkout's `node_modules` symlinked in by absolute path |
 | backend | the rig's daemon, TWO owner processes: A `Deploy checklist` (`aaaa11112222`, no ask engine) and B `Review notes` (`bbbb11112222`, live queued-ask engine) | the same daemon, the same two owners |
 | what differs | `right-slot-memory.ts`, `right-slot-follower.ts`, `ui-preferences-store.ts`'s per-session record and its persist-v3 step, `canvas/index.tsx`'s Escape stand-down (round 1's U2), `main.tsx`'s install, `dev-driver/install.ts`'s two new `state()` fields | — |
@@ -144,7 +144,7 @@ state rather than its pixels:
   the pane arrive together with the frame.)
 - **A restored canvas arrives 596 px and eases to 560 (D3, N2), documented, not
   changed.** `probe-hop-*.json`'s `hopBtoA` first samples read `slot 596 / col 480`
-  and the last `560 / 516`, seven distinct width states between; `main`'s own first
+  and the last `560 / 516`, seven distinct states (six width values) between; `main`'s own first
   open decays the same way (its `s1` timeline: 596 → 581 → 570 → 565 → 562 → 560
   across ~143 ms, t=198–341 in that run's marks). Pre-existing on open; this PR
   makes it once per return. The reload case reads the same shape later in the
@@ -188,13 +188,9 @@ state rather than its pixels:
   the transcript only for wake rows carrying `custom_type: "wake_prompt"` with
   `hidden === true` (the rig stages neither — no wake row at all), and the rest
   of it is installer/onboarding/providers surfaces no frame here shows. THE
-  SPOT-CHECK: after each fold, one after-arm dark pass re-run on the folded tree
-  read the same `drawn`/slot/column numbers as the committed records for every
-  state in `s1`, `s2`, `s3`, `s4`, `s5a`, `s5b`, `s6` and `s7` (16 of 16 probes
-  identical on both), the held-arrival still re-captured cleanly through the
-  same hold, and the committed stills diffed to a mean per-channel difference of
-  0.01–0.03 (the transcript clock and the composer caret — 0.01% of pixels).
-  The frames therefore stand as committed.
+  RECHECK: the delta was reviewed statically against this set's own records —
+  the affected passes' `run-*.json` / `probe-hop-*.json` beside this README —
+  and no re-shoot was needed. The frames therefore stand as committed.
 
 ## The commands
 
