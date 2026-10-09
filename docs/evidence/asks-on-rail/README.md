@@ -219,7 +219,7 @@ this README are the driver's own output:
   pre-press readings `before`/`arrived` that assert the pacing), the menu's
   items, and the enqueued ask's id for `ask-open`.
 
-## Round-1 remediation, and why these frames still stand (commit `2aa64f1ab47e`)
+## Round-1 and round-2 remediation, and why these frames still stand (commits `2aa64f1ab47e`, `dbefd88036d`)
 
 PR #917's round-1 agent-review, QA and design passes were answered by one
 remediation commit, `2aa64f1ab47e`, and this note - plus the cast correction to
@@ -237,3 +237,12 @@ NONE OF THE SEVEN PHOTOGRAPHED STATES CHANGES: the frames still render
 `f5dd12d41e950c6a9a436f687528d84ee3a16fce`. The commit edits focus plumbing, the
 request signal and comments - no pixel of the captured set moves - so the
 round-2 passes verify these same frames on the new head.
+
+ROUND 2 EXTENDS THE SAME CLAIM TO `dbefd88036d`: the menu door's claim now
+settles only once the spawning menu has left the document and a two-step quiet
+beat has passed, so a restore delivered late - the loaded-host ordering a
+scratch probe reproduced against the old one-beat settle - is still answered
+into the pane, with a fixture that fails on the old ordering and passes on this
+head. NONE OF THE SEVEN PHOTOGRAPHED STATES CHANGES for this commit either -
+the frames, and `capturedAtHead`, are the same ones above - so the round-3
+passes verify them on the new head.
