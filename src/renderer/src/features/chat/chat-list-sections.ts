@@ -25,19 +25,27 @@
  * labels read ONE clock, and which clock is the reader's choice: `active` (the
  * default) is the transcript's activity time - the wire's `mtime`, this row's
  * `updated_at` - and `created` is the conversation's birth, the wire's
- * `created_at`. Every other rule is the basis's to change ONLY through that one
- * read (`rowTimeMs`): running first, calendar days, and "no time is OLDER, never
- * a date" hold on both, and the label cannot disagree with the bin because both
- * come through the same function. The operator's report - "even if I've asked an
- * older session something today, once it completes I can't see it within the
- * today bin" - is why the basis is configurable at all; the promptness half of
- * the fix lives in the sidebar's refresh, not here.
+ * `created_at`. The basis is the whole of what changes through that one read
+ * (`rowTimeMs`): the bin, the label AND - since 2026-10-08 - the order, so a
+ * section can no longer draw a row whose label contradicts the place it sits in.
+ * The operator's report - "even if I've asked an older session something today,
+ * once it completes I can't see it within the today bin" - is why the basis is
+ * configurable at all; the promptness half of the fix lives in the sidebar's
+ * refresh, not here.
  *
- * WHAT IT DELIBERATELY DOES NOT DO: re-sort. The catalogue owns the order
- * (`desktop-session-contract.ts`: "the backend owns status precedence ... and
- * order"), and a partition that preserved it inside each section is the TUI's
- * own rule (`chat-sections.ts` states it for `Pinned`). Bucketing is `filter`,
- * never `sort`.
+ * WHAT IT DELIBERATELY DOES NOT DO: order the rows it is given. This module
+ * BUCKETS (`filter`, never `sort`) - the order the reader sees is decided before
+ * this call by the ONE arrangement (`chat-sidebar-view.ts`'s `pageOrder`), which
+ * reads the same clock this file's `rowTimeMs` door hands to the bins and the
+ * labels. THE OLD CONTRACT SAID THE OPPOSITE - "WHAT IT DELIBERATELY DOES NOT
+ * DO: re-sort", on the premise that the catalogue's arrival order WAS recency -
+ * and the premise was false: the backend ranks `(tier, wake band, -created_at,
+ * id)` (`session/catalog.py`), so rows arrive in CREATION order while every bin
+ * and label here read the ACTIVITY clock. The operator's screenshots are that
+ * pair disagreeing (`15h` drawn under `6d` inside This week), and his
+ * 2026-10-08 instruction is the reversal: within every section and group the
+ * rows follow the order the chosen basis implies, and the whole of that change
+ * is that the arrangement may sort - this file's bucketing stays a filter.
  */
 
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
@@ -99,6 +107,28 @@ export function isRunningRow(row: CanonicalSessionRow): boolean {
 	return RUNNING_CODES.has(row.status?.code ?? "");
 }
 
+/**
+ * The status codes that STOP ON THE READER: a turn that cannot proceed until
+ * they answer (`approval`) or a question waiting for them (`answer`).
+ *
+ * They are the RUNNING section's first band in the arrangement
+ * (`chat-sidebar-view.ts`'s `pageOrder` lifts them above the other running
+ * rows), which is the design intent the section's own header states - "it is
+ * the one thing in the list they must act on, so it belongs at the top". The
+ * set lives HERE, beside `RUNNING_CODES`, because `runningOrderMs` and the lift
+ * must agree about which rows wait on the reader for the same reason
+ * `isRunningRow` is imported by the lift rather than restated: two copies are
+ * how a row comes to be lifted against one rule and keyed by another.
+ */
+export const STOPPED_ON_READER_CODES: ReadonlySet<string> = new Set([
+	"approval",
+	"answer",
+]);
+
+export function isStoppedOnReader(row: CanonicalSessionRow): boolean {
+	return STOPPED_ON_READER_CODES.has(row.status?.code ?? "");
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -128,9 +158,14 @@ const startOfDay = (now: number): number => {
  *
  * `created_at <= 0` is the backend's own "unknown" (`session_created_at`
  * answers `0.0` when the directory cannot be read), so on the Created basis
- * zero is refused rather than printed as 1970. `updated_at` keeps the older
- * finiteness-only rule: an mtime of zero is not a state the backend produces,
- * and a row that somehow carried one is better off sorted than hidden.
+ * zero is refused rather than printed as 1970. `updated_at` IS HELD TO THE SAME
+ * RULE (2026-10-08), and the older finiteness-only comment here was false about
+ * the wire: core #2044 makes `mtime = 0.0` a real, published state - the "no
+ * claim" a peer row carries when nothing readable arrived - and a desktop row
+ * that read it accepted `0.0` as an instant, printed `56y` beside an untouched
+ * conversation and filed it among the oldest. "No clock" is a state this door
+ * refuses on BOTH bases now, so the row sorts last and prints no label instead
+ * of inventing 1970.
  */
 export function rowTimeMs(
 	row: CanonicalSessionRow,
@@ -138,7 +173,53 @@ export function rowTimeMs(
 ): number | null {
 	const seconds = basis === "created" ? row.created_at : row.updated_at;
 	if (typeof seconds !== "number" || !Number.isFinite(seconds)) return null;
-	if (basis === "created" && seconds <= 0) return null;
+	if (seconds <= 0) return null;
+	return seconds * 1000;
+}
+
+/**
+ * The row field a RUNNING row's order reads: the time of the last USER message,
+ * in epoch SECONDS - the wire's `last_user_at`.
+ *
+ * ONE CONSTANT, because this field is the seam between two repositories and
+ * will be renamed or re-homed exactly once: core does NOT publish it yet (the
+ * mesh lane owns the remote-row stamps, and a core change is a separate lane),
+ * so `runningOrderMs` below falls back to `created_at` and the arrangement is
+ * a creation order for running rows today. The declared property on
+ * `CanonicalSessionRow` is the other half of the spelling; the read below is
+ * typed through it, and the declaration's own comment names this constant.
+ */
+export const LAST_USER_AT_FIELD = "last_user_at";
+
+/**
+ * The instant a RUNNING row's order reads, in MILLISECONDS, or null for none.
+ *
+ * WHY RUNNING ROWS ARE NOT KEYED BY ACTIVITY (the operator's clarification,
+ * 2026-10-08): "across surfaces we should keep the sort of running sessions
+ * stable ... otherwise they'll keep resorting every time a new message is sent
+ * which we don't want ... in the running sections, it makes sense to sort based
+ * on the time of the last user message, so if I send a more recent message to a
+ * session that session will pop to the top ... but any responses or non-user
+ * messages will not reorder those by activity." So a response landing in a
+ * running chat must NOT move it; sending a message MAY; and until the wire
+ * carries the user-message clock, a running row is keyed by its birth, which
+ * does not move at all.
+ *
+ * THE READ IS TYPED THROUGH THE DECLARATION, which is the half of the link a
+ * rename breaks: `CanonicalSessionRow` carries an index signature, so a read of
+ * an UNDECLARED key is `unknown` - the annotation below stops compiling if the
+ * store's declaration and `LAST_USER_AT_FIELD` stop naming the same field, and
+ * the same refusal `rowTimeMs` applies to a zero is applied here (`last_user_at
+ * <= 0` is "no claim", never 1970).
+ */
+export function runningOrderMs(row: CanonicalSessionRow): number | null {
+	const lastUser: number | null | undefined = row[LAST_USER_AT_FIELD];
+	const seconds =
+		typeof lastUser === "number" && Number.isFinite(lastUser) && lastUser > 0
+			? lastUser
+			: row.created_at;
+	if (typeof seconds !== "number" || !Number.isFinite(seconds)) return null;
+	if (seconds <= 0) return null;
 	return seconds * 1000;
 }
 
@@ -156,7 +237,15 @@ export function sectionOf(
 	return "older";
 }
 
-/** The rows of each section, in the catalogue's own order. */
+/**
+ * The rows of each section, in the order they are GIVEN.
+ *
+ * The partition is a `filter`: the order the reader sees was decided before
+ * this call by the ONE arrangement (`pageOrder`), which reads the same basis
+ * this function bins by - so the bin, the label and the order are three
+ * readings of one clock, and a section cannot draw a row its label
+ * contradicts.
+ */
 export function sectionRows(
 	rows: readonly CanonicalSessionRow[],
 	now: number,

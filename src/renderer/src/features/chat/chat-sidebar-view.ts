@@ -12,12 +12,19 @@
  * rather than described in a comment:
  *
  *   1. the conversation being VIEWED is on screen even when it falls outside
- *      the loaded page (`pageRows`);
+ *      the loaded page (`pageRows`), AND a RUNNING row is never withheld by the
+ *      page at all: the page is the first N rows of the arrangement plus every
+ *      running row beyond it, in both orderings (agent review round 1, A1);
  *   2. a search looks at EVERY conversation, not at the loaded page, and
  *      reveals a match the page would not have reached (`pageRows` under
  *      `searching`);
- *   3. the active rows sit above the rest WITHOUT inverting recency below them
- *      (`pageOrder` - a stable partition, never a re-sort).
+ *   3. the rows READ in the order their time labels imply (`pageOrder` - the
+ *      ONE arrangement, applied before the page is cut: the running rows lifted,
+ *      then every other row newest-first by the chosen basis's clock). INVARIANT
+ *      3 REPLACED A STABLE PARTITION on 2026-10-08 at the operator's instruction;
+ *      `pageOrder` carries the reversal and it keeps the old contract in its own
+ *      comment rather than erasing it, because the difference between the two is
+ *      the whole of what this change reverses.
  *
  * WHAT THIS REPLACES, and why the operator asked for it (2026-09-25): the
  * column had one control surface, the boundary between its two regions, and no
@@ -31,7 +38,10 @@
  * sends (`desktop-session-contract.ts`). A "manual" ordering of the WHOLE list -
  * drag a row out of its section and into another - is deliberately absent: the
  * wire carries no rank for a conversation, and a cross-section drag would have to
- * invent one for rows the catalogue sorts by recency.
+ * invent one for rows the catalogue sorts by recency. (The ARRANGEMENT does sort
+ * the DRAWN list - that is invariant 3, and `pageOrder` states exactly which
+ * clocks it reads - so what is refused here is a rank the row would carry, never
+ * a view-side sort of the rows as they arrived.)
  *
  * WHAT CHANGED (issue #693, 2026-09-30). `pins` is a manual order, and the
  * sentence above used to refuse one outright on the grounds that it "would
@@ -43,9 +53,12 @@
  * the objection: the order is a permutation of the pinned ids this app knows,
  * applied by `chat-pin-order.ts` to the Pinned section's rows only - the TUI
  * keeps its own catalogue order, `sessions.pin` stays a boolean with no rank
- * beside it, and nothing in this file re-orders what the backend sent. A
- * desktop-local arrangement of one section is a preference; a rank the two
- * surfaces disagree about would be a claim, which is why there is no wire field.
+ * beside it, and nothing in this file re-orders what the backend sent. ("Nothing
+ * in this file" stopped being true of the LIST on 2026-10-08 - `pageOrder`
+ * arranges the drawn rows - and is still true of the Pinned section and of the
+ * pins contract this paragraph is about.) A desktop-local arrangement of one
+ * section is a preference; a rank the two surfaces disagree about would be a
+ * claim, which is why there is no wire field.
  */
 
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
@@ -53,6 +66,9 @@ import {
 	SIDEBAR_BASES,
 	type SidebarBasis,
 	isRunningRow,
+	isStoppedOnReader,
+	rowTimeMs,
+	runningOrderMs,
 } from "./chat-list-sections";
 
 /** Every section the sidebar can draw, in the order a fresh column draws them. */
@@ -384,15 +400,17 @@ export function sectionMoreName(hidden: number, unit: string): string {
 export type SidebarGroupBy = "section" | "agent" | "flat";
 
 /**
- * How the chats list is ordered.
+ * How the chats list is ordered - the two meanings, restated on 2026-10-08
+ * because the operator's instruction reversed what they were.
  *
  * `active-first` is the operator's own word ("sorting active to the top"): a
  * conversation with a turn in flight, or one stopped on the reader, is lifted
- * above the rest. `recent` is the catalogue's order untouched, which is the
- * backend's recency - the option to have, for a reader who would rather the
- * list not move when a turn starts.
+ * above the rest, and EVERY row then runs newest-first by the basis's clock.
+ * `recent` ("Most recent") is ONE order over the whole list with no lift.
  *
- * NEITHER IS A RE-SORT OF WHAT FOLLOWS THE LIFT: see `pageOrder`.
+ * WHAT THE TWO SHARE: a RUNNING row is never keyed by its activity clock, so a
+ * response landing in a running chat re-sorts nothing (`pageOrder` carries why
+ * and whose words). What separates them is only the lift.
  */
 export type SidebarOrderBy = "active-first" | "recent";
 
@@ -508,12 +526,50 @@ export function pageLimit(loads: number): number {
  *
  * The step is bounded by what is actually left (`remaining`), so the control
  * cannot offer ten rows when four are unloaded - the operator's own reference
- * prints `Show 4 more sessions`, not the ladder's next rung.
+ * prints `Show 4 more sessions`, not the ladder's next rung. And `remaining`
+ * now comes from `pageReveal` where the list can compute it (follow-up a,
+ * 2026-10-08), because a live row inside the next slice is already drawn: the
+ * sentence names the rows the press ADDS, never the rows that merely exist.
  */
 export function pageMoreLabel(loads: number, remaining: number): string {
 	const step = pageLimit(loads + 1) - pageLimit(loads);
 	const add = Math.max(0, Math.min(step, remaining));
 	return add === 1 ? "Show 1 more chat" : `Show ${add} more chats`;
+}
+
+/**
+ * The rows a press of the foot will ACTUALLY add, over the rows already held.
+ *
+ * WHY THIS IS NOT `remaining`. The page is a window of the arrangement PLUS
+ * every live row beyond it (agent review round 1, A1), so a RUNNING row inside
+ * the next slice is already DRAWN - it was drawn as a stray the moment it fell
+ * outside the window. Counting it as something a press `reveals` overstates: the
+ * review's own measurement (round 2, follow-up a) observed `Show 15 more chats`
+ * revealing 14, because one of the fifteen positions in the next slice was a
+ * live row already on screen.
+ *
+ * ZERO IS A RUNG-ONLY PRESS, and it is why there is a fallback rather than a
+ * clamp: when every row in the slice is live (each already drawn), the press
+ * still moves the ladder's rung and the daemon's own tail may answer with rows -
+ * so the sentence states the bounded step as before rather than offering
+ * `Show 0 more chats`. Reachable only with step-many live rows below the cut,
+ * which is why the fallback is a sentence and not a second control.
+ */
+export function pageReveal(
+	ordered: readonly CanonicalSessionRow[],
+	loads: number,
+	remaining: number,
+): number {
+	const step = pageLimit(loads + 1) - pageLimit(loads);
+	const from = pageLimit(loads);
+	const to = Math.min(from + step, ordered.length);
+	let live = 0;
+	for (let index = from; index < to; index += 1) {
+		if (isActiveRow(ordered[index] as CanonicalSessionRow)) live += 1;
+	}
+	const add = Math.max(0, to - from - live);
+	if (add > 0) return add;
+	return Math.max(0, Math.min(step, remaining));
 }
 
 /**
@@ -530,27 +586,108 @@ export function isActiveRow(row: CanonicalSessionRow): boolean {
 }
 
 /**
- * The list in the order the PAGE is taken over it - invariant 3's whole
- * implementation, and it is a stable PARTITION rather than a sort.
+ * The lane a row occupies under `active-first`, in draw order: the turns
+ * stopped on the reader, then the other running rows, then everything else.
  *
- * `Array.prototype.sort` is not used, and this is not a style preference: a
- * comparator added to lift active rows is also free to reorder the rows it did
- * not intend to touch (V8's sort is stable TODAY, and a comparator that
- * compares only one bit is exactly the sort of thing a later edit "improves"
- * into a two-key comparison, which is what would invert recency). Two filters
- * cannot: the relative order of everything that is not lifted is preserved
- * exactly, which is what "without inverting recency below it" asks for, and
- * `recent` is the identity function over the same array.
+ * `recent` puts every row in lane 0 (`pageOrder` states why the two orderings
+ * differ by exactly this).
+ */
+function liftLane(row: CanonicalSessionRow): number {
+	if (isStoppedOnReader(row)) return 0;
+	if (isRunningRow(row)) return 1;
+	return 2;
+}
+
+/**
+ * The clock the arrangement reads for one row: a running row's own key (the
+ * last USER message, else its birth) or the chosen basis's clock for every
+ * other row.
+ */
+function orderKeyMs(
+	row: CanonicalSessionRow,
+	basis: SidebarBasis,
+): number | null {
+	return isRunningRow(row) ? runningOrderMs(row) : rowTimeMs(row, basis);
+}
+
+/**
+ * Newest first, and "no clock" after every row WITH one - the same rule
+ * `chat-remote.ts` wrote for the merge this arrangement replaces: "no clock" is
+ * not "now", and a row that prints no label (`rowTimeMs` is the one door for
+ * both facts) belongs below the rows that print one.
+ */
+function byNewest(a: number | null, b: number | null): number {
+	if (a === null && b === null) return 0;
+	if (a === null) return 1;
+	if (b === null) return -1;
+	return b - a;
+}
+
+/**
+ * The arrangement - invariant 3's whole implementation, and the ONE place the
+ * drawn order of a chat row is decided. It is applied BEFORE the page is cut
+ * (`pageRows` takes the head of this list), so pressing `Show more` reveals rows
+ * rather than re-arranging the ones on screen.
+ *
+ * THE RULE (the operator's, 2026-10-08), in three clauses:
+ *
+ *   - a RUNNING row is never ordered by its activity. A response lands in a
+ *     running chat's transcript on every turn, and a section that re-sorted on
+ *     each write flickers under the reader's cursor; so a running row's key is
+ *     the time of its last USER message (`runningOrderMs`), which is the one
+ *     event that SHOULD move it to the front of the running band - and until
+ *     core publishes that field, its birth (`created_at`), which does not move
+ *     at all;
+ *   - under `active-first` the running rows are LIFTED above the rest - the
+ *     ones stopped on the reader (`approval`, `answer`: a turn that cannot
+ *     proceed without them) above the other running rows - each band
+ *     newest-first; every other row then runs newest-first by the BASIS clock,
+ *     which is the same clock its label prints (`rowTimeMs`);
+ *   - under `recent` there is NO lift: one order over every row, running rows
+ *     keyed by `runningOrderMs` and the rest by the basis clock.
+ *
+ * THE KEY IS TOTAL, and every term is deliberate. Rows whose keys tie keep the
+ * order they arrived in (the catalogue's own), never an id or a title: those
+ * are stable facts about a row and say nothing about when it moved. The total
+ * key is also what makes this function IDEMPOTENT - `pageOrder(pageOrder(x))`
+ * equals `pageOrder(x)`, because a tie is broken by the row's POSITION, and an
+ * arranged array already holds its ties in the order they were placed in.
+ *
+ * WHY `Array.prototype.sort` IS FINE HERE, when this function used to refuse
+ * it: the old contract was a stable PARTITION ("the active rows sit above the
+ * rest WITHOUT inverting recency below them"), and its comment warned that a
+ * comparator "is also free to reorder the rows it did not intend to touch".
+ * That warning was about a comparator with a hidden second key; this one states
+ * every key it reads - lane, clock, arrival - so there is nothing left for the
+ * engine's stability to decide, and the order no longer depends on V8's sort
+ * being stable today. THE OLD BEHAVIOUR IS WORTH STATING because it was the
+ * shipped rule for ten days: it lifted running rows and left everything else in
+ * the catalogue's arrival order - which is CREATION order (`session/catalog.py`
+ * ranks `(tier, wake band, -created_at, id)`), so the list drew `15h` under
+ * `6d` and the operator's report is exactly that pair disagreeing.
+ *
+ * WHAT IT DELIBERATELY DOES NOT ARRANGE: the Pinned section (the reader's own
+ * manual order, `chat-pin-order.ts`'s to apply) and a QUERY's rows. A search
+ * answer is ranked by relevance (`chat-search.ts`), and a clock order over it
+ * would be a second ranking authority over the one the reader searched with; so
+ * the component does not call this function while a query is on, and the three
+ * invariants above still hold for the list it draws.
  */
 export function pageOrder(
 	rows: readonly CanonicalSessionRow[],
 	orderBy: SidebarOrderBy,
+	basis: SidebarBasis,
 ): CanonicalSessionRow[] {
-	if (orderBy === "recent") return [...rows];
-	const active: CanonicalSessionRow[] = [];
-	const rest: CanonicalSessionRow[] = [];
-	for (const row of rows) (isActiveRow(row) ? active : rest).push(row);
-	return [...active, ...rest];
+	const keyed = rows.map((row, index) => ({
+		row,
+		index,
+		lane: orderBy === "active-first" ? liftLane(row) : 0,
+		at: orderKeyMs(row, basis),
+	}));
+	keyed.sort(
+		(a, b) => a.lane - b.lane || byNewest(a.at, b.at) || a.index - b.index,
+	);
+	return keyed.map((entry) => entry.row);
 }
 
 export type PageResult = {
@@ -563,7 +700,12 @@ export type PageResult = {
 	 * without loading 400 rows to get there.
 	 */
 	lifted: boolean;
-	/** Rows past the page, i.e. how many `Show more` would reveal. */
+	/**
+	 * Rows past the page, i.e. how many `Show more` would reveal. A running row
+	 * beyond the window is drawn, not counted here (the cut never withholds a
+	 * live row - A1): what is left to reveal is the arranged rows past the
+	 * window that are not live.
+	 */
 	remaining: number;
 };
 
@@ -594,26 +736,73 @@ export function pageRows(
 	if (searching) {
 		return { rows: [...ordered], lifted: false, remaining: 0 };
 	}
-	const head = ordered.slice(0, Math.max(0, limit));
+	/*
+	 * THE PAGE IS A WINDOW OF THE ARRANGEMENT, PLUS EVERY LIVE ROW BEYOND IT.
+	 *
+	 * The first `limit` rows of the arranged list are drawn in order, and a
+	 * RUNNING row the window did not reach is drawn as well, in place. The cut is
+	 * a DISCLOSURE, and a disclosure must not be a way to hide live work: agent
+	 * review round 1 (A1) measured `Most recent` at rung 10 drawing ZERO of 2 live
+	 * turns against 40 completed ones, because under `recent` a running row keyed
+	 * by its (old) birth sorts below the cut - while `origin/main` had drawn it,
+	 * by the accident of the catalogue's tier order.
+	 *
+	 * WHY THE WINDOW AND NOT "RUNNING ROWS COST NO QUOTA", which is
+	 * `entityRows`' rule one level down. Both keep the guarantee; the difference
+	 * is the page's SIZE, and the size was measured. Under the no-quota shape the
+	 * page holds N non-running rows PLUS every running row, so the size is a
+	 * function of the LIVE SET: each completion moves its row from the free set
+	 * into the quota (evicting the tail row the quota held) and each new turn
+	 * does the reverse. The geometry rig (`sidebar-resort-geometry.mjs --assert`)
+	 * turned three cells red on exactly that: with the reader parked at the
+	 * scroll extreme, the one-row shrink clamped `scrollTop` 152 -> 120 and the
+	 * viewport "moved -32 px while a row re-filed". A page whose height churns
+	 * with every completion is the flicker this change exists to remove, so the
+	 * list's page is the window: size N, stable across completions that land
+	 * inside it, with live rows drawn in place instead of lifted (the lift is
+	 * `active-first`'s own rule, and `recent` exists for a reader who asked for
+	 * one clock). `entityRows` keeps its own shape - its bound is a per-group
+	 * disclosure with its own pinned contract - and both surfaces share only the
+	 * guarantee: a live row is never behind the cut.
+	 *
+	 * `remaining` counts every row not drawn, so the foot's number and the drawn
+	 * set agree by construction.
+	 */
+	const head: CanonicalSessionRow[] = [];
+	let quota = Math.max(0, limit);
+	for (const row of ordered) {
+		if (quota > 0) {
+			head.push(row);
+			quota -= 1;
+			continue;
+		}
+		if (isActiveRow(row)) head.push(row);
+	}
 	const remaining = Math.max(0, ordered.length - head.length);
 	if (!currentId) return { rows: head, lifted: false, remaining };
-	const index = ordered.findIndex((row) => row.session_id === currentId);
-	if (index < 0 || index < head.length) {
+	/*
+	 * The drawn set is no longer a prefix, so "is it already drawn" is a
+	 * membership test and not an index comparison - `head.includes` asks the
+	 * question the old `index < head.length` used to stand for.
+	 */
+	const viewed = ordered.find((row) => row.session_id === currentId) ?? null;
+	if (viewed === null || head.includes(viewed)) {
 		return { rows: head, lifted: false, remaining };
 	}
-	return { rows: [ordered[index], ...head], lifted: true, remaining };
+	return { rows: [viewed, ...head], lifted: true, remaining };
 }
 
 /** What one expanded entity's session list draws, and what it withholds. */
 export type EntityRows = {
 	/**
-	 * The rows to draw, in the catalogue's own order - with the viewed conversation
-	 * at the head when the bound withheld it (see `lifted`).
+	 * The rows to draw, in the order they were GIVEN (the arrangement's) - with
+	 * the viewed conversation at the head when the bound withheld it (see
+	 * `lifted`).
 	 */
 	rows: CanonicalSessionRow[];
 	/**
 	 * Whether `rows[0]` is the viewed conversation, lifted: it is drawn OUT OF the
-	 * catalogue's order because the bound withheld it from where it belongs.
+	 * order it was given because the bound withheld it from where it belongs.
 	 * `false` when it is drawn in place, or is not this group's row at all.
 	 */
 	lifted: boolean;
@@ -633,16 +822,18 @@ export type EntityRows = {
  * expanded team or agent were not, so a team with 41 conversations drew all 41
  * into a column that also holds the chats list and every other expanded group.
  *
- * THE ORDER IS THE CATALOGUE'S AND THIS FUNCTION DOES NOT TOUCH IT. "Sorted by
- * most recent/active" is already true of the rows as they arrive: the backend
- * ranks the catalogue `(tier, wake_rank, -birth, id)` (`session/catalog.py`),
- * so the ACTIVE states lead and the rest run newest-first - and the id
- * tie-break makes that key total, which is what stops two equal rows swapping
- * places between two reads. Applying `pageOrder` here would be a SECOND
- * ordering authority beside the one the wire already carries, which
- * `chat-sections.ts` and `sidebar-scope-paging.ts` both refuse; it would also
- * be free to invert the server's tier precedence (lifting a `busy` row above
- * an `approval` one). So the bound takes a PREFIX, never a re-sort.
+ * THE ORDER IS THE ARRANGEMENT'S, AND THIS FUNCTION ONLY TAKES A PREFIX OF
+ * WHAT IT IS HANDED. "Sorted by most recent/active" is now true of the rows as
+ * they are GIVEN, because the component arranges a group's rows through the
+ * same `pageOrder` call the chats list uses before this bound applies (2026-
+ * 10-08: the nested lists carried the same creation-ranked defect the list did,
+ * and the operator's instruction - "across surfaces" - is why one arrangement
+ * serves both). So the bound never re-orders: it slices the arranged list, and a
+ * group cannot disagree with the list above it about which clock puts a
+ * conversation where. (The old text here argued the opposite - that applying
+ * `pageOrder` would be a "SECOND ordering authority" beside the wire's tier
+ * order - and the premise is the same false one the arrangement's own comment
+ * records: the wire's key ranks by `-birth`, not by activity.)
  *
  * RUNNING ROWS ARE EXEMPT FROM THE BOUND, and this is the one rule the brief did
  * not state. The bound is a DISCLOSURE, and a disclosure must not be a way to
@@ -652,7 +843,11 @@ export type EntityRows = {
  * section's own predicate, imported rather than restated so the exemption and
  * the section cannot disagree about what "running" means. (The shape is dsh's -
  * rows that must never be hidden leave the quota before it applies - but the
- * ladder's numbers are the operator's, not dsh's.)
+ * ladder's numbers are the operator's, not dsh's.) Under the arrangement a
+ * running row usually leads the group rather than sitting in place at 40; the
+ * exemption still matters for the rows the lift did not reach (a group whose
+ * running row is OLDER than its first ten by the arrangement's key), which is
+ * exactly the case this story's frame photographs.
  *
  * A SEARCH IS NEVER BOUNDED, which is `pageRows`' invariant 2 one level down:
  * the reader's query already narrowed these rows, so a bound applied on top of
@@ -664,7 +859,7 @@ export type EntityRows = {
  * reader's own row fits was the alternative and is refused: in a 41-row group
  * whose viewed row sits at 40, admitting it in place draws 40 rows - exactly the
  * complaint this change exists to answer. One row is drawn at the head instead,
- * wearing the panel's own `rowCurrent` ground, and the rest keep the catalogue's
+ * wearing the panel's own `rowCurrent` ground, and the rest keep the arranged
  * order exactly.
  */
 export function entityRows(
@@ -853,12 +1048,15 @@ export type SidebarRowGroup = {
 /**
  * The arranged list under a given `groupBy`.
  *
- * `section` returns null and leaves the arrangement to
+ * THE ORDER IS THE ARRANGEMENT'S, and this function does not touch it: the rows
+ * arrive arranged (`pageOrder`), and this groups them while preserving that
+ * order inside every group - a partition by binding, never a second ordering
+ * authority. `section` returns null and leaves the arrangement to
  * `chat-list-sections.ts`'s own partition, which is where the RUNNING/TODAY/
  * WEEK/OLDER rules live and the only place they should: a second implementation
  * of "which section is this row in" is how the labels and the lift disagree.
- * `agent` groups by the row's binding - its team, else its agent - and
- * `flat` is one unlabelled group.
+ * `agent` groups by the row's binding - its team, else its agent - and `flat`
+ * is one unlabelled group.
  *
  * UNGROUPED IS A REAL GROUP rather than a leftover, and it is drawn rather than
  * dropped: an untargeted chat, a chat whose agent was deleted, and a chat opened

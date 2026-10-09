@@ -6962,6 +6962,21 @@ export const STORIES = [
 	 */
 	["chat-sidebar-view-menu--popover-basis-last-active", 741, 760],
 	["chat-sidebar-view-menu--popover-basis-created", 741, 760],
+	[
+		/*
+		 * THE MIXED CATALOGUE (2026-10-08): the one frame the order change is
+		 * read off - a Running section whose three clocks disagree and a This-week
+		 * section of idle, stopped, scheduled and remote rows whose labels only
+		 * read in order once the arrangement sorts by the basis clock. The before
+		 * half lives beside it as `time-order-mixed-before/`, captured from
+		 * unmodified `origin/main` (`15a7a4ed522`) in a detached worktree with this
+		 * story file staged in - the same recipe the set's other before pairs
+		 * document.
+		 */
+		"chat-sidebar-view-menu--time-order-mixed",
+		741,
+		1060,
+	],
 	["chat-sidebar-view-menu--reorder-edges", 741, 760],
 	/* The design direction's D2 capture: the same panel in the window floor. */
 	["chat-sidebar-view-menu--popover-open-short", 800, 600],
@@ -7193,8 +7208,9 @@ export const STORIES = [
 	 * The ORDER pair is one control over two frames on purpose: `Most recent`
 	 * and `Active first` must produce different lists, not merely different
 	 * ticks, so the two captions' row orders are read against each other (the
-	 * live turn is the oldest conversation in the fixture and so sits past the
-	 * ten-row page under one order and leads the list under the other).
+	 * live turn carries no key clock in the fixture and so draws past the
+	 * ten-row page under one order - in place, as the window rule draws every
+	 * live row - and in the running band under the other; round 2's U3/D1).
 	 * ------------------------------------------------------------------ */
 	/*
 	 * EACH ENTRY CLAIMS ITS OUTCOME, and the rig checks it against the live DOM
@@ -7339,7 +7355,14 @@ export const STORIES = [
 				name: "aria-checked",
 				equals: "true",
 			},
-			expectGone: '[data-session-row="audit-busy-old"]',
+			/*
+			 * PRESENT, NOT ABSENT (round 2, U3/D1): the window rule draws the live row
+			 * under BOTH orderings - under `recent` it is drawn in place, last - so the
+			 * old `expectGone` described a behaviour this head removed. The position
+			 * claim lives in the story's settle (the row is the LAST drawn row); this
+			 * one-shot reading pins what the shutter must see.
+			 */
+			expectPresent: '[data-session-row="audit-busy-old"]',
 		},
 	],
 	[
