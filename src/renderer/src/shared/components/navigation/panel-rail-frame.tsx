@@ -32,6 +32,17 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 	listOnScreen = false,
 	readerChildId = null,
 	browserAttentionCount = 0,
+	/*
+	 * THE ASKS ITEM IS OPT-IN (#896), unlike the four route-gated siblings. Whether
+	 * a host offers a door is the APP's fact (`published`/`answered`), and a frame
+	 * that cannot know it must not pretend one was offered - so the default is
+	 * ABSENT, and a story that means to photograph the fifth item passes
+	 * `askOffered`. The scope defaults to `session` because the frame's own route
+	 * default has a conversation, exactly as `sessionId` does.
+	 */
+	askOffered = false,
+	askCount = 0,
+	askScope = "session",
 	consoleUnseenCount = 0,
 	consoleUnseenPulsing = false,
 	fileCount = 0,
@@ -71,6 +82,9 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 				listOnScreen={listOnScreen}
 				readerChildId={readerChildId}
 				browserAttentionCount={browserAttentionCount}
+				askOffered={askOffered}
+				askCount={askCount}
+				askScope={askScope}
 				consoleUnseenCount={consoleUnseenCount}
 				consoleUnseenPulsing={consoleUnseenPulsing}
 				fileCount={fileCount}

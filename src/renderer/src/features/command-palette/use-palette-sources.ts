@@ -35,6 +35,7 @@ import {
 } from "@features/chat/chat-search";
 import type { ArchiveView } from "@features/chat/chat-search";
 import { useMeshMembership } from "@features/mesh/mesh-store";
+import { presentSetting } from "@features/settings/backend-setting-copy";
 import { DEFAULT_SETTINGS_SECTIONS } from "@features/settings/components/settings-sidebar";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type { BackendSettings } from "@shared/api/local-operator/desktop-api";
@@ -758,7 +759,17 @@ export function usePaletteItems({
 		if (!wantsSettings) return [];
 		return [
 			...buildSettingsSectionItems(DEFAULT_SETTINGS_SECTIONS),
-			...buildSettingKeyItems(registry.data?.settings ?? []),
+			/*
+			 * PRESENTED before built (`.map(presentSetting)`), the same fold the
+			 * settings page's row list and search apply: without it the palette
+			 * showed and searched the registry's terminal copy - "Delegated
+			 * cleanup", the "↳" child idiom - so a row the page finds by
+			 * "retention" was unfindable here and the two surfaces disagreed about
+			 * a setting's own name (agent review round 1, F4).
+			 */
+			...buildSettingKeyItems(
+				(registry.data?.settings ?? []).map(presentSetting),
+			),
 		];
 	}, [registry.data, wantsSettings]);
 

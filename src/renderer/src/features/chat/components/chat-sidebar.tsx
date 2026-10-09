@@ -984,8 +984,8 @@ export function ChatSidebar({
 	 * fired. The aggregate is uncapped and covers every conversation, so it is the
 	 * one source that can mark a row the user is not looking at.
 	 *
-	 * ONE READ, TWO LENSES: this is the same `FLEET_ASKS_QUERY_KEY` entry the header's
-	 * fleet-scope asks trigger already reads, so a row and the top-level count cannot
+	 * ONE READ, TWO LENSES: this is the same `FLEET_ASKS_QUERY_KEY` entry the top-level
+	 * asks door (the panel rail's item since #896) already reads, so a row and the top-level count cannot
 	 * disagree about how many asks are outstanding, and this adds no second poll.
 	 * `rows === null` is "the route has not answered" rather than "no asks", which
 	 * is why the map is null rather than empty there - a row keeps whatever its own

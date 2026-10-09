@@ -1,5 +1,5 @@
 /**
- * The panel rail's copy and its fixed order, as pure functions (#872).
+ * The panel rail's copy and its fixed order, as pure functions (#872, #896).
  *
  * WHY A MODULE OF STRINGS. These sentences were the chat header's, and four
  * harnesses, the onboarding tour and the accessibility name of every trigger read
@@ -10,6 +10,12 @@
  * so a user who learned them keeps them; the only new sentences are the two
  * CLOSE states the console and canvas never had, because their old triggers hid
  * while the pane was open and the rail's items do not.
+ *
+ * THE ASK ITEM'S SENTENCES ARE THE FIFTH AND KEEP THE SAME PROVENANCE (#896),
+ * one hop removed: `askRailToggleLabel` in `ask-queue.ts` is the sentence the
+ * header's asks trigger printed, and this module prints it rather than spelling
+ * it a second time — see `askRailLabels` below for the two halves and their
+ * sources.
  *
  * THE ACCESSIBLE NAME CARRIES NO STATE VERB (UX round 1, U2). Every item also
  * exposes `aria-pressed`, so a name that flipped to "Close browser" while the
@@ -24,9 +30,25 @@
  * reader hears and the tooltip a pointer reads carry the exact number.
  */
 
-/** The triggers, in the rail's fixed top-to-bottom order. */
+import {
+	type AskScope,
+	askRailToggleLabel,
+	askScopeSubject,
+} from "@features/chat/ask-queue";
+
+/**
+ * The six triggers, in the rail's fixed top-to-bottom order.
+ *
+ * ASK GOES SECOND, its historical slot (#896). The pre-#872 header order was
+ * Run -> Asks -> Browser -> Console -> Canvas (`9c0da1382af^`'s `chat-header.tsx`),
+ * and the four panel triggers moved to the rail with their relative order
+ * preserved; the asks trigger's return to its old position is the fifth item
+ * arriving where it always stood. CODE REVIEW IS APPENDED LAST (the #927 fold
+ * onto #917): its appearing moves nothing above it.
+ */
 export const PANEL_RAIL_ORDER = [
 	"run",
+	"ask",
 	"browser",
 	"console",
 	"canvas",
@@ -89,13 +111,43 @@ export function canvasRailLabels(
 }
 
 /**
+/**
+ * The asks item's tooltip and accessible name (#896).
+ *
+ * THE TOOLTIP IS THE DOOR'S OWN SENTENCE, not a recomposition: `askRailToggleLabel`
+ * (ask-queue.ts) is the ONE derivation of `Open asks — This conversation, 3 waiting
+ * or moved on` — the string the header trigger printed before the control moved to
+ * the rail — so the item cannot grow a second grammar for the same fact.
+ *
+ * THE NAME IS THE STABLE NOUN, THE SCOPE AND THE COUNT — the family's U2 contract
+ * (`Asks, This conversation, 3 waiting or moved on`): no verb, because `aria-pressed`
+ * carries open/closed, and the subject's words come from `askScopeSubject`, the same
+ * function the tooltip and the drawer's bar read, so the glyph, the words and both
+ * spoken registers cannot name the two queues differently.
+ */
+export function askRailLabels(
+	open: boolean,
+	scope: AskScope,
+	count: number,
+): { tooltip: string; aria: string } {
+	return {
+		tooltip: askRailToggleLabel({ open, scope, count }),
+		aria:
+			count > 0
+				? `Asks, ${askScopeSubject(scope)}, ${count} waiting or moved on`
+				: `Asks, ${askScopeSubject(scope)}`,
+	};
+}
+
+/**
  * The code review item's tooltip and accessible name (§8).
  *
  * APPENDED LAST, which is why the item may appear mid-session without moving
  * anything above it (the rail's own order note). The counts are `opened` and
  * `mentioned` - the two groups the pane draws - and a zero half is dropped,
  * because "0 mentioned" beside a count of everything states nothing; the mark
- * for attention adds its own clause ("findings open"), the chip's own tail.
+ * for attention adds its own clause (`checks failing` / `findings open`), the
+ * chip's own tail.
  *
  * The CAP is never applied here (the file's own rule): the name a screen reader
  * hears carries the exact numbers.
