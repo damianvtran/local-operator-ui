@@ -982,6 +982,182 @@ test("an unchanged row keeps its record identity, images and all", () => {
 	);
 });
 
+/* ---------------------------------------------------------------------- *
+ * Output artifacts (AttachmentContent).
+ *
+ * The block a tool produces for the USER: `kind` + metadata + a store digest
+ * instead of bytes. Detection is `kind` + a media fact, NEVER `type` — the
+ * encoder drops defaults, so `kind` is present precisely BECAUSE the contract
+ * makes it required (a defaulted kind would vanish from durable rows and make
+ * an image artifact indistinguishable from a legacy image reference).
+ * ---------------------------------------------------------------------- */
+
+/** A durable artifact block: no `type`, metadata set, digest reference. */
+const durableArtifact = {
+	kind: "image",
+	content_type: "image/png",
+	attachment: DIGEST,
+	source_url: "https://provider.example/img/01.png",
+	size_bytes: 41233,
+	width: 1024,
+	height: 1024,
+	name: "flux-dev-01.png",
+};
+
+test("an artifact row coerces with its metadata on the durable shape", () => {
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "t-art",
+				ts: 1,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-gen",
+					tool_name: "generate_image",
+					content: [{ text: "Generated one image" }, durableArtifact],
+					provider_payload: { duration_s: 4.2, details: {} },
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const tool = state.records.find((r) => r.kind === "tool");
+	assert.equal(tool.images.length, 1);
+	const img = tool.images[0];
+	assert.equal(img.attachment, DIGEST);
+	assert.equal(img.data, null);
+	assert.equal(img.mimeType, "image/png");
+	assert.equal(img.kind, "image");
+	assert.equal(img.width, 1024);
+	assert.equal(img.height, 1024);
+	assert.equal(img.sizeBytes, 41233);
+	assert.equal(img.name, "flux-dev-01.png");
+	assert.equal(img.sourceUrl, "https://provider.example/img/01.png");
+	// The artifact must not leak into the row's text either.
+	assert.equal(tool.output, "Generated one image");
+});
+
+test("a live artifact frame maps the same way as the durable row", () => {
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-gen",
+			tool_name: "generate_image",
+			result: {
+				content: [
+					{ type: "text", text: "Generated" },
+					{
+						type: "attachment",
+						kind: "image",
+						content_type: "image/webp",
+						attachment: DIGEST,
+					},
+				],
+				details: {},
+			},
+			duration_s: 1,
+		},
+		1,
+	);
+	const tool = state.records.find((r) => r.kind === "tool");
+	assert.equal(tool.images.length, 1);
+	assert.equal(tool.images[0].kind, "image");
+	assert.equal(tool.images[0].mimeType, "image/webp");
+	assert.equal(tool.images[0].sourceUrl, null);
+});
+
+test("video artifacts ride the same array with their kind and metadata", () => {
+	const video = {
+		kind: "video",
+		content_type: "video/mp4",
+		attachment: DIGEST,
+		duration_s: 6.5,
+		width: 1920,
+		height: 1080,
+	};
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "t-vid",
+				ts: 1,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-vid",
+					tool_name: "generate_video",
+					content: [video],
+					provider_payload: { details: {} },
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const tool = state.records.find((r) => r.kind === "tool");
+	assert.equal(tool.images.length, 1);
+	assert.equal(tool.images[0].kind, "video");
+	assert.equal(tool.images[0].durationS, 6.5);
+	assert.equal(tool.images[0].mimeType, "video/mp4");
+});
+
+test("a bare `kind` with no media fact is not an artifact", () => {
+	// Tool arguments and details payloads are free-form JSON: a stray `kind`
+	// key must not conjure a phantom picture or eat the row's text.
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "t-stray",
+				ts: 1,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-stray",
+					tool_name: "x",
+					content: [{ text: "hello", kind: "image" }],
+					provider_payload: { details: {} },
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const tool = state.records.find((r) => r.kind === "tool");
+	assert.equal(tool.images.length, 0);
+	assert.equal(tool.output, "hello");
+});
+
+test("an artifact row keeps its images-array identity across replays", () => {
+	const page = {
+		entries: [
+			{
+				id: "t-art",
+				ts: 1,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-gen",
+					tool_name: "generate_image",
+					content: [durableArtifact],
+					provider_payload: { details: {} },
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	};
+	const first = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+	const second = applyHistoryPage(first, page);
+	assert.equal(second.records[0], first.records[0], "record identity");
+	assert.equal(
+		second.records[0].images,
+		first.records[0].images,
+		"images array identity",
+	);
+});
+
 test("diff counters ride the row, and only as positive integers", () => {
 	const entry = (details) => ({
 		id: `t-${JSON.stringify(details)}`,
