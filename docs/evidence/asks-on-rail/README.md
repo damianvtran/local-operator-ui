@@ -218,3 +218,22 @@ this README are the driver's own output:
   pass: every case's frames, its `probe`/`door`/`memory` readings (including the
   pre-press readings `before`/`arrived` that assert the pacing), the menu's
   items, and the enqueued ask's id for `ask-open`.
+
+## Round-1 remediation, and why these frames still stand (commit `2aa64f1ab47e`)
+
+PR #917's round-1 agent-review, QA and design passes were answered by one
+remediation commit, `2aa64f1ab47e`, and this note - plus the cast correction to
+the backend row above, which belongs to the same round. What that commit moves
+against the frames: the rail's focus-return effect now stands down for the asks
+pane (`before === "ask"`; F1/Q2 - focus after a chip-opened close returns to the
+chip again), the `…` menu's asks row now opens the drawer as a user press (the
+scope-carrying `askOpenIntent` request, plus the drawer's bounded claim answering
+the menu's own focus teardown; Q1 - the empty state is reachable from that door
+and the keyboard lands in the pane), and one copy string changes (the carried
+cross-scope tooltip verb reads `Open asks` where its press re-scopes; N1).
+
+NONE OF THE SEVEN PHOTOGRAPHED STATES CHANGES: the frames still render
+`f5dd12d41e9`'s surfaces, and the set's `capturedAtHead` stays
+`f5dd12d41e950c6a9a436f687528d84ee3a16fce`. The commit edits focus plumbing, the
+request signal and comments - no pixel of the captured set moves - so the
+round-2 passes verify these same frames on the new head.
