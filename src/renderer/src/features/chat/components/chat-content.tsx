@@ -1739,7 +1739,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				 * route, so a rig reading "the first one" reads whichever happens to
 				 * precede it and says nothing about this region (remediation round 1, D1).
 				 */}
-				<output data-ask-open-announcer="" className="sr-only" aria-live="polite">
+				<output
+					data-ask-open-announcer=""
+					className="sr-only"
+					aria-live="polite"
+				>
 					{asksAnnouncement}
 				</output>
 				<div
