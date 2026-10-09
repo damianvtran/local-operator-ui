@@ -97,6 +97,33 @@ round 1 reproduced). Its nine frames per palette are committed under
 `docs/evidence/projects-inline-edit/`, whose README carries the seed script,
 the exact command and the check list.
 
+**`--scene project-open` (`--project <key>` names the row) is the before/after
+pair for the project page's composer autofocus** (operator report, 2026-10-08:
+*"when clicking into a project, because of the standard behaviour of the
+composer, it scrolls the user down to centre on the composer and focuses it ...
+on the projects page it shouldn't [autofocus], and we should stay scrolled at
+the top when clicking in"*). It presses the seeded project's row in the LIST
+view with a real pointer, samples the page per animation frame while the
+detail page lands, and asserts the claim `--autofocus-expect` names: `jump` on
+the base tree (the strip's mount-time focus scrolls the page down, the box
+holds the caret) or `stay` on the head tree (scrollTop 0, unfocused, the strip
+below the fold) — the same scene bytes on both trees. It also walks the
+controls the change must not move: the strip still takes a click and types, a
+pointer Send is admitted (read back from the daemon's `history` route), the
+Send-to target switches through the real Radix Select without moving the page,
+the chat pane's composer still takes the caret on open, and `history.back()`
+returns to a page that stayed put. It also leaves the detail WHILE SCROLLED -
+through the sidebar's `Projects` row, which lands at any offset, where the
+header's own escape must be wheeled to first - and re-opens the SAME project:
+the detail scroller's DOM node is reused across the list and the detail views,
+so the offset can only survive a leave that happens scrolled (UX round 1's U1),
+and the `stay` half asserts the landing at the top while the base half records
+where it lands. It uses CDP
+`Emulation.setFocusEmulationEnabled` because a never-shown window cannot show
+`:focus` rings, and says so in its README. Its frames are committed under
+`docs/evidence/project-open-no-autofocus/`, the base tree's half under
+`before/` and the head tree's under `after/`.
+
 **`--scene sessionless-slash` (issue #625) types five commands — `/help`,
 `/theme`, `/login`, `/logout`, `/resume` — into a NEW chat (`⌘N`, the press
 `--scene new-chat` proves), one theme per launch like every stateful scene.
@@ -635,4 +662,6 @@ them — the same position as the other committed live-app PNG sets, and the rea
 `docs/evidence/project-detail-live/` (the `project-detail` scene's frames, six per
 palette) is declared in the manifest's `supplementary` list with `frames: 0`.
 The same position holds for `docs/evidence/projects-inline-edit/` (the
-`project-inline-edit` scene's frames, nine per palette).
+`project-inline-edit` scene's frames, nine per palette) and for
+`docs/evidence/project-open-no-autofocus/` (the `project-open` pair, four frames
+per palette per tree).

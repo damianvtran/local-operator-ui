@@ -1,0 +1,98 @@
+{
+ "expect": "jump",
+ "theme": "localOperatorDark",
+ "first": {
+  "scrollTop": 705,
+  "scrollHeight": 1784,
+  "clientHeight": 868,
+  "scroller": {
+   "top": 32,
+   "bottom": 900
+  },
+  "card": {
+   "top": 373.2,
+   "bottom": 571.2,
+   "height": 198
+  },
+  "textarea": {
+   "top": 449.2,
+   "bottom": 483.2,
+   "height": 34
+  },
+  "cardNaturalTop": 1046.2,
+  "textareaNaturalTop": 1122.2,
+  "activeElement": "textarea \"Message\"",
+  "textareaFocused": true,
+  "textareaMatchesFocus": true,
+  "viewport": {
+   "width": 1380,
+   "height": 900,
+   "devicePixelRatio": 2
+  }
+ },
+ "settled": {
+  "scrollTop": 705,
+  "scrollHeight": 1784,
+  "clientHeight": 868,
+  "scroller": {
+   "top": 32,
+   "bottom": 900
+  },
+  "card": {
+   "top": 373.2,
+   "bottom": 571.2,
+   "height": 198
+  },
+  "textarea": {
+   "top": 449.2,
+   "bottom": 483.2,
+   "height": 34
+  },
+  "cardNaturalTop": 1046.2,
+  "textareaNaturalTop": 1122.2,
+  "activeElement": "textarea \"Message\"",
+  "textareaFocused": true,
+  "textareaMatchesFocus": true,
+  "viewport": {
+   "width": 1380,
+   "height": 900,
+   "devicePixelRatio": 2
+  }
+ },
+ "sampler": {
+  "sawStrip": true,
+  "sawAt": 349,
+  "stopped": true,
+  "maxScrollTop": 705,
+  "samples": [
+   {
+    "t": 5,
+    "strip": false,
+    "scrollTop": null,
+    "stripTop": null,
+    "activeElement": "body"
+   },
+   {
+    "t": 172,
+    "strip": false,
+    "scrollTop": null,
+    "stripTop": null,
+    "activeElement": "button \"Rig openActive0/4just now\""
+   },
+   {
+    "t": 244,
+    "strip": false,
+    "scrollTop": null,
+    "stripTop": null,
+    "activeElement": "body"
+   },
+   {
+    "t": 349,
+    "strip": true,
+    "scrollTop": 705,
+    "stripTop": 373,
+    "activeElement": "textarea \"Message\""
+   }
+  ]
+ }
+}

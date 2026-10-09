@@ -4,6 +4,7 @@ import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
+import { installFocusScrollModel } from "./focus-scroll-model.mjs";
 
 /*
  * THE QUICK-SEND STRIP'S BOX IS THE APP'S COMPOSER — mounted, and carrying the
@@ -142,6 +143,19 @@ globalThis.IntersectionObserver = class {
 	disconnect() {}
 };
 DOM.window.Element.prototype.scrollIntoView = () => {};
+
+/*
+ * THE FOCUSING STEPS' SCROLL HALF, MODELLED (see `focus-scroll-model.mjs`).
+ * jsdom moves focus and never scrolls - it has no layout engine - so without
+ * this rig the difference between a plain `focus()` and `focus({preventScroll:
+ * true})` is invisible here, and that difference IS this change: the composer
+ * may claim the caret, but it may never move the reader's page. The model
+ * records every call and moves the nearest scroll container by a fixed delta
+ * when a call does not prevent the scroll; the live Chromium geometry is the
+ * harness slice's half.
+ */
+const focusModel = installFocusScrollModel(DOM.window);
+after(() => focusModel.restore());
 
 /*
  * A CANVAS THAT ANSWERS, because the composer's graph measures text at MODULE
@@ -325,34 +339,66 @@ const PNG_DATA_URL = `data:image/png;base64,${Buffer.from(PNG_BYTES).toString("b
 
 const mounts = [];
 const mountStrip = async (props = {}) => {
+	/*
+	 * THE STRIP SITS INSIDE THE PAGE'S SCROLLER, which is the geometry the whole
+	 * fix is about: the detail screen's composer is at the foot of an
+	 * `overflow-y-auto` column (`projects-page.tsx`), so a focus call that scrolls
+	 * its element into view moves the READER. The scroller carries the overflow as
+	 * an INLINE style rather than a class because a jsdom document applies no
+	 * stylesheet and a Tailwind class would resolve to nothing, and the model in
+	 * `focus-scroll-model.mjs` is what turns a call into that movement.
+	 */
+	const scroller = document.createElement("div");
+	scroller.style.overflowY = "auto";
+	scroller.style.height = "200px";
+	document.body.append(scroller);
 	const host = document.createElement("div");
-	document.body.append(host);
+	scroller.append(host);
 	const root = createRoot(host);
 	const queryClient = new QueryClient({
 		defaultOptions: { queries: { retry: false } },
 	});
 	const sent = [];
-	await act(async () => {
-		root.render(
-			React.createElement(
-				QueryClientProvider,
-				{ client: queryClient },
-				React.createElement(ProjectQuickSend, {
-					links: [link()],
-					target: "s1",
-					onTargetChange: () => {},
-					onSend: async (...args) => {
-						sent.push(args);
-						return true;
-					},
-					focusTick: 0,
-					...props,
-				}),
-			),
+	const tree = (next = {}) =>
+		React.createElement(
+			QueryClientProvider,
+			{ client: queryClient },
+			React.createElement(ProjectQuickSend, {
+				links: [link()],
+				target: "s1",
+				onTargetChange: () => {},
+				onSend: async (...args) => {
+					sent.push(args);
+					return true;
+				},
+				focusTick: 0,
+				...props,
+				...next,
+			}),
 		);
+	await act(async () => {
+		root.render(tree());
 	});
 	mounts.push({ root, queryClient });
-	return { host, root, sent, queryClient };
+	return {
+		host,
+		root,
+		sent,
+		queryClient,
+		scroller,
+		/*
+		 * A RE-RENDER WITH NEW PROPS, keeping whatever the case did not name. Two of
+		 * the cases below are about a strip whose state CHANGED under it - a target
+		 * appearing, a row's message action bumping the tick - and neither is
+		 * reachable from a mount alone.
+		 */
+		rerender: async (next = {}) => {
+			await act(async () => {
+				root.render(tree(next));
+			});
+			await settle();
+		},
+	};
 };
 
 after(async () => {
@@ -576,5 +622,172 @@ test("a strip with nothing to send to refuses the box and says why", async () =>
 		host.textContent ?? "",
 		/Choose a session to send to\./,
 		"the reason is on the surface too",
+	);
+});
+
+/* ------------------------------------------------------------------------ */
+/* The caret, and which doors may move the reader's page (operator, 2026-10-08) */
+/* ------------------------------------------------------------------------ */
+/*
+ * "When clicking into a project, because of the standard behaviour of the
+ * composer, it scrolls the user down to centre on the composer and focuses it.
+ * For projects the composer is an optional interaction, not the primary one, so
+ * there should be an option that is context dependent: the composer auto-focuses
+ * mostly, but on the projects page it shouldn't, and we should stay scrolled at
+ * the top when clicking in."
+ *
+ * WHAT THESE CASES CAN AND CANNOT SEE, SAID PLAINLY. jsdom has no layout engine,
+ * so the scroll is MODELLED rather than measured (`scripts/focus-scroll-model.mjs`):
+ * every `focus()` call is recorded with the options it carried, and a call that
+ * does not prevent the scroll moves the scroller by a fixed delta - which is what
+ * a real engine's centring does in an unknown amount. That makes "movement
+ * versus no movement" answerable, and it is the property this fix is; the
+ * geometry (that the strip really is below the fold, and where a centre lands)
+ * is the live-Chromium evidence's half, not this rig's.
+ */
+
+/** Focus the box the way a pointer press does: focus moves, the page does not. */
+const clickInto = async (host) => {
+	await act(async () => {
+		box(host).focus({ preventScroll: true });
+	});
+};
+
+/** Every focus call that reached the strip's own box, in order. */
+const claimsOnBox = (host) =>
+	focusModel.calls.filter((call) => call.element === box(host));
+
+/*
+ * THE PRECONDITION, ESTABLISHED RATHER THAN ASSUMED. Opening a project is a
+ * navigation from elsewhere on the page, so the caret is not already sitting in
+ * some composer's box - but this file's earlier cases leave their trees mounted
+ * until the `after` hook, and one of them can hold the caret. Left in place that
+ * would mask the regression rather than prove the fix: the composer's own guard
+ * (`isInputFocused`) would skip the claim for a reason that has nothing to do
+ * with the case, and both the caret assertion and the recorded-call assertion
+ * would pass on the pre-fix source.
+ */
+const startFromNothing = () => {
+	document.activeElement?.blur?.();
+	assert.ok(
+		!["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName ?? ""),
+		"no text field holds the caret when the project opens",
+	);
+};
+
+test("opening a project does not focus the Send-to box and does not scroll to it", async () => {
+	startFromNothing();
+	const { host, scroller } = await mountStrip();
+	const field = box(host);
+	assert.ok(
+		field,
+		"the composer's box is mounted (the mount really rendered it)",
+	);
+	assert.notEqual(
+		document.activeElement,
+		field,
+		"the strip is a secondary interaction and must not take the caret on its own initiative",
+	);
+	assert.equal(
+		scroller.scrollTop,
+		0,
+		"and the page stays where the reader left it - the model moves this by a non-zero delta for any focus that does not prevent the scroll",
+	);
+	assert.deepEqual(
+		claimsOnBox(host),
+		[],
+		"no focus call reached the box at all on the mounting path",
+	);
+});
+
+test("a box that becomes writable does not take the caret from the control that made it writable", async () => {
+	/*
+	 * THE "Send to" TRANSITION, the second half of the operator's report. With no
+	 * target the strip refuses the box (`hostNotice.blocksInput`), so choosing a
+	 * session flips it writable - and the composer's claim used to re-fire on that
+	 * transition, taking the caret off the Select trigger mid-interaction (Radix
+	 * returns focus to that trigger when its menu closes; the composer must not
+	 * take it from there).
+	 */
+	const frame = await mountStrip({ links: [], target: null });
+	assert.equal(
+		box(frame.host).readOnly,
+		true,
+		"the box refuses input while there is nothing to send to",
+	);
+	startFromNothing();
+	/*
+	 * AND THE CARET IS ON THE CONTROL THAT MAKES IT WRITABLE, which is where a
+	 * pick leaves it: the user pressed this trigger, and Radix returns focus to it
+	 * when the menu closes.
+	 */
+	const trigger = frame.host.querySelector(
+		'[aria-label="Select the session to message"]',
+	);
+	assert.ok(trigger, "the Send-to select trigger is mounted");
+	await act(async () => {
+		trigger.focus({ preventScroll: true });
+	});
+	await frame.rerender({ links: [link()], target: "s1" });
+	assert.equal(
+		box(frame.host).readOnly,
+		false,
+		"and becomes writable once a target exists",
+	);
+	assert.notEqual(
+		document.activeElement,
+		box(frame.host),
+		"the transition must not move the caret into the box",
+	);
+	assert.deepEqual(
+		claimsOnBox(frame.host),
+		[],
+		"no focus call reached the box on the transition at all",
+	);
+	assert.equal(frame.scroller.scrollTop, 0, "nor scroll the page to it");
+});
+
+test("the row's message action still hands the box over, and may bring it into view", async () => {
+	/*
+	 * The opt-out is about the composer claiming the caret when the reader has
+	 * asked for nothing. The row's message action EXISTS to hand the box over, so
+	 * it keeps a plain focus: the press working, not the page moving on its own.
+	 */
+	const frame = await mountStrip();
+	await frame.rerender({ focusTick: 1 });
+	assert.equal(
+		document.activeElement,
+		box(frame.host),
+		"the press that exists to hand the box over must land in it",
+	);
+	assert.ok(
+		frame.scroller.scrollTop > 0,
+		"and a focus the user asked for is allowed to bring the box into view",
+	);
+});
+
+test("the post-send hand-back restores the caret without dragging a reader back down", async () => {
+	/*
+	 * The pointer press focuses Send, and the browser drops focus to `<body>` when
+	 * the send settles, so the strip hands the caret back - the renderer driver's
+	 * `project-detail` scene asserts `document.activeElement` for exactly this.
+	 * What the hand-back must not do is move a reader who scrolled away while the
+	 * send was in flight: a send can take seconds, and restoring a caret is not
+	 * navigation.
+	 */
+	const frame = await mountStrip();
+	await clickInto(frame.host);
+	await type(frame.host, "one more thing, please");
+	frame.scroller.scrollTop = 120;
+	await pressEnter(frame.host);
+	assert.equal(
+		document.activeElement,
+		box(frame.host),
+		"the caret comes back to the box the press belonged to",
+	);
+	assert.equal(
+		frame.scroller.scrollTop,
+		120,
+		"and the hand-back must not scroll the page back to the strip",
 	);
 });
