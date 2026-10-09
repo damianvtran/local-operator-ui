@@ -3622,7 +3622,12 @@ export type DesktopCodeRequestCi = {
 	failed: number;
 	pending: number;
 	total: number;
-	url: string | null;
+	/**
+	 * The checks page, when the host reported one. OPTIONAL for the same reason
+	 * `comments` is: the design's row sketch (§D.6) does not list it, and a
+	 * backend that omits it must not fail a parse.
+	 */
+	url?: string | null;
 };
 
 /** The fetched summary of the forge's own record, absent until first fetched. */

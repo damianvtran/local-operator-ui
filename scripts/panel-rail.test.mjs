@@ -150,7 +150,7 @@ async function mount(render) {
 		 * error jsdom swallows, so this map's "fails loudly" promise needs an
 		 * assertion that actually reads the effect, not just the list (R1-1, Q1).
 		 */
-		/* Nothing here builds a selector from an arbitrary id; the ids are the rail's own four. */
+		/* Nothing here builds a selector from an arbitrary id; the ids are the rail's own five. */
 		CSS: { escape: (value) => String(value) },
 		// Radix reads a node's computed style to tell a real `<button>` from a
 		// non-element child; it reaches for the BARE global, like the two above.
@@ -278,14 +278,16 @@ const NO_PANES = {
 	isCanvasOpen: false,
 	isBrowserPaneOpen: false,
 	isConsolePaneOpen: false,
+	isCodeReviewPaneOpen: false,
 	isAskDrawerOpen: false,
 	askDrawerEvictedPane: null,
 };
 const details = () => deriveRunDetails(fixtures.settled());
 
-const rail = (overrides = {}) =>
-	React.createElement(PanelRail, {
-		sessionId: "session-1",
+const rail = (overrides = {}) => {
+	const { sessionId = "session-1", ...rest } = overrides;
+	return React.createElement(PanelRail, {
+		sessionId,
 		runDetails: details(),
 		mcpServers: [],
 		listOnScreen: false,
@@ -294,8 +296,19 @@ const rail = (overrides = {}) =>
 		consoleUnseenCount: 0,
 		consoleUnseenPulsing: false,
 		fileCount: 0,
-		...overrides,
+		/*
+		 * The code review door's offer mirrors `chat-content`'s own derivation
+		 * (§M.1): the capability AND a session on the route - so the draft arms
+		 * below, which pass `sessionId: null`, get the pre-feature rail without
+		 * having to restate it.
+		 */
+		codeOffered: sessionId !== null,
+		codeOpened: 0,
+		codeMentioned: 0,
+		codeAttention: false,
+		...rest,
 	});
+};
 
 /** Every case starts from a closed slot on a drawable route. */
 const reset = (api, route = DRAWABLE) =>
@@ -312,7 +325,13 @@ test("the rail is ONE vertical toolbar with a name, in the fixed order", async (
 		assert.equal(toolbar.getAttribute("role"), "toolbar");
 		assert.equal(toolbar.getAttribute("aria-orientation"), "vertical");
 		assert.equal(toolbar.getAttribute("aria-label"), "Panels");
-		assert.deepEqual(api.ids(), ["run", "browser", "console", "canvas"]);
+		assert.deepEqual(api.ids(), [
+			"run",
+			"browser",
+			"console",
+			"canvas",
+			"code",
+		]);
 		assert.deepEqual(api.ids(), [...PANEL_RAIL_ORDER]);
 	});
 });
@@ -328,7 +347,7 @@ test("one tab stop: exactly one item is tabbable, and it follows focus", async (
 		assert.equal(
 			api.items().filter((item) => item.getAttribute("tabindex") === "-1")
 				.length,
-			3,
+			4,
 		);
 		/* Focus entering on another item (a click, a pointer) moves the stop with it. */
 		act(() => api.item("console").focus());
@@ -351,10 +370,10 @@ test("ArrowUp/ArrowDown walk the items, Home/End take the ends, and the walk is 
 		await api.key(api.item("console"), "ArrowUp");
 		assert.equal(active(), "browser");
 		await api.key(api.item("browser"), "End");
-		assert.equal(active(), "canvas");
-		await api.key(api.item("canvas"), "ArrowDown");
-		assert.equal(active(), "canvas", "bounded at the end, not wrapping");
-		await api.key(api.item("canvas"), "Home");
+		assert.equal(active(), "code", "the fifth item is the last");
+		await api.key(api.item("code"), "ArrowDown");
+		assert.equal(active(), "code", "bounded at the end, not wrapping");
+		await api.key(api.item("code"), "Home");
 		assert.equal(active(), "run");
 		await api.key(api.item("run"), "ArrowUp");
 		assert.equal(active(), "run", "bounded at the start, not wrapping");
@@ -374,13 +393,14 @@ test("ArrowUp/ArrowDown walk the items, Home/End take the ends, and the walk is 
 	});
 });
 
-test("aria-pressed follows each of the four store flags, one at a time", async () => {
+test("aria-pressed follows each of the five store flags, one at a time", async () => {
 	await mount(async (api) => {
 		for (const [flag, id] of [
 			["isRunPanelOpen", "run"],
 			["isBrowserPaneOpen", "browser"],
 			["isConsolePaneOpen", "console"],
 			["isCanvasOpen", "canvas"],
+			["isCodeReviewPaneOpen", "code"],
 		]) {
 			reset(api);
 			await api.render(rail());
@@ -432,6 +452,7 @@ test("a claimed pane the route cannot draw lights NOTHING (the drawable-aware se
 			"isBrowserPaneOpen",
 			"isConsolePaneOpen",
 			"isCanvasOpen",
+			"isCodeReviewPaneOpen",
 		]) {
 			reset(api, { mounted: false, runDetails: false, session: false });
 			api.store({ [flag]: true });
@@ -474,10 +495,11 @@ test("a panel the route cannot draw is ABSENT, not disabled", async () => {
 		}
 		assert.equal(api.$("[data-run-panel-trigger]"), null);
 		assert.equal(api.$("[data-tour-tag=console-pane-trigger]"), null);
-		/* A conversation with a session but no run view model: Console without Run. */
+		/* A conversation with a session but no run view model: Console without Run
+		   (and the code review door, which needs only the session - §M.1). */
 		reset(api, { mounted: true, runDetails: false, session: true });
 		await api.render(rail({ runDetails: null }));
-		assert.deepEqual(api.ids(), ["browser", "console", "canvas"]);
+		assert.deepEqual(api.ids(), ["browser", "console", "canvas", "code"]);
 	});
 });
 

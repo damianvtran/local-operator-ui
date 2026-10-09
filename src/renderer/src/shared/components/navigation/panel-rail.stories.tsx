@@ -38,18 +38,36 @@ type OpenFlag =
 	| "isRunPanelOpen"
 	| "isBrowserPaneOpen"
 	| "isConsolePaneOpen"
-	| "isCanvasOpen";
+	| "isCanvasOpen"
+	| "isCodeReviewPaneOpen";
 
 const Rail: FC<{
 	open?: OpenFlag;
 	/** Focus this item with the keyboard modality, so `:focus-visible` is the frame's state. */
-	focusItem?: "run" | "browser" | "console" | "canvas";
+	focusItem?: "run" | "browser" | "console" | "canvas" | "code";
 	details?: ReturnType<typeof deriveRunDetails> | null;
 	sessionId?: string | null;
 	browserAttentionCount?: number;
 	consoleUnseenCount?: number;
 	consoleUnseenPulsing?: boolean;
 	fileCount?: number;
+	/*
+	 * THE CODE REVIEW DOOR'S OWN FOUR (/PR2): whether it is offered at all and
+	 * the two counts its name carries. `offered` is `chat-content`'s answer
+	 * (`features.code_requests` AND a session): false here is the pre-feature
+	 * rail, which is the state a fresh backend shows.
+	 */
+	codeOffered?: boolean;
+	codeOpened?: number;
+	codeMentioned?: number;
+	codeAttention?: boolean;
+	/*
+	 * The frame's height, defaulting to the four-door 184 the other frames hold.
+	 * The five-door rail needs its own: 5 x 32px items + 4 x 4px gaps + the
+	 * container's own padding past 184, and a clipped fifth item would be a frame
+	 * of a layout the app does not have.
+	 */
+	height?: number;
 }> = ({
 	open,
 	focusItem,
@@ -59,6 +77,11 @@ const Rail: FC<{
 	consoleUnseenCount = 0,
 	consoleUnseenPulsing = false,
 	fileCount = 0,
+	codeOffered = false,
+	codeOpened = 0,
+	codeMentioned = 0,
+	codeAttention = false,
+	height = 184,
 }) => {
 	useLayoutEffect(() => {
 		useUiPreferencesStore.setState({
@@ -66,6 +89,7 @@ const Rail: FC<{
 			isBrowserPaneOpen: open === "isBrowserPaneOpen",
 			isConsolePaneOpen: open === "isConsolePaneOpen",
 			isCanvasOpen: open === "isCanvasOpen",
+			isCodeReviewPaneOpen: open === "isCodeReviewPaneOpen",
 			isAskDrawerOpen: false,
 			askDrawerEvictedPane: null,
 		});
@@ -75,6 +99,7 @@ const Rail: FC<{
 				isBrowserPaneOpen: false,
 				isConsolePaneOpen: false,
 				isCanvasOpen: false,
+				isCodeReviewPaneOpen: false,
 			});
 	}, [open]);
 	/*
@@ -91,7 +116,8 @@ const Rail: FC<{
 	return (
 		<div
 			data-testid="rail-frame"
-			className="flex h-[184px] w-[132px] bg-canvas"
+			className="flex w-[132px] bg-canvas"
+			style={{ height }}
 		>
 			<div className="flex-1 bg-elevated" />
 			<PanelRailFrame
@@ -101,6 +127,10 @@ const Rail: FC<{
 				consoleUnseenCount={consoleUnseenCount}
 				consoleUnseenPulsing={consoleUnseenPulsing}
 				fileCount={fileCount}
+				codeOffered={codeOffered}
+				codeOpened={codeOpened}
+				codeMentioned={codeMentioned}
+				codeAttention={codeAttention}
 			/>
 		</div>
 	);
@@ -194,6 +224,51 @@ export const ConsoleOpenBlip: Story = {
 			open="isConsolePaneOpen"
 			consoleUnseenCount={1}
 			consoleUnseenPulsing={true}
+		/>
+	),
+};
+
+/*
+ * THE CODE REVIEW DOOR (built spec §8, manager decision §M.1): appended LAST so
+ * its arrival moves nothing above it, offered wherever the pane can exist (the
+ * capability is set and the route has a session), with the attention dot on a
+ * real open row with findings open or CI failing.
+ *
+ * The frame is 220 rather than the four-door 184: five items plus the gaps and
+ * the container's own padding exceed 184, and a frame that clipped the fifth
+ * item would be a photograph of a layout the app does not have - the same class
+ * of defect the installer's 900x700 frame recorded in the capture set's own
+ * notes.
+ */
+/** Offered, quiet: counts in the name, no dot. */
+export const CodeItem: Story = {
+	render: () => (
+		<Rail codeOffered={true} codeOpened={2} codeMentioned={1} height={220} />
+	),
+};
+
+/** Offered with the attention dot: an open row has findings open or CI failing. */
+export const CodeAttention: Story = {
+	render: () => (
+		<Rail
+			codeOffered={true}
+			codeOpened={2}
+			codeMentioned={1}
+			codeAttention={true}
+			height={220}
+		/>
+	),
+};
+
+/** The door lit: the code review pane is the drawn occupant. */
+export const CodeOpen: Story = {
+	render: () => (
+		<Rail
+			open="isCodeReviewPaneOpen"
+			codeOffered={true}
+			codeOpened={2}
+			codeMentioned={1}
+			height={220}
 		/>
 	),
 };
