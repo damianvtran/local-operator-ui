@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|none>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -106,6 +106,10 @@
  *                          `stay` is the head tree, where the page opens at
  *                          scrollTop 0, unfocused, with the strip below the
  *                          fold.
+ *   --session <id>         (with --scene output-artifact) the seeded session the
+ *                          scene reads; the fixture is the attachment lane's own
+ *                          seed, and a default would photograph whatever chat
+ *                          happens to open
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
  *                          runs against two backends can be told apart
@@ -388,6 +392,15 @@ const BACKEND_RECORDS = argValue("--backend-records", null);
  * that guessed would photograph whatever the seed happened to call its row.
  */
 const PROJECT = argValue("--project", null);
+/**
+ * The seeded session `--scene output-artifact` reads, by its session id.
+ *
+ * An ARGUMENT rather than a constant: the fixture is the attachment lane's own
+ * seed (harness `feat/output-attachments`), which writes `sessions/<id>/` into
+ * the config root the run's daemon serves — so this run pins whatever that
+ * seed created rather than an id baked in here.
+ */
+const SESSION = argValue("--session", null);
 /**
  * The command that starts a fresh daemon on the `--backend` address, for
  * `--scene connection-drop`'s reconnect half.
@@ -9940,6 +9953,151 @@ function readComposerReturn(cdp) {
 			notice: notice ? clean(notice.textContent) : null,
 		};
 	})()`);
+}
+
+/**
+ * `--scene output-artifact` photographs PRODUCED MEDIA in the canonical transcript.
+ *
+ * The claim is the output-attachment contract's UI half: a transcript row whose
+ * content carries an `AttachmentContent` block (kind + content_type + a store
+ * digest + metadata) must draw the picture inline — over the WHOLE real path,
+ * from a seeded session's durable row through the daemon's history route, the
+ * reducer's artifact coercion, the digest fetch and a `blob:` URL into the same
+ * `<img>` every other attachment uses. Nothing about the picture is assembled in
+ * the page.
+ *
+ * The fixture is the attachment lane's own seed (harness
+ * `feat/output-attachments`): a session with one artifact row (a real 640x360
+ * PNG registered through `cache_media`) and two legacy image rows — an
+ * externalised digest reference and a sub-floor inline `data:` one — so one
+ * frame pairs the new block with both back-compat shapes. `--session` names that
+ * session; the scene refuses without it rather than photographing an empty chat.
+ *
+ * The reload half: after `Page.reload` — the renderer's own re-mount, the app's
+ * closest thing to a cold read — the same route must re-read the same session
+ * from the daemon and every picture must decode again. That is the durable row
+ * surviving a reload, not the page's own memory.
+ *
+ * What it cannot see: the frames are the app's own `capturePage` in headless
+ * mode, so they prove the pixels the renderer painted; and it needs a daemon the
+ * caller seeded, because the block this scene is about does not exist in any
+ * historical transcript.
+ */
+async function sceneOutputArtifact(cdp) {
+	const hello = await verb(cdp, "hello");
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	const frames = [];
+
+	/*
+	 * READ THE PICTURES OFF THE RENDERED DOM, one shape only: an `<img>` that has
+	 * DECODED (`complete` + a real `naturalWidth`). The artifact's src must be a
+	 * `blob:` URL — the digest fetch's own object URL; a `data:` URL is accepted
+	 * only for the sub-floor inline legacy row.
+	 */
+	const readImages = () =>
+		cdp.evaluate(`(() => {
+			const log = document.querySelector('[role="log"]');
+			if (!log) return null;
+			return [...log.querySelectorAll('img')].map((el) => {
+				const r = el.getBoundingClientRect();
+				return {
+					src: (el.getAttribute('src') || '').slice(0, 16),
+					alt: el.getAttribute('alt') || '',
+					loaded: el.complete && el.naturalWidth > 0,
+					naturalWidth: el.naturalWidth,
+					naturalHeight: el.naturalHeight,
+					box: { w: Math.round(r.width), h: Math.round(r.height) },
+				};
+			});
+		})()`);
+	const waitForPictures = () =>
+		waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				if (!log) return false;
+				const imgs = [...log.querySelectorAll('img')];
+				return imgs.length >= 3 && imgs.every((el) => el.complete && el.naturalWidth > 0);
+			})()`,
+			45_000,
+		);
+
+	await verb(cdp, "navigate", `/chat/${SESSION}`);
+	const painted = await waitForPictures();
+	check(
+		"all three seeded pictures decode in the transcript",
+		painted.ok,
+		`last reading: ${JSON.stringify(painted.last)}`,
+	);
+	const reading = (await readImages()) ?? [];
+	note("images (before reload)", JSON.stringify(reading, null, 2));
+	const artifact = reading.find(
+		(i) => i.naturalWidth === 640 && i.naturalHeight === 360,
+	);
+	check(
+		"the artifact picture decoded at its real 640x360 size from a store fetch (blob:)",
+		Boolean(artifact) && artifact.loaded && artifact.src.startsWith("blob:"),
+		JSON.stringify(artifact ?? null),
+	);
+	check(
+		"the externalised legacy picture decoded too (a digest reference, the route images always used)",
+		reading.some((i) => i.naturalWidth === 320 && i.naturalHeight === 200),
+		JSON.stringify(reading.filter((i) => i.naturalWidth === 320)),
+	);
+	check(
+		"the sub-floor legacy picture decoded straight from its inline data: URL",
+		reading.some((i) => i.naturalWidth === 8 && i.src.startsWith("data:")),
+		JSON.stringify(reading.filter((i) => i.naturalWidth === 8)),
+	);
+	/*
+	 * CENTRE THE PICTURE for the frame. The pane opens at the transcript's
+	 * bottom; the tool card and its artifact sit higher in this short session,
+	 * so the frame would otherwise point the reader at empty space below. The
+	 * scroll is the app's own scroller - `scrollIntoView` on the first blob:
+	 * picture, which the checks above proved decoded - with a settle wait so the
+	 * capture never lands mid-scroll.
+	 */
+	await cdp.evaluate(
+		`(() => { const img = document.querySelector('[role="log"] img[src^="blob:"]'); if (img) img.scrollIntoView({ block: "center" }); return true; })()`,
+	);
+	await wait(600);
+	frames.push(await captureSettled(cdp, `artifact-inline${RUN_LABEL}`));
+
+	/*
+	 * THE RELOAD. `Page.reload` re-mounts the renderer; the route's session id
+	 * survives in the hash, so the repaint is this session read AGAIN from the
+	 * daemon's history route — the durable rows, not the page's memory.
+	 */
+	await cdp.send("Page.reload", { ignoreCache: false });
+	const back = await waitForPictures();
+	check(
+		"every picture decodes again after a renderer reload",
+		back.ok,
+		`last reading after reload: ${JSON.stringify(back.last)}`,
+	);
+	const replayed = (await readImages()) ?? [];
+	note("images (after reload)", JSON.stringify(replayed, null, 2));
+	check(
+		"the artifact is STILL a store fetch after the reload (the durable row, not a cached object URL)",
+		replayed.some((i) => i.naturalWidth === 640 && i.src.startsWith("blob:")),
+		JSON.stringify(replayed.filter((i) => i.naturalWidth === 640)),
+	);
+	frames.push(await captureSettled(cdp, `artifact-after-reload${RUN_LABEL}`));
+	return frames;
 }
 
 async function sceneConnectionDrop(cdp) {
@@ -41658,6 +41816,16 @@ async function main() {
 			"--scene turn-collapse needs --backend: the bar collapses a turn the daemon has to actually run, and with no backend the chat route draws its refusal surface and no composer mounts",
 		);
 	}
+	if (SCENE === "output-artifact" && BACKEND === null) {
+		throw new Error(
+			"--scene output-artifact needs --backend: the transcript it photographs is read from a live daemon's history route, and no historical transcript carries the block it is about",
+		);
+	}
+	if (SCENE === "output-artifact" && SESSION === null) {
+		throw new Error(
+			"--scene output-artifact needs --session <id>: it photographs the seeded session, and a default would photograph whatever chat happens to open",
+		);
+	}
 	if (SCENE === "conversation-start-away-failure" && BACKEND === null) {
 		console.error(
 			"the conversation-start-away-failure scene needs --backend <url>: it drives a real refusal through the tap",
@@ -41951,6 +42119,7 @@ async function main() {
 			 */ else if (SCENE === "floors") await sceneFloors(cdp);
 			else if (SCENE === "first-send") await sceneFirstSend(cdp);
 			else if (SCENE === "turn-collapse") await sceneTurnCollapse(cdp);
+			else if (SCENE === "output-artifact") await sceneOutputArtifact(cdp);
 			else if (SCENE === "conversation-start")
 				await sceneConversationStart(cdp);
 			else if (SCENE === "conversation-start-away-failure")
