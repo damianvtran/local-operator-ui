@@ -38,7 +38,7 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 	codeOffered = false,
 	codeOpened = 0,
 	codeMentioned = 0,
-	codeAttention = false,
+	codeAttention = null,
 }) => {
 	const setRightSlotRoute = useUiPreferencesStore((s) => s.setRightSlotRoute);
 	const hasRunDetails = runDetails !== null;
@@ -48,9 +48,15 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 			mounted: true,
 			runDetails: hasRunDetails,
 			session: hasSession,
+			codeReview: true,
 		});
 		return () =>
-			setRightSlotRoute({ mounted: false, runDetails: false, session: false });
+			setRightSlotRoute({
+				mounted: false,
+				runDetails: false,
+				session: false,
+				codeReview: false,
+			});
 	}, [setRightSlotRoute, hasRunDetails, hasSession]);
 	return (
 		<div

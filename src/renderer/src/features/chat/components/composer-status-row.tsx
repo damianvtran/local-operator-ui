@@ -1295,17 +1295,6 @@ export type ComposerStatusRowProps = {
 	 */
 	onFocusComposer?: () => void;
 	/**
-	 * The session's transport is attached - the code request chip's poll gate.
-	 *
-	 * The design's cadence is `60 s ONLY while the pane or chip is visible AND
-	 * (session live OR a row has CI pending)` (§D.5), and "session live" is a fact
-	 * the composer's host holds (`canonical.view.status`) rather than one this row
-	 * can re-derive. Optional, and ABSENT MEANS UNKNOWN, which is the safe
-	 * direction: the chip then polls only while a row's own CI is pending, and
-	 * every other refresh rides the feed frame and the window-focus refetch.
-	 */
-	sessionLive?: boolean;
-	/**
 	 * Say one sentence in the composer's own note idiom.
 	 *
 	 * THE ROW WRITES ONE NOTE and it is why this prop exists: the judge deciding to
@@ -1331,7 +1320,6 @@ export const ComposerStatusRow = ({
 	onFocusComposer,
 	onNote,
 	nowMs,
-	sessionLive = false,
 }: ComposerStatusRowProps) => {
 	/*
 	 * CONTROLLED WHEN THE CALLER SUPPLIES IT (see `askExpanded` on the props). The
@@ -1349,8 +1337,8 @@ export const ComposerStatusRow = ({
 	const revealPlan = useUiPreferencesStore(
 		(state) => state.revealRunPanelSection,
 	);
-	const setCodeReviewPaneOpen = useUiPreferencesStore(
-		(state) => state.setCodeReviewPaneOpen,
+	const revealCodeReviewPane = useUiPreferencesStore(
+		(state) => state.revealCodeReviewPane,
 	);
 	/*
 	 * ONE command channel PER CONTROL, and it is the pickers' own hook rather than a
@@ -1523,10 +1511,7 @@ export const ComposerStatusRow = ({
 	 * closes it ("a chip reveals, it does not toggle", cst.md §5.2; a genuine
 	 * click still focuses the button by the browser's own rule).
 	 */
-	const codeChip = useCodeRequestsChip(
-		frontend?.session_id ?? null,
-		sessionLive,
-	);
+	const codeChip = useCodeRequestsChip(frontend?.session_id ?? null);
 	const showCode = codeChip.show;
 	/*
 	 * The ask item's gate: a host that WIRES the lane, the lane is bounded by the WIRE,
@@ -3050,7 +3035,7 @@ export const ComposerStatusRow = ({
 								type="button"
 								data-status-code-requests=""
 								aria-label={codeChip.label}
-								onClick={() => setCodeReviewPaneOpen(true)}
+								onClick={() => revealCodeReviewPane()}
 								className={cn(CHIP_CONTROL, codeFirst ? FIRST_CHIP : undefined)}
 							>
 								<GitPullRequest

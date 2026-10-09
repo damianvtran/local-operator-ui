@@ -59,8 +59,13 @@ export type PanelRailProps = {
 	codeOpened: number;
 	/** Rows in the ledger's Mentioned group. */
 	codeMentioned: number;
-	/** Any opened row with findings open or CI failing (the rail's attention dot, §G.2). */
-	codeAttention: boolean;
+	/**
+	 * Any opened row with findings open or checks failing - the rail's attention
+	 * dot, §G.2 - as the CAUSE string (`checks failing` / `findings open` /
+	 * both) so the tooltip and the announced name say what is actually wrong
+	 * (design round 1, D5 / UX round 1, U6). Null when nothing needs attention.
+	 */
+	codeAttention: string | null;
 };
 
 const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End"]);
@@ -412,7 +417,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 						data-tour-tag="code-pane-trigger"
 					>
 						<GitPullRequest aria-hidden={true} />
-						{codeAttention && (
+						{codeAttention !== null && (
 							<span
 								aria-hidden="true"
 								data-code-review-attention=""

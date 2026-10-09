@@ -53,17 +53,81 @@ export default meta;
 
 type Story = StoryObj;
 
-const Frame: FC<{ height: number; children: ReactNode }> = ({
+const Frame: FC<{ height: number; width?: number; children: ReactNode }> = ({
 	height,
+	width = DEFAULT_RIGHT_SLOT_WIDTH,
 	children,
 }) => (
-	<div
-		className="h-full bg-surface"
-		style={{ width: DEFAULT_RIGHT_SLOT_WIDTH, height }}
-	>
+	<div className="h-full bg-surface" style={{ width, height }}>
 		{children}
 	</div>
 );
+
+/**
+ * THE SCAN GATE (UX round 1, U2): the backend says the transcript scan for
+ * this journal has not settled (`scan_state: "refreshing"`) and the answer is
+ * empty - the pane keeps its LOADING state rather than claiming the session
+ * has no code requests. The empty copy only appears on a `ready` answer.
+ */
+export const Scanning: Story = {
+	render: () => (
+		<Frame height={300}>
+			<CodeReviewPaneBody
+				phase="loading"
+				data={list([], { scan_state: "refreshing" })}
+				refreshing={false}
+				onRefresh={() => undefined}
+				onClose={() => undefined}
+				nowMs={FIXTURE_NOW_MS}
+			/>
+		</Frame>
+	),
+};
+
+/**
+ * The narrow floor (320px, the slot's minimum): design D3 / UX U8's re-shoot.
+ * The merged rows and the worst-case `via subagent coder › reviewer` tag - the
+ * two shapes that rendered as `damianvtran/local-operator #2…` and `d.` before
+ * the identity split - so the frame proves the `#N` survives truncation.
+ */
+export const Narrow: Story = {
+	render: () => (
+		<Frame height={460} width={320}>
+			<CodeReviewPaneBody
+				phase="ready"
+				data={list(populatedRows())}
+				refreshing={false}
+				onRefresh={() => undefined}
+				onClose={() => undefined}
+				nowMs={FIXTURE_NOW_MS}
+			/>
+		</Frame>
+	),
+};
+
+/**
+ * The quiet failure cue over painted rows (UX round 1, U3's third arm): a
+ * refresh that failed after the POST left the rows up and says so in the
+ * notice slot, exactly as QA's bad-token cell found it.
+ */
+export const RefreshFailed: Story = {
+	render: () => (
+		<Frame height={420}>
+			<CodeReviewPaneBody
+				phase="ready"
+				data={list(populatedRows())}
+				refreshing={false}
+				checked={false}
+				refreshFailed={
+					"Couldn't refresh — credential rejected — sign in again with gh/glab, then refresh."
+				}
+				onRefresh={() => undefined}
+				onClose={() => undefined}
+				nowMs={FIXTURE_NOW_MS}
+			/>
+		</Frame>
+	),
+};
 
 /** The populated ledger: mixed lanes and states (§6's "every rung once"). */
 export const Populated: Story = {

@@ -44,7 +44,7 @@ export const ShellStoryRail: FC<{
 			codeOffered={false}
 			codeOpened={0}
 			codeMentioned={0}
-			codeAttention={false}
+			codeAttention={null}
 		/>
 	</InPanelRailHost>
 );

@@ -27,6 +27,7 @@ import {
 	Check,
 	Copy,
 	FileText,
+	GitPullRequest,
 	Globe,
 	Info,
 	MessageCircleQuestion,
@@ -211,6 +212,18 @@ type ChatHeaderProps = {
 	 */
 	onOpenConsole?: () => void;
 	/**
+	 * Opens (or closes) the conversation's CODE REVIEW pane, or absent when this
+	 * header has none (agent review round 1, N1).
+	 *
+	 * The fifth occupant of the same slot, the same shape as `onOpenConsole` -
+	 * except that its write TOGGLES, because the code pane has no toolbar of its
+	 * own in this header and the menu is its only door from the keyboard: a
+	 * label that flipped to "Close code review" over a press that only ever
+	 * opened would be one control stating two things. The label and the action
+	 * both read the store's live flag.
+	 */
+	onOpenCodeReview?: () => void;
+	/**
 	 * THE ASKS ENTRY POINT (operator ask, 2026-10-05): open (or close) the asks
 	 * surface, and how much it is carrying right now.
 	 *
@@ -320,6 +333,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	deleteEnabled = false,
 	onRequestDelete,
 	onOpenConsole,
+	onOpenCodeReview,
 	onToggleAsks,
 	asksAttentionCount = 0,
 	asksScope = "session",
@@ -327,6 +341,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 }) => {
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+	/*
+	 * The code review pane's bound, read for the `...` menu's entry (N1): the
+	 * label flips with the SAME store field `onOpenCodeReview` toggles, so the
+	 * menu cannot state a pane that is not the one on screen.
+	 */
+	const isCodeReviewPaneOpen = useUiPreferencesStore(
+		(s) => s.isCodeReviewPaneOpen,
+	);
 	/*
 	 * The transcript display mode (issue #756), read here for the OVERFLOW MENU so
 	 * the choice is reachable from the conversation the reader is looking at rather
@@ -1375,6 +1397,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							{(runDetails ||
 								onToggleBrowser ||
 								onOpenConsole ||
+								onOpenCodeReview ||
 								onOpenOptions) && <DropdownMenuSeparator />}
 							{runDetails && (
 								<DropdownMenuItem onSelect={() => setRunPanelOpen(true)}>
@@ -1411,6 +1434,21 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								<DropdownMenuItem onSelect={() => setCanvasOpen(!isCanvasOpen)}>
 									<FileText aria-hidden="true" />
 									<span>{isCanvasOpen ? "Close canvas" : "Open canvas"}</span>
+								</DropdownMenuItem>
+							)}
+							{onOpenCodeReview && (
+								/*
+								 * APPENDED LAST, after canvas, matching the rail's own order
+								 * (agent review round 1, N1): the item appearing mid-session moves
+								 * nothing above it, and the #917 fold keeps this position.
+								 */
+								<DropdownMenuItem onSelect={() => onOpenCodeReview()}>
+									<GitPullRequest aria-hidden="true" />
+									<span>
+										{isCodeReviewPaneOpen
+											? "Close code review"
+											: "Open code review"}
+									</span>
 								</DropdownMenuItem>
 							)}
 						</DropdownMenuContent>

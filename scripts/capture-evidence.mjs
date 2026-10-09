@@ -10949,16 +10949,19 @@ export const STORIES = [
 	["code-review-pane--populated", 640, 960],
 	["code-review-pane--empty", 640, 300],
 	["code-review-pane--loading", 640, 300],
+	["code-review-pane--scanning", 640, 300],
 	["code-review-pane--error-state", 640, 300],
 	["code-review-pane--link-only", 640, 340],
 	["code-review-pane--rate-limited", 640, 340],
 	["code-review-pane--stale", 640, 340],
 	["code-review-pane--could-not-refresh", 640, 520],
+	["code-review-pane--refresh-failed", 640, 420],
 	["code-review-pane--refreshing", 640, 340],
+	["code-review-pane--narrow", 320, 460],
 	["navigation-panel-rail--code-item", 132, 220],
 	["navigation-panel-rail--code-attention", 132, 220],
 	["navigation-panel-rail--code-open", 132, 220],
-	["chat-composer-status-row--code-requests-chip", 1000, 560],
+	["chat-composer-status-row--code-requests-chip", 1000, 760],
 ];
 
 /**

@@ -2991,15 +2991,39 @@ const codeChipClient = (): QueryClient => {
 const CodeChipHost: FC<{ children: ReactNode }> = ({ children }) => {
 	useLayoutEffect(() => {
 		useUiPreferencesStore.setState({
-			rightSlotRoute: { mounted: true, runDetails: false, session: true },
+			rightSlotRoute: {
+				mounted: true,
+				runDetails: false,
+				session: true,
+				codeReview: true,
+			},
 		});
 		return () =>
 			useUiPreferencesStore.setState({
-				rightSlotRoute: { mounted: false, runDetails: false, session: false },
+				rightSlotRoute: {
+					mounted: false,
+					runDetails: false,
+					session: false,
+					codeReview: false,
+				},
 			});
 	}, []);
 	return <>{children}</>;
 };
+
+/**
+ * The chip's crowded case (design round 1, D7): a to-do, a wake and a watch
+ * beside the code chip - the four-chip row the designer measured at 469px
+ * against a 416px box, where the code chip wraps alone onto line 2. The story
+ * exists so the wrap is LOOKED AT rather than argued from widths.
+ */
+const CHIP_SIBLINGS: RunDetails = deriveRunDetails({
+	jobs: [],
+	todos: planOf(["pending"]),
+	wakes: [wakeOf("w1", "Stand-up reminder", 12)],
+	monitors: [monitorOf("m1", "loom-pr-1710", 1)],
+	nowMs: WAKE_NOW_MS,
+});
 
 export const CodeRequestsChip: Story = {
 	render: () => (
@@ -3015,6 +3039,11 @@ export const CodeRequestsChip: Story = {
 						label="Beside the goal: the counts chip follows the reading it sits after"
 						frontend={chipFrontend(SHORT_GOAL)}
 						runDetails={null}
+					/>
+					<Band
+						label="With a to-do, a wake and a watch: the four-chip row wraps, and the code chip lands alone on line 2"
+						frontend={chipFrontend("")}
+						runDetails={CHIP_SIBLINGS}
 					/>
 				</div>
 			</CodeChipHost>

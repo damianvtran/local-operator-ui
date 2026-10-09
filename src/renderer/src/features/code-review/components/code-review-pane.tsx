@@ -1,10 +1,15 @@
 import { PanelNotice } from "@features/chat/pickers/panels/panel-states";
 import { Button, Separator, Skeleton } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { PanelRightClose, RefreshCw } from "lucide-react";
-import { type FC, useEffect, useState } from "react";
+import { type FC, type Ref, useEffect, useRef, useState } from "react";
 import type { DesktopCodeRequestsList } from "../../../../../shared/desktop-contract";
-import { coolingClauses, groupRows } from "../code-review-model";
+import {
+	coolingClauses,
+	groupRows,
+	toolOutputNote,
+} from "../code-review-model";
 import {
 	useCodeRequests,
 	useRefreshCodeRequests,
@@ -68,9 +73,22 @@ export type CodeReviewPaneBodyProps = {
 	phase: "loading" | "error" | "ready";
 	data: DesktopCodeRequestsList | undefined;
 	refreshing: boolean;
+	/*
+	 * THE PRESS'S THREE ANSWERS (UX round 1, U3): the control spins while work
+	 * is in flight (`refreshing`), says `Checked just now` once the post-press
+	 * refetch has SETTLED (changed rows or not - "refreshed, nothing changed"
+	 * must read differently from "did nothing"), and states what failed, in the
+	 * pane's own quiet register, when the POST failed over painted rows.
+	 * Optional on the body (defaults: false / null) so a story that pins the
+	 * four states does not restate the press's feedback.
+	 */
+	checked?: boolean;
+	refreshFailed?: string | null;
 	onRefresh: () => void;
 	onClose: () => void;
 	nowMs: number;
+	/** The pane's own root, for a reveal request to focus (UX round 1, U11). */
+	rootRef?: Ref<HTMLDivElement>;
 };
 
 /** One group of rows under its header (§4): `Opened`, `Mentioned`. */
@@ -98,14 +116,18 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 	phase,
 	data,
 	refreshing,
+	checked = false,
+	refreshFailed = null,
 	onRefresh,
 	onClose,
 	nowMs,
+	rootRef,
 }) => {
 	const cooling = coolingClauses(data?.cooling, nowMs);
 	const groups = groupRows(data?.rows ?? []);
 	return (
 		<div
+			ref={rootRef}
 			data-code-review-pane=""
 			aria-label="Code review"
 			tabIndex={-1}
@@ -124,18 +146,36 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 				)}
 				data-code-review-bar=""
 			>
-				<span className={cn("min-w-0 truncate text-meta text-ink-muted")}>
-					Code review
+				<span className={cn("flex min-w-0 items-baseline gap-2")}>
+					<span className={cn("min-w-0 truncate text-meta text-ink-muted")}>
+						Code review
+					</span>
+					{checked && (
+						<span className={cn("shrink-0 text-meta text-ink-dim")}>
+							Checked just now
+						</span>
+					)}
 				</span>
 				<span className={cn("flex shrink-0 items-center gap-1")}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Refresh code reviews"
+						aria-label={
+							refreshing ? "Refreshing code reviews" : "Refresh code reviews"
+						}
+						/*
+						 * `aria-disabled`, NOT `disabled` (UX round 1, U3): a disabled
+						 * button drops focus to `<body>` the moment Enter is pressed, so the
+						 * keyboard user loses their place; the handler guards the busy case
+						 * instead and the control keeps focus through the refetch.
+						 */
+						aria-disabled={refreshing}
 						onClick={onRefresh}
-						disabled={refreshing}
 					>
-						<RefreshCw aria-hidden="true" />
+						<RefreshCw
+							aria-hidden="true"
+							className={cn(refreshing && "motion-safe:animate-spin")}
+						/>
 					</Button>
 					<Button
 						variant="ghost"
@@ -148,19 +188,27 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 				</span>
 			</div>
 			{/*
-			 * The rate-limit line(s), directly under the bar and once per host (§5):
-			 * row-level repetition of one host's window is noise, and the window is a
-			 * fact about the HOST rather than about any row.
+			 * The notices under the bar, in a slot whose height is RESERVED
+			 * (UX round 1, U12): the cooling line growing in pushed every row down
+			 * 22px and put the row under the pointer somewhere else; the slot is
+			 * `min-h-5` whether or not it has anything to say (`pb-1` keeps the
+			 * spacing those lines always carried).
+			 *
+			 * The rate-limit line(s) are once per host (§5), and the refresh's own
+			 * failure rides the same register: a quiet caption, not a panel-level
+			 * error over painted rows (§6).
 			 */}
-			{cooling.length > 0 && (
-				<div className={cn("flex flex-col gap-0.5 px-3 pb-1")}>
-					{cooling.map((line) => (
+			<div className={cn("flex min-h-5 flex-col gap-0.5 px-3 pb-1")}>
+				{cooling.length > 0 &&
+					cooling.map((line) => (
 						<span key={line} className={cn("text-meta text-ink-dim")}>
 							{line}
 						</span>
 					))}
-				</div>
-			)}
+				{refreshFailed && (
+					<span className={cn("text-meta text-ink-dim")}>{refreshFailed}</span>
+				)}
+			</div>
 			<div className={cn("flex min-h-0 flex-1 flex-col overflow-y-auto")}>
 				{phase === "loading" && (
 					<div className={cn("flex flex-col gap-2 px-3 py-3")}>
@@ -225,7 +273,10 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 							)}
 							{(data?.tool_output_only_count ?? 0) > 0 && (
 								<span className={cn("px-3 py-2 text-meta text-ink-dim")}>
-									{data?.tool_output_only_count} more seen in tool output
+									{toolOutputNote(
+										data?.tool_output_only_count ?? 0,
+										data?.tool_output_truncated === true,
+									)}
 								</span>
 							)}
 						</>
@@ -244,22 +295,116 @@ export const CodeReviewPane: FC<CodeReviewPaneProps> = ({
 	const query = useCodeRequests(sessionId, { visible: true, sessionLive });
 	const refresh = useRefreshCodeRequests(sessionId);
 	const clock = useMinuteClock(nowMs);
+	const rootRef = useRef<HTMLDivElement>(null);
+	const [feedback, setFeedback] = useState<"idle" | "pressed" | "checked">(
+		"idle",
+	);
+	const refetchSeen = useRef(false);
+
+	/*
+	 * THE SCAN GATE (UX round 1, U2): `scan_state: "refreshing"` is the
+	 * backend saying the index is being rebuilt for this journal, so an EMPTY
+	 * answer is not yet a claim that the session has no code requests - the
+	 * pane keeps its loading state until the scan settles (`ready`) or rows
+	 * arrive. `missing` is NOT settling: there is no journal to scan, and the
+	 * empty copy is the honest answer there.
+	 */
+	const scanSettling = query.data?.scan_state === "refreshing";
 	const phase: CodeReviewPaneBodyProps["phase"] =
-		query.data !== undefined ? "ready" : query.isError ? "error" : "loading";
+		query.data === undefined
+			? query.isError
+				? "error"
+				: "loading"
+			: scanSettling && (query.data.rows?.length ?? 0) === 0
+				? "loading"
+				: "ready";
+
+	/*
+	 * The post-press answer (UX round 1, U3): the control spins through the
+	 * POST *and* the refetch it triggers, then says `Checked just now` once
+	 * that refetch has SETTLED - changed or not. `refetchSeen` is what tells a
+	 * real refetch from the fresh ten-second window starving one, and the
+	 * settle is read off `isFetching` falling - `dataUpdatedAt` is deliberately
+	 * not a dependency (it would re-run the effect on every data change).
+	 */
+	useEffect(() => {
+		if (feedback === "pressed" && query.isFetching) refetchSeen.current = true;
+	}, [feedback, query.isFetching]);
+	useEffect(() => {
+		if (feedback !== "pressed" || !refetchSeen.current) return;
+		if (query.isFetching) return;
+		setFeedback("checked");
+		const id = window.setTimeout(() => setFeedback("idle"), 8_000);
+		return () => window.clearTimeout(id);
+	}, [feedback, query.isFetching]);
+
+	const onRefresh = () => {
+		if (refresh.isPending || scanSettling) return;
+		if (phase === "error") {
+			void query.refetch();
+			return;
+		}
+		refetchSeen.current = false;
+		setFeedback("pressed");
+		refresh.mutate(undefined, {
+			onError: () => setFeedback("idle"),
+		});
+	};
+
+	/*
+	 * ESCAPE CLOSES THE PANE (UX round 1, U9): the same rule the run panel's
+	 * ladder states - an UNCLAIMED Escape is the pane's while it is open,
+	 * `stopPropagation` so the window-level Escape does not also act on the
+	 * press (a document listener is on the way to the window). A layer that
+	 * claimed the press first (a tooltip's dismissable layer preventDefaults
+	 * from the capture phase) keeps it.
+	 */
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== "Escape") return;
+			if (event.defaultPrevented) return;
+			event.stopPropagation();
+			onClose();
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, [onClose]);
+
+	/*
+	 * THE CHIP'S REVEAL (UX round 1, U11): pressing the chip while the pane is
+	 * already open re-requests attention, and the pane answers by taking focus
+	 * on its own root (`tabIndex={-1}`) - there are no sections to scroll, so
+	 * focus is the whole of what a reveal can be here.
+	 */
+	const reveal = useUiPreferencesStore((state) => state.codeReviewReveal);
+	const clearReveal = useUiPreferencesStore(
+		(state) => state.clearCodeReviewReveal,
+	);
+	useEffect(() => {
+		if (!reveal) return;
+		rootRef.current?.focus();
+		clearReveal(reveal.nonce);
+	}, [reveal, clearReveal]);
+
+	const refreshing =
+		refresh.isPending ||
+		scanSettling ||
+		(feedback === "pressed" && query.isFetching);
+	const refreshFailed =
+		refresh.isError && !refreshing
+			? `Couldn't refresh — ${refresh.error instanceof Error ? refresh.error.message : "try again"}`
+			: null;
 	return (
 		<CodeReviewPaneBody
 			phase={phase}
 			data={query.data}
-			refreshing={refresh.isPending}
-			onRefresh={() => {
-				if (phase === "error") {
-					void query.refetch();
-					return;
-				}
-				refresh.mutate();
-			}}
+			refreshing={refreshing}
+			checked={feedback === "checked"}
+			refreshFailed={refreshFailed}
+			onRefresh={onRefresh}
 			onClose={onClose}
 			nowMs={clock}
+			rootRef={rootRef}
 		/>
 	);
 };
