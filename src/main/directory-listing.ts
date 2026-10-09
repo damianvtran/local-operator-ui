@@ -65,7 +65,7 @@
  *    constraints and the evidence pointer.
  */
 
-import { realpathSync, statSync } from "node:fs";
+import { statSync } from "node:fs";
 import {
 	realpath as fsRealpath,
 	stat as fsStat,
@@ -368,15 +368,6 @@ export async function listDirectory(dir: string): Promise<DirectoryListing> {
 	}
 }
 
-/** A path's fully resolved spelling, or `null` when it will not resolve. */
-export function realPathOrNull(path: string): string | null {
-	try {
-		return realpathSync(path);
-	} catch {
-		return null;
-	}
-}
-
 /**
  * The harness's own containment verdict, over two already-resolved paths.
  *
@@ -430,7 +421,7 @@ export function outsideWorkspace(
  */
 
 /**
- * How many path probes may be in flight at once.
+ * How many path probes may be in flight at once, APP-WIDE.
  *
  * Four is libuv's own thread-pool width, and the number comes from a measured
  * property of the storm itself: the missing-path autofs lookup is SERIALISED
@@ -440,12 +431,21 @@ export function outsideWorkspace(
  * total is n x 265 ms however wide the pool is, and what a wider pool changes
  * is each lookup's queue position (the 6-at-once batch saw individual lookups
  * of 0.8-1.6 s). A bound beyond the pool's width would not finish the batch
- * sooner; it would only charge queue time against each probe's deadline - the
- * deadline starts when the unit is dispatched - turning healthy slow lookups
- * into faults. Four keeps the pool saturated without queueing units behind it,
- * and the bound is what makes the concurrency claim testable: the pinned test
- * drives slow probes and asserts the high-water mark is exactly this number,
- * which a 64-wide fan-out (or a serial loop) would fail.
+ * sooner; it would only charge queue time against each probe's deadline,
+ * turning healthy slow lookups into faults.
+ *
+ * THE BOUND IS THE APP'S, NOT ONE CALL'S (remediation round 1, R1-3).
+ * `probeFiles` can be invoked while another call is still probing - the
+ * panel's batch, the transcript's link pre-scan and a canvas click all reach
+ * the same handler - so the gate below (`acquireProbeSlot`) is process-wide:
+ * the app never has more than this many probes outstanding however many calls
+ * overlap, and the deadline clock starts at ADMISSION rather than dispatch,
+ * because a probe waiting for a slot is not yet doing any work to time. Each
+ * call still bounds its own dispatch with `runWithLimit`, so a 30-path storm
+ * leaves at most this many of its units waiting at the gate rather than all
+ * 30 ahead of another call's click. The pinned tests drive a single call
+ * (high-water mark exactly this number) and two overlapping calls (still this
+ * number, not twice it); a 64-wide fan-out or a serial loop fails both.
  *
  * What the measured storm charges the LOOP is now nothing. The before/after
  * run drives a 30-path batch with a 16 ms heartbeat: the batch ran off-thread
@@ -456,15 +456,18 @@ export function outsideWorkspace(
 export const PROBE_CONCURRENCY = 4;
 
 /**
- * Wall-clock ceiling on ONE path's probe, from the moment its turn starts
- * (queue time in the pool is not charged to it).
+ * Wall-clock ceiling on ONE path's probe, from the moment the process-wide
+ * gate admits it (waiting for a slot is not charged to it).
  *
  * Inside the deadline the measured autofs lookup (266-275 ms) answers as the
  * true "missing" it is; past it the answer is a FAULT - `exists: false` WITH
  * an `error` - because a probe that did not finish is not a statement that the
- * file is absent, and the difference is the whole diagnosis when a tile says
- * the file is gone and it is there. 1.75 s sits between the two measured ends:
- * well over any lookup the OS should answer, well under the multi-second
+ * file is absent. That distinction is load-bearing on both sides of the
+ * bridge: the `error` field is the discriminant consumers branch on, and the
+ * renderer paints a fault as UNKNOWN (unmarked) rather than as a missing file
+ * (remediation round 1, R1-2; QA round 1, Q1), so an existing file under a
+ * stalled mount is not reported gone. 1.75 s sits between the two measured
+ * ends: well over any lookup the OS should answer, well under the multi-second
  * stalls the synchronous handler caused. NOTE the deadline bounds the ANSWER,
  * not the syscall: a timed-out stat still occupies a libuv thread until the OS
  * answers it, so a batch of hung mounts still costs the pool their queueing,
@@ -484,22 +487,58 @@ export const PROBE_DEADLINE_MS = 1750;
 export const PROBE_POSITIVE_TTL_MS = 30_000;
 
 /**
- * How long a NEGATIVE answer (nothing at that path) stays usable, ms.
+ * How long a FAST miss (a lookup that answered in under
+ * `PROBE_SLOW_MISS_THRESHOLD_MS`) stays usable, ms.
+ *
+ * Seconds rather than minutes, because damping a cheap answer buys almost
+ * nothing and costs the recovery paths: a local miss re-probes for ~0 ms, and
+ * this window is exactly how long a file that appears after a miss can stay
+ * un-seen. It exists at all to absorb the duplicate asks of one burst (the
+ * renderer's chunk loop, the transcript's link pre-scan and a toolbar reveal
+ * can all ask within the same second). The viewer's click probe goes through
+ * this same cache (`canvas-file-viewer.tsx`), so this window is also the bound
+ * on how long a click could be refused as "File no longer exists" for a file
+ * that has just appeared - the cell in `scripts/directory-listing.test.mjs`
+ * pins exactly that (remediation round 1, R1-1).
+ */
+export const PROBE_FAST_MISS_TTL_MS = 2_000;
+
+/**
+ * The elapsed time, ms, at or above which a miss counts as SLOW - the
+ * autofs/mount class that earns the long damping.
+ *
+ * Measured on this host: a missing-path lookup under `/home` (macOS autofs)
+ * costs 266-275 ms while `/tmp` and real directories answer in ~0 ms, so 150
+ * sits an order of magnitude above any local answer and well below the storm,
+ * and only the class that pays 266 ms per ask gets the long TTL. The elapsed
+ * it is compared against is the unit's own probe time, measured AFTER the
+ * process-wide gate admits it (`PROBE_CONCURRENCY` explains why), so slot
+ * queueing is not charged to the classification.
+ */
+export const PROBE_SLOW_MISS_THRESHOLD_MS = 150;
+
+/**
+ * How long a SLOW miss (the autofs class; see `PROBE_SLOW_MISS_THRESHOLD_MS`)
+ * stays usable, ms.
  *
  * A negative answer is what the autofs storm is made of: the measured open
- * asked about 29 distinct `/home/ec2-user/*` paths, every one missed, and the
- * renderer re-asks misses on every transcript growth - so every open of the
- * session repeated the storm. Longer than the positive TTL because the fact is
- * more stable in the direction that hurts (a missing path that comes back is
- * the write-later flow, which the renderer already retries) and because these
- * are the lookups that cost 266-275 ms each. The honest bound this puts on
- * staleness, stated rather than implied: a file that appears while a negative
- * answer is cached stays reported missing for up to this window - including
- * to the renderer's growth retry, when the retry's resolved spelling is the
- * key the miss was stored under (`probeCacheKey` below explains when it is
- * not) - and the first probe after the window is the one that sees it.
+ * asked about 29 distinct `/home/ec2-user/*` paths and re-asked them on every
+ * open, and each fresh lookup cost 266-275 ms. Two minutes covers a reader
+ * flipping between sessions - the measured warm re-open case - without pinning
+ * a verdict for the life of the session.
+ *
+ * WHAT THIS DAMPING COSTS, stated plainly because round 1 measured the
+ * overclaim (R1-1): a slow miss that is really a file that will appear stays
+ * answered "missing" for up to this window. The renderer's growth retry asks
+ * the RESOLVED spelling, so for a `~`-spelled miss the first retry is a fresh
+ * key and gets a fresh look - but a retry that itself misses is cached under
+ * ITS key like any other miss, and an absolute spelling shares the original
+ * key from the start. The recovery guarantee that matters is therefore the
+ * COST RATING in the constants above: only the class that pays 266 ms per ask
+ * may be damped for minutes; a local miss is damped for
+ * `PROBE_FAST_MISS_TTL_MS`, so a file that appears is visible within seconds.
  */
-export const PROBE_NEGATIVE_TTL_MS = 120_000;
+export const PROBE_SLOW_MISS_TTL_MS = 120_000;
 
 /**
  * Ceiling on remembered answers.
@@ -540,7 +579,8 @@ export type ProbeDeps = {
 	/**
 	 * The fully resolved spelling, or `null` when it will not resolve. Never
 	 * expected to throw: "will not resolve" includes every failure to the
-	 * production implementation, exactly as `realPathOrNull` folded them.
+	 * production implementation, which folds them the way the old handler's
+	 * realpath did.
 	 */
 	realpath(path: string): Promise<string | null>;
 	/** Wall clock, ms, for the cache TTLs. */
@@ -586,9 +626,9 @@ export type ProbeFileCache = Map<string, ProbeCacheEntry>;
  * and re-spelling the split is truer than casting the option past the
  * compiler. Only a path that is genuinely not there earns the "missing"
  * answer; every other errno throws, exactly as it did before. `realpath` folds
- * every failure to `null`, exactly as `realPathOrNull` did, so a target that
- * will not resolve stays the fail-closed "outside" rather than becoming a
- * fault.
+ * every failure to `null`, the way the handler this replaces folded them, so a
+ * target that will not resolve stays the fail-closed "outside" rather than
+ * becoming a fault.
  */
 export const fsProbeDeps: ProbeDeps = {
 	stat: async (path) => {
@@ -629,12 +669,17 @@ const sharedProbeCache: ProbeFileCache = new Map();
  * answer is paired to (the renderer matches results to tiles BY INPUT).
  *
  * One consequence worth stating, because the renderer's retry loop leans on
- * it: a missing path is re-asked in its RESOLVED spelling (`book.missing`),
- * and for a `~`-relative mention those are two keys - the retry gets a fresh
- * look at the filesystem, which is what lets the write-later flow flip to
- * present. For an absolute mention - every `/home/ec2-user/...` path in the
- * measured storm - the two spellings are the same key, and the retry is
- * absorbed by the cache instead of re-paying 266-275 ms per miss.
+ * it: a missing path is re-asked in its RESOLVED spelling (`book.missing`).
+ * For a `~`-relative mention those are two keys, so the FIRST retry gets a
+ * fresh look at the filesystem; a retry that itself misses is cached under its
+ * own key like any other miss, and for an absolute mention - every
+ * `/home/ec2-user/...` path in the measured storm - the two spellings are the
+ * same key from the start, so retries are absorbed by the cache instead of
+ * re-paying 266-275 ms per miss. What keeps that absorption from hiding a file
+ * that appears is the COST RATING on the entry, not the key (see `remember`:
+ * a fast local miss expires in seconds; only the autofs class holds the long
+ * TTL). The earlier claim that the two keys alone preserved the write-later
+ * flip was measured false (remediation round 1, R1-1).
  */
 function probeCacheKey(input: string, resolved: string): string {
 	return `${input}\u0000${resolved}`;
@@ -675,7 +720,7 @@ async function withProbeDeadline<T>(work: Promise<T>): Promise<T> {
  * ONCE per call, asynchronously, and under the same deadline.
  *
  * `null` means the question cannot be asked: no real resolution (the old
- * `realPathOrNull`'s answer to a throw), or the deadline fired. A `null` root
+ * handler's folding of a realpath that threw), or the deadline fired. A `null` root
  * makes `outsideWorkspace` answer `undefined` - a caller told nothing rather
  * than told "inside" - and folding a slow root into that same `null`, rather
  * than faulting every path in the batch, keeps one slow lookup on the root
@@ -700,7 +745,11 @@ type ProbeFacts = {
 	mtimeMs: number | null;
 	/** The fully resolved target, for the verdict; `null` when it did not resolve. */
 	realPath: string | null;
-	/** Present on a fault; a fault is never cached. */
+	/**
+	 * Present on a fault - a probe that could not answer. Never cached, and the
+	 * discriminant consumers branch on: `exists: false` WITH this set is
+	 * UNKNOWN, not "missing" (remediation round 1, R1-2).
+	 */
 	error?: string;
 };
 
@@ -741,8 +790,9 @@ async function probeOnce(
 		);
 	} catch (error) {
 		// A genuine fault - permission, a stale network mount, the deadline - is not
-		// the same answer as "no such file", and the difference is the whole
-		// diagnosis when a tile says the file is gone and it is there.
+		// the same answer as "no such file": the `error` field carries the
+		// difference, and consumers read it as UNKNOWN rather than as a gone file
+		// (remediation round 1, R1-2). Never cached, in any class.
 		return {
 			exists: false,
 			isFile: false,
@@ -757,6 +807,15 @@ async function probeOnce(
 /**
  * Remember an answer, under the cap and never for a fault.
  *
+ * THE TTL IS THE MISS'S OWN COST (remediation round 1, R1-1). A miss that took
+ * at least `PROBE_SLOW_MISS_THRESHOLD_MS` is the autofs class and earns
+ * `PROBE_SLOW_MISS_TTL_MS`; a cheap local miss earns `PROBE_FAST_MISS_TTL_MS`,
+ * so a file that appears after one is visible within seconds instead of up to
+ * two minutes. A positive answer keeps its own TTL.
+ *
+ * A fault is never stored, in any class: a fault is a fact about one attempt,
+ * not about the file, and the answer's `error` field is what says so.
+ *
  * At the cap the OLDEST insertion is dropped. Deliberately FIFO, not LRU: with
  * TTLs of two minutes at most, everything in the map is dead within one storm's
  * worth of time anyway, and re-ordering on every hit is bookkeeping this win
@@ -767,6 +826,7 @@ function remember(
 	key: string,
 	facts: ProbeFacts,
 	at: number,
+	elapsedMs: number,
 ): void {
 	if (facts.error !== undefined) return;
 	if (cache.size >= PROBE_CACHE_LIMIT) {
@@ -775,7 +835,11 @@ function remember(
 	}
 	cache.set(key, {
 		at,
-		ttlMs: facts.exists ? PROBE_POSITIVE_TTL_MS : PROBE_NEGATIVE_TTL_MS,
+		ttlMs: facts.exists
+			? PROBE_POSITIVE_TTL_MS
+			: elapsedMs >= PROBE_SLOW_MISS_THRESHOLD_MS
+				? PROBE_SLOW_MISS_TTL_MS
+				: PROBE_FAST_MISS_TTL_MS,
 		exists: facts.exists,
 		isFile: facts.isFile,
 		sizeBytes: facts.sizeBytes,
@@ -785,9 +849,56 @@ function remember(
 }
 
 /**
+ * The process-wide probe gate: the `PROBE_CONCURRENCY` bound is the APP's, not
+ * one call's (remediation round 1, R1-3).
+ *
+ * Module-level like `sharedProbeCache`, because what it bounds is a property
+ * of the process - the number of filesystem probes in flight against a thread
+ * pool of that width - not of any one call. FIFO admission across calls; the
+ * release must be called exactly once per grant (a double release is ignored
+ * rather than corrupting the count). Nothing outside this module reads the
+ * counter, so it needs no reset between tests: every granted slot is released
+ * in a `finally`.
+ */
+function createProbeGate(limit: number): () => Promise<() => void> {
+	let active = 0;
+	const waiting: Array<() => void> = [];
+	const admitNext = (): void => {
+		const grant = waiting.shift();
+		if (grant === undefined) return;
+		active += 1;
+		grant();
+	};
+	return () =>
+		new Promise((resolve) => {
+			const grant = (): void => {
+				let released = false;
+				resolve(() => {
+					if (released) return;
+					released = true;
+					active -= 1;
+					admitNext();
+				});
+			};
+			if (active < limit) {
+				active += 1;
+				grant();
+			} else {
+				waiting.push(grant);
+			}
+		});
+}
+
+/** The one gate every call shares, so the bound is the app's, not a call's. */
+const acquireProbeSlot = createProbeGate(PROBE_CONCURRENCY);
+
+/**
  * Run `worker` over `items` with at most `limit` in flight. Each runner awaits
  * one item's worker before pulling the next, so the in-flight count is at most
- * the number of runners - the property the concurrency test pins.
+ * the number of runners - the property the concurrency test pins. This is the
+ * PER-CALL dispatch bound; the app-wide admission bound is `acquireProbeSlot`,
+ * and the two exist for different jobs: this one keeps a long batch from
+ * parking every unit at the gate ahead of another call's single click.
  */
 async function runWithLimit<T>(
 	items: readonly T[],
@@ -818,9 +929,10 @@ async function runWithLimit<T>(
  * resolution rule, containment semantics, the `MAX_PROBE_PATHS` cap - with the
  * two changes the measured storm forces: everything here is asynchronous (no
  * `statSync`/`realpathSync` anywhere on this path), and the work is bounded and
- * cached (pool, deadline, TTLs) so a batch of slow autofs misses costs the
- * event loop nothing and a re-open costs the filesystem nothing. The account
- * of those changes is the block comment at the top of this section.
+ * cached (one process-wide pool, a per-path deadline, cost-rated miss TTLs) so
+ * a batch of slow autofs misses costs the event loop nothing and a re-open
+ * costs the filesystem nothing. The account of those changes is the block
+ * comment at the top of this section.
  *
  * `asked` is taken as the renderer sent it - each entry already a string (the
  * IPC wiring filters) - and is capped here, where the cap's rationale lives.
@@ -873,9 +985,22 @@ export async function probeFiles(
 		[...units.entries()].filter(([, unit]) => unit.facts === null),
 		PROBE_CONCURRENCY,
 		async ([key, unit]) => {
-			const facts = await probeOnce(unit.resolved, deps);
-			unit.facts = facts;
-			remember(cache, key, facts, deps.now());
+			/*
+			 * ADMISSION FIRST, then the clock (remediation round 1, R1-3): a probe
+			 * waiting for the process-wide slot is not yet doing work, so neither
+			 * the deadline nor the fast/slow classification is charged for the
+			 * wait.
+			 */
+			const release = await acquireProbeSlot();
+			try {
+				const startedAt = deps.now();
+				const facts = await probeOnce(unit.resolved, deps);
+				const elapsedMs = deps.now() - startedAt;
+				unit.facts = facts;
+				remember(cache, key, facts, deps.now(), elapsedMs);
+			} finally {
+				release();
+			}
 		},
 	);
 
