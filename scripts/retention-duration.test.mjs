@@ -36,6 +36,33 @@ globalThis.document = dom.window.document;
 globalThis.window.api = {
 	desktop: { request: async () => ({ status: 200, body: {} }) },
 };
+/*
+ * A localStorage for the notice store's `persist` middleware. The renderer
+ * always has one; jsdom puts it on the window (which the promotion loop above
+ * would copy), but a bare `localStorage` read inside a bundled module is not
+ * guaranteed to resolve, so the test states the environment it needs.
+ */
+globalThis.localStorage ??= {
+	store: new Map(),
+	getItem(key) {
+		return this.store.has(key) ? this.store.get(key) : null;
+	},
+	setItem(key, value) {
+		this.store.set(key, String(value));
+	},
+	removeItem(key) {
+		this.store.delete(key);
+	},
+	clear() {
+		this.store.clear();
+	},
+	key(index) {
+		return [...this.store.keys()][index] ?? null;
+	},
+	get length() {
+		return this.store.size;
+	},
+};
 globalThis.ResizeObserver ??= class {
 	observe() {}
 	unobserve() {}
@@ -59,7 +86,8 @@ const bundle = await build({
 			export { tierFor } from "./src/renderer/src/features/settings/backend-settings-tiers";
 			export { RetentionDurationControl } from "./src/renderer/src/features/settings/components/retention-duration-control";
 			export { BackendSettingRow } from "./src/renderer/src/features/settings/components/backend-setting-row";
-			export { parseDelegatedCleanupNotice } from "./src/renderer/src/shared/store/delegated-cleanup-notice-store";
+			export { parseDelegatedCleanupNotice, useDelegatedCleanupNoticeStore } from "./src/renderer/src/shared/store/delegated-cleanup-notice-store";
+			export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -474,6 +502,48 @@ test("the row explains the gate in the switch's own words", async (t) => {
 /* ------------------------------------------------------------------ *
  * The first-run notice's wire shape
  * ------------------------------------------------------------------ */
+
+test("a sessions.list answer carrying the notice lifts it into the store, once", async () => {
+	/*
+	 * THE REAL PATH the manager's brief is about: the notice rides
+	 * `sessions.list`, and the renderer consumes it at the transport
+	 * (`desktopResult`) rather than in any one caller - because five callers
+	 * issue this op and whichever asks first is served it. This drives that
+	 * function with a stubbed preload bridge and reads the store.
+	 */
+	globalThis.window.api = {
+		desktop: {
+			request: async () => ({
+				status: 200,
+				body: {
+					status: 200,
+					message: "ok",
+					result: {
+						sessions: [],
+						delegated_cleanup_notice: {
+							message: "Cleaned up 3 delegated sessions so far.",
+							removed: 3,
+							max_age_hours: 48,
+							in_progress: true,
+							first_removal_at: "2026-10-09T10:00:00-0400",
+							freed_bytes_estimate: null,
+							record: "~/.local-operator/sessions/cleanup.log",
+						},
+					},
+				},
+			}),
+		},
+	};
+	await m.desktopResult({ op: "sessions.list" });
+	const held = m.useDelegatedCleanupNoticeStore.getState().notice;
+	assert.equal(held?.removed, 3);
+	assert.equal(held?.in_progress, true);
+	// Dismissing clears it; the server will never send it again, so the store
+	// must not resurrect it on the next read that does not carry one.
+	m.useDelegatedCleanupNoticeStore.getState().dismiss();
+	await m.desktopResult({ op: "sessions.list" });
+	assert.equal(m.useDelegatedCleanupNoticeStore.getState().notice?.removed, 3);
+});
 
 test("the notice parser accepts the wire shape and refuses a message-less one", () => {
 	const wire = {
