@@ -94,6 +94,63 @@ const appResolvers = await (async () => {
 	);
 })();
 
+/*
+ * A PYTHON VERSION LITERAL, in the one shape a script PINS rather than mentions
+ * (code review round 2, M-1): a quoted token that is the version and nothing
+ * else. Prose that names the floor ("not a runnable Python 3.12+") is not a pin
+ * and must stay writable - which is why the pattern anchors on the quote instead
+ * of matching dotted numbers anywhere.
+ */
+const PYTHON_VERSION_TOKEN = /["']3\.\d[\w.]*["']/;
+
+/*
+ * AND THE THREE-PART LITERAL ANYWHERE, quoted or not (code review round 3,
+ * N3-3): anchoring the pattern on the quote is what keeps the floor-mention prose
+ * writable, and it is also what lost the pre-change scan's coverage of a bare
+ * `3.14.7` written into code. This restores exactly that scan. The prose names a
+ * two-part floor ("Python 3.12+"), which this cannot match by construction, and a
+ * version glued to a word (`python3.14.7`) was never covered by the old scan
+ * either - the realistic re-pin shapes are the assignment and the quoted token.
+ */
+const PYTHON_VERSION_BARE = /\b3\.\d+\.\d+\b/;
+
+test("the Python-version guard catches every spelling of a pin", () => {
+	/*
+	 * The four forms a re-pin actually takes, mutation-checked here rather than in
+	 * a reviewer's throwaway script: the three-part literal the old guard caught,
+	 * and the two-part, wildcard and pre-release-part spellings it did not.
+	 */
+	for (const literal of ['"3.14.7"', '"3.14"', '"3.14.x"', '"3.14.7b1"'])
+		assert.ok(
+			PYTHON_VERSION_TOKEN.test(literal),
+			`${literal} is a pin the guard must catch`,
+		);
+	/*
+	 * And it stays quiet on what a script may legitimately carry: the floor as a
+	 * tuple in a version probe, and the prose the shipped Windows script prints.
+	 */
+	for (const innocent of [
+		"(3, 12)",
+		"$PythonVersion = $env:LOCAL_OPERATOR_PYTHON_VERSION",
+		'"WARNING: ... is not a runnable Python 3.12+; looking for another."',
+	])
+		assert.ok(!PYTHON_VERSION_TOKEN.test(innocent), `${innocent} is not a pin`);
+	/*
+	 * The bare scan's own cases (round 3, N3-3): a three-part literal in code is
+	 * caught whether or not it is quoted, and the two shapes a script may keep
+	 * using are not - the floor as a tuple, and the floor named in prose as a
+	 * two-part version.
+	 */
+	for (const literal of [
+		"3.14.7",
+		"& $UvBin python install 3.14.7",
+		"$v = 3.14.7",
+	])
+		assert.ok(PYTHON_VERSION_BARE.test(literal), `${literal} must be caught`);
+	for (const innocent of ["(3, 12)", '"Python 3.12+ is available"'])
+		assert.ok(!PYTHON_VERSION_BARE.test(innocent), `${innocent} is not a pin`);
+});
+
 test("the Tcl/Tk token expands from the declaration, and the seed directory it names is required", () => {
 	// Review R2-5: `{tkver}`'s only other consumer is an OPTIONAL prune entry
 	// (`lib/tk{tkver}/demos`), whose absence is the accepted outcome - so the token
@@ -365,14 +422,71 @@ test("each install script installs with uv and keeps the pip path it had", () =>
 		// The fallback is the path that shipped until now, and it has to survive:
 		// without it a build with no uv fails to install a backend at all.
 		assert.ok(
-			script.includes("python -m pip install --upgrade pip"),
-			`${path}: the pip fallback lost its pip upgrade`,
+			script.includes("-m pip install"),
+			`${path}: the pip fallback is gone`,
+		);
+		/*
+		 * AND IT NO LONGER UPGRADES PIP FIRST, nor runs `--verbose` (first-run
+		 * onboarding, Q13). This assertion used to pin the opposite. The
+		 * self-upgrade was a second resolve-and-download in front of the install
+		 * that changed nothing (both creation paths already leave pip 24.2+), and
+		 * removing it took the cold macOS fallback from 28.6 s to 25.0 s and the
+		 * Linux one from 30.7 s to 27.0 s (measured 2026-10-08, empty caches).
+		 */
+		// Code lines only: the scripts' own comments name the removed command to
+		// say why it is gone, and a comment is not an install.
+		const code = script
+			.split("\n")
+			.filter((line) => !/^\s*#/.test(line))
+			.join("\n");
+		assert.ok(
+			!code.includes("pip install --upgrade pip"),
+			`${path}: the pip fallback upgrades pip again`,
 		);
 		assert.ok(
-			script.indexOf("UV_") < script.indexOf("pip install --upgrade pip") ||
-				script.indexOf("Uv") < script.indexOf("pip install --upgrade pip"),
-			`${path}: the pip upgrade must sit on the fallback path, after the uv decision - the uv path skips it deliberately`,
+			!/pip install[^\n]*--verbose/.test(code),
+			`${path}: the pip fallback is verbose again`,
 		);
+		/*
+		 * THE INTERPRETER VERSION IS NOT SPELLED IN A SCRIPT (code review round 1,
+		 * R5): the Windows script carried a literal `"3.14.7"` fallback, a second
+		 * copy of this file's `python.version` that nothing compared against the
+		 * layout and that only a hand-run reached. The app hands the version down
+		 * (`LOCAL_OPERATOR_PYTHON_VERSION`, read from the layout in
+		 * `backend-installer.ts`), and the script now fails loudly without it.
+		 */
+		if (path.endsWith(".ps1")) {
+			assert.ok(
+				!PYTHON_VERSION_TOKEN.test(code),
+				`${path}: a Python version literal is a second pin - pass LOCAL_OPERATOR_PYTHON_VERSION instead`,
+			);
+			assert.ok(
+				!PYTHON_VERSION_BARE.test(code),
+				`${path}: an unquoted Python version literal is a second pin too`,
+			);
+			/*
+			 * AND EVERY ASSIGNMENT IS THE ENV READ, checked line by line (code
+			 * review round 2, M-1): the old guard was a three-part dotted literal,
+			 * so a re-pin written as `"3.14"`, `"3.14.x"` or `"3.14.7b1"` - or as a
+			 * conditional whose fallback branch is a literal - passed it silently.
+			 * A pin the script ACTS on is always this assignment, so requiring its
+			 * right-hand side to be exactly the app's variable is the check that
+			 * cannot be spelled around.
+			 */
+			for (const line of code.split("\n")) {
+				const assignment = /^\s*\$PythonVersion\s*=\s*(.*?)\s*$/.exec(line);
+				if (assignment === null) continue;
+				assert.equal(
+					assignment[1],
+					"$env:LOCAL_OPERATOR_PYTHON_VERSION",
+					`${path}: $PythonVersion must read the app's variable, not a literal`,
+				);
+			}
+			assert.ok(
+				code.includes("LOCAL_OPERATOR_PYTHON_VERSION"),
+				`${path}: the version must come from the app`,
+			);
+		}
 		/*
 		 * pip stays in the venv: the app's backend-update path runs
 		 * `pip install --upgrade local-operator` inside this environment, so BOTH
@@ -408,7 +522,7 @@ test("each install script installs with uv and keeps the pip path it had", () =>
 		/*
 		 * And each script has to hold the result: macOS and Linux check `bin/pip`
 		 * after creation, and Windows - whose venv pip is reached as a module of the
-		 * venv's activated interpreter - runs `python -m pip`, which the fallback
+		 * venv's own interpreter - runs `<venv>\\Scripts\\python.exe -m pip`, which the fallback
 		 * assertion above pins to the pip path. A creation path that stopped leaving
 		 * pip behind fails on its own line rather than passing on the other path's
 		 * claim.
@@ -416,7 +530,14 @@ test("each install script installs with uv and keeps the pip path it had", () =>
 		const pipHeld = {
 			"src/main/backend/scripts/macos-install-script.sh": /bin\/pip/,
 			"src/main/backend/scripts/linux-install-script.sh": /bin\/pip/,
-			"src/main/backend/scripts/windows-install-script.ps1": /python -m pip/,
+			/*
+			 * The venv's own interpreter, by path, running pip (first-run onboarding,
+			 * Q13): stricter than the bare `python -m pip` this used to accept, which
+			 * resolved through PATH and so could install into whatever Python came
+			 * first rather than proving the created environment holds pip.
+			 */
+			"src/main/backend/scripts/windows-install-script.ps1":
+				/Scripts\\python\.exe" -m pip/,
 		}[path];
 		assert.ok(
 			pipHeld,
