@@ -6503,6 +6503,44 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 		}, [audioBlob, handleSendAudio]);
 
+		/*
+		 * THE DICTATION CHORD ASKS THE BOX TO BE ON SCREEN (agent review round 1,
+		 * MINOR-1). The push-to-talk binding is a WINDOW-level hold, and its only
+		 * feedback — the recording state, the confirm control — renders inside this
+		 * composer. On the projects page the strip's box starts BELOW THE FOLD by
+		 * design, so a chord held at the top of the page used to start a take whose
+		 * whole UI was off screen and whose transcript landed with no visible
+		 * hand-off — the landing state of the page, not a stray corner.
+		 *
+		 * THE CHORD IS GATED, NOT CHASED. The rejected alternative was to scroll the
+		 * strip into view when the chord engages; the binding is GLOBAL, so its
+		 * target box may not be what the user means, and moving the page on a hold
+		 * would drag the reader exactly where this page must not (the operator's
+		 * report). Refusing the hold leaves the reader still, and every door the
+		 * user's own gesture opens (a click, the row's Message action) focuses as it
+		 * did before.
+		 *
+		 * IT FAILS OPEN. The ref starts `true` and only an IntersectionObserver
+		 * report can turn it off; where no observer exists, or where one exists but
+		 * cannot observe (jsdom harnesses stub IO as a no-op class — and some do not
+		 * define it at all), nothing is ever reported and the chord keeps the answer
+		 * it always had, so no host loses dictation to a rig that cannot observe.
+		 */
+		const boxOnScreenRef = useRef(true);
+		useEffect(() => {
+			if (typeof IntersectionObserver === "undefined") return;
+			const box = textareaRef.current;
+			if (box === null) return;
+			const observer = new IntersectionObserver((entries) => {
+				const entry = entries[entries.length - 1];
+				if (entry !== undefined) {
+					boxOnScreenRef.current = entry.isIntersecting;
+				}
+			});
+			observer.observe(box);
+			return () => observer.disconnect();
+		}, [textareaRef]);
+
 		// Register with speech-to-text manager
 		useSpeechToTextManager(
 			"message-input",
@@ -6515,14 +6553,17 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * contradiction at the heart of the report. The composer being writable is
 			 * `!isInputDisabled` (the same fact the refusal carries), and a send in
 			 * flight does not make this box unwritable: a mid-turn message rides the
-			 * existing steer path.
+			 * existing steer path. The on-screen term is the observer above — the
+			 * hold's feedback renders HERE, so a box the reader cannot see must not
+			 * answer the chord; it fails open (see there).
 			 */
 			() =>
 				Boolean(
 					!isInputDisabled &&
 						!isRecording &&
 						!isTranscribing &&
-						canEnableRecordingFeature,
+						canEnableRecordingFeature &&
+						boxOnScreenRef.current,
 				),
 		);
 

@@ -441,6 +441,11 @@ test("a refused box takes the caret from a gesture and not from an unprompted fo
 		"and the opt-out may only skip the claim, never the hand-back",
 	);
 	assert.match(
+		source,
+		/wasDictatingRef\.current = dictating;/,
+		"and the previous render's answer must be WRITTEN, not only compared: deleting this write leaves both strings above in place while the falling edge never fires on the next render, so the hand-back silently becomes dead code that only the behavioural arm can catch (agent review round 1, NIT-1)",
+	);
+	assert.match(
 		code(CARET),
 		/if \(!field \|\| field\.disabled\) return false;/,
 		"and the gesture's hand-off still refuses only a DISABLED field - `readOnly` is not a bail, or the destination composer of every pick onto a missing conversation would be skipped in favour of the rail",
