@@ -1,6 +1,6 @@
 {
   "viewport": {
-    "w": 1380,
+    "w": 1280,
     "h": 900,
     "dpr": 2,
     "theme": "localOperatorDark"
@@ -21,7 +21,7 @@
       "scrollHeight": 900,
       "clientHeight": 900,
       "clipped": false,
-      "text": "dialog 640x531.8 | body 638x401.8 | grid 590x268.7"
+      "text": "Connect an AI accountStep 1 of 3Local Operator needs an AI account to work. Radient is the easiest: one browser sign-in and nothing to paste. Already pay for ChatGPT or Claude? Sign in with that instead. Anything else is under More providers.RARadient\u00b7RecommendedOne browser sign-in. Nothing to paste.Sign inANAnthropicSign in with your Claude accountSign inOAOpenAISign in with your ChatGPT accountSign inGOGooglePaste an API keyAdd keyMore providers: local models, xAI, OpenRouter, DeepSeek and 6 moreSkip for now"
     },
     "dialog": {
       "left": 370,
@@ -92,7 +92,7 @@
       "scrollHeight": 227,
       "clientHeight": 227,
       "clipped": false,
-      "text": "RARadient·RecommendedOne browser sign-in. Nothing to paste.Sign inANAnthropicSign in with your Claude accountSign inOAOpenAISign in with your ChatGPT accountSign inGOGooglePaste an API keyAdd key"
+      "text": "RARadient\u00b7RecommendedOne browser sign-in. Nothing to paste.Sign inANAnthropicSign in with your Claude accountSign inOAOpenAISign in with your ChatGPT accountSign inGOGooglePaste an API keyAdd key"
     },
     "search": null,
     "radiogroup": null,
@@ -216,7 +216,7 @@
       "scrollHeight": 56,
       "clientHeight": 56,
       "clipped": false,
-      "text": "RARadient·RecommendedOne browser sign-in. Nothing to paste.Sign in"
+      "text": "RARadient\u00b7RecommendedOne browser sign-in. Nothing to paste.Sign in"
     },
     {
       "left": 395,
@@ -453,7 +453,7 @@
       "scrollHeight": 26,
       "clientHeight": 26,
       "clipped": false,
-      "text": "More providers: xAI, OpenRouter, DeepSeek, local models and 6 more"
+      "text": "More providers: local models, xAI, OpenRouter, DeepSeek and 6 more"
     },
     {
       "left": 395,
@@ -495,5 +495,5 @@
     "scrollHeight": 900,
     "clientHeight": 900
   },
-  "text": "dialog 640x531.8 | body 638x401.8 | grid 590x268.7\nConnect an AI account\nStep 1 of 3\n\nLocal Operator needs an AI account to work. Radient is the easiest: one browser sign-in and nothing to paste. Already pay for ChatGPT or Claude? Sign in with that instead. Anything else is under More providers below, which names what it holds.\n\nRA\nRadient\n·\nRecommended\nOne browser sign-in. Nothing to paste.\nSign in\nAN\nAnthropic\nSign in with your Claude account\nSign in\nOA\nOpenAI\nSign in with your ChatGPT account\nSign in\nGO\nGoogle\nPaste an API key\nAdd key\nMore providers: xAI, OpenRouter, DeepSeek, local models and 6 more\nSkip for now"
+  "text": "Connect an AI account\nStep 1 of 3\n\nLocal Operator needs an AI account to work. Radient is the easiest: one browser sign-in and nothing to paste. Already pay for ChatGPT or Claude? Sign in with that instead. Anything else is under More providers.\n\nRA\nRadient\n\u00b7\nRecommended\nOne browser sign-in. Nothing to paste.\nSign in\nAN\nAnthropic\nSign in with your Claude account\nSign in\nOA\nOpenAI\nSign in with your ChatGPT account\nSign in\nGO\nGoogle\nPaste an API key\nAdd key\nMore providers: local models, xAI, OpenRouter, DeepSeek and 6 more\nSkip for now"
 }
