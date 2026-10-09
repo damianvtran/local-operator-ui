@@ -28,8 +28,7 @@
  * `docs/evidence/chat-markdown-tables/README.md` (`MEASUREMENTS.md` in the
  * before half is the same reading for the unfixed tree). A jsdom host has no
  * layout, so a computed-style assertion here would measure jsdom's defaults,
- * not the fix. That is the same split `chat-measure-handle.test.mjs` records
- * for the measure handle.
+ * not the fix.
  */
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";

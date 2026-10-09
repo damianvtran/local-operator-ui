@@ -66,6 +66,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	FEATURED_PROVIDER_IDS,
 	GROUP_HEADINGS,
+	PROVIDER_DIALOG_GROUP_ORDER,
+	PROVIDER_PAGE_GROUP_ORDER,
 	type ProviderGroup,
 	RECOMMENDED_PROVIDER_ID,
 	addRowMeta,
@@ -75,6 +77,7 @@ import {
 	connectedRows,
 	modelDisplayName,
 	monogramOf,
+	moreProvidersSummary,
 	providerGroup,
 	rowActionLabel,
 } from "./provider-catalog";
@@ -853,7 +856,14 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		);
 	};
 
-	const groupOrder: ProviderGroup[] = ["subscription", "key", "local"];
+	/*
+	 * Which group leads depends on the surface; both orders live in the catalog
+	 * beside the trigger that promises them, so the summary and the rows cannot
+	 * drift apart about what a reader meets first (design round 2, D8).
+	 */
+	const groupOrder = featuredOnly
+		? PROVIDER_DIALOG_GROUP_ORDER
+		: PROVIDER_PAGE_GROUP_ORDER;
 	const nothingMatches = groupOrder.every(
 		(group) => groups[group].length === 0,
 	);
@@ -1057,7 +1067,12 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 				) : null}
 				{searching || restCount > 0 ? (
 					<Disclosure
-						summary="More providers"
+						/*
+						 * The summary NAMES what is behind it (first-run onboarding, D11): a
+						 * bare "More providers" hid xAI, OpenRouter, DeepSeek and the local
+						 * runtimes from anyone who did not think to open it.
+						 */
+						summary={moreProvidersSummary(rest, groupOrder)}
 						defaultOpen={focusGroup !== null || initialProviderId !== null}
 						chevron="trailing"
 					>
