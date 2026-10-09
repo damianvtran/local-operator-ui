@@ -1,3 +1,8 @@
+import type {
+	BrowserWindowConstructorOptions,
+	Session,
+	WebContents,
+} from "electron";
 /**
  * The Electron half of `window-guards.ts`: it attaches the pure rules to a real
  * window and its session, and owns no policy of its own.
@@ -7,11 +12,7 @@
  * wiring, and `scripts/window-guards-electron.test.mjs` exercises it inside a
  * real Electron against a hostile document.
  */
-import type {
-	BrowserWindowConstructorOptions,
-	Session,
-	WebContents,
-} from "electron";
+import type { ExternalOpenOutcome } from "../shared/desktop-contract";
 import {
 	type PopupVerdict,
 	type Verdict,
@@ -88,15 +89,21 @@ export function guardNavigation(
  * Install the `window.open` policy: auth URLs get the sandboxed popup (whose
  * own webContents is guarded at creation, below), every other URL is
  * scheme-gated before the injected OS door or denied. `authWindowOptions` is
- * the popup's unchanged window configuration, supplied by the caller so this
- * file does not restate it.
+ * the popup's window configuration, supplied by the caller so this file does
+ * not restate it.
+ *
+ * `notifyRefused` is the half a refusal owes a person (round-2 R-4): a click
+ * that ends in `deny`, or an external open the OS could not take, has no
+ * caller to answer - it left through `window.open`, not an IPC - so the app
+ * pushes the refusal to the renderer that clicked. The test fakes pass none.
  */
 export function guardWindowOpen(
 	contents: WebContents,
 	decide: (url: string) => PopupVerdict,
-	openExternal: (url: string) => Promise<boolean>,
+	openExternal: (url: string) => Promise<ExternalOpenOutcome>,
 	authWindowOptions: BrowserWindowConstructorOptions,
 	log: Log,
+	notifyRefused?: (url: string, reason: string) => void,
 ): void {
 	contents.setWindowOpenHandler((details) => {
 		const verdict = decide(details.url);
@@ -107,9 +114,16 @@ export function guardWindowOpen(
 			};
 		}
 		if (verdict.action === "external") {
-			void openExternal(verdict.url);
+			/*
+			 * The outcome is not dropped: an OS-level failure is the same "a press
+			 * that did nothing" the refusal toast exists for.
+			 */
+			void openExternal(verdict.url).then((outcome) => {
+				if (!outcome.ok) notifyRefused?.(verdict.url, outcome.reason);
+			});
 		} else {
 			log(`[window-guard] denied window.open: ${verdict.reason}`);
+			notifyRefused?.(details.url, verdict.reason);
 		}
 		return { action: "deny" };
 	});

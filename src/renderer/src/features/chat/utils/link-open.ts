@@ -15,6 +15,7 @@
  * module owns.
  */
 
+import { showExternalOpenRefusal } from "@shared/lib/external-open-refusal";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { getFileName } from "./get-file-name";
 import { type LinkKind, forgetProbe } from "./link-actions";
@@ -82,11 +83,22 @@ export async function revealLocalTarget(target: string): Promise<boolean> {
  * so the toolbar's Open does the same thing from the same place. The scheme is
  * NOT re-checked: `classifyHref` is what decided this is a URL, and a second
  * check here would be a second answer to one question.
+ *
+ * Answers whether the door took it, like `openLocalTarget`: the bridge returns
+ * the main process's verdict, and a refusal - a loopback address, a scheme the
+ * app does not hand out - is shown rather than swallowed (round-2 R-4), so a
+ * press cannot look broken. `undefined` from the bridge is treated as success:
+ * outside Electron there is nothing to open with.
  */
-export async function openUrlTarget(target: string): Promise<void> {
+export async function openUrlTarget(target: string): Promise<boolean> {
 	const open = window.api?.openExternal;
-	if (typeof open !== "function") return;
-	await open(target);
+	if (typeof open !== "function") return true;
+	const outcome = await open(target);
+	if (outcome && outcome.ok === false) {
+		showExternalOpenRefusal(outcome.reason);
+		return false;
+	}
+	return true;
 }
 
 /** Copy a target's own spelling to the clipboard. */
@@ -103,7 +115,5 @@ export async function copyTarget(target: string): Promise<boolean> {
 
 /** Open a target by the kind the classifier gave it. */
 export function openTarget(kind: LinkKind, target: string): Promise<boolean> {
-	return kind === "url"
-		? openUrlTarget(target).then(() => true)
-		: openLocalTarget(target);
+	return kind === "url" ? openUrlTarget(target) : openLocalTarget(target);
 }

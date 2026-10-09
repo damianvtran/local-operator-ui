@@ -6415,6 +6415,33 @@ export type FileActionOutcome = {
 };
 
 /**
+ * What `open-external` answers with, and the channel a refusal is PUSHED on.
+ *
+ * The IPC half answers its caller directly: the link toolbar's Open awaits
+ * `window.api.openExternal`, so a refusal travels back as `ok: false` and the
+ * renderer shows it rather than a press that looks broken (round-2 R-4).
+ *
+ * A markdown ANCHOR's click has no such caller: it leaves through `window.open`
+ * and the main process's door, so the refusal is pushed to the window whose
+ * content asked - `EXTERNAL_OPEN_REFUSED_CHANNEL` with `ExternalOpenRefusedPayload`
+ * - and the renderer shows the same sentence. Before this, a refused link (a
+ * transcript link to `http://localhost:3000`, say) did nothing at all with only
+ * a main-process log line, which is not an answer a person can see.
+ */
+export type ExternalOpenOutcome = { ok: true } | { ok: false; reason: string };
+
+/** The push payload for a refused external open; mirrors the outcome's failure half. */
+export type ExternalOpenRefusedPayload = {
+	/** The URL whose open was refused, as the door saw it. */
+	url: string;
+	/** The door's own reason, for the toast's copy and for a log line. */
+	reason: string;
+};
+
+/** The channel a refused external open is pushed on (see `ExternalOpenOutcome`). */
+export const EXTERNAL_OPEN_REFUSED_CHANNEL = "external-open-refused";
+
+/**
  * Why a byte read was refused.
  *
  * A string code, not an `Error` subclass: Electron serialises an Error across

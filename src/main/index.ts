@@ -25,6 +25,8 @@ import {
 } from "../shared/backend-status";
 import {
 	type DirectoryListing,
+	EXTERNAL_OPEN_REFUSED_CHANNEL,
+	type ExternalOpenOutcome,
 	type FileActionOutcome,
 	MAX_FILE_READ_BYTES,
 	MAX_PROBE_PATHS,
@@ -735,9 +737,10 @@ const trustedRendererDocuments = (): readonly string[] => [
 /**
  * The single door from a renderer-reachable code path to the OS's URL handlers
  * (`window.open` and the `open-external` IPC both land here). The scheme and
- * shape rules are `window-guards.ts`'s; this binds them to `shell`.
+ * shape rules are `window-guards.ts`'s; this binds them to `shell`, and the
+ * outcome travels to whoever asked (round-2 R-4).
  */
-const openExternalVetted = (raw: unknown): Promise<boolean> =>
+const openExternalVetted = (raw: unknown): Promise<ExternalOpenOutcome> =>
 	openVettedExternal(
 		raw,
 		(url) => shell.openExternal(url),
@@ -747,8 +750,8 @@ const openExternalVetted = (raw: unknown): Promise<boolean> =>
 /**
  * The sign-in popup's window options, supplied to `guardWindowOpen` at every
  * install site - the main window and the mini view. ONE spelling, because the
- * two guards must create the same window; the values themselves are unchanged
- * from the pre-guard handler.
+ * two guards must create the same window; the values are the pre-guard
+ * handler's, plus `disableDialogs` (round-2 S-7).
  */
 const authPopupWindowOptions: BrowserWindowConstructorOptions = {
 	width: 800,
@@ -769,6 +772,12 @@ const authPopupWindowOptions: BrowserWindowConstructorOptions = {
 		enableWebSQL: false,
 		navigateOnDragDrop: false,
 		spellcheck: false,
+		/*
+		 * A JS dialog in a popup must not be able to wedge it (round-2 S-7): a
+		 * renderer-reached `confirm()`/`alert()` needs no permission and blocks
+		 * every later evaluation on the page behind its modal.
+		 */
+		disableDialogs: true,
 	},
 };
 
@@ -1059,6 +1068,11 @@ function createWindow(
 		openExternalVetted,
 		authPopupWindowOptions,
 		(m) => logger.warn(m, LogFileType.BACKEND),
+		(url, reason) =>
+			mainWindow.webContents.send(EXTERNAL_OPEN_REFUSED_CHANNEL, {
+				url,
+				reason,
+			}),
 	);
 
 	// HMR for renderer base on electron-vite cli.
@@ -1949,8 +1963,12 @@ app
 		 * SESSION-LEVEL GUARDS, installed once before any window exists (UI
 		 * security lane U-a). The default session is shared by the main window, the
 		 * Quick send mini view and every iframe they host, so a policy set here
-		 * covers the canvas preview's frame too; the driven browser and the console
-		 * capture use their own partitions and are unaffected.
+		 * covers the canvas preview's frame too - and the console capture window,
+		 * which is created with NO `partition` (`console/capture.ts`), so these
+		 * handlers DO apply to it; it is not one of the trusted renderers, so any
+		 * capability it ever asked for would be refused, and nothing in that module
+		 * asks today (round-2 R-5). The driven browser uses its own partition,
+		 * where `browser/profile.ts` installs the same pair.
 		 *
 		 * - permissions: deny by default (Electron otherwise approves EVERYTHING,
 		 *   for any frame), granting only what the app's own documents use.
@@ -2425,6 +2443,11 @@ app
 				openExternalVetted,
 				authPopupWindowOptions,
 				(m) => logger.warn(m, LogFileType.BACKEND),
+				(url, reason) =>
+					quickSend.window.webContents.send(EXTERNAL_OPEN_REFUSED_CHANNEL, {
+						url,
+						reason,
+					}),
 			);
 		}
 		if (hotkeysAllowed(windowLaunch.mode)) {
@@ -2836,12 +2859,13 @@ app
 		 * Vetted, not forwarded: the renderer's `window.api.openExternal` takes any
 		 * string, and `shell.openExternal` launches whatever the OS maps the scheme
 		 * to. Every caller in the renderer passes an http(s) link (or an update
-		 * remedy's page); a refusal is logged and resolves quietly, which is what a
-		 * failed open did before.
+		 * remedy's page). The outcome travels back to the caller (round-2 R-4): a
+		 * refusal is what the caller's toast renders, instead of a press that
+		 * resolved quietly and looked broken. The anchor path has no caller to
+		 * answer - its refusals are pushed on `EXTERNAL_OPEN_REFUSED_CHANNEL` (see
+		 * `guardWindowOpen`'s `notifyRefused`).
 		 */
-		ipcMain.handle("open-external", async (_, url) => {
-			await openExternalVetted(url);
-		});
+		ipcMain.handle("open-external", async (_, url) => openExternalVetted(url));
 
 		ipcMain.handle(
 			"show-item-in-folder",

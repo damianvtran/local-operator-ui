@@ -33,6 +33,7 @@
  * thin adapter with no policy of its own. The real-runtime proof - a hostile
  * document in a real BrowserWindow - is `scripts/window-guards-electron.test.mjs`.
  */
+import type { ExternalOpenOutcome } from "../shared/desktop-contract";
 import { trustedDesktopFrame } from "./desktop-transport";
 
 /** A verdict that carries its reason, so a denial is loggable and assertable. */
@@ -130,21 +131,45 @@ function isPrivateIpv6(host: string): boolean {
 }
 
 /**
+ * Canonical form of a hostname for the local/private rules below: lowercased,
+ * with a trailing root dot stripped (`localhost.` is the FQDN spelling of
+ * `localhost`; the URL parser does not fold it, and the daemon answers it).
+ * ONE normaliser, so the three callers of `isLocalOrPrivateHost` cannot
+ * disagree about a spelling (round-2 R-2).
+ */
+const canonicalHost = (hostname: string): string =>
+	hostname.toLowerCase().replace(TRAILING_DOT, "");
+
+/**
  * Whether a URL host names the user's own machine or their local network.
  *
- * WHY THIS EXISTS (security review S-5): the vetted external door hands
- * http(s) to the user's own browser, and a renderer-side script picks the URL.
- * Without this, app content could make the USER's browser issue requests at
- * the loopback daemon, a router console or a dev server - with the browser's
+ * THE ONE HOST TEST FOR ALL THREE LOCAL RULES (round-2 R-2): the external door
+ * (security review S-5), the preview CSP predicate (`isStaticServeRequest`) and
+ * the child-frame navigation rule (`frameNavigationVerdict`) all call THIS
+ * function. Until they did, the predicate and the frame rule held a literal
+ * three-name set while the door held the family below, so spellings the daemon
+ * answers - `localhost.`, `127.0.0.2`, `[::ffff:127.0.0.1]` - got no CSP and
+ * no frame containment, and the containment story was "two functions happen to
+ * share a constant" rather than a rule. One spelling family, one test: a false
+ * positive can only ADD policy (a CSP on a response nothing loads as a
+ * document; a frame allowance for a host that is still the user's own), while
+ * the other direction is the bypass the rules exist to close.
+ *
+ * WHY THE DOOR HALF EXISTS (security review S-5): the vetted external door
+ * hands http(s) to the user's own browser, and a renderer-side script picks the
+ * URL. Without this, app content could make the USER's browser issue requests
+ * at the loopback daemon, a router console or a dev server - with the browser's
  * cookies, outside the app's trust model. Nothing in the renderer legitimately
  * opens the daemon in a browser, so these targets are refused.
  *
- * The WHATWG URL parser has already canonicalized the host when the verdict
- * sees it: `2130706433`, `0x7f.1` and `127.1` all arrive as `127.0.0.1`, so
- * these checks are over names, not spellings.
+ * The WHATWG URL parser has already canonicalized the host when a verdict sees
+ * it: `2130706433`, `0x7f.1` and `127.1` all arrive as `127.0.0.1`, so these
+ * checks are over names, not spellings. A name that merely RESOLVES to loopback
+ * (`lvh.me`, `localtest.me`) is deliberately NOT covered: resolution is neither
+ * pure nor stable, and these rules are over names.
  */
 export function isLocalOrPrivateHost(hostname: string): boolean {
-	const host = hostname.toLowerCase().replace(TRAILING_DOT, "");
+	const host = canonicalHost(hostname);
 	if (host === "localhost" || host.endsWith(".localhost")) return true;
 	if (host.startsWith("[") && host.endsWith("]"))
 		return isPrivateIpv6(host.slice(1, -1));
@@ -196,7 +221,9 @@ export function externalUrlVerdict(raw: unknown): ExternalVerdict {
 }
 
 /**
- * Vet `raw`, then hand it to `open`. Resolves to whether it was handed over.
+ * Vet `raw`, then hand it to `open`. Resolves to the outcome, refusal reason
+ * included (round-2 R-4): the caller that has a person on the other end - the
+ * `open-external` IPC, or `guardWindowOpen`'s refusal push - shows it.
  *
  * ONE function behind both doors to the OS that a renderer can reach - the
  * `open-external` IPC and the popup handler - so there is one answer to "what
@@ -206,20 +233,19 @@ export async function openVettedExternal(
 	raw: unknown,
 	open: (url: string) => Promise<void> | void,
 	log: (message: string) => void,
-): Promise<boolean> {
+): Promise<ExternalOpenOutcome> {
 	const verdict = externalUrlVerdict(raw);
 	if (!verdict.allowed) {
 		log(`[window-guard] refused to open externally: ${verdict.reason}`);
-		return false;
+		return { ok: false, reason: verdict.reason };
 	}
 	try {
 		await open(verdict.url);
-		return true;
+		return { ok: true };
 	} catch (error) {
-		log(
-			`[window-guard] the OS could not open the URL: ${error instanceof Error ? error.message : String(error)}`,
-		);
-		return false;
+		const reason = `the OS could not open the URL: ${error instanceof Error ? error.message : String(error)}`;
+		log(`[window-guard] ${reason}`);
+		return { ok: false, reason };
 	}
 }
 
@@ -256,6 +282,16 @@ const AUTH_SCHEMES: ReadonlySet<string> = new Set([
 	"msauth:",
 	"msftauth:",
 ]);
+
+/*
+ * THE POPUP'S LAST HOP is NOT in this set (round-2 R-6): a flow whose final
+ * redirect is the app's own origin, or MSAL's `msal<clientId>://auth` relay,
+ * is denied by `popupNavigationVerdict` - the client id is per-app, so an exact
+ * set cannot name it and a prefix match would admit every `msal…:` scheme.
+ * Acceptable because no flow here opens such a popup (sign-in is the
+ * system-browser door, `desktop.openAuthorization`); a revival must add its
+ * exact hop with its own review, or rebuild on that door.
+ */
 
 /**
  * Whether `url` is one of the sign-in hosts: https, no credentials, the exact
@@ -296,8 +332,30 @@ export type PopupVerdict =
  * scenario asserts.
  */
 export function popupVerdict(raw: string): PopupVerdict {
-	// MSAL opens its popup at `about:blank` and navigates it afterwards.
-	if (raw === "about:blank") return { action: "auth" };
+	/*
+	 * `about:blank` is REFUSED (round-2 S-7), and this is the load-bearing
+	 * refusal of the door:
+	 *
+	 * It USED to be an auth start, because MSAL opens its popup there and
+	 * navigates it afterwards. But Electron resolves `window.open('javascript:…')`
+	 * to exactly this URL before the handler runs - measured on 44.3.0: details
+	 * identical to a plain `window.open('about:blank')` (url, frameName,
+	 * features, disposition) - so the allowance minted an auth-class WINDOW for
+	 * the javascript: case, and the script body then ran inside it (measured: it
+	 * fetched a loopback stub; sandboxed, no bridge, no OS door). No spelling
+	 * reaches here that could tell the two apart, so the allowance and the
+	 * bypass are one thing, and the start is what moves.
+	 *
+	 * Nothing in the renderer opens an `about:blank` popup (sign-in is
+	 * `desktop.openAuthorization` in the system browser), and a revived hosted
+	 * sign-in starts at a real provider URL - see AUTH_SCHEMES' note for its
+	 * last hop, which this door does not complete either.
+	 */
+	if (raw === "about:blank")
+		return {
+			action: "deny",
+			reason: "about:blank is refused as a popup start",
+		};
 	let url: URL | null = null;
 	try {
 		url = new URL(raw);
@@ -321,9 +379,11 @@ export function popupVerdict(raw: string): PopupVerdict {
  * `file:///etc/hosts` (accepted and observed). It may travel the hosts and
  * relay schemes the popup door was vetted against, and nothing else.
  *
- * `about:blank` stays allowed: MSAL opens its popup there, a blank document
- * carries no origin and no privilege, and refusing it would break the
- * starting hop of the one flow this door exists for.
+ * `about:blank` stays allowed HERE: after creation a page may blank its own
+ * window mid-flow, and a blank document carries no origin and no privilege. The
+ * CREATION door is what changed (round-2 S-7): a popup must start at a real
+ * allow-listed URL, because a blank start is indistinguishable from the
+ * resolved `window.open('javascript:…')` - see `popupVerdict`.
  */
 export function popupNavigationVerdict(rawUrl: string): Verdict {
 	if (rawUrl === "about:blank") return ALLOW;
@@ -341,17 +401,12 @@ export function popupNavigationVerdict(rawUrl: string): Verdict {
 // Navigation
 // ---------------------------------------------------------------------------
 
-/** Hostnames `URL` reports for a loopback backend. */
-const LOOPBACK_HOSTS: ReadonlySet<string> = new Set([
-	"127.0.0.1",
-	"localhost",
-	"[::1]",
-]);
-
 /**
  * The backend's own static routes, the only http(s) a child frame is ever
- * framed from (`html-preview.tsx` -> `/v1/static/html`). Loopback AND this
- * prefix, any port: the renderer's CSP `frame-src` pins the port, and the
+ * framed from (`html-preview.tsx` -> `/v1/static/html`). A host of the user's
+ * own machine or local network (`isLocalOrPrivateHost` - the ONE host test the
+ * external door and the CSP predicate share with this rule, round-2 R-2) AND
+ * this prefix, any port: the renderer's CSP `frame-src` pins the port, and the
  * daemon's port is not a thing main should have to know to answer this.
  */
 const STATIC_FRAME_PREFIX = "/v1/static/";
@@ -416,7 +471,7 @@ export function frameNavigationVerdict(
 	}
 	if (
 		(url.protocol === "http:" || url.protocol === "https:") &&
-		LOOPBACK_HOSTS.has(url.hostname) &&
+		isLocalOrPrivateHost(url.hostname) &&
 		url.pathname.startsWith(STATIC_FRAME_PREFIX)
 	)
 		return ALLOW;
@@ -478,7 +533,11 @@ export function permissionVerdict(
 			query.mediaTypes.every((type) => type === "audio")
 		);
 	// The check handler reports one type, and `unknown` for device enumeration.
-	return query.mediaType !== "video";
+	// Only `audio` is granted (round-2 R-7): a check that reports no type at all
+	// is a session that omitted the field, and `video`/`unknown` are not things
+	// this renderer asks for - nothing in it enumerates devices. If a surface
+	// ever does, this is the line its check widens, consciously.
+	return query.mediaType === "audio";
 }
 
 // ---------------------------------------------------------------------------
@@ -517,8 +576,9 @@ function decodedPathname(pathname: string): string {
 }
 
 /**
- * Whether `rawUrl` is a request the preview response policy must cover: a
- * loopback URL whose decoded path lands anywhere in the static serve family.
+ * Whether `rawUrl` is a request the preview response policy must cover: a URL
+ * of the user's own machine or local network whose decoded path lands anywhere
+ * in the static serve family.
  *
  * WHY THE WHOLE FAMILY AND NOT THE ONE ROUTE (security review S-1): comparing
  * the LITERAL pathname against `/v1/static/html` let a sandboxed preview
@@ -535,15 +595,18 @@ function decodedPathname(pathname: string): string {
  * document (a CSP constrains documents, not data consumers), while a false
  * negative is the bypass this function exists to close. The case fold and a
  * literal `+` are both in that adds-only bucket: no consumer loads those
- * spellings as documents, and the headers are inert if something did. Any
- * port, any resource type: keying on either would make the policy depend on
- * how a request happened to be made.
+ * spellings as documents, and the headers are inert if something did. The HOST
+ * side joined that direction in round 2 (R-2): it is the ONE test the door and
+ * the frame rule also call (`isLocalOrPrivateHost`), because the predicate was
+ * the strict side of a spelling family and a strict predicate is exactly the
+ * bypass this function exists to close. Any port, any resource type: keying on
+ * either would make the policy depend on how a request happened to be made.
  */
 export function isStaticServeRequest(rawUrl: string): boolean {
 	try {
 		const url = new URL(rawUrl);
 		if (url.protocol !== "http:" && url.protocol !== "https:") return false;
-		if (!LOOPBACK_HOSTS.has(url.hostname)) return false;
+		if (!isLocalOrPrivateHost(url.hostname)) return false;
 		return decodedPathname(url.pathname)
 			.toLowerCase()
 			.startsWith(STATIC_FRAME_PREFIX);
