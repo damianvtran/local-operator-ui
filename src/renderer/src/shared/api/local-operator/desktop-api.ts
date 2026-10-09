@@ -22,6 +22,10 @@ import {
 	SESSION_IS_REMOTE_CODE,
 } from "../../../../../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../../../../../shared/desktop-stream-notice";
+import {
+	parseDelegatedCleanupNotice,
+	useDelegatedCleanupNoticeStore,
+} from "../../store/delegated-cleanup-notice-store";
 
 export type {
 	AuthOperation,
@@ -399,7 +403,73 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 			typeof envelope?.detail === "object" ? envelope.detail : undefined,
 		);
 	}
+	if (request.op === "sessions.list") {
+		liftDelegatedCleanupNotice(envelope?.result);
+	}
 	return envelope?.result as T;
+}
+
+/**
+ * Take the delegated-cleanup notice out of a `sessions.list` answer, if it
+ * carries one.
+ *
+ * At the transport, not in any one caller, because `sessions.list` has five
+ * callers (the sidebar head, the tail and scoped pages, the destination
+ * pickers, the mesh store) and the field rides EVERY answer the server serves
+ * while the store is unacknowledged - so whichever caller asks first carries
+ * it, and a notice lifted only by the sidebar would be silently dropped by
+ * whichever picker won the race. The store keeps it until the reader dismisses
+ * it; the write half of that dismissal is `dismissDelegatedCleanupNotice`
+ * below.
+ */
+function liftDelegatedCleanupNotice(result: unknown): void {
+	if (typeof result !== "object" || result === null) return;
+	const notice = parseDelegatedCleanupNotice(
+		(result as { delegated_cleanup_notice?: unknown }).delegated_cleanup_notice,
+	);
+	if (notice) useDelegatedCleanupNoticeStore.getState().receive(notice);
+}
+
+/**
+ * Acknowledge the one-time delegated-cleanup notice for the STORE.
+ *
+ * WHY DISMISSAL WRITES. The route's GET is a non-consuming peek: the field
+ * rides every `sessions.list` answer until this op lands, which is what lets a
+ * second window still meet the notice after the first one saw it. The reader's
+ * dismissal is the event that flips `notice_acknowledged`, so it is HALF local
+ * (the stored copy clears) and half wire (this call).
+ *
+ * NEVER REJECTS, on purpose. The local clear is what the reader asked for and
+ * it is already applied; a failed ack only means the field stays on the wire
+ * and a later answer re-lifts the notice - the at-least-once direction a
+ * once-per-store notice wants if anything. So a failure here is swallowed
+ * rather than shown: there is no action for the reader to take, and a scary
+ * banner about a notice they just dismissed is worse than the reappearance it
+ * cannot prevent.
+ */
+async function acknowledgeDelegatedCleanupNotice(): Promise<void> {
+	try {
+		await desktopResult({ op: "delegated_cleanup_notice.ack" });
+	} catch {
+		// Deliberately swallowed: the dismissal is the promise this call makes,
+		// and it is kept (see above).
+	}
+}
+
+/**
+ * The reader dismissed the notice: clear the stored copy, then acknowledge it
+ * for the store.
+ *
+ * The ONE dismissal path, so the two halves cannot diverge: every caller that
+ * drops the notice (the band's dismiss control, the tests) goes through here
+ * and the ack cannot be forgotten. The local clear is synchronous - the band
+ * is gone on this render - and the ack rides the same desktop request plumbing
+ * as every other op, tolerating failure as {@link acknowledgeDelegatedCleanupNotice}
+ * states.
+ */
+export async function dismissDelegatedCleanupNotice(): Promise<void> {
+	useDelegatedCleanupNoticeStore.getState().dismiss();
+	await acknowledgeDelegatedCleanupNotice();
 }
 
 /**
