@@ -25,8 +25,10 @@
  *              `ImageAttachment`, so the reserved box, the lightbox expansion
  *              and the canvas affordance all come with it) under a quiet
  *              one-line receipt.
- *   failed     a plain sentence, the provider's error text VERBATIM in the
- *              trace's existing sunken detail block, and Retry when wired.
+ *   failed     the error sentence VERBATIM as the line itself — the frozen
+ *              platform `error` is authored to be read as-is and is never
+ *              wrapped in a sentence this card substituted for it — and Retry
+ *              when wired.
  *   cancelled  a plain state line and the restart slots when wired.
  *
  * AFFORDANCES ARE OPT-IN. The card draws only the controls its `actions`
@@ -53,7 +55,6 @@
 import { Button, Progress } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useEffect, useState } from "react";
-import { DETAIL_SECTION_MAX } from "../components/trace/tool-detail";
 import {
 	formatBytes,
 	formatDuration,
@@ -172,15 +173,31 @@ function StateLine({
 			text = "Cancelling…";
 			break;
 		case "done":
-			text = "Generated image";
+			/*
+			 * One line either way. `already-finished` is the frozen
+			 * `media_already_completed` receipt — a cancel that lost its race
+			 * with the finish — so it states the finish and withholds the
+			 * duration: that number belongs to the receipt that watched the
+			 * run, and this one only heard about it.
+			 */
+			text =
+				view.receipt === "already-finished"
+					? "Already finished."
+					: "Generated image";
 			detail =
-				view.durationS === null ? null : formatSettledDuration(view.durationS);
+				view.receipt === "already-finished" || view.durationS === null
+					? null
+					: formatSettledDuration(view.durationS);
 			break;
 		case "failed":
-			text =
-				view.source === "provider"
-					? "Image generation failed."
-					: "The request was never sent to a provider.";
+			/*
+			 * The frozen shape's sentence, VERBATIM (see the model header): the
+			 * platform `error` is authored to be read as-is, so no sentence of
+			 * this app's is layered over it. The fallback covers only a record
+			 * whose text is ABSENT entirely — it is the absence's sentence, not
+			 * a substitute for supplied text. PROVISIONAL fallback copy.
+			 */
+			text = view.message ?? "The image could not be generated.";
 			emphasis = true;
 			break;
 		case "cancelled":
@@ -198,26 +215,6 @@ function StateLine({
 				</span>
 			)}
 		</p>
-	);
-}
-
-/**
- * The provider's error text, VERBATIM, in the trace's existing detail-section
- * idiom (`canonical-transcript`'s never-run body): `sunken`, radius 10, mono,
- * the shared `DETAIL_SECTION_MAX` cap so a long stack does not push its own
- * row off-screen. The plain sentence above the block is the label — a second
- * label inside would state the same thing twice.
- */
-function ErrorBlock({ message }: { message: string }) {
-	return (
-		<div
-			data-imagegen-error=""
-			className={cn("w-full rounded-md bg-sunken p-3 font-mono text-mono-sm")}
-		>
-			<div className={cn(DETAIL_SECTION_MAX, "overflow-auto")}>
-				<pre className={cn("whitespace-pre text-danger")}>{message}</pre>
-			</div>
-		</div>
 	);
 }
 
@@ -294,9 +291,6 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 				/>
 			) : null}
 			{logTail === null ? null : <LogTail line={logTail} />}
-			{view.state === "failed" && view.message !== null ? (
-				<ErrorBlock message={view.message} />
-			) : null}
 			{view.state === "done" && view.images.length > 0 ? (
 				<div className={cn("flex flex-col gap-2")}>
 					{view.images.map((image, index) => (

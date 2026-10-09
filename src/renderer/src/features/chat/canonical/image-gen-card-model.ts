@@ -28,12 +28,29 @@
  * payload, artifact ref — are not frozen on the wire yet, and nothing in the
  * frames this app receives today carries them. So the mapping renders the
  * REDUCED state honestly instead of guessing: `progress` is all-absence
- * (`null` / empty), the failed state's verbatim text is the tool result's own
- * output (the only error text that exists), and the generated image arrives
- * through `record.images` — the attachments lane's existing extraction, which
- * is also what the fold's media counting reads. When the fields freeze they
- * are read HERE and nowhere else; the stories drive those shapes through the
- * view type until then.
+ * (`null` / empty), and the generated image arrives through `record.images` —
+ * the attachments lane's existing extraction, which is also what the fold's
+ * media counting reads. When the fields freeze they are read HERE and nowhere
+ * else; the stories drive those shapes through the view type until then.
+ *
+ * THE PROVIDER-ERROR SHAPE IS FROZEN (manager, 2026-10-08), and its read is
+ * the one that lives here today as a best-available source. A failed
+ * generation carries `error` — a stable platform sentence that is safe to
+ * render as-is — plus `error_type` (FAL's own structured code where one
+ * exists, otherwise one of `media_rejected | media_failed |
+ * media_rate_limited | media_unavailable`). The card renders `error`
+ * VERBATIM: it never layers a substituted sentence of its own over the text.
+ * Until `error` lands on the record, the mapping reads the tool result's own
+ * output, which is the only error text that exists today; `error_type` is
+ * carried on the view (`errorType`) for structure but stays `null` until the
+ * field has a home on the wire.
+ *
+ * AND ONE CODE IS A RECEIPT RATHER THAN AN ERROR: a cancel against an
+ * already-finished job comes back as a conflict with `error_type:
+ * media_already_completed`, and the card must state "already finished" rather
+ * than paint a failure. That is the done state's `already-finished` receipt
+ * below — the guard is a two-line arm at this file's error mapping once the
+ * field lands, and the stories carry the receipt's render today.
  */
 
 import type { TranscriptImage, TranscriptRecord } from "./transcript-reducer";
@@ -128,21 +145,31 @@ export type ImageGenCardView =
 			images: readonly TranscriptImage[];
 			/** The backend's measured duration, or `null` for a replayed row. */
 			durationS: number | null;
+			/**
+			 * Which receipt the line states. `already-finished` is the frozen
+			 * `media_already_completed` arm (see the header): the generation completed
+			 * before a cancel could act, so the card states the finish — never an
+			 * error, and never a cancellation that did not happen.
+			 */
+			receipt: "generated" | "already-finished";
 	  }
 	| {
 			state: "failed";
 			/**
-			 * The error text VERBATIM, or `null` when none was stated — the card
-			 * then draws the sentence alone rather than inventing a detail.
+			 * The error sentence VERBATIM — the frozen `error` field, or today the
+			 * tool result's own output, which is the only error text that exists —
+			 * and `null` when none was stated (the card then falls back to its own
+			 * absence sentence rather than inventing a detail). Rendered as-is: the
+			 * card never wraps it in a sentence this app substituted for the
+			 * provider's.
 			 */
 			message: string | null;
 			/**
-			 * Which sentence precedes the text: `provider` for a result the tool
-			 * returned as an error, `harness` for a verdict that stopped the call
-			 * before any provider saw it. The two are different facts and the
-			 * card words them differently.
+			 * The frozen `error_type` once the field lands (FAL's structured code or
+			 * a `media_*` platform code), carried for structure rather than display.
+			 * `null` today: the field has no home on the wire yet.
 			 */
-			source: "provider" | "harness";
+			errorType: string | null;
 	  }
 	| { state: "cancelled" };
 
@@ -175,14 +202,15 @@ export function imageGenCardView(
 	/*
 	 * ARM 2, the planning verdicts (`unknown_tool`, `invalid_arguments`,
 	 * `duplicate_id`, `denied`, `gate_failed`): the harness's own reason is the
-	 * whole content of the fact, so it is the failed state's verbatim text —
-	 * worded as the harness's sentence, not a provider's. TRUTHINESS rather
-	 * than `!== null` for the reason the transcript's own reader gives: a
-	 * record built by hand (a test fixture, a story) carries no
+	 * whole content of the fact, so it IS the failed state's text — rendered
+	 * as-is, like every failure text (the frozen shape supplies sentences that
+	 * are safe to render; nothing here layers one of its own over them).
+	 * TRUTHINESS rather than `!== null` for the reason the transcript's own
+	 * reader gives: a record built by hand (a test fixture, a story) carries no
 	 * `notRunReason` key at all, and an absent key must not read as a verdict.
 	 */
 	if (record.notRunReason)
-		return { state: "failed", source: "harness", message: record.notRunReason };
+		return { state: "failed", message: record.notRunReason, errorType: null };
 	/*
 	 * ARM 3, the turn that died while the call was still being dictated: the
 	 * harness's `never sent` fact with no verdict at all. Nothing failed and
@@ -191,15 +219,17 @@ export function imageGenCardView(
 	 */
 	if (record.neverSent === true) return { state: "cancelled" };
 	/*
-	 * ARM 4, the tool's own error result. The message is the result's output
-	 * VERBATIM — the provider error text as it reached the transcript — and is
-	 * `null` when the result carried none, which the card renders as the
-	 * sentence alone. `stopping` does NOT override a settled failure: the
-	 * interrupt's overlay belongs to an unsettled call (below), and a receipt
-	 * answering `idle` over a failed record must not reopen it.
+	 * ARM 4, the tool's own error result. The message is the frozen `error`
+	 * field once it lands on the record; until then it is the result's output
+	 * VERBATIM — the error text as it reached the transcript — and `null` when
+	 * the result carried none, which the card renders as its own absence
+	 * sentence rather than a substitute for supplied text. `stopping` does NOT
+	 * override a settled failure: the interrupt's overlay belongs to an
+	 * unsettled call (below), and a receipt answering `idle` over a failed
+	 * record must not reopen it.
 	 */
 	if (record.isError === true)
-		return { state: "failed", source: "provider", message: record.output };
+		return { state: "failed", message: record.output, errorType: null };
 	/*
 	 * ARM 5, the unsettled phases. `stopping` (the pane's stop in flight) turns
 	 * both into the cancelling step — for `running` the call is still executing
@@ -243,6 +273,7 @@ export function imageGenCardView(
 				state: "done",
 				images: record.images ?? [],
 				durationS: record.durationS ?? null,
+				receipt: "generated",
 			};
 	}
 }
