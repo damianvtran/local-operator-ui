@@ -63,8 +63,8 @@
  *
  * Entering is the user's own press and nothing else: the mount finds focus on one of
  * the lane's two DOORS - the status-row item (`ASK_ITEM_SELECTOR`, the session scope)
- * or the conversation header's asks trigger (`ASK_HEADER_ITEM_SELECTOR`, whichever
- * scope it opened) - or it
+ * or the panel rail's asks item (`ASK_RAIL_ITEM_SELECTOR`, whichever scope it opened;
+ * the conversation header's trigger until #896 moved it) - or it
  * moves nothing, which is what keeps the lane's no-focus-steal promise (whose subject
  * is an ask ARRIVING) intact. WHERE it lands is the CARD's first control and not the
  * bar's (UX round 1, U4): the bar's leading control in DOM order is the dismiss, so
@@ -96,8 +96,8 @@ import type {
 import {
 	ASK_DRAWER_UNAVAILABLE_LINE,
 	ASK_DRAWER_UNREAD_LINE,
-	ASK_HEADER_ITEM_SELECTOR,
 	ASK_ITEM_SELECTOR,
+	ASK_RAIL_ITEM_SELECTOR,
 	EMPTY_DRAFTS,
 	askQueueView,
 	askScopeLine,
@@ -157,8 +157,8 @@ export type AskDrawerProps = {
 	> | null;
 	/**
 	 * Which queue this drawer is showing, carried by the ENTRY POINT rather than
-	 * chosen here (design note §4.4): a session's chip opens `session` and the header's
-	 * asks trigger opens `fleet` at the top level (or `session` inside one). It is read
+	 * chosen here (design note §4.4): a session's chip opens `session` and the rail's
+	 * asks item opens `fleet` at the top level (or `session` inside one). It is read
 	 * for the chrome bar's scope line, the surface's accessible name, and the per-row
 	 * conversation line (`conversationOf` below) - the three places the two contexts
 	 * differ - so the two queues share one container rather than growing a second
@@ -256,14 +256,14 @@ export const AskDrawer = ({
 	 *
 	 * WHY THE DISTINCTION IS THE WHOLE FINE PRINT. `isAskDrawerOpen` is a STORE flag
 	 * and deliberately survives a conversation switch - the drawer follows the user
-	 * into whatever conversation is opened next - and the FLEET trigger is offered at
+	 * into whatever conversation is opened next - and the FLEET-scoped door is offered at
 	 * ZERO outstanding asks, so a press on it opens this surface over a queue with
 	 * nothing in it ON PURPOSE. Auto-closing THAT mount would be a control that
 	 * refuses its own door. The signal is the lane's existing one, latched where it
-	 * is computed: the entry effect's `ASK_ITEM_SELECTOR` / `ASK_HEADER_ITEM_SELECTOR`
+	 * is computed: the entry effect's `ASK_ITEM_SELECTOR` / `ASK_RAIL_ITEM_SELECTOR`
 	 * read of the element that held focus. It is a LATCH, never cleared, because the
 	 * entry effect runs on every commit until its one-shot is spent and a later
-	 * commit could find focus back on the trigger with no press behind it.
+	 * commit could find focus back on the door with no press behind it.
 	 */
 	const openedByDoor = useRef(false);
 
@@ -370,15 +370,17 @@ export const AskDrawer = ({
 	/*
 	 * INTO THE DRAWER, and only for the user's own press: the mount must find focus
 	 * ALREADY on one of the lane's two doors - the composer chip (the session
-	 * scope) or the conversation header's asks trigger (either scope) - so a
+	 * scope) or the panel rail's asks item (either scope; the conversation header's
+	 * trigger until #896 moved it) - so a
 	 * programmatic open, a story pinning the flag, or a second mount moves nothing.
 	 *
-	 * BOTH DOORS, because the header door is outside the pane: with only the chip
-	 * accepted, an open from the header left the keyboard on the trigger, nothing
+	 * BOTH DOORS, because the rail door is outside the pane: with only the chip
+	 * accepted, an open from the header (the door's home until #896) left the keyboard
+	 * on the trigger, nothing
 	 * inside the pane could consume Escape, and the press reached the app's interrupt
 	 * rung and stopped the agent's turn (UX round 1, U1 / agent review round 1, F1).
 	 * The returned `Element` is remembered so the door that was pressed is the one
-	 * focus goes back to - the chip and the header trigger, either of which may be
+	 * focus goes back to - the chip and the rail item, either of which may be
 	 * unmounted on the route under the open surface.
 	 */
 	const wasBootstrapped = useRef(false);
@@ -388,12 +390,12 @@ export const AskDrawer = ({
 		const active = document.activeElement;
 		if (active === null || typeof active.matches !== "function") return;
 		/*
-		 * EITHER DOOR: the composer chip (session) or the header's asks trigger
+		 * EITHER DOOR: the composer chip (session) or the panel rail's asks item
 		 * (either scope). Both are the user's own press; nothing else moves focus.
 		 */
 		const door =
 			active.matches(ASK_ITEM_SELECTOR) ||
-			active.matches(ASK_HEADER_ITEM_SELECTOR)
+			active.matches(ASK_RAIL_ITEM_SELECTOR)
 				? active
 				: null;
 		/*
@@ -425,8 +427,8 @@ export const AskDrawer = ({
 		 * EVERY OTHER COMMIT RESOLVES THE MOVE, and it resolves it whether or not a
 		 * door is under focus. Spending the flag only on a commit that found BOTH a door
 		 * and a surface (the shape this used to have) left it false for as long as a
-		 * drawer mounted with nothing focused stayed up: the header trigger is still on
-		 * screen and still matches `ASK_HEADER_ITEM_SELECTOR`, and the ask clock re-renders once
+		 * drawer mounted with nothing focused stayed up: the rail's asks item is still on
+		 * screen and still matches `ASK_RAIL_ITEM_SELECTOR`, and the ask clock re-renders once
 		 * a second, so the next Tab onto that row plus any commit moved focus into the
 		 * pane - the steal that old docblock said could not happen. Focus moves ONLY on
 		 * a commit that has both a door and a surface, so the bounded wait cannot move
@@ -502,7 +504,7 @@ export const AskDrawer = ({
 	 * typing, and moving it to a row there would be the theft this whole lane avoids.
 	 *
 	 * The remembered door, not a fresh `querySelector(ASK_ITEM_SELECTOR)`: the fleet
-	 * pane's door is the header trigger and the session chip may not even be mounted on
+	 * pane's door is the rail item and the session chip may not even be mounted on
 	 * the route beneath it, so looking the chip up would either find nothing or focus
 	 * the wrong control - the same defect UX round 1, U1 recorded from the other end.
 	 *

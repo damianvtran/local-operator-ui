@@ -356,7 +356,8 @@ type UiPreferencesState = {
 	 * IT IS THE ASK LANE'S ONE FLAG, and that is why it lives here rather than in
 	 * `chat-page`: the readers have to agree about it or the surface contradicts
 	 * itself - the status-row chip that opens it (`composer-status-row.tsx`), the
-	 * header door, the Escape claim and the drawer itself. A second copy is exactly
+	 * rail's asks item (the header door before #896), the Escape claim and the
+	 * drawer itself. A second copy is exactly
 	 * how the chip and the surface it opens end up disagreeing. It does NOT put the
 	 * composer into any mode: the routing that once did (`ask-nonblocking.md` §5.0,
 	 * R7) was retired on 2026-10-07.
@@ -1364,8 +1365,9 @@ export function resolveRightSlotOccupied(state: UiPreferencesState): boolean {
  *
  * It returns the short name, a primitive, so a `useUiPreferencesStore(selector)`
  * subscriber re-renders only when the answer changes. `"ask"` is a legitimate
- * answer: the rail reads it as "the slot is held by the drawer", lights none of
- * its four items, and leaves the borrowed pane's own flag (`askDrawerEvictedPane`)
+ * answer: the rail reads it as "the slot is held by the drawer" and lights the
+ * ASKS item (#896; before the move the rail carried no asks item, so this answer
+ * lit nothing), leaving the borrowed pane's own flag (`askDrawerEvictedPane`)
  * out of it - lighting the covered pane would say something false.
  */
 export function resolveDrawnRightSlotPane(

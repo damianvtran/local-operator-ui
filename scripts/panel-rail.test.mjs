@@ -56,7 +56,8 @@ const bundle = await build({
 			export { Tooltip, TooltipProvider } from "./src/renderer/src/shared/components/ui/tooltip";
 			export { ChatLayout } from "./src/renderer/src/shared/components/common/chat-layout";
 			export { InPanelRailHost, PanelRailHostContext } from "./${NAV}/panel-rail-host";
-			export { browserRailLabels, canvasRailLabels, consoleRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
+			export { askRailLabels, browserRailLabels, canvasRailLabels, consoleRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
+			export { askRailToggleLabel, askScopeSubject, ASK_RAIL_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";
 			export { useUiPreferencesStore, resolveDrawnRightSlotPane } from "./src/renderer/src/shared/store/ui-preferences-store";
 			export { deriveRunDetails } from "./${RUN}/run-detail-model";
 			export * as fixtures from "./${RUN}/run-details.fixtures";
@@ -106,6 +107,9 @@ const {
 	ChatLayout,
 	InPanelRailHost,
 	PanelRailHostContext,
+	askRailLabels,
+	askRailToggleLabel,
+	ASK_RAIL_ITEM_SELECTOR,
 	browserRailLabels,
 	canvasRailLabels,
 	consoleRailLabels,
@@ -150,7 +154,7 @@ async function mount(render) {
 		 * error jsdom swallows, so this map's "fails loudly" promise needs an
 		 * assertion that actually reads the effect, not just the list (R1-1, Q1).
 		 */
-		/* Nothing here builds a selector from an arbitrary id; the ids are the rail's own four. */
+		/* Nothing here builds a selector from an arbitrary id; the ids are the rail's own five. */
 		CSS: { escape: (value) => String(value) },
 		// Radix reads a node's computed style to tell a real `<button>` from a
 		// non-element child; it reaches for the BARE global, like the two above.
@@ -279,10 +283,19 @@ const NO_PANES = {
 	isBrowserPaneOpen: false,
 	isConsolePaneOpen: false,
 	isAskDrawerOpen: false,
+	askDrawerScope: "session",
 	askDrawerEvictedPane: null,
 };
 const details = () => deriveRunDetails(fixtures.settled());
 
+/*
+ * The rail as the chat surface mounts it (#896): the asks item is OFFERED by
+ * default, because that is the app's normal state where a host publishes a queue -
+ * the cells that need it absent (proving offered-gating) pass `askOffered: false`,
+ * and the cells that need a count pass it. A draft was never reachable with an
+ * unoffered item before this, so offering it here is what keeps the fifth item
+ * under test in the same mounts as its four siblings.
+ */
 const rail = (overrides = {}) =>
 	React.createElement(PanelRail, {
 		sessionId: "session-1",
@@ -291,6 +304,9 @@ const rail = (overrides = {}) =>
 		listOnScreen: false,
 		readerChildId: null,
 		browserAttentionCount: 0,
+		askOffered: true,
+		askCount: 0,
+		askScope: "session",
 		consoleUnseenCount: 0,
 		consoleUnseenPulsing: false,
 		fileCount: 0,
@@ -312,8 +328,15 @@ test("the rail is ONE vertical toolbar with a name, in the fixed order", async (
 		assert.equal(toolbar.getAttribute("role"), "toolbar");
 		assert.equal(toolbar.getAttribute("aria-orientation"), "vertical");
 		assert.equal(toolbar.getAttribute("aria-label"), "Panels");
-		assert.deepEqual(api.ids(), ["run", "browser", "console", "canvas"]);
+		assert.deepEqual(api.ids(), ["run", "ask", "browser", "console", "canvas"]);
 		assert.deepEqual(api.ids(), [...PANEL_RAIL_ORDER]);
+		/* The asks item sits SECOND (#896), its historical slot: the pre-#872 header
+		   ran Run -> Asks -> Browser -> Console -> Canvas. */
+		assert.equal(
+			api.ids()[1],
+			"ask",
+			"the fifth door returned to its old position",
+		);
 	});
 });
 
@@ -328,7 +351,7 @@ test("one tab stop: exactly one item is tabbable, and it follows focus", async (
 		assert.equal(
 			api.items().filter((item) => item.getAttribute("tabindex") === "-1")
 				.length,
-			3,
+			4,
 		);
 		/* Focus entering on another item (a click, a pointer) moves the stop with it. */
 		act(() => api.item("console").focus());
@@ -345,6 +368,8 @@ test("ArrowUp/ArrowDown walk the items, Home/End take the ends, and the walk is 
 		const active = () => api.document.activeElement?.dataset?.panelRailItem;
 		act(() => api.item("run").focus());
 		await api.key(api.item("run"), "ArrowDown");
+		assert.equal(active(), "ask", "the ask item is the second stop (#896)");
+		await api.key(api.item("ask"), "ArrowDown");
 		assert.equal(active(), "browser");
 		await api.key(api.item("browser"), "ArrowDown");
 		assert.equal(active(), "console");
@@ -374,13 +399,16 @@ test("ArrowUp/ArrowDown walk the items, Home/End take the ends, and the walk is 
 	});
 });
 
-test("aria-pressed follows each of the four store flags, one at a time", async () => {
+test("aria-pressed follows each of the five store flags, one at a time", async () => {
 	await mount(async (api) => {
 		for (const [flag, id] of [
 			["isRunPanelOpen", "run"],
 			["isBrowserPaneOpen", "browser"],
 			["isConsolePaneOpen", "console"],
 			["isCanvasOpen", "canvas"],
+			/* The fifth state (#896): the drawer holds the slot, so the ASKS item is the
+			   lit one - the fix the issue names, where the rail used to light nothing. */
+			["isAskDrawerOpen", "ask"],
 		]) {
 			reset(api);
 			await api.render(rail());
@@ -421,6 +449,47 @@ test("pressing an item claims the slot: the others are cleared, and a second pre
 		);
 		await api.click(api.item("run"));
 		assert.deepEqual(api.pressed(), ["run"]);
+		/* THE ASKS ITEM IS THE HEADER TRIGGER'S OLD DOOR (#896), verbatim: a toggle in
+		   ITS scope - it closes when this scope is open, replaces the OTHER scope's open
+		   (open=true for this one), and claims the slot from any sibling. */
+		await api.click(api.item("ask"));
+		assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, true);
+		assert.equal(useUiPreferencesStore.getState().askDrawerScope, "session");
+		assert.deepEqual(
+			api.pressed(),
+			["ask"],
+			"the open drawer lights its own item, not its neighbours",
+		);
+		await api.click(api.item("ask"));
+		assert.equal(
+			useUiPreferencesStore.getState().isAskDrawerOpen,
+			false,
+			"a second press closes its own drawer",
+		);
+		assert.deepEqual(
+			api.pressed(),
+			["run"],
+			"and the borrowed slot is HANDED BACK: the drawer closed itself and the run panel it displaced returned (the store's borrow rule, unchanged by the move)",
+		);
+		/* Open in the OTHER scope: the press REPLACES the scope rather than closing. */
+		api.store({ isAskDrawerOpen: true, askDrawerScope: "fleet" });
+		await api.click(api.item("ask"));
+		assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, true);
+		assert.equal(
+			useUiPreferencesStore.getState().askDrawerScope,
+			"session",
+			"the press re-opens in this item's scope",
+		);
+		assert.deepEqual(api.pressed(), ["ask"]);
+		/* And the drawer's claim is cleared by a sibling's press, as `claimRightSlot`
+		   writes it: pressing any other item is a swap. */
+		await api.click(api.item("browser"));
+		assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, false);
+		assert.deepEqual(
+			api.pressed(),
+			["browser"],
+			"a swap clears the drawer's claim",
+		);
 	});
 });
 
@@ -432,6 +501,7 @@ test("a claimed pane the route cannot draw lights NOTHING (the drawable-aware se
 			"isBrowserPaneOpen",
 			"isConsolePaneOpen",
 			"isCanvasOpen",
+			"isAskDrawerOpen",
 		]) {
 			reset(api, { mounted: false, runDetails: false, session: false });
 			api.store({ [flag]: true });
@@ -465,8 +535,8 @@ test("a panel the route cannot draw is ABSENT, not disabled", async () => {
 		await api.render(rail({ runDetails: null, sessionId: null }));
 		assert.deepEqual(
 			api.ids(),
-			["browser", "canvas"],
-			"Run details and Console are absent on {mounted, !runDetails, !session}",
+			["ask", "browser", "canvas"],
+			"Run details and Console are absent on {mounted, !runDetails, !session}; the asks item is present because THIS host offers it - its rule is the host's, not the route's (see its own cell below)",
 		);
 		for (const item of api.items()) {
 			assert.equal(item.disabled, false);
@@ -477,7 +547,67 @@ test("a panel the route cannot draw is ABSENT, not disabled", async () => {
 		/* A conversation with a session but no run view model: Console without Run. */
 		reset(api, { mounted: true, runDetails: false, session: true });
 		await api.render(rail({ runDetails: null }));
-		assert.deepEqual(api.ids(), ["browser", "console", "canvas"]);
+		assert.deepEqual(api.ids(), ["ask", "browser", "console", "canvas"]);
+	});
+});
+
+/*
+ * THE ASKS ITEM'S OWN RULE (#896): PRESENT iff a host offers a door - the header
+ * trigger's old "offered" gate (`published`/`answered`, resolved by `chat-content`)
+ * - and its two labels carry the scope and the count. Asserted on BOTH scopes,
+ * because the scope is the one fact that makes two renders of one control describe
+ * two different queues (UX round 1, U3), and on the tag, because the drawer's
+ * focus-return anchor and Escape door attach to it (#820/#835's contract, moved with
+ * the control).
+ */
+test("the asks item follows the host's offer, and its labels carry the scope and the count", async () => {
+	await mount(async (api) => {
+		reset(api);
+		await api.render(rail({ askOffered: false }));
+		assert.equal(
+			api.item("ask"),
+			null,
+			"absent, not disabled, where no host offers a door",
+		);
+		assert.deepEqual(api.ids(), ["run", "browser", "console", "canvas"]);
+		await api.render(
+			rail({ askOffered: true, askCount: 3, askScope: "session" }),
+		);
+		const offered = api.item("ask");
+		assert.ok(offered, "offered: the item is present");
+		assert.equal(offered.getAttribute("data-tour-tag"), "ask-pane-trigger");
+		assert.ok(
+			offered.matches(ASK_RAIL_ITEM_SELECTOR),
+			"the drawer's entry/return path resolves to this item's tag",
+		);
+		assert.equal(offered.getAttribute("data-ask-scope"), "session");
+		assert.equal(
+			offered.getAttribute("aria-label"),
+			"Asks, This conversation, 3 waiting or moved on",
+			"the name is the stable noun + scope + count (U2); no verb",
+		);
+		assert.equal(
+			offered.getAttribute("aria-pressed"),
+			"false",
+			"open/closed is `aria-pressed`'s to say, once",
+		);
+		await api.render(
+			rail({ askOffered: true, askCount: 11, askScope: "fleet" }),
+		);
+		assert.equal(
+			api.item("ask").getAttribute("aria-label"),
+			"Asks, All conversations, 11 waiting or moved on",
+		);
+		assert.equal(api.item("ask").getAttribute("data-ask-scope"), "fleet");
+		/* Zero still names its subject (U3): the scope word is what says WHICH queue
+		   the quiet door opens. */
+		await api.render(
+			rail({ askOffered: true, askCount: 0, askScope: "fleet" }),
+		);
+		assert.equal(
+			api.item("ask").getAttribute("aria-label"),
+			"Asks, All conversations",
+		);
 	});
 });
 
@@ -523,6 +653,36 @@ test("the tooltips are the header's verbatim; the accessible names are stable no
 	);
 	assert.equal(canvasRailLabels(false, 4, "⌘⇧C").aria, "Canvas (⌘⇧C), 4 files");
 	assert.equal(canvasRailLabels(true, 0, "⌘⇧C").aria, "Canvas (⌘⇧C)");
+	/*
+	 * THE ASKS ITEM (#896): the tooltip is the DOOR'S OWN SENTENCE from `ask-queue.ts`
+	 * and the name is the stable noun + scope + count. The third shape is the U3
+	 * promise restated on the rail: at ZERO it still names its scope, which is what
+	 * keeps it distinct from the drawer's own `Close asks` dismiss.
+	 */
+	assert.deepEqual(askRailLabels(false, "session", 1), {
+		tooltip: "Open asks — This conversation, 1 waiting or moved on",
+		aria: "Asks, This conversation, 1 waiting or moved on",
+	});
+	assert.deepEqual(askRailLabels(true, "fleet", 2), {
+		tooltip: "Close asks — All conversations, 2 waiting or moved on",
+		aria: "Asks, All conversations, 2 waiting or moved on",
+	});
+	assert.deepEqual(askRailLabels(false, "session", 0), {
+		tooltip: "Open asks — This conversation",
+		aria: "Asks, This conversation",
+	});
+	assert.notEqual(
+		askRailLabels(true, "session", 0).tooltip,
+		"Close asks",
+		"the rail door must never be the same string as the pane's own dismiss",
+	);
+	/* THE TOOLTIP IS THE REUSE ITSELF, not a second spelling: `askRailLabels` prints
+	   `ask-queue.ts`'s composer for the same state, so the two cannot drift. */
+	assert.equal(
+		askRailLabels(true, "session", 0).tooltip,
+		askRailToggleLabel({ open: true, scope: "session", count: 0 }),
+		"one derivation: the rail's tooltip IS ask-queue's sentence",
+	);
 	/* And the DOM: the NAME is stable and `aria-pressed` alone carries open/closed (U2). */
 	await mount(async (api) => {
 		reset(api);
@@ -595,11 +755,44 @@ test("the browser badge: the count, capped at 9+ on the glyph, ringed in the rai
 	});
 });
 
-test("while the Asks drawer holds the slot NOTHING is lit, and a press is a swap", async () => {
+test("the ask badge (#896): the count, capped at 9+ on the glyph, styled like the browser's", async () => {
+	await mount(async (api) => {
+		reset(api);
+		await api.render(rail({ askCount: 0 }));
+		assert.equal(
+			api.$("[data-tour-tag=ask-pane-badge]"),
+			null,
+			"no badge at 0",
+		);
+		await api.render(rail({ askCount: 1 }));
+		assert.equal(api.$("[data-tour-tag=ask-pane-badge]").textContent, "1");
+		await api.render(rail({ askCount: 12 }));
+		const capped = api.$("[data-tour-tag=ask-pane-badge]");
+		assert.equal(capped.textContent, "9+", "the glyph is capped");
+		assert.match(
+			api.item("ask").getAttribute("aria-label"),
+			/12 waiting or moved on/,
+			"the name keeps the exact number",
+		);
+		assert.ok(
+			capped.className.includes("ring-surface"),
+			"the ring names the rail's ground, as the browser mark's does",
+		);
+		assert.ok(!capped.className.includes("ring-canvas"));
+		/* The mark draws while the item is LIT: the count must not disappear with the
+		   pane it opened (the shape the operator asked for on the header trigger). */
+		api.store({ isAskDrawerOpen: true, askDrawerScope: "session" });
+		assert.equal(api.item("ask").getAttribute("aria-pressed"), "true");
+		assert.equal(api.$("[data-tour-tag=ask-pane-badge]").textContent, "9+");
+	});
+});
+
+test("while the Asks drawer holds the slot the ASK ITEM is lit, and a press on another item is a swap", async () => {
 	await mount(async (api) => {
 		reset(api);
 		/* The drawer borrowed the slot from the browser: the borrow is recorded, and
-		   lighting the covered pane would say something false. */
+		   lighting the covered pane would say something false. #896: the ask item is
+		   the one that lights, because the drawer is what is drawn. */
 		api.store({
 			isBrowserPaneOpen: false,
 			isAskDrawerOpen: true,
@@ -611,7 +804,11 @@ test("while the Asks drawer holds the slot NOTHING is lit, and a press is a swap
 			resolveDrawnRightSlotPane(useUiPreferencesStore.getState()),
 			"ask",
 		);
-		assert.deepEqual(api.pressed(), [], "zero items lit while Asks is drawn");
+		assert.deepEqual(
+			api.pressed(),
+			["ask"],
+			"the drawer's own item is the lit one, and only it - before #896 this was []",
+		);
 		await api.click(api.item("canvas"));
 		const state = useUiPreferencesStore.getState();
 		assert.equal(
@@ -681,6 +878,7 @@ test("every legacy hook the tour, the proofs and the driver find the controls by
 		await api.render(
 			rail({
 				browserAttentionCount: 1,
+				askCount: 1,
 				consoleUnseenCount: 1,
 				consoleUnseenPulsing: true,
 				fileCount: 2,
@@ -690,6 +888,11 @@ test("every legacy hook the tour, the proofs and the driver find the controls by
 			"[data-run-panel-trigger]",
 			'[data-tour-tag="browser-pane-trigger"]',
 			'[data-tour-tag="browser-pane-badge"]',
+			/* The asks item's tag and badge (#896): the drawer's entry/return path and
+			   the tour attach to the first; the second is the mark the issue asked to
+			   carry over from the header. */
+			'[data-tour-tag="ask-pane-trigger"]',
+			'[data-tour-tag="ask-pane-badge"]',
 			'[data-tour-tag="console-pane-trigger"]',
 			'[data-tour-tag="console-pane-blip"]',
 			'[data-tour-tag="open-canvas-button"]',
@@ -772,7 +975,7 @@ test("the host is inert outside a shell and portals into the shell's element ins
 
 /* ----------------------------------------------------------------- source pins */
 
-test("the header no longer renders the four triggers or their shed ladder", () => {
+test("the header no longer renders the five triggers or their shed ladder", () => {
 	const header = read(
 		"src/renderer/src/features/chat/components/chat-header.tsx",
 	);
@@ -782,6 +985,11 @@ test("the header no longer renders the four triggers or their shed ladder", () =
 		"console-pane-trigger",
 		"console-pane-blip",
 		"open-canvas-button",
+		/* The asks trigger is the LAST to leave (#896), and its badge goes with it:
+		   both tags live on the rail's item now, and a header that kept one would be
+		   the defect the issue names - two doors of one kind in two places. */
+		"ask-pane-trigger",
+		"ask-pane-badge",
 	]) {
 		assert.ok(
 			!header.includes(`data-tour-tag="${tag}"`),
@@ -804,16 +1012,41 @@ test("the header no longer renders the four triggers or their shed ladder", () =
 		!header.includes("@[20rem]/chathdr"),
 		"the canvas's shed rung is gone",
 	);
-	/* What stays: the Asks door, the menu with its four entries, and the chord. */
-	assert.ok(header.includes('data-tour-tag="ask-pane-trigger"'));
+	/* What stays: the menu with all FIVE entries - its asks row is the header's only
+	   asks door now (#896) - the chord, and the asks item's tag where it moved TO.
+	   The rail source carries the tag because the drawer's focus-return anchor and
+	   Escape door attach to the control, not to a file. */
+	const railSource = read(
+		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
+	);
+	assert.ok(
+		railSource.includes('data-tour-tag="ask-pane-trigger"'),
+		"the asks item's tag must live on the rail item: it is the drawer's anchor",
+	);
 	for (const label of [
 		"Run details",
+		"Close asks",
 		"Open browser",
 		"Open console",
 		"Open canvas",
 	]) {
 		assert.ok(header.includes(label), `the ... menu lost its "${label}" entry`);
 	}
+	/* The asks row's label is the sibling toggle spelling, and its PLACEMENT mirrors
+	   the rail's order (between Run details and Open browser). */
+	assert.ok(
+		header.includes('{asksOpen ? "Close asks" : "Open asks"}'),
+		"the asks row must be the same toggle sentence as the browser row's",
+	);
+	const runAt = header.indexOf("<span>Run details</span>");
+	const asksAt = header.indexOf('{asksOpen ? "Close asks" : "Open asks"}');
+	const browserAt = header.indexOf(
+		'{isBrowserPaneOpen ? "Close browser" : "Open browser"}',
+	);
+	assert.ok(
+		runAt >= 0 && asksAt > runAt && browserAt > asksAt,
+		"the asks row sits between Run details and Open browser, mirroring the rail (#896)",
+	);
 	assert.ok(
 		header.includes("isCanvasTogglePress(event)"),
 		"the existing chord is still bound, exactly as before",
@@ -940,8 +1173,12 @@ test("the host stays 44 across React StrictMode's double-mounted effects", async
  * jsdom has no layout, so the rect of the open tooltip is STATED by the case - the
  * instrument is the policy's own decision (does this box overlap the registered view
  * rect), not a pixel. The measured positions the numbers come from (1280x900, run
- * present): the view's rect is [740,150,496,750]; Canvas's tooltip is at y=150..178
+ * present, the FOUR-item rail the round measured): the view's rect is
+ * [740,150,496,750]; Canvas's tooltip is at y=150..178
  * (23px inside), Console's at y=114..142 and Browser's and Run's higher still.
+ * #896's asks item moves every box below the first down one pitch, so WHICH items
+ * reach the view at 1280x900 is re-derived by the evidence pass; these cases pin the
+ * PREDICATE, not a layout.
  */
 const VIEW = { x: 740, y: 150, width: 496, height: 750 };
 const ours = () =>
@@ -1234,6 +1471,82 @@ test("the ... menu's Open canvas row opens the CANVAS, not the slash-command chi
 			"the row flips the canvas flag",
 		);
 		assert.equal(chipsToggled, 0, "and does not toggle the legacy chips row");
+	});
+});
+
+/*
+ * AND THE CONTRASTING DOOR FOR ASKS (#896). The asks row speaks through a PROP
+ * (`onToggleAsks`) rather than reaching into the store, because the scope fact is
+ * the caller's: this pins the three things that makes true - the row is offered
+ * exactly where a host offers a door, its label states the action the press takes
+ * (`Open asks` / `Close asks`, the browser row's toggle idiom), and pressing it
+ * fires the host's toggle and nothing else.
+ */
+test("the ... menu's asks row is the header's remaining door: gated, verb-labelled, wired to the prop", async () => {
+	await mount(async (api) => {
+		reset(api);
+		let toggles = 0;
+		const header = (key, asks) =>
+			React.createElement(
+				TooltipProvider,
+				null,
+				React.createElement(ChatHeader, {
+					key,
+					agentName: "Core",
+					onOpenOptions: () => {},
+					runDetails: details(),
+					...asks,
+				}),
+			);
+		const openMenu = async () => {
+			const trigger = api.$('[aria-label="Conversation actions"]');
+			act(() => {
+				trigger.dispatchEvent(
+					new api.window.KeyboardEvent("keydown", {
+						key: "Enter",
+						bubbles: true,
+						cancelable: true,
+					}),
+				);
+			});
+			await act(async () => {});
+		};
+		const rowNamed = (text) =>
+			api
+				.$$('[role="menuitem"]')
+				.find((item) => item.textContent.trim() === text);
+		/* Offered, closed: the row reads `Open asks`, and pressing it fires the prop. */
+		await api.render(
+			header("offered", {
+				onToggleAsks: () => {
+					toggles += 1;
+				},
+			}),
+		);
+		await openMenu();
+		const open = rowNamed("Open asks");
+		assert.ok(open, "the menu offers the asks row where a host offers a door");
+		await api.click(open);
+		assert.equal(toggles, 1, "the row presses the host's toggle, once");
+		/* Offered, open: the same row flips to `Close asks`. */
+		await api.render(
+			header("open", { onToggleAsks: () => {}, asksOpen: true }),
+		);
+		await openMenu();
+		assert.ok(
+			rowNamed("Close asks"),
+			"the label states the action the press will take, as the browser row's does",
+		);
+		/* Not offered: no asks row at all - absent, never disabled. */
+		await api.render(header("none", {}));
+		await openMenu();
+		assert.equal(
+			api
+				.$$('[role="menuitem"]')
+				.filter((item) => /asks/i.test(item.textContent)).length,
+			0,
+			"no asks row where no host offers a door",
+		);
 	});
 });
 

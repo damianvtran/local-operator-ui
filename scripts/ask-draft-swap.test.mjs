@@ -173,9 +173,9 @@ test("a mount over a queue with nothing to show closes itself, unless a door ope
 	 * THE DOOR: the fleet trigger is offered at ZERO outstanding asks, so a press on
 	 * it opens this surface over an empty queue ON PURPOSE - closing that mount would
 	 * be a control refusing its own door. The signal is the lane's own: the entry move
-	 * accepts the composer chip (`ASK_ITEM_SELECTOR`) or the header trigger
-	 * (`ASK_HEADER_ITEM_SELECTOR`), so the rig puts focus on the header door before
-	 * mounting, which is the state a press leaves behind.
+	 * accepts the composer chip (`ASK_ITEM_SELECTOR`) or the rail item
+	 * (`ASK_RAIL_ITEM_SELECTOR`, the header trigger until #896), so the rig puts focus
+	 * on the rail door before mounting, which is the state a press leaves behind.
 	 */
 	const pressed = [];
 	const door = document.createElement("button");

@@ -37,7 +37,7 @@ const bundle = await build({
 			'export { fleetAskRows, fleetAskFrontend, fleetAsksOutstanding, fleetAsksBySession, fleetAskSessionFor, fleetAskConversationLabel, fleetAskConversationLabels, FLEET_ASKS_QUERY_KEY, FLEET_ASKS_POLL_MS } from "./src/renderer/src/features/chat/fleet-asks";',
 			'export { useUiPreferencesStore, persistedUiPreferences, resolveRightSlotWidth } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";',
-			'export { askScopeLine, ASK_ITEM_SELECTOR, ASK_HEADER_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { askScopeLine, ASK_ITEM_SELECTOR, ASK_RAIL_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
@@ -71,7 +71,7 @@ const {
 	desktopRequestSchema,
 	askScopeLine,
 	ASK_ITEM_SELECTOR,
-	ASK_HEADER_ITEM_SELECTOR,
+	ASK_RAIL_ITEM_SELECTOR,
 } = mod;
 
 /** One aggregate row, in the route's own shape: frozen `PendingAsk` + identity. */
@@ -533,7 +533,7 @@ test("the fleet drawer answers by looking the row's session up", () => {
  * of fact a refactor loses silently: the pane's Escape claim, the selector the
  * drawer's entry move accepts, and the key that keeps two `/chat` rows apart.
  */
-test("the fleet pane claims Escape at the window, and the drawer accepts the header door", () => {
+test("the fleet pane claims Escape at the window, and the drawer accepts the rail door", () => {
 	const drawer = read(
 		"src/renderer/src/features/chat/components/asks/fleet-ask-drawer.tsx",
 	);
@@ -556,10 +556,10 @@ test("the fleet pane claims Escape at the window, and the drawer accepts the hea
 		"src/renderer/src/features/chat/components/asks/ask-drawer.tsx",
 	);
 	assert.ok(
-		container.includes("ASK_HEADER_ITEM_SELECTOR"),
-		"the drawer's entry move no longer accepts the header door, so focus never enters the pane when it is opened from the header trigger.",
+		container.includes("ASK_RAIL_ITEM_SELECTOR"),
+		"the drawer's entry move no longer accepts the rail door, so focus never enters the pane when it is opened from the rail item.",
 	);
-	assert.equal(ASK_HEADER_ITEM_SELECTOR, '[data-tour-tag="ask-pane-trigger"]');
+	assert.equal(ASK_RAIL_ITEM_SELECTOR, '[data-tour-tag="ask-pane-trigger"]');
 });
 
 test("the nav list is keyed by the row's own tag, not the shared route", () => {
@@ -578,14 +578,17 @@ test("the nav list is keyed by the row's own tag, not the shared route", () => {
 });
 
 /*
- * THE ENTRY POINT LIVES IN THE HEADER (operator ask, 2026-10-05). The row this
- * lane used to be opened from was removed from the sidebar because that column
- * was over-subscribed, so the door moved into the conversation header's own
- * cluster - and this pins the move at the source, because the failure mode is
- * silent: the fleet scope would simply have no door, and every read behind it
- * would keep working while the surface became unreachable.
+ * THE ENTRY POINT LIVES ON THE PANEL RAIL (#896; the conversation header before the
+ * move, the sidebar's `All asks` row before #820/#835). The row this lane used to be
+ * opened from was removed from the sidebar because that column was over-subscribed,
+ * so the door moved into the conversation header's own cluster, and then - with the
+ * four panel triggers - onto the rail at the window's right edge. This pins the
+ * move at the source, because the failure mode is silent: the fleet scope would
+ * simply have no door, and every read behind it would keep working while the
+ * surface became unreachable. TWO SURFACES SPELL THE DOOR NOW: the rail item's own
+ * press, and the header's `onToggleAsks` prop that its `...` menu row fires.
  */
-test("the asks door left the sidebar for the conversation header", () => {
+test("the asks door left the sidebar for the conversation header, and then for the panel rail", () => {
 	const nav = read(
 		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
 	);
@@ -596,15 +599,27 @@ test("the asks door left the sidebar for the conversation header", () => {
 	const header = read(
 		"src/renderer/src/features/chat/components/chat-header.tsx",
 	);
-	assert.match(
-		header,
-		/data-tour-tag="ask-pane-trigger"/,
-		"the header cluster no longer carries the asks trigger, which is the door the selector above names.",
+	assert.ok(
+		!header.includes('data-tour-tag="ask-pane-trigger"'),
+		"the header cluster still carries the asks trigger: #896 moved the control to the rail, and a second door of the same kind in the old place is the defect the issue names.",
 	);
 	assert.match(
 		header,
 		/onToggleAsks/,
-		"the header must take the asks door as a prop rather than reach into the store: it is rendered for a draft too, where the scope is the fleet's.",
+		"the header must take the asks door as a prop rather than reach into the store: its menu row is rendered for a draft too, where the scope is the fleet's.",
+	);
+	const rail = read(
+		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
+	);
+	assert.match(
+		rail,
+		/data-tour-tag="ask-pane-trigger"/,
+		"the rail no longer carries the asks item, which is the door the selector above names.",
+	);
+	assert.match(
+		rail,
+		/setAskDrawerOpen\(\s*!\(isAskDrawerOpen && askDrawerScope === askScope\),\s*askScope,/,
+		"the rail press must be the header trigger's old door: a toggle in the ITEM's own scope (this scope open closes; the other scope's open is replaced).",
 	);
 	const content = read(
 		"src/renderer/src/features/chat/components/chat-content.tsx",
@@ -612,7 +627,7 @@ test("the asks door left the sidebar for the conversation header", () => {
 	assert.match(
 		content,
 		/setAskDrawerOpen\(!headerAsksOpen, headerAsksScope\)/,
-		"the header door must open the drawer in the scope its own conversation resolves to (session inside a session, fleet at the top level).",
+		"the header's menu row must open the drawer in the scope its own conversation resolves to (session inside a session, fleet at the top level).",
 	);
 	assert.match(
 		content,
