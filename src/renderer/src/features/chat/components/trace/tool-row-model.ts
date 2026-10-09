@@ -283,6 +283,16 @@ export function preferDeliveryState(
  * tool's free-form `details` (the same reasoning the reducer's `artifactKind`
  * states one layer down: a stray key must not turn a payload into something
  * it is not).
+ *
+ * SCOPE, stated so the boundary is not re-derived: the gate is deliberately
+ * TOOL-AGNOSTIC. A non-imagegen frame whose free-form `details` happen to
+ * carry `stage`/`error_type` IS stored on the record — a tool's payload is
+ * its own business, and the reducer does not know which tools will say what —
+ * and it is INERT: `record.details` has exactly one reader (the image-gen
+ * card's adapter, which renders only for the detection set), so nothing
+ * paints it and the transcript's rendering is untouched. An un-gated payload
+ * (neither key present) is a no-op even at the record; the suite pins that
+ * half (agent review round 1, F1).
  */
 function progressDetailsFrom(details: unknown): Record<string, unknown> | null {
 	if (!details || typeof details !== "object" || Array.isArray(details))

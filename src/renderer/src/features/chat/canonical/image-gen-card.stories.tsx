@@ -202,6 +202,10 @@ const runningView = (progress: ImageGenProgress): ImageGenCardView => ({
 	state: "running",
 	startedAtMs: Date.now() - 12_000,
 	progress,
+	// The interim's account slot: the `MidWalkFailure` story below carries the
+	// live note through the real record path; these mounts exercise the
+	// progress slots, where no frame states one.
+	note: null,
 });
 
 const meta: Meta = {
@@ -368,61 +372,87 @@ export const Done: Story = {
 };
 
 /**
- * The frozen failure shape in both arms, both verbatim: the platform's own
+ * The frozen failure shape in all three arms, verbatim: the platform's own
  * sentence for a failed generation (authored to be read as-is — no vendor
  * text is expected, and no sentence of this app's is layered over it), the
  * harness's verdict for a call that never reached a provider, and the
  * canonical settled failure a walked-out cascade returns - `error` +
  * `error_type` with NO `stage`, that shape's own signature (the wire's rule:
  * no canonical stage names a walk's failure).
+ *
+ * ONE FRAME PER ARM, deliberately (design round 1, D3): three consecutive tool
+ * records in one frame trip the transcript's aggregation, so the default frame
+ * rendered the fold (`› 3 generate_image`) with none of the arms' text visible
+ * until a press; split, every arm renders by default, which is what this cell
+ * exists to show.
  */
 export const Failed: Story = {
 	render: () => (
-		<Frame
-			height={460}
-			records={[
-				genTool({
-					id: "tool:f1",
-					isError: true,
-					durationS: 1.2,
-					output: "This generation failed before producing output.",
-				}),
-				genTool({
-					id: "tool:f2",
-					phase: "queued",
-					notRunReason:
-						"invalid arguments for generate_image: 'prompt' is required",
-					notRunKind: "invalid_arguments",
-					neverSent: true,
-				}),
-				genTool({
-					id: "tool:f3",
-					isError: true,
-					durationS: 9.1,
-					output: "Radient: out of credits · FAL: rate limited",
-					details: canonical({
-						error: "Radient: out of credits · FAL: rate limited",
-						error_type: "insufficient_credits",
+		<div className="flex flex-col gap-4">
+			<Frame
+				height={140}
+				records={[
+					genTool({
+						id: "tool:f1",
+						isError: true,
+						durationS: 1.2,
+						output: "This generation failed before producing output.",
 					}),
-				}),
-			]}
-		/>
+				]}
+			/>
+			<Frame
+				height={140}
+				records={[
+					genTool({
+						id: "tool:f2",
+						phase: "queued",
+						notRunReason:
+							"invalid arguments for generate_image: 'prompt' is required",
+						notRunKind: "invalid_arguments",
+						neverSent: true,
+					}),
+				]}
+			/>
+			<Frame
+				height={140}
+				records={[
+					genTool({
+						id: "tool:f3",
+						isError: true,
+						durationS: 9.1,
+						output: "Radient: out of credits · FAL: rate limited",
+						details: canonical({
+							error: "Radient: out of credits · FAL: rate limited",
+							error_type: "insufficient_credits",
+						}),
+					}),
+				]}
+			/>
+		</div>
 	),
 };
 
 /**
  * The MID-WALK failure: the wire's `stage: null` frame - a rung failed and the
  * walk continues - whose semantics ride the `error`/`error_type` pair ("the
- * pair the surfaces branch on", harness PR #2089). The card states the
- * failure's text verbatim in the failed presentation, and the next frame (the
- * next rung's `queued`, or the terminal result) replaces it. RECORDED, NOT
- * RULED: the design round reviewed the settled failure's copy, not this live
- * arm's.
+ * pair the surfaces branch on", harness PR #2089). RULED by design round 1
+ * (D1): the call keeps its LIVE presentation (tile, state line, clock,
+ * Cancel) and the pair's sentence rides as the interim's note under the body,
+ * verbatim; the next frame (the next rung's `queued`, or the terminal result)
+ * replaces the note with no state-level change and no control flicker - a
+ * note, never a failure latch.
  */
 export const MidWalkFailure: Story = {
 	render: () => (
 		<Frame
-			height={300}
+			// 360, not 300: the interim note line and the Cancel row both sit under
+			// the tile at this width, and the shorter frame cropped the control
+			// (measured on the first recapture of this cell).
+			height={360}
+			// The acceptance (design round 1, D1) names Cancel as part of the live
+			// presentation this cell must show, so the story wires the interrupt
+			// the way integration does (the composer's own Stop path).
+			onInterruptTurn={noop}
 			records={[
 				genTool({
 					id: "tool:m1",

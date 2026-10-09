@@ -8778,10 +8778,13 @@ export const STORIES = [
 	 * call - and `already-finished` is the cancel conflict's receipt
 	 * (`error_type: media_already_completed`). Both are ONE-record Frame
 	 * stories, so 640 wide like `cancelled` above them: a 1280 frame buries a
-	 * single row's ink, and the two are the states the stories set exists to
-	 * carry (a durable transcript can hold neither).
+	 * single row's ink. The mid-walk frame is live-only by the wire's own
+	 * contract, and the conflict receipt - though the durable row carries its
+	 * pair too - has no other default-frame rendering, so the story set is
+	 * these states' one picture (agent review round 1, F2 lifted the earlier
+	 * "a durable transcript can hold neither", imprecise for the receipt).
 	 */
-	["chat-image-generation--mid-walk-failure", 640, 300],
+	["chat-image-generation--mid-walk-failure", 640, 360],
 	["chat-image-generation--already-finished", 640, 260],
 	/* THE PRE-MARKER CONTINUATION ROWS. A goal-continuation row written before
 	   the `harness_injected` stamp existed carries no marker to read - and one

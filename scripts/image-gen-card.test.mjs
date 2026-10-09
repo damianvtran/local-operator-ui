@@ -234,8 +234,9 @@ test("the failure pair reads verbatim, the conflict is a receipt, and a plain ca
 		errorType: "insufficient_credits",
 	});
 	// The mid-walk frame (`stage: null`, the pair present, the call unsettled):
-	// the failure's text verbatim in the failed presentation; a later frame
-	// stating no error flips the card back.
+	// the LIVE presentation with the sentence as its interim note (design round
+	// 1, D1) — never the settled failed arm — and the next frame's absence
+	// swaps the note with no state-level change and no control flicker.
 	const midWalk = imageGenCardView(
 		tool({
 			phase: "running",
@@ -247,9 +248,10 @@ test("the failure pair reads verbatim, the conflict is a receipt, and a plain ca
 		}),
 	);
 	assert.deepEqual(midWalk, {
-		state: "failed",
-		message: "out of credits",
-		errorType: "insufficient_credits",
+		state: "running",
+		startedAtMs: 3,
+		progress: { fraction: null, logs: [], queuePosition: null },
+		note: "out of credits",
 	});
 	const recovered = imageGenCardView(
 		tool({
@@ -259,6 +261,7 @@ test("the failure pair reads verbatim, the conflict is a receipt, and a plain ca
 		}),
 	);
 	assert.equal(recovered.state, "running");
+	assert.equal(recovered.note, null);
 	// The conflict receipt: an error-shaped result whose code makes it the done
 	// state's already-finished receipt — a finish, never a failure.
 	const conflict = imageGenCardView(
@@ -518,8 +521,8 @@ try {
 }
 
 /** The card rendered the way the app renders it, absent attachment scope. */
-const markupOf = (view) =>
-	renderToStaticMarkup(h(ImageGenCard, { view, scope: null }));
+const markupOf = (view, actions) =>
+	renderToStaticMarkup(h(ImageGenCard, { view, scope: null, actions }));
 
 /** The live-progress shape with every field negative (nothing on the wire). */
 const NO_PROGRESS = { fraction: null, logs: [], queuePosition: null };
@@ -634,4 +637,43 @@ test("a queued card states its queue position only when one exists (Q-1)", () =>
 	});
 	assert.equal(composing.includes("Writing the request"), true);
 	assert.match(composing, BYTE_COUNT);
+});
+
+/*
+ * The mid-walk failure's LIVE presentation (design round 1, D1): the call
+ * keeps its body, clock and Cancel while the sentence rides as a note under
+ * the live body — and the note's absence on the next frame IS the un-say (no
+ * latch, no state-level change, no control flicker).
+ */
+test("the mid-walk note rides under the live body, and the live affordances stay (D1)", () => {
+	const note = markupOf(
+		{
+			state: "running",
+			startedAtMs: 3000,
+			progress: NO_PROGRESS,
+			note: "out of credits",
+		},
+		{ onCancel: () => {} },
+	);
+	assert.equal(note.includes("data-imagegen-tile"), true);
+	assert.equal(note.includes("Generating image…"), true);
+	assert.equal(note.includes("data-imagegen-note"), true);
+	assert.equal(note.includes("out of credits"), true);
+	assert.equal(note.includes("Cancel"), true);
+
+	// The recovered frame: same state, the note gone — the control neither
+	// leaves nor disables, because no state the wire does not claim was painted.
+	const recovered = markupOf(
+		{
+			state: "running",
+			startedAtMs: 3000,
+			progress: NO_PROGRESS,
+			note: null,
+		},
+		{ onCancel: () => {} },
+	);
+	assert.equal(recovered.includes("data-imagegen-note"), false);
+	assert.equal(recovered.includes("out of credits"), false);
+	assert.equal(recovered.includes("data-imagegen-tile"), true);
+	assert.equal(recovered.includes("Cancel"), true);
 });
