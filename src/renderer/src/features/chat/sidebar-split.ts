@@ -444,7 +444,8 @@ export function resolveSidebarSplit({
 					? { value, min: SIDEBAR_MIN_REGION_PX, max: liveMax, resizable: true }
 					: // The range collapses onto what is DRAWN and a write is
 						// refused, so a preference the window cannot host survives
-						// for one that can (`chat-content.tsx`'s `runPanelResizable`).
+						// for one that can (`chat-content.tsx`'s run-pane separator
+						// contract).
 						{
 							value: announced,
 							min: announced,
