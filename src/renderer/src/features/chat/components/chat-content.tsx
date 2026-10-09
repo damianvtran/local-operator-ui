@@ -1963,6 +1963,19 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										startingSince={canonical.startingSince ?? null}
 										stopping={stoppingTurn}
 										/*
+										 * The image-gen card's Cancel, offered on the SAME two
+										 * terms the composer's Stop is: `canonicalStop`
+										 * exists only when the backend advertises
+										 * `session_interrupt` and the pane is not terminal, so
+										 * the card never draws a control whose press could
+										 * only 401 or answer "nothing was running". One
+										 * callback (`canonical.onStop`, stable since the
+										 * page's own useCallback fix), so the transcript's
+										 * memoised rows compare one reference and a press
+										 * takes the same write path as the composer's.
+										 */
+										onInterruptTurn={canonicalStop?.onStop}
+										/*
 										 * The disputed idle withholds the rung's clock (U9): the
 										 * label stands - the work may be real - but the ticking
 										 * number asserts a duration the pane just admitted it
