@@ -42,13 +42,116 @@ export const RECOMMENDED_PROVIDER_ID = "radient";
  * The rows onboarding shows before "More providers": the recommendation, the
  * two subscriptions most people already pay for, and one key provider so the
  * key route is visible without expanding anything (design § 5).
+ *
+ * THE KEY ROW IS GOOGLE NOW, not DeepSeek (first-run onboarding, D11/U7): the
+ * one key provider a first-time user is shown should be one they recognise, and
+ * Gemini is. DeepSeek, xAI and OpenRouter are named in the "More providers"
+ * summary instead (`moreProvidersSummary`), so none of them is hidden behind an
+ * unlabelled disclosure.
  */
 export const FEATURED_PROVIDER_IDS = [
 	"radient",
 	"anthropic",
 	"openai",
-	"deepseek",
+	"google",
 ] as const;
+
+/**
+ * The brands the "More providers" summary names, in order, when they are behind
+ * it. The operator's list of providers that must stay easy to find (xAI,
+ * OpenRouter, DeepSeek) leads; Google is featured above, so it is named here
+ * only on a census where it is not.
+ */
+const MORE_PROVIDERS_NAMED = [
+	"xai",
+	"openrouter",
+	"google",
+	"deepseek",
+	"mistral",
+] as const;
+const MORE_PROVIDERS_NAMED_LIMIT = 3;
+
+/**
+ * The group order the FULL PAGE renders, and the order the TUI's setup splash
+ * mirrors: subscriptions, then API keys, then the local runtimes.
+ */
+export const PROVIDER_PAGE_GROUP_ORDER: ProviderGroup[] = [
+	"subscription",
+	"key",
+	"local",
+];
+
+/**
+ * The group order the ONBOARDING DIALOG renders, local runtimes first.
+ *
+ * WHICH GROUP LEADS DEPENDS ON THE SURFACE (design round 1, D1), and the reason
+ * is the disclosure's own promise: the dialog's trigger names what is behind it,
+ * and a group named first but rendered last is the shape that read as absent
+ * under the dialog's footer. First-run is also exactly where a local model is a
+ * real answer (no account, nothing to paste). The dialog is the only surface
+ * whose heading promises a group by name, so the divergence is owned here rather
+ * than being a new convention for the page.
+ */
+export const PROVIDER_DIALOG_GROUP_ORDER: ProviderGroup[] = [
+	"local",
+	"subscription",
+	"key",
+];
+
+/**
+ * What the "More providers" disclosure says is behind it (first-run onboarding,
+ * D11): `More providers: xAI, OpenRouter, DeepSeek, local models and 6 more`.
+ *
+ * DERIVED FROM THE ROWS IT HIDES, never written as a literal, so it cannot name a
+ * provider that is not there or under-count the ones that are: the names are the
+ * rows' own brands, "local models" appears only when the local group is
+ * non-empty, and the count is exactly the cloud rows not otherwise named.
+ *
+ * THE NAMES FOLLOW THE RENDERED ORDER (design round 2, D8). The caller passes the
+ * group order it is about to paint, so a trigger that leads with the local
+ * runtimes names them first (`local models, xAI, OpenRouter ...`) instead of
+ * promising brands that sit several hundred pixels below the fold. Within a cloud
+ * group the names keep MORE_PROVIDERS_NAMED's order - the operator's
+ * must-stay-findable list - rather than the registry's row order, because that
+ * list is the promise the trigger is making.
+ */
+export function moreProvidersSummary(
+	rest: {
+		subscription: DesktopProvider[];
+		key: DesktopProvider[];
+		local: DesktopProvider[];
+	},
+	order: ProviderGroup[] = PROVIDER_PAGE_GROUP_ORDER,
+): string {
+	const cloud = [...rest.subscription, ...rest.key];
+	const parts: string[] = [];
+	let named = 0;
+	for (const group of order) {
+		if (group === "local") {
+			/*
+			 * The group as ONE phrase: it is five runtime rows, and the trigger has
+			 * no room for "LM Studio, Ollama, vLLM, ..." - the disclosure names them
+			 * row by row.
+			 */
+			if (rest.local.length > 0) parts.push("local models");
+			continue;
+		}
+		const bucket = rest[group];
+		for (const id of MORE_PROVIDERS_NAMED) {
+			if (named >= MORE_PROVIDERS_NAMED_LIMIT) break;
+			const provider = bucket.find((row) => row.id === id);
+			if (!provider) continue;
+			parts.push(brandOf(provider));
+			named += 1;
+		}
+	}
+	const others = cloud.length - named;
+	if (parts.length === 0) return "More providers";
+	if (others > 0)
+		return `More providers: ${parts.join(", ")} and ${others} more`;
+	if (parts.length === 1) return `More providers: ${parts[0]}`;
+	return `More providers: ${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
 
 /** "Anthropic (Claude Pro/Max)" -> "Anthropic"; a name without one is kept. */
 export function brandOf(provider: {

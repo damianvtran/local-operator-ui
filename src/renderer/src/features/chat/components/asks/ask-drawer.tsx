@@ -182,7 +182,7 @@ export type AskDrawerProps = {
 	answering?: boolean;
 	/** This surface's own record of the asks it posted for: `AskOutcome`, passed through untouched. */
 	outcomes?: Record<string, AskOutcome | undefined>;
-	/** The in-flight answers, keyed by ask id then question id. Caller-owned: the composer and this drawer are one draft. */
+	/** The in-flight answers, keyed by ask id then question id. Caller-owned so a draft outlives the drawer being closed; the panel's own controls are its only writers. */
 	drafts?: Record<string, AskDraft>;
 	onDraftChange?: (askId: string, next: AskDraft) => void;
 	/**

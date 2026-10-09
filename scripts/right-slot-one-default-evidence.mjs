@@ -164,8 +164,8 @@ const check = (ok, message) => {
 const near = (a, b, tolerance = 1) => Math.abs(a - b) <= tolerance;
 /*
  * THE BEFORE TREE'S CONSOLE DEFAULT IS MEASURED FROM THE SHIPPED FACE IN THE
- * BROWSER: the store computes `DEFAULT_CONSOLE_PANEL_WIDTH` from `measureCell()`
- * at module load, and the real face's advance is ~7.83px per cell there - 799 for
+ * BROWSER: the base store computes the console's seed from `measureCell()` at
+ * module load, and the real face's advance is ~7.83px per cell there - 799 for
  * the design's 100 columns plus 16px of chrome - against the 796 the no-DOM ratio
  * (0.6em) computes and the tests pin. This one cell therefore allows the ratio to
  * differ by up to 5px, and `readings.json` carries the number actually read; the
