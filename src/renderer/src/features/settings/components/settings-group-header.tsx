@@ -106,8 +106,19 @@ export const SettingsGroupHeader = ({
 			 * hierarchy's chrome exactly as designed.
 			 */
 			chevronClassName="text-ink-dim"
-			/* One shape for all 19 headers, which is what makes the arrival index
-			   scan as a list rather than as 19 differently-sized things.
+			/*
+			 * `firstLine`, because a header's mark belongs on the TITLE's line
+			 * (design round 1, D1): at a wrapping width the chevron sat on the
+			 * second line (measured at a 420px column, chevron centre 754 against
+			 * line-1 centre 734), reading as attached to the word "sessions"
+			 * rather than to the group it opens. The settings ROW already passes
+			 * this for the same reason ("a row's mark belongs on the label's
+			 * line", `backend-setting-row.tsx`), and this is the other half of
+			 * that rule.
+			 */
+			summaryAlign="firstLine"
+			/* One shape for all 22 headers, which is what makes the arrival index
+			   scan as a list rather than as 22 differently-sized things.
 
 			   The empty disclosed-content box this header used to grow is gone from
 			   the primitive itself (`children != null` now gates it), which removes the
@@ -131,8 +142,20 @@ export const SettingsGroupHeader = ({
 							the title keeps its rail because the cluster beside it still hugs
 						the left. */
 				<span className="flex w-full min-w-0 items-center gap-2">
-					<span className="flex min-w-0 items-center gap-2">
-						<span className="truncate text-heading text-ink">{title}</span>
+					{/*
+					 * `flex-wrap` and `gap-y-0`: a long TITLE ("Delegated work: subagents and
+					 * background sessions") used to be squeezed by its `shrink-0` count and
+					 * scope marks until it read `Dele...` at a 420px column. Wrapped, the
+					 * marks drop to a second line, and a title that is itself wider than the
+					 * column wraps rather than truncates (a name cut to `Dele...` is a name
+					 * lost). A header whose cluster fits on one line is unchanged, which is
+					 * every other header on the page; `min-h-10` on the row is a floor, so a
+					 * two-line header grows.
+					 */}
+					<span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0">
+						<span className="min-w-0 break-words text-heading text-ink">
+							{title}
+						</span>
 						{/* The count is stated only when there is one to state: a section whose
 							   rows the tier filter is holding back reads `14 advanced`, not
 						    `0 settings, 14 advanced`. */}
