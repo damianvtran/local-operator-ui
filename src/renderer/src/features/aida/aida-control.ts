@@ -14,7 +14,10 @@
  */
 
 import type { DesktopAidaControlResult } from "../../../../shared/desktop-control-contract";
-import { userFacingMessage } from "../../shared/api/local-operator/desktop-api";
+import {
+	DesktopControlError,
+	userFacingMessage,
+} from "../../shared/api/local-operator/desktop-api";
 
 /** The route's own op vocabulary, mirrored (`aida.control`, `design.md` § 4). */
 export type AidaControlAction =
@@ -138,3 +141,124 @@ export function aidaControlFailureCopy(error: unknown): string {
  */
 export const AIDA_DISABLED_SENTENCE =
 	"The chief of staff is switched off on this install.";
+
+/**
+ * Where first-run setup lands, and what it says, when `greet` did not open her
+ * conversation (first-run onboarding, U1/A2).
+ *
+ * THE SETUP NEVER STRANDS THE USER: every refusal lands in the chat, because the
+ * provider the user just connected works there whatever happened to her. What
+ * differs is the sentence:
+ *
+ * - `aida_no_provider` (409): the backend could not resolve a provider to greet
+ *   with - a key that has not propagated yet, or setup finished on a census that
+ *   was stale. Said as a fact with its remedy, at `info`, because nothing broke.
+ * - `aida_disabled` (409): the install switched her off. Silence is correct -
+ *   setup is not the place to advertise a feature the operator turned off.
+ * - anything else: the transport's own authored copy, at `error`.
+ *
+ * The code is read off `DesktopControlError.code`, the vetted category the
+ * transport attached from the refusal body's `detail.code` - never matched in
+ * the sentence, which is the backend's to reword.
+ */
+export const AIDA_NO_PROVIDER_CODE = "aida_no_provider";
+export const AIDA_DISABLED_CODE = "aida_disabled";
+
+export function aidaGreetFailure(
+	error: unknown,
+	name: string,
+): { kind: "info" | "error"; text: string } | null {
+	const code = error instanceof DesktopControlError ? error.code : undefined;
+	if (code === AIDA_DISABLED_CODE) return null;
+	if (code === AIDA_NO_PROVIDER_CODE)
+		return {
+			kind: "info",
+			text: `${name} will say hello once an AI account is connected. Connect one from the chat to start.`,
+		};
+	return {
+		kind: "error",
+		text: `${name}'s conversation could not be opened, so you are in a new chat instead. ${aidaControlFailureCopy(error)}`,
+	};
+}
+
+/**
+ * The one extra sentence a SUCCESSFUL first-run landing may owe (code review
+ * round 1, R3's sibling: read the facts, never the prose). Two of them, and both
+ * come from the answer's own additive fields rather than from inferring her
+ * plans out of `paused`/`greeted`:
+ *
+ * - `held: true` — a live session on this machine owns her rows, so the greeting
+ *   arrives IN THE OTHER WINDOW. The route sets it on exactly that outcome
+ *   (`desktop_aida.py`'s `owner` branch) and it is a 200, not a failure; without
+ *   it the desktop could only guess, because the ordinary success carries the
+ *   same three legacy fields.
+ * - `paused` with the greeting unsettled — she is held behind the pause and
+ *   `/aida resume` delivers it. `greeting_state` is what says "unsettled":
+ *   `delivered` and `skipped` are terminal (the backend's own words for the
+ *   ledger), so a pause over either of those owes the user nothing.
+ *
+ * NOT USED FOR THE SKIP PATH, deliberately: `skipped` is set by the backend for
+ * an install that already has human conversations before the first-run
+ * precondition is read — the desktop's "Skip to chat" never calls `greet` at all,
+ * so there is no request of ours for a state word to describe.
+ *
+ * TOLERANT OF AN OLDER BACKEND: with both additions absent the notice falls back
+ * to the `paused && !greeted` inference this shipped with, so an older payload
+ * still gets the resume sentence and never a wrong owner sentence.
+ */
+export function aidaGreetHeldNotice(
+	state: Pick<
+		DesktopAidaControlResult,
+		"paused" | "greeted" | "greeting_state" | "held"
+	>,
+	name: string,
+): string | null {
+	if (state.held === true)
+		return `${name} is already open in another window, so she will say hello there.`;
+	/*
+	 * "Settled" is delivered-or-skipped, and `greeted` is the OLDER spelling of
+	 * exactly those two states for a backend that predates the ledger: it is the
+	 * frozen field's whole meaning ("the greeting has been delivered"), so an
+	 * absent `greeting_state` falls back to it rather than to "nothing is
+	 * settled", which would tell a user whose name she already knows that she
+	 * still has to say hello.
+	 */
+	const settled =
+		state.greeting_state === "delivered" ||
+		state.greeting_state === "skipped" ||
+		(state.greeting_state == null && state.greeted === true);
+	if (state.paused && !settled)
+		return `${name} is paused, so she will say hello when you resume her: type /aida resume.`;
+	return null;
+}
+
+/**
+ * Does this install still OWE the user her hello - the question step 3's copy
+ * turns on?
+ *
+ * The wizard's last step promises "she will say hello first", which is only true
+ * while the ledger says so: `owed` means she has never been offered. `delivered`
+ * and `skipped` mean she will not speak first again, so the step describes what
+ * its button does instead of promising a greeting the user has already had. The
+ * gap this closes was recorded when step 3 shipped: the state word lived only on
+ * the POST's answer, and the wizard reads the GET (code review round 1's contract
+ * addendum, point 1; the READ carries the field as of backend #2071 head
+ * `dbe513397e`).
+ *
+ * ONLY `owed` PROMISES. `requested` and `armed` mean the request is already out,
+ * and the neutral sentence stays true for them, so the rule needs no third
+ * wording.
+ *
+ * ABSENT IS OWED, and the frozen `greeted` is deliberately NOT consulted: on a
+ * backend that predates the ledger it meant ARMED rather than delivered, so
+ * reading it here would let an armed-but-undelivered greeting suppress a promise
+ * that was still true. An install that predates the field therefore keeps the
+ * copy that shipped, which is the tolerant direction - one sentence too warm,
+ * never a promise the user can catch out.
+ */
+export function aidaOwesGreeting(
+	state: { greeting_state?: string | null } | null | undefined,
+): boolean {
+	const word = state?.greeting_state;
+	return word == null || word === "owed";
+}

@@ -1459,10 +1459,12 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 * neighbouring surface that carries it. It returns by itself the moment the
 			 * turn ends and the third box goes with it, and that is the whole of the
 			 * mitigation. The alternative is this reading painting over a control, and
-			 * the row's ladder already ranks active time the first thing shed. A reader
-			 * who raises `--lo-chat-measure` far enough would have room for it, and this
-			 * does not consult that: the shed is on the STATE, which is what issue #788's
-			 * own second option asks for and the only one a container query cannot do.
+			 * the row's ladder already ranks active time the first thing shed. The
+			 * measure is one fixed 810px now (a width a reader could drag it to, and
+			 * that would have left room for this reading, was removed in #895), so there
+			 * is no wider row to consult: the shed is on the STATE, which is what issue
+			 * #788's own second option asks for and the only one a container query
+			 * cannot do.
 			 *
 			 * AND IT REFLOWS THE CLUSTER AT THE TURN BOUNDARY, which no frame in this
 			 * change's set can settle: because the shed frees ~36px at the same instant

@@ -3,7 +3,6 @@ import { useConversationInputStore } from "@shared/store/conversation-input-stor
 import type { Meta, StoryObj } from "@storybook/react";
 import { userEvent } from "@storybook/test";
 import { type ReactNode, useEffect } from "react";
-import { ASK_COMPOSER_PLACEHOLDER } from "../ask-queue";
 import type { Message } from "../types/message";
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
 
@@ -386,52 +385,6 @@ export const ReducedMotion: Story = {
 	render: () => (
 		<Column label="reduced motion: one entry is held instead of rotating">
 			{composerBand({ story: "reduced-motion" })}
-		</Column>
-	),
-};
-
-/**
- * THE ASK-MODE PLACEHOLDER FLIP (design §5.0), both modes.
- *
- * The composer's invitation slot is the one the page's ask-mode copy replaces:
- * `placeholderOverride` is documented as the HOST's sentence for that slot, and
- * every state sentence - a refusal, the recording line, a gate - still outranks
- * it, because those describe facts about the box that a host's copy cannot.
- *
- * These two frames are the pair that makes the flip reviewable: the same box,
- * the same empty draft, one with the answer-mode sentence and one without. In
- * the app the flag is the ask surface's expanded state, which the page owns; a
- * story cannot reach that page state, so it passes the sentence the page would,
- * which is the whole of what changes on screen.
- */
-export const AskAnswerPlaceholder: Story = {
-	render: () => (
-		<Column label="ask expanded: what the user types is an answer">
-			<MessageInput
-				isLoading={false}
-				messages={EMPTY}
-				conversationId={conversationFor("ask-expanded")}
-				initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
-				isSmallView={false}
-				onSendMessage={async () => true}
-				placeholderOverride={ASK_COMPOSER_PLACEHOLDER}
-			/>
-		</Column>
-	),
-};
-
-/** The same box, minimized: the app's own invitation, unchanged. */
-export const AskMinimizedPlaceholder: Story = {
-	render: () => (
-		<Column label="ask minimized: an ordinary conversation box">
-			<MessageInput
-				isLoading={false}
-				messages={EMPTY}
-				conversationId={conversationFor("ask-minimized")}
-				initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
-				isSmallView={false}
-				onSendMessage={async () => true}
-			/>
 		</Column>
 	),
 };
