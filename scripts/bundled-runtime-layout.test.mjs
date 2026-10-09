@@ -103,6 +103,17 @@ const appResolvers = await (async () => {
  */
 const PYTHON_VERSION_TOKEN = /["']3\.\d[\w.]*["']/;
 
+/*
+ * AND THE THREE-PART LITERAL ANYWHERE, quoted or not (code review round 3,
+ * N3-3): anchoring the pattern on the quote is what keeps the floor-mention prose
+ * writable, and it is also what lost the pre-change scan's coverage of a bare
+ * `3.14.7` written into code. This restores exactly that scan. The prose names a
+ * two-part floor ("Python 3.12+"), which this cannot match by construction, and a
+ * version glued to a word (`python3.14.7`) was never covered by the old scan
+ * either - the realistic re-pin shapes are the assignment and the quoted token.
+ */
+const PYTHON_VERSION_BARE = /\b3\.\d+\.\d+\b/;
+
 test("the Python-version guard catches every spelling of a pin", () => {
 	/*
 	 * The four forms a re-pin actually takes, mutation-checked here rather than in
@@ -124,6 +135,20 @@ test("the Python-version guard catches every spelling of a pin", () => {
 		'"WARNING: ... is not a runnable Python 3.12+; looking for another."',
 	])
 		assert.ok(!PYTHON_VERSION_TOKEN.test(innocent), `${innocent} is not a pin`);
+	/*
+	 * The bare scan's own cases (round 3, N3-3): a three-part literal in code is
+	 * caught whether or not it is quoted, and the two shapes a script may keep
+	 * using are not - the floor as a tuple, and the floor named in prose as a
+	 * two-part version.
+	 */
+	for (const literal of [
+		"3.14.7",
+		"& $UvBin python install 3.14.7",
+		"$v = 3.14.7",
+	])
+		assert.ok(PYTHON_VERSION_BARE.test(literal), `${literal} must be caught`);
+	for (const innocent of ["(3, 12)", '"Python 3.12+ is available"'])
+		assert.ok(!PYTHON_VERSION_BARE.test(innocent), `${innocent} is not a pin`);
 });
 
 test("the Tcl/Tk token expands from the declaration, and the seed directory it names is required", () => {
@@ -434,6 +459,10 @@ test("each install script installs with uv and keeps the pip path it had", () =>
 			assert.ok(
 				!PYTHON_VERSION_TOKEN.test(code),
 				`${path}: a Python version literal is a second pin - pass LOCAL_OPERATOR_PYTHON_VERSION instead`,
+			);
+			assert.ok(
+				!PYTHON_VERSION_BARE.test(code),
+				`${path}: an unquoted Python version literal is a second pin too`,
 			);
 			/*
 			 * AND EVERY ASSIGNMENT IS THE ENV READ, checked line by line (code

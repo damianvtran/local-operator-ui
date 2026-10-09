@@ -662,9 +662,10 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 					{liveDetail}
 					{/*
 					 * The sub-progress, on its own line inside the reserved two: uv's own
-					 * counts (`3 of 6 large downloads done`), never a fraction it does not
-					 * have (D9). Hidden from the live region's announcement for the same
-					 * reason as the clock - it moves several times a second.
+					 * counts (`3 large downloads finished`), never a fraction it does not
+					 * have (D9, and D3 removed the one that could grow). Hidden from the
+					 * live region's announcement for the same reason as the clock - it
+					 * moves several times a second.
 					 */}
 					{subLine && (
 						<span aria-hidden="true" className="block tabular-nums">
