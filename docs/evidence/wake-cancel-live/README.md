@@ -93,6 +93,7 @@ CI's own build does not use either workaround.
 | `aida-managed.png` | Her conversation: the operator's own `w1` ("4-hourly proactive check-in (operator-set cadence)") carries `Cancel`; the engine's `aida-cadence` row carries `managed by Aida` and NO control (asserted: `controlPresent: false`). |
 | `aida-confirm.png` | Pressing `w1`'s control on her conversation opens the card NAMING her: `Cancel Aida's check-in?` / "will not fire again, and nothing re-creates it. Aida's own cadence is unaffected." / `Keep` / `Cancel check-in`. |
 | `aida-cancelled.png` | After the card's confirm: the press whose target read `Cancelling…` mid-write (the busy verb, recorded in `run-facts.json`). |
+| `refusal-before.png` | The refusal scenario's starting state — the row the run then tried to make stale. The press could not be staged (limits below), so this frame is the scenario's own record of what it had before it lost the race. |
 | `debug-before-chip.png` | The rig's overlay probe on a fresh profile (the first-run "Connect an AI account" card) — kept because it is the reason the rig has a dismiss step at all. |
 
 The wire half, from `$ISO/logs/daemon.log` (quoted in `run-facts.json`):
