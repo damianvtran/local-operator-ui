@@ -623,6 +623,20 @@ export type DesktopFeature =
 	 */
 	| "projects_request_update"
 	/**
+	 * `projects.update` with `force_done`: closing a project over milestones that
+	 * are still open, on purpose (`PATCH /v1/desktop/projects/{key}` with
+	 * `force_done: true`; the refusal it answers is the 422
+	 * `project_done_incomplete`).
+	 *
+	 * ITS OWN KEY rather than a bump of `projects` (which stays 2): the tab, its
+	 * CRUD and the search index all work on a daemon that cannot force a close,
+	 * and a version bump would hide that working surface. Absent means the
+	 * confirm dialog is NOT offered - the refusal is only SAID (toast on the
+	 * board, inline sentence on the detail) - because an older daemon 422s the
+	 * extra body key, which would turn a deliberate choice into a second refusal.
+	 */
+	| "projects_force_done"
+	/**
 	 * Moving a conversation between devices: `POST /v1/desktop/sessions/{id}/transfer`.
 	 *
 	 * ITS OWN KEY rather than a version of `peers`, and the split is the backend's

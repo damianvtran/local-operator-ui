@@ -35,6 +35,15 @@ import type {
 	DesktopProjectView,
 } from "../../../../../shared/desktop-control-contract";
 import "../../../styles/index.css";
+/*
+ * The detail screen mounts the quick-send composer, which reaches
+ * `window.electron` from a passive effect; Storybook's preview mocks only
+ * `window.api`, so without this the detail stories die in
+ * `commitHookEffectListMount` before their play runs (measured on a clean
+ * dev Storybook: the existing `detail` and `inline-edit-refused` fail the same
+ * way). The shim is the composer stories' shared stand-in.
+ */
+import "../../chat/components/story-electron-shim";
 import { INLINE_EDIT_CONFLICT_SENTENCE } from "@shared/components/inline-edit";
 import {
 	type BoardWindow,
@@ -602,6 +611,22 @@ type StubState = {
 	/** `projects.update` never settles: the inline editor's saving state. */
 	hangPatch?: boolean;
 	/**
+	 * THE DONE-GATE, scripted the way the daemon answers it: a PATCH to
+	 * `status: done` with no `force_done` is refused 422 with the coded body
+	 * (`project_done_incomplete` + the open names). `capability` advertises
+	 * `projects_force_done` (false = an older daemon: no code, no force offer,
+	 * the bare sentence under `project_invalid`). `forcedFailure` makes the
+	 * FORCED retry itself fail (the dialog's error state); `forcedHang` holds it
+	 * open (the dialog's submitting state). A landed move rewrites the fixture
+	 * row, so the settled frame is the re-read of a real write.
+	 */
+	doneGate?: {
+		names: string[];
+		capability: boolean;
+		forcedFailure?: string;
+		forcedHang?: boolean;
+	};
+	/**
 	 * `projects.request_update`'s scripted answer (the check-in states). `null`
 	 * means no story configured it: a press without a fixture says so loudly
 	 * rather than faking a result.
@@ -692,6 +717,7 @@ const answer = (request: {
 					features: {
 						projects: stub.searchIndex ? 2 : 1,
 						projects_request_update: 1,
+						...(stub.doneGate?.capability ? { projects_force_done: 1 } : {}),
 						team_catalogue: 1,
 						profile_catalogue: 1,
 					},
@@ -785,6 +811,50 @@ const answer = (request: {
 			 */
 			if (stub.hangPatch) return new Promise(() => {});
 			bridgeOps.push({ op: request.op, request });
+			if (
+				stub.doneGate &&
+				isRecord(request.fields) &&
+				request.fields.status === "done"
+			) {
+				const gate = stub.doneGate;
+				const sentence = `cannot set status 'done': ${gate.names.length} milestone${gate.names.length === 1 ? "" : "s"} still incomplete (${gate.names.map((name) => `'${name}'`).join(", ")}) \u2014 complete them, or pass force_done=true to close with them open`;
+				if (request.force_done !== true) {
+					return {
+						status: 422,
+						body: {
+							detail: gate.capability
+								? {
+										code: "project_done_incomplete",
+										message: sentence,
+										incomplete: gate.names,
+									}
+								: { code: "project_invalid", message: sentence },
+						},
+					};
+				}
+				if (gate.forcedHang) return new Promise(() => {});
+				if (gate.forcedFailure)
+					return {
+						status: 422,
+						body: {
+							detail: { code: "project_invalid", message: gate.forcedFailure },
+						},
+					};
+				const key = String(request.key ?? "");
+				const row = stub.projects.find((candidate) => candidate.id === key);
+				if (row) row.status = "done";
+				if (stub.detail) applyFields(stub.detail.project, request.fields);
+				return {
+					status: 200,
+					body: {
+						result: {
+							...(row ?? stub.projects[0]),
+							status: "done",
+							forced_done: true,
+						},
+					},
+				};
+			}
 			if (stub.failPatch)
 				return {
 					status: stub.failPatchStatus ?? 422,
@@ -3396,6 +3466,351 @@ export const DeleteConfirm: Story = {
 				)
 			);
 		}, "the delete button to enable");
+	}),
+};
+
+/* ------------------------------------------------ the done-gate, as a choice */
+
+/*
+ * "MARK DONE ANYWAY" (the projects-board status-refusal fix). The fixture is
+ * the REAL shape of the case that exposed it: a nine-milestone plan with seven
+ * open, every one overdue, so the dialog's truncation and its full list are
+ * exercised by the frame rather than by a toy of two names.
+ */
+const OPEN_MILESTONES = [
+	"dashboard cutover",
+	"beta cut",
+	"load test",
+	"runbook review",
+	"vendor sign-off",
+	"data backfill",
+	"decommission v1",
+];
+const DONE_GATE_ROWS = THREE.map((row) =>
+	row.id === "p1"
+		? { ...row, milestones_total: 9, milestones_completed: 2 }
+		: { ...row },
+);
+const DONE_GATE_FORCED_TOAST = "Moved to Done with 7 milestones still open";
+
+/** The toast region's text: the sonner container the preview mounts. */
+const toastText = () =>
+	document.querySelector("[data-sonner-toaster]")?.textContent ?? "";
+
+/** The `projects.update` ops that reached the bridge, in order. */
+const updateOps = () =>
+	bridgeOps.filter((entry) => entry.op === "projects.update");
+
+/** The open confirm dialog's panel, or null. */
+const doneDialog = () =>
+	document.querySelector<HTMLElement>(
+		'[role="dialog"]:has([data-project-force-done])',
+	);
+
+const dialogButton = (label: string) =>
+	[...(doneDialog()?.querySelectorAll<HTMLButtonElement>("button") ?? [])].find(
+		(button) => button.textContent?.trim() === label,
+	);
+
+/**
+ * Drive the real card menu to `Set status > Done`, through `userEvent` so the
+ * trigger takes focus the way a pointer does (the dialog and the hand-off both
+ * read the focused opener).
+ */
+const pickBoardDone = async () => {
+	const selector = '[aria-label="Actions for payments-migration"]';
+	await poll(() => document.querySelector(selector) !== null, selector);
+	await userEvent.click(need<HTMLElement>(selector));
+	await poll(
+		() => (document.body.textContent ?? "").includes("Set status"),
+		"the card menu",
+	);
+	const subTrigger = [
+		...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+	].find((element) => element.textContent?.includes("Set status"));
+	if (!subTrigger) throw new Error("the card menu has no Set status row");
+	await userEvent.hover(subTrigger);
+	await poll(
+		() => document.querySelectorAll('[role="menuitemradio"]').length >= 7,
+		"the status submenu",
+	);
+	const done = [
+		...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]'),
+	].find((item) => item.textContent?.trim() === "Done");
+	if (!done) throw new Error("the status submenu has no Done item");
+	await userEvent.click(done);
+};
+
+const boardGate = (
+	doneGate: NonNullable<StubState["doneGate"]>,
+): ReturnType<typeof page> =>
+	page({
+		view: "board",
+		projects: DONE_GATE_ROWS.map((row) => ({ ...row })),
+		details: detailsFor(DONE_GATE_ROWS),
+		doneGate,
+	});
+
+const openForceDialog = async () => {
+	await pickBoardDone();
+	await poll(() => doneDialog() !== null, "the done-anyway dialog");
+};
+
+/**
+ * BEFORE THE FIX THIS WAS SILENT: no toast, a card that did not move. Without
+ * the `projects_force_done` capability the refusal is SPOKEN (the daemon's
+ * sentence through the app's copy) and no force is offered - an older daemon
+ * would 422 the extra body key. It also asserts the refusal went out ONCE: a
+ * 4xx is not retried (the app's mutation default would have sent it twice).
+ */
+export const BoardDoneRefusedNoCapability: Story = {
+	parameters: { toastDuration: Number.POSITIVE_INFINITY },
+	render: () => boardGate({ names: OPEN_MILESTONES, capability: false }),
+	play: playOnce("board-done-refused-no-capability", async () => {
+		await pickBoardDone();
+		await poll(
+			() => toastText().includes("This can't be marked done yet"),
+			"the refusal toast",
+		);
+		if (doneDialog() !== null)
+			throw new Error("a daemon without the capability must not offer a force");
+		// Longer than the mutation retry's backoff, so a second send would show.
+		await new Promise((resolve) => setTimeout(resolve, 2500));
+		if (updateOps().length !== 1)
+			throw new Error(
+				`the refused PATCH was sent ${updateOps().length} times, not once`,
+			);
+	}),
+};
+
+/** The question, idle: seven overdue milestones, three named, the rest counted. */
+export const BoardDoneForceDialog: Story = {
+	render: () => boardGate({ names: OPEN_MILESTONES, capability: true }),
+	play: playOnce("board-done-force-dialog", async () => {
+		await openForceDialog();
+		const text = doneDialog()?.textContent ?? "";
+		for (const expected of [
+			"Mark done with open milestones?",
+			"7 milestones are still open (dashboard cutover, beta cut, load test and 4 more). Mark done anyway?",
+			"milestones stay open",
+		])
+			if (!text.includes(expected))
+				throw new Error(`the dialog does not say: ${expected}`);
+		// Initial focus is the SAFE action, not the one that writes.
+		await poll(
+			() => document.activeElement === dialogButton("Cancel"),
+			"initial focus on Cancel",
+		);
+		// The full list is one press away, and complete.
+		await userEvent.click(need<HTMLElement>('[role="dialog"] [aria-expanded]'));
+		await poll(
+			() =>
+				document.querySelectorAll("[data-project-open-milestones] li")
+					.length === 7,
+			"the full milestone list",
+		);
+		if (updateOps().length !== 1)
+			throw new Error("opening the question must not write");
+	}),
+};
+
+/** The forced write in flight: busy primary, every other exit refused. */
+export const BoardDoneForceSubmitting: Story = {
+	render: () =>
+		boardGate({ names: OPEN_MILESTONES, capability: true, forcedHang: true }),
+	play: playOnce("board-done-force-submitting", async () => {
+		await openForceDialog();
+		const confirm = dialogButton("Mark done anyway");
+		if (!confirm) throw new Error("no Mark done anyway button");
+		await userEvent.click(confirm);
+		await poll(() => dialogButton("Cancel")?.disabled === true, "busy state");
+		// A second press and Escape must neither send nor close.
+		await userEvent.click(confirm);
+		await userEvent.keyboard("{Escape}");
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		if (doneDialog() === null) throw new Error("Escape closed a pending write");
+		const forced = updateOps().filter(
+			(entry) => entry.request.force_done === true,
+		);
+		if (forced.length !== 1)
+			throw new Error(`${forced.length} forced writes were sent, not one`);
+	}),
+};
+
+/** The forced retry itself fails: its sentence IN the dialog, dialog stays. */
+export const BoardDoneForceError: Story = {
+	render: () =>
+		boardGate({
+			names: OPEN_MILESTONES,
+			capability: true,
+			forcedFailure: "no such project",
+		}),
+	play: playOnce("board-done-force-error", async () => {
+		await openForceDialog();
+		await userEvent.click(need<HTMLElement>("[data-project-force-done]"));
+		await poll(
+			() => (doneDialog()?.textContent ?? "").includes("no such project"),
+			"the failure sentence inside the dialog",
+		);
+		if (dialogButton("Mark done anyway")?.disabled)
+			throw new Error("the press must be repeatable after a failure");
+		if (dialogButton("Cancel")?.disabled)
+			throw new Error("Cancel must be available after a failure");
+	}),
+};
+
+/** Success: the card is in Done, the toast SAYS it closed over open work. */
+export const BoardDoneForceSuccess: Story = {
+	parameters: { toastDuration: Number.POSITIVE_INFINITY },
+	render: () => boardGate({ names: OPEN_MILESTONES, capability: true }),
+	play: playOnce("board-done-force-success", async () => {
+		await openForceDialog();
+		await userEvent.click(need<HTMLElement>("[data-project-force-done]"));
+		await poll(() => doneDialog() === null, "the dialog to close");
+		await poll(
+			() => toastText().includes(DONE_GATE_FORCED_TOAST),
+			"the forced-close toast",
+		);
+		const forced = updateOps().filter(
+			(entry) => entry.request.force_done === true,
+		);
+		if (forced.length !== 1)
+			throw new Error("expected exactly one forced PATCH");
+		// The caret goes back to the (re-parented) card's trigger.
+		await poll(
+			() =>
+				document.activeElement ===
+				document.querySelector('[data-project-menu="p1"]'),
+			"focus handed back to the moved card",
+		);
+	}),
+};
+
+/** Cancel closes with no write and the card where it was. */
+export const BoardDoneForceCancel: Story = {
+	render: () => boardGate({ names: OPEN_MILESTONES, capability: true }),
+	play: playOnce("board-done-force-cancel", async () => {
+		await openForceDialog();
+		await userEvent.click(dialogButton("Cancel") as HTMLElement);
+		await poll(() => doneDialog() === null, "the dialog to close");
+		if (updateOps().length !== 1)
+			throw new Error("Cancel wrote: expected only the refused PATCH");
+		if (updateOps().some((entry) => entry.request.force_done === true))
+			throw new Error("Cancel sent a forced PATCH");
+	}),
+};
+
+/** Escape is Cancel: no write. */
+export const BoardDoneForceEscape: Story = {
+	render: () => boardGate({ names: OPEN_MILESTONES, capability: true }),
+	play: playOnce("board-done-force-escape", async () => {
+		await openForceDialog();
+		await userEvent.keyboard("{Escape}");
+		await poll(() => doneDialog() === null, "the dialog to close");
+		if (updateOps().some((entry) => entry.request.force_done === true))
+			throw new Error("Escape sent a forced PATCH");
+	}),
+};
+
+/** The secondary action leaves for the project, with no write. */
+export const BoardDoneForceOpenProject: Story = {
+	render: () => (
+		<RouteTo path="/projects">
+			{boardGate({ names: OPEN_MILESTONES, capability: true })}
+		</RouteTo>
+	),
+	play: playOnce("board-done-force-open-project", async () => {
+		await openForceDialog();
+		await userEvent.click(dialogButton("Open project") as HTMLElement);
+		await poll(() => doneDialog() === null, "the dialog to close");
+		if (updateOps().some((entry) => entry.request.force_done === true))
+			throw new Error("Open project sent a forced PATCH");
+	}),
+};
+
+/** The detail's inline status field: pick Done, get the refusal, then the door. */
+const pickDetailDone = async () => {
+	await waitForDetail();
+	await clickWhen(
+		'[data-project-field="status"] [data-inline-edit-control="begin"]',
+	);
+	await clickWhen('[data-project-status-option="done"]');
+};
+
+const detailGate = (
+	capability: boolean,
+	extra: Partial<NonNullable<StubState["doneGate"]>> = {},
+) => (
+	<RouteTo path="/projects/p1">
+		{page({
+			projects: DONE_GATE_ROWS.map((row) => ({ ...row })),
+			detail: structuredClone(DETAIL),
+			doneGate: { names: OPEN_MILESTONES, capability, ...extra },
+		})}
+	</RouteTo>
+);
+
+/** No capability: the refusal sentence and Retry, and NO force door. */
+export const DetailDoneRefusedNoCapability: Story = {
+	render: () => detailGate(false),
+	play: playOnce("detail-done-refused-no-capability", async () => {
+		await pickDetailDone();
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes("can't be marked done yet"),
+			"the inline refusal",
+		);
+		if (document.querySelector("[data-project-force-done-door]") !== null)
+			throw new Error("the force door was offered without the capability");
+	}),
+};
+
+/** With the capability: the sentence, Retry, and the deliberate door. */
+export const DetailDoneRefusedForceDoor: Story = {
+	render: () => detailGate(true),
+	play: playOnce("detail-done-refused-force-door", async () => {
+		await pickDetailDone();
+		await poll(
+			() => document.querySelector("[data-project-force-done-door]") !== null,
+			"the force door",
+		);
+	}),
+};
+
+/** The door opens the same dialog; confirming closes the project over the open work. */
+export const DetailDoneForceConfirm: Story = {
+	parameters: { toastDuration: Number.POSITIVE_INFINITY },
+	render: () => detailGate(true),
+	play: playOnce("detail-done-force-confirm", async () => {
+		await pickDetailDone();
+		await clickWhen("[data-project-force-done-door]");
+		await poll(() => doneDialog() !== null, "the done-anyway dialog");
+		await userEvent.click(need<HTMLElement>("[data-project-force-done]"));
+		await poll(() => doneDialog() === null, "the dialog to close");
+		await poll(
+			() => toastText().includes(DONE_GATE_FORCED_TOAST),
+			"the forced-close toast",
+		);
+		const forced = updateOps().filter(
+			(entry) => entry.request.force_done === true,
+		);
+		if (forced.length !== 1)
+			throw new Error("expected exactly one forced PATCH");
+	}),
+};
+
+/** The forced retry fails on the detail: sentence in the dialog, field still held. */
+export const DetailDoneForceError: Story = {
+	render: () => detailGate(true, { forcedFailure: "no such project" }),
+	play: playOnce("detail-done-force-error", async () => {
+		await pickDetailDone();
+		await clickWhen("[data-project-force-done-door]");
+		await poll(() => doneDialog() !== null, "the done-anyway dialog");
+		await userEvent.click(need<HTMLElement>("[data-project-force-done]"));
+		await poll(
+			() => (doneDialog()?.textContent ?? "").includes("no such project"),
+			"the failure sentence inside the dialog",
+		);
 	}),
 };
 

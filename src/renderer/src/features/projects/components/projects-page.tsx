@@ -87,8 +87,11 @@ import {
 } from "../project-filters";
 import {
 	type BoardWindow,
+	type DoneGateRefusal,
 	boardWindowEmptyHeading,
 	boardWindowProjects,
+	forcedCloseToastText,
+	projectDisplayName,
 	projectStatusMeta,
 	readBoardWindow,
 	refusalCopy,
@@ -120,6 +123,8 @@ import { BoardWindowSelect } from "./board-window-select";
 import { ProjectBoard, useMoveFocusHandoff } from "./project-board";
 import { ProjectDeleteDialog } from "./project-delete-dialog";
 import { ProjectDetailScreen } from "./project-detail";
+import { ProjectDoneAnywayDialog } from "./project-done-anyway-dialog";
+import { doneGateRefusalOf, projectMoveErrorCopy } from "./project-editors";
 import { ProjectFormDialog } from "./project-form-dialog";
 import { ProjectList } from "./project-list";
 import { ProjectTimeline } from "./project-timeline";
@@ -581,6 +586,31 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 		writeBoardWindow("all");
 		setHandBackToWindow(true);
 	};
+	/*
+	 * THE DONE-GATE'S QUESTION, held while the reader answers it: the card they
+	 * tried to move, where to, and what the daemon said was still open. Null is
+	 * "no question asked". Only ever set when the daemon coded the refusal AND
+	 * advertises `projects_force_done` (see `moveTo`), so the dialog's one
+	 * write is always one this daemon accepts.
+	 */
+	const [forceTarget, setForceTarget] = useState<{
+		project: DesktopProject;
+		status: string;
+		refusal: DoneGateRefusal;
+	} | null>(null);
+	const forceDoneOffered = desktopFeatureEnabled(
+		capabilities.data,
+		"projects_force_done",
+	);
+	/*
+	 * A MOVE THAT DID NOT HAPPEN IS NEVER SILENT. This write used to pass no
+	 * `onError`, so the daemon's 422 (the done-gate's "N milestones still
+	 * incomplete") reached nobody: no toast, and a card that simply did not move
+	 * (QA's isolated-daemon repro). Every failure now ends in exactly one of two
+	 * places - the confirm dialog (the open-milestones refusal, when this daemon
+	 * can honour a forced close) or an error toast with the route's own sentence
+	 * through the app's copy.
+	 */
 	const moveTo = (project: DesktopProject, status: string) => {
 		update.mutate(
 			{
@@ -600,6 +630,21 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					 * card now lives.
 					 */
 					void list.refetch().then(() => handOffFocus(project.id));
+				},
+				onError: (error) => {
+					const refusal = doneGateRefusalOf(error);
+					if (refusal?.coded && forceDoneOffered) {
+						// The question takes the focus; its close hands it back.
+						setForceTarget({ project, status, refusal });
+						return;
+					}
+					showErrorToast(projectMoveErrorCopy(error));
+					/*
+					 * The card did not move, so nothing re-parents - but the menu that
+					 * held the press has closed, and the caret goes back to its trigger
+					 * rather than being left to the menu's own unmount.
+					 */
+					handOffFocus(project.id);
 				},
 			},
 		);
@@ -1092,6 +1137,43 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					});
 					showSuccessToast("Project deleted");
 					setDeleting(null);
+				}}
+			/>
+
+			<ProjectDoneAnywayDialog
+				open={forceTarget !== null}
+				refusal={forceTarget?.refusal ?? null}
+				projectLabel={
+					forceTarget ? projectDisplayName(forceTarget.project) : ""
+				}
+				onClose={() => {
+					// Every exit (Cancel, Escape, scrim, X, success) hands the caret back
+					// to the card's trigger; none of them but the confirm wrote anything.
+					if (forceTarget) handOffFocus(forceTarget.project.id);
+					setForceTarget(null);
+				}}
+				onConfirm={async () => {
+					if (!forceTarget) return;
+					const { project, status, refusal } = forceTarget;
+					const result = await update.mutateAsync({
+						key: project.id,
+						fields: { status: status as DesktopProjectStatus },
+						forceDone: true,
+					});
+					showSuccessToast(
+						forcedCloseToastText(
+							result,
+							refusal.count,
+							projectStatusMeta(status).label,
+						),
+					);
+					void list.refetch().then(() => handOffFocus(project.id));
+				}}
+				secondaryLabel="Open project"
+				onSecondary={() => {
+					const id = forceTarget?.project.id;
+					setForceTarget(null);
+					if (id) void navigate(`/projects/${id}`);
 				}}
 			/>
 
