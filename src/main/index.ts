@@ -25,7 +25,6 @@ import {
 	type DirectoryListing,
 	type FileActionOutcome,
 	MAX_FILE_READ_BYTES,
-	MAX_PROBE_PATHS,
 	type ProbedFile,
 	type ReadFileBytesResponse,
 } from "../shared/desktop-contract";
@@ -80,8 +79,7 @@ import {
 import { registerDevDriverIPC } from "./dev-driver-ipc";
 import {
 	listDirectory,
-	outsideWorkspace,
-	realPathOrNull,
+	probeFiles,
 	resolveUserPath as resolveUserPathWith,
 } from "./directory-listing";
 import { type MiniViewRegistrar, createRegistrar } from "./hotkey-registration";
@@ -2611,6 +2609,17 @@ app
 		 * dropped: "the agent wrote this and it is gone" is a fact the tile states,
 		 * and silently filtering it would recreate the original complaint from the
 		 * other side.
+		 *
+		 * The probing itself — and the reason it must never be synchronous — lives
+		 * in `probeFiles` in `./directory-listing`, where
+		 * `scripts/directory-listing.test.mjs` exercises it without booting
+		 * Electron: a remote session's transcript mentions `/home/ec2-user/...`
+		 * paths, and on macOS `/home` is an autofs map whose missing-path lookups
+		 * cost a measured 266-275 ms each, so the synchronous shape this wiring
+		 * used to carry (a `statSync` per path, inside this handler) blocked the
+		 * main thread for 8.00 s on a 30-path batch and held a warm remote open at
+		 * 2.4-3.2 s before first paint. This handler is wiring only: filter the
+		 * non-strings, hand over `home`, answer.
 		 */
 		ipcMain.handle(
 			"probe-files",
@@ -2618,53 +2627,7 @@ app
 				const asked = Array.isArray(paths)
 					? paths.filter((path): path is string => typeof path === "string")
 					: [];
-				/*
-				 * The workspace root the containment verdict is measured against, resolved
-				 * ONCE per batch: it is the same directory for every path asked about, and
-				 * `realpath` on it per path would pay for one answer sixty-four times.
-				 * `null` when no cwd was given, which is a caller that cannot get a
-				 * verdict rather than a caller that gets "inside".
-				 */
-				const realRoot = cwd ? realPathOrNull(resolveUserPath(cwd)) : null;
-				return asked.slice(0, MAX_PROBE_PATHS).map((input) => {
-					let resolved = input;
-					try {
-						resolved = resolveUserPath(input, cwd);
-						const stat = statSync(resolved, { throwIfNoEntry: false });
-						const exists = stat !== undefined;
-						return {
-							input,
-							resolved,
-							exists,
-							isFile: stat?.isFile() ?? false,
-							sizeBytes: stat?.isFile() ? stat.size : null,
-							mtimeMs: stat?.isFile() ? stat.mtimeMs : null,
-							/*
-							 * The containment verdict, and the reason it is asked ONLY of a path
-							 * that exists: the one caller that reads it (the composer's `@` chip)
-							 * asks the question about a candidate reference, so a path that is not
-							 * there costs no second syscall — and a miss is the common case on the
-							 * keystroke path this runs on.
-							 */
-							outsideWorkspace: exists
-								? outsideWorkspace(realPathOrNull(resolved), realRoot)
-								: undefined,
-						};
-					} catch (error) {
-						// A genuine fault - permission, a stale network mount - is not the
-						// same answer as "no such file", and the difference is the whole
-						// diagnosis when a tile says the file is gone and it is there.
-						return {
-							input,
-							resolved,
-							exists: false,
-							isFile: false,
-							sizeBytes: null,
-							mtimeMs: null,
-							error: error instanceof Error ? error.message : String(error),
-						};
-					}
-				});
+				return await probeFiles(asked, cwd, app.getPath("home"));
 			},
 		);
 

@@ -2038,7 +2038,9 @@ export const STORIES = [
 	 * the whole run. The frames already committed under `docs/evidence/
 	 * chat-header-cluster/` PREDATE the move and are not re-shot (they show the
 	 * header cluster as it was, which is what they are evidence of); the surface's
-	 * remaining rows are the header as it is - the menu and the Asks trigger.
+	 * remaining rows are the header as it is - the menu, whose five entries include
+	 * the asks row #896 added when the Asks trigger joined the rail (its own states
+	 * are `navigation-panel-rail--asks-*`).
 	 */
 	["chat-header-cluster--no-approval", 560, 84],
 	/* The badge drawn with the canvas button unmounted: the reservation's room is
@@ -5620,7 +5622,7 @@ export const STORIES = [
 	 * `--chrome-inset-end-h` (40px) with a default Windows window's values
 	 * (`useWindowsChromeSimulation`), so the frame is the LAYOUT's answer to them.
 	 * The shutter-time claims are the change's own: the rail's first item starts
-	 * below the 40px caption area; with no pane the header's Asks trigger ends 94px
+	 * below the 40px caption area; with no pane the header's action cluster ends 94px
 	 * (138 - 44) short of the window's edge, with a pane open its close control does,
 	 * and on a route with no rail (settings) the fleet drawer keeps the FULL 138px.
 	 */
