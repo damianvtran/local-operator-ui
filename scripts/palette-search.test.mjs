@@ -40,11 +40,32 @@ const {
 	PALETTE_GROUP_ORDER,
 	PALETTE_SECTION_TITLES,
 	parsePaletteQuery,
+	RECENTS_PIN_CAP,
 	SCOPE_LEGEND,
 	searchPalette,
 	SOFT_TIER,
 	TOTAL_CAP,
 } = module;
+
+/*
+ * The source-anchor patterns, at module scope: a regex literal in a test body is
+ * recompiled per call, and this file's other anchors are read the same way. The
+ * anchor tests scan `use-palette-sources.ts` because the React hook it carries
+ * cannot be mounted here.
+ */
+const RECENTS_JOIN_CALL =
+	/chatRecentsOfRow\(\s*row,\s*conversationRecents,\s*displayedSessionId,\s*archiveEnabled,\s*archiveFacts,?\s*\)/;
+/* The facts are read from the store, and are an input of the `chatItems` memo:
+ * without the dependency the memo would not rebuild when an archive press settles
+ * its fact, which is the whole of agent review round 2's R2-1. */
+const ARCHIVE_FACTS_SELECTOR =
+	/const archiveFacts = useCanonicalSessionsStore\(\s*\(state\) => state\.archiveFacts,?\s*\);/;
+const ARCHIVE_FACTS_MEMO_DEPENDENCY =
+	/archiveEnabled,\s*archiveFacts,?\s*\]\);/;
+const ARCHIVE_CAPABILITY_GATE =
+	/desktopFeatureEnabled\(\s*capabilities\.data,\s*"session_archive",\s*\)/;
+const RECENTS_FIELDS_FROM_HELPER =
+	/recentRank: recents\.recentRank,\s*current: recents\.current,\s*archived: recents\.archived,/;
 
 /* ------------------------------------------------------------------ *
  * Fixtures
@@ -520,6 +541,271 @@ test("with everything shown, clipped stays false — it is not 'a cap was consul
 	);
 	assert.equal(outcome.total, 3);
 	assert.equal(outcome.clipped, false);
+});
+
+/* ------------------------------------------------------------------ *
+ * The Recents pin
+ * ------------------------------------------------------------------ */
+
+/*
+ * A visited row carries `recentRank` (its index in the visited ring, 0 the most
+ * recent) and, for the conversation on screen, `current` - both decided at the
+ * source (`use-palette-sources.ts`) because this module is import-free. `order`
+ * stays the catalogue's newest-first rank, so a rank and an order can disagree,
+ * which is the point of the pin: it is ordered by VISIT, not by activity.
+ */
+const visitedChat = (id, title, order, recentRank, extra = {}) => ({
+	...listedChat(id, title, order),
+	recentRank,
+	...extra,
+});
+
+test("the switcher pins Recents directly beneath Unread, above the Chats tier", () => {
+	const outcome = searchPalette({
+		items: [
+			unreadChat("u1", "Unread one", 0),
+			visitedChat("r1", "Visited one", 1, 0),
+			listedChat("c1", "Never visited", 2),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.equal(PALETTE_SECTION_TITLES.recents, "Recents");
+	assert.deepEqual(groups(outcome), ["unread", "recents", "chats"]);
+	assert.deepEqual(names(outcome), [
+		"Unread one",
+		"Visited one",
+		"Never visited",
+	]);
+	assert.equal(outcome.clipped, false);
+});
+
+test("Recents follows the visited ring, not the catalogue's recency", () => {
+	const outcome = searchPalette({
+		items: [
+			// Newest by activity, but visited longest ago.
+			visitedChat("r-old", "Visited longest ago", 0, 2),
+			visitedChat("r-new", "Visited last", 1, 0),
+			visitedChat("r-mid", "Visited before that", 2, 1),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(
+		outcome.sections[0].items.map((match) => match.item.name),
+		["Visited last", "Visited before that", "Visited longest ago"],
+	);
+});
+
+test("no row appears twice across Unread, Recents and Chats", () => {
+	const outcome = searchPalette({
+		items: [
+			// Unread AND visited: it lives in the Unread pin only.
+			unreadChat("both", "Unread and visited", 0),
+			visitedChat("r1", "Visited", 1, 1),
+			listedChat("c1", "Plain", 2),
+		].map((item) =>
+			item.id === "chat-both" ? { ...item, recentRank: 0 } : item,
+		),
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	const ids = outcome.sections.flatMap((section) =>
+		section.items.map((match) => match.item.id),
+	);
+	assert.equal(new Set(ids).size, ids.length);
+	assert.deepEqual(
+		outcome.sections.map((section) => [
+			section.group,
+			section.items.map((match) => match.item.name),
+		]),
+		[
+			["unread", ["Unread and visited"]],
+			["recents", ["Visited"]],
+			["chats", ["Plain"]],
+		],
+	);
+});
+
+test("the conversation on screen is left out of Recents, so the first row is the previous one", () => {
+	const outcome = searchPalette({
+		items: [
+			visitedChat("here", "On screen", 0, 0, { current: true }),
+			visitedChat("prev", "Previous", 1, 1),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["recents", "chats"]);
+	assert.deepEqual(
+		outcome.sections[0].items.map((match) => match.item.name),
+		["Previous"],
+	);
+	// It is not lost: it is an ordinary row of the Chats tier.
+	assert.deepEqual(
+		outcome.sections[1].items.map((match) => match.item.name),
+		["On screen"],
+	);
+});
+
+test("an archived row in the ring is not claimed by the Recents pin (QA round 1, Q-1)", () => {
+	/*
+	 * The pin reads the row's OWN `archived` fact, set at the source with the
+	 * sidebar's `visibleRows` rule (`chatRecentsOfRow`). The row CAN be in the
+	 * browse pool - the join's empty-query arm applies no archive filter, which is
+	 * pre-existing on both trees - so without this the pin claimed the very
+	 * conversation the reader had just archived away (the base tree drew it under
+	 * Chats; the ring keeping its id is by design, the pin drawing it is not).
+	 */
+	const outcome = searchPalette({
+		items: [
+			visitedChat("r-arch", "Archived visit", 0, 0, { archived: true }),
+			visitedChat("r-live", "Live visit", 1, 1),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["recents", "chats"]);
+	assert.deepEqual(
+		outcome.sections[0].items.map((match) => match.item.name),
+		["Live visit"],
+	);
+	// Not claimed - and not dropped either: it is an ordinary row of the Chats
+	// tier, exactly what `current` does with the conversation on screen.
+	assert.deepEqual(
+		outcome.sections[1].items.map((match) => match.item.name),
+		["Archived visit"],
+	);
+});
+
+test("a row whose archived fact is false, or absent, is still claimed by Recents", () => {
+	/*
+	 * The predicate is `archived !== true`, not "has an `archived` field": a live
+	 * row that states the fact false, and a row that says nothing about it, are both
+	 * eligible - the same "absence is not a claim" rule the join applies to every
+	 * other fact it reads.
+	 */
+	const outcome = searchPalette({
+		items: [
+			visitedChat("r-false", "Stated live", 0, 0, { archived: false }),
+			visitedChat("r-silent", "Silent", 1, 1),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["recents"]);
+	assert.deepEqual(
+		outcome.sections[0].items.map((match) => match.item.name),
+		["Stated live", "Silent"],
+	);
+});
+
+test("Recents shows at most five rows, and the rest stay in the Chats tier exactly once", () => {
+	assert.equal(RECENTS_PIN_CAP, 5);
+	const outcome = searchPalette({
+		items: Array.from({ length: 8 }, (_, index) =>
+			visitedChat(`r${index}`, `Visited ${index}`, index, index),
+		),
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["recents", "chats"]);
+	assert.deepEqual(
+		outcome.sections[0].items.map((match) => match.item.name),
+		["Visited 0", "Visited 1", "Visited 2", "Visited 3", "Visited 4"],
+	);
+	// The pin claims only its five; the other three browse in their own tier.
+	assert.deepEqual(
+		outcome.sections[1].items.map((match) => match.item.name),
+		["Visited 5", "Visited 6", "Visited 7"],
+	);
+	assert.equal(outcome.total, 8);
+	assert.equal(outcome.clipped, false);
+});
+
+test("Recents is absent, with no empty heading, when no row carries a rank", () => {
+	const outcome = searchPalette({
+		items: [listedChat("c1", "Alpha", 0), listedChat("c2", "Beta", 1)],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["chats"]);
+	assert.deepEqual(names(outcome), ["Alpha", "Beta"]);
+});
+
+test("Recents is absent when the only ranked row is the one on screen", () => {
+	const outcome = searchPalette({
+		items: [
+			visitedChat("here", "On screen", 0, 0, { current: true }),
+			listedChat("c1", "Beta", 1),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["chats"]);
+});
+
+test("a typed query drops Recents, and the row is found by search as always", () => {
+	const outcome = searchPalette({
+		items: [visitedChat("r1", "Retention follow-up", 0, 0)],
+		raw: "#retention",
+	});
+	assert.ok(!groups(outcome).includes("recents"));
+	assert.deepEqual(names(outcome), ["Retention follow-up"]);
+});
+
+test("Recents is the switcher's alone; the un-scoped browse is untouched", () => {
+	const outcome = searchPalette({
+		items: [visitedChat("r1", "Visited", 0, 0), listedChat("c1", "Plain", 1)],
+		raw: "",
+	});
+	assert.ok(!groups(outcome).includes("recents"));
+	assert.deepEqual(names(outcome), ["Visited", "Plain"]);
+});
+
+test("Recents draws from the same budget as Unread and the tiers, with honest accounting", () => {
+	const outcome = searchPalette({
+		items: [
+			...Array.from({ length: 46 }, (_, index) =>
+				unreadChat(`u${index}`, `Unread ${index}`, index),
+			),
+			...Array.from({ length: 5 }, (_, index) =>
+				visitedChat(`r${index}`, `Visited ${index}`, 46 + index, index),
+			),
+			...Array.from({ length: 4 }, (_, index) =>
+				listedChat(`c${index}`, `Listed ${index}`, 51 + index),
+			),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	// 46 unread leave two rows of budget: Recents gets them, the Chats tier none.
+	assert.deepEqual(groups(outcome), ["unread", "recents"]);
+	assert.deepEqual(
+		outcome.sections[1].items.map((match) => match.item.name),
+		["Visited 0", "Visited 1"],
+	);
+	assert.equal(
+		outcome.sections.reduce(
+			(count, section) => count + section.items.length,
+			0,
+		),
+		TOTAL_CAP,
+	);
+	// 46 + 5 claimed by the pins + 4 left for the tier: every row considered.
+	assert.equal(outcome.total, 55);
+	assert.equal(outcome.clipped, true);
+	// A claimed-but-undrawn Recents row does not reappear as a Chats duplicate.
+	const ids = outcome.sections.flatMap((section) =>
+		section.items.map((match) => match.item.id),
+	);
+	assert.equal(new Set(ids).size, ids.length);
+});
+
+test("a full Unread pin leaves Recents nothing to draw, and its rows are not duplicated below", () => {
+	const outcome = searchPalette({
+		items: [
+			...Array.from({ length: 48 }, (_, index) =>
+				unreadChat(`u${index}`, `Unread ${index}`, index),
+			),
+			visitedChat("r0", "Visited 0", 48, 0),
+			listedChat("c0", "Listed 0", 49),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["unread"]);
+	assert.equal(outcome.total, 50);
+	assert.equal(outcome.clipped, true);
 });
 
 /* ------------------------------------------------------------------ *
@@ -1117,6 +1403,42 @@ test("the palette's join is given the same tombstone view the sidebar's is (agen
 	);
 	assert.match(source, /forgotten: new Set\(Object\.keys\(forgotten\)\)/);
 	assert.match(source, /state\.forgotten\)/);
+});
+
+test("the Recents pin's row facts come from the one tested helper, over the sidebar's archive gate (agent review round 1, R1-1; QA round 1, Q-1)", () => {
+	/*
+	 * The source hook is a React module this node harness cannot mount, so the
+	 * half that CAN be pinned is that the seam exists rather than being re-derived
+	 * inline: the memo calls `chatRecentsOfRow` - whose in-ring/not, duplicate,
+	 * current and archived cases are exercised for real in
+	 * `scripts/palette-recents.test.mjs` - and the archive fact is read from the
+	 * same capability the sidebar's own list reads.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/command-palette/use-palette-sources.ts",
+		"utf8",
+	);
+	assert.match(
+		source,
+		RECENTS_JOIN_CALL,
+		"the row-to-ring join must go through the tested helper, over the archive gate",
+	);
+	assert.match(
+		source,
+		ARCHIVE_CAPABILITY_GATE,
+		"the archive fact must come from the sidebar's own capability",
+	);
+	assert.match(source, RECENTS_FIELDS_FROM_HELPER);
+	assert.match(
+		source,
+		ARCHIVE_FACTS_SELECTOR,
+		"the answered archive facts must be read from the store, as the sidebar reads them",
+	);
+	assert.match(
+		source,
+		ARCHIVE_FACTS_MEMO_DEPENDENCY,
+		"the facts must be a dependency of the chatItems memo, or a settled press never rebuilds it",
+	);
 });
 
 /* ------------------------------------------------------------------ *
