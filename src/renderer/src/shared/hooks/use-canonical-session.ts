@@ -31,6 +31,7 @@
  * measurable in the browser's own timeline rather than estimated.
  */
 
+import { openFrameCoversHeld } from "@features/chat/canonical/open-frame";
 import {
 	EMPTY_TRANSCRIPT,
 	RECONCILE_TAIL_ENTRIES,
@@ -2108,7 +2109,36 @@ export function useCanonicalSessionStream(
 	 * caller's identity is.
 	 */
 	identity: string | undefined = sessionId,
+	/**
+	 * THE OPEN-FRAME NEGOTIATION (`docs/DESKTOP_API.md`, "The open frame"), read
+	 * by the CALLER off the backend's capabilities and passed in rather than
+	 * looked up here.
+	 *
+	 * WHY A PARAMETER. This module is the one the renderer's load rigs bundle
+	 * with a React stand-in and no query client (`session-load-sequence`,
+	 * `reconnect-page-gap`), so it must not import the capability hook: the
+	 * capability is the PANE's question (its own `chat-page` already resolves it,
+	 * from cache, before this hook is called), and this hook's job is to act on
+	 * the answer.
+	 *
+	 * WHY IT IS COPIED INTO A REF. Gating the stream on it as a dependency would
+	 * RESUBSCRIBE this pane the moment it flipped false -> true - a second open
+	 * frame, a second snapshot, a second commit: exactly the extra painted state
+	 * the contract is being adopted to remove. The ref is written on every render
+	 * and read at the moment each request is built (the subscription's own open,
+	 * and every `/history` read the walk or the pager issues later), so a request
+	 * carries the answer that was known when it was made.
+	 *
+	 * FALSE IS THE FAIL-CLOSED DEFAULT and every caller that has no capability
+	 * read to hand keeps it: today's page, today's condensation, the align walk
+	 * included. An open that races the capability read is false for the same
+	 * reason - never a page whose unit changed under a reader that has not read
+	 * `runs`. Every read AFTER that picks the flag up, so nothing stays stuck.
+	 */
+	openFrame = false,
 ): CanonicalSessionHandle {
+	const openFrameRef = useRef(openFrame);
+	openFrameRef.current = openFrame;
 	const [view, setView] = useState<CanonicalSessionView>(() => {
 		const seed = enabled && sessionId ? paintSeed(sessionId) : null;
 		return {
@@ -3050,6 +3080,7 @@ export function useCanonicalSessionStream(
 						// and asking for more than the bound leaves is a page the loop
 						// would refuse to continue from.
 						limit: Math.min(limit, RECONCILE_WALK_MAX_ROWS - rows),
+						openFrame: openFrameRef.current,
 					});
 				} catch {
 					// A cleared view has nothing left to read for: without this the
@@ -3488,6 +3519,15 @@ export function useCanonicalSessionStream(
 			 */
 			const heldIds = new Set<string>();
 			/*
+			 * The INSTANT of each held row, keyed the same way, for the open-frame arm
+			 * of the tail gate below: a held row is placed relative to the page by the
+			 * journal's clock, because the ids are opaque and a page that starts at a
+			 * run's opening user row is the only datum that lets "behind it" be asked
+			 * at all. Populated from the same loop as `heldIds`, so a row cannot be in
+			 * one and not the other.
+			 */
+			const heldInstants = new Map<string, number>();
+			/*
 			 * A row only a reconnect replay delivered is not a held JOURNAL row until a
 			 * page names it (`replayBornIds`). Pruned first, from the same live index
 			 * the loop reads, so a `/clear` or a dropped row cannot leave an id behind
@@ -3497,8 +3537,13 @@ export function useCanonicalSessionStream(
 				if (!viewRef.current.transcript.index.has(id))
 					replayBornIds.current.delete(id);
 			for (const record of viewRef.current.transcript.records)
-				if (isDurableOwnerRow(record) && !replayBornIds.current.has(record.id))
+				if (
+					isDurableOwnerRow(record) &&
+					!replayBornIds.current.has(record.id)
+				) {
 					heldIds.add(record.id);
+					heldInstants.set(record.id, record.ts);
+				}
 			/*
 			 * READ FROM THE LIVE VIEW, NOT FROM `paintedIds` (QA round 3, Q3-1).
 			 * `paintedIds` is "the index the last flush left behind" and is refreshed
@@ -3579,9 +3624,30 @@ export function useCanonicalSessionStream(
 				if (pageIsJournalTail(frame.payload)) {
 					// The seam behind the page, not the page itself: see the two regimes
 					// above and the #876 note on the journal-tail arm.
-					return (
-						heldIds.size === 0 ||
-						entries.some((entry) => heldIds.has(entryRecordKey(entry)))
+					if (heldIds.size === 0) return true;
+					const carried = new Set<string>();
+					for (const entry of entries) carried.add(entryRecordKey(entry));
+					if (entries.some((entry) => heldIds.has(entryRecordKey(entry))))
+						return true;
+					/*
+					 * THE OPEN-FRAME ARM (C1). An overlap is ONE proof that the page
+					 * connects to the rows the pane holds; a page whose own START the
+					 * server's facts attest - the oldest run's opening user row - is the
+					 * other, and it is the proof the turn-aligned cut is built to give.
+					 * `openFrameCoversHeld` carries the reasoning in full, including why
+					 * its bounds are strict: a held row at or below the attested start is
+					 * the #876/#883 seam and a held row at or above the page's newest
+					 * entry is either the live tail or a row a cut-at-a-cursor page may
+					 * have omitted, and in both cases today's walk stands.
+					 *
+					 * IT COMPARES IDS AND ONE INSTANT, NOT PAGES: the reopen that used to
+					 * spend up to `RECONCILE_WALK_MAX_REQUESTS` serial reads proving there
+					 * was nothing to fetch spends none.
+					 */
+					return openFrameCoversHeld(
+						frame.payload.history,
+						heldInstants,
+						carried,
 					);
 				}
 				if (newest.id === frame.payload.frontend.snapshot.history_cursor)
@@ -4548,6 +4614,7 @@ export function useCanonicalSessionStream(
 					sessionId,
 					epoch: reconnectRef.current.epoch,
 					afterSeq: reconnectRef.current.afterSeq,
+					openFrame: openFrameRef.current,
 				},
 				(event) => {
 					if (generationRef.current !== generation) return;
@@ -5323,6 +5390,7 @@ export function useCanonicalSessionStream(
 					sessionId: requested,
 					beforeId,
 					limit: 100,
+					openFrame: openFrameRef.current,
 				}),
 			isCurrent: () => stillHere() && notCleared(),
 			commit: (update) =>
@@ -5391,6 +5459,7 @@ export function useCanonicalSessionStream(
 					op: "sessions.history",
 					sessionId: requested,
 					limit: 100,
+					openFrame: openFrameRef.current,
 				});
 				if (sessionRef.current !== requested) return false;
 				/*

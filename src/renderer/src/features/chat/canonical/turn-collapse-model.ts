@@ -208,6 +208,44 @@ export type TurnSummaryFacts = {
 };
 
 /**
+ * One run's facts AS THE SERVER STATES THEM, in this model's own vocabulary.
+ *
+ * THE MODEL'S INPUT SHAPE, deliberately not the wire's (`DesktopOpenFrameRun`),
+ * and the adapter that reads the wire is `open-frame.ts`: this module must not
+ * grow a second opinion about what `runs_state` means or about which runs carry
+ * counts, so a fact arrives here already filtered to a SETTLED run with a whole
+ * count, and a caller with no facts passes none at all.
+ *
+ * WHY IT EXISTS. Condensation is a pure function of the LOADED rows, so a run
+ * whose head lies above the page condenses from the loaded span: its bar states
+ * a minimum count and no duration, and the pane spends the next several hundred
+ * milliseconds (up to `ALIGN_WALK_MAX_PAGES` serial `/history` reads) growing the
+ * bar one page at a time. The operator's own case, recorded in PR #702's body:
+ * `30 actions` at open, `Took 2h23m · 423 actions` thirteen pages later. A fact
+ * is that same turn's total measured from the whole journal, so the bar can be
+ * right on the frame the reader first sees it.
+ */
+export type RunFact = {
+	/**
+	 * Tool rows in the run: the same unit as `TurnSummaryFacts.actions`.
+	 *
+	 * EXACT when `complete`, a LOWER BOUND when not - the run held a row body the
+	 * index had to drop, and a pathological row must never be reported as an
+	 * exact count. The bar's `+` is `TurnSummaryFacts.partial`'s job either way.
+	 */
+	actions: number;
+	/** The run's reported work (`duration_s`, summed), or null for none. */
+	workedSeconds: number | null;
+	/** Tool rows whose outcome is a genuine error, by the client's own predicate. */
+	failed: number;
+	/** False: `actions` is a lower bound (see above). */
+	complete: boolean;
+};
+
+/** The facts an open-frame page carries, by `run_key` (`TurnRun.key`). */
+export type RunFactLookup = ReadonlyMap<string, RunFact>;
+
+/**
  * One SEGMENT of a run: a maximal contiguous span of hidden rows and the one bar
  * that stands in for it (issue #665).
  *
@@ -434,6 +472,13 @@ export function collapsePlan(
 		 * Omitted is the shipped `by-turn` condensation.
 		 */
 		mode?: TranscriptDisplayMode;
+		/**
+		 * The server's per-run facts when the page carries them (`RunFact`), keyed by
+		 * `run_key` - which IS this module's `TurnRun.key`, so the join is a field
+		 * and never a position. Omitted or empty is every old backend, every
+		 * `building` answer and every peer's conversation, and changes nothing.
+		 */
+		runFacts?: RunFactLookup;
 	},
 ): CollapsePlan {
 	dbgCollapsePlanCalls.count += 1;
@@ -458,6 +503,7 @@ export function collapsePlan(
 				focusHold,
 				openRuns,
 				options.mode,
+				options.runFacts,
 			),
 		),
 	};
@@ -684,6 +730,13 @@ export function collapsePlanOptionsKey(options: {
 	focusHold?: string | null;
 	openRuns?: ReadonlySet<string>;
 	mode?: TranscriptDisplayMode;
+	/**
+	 * The server's facts, as `collapsePlan` takes them. IN THE KEY because the
+	 * bar's text moves with them: the caller's options object is memoised on the
+	 * page's identity, so this serialisation happens once per fact set rather
+	 * than once per render, and a re-created-but-equal map cannot buy a re-plan.
+	 */
+	runFacts?: RunFactLookup;
 }): string {
 	const parts: string[] = [
 		options.live ? "live" : "settled",
@@ -692,6 +745,28 @@ export function collapsePlanOptionsKey(options: {
 	];
 	if (options.openRuns) {
 		for (const key of [...options.openRuns].sort()) parts.push(`open:${key}`);
+	}
+	/*
+	 * SORTED, and `facts:`-prefixed rather than appended bare. Sorted so two
+	 * maps with the same content cannot hash two ways (the page's own order is
+	 * not part of the plan's input); prefixed because a run key is any string the
+	 * journal minted, so an unprefixed part could collide with a run key or with
+	 * the `live`/`settled` token above - the one failure a signature must not
+	 * have. The separator inside is `,`, not the `\u0000` the parts use, and a
+	 * run key containing one would only ever cost a spurious re-plan.
+	 */
+	if (options.runFacts && options.runFacts.size > 0) {
+		const facts: string[] = [];
+		for (const key of [...options.runFacts.keys()].sort()) {
+			const fact = options.runFacts.get(key);
+			if (!fact) continue;
+			facts.push(
+				`${key}:${fact.actions}:${fact.workedSeconds ?? ""}:${
+					fact.complete ? "c" : "p"
+				}:${fact.failed}`,
+			);
+		}
+		parts.push(`facts:${facts.join(",")}`);
 	}
 	return parts.join("\u0000");
 }
@@ -982,9 +1057,21 @@ export function alignWalkRunKeyConfirmed(
 	 * the window covers the whole list. */
 	storeTopRun: TurnRun | null,
 	openRuns?: ReadonlySet<string>,
+	/**
+	 * The server's facts for the page's runs, or nothing (`RunFact`). A run here
+	 * has ALREADY been answered - its counts are the turn's own - so the walk has
+	 * nothing left to fetch for it and this returns null: the reads stay unspent
+	 * and the bar the reader is looking at is exact on the frame it was painted
+	 * on. Absent or empty (an old backend, a `building` answer, a peer's
+	 * conversation, a live tail - a fact is only ever offered for a SETTLED run)
+	 * is every case where the walk is still the only way the figure is ever
+	 * completed, and there today's decision stands unchanged.
+	 */
+	runFacts?: RunFactLookup,
 ): string | null {
 	const key = alignWalkRunFromPlan(plan, openRuns);
 	if (key === null) return null;
+	if (runFacts?.has(key)) return null;
 	if (storeTopRun === null) return key;
 	return !storeTopRun.opensWithUserRow && storeTopRun.key === key ? key : null;
 }
@@ -1430,6 +1517,13 @@ function planRun(
 	 * value. See `collapsePlan`'s option for why the plan keeps no rule of its own.
 	 */
 	mode?: TranscriptDisplayMode,
+	/**
+	 * The server's facts for the runs this page carries (`RunFact`), or nothing.
+	 * Consulted for the HEAD-CUT span only, and only when the run the page names
+	 * is one of these keys; see the block after the segments below for why a
+	 * fully-loaded run is deliberately left to the rows it already has.
+	 */
+	runFacts?: RunFactLookup,
 ): RunCollapsePlan {
 	const runRows = rows.slice(run.openingIndex, run.endIndex + 1);
 	const records = runRows.map((row) => row.record);
@@ -1470,6 +1564,15 @@ function planRun(
 	 */
 	const liveFrom = live ? settledCloseOf(records, partition.cycles) + 1 : -1;
 
+	/*
+	 * THE ONE SPAN THE FACTS CAN COMPLETE. Only a span that OPENS at the loaded
+	 * edge is a fragment: its rows above are off-page, while every other span
+	 * begins and ends inside the loaded page and is therefore exact already.
+	 * Recorded during the map rather than searched for afterwards, so the flag the
+	 * segment was built with and the span this block patches cannot drift apart.
+	 */
+	let cutSpan = -1;
+
 	const segments: SegmentPlan[] = partition.segments.map(
 		(span: SegmentSpan, i): SegmentPlan => {
 			const segRows = runRows.slice(span.from, span.to + 1);
@@ -1487,6 +1590,7 @@ function planRun(
 			 * the pre-answer bars add up to the foot's figure.
 			 */
 			const headLoaded = !(span.from === 0 && !run.opensWithUserRow);
+			if (!headLoaded) cutSpan = i;
 
 			const label = labelOfSegment(records, partition.cycles, span);
 			const collapsedHere =
@@ -1522,8 +1626,88 @@ function planRun(
 		},
 	);
 
+	/*
+	 * THE HEAD-CUT SPAN TAKES ITS FIGURES FROM THE RUN (`RunFact`), which is what
+	 * makes a bar right on the frame the reader first sees it instead of after the
+	 * align walk has fetched the head in.
+	 *
+	 * SUBTRACTION, NOT SUBSTITUTION, and the difference is the reader's arithmetic:
+	 * the fact states the WHOLE run's totals, while this bar stands for one span of
+	 * it - a pinned row (a compaction, a terminal marker) splits a run into several
+	 * bars, and a bar that stated the run's total beside a sibling stating its own
+	 * rows would not add up. Every other span is fully loaded by construction (see
+	 * `cutSpan`), so the run's total minus their known work IS this span's, exactly,
+	 * and the ladder still sums to the turn's figure (D1).
+	 *
+	 * WHAT THE FACTS DO NOT MOVE: the class sentence (`title`), which is a phrase
+	 * about the actions this span HAS; `failed`/`firstFailedId`, which no bar prints
+	 * and the failure jump reads off the rows in hand anyway. A run whose page
+	 * carries no fact, or a fact this build cannot read, keeps every loaded-rows
+	 * answer it had - the fallback is the point, not a degradation.
+	 */
+	const fact = cutSpan >= 0 ? (runFacts?.get(run.key) ?? null) : null;
+	const cutSegment = cutSpan >= 0 ? segments[cutSpan] : null;
+	if (fact !== null && cutSegment !== null) {
+		let knownActions = 0;
+		let knownWorked = 0;
+		for (const [i, segment] of segments.entries()) {
+			if (i === cutSpan) continue;
+			knownActions += segment.facts.actions;
+			knownWorked += workedSeconds(segment.rows) ?? 0;
+		}
+		const actions = Math.max(0, fact.actions - knownActions);
+		const worked =
+			fact.workedSeconds === null
+				? null
+				: Math.max(0, fact.workedSeconds - knownWorked);
+		segments[cutSpan] = {
+			...cutSegment,
+			facts: {
+				...cutSegment.facts,
+				actions,
+				/*
+				 * The head-cut span's duration gate, lifted by the fact: the sum is no
+				 * longer a fragment of the turn's work but the turn's own, so the `1s`
+				 * floor and the never-a-`0s`-claim rule are the only ones left (the same
+				 * pair `factsOf` applies to a loaded head).
+				 */
+				durationS: worked !== null && worked >= 1 ? worked : null,
+				/*
+				 * `complete: false` is the server saying the index dropped a row body
+				 * inside this run, so the count is a FLOOR - the bar's `+`.
+				 */
+				partial: !fact.complete,
+			},
+		};
+	}
+
 	/* The turn's own totals: the run through its answer, commentary excluded. */
 	const turnRows = answerAt === null ? runRows : runRows.slice(0, answerAt + 1);
+	/*
+	 * The run-level figures have no reader of their own today, but they are what a
+	 * consumer reads to state the turn's whole work, so they must not be left
+	 * contradicting the bars beneath them: when a cut span took the facts, the
+	 * pre-answer bars sum to exactly the turn's figure, and re-deriving the totals
+	 * from those bars is what keeps the two in step (D1's ladder, now over facts).
+	 * WITH NO CUT SPAN, the loaded fold stands untouched - including for a run
+	 * whose head is cut at a PINNED row, where the loaded spans are whole and the
+	 * rows above them are not hidden by any bar.
+	 */
+	const turnFacts = factsOf(turnRows, {
+		partial: !run.opensWithUserRow,
+		headLoaded: run.opensWithUserRow,
+	});
+	const ladder = (() => {
+		if (fact === null || cutSpan < 0) return null;
+		let actions = 0;
+		let worked = 0;
+		for (const segment of segments) {
+			if (segment.afterAnswer) continue;
+			actions += segment.facts.actions;
+			worked += segment.facts.durationS ?? 0;
+		}
+		return { actions, worked, partial: !fact.complete, failed: fact.failed };
+	})();
 	const hidden = segments.flatMap((segment) => segment.rows);
 	return {
 		key: run.key,
@@ -1539,10 +1723,16 @@ function planRun(
 		recordIds: runRows.map((row) => row.record.id),
 		hidden,
 		gap: segments[0]?.gap ?? "item",
-		facts: factsOf(turnRows, {
-			partial: !run.opensWithUserRow,
-			headLoaded: run.opensWithUserRow,
-		}),
+		facts:
+			ladder === null
+				? turnFacts
+				: {
+						...turnFacts,
+						actions: ladder.actions,
+						durationS: ladder.worked >= 1 ? ladder.worked : null,
+						partial: ladder.partial,
+						failed: ladder.failed,
+					},
 		answerId,
 		stampTs: answerAt === null ? null : records[answerAt].ts,
 		segments,

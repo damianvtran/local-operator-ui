@@ -344,6 +344,13 @@ const snapshotFrame = (
 		coldReason,
 		hasMore = true,
 		cursorMissing = false,
+		/**
+		 * The open-frame fields an `open_frame=1` page carries
+		 * (`docs/DESKTOP_API.md`, "The open frame"), spread onto the page verbatim.
+		 * Named as the wire names them, so a case reads like the answer it stands
+		 * in for rather than like a test fixture.
+		 */
+		openFrame,
 	},
 ) => ({
 	session_id: SESSION_A,
@@ -390,7 +397,12 @@ const snapshotFrame = (
 				attention: null,
 			},
 		},
-		history: { entries, has_more: hasMore, cursor_missing: cursorMissing },
+		history: {
+			entries,
+			has_more: hasMore,
+			cursor_missing: cursorMissing,
+			...openFrame,
+		},
 		cold: false,
 		/*
 		 * Absent unless a case names it: an older backend sends no token, and the
@@ -3911,5 +3923,59 @@ test("a page still out for A when the reader goes A -> B -> A is dropped, and ca
 		oldest,
 		plan.rows[plan.rows.length - SNAPSHOT_PAGE].id,
 		`the cursor comes from the snapshot, not the stale page (was ${before}, now ${oldest})`,
+	);
+});
+
+/*
+ * THE OPEN-FRAME ARM'S OWN GUARANTEE (C1, lane U1). `pageIsPaintedTail` grew a
+ * third proof: a page whose facts ATTEST where it begins - the oldest run's
+ * opening user row, on a page the turn-aligned cut was allowed to extend -
+ * covers a held row strictly inside its own span, so a pane whose rows lie
+ * inside the page owes no read even when the id-overlap test cannot say so.
+ *
+ * The widening is only safe if it does NOT reach the case it was built beside:
+ * a cached block sitting BEHIND such a page is #876's seam, and #883's whole
+ * point is that a reopen must still walk back to it. This case is that pair:
+ * the same reopen, the same 300 rows written while away, an open-frame page
+ * whose start IS attested - and the read count is unchanged from the base
+ * walk, because every held row is at or below the attested start.
+ */
+test("an open-frame page that attests its start still walks to the cached block behind it (#883)", async () => {
+	const { transcript, painted, reads } = await driveCachedReopen({
+		away: 300,
+		returnPage: (t) => {
+			const entries = t.tail(REOPEN_PAGE).entries;
+			const newest = entries[entries.length - 1];
+			return {
+				cursor: t.rows[t.rows.length - REOPEN_PAGE - 1].id,
+				entries,
+				coldReason: null,
+				openFrame: {
+					runs_state: "ready",
+					head_cut: false,
+					runs: [
+						{
+							run_key: recordIdOf(newest),
+							opening_user_id: entries[0].id,
+							closing_answer_id: recordIdOf(newest),
+							settled: true,
+							action_count: 3,
+							worked_seconds: 12,
+							complete: true,
+						},
+					],
+				},
+			};
+		},
+	});
+	assert.deepEqual(
+		painted,
+		transcript.rows.map(recordIdOf).slice(REOPEN_TOTAL - REOPEN_PAGE),
+		"no range is dropped: every held row and every row written while away",
+	);
+	assert.equal(
+		reads,
+		4,
+		"the facts attest the page's start, not the pane's block - the walk runs as it does without them",
 	);
 });
