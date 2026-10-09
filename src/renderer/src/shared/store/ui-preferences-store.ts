@@ -31,6 +31,20 @@ import { DEFAULT_THEME } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import {
+	MEMORY_PANES,
+	type MemoryPane,
+	type RightSlotMemory,
+	isDraftMemoryKey,
+	isMemoryPane,
+	memoryCarry,
+	memoryPaneFlag,
+	memoryProject,
+	memoryPut,
+	memoryRead,
+	memoryRemove,
+	memorySanitize,
+} from "./right-slot-memory";
 
 /**
  * Which menu a recents ring belongs to. The two rosters are separate lists of
@@ -81,7 +95,17 @@ type UiPreferencesState = {
 	setCommandPaletteQuery: (query: string) => void;
 
 	/**
-	 * Whether the canvas is open (global, not per conversation)
+	 * Whether the canvas is open FOR THE ACTIVE CONVERSATION (issue #894).
+	 *
+	 * The flag is the live PROJECTION of one conversation's memory
+	 * (`rightSlotMemory`, read through `memoryProject`), not a global preference:
+	 * each conversation remembers its own occupant, `bindRightSlotKey` writes these
+	 * four flags from the memory when the active conversation moves, and a read here
+	 * is therefore "what this conversation had open" — which is what arrives on the
+	 * same frame as the transcript it belongs to. A conversation with no memory
+	 * projects to all four false, so a switch shows no panel rather than the
+	 * previous conversation's. UNBOUND (`rightSlotKey === undefined`) the flag
+	 * behaves exactly as the global boolean it always was — see `rightSlotKey`.
 	 */
 	isCanvasOpen: boolean;
 
@@ -96,13 +120,13 @@ type UiPreferencesState = {
 	setCanvasOpen: (open: boolean) => void;
 
 	/**
-	 * Whether the run panel is open (global, not per conversation)
+	 * Whether the run panel is open FOR THE ACTIVE CONVERSATION.
 	 *
-	 * Global and persisted for the same reason `isCanvasOpen` is: the pane is a
-	 * property of the window's right slot rather than of one conversation, so
-	 * switching conversations keeps it open on the new session's data. What is
-	 * NOT global is the reader's open child, which belongs to one session's
-	 * lineage and is therefore the panel component's own state.
+	 * Per conversation for the same reason `isCanvasOpen` is (issue #894): the pane
+	 * holds one conversation's roster, prose and jobs, so returning to a
+	 * conversation restores it and a conversation that never opened it shows none.
+	 * What was ALREADY per conversation is the reader's open child, which belongs to
+	 * one session's lineage and is therefore the panel component's own state.
 	 */
 	isRunPanelOpen: boolean;
 
@@ -120,15 +144,16 @@ type UiPreferencesState = {
 	setRunPanelOpen: (open: boolean) => void;
 
 	/**
-	 * Whether the conversation's browser pane is open (global, not per conversation).
+	 * Whether the conversation's browser pane is open (per conversation).
 	 *
 	 * The third occupant of the window's right slot, added by the
-	 * conversation-scoped browser (`docs/design/browser-approval-ux.md` 7.3). Global
-	 * and persisted for the reason `isRunPanelOpen` states — the pane is a property
-	 * of the window's slot rather than of one conversation — and that is exactly why
-	 * it SURVIVES a conversation switch with its content following the session: the
-	 * user opened it deliberately, and a pane that closed itself because they
-	 * changed conversation would be the persistence the operator asked for, undone.
+	 * conversation-scoped browser (`docs/design/browser-approval-ux.md` 7.3).
+	 * Per conversation since issue #894, and that is a CORRECTION of the rule this
+	 * comment used to state: the pane's TABS were the conversation's while the pane
+	 * being open was the window's, so a session with no browser of its own was
+	 * handed one it had never opened. A session with no entry now opens with no
+	 * panel — the browser included, since opening one is a rail press or a header
+	 * trigger.
 	 */
 	isBrowserPaneOpen: boolean;
 
@@ -142,6 +167,78 @@ type UiPreferencesState = {
 	 * @param open - Whether the browser pane should be open
 	 */
 	setBrowserPaneOpen: (open: boolean) => void;
+
+	/**
+	 * THE CONVERSATION THE SLOT IS BOUND TO (issue #894), and the tri-state that
+	 * decides whether the memory applies at all.
+	 *
+	 * - `undefined` — UNBOUND. Nothing binds the slot, so every setter behaves
+	 *   exactly as the global boolean it always was: stories, the desktop rigs that
+	 *   drive the store directly, and the mini window (which mounts the composer but
+	 *   not the chat surface) are the states that ship this way. `rightSlotMemory`
+	 *   is inert and no conversation is remembered.
+	 * - `null` — BOUND, NO CONVERSATION. The chat surface is up on a route with
+	 *   neither a session nor a draft, so nothing is projected and nothing is
+	 *   written: the slot is empty and stays empty rather than holding some other
+	 *   conversation's pane.
+	 * - a string — the conversation identity the memory is read and written under,
+	 *   which is the identity the chat surface keys these panes on
+	 *   (`panelIdentityOfView`).
+	 *
+	 * NOT PERSISTED: the bind is a launch's own act, redone by the follower before
+	 * the first render, and a persisted key would name a conversation from the
+	 * previous process.
+	 */
+	rightSlotKey: string | null | undefined;
+
+	/**
+	 * WHAT EACH CONVERSATION REMEMBERS — newest last, at most one entry per
+	 * conversation (`right-slot-memory.ts` states the shape and its rules).
+	 *
+	 * The four durable flags above are its PROJECTION for the bound conversation: a
+	 * claim writes the entry and the flag in one `set()`, a close deletes the entry
+	 * it owns, and `bindRightSlotKey` writes all four flags from the memory when the
+	 * active conversation moves. PERSISTED (minus the `draft:` entries, which are a
+	 * launch's own rows), so returning to a conversation after a relaunch restores
+	 * its panel without a frame of the wrong one.
+	 */
+	rightSlotMemory: RightSlotMemory;
+
+	/**
+	 * THE ONE-SHOT HANDOVER from the four GLOBAL flags this store used to persist
+	 * (issue #894's migration).
+	 *
+	 * A profile upgrading from a blob that carried (say) `isCanvasOpen: true` was
+	 * looking at a canvas, and the memory that replaces it has no conversation to
+	 * attach to yet - the active one is only known once the conversations store has
+	 * hydrated. So the migration lifts the flag into this field and the FIRST bind
+	 * plants it: on a session id with no entry, because a session outlives the
+	 * launch; never on a `draft:` key, because a fresh draft is a new conversation
+	 * whose own panel state is "none"; and HELD across a bind to `null`, which is a
+	 * route with no conversation rather than a decision about one. Consumed once,
+	 * then null for the rest of the profile's life.
+	 */
+	rightSlotLegacySeed: MemoryPane | null;
+
+	/**
+	 * Bind the slot to a conversation, and project that conversation's memory onto
+	 * the four flags. Called by `right-slot-follower.ts` alone, and by the suites.
+	 *
+	 * ONE `set()`, always: the slot's readers are the rail, the header, the lane and
+	 * the slot's own width resolver, and a bind that moved the flags in two steps
+	 * would paint one of them a frame of the wrong pane on every conversation
+	 * switch.
+	 *
+	 * @param key - The conversation identity, or `null` for a bound route with no
+	 *   conversation
+	 * @param options.admittedFrom - The draft key this bind is an ADMISSION of, so
+	 *   the draft's entry moves to the session id in the same step as the identity
+	 *   flip (see `right-slot-follower.ts`)
+	 */
+	bindRightSlotKey: (
+		key: string | null,
+		options?: { admittedFrom?: string },
+	) => void;
 
 	/**
 	 * The width of the right slot in pixels, shared by every pane that can
@@ -187,9 +284,10 @@ type UiPreferencesState = {
 	 * WHAT THE CURRENT ROUTE CAN DRAW INTO THE SLOT - the half of the slot's truth
 	 * the flags cannot answer alone (#868).
 	 *
-	 * THE FLAGS ARE PREFERENCES; AN OCCUPIED SLOT IS SOMETHING ON SCREEN. The five
-	 * pane flags persist across conversation switches and relaunches ON PURPOSE
-	 * (see `isAskDrawerOpen` and its siblings), so a true flag is not a promise
+	 * THE FLAGS ARE PREFERENCES; AN OCCUPIED SLOT IS SOMETHING ON SCREEN. The four
+	 * durable flags survive a relaunch as the bound conversation's memory (see
+	 * `rightSlotMemory`), and the asks flag is a launch's own event (see
+	 * `isAskDrawerOpen`), so a true flag is not a promise
 	 * that a pane is mounted: the run panel only mounts with `runDetails` (a draft
 	 * has none), the session-scoped asks drawer only mounts with a conversation to
 	 * show, and a route that mounts no chat surface at all (settings, agents)
@@ -228,9 +326,11 @@ type UiPreferencesState = {
 	 * so a `useState` inside it forgot the choice on every switch - while the pane
 	 * itself stayed OPEN at the width the user had dragged, which is the same slot
 	 * persisting and its lens not persisting. `isBrowserPaneOpen` and
-	 * `rightSlotWidth` state the rule this joins: what belongs to the window's
-	 * slot survives a conversation switch, and only what belongs to the conversation
-	 * (the tabs, and the session a `"conversation"` choice resolves to) follows it.
+	 * `rightSlotWidth` is the rule this joins: the shared width is the window's and
+	 * survives a conversation switch, while the pane's OCCUPANT — and, within a
+	 * conversation, the tabs and the session a `"conversation"` choice resolves to
+	 * — is the conversation's (issue #894 moved the occupant to the conversation;
+	 * the width deliberately did not move, #677).
 	 */
 	browserPaneScope: BrowserPaneScope;
 
@@ -243,9 +343,9 @@ type UiPreferencesState = {
 	/**
 	 * Whether the console pane is open (the FOURTH occupant of the right slot).
 	 *
-	 * Global and persisted, for the reason `isBrowserPaneOpen` states rather than
-	 * beside it: the pane belongs to the window's slot, so it survives a
-	 * conversation switch with its content following the session - and it is
+	 * Per conversation, for the reason `isBrowserPaneOpen` states: a console's
+	 * surfaces belong to exactly one session (design 6.3), so remembering the pane
+	 * per conversation is the same rule its content already followed — and it is
 	 * one-at-a-time with its three siblings through `claimRightSlot`.
 	 */
 	isConsolePaneOpen: boolean;
@@ -276,28 +376,38 @@ type UiPreferencesState = {
 	 *
 	 * AND IT SURVIVES A CONVERSATION SWITCH (agent review round 1, M2).
 	 * `SessionPanel` is keyed by the conversation, so the old in-component `useState`
-	 * reset to closed on every switch; a store flag does not, and neither do the four
-	 * siblings. So switching A -> B with the drawer open shows B's queue in a surface
-	 * that was opened for A. (That used to ALSO put B's composer into answer mode for a
-	 * question nobody opened, which was the sharp edge of keeping it; with the routing
-	 * retired the composer is unaffected and what remains is a drawer the user can see
-	 * and close.)
+	 * reset to closed on every switch; a store flag does not. So switching A -> B with
+	 * the drawer open shows B's queue in a surface that was opened for A. (That used
+	 * to ALSO put B's composer into answer mode for a question nobody opened, which
+	 * was the sharp edge of keeping it; with the routing retired the composer is
+	 * unaffected and what remains is a drawer the user can see and close.)
 	 *
-	 * IT IS KEPT, deliberately, because the four siblings behave the same way (a
-	 * canvas opened for one conversation stays open over the next) and a second rule
-	 * for one pane is how the five drift apart. The design note's §4.4 sentence
-	 * ("opening from inside a session can never present another session's questions")
-	 * is about the ENTRY POINT rather than the flag: what the chip opens is always
-	 * this conversation's queue.
+	 * IT IS KEPT, deliberately, and since issue #894 the drawer is the ONLY one of the
+	 * five that follows the user across conversations: the four durable panes are
+	 * per-conversation memory now, while a DRAWER is a reading of the queue you have
+	 * right now rather than a document you keep open (the same distinction that keeps
+	 * this flag out of persistence). The design note's §4.4 sentence ("opening from
+	 * inside a session can never present another session's questions") is about the
+	 * ENTRY POINT rather than the flag: what the chip opens is always this
+	 * conversation's queue.
 	 *
 	 * AND IT BORROWS THE SLOT RATHER THAN TAKING IT (UX round 1, U6). The exclusivity
-	 * above means opening the drawer writes `isCanvasOpen: false` - and that flag IS
-	 * persisted, so a peek at a queue used to survive as a preference the user never
-	 * expressed: a relaunch restored a window with the canvas gone. The pane the
-	 * drawer displaced is recorded in `askDrawerEvictedPane` and written back when the
-	 * drawer closes, so the durable pane is never actually lost to a transient
-	 * surface. An explicit choice made while the drawer is up (any of the four
-	 * claiming the slot) forfeits the record: the user replaced the pane on purpose,
+	 * above means opening the drawer writes `isCanvasOpen: false`, so the pane it
+	 * displaced has to be GIVEN BACK rather than lost to a transient surface. HOW it
+	 * is given back is the one thing issue #894 split in two:
+	 *
+	 * - BOUND (`rightSlotKey` is a string) the memory already holds the displaced
+	 *   pane, so no record is written and a close restores `memoryProject` - which
+	 *   also fixes the case the per-run record could not: a fleet drawer opened over
+	 *   A's canvas and closed over B used to put A's canvas onto B, because the drawer
+	 *   is the one occupant that travels;
+	 * - UNBOUND (stories, the desktop rigs, the mini window) `askDrawerEvictedPane`
+	 *   is written and read back exactly as it was, because there is no memory to hold
+	 *   the answer and a behaviour change there would touch surfaces this feature does
+	 *   not.
+	 *
+	 * In both modes an explicit choice made while the drawer is up (any of the four
+	 * claiming the slot) forfeits the borrow: the user replaced the pane on purpose,
 	 * and returning it later would be the surface resurrecting itself.
 	 */
 	isAskDrawerOpen: boolean;
@@ -1018,6 +1128,47 @@ const claimRightSlot = (
 	askDrawerEvictedPane: null,
 });
 
+/**
+ * THE MEMORY SIDE OF A CLAIM, in bound mode.
+ *
+ * `claimRightSlot` answers "which flag wins"; this answers the other half of the
+ * same act — "and what does the bound conversation remember now?". They are
+ * written together in one `set()` at every durable call site. Both are no-ops in
+ * unbound mode, which is what keeps stories, the desktop rigs and the mini window
+ * on the global-flag behaviour byte for byte.
+ */
+const claimedMemory = (
+	state: Pick<UiPreferencesState, "rightSlotKey" | "rightSlotMemory">,
+	pane: MemoryPane,
+): Partial<Pick<UiPreferencesState, "rightSlotMemory">> => {
+	const key = state.rightSlotKey;
+	if (typeof key !== "string") return {};
+	return { rightSlotMemory: memoryPut(state.rightSlotMemory, key, pane) };
+};
+
+/**
+ * THE MEMORY SIDE OF A CLOSE: the entry goes ONLY when it is this pane's.
+ *
+ * The guard is the rule rather than a tidy-up. A close is reached by the pane's
+ * own control AND by effects that run on a mount, a route change or a remount, so
+ * a conversation switch can deliver a close for the conversation the user has
+ * LEFT — and deleting unconditionally would then delete the entry the
+ * destination's own bind is entitled to restore, which is the #894 defect in
+ * reverse. "This conversation has X open" is the only thing a close may retract,
+ * so it is the only thing checked.
+ */
+const releasedMemory = (
+	state: Pick<UiPreferencesState, "rightSlotKey" | "rightSlotMemory">,
+	pane: MemoryPane,
+): Partial<Pick<UiPreferencesState, "rightSlotMemory">> => {
+	const key = state.rightSlotKey;
+	if (typeof key !== "string") return {};
+	const memory = memoryRemove(state.rightSlotMemory, key, pane);
+	// The same array back means nothing was retracted: say nothing rather than
+	// hand `persist` a write that changes no byte.
+	return memory === state.rightSlotMemory ? {} : { rightSlotMemory: memory };
+};
+
 export type RightSlotPane = "canvas" | "run" | "browser" | "console" | "ask";
 
 /**
@@ -1048,6 +1199,14 @@ export const EMPTY_RIGHT_SLOT_ROUTE: RightSlotRouteFacts = Object.freeze({
 	runDetails: false,
 	session: false,
 });
+
+/**
+ * The empty memory: a launch knows no conversation's history yet. Shared so the
+ * store's initial state and a suite's reset are one value rather than a fresh
+ * array each — and FROZEN, because the list is read by every projection while
+ * only the pure writers below ever replace it.
+ */
+export const EMPTY_RIGHT_SLOT_MEMORY: RightSlotMemory = Object.freeze([]);
 
 /**
  * The width the right slot gives the open pane, for the row it shares with the
@@ -1463,8 +1622,18 @@ const EMPTY_CONSOLE_UNSEEN: ConsoleUnseenMark[] = [];
  * tag (a shipped number is spent - a profile stored at it will never run its step
  * again, so a new step needs a new number). Then add the new step under its own
  * `if (version < N)` in `migrateUiPreferences`; never edit a shipped step.
+ *
+ * THE RULE WAS EXERCISED ONCE, BY THE #894 FOLD: this branch first carried the
+ * right slot's memory as v2 beside a duplicate of #895's step; the fold onto
+ * `main` keeps #895's v2 (the copy that shipped) and renumbers the memory step
+ * to v3, dropping the duplicate.
+ *
+ * v3 (#894) IS THE RIGHT SLOT'S MEMORY: the four global pane flags stop being
+ * persisted and become the bound conversation's projection, so the step lifts
+ * whichever flag was true into `rightSlotLegacySeed` - the one-shot seed the
+ * first bind plants - and deletes the four keys.
  */
-export const UI_PREFERENCES_VERSION = 2;
+export const UI_PREFERENCES_VERSION = 3;
 
 /**
  * The keys v2 removes from a stored blob. A list rather than a `delete
@@ -1503,6 +1672,14 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			isRunPanelOpen: false,
 			isBrowserPaneOpen: false,
 			isConsolePaneOpen: false,
+			/*
+			 * The memory the four flags above are the projection of (issue #894):
+			 * nothing bound, nothing remembered, no handed-over seed. See
+			 * `rightSlotKey` for what each of the three means.
+			 */
+			rightSlotKey: undefined,
+			rightSlotMemory: EMPTY_RIGHT_SLOT_MEMORY,
+			rightSlotLegacySeed: null,
 			isAskDrawerOpen: false,
 			askDrawerScope: "session",
 			askDrawerEvictedPane: null,
@@ -1581,57 +1758,110 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			},
 
 			setCanvasOpen: (open: boolean) => {
-				set(open ? claimRightSlot("isCanvasOpen") : { isCanvasOpen: false });
+				set((state) =>
+					open
+						? {
+								...claimRightSlot("isCanvasOpen"),
+								...claimedMemory(state, "canvas"),
+							}
+						: { isCanvasOpen: false, ...releasedMemory(state, "canvas") },
+				);
 			},
 
 			setRunPanelOpen: (open: boolean) => {
-				set(
-					open ? claimRightSlot("isRunPanelOpen") : { isRunPanelOpen: false },
+				set((state) =>
+					open
+						? {
+								...claimRightSlot("isRunPanelOpen"),
+								...claimedMemory(state, "run"),
+							}
+						: { isRunPanelOpen: false, ...releasedMemory(state, "run") },
 				);
 			},
 
 			setBrowserPaneOpen: (open: boolean) => {
-				set(
+				set((state) =>
 					open
-						? claimRightSlot("isBrowserPaneOpen")
-						: { isBrowserPaneOpen: false },
+						? {
+								...claimRightSlot("isBrowserPaneOpen"),
+								...claimedMemory(state, "browser"),
+							}
+						: {
+								isBrowserPaneOpen: false,
+								...releasedMemory(state, "browser"),
+							},
 				);
 			},
 
 			setConsolePaneOpen: (open: boolean) => {
-				set(
+				set((state) =>
 					open
-						? claimRightSlot("isConsolePaneOpen")
-						: { isConsolePaneOpen: false },
+						? {
+								...claimRightSlot("isConsolePaneOpen"),
+								...claimedMemory(state, "console"),
+							}
+						: {
+								isConsolePaneOpen: false,
+								...releasedMemory(state, "console"),
+							},
 				);
 			},
 
 			setAskDrawerOpen: (open: boolean, scope: AskScope) => {
-				set((state) =>
-					open
-						? {
-								...claimRightSlot("isAskDrawerOpen"),
-								/*
-								 * WHICH QUEUE, written with the flag so the two are one update: a
-								 * surface reading `isAskDrawerOpen` between the two writes would
-								 * paint the previous scope's rows for a frame.
-								 */
-								askDrawerScope: scope,
-								/*
-								 * WHAT IT DISPLACED, not just that it won: the pane that held the slot a
-								 * moment ago is the one a close owes back, and only this call site knows it
-								 * (the claim itself sees only its own name).
-								 */
-								askDrawerEvictedPane: evictedFlag(state),
-							}
-						: {
-								isAskDrawerOpen: false,
-								...(state.askDrawerEvictedPane === null
-									? null
-									: { [state.askDrawerEvictedPane]: true }),
-								askDrawerEvictedPane: null,
-							},
-				);
+				set((state) => {
+					const bound = typeof state.rightSlotKey === "string";
+					if (open) {
+						return {
+							...claimRightSlot("isAskDrawerOpen"),
+							/*
+							 * WHICH QUEUE, written with the flag so the two are one update: a
+							 * surface reading `isAskDrawerOpen` between the two writes would
+							 * paint the previous scope's rows for a frame.
+							 */
+							askDrawerScope: scope,
+							/*
+							 * WHAT IT DISPLACED, and ONLY in unbound mode. Bound, the memory already
+							 * holds the displaced pane for this conversation, so a second record would
+							 * be a second answer to give back — and the wrong one the moment the
+							 * drawer outlives a switch (see `isAskDrawerOpen`).
+							 */
+							askDrawerEvictedPane: bound ? null : evictedFlag(state),
+						};
+					}
+					const closed = {
+						isAskDrawerOpen: false,
+						askDrawerEvictedPane: null,
+					} as const;
+					if (bound) {
+						/*
+						 * BOUND: the close restores the BOUND conversation's own memory, which is
+						 * the fix for a fleet drawer opened over A's canvas and closed over B —
+						 * the per-run record could only ever name A's pane.
+						 */
+						return {
+							...closed,
+							...memoryProject(
+								state.rightSlotMemory,
+								state.rightSlotKey,
+								false,
+							),
+						};
+					}
+					if (state.rightSlotKey === null) {
+						/*
+						 * BOUND, NO CONVERSATION: nothing was displaced (the open wrote no
+						 * record) and there is no memory to restore, so the close only clears the
+						 * flag.
+						 */
+						return closed;
+					}
+					return {
+						...closed,
+						...(state.askDrawerEvictedPane === null
+							? null
+							: { [state.askDrawerEvictedPane]: true }),
+					};
+				});
 			},
 
 			setConsoleActiveSurface: (surface: string | null) => {
@@ -1694,6 +1924,52 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				});
 			},
 
+			bindRightSlotKey: (key, options) => {
+				set((state) => {
+					let memory = state.rightSlotMemory;
+					let seed = state.rightSlotLegacySeed;
+					const admittedFrom = options?.admittedFrom;
+					if (typeof admittedFrom === "string" && typeof key === "string") {
+						/*
+						 * THE ADMISSION CARRY, and it is what keeps the remount invisible: the
+						 * draft's entry moves to the session id so the panel is still open in the
+						 * first frame after the identity flip, rather than closing and reopening.
+						 */
+						memory = memoryCarry(memory, admittedFrom, key);
+					}
+					if (key === null) {
+						/*
+						 * A ROUTE WITH NO CONVERSATION IS NOT A DECISION ABOUT ONE, so the seed
+						 * is HELD rather than planted on nothing or dropped: the session it was
+						 * meant for is the one the app is about to open.
+						 */
+					} else if (isDraftMemoryKey(key)) {
+						/*
+						 * A DRAFT IS A LAUNCH'S OWN ROW — the canonical store mints a fresh key
+						 * per launch — so the seed does not land here: the panel would come back
+						 * hanging off a conversation nothing can reach. Dropped, deliberately
+						 * (the decision record's "a first launch on a draft drops it").
+						 */
+						seed = null;
+					} else if (seed !== null && memoryRead(memory, key) === undefined) {
+						/*
+						 * THE HANDOVER, once: the legacy flag becomes this session's entry and the
+						 * seed is spent. A session that already has an entry keeps its own answer
+						 * — the user's choice in THIS profile outranks a flag from a launch that
+						 * predates the memory.
+						 */
+						memory = memoryPut(memory, key, seed);
+						seed = null;
+					}
+					return {
+						rightSlotKey: key,
+						rightSlotMemory: memory,
+						rightSlotLegacySeed: seed,
+						...memoryProject(memory, key, state.isAskDrawerOpen),
+					};
+				});
+			},
+
 			setRightSlotRoute: (route: RightSlotRouteFacts) => {
 				/*
 				 * THE EQUALITY GUARD SITS BEFORE `set`, not inside its updater (agent review
@@ -1731,6 +2007,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				set((state) => ({
 					// The claim is spread rather than restated: see `claimRightSlot`.
 					...claimRightSlot("isRunPanelOpen"),
+					...claimedMemory(state, "run"),
 					runPanelReveal: {
 						section,
 						nonce: (state.runPanelReveal?.nonce ?? 0) + 1,
@@ -1838,21 +2115,43 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 		{
 			name: "ui-preferences-storage",
 			/*
-			 * v1 IS THE ONE-SLOT WIDTH (#677): a v0 blob carries the four
-			 * per-surface widths, v1 carries `rightSlotWidth`, and
-			 * `migrateUiPreferences` below seeds the shared value from whichever
-			 * legacy width the user had actually dragged. Version 0 is also every
-			 * existing blob's version, so the migration runs exactly once per
-			 * profile — and a blob that never carried any of the four keys seeds
-			 * to 0, which is "every pane opens at the one default". v2 is
-			 * `UI_PREFERENCES_VERSION`'s own note (#895).
+			 * THREE STEPS, each its own guard, and each one written to be IDEMPOTENT so
+			 * the chain survives a rebase onto a sibling lane's step (the reason this is
+			 * a chain of `if (version < n)` guards rather than one early return per
+			 * version).
+			 *
+			 * - v1 IS THE ONE-SLOT WIDTH (#677): a v0 blob carries the four
+			 *   per-surface widths, v1 carries `rightSlotWidth`, and
+			 *   `migrateUiPreferences` below seeds the shared value from whichever
+			 *   legacy width the user had actually dragged. Version 0 is also every
+			 *   existing blob's version, so the migration runs exactly once per profile -
+			 *   and a blob that never carried any of the four keys seeds to 0, which is
+			 *   "every pane opens at the one default" (#872 follow-up; before it, unset
+			 *   resolved to a different number per pane and the slot re-sized on every
+			 *   switch).
+			 * - v2 IS `chatMeasureWidth`'S REMOVAL (#895), kept exactly as `main` wrote
+			 *   it: this branch carried a duplicate of that step while it had to land
+			 *   before that lane, and the duplicate is dropped here rather than
+			 *   re-spelled - the chain keeps the copy that shipped. This is the step
+			 *   `UI_PREFERENCES_VERSION`'s own note cross-references.
+			 * - v3 IS THE RIGHT SLOT'S MEMORY (issue #894): the four global pane flags
+			 *   stop being persisted and become the bound conversation's projection, so
+			 *   the migration lifts whichever flag was true into `rightSlotLegacySeed`
+			 *   and deletes all four keys. See `migrateUiPreferences`.
 			 */
 			version: UI_PREFERENCES_VERSION,
 			migrate: migrateUiPreferences,
 			/*
-			 * `runPanelReveal` is deliberately NOT persisted, and this is the only
-			 * field the filter touches — every other field keeps the default "persist
-			 * it" behaviour this store has always had.
+			 * WHAT A HYDRATED BLOB MAY SAY, and this is where the memory is sanitised
+			 * rather than trusted (see `mergePersistedUiPreferences`): the field is read
+			 * back through `memorySanitize`, so a hand edit, a downgrade or a
+			 * half-written blob cannot put a conversation nobody can reach or a pane the
+			 * store does not have into the memory.
+			 *
+			 * `runPanelReveal` is deliberately NOT persisted, and the FILTER is where
+			 * that lives — every other field keeps the default "persist it" behaviour
+			 * this store has always had, apart from the four flags and the bind key
+			 * (see `persistedUiPreferences`).
 			 *
 			 * Persisting it would outlive the event it describes: a request that was
 			 * still pending when the app closed would be restored on the next launch
@@ -1868,6 +2167,8 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			 * being restored and the user opening it.
 			 */
 			partialize: persistedUiPreferences,
+
+			merge: mergePersistedUiPreferences,
 		},
 	),
 );
@@ -1964,6 +2265,22 @@ export function parseConversationRecents(value: unknown): string[] {
  * Both are consumed by the pane that answers them, so persisting either would outlive the event it describes
  * — a launch would restore a request nobody made and act on it, which for the console
  * means running a shell in a conversation every time the app started.
+ *
+ * THE FOUR DURABLE FLAGS LEAVE THE BLOB ENTIRELY (issue #894). They used to be the
+ * preference — "the window had a canvas open" — and they are now the bound
+ * conversation's PROJECTION, which `rightSlotMemory` is the record of. Persisting
+ * both would be two answers to "what was open", and the one that survived a relaunch
+ * cannot say WHICH conversation it belonged to. So the flags and the bind key are
+ * omitted, `rightSlotMemory` and `rightSlotLegacySeed` are what go to disk, and the
+ * `draft:` entries are filtered out of the memory on the way (a draft is a launch's
+ * own row — see `right-slot-memory.ts`).
+ *
+ * AND THAT RETIRES THE DRAWER'S WRITE-BACK. It used to add the displaced pane's flag
+ * back into the blob when the drawer was open, because the drawer's claim had zeroed a
+ * PERSISTED flag. The displaced pane now lives in the bound conversation's memory
+ * (which is persisted, and correctly per conversation), and in unbound mode the write
+ * never reaches disk at all — so re-adding a flag key here would be the only way a flag
+ * could come back, and it would come back without a conversation to belong to.
  */
 export function persistedUiPreferences<
 	T extends {
@@ -1973,6 +2290,12 @@ export function persistedUiPreferences<
 		askDrawerScope: unknown;
 		askDrawerEvictedPane: unknown;
 		rightSlotRoute: unknown;
+		isCanvasOpen: unknown;
+		isRunPanelOpen: unknown;
+		isBrowserPaneOpen: unknown;
+		isConsolePaneOpen: unknown;
+		rightSlotKey: unknown;
+		rightSlotMemory: RightSlotMemory;
 	},
 >(
 	state: T,
@@ -1984,43 +2307,122 @@ export function persistedUiPreferences<
 	| "askDrawerScope"
 	| "askDrawerEvictedPane"
 	| "rightSlotRoute"
+	| "isCanvasOpen"
+	| "isRunPanelOpen"
+	| "isBrowserPaneOpen"
+	| "isConsolePaneOpen"
+	| "rightSlotKey"
 > {
 	const {
 		runPanelReveal: _pending,
 		consoleOpenIntent: _intent,
 		/*
-		 * THE ASKS DRAWER IS THE ONE SLOT FLAG NOT PERSISTED, and it is excluded here
-		 * rather than in the flag's own note because this is where the decision is
-		 * executed (see `isAskDrawerOpen` for the argument): a relaunch must not reopen
-		 * a surface nobody opened this launch. The other four stay persisted because
-		 * they hold documents and viewers the user was reading; the drawer holds a
-		 * queue, which the session republishes on its own.
+		 * THE ASKS DRAWER IS NOT PERSISTED, and it is excluded here rather than in the
+		 * flag's own note because this is where the decision is executed (see
+		 * `isAskDrawerOpen` for the argument): a relaunch must not reopen a surface nobody
+		 * opened this launch. The four durable panes are restored from the memory, which
+		 * is per conversation; the drawer holds a queue, which the session republishes on
+		 * its own.
 		 */
-		isAskDrawerOpen: drawerOpen,
+		isAskDrawerOpen: _drawerOpen,
 		askDrawerScope: _scope,
-		askDrawerEvictedPane: evicted,
+		askDrawerEvictedPane: _evicted,
 		/*
 		 * THE ROUTE FACTS JOIN THE REQUESTS RATHER THAN THE PREFERENCES: they
 		 * describe where the app IS, not what the user chose, and the next launch
 		 * publishes its own (see `rightSlotRoute`).
 		 */
 		rightSlotRoute: _route,
+		/*
+		 * THE FLAGS AND THE BIND, excluded together because they are one fact: the flags
+		 * are `rightSlotMemory`'s projection for `rightSlotKey`, and a persisted key
+		 * would name a conversation from the previous process (see `rightSlotKey`).
+		 */
+		isCanvasOpen: _canvas,
+		isRunPanelOpen: _run,
+		isBrowserPaneOpen: _browser,
+		isConsolePaneOpen: _console,
+		rightSlotKey: _key,
 		...persisted
 	} = state;
 	/*
-	 * AND THE PANE IT WAS BORROWING FROM COMES BACK (UX round 1, U6). The drawer's
-	 * claim wrote `isCanvasOpen: false` (or the run/browser/console equivalent) to hold
-	 * the slot, and that flag is persisted - so quitting while the drawer happened to
-	 * be open would restore a window missing a document the user had open. The live
-	 * flags are the truth when the drawer is closed; while it is open, the record says
-	 * what the flags were before the borrow, and that is what goes to disk.
-	 *
-	 * The record itself is dropped (`askDrawerEvictedPane` is not persisted): it means
-	 * something only within the run that made it, exactly as `runPanelReveal`'s
-	 * request does.
+	 * The memory is read off the state rather than destructured out of it: `persisted`
+	 * then keeps the field's own type, so the filtered value below is an OVERRIDE of a
+	 * present field rather than a property the omit-type says cannot exist.
 	 */
-	if (drawerOpen !== true || typeof evicted !== "string") return persisted;
-	return { ...persisted, [evicted]: true } as typeof persisted;
+	return {
+		...persisted,
+		rightSlotMemory: persistableRightSlotMemory(state.rightSlotMemory),
+	};
+}
+
+/**
+ * The memory entries that go to disk: everything but the `draft:` ones, and an
+ * empty list for a state that has no memory at all to filter.
+ *
+ * A draft key is a LAUNCH's row — the canonical store mints a fresh `draft:<uuid>`
+ * per launch — so a persisted entry under one would restore a panel onto a
+ * conversation that no longer exists. Filtered here, at the write, because that is
+ * the only boundary a draft entry crosses; `memorySanitize` drops them again on the
+ * way back for symmetry, so neither direction depends on the other having run.
+ *
+ * THE ABSENT MEMORY IS ANSWERED, NOT THROWN ON (the desktop suite found this on
+ * CI: the header-identity fixture builds the slice from a partial state, and
+ * reading `.filter` off the missing field threw). A fixture, or a reconstructed
+ * snapshot, has no memory; the honest persisted output is an empty one, and a
+ * serializer must not treat "we could not find out" as fatal. The store's own
+ * state always carries the field, so the app's output is unchanged.
+ */
+function persistableRightSlotMemory(
+	memory: RightSlotMemory | undefined,
+): RightSlotMemory {
+	return (memory ?? EMPTY_RIGHT_SLOT_MEMORY).filter(
+		([key]) => !isDraftMemoryKey(key),
+	);
+}
+
+/**
+ * What a hydrated blob is allowed to say about the slot (issue #894).
+ *
+ * `merge` rather than the default shallow spread, for what disk is allowed to say:
+ *
+ * - `rightSlotMemory` is read back through `memorySanitize`, because `localStorage`
+ *   is not a trusted input — a hand edit, a downgrade or a half-written blob must not
+ *   put a key nothing can reach or a pane the store does not have into the memory;
+ * - `rightSlotLegacySeed` is read through `isMemoryPane` for the same reason (agent
+ *   review round 1, F2): `...rest` used to carry any value a hand-edited blob held
+ *   straight to the first bind, which planted it as an entry the projection can
+ *   never draw. The seed is a pane name or nothing;
+ * - the four flag keys are dropped if a blob still carries one. The migration
+ *   deletes them, so this only fires for a blob that never went through it (a hand
+ *   edit, or a build-order accident), and what it prevents is the one thing the
+ *   inversion cannot allow: a flag set on screen with no conversation holding it.
+ *
+ * `rightSlotKey` is taken from the CURRENT state rather than the blob, which is
+ * `undefined`: the bind is a launch's own act, redone by the follower before the first
+ * render, and a restored key would name a conversation this process has not read.
+ */
+export function mergePersistedUiPreferences(
+	persisted: unknown,
+	current: UiPreferencesState,
+): UiPreferencesState {
+	const blob = (persisted ?? {}) as Partial<UiPreferencesState>;
+	const {
+		isCanvasOpen: _canvas,
+		isRunPanelOpen: _run,
+		isBrowserPaneOpen: _browser,
+		isConsolePaneOpen: _console,
+		...rest
+	} = blob;
+	return {
+		...current,
+		...rest,
+		rightSlotKey: current.rightSlotKey,
+		rightSlotMemory: memorySanitize(blob.rightSlotMemory),
+		rightSlotLegacySeed: isMemoryPane(blob.rightSlotLegacySeed)
+			? blob.rightSlotLegacySeed
+			: null,
+	};
 }
 
 /**
@@ -2029,6 +2431,12 @@ export function persistedUiPreferences<
  * Pure and exported so `scripts/right-slot-width.test.mjs` drives it directly:
  * the steps are decisions about what a user's saved profile becomes, and they
  * run once per profile, so a wrong one is not found by trying the app twice.
+ *
+ * ONE GUARD PER VERSION, IN ORDER, EACH WRITTEN TO BE IDEMPOTENT. The chain (rather
+ * than an early return per version) is deliberate: these steps land from two lanes
+ * against the same file, and a step that is a `delete` of a key the later blob cannot
+ * carry is a trivial conflict to reconcile. See the `version` field for what each one
+ * is.
  */
 export function migrateUiPreferences(
 	persisted: unknown,
@@ -2045,6 +2453,32 @@ export function migrateUiPreferences(
 	 */
 	if (version < 1) foldLegacyPaneWidths(blob);
 	if (version < 2) for (const key of RETIRED_IN_V2) delete blob[key];
+	if (version < 3) {
+		/*
+		 * v3 LIFTS THE FOUR GLOBAL FLAGS INTO THE ONE-SHOT SEED, and deletes them
+		 * UNCONDITIONALLY - the second half is what makes the step idempotent and what
+		 * stops a flag from being persisted again by the fresh blob's first write.
+		 *
+		 * WHICH FLAG WINS, when a hand-edited or oddly-written blob carries more than
+		 * one: the slot's own precedence order (canvas -> run -> browser -> console),
+		 * read from `MEMORY_PANES`, which is the same order `activeRightSlotPane`
+		 * answers with. Two orders would be two answers to "which pane was up?".
+		 *
+		 * The seed is what the FIRST BIND plants on the session it lands on (see
+		 * `rightSlotLegacySeed`): the migrated profile was looking at that pane, so
+		 * opening onto a conversation with nothing is the honest reading, and a first
+		 * launch onto a draft drops it.
+		 */
+		let seed: MemoryPane | null = null;
+		for (const pane of MEMORY_PANES) {
+			if (blob[memoryPaneFlag(pane)] === true) {
+				seed = pane;
+				break;
+			}
+		}
+		if (seed !== null) blob.rightSlotLegacySeed = seed;
+		for (const pane of MEMORY_PANES) delete blob[memoryPaneFlag(pane)];
+	}
 	return blob;
 }
 

@@ -1,0 +1,47 @@
+{
+  "probed": "the two cells whose discrimination rides `right-slot-memory.test.mjs`'s (A) and (C)",
+  "ref": "15a7a4ed5228c77417ab4e1e64033b5854121d2c",
+  "worktree": "/Users/damian/.local-operator/sessions/0d8c333a38f9/scratchpad/slot-before-1008e",
+  "cells": {
+    "A": {
+      "expected": {
+        "isCanvasOpen": false
+      },
+      "actual": {
+        "isCanvasOpen": true
+      },
+      "note": "a conversation that never opened a pane must not show one",
+      "pass": false
+    },
+    "C": {
+      "checks": {
+        "backOnA": {
+          "expected": {
+            "isCanvasOpen": true,
+            "isBrowserPaneOpen": false
+          },
+          "actual": {
+            "isCanvasOpen": false,
+            "isBrowserPaneOpen": true
+          },
+          "note": "back on A the canvas must return; `main` still shows the other conversation's browser",
+          "pass": false
+        },
+        "closeOnB": {
+          "expected": {
+            "isCanvasOpen": false,
+            "isBrowserPaneOpen": true
+          },
+          "actual": {
+            "isCanvasOpen": false,
+            "isBrowserPaneOpen": true
+          },
+          "note": "closing the drawer on B gives B its own browser back (true on both trees)",
+          "pass": true
+        }
+      },
+      "pass": false
+    }
+  },
+  "verdict": "FAIL-ON-THIS-TREE: 2 of 2 cells fail (the old global behaviour)"
+}
