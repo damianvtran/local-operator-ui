@@ -1,4 +1,6 @@
+import type { AskScope } from "@features/chat/ask-queue";
 import { canvasToggleCap } from "@features/chat/canvas-shortcut";
+import { AsksScopeIcon } from "@features/chat/components/asks/asks-scope-icon";
 import type {
 	McpServerRow,
 	RunDetails,
@@ -23,6 +25,7 @@ import {
 import { PanelRailItem, PanelRailRovingContext } from "./panel-rail-item";
 import {
 	PANEL_RAIL_ORDER,
+	askRailLabels,
 	browserRailLabels,
 	canvasRailLabels,
 	consoleRailLabels,
@@ -41,6 +44,27 @@ export type PanelRailProps = {
 	readerChildId: string | null;
 	/** Approvals THIS conversation's agent waits on (the browser item's badge). */
 	browserAttentionCount: number;
+	/**
+	 * Whether a host offers the asks door (the header trigger's old "offered" rule,
+	 * moved here with the control in #896): the item is PRESENT iff this is true,
+	 * absent-not-disabled otherwise, exactly as the four siblings follow the route.
+	 */
+	askOffered: boolean;
+	/**
+	 * The outstanding asks the item's scope carries - what the BADGE counts.
+	 *
+	 * THE OUTSTANDING SET, decided rather than inherited (design round 1, D3, moved
+	 * here with the mark in #896): open + moved-on rows are still the user's to act
+	 * on, so the mark is an attention mark; a settled ask offers nothing and its
+	 * number belongs to the drawer's filter, not a door. The number is the drawer's
+	 * own view (`askQueueView.open` / `fleetAsks.outstanding`), not a second tally.
+	 */
+	askCount: number;
+	/**
+	 * Which queue the item's press opens - this conversation's or the fleet's -
+	 * riding the same `setAskDrawerOpen(open, scope)` seam the drawer reads.
+	 */
+	askScope: AskScope;
 	/** Console completions not yet looked at, and whether they still pulse. */
 	consoleUnseenCount: number;
 	consoleUnseenPulsing: boolean;
@@ -51,7 +75,7 @@ export type PanelRailProps = {
 const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End"]);
 
 /**
- * THE PANEL RAIL (#872): the four doors to the window's right slot, as one
+ * THE PANEL RAIL (#872, #896): the five doors to the window's right slot, as one
  * vertical column at the window's trailing edge.
  *
  * WHAT IT REPLACES. The Run details, Browser, Console and Canvas triggers lived in
@@ -59,22 +83,28 @@ const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End"]);
  * (the browser stayed and flipped its label; the console and canvas hid while their
  * pane was open), shed in a ladder as the header narrowed, and so answered "which
  * panel is this" nowhere. A rail is permanent: it never sheds, every item is always
- * where it was, and the lit item IS the answer. The header keeps its `...` menu
- * (the four entries, for keyboard users and narrow windows) and the Asks trigger.
+ * where it was, and the lit item IS the answer. The header keeps its `...` menu,
+ * which now carries ALL FIVE panel entries for keyboard users and narrow windows
+ * (#896 gave it the asks row when the asks trigger - the last door still in the
+ * header - moved onto the rail with its four siblings).
  *
  * LIT MEANS "THIS IS WHAT IS DRAWN IN THE SLOT", not "this flag is up". The store's
  * flags are preferences that outlive the route that can draw them; the selector
  * (`resolveDrawnRightSlotPane`) answers from the claim AND the route facts, so a
  * claimed-but-undrawable pane lights nothing. While the Asks drawer holds the slot
- * the answer is `"ask"` and NO item is lit: lighting the pane the drawer covers
- * would say something false, and pressing any item is a swap (`claimRightSlot`
- * clears the ask flag and forfeits the borrow).
+ * the answer is `"ask"` and the ASK ITEM is the lit one (#896): the drawer is what
+ * is drawn, so the item that opened it says so - before the move this state lit
+ * nothing on the rail and the only sign of what was open lived in the header. A
+ * press on any OTHER item is a swap (`claimRightSlot` clears the ask flag and
+ * forfeits the borrow); a press on the ask item itself is the same door in both
+ * directions - it closes its own drawer, or replaces the other scope's open.
  *
  * A PANEL THE ROUTE CANNOT DRAW IS ABSENT, NOT DISABLED (the house rule the console
  * door already followed: "a control that cannot act is not shown"): Run details
- * without run details, Console without a conversation. Browser and Canvas open on a
- * draft today, so they are always present. The order is fixed, so the only movement
- * is those two appearing.
+ * without run details, Console without a conversation, the asks item when no host
+ * offers a door (`askOffered`, the header trigger's old rule). Browser and Canvas
+ * open on a draft today, so they are always present. The order is fixed, so the
+ * only movement is those appearing.
  *
  * ONE TAB STOP. It is a vertical `toolbar`: the roving item carries `tabIndex=0`,
  * ArrowUp/ArrowDown walk the items, Home/End take the ends, and focus entering the
@@ -93,6 +123,9 @@ export const PanelRail: FC<PanelRailProps> = ({
 	listOnScreen,
 	readerChildId,
 	browserAttentionCount,
+	askOffered,
+	askCount,
+	askScope,
 	consoleUnseenCount,
 	consoleUnseenPulsing,
 	fileCount,
@@ -101,10 +134,13 @@ export const PanelRail: FC<PanelRailProps> = ({
 	const isBrowserPaneOpen = useUiPreferencesStore((s) => s.isBrowserPaneOpen);
 	const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+	const isAskDrawerOpen = useUiPreferencesStore((s) => s.isAskDrawerOpen);
+	const askDrawerScope = useUiPreferencesStore((s) => s.askDrawerScope);
 	const setBrowserPaneOpen = useUiPreferencesStore((s) => s.setBrowserPaneOpen);
 	const setConsolePaneOpen = useUiPreferencesStore((s) => s.setConsolePaneOpen);
 	const requestConsoleOpen = useUiPreferencesStore((s) => s.requestConsoleOpen);
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
+	const setAskDrawerOpen = useUiPreferencesStore((s) => s.setAskDrawerOpen);
 
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	const [present, setPresent] = useState<ReadonlySet<string>>(
@@ -189,6 +225,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	const browser = browserRailLabels(drawn === "browser", browserAttentionCount);
+	const ask = askRailLabels(drawn === "ask", askScope, askCount);
 	const terminal = consoleRailLabels(drawn === "console", consoleUnseenCount);
 	const canvas = canvasRailLabels(
 		drawn === "canvas",
@@ -260,6 +297,68 @@ export const PanelRail: FC<PanelRailProps> = ({
 						listOnScreen={listOnScreen}
 						readerChildId={readerChildId}
 					/>
+				)}
+				{askOffered && (
+					<PanelRailItem
+						id="ask"
+						label={ask.tooltip}
+						ariaLabel={ask.aria}
+						/*
+						 * THE STATE THE HEADER COULD NOT SHOW (#896): while the drawer holds
+						 * the slot the answer is `"ask"` (`resolveDrawnRightSlotPane`), and this
+						 * is the item that says so. Before the move the asks door sat in the
+						 * header and the rail lit nothing for this state - the defect the issue
+						 * names.
+						 */
+						pressed={drawn === "ask"}
+						/*
+						 * THE HEADER'S OLD DOOR, verbatim: toggle in THIS item's scope - a press
+						 * while this scope is open closes, a press while the OTHER scope is open
+						 * replaces the scope (open=true for this one), and the store's
+						 * `claimRightSlot` does the swap clearing. The state is read live (the
+						 * file's own idiom) rather than latched when the item rendered.
+						 */
+						onClick={() =>
+							setAskDrawerOpen(
+								!(isAskDrawerOpen && askDrawerScope === askScope),
+								askScope,
+							)
+						}
+						/* The drawer's focus-return anchor and Escape door (#820/#835): the tag
+						   moved with the control, value unchanged - four harnesses, the tour and
+						   the driver attach to it. */
+						data-tour-tag="ask-pane-trigger"
+						/* WHICH QUEUE THIS DOOR OPENS, on the element, so the scope-legibility
+						   claim (UX round 1, U3) is assertable rather than read off pixels: a rig
+						   compares this attribute AND the glyph between the two scopes. */
+						data-ask-scope={askScope}
+					>
+						<AsksScopeIcon scope={askScope} aria-hidden={true} />
+						{askCount > 0 && (
+							/*
+							 * THE COUNT IN THE RAIL'S OWN REGISTER (#896, the issue's "styled like
+							 * the Browser and Console counts already on the rail"). The browser
+							 * item's block above states the geometry (design round 1, D4) and why
+							 * the ring names `surface`; this mark is that block's numbers with the
+							 * ask lane's count, capped at the glyph exactly as the browser's is.
+							 * The header trigger wore the quieter `attentionQuiet`; on the rail
+							 * the sibling count wears `attention`, and the issue asks this mark to
+							 * match it - if the design round prefers the quiet register, this
+							 * block is where the change lands.
+							 */
+							<span className="pointer-events-none absolute -top-0.5 -right-0.5 flex">
+								<Badge
+									variant="attention"
+									shape="pill"
+									size="count"
+									className="h-3.5 min-w-3.5 px-0.75 text-meta-sm leading-none ring-2 ring-surface"
+									data-tour-tag="ask-pane-badge"
+								>
+									{countLabel(askCount, 9)}
+								</Badge>
+							</span>
+						)}
+					</PanelRailItem>
 				)}
 				<PanelRailItem
 					id="browser"
