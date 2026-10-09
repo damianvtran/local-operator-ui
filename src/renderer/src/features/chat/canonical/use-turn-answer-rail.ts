@@ -34,16 +34,24 @@ import { TURN_ANSWER_RAIL_KEY } from "./turn-answer-rail";
 import { useDisplayFlag } from "./use-display-flag";
 
 export function useTurnAnswerRail(): boolean {
-	const { reading, available } = useDisplayFlag(TURN_ANSWER_RAIL_KEY);
+	const { reading, plane } = useDisplayFlag(TURN_ANSWER_RAIL_KEY);
 	/*
-	 * THE PLANE'S ANSWER OUTRANKS EVERYTHING ELSE HERE, which is the arm this
-	 * hook has carried since agent review round 1 (R3) and QA round 1 (Q-1):
-	 * `enabled: false` only stops the query REFETCHING, so a plane that stops
-	 * advertising `settings` would otherwise keep drawing the rail off a payload
-	 * it can no longer stand behind. `available` is false while the capability
-	 * query is unanswered as well, which is the fail-closed direction this hook
-	 * has always had (`if (!enabled) return false`).
+	 * THE PLANE'S ANSWERED DENIAL OUTRANKS EVERYTHING ELSE HERE, which is the arm
+	 * this hook has carried since agent review round 1 (R3) and QA round 1 (Q-1):
+	 * `enabled: false` only stops the query REFETCHING, so a plane that ANSWERS
+	 * without advertising `settings` would otherwise keep drawing the rail off a
+	 * payload it can no longer stand behind. A plane that cannot be asked at all
+	 * (`failed`) is the same fail-closed direction, and is what a tree without
+	 * this module does.
+	 *
+	 * AND "NO ANSWER YET" IS NOT THAT. Reading both as off was this hook's own
+	 * defect: the mark was absent from the commit that painted the answer and
+	 * appeared one commit later on the capability answer alone — the rail half of
+	 * the flicker this lane exists to remove (agent review round 1, R2, measured
+	 * `marks=0` then `marks=1` on the capability answer while the settings read was
+	 * still owed). While the plane is `unknown` or the registry read is in flight,
+	 * the seed's reading stands, and the rail rides the commit that paints the rows.
 	 */
-	if (!available) return false;
+	if (plane === "denied" || plane === "failed") return false;
 	return reading !== "off";
 }

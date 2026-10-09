@@ -3322,6 +3322,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		// `transcript-pane.ts`, which is the one authority for them.
 		missing,
 		stale,
+		/*
+		 * The filter's own hold, as the pane's sixth fact (design round 1, D1):
+		 * while the settings answer is owed the rows this flag governs are withheld
+		 * from all three paint sites, so the pane's claim has to be "loading" rather
+		 * than "nothing" - otherwise the reader is shown an empty conversation for
+		 * the length of the hold. See `transcript-pane.ts`.
+		 */
+		filterHeld: holdFiltering,
 	};
 	const holdPlaceholder = transcriptPaneHoldsPlaceholder(paneView);
 	const collapsed = transcriptPaneCollapses(paneView);

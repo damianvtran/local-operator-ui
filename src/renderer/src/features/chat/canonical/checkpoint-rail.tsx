@@ -11,6 +11,7 @@ import {
 	useCallback,
 	useEffect,
 	useId,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -416,7 +417,20 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 	 * end-active dash read luma 77 against 238 for an interior active mark,
 	 * dimmer than its rest neighbours in 59/59 palettes).
 	 */
-	useEffect(() => {
+	/*
+	 * A LAYOUT EFFECT, NOT A PASSIVE ONE, and that is design round 1's D2: the
+	 * mark column painted at the frame's own scrollTop 0 and then slid to the
+	 * active mark's offset once this ran, so the rail's first paint was not its
+	 * settled geometry - measured as uniform whole-column slides of -428 px (S5),
+	 * -2428 px (S6) and -1868 px (S3) between the first painted frame and the
+	 * settled one, in the exact proportion of the ticks lying below the active
+	 * mark. Painting early at the wrong offset moves the flicker rather than
+	 * removing it; writing the offset in a layout effect lands it in the SAME
+	 * commit as the `activeId` that caused it, so nothing observable moves. The
+	 * write is this frame's own `scrollTop` only - it never touches an ancestor,
+	 * which is what `scrollIntoView` would do.
+	 */
+	useLayoutEffect(() => {
 		if (activeId === null) return;
 		const frame = frameRef.current;
 		const element = tickElements.current.get(activeId);

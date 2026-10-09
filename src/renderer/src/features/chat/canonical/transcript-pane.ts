@@ -24,6 +24,16 @@ import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-
  *   the SAME composed fact the composer band reads - one question, two readers.
  * - `recordCount`: is there anything to scroll? Records rather than rendered
  *   rows, because a record that renders to no row is still nothing to scroll.
+ * - `filterHeld` (added with the settings hold): is the cross-session filter
+ *   still PENDING, with the rows it governs withheld from this render? This is
+ *   the one input that is not a fact about the conversation but about what the
+ *   pane is WILLING to paint, and it exists because withholding rows and claiming
+ *   nothing is not a state a reader can read (design round 1, D1, measured: with
+ *   a seeded window and a stalled settings answer the loading line was gone by
+ *   t0+239 ms and the pane showed 0 rows and no claim at all until t0+947 ms - it
+ *   read as an EMPTY CONVERSATION, not a loading one). Held rows are exactly the
+ *   case where the placeholder is the true claim: the pane has the records and is
+ *   deliberately not painting them yet.
  * - `admittedSend` (added with the wait line): has this pane admitted a send the
  *   owner has not answered yet? The pane's own fact, and the only one of the
  *   five that no record can carry - the optimistic echo is not durable history,
@@ -221,6 +231,13 @@ export function canonicalTranscriptTerminal(view: {
 
 /** The state every decision in this module reads. */
 export type TranscriptPaneView = {
+	/**
+	 * The cross-session filter is pending and its rows are withheld from this
+	 * render (`canonical-transcript.tsx`'s `holdFiltering`). Optional so every
+	 * existing caller and test fixture stays valid, and read strictly `=== true`
+	 * like the other flags in this file.
+	 */
+	filterHeld?: boolean;
 	/** Where the stream is. Only the pane's own statement depends on it. */
 	status: CanonicalTranscriptStatus;
 	/** The published failure, if any: the notice's copy and its control. */
@@ -282,11 +299,10 @@ export type TranscriptPaneView = {
 export function transcriptPaneHoldsPlaceholder(
 	view: TranscriptPaneView,
 ): boolean {
+	if (view.admittedSend || paneStatement(view)) return false;
+	if (view.filterHeld === true) return true;
 	return (
-		view.awaitingHydration &&
-		!view.admittedSend &&
-		!paneStatement(view) &&
-		(view.recordCount === 0 || view.stale === true)
+		view.awaitingHydration && (view.recordCount === 0 || view.stale === true)
 	);
 }
 

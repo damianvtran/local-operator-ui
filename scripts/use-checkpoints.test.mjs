@@ -34,7 +34,7 @@ const bundle = await build({
 			 * one, of a blip). freshWindow is how an arm says so, and the arms
 			 * that are ABOUT the memory do not call it.
 			 */
-			export { __resetCheckpointManifestCache, loadCheckpointManifest } from "./src/renderer/src/features/chat/canonical/checkpoint-manifest-cache";
+			export { __resetCheckpointManifestCache, CHECKPOINT_MANIFEST_FRESH_MS, loadCheckpointManifest } from "./src/renderer/src/features/chat/canonical/checkpoint-manifest-cache";
 			/*
 			 * The probe: one client render per mount, and every render hands its
 			 * answer to the tracker so a test reads the LAST one after any
@@ -94,6 +94,7 @@ const {
 	Harness,
 	CHECKPOINT_POLL_INTERVAL_MS,
 	__resetCheckpointManifestCache,
+	CHECKPOINT_MANIFEST_FRESH_MS,
 	loadCheckpointManifest,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -613,6 +614,79 @@ test("one request serves the open-time prefetch and the hook's own mount", async
 		await prefetched;
 		assert.equal(reads, 1, "one request for both asks");
 		assert.equal(rail.latest().state, "ready");
+	} finally {
+		await rail.close();
+	}
+});
+
+test("a manifest this open already read is SERVED, not re-read (QA round 1, Q-2)", async (t) => {
+	/*
+	 * The measured regression: the open spent TWO `/checkpoints` reads on 29/36
+	 * opens against base's one, because the cache deduped only while the first
+	 * read was still IN FLIGHT - once the open's own read settled, the mount's ask
+	 * started a second request for a fact this window had read milliseconds
+	 * earlier. The memory it seeds from is that answer, so the first load of the
+	 * epoch serves from it instead.
+	 */
+	let reads = 0;
+	const requests = backend(() => {
+		reads += 1;
+		return Promise.resolve(manifest([completion()]));
+	});
+	/* The open's own read, settled BEFORE the mount - the 29/36 shape. */
+	await loadCheckpointManifest("s1");
+	assert.equal(reads, 1, "the open read the manifest");
+
+	const rail = await mountHook("s1");
+	try {
+		await rail.flush();
+		assert.equal(
+			reads,
+			1,
+			"the mount did not re-read what this open had just read",
+		);
+		assert.equal(rail.latest().state, "ready", "it paints the memory");
+		assert.equal(
+			rail.latest().checkpoints.length,
+			1,
+			"and the memory's ticks are the rail's",
+		);
+	} finally {
+		await rail.close();
+	}
+});
+
+test("a manifest from an earlier visit is still VERIFIED (QA round 1, Q-2's control)", async (t) => {
+	/*
+	 * The other half of the gate, and the reason it is a clock rather than a flag:
+	 * a memory older than the freshness window is a previous visit's, so the
+	 * mount's first load asks for the authority as it always did. Without this the
+	 * arm above could be passing because the refresh was removed rather than
+	 * because a FRESH memory was recognised.
+	 */
+	let reads = 0;
+	const requests = backend(() => {
+		reads += 1;
+		return Promise.resolve(manifest([completion()]));
+	});
+	await loadCheckpointManifest("s1");
+	const readAt = Date.now();
+	/*
+	 * The clock is moved BEFORE the mount, because the mount is where the first
+	 * load runs (an effect inside `mountHook`): installing the mock afterwards
+	 * would leave the gate reading the real clock and the arm would pass for the
+	 * wrong reason.
+	 */
+	t.mock.method(Date, "now", () => readAt + CHECKPOINT_MANIFEST_FRESH_MS + 1);
+	const rail = await mountHook("s1");
+	try {
+		await rail.flush();
+		assert.equal(reads, 2, "an old memory is refreshed, not trusted");
+		assert.equal(
+			rail.latest().state,
+			"ready",
+			"and the rail stays painted throughout",
+		);
 	} finally {
 		await rail.close();
 	}

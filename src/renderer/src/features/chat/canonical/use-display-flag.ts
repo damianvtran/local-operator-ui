@@ -28,9 +28,11 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+	DISPLAY_HOLD_BUDGET_MS,
 	type DisplayFlagReading,
+	type DisplayPlane,
 	displayFlagReading,
 	readDisplaySeed,
 	readFlagValue,
@@ -62,39 +64,55 @@ export type DisplayFlagView = {
 	/** The persisted last-known value, when the seed had one. */
 	seed: boolean | undefined;
 	/**
-	 * The PLANE's own answer to "does this backend serve the registry at all",
-	 * false while the capability query is unanswered.
+	 * What the PLANE (this window's backend) has said about the registry: no answer
+	 * yet, answered denied, answered with the registry, or unanswerable.
 	 *
-	 * It is returned rather than folded into `reading` because the two flags
-	 * read it differently and both behaviours are pinned: the rail is OFF for a
-	 * plane that stops advertising `settings`, cached payload or not (its own
+	 * It is returned rather than folded into `reading` because the two flags read
+	 * it differently and both behaviours are pinned: the rail is OFF for a plane
+	 * that ANSWERS without advertising `settings`, cached payload or not (its own
 	 * arm, agent review round 1 R3 / QA round 1 Q-1, and
-	 * `turn-collapse-behaviour.test.mjs`'s matrix), while the cross-session
-	 * filter has never consulted it — an answered payload that says
-	 * `hide_cross_session` is true keeps hiding. The reading below is the same
-	 * fact for both; the arm belongs to the reader.
+	 * `turn-collapse-behaviour.test.mjs`'s matrix), while the cross-session filter
+	 * has never consulted it — an answered payload that says
+	 * `hide_cross_session` is true keeps hiding. The reading below is the same fact
+	 * for both; the arm belongs to the reader, and `DisplayPlane` states why
+	 * "unknown" is its own state rather than part of "denied".
 	 */
-	available: boolean;
+	plane: DisplayPlane;
 };
 
 /**
  * Read one display flag.
  *
- * THE `owed` TERM IS DELIBERATELY NARROW: a first answer is in flight for a
- * plane that advertises the registry, and no answer is in hand. That is the one
- * window in which painting the flag's effect and taking it back is a flicker the
- * app can still choose to avoid, and the ONLY window a seeded-on flag is held
- * for (`displayFlagReading`). It is bounded by the transport's own deadline, so
- * a plane that never answers releases the hold rather than holding forever; a
- * capability answer that never comes does not open the window at all, because
- * without it there is no request to be in flight.
+ * THE `owed` TERM IS "AN ANSWER COULD STILL ARRIVE", in either leg: the capability
+ * answer for a plane that has not spoken yet, or the registry read for a plane
+ * that advertises it. That is the window in which painting the flag's effect and
+ * taking it back is a flicker the app can choose to avoid — and it is bounded
+ * twice over, by the query's own settle and by `DISPLAY_HOLD_BUDGET_MS`, so a
+ * backend that never answers releases the hold rather than holding (agent review
+ * round 1, R1: the deadline was NOT a bound, because a retried read keeps
+ * `owed` true for up to 51 s and the pane showed nothing for all of it).
+ *
+ * THE BUDGET IS ARMED ONCE PER MOUNT AND LATCHED. A hold that could re-arm would
+ * let a retry gap or a late answer re-blank a pane that had already painted —
+ * the flicker in its worse direction. Once spent, the seed's own reading paints
+ * (`displayFlagReading` step 4) and no later event can withhold the records
+ * again; a background refetch (a save in the Settings page) therefore never
+ * blanks a transcript that is already on screen.
  */
 export function useDisplayFlag(key: string): DisplayFlagView {
 	const capabilities = useDesktopCapabilities();
-	const available = desktopFeatureEnabled(capabilities.data, "settings");
+	const advertised = desktopFeatureEnabled(capabilities.data, "settings");
+	const plane: DisplayPlane =
+		capabilities.data !== undefined
+			? advertised
+				? "available"
+				: "denied"
+			: capabilities.isError
+				? "failed"
+				: "unknown";
 	const settingsQuery = useQuery({
 		...backendSettingsQueryOptions(),
-		enabled: available,
+		enabled: advertised,
 	});
 	const settings = settingsQuery.data?.settings;
 	/*
@@ -108,15 +126,46 @@ export function useDisplayFlag(key: string): DisplayFlagView {
 	}, [settings]);
 	const seed = useMemo(() => seededFlag(readDisplaySeed(), key), [key]);
 	const answer = readFlagValue(settings, key);
+	/*
+	 * A `status === "pending"` read is the whole "still owed" fact, and it is
+	 * deliberately NOT `fetchStatus`: a v5 retry dispatches its failure without
+	 * touching `fetchStatus`, so the narrower term went false between attempts and
+	 * the hold would have ended and re-armed inside one read (agent review round 1,
+	 * R1's own citation). `pending` covers the disabled query too (a plane that has
+	 * not answered yet), which is the state R2 asks for.
+	 *
+	 * `failureCount === 0` IS PART OF IT, and it is what makes a FAILING read stop
+	 * holding. React-query retries inside the same `pending` status, so a read that
+	 * throws on the first attempt keeps `status: "pending"` for the retry delay and
+	 * the hold would have blanked the transcript for ~1 s (the review's own P6:
+	 * blank samples from +116 ms to +886 ms). A read that has already failed is not
+	 * an answer that is still coming; the seed's reading paints, and a later
+	 * attempt that succeeds still replaces it.
+	 */
+	const owed =
+		plane !== "denied" &&
+		plane !== "failed" &&
+		answer === undefined &&
+		settingsQuery.status === "pending" &&
+		settingsQuery.failureCount === 0;
+	const [holdSpent, setHoldSpent] = useState(false);
+	useEffect(() => {
+		if (holdSpent || !owed || seed !== true) return;
+		/*
+		 * `window.setTimeout`, not the bare global: the renderer's own timer, and the
+		 * one the rigs that stub window timers (the load-sequence rig does, so its
+		 * deadline and poll timers never fire) can therefore hold still for a
+		 * deterministic arm.
+		 */
+		const timer = window.setTimeout(
+			() => setHoldSpent(true),
+			DISPLAY_HOLD_BUDGET_MS,
+		);
+		return () => window.clearTimeout(timer);
+	}, [holdSpent, owed, seed]);
 	return {
-		reading: displayFlagReading({
-			answer,
-			seed,
-			owed:
-				settingsQuery.data === undefined &&
-				settingsQuery.fetchStatus === "fetching",
-		}),
+		reading: displayFlagReading({ answer, seed, plane, owed, holdSpent }),
 		seed,
-		available,
+		plane,
 	};
 }

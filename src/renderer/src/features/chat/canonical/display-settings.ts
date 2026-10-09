@@ -29,12 +29,31 @@
  * reads are persisted, which is kilobytes rather than the ~106 KB payload the
  * registry itself ships.
  *
- * SWITCHING BACKENDS IS THE ONE SKEW IT CANNOT SEE. The settings query is keyed
- * `["desktop", "settings"]` with no backend dimension, so a seed written
- * against one daemon is read against whatever daemon this window is paired to
- * next. The value is a display preference, the window it is wrong for is one
- * render, and the alternative — a backend identity the registry does not carry
- * — would be a second identity to keep true. Recorded rather than solved.
+ * SWITCHING BACKENDS IS THE ONE SKEW IT CANNOT SEE, and the review's R4 is
+ * right that "one render" was optimistic for the FILTER (agent review round 1,
+ * R4). The settings query is keyed `["desktop", "settings"]` with no backend
+ * dimension, so a seed written against one daemon is read against whatever
+ * daemon this window is paired to next — and the window it is wrong for lasts
+ * until an answer lands, which for a failing read is the query's own retry
+ * window, not a frame.
+ *
+ * WHAT BOUNDS IT NOW, and why not a key: the two answers that say anything
+ * truthful about this window's backend both drop the seed outright — a plane
+ * that ANSWERS `denied`, and a plane that cannot be asked at all (`failed`) —
+ * and any successful registry read replaces it with the answer, in both
+ * directions. What does NOT drop it is a read that FAILS: a failed read resolves
+ * to the seed's own reading, exactly as a spent hold budget does, because the
+ * alternative (treating a failure as "show everything") re-opens the very class
+ * this lane removes — the rows appear, and a later successful read removes them
+ * again. That leaves a re-pair to a backend whose registry read keeps failing as
+ * the one window this memory is wrong for, and the review's R4 is right to name
+ * it; the window is bounded by whichever of those two plane answers comes first,
+ * and it is not bounded by a clock, because the memory is meant to outlive opens.
+ * The alternative (keying the memory) has nothing truthful to key on: the wire's
+ * only backend-shaped field is `desktop_contract`, a VERSION, which two daemons
+ * can share and one daemon changes on upgrade — an identity that is neither
+ * unique nor stable is worse than a recorded bound. Recorded, and bounded by
+ * the plane's own answers, rather than keyed.
  */
 
 import { TURN_ANSWER_RAIL_KEY } from "./turn-answer-rail";
@@ -73,15 +92,52 @@ export type DisplaySeed = Readonly<Record<string, unknown>>;
 /**
  * What a display flag reads as, for the surfaces that paint before its answer.
  *
- * - `on` / `off` are answers (an answer, the seed standing in for one).
+ * - `on` / `off` are answers (an answer, or the seed standing in for one).
  * - `pending` is the ONE state the seed alone cannot settle: the flag was last
  *   known TRUE and the answer that could contradict it has not arrived. It is
  *   the state the transcript holds its records in, because painting a row the
  *   last known setting says is hidden and then removing it is the flicker this
  *   file exists to remove. It is never produced from a last-known FALSE: an
  *   operator who has the option off pays nothing for the answer.
+ *
+ * `pending` HAS A BUDGET (`DISPLAY_HOLD_BUDGET_MS`) and the rule below takes the
+ * fact that it is spent: an answer that never arrives must not leave the pane
+ * withheld forever, and the seed's own reading is the safe way out — see
+ * `displayFlagReading`.
  */
 export type DisplayFlagReading = "on" | "off" | "pending";
+
+/**
+ * How long the `pending` hold may last before the seed's own reading paints.
+ *
+ * WHAT BOUNDS IT, MEASURED. The registry read answers in 8-16 ms on a quiet host
+ * and answered in 103 ms in the worst pass of this lane's own bench (host load
+ * 200, 100-row registry), and the page it is racing lands 90-160 ms into an
+ * open. 150 ms is the slowest answer this lane has measured plus half again, and
+ * it keeps the worst-case first contentful frame inside the operator's 300 ms
+ * target for every shape measured so far.
+ *
+ * WHY IT MUST EXIST AT ALL. Without it the hold lasts as long as the query does,
+ * and the query inherits the app's retry: transport deadline 20 s, renderer
+ * timeout 25 s, one retry 1 s apart (agent review round 1, R1 — 51 s of a BLANK
+ * transcript, with no rows, no working line and no placeholder, since the hold
+ * is not the pane's loading arm). The hold is worth a few tens of milliseconds
+ * and never worth a second.
+ */
+export const DISPLAY_HOLD_BUDGET_MS = 150;
+
+/**
+ * What the PLANE (the backend this window is paired to) has said about the
+ * settings registry.
+ *
+ * FOUR STATES BECAUSE THREE WOULD MERGE TWO DIFFERENT FACTS (agent review round
+ * 1, R2): "no answer yet" and "answered denied" are not the same, and collapsing
+ * them made the rail's mark appear a commit after the rows whenever the
+ * capability answer landed late. `denied` and `failed` are the fail-closed pair
+ * (the plane has no registry, or cannot be asked); `unknown` still owes an
+ * answer, so the seed may stand in for it.
+ */
+export type DisplayPlane = "unknown" | "denied" | "available" | "failed";
 
 /** A registry row, as much of it as this module reads. */
 type SettingRow = { key: string; value?: unknown };
@@ -182,27 +238,39 @@ export function seededFlag(
  *
  * The order is the whole rule, and each step is a different question:
  *
- * 1. `available === false` — the plane does not advertise `settings`, so there
- *    is no answer to wait for and the seed has nothing to stand in for. Off
- *    (fail-closed; the contract every reader of these keys already states).
- * 2. an answer exists — it wins, in both directions. This is what makes the
- *    seed a head start rather than a second truth.
- * 3. no answer, and one is still owed, and the seed says ON — `pending`: the
- *    caller may withhold what the flag governs for this window, because
- *    painting it and taking it back is the flicker being removed.
- * 4. otherwise — the seed's own value, or off. An owed answer for a flag that
- *    was last known OFF is NOT pending: that operator paints now and, if the
- *    far side has changed the value since, follows it in one later commit.
+ * 1. an answer exists — it wins, in both directions. This is what makes the seed
+ *    a head start rather than a second truth.
+ * 2. the plane is `denied` or `failed` — off. A backend that does not advertise
+ *    the registry has no opinion a seed could honestly stand in for, and neither
+ *    has one that cannot be asked; both are the fail-closed direction every
+ *    reader of these keys already stated, and both are exactly what a tree
+ *    without this module does.
+ * 3. no answer, one is still owed, the seed says ON, and the hold's budget is
+ *    not spent — `pending`: the caller may withhold what the flag governs for
+ *    this window, because painting it and taking it back is the flicker being
+ *    removed.
+ * 4. otherwise — the seed's own value, or off. Three cases land here and all
+ *    three want the same thing: the hold's budget is spent (the answer is late;
+ *    painting the last-known reading is safe for the FILTER, since a later `off`
+ *    can only ADD rows back, never take one away), the read has FAILED (the same
+ *    reasoning — dropping to "show everything" would re-open the removal class on
+ *    the read that succeeds afterwards), and the flag was last known OFF (that
+ *    operator paints now and follows a changed value in one later commit).
  */
 export function displayFlagReading(input: {
 	/** The answer's value, or undefined while no answer is in hand. */
 	answer: boolean | undefined;
 	/** The persisted last-known value, or undefined when nothing was seeded. */
 	seed: boolean | undefined;
+	/** What the plane has said about the registry. */
+	plane: DisplayPlane;
 	/** True while this plane owes an answer that could still arrive. */
 	owed: boolean;
+	/** True once the hold's budget is spent (`DISPLAY_HOLD_BUDGET_MS`). */
+	holdSpent: boolean;
 }): DisplayFlagReading {
 	if (input.answer !== undefined) return input.answer ? "on" : "off";
-	if (input.owed && input.seed === true) return "pending";
+	if (input.plane === "denied" || input.plane === "failed") return "off";
+	if (input.owed && !input.holdSpent && input.seed === true) return "pending";
 	return input.seed === true ? "on" : "off";
 }

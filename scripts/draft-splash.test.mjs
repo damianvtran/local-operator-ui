@@ -525,3 +525,63 @@ test("the pane is given the composed fact, not the raw one", () => {
 		"`hydrated` answers 'has an authoritative page been applied for this session', which is false forever on a pane that has no session - the pane must not read it directly (use the handle's composed field). Asserted on the prop's own expression, not file-wide.",
 	);
 });
+
+test("a HELD cross-session filter claims loading rather than nothing (design round 1, D1)", () => {
+	/*
+	 * The measured defect: with the hide setting ON, a seeded window and a stalled
+	 * settings answer, the page applied at ~t0+240 ms while the rows it governs
+	 * were withheld - so the pane had records, painted none of them, and made NO
+	 * claim at all until the answer landed at ~t0+947 ms. On the frame it read as
+	 * an EMPTY CONVERSATION rather than a loading one (0 rows, no loading line,
+	 * the rail painted over the blank).
+	 *
+	 * Held rows are the placeholder's own case, and the sixth input says so
+	 * explicitly: the pane HAS the records and is deliberately not painting them.
+	 * The alternating arms below are the same view with the hold lifted and with
+	 * the two facts that outrank every claim in this module.
+	 */
+	const held = {
+		status: "live",
+		failure: null,
+		awaitingHydration: false,
+		recordCount: 2,
+		filterHeld: true,
+	};
+	assert.equal(
+		transcriptPaneHoldsPlaceholder(held),
+		true,
+		"a pane withholding rows it holds must claim the load, not nothing",
+	);
+	assert.equal(
+		transcriptPaneCollapses(held),
+		false,
+		"and it keeps the column, because the placeholder it paints needs the height",
+	);
+
+	const settled = { ...held, filterHeld: false };
+	assert.equal(
+		transcriptPaneHoldsPlaceholder(settled),
+		false,
+		"the same pane with the filter settled claims nothing and paints its rows",
+	);
+	assert.equal(
+		transcriptPaneCollapses(settled),
+		false,
+		"and it does not collapse either: it has rows of its own",
+	);
+
+	assert.equal(
+		transcriptPaneHoldsPlaceholder({ ...held, admittedSend: true }),
+		false,
+		"a send this pane admitted outranks the hold, as it outranks the placeholder",
+	);
+	assert.equal(
+		transcriptPaneHoldsPlaceholder({
+			...settled,
+			recordCount: 0,
+			awaitingHydration: true,
+		}),
+		true,
+		"and the pre-existing term is untouched: a page still owed with nothing to scroll still holds",
+	);
+});

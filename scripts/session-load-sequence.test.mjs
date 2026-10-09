@@ -149,6 +149,12 @@ window.HTMLCanvasElement.prototype.getContext = function getContext() {
 		measureText: (text) => ({ width: String(text).length * 6 }),
 	};
 };
+/*
+ * THE REAL WINDOW TIMER, kept before the stub below replaces it. The budget arm
+ * needs the product's own timer to fire, and it restores this one for its own
+ * mount rather than restructuring the stub every other arm depends on.
+ */
+const REAL_WINDOW_SET_TIMEOUT = window.setTimeout.bind(window);
 window.setTimeout = () => {
 	timerSeq += 1;
 	return timerSeq;
@@ -1039,7 +1045,7 @@ const clearDisplayFlags = () => localStorage.removeItem(DISPLAY_SEED_KEY);
  * Everything else is the shipped stub (`answerNetwork`), so the only scripted
  * fact is the one under test: when the registry answers relative to the page.
  */
-const heldSettings = () => {
+const heldSettings = ({ capabilities = "answer", settings = "hold" } = {}) => {
 	/**
 	 * Every held read, not just the last: the query is shared, and a read that
 	 * was already in flight when a second one starts still has to be answered —
@@ -1058,11 +1064,47 @@ const heldSettings = () => {
 	 */
 	let sawRequest = false;
 	const seen = [];
+	/**
+	 * The capability answer's own latch and resolvers, for `capabilities: "hold"`.
+	 *
+	 * A LATE CAPABILITY ANSWER IS A COLD OPEN'S OWN SHAPE and every other arm in
+	 * this file answers it inside `mountArm`, which is why none of them could see
+	 * R2 (agent review round 1, R5). The latch is the same one `requestSeen` uses,
+	 * for the same reason.
+	 */
+	let sawCapabilities = false;
+	const capabilityWaiters = [];
+	const heldCapabilities = [];
 	const network = async (request) => {
-		if (request.op === "capabilities") return CAPABILITIES_WITH_SETTINGS;
+		if (request.op === "capabilities") {
+			sawCapabilities = true;
+			for (const resolve of capabilityWaiters.splice(0)) resolve();
+			if (capabilities === "hold") {
+				return await new Promise((resolve) => {
+					heldCapabilities.push(resolve);
+				});
+			}
+			return CAPABILITIES_WITH_SETTINGS;
+		}
 		if (request.op === "settings.list") {
 			sawRequest = true;
 			for (const resolve of seen.splice(0)) resolve();
+			/*
+			 * R1's failure case, in the shape a real failing read has: the attempt is
+			 * IN FLIGHT for a moment before it rejects (a transport that fails, not a
+			 * synchronous throw - the synchronous shape settles `error` in the same
+			 * tick and leaves nothing observable, measured), and react-query's own
+			 * retry (the app default, one attempt 1 s later) is what the product has
+			 * to survive without withholding the transcript.
+			 */
+			if (settings === "fail" || settings === "fail-slow") {
+				if (settings === "fail-slow") {
+					await new Promise((settle) =>
+						REAL_WINDOW_SET_TIMEOUT(settle, FAILING_READ_MS),
+					);
+				}
+				throw new Error("settings.list: scripted failure");
+			}
 			return await new Promise((resolve) => {
 				held.push(resolve);
 			});
@@ -1086,6 +1128,20 @@ const heldSettings = () => {
 				? Promise.resolve()
 				: new Promise((resolve) => seen.push(resolve)),
 		/** Answer every held read; the caller flushes frames inside `act`. */
+		/** Wait until the capability read is actually in flight (`capabilities: "hold"`). */
+		capabilitiesSeen: () =>
+			sawCapabilities
+				? Promise.resolve()
+				: new Promise((resolve) => capabilityWaiters.push(resolve)),
+		/** Answer the held capability read; the caller flushes frames inside `act`. */
+		releaseCapabilities: async () => {
+			await act(async () => {
+				for (const resolve of heldCapabilities.splice(0)) {
+					resolve(CAPABILITIES_WITH_SETTINGS);
+				}
+				await new Promise((settle) => setTimeout(settle, 0));
+			});
+		},
 		answer: async (flags) => {
 			const payload = settingsPayload(flags);
 			await act(async () => {
@@ -1148,6 +1204,15 @@ const SEND_SEED = {
 	...IN_FLIGHT_SEED,
 	tool_name: "send",
 };
+/**
+ * How long the scripted failing read stays in flight before it rejects.
+ *
+ * A LOCAL RIG NUMBER, not the product's: the point is that the read has an
+ * observable in-flight phase on both attempts, which is what the retry's own
+ * `fetching` window needs to be wide enough to sample.
+ */
+const FAILING_READ_MS = 250;
+
 /** The page plus the live send, as one snapshot frame. */
 const crossSnapshot = () =>
 	frame(2, "snapshot", {
@@ -1380,4 +1445,248 @@ test("the same page with the rail off: the answer is elected and wears no mark",
 	await settings.answer({ [TURN_ANSWER_RAIL_KEY]: false });
 	await record("settings: rail off");
 	assert.equal(records.at(-1).railMarks, 0, "and the answer changes nothing");
+});
+
+test("the rail's last known ON rides the rows while the CAPABILITY answer is still owed", async (t) => {
+	/*
+	 * R2, and the case every arm above structurally cannot see (R5): they all
+	 * answer `capabilities` inside `mountArm`, so a LATE capability answer is
+	 * unrepresentable. On a cold open after a launch the capability read is its
+	 * own round trip - the shape the bench's S5-cold measures - and the rail's arm
+	 * used to collapse "no answer yet" with "answered denied": the mark was absent
+	 * from the commit that painted the answer and appeared one commit later on the
+	 * capability answer alone (agent review round 1, R2: `marks=0` then `marks=1`
+	 * with the settings read still owed).
+	 */
+	__resetPaintCache();
+	seedDisplayFlags({ [TURN_ANSWER_RAIL_KEY]: true });
+	const settings = heldSettings({ capabilities: "hold" });
+	const { records, record, send } = await mountArm(
+		t,
+		"mount (capabilities owed)",
+		settings.network,
+	);
+
+	const short = [
+		entry("u1", S, {
+			kind: "message",
+			role: "user",
+			content: [{ text: QUESTION }],
+		}),
+		entry("a1", S + 40, {
+			kind: "message",
+			role: "assistant",
+			content: [{ text: CLOSE }],
+			stop_reason: "stop",
+		}),
+	];
+
+	await settings.capabilitiesSeen();
+	await send(openFrame);
+	await record("open");
+	await send(
+		frame(2, "snapshot", {
+			frontend: frontendState({ streaming: false, live_events: [] }),
+			history: { entries: short, has_more: false, cursor_missing: false },
+			cold: false,
+			cold_reason: null,
+		}),
+	);
+	await record("page (capabilities owed)");
+
+	printSequence(records, "the rail, last known ON, capability answer owed");
+	assert.equal(
+		records.at(-1).electedAnswers,
+		1,
+		`one elected answer is painted: ${JSON.stringify(records.at(-1).ids)}`,
+	);
+	assert.equal(
+		records.at(-1).railMarks,
+		1,
+		"the mark is in the first contentful commit, capability answer or not",
+	);
+
+	await settings.releaseCapabilities();
+	await record("capabilities: settings advertised");
+	assert.equal(
+		records.at(-1).railMarks,
+		1,
+		"and the capability answer does not move it",
+	);
+
+	await settings.answer({ [TURN_ANSWER_RAIL_KEY]: true });
+	await record("settings: rail on");
+	assert.equal(
+		records.at(-1).railMarks,
+		1,
+		"nor does the answer it was waiting for",
+	);
+});
+
+test("the hold's budget: a registry read that never answers releases the pane, filtered", async (t) => {
+	/*
+	 * R1's worst case, pinned. `heldSettings()` never settles the read, so before
+	 * this fix `owed` stayed true for the query's whole retry window - derived
+	 * from the shipped constants: transport deadline 20 s, renderer timeout 25 s,
+	 * one retry 1 s apart, 51 s of a BLANK transcript (no rows, no working line,
+	 * no placeholder, because the hold is not the pane's loading arm). The budget
+	 * (`DISPLAY_HOLD_BUDGET_MS`) is what ends it, and the safe way out is the
+	 * seed's own reading: with a last-known ON the filer can only ADD rows back
+	 * when the answer finally lands, so the F10 removal class stays closed.
+	 *
+	 * THE BUDGET IS A WINDOW TIMER and this rig stubs window timers on purpose (so
+	 * every other arm's hold is deterministic) - this arm restores the real one
+	 * for its own mount, which is exactly the seam the product uses, and puts the
+	 * stub back whatever happens.
+	 */
+	__resetPaintCache();
+	seedDisplayFlags({ [HIDE_CROSS_SESSION_KEY]: true });
+	const settings = heldSettings();
+	window.setTimeout = REAL_WINDOW_SET_TIMEOUT;
+	try {
+		const { records, record, send } = await mountArm(
+			t,
+			"mount (read never answers)",
+			settings.network,
+		);
+
+		await settings.requestSeen();
+		await send(openFrame);
+		await record("open");
+		await send(crossSnapshot());
+		await record("page (read never answers)");
+		assert.equal(
+			records.at(-1).rows,
+			0,
+			`rows painted ahead of the answer that governs them: ${JSON.stringify(records.at(-1).ids)}`,
+		);
+
+		/*
+		 * Past the budget, with no answer anywhere in sight. THE WAIT IS THIS
+		 * RIG'S OWN NUMBER, generously above the product's: the fact under test is
+		 * that the pane RELEASES at all, and a rig that imported the product's own
+		 * constant could not be run against a tree that predates it - which is
+		 * exactly how an arm proves it discriminates.
+		 */
+		await act(async () => {
+			await new Promise((settle) => REAL_WINDOW_SET_TIMEOUT(settle, 400));
+		});
+		await record("after the budget");
+		printSequence(records, "the hold's budget, read never answers");
+		assert.ok(
+			records.at(-1).rows > 0,
+			`the pane releases once the budget is spent: ${records.at(-1).rows} rows`,
+		);
+		assert.equal(
+			records.at(-1).ids.filter((id) => CROSS_SESSION_IDS.includes(id)).length,
+			0,
+			`the release paints the seed's own reading, filtered: ${JSON.stringify(records.at(-1).ids)}`,
+		);
+
+		/*
+		 * And the invariant, off every sample: the release did not walk back
+		 * through the removal class - no commit in this sequence painted a hidden
+		 * row, before the budget or after it.
+		 */
+		for (const row of records) {
+			const painted = row.ids.filter((id) => CROSS_SESSION_IDS.includes(id));
+			assert.deepEqual(painted, [], `${row.step} painted a cross-session row`);
+		}
+	} finally {
+		window.setTimeout = () => {
+			timerSeq += 1;
+			return timerSeq;
+		};
+	}
+});
+
+test("a registry read that fails releases the pane, and the retry never takes it back", async (t) => {
+	/*
+	 * The other half of R1, as a GUARD rather than a discriminator, and said out
+	 * loud because the difference matters when this file is run against an older
+	 * tree: it passes there too, measured, and here is why. The failure case was
+	 * already safe on the round-0 tree for two reasons that have nothing to do
+	 * with the fix - react-query dispatches `error` (fetchStatus idle) on the
+	 * failed attempt, so the hold released on its own, and the pane's paint latch
+	 * meant the RETRY's `fetching` phase could not withdraw rows that had already
+	 * been painted (the same latch the fix keeps in the cheap form of
+	 * `failureCount`). What it pins is the behaviour R5 asked for: what the pane
+	 * shows after a failing read, and that the retry that follows never takes it
+	 * back. Sampled every 100 ms across the retry window, because a single sample
+	 * at the end would miss a blank phase exactly one attempt wide.
+	 */
+	__resetPaintCache();
+	seedDisplayFlags({ [HIDE_CROSS_SESSION_KEY]: true });
+	const settings = heldSettings({ settings: "fail-slow" });
+	window.setTimeout = REAL_WINDOW_SET_TIMEOUT;
+	try {
+		const { records, record, send } = await mountArm(
+			t,
+			"mount (read fails)",
+			settings.network,
+		);
+
+		await settings.requestSeen();
+		await send(openFrame);
+		await record("open");
+		await send(crossSnapshot());
+		/*
+		 * The first attempt is still in flight at this sample, so let it fail first:
+		 * the hold that covers a read on its way is the budget arm's subject, and
+		 * this arm is about the RETRY.
+		 */
+		await act(async () => {
+			await new Promise((settle) =>
+				REAL_WINDOW_SET_TIMEOUT(settle, FAILING_READ_MS + 60),
+			);
+		});
+		await record("page (read failed)");
+
+		printSequence(records, "the failed read, last known ON");
+		assert.ok(
+			records.at(-1).rows > 0,
+			`the pane paints despite the failure: ${records.at(-1).rows} rows`,
+		);
+		assert.equal(
+			records.at(-1).ids.filter((id) => CROSS_SESSION_IDS.includes(id)).length,
+			0,
+			`and paints the seed's reading, filtered: ${JSON.stringify(records.at(-1).ids)}`,
+		);
+
+		/*
+		 * AND IT STAYS PAINTED ACROSS THE RETRY, which is the half of R1 that the
+		 * first sample cannot see and the reason the term is `failureCount` rather
+		 * than the read's transient `fetchStatus`. The retry attempt starts about a
+		 * second later and re-enters `fetching`, so a hold keyed on that transient
+		 * would take the rows back off the screen and re-blank a transcript that had
+		 * already painted - the removal class in its worse direction. The wait spans
+		 * the retry attempt (the app's own `retry: 1`, a 1 s delay); the retryer's
+		 * timer is the retryer's own, so this rig's window-timer stub does not touch
+		 * it.
+		 */
+		const painted = records.at(-1).ids;
+		for (let index = 1; index <= 14; index += 1) {
+			await act(async () => {
+				await new Promise((settle) => REAL_WINDOW_SET_TIMEOUT(settle, 100));
+			});
+			await record(`t+${index * 100}ms`);
+		}
+		for (const row of records.slice(-15)) {
+			assert.ok(row.rows > 0, `${row.step} blanked a pane that had painted`);
+			assert.deepEqual(
+				row.ids,
+				painted,
+				`${row.step} changed the painted rows after the failure`,
+			);
+		}
+		for (const row of records) {
+			const hidden = row.ids.filter((id) => CROSS_SESSION_IDS.includes(id));
+			assert.deepEqual(hidden, [], `${row.step} painted a cross-session row`);
+		}
+	} finally {
+		window.setTimeout = () => {
+			timerSeq += 1;
+			return timerSeq;
+		};
+	}
 });

@@ -29,16 +29,23 @@
  * the readers' own business (the hook logs it, the rail hides, the flag falls
  * back to the last known value), and nothing here delays a paint.
  */
-import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import type { DesktopCapabilities } from "../../../../../shared/desktop-contract";
 import { loadCheckpointManifest } from "./checkpoint-manifest-cache";
 import { backendSettingsQueryOptions } from "./use-display-flag";
 
 export function useOpenPrefetch(
 	sessionId: string | undefined,
-	capabilities: DesktopCapabilities | undefined,
+	/*
+	 * THE BOOLEAN, NOT THE CAPABILITIES OBJECT. This effect used to depend on
+	 * `capabilities.data`, so it ran once with `undefined` and again when the
+	 * answer landed — two `sessions.checkpoints` reads for one open, measured
+	 * `["capabilities","sessions.checkpoints","settings.list","sessions.checkpoints"]`
+	 * (agent review round 1, R3), in a module whose own doc says moving the reads
+	 * here "adds no request — only a start time". `use-checkpoints.test.mjs` pins
+	 * one read per ask, and it was right to.
+	 */
+	settingsAdvertised: boolean,
 ): void {
 	const client = useQueryClient();
 	useEffect(() => {
@@ -50,7 +57,7 @@ export function useOpenPrefetch(
 		 * which would leave an error in the cache the transcript then has to
 		 * clear before it can read the key it was actually asking about.
 		 */
-		if (desktopFeatureEnabled(capabilities, "settings")) {
+		if (settingsAdvertised) {
 			void client.prefetchQuery(backendSettingsQueryOptions());
 		}
 		/*
@@ -59,5 +66,5 @@ export function useOpenPrefetch(
 		 * the same failure say the same thing twice.
 		 */
 		void loadCheckpointManifest(sessionId).catch(() => {});
-	}, [sessionId, capabilities, client]);
+	}, [sessionId, settingsAdvertised, client]);
 }

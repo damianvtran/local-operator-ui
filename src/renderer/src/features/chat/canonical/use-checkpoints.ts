@@ -8,6 +8,8 @@ import type {
 } from "../../../../../shared/desktop-contract";
 import { CHECKPOINT_WARM_MAX_IDS } from "../../../../../shared/desktop-contract";
 import {
+	CHECKPOINT_MANIFEST_FRESH_MS,
+	checkpointManifestAgeMs,
 	loadCheckpointManifest,
 	readCachedCheckpointManifest,
 } from "./checkpoint-manifest-cache";
@@ -88,8 +90,12 @@ export type UseCheckpointsResult = {
 /** A stable empty answer, so consumers memoising on `checkpoints` are calm. */
 const NO_CHECKPOINTS: Checkpoint[] = [];
 
-/** What one load may be: the first answer for a conversation, or a refresh. */
-type LoadMode = "initial" | "refresh";
+/**
+ * What one load may be: the first answer for a conversation, a refresh, or
+ * SERVED — the memory this open's own read already filled, which is not read
+ * again (QA round 1, Q-2; see `CHECKPOINT_MANIFEST_FRESH_MS`).
+ */
+type LoadMode = "initial" | "refresh" | "served";
 
 export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 	/*
@@ -198,6 +204,31 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 			if (inFlightEpoch.current === epoch) return;
 			inFlightEpoch.current = epoch;
 			try {
+				if (mode === "served") {
+					/*
+					 * THE MEMORY IS THIS OPEN'S ANSWER. The read that filled it started when
+					 * the conversation opened and answered inside the freshness window, so
+					 * asking again is the same fact twice — which is exactly what QA round 1
+					 * measured (2 `/checkpoints` reads on 29/36 opens, because the cache
+					 * deduped only while the first read was still in flight). Everything the
+					 * answered path does to state happens here too; only the request is
+					 * skipped, and a memory that vanished between the decision and this call
+					 * falls through to the ordinary read rather than to nothing.
+					 */
+					const served = readCachedCheckpointManifest(sessionRef.current);
+					if (served !== null) {
+						if (epoch !== epochRef.current) return;
+						setManifest(served);
+						setState("ready");
+						if (pendingIds.current.size > 0) {
+							pendingIds.current = new Set(
+								checkpointPendingIds(served, pendingIds.current),
+							);
+						}
+						if (pendingIds.current.size > 0) schedulePollRef.current(epoch);
+						return;
+					}
+				}
 				/*
 				 * The read itself is `checkpoint-manifest-cache`'s, which is what makes
 				 * the open-time prefetch and this mount ONE request rather than two: the
@@ -334,13 +365,33 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 		 * holds deserves it for the same reason.
 		 */
 		const seeded = sessionId ? readCachedCheckpointManifest(sessionId) : null;
+		/*
+		 * Q-2's gate, and it is asked only of the FIRST load of the epoch: a memory
+		 * this open already read is served rather than re-requested, while an older
+		 * one (a previous visit's, or one whose read failed) is refreshed as before.
+		 * Every later load — a poll, a `refresh()` from a gesture — is untouched.
+		 */
+		const ageMs = sessionId ? checkpointManifestAgeMs(sessionId) : null;
+		/*
+		 * A NEGATIVE AGE IS NOT FRESHNESS. `Date.now()` moving backwards (an NTP
+		 * correction, or a test's mocked clock) makes the memory look newer than
+		 * now, which is a clock this code cannot reason about - and the fail-closed
+		 * direction for an unusable clock is to verify rather than trust, so the
+		 * read goes out. Pinned by the arm above, which mounts under a mocked `Date`
+		 * and asserts its re-read.
+		 */
+		const served =
+			seeded !== null &&
+			ageMs !== null &&
+			ageMs >= 0 &&
+			ageMs <= CHECKPOINT_MANIFEST_FRESH_MS;
 		setManifest(seeded);
 		if (!sessionId) {
 			setState("idle");
 			return;
 		}
 		setState(seeded ? "ready" : "loading");
-		void load(epoch, seeded ? "refresh" : "initial");
+		void load(epoch, seeded ? (served ? "served" : "refresh") : "initial");
 		return () => {
 			/*
 			 * A read in flight at unmount must not apply its answer or re-arm a
