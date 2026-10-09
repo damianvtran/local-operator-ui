@@ -7,13 +7,20 @@ import { build } from "esbuild";
  * THE REMOTE ROW'S OWN FACTS, EXECUTED.
  *
  * `chat-remote.ts` holds the sidebar's remote-row copy and its degradation
- * ladder - the device label, the network lookup, the ONE sentence both channels
- * read, and the list order - and this file hands them rows with no DOM, which is
- * the whole reason they live outside the nine-thousand-line component. The
- * sentence is what the operator asked to read on hover ("which remote device and
- * network that session is on"), so its degradation cases are the feature, not
- * edge cases: no network name, no device name, an unreachable owner with and
- * without the wire's own reason.
+ * ladder - the device label, the network lookup, and the ONE sentence both
+ * channels read - and this file hands them rows with no DOM, which is the whole
+ * reason they live outside the nine-thousand-line component. The sentence is
+ * what the operator asked to read on hover ("which remote device and network
+ * that session is on"), so its degradation cases are the feature, not edge
+ * cases: no network name, no device name, an unreachable owner with and without
+ * the wire's own reason.
+ *
+ * THE ORDER TESTS THAT USED TO LIVE HERE MOVED ON 2026-10-08, with the rule they
+ * covered: `mergeRemoteRowsByActivity` retired when the sidebar's arrangement
+ * started sorting every drawn row ("a row with no usable time sorts last, not
+ * first", and a zero stamp is no usable time) - and that property is now
+ * asserted where the order is computed, `scripts/chat-sidebar-time-order.test.mjs`,
+ * over the real pipeline rather than over a helper beside it.
  */
 const bundle = await build({
 	stdin: {
@@ -27,7 +34,6 @@ const bundle = await build({
 });
 const {
 	deviceNetworkNames,
-	mergeRemoteRowsByActivity,
 	remoteClause,
 	remoteDeviceLabel,
 	remoteUnreachableClause,
@@ -125,42 +131,6 @@ test("the unreachable line is split, from the wire's own words, or the shared gl
 		remoteUnreachableClause(remote({ reachable: undefined })),
 		"",
 		"absence of reachability is no claim, not an unreachable claim",
-	);
-});
-
-test("remote rows re-enter the list where their clock says", () => {
-	const rows = [
-		remote({ session_id: "r1", updated_at: 900 }),
-		row({ session_id: "l1", updated_at: 1000 }),
-		row({ session_id: "l2", updated_at: 800 }),
-		row({ session_id: "l3", updated_at: 600 }),
-		remote({ session_id: "r2", updated_at: 700 }),
-		remote({ session_id: "r3", updated_at: 500 }),
-	];
-	const merged = mergeRemoteRowsByActivity(rows).map((r) => r.session_id);
-	assert.deepEqual(
-		merged,
-		["l1", "r1", "l2", "r2", "l3", "r3"],
-		"each remote row sits before the first row it outranks; the local order is untouched",
-	);
-});
-
-test("a list with no remote rows is returned as it stood", () => {
-	const rows = [row({ session_id: "l1" }), row({ session_id: "l2" })];
-	assert.deepEqual(
-		mergeRemoteRowsByActivity(rows).map((r) => r.session_id),
-		["l1", "l2"],
-	);
-});
-
-test("a row with no usable clock sorts last, not first", () => {
-	const rows = [
-		remote({ session_id: "r1", updated_at: undefined }),
-		row({ session_id: "l1", updated_at: 1000 }),
-	];
-	assert.deepEqual(
-		mergeRemoteRowsByActivity(rows).map((r) => r.session_id),
-		["l1", "r1"],
 	);
 });
 
