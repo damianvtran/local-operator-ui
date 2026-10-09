@@ -107,35 +107,37 @@ test("everything else is refused, each by a named reason", () => {
 	}
 });
 
-test("openVettedExternal calls the OS only for an allowed URL and reports failure", async () => {
+test("openVettedExternal calls the OS only for an allowed URL, and answers with the outcome", async () => {
 	const opened = [];
 	const logs = [];
 	const open = (url) => {
 		opened.push(url);
 	};
-	assert.equal(
+	assert.deepEqual(
 		await guards.openVettedExternal("https://example.com", open, (m) =>
 			logs.push(m),
 		),
-		true,
+		{ ok: true },
 	);
-	assert.equal(
-		await guards.openVettedExternal("file:///etc/passwd", open, (m) =>
-			logs.push(m),
-		),
-		false,
+	// Round-2 R-4: the refusal reason travels to the caller, not just the log -
+	// it is what the renderer shows a person.
+	const refused = await guards.openVettedExternal(
+		"file:///etc/passwd",
+		open,
+		(m) => logs.push(m),
 	);
+	assert.equal(refused.ok, false);
+	assert.match(refused.reason, /scheme file:/);
 	assert.deepEqual(opened, ["https://example.com/"]);
 	assert.match(logs.join("\n"), /refused to open externally: scheme file:/);
-	// An OS-level failure resolves false (what the old IPC did: swallow and log).
-	assert.equal(
-		await guards.openVettedExternal(
-			"https://example.com",
-			() => Promise.reject(new Error("no handler")),
-			(m) => logs.push(m),
-		),
-		false,
+	// An OS-level failure resolves the same failure shape.
+	const failed = await guards.openVettedExternal(
+		"https://example.com",
+		() => Promise.reject(new Error("no handler")),
+		(m) => logs.push(m),
 	);
+	assert.equal(failed.ok, false);
+	assert.match(failed.reason, /could not open the URL: no handler/);
 	assert.match(logs.join("\n"), /could not open the URL: no handler/);
 });
 
@@ -143,7 +145,6 @@ test("openVettedExternal calls the OS only for an allowed URL and reports failur
 
 test("sign-in providers still get the sandboxed popup; lookalikes do not", () => {
 	const auth = [
-		"about:blank",
 		"https://accounts.google.com/o/oauth2/v2/auth?client_id=x",
 		"https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
 		"https://login.live.com/oauth20_authorize.srf",
@@ -153,6 +154,14 @@ test("sign-in providers still get the sandboxed popup; lookalikes do not", () =>
 	];
 	for (const url of auth)
 		assert.deepEqual(guards.popupVerdict(url), { action: "auth" }, url);
+
+	// Round-2 S-7: `about:blank` is refused. It is the resolved form of
+	// `window.open('javascript:…')` - measured on Electron 44.3.0 with handler
+	// details identical to a plain blank open - so the old allowance minted an
+	// auth-class window whose script body then ran.
+	const blank = guards.popupVerdict("about:blank");
+	assert.equal(blank.action, "deny");
+	assert.match(blank.reason, /about:blank/);
 
 	// Every one of these satisfied the substring test the old handler used.
 	const lookalikes = [
@@ -256,9 +265,10 @@ const fakeContents = () => {
 	};
 };
 
-test("guardWindowOpen: auth keeps its options, external goes through the injected door, the rest is denied", async () => {
+test("guardWindowOpen: auth keeps its options, external goes through the injected door, the rest is denied and reported", async () => {
 	const contents = fakeContents();
 	const external = [];
+	const refused = [];
 	const logs = [];
 	const options = { width: 800, webPreferences: { sandbox: true } };
 	guards.guardWindowOpen(
@@ -266,10 +276,11 @@ test("guardWindowOpen: auth keeps its options, external goes through the injecte
 		guards.popupVerdict,
 		async (url) => {
 			external.push(url);
-			return true;
+			return { ok: true };
 		},
 		options,
 		(m) => logs.push(m),
+		(url, reason) => refused.push({ url, reason }),
 	);
 	assert.deepEqual(contents.open("https://accounts.google.com/o/oauth2/auth"), {
 		action: "allow",
@@ -288,6 +299,29 @@ test("guardWindowOpen: auth keeps its options, external goes through the injecte
 		"https://accounts.google.com.attacker.test/",
 	]);
 	assert.match(logs.join("\n"), /denied window\.open: scheme file:/);
+	// Round-2 R-4: a refusal is REPORTED (the renderer's toast), not only logged.
+	assert.equal(refused.length, 1);
+	assert.match(refused[0].url, /^file:/);
+	assert.match(refused[0].reason, /scheme file:/);
+
+	// An OS-level failure rides the same report: the press did nothing, too.
+	const failing = fakeContents();
+	const reported = [];
+	guards.guardWindowOpen(
+		failing,
+		guards.popupVerdict,
+		async () => ({
+			ok: false,
+			reason: "the OS could not open the URL: no handler",
+		}),
+		options,
+		() => {},
+		(url, reason) => reported.push({ url, reason }),
+	);
+	failing.open("https://example.com/x");
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assert.equal(reported.length, 1);
+	assert.match(reported[0].reason, /no handler/);
 
 	// The auth popup's own webContents gets its guard the moment it exists
 	// (security review S-2): its navigation is vetted and nested windows are
@@ -349,6 +383,12 @@ test("a child frame may be the PDF blob or the backend's static route, nothing e
 		"http://127.0.0.1:1111/v1/static/html?path=%2Ftmp%2Fa.html",
 		"http://localhost:54321/v1/static/html?path=x",
 		"http://[::1]:1111/v1/static/html?path=x",
+		// Round-2 R-2: one host test with the door - the alias spellings a loopback
+		// (or local-network) daemon answers are framable too.
+		"http://localhost.:1111/v1/static/html?path=x",
+		"http://127.0.0.2:1111/v1/static/html?path=x",
+		"http://[::ffff:127.0.0.1]:1111/v1/static/html?path=x",
+		"http://10.0.0.20:1111/v1/static/html?path=x",
 	]) {
 		assert.equal(nav(url, false, [APP_FILE, APP_DEV]).allowed, true, url);
 	}
@@ -478,6 +518,11 @@ test("permissions: deny by default, grant only what the app's own documents use"
 	assert.equal(ask("media", { mediaTypes: ["video"] }), false);
 	assert.equal(ask("media", { mediaTypes: [] }), false);
 	assert.equal(ask("media", { mediaType: "video" }), false);
+	// Round-2 R-7: exhaustive - a check that reports no type at all is a session
+	// that omitted the field, and `unknown` is device enumeration, which nothing
+	// in this renderer does; both refuse rather than grant.
+	assert.equal(ask("media", {}), false);
+	assert.equal(ask("media", { mediaType: "unknown" }), false);
 	for (const permission of [
 		"clipboard-read",
 		"geolocation",
@@ -593,6 +638,14 @@ test("the whole static serve family gets the policy, however the path is spelled
 		"http://127.0.0.1:1111/v1/static/audio?path=x.mp3",
 		// A literal plus is a path character, not a space; still in the family.
 		"http://127.0.0.1:1111/v1/static/htm+l",
+		// Round-2 R-2: the SAME host test the door uses, so every alias spelling
+		// of the machine the daemon answers gets the policy too.
+		"http://localhost.:9/v1/static/html",
+		"http://127.0.0.2:1111/v1/static/html",
+		"http://0.0.0.0:1111/v1/static/html",
+		"http://[::ffff:127.0.0.1]:1111/v1/static/html",
+		"http://[::]:1111/v1/static/html",
+		"http://10.0.0.5:1111/v1/static/html",
 	])
 		assert.equal(guards.isStaticServeRequest(url), true, url);
 	for (const url of [
@@ -814,6 +867,9 @@ test("shell.openExternal is reached only through the vetted door in the main win
 	assert.deepEqual(uses.sort(), ['"https://local-operator.com"', "url"].sort());
 	assert.match(
 		src,
-		/ipcMain\.handle\("open-external", async \(_, url\) => \{\s*await openExternalVetted\(url\);/,
+		/ipcMain\.handle\("open-external", async \(_, url\) => openExternalVetted\(url\)\);/,
 	);
+	// Round-2 R-4: the anchor half of a refusal is pushed to the window that
+	// clicked; the handler above answers only its own caller.
+	assert.match(src, /EXTERNAL_OPEN_REFUSED_CHANNEL/);
 });

@@ -358,6 +358,13 @@ const APP_SPAWN_SITES = [
 		/env:\s*\{/,
 	),
 	exempt(
+		"scripts/window-guards-electron.test.mjs",
+		"spawnSync",
+		1,
+		"boots a bare Electron scenario bundle against its own loopback stub - no app, no backend, no `Notification` - so the path that reaches the operator's Notification Center is not reachable from it; run on demand (`pnpm test:window-guards`) because it needs a display, and no CI step runs it (test-inventory records that)",
+		/env:\s*\{/,
+	),
+	exempt(
 		"scripts/notification-evidence.mjs",
 		"spawnSync",
 		1,

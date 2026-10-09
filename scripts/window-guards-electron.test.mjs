@@ -13,9 +13,13 @@
  * The document walks three phases in both modes (security review S-1): the
  * canonical `/v1/static/html` copy, the same handler reached by its DECODED
  * path (`/v1/static/htm%6c`), and a document-capable sibling route
- * (`/v1/static/images`, serving `image/svg+xml`). The same run also steers an
- * `about:blank` auth popup (S-2), attempts a download from the app document
- * (S-4) and hands a loopback URL to the window.open door (S-5).
+ * (`/v1/static/images`, serving `image/svg+xml`). The same run also works the
+ * popup door (S-2 / S-7): after the change `about:blank` - and its resolved
+ * `window.open('javascript:…')` form - mints no window, and the relay-scheme
+ * popup the door still creates cannot be steered off its door; before the
+ * change the rig's old handler minted the blank popup and the same steer
+ * committed. It also attempts a download from the app document (S-4) and hands
+ * a loopback URL to the window.open door (S-5).
  *
  * WHY IT IS NOT IN `pnpm test:desktop`: that suite is node-only; this boots
  * Electron (hidden, `show: false`, its own userData dir under the temp root), so
@@ -231,13 +235,25 @@ test(
 		assert.ok(svg, "after: the SVG phase reported");
 		assert.match(svg.read, /^THREW/);
 
-		// S-2: the popup was created but could not be steered off its door.
-		assert.equal(after.popupAfterSteer, "about:blank");
+		// S-7: the blank start mints no window at all, in either spelling
+		// (Electron resolves `window.open('javascript:…')` to exactly
+		// `about:blank` before the door sees it - measured on 44.3.0).
+		assert.equal(after.blankPopupIsNull, true);
+		assert.equal(after.jsPopupIsNull, true);
+		assert.equal(after.blankOrJsWindows, 0);
+		assert.ok(
+			after.guardLog.some((m) => m.includes("denied window.open: about:blank")),
+			"after: the blank start was denied with a reason",
+		);
+		// S-2: the popup shape the door still creates (a relay scheme) carries
+		// the travel guard - the opener's steer is blocked and nothing moved.
+		assert.equal(after.relayPopupExists, true);
+		assert.equal(after.relayAfterSteer, "");
 		assert.ok(
 			after.guardLog.some((m) =>
 				m.includes("blocked main-frame navigation to file:///etc/hosts"),
 			),
-			"after: the popup steer was blocked by the popup guard",
+			"after: the relay popup's steer was blocked by the popup guard",
 		);
 
 		// S-4: deny-by-default held, and the export blob was left to the save

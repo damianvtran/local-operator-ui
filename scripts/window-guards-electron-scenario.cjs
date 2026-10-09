@@ -21,6 +21,13 @@
  * (`onCompleted`) is what shows the CSP travelling with the encoded and SVG
  * responses - the same stream the shipped `guardPreviewResponses` rewrites.
  *
+ * THE POPUP PHASES (S-2, S-7). After the change the blank start mints no
+ * window at all - `about:blank` and its resolved `window.open('javascript:…')`
+ * form are refused at the door - and the relay-scheme popup the door still
+ * creates cannot be steered off its door from the opener. Before the change
+ * the rig's own old-style handler created the blank popup and the same steer
+ * committed, so the pair is a difference.
+ *
  * Env: WG_BUNDLE (esbuild bundle of the shipped guards), WG_SANDBOX (the
  * sandbox attribute under test), WG_MODE (before|after), WG_USER_DATA,
  * WG_OUT. No window is shown (`show: false` on every window), nothing touches
@@ -259,20 +266,56 @@ const SVG_DOC = (
 		"document.getElementById('p').getAttribute('sandbox')",
 	);
 
-	// S-2: create the auth-class popup the door still allows, then steer it
-	// from the opener the way the review did.
-	await win.webContents.executeJavaScript(
-		`window.__popup = window.open("about:blank"); 1`,
-	);
-	await new Promise((r) => setTimeout(r, 300));
-	const popup = popups.find((p) => p.url === "about:blank");
+	/*
+	 * S-2 and S-7, the popup door. AFTER: `about:blank` - and therefore the
+	 * `window.open('javascript:…')` form Electron resolves to exactly that URL -
+	 * mints no window at all, and the relay-scheme popup the door still creates
+	 * carries the travel guard, so the same opener-driven steer the review used
+	 * must be blocked. BEFORE: the rig's old-style handler (see above) creates
+	 * the blank popup and the steer commits - the pair is a difference.
+	 */
 	let popupAfterSteer = null;
-	if (popup) {
-		await win.webContents
-			.executeJavaScript(`window.__popup.location = "file:///etc/hosts"; 1`)
-			.catch(() => {});
+	let blankPopupIsNull = null;
+	let jsPopupIsNull = null;
+	let blankOrJsWindows = null;
+	let relayPopupExists = null;
+	let relayAfterSteer = null;
+	let beforePopup = null;
+	if (mode === "after") {
+		blankPopupIsNull = await win.webContents.executeJavaScript(
+			`window.open("about:blank") === null`,
+		);
+		jsPopupIsNull = await win.webContents.executeJavaScript(
+			`window.open('javascript:document.title="pwned"') === null`,
+		);
+		await new Promise((r) => setTimeout(r, 300));
+		blankOrJsWindows = popups.filter((p) => p.url === "about:blank").length;
+		await win.webContents.executeJavaScript(
+			`window.__relay = window.open("storagerelay://https/localhost?id=auth1"); 1`,
+		);
 		await new Promise((r) => setTimeout(r, 400));
-		popupAfterSteer = popup.contents.getURL();
+		const relay = popups.find((p) => p.url.includes("storagerelay"));
+		relayPopupExists = Boolean(relay);
+		if (relay) {
+			await win.webContents
+				.executeJavaScript(`window.__relay.location = "file:///etc/hosts"; 1`)
+				.catch(() => {});
+			await new Promise((r) => setTimeout(r, 400));
+			relayAfterSteer = relay.contents.getURL();
+		}
+	} else {
+		await win.webContents.executeJavaScript(
+			`window.__popup = window.open("about:blank"); 1`,
+		);
+		await new Promise((r) => setTimeout(r, 300));
+		beforePopup = popups.find((p) => p.url === "about:blank");
+		if (beforePopup) {
+			await win.webContents
+				.executeJavaScript(`window.__popup.location = "file:///etc/hosts"; 1`)
+				.catch(() => {});
+			await new Promise((r) => setTimeout(r, 400));
+			popupAfterSteer = beforePopup.contents.getURL();
+		}
 	}
 
 	// S-4: two download attempts from the app document. data: is the class the
@@ -320,7 +363,7 @@ const SVG_DOC = (
 			.catch(() => {});
 	}
 	await new Promise((r) => setTimeout(r, 400));
-	if (popup) popupAfterSteer = popup.contents.getURL();
+	if (beforePopup) popupAfterSteer = beforePopup.contents.getURL();
 
 	fs.writeFileSync(
 		process.env.WG_OUT,
@@ -337,6 +380,11 @@ const SVG_DOC = (
 				guardLog,
 				downloads,
 				popupAfterSteer,
+				blankPopupIsNull,
+				jsPopupIsNull,
+				blankOrJsWindows,
+				relayPopupExists,
+				relayAfterSteer,
 				mainBefore: mainBefore === parentUrl,
 				mainStayedOnApp: mainAfterNav === parentUrl,
 				mainAfterNav,
