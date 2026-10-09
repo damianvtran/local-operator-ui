@@ -34,7 +34,7 @@ on none, and the destination's column takes the room back (516 → 1076 px).
 
 | | AFTER | BEFORE |
 | --- | --- | --- |
-| renderer tree | this branch — the frames were shot at head **`fcaf1df0b49`** (round 1's remediation commit); the fold onto **#901** (`db8c9c3278c`) that followed changes none of the photographed surfaces (delta analysis and spot-check below) | `origin/main` @ **`15a7a4ed522`** (#891) |
+| renderer tree | this branch — the frames were shot at head **`fcaf1df0b49`** (round 1's remediation commit); the folds onto **#901** and **#899 + v0.33.7** that followed change none of the photographed surfaces (delta analysis and spot-check below) | `origin/main` @ **`15a7a4ed522`** (#891) |
 | served from | this checkout (`RIG_REPO`) | a throwaway worktree of `origin/main` (`SLOT_RIG_BEFORE_REPO`), with this checkout's `node_modules` symlinked in by absolute path |
 | backend | the rig's daemon, TWO owner processes: A `Deploy checklist` (`aaaa11112222`, no ask engine) and B `Review notes` (`bbbb11112222`, live queued-ask engine) | the same daemon, the same two owners |
 | what differs | `right-slot-memory.ts`, `right-slot-follower.ts`, `ui-preferences-store.ts`'s per-session record and its persist-v3 step, `canvas/index.tsx`'s Escape stand-down (round 1's U2), `main.tsx`'s install, `dev-driver/install.ts`'s two new `state()` fields | — |
@@ -173,23 +173,26 @@ state rather than its pixels:
   console in this session"; the browser's own first-run surface) need the Electron
   host. The neighbours' sets carry those designed states:
   `console-pane/empty` and `browser-pane/draft-conversation`.
-- **The #901 fold changes none of these frames, and that was CHECKED rather than
-  assumed.** #901 ("the chat-measure removal") landed on `main` after these frames
-  were shot, and the set is committed on the folded tree, so the delta was
-  measured both ways. THE DIFF (`1a1d4165598..db8c9c3278c`): it removes the
-  conversation column's two measure-handle mounts — whose cue line is
-  `opacity-0` unless hovered or focused, so it had no ink in any of these
+- **The #901 / #899 / v0.33.7 folds change none of these frames, and that was
+  CHECKED rather than assumed.** Three folds landed under the set after its
+  frames were shot — #901 ("the chat-measure removal"), then #899 (first-run
+  onboarding) with the v0.33.7 release — and the set is committed on the
+  twice-folded tree, so the delta was measured both ways. THE DIFFS: #901
+  removes the conversation column's two measure-handle mounts — whose cue line
+  is `opacity-0` unless hovered or focused, so it had no ink in any of these
   no-hover stills — and the `relative` that positioned them (they were
   out-of-flow children); collapses the `--lo-chat-measure` override chain in
-  `styles/index.css` to its single 810 px declaration (the resolved width is
-  identical when no override was ever written, and these rigs never wrote one);
-  un-exports two divider helpers whose only other consumer was the deleted
-  handle; and touches comments/export keywords in the files this set
-  photographs. THE SPOT-CHECK: one after-arm dark pass re-run on the folded
-  tree read the same `drawn`/slot/column numbers as the committed records for
-  every state in `s1`, `s2`, `s3`, `s4`, `s5a`, `s5b`, `s6` and `s7` (16 of 16
-  probes identical), the held-arrival still re-captured cleanly through the same
-  hold, and the committed stills diffed to a mean per-channel difference of
+  `styles/index.css` to its single 810 px declaration (identical resolved width
+  when no override was written, and these rigs never wrote one); un-exports two
+  divider helpers whose only other consumer was the deleted handle. #899 touches
+  the transcript only for wake rows carrying `custom_type: "wake_prompt"` with
+  `hidden === true` (the rig stages neither — no wake row at all), and the rest
+  of it is installer/onboarding/providers surfaces no frame here shows. THE
+  SPOT-CHECK: after each fold, one after-arm dark pass re-run on the folded tree
+  read the same `drawn`/slot/column numbers as the committed records for every
+  state in `s1`, `s2`, `s3`, `s4`, `s5a`, `s5b`, `s6` and `s7` (16 of 16 probes
+  identical on both), the held-arrival still re-captured cleanly through the
+  same hold, and the committed stills diffed to a mean per-channel difference of
   0.01–0.03 (the transcript clock and the composer caret — 0.01% of pixels).
   The frames therefore stand as committed.
 
