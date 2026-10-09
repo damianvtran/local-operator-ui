@@ -1168,6 +1168,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			with_counts: z.boolean().optional(),
 		})
 		.strict(),
+	/*
+	 * Acknowledge the one-time delegated-cleanup notice:
+	 * `POST /v1/desktop/delegated-cleanup-notice/ack`.
+	 *
+	 * The notice rides `sessions.list` UNTIL this write lands: the GET is a
+	 * non-consuming peek (every list answer keeps carrying the field while the
+	 * store is unacknowledged, which is what lets a second window see the same
+	 * notice), and this op is the one thing that flips `notice_acknowledged` on
+	 * disk. The route is idempotent - acknowledging an acknowledged store writes
+	 * what is already there - so, like `sessions.archive`, it needs no
+	 * `requestId`: a retry cannot flip anything back.
+	 */
+	z
+		.object({ op: z.literal("delegated_cleanup_notice.ack") })
+		.strict(),
 	z
 		.object({
 			// Content search over the store: name, id, exact conversation body, and
@@ -4838,6 +4853,48 @@ export type BackendSetting = {
 	 * row (see `setting-control.tsx`).
 	 */
 	hotkey_scope?: "app" | "desktop" | null;
+	/**
+	 * A SIXTH additive field: what an `int`/`float` row COUNTS, as a plain
+	 * lowercase noun (`"hours"`), and `""` on every row that counts nothing in
+	 * particular. With `minimum`/`maximum` it is the whole contract a bounded
+	 * duration control needs, and it exists because a renderer cannot tell "this
+	 * int is hours" from its key. The stored value is ALWAYS in this unit: a
+	 * control that shows "7 days" writes 168. Absent on a server that predates it,
+	 * which is read as "no unit" and degrades to the plain number field the row
+	 * always had (the delegated-retention row has a key-keyed fallback, see
+	 * `retention-duration.ts`).
+	 */
+	unit?: string | null;
+};
+/**
+ * The one-time "delegated sessions were cleaned up" notice, as
+ * `GET /v1/desktop/sessions` carries it in the additive field
+ * `delegated_cleanup_notice` (`null` or absent when there is nothing to say).
+ *
+ * SERVED UNTIL ACKNOWLEDGED: the GET is a non-consuming PEEK - every list
+ * answer keeps carrying the field while the store's `notice_acknowledged` flag
+ * is unset (which is what lets a second window see the same notice), and the
+ * dismissal's `POST /v1/desktop/delegated-cleanup-notice/ack` is the one write
+ * that flips it. The renderer lifts the field out of every answer at the
+ * transport (`desktopResult`) into `delegated-cleanup-notice-store`, which
+ * holds it until the reader dismisses it - a notice kept only in the response
+ * that carried it would be gone with the next re-render of whatever fetched it.
+ */
+export type DelegatedCleanupNotice = {
+	/** Finished sentences, one per line; rendered verbatim, never re-worded. */
+	message: string;
+	/** Sessions removed so far. */
+	removed: number;
+	/** The window the removal used, in hours. */
+	max_age_hours: number;
+	/** True while a backlog is still draining (the message already says "so far"). */
+	in_progress: boolean;
+	/** ISO timestamp of the first removal. */
+	first_removal_at: string;
+	/** A LOWER BOUND on the bytes freed (the sizer caps its walk), or null. */
+	freed_bytes_estimate: number | null;
+	/** Where the per-removal record lives, for display. */
+	record: string;
 };
 export type BackendSettings = {
 	sections: {
@@ -5207,6 +5264,17 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		/*
+		 * The one write behind the notice's lifecycle: the dismissal's ack. The GET
+		 * above is a PEEK (`delegated_cleanup_notice` stays on every answer until
+		 * this lands), so this is the only op that stops the store serving it -
+		 * idempotent, and sent once per dismissal.
+		 */
+		case "delegated_cleanup_notice.ack":
+			return {
+				path: "/v1/desktop/delegated-cleanup-notice/ack",
+				method: "POST",
+			};
 		case "sessions.search": {
 			// `encodeURIComponent` rather than interpolation: a query is whatever
 			// the user typed, and `&`, `#` or a space in it would otherwise change
