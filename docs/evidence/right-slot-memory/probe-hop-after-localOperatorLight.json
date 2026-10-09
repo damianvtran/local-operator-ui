@@ -92,7 +92,7 @@
         "activeSessionId": "aaaa11112222",
         "activeDraftKey": null,
         "drafts": {
-          "draft:6fc29ffc-1dbd-4724-bd6a-909e7164e80f": {
+          "draft:a9dfa7eb-aa57-4f37-b02a-d0de114c36eb": {
             "sessionId": null,
             "error": false,
             "undelivered": false,
@@ -131,15 +131,15 @@
     }
   },
   "hopAtoB": {
-    "framesSampled": 361,
+    "framesSampled": 362,
     "distinctStates": 2,
-    "framesOnDestination": 348,
+    "framesOnDestination": 351,
     "withAPane": 0,
     "withTheLeftPanesPane": 0,
     "withALitItem": 0,
     "firstMarks": [
       {
-        "t": 240,
+        "t": 204,
         "hash": "bbbb11112222",
         "drawn": "",
         "lit": "",
@@ -151,7 +151,7 @@
         "active": "TEXTAREA[Message]"
       },
       {
-        "t": 252,
+        "t": 215,
         "hash": "bbbb11112222",
         "drawn": "",
         "lit": "",
@@ -163,7 +163,7 @@
         "active": "TEXTAREA[Message]"
       },
       {
-        "t": 256,
+        "t": 219,
         "hash": "bbbb11112222",
         "drawn": "",
         "lit": "",
@@ -175,7 +175,7 @@
         "active": "TEXTAREA[Message]"
       },
       {
-        "t": 268,
+        "t": 242,
         "hash": "bbbb11112222",
         "drawn": "",
         "lit": "",
@@ -187,7 +187,7 @@
         "active": "TEXTAREA[Message]"
       },
       {
-        "t": 285,
+        "t": 275,
         "hash": "bbbb11112222",
         "drawn": "",
         "lit": "",
@@ -199,7 +199,7 @@
         "active": "TEXTAREA[Message]"
       },
       {
-        "t": 302,
+        "t": 281,
         "hash": "bbbb11112222",
         "drawn": "",
         "lit": "",
@@ -213,7 +213,7 @@
     ],
     "lastMarks": [
       {
-        "t": 5968,
+        "t": 5980,
         "hash": "bbbb11112222",
         "drawn": "",
         "lit": "",
@@ -225,7 +225,7 @@
         "active": "TEXTAREA[Message]"
       },
       {
-        "t": 5985,
+        "t": 5996,
         "hash": "bbbb11112222",
         "drawn": "",
         "lit": "",
@@ -237,7 +237,7 @@
         "active": "TEXTAREA[Message]"
       },
       {
-        "t": 6002,
+        "t": 6013,
         "hash": "bbbb11112222",
         "drawn": "",
         "lit": "",
@@ -326,7 +326,7 @@
         "activeSessionId": "bbbb11112222",
         "activeDraftKey": null,
         "drafts": {
-          "draft:6fc29ffc-1dbd-4724-bd6a-909e7164e80f": {
+          "draft:a9dfa7eb-aa57-4f37-b02a-d0de114c36eb": {
             "sessionId": null,
             "error": false,
             "undelivered": false,
@@ -365,15 +365,15 @@
     }
   },
   "hopBtoA": {
-    "framesSampled": 361,
+    "framesSampled": 362,
     "distinctStates": 7,
-    "framesOnDestination": 350,
-    "withAPane": 350,
-    "withTheLeftPanesPane": 350,
-    "withALitItem": 350,
+    "framesOnDestination": 351,
+    "withAPane": 351,
+    "withTheLeftPanesPane": 351,
+    "withALitItem": 351,
     "firstMarks": [
       {
-        "t": 226,
+        "t": 200,
         "hash": "aaaa11112222",
         "drawn": "canvas",
         "lit": "canvas",
@@ -385,7 +385,7 @@
         "active": "TEXTAREA[Message]"
       },
       {
-        "t": 241,
+        "t": 210,
         "hash": "aaaa11112222",
         "drawn": "canvas",
         "lit": "canvas",
@@ -397,7 +397,7 @@
         "active": "TEXTAREA[Message]"
       },
       {
-        "t": 245,
+        "t": 215,
         "hash": "aaaa11112222",
         "drawn": "canvas",
         "lit": "canvas",
@@ -409,7 +409,7 @@
         "active": "TEXTAREA[Message]"
       },
       {
-        "t": 251,
+        "t": 233,
         "hash": "aaaa11112222",
         "drawn": "canvas",
         "lit": "canvas",
@@ -433,7 +433,7 @@
         "active": "TEXTAREA[Message]"
       },
       {
-        "t": 284,
+        "t": 272,
         "hash": "aaaa11112222",
         "drawn": "canvas",
         "lit": "canvas",
@@ -447,7 +447,7 @@
     ],
     "lastMarks": [
       {
-        "t": 5981,
+        "t": 5975,
         "hash": "aaaa11112222",
         "drawn": "canvas",
         "lit": "canvas",
@@ -459,7 +459,7 @@
         "active": "TEXTAREA[Message]"
       },
       {
-        "t": 5998,
+        "t": 5992,
         "hash": "aaaa11112222",
         "drawn": "canvas",
         "lit": "canvas",
@@ -471,7 +471,7 @@
         "active": "TEXTAREA[Message]"
       },
       {
-        "t": 6015,
+        "t": 6008,
         "hash": "aaaa11112222",
         "drawn": "canvas",
         "lit": "canvas",
@@ -573,7 +573,7 @@
         "activeSessionId": "aaaa11112222",
         "activeDraftKey": null,
         "drafts": {
-          "draft:6fc29ffc-1dbd-4724-bd6a-909e7164e80f": {
+          "draft:a9dfa7eb-aa57-4f37-b02a-d0de114c36eb": {
             "sessionId": null,
             "error": false,
             "undelivered": false,

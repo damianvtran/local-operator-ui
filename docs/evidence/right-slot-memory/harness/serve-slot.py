@@ -47,6 +47,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import secrets
 import socket
 import sys
@@ -131,6 +132,48 @@ async def serve_listener(app, port: int, ready_file: Path) -> None:
     ready_file.write_text(f"{chosen}\n")
     print(f"READY port={chosen}", flush=True)
     await serving
+
+
+class HoldStreamStart:
+    """Hold the START of one session's desktop events stream while its hold file exists.
+
+    WHY THIS EXISTS (design review round 1, D1). The run pane's arrival is a ~60 ms
+    window - the flag projects at the bind, the pane draws when this stream's
+    snapshot lands (its `runDetails` wait on the canonical frontend) - and the
+    driver's shutter cannot be aimed at it: CDP `Page.captureScreenshot` paints /
+    fetches a fresh surface, and a capture REQUEST inside the window was measured to
+    produce a frame of the DRAWN pane (two DOM readings bracketing the request both
+    showed the empty column; the frame did not). The design round's own approved
+    remedy is to hold the frame response: with the snapshot held, the pane cannot
+    draw, and the still photographs the state the app genuinely passes through (the
+    flag projected, the pane not drawable yet) with its stay extended for the
+    shutter. The extension is DISCLOSED in the set's README, and the unheld gate is
+    recorded separately (the sampler's per-frame marks, which have no shutter to
+    race).
+
+    The driver writes `<scratch>/hold/<session_id>` before the held hop and removes
+    it when the still is taken; the wait is bounded so a stray file cannot hang the
+    rig. Only the stream's START is delayed - nothing else about the response or the
+    daemon changes.
+    """
+
+    def __init__(self, app, scratch: Path):
+        self.app = app
+        self.hold_dir = scratch / "hold"
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http":
+            match = re.match(
+                r"^/v1/desktop/sessions/([a-f0-9]{12})/events$", scope.get("path", "")
+            )
+            if match:
+                hold = self.hold_dir / match.group(1)
+                if hold.exists():
+                    loop = asyncio.get_running_loop()
+                    deadline = loop.time() + 15.0
+                    while hold.exists() and loop.time() < deadline:
+                        await asyncio.sleep(0.02)
+        await self.app(scope, receive, send)
 
 
 def build_question(question_id: str, text: str, labels: list[str]):
@@ -243,7 +286,12 @@ async def main() -> None:
     if args.mode == "routes":
         from local_operator.server.app import app
 
-        await serve_listener(app, args.port, scratch / "routes-port")
+        # The hold is this rig's own middleware (see HoldStreamStart): a monitor has no
+        # lever for a 60 ms window, and the daemon is the one process that CAN hold the
+        # frame response. It is inert unless `<scratch>/hold/<session>` exists.
+        await serve_listener(
+            HoldStreamStart(app, scratch), args.port, scratch / "routes-port"
+        )
         return
 
     # ---- owner mode ----

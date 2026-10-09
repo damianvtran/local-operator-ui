@@ -43,11 +43,16 @@
  *   s2 restart-on-b        canvas on A, hop to B, RELOAD; B clean, A still remembers
  *   s3 draft-admission     panel on A, New chat, browser pane on the draft, send it
  *   s4 asks-borrow         B remembers the canvas, a pending ask, the drawer by hand
+ *                          and closed by BOTH doors - the button and Escape
  *   s5 narrow-arrival      the same hop at 1024x900, where the canvas would overlay
- *   s6 run-frame-arrival   B remembers the run panel; first paint vs settled
+ *   s6 run-frame-arrival   B remembers the run panel; the app's own arrival gate
+ *                          (sampler, for the timeline) and the HELD-arrival still
+ *                          (the daemon's frame-response hold; see the block below)
+ *   s7 console-restore     B remembers the console; hop away and back - the pane
+ *                          returns and draws its designed empty state
  */
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
 	SAMPLER_COLUMNS,
@@ -175,6 +180,54 @@ const hop = (page, key) => page.pressRow(key);
 
 const seq = { n: 0 };
 const ask = (body) => command(SCRATCH, SESSION.B, body, seq);
+
+/*
+ * THE PRE-FRAME ARRIVAL, IN TWO RECORDINGS (design review round 1, D1). The window
+ * this case is about is ~60ms wide - the flag projects at the bind, the pane draws
+ * when its canonical frame lands - and ONE recording cannot carry both its length
+ * and its pixels:
+ *
+ *  - the app's OWN gate, for the timeline: the sampler marks every animation frame
+ *    IN THE PAGE (`startSampler`), so the window is recorded every run whether or
+ *    not a shutter could catch it - no race, and the numbers are the app's. A
+ *    screenshot cannot replace this: CDP `Page.captureScreenshot` paints/fetches a
+ *    fresh surface, and a capture requested inside the window was measured - while
+ *    iterating this round - to produce a frame of the DRAWN pane while two DOM
+ *    readings bracketing the request both showed the empty column.
+ *  - the HELD arrival, for the still: the same state, with its stay extended by the
+ *    daemon's own hold (`HoldStreamStart` in `serve-slot.py` - the design round's
+ *    approved "hold the frame response", because the window's end IS this stream's
+ *    snapshot). The driver writes `<scratch>/hold/<session>` before the held hop,
+ *    keeps it while the still is taken, and removes it; the pane draws after the
+ *    release, and the bound in the middleware means a stray file cannot hang the
+ *    rig.
+ *
+ * The two recordings are disclosed where the numbers and the still are quoted: the
+ * README says which recording the still came from. Nothing else about the arrival
+ * changes.
+ */
+const arrivalOpen = (key) => `(() => {
+	const state = window.__loDevDriver?.call?.("state") ?? {};
+	return state.runPanelOpen === true
+		&& document.querySelector('[data-tour-tag="run-panel-dock"]') === null
+		&& location.hash.includes(${JSON.stringify(SESSION[key])});
+})()`;
+
+async function waitArrivalWindow(page, key, timeoutMs = 1500) {
+	const start = Date.now();
+	for (;;) {
+		if (await page.evaluate(arrivalOpen(key))) return true;
+		if (Date.now() - start > timeoutMs) return false;
+	}
+}
+
+const inArrivalWindow = (reading, key) =>
+	reading.drawn.length === 0 &&
+	reading.state?.runPanelOpen === true &&
+	reading.hash.includes(SESSION[key]);
+
+/** The hold file's path for one session - the driver's side of `HoldStreamStart`. */
+const holdFileFor = (key) => join(SCRATCH, "hold", SESSION[key]);
 
 /* --------------------------------------------------------------------- the cases ---- */
 
@@ -453,9 +506,38 @@ const CASES = [
 			const restored = { probe: await page.probe(), memory: await page.memory() };
 			frames.restored = await page.shot("s4-canvas-returns");
 
+			/*
+			 * AND THE OTHER DOOR (N1, and the proof of UX round 1's U2 fix): the drawer
+			 * closed by ESCAPE. This is the press the canvas's own window listener used
+			 * to double-take - the drawer claims it with `preventDefault` and the close
+			 * re-projects the memory, which re-mounts the canvas inside the same
+			 * dispatch, so the canvas's listener then closed the canvas too and DELETED
+			 * the conversation's entry; it now stands down on `defaultPrevented` (this
+			 * round's fix, `canvas/index.tsx`). The readings are the claim: the canvas
+			 * drawn again and the memory untouched - the same give-back the button's door
+			 * shows, through the other door.
+			 */
+			await page.pressAskChip();
+			await page.waitFor(
+				`document.querySelector('${DRAWER}') !== null`,
+				"the drawer reopened",
+				15_000,
+			);
+			await wait(1200);
+			const escapeOpen = { probe: await page.probe(), memory: await page.memory() };
+			await page.key("Escape", "Escape", 27);
+			await page.waitFor(
+				`document.querySelector('${DRAWER}') === null`,
+				"the drawer to close on Escape",
+				15_000,
+			);
+			await wait(SETTLE);
+			const escaped = { probe: await page.probe(), memory: await page.memory() };
+			frames.escapeReturn = await page.shot("s4-canvas-returns-via-escape");
+
 			return {
 				frames,
-				readings: { remembersCanvas, chipUp, borrow, restored },
+				readings: { remembersCanvas, chipUp, borrow, restored, escapeOpen, escaped },
 				enqueued: enqueued.ask_id ?? null,
 				backend: backendReading(SCRATCH, SESSION.B, null),
 			};
@@ -465,9 +547,9 @@ const CASES = [
 	{
 		name: "s6",
 		label: "s6-run-frame-arrival",
-		title: "B remembers the run panel; first paint after the hop vs settled",
+		title: "B remembers the run panel; the pre-frame arrival after the hop vs settled",
 		arms: ["before", "after"],
-		async run(page) {
+		async run(page, arm) {
 			await openAt(page, "A");
 			await wait(SETTLE);
 			await hop(page, "B");
@@ -492,26 +574,107 @@ const CASES = [
 			const onA = { probe: await page.probe(), memory: await page.memory() };
 			frames.onA = await page.shot("s6-on-a");
 
+			/*
+			 * RECORDING 1 - THE APP'S OWN GATE, for the timeline. No shutter: the
+			 * sampler is in-page, so the window cannot be missed, and these are the
+			 * numbers the README quotes.
+			 */
 			await page.startSampler(4000);
 			await wait(150);
 			await hop(page, "B");
 			await page.waitFor(COLUMN, "B's transcript column");
-			const firstPaint = await page.probe();
+			if (!(await waitArrivalWindow(page, "B"))) {
+				throw new Error("s6: the unheld arrival window never opened");
+			}
+			await wait(SETTLE);
+			const timeline = summariseTimeline(await page.timeline());
+
+			/*
+			 * RECORDING 2 - THE HELD ARRIVAL, for the still. Hop away, arm the hold
+			 * file, hop back; the daemon holds the stream's start, so the window stays
+			 * open until the still is taken and the hold is released.
+			 */
+			await hop(page, "A");
+			await page.waitFor(COLUMN, "A's transcript column");
+			await wait(SETTLE);
+			const holdFile = holdFileFor("B");
+			mkdirSync(join(SCRATCH, "hold"), { recursive: true });
+			writeFileSync(holdFile, "hold\n");
+			await hop(page, "B");
+			await page.waitFor(COLUMN, "B's transcript column");
+			if (!(await waitArrivalWindow(page, "B"))) {
+				rmSync(holdFile, { force: true });
+				throw new Error("s6: the held arrival window never opened");
+			}
+			const before = await page.probe();
 			frames.firstPaint = await page.shot("s6-back-first-paint");
+			const after = await page.probe();
+			rmSync(holdFile, { force: true });
+			if (!(inArrivalWindow(before, "B") && inArrivalWindow(after, "B"))) {
+				throw new Error(
+					"s6: the held still's readings disagree with the window it was taken in",
+				);
+			}
 			await wait(SETTLE);
 			const settled = { probe: await page.probe(), memory: await page.memory() };
 			frames.settled = await page.shot("s6-back-settled");
-			const timeline = summariseTimeline(await page.timeline());
 
 			/* Clear the plan so the conversation is left as the other cases found it. */
 			await ask({ op: "todos", phases: [] });
 
-			return { frames, readings: { openOnB, onA, firstPaint, settled }, timeline };
+			return {
+				frames,
+				readings: {
+					openOnB,
+					onA,
+					firstPaint: { before, after },
+					settled,
+				},
+				timeline,
+			};
+		},
+	},
+	{
+		name: "s7",
+		label: "s7-console-restore",
+		title: "B remembers the console; hop to A; hop back - the pane returns and draws its empty state",
+		arms: ["before", "after"],
+		async run(page) {
+			/*
+			 * THE CONSOLE'S OWN STORY, because the decision record promises the
+			 * restored browser and console panes "draw their designed empty states" and
+			 * neither was photographed (design review round 1, D5). The BROWSER's
+			 * designed state cannot be reached from this rig - the web fallback ("the
+			 * browser is only available in the desktop app") draws instead, since the
+			 * native view is Electron's - so the console carries the state's evidence:
+			 * the pane mounts without Electron and draws "No console in this session".
+			 */
+			await openAt(page, "B");
+			await wait(SETTLE);
+			await page.pressRail("console");
+			await page.waitFor(paneDrawn("console"), "the console pane on B", 20_000);
+			await wait(SETTLE);
+			const openOnB = { probe: await page.probe(), memory: await page.memory() };
+			const frames = { openOnB: await page.shot("s7-console-on-b") };
+
+			await hop(page, "A");
+			await page.waitFor(COLUMN, "A's transcript column");
+			await wait(SETTLE);
+			const onA = { probe: await page.probe(), memory: await page.memory() };
+			frames.onA = await page.shot("s7-arrival-a");
+
+			await hop(page, "B");
+			await page.waitFor(COLUMN, "B's transcript column");
+			await wait(SETTLE);
+			const restored = { probe: await page.probe(), memory: await page.memory() };
+			frames.restored = await page.shot("s7-console-restored");
+
+			return { frames, readings: { openOnB, onA, restored } };
 		},
 	},
 ];
 
-const RUN_ORDER = ["s1", "s2", "s5a", "s5b", "s3", "s6", "s4"];
+const RUN_ORDER = ["s1", "s2", "s5a", "s5b", "s3", "s6", "s7", "s4"];
 for (const testCase of CASES) {
 	if (!RUN_ORDER.includes(testCase.name)) {
 		throw new Error(`case ${testCase.name} is missing from RUN_ORDER`);
