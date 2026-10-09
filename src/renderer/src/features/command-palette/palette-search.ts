@@ -212,6 +212,35 @@ export type PaletteItem = {
 	 * reader (issue #760).
 	 */
 	unread?: boolean;
+	/**
+	 * The row's place in the visited ring (`conversationRecents`), 0 being the
+	 * conversation visited most recently. Set at the source, for the same reason
+	 * `unread` is: this module is deliberately import-free, so the ring's data
+	 * travels on the item and the browse layout's Recents pin is its only reader.
+	 * Absent when the conversation is not in the ring - a fresh install, or one
+	 * not visited lately - which is what keeps the section from drawing at all.
+	 */
+	recentRank?: number;
+	/**
+	 * True on the row for the conversation the app is displaying right now.
+	 * Decided at the source (the shell's own displayed-session rule) and carried
+	 * as data for the same import-free reason. The Recents pin reads it to leave
+	 * that row out: you are already in it, and without it the first Recents row
+	 * would always be the screen you are looking at instead of the one you left.
+	 */
+	current?: boolean;
+	/**
+	 * True on a conversation the archive store holds out of the default lists -
+	 * the row's OWN `archived` fact, and only when this backend advertises
+	 * `session_archive`. Decided at the source with the sidebar's own predicate
+	 * (`visibleRows`, `chat-archived.ts`, called rather than restated) for the same
+	 * import-free reason as `unread`/`recentRank`, and read by exactly one caller:
+	 * the Recents pin leaves these rows out, so an archived conversation is not
+	 * claimed by the pin (QA round 1, Q-1). The browse pool below still offers
+	 * them - pre-existing on both trees - which is why this is a field on the row
+	 * rather than a filter on the pool.
+	 */
+	archived?: boolean;
 	/** Rendered in the danger role; the one row that destroys something. */
 	destructive?: boolean;
 };
@@ -229,11 +258,12 @@ export type PaletteMatch = {
 };
 
 /**
- * A section's key: one of the source groups, or the pinned `unread` section
- * (issue #760) — a section about one fact rather than a source of its own, so
- * it is a SECTION key and deliberately not a member of `PaletteGroup`.
+ * A section's key: one of the source groups, or one of the two pinned sections
+ * the chats switcher draws above them - `unread` (issue #760) and `recents`.
+ * Each is a section about one fact rather than a source of its own, so they are
+ * SECTION keys and deliberately not members of `PaletteGroup`.
  */
-export type PaletteSectionKey = PaletteGroup | "unread";
+export type PaletteSectionKey = PaletteGroup | "unread" | "recents";
 
 export type PaletteSection = {
 	group: PaletteSectionKey;
@@ -797,6 +827,7 @@ export const PALETTE_GROUP_TITLES: Record<PaletteGroup, string> = {
 export const PALETTE_SECTION_TITLES: Record<PaletteSectionKey, string> = {
 	...PALETTE_GROUP_TITLES,
 	unread: "Unread",
+	recents: "Recents",
 };
 
 /**
@@ -839,6 +870,23 @@ export const PALETTE_GROUP_ORDER: PaletteGroup[] = [
 const GROUP_CAP = 6;
 const SCOPED_GROUP_CAP = 24;
 export const TOTAL_CAP = 48;
+/**
+ * How many rows the switcher's Recents pin shows.
+ *
+ * Five, because the pin is a shortcut to the conversations you were just in and it
+ * sits between the Unread pin and the Chats tier, whose own browse cap is also five
+ * (`BROWSE_CAP.chats`). It is NOT a number chosen to fit beside the Chats tier:
+ * five is ACCEPTED TO COST some of it. The list box is 384px, and with even one
+ * unread row the pin's five rows push most of the Chats tier below the fold on
+ * open (design round 1, D1 measured it: 1 unread + 5 Recents + 5 Chats leaves about
+ * 1.8 of the Chats rows visible). The fold fade and the scrollbar cue the rest -
+ * every row stays reachable by down-arrow or by scrolling - and a smaller cap was
+ * the alternative, rejected because a pin of two or three would be routinely short
+ * of the conversations the ring remembers. The ring remembers more
+ * (`CONVERSATION_RECENTS_LIMIT`, twenty) so that the pin stays full when some of
+ * what it remembers is on screen, unread, gone or archived.
+ */
+export const RECENTS_PIN_CAP = 5;
 const BROWSE_CAP: Record<PaletteGroup, number> = {
 	navigation: 6,
 	chats: 5,
@@ -941,6 +989,67 @@ export function searchPalette({
 				 * what the false side of `clipped` must not hide.
 				 */
 				for (const item of unread) pinnedIds.add(item.id);
+			}
+			/*
+			 * THE RECENTS PIN: the conversations visited lately, directly beneath
+			 * Unread, so getting back to one is a single keystroke. `recentRank` is
+			 * the row's index in the visited ring, set at the source (this module
+			 * stays import-free).
+			 *
+			 * WHICH ROWS. Featured chat rows that carry a rank, minus two kinds:
+			 * - unread rows, which already sit in the Unread pin above - a row never
+			 *   appears twice, and `pinnedIds` holds them by now;
+			 * - the conversation on screen, because the reader is already in it. It
+			 *   is what makes the first Recents row "the previous conversation"
+			 *   (the Alt-Tab behaviour);
+			 * - archived rows, which the row carries as `archived` under `visibleRows`'
+			 *   rule (`chat-archived.ts`): the pin does not claim one (QA round 1,
+			 *   Q-1). The pin is the ONLY thing that changes here - the browse pool
+			 *   below still offers an archived conversation, which is pre-existing on
+			 *   both trees and recorded as deferred - and leaving a row to the tier
+			 *   below is already this pin's shape, because `current` does exactly that.
+			 * A ring entry with no catalogue row (deleted, forgotten) never reaches
+			 * here: rows are derived from live catalogue items, so nothing is
+			 * resurrected. An empty ring, or no eligible row, draws no section and no
+			 * heading, and the list is exactly what it was.
+			 *
+			 * SAME BUDGET, SAME ACCOUNTING as the Unread pin: `total` counts the
+			 * pin's whole claim, the drawn rows come out of the running `rendered`
+			 * budget, and every row the pin claims - drawn within its five or not -
+			 * goes into `pinnedIds`, so it cannot reappear under the Chats tier as a
+			 * second copy. SWITCHER-ONLY for the reason the Unread pin is: the gate is
+			 * the `#` seed's scope, and the un-scoped Cmd/Ctrl+P browse is unchanged.
+			 */
+			const recents = pool
+				.filter(
+					(item) =>
+						item.group === "chats" &&
+						item.featured &&
+						item.recentRank !== undefined &&
+						item.current !== true &&
+						item.archived !== true &&
+						!pinnedIds.has(item.id),
+				)
+				.sort(
+					(a, b) => (a.recentRank ?? 0) - (b.recentRank ?? 0) || byOrder(a, b),
+				);
+			if (recents.length > 0) {
+				const claimed = recents.slice(0, RECENTS_PIN_CAP);
+				total += claimed.length;
+				const room = Math.max(0, TOTAL_CAP - rendered);
+				if (room > 0) {
+					const shown = claimed.slice(0, room);
+					sections.push({
+						group: "recents",
+						items: shown.map((item) => ({
+							item,
+							score: 0,
+							soft: item.tier === SOFT_TIER,
+						})),
+					});
+					rendered += shown.length;
+				}
+				for (const item of claimed) pinnedIds.add(item.id);
 			}
 		}
 		for (const group of PALETTE_GROUP_ORDER) {
