@@ -414,18 +414,15 @@ else
 fi
 
 if [ "$UV_INSTALLED" != true ]; then
-  echo "Upgrading pip..."
-  python -m pip install --upgrade pip || {
-    echo "ERROR: Failed to upgrade pip. Exit code: $?"
-    echo "pip version before failing:"
-    pip --version
-    exit 1
-  }
-  echo "pip upgrade successful:"
-  pip --version
-
+  # NO `pip install --upgrade pip` AND NO `--verbose` (first-run onboarding,
+  # Q4/Q13). The self-upgrade is a whole extra resolve-and-download (2.3-2.8 s
+  # measured, see the uv note above) that changes nothing about the result: the
+  # environment's pip is already 24.2+ on both creation paths, which is the
+  # version this script's TLS note depends on. `--verbose` multiplied the output
+  # the app parses line by line and the log a user attaches, and none of it was
+  # read: the failure branch below prints its own diagnosis.
   echo "Installing local-operator package..."
-  python -m pip install --upgrade --verbose local-operator || {
+  python -m pip install --upgrade local-operator || {
     echo "ERROR: Failed to install local-operator package. Exit code: $?"
     echo "Python version:"
     python --version
