@@ -308,28 +308,16 @@ const CHROME_LAUNCH_SITES = [
 		"measures the condensed action group's height and its thumbnail strip from the live DOM, which is the compactness budget the pictures pass states as a number",
 	),
 	guarded(
-		"scripts/chat-measure-drag-evidence.mjs",
-		"spawn",
-		1,
-		"drives the conversation column's drag handle with a real pointer, photographs each state, and asserts what the reader's preference received - including a relaunch, which is why it launches Chrome twice against one profile",
-	),
-	guarded(
 		"scripts/chat-measure-evidence.mjs",
 		"spawn",
 		1,
 		"photographs the chat column's shared measure at the shipped value and at the value it carried before, and reads the line length back from the rendered DOM - the frame pair a sweep cannot take, because the previous value is not in the tree at any later head",
 	),
 	guarded(
-		"scripts/chat-measure-line-evidence.mjs",
+		"scripts/chat-measure-handles-removed-evidence.mjs",
 		"spawn",
 		1,
-		"drives the conversation column's resize cue on TWO trees in one run - the base tree's floating bar and this branch's state line - so the before/after pair for issue #848 is a like-for-like comparison, and asserts the geometry of both halves",
-	),
-	guarded(
-		"scripts/chat-measure-hover-evidence.mjs",
-		"spawn",
-		1,
-		"drives the conversation column's resize cue on TWO trees in one run for the hover-cue pass - the base tree's full-height rule and this head's fade bar - and reads the cue's ink back twice, off the painted gradient and off the committed frames themselves; it also holds the pointer past each tree's tooltip dwell, so the panel's arrival is compared rather than described",
+		"photographs and reads the conversation column's edges on two trees in two runs (before and after the #895 handle removal): the hit-test stack and cursor at every pixel of both former strips, the dividers as the control, and a seeded version-1 blob's migration, all from the live DOM",
 	),
 	guarded(
 		"scripts/composer-readings-geometry.mjs",
