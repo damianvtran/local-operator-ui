@@ -1071,6 +1071,41 @@
 		}
 	}
 
+	/* ---- the generating-image tile's shimmer sweep -------------------------
+	 * `image-gen-card.tsx` draws a media-scale placeholder while an image
+	 * generation runs, and this is the band that travels across it. Three
+	 * properties are deliberate:
+	 *
+	 *   - `background-position` ALONE - a member of the motion contract's
+	 *     allowed pair (with opacity, branding section 5). A width or a
+	 *     translate would be a layout property under a budget that forbids one,
+	 *     and the band's travel is the whole effect.
+	 *   - it ENDS on a visible frame, like `pulse-visible` above: the
+	 *     reduced-motion cap truncates rather than cancels, lands an animation
+	 *     on its `to` keyframe, and a sweep that ended mid-transparent would
+	 *     park an empty box on exactly the readers the cap protects.
+	 *   - and the two properties that make that parked `to` frame actually
+	 *     read, stated here because the keyframes alone cannot: the span's own
+	 *     `bg-[position:-200%_50%]` (its resting position IS the end frame)
+	 *     and `bg-no-repeat`. With the inherited `repeat`, the image is twice
+	 *     the tile, so every `±200%` position lands one image width away — the
+	 *     `0%` phase again — and "parked" is a static sheen crossing twice per
+	 *     loop; un-repeated, `-200%` is genuinely off the tile (design round
+	 *     1, D1, measured in pixels both ways).
+	 *   - `infinite` and `linear`: the machine has not stated an end, and an
+	 *     eased sweep would imply one.
+	 */
+	--animate-shimmer: shimmer 1.6s linear infinite;
+
+	@keyframes shimmer {
+		from {
+			background-position: 200% 50%;
+		}
+		to {
+			background-position: -200% 50%;
+		}
+	}
+
 	/*
 	 * The checkpoint jump's landing wash (`reveal-record.ts`, design §D7).
 	 *
