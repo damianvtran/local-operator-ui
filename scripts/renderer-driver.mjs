@@ -26796,14 +26796,15 @@ async function scenePaletteRecents(cdp) {
 
 	/*
 	 * Seed the ring the way a returning user has it, then boot into it. A merge into
-	 * whatever blob the app already wrote (not a replacement), at the store's own
-	 * version, so hydration is zustand's and no migration runs.
+	 * whatever blob the app already wrote (not a replacement), stamped at the
+	 * version the store ships (2, the `chatMeasureWidth` retirement), so hydration
+	 * is zustand's and no step fires.
 	 */
 	const seedRing = async (ring) => {
 		await cdp.evaluate(`(() => {
 			const key = ${JSON.stringify(PREFS_KEY)};
 			const raw = window.localStorage.getItem(key);
-			const parsed = raw === null ? { state: {}, version: 1 } : JSON.parse(raw);
+			const parsed = raw === null ? { state: {}, version: 2 } : JSON.parse(raw);
 			parsed.state = { ...(parsed.state ?? {}), conversationRecents: ${JSON.stringify(ring)} };
 			window.localStorage.setItem(key, JSON.stringify(parsed));
 			return true;

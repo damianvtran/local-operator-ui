@@ -14,9 +14,12 @@ import { build } from "esbuild";
  * - `pushConversationRecent`, the pure ordering rule (the same shape, and the
  *   same reason, as `pushProfileRecent` in `header-identity-menu.test.mjs`);
  * - the persisted store: `persistedUiPreferences` keeps the key, and a blob
- *   written BEFORE the key existed hydrates to `[]` with no version bump and no
- *   migration - proved by seeding `localStorage` with such a blob before the
- *   store module is first evaluated, which is what a real upgrade does;
+ *   written BEFORE the key existed hydrates to `[]` with no step of its own in
+ *   the migration - proved by seeding `localStorage` with such a blob before the
+ *   store module is first evaluated, which is what a real upgrade does. And
+ *   because the v2 step that retires `chatMeasureWidth` (#895) runs over the
+ *   same blob, a second cell (the fold of origin/main) seeds a v1 blob carrying
+ *   BOTH and pins that the step drops the width and keeps the ring;
  * - `visitedConversationId`, the visit rule `useConversationRecents` applies to
  *   the shell's displayed-session fields.
  *
@@ -39,9 +42,10 @@ globalThis.localStorage = {
 
 /*
  * An upgrade from a build that predates `conversationRecents`: a persisted blob
- * at the CURRENT store version (1) that carries other preferences and not the
- * key. Seeded before the store module is evaluated so zustand's own hydration
- * is what is under test, not a hand-rolled merge.
+ * at version 1 - the version that build wrote, and the shape a real upgrade
+ * presents - that carries other preferences and not the key. Seeded before the
+ * store module is evaluated so zustand's own hydration is what is under test,
+ * not a hand-rolled merge.
  */
 memory.set(
 	"ui-preferences-storage",
@@ -54,7 +58,7 @@ memory.set(
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { parseConversationRecents, pushConversationRecent, CONVERSATION_RECENTS_LIMIT, useUiPreferencesStore as store, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			'export { parseConversationRecents, pushConversationRecent, CONVERSATION_RECENTS_LIMIT, UI_PREFERENCES_VERSION, useUiPreferencesStore as store, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { chatRecentsOfRow, visitedConversationId } from "./src/renderer/src/features/command-palette/use-conversation-recents";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -80,6 +84,7 @@ const {
 	persistedUiPreferences,
 	pushConversationRecent,
 	store,
+	UI_PREFERENCES_VERSION,
 	visitedConversationId,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -89,7 +94,7 @@ test("the ring is bounded at twenty, deliberately more than the five the palette
 	assert.equal(CONVERSATION_RECENTS_LIMIT, 20);
 });
 
-test("a blob written before the key existed hydrates to an empty ring, with no migration", () => {
+test("a blob written before the key existed hydrates to an empty ring, with no step of its own in the migration", () => {
 	// Read first, before any test writes: this is the state a real upgrade boots in.
 	assert.deepEqual(store.getState().conversationRecents, []);
 	// The pre-existing preference in the same blob survived the same hydration.
@@ -166,7 +171,50 @@ test("the ring is written to disk by the store's own persistence", () => {
 	// And it really reached storage through the shipped persist middleware.
 	const written = JSON.parse(memory.get("ui-preferences-storage"));
 	assert.deepEqual(written.state.conversationRecents, ["one", "two"]);
-	assert.equal(written.version, 1);
+	// Stamped at the version the store ships (2 since the fold of origin/main:
+	// the `chatMeasureWidth` retirement) - this key rides no step of its own.
+	assert.equal(written.version, UI_PREFERENCES_VERSION);
+});
+
+test("a v1 blob carrying BOTH the retired width and the ring: the v2 step drops the width and keeps the ring (fold of origin/main)", async () => {
+	/*
+	 * The v2 step that retires `chatMeasureWidth` (#895) and this ring ride the
+	 * SAME `ui-preferences-storage` blob through the same `migrateUiPreferences`
+	 * pass, and the two halves shipped from different lanes: this cell pins that
+	 * the step drops the width WITHOUT taking the ring with it - through a real
+	 * rehydrate, the retired key must not survive zustand's default merge, and
+	 * the ring must come through intact.
+	 */
+	memory.set(
+		"ui-preferences-storage",
+		JSON.stringify({
+			state: {
+				chatMeasureWidth: 900,
+				conversationRecents: ["x", "y", "z"],
+				themeName: "dracula",
+			},
+			version: 1,
+		}),
+	);
+	await store.persist.rehydrate();
+	const state = store.getState();
+	assert.equal(
+		"chatMeasureWidth" in state,
+		false,
+		"the stale key must not survive zustand's default merge",
+	);
+	assert.deepEqual(
+		state.conversationRecents,
+		["x", "y", "z"],
+		"the ring rides the step untouched",
+	);
+	assert.equal(state.themeName, "dracula", "the rest of the blob is kept");
+	// The blob the store writes back next carries the same two facts: no width,
+	// and the ring, now extended by the store's own writer.
+	store.getState().rememberConversation("w");
+	const written = JSON.parse(memory.get("ui-preferences-storage"));
+	assert.equal("chatMeasureWidth" in written.state, false);
+	assert.deepEqual(written.state.conversationRecents, ["w", "x", "y", "z"]);
 });
 
 test("the visit rule: a conversation is recorded, a draft with no session yet is not", () => {

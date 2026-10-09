@@ -337,10 +337,17 @@ jobs:
           $env:LOCAL_OPERATOR_VENV_PATH = "$env:APPDATA\Local Operator\local-operator-venv-uv"
           $log = "$env:RUNNER_TEMP\windows-uv-arm.log"
           # The phase is timed by the script's own markers, exactly as the
-          # fallback arm above does it. pyenv and Python 3.12 are already on this
-          # runner from the fallback arm's run; the script prepends the pyenv
-          # paths itself, so a second run in a fresh shell is what a user's
-          # second install looks like.
+          # fallback arm above does it.
+          #
+          # NO `PYTHON_BIN` AND A FRESH SUPPORT DIRECTORY ON THIS ARM: it is the
+          # shape a packaged Windows app has on a clean machine (the app ships no
+          # interpreter on Windows), so the script has to provision Python through
+          # the bundled uv's `uv python install` - the path that replaced
+          # pyenv-win (first-run onboarding, Q4). The PATH arm of the script is
+          # what the fallback arm above exercises, since that job has neither uv
+          # nor PYTHON_BIN; the runner's own Python 3.12+ answers it.
+          $env:LOCAL_OPERATOR_PYTHON_VERSION = (Get-Content src/shared/bundled-runtime-layout.json -Raw | ConvertFrom-Json).python.version
+          Remove-Item env:PYTHON_BIN -ErrorAction SilentlyContinue
           $componentsAt = $null
           .\src\main\backend\scripts\windows-install-script.ps1 2>&1 | ForEach-Object {
             if ($_.ToString().Trim() -eq '|LO1:components') { $componentsAt = Get-Date }
@@ -369,6 +376,21 @@ jobs:
           if (-not (Select-String -Path $log -Pattern 'installation with uv successful' -Quiet)) {
             Write-Error "Error: the script never reported installing with uv."
             exit 1
+          }
+          # And the interpreter came from the bundled uv, inside the app's own
+          # folder - not from the runner's PATH, which would make this arm prove
+          # nothing about a clean machine.
+          if (-not (Select-String -Path $log -Pattern 'Using Python installed by uv' -Quiet)) {
+            Write-Error "Error: the uv arm did not provision Python with uv; a clean Windows machine has no other Python to fall back on."
+            exit 1
+          }
+          # Nothing outside the app's folder: the script used to persist User-scope
+          # PYENV/PYENV_HOME and PATH prepends (first-run onboarding, Q4).
+          foreach ($name in @('PYENV', 'PYENV_HOME')) {
+            if ([System.Environment]::GetEnvironmentVariable($name, 'User')) {
+              Write-Error "Error: the install script wrote the User-scope $name variable."
+              exit 1
+            }
           }
           if (-not (Test-Path "$env:LOCAL_OPERATOR_VENV_PATH\Scripts\pip.exe")) {
             Write-Error "Error: the uv install produced a venv with no pip; the app's backend-update path installs with pip in this very environment."
@@ -461,8 +483,7 @@ jobs:
       # THE UV ARM, and why it belongs HERE rather than only on Linux (review
       # R1-4 / QA Q7): macOS is the platform that ships a uv, and this script is
       # not a copy of the Linux one - it refuses a standalone run without
-      # `LOCAL_OPERATOR_VENV_PATH`, defaults `PYTHONPYCACHEPREFIX`, and treats a
-      # failed `pip install --upgrade pip` as FATAL where Linux warns. A regression
+      # `LOCAL_OPERATOR_VENV_PATH` and defaults `PYTHONPYCACHEPREFIX`. A regression
       # in the path macOS users actually take would otherwise ship green.
       #
       # The version is read from the layout definition rather than written here,
