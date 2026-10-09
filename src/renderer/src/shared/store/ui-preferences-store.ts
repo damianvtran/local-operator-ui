@@ -774,6 +774,38 @@ type UiPreferencesState = {
 	 * `rememberMention` states one list over.
 	 */
 	rememberProfile: (kind: ProfileRecencyKind, name: string) => void;
+
+	/**
+	 * The conversations this window has DISPLAYED, most recent first, as session
+	 * ids: the data behind the command palette's Recents section (the Cmd/Ctrl+K
+	 * switcher's empty-query browse list, `docs/command-palette.md`).
+	 *
+	 * WHY GLOBAL AND PERSISTED. "The conversation I was in a minute ago" is a
+	 * fact about the person, not about any one session, and it is most useful
+	 * exactly when the window has just been reopened, so the ring rides this
+	 * store's persistence like `profileRecents` does. A fresh install, and a blob
+	 * written before this key existed, both read `[]` - zustand's default merge
+	 * keeps the initial value for a key the persisted blob lacks, so this key
+	 * needs no step of its own in the migration, and the version the file ships
+	 * is not its either: `UI_PREFERENCES_VERSION` moved once, to retire
+	 * `chatMeasureWidth`, a different key (whose note carries the story). A v1
+	 * blob carrying BOTH keys is pinned by `scripts/palette-recents.test.mjs`, which proves the step
+	 * drops the width and keeps the ring.
+	 *
+	 * IDS, NOT ROWS. The palette derives its rows from the live catalogue, so an
+	 * id whose conversation was deleted, archived out of view or forgotten simply
+	 * has no row to draw; a stale id costs a slot in the ring and nothing else, and
+	 * the ring is never the thing that can resurrect a conversation.
+	 */
+	conversationRecents: string[];
+
+	/**
+	 * Record a conversation that became the displayed one. Bounded at
+	 * `CONVERSATION_RECENTS_LIMIT` and moved to the front when revisited
+	 * (`pushConversationRecent`). Called by exactly one writer,
+	 * `use-conversation-recents.ts`, off the app shell's displayed-session value.
+	 */
+	rememberConversation: (sessionId: string) => void;
 };
 
 /**
@@ -1304,6 +1336,20 @@ export const MENTION_RECENTS_LIMIT = 20;
  */
 export const PROFILE_RECENTS_LIMIT = 4;
 /**
+ * How many visited conversations the ring remembers.
+ *
+ * Twenty, and the number is deliberately larger than what the palette draws
+ * (`RECENTS_PIN_CAP`, five): the ring is the memory, the pin is the shortcut. The
+ * surplus is what keeps the pin full when some remembered conversations stop
+ * being eligible - the one on screen is excluded, unread ones live in the Unread
+ * section, and deleted or archived ones have no catalogue row - so a ring of five
+ * would routinely show two or three rows where five exist. Twenty ids is a few
+ * hundred bytes of localStorage, and past that depth "recent" has stopped meaning
+ * anything the sidebar's own list does not answer better.
+ */
+export const CONVERSATION_RECENTS_LIMIT = 20;
+
+/**
  * The floor each pane's own control stops a drag at — and, since the #677
  * round-1 review (D2), the floor the RESOLVER holds the shared width to.
  *
@@ -1471,6 +1517,9 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			/* Empty on a fresh install, and the menu renders NO recents band (and no
 			 * heading) in that state rather than an empty one - see the menu model. */
 			profileRecents: { agent: [], team: [] },
+			/* Empty on a fresh install: the palette then draws no Recents section and
+			 * no heading, so the switcher's browse list is the one it always was. */
+			conversationRecents: [],
 
 			openCreateAgentDialog: () => {
 				set({ isCreateAgentDialogOpen: true });
@@ -1768,6 +1817,23 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 					},
 				}));
 			},
+
+			rememberConversation: (sessionId) => {
+				set((state) => {
+					/* The READ side, not the setter's: zustand rehydrates past the
+					 * setters, so this value is an untrusted blob's shape and is parsed
+					 * before either reader touches it (`parseConversationRecents`). */
+					const current = parseConversationRecents(state.conversationRecents);
+					const next = pushConversationRecent(current, sessionId);
+					/* Revisiting the conversation already at the front changes nothing, so
+					 * it must not notify: the palette's source hook subscribes to this
+					 * ring and would rebuild its row list for a no-op. */
+					return next.length === current.length &&
+						next.every((id, index) => id === current[index])
+						? state
+						: { conversationRecents: next };
+				});
+			},
 		}),
 		{
 			name: "ui-preferences-storage",
@@ -1826,6 +1892,58 @@ export function pushProfileRecent(
 		0,
 		PROFILE_RECENTS_LIMIT,
 	);
+}
+
+/**
+ * One conversation's move to the front of the visited ring: most recent first,
+ * no duplicates, bounded at `CONVERSATION_RECENTS_LIMIT`.
+ *
+ * A NAMED FUNCTION RATHER THAN AN INLINE EXPRESSION IN THE ACTION, for
+ * `pushProfileRecent`'s reason one ring over: the rule is what the palette's
+ * Recents order means ("the conversation you left a moment ago is the first
+ * row"), and a rule inside a `set()` callback can only be exercised by mounting
+ * the store. Pinned by `scripts/palette-recents.test.mjs`: a revisit moves
+ * rather than duplicates, the oldest id is dropped at the bound, and the input
+ * ring is never mutated (a subscriber compares against the previous state).
+ */
+export function pushConversationRecent(
+	ring: readonly string[],
+	sessionId: string,
+): string[] {
+	return [sessionId, ...ring.filter((entry) => entry !== sessionId)].slice(
+		0,
+		CONVERSATION_RECENTS_LIMIT,
+	);
+}
+
+/**
+ * The visited ring as `localStorage` may hand it back, which is not the shape the
+ * setter wrote.
+ *
+ * ZUSTAND REHYDRATES PAST THE SETTERS, so a blob this build did not write - a
+ * hand-edit, a truncated write, a value from a build that stored something else -
+ * arrives at this key unvalidated and would throw TWICE: in
+ * `pushConversationRecent`'s `.filter` and, worse, in a RENDER path
+ * (`use-palette-sources.ts`'s row map). `rememberConversation`'s `?? []` covered
+ * neither, because `??` answers only null and undefined; a string passes straight
+ * through into `.filter`. This is the read-side rule `parseTranscriptDisplayMode`
+ * and `parseSidebarView` already follow, in its shape for a list: anything that is
+ * not an array is the empty ring, and every reader goes through it (agent review
+ * round 1, R1-5). `profileRecents` has the identical gap and is deliberately left
+ * alone here - recorded as deferred rather than widened into this change.
+ *
+ * THE ARRAY IDENTITY IS KEPT, on purpose: the palette's source hook SELECTS this
+ * value, and zustand compares the selected reference, so returning a fresh `[]`
+ * per call would re-render the row list on every render. A valid array is returned
+ * as-is; the invalid arm returns one shared constant. Members that are not strings
+ * are left in place rather than filtered, because they are inert in every reader
+ * (`indexOf`, `!==`, and the renderer's `id ===` comparisons can never match a
+ * session id) and filtering them would allocate on a path already taken only for a
+ * malformed value.
+ */
+const NO_CONVERSATION_RECENTS: string[] = [];
+export function parseConversationRecents(value: unknown): string[] {
+	return Array.isArray(value) ? (value as string[]) : NO_CONVERSATION_RECENTS;
 }
 
 /**
