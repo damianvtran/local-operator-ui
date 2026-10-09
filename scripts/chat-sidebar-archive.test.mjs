@@ -610,12 +610,15 @@ test("the header's menu is the session's actions, and its delete only ASKS", () 
 	 * right-slot actions, so five hosts can open it), which no single-line anchor
 	 * matches. Starting at the trigger is also the tighter read: the thing this test
 	 * is about is the menu, and an anchor on the trigger cannot be satisfied by
-	 * prose about the gate.
+	 * prose about the gate. THE END ANCHOR WAS `asksButtonShown && (` UNTIL #896,
+	 * when the header's asks trigger - the block that followed the menu - moved to
+	 * the panel rail; the trailing spacer that ends the header is the next stable
+	 * thing after the menu and carries the same stopping power.
 	 */
 	const menu = between(
 		HEADER,
 		"<DropdownMenuTrigger asChild>",
-		"asksButtonShown && (",
+		"{reserveTrailingChrome ? (",
 	);
 	// Fail-closed and whole: with neither capability there is no trigger at all,
 	// rather than a menu advertising items that do nothing.

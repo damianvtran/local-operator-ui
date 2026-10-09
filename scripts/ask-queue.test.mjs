@@ -732,20 +732,24 @@ test("the item's clause never claims a split the frame cannot know", () => {
 });
 
 /*
- * THE HEADER DOOR'S OWN NAME (QA round 2, Q2-1). It was composed inline in
+ * THE DOOR'S OWN NAME (QA round 2, Q2-1; the rail's since #896, renamed with the
+ * ASK_RAIL_ITEM_SELECTOR move so no export keeps naming a place the control left).
+ * It was composed inline in
  * `chat-header.tsx`, so the promise this lane makes about it - no two asks controls can
  * be one string (UX round 1, U3) - had no CI instrument; the only `Open asks` under
  * `scripts/` was a stand-in's `textContent`. The four shapes below are the contract now,
  * including the one the promise is about: the quiet state still carries its scope, which
- * is what keeps it distinct from the drawer's own dismiss.
+ * is what keeps it distinct from the drawer's own dismiss. The rail prints this string
+ * as its tooltip (`panel-rail-model.ts`'s `askRailLabels`), which is why the sentence
+ * must stay a single derivation rather than a copy.
  */
-test("the header door's name carries its verb, its scope and the count it stands for", () => {
+test("the rail door's name carries its verb, its scope and the count it stands for", () => {
 	assert.equal(
-		queue.askHeaderToggleLabel({ open: false, scope: "session", count: 1 }),
+		queue.askRailToggleLabel({ open: false, scope: "session", count: 1 }),
 		"Open asks \u2014 This conversation, 1 waiting or moved on",
 	);
 	assert.equal(
-		queue.askHeaderToggleLabel({ open: true, scope: "fleet", count: 2 }),
+		queue.askRailToggleLabel({ open: true, scope: "fleet", count: 2 }),
 		"Close asks \u2014 All conversations, 2 waiting or moved on",
 	);
 	/*
@@ -754,17 +758,17 @@ test("the header door's name carries its verb, its scope and the count it stands
 	 * two controls for two different acts.
 	 */
 	assert.equal(
-		queue.askHeaderToggleLabel({ open: false, scope: "session", count: 0 }),
+		queue.askRailToggleLabel({ open: false, scope: "session", count: 0 }),
 		"Open asks \u2014 This conversation",
 	);
 	assert.equal(
-		queue.askHeaderToggleLabel({ open: true, scope: "fleet", count: 0 }),
+		queue.askRailToggleLabel({ open: true, scope: "fleet", count: 0 }),
 		"Close asks \u2014 All conversations",
 	);
 	assert.notEqual(
-		queue.askHeaderToggleLabel({ open: true, scope: "session", count: 0 }),
+		queue.askRailToggleLabel({ open: true, scope: "session", count: 0 }),
 		"Close asks",
-		"the header door must never be the same string as the pane's own dismiss",
+		"the rail door must never be the same string as the pane's own dismiss",
 	);
 });
 
