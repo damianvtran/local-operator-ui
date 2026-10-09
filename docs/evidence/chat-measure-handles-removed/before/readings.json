@@ -1,0 +1,238 @@
+{
+	"label": "before",
+	"origin": "http://localhost:6395",
+	"themes": {
+		"localOperatorLight": {
+			"alone": {
+				"size": {
+					"width": 1180,
+					"height": 900
+				},
+				"container": {
+					"left": 260,
+					"right": 1136,
+					"width": 876
+				},
+				"column": {
+					"left": 293,
+					"right": 1103,
+					"width": 810,
+					"maxWidth": "810px",
+					"position": "relative"
+				},
+				"handlesInDom": 2,
+				"leftStrip": {
+					"pixels": 10,
+					"handlePixels": 10,
+					"cursors": [
+						"col-resize"
+					],
+					"topRoles": [
+						"separator"
+					],
+					"distanceFromContainerLeft": 33
+				},
+				"rightStrip": {
+					"pixels": 10,
+					"handlePixels": 10,
+					"cursors": [
+						"col-resize"
+					],
+					"topRoles": [
+						"separator"
+					],
+					"distanceFromContainerRight": 33
+				},
+				"sidebarDivider": {
+					"left": 254,
+					"right": 266,
+					"x": 260,
+					"y": 466,
+					"topRole": "separator",
+					"topCursor": "col-resize"
+				}
+			},
+			"panel": {
+				"size": {
+					"width": 1512,
+					"height": 900
+				},
+				"container": {
+					"left": 260,
+					"right": 1048,
+					"width": 788
+				},
+				"column": {
+					"left": 276,
+					"right": 1032,
+					"width": 756,
+					"maxWidth": "810px",
+					"position": "relative"
+				},
+				"handlesInDom": 2,
+				"leftStrip": {
+					"pixels": 10,
+					"handlePixels": 10,
+					"cursors": [
+						"col-resize"
+					],
+					"topRoles": [
+						"separator"
+					],
+					"distanceFromContainerLeft": 16
+				},
+				"rightStrip": {
+					"pixels": 10,
+					"handlePixels": 10,
+					"cursors": [
+						"col-resize"
+					],
+					"topRoles": [
+						"separator"
+					],
+					"distanceFromContainerRight": 16
+				},
+				"sidebarDivider": {
+					"left": 254,
+					"right": 266,
+					"x": 260,
+					"y": 466,
+					"topRole": "separator",
+					"topCursor": "col-resize"
+				},
+				"panelDivider": {
+					"left": 1042,
+					"right": 1054,
+					"x": 1048,
+					"y": 466,
+					"topRole": "separator",
+					"topCursor": "col-resize"
+				}
+			}
+		},
+		"localOperatorDark": {
+			"alone": {
+				"size": {
+					"width": 1180,
+					"height": 900
+				},
+				"container": {
+					"left": 260,
+					"right": 1136,
+					"width": 876
+				},
+				"column": {
+					"left": 293,
+					"right": 1103,
+					"width": 810,
+					"maxWidth": "810px",
+					"position": "relative"
+				},
+				"handlesInDom": 2,
+				"leftStrip": {
+					"pixels": 10,
+					"handlePixels": 10,
+					"cursors": [
+						"col-resize"
+					],
+					"topRoles": [
+						"separator"
+					],
+					"distanceFromContainerLeft": 33
+				},
+				"rightStrip": {
+					"pixels": 10,
+					"handlePixels": 10,
+					"cursors": [
+						"col-resize"
+					],
+					"topRoles": [
+						"separator"
+					],
+					"distanceFromContainerRight": 33
+				},
+				"sidebarDivider": {
+					"left": 254,
+					"right": 266,
+					"x": 260,
+					"y": 466,
+					"topRole": "separator",
+					"topCursor": "col-resize"
+				}
+			},
+			"panel": {
+				"size": {
+					"width": 1512,
+					"height": 900
+				},
+				"container": {
+					"left": 260,
+					"right": 1048,
+					"width": 788
+				},
+				"column": {
+					"left": 276,
+					"right": 1032,
+					"width": 756,
+					"maxWidth": "810px",
+					"position": "relative"
+				},
+				"handlesInDom": 2,
+				"leftStrip": {
+					"pixels": 10,
+					"handlePixels": 10,
+					"cursors": [
+						"col-resize"
+					],
+					"topRoles": [
+						"separator"
+					],
+					"distanceFromContainerLeft": 16
+				},
+				"rightStrip": {
+					"pixels": 10,
+					"handlePixels": 10,
+					"cursors": [
+						"col-resize"
+					],
+					"topRoles": [
+						"separator"
+					],
+					"distanceFromContainerRight": 16
+				},
+				"sidebarDivider": {
+					"left": 254,
+					"right": 266,
+					"x": 260,
+					"y": 466,
+					"topRole": "separator",
+					"topCursor": "col-resize"
+				},
+				"panelDivider": {
+					"left": 1042,
+					"right": 1054,
+					"x": 1048,
+					"y": 466,
+					"topRole": "separator",
+					"topCursor": "col-resize"
+				}
+			}
+		}
+	},
+	"migration": {
+		"seeded": {
+			"state": {
+				"chatMeasureWidth": 1100,
+				"themeName": "localOperatorLight",
+				"rightSlotWidth": 0
+			},
+			"version": 1
+		},
+		"maxWidth": "1100px",
+		"width": 844,
+		"override": "1100px",
+		"blobVersion": 1,
+		"blobHasKey": true,
+		"blobKeyValue": 1100
+	}
+}

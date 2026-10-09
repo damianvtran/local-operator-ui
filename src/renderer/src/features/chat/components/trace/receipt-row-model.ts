@@ -479,6 +479,44 @@ export function wakeIsCatchup(details: Record<string, unknown>): boolean {
 }
 
 /**
+ * Is this wake row a HIDDEN delivery - one no human surface may paint?
+ *
+ * Two producers write the marker today: a patience fire (`ask`'s internal
+ * timer), and Aida's first-run greeting trigger, whose text is a factual line
+ * addressed to her (`[first-run] surface=desktop; ...`). The operator's rule for
+ * the second is that the conversation OPENS on her message: a wake receipt, or
+ * worse a user row, above it reads as if the user had typed the trigger.
+ *
+ * The core decides this once (`harness/rows.py::is_hidden_wake_delivery`) and
+ * already drops the row from the history window it serves, so on a current
+ * backend this is the second line of defence: it covers a page from an owner
+ * whose window predates that drop and a `history_delta` frame, which reaches
+ * `durableRecord` without passing through the window at all.
+ *
+ * STRICT `=== true`: the producer writes a JSON boolean, and the fail-safe
+ * direction is to SHOW a row - hiding something a person needed to see is the
+ * worse failure (the same asymmetry `isHarnessInjected` states).
+ *
+ * THE ONE DIVERGENCE FROM THE CORE, NAMED SO THE PRODUCER KNOWS WHICH SHAPE IS
+ * LOAD-BEARING (code review round 1, R3): `harness/rows.py`'s
+ * `is_hidden_wake_delivery` reads the same marker TRUTHILY
+ * (`bool(details.get("hidden"))`), so a producer that wrote a truthy
+ * non-boolean - `"yes"`, `1` - would have the core drop the row from the
+ * served window while this client kept painting it on a `history_delta`. Strict
+ * is kept, deliberately, because the two failures are not symmetric: the
+ * divergence costs a stale row on screen, and mirroring the core would let a
+ * malformed value from a future producer silently hide a message from the person
+ * it was addressed to. What is load-bearing is a JSON `true`, and the producer
+ * GUARANTEES that shape: the backend writes `details.hidden` as a real boolean on
+ * the greeting's `custom_type: "wake_prompt"` row (confirmed on the backend side
+ * in round 1). This docblock is where that is stated, rather than the divergence
+ * being rediscovered from the two implementations.
+ */
+export function wakeIsHidden(details: Record<string, unknown>): boolean {
+	return details.hidden === true;
+}
+
+/**
  * The human-readable headline of a wake delivery.
  *
  * A wake's persisted text is `<envelope>\n\n<message>`, and the envelope is
