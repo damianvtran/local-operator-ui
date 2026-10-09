@@ -248,7 +248,8 @@ const storeBundle = await build({
 		contents:
 			'export * from "./src/renderer/src/shared/store/canonical-sessions-store";' +
 			' export * from "./src/renderer/src/features/chat/chat-archived";' +
-			' export * from "./src/renderer/src/features/chat/delete-conversation";',
+			' export * from "./src/renderer/src/features/chat/delete-conversation";' +
+			' export { chatRecentsOfRow } from "./src/renderer/src/features/command-palette/use-conversation-recents";',
 		resolveDir: process.cwd(),
 	},
 	alias: {
@@ -330,7 +331,7 @@ const storeModule = await import(
 	`data:text/javascript;base64,${Buffer.from(storeBundle.outputFiles[0].text).toString("base64")}`
 );
 const { useCanonicalSessionsStore: store } = storeModule;
-const { answeredArchiveRows, visibleRows } = storeModule;
+const { answeredArchiveRows, chatRecentsOfRow, visibleRows } = storeModule;
 
 const page = (sessions, extra = {}) => ({
 	sessions: sessions.map(({ session_id, title, archived }) => ({
@@ -448,6 +449,47 @@ test("an accepted press settles the fact and raises its offer in ONE update, and
 		"the offer is the store's own write now, not a caller's",
 	);
 	assert.equal(state.archiveFailure, null);
+});
+
+test("the palette's Recents pin follows the settled fact, with no change to any row (agent review round 2, R2-1)", async () => {
+	await seed([{ session_id: SESSION, title: "Kept", archived: false }]);
+	const ring = [SESSION];
+	const pinOut = () => {
+		const { sessions, archiveFacts } = store.getState();
+		return chatRecentsOfRow(sessions[0], ring, null, true, archiveFacts)
+			.archived;
+	};
+	assert.equal(pinOut(), false, "a live visited row is eligible for the pin");
+	const rowBefore = store.getState().sessions[0];
+
+	// In flight the press is an intent only: the pin still claims the row.
+	let release;
+	serve(
+		() =>
+			new Promise((resolve) => {
+				release = () => resolve({ session_id: SESSION, archived: true });
+			}),
+	);
+	const flight = store.getState().setSessionArchived(SESSION, true, "Kept");
+	assert.equal(pinOut(), false, "an unanswered press changes nothing");
+	release();
+	await flight;
+
+	// Settled: the fact says archived, the catalogue row still says live (the
+	// press patches no row), and the pin has already let the conversation go.
+	assert.equal(store.getState().sessions[0], rowBefore, "no row was patched");
+	assert.equal(store.getState().sessions[0].archived, false);
+	assert.equal(pinOut(), true, "the pin must follow the settled fact");
+
+	// And the way back, again without a catalogue read.
+	serve({ session_id: SESSION, archived: false });
+	await store.getState().setSessionArchived(SESSION, false, "Kept");
+	assert.equal(store.getState().sessions[0], rowBefore, "no row was patched");
+	assert.equal(
+		pinOut(),
+		false,
+		"an answered unarchive makes it eligible again",
+	);
 });
 
 test("a refused press drops the intent it wrote, and says so once", async () => {

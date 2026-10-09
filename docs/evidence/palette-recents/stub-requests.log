@@ -1,0 +1,2 @@
+3 stub GET /v1/desktop/sessions?limit=1 -> 200 rows=1 next=-
+16 stub GET /v1/desktop/sessions?limit=500&include_archived=true -> 200 rows=6 next=-
