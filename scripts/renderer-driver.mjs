@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|none>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -106,6 +106,10 @@
  *                          `stay` is the head tree, where the page opens at
  *                          scrollTop 0, unfocused, with the strip below the
  *                          fold.
+ *   --session <id>         (with --scene output-artifact) the seeded session the
+ *                          scene reads; the fixture is the attachment lane's own
+ *                          seed, and a default would photograph whatever chat
+ *                          happens to open
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
  *                          runs against two backends can be told apart
@@ -135,6 +139,18 @@
  *                          the dispatcher's own sentence for each and no
  *                          picker - the base tree's half of the pair (issue
  *                          #625)
+ *   --recents-expect <after|before>  (with --scene palette-recents) which half
+ *                          of the pair this run records: `after` (the default)
+ *                          asserts the Recents section under Unread and the walk
+ *                          across it; `before` records a base tree that predates
+ *                          the section
+ *   --recents-full  (with --scene palette-recents) records the OTHER half of this
+ *                          set - one frame of the pin at its full five rows with a
+ *                          bound row's hint - and returns. Needs the stub's LARGE
+ *                          catalogue (`--catalogue=<n>`), because the set's own
+ *                          six-conversation fixture has neither enough rows to fill
+ *                          the pin nor a bound conversation to draw a hint from
+ *                          (design round 1, D4)
  *   --row-space-expect <after|before>  (with --scene row-space) which half of
  *                          the pair this run records: `after` (the default)
  *                          asserts the head tree's two claims - the row's acts
@@ -142,6 +158,13 @@
  *                          edge cues track the clipped end; `before` records the
  *                          base tree's readings of the same moments instead
  *                          (issues #840 and #845)
+ *   --imagegen-expect <after|before>  (with --scene imagegen-card) which half of
+ *                          the pair this run records: `after` (the default)
+ *                          asserts the card at each generating call, the image
+ *                          it decoded over the attachment route, and the
+ *                          platform sentence on the failed one; `before`
+ *                          records the base tree's rendering of the SAME seeded
+ *                          calls - the ledger's own tool rows - instead
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -198,6 +221,13 @@ import { basename, join, resolve, sep } from "node:path";
 import sharp from "sharp";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { EVIDENCE_TZ } from "./evidence-tz.mjs";
+import {
+	IMAGEGEN_CALL_CANCELLED,
+	IMAGEGEN_CALL_DONE,
+	IMAGEGEN_CALL_FAILED,
+	IMAGEGEN_CALL_FOLD,
+	IMAGEGEN_FIXTURE_SESSION,
+} from "./imagegen-card-fixture.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 /*
  * Every python this harness starts is handed an environment it has decided about,
@@ -362,6 +392,15 @@ const BACKEND_RECORDS = argValue("--backend-records", null);
  * that guessed would photograph whatever the seed happened to call its row.
  */
 const PROJECT = argValue("--project", null);
+/**
+ * The seeded session `--scene output-artifact` reads, by its session id.
+ *
+ * An ARGUMENT rather than a constant: the fixture is the attachment lane's own
+ * seed (harness `feat/output-attachments`), which writes `sessions/<id>/` into
+ * the config root the run's daemon serves — so this run pins whatever that
+ * seed created rather than an id baked in here.
+ */
+const SESSION = argValue("--session", null);
 /**
  * The command that starts a fresh daemon on the `--backend` address, for
  * `--scene connection-drop`'s reconnect half.
@@ -556,6 +595,49 @@ const AUTOFOCUS_EXPECT = argValue("--autofocus-expect", null);
  * refused rather than defaulted, for the same reason the flags above are.
  */
 const ROW_SPACE_EXPECT = argValue("--row-space-expect", "after");
+/**
+ * WHICH HALF OF A BEFORE/AFTER PAIR THIS RUN IS (with --scene imagegen-card).
+ *
+ * `after` (the default) asserts the card's own claims against the head tree;
+ * `before` runs the same steps against a tree without the card and RECORDS
+ * the same four moments, because the card's presence is the change and failing
+ * on its absence there would only restate that the base tree is the base tree.
+ * The base tree's rendering of the same seeded calls is the ledger's own tool
+ * rows, so the before half asserts exactly that instead. A value the scene
+ * does not know is refused rather than defaulted, like every flag above.
+ */
+const IMAGEGEN_EXPECT = argValue("--imagegen-expect", "after");
+/**
+ * WHICH HALF OF THE RECENTS PAIR THIS RUN IS (with --scene palette-recents).
+ *
+ * `after` (the default) asserts the head tree's claims: the visited ring is
+ * filled by the app itself, the switcher pins Recents under Unread, and the walk
+ * crosses Unread -> Recents -> Chats. `before` records the base tree (a build
+ * that predates the section) instead: the same seeded profile, the same fixture,
+ * and the switcher drawing Unread and Chats only. The pair exists so the "after"
+ * frames are read against a render of the same state rather than against memory,
+ * and a value the scene does not know is refused rather than defaulted, for the
+ * reason `ROW_SPACE_EXPECT` states.
+ */
+const RECENTS_EXPECT = argValue("--recents-expect", "after");
+if (!["after", "before"].includes(RECENTS_EXPECT)) {
+	throw new Error(
+		`--recents-expect must be after or before, got ${JSON.stringify(RECENTS_EXPECT)}`,
+	);
+}
+/**
+ * THE FULL-PIN HALF of the Recents set (design round 1, D4).
+ *
+ * The set's six-conversation fixture cannot show the pin at its full five rows with
+ * a binding hint: every one of its rows is unbound (`binding: {agent: null, team:
+ * null}`), and six rows cannot fill a five-row pin once one is unread and one is the
+ * conversation on screen. This half therefore runs against the stub's LARGE
+ * catalogue (`--catalogue=<n>`, the `sidebar-lazy-chats` fixture), whose rows are
+ * spread across two teams and two agents - and it shoots ONE frame and returns,
+ * because the rest of this scene's checks are written against the six-conversation
+ * fixture.
+ */
+const RECENTS_FULL = process.argv.includes("--recents-full");
 /**
  * WHICH HALF OF A BEFORE/AFTER PAIR THIS RUN IS (with --scene conversation-start).
  *
@@ -9873,6 +9955,151 @@ function readComposerReturn(cdp) {
 	})()`);
 }
 
+/**
+ * `--scene output-artifact` photographs PRODUCED MEDIA in the canonical transcript.
+ *
+ * The claim is the output-attachment contract's UI half: a transcript row whose
+ * content carries an `AttachmentContent` block (kind + content_type + a store
+ * digest + metadata) must draw the picture inline — over the WHOLE real path,
+ * from a seeded session's durable row through the daemon's history route, the
+ * reducer's artifact coercion, the digest fetch and a `blob:` URL into the same
+ * `<img>` every other attachment uses. Nothing about the picture is assembled in
+ * the page.
+ *
+ * The fixture is the attachment lane's own seed (harness
+ * `feat/output-attachments`): a session with one artifact row (a real 640x360
+ * PNG registered through `cache_media`) and two legacy image rows — an
+ * externalised digest reference and a sub-floor inline `data:` one — so one
+ * frame pairs the new block with both back-compat shapes. `--session` names that
+ * session; the scene refuses without it rather than photographing an empty chat.
+ *
+ * The reload half: after `Page.reload` — the renderer's own re-mount, the app's
+ * closest thing to a cold read — the same route must re-read the same session
+ * from the daemon and every picture must decode again. That is the durable row
+ * surviving a reload, not the page's own memory.
+ *
+ * What it cannot see: the frames are the app's own `capturePage` in headless
+ * mode, so they prove the pixels the renderer painted; and it needs a daemon the
+ * caller seeded, because the block this scene is about does not exist in any
+ * historical transcript.
+ */
+async function sceneOutputArtifact(cdp) {
+	const hello = await verb(cdp, "hello");
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	const frames = [];
+
+	/*
+	 * READ THE PICTURES OFF THE RENDERED DOM, one shape only: an `<img>` that has
+	 * DECODED (`complete` + a real `naturalWidth`). The artifact's src must be a
+	 * `blob:` URL — the digest fetch's own object URL; a `data:` URL is accepted
+	 * only for the sub-floor inline legacy row.
+	 */
+	const readImages = () =>
+		cdp.evaluate(`(() => {
+			const log = document.querySelector('[role="log"]');
+			if (!log) return null;
+			return [...log.querySelectorAll('img')].map((el) => {
+				const r = el.getBoundingClientRect();
+				return {
+					src: (el.getAttribute('src') || '').slice(0, 16),
+					alt: el.getAttribute('alt') || '',
+					loaded: el.complete && el.naturalWidth > 0,
+					naturalWidth: el.naturalWidth,
+					naturalHeight: el.naturalHeight,
+					box: { w: Math.round(r.width), h: Math.round(r.height) },
+				};
+			});
+		})()`);
+	const waitForPictures = () =>
+		waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				if (!log) return false;
+				const imgs = [...log.querySelectorAll('img')];
+				return imgs.length >= 3 && imgs.every((el) => el.complete && el.naturalWidth > 0);
+			})()`,
+			45_000,
+		);
+
+	await verb(cdp, "navigate", `/chat/${SESSION}`);
+	const painted = await waitForPictures();
+	check(
+		"all three seeded pictures decode in the transcript",
+		painted.ok,
+		`last reading: ${JSON.stringify(painted.last)}`,
+	);
+	const reading = (await readImages()) ?? [];
+	note("images (before reload)", JSON.stringify(reading, null, 2));
+	const artifact = reading.find(
+		(i) => i.naturalWidth === 640 && i.naturalHeight === 360,
+	);
+	check(
+		"the artifact picture decoded at its real 640x360 size from a store fetch (blob:)",
+		Boolean(artifact) && artifact.loaded && artifact.src.startsWith("blob:"),
+		JSON.stringify(artifact ?? null),
+	);
+	check(
+		"the externalised legacy picture decoded too (a digest reference, the route images always used)",
+		reading.some((i) => i.naturalWidth === 320 && i.naturalHeight === 200),
+		JSON.stringify(reading.filter((i) => i.naturalWidth === 320)),
+	);
+	check(
+		"the sub-floor legacy picture decoded straight from its inline data: URL",
+		reading.some((i) => i.naturalWidth === 8 && i.src.startsWith("data:")),
+		JSON.stringify(reading.filter((i) => i.naturalWidth === 8)),
+	);
+	/*
+	 * CENTRE THE PICTURE for the frame. The pane opens at the transcript's
+	 * bottom; the tool card and its artifact sit higher in this short session,
+	 * so the frame would otherwise point the reader at empty space below. The
+	 * scroll is the app's own scroller - `scrollIntoView` on the first blob:
+	 * picture, which the checks above proved decoded - with a settle wait so the
+	 * capture never lands mid-scroll.
+	 */
+	await cdp.evaluate(
+		`(() => { const img = document.querySelector('[role="log"] img[src^="blob:"]'); if (img) img.scrollIntoView({ block: "center" }); return true; })()`,
+	);
+	await wait(600);
+	frames.push(await captureSettled(cdp, `artifact-inline${RUN_LABEL}`));
+
+	/*
+	 * THE RELOAD. `Page.reload` re-mounts the renderer; the route's session id
+	 * survives in the hash, so the repaint is this session read AGAIN from the
+	 * daemon's history route — the durable rows, not the page's memory.
+	 */
+	await cdp.send("Page.reload", { ignoreCache: false });
+	const back = await waitForPictures();
+	check(
+		"every picture decodes again after a renderer reload",
+		back.ok,
+		`last reading after reload: ${JSON.stringify(back.last)}`,
+	);
+	const replayed = (await readImages()) ?? [];
+	note("images (after reload)", JSON.stringify(replayed, null, 2));
+	check(
+		"the artifact is STILL a store fetch after the reload (the durable row, not a cached object URL)",
+		replayed.some((i) => i.naturalWidth === 640 && i.src.startsWith("blob:")),
+		JSON.stringify(replayed.filter((i) => i.naturalWidth === 640)),
+	);
+	frames.push(await captureSettled(cdp, `artifact-after-reload${RUN_LABEL}`));
+	return frames;
+}
+
 async function sceneConnectionDrop(cdp) {
 	const facts = await factsOf(cdp);
 	check(
@@ -12566,6 +12793,333 @@ async function sceneTranscriptRail(cdp) {
 		);
 		await capture(cdp, `transcript-rail-building-${suffix}`);
 		await parkPointer(cdp);
+	}
+}
+
+/**
+ * THE GENERATING-IMAGE CARD, driven in the built app against a fixture daemon.
+ *
+ * WHY A SCENE AND NOT ONLY THE STORY SET. The stories photograph the component
+ * the design round reviews; they cannot show the ROW it becomes. Only the real
+ * transcript can: the records come from durable journal rows this run's own
+ * daemon serves (the fixture below writes them before the daemon starts, the
+ * rail's own pattern), the reducer maps them, the card stands at the call's
+ * position among its neighbours, the generated image is fetched over the real
+ * attachment route (`GET /v1/desktop/sessions/<id>/attachments/<digest>`, the
+ * shipped path the durable digest exists for), and the turn's own condensers
+ * (the settled bar's media strip, the fold's count line) are the shipped ones.
+ * A stubbed transcript would photograph this scene's arithmetic instead.
+ *
+ * THE HONEST SPLIT, stated here because it shapes what the frames can carry.
+ * A durable row is SETTLED by construction, so the scene's four seeded moments
+ * are: DONE (a real 1024x640 image through the attachment route, with the
+ * backend's own 12.4s duration), FAILED (the frozen platform sentence on the
+ * result - rendered verbatim, which is the whole point of that sentence),
+ * CANCELLED (the runtime's `__fault: aborted` marker, the same classification
+ * the live end event would have made), and one CONDENSED settled run whose
+ * collapsed surface carries the run's pictures. QUEUED, RUNNING and CANCELLING
+ * are LIVE states - produced by `tool_execution_start` frames and the pane's
+ * own stop fact - and no producer on this wire generates them for this tool
+ * yet; those frames are the story set's (`image-gen-card.stories.tsx`), and
+ * this scene asserts their ABSENCE from the durable page rather than staging
+ * them.
+ *
+ * THE BEFORE HALF (`--imagegen-expect before`) runs the same bytes against the
+ * base tree, where the same seeded calls render as the ledger's own tool rows:
+ * no card anywhere, the image under the settled row, the same four frames.
+ * The pair is what the design round reads - one rendering replaced by another,
+ * not two renderings of two different fixtures.
+ *
+ * THE COMMAND (the fixture daemon, then the driver; `$RIG` is a scratch root):
+ *
+ *   node scripts/imagegen-card-fixture.mjs "$RIG/config"
+ *   printf 'values:\n  hosting: test\n  model_name: mock-model\n' > "$RIG/config/config.yml"
+ *   LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
+ *     HOME="$RIG/home" LOCAL_OPERATOR_CONFIG_DIR="$RIG/config" \
+ *     local-operator serve --host 127.0.0.1 --port <port> --hosting test --model mock-model &
+ *   VITE_LOCAL_OPERATOR_API_URL="http://127.0.0.1:<port>" pnpm build
+ *   LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
+ *     node scripts/renderer-driver.mjs --scene imagegen-card \
+ *     --backend "http://127.0.0.1:<port>" --backend-records "$RIG/config/run/serve" \
+ *     --seed-onboarding-complete --out "$RIG/frames"
+ *
+ * The rendered rows are the FIXTURE's, and every frame's log says so: the
+ * synthetic half is the INPUT (the journal `scripts/imagegen-card-fixture.mjs`
+ * mints), the disclosure the staged-input verbs owe their evidence.
+ */
+async function sceneImageGenCard(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const after = IMAGEGEN_EXPECT === "after";
+	const evaluate = (expression) => cdp.evaluate(expression);
+	const rowSelector = (callId) =>
+		`[data-record-id="tool:${callId}"]:not([data-turn-summary])`;
+
+	/* ---------------------------------------------------------------- open the
+	 * fixture conversation, the way the rail scene opens its own. */
+	await verb(cdp, "navigate", "/chat");
+	const listed = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-session-row="${IMAGEGEN_FIXTURE_SESSION}"]'))`,
+		30_000,
+	);
+	check(
+		"the fixture conversation is listed by the daemon this run owns",
+		listed.ok,
+		`no row for ${IMAGEGEN_FIXTURE_SESSION} after ${listed.waitedMs}ms`,
+		`row listed after ${listed.waitedMs}ms`,
+	);
+	await verb(cdp, "press", {
+		selector: `[data-session-row="${IMAGEGEN_FIXTURE_SESSION}"] [data-chat-row]`,
+	});
+	const hydrated = await waitForCondition(
+		cdp,
+		`document.querySelectorAll("[data-record-id]").length > 0`,
+		30_000,
+	);
+	check(
+		"the conversation's rows hydrate from the daemon this run owns",
+		hydrated.ok,
+		`no rows after ${hydrated.waitedMs}ms`,
+		`rows mounted after ${hydrated.waitedMs}ms`,
+	);
+
+	/**
+	 * Bring one call's row on screen, opening whatever condenses it.
+	 *
+	 * A settled turn collapses behind its `[data-turn-summary]` bar and the
+	 * collapsed bar's rows are NOT in the DOM (`failed-row-jump.ts`), so a frame
+	 * of a card inside one would photograph the bar. The reveal is the walk the
+	 * failure jump performs: press the bar that names this record in its
+	 * `data-run-ids` - the bar's own disclosure, an actual press - and the rows
+	 * are back. A row already standing (this turn was left open) makes the whole
+	 * helper a no-op, and the press is only sent when the row is absent for the
+	 * same reason: pressing an open bar would collapse it again.
+	 */
+	const reveal = async (callId) => {
+		const selector = rowSelector(callId);
+		const query = JSON.stringify(selector);
+		if (!(await evaluate(`Boolean(document.querySelector(${query}))`))) {
+			const pressed = await verb(cdp, "press", {
+				selector: `[data-turn-summary][data-run-ids~="tool:${callId}"] button[aria-expanded]`,
+			}).catch((error) => ({ error: String(error) }));
+			note(
+				`the condensed bar naming ${callId} was pressed to reveal its rows`,
+				JSON.stringify(pressed).slice(0, 240),
+			);
+		}
+		const visible = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector(${query}))`,
+			10_000,
+		);
+		await evaluate(
+			`(() => { const row = document.querySelector(${query}); if (row) row.scrollIntoView({ block: "center" }); return Boolean(row); })()`,
+		);
+		await wait(450);
+		return visible.ok;
+	};
+
+	/** The card state the row currently draws, or null when no card stands. */
+	const cardState = (callId) =>
+		evaluate(`(() => {
+			const row = document.querySelector(${JSON.stringify(rowSelector(callId))});
+			const card = row === null ? null : row.querySelector("[data-imagegen-card]");
+			return card === null ? null : card.getAttribute("data-imagegen-card");
+		})()`);
+
+	/** One call's rendered text, card or ledger row, for the copy checks. */
+	const rowText = (callId) =>
+		evaluate(`(() => {
+			const row = document.querySelector(${JSON.stringify(rowSelector(callId))});
+			return row === null ? null : row.textContent;
+		})()`);
+
+	/**
+	 * The picture inside one call's row, as the DOM answers: src scheme,
+	 * natural (decoded) size and shown size.
+	 *
+	 * ONE reading for both halves of the pair, deliberately: the card draws its
+	 * image through `CanonicalImage` (the established path), so "an img inside
+	 * the call's row" is the fact both renderings share, and the interesting
+	 * difference between them is the copy and the chrome around it, not a second
+	 * way to find a picture.
+	 */
+	const imageReading = (callId) =>
+		evaluate(`(() => {
+			const row = document.querySelector(${JSON.stringify(rowSelector(callId))});
+			if (row === null) return null;
+			const img = row.querySelector("img");
+			if (img === null) return null;
+			const rect = img.getBoundingClientRect();
+			return {
+				scheme: String(img.getAttribute("src") || "").split(":")[0] || null,
+				natural: img.naturalWidth + "x" + img.naturalHeight,
+				shown: Math.round(rect.width) + "x" + Math.round(rect.height),
+				decoded: Boolean(img.complete && img.naturalWidth > 0),
+			};
+		})()`);
+
+	/** Wait until that picture has decoded, or say it never did. */
+	const imageDecoded = (callId) =>
+		waitForCondition(
+			cdp,
+			`(() => {
+				const row = document.querySelector(${JSON.stringify(rowSelector(callId))});
+				const img = row === null ? null : row.querySelector("img");
+				return Boolean(img && img.complete && img.naturalWidth > 0);
+			})()`,
+			15_000,
+		);
+
+	for (const theme of sceneThemes()) {
+		const suffix = theme === "localOperatorDark" ? "dark" : "light";
+		await verb(cdp, "setTheme", theme);
+
+		const revealed = {
+			done: await reveal(IMAGEGEN_CALL_DONE),
+			failed: await reveal(IMAGEGEN_CALL_FAILED),
+			cancelled: await reveal(IMAGEGEN_CALL_CANCELLED),
+		};
+		check(
+			`all three seeded calls' rows stand on screen (${theme})`,
+			revealed.done && revealed.failed && revealed.cancelled,
+			JSON.stringify(revealed),
+			JSON.stringify(revealed),
+		);
+
+		if (after) {
+			const states = {
+				done: await cardState(IMAGEGEN_CALL_DONE),
+				failed: await cardState(IMAGEGEN_CALL_FAILED),
+				cancelled: await cardState(IMAGEGEN_CALL_CANCELLED),
+			};
+			check(
+				`each settled call renders the card's own state (${theme})`,
+				states.done === "done" &&
+					states.failed === "failed" &&
+					states.cancelled === "cancelled",
+				JSON.stringify(states),
+				JSON.stringify(states),
+			);
+			const liveOnly = await evaluate(
+				'document.querySelectorAll(\'[data-imagegen-card="queued"], [data-imagegen-card="running"], [data-imagegen-card="cancelling"]\').length',
+			);
+			check(
+				`no live-only card state is invented on a durable page (${theme})`,
+				liveOnly === 0,
+				`${liveOnly} live-only card(s) on a durable page`,
+				"queued/running/cancelling cards: 0 - those frames are the story set's",
+			);
+			await reveal(IMAGEGEN_CALL_DONE);
+			const decoded = await imageDecoded(IMAGEGEN_CALL_DONE);
+			const image = await imageReading(IMAGEGEN_CALL_DONE);
+			check(
+				`the done card's image decoded over the attachment route (${theme})`,
+				decoded.ok &&
+					image !== null &&
+					image.scheme === "blob" &&
+					image.natural === "1024x640",
+				`no decoded image after ${decoded.waitedMs}ms: ${JSON.stringify(image)}`,
+				JSON.stringify(image),
+			);
+			const failedText = await rowText(IMAGEGEN_CALL_FAILED);
+			check(
+				`the failed card states the platform sentence verbatim (${theme})`,
+				typeof failedText === "string" &&
+					failedText.includes(
+						"This generation failed before producing output.",
+					),
+				`the sentence is not on the row: ${JSON.stringify(failedText)}`,
+				"the platform `error` sentence, rendered as-is",
+			);
+			const cancelledText = await rowText(IMAGEGEN_CALL_CANCELLED);
+			check(
+				`the cancelled card states the plain cancellation (${theme})`,
+				typeof cancelledText === "string" &&
+					cancelledText.includes("Cancelled"),
+				`the cancellation line is not on the row: ${JSON.stringify(cancelledText)}`,
+				"cancelled, with no error sentence claimed for it",
+			);
+		} else {
+			const cards = await evaluate(
+				'document.querySelectorAll("[data-imagegen-card]").length',
+			);
+			check(
+				`the base tree renders no image-gen card (${theme})`,
+				cards === 0,
+				`${cards} card(s) on the base tree's page`,
+				"no [data-imagegen-card] anywhere - the calls render as the ledger's rows",
+			);
+			const decoded = await imageDecoded(IMAGEGEN_CALL_DONE);
+			const image = await imageReading(IMAGEGEN_CALL_DONE);
+			check(
+				`the base tree renders the same generated image under its row (${theme})`,
+				decoded.ok && image !== null && image.natural === "1024x640",
+				`no decoded image after ${decoded.waitedMs}ms: ${JSON.stringify(image)}`,
+				JSON.stringify(image),
+			);
+		}
+
+		/*
+		 * THE FRAMES, the same four scrolls and labels in both halves: one per
+		 * settled state at its call's position, and the condensed run whose
+		 * collapsed surface carries the run's pictures.
+		 */
+		await reveal(IMAGEGEN_CALL_DONE);
+		await imageDecoded(IMAGEGEN_CALL_DONE);
+		await parkPointer(cdp);
+		await captureSettled(cdp, `imagegen-done-${suffix}`);
+		await reveal(IMAGEGEN_CALL_FAILED);
+		await parkPointer(cdp);
+		await captureSettled(cdp, `imagegen-failed-${suffix}`);
+		await reveal(IMAGEGEN_CALL_CANCELLED);
+		await parkPointer(cdp);
+		await captureSettled(cdp, `imagegen-cancelled-${suffix}`);
+
+		/*
+		 * The condensed surface: after the three reveals above, the only
+		 * `[data-fold-media]` left on screen belongs to the settled run of three
+		 * calls (turn four), which never needed opening - its strip IS the claim
+		 * that the fold counts the finished image. The strip's own arm, the one a
+		 * frame cannot read, is the tile's decoded size: 896x576 is the SECOND
+		 * fixture candidate, so the picture in the strip is provably the run's
+		 * own product and not the hero image borrowed from turn one.
+		 */
+		const strip = await waitForCondition(
+			cdp,
+			`(() => {
+				const media = document.querySelector("[data-fold-media]");
+				if (media === null) return null;
+				const img = media.querySelector("img");
+				if (img === null || !img.complete || img.naturalWidth === 0) return null;
+				return {
+					label: media.getAttribute("aria-label"),
+					natural: img.naturalWidth + "x" + img.naturalHeight,
+				};
+			})()`,
+			15_000,
+		);
+		check(
+			`the condensed run's strip carries its own generated image (${theme})`,
+			strip.ok &&
+				strip.last?.label === "1 image from this run" &&
+				strip.last?.natural === "896x576",
+			`no decoded strip image after ${strip.waitedMs}ms: ${JSON.stringify(strip.last)}`,
+			JSON.stringify(strip.last),
+		);
+		await evaluate(
+			`(() => { const media = document.querySelector("[data-fold-media]"); if (media) media.scrollIntoView({ block: "center" }); return Boolean(media); })()`,
+		);
+		await wait(450);
+		await parkPointer(cdp);
+		await captureSettled(cdp, `imagegen-condensed-${suffix}`);
 	}
 }
 
@@ -26715,6 +27269,474 @@ async function scenePaletteUnread(cdp) {
 	return frames;
 }
 
+/*
+ * ---- the switcher's Recents section ----
+ *
+ * WHY ITS OWN SCENE, and why it leans on `scenePaletteUnread`'s fixture. Recents
+ * is a claim about three things a unit test cannot show together: the app FILLS
+ * the visited ring itself (the hook reads the shell's displayed conversation, so
+ * this scene opens a conversation the way a user does and then reads the ring off
+ * the profile's own persisted preferences), the section sits UNDER Unread and
+ * ABOVE Chats with no row repeated, and the keyboard walks across the boundary
+ * between sections in order. The first is state, the second is a picture, the
+ * third is a sequence of `aria-activedescendant` readings; the frames carry the
+ * second and the log carries the other two.
+ *
+ * THE PROFILE IS SEEDED, NOT SCRIPTED: the ring is written into the profile's
+ * `ui-preferences-storage` and the page reloaded, so the app BOOTS with a
+ * history - the state a person who has used it for a week is in. The seed
+ * deliberately includes the fixture's UNREAD conversation (it must NOT appear
+ * under Recents: it is already in the Unread section) and, after the scene opens
+ * "Invoice reconciliation" by pressing its sidebar row, the conversation ON SCREEN
+ * (it must not appear either: you are already in it).
+ *
+ * Both halves of the pair run this same scene (`--recents-expect before|after`);
+ * the `before` half records a base tree that does not draw the section.
+ */
+async function scenePaletteRecents(cdp) {
+	const frames = [];
+	const AFTER = RECENTS_EXPECT === "after";
+	/*
+	 * The theme this run shoots in, and the tag its frame labels carry. Named once rather
+	 * than the literal `localOperatorDark` the scene used to hard-code: design round 1's D4
+	 * asked for one frame of this same scene in `localOperatorLight`, and a scene that
+	 * re-applied dark after `--theme` had set light would have photographed neither.
+	 */
+	const THEME_ID = THEME ?? "localOperatorDark";
+	/*
+	 * Lower-case, because a frame label is validated to lowercase letters, digits, dashes
+	 * and underscores (`dev-driver-capture`). The dark spelling is kept as `dark` so the
+	 * set's committed labels do not move.
+	 */
+	const THEME_TAG =
+		THEME_ID === "localOperatorDark" ? "dark" : THEME_ID.toLowerCase();
+	/* The fixture's conversations (`docs/evidence/sidebar-row-space/harness/stub-daemon.mjs`). */
+	const UNREAD_ID = "b3f1a09c7d52";
+	const OPEN_ID = "2d5ad5da0025"; // Invoice reconciliation: opened by the scene
+	const VISITED = [
+		"7c1b0f2a4d31", // Migration checklist: visited most recently before the open
+		"e059761608ae", // Release notes for 0.29
+		"c4e17b90a2f6", // AWS cost increase review...
+		UNREAD_ID, // unread AND visited: lives in the Unread section only
+	];
+	const PREFS_KEY = "ui-preferences-storage";
+
+	const hello = await verb(cdp, "hello");
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	/*
+	 * Seed the ring the way a returning user has it, then boot into it. A merge into
+	 * whatever blob the app already wrote (not a replacement), stamped at the
+	 * version the store ships (2, the `chatMeasureWidth` retirement), so hydration
+	 * is zustand's and no step fires.
+	 */
+	const seedRing = async (ring) => {
+		await cdp.evaluate(`(() => {
+			const key = ${JSON.stringify(PREFS_KEY)};
+			const raw = window.localStorage.getItem(key);
+			const parsed = raw === null ? { state: {}, version: 2 } : JSON.parse(raw);
+			parsed.state = { ...(parsed.state ?? {}), conversationRecents: ${JSON.stringify(ring)} };
+			window.localStorage.setItem(key, JSON.stringify(parsed));
+			return true;
+		})()`);
+		await cdp.send("Page.reload", { ignoreCache: false });
+		await waitForBridge(cdp);
+		await wait(500);
+	};
+	const readRing = () =>
+		cdp.evaluate(`(() => {
+			try {
+				const raw = window.localStorage.getItem(${JSON.stringify(PREFS_KEY)});
+				return raw ? (JSON.parse(raw)?.state?.conversationRecents ?? null) : null;
+			} catch {
+				return "(unreadable)";
+			}
+		})()`);
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", THEME_ID);
+	await seedRing(VISITED);
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", THEME_ID);
+	const state = await verb(cdp, "state");
+	check(
+		"the catalogue answered with this set's fixture",
+		state.sessionCount >= 5,
+		`sessionCount is ${state.sessionCount}`,
+	);
+	await drawAtLeast(cdp, 5);
+
+	/*
+	 * OPEN A CONVERSATION THE WAY A USER DOES: the sidebar row's press, the path
+	 * `browser-composition` opens one with. Nothing here tells the ring; the hook has
+	 * to notice the displayed conversation changed.
+	 *
+	 * SKIPPED IN THE `--recents-full` HALF: that conversation belongs to the
+	 * six-conversation fixture, and this half runs against the LARGE catalogue, where
+	 * no such row exists to press.
+	 */
+	if (!RECENTS_FULL) {
+		await verb(cdp, "press", {
+			selector: `[data-session-row="${OPEN_ID}"] [data-chat-row]`,
+		});
+		const opened = await waitForCondition(
+			cdp,
+			`document.querySelector('[data-session-row="${OPEN_ID}"]') !== null`,
+			30_000,
+		);
+		await wait(600);
+		const afterOpen = await verb(cdp, "state");
+		check(
+			"the fixture conversation is the one open on the pane",
+			opened.ok && afterOpen.activeSessionId === OPEN_ID,
+			`active=${afterOpen.activeSessionId}`,
+		);
+		const ring = await readRing();
+		note("the persisted visited ring after the open", JSON.stringify(ring));
+		if (AFTER) {
+			check(
+				"opening a conversation put it at the FRONT of the persisted ring, ahead of the seeded history, with no duplicate",
+				Array.isArray(ring) &&
+					ring[0] === OPEN_ID &&
+					ring.slice(1).join() === VISITED.join() &&
+					new Set(ring).size === ring.length,
+				JSON.stringify(ring),
+			);
+		}
+	}
+
+	const readList = async () =>
+		cdp.evaluate(`(() => {
+			const list = document.querySelector("#command-palette-results");
+			if (!list) return null;
+			const box = list.getBoundingClientRect();
+			return {
+				box: { x: box.x, y: box.y, width: box.width, height: box.height },
+				headings: [...list.querySelectorAll('[role="presentation"]')].map((node) =>
+					(node.textContent || "").trim(),
+				),
+				/* Each row with the heading it sits under, in DOM order. */
+				options: [...list.querySelectorAll('[role="option"]')].map((row) => {
+					let heading = null;
+					for (let n = row.previousElementSibling; n; n = n.previousElementSibling) {
+						if (n.getAttribute("role") === "presentation") {
+							heading = (n.textContent || "").trim();
+							break;
+						}
+					}
+					return {
+						id: row.id,
+						heading,
+						selected: row.getAttribute("aria-selected") === "true",
+						text: (row.textContent || "").replace(/\s+/g, " ").trim().slice(0, 48),
+					};
+				}),
+				active:
+					document
+						.getElementById("command-palette-input")
+						?.getAttribute("aria-activedescendant") ?? null,
+			};
+		})()`);
+	const openSwitcher = async () => {
+		await verb(cdp, "press", "[data-command-palette-trigger]");
+		await waitForScene(
+			cdp,
+			`document.activeElement?.id === "command-palette-input"`,
+		);
+		await cdp.send("Input.insertText", { text: "#" });
+		await waitForScene(
+			cdp,
+			`document.querySelectorAll('#command-palette-results [role="option"]').length > 0`,
+		);
+		return readList();
+	};
+	const closeSwitcher = async () => {
+		for (const type of ["keyDown", "keyUp"]) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type,
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+				nativeVirtualKeyCode: 27,
+			});
+		}
+		return waitForScene(
+			cdp,
+			`!document.querySelector('[data-tour-tag="command-palette-dialog"]')`,
+		);
+	};
+	const idOf = (id) => `chat-${id}`;
+
+	/*
+	 * THE FULL PIN, WITH A BOUND ROW (design round 1, D4).
+	 *
+	 * WHY A FIXTURE OF ITS OWN. This set's six conversations are all unbound
+	 * (`binding: {agent: null, team: null}`), so no ring over them can show a binding
+	 * HINT - and six rows cannot fill the pin's five once one is unread and one is the
+	 * conversation on screen. This half therefore runs against the stub's LARGE
+	 * catalogue (`--catalogue=<n>`), whose rows are spread across two teams and two
+	 * agents, and it shoots ONE frame and returns: the checks below are written against
+	 * the six-conversation fixture.
+	 */
+	if (RECENTS_FULL) {
+		/*
+		 * p015..p034 carry the `minervadev` team; p035..p042 are bound to the `reviewer`
+		 * agent (`stub-daemon.mjs`'s `pagedCatalogue`). Six ids, deliberately one more
+		 * than the pin draws (`RECENTS_PIN_CAP`, five), so the frame shows both the full
+		 * pin and the sixth ring entry falling through to the Chats tier.
+		 */
+		const BOUND_RING = ["p016", "p017", "p018", "p035", "p036", "p019"];
+		await verb(cdp, "navigate", "/chat");
+		await verb(cdp, "setTheme", THEME_ID);
+		await seedRing(BOUND_RING);
+		await verb(cdp, "navigate", "/chat");
+		await drawAtLeast(cdp, 5);
+		const ringBack = await readRing();
+		check(
+			"the seeded bound ring hydrated into the app",
+			Array.isArray(ringBack) &&
+				BOUND_RING.every((id) => ringBack.includes(id)),
+			JSON.stringify(ringBack),
+		);
+		const full = await openSwitcher();
+		note("the full Recents pin over the bound catalogue", JSON.stringify(full));
+		if (full === null)
+			throw new Error("the switcher's list was not in the DOM");
+		const pinned = full.options.filter((row) => row.heading === "Recents");
+		check(
+			"the Recents pin is FULL: five rows, in ring order",
+			pinned.map((row) => row.id).join() ===
+				BOUND_RING.slice(0, 5).map(idOf).join(),
+			JSON.stringify(pinned.map((row) => row.id)),
+		);
+		check(
+			"the pin claims only FIVE of the six ring entries: the sixth is not in Recents",
+			pinned.length === 5 &&
+				!pinned.some((row) => row.id === idOf(BOUND_RING[5])) &&
+				full.options.filter((row) => row.id === idOf(BOUND_RING[5])).length <=
+					1,
+			JSON.stringify(full.options.map((row) => `${row.heading}:${row.id}`)),
+		);
+		note(
+			"the sixth ring entry sits past the Chats tier's own five-row cap in this fixture, so this frame does not draw it - it is not in Recents either (the pin's cap, not an exclusion)",
+			JSON.stringify(
+				full.options
+					.filter((row) => row.heading === "Chats")
+					.map((row) => row.id),
+			),
+		);
+		check(
+			"a Recents row carries its binding hint (the team or agent the conversation is bound to)",
+			pinned.some((row) => /minervadev|reviewer/.test(row.text)),
+			JSON.stringify(pinned.map((row) => row.text)),
+		);
+		check(
+			"no conversation is drawn twice across the sections",
+			new Set(full.options.map((row) => row.id)).size === full.options.length,
+			JSON.stringify(full.options.map((row) => row.id)),
+		);
+		frames.push(await captureSettled(cdp, `palette-recents-full-${THEME_TAG}`));
+		await closeSwitcher();
+		return frames;
+	}
+
+	/* ---- frame 1: the switcher on open ---- */
+	const switcher = await openSwitcher();
+	note("the switcher's empty (#) state", JSON.stringify(switcher));
+	if (switcher === null)
+		throw new Error(
+			"the switcher's list was not in the DOM after typing the seed",
+		);
+	const shape = switcher.options.map((row) => `${row.heading}:${row.id}`);
+	if (AFTER) {
+		check(
+			"the sections read Unread, Recents, Chats - Recents directly beneath Unread",
+			switcher.headings.join("|") === "Unread|Recents|Chats",
+			JSON.stringify(switcher.headings),
+		);
+		const recents = switcher.options.filter((row) => row.heading === "Recents");
+		check(
+			"Recents lists the visited ring in visit order, minus the unread row and minus the conversation on screen",
+			recents.map((row) => row.id).join() ===
+				[idOf(VISITED[0]), idOf(VISITED[1]), idOf(VISITED[2])].join(),
+			JSON.stringify(recents.map((row) => row.id)),
+		);
+		check(
+			"the conversation on screen is not in Recents (it sits in the Chats tier as an ordinary row)",
+			!recents.some((row) => row.id === idOf(OPEN_ID)) &&
+				switcher.options.some(
+					(row) => row.id === idOf(OPEN_ID) && row.heading === "Chats",
+				),
+			JSON.stringify(shape),
+		);
+		check(
+			"the unread conversation is in Unread only, though it is in the ring",
+			switcher.options.filter((row) => row.id === idOf(UNREAD_ID)).length ===
+				1 &&
+				switcher.options.find((row) => row.id === idOf(UNREAD_ID))?.heading ===
+					"Unread",
+			JSON.stringify(shape),
+		);
+		check(
+			"no conversation is drawn twice across the three sections",
+			new Set(switcher.options.map((row) => row.id)).size ===
+				switcher.options.length,
+			JSON.stringify(shape),
+		);
+	} else {
+		check(
+			"the base tree draws Unread and Chats only - no Recents heading",
+			switcher.headings.join("|") === "Unread|Chats",
+			JSON.stringify(switcher.headings),
+		);
+	}
+	check(
+		"the selection starts on the first row (the unread conversation)",
+		switcher.options[0]?.selected === true &&
+			switcher.active === switcher.options[0]?.id &&
+			switcher.options[0]?.id === idOf(UNREAD_ID),
+		`active is ${switcher.active}`,
+	);
+	frames.push(
+		await captureSettled(
+			cdp,
+			AFTER
+				? `palette-recents-${THEME_TAG}`
+				: `palette-recents-before-${THEME_TAG}`,
+		),
+	);
+
+	/* ---- frame 2: one ArrowDown across the Unread -> Recents boundary ---- */
+	const press = async (key, code, virtualKeyCode, modifiers = 0) => {
+		await pressChord(cdp, { key, code, virtualKeyCode, modifiers });
+		await wait(150);
+		return readList();
+	};
+	const down = () => press("ArrowDown", "ArrowDown", 40);
+	const crossed = await down();
+	note("after one ArrowDown", JSON.stringify(crossed));
+	const secondRow = switcher.options[1];
+	check(
+		AFTER
+			? "ArrowDown crossed from the last Unread row onto the FIRST Recents row"
+			: "ArrowDown moved onto the second row (the base tree has no Recents)",
+		crossed !== null &&
+			crossed.active === secondRow?.id &&
+			(AFTER
+				? secondRow?.heading === "Recents"
+				: secondRow?.heading === "Chats"),
+		`active ${switcher.active} -> ${crossed?.active}; second row ${JSON.stringify(secondRow)}`,
+	);
+	frames.push(
+		await captureSettled(
+			cdp,
+			AFTER
+				? `palette-recents-down-${THEME_TAG}`
+				: `palette-recents-before-down-${THEME_TAG}`,
+		),
+	);
+
+	/* ---- the full walk: every row, in list order, by ArrowDown and by Ctrl+N ---- */
+	if (AFTER) {
+		const order = switcher.options.map((row) => row.id);
+		const walked = [crossed.active];
+		for (let step = 2; step < order.length; step += 1) {
+			const next =
+				step % 2 === 0
+					? await down()
+					: await press("n", "KeyN", 78, MODIFIER.ctrl);
+			walked.push(next?.active ?? null);
+		}
+		note(
+			"the walk (ArrowDown, then alternating Ctrl+N / ArrowDown)",
+			JSON.stringify(walked),
+		);
+		check(
+			"Down and Ctrl+N visit every row in list order: Unread -> Recents (x3) -> Chats, with none skipped",
+			walked.join() === order.slice(1).join(),
+			`walked ${JSON.stringify(walked)} vs list ${JSON.stringify(order.slice(1))}`,
+		);
+		const draftAfter = await stagedDraft(cdp);
+		check(
+			"Ctrl+N stepped the palette and did NOT start a new chat",
+			draftAfter === null || draftAfter === undefined,
+			JSON.stringify(draftAfter),
+		);
+	}
+	check("Escape closed the palette", (await closeSwitcher()) === true);
+
+	/* ---- frame 3: an empty ring - no section, no heading ---- */
+	await seedRing([]);
+	await verb(cdp, "navigate", "/chat");
+	await drawAtLeast(cdp, 5);
+	/* Boot restores the open conversation, so the hook records it again: a ring of one,
+	 * and that one is the conversation on screen - excluded - so nothing is eligible. */
+	const ringAfterReboot = await readRing();
+	note(
+		"the ring after booting from an empty one",
+		JSON.stringify(ringAfterReboot),
+	);
+	const empty = await openSwitcher();
+	note("the switcher with no eligible recents", JSON.stringify(empty));
+	check(
+		"with no eligible visited conversation the switcher is Unread then Chats - no Recents heading, no empty section",
+		empty !== null && empty.headings.join("|") === "Unread|Chats",
+		JSON.stringify(empty?.headings),
+	);
+	frames.push(
+		await captureSettled(
+			cdp,
+			AFTER
+				? `palette-recents-empty-${THEME_TAG}`
+				: `palette-recents-before-empty-${THEME_TAG}`,
+		),
+	);
+	await closeSwitcher();
+
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: stable ${frame.stable === true}, toast-free ${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map(
+				(f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`,
+			)
+			.join(" | "),
+	);
+	check(
+		"the first two frames are two renders, not one frame written twice",
+		!readFileSync(frames[0].path).equals(readFileSync(frames[1].path)),
+		`${frames[0].bytes}B vs ${frames[1].bytes}B`,
+	);
+	return frames;
+}
+
 // ---- the composer's @ mentions -------------------------------------------------
 
 /*
@@ -40774,6 +41796,11 @@ async function main() {
 			"--scene palette-unread needs --backend: the Unread pin is composed from the catalogue's own rows, so a run with no backend has no conversation the fixture could carry an unread fact on",
 		);
 	}
+	if (SCENE === "palette-recents" && BACKEND === null) {
+		throw new Error(
+			"--scene palette-recents needs --backend: Recents is composed from the catalogue's own rows, so a run with no backend has no conversation to visit",
+		);
+	}
 	if (SCENE === "question-dock" && BACKEND === null) {
 		throw new Error(
 			"--scene question-dock needs --backend: the card docks on a gate a live owner parks, and a run with none has no turn to pause",
@@ -40787,6 +41814,16 @@ async function main() {
 	if (SCENE === "turn-collapse" && BACKEND === null) {
 		throw new Error(
 			"--scene turn-collapse needs --backend: the bar collapses a turn the daemon has to actually run, and with no backend the chat route draws its refusal surface and no composer mounts",
+		);
+	}
+	if (SCENE === "output-artifact" && BACKEND === null) {
+		throw new Error(
+			"--scene output-artifact needs --backend: the transcript it photographs is read from a live daemon's history route, and no historical transcript carries the block it is about",
+		);
+	}
+	if (SCENE === "output-artifact" && SESSION === null) {
+		throw new Error(
+			"--scene output-artifact needs --session <id>: it photographs the seeded session, and a default would photograph whatever chat happens to open",
 		);
 	}
 	if (SCENE === "conversation-start-away-failure" && BACKEND === null) {
@@ -40855,6 +41892,25 @@ async function main() {
 	) {
 		throw new Error(
 			`--row-space-expect takes after or before (got ${JSON.stringify(ROW_SPACE_EXPECT)}): the two are different claims about the same moments, and a defaulted typo would silently answer the other one`,
+		);
+	}
+	if (
+		SCENE === "imagegen-card" &&
+		IMAGEGEN_EXPECT !== "after" &&
+		IMAGEGEN_EXPECT !== "before"
+	) {
+		throw new Error(
+			`--imagegen-expect takes after or before (got ${JSON.stringify(IMAGEGEN_EXPECT)}): the two are different renderings of the same seeded calls, and a defaulted typo would silently answer the other one`,
+		);
+	}
+	if (SCENE === "imagegen-card" && BACKEND === null) {
+		throw new Error(
+			"--scene imagegen-card needs --backend: the card's states are read from durable transcript rows, and with no backend the chat route draws its refusal surface and no conversation opens",
+		);
+	}
+	if (SCENE === "imagegen-card" && BACKEND_RECORDS === null) {
+		throw new Error(
+			"--scene imagegen-card needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
 		);
 	}
 	if (SCENE === "route-tops" && BACKEND === null) {
@@ -41063,6 +42119,7 @@ async function main() {
 			 */ else if (SCENE === "floors") await sceneFloors(cdp);
 			else if (SCENE === "first-send") await sceneFirstSend(cdp);
 			else if (SCENE === "turn-collapse") await sceneTurnCollapse(cdp);
+			else if (SCENE === "output-artifact") await sceneOutputArtifact(cdp);
 			else if (SCENE === "conversation-start")
 				await sceneConversationStart(cdp);
 			else if (SCENE === "conversation-start-away-failure")
@@ -41101,6 +42158,7 @@ async function main() {
 				await sceneProjectInlineEdit(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE === "palette-unread") await scenePaletteUnread(cdp);
+			else if (SCENE === "palette-recents") await scenePaletteRecents(cdp);
 			else if (SCENE === "scrollbar-fade") await sceneScrollbarFade(cdp);
 			else if (SCENE === "hit-zones") await sceneHitZones(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
@@ -41112,6 +42170,7 @@ async function main() {
 			else if (SCENE === "mentions") await sceneMentions(cdp);
 			else if (SCENE === "shell-evidence") await sceneShellEvidence(cdp);
 			else if (SCENE === "transcript-rail") await sceneTranscriptRail(cdp);
+			else if (SCENE === "imagegen-card") await sceneImageGenCard(cdp);
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);

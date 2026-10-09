@@ -1,0 +1,68 @@
+renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
+[build] current: assets 2026-10-08T21:04:57.120Z >= sources 2026-10-08T20:57:25.418Z
+[note] abandoned scratch trees
+        3 seen, 0 owned by a live pid (kept), 3 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:18731 (frame-src already lists it, media-src already lists it, img-src already lists it)
+  serve records 2 linked from /Users/damian/.local-operator/sessions/fc88957ed847/scratchpad/pr898-evidence/after-light/records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/palette-recents
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-7546
+  frames        /Users/damian/.local-operator/sessions/fc88957ed847/scratchpad/pr898-evidence/after-light/frames
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-7546/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:18731   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/palette-recents/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:18731","backend":"http://127.0.0.1:18731"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:18731)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] the renderer sees the built app, not a bare Vite page
+[PASS] window mode is headless and the window is never shown
+[PASS] the catalogue answered with this set's fixture
+[PASS] the fixture conversation is the one open on the pane
+[note] the persisted visited ring after the open
+        ["2d5ad5da0025","7c1b0f2a4d31","e059761608ae","c4e17b90a2f6","b3f1a09c7d52"]
+[PASS] opening a conversation put it at the FRONT of the persisted ring, ahead of the seeded history, with no duplicate
+[note] the switcher's empty (#) state
+        {"box":{"x":371,"y":283.40234375,"width":638,"height":348.1953125},"headings":["Unread","Recents","Chats"],"options":[{"id":"chat-b3f1a09c7d52","heading":"Unread","selected":true,"text":"Quarterly retention  weep and the tran cript  it"},{"id":"chat-7c1b0f2a4d31","heading":"Recents","selected":false,"text":"Migration checkli t"},{"id":"chat-e059761608ae","heading":"Recents","selected":false,"text":"Relea e note  for 0.29"},{"id":"chat-c4e17b90a2f6","heading":"Recents","selected":false,"text":"AWS co t increa e review with Grafana da hboard"},{"id":"chat-2d5ad5da0025","heading":"Chats","selected":false,"text":"Invoice reconciliation"},{"id":"chat-a91f4c7e2b60","heading":"Chats","selected":false,"text":"Old onboarding note"}],"active":"chat-b3f1a09c7d52"}
+[PASS] the sections read Unread, Recents, Chats - Recents directly beneath Unread
+[PASS] Recents lists the visited ring in visit order, minus the unread row and minus the conversation on screen
+[PASS] the conversation on screen is not in Recents (it sits in the Chats tier as an ordinary row)
+[PASS] the unread conversation is in Unread only, though it is in the ring
+[PASS] no conversation is drawn twice across the three sections
+[PASS] the selection starts on the first row (the unread conversation)
+[note] after one ArrowDown
+        {"box":{"x":371,"y":295.40234375,"width":638,"height":324.1953125},"headings":["Unread","Recents","Chats"],"options":[{"id":"chat-b3f1a09c7d52","heading":"Unread","selected":false,"text":"Quarterly retention  weep and the tran cript  it"},{"id":"chat-7c1b0f2a4d31","heading":"Recents","selected":true,"text":"Migration checkli tOpen↵"},{"id":"chat-e059761608ae","heading":"Recents","selected":false,"text":"Relea e note  for 0.29"},{"id":"chat-c4e17b90a2f6","heading":"Recents","selected":false,"text":"AWS co t increa e review with Grafana da hboard"},{"id":"chat-2d5ad5da0025","heading":"Chats","selected":false,"text":"Invoice reconciliation"},{"id":"chat-a91f4c7e2b60","heading":"Chats","selected":false,"text":"Old onboarding note"}],"active":"chat-7c1b0f2a4d31"}
+[PASS] ArrowDown crossed from the last Unread row onto the FIRST Recents row
+[note] the walk (ArrowDown, then alternating Ctrl+N / ArrowDown)
+        ["chat-7c1b0f2a4d31","chat-e059761608ae","chat-c4e17b90a2f6","chat-2d5ad5da0025","chat-a91f4c7e2b60"]
+[PASS] Down and Ctrl+N visit every row in list order: Unread -> Recents (x3) -> Chats, with none skipped
+[PASS] Ctrl+N stepped the palette and did NOT start a new chat
+[PASS] Escape closed the palette
+[note] the ring after booting from an empty one
+        ["2d5ad5da0025"]
+[note] the switcher with no eligible recents
+        {"box":{"x":371,"y":312.1015625,"width":638,"height":290.796875},"headings":["Unread","Chats"],"options":[{"id":"chat-b3f1a09c7d52","heading":"Unread","selected":true,"text":"Quarterly retention  weep and the tran cript  it"},{"id":"chat-2d5ad5da0025","heading":"Chats","selected":false,"text":"Invoice reconciliation"},{"id":"chat-c4e17b90a2f6","heading":"Chats","selected":false,"text":"AWS co t increa e review with Grafana da hboard"},{"id":"chat-e059761608ae","heading":"Chats","selected":false,"text":"Relea e note  for 0.29"},{"id":"chat-7c1b0f2a4d31","heading":"Chats","selected":false,"text":"Migration checkli t"},{"id":"chat-a91f4c7e2b60","heading":"Chats","selected":false,"text":"Old onboarding note"}],"active":"chat-b3f1a09c7d52"}
+[PASS] with no eligible visited conversation the switcher is Unread then Chats - no Recents heading, no empty section
+[PASS] every capture is a frame the app held still for, with no toast on it
+[PASS] every capture wrote a PNG of the requested size
+[PASS] the first two frames are two renders, not one frame written twice
+[PASS] no process from this run outlived its boot
+
+frames: palette-recents-down-localoperatorlight.png, palette-recents-empty-localoperatorlight.png, palette-recents-localoperatorlight.png
+frames directory: /Users/damian/.local-operator/sessions/fc88957ed847/scratchpad/pr898-evidence/after-light/frames
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-7546/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-7546 (the frames are also in --out)
+
+ALL CHECKS PASSED
