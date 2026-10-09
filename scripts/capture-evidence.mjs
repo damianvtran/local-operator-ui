@@ -8685,6 +8685,45 @@ export const STORIES = [
 	["chat-interrupted-rows--turn-counts", 1280, 800],
 	["chat-interrupted-rows--skip-durable-narrow", 720, 800],
 	["chat-interrupted-rows--skip-durable-narrow-expanded", 720, 800],
+	/*
+	 * THE GENERATING-IMAGE CARD'S STATES (the image-gen programme's surfaces
+	 * lane, round-1 shell). The card is mounted directly from the view-model
+	 * adapter (`image-gen-card.stories.tsx`), because the states it must show
+	 * are the ones a durable transcript cannot honestly carry: `queued`,
+	 * `running` (with and without the frozen-in-later progress fields) and
+	 * `cancelling` are LIVE states, and no producer on today's wire generates
+	 * them for this tool - the daemon-side half of the pair is the
+	 * `imagegen-card` driver scene, whose fixture rows can only be settled
+	 * (done/failed/cancelled), so THESE stories are the live states' frames.
+	 * `done`, `failed` and `cancelled` are re-shown here through the same view
+	 * type so the design round can compare the story's chrome against the real
+	 * app's frames, and `affordances` is the actions matrix (cancel only vs
+	 * all three slots - restart/steer are deliberately unwired in integration
+	 * until the regenerate op is named).
+	 *
+	 * THE VIEWPORTS ARE THE STORIES' OWN FRAME HEIGHTS, not a fixed canvas:
+	 * each mount is content-sized, and a taller capture would photograph the
+	 * card adrift in ground - the exact frame the paint floor exists to refuse
+	 * (the same reading `tool-row.stories.tsx`'s Frame carries; the trace-fold
+	 * cells are captured at their own 130px for this reason). The two
+	 * DIRECT-mount stories (the progress fields and the affordance matrix) are
+	 * captured at 640 wide so their 560px stack fills the column rather than
+	 * floating in a 1280 canvas.
+	 */
+	["chat-image-generation--queued", 1280, 220],
+	["chat-image-generation--running", 1280, 420],
+	["chat-image-generation--progress-fields", 640, 600],
+	["chat-image-generation--cancelling", 1280, 420],
+	["chat-image-generation--done", 1280, 560],
+	["chat-image-generation--failed", 1280, 460],
+	/*
+	 * 640 wide, alone among the Frame captures: the cancelled story's one
+	 * interrupted row is a column of ink a 1280 frame buries - measured
+	 * 98.84% ground against the floor's 98.50% - and the card is a 560px
+	 * object, so the narrower frame is also the truer one.
+	 */
+	["chat-image-generation--cancelled", 640, 300],
+	["chat-image-generation--affordances", 640, 640],
 	/* THE PRE-MARKER CONTINUATION ROWS. A goal-continuation row written before
 	   the `harness_injected` stamp existed carries no marker to read - and one
 	   still arrives from an owner on an older build - so hiding only stamped
