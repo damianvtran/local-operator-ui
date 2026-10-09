@@ -2115,29 +2115,29 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 		{
 			name: "ui-preferences-storage",
 			/*
-			  * THREE STEPS, each its own guard, and each one written to be IDEMPOTENT so
-			  * the chain survives a rebase onto a sibling lane's step (the reason this is
-			  * a chain of `if (version < n)` guards rather than one early return per
-			  * version).
-			  *
-			  * - v1 IS THE ONE-SLOT WIDTH (#677): a v0 blob carries the four
-			  *   per-surface widths, v1 carries `rightSlotWidth`, and
-			  *   `migrateUiPreferences` below seeds the shared value from whichever
-			  *   legacy width the user had actually dragged. Version 0 is also every
-			  *   existing blob's version, so the migration runs exactly once per profile -
-			  *   and a blob that never carried any of the four keys seeds to 0, which is
-			  *   "every pane opens at the one default" (#872 follow-up; before it, unset
-			  *   resolved to a different number per pane and the slot re-sized on every
-			  *   switch).
-			  * - v2 IS `chatMeasureWidth`'S REMOVAL (#895), kept exactly as `main` wrote
-			  *   it: this branch carried a duplicate of that step while it had to land
-			  *   before that lane, and the duplicate is dropped here rather than
-			  *   re-spelled - the chain keeps the copy that shipped. This is the step
-			  *   `UI_PREFERENCES_VERSION`'s own note cross-references.
-			  * - v3 IS THE RIGHT SLOT'S MEMORY (issue #894): the four global pane flags
-			  *   stop being persisted and become the bound conversation's projection, so
-			  *   the migration lifts whichever flag was true into `rightSlotLegacySeed`
-			  *   and deletes all four keys. See `migrateUiPreferences`.
+			 * THREE STEPS, each its own guard, and each one written to be IDEMPOTENT so
+			 * the chain survives a rebase onto a sibling lane's step (the reason this is
+			 * a chain of `if (version < n)` guards rather than one early return per
+			 * version).
+			 *
+			 * - v1 IS THE ONE-SLOT WIDTH (#677): a v0 blob carries the four
+			 *   per-surface widths, v1 carries `rightSlotWidth`, and
+			 *   `migrateUiPreferences` below seeds the shared value from whichever
+			 *   legacy width the user had actually dragged. Version 0 is also every
+			 *   existing blob's version, so the migration runs exactly once per profile -
+			 *   and a blob that never carried any of the four keys seeds to 0, which is
+			 *   "every pane opens at the one default" (#872 follow-up; before it, unset
+			 *   resolved to a different number per pane and the slot re-sized on every
+			 *   switch).
+			 * - v2 IS `chatMeasureWidth`'S REMOVAL (#895), kept exactly as `main` wrote
+			 *   it: this branch carried a duplicate of that step while it had to land
+			 *   before that lane, and the duplicate is dropped here rather than
+			 *   re-spelled - the chain keeps the copy that shipped. This is the step
+			 *   `UI_PREFERENCES_VERSION`'s own note cross-references.
+			 * - v3 IS THE RIGHT SLOT'S MEMORY (issue #894): the four global pane flags
+			 *   stop being persisted and become the bound conversation's projection, so
+			 *   the migration lifts whichever flag was true into `rightSlotLegacySeed`
+			 *   and deletes all four keys. See `migrateUiPreferences`.
 			 */
 			version: UI_PREFERENCES_VERSION,
 			migrate: migrateUiPreferences,
