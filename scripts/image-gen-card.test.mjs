@@ -144,6 +144,10 @@ test("a settled success carries the images and the measured duration through unt
 	// own `images`, so the card cannot disagree with the condensed strip.
 	assert.equal(view.images, images);
 	assert.equal(view.durationS, 8.6);
+	// The ordinary receipt, and the only one a record can reach today:
+	// `already-finished` is the frozen `media_already_completed` arm, which no
+	// wire field carries yet.
+	assert.equal(view.receipt, "generated");
 	// A settled success with no duration (a replayed row) states none.
 	assert.equal(
 		imageGenCardView(tool({ phase: "done", durationS: null })).durationS,
@@ -151,23 +155,26 @@ test("a settled success carries the images and the measured duration through unt
 	);
 });
 
-test("a failure carries the provider's text verbatim, and a verdict keeps its own source", () => {
+test("a failure carries the error text verbatim, and a verdict keeps its own", () => {
 	const provider = imageGenCardView(
 		tool({
 			isError: true,
-			output: "HTTP 422: prompt rejected by the safety checker",
+			output: "This generation failed before producing output.",
 		}),
 	);
 	assert.deepEqual(provider, {
 		state: "failed",
-		source: "provider",
-		message: "HTTP 422: prompt rejected by the safety checker",
+		message: "This generation failed before producing output.",
+		// The frozen `error_type` has no home on the wire yet; the view carries
+		// the slot so the read stays in this one module when it lands.
+		errorType: null,
 	});
-	// An error frame that carried no text states none — the sentence alone.
+	// An error frame that carried no text states none — the card's absence
+	// sentence is the card's, and nothing here invents a detail.
 	assert.deepEqual(imageGenCardView(tool({ isError: true, output: null })), {
 		state: "failed",
-		source: "provider",
 		message: null,
+		errorType: null,
 	});
 	const harness = imageGenCardView(
 		tool({
@@ -180,16 +187,16 @@ test("a failure carries the provider's text verbatim, and a verdict keeps its ow
 	);
 	assert.deepEqual(harness, {
 		state: "failed",
-		source: "harness",
 		message: "invalid arguments for generate_image: 'prompt' is required",
+		errorType: null,
 	});
 	// A record built by hand carries no `notRunReason` key at all; an absent
 	// key must not read as a verdict.
 	assert.equal(
 		imageGenCardView(
 			tool({ isError: true, output: "boom", notRunReason: undefined }),
-		).source,
-		"provider",
+		).message,
+		"boom",
 	);
 });
 
@@ -232,7 +239,7 @@ test("controls render only where wired and where the state can act", () => {
 	};
 	const cancelling = { ...running, state: "cancelling", generating: true };
 	const done = { state: "done", images: [], durationS: null };
-	const failed = { state: "failed", source: "provider", message: null };
+	const failed = { state: "failed", message: null, errorType: null };
 	const cancelled = { state: "cancelled" };
 
 	// Nothing wired, nothing drawn — an absent handler is an absent control.

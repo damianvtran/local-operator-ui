@@ -20,8 +20,9 @@
  *   visible `sunken` tile rather than an empty box;
  * - the done receipt is ONE line, with the picture under it through the
  *   existing image path (click to expand it, as any image in the transcript);
- * - a failed card shows the provider's text verbatim in the trace's sunken
- *   detail block, capped by the same height budget every detail section uses;
+ * - a failed card IS the error sentence, verbatim: the frozen platform
+ *   `error` is authored to be read as-is, so no sentence of this app's sits
+ *   above it;
  * - and the controls are exactly the ones the story provided - a state the
  *   story did not wire renders nothing rather than a dead button.
  */
@@ -297,7 +298,12 @@ export const Done: Story = {
 	),
 };
 
-/** A provider failure and a harness verdict, both verbatim. */
+/**
+ * The frozen failure shape in both arms, both verbatim: the platform's own
+ * sentence for a failed generation (authored to be read as-is — no vendor
+ * text is expected, and no sentence of this app's is layered over it), and
+ * the harness's verdict for a call that never reached a provider.
+ */
 export const Failed: Story = {
 	render: () => (
 		<Frame
@@ -307,8 +313,7 @@ export const Failed: Story = {
 					id: "tool:f1",
 					isError: true,
 					durationS: 1.2,
-					output:
-						'HTTP 422 from the provider: {"detail":[{"loc":["body","prompt"],"msg":"prompt rejected by the safety checker","type":"value_error"}]}',
+					output: "This generation failed before producing output.",
 				}),
 				genTool({
 					id: "tool:f2",
@@ -363,12 +368,24 @@ export const Affordances: Story = {
 			<ImageGenCard
 				view={{
 					state: "failed",
-					source: "provider",
-					message:
-						'HTTP 422 from the provider: {"detail":[{"loc":["body","prompt"],"msg":"prompt rejected by the safety checker","type":"value_error"}]}',
+					message: "This generation failed before producing output.",
+					errorType: null,
 				}}
 				scope={null}
 				actions={{ onCancel: noop, onRestart: noop, onEditRestart: noop }}
+			/>
+			{/* The frozen `media_already_completed` receipt (a cancel that lost its
+			 * race with the finish): a direct mount, because no record carries the
+			 * code until `error_type` lands on the wire — it must read as a finish,
+			 * never an error, and the adapter's done state owns it. */}
+			<ImageGenCard
+				view={{
+					state: "done",
+					images: [],
+					durationS: null,
+					receipt: "already-finished",
+				}}
+				scope={null}
 			/>
 			<ImageGenCard
 				view={{ state: "cancelled" }}
