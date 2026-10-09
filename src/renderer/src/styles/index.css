@@ -1083,9 +1083,15 @@
 	 *   - it ENDS on a visible frame, like `pulse-visible` above: the
 	 *     reduced-motion cap truncates rather than cancels, lands an animation
 	 *     on its `to` keyframe, and a sweep that ended mid-transparent would
-	 *     park an empty box on exactly the readers the cap protects. Parked at
-	 *     `-200%` the band is off the tile and the tile's own `sunken` ground
-	 *     still reads.
+	 *     park an empty box on exactly the readers the cap protects.
+	 *   - and the two properties that make that parked `to` frame actually
+	 *     read, stated here because the keyframes alone cannot: the span's own
+	 *     `bg-[position:-200%_50%]` (its resting position IS the end frame)
+	 *     and `bg-no-repeat`. With the inherited `repeat`, the image is twice
+	 *     the tile, so every `±200%` position lands one image width away — the
+	 *     `0%` phase again — and "parked" is a static sheen crossing twice per
+	 *     loop; un-repeated, `-200%` is genuinely off the tile (design round
+	 *     1, D1, measured in pixels both ways).
 	 *   - `infinite` and `linear`: the machine has not stated an end, and an
 	 *     eased sweep would imply one.
 	 */

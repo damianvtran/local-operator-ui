@@ -366,8 +366,9 @@ const BYTE_COUNT = /[0-9.]+ KB/;
 /*
  * Both spellings of the generating body are pinned against the SAME render:
  * a call that was never generating must show `Cancelling…` with neither the
- * tile nor a `progressbar`, and one that was keeps both while the stop is in
- * flight (round-1 review F3).
+ * tile nor a `progressbar`; one that was keeps its TILE while the stop is in
+ * flight — and draws no bar, because a fraction-less frame draws none (design
+ * round 1, D2; the bar's own pins follow). (round-1 review F3.)
  */
 test("a cancelling card wears the generating body only when one existed (F3)", () => {
 	const neverGenerated = markupOf({
@@ -387,17 +388,53 @@ test("a cancelling card wears the generating body only when one existed (F3)", (
 		startedAtMs: 5000,
 		progress: NO_PROGRESS,
 	});
-	assert.equal(wasGenerating.includes('role="progressbar"'), true);
 	assert.equal(wasGenerating.includes("data-imagegen-tile"), true);
+	// No fraction, no bar — the same rule the running pin below carries.
+	assert.equal(wasGenerating.includes('role="progressbar"'), false);
 
-	// A running call had a generation by definition, so it always carries both.
+	// A running call had a generation by definition, so the tile is there.
 	const running = markupOf({
 		state: "running",
 		startedAtMs: null,
 		progress: NO_PROGRESS,
 	});
-	assert.equal(running.includes('role="progressbar"'), true);
 	assert.equal(running.includes("data-imagegen-tile"), true);
+	assert.equal(running.includes('role="progressbar"'), false);
+});
+
+/*
+ * The bar's ONE mode — the determinate fill — and its ONE gate: a fraction
+ * must be carried (design round 1, D2). A fraction-less card draws no bar at
+ * all (the tile's sweep is the surface's one indefinite element), the
+ * determinate fill survives into a cancelling body that was generating and
+ * still carries a fraction, and the tile stays wherever the body is.
+ */
+test("the bar draws only when a fraction is carried, and only determinate (D2)", () => {
+	const running = markupOf({
+		state: "running",
+		startedAtMs: null,
+		progress: { fraction: 0.42, logs: [], queuePosition: null },
+	});
+	assert.equal(running.includes('role="progressbar"'), true);
+	assert.equal(running.includes('aria-valuenow="42"'), true);
+
+	const cancelling = markupOf({
+		state: "cancelling",
+		generating: true,
+		startedAtMs: 5000,
+		progress: { fraction: 0.42, logs: [], queuePosition: null },
+	});
+	assert.equal(cancelling.includes('role="progressbar"'), true);
+	assert.equal(cancelling.includes('aria-valuenow="42"'), true);
+
+	const noFraction = markupOf({
+		state: "running",
+		startedAtMs: 42,
+		progress: NO_PROGRESS,
+	});
+	assert.equal(noFraction.includes('role="progressbar"'), false);
+	// The tile is the running body's liveness, and stays.
+	assert.equal(noFraction.includes("data-imagegen-tile"), true);
 });
 
 /*

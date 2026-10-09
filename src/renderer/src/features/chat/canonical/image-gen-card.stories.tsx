@@ -16,8 +16,13 @@
  * - the card sits where the ledger row would have: same left edge, same row
  *   gap, `MessageContainer` around it;
  * - a queued card has NO generating tile (nothing is generating yet);
- * - the running tile's shimmer sweeps; under reduced motion it parks as a
- *   visible `sunken` tile rather than an empty box;
+ * - the running tile's shimmer sweeps — one crossing per loop — and under
+ *   reduced motion it parks as the BARE `sunken` well (the band off the
+ *   tile), the state the `reduced-motion` cell in the evidence set
+ *   photographs;
+ * - a fraction-less card draws no bar: the sweep is the card's one
+ *   indefinite element, and the determinate fill appears only when a
+ *   fraction is carried (design round 1, D2);
  * - the done receipt is ONE line, with the picture under it through the
  *   existing image path (click to expand it, as any image in the transcript);
  * - a failed card IS the error sentence, verbatim: the frozen platform
@@ -219,12 +224,13 @@ export const Running: Story = {
 };
 
 /**
- * The progress branches the wire cannot carry yet: no lines (reduced state),
- * a log tail, a known fraction switching the bar from its indeterminate
- * pulse to the determinate fill, and the queue position — which renders on
- * the QUEUED state, the wait it describes (a running line's one datum slot is
- * the clock, and its position slot is carried but not drawn). Mounted
- * directly; see the file header.
+ * The progress branches the wire cannot carry yet: no lines, a log tail, a
+ * known fraction drawing the bar — the determinate fill is the bar's one
+ * mode (design round 1, D2: a fraction-less card draws no bar; the tile's
+ * sweep is the surface's one indefinite element) — and the queue position,
+ * which renders on the QUEUED state, the wait it describes (a running line's
+ * one datum slot is the clock, and its position slot is carried but not
+ * drawn). Mounted directly; see the file header.
  */
 export const ProgressFields: Story = {
 	render: () => (
@@ -267,10 +273,11 @@ export const ProgressFields: Story = {
 
 /**
  * After Cancel, until the interrupt settles: the running call keeps its tile
- * (and bar) while the work is still in flight, the queued one grows neither —
- * a call that never generated must not wear the generating body (round-1
- * F3) — and the control is drawn-but-held. `stopping` is the pane's own stop
- * fact — the same one the composer's Stop reads.
+ * while the work is still in flight (no bar — it carries no fraction; design
+ * round 1, D2), the queued one grows neither — a call that never generated
+ * must not wear the generating body (round-1 F3) — and the control is
+ * drawn-but-held. `stopping` is the pane's own stop fact — the same one the
+ * composer's Stop reads.
  */
 export const Cancelling: Story = {
 	render: () => (
