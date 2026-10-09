@@ -61,33 +61,19 @@
  },
  "sampler": {
   "sawStrip": true,
-  "sawAt": 95,
+  "sawAt": 76,
   "stopped": true,
   "maxScrollTop": 0,
   "samples": [
    {
-    "t": 3,
+    "t": 8,
     "strip": false,
     "scrollTop": null,
     "stripTop": null,
     "activeElement": "body"
    },
    {
-    "t": 21,
-    "strip": false,
-    "scrollTop": null,
-    "stripTop": null,
-    "activeElement": "button \"Rig openActive0/4just now\""
-   },
-   {
-    "t": 54,
-    "strip": false,
-    "scrollTop": null,
-    "stripTop": null,
-    "activeElement": "body"
-   },
-   {
-    "t": 95,
+    "t": 77,
     "strip": true,
     "scrollTop": 0,
     "stripTop": 1078,
