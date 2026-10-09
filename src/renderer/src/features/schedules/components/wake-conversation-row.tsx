@@ -18,14 +18,17 @@
  * difference is argued rather than inherited:
  *
  * - the row is interactive: the head opens the conversation, and each wake line
- *   carries `Cancel wake`. The pane's rows are a readout because the pane is
- *   watching a live turn; this page's entire job is managing what is armed, and
- *   a user who can create a scheduled task but cannot stop one has half a
- *   control;
- * - a conversation with more than `WAKE_LINE_CAP` wakes hides the rest behind a
- *   `Disclosure` whose label carries the count. The pane uses a statement marker
- *   because nothing there can cancel; here a shed line can be brought back, so
- *   the control is the app's one disclosure idiom.
+ *   carries `Cancel wake`. The pane's rows carry the same control now (the
+ *   wakes control slice), composed for the pane's own surface, and the two
+ *   surfaces read their verdicts from ONE model (`wake-controls-model.ts`): a
+ *   line whose schedule the engine owns (`aida-*`) shows the managed state
+ *   instead of a cancel, on BOTH surfaces, because the desktop route refuses
+ *   those ids (its `WakeId` pattern is `^w\d{1,4}$`) and a control that can only
+ *   fail is worse than no control. A conversation with more than
+ *   `WAKE_LINE_CAP` wakes hides the rest behind a `Disclosure` whose label
+ *   carries the count. The pane uses a statement marker because nothing there
+ *   can cancel; here a shed line can be brought back, so the control is the
+ *   app's one disclosure idiom.
  *
  * ## Hover-revealed actions, and the state that is always drawn
  *
@@ -35,7 +38,14 @@
  * own state - the count, the next fire, or `Parked` - because a state that only
  * appears under the pointer is a state the reader has to hunt for.
  */
-import { WakeRowView } from "@features/chat/components/run-details/run-detail-wakes";
+import {
+	WakeManagedState,
+	WakeRowView,
+} from "@features/chat/components/run-details/run-detail-wakes";
+import {
+	type AidaWakeIdentity,
+	wakeControlMode,
+} from "@features/chat/components/run-details/wake-controls-model";
 import { Button, Tooltip } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
@@ -56,6 +66,9 @@ export type WakeConversationRowProps = {
 	onCancel: (row: ScheduledTaskRow, wake: WakeLine) => void;
 	/** Open the editor for one armed wake. */
 	onEdit: (row: ScheduledTaskRow, wake: WakeLine) => void;
+	/** What the page knows about the chief of staff, for the guard
+	 *  (`wake-controls-model.ts`): the same prop the pane's section takes. */
+	identity: AidaWakeIdentity;
 };
 
 /**
@@ -80,15 +93,26 @@ const ACTION_REVEAL = [
  * schedule. They are the same species of control - hover- and focus-revealed
  * like every other row action in the app - and only the destructive one is
  * tinted, because a tint on both would say they are equally final.
+ *
+ * A line the engine owns (`aida-*`) has NO cancel: the model's `managed`
+ * verdict, read from the same function the pane's section reads, so the two
+ * surfaces cannot disagree about a row. Its state rides the shared
+ * `WakeManagedState` under the message; `Edit wake` stays, because the brief for
+ * this slice is the cancel, and whether the edit is equally doomed is a separate
+ * question tracked in the PR.
  */
 const WakeLineItem: FC<{
 	wake: WakeLine;
+	managedName: string | null;
 	onCancel: () => void;
 	onEdit: () => void;
-}> = ({ wake, onCancel, onEdit }) => (
+}> = ({ wake, managedName, onCancel, onEdit }) => (
 	<WakeRowView
 		row={wake}
 		trailingClause={wake.ranLabel || undefined}
+		note={
+			managedName === null ? undefined : <WakeManagedState name={managedName} />
+		}
 		action={
 			<>
 				<Tooltip content="Edit wake">
@@ -106,22 +130,24 @@ const WakeLineItem: FC<{
 						<SquarePen />
 					</Button>
 				</Tooltip>
-				<Tooltip content="Cancel wake">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Cancel wake"
-						onClick={onCancel}
-						className={cn(
-							...ACTION_REVEAL,
-							"group-hover/wake:pointer-events-auto group-hover/wake:opacity-100",
-							"group-focus-within/wake:pointer-events-auto group-focus-within/wake:opacity-100",
-							"hover:bg-danger-wash hover:text-danger",
-						)}
-					>
-						<X />
-					</Button>
-				</Tooltip>
+				{managedName === null && (
+					<Tooltip content="Cancel wake">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Cancel wake"
+							onClick={onCancel}
+							className={cn(
+								...ACTION_REVEAL,
+								"group-hover/wake:pointer-events-auto group-hover/wake:opacity-100",
+								"group-focus-within/wake:pointer-events-auto group-focus-within/wake:opacity-100",
+								"hover:bg-danger-wash hover:text-danger",
+							)}
+						>
+							<X />
+						</Button>
+					</Tooltip>
+				)}
 			</>
 		}
 	/>
@@ -132,9 +158,22 @@ export const WakeConversationRow: FC<WakeConversationRowProps> = ({
 	onOpen,
 	onCancel,
 	onEdit,
+	identity,
 }) => {
 	const [expanded, setExpanded] = useState(false);
 	const hidden = row.wakes.slice(row.visibleWakes.length);
+	/*
+	 * One classification per line, over THIS row's own list: the page and the
+	 * pane read the same function with the same facts (`wakeControlMode`), so a
+	 * line the engine owns reads the same on both surfaces.
+	 */
+	const context = {
+		sessionId: row.sessionId,
+		wakeIds: row.wakes.map((wake) => wake.id),
+		aida: identity,
+	};
+	const managedNameFor = (wake: WakeLine): string | null =>
+		wakeControlMode(wake.id, context) === "managed" ? identity.name : null;
 
 	return (
 		<li
@@ -172,6 +211,7 @@ export const WakeConversationRow: FC<WakeConversationRowProps> = ({
 							<WakeLineItem
 								key={wake.id}
 								wake={wake}
+								managedName={managedNameFor(wake)}
 								onCancel={() => onCancel(row, wake)}
 								onEdit={() => onEdit(row, wake)}
 							/>
@@ -194,6 +234,7 @@ export const WakeConversationRow: FC<WakeConversationRowProps> = ({
 									<WakeLineItem
 										key={wake.id}
 										wake={wake}
+										managedName={managedNameFor(wake)}
 										onCancel={() => onCancel(row, wake)}
 										onEdit={() => onEdit(row, wake)}
 									/>

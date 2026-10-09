@@ -1,3 +1,14 @@
+import {
+	useAidaDisplayName,
+	useAidaTarget,
+} from "@features/aida/use-aida-target";
+import {
+	type AidaWakeIdentity,
+	sessionIsChiefOfStaff,
+	wakeConfirmActionLabel,
+	wakeConfirmSentence,
+	wakeConfirmTitle,
+} from "@features/chat/components/run-details/wake-controls-model";
 /**
  * The Schedules page: every conversation on this machine that has wakes, with
  * its wakes beneath it, plus the fenced group of rows still on the older
@@ -34,6 +45,10 @@
  * cannot leave the chat pane asserting a wake that was just cancelled.
  */
 import type { ScheduleResponse } from "@shared/api/local-operator";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { PageHeader } from "@shared/components/common/page-header";
 import { Spinner } from "@shared/components/common/spinner";
@@ -103,6 +118,24 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 	const listing = useWakesListing();
 	const queryClient = useQueryClient();
 	/*
+	 * What this page knows about the chief of staff, read from the same shared
+	 * `aida.status` cache entry the sidebar and the chat pane read
+	 * (`use-aida-target.ts`), so no two surfaces can disagree about whose
+	 * conversation a row is. The guard reads it through `wakeControlMode`; this
+	 * page uses only the two halves it needs here (`sessionIsChiefOfStaff` for the
+	 * confirmation's copy, and the mode for the managed lines' state).
+	 */
+	const capabilities = useDesktopCapabilities();
+	const aidaEnabled = desktopFeatureEnabled(capabilities.data, "aida", 1);
+	const aidaTarget = useAidaTarget(aidaEnabled);
+	const aidaName = useAidaDisplayName();
+	const wakeAida: AidaWakeIdentity = {
+		capability: aidaEnabled,
+		statusResolved: aidaTarget.isSuccess,
+		sessionId: aidaTarget.data?.session_id ?? null,
+		name: aidaName,
+	};
+	/*
 	 * ONE refresh for the page rather than one reader's, and every control that
 	 * offers a refresh calls it. The header control used to reload the wake listing
 	 * alone, so the fenced legacy annex - its own query - did not move with it and
@@ -152,6 +185,18 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				if (opened) navigate(`/chat/${sessionId}`);
 			});
 	};
+
+	/**
+	 * Whether the open confirmation may NAME the chief of staff.
+	 *
+	 * Decided at the same level as the modal that uses it, from the row the
+	 * confirmation is ABOUT (not from whatever the list holds later): a cancel
+	 * pressed on one row and a listing that moved under it must not turn the
+	 * question into one about a different conversation.
+	 */
+	const namedCancel =
+		pendingCancel !== null &&
+		sessionIsChiefOfStaff(pendingCancel.row.sessionId, wakeAida);
 
 	const handleCancelWake = async () => {
 		if (!pendingCancel) return;
@@ -419,6 +464,7 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 								key={row.sessionId}
 								row={row}
 								onOpen={openConversation}
+								identity={wakeAida}
 								onCancel={(target, wake) =>
 									setPendingCancel({ row: target, wake })
 								}
@@ -529,15 +575,26 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				initialData={editingLegacy}
 			/>
 
+			{/*
+			 * The one confirmation for a cancel, with the SAME copy builders the pane's
+			 * card uses (`wake-controls-model.ts`), so the two surfaces cannot ask this
+			 * question two ways. `named` is the guard's own arm: only a row on a
+			 * conversation KNOWN to be the chief of staff's puts her name on the
+			 * question and on the button; every other row keeps the neutral wording.
+			 */}
 			<ConfirmationModal
 				open={pendingCancel !== null}
-				title="Cancel this wake?"
+				title={wakeConfirmTitle(namedCancel, wakeAida.name)}
 				message={
 					pendingCancel
-						? `“${wakePromptHead(pendingCancel.wake.message)}” will not fire again. The conversation stays.`
+						? wakeConfirmSentence({
+								named: namedCancel,
+								name: wakeAida.name,
+								head: wakePromptHead(pendingCancel.wake.message),
+							})
 						: ""
 				}
-				confirmText="Cancel wake"
+				confirmText={wakeConfirmActionLabel(namedCancel)}
 				cancelText="Keep"
 				isDangerous
 				onConfirm={() => void handleCancelWake()}

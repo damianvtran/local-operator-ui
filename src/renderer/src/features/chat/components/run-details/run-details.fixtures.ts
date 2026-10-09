@@ -1564,6 +1564,37 @@ export const wakesOnly = (): RunDetailsInput => ({
 });
 
 /**
+ * One engine-owned row beside one ordinary one: the two verdicts the wakes
+ * control model draws differently, on one list.
+ *
+ * `aida-cadence` is the id `local_operator/aida/proactive.py` owns (its
+ * `ROW_PREFIX` is `aida-`, and `is_aida_row` is the one reader), so the row
+ * carries the managed state and NO control: the engine re-arms it, and the
+ * desktop route refuses the id (its `WakeId` pattern is `^w\\d{1,4}$`) before any
+ * handler. The `w1` beside it is the operator's own schedule, which is why it
+ * keeps its one-press `Cancel`.
+ */
+export const wakesManaged = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [],
+	todos: [],
+	wakes: [
+		wakeSchedule({
+			id: "aida-cadence",
+			message: "Aida's daily check-in",
+			dueInMinutes: 540,
+			everyMinutes: 1_440,
+		}),
+		wakeSchedule({
+			id: "w1",
+			message: "4-hourly proactive check-in (operator-set cadence)",
+			dueInMinutes: 12,
+			everyMinutes: 240,
+		}),
+	],
+});
+
+/**
  * The three cadences on one list, and published OUT of due order.
  *
  * `frontend.wakes` is the backend's own schedule order — `w1`..`w16`, which is
