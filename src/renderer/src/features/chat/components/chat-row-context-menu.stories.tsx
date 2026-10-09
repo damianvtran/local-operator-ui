@@ -1,9 +1,10 @@
 /**
  * The row context menu, as shipped - the story `docs/evidence/chat-sidebar-row-context-menu/`
- * is captured from. It draws Archive, Pin and Fork on an ordinary row, and FIVE
- * items on a pinned one - the conditional Move pair trails Fork, and
- * `chat-sidebar.tsx`'s items comment carries the order rule; the readout lists
- * whatever the product mounted, so no frame states a count the app does not hold.
+ * is captured from. It draws Archive, Pin, Fork and Copy session ID on an ordinary
+ * row, and SIX items on a pinned one - the conditional Move pair trails the
+ * unconditional run, and `chat-sidebar.tsx`'s items comment carries the order rule;
+ * the readout lists whatever the product mounted, so no frame states a count the app
+ * does not hold.
  *
  * THIS STORY DRIVES THE REAL THING, and the one simulation is named rather than
  * hidden. The menu is opened THROUGH THE REAL TRIGGER: a dispatched `contextmenu`
@@ -23,6 +24,11 @@
  * the DOM (the panel's own box, the anchoring point, the row's ground, the pair's
  * display, the flyout's presence and where focus landed), so a frame cannot claim
  * a number the app does not hold.
+ *
+ * THE COPY STATE'S CLIPBOARD IS RECORDED, NOT WRITTEN (#893): the row's Copy item
+ * goes through the real helper, whose `navigator.clipboard.writeText` is stubbed for
+ * that one state so the act can be photographed without a clipboard permission the
+ * headless rig does not have - see `pressCopy` and `clipboardRecord` below.
  *
  * THE TIMING IS PART OF THE MEASUREMENT. `delayMs` (default 250) opens the menu
  * after the story has settled but BEFORE the flyout's own 400ms dwell, so the
@@ -265,6 +271,20 @@ const unstartedDraft = (sessionId: string) => ({
 	},
 });
 
+/*
+ * WHERE THE RECORDING CLIPBOARD PUTS WHAT IT RECORDED (#893).
+ *
+ * The row menu's `Copy session ID` item calls `copySessionId`, which writes through
+ * `navigator.clipboard.writeText` - and a headless capture has neither clipboard
+ * permission nor document focus, so the real write is REFUSED and the frame would
+ * show the FAILURE toast instead of the success the state is named for. The story
+ * therefore installs a recording stub for the Copy state only (see the press below),
+ * and this module-scope box is where the stub leaves the value for the readout: the
+ * readout samples the DOM every animation frame, so the record has to be readable
+ * from outside React's render.
+ */
+const clipboardRecord: { value: string | null } = { value: null };
+
 const resetStores = (unstartedSessionId?: string) => {
 	useUiPreferencesStore.setState({
 		chatSidebarView: { ...DEFAULT_SIDEBAR_VIEW },
@@ -280,6 +300,9 @@ const resetStores = (unstartedSessionId?: string) => {
 	// A request written by a previous state's Fork press would otherwise read as
 	// this one's.
 	usePanelPresentationStore.setState({ request: null });
+	// And the recorded clipboard value, for the same reason: a value a previous
+	// state's Copy press recorded would otherwise print as this one's.
+	clipboardRecord.value = null;
 };
 
 /* ---------------------------------------------------------------- the rig */
@@ -331,6 +354,17 @@ const Panel: FC<{
 	 * `scripts/panel-presentation.test.mjs`; the story does not pretend to show it.
 	 */
 	pressFork?: boolean;
+	/**
+	 * Press the menu's Copy session ID item once it is open (#893), and let the
+	 * readout print the string its recording clipboard captured.
+	 *
+	 * The write is stubbed rather than attempted (see `clipboardRecord`): this is
+	 * the same class of substitution as the stubbed transport under the whole set,
+	 * and it is the readout that keeps it honest - the frame shows what the act
+	 * asked the clipboard to take. The real write path (and the refusal it can
+	 * take) is `scripts/chat-session-copy-id.test.mjs`'s and QA's over CDP.
+	 */
+	pressCopy?: boolean;
 }> = ({
 	sessionId,
 	spot,
@@ -338,6 +372,7 @@ const Panel: FC<{
 	noMenu = false,
 	search,
 	pressFork = false,
+	pressCopy = false,
 }) => {
 	useEffect(() => {
 		let cancelled = false;
@@ -427,6 +462,38 @@ const Panel: FC<{
 					 */
 					item.click();
 				}
+				if (pressCopy) {
+					/*
+					 * THE RECORDING CLIPBOARD (#893), installed BEFORE the press because
+					 * `copySessionId` reads `navigator.clipboard.writeText` at call time. An own
+					 * data property shadows the prototype's getter, so the stub works whether or
+					 * not the browser exposes a clipboard at all, and it RESOLVES rather than
+					 * rejecting so the helper takes its success path and raises its real toast.
+					 */
+					Object.defineProperty(navigator, "clipboard", {
+						configurable: true,
+						value: {
+							writeText: (text: string) => {
+								clipboardRecord.value = text;
+								return Promise.resolve();
+							},
+						},
+					});
+					const item = await waitFor(
+						() =>
+							[
+								...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+							].find((node) => node.textContent?.includes("Copy session ID")) ??
+							null,
+					);
+					if (!item || cancelled) return;
+					await sleep(300);
+					/*
+					 * A real click, which is what Radix turns into the item's `onSelect` - the
+					 * same press `pressFork` makes, one row down (Copy is slot 4).
+					 */
+					item.click();
+				}
 				return;
 			}
 			/*
@@ -458,9 +525,11 @@ const Panel: FC<{
 		return () => {
 			cancelled = true;
 		};
-	}, [sessionId, spot, delayMs, noMenu, search, pressFork]);
+	}, [sessionId, spot, delayMs, noMenu, search, pressFork, pressCopy]);
 
-	return <Readout sessionId={sessionId} showFork={pressFork} />;
+	return (
+		<Readout sessionId={sessionId} showFork={pressFork} showCopy={pressCopy} />
+	);
 };
 
 /**
@@ -471,10 +540,11 @@ const Panel: FC<{
  * anchor is a fact about the dispatch and leaves no trace in the DOM once the
  * primitive has positioned from it.
  */
-const Readout: FC<{ sessionId: string; showFork: boolean }> = ({
-	sessionId,
-	showFork,
-}) => {
+const Readout: FC<{
+	sessionId: string;
+	showFork: boolean;
+	showCopy: boolean;
+}> = ({ sessionId, showFork, showCopy }) => {
 	const [lines, setLines] = useState<string[]>([]);
 	// The sampler runs outside React's render, so the route is a dependency of the
 	// effect that owns it rather than something it can read each frame.
@@ -542,6 +612,14 @@ const Readout: FC<{ sessionId: string; showFork: boolean }> = ({
 						}`,
 						`route: ${route}`,
 					]
+				: [];
+			/*
+			 * THE COPY PRESS'S ONE OBSERVABLE EFFECT, only in the state that presses it:
+			 * the string the item handed the clipboard - `none` until the press lands, so
+			 * the line is the press rather than a decoration on every frame.
+			 */
+			const copy = showCopy
+				? [`copied: ${clipboardRecord.value ?? "none"}`]
 				: [];
 			return [
 				`anchor point: ${anchor}`,
@@ -622,6 +700,7 @@ const Readout: FC<{ sessionId: string; showFork: boolean }> = ({
 						: "none"
 				}`,
 				...fork,
+				...copy,
 			];
 		};
 		/*
@@ -645,7 +724,7 @@ const Readout: FC<{ sessionId: string; showFork: boolean }> = ({
 			window.cancelAnimationFrame(raf);
 			window.removeEventListener("row-menu-anchor", onAnchor);
 		};
-	}, [anchor, sessionId, showFork, route]);
+	}, [anchor, sessionId, showFork, showCopy, route]);
 
 	return (
 		<div
@@ -670,7 +749,8 @@ const Page: FC<{
 	noMenu?: boolean;
 	search?: string;
 	pressFork?: boolean;
-}> = ({ sessionId, spot, delayMs, noMenu, search, pressFork }) => (
+	pressCopy?: boolean;
+}> = ({ sessionId, spot, delayMs, noMenu, search, pressFork, pressCopy }) => (
 	<div className="flex h-screen overflow-hidden bg-canvas text-ink">
 		{/* The panel's own column: the app's 280px sidebar width, the width every
 		    row-space decision in this change was measured at. */}
@@ -696,6 +776,7 @@ const Page: FC<{
 				noMenu={noMenu}
 				search={search}
 				pressFork={pressFork}
+				pressCopy={pressCopy}
 			/>
 		</div>
 	</div>
@@ -724,10 +805,24 @@ const state = (
 		unstarted?: string;
 		/** Press Fork once the menu is open and read the request it wrote. */
 		pressFork?: boolean;
+		/** Press Copy session ID once the menu is open and read the recorded value. */
+		pressCopy?: boolean;
+		/**
+		 * Hold any toast this state raises, in ms (#893).
+		 *
+		 * A toast self-closes after sonner's 4s, which is a frame that cannot be
+		 * reproduced - the `credential-notice` set's own reason for the same parameter.
+		 */
+		toastDuration?: number;
 		features: { pins: boolean; archive: boolean };
 	},
 ): Story => ({
 	name,
+	// Only the states that raise a toast declare it, so the other frames keep
+	// sonner's shipped duration rather than a rig-only value.
+	...(args.toastDuration !== undefined
+		? { parameters: { toastDuration: args.toastDuration } }
+		: {}),
 	render: () => {
 		resetStores(args.unstarted);
 		bridge(args.features);
@@ -739,6 +834,7 @@ const state = (
 				noMenu={args.noMenu}
 				search={args.search}
 				pressFork={args.pressFork}
+				pressCopy={args.pressCopy}
 			/>
 		);
 	},
@@ -802,6 +898,25 @@ export const ForkPressed = state("Fork pressed, request names the row", {
 	sessionId: "s2",
 	spot: "pointer",
 	pressFork: true,
+	features: BOTH,
+});
+
+/**
+ * Copy pressed on s2 (#893) - the sixth row's own act, and the sidebar's half of
+ * it.
+ *
+ * The story installs a RECORDING clipboard (see `clipboardRecord`), presses the
+ * `Copy session ID` item through a real click, and the readout prints what was
+ * recorded: `copied: s2`, where the value is the ROW's own conversation id. The
+ * toast the helper raises is held with `toastDuration`, so it lands in the frame -
+ * `.storybook/preview.tsx` mounts the app's own `ThemedToastContainer`, which is
+ * the same container the app's toasts use.
+ */
+export const CopyPressed = state("Copy pressed, value recorded", {
+	sessionId: "s2",
+	spot: "pointer",
+	pressCopy: true,
+	toastDuration: 24 * 60 * 60 * 1000,
 	features: BOTH,
 });
 

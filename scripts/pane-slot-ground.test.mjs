@@ -125,6 +125,14 @@ const LANE_GRADIENT =
 /* Every gradient the lane paints (one per ground branch), so the rail's pair is
  * asserted on BOTH rather than on whichever the first regex hit. */
 const LANE_GRADIENT_ALL = new RegExp(LANE_GRADIENT.source, "g");
+/* A class-utility match, not a substring one: `border`, `divide`, `shadow`, `ring`
+ * and `outline` as the START of a utility (after whitespace, a variant colon, a
+ * quote or the important `!`), whole word up to its `-` suffix, so `ring-surface`
+ * and `border-l` count and a word that merely contains them does not. */
+const RAIL_RULE_UTILITY =
+	/(?:^|[\s"'`:!])(?:border|divide|shadow|ring|outline)(?![a-zA-Z])/;
+/* The rail root's ground, the one class the negative pin must still find. */
+const RAIL_GROUND = /\bbg-surface\b/;
 /* The panel rail host's own ground (#872), in the shell. */
 const RAIL_HOST_GROUND =
 	/data-panel-rail-host=""\s*className="[^"]*\b(bg-[\w-]+)\b[^"]*"/;
@@ -322,17 +330,19 @@ test("every pane in the slot roots at the lane's slot stop", () => {
 	 * place the two are compared rather than one being restated. */
 });
 
-test("the panel rail host paints the lane's final stop, on both ground branches (#872)", () => {
+test("the panel rail paints the lane's final stop with no rule on its leading edge, on both ground branches (#872)", () => {
 	/*
 	 * The lane is a mirror of the columns' grounds, and the rail is a column: the
 	 * host's own class and the lane's last stop are ONE decision stated twice, so
 	 * they are compared here rather than either being restated as a literal. The
 	 * rail is chrome (`surface`, the sidebar's rung), NOT a slot wrapper - its file
-	 * is not in PANE_HOSTS and it carries a `border-l border-hairline` of its own on
-	 * purpose: the no-seam rule above is about the slot's pane wrappers, where the
-	 * seam is the tone step; the rail has no tone step to its left (the slot is
-	 * `elevated`, the rail `surface`), so the hairline is the boundary the step
-	 * would otherwise have to carry.
+	 * is not in PANE_HOSTS - and it draws NO rule of its own: the boundary to the
+	 * slot's `elevated` (or the conversation's `canvas` with no pane) is the tone
+	 * step, the same way the sidebar's edge is carried, and the `border-l
+	 * border-hairline` that used to sit here was the same second-way-of-saying-one-
+	 * thing the no-seam test below refuses for the slot's wrappers. This is a
+	 * NEGATIVE pin - the rail root's class list carries its ground and nothing that
+	 * draws a line - so a rule cannot quietly return to the window's edge.
 	 */
 	const layoutSource = read(CHAT_LAYOUT);
 	const gradients = [...layoutSource.matchAll(LANE_GRADIENT_ALL)];
@@ -362,9 +372,51 @@ test("the panel rail host paints the lane's final stop, on both ground branches 
 	const rail = read(
 		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
 	);
+	/*
+	 * THE WHOLE `cn(...)` ARGUMENT LIST, not its first literal. The root's classes
+	 * are computed from several arguments (the ground literal, then the caption-inset
+	 * padding literal, with prose comments between them), and a rule utility added
+	 * to any later one would draw the edge just as well as one in the first. A
+	 * pattern anchored on one literal proved absence in that string only, so the call
+	 * is cut out by its balanced parentheses from the root's `className={cn(` and
+	 * read after `withoutComments`, which keeps the comment that QUOTES the removed
+	 * `border-l border-hairline` from tripping the pin it justifies.
+	 */
+	const start = rail.indexOf('data-panel-rail=""');
+	const open = rail.indexOf("className={cn(", start);
 	assert.ok(
-		/border-l border-hairline bg-surface/.test(rail),
-		"panel-rail.tsx must wear the rail's own ground (surface) and leading hairline",
+		start !== -1 && open !== -1,
+		"panel-rail.tsx no longer declares the rail root as `data-panel-rail` followed by `className={cn(...)}` - update the pin, not the spelling, or a rule can hide behind the miss",
+	);
+	let depth = 0;
+	let end = -1;
+	const callStart = open + "className={cn".length;
+	/* Parentheses balance across the call's literals (`calc(var(...))`), so a plain
+	 * depth count finds the call's own close without parsing strings. Comments are
+	 * stripped from the TAIL first so a `)` in prose cannot unbalance it. */
+	const tail = withoutComments(rail.slice(callStart));
+	for (let i = 0; i < tail.length; i++) {
+		if (tail[i] === "(") depth++;
+		else if (tail[i] === ")" && --depth === 0) {
+			end = i;
+			break;
+		}
+	}
+	assert.ok(end !== -1, "the rail root's `cn(...)` call never closes");
+	const rootClasses = tail.slice(0, end + 1);
+	assert.ok(
+		rootClasses.length > 20,
+		"the rail root's class computation is empty - the pin would pass vacuously",
+	);
+	assert.doesNotMatch(
+		rootClasses,
+		RAIL_RULE_UTILITY,
+		"the rail root carries a rule utility again. The rail's edge is the tone step (`surface` against `elevated`/`canvas`); a border, divide or shadow beside it is a second way of saying one thing - and the operator's report on the shipped rail was exactly that line: the hairline began at y=32 under the lane and read as a line that did not go all the way up.",
+	);
+	assert.match(
+		rootClasses,
+		RAIL_GROUND,
+		"the rail root lost its ground: `surface` is the sidebar's rung and the lane's final stop (asserted just above)",
 	);
 });
 

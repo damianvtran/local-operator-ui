@@ -495,17 +495,17 @@ type ChatContentProps = {
 		 */
 		askOutcomes?: Record<string, AskOutcome | undefined>;
 		/*
-		 * THE ASK-MODE LANE (design §5.0). `askExpanded` is the one flag the
-		 * composer's routing rule reads, and the page owns it rather than the ask
-		 * surfaces so the bar and the composer cannot disagree about which mode the
-		 * user is in. `askComposerPlaceholder` is the page's sentence for the
-		 * expanded state, passed to the composer's own invitation slot.
+		 * THE ASKS DRAWER'S LANE. `askExpanded` is the one flag the status-row chip, the
+		 * header door and the drawer all read, and the page owns it rather than the ask
+		 * surfaces so they cannot disagree about whether the drawer is open. It says
+		 * nothing about the composer: the main box is an ordinary conversation box
+		 * whether the drawer is open or not (the reversal of design §5.0, R7), so
+		 * there is no sentence or mode to pass it. `askDrafts` is the panel's own draft.
 		 */
 		askExpanded?: boolean;
 		onAskToggle?: (next: boolean) => void;
 		askDrafts?: Record<string, AskDraft>;
 		onAskDraftChange?: (askId: string, next: AskDraft) => void;
-		askComposerPlaceholder?: string;
 	};
 	/**
 	 * The session's derived subagent and to-do view model (`run-details.md` § 8),
@@ -692,8 +692,14 @@ const defaultCanvasState = {
  * (`docs/run-sidebar.md` § 8). Named here beside the floor because the divider's
  * range is now built from both, and because the ceiling is what a drag is
  * refused at once the row cannot host it.
+ *
+ * EXPORTED for the shell story that mounts this arm's own pair
+ * (`shell.stories.tsx`'s `ChatMeasureEdgesRunPanel`): a frame of the divider has
+ * to carry the range the app gives it, and a literal restated in the story is
+ * the drift this constant exists to prevent - a bound moved here would leave the
+ * arm's claim true only by accident.
  */
-const RUN_PANEL_MAX_PX = 640;
+export const RUN_PANEL_MAX_PX = 640;
 
 /**
  * The chat column's own floor, in pixels, as a fallback for the measured one.
@@ -1771,6 +1777,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							identity={identity}
 							deviceSlot={deviceSlot}
 							renameSessionId={renameSessionId}
+							/*
+							 * THE COPY-SESSION-ID READ (#893): the same canonical id this component already
+							 * carries as its own `sessionId` prop, passed on unchanged so the header's
+							 * overflow menu copies what the pane is showing. Undefined on a draft, where
+							 * the item is simply not drawn.
+							 */
+							sessionId={sessionId}
 							onOpenOptions={onOpenOptions}
 							runDetails={runDetails}
 							/*
@@ -1968,9 +1981,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										onLoadOlderOutcome={canonical.view.loadOlderDetailed}
 										olderFailed={canonical.view.olderFailed}
 										containerRef={messagesContainerRef}
-										/* The chat page is the one mount that owns the measure; the run pane's
-										 * child reader deliberately does not opt in (see the prop's note). */
-										measureHandle
 										isSmallView={isSmallView}
 										status={canonical.view.status}
 										failure={canonical.view.failure}
@@ -2202,28 +2212,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onCredentialsStored={invalidateStoredCredentials}
 								recordingProbe={recordingProbe}
 								/*
-								 * THE ANSWER-MODE INVITATION (design §5.0). The composer's
-								 * own invitation slot, so every state sentence - a refusal,
-								 * the recording line, a gate - still outranks it: those
-								 * describe facts about the box that this copy cannot.
-								 */
-								placeholderOverride={canonical?.askComposerPlaceholder}
-								/*
-								 * AND IT IS A MODE, not an invitation (design §5.0). Without this
-								 * the turn's own sentence outranked the ask's while a turn ran -
-								 * "Steer the agent. Enter sends now. Esc stops." over a box whose
-								 * Enter posts the ANSWER (UX round 1, U2). The ranking itself is
-								 * `composerPlaceholder`'s `askMode` rung.
-								 */
-								askMode={Boolean(canonical?.askComposerPlaceholder)}
-								/*
+								 * NO ASK-MODE SENTENCE OR FLAG REACHES THIS BOX. It used to receive the
+								 * answer-mode invitation (`placeholderOverride`) and an `askMode` flag
+								 * while the drawer was open, because its Enter was routed into the ask
+								 * (design §5.0, R7). The operator reversed that on 2026-10-07: this
+								 * box keeps its own placeholder in every state and a send is a chat
+								 * message. Do not re-add either prop here - the `Other` answer has its
+								 * own field inside the card.
+								 *
 								 * THE ASK LANE'S DOOR, forwarded to the STATUS ROW rather than to the
 								 * drawer: the trigger is a row item now, and the page owns the ONE flag that
-								 * row, the composer's routing rule and the drawer all read
-								 * (`chat-page.tsx`'s `askExpanded`, the store's `isAskDrawerOpen`). Handing
-								 * the same `canonical` pair to both keeps the row item's state and the
-								 * drawer's state the same state - a second copy is the one thing that rule
-								 * forbids.
+								 * row and the drawer both read (`chat-page.tsx`'s `askExpanded`, the
+								 * store's `isAskDrawerOpen`). Handing the same `canonical` pair to both keeps
+								 * the row item's state and the drawer's state the same state - a second copy
+								 * is the one thing that rule forbids.
 								 */
 								askExpanded={canonical?.askExpanded}
 								onAskToggle={canonical?.onAskToggle}
@@ -2366,11 +2368,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								/*
 								 * AND AN OPEN ASK THAT IS SECRET-ONLY REFUSES IT TOO (agent review
 								 * round 3, F3). With `asks` on the wire the mirrored gate is
-								 * suppressed, so this term was false while a secret ask waited -
-								 * and because such an ask is deliberately NOT the composer's ask
-								 * mode, the box would otherwise have been an ordinary conversation
-								 * field, which is where a typed credential becomes a chat message.
+								 * suppressed, so this term was false while a secret ask waited, and
+								 * the box would have stayed open while a credential was being asked
+								 * for - which is where a typed credential becomes a chat message.
 								 * The panel's masked field is the only door for it.
+								 *
+								 * THIS IS A CREDENTIAL-SAFETY RULE, NOT ROUTING. The composer no
+								 * longer answers an ask in any state (design 5.0's R7, reversed on
+								 * 2026-10-07), so nothing here says the box is "the answer box" or
+								 * "not the ask mode": a secret-only ask simply must not leave an
+								 * open box beside it. A question that is not secret leaves the box
+								 * an ordinary chat field.
 								 */
 								secretAnswer={
 									gateIsSecret(gate) ||

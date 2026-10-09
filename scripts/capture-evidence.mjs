@@ -2085,7 +2085,16 @@ export const STORIES = [
 		420,
 		{
 			press: "[data-conversation-actions]",
+			/*
+			 * TWO `ArrowDown`s since #893, where one used to reach the submenu trigger:
+			 * the menu's FIRST item is now `Copy session ID`, and the transcript-display
+			 * submenu trigger is the second - so a single `ArrowDown` lands on Copy and
+			 * `ArrowRight` opens nothing, which the entry's `expectPresent` on
+			 * `[role="menuitemradio"]` refused loudly rather than filing the closed
+			 * menu under a name that claims the submenu is open.
+			 */
 			keys: [
+				{ key: "ArrowDown", settleMs: 300 },
 				{ key: "ArrowDown", settleMs: 300 },
 				{ key: "ArrowRight", settleMs: 400 },
 			],
@@ -2100,7 +2109,9 @@ export const STORIES = [
 		{
 			prefs: { transcriptDisplayMode: "by-response" },
 			press: "[data-conversation-actions]",
+			/* Two `ArrowDown`s, as the `by-turn` sibling above explains (#893). */
 			keys: [
+				{ key: "ArrowDown", settleMs: 300 },
 				{ key: "ArrowDown", settleMs: 300 },
 				{ key: "ArrowRight", settleMs: 400 },
 			],
@@ -10512,6 +10523,34 @@ export const STORIES = [
 			expectSentence: {
 				selector: "[data-readout-list]",
 				includes: "fork request: session.fork for s2",
+			},
+		},
+	],
+	/*
+	 * `copy-pressed` (#893): the menu's sixth row is pressed on s2, and the frame
+	 * carries both halves of what that act produces - the readout's `copied: s2`
+	 * (the string the item handed the clipboard: the ROW's own conversation, copied
+	 * verbatim) and the app's own success toast, held by the story's `toastDuration`
+	 * because a toast that self-closes is a frame that cannot be reproduced.
+	 *
+	 * `expectSentence` is what makes a frame filed under this name impossible to be
+	 * the state BEFORE the press: the `copied:` line reads `copied: none` until the
+	 * item is clicked, so the shutter waits (the claim is polled) rather than
+	 * photographing the open menu under a name that claims the press landed.
+	 * `expectPresent` on the toast holds the other half of the same claim - the
+	 * helper's success path, not its refusal toast - at the shutter.
+	 */
+	[
+		"chat-sidebar-row-context-menu--copy-pressed",
+		780,
+		520,
+		{
+			hover: '[data-session-row="s2"]',
+			hoverSettleMs: 1200,
+			expectPresent: "[data-sonner-toast]",
+			expectSentence: {
+				selector: "[data-readout-list]",
+				includes: "copied: s2",
 			},
 		},
 	],

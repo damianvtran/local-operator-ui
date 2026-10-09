@@ -1388,17 +1388,25 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 			 * change, so it deliberately does not bump `textRevision` - bumping there
 			 * would make the composer mirror its own keystrokes back at itself. But that
 			 * leaves no way for the app to move the box's text, and the hook mirrors
-			 * store text only when the revision says the store is the author. Measured
-			 * consequence before this action existed: the ask-mode draft swap wrote
-			 * `currentInput` and the textarea did not move, so a chat draft typed while
-			 * the bar was minimized was still in the box after expanding and went out as
-			 * the ANSWER to the agent's question (agent review F1 / QA Q-1 / UX U1 - all
-			 * three streams, same defect).
+			 * store text only when the revision says the store is the author.
 			 *
-			 * The row is created when absent, because the swap can be the first write a
-			 * conversation ever sees, and an empty `value` is a real instruction here
-			 * rather than "no change": switching into an empty ask buffer means the box
-			 * must be EMPTY.
+			 * ITS CALLERS TODAY are the agent-config box (`config-composer.tsx` seeds it
+			 * with a starting request and clears it) and the draft restage
+			 * (`restageDraft` in `canonical-sessions-store.ts`, which carries text into
+			 * the staged draft's row and empties the row it came from). Measured
+			 * consequence before this action existed, from its FIRST caller - the asks
+			 * drawer's draft swap, which no longer exists (design 5.0's R7, retired on
+			 * 2026-10-07 when the main composer stopped answering asks): it wrote
+			 * `currentInput` and the textarea did not move, so a chat draft was still in
+			 * the box after the swap and went out as the ANSWER to the agent's question
+			 * (agent review F1 / QA Q-1 / UX U1 - all three streams, same defect). The
+			 * caller is gone and the defect is the reason the action exists: any
+			 * app-side writer of the box needs the revision bump.
+			 *
+			 * The row is created when absent, because the first write a conversation
+			 * ever sees can be an app-side one (a restage into a fresh key), and an empty
+			 * `value` is a real instruction here rather than "no change": a restage that
+			 * moves a draft out of a row must leave that box EMPTY.
 			 */
 			setComposerText: (conversationId, value) => {
 				const existing = get().inputByConversation[conversationId] || {
@@ -1418,8 +1426,8 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 							 * KEPT, NOT ZEROED (agent review round 2, N-3): the store's own
 							 * convention, set by `beginInFlight`, is that a disclosure survives
 							 * a box write that does not CONSUME the text it measured
-							 * (`textLeaves ? 0 : row.unredactedChars`). The swap moves text
-							 * between buffers without sending any, so clearing here told the
+							 * (`textLeaves ? 0 : row.unredactedChars`). An app-side write moves
+							 * text between rows without sending any, so clearing here told the
 							 * user a plaintext disclosure was gone while the characters it
 							 * described were still on the row.
 							 */
