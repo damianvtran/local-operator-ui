@@ -19,6 +19,7 @@ export const InstallationProgress: React.FC = () => {
 			phase={view.phase}
 			installed={view.installed}
 			failure={view.failure}
+			timing={view.timing}
 			onCancel={cancel}
 			onRetry={retry}
 		/>

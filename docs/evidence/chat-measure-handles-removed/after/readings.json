@@ -1,0 +1,238 @@
+{
+	"label": "after",
+	"origin": "http://localhost:6396",
+	"themes": {
+		"localOperatorLight": {
+			"alone": {
+				"size": {
+					"width": 1180,
+					"height": 900
+				},
+				"container": {
+					"left": 260,
+					"right": 1136,
+					"width": 876
+				},
+				"column": {
+					"left": 293,
+					"right": 1103,
+					"width": 810,
+					"maxWidth": "810px",
+					"position": "static"
+				},
+				"handlesInDom": 0,
+				"leftStrip": {
+					"pixels": 10,
+					"handlePixels": 0,
+					"cursors": [
+						"auto"
+					],
+					"topRoles": [
+						"log"
+					],
+					"distanceFromContainerLeft": 33
+				},
+				"rightStrip": {
+					"pixels": 10,
+					"handlePixels": 0,
+					"cursors": [
+						"auto"
+					],
+					"topRoles": [
+						"log"
+					],
+					"distanceFromContainerRight": 33
+				},
+				"sidebarDivider": {
+					"left": 254,
+					"right": 266,
+					"x": 260,
+					"y": 466,
+					"topRole": "separator",
+					"topCursor": "col-resize"
+				}
+			},
+			"panel": {
+				"size": {
+					"width": 1512,
+					"height": 900
+				},
+				"container": {
+					"left": 260,
+					"right": 1048,
+					"width": 788
+				},
+				"column": {
+					"left": 276,
+					"right": 1032,
+					"width": 756,
+					"maxWidth": "810px",
+					"position": "static"
+				},
+				"handlesInDom": 0,
+				"leftStrip": {
+					"pixels": 10,
+					"handlePixels": 0,
+					"cursors": [
+						"auto"
+					],
+					"topRoles": [
+						"log"
+					],
+					"distanceFromContainerLeft": 16
+				},
+				"rightStrip": {
+					"pixels": 10,
+					"handlePixels": 0,
+					"cursors": [
+						"auto"
+					],
+					"topRoles": [
+						"log"
+					],
+					"distanceFromContainerRight": 16
+				},
+				"sidebarDivider": {
+					"left": 254,
+					"right": 266,
+					"x": 260,
+					"y": 466,
+					"topRole": "separator",
+					"topCursor": "col-resize"
+				},
+				"panelDivider": {
+					"left": 1042,
+					"right": 1054,
+					"x": 1048,
+					"y": 466,
+					"topRole": "separator",
+					"topCursor": "col-resize"
+				}
+			}
+		},
+		"localOperatorDark": {
+			"alone": {
+				"size": {
+					"width": 1180,
+					"height": 900
+				},
+				"container": {
+					"left": 260,
+					"right": 1136,
+					"width": 876
+				},
+				"column": {
+					"left": 293,
+					"right": 1103,
+					"width": 810,
+					"maxWidth": "810px",
+					"position": "static"
+				},
+				"handlesInDom": 0,
+				"leftStrip": {
+					"pixels": 10,
+					"handlePixels": 0,
+					"cursors": [
+						"auto"
+					],
+					"topRoles": [
+						"log"
+					],
+					"distanceFromContainerLeft": 33
+				},
+				"rightStrip": {
+					"pixels": 10,
+					"handlePixels": 0,
+					"cursors": [
+						"auto"
+					],
+					"topRoles": [
+						"log"
+					],
+					"distanceFromContainerRight": 33
+				},
+				"sidebarDivider": {
+					"left": 254,
+					"right": 266,
+					"x": 260,
+					"y": 466,
+					"topRole": "separator",
+					"topCursor": "col-resize"
+				}
+			},
+			"panel": {
+				"size": {
+					"width": 1512,
+					"height": 900
+				},
+				"container": {
+					"left": 260,
+					"right": 1048,
+					"width": 788
+				},
+				"column": {
+					"left": 276,
+					"right": 1032,
+					"width": 756,
+					"maxWidth": "810px",
+					"position": "static"
+				},
+				"handlesInDom": 0,
+				"leftStrip": {
+					"pixels": 10,
+					"handlePixels": 0,
+					"cursors": [
+						"auto"
+					],
+					"topRoles": [
+						"log"
+					],
+					"distanceFromContainerLeft": 16
+				},
+				"rightStrip": {
+					"pixels": 10,
+					"handlePixels": 0,
+					"cursors": [
+						"auto"
+					],
+					"topRoles": [
+						"log"
+					],
+					"distanceFromContainerRight": 16
+				},
+				"sidebarDivider": {
+					"left": 254,
+					"right": 266,
+					"x": 260,
+					"y": 466,
+					"topRole": "separator",
+					"topCursor": "col-resize"
+				},
+				"panelDivider": {
+					"left": 1042,
+					"right": 1054,
+					"x": 1048,
+					"y": 466,
+					"topRole": "separator",
+					"topCursor": "col-resize"
+				}
+			}
+		}
+	},
+	"migration": {
+		"seeded": {
+			"state": {
+				"chatMeasureWidth": 1100,
+				"themeName": "localOperatorLight",
+				"rightSlotWidth": 0
+			},
+			"version": 1
+		},
+		"maxWidth": "810px",
+		"width": 810,
+		"override": "",
+		"blobVersion": 2,
+		"blobHasKey": false,
+		"blobKeyValue": null
+	}
+}

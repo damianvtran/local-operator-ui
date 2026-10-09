@@ -3606,6 +3606,73 @@ test("a wake delivery is a receipt, and the catch-up is not one", () => {
 	assert.equal(state.records.length, 0);
 });
 
+/*
+ * A HIDDEN wake delivery paints nothing, on either door (first-run onboarding,
+ * A4). Aida's greeting is triggered by a hidden wake whose text is addressed to
+ * her; the operator's rule is that her conversation OPENS on her own message, so
+ * neither a receipt nor a user row may stand above it. History load is
+ * `applyHistoryPage`; the live arrival of a custom row is a `history_delta`
+ * frame, which the core sends for it because a wake is never announced as a
+ * user `message_start`. Her reply must still paint, first.
+ */
+test("a hidden wake delivery paints no row on history load or live, and her reply is first", () => {
+	const trigger = {
+		kind: "custom",
+		custom_type: "wake_prompt",
+		attribution: "user",
+		details: {
+			wake_id: "aida-greeting",
+			hidden: true,
+			text: "[first-run] surface=desktop; signed_in_with=radient",
+		},
+	};
+	const reply = {
+		role: "assistant",
+		content: [{ type: "text", text: "Hi, I'm Aida." }],
+	};
+	const loaded = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("w-hidden", 5, trigger),
+			messageEntry("a-1", 6, reply),
+		]),
+	);
+	assert.deepEqual(
+		loaded.records.map((record) => [record.id, record.kind]),
+		[["a-1", "assistant"]],
+	);
+
+	const live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "history_delta",
+			messages: [
+				{ id: "w-hidden", ...trigger },
+				{ id: "a-1", ...reply },
+			],
+		},
+		10_000,
+	);
+	assert.deepEqual(
+		live.records.map((record) => [record.id, record.kind]),
+		[["a-1", "assistant"]],
+	);
+
+	// Fail-safe direction: only a JSON `true` hides. A truthy string is a
+	// producer this build does not know, and a row it did not mean to hide shows.
+	const shown = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			messageEntry("w-2", 5, {
+				...trigger,
+				details: { ...trigger.details, hidden: "yes" },
+			}),
+		]),
+	);
+	assert.equal(shown.records.length, 1);
+	assert.equal(shown.records[0].kind, "wake");
+});
+
 test("the new kinds do not change how other custom rows project", () => {
 	// The regression guard for the branch this change inserted in front of: a
 	// custom row that is neither a peer nor a wake still paints `details.text`,

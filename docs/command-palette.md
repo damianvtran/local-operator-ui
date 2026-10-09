@@ -79,7 +79,8 @@ deliberate:
   moves, it does not duplicate). The pin shows at most **5** (`RECENTS_PIN_CAP`).
   The ring is larger than the pin on purpose: the surplus keeps the pin full when
   some of what it remembers is on screen, unread, or gone. A blob written before
-  the key existed hydrates to an empty ring; no migration is needed.
+  the key existed hydrates to an empty ring; the key needs no step of its own in
+  the migration.
 - **What is left out.** The conversation on screen (you are already in it; this is
   what makes the first row "the previous conversation", the Alt-Tab behaviour),
   archived rows (the sidebar's own rule - when the backend advertises

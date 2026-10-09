@@ -252,9 +252,7 @@ const bundle = await build({
 			 * authority. The values a load with NO admitted send
 			 * holds are undelivered null, isSmallView false, missing false and the
 			 * starting quartet false/null - the panel's own send latches, which
-			 * never fire without a send. measureHandle is deliberately OMITTED: the
-			 * call site's opt-in for the measure's drag handles, which the run
-			 * panel's child reader does not pass either.
+			 * never fire without a send.
 			 */
 			export function LoadPane({ sessionId, containerRef }) {
 				/*

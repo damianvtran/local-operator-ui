@@ -257,8 +257,7 @@ If you encounter issues not covered here, please:
 
 ## Credits
 
-Some general style and interaction UX here is inspired by [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`) - including the conversation measure's draggable width controls, whose geometry, hover cue and persistence shape were read from
-its `ConversationWidthControls` and adopted with this app's own bounds.
+Some general style and interaction UX here is inspired by [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`).
 
 ## License
 
