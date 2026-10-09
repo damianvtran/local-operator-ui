@@ -1168,6 +1168,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			with_counts: z.boolean().optional(),
 		})
 		.strict(),
+	/*
+	 * Acknowledge the one-time delegated-cleanup notice:
+	 * `POST /v1/desktop/delegated-cleanup-notice/ack`.
+	 *
+	 * The notice rides `sessions.list` UNTIL this write lands: the GET is a
+	 * non-consuming peek (every list answer keeps carrying the field while the
+	 * store is unacknowledged, which is what lets a second window see the same
+	 * notice), and this op is the one thing that flips `notice_acknowledged` on
+	 * disk. The route is idempotent - acknowledging an acknowledged store writes
+	 * what is already there - so, like `sessions.archive`, it needs no
+	 * `requestId`: a retry cannot flip anything back.
+	 */
+	z
+		.object({ op: z.literal("delegated_cleanup_notice.ack") })
+		.strict(),
 	z
 		.object({
 			// Content search over the store: name, id, exact conversation body, and
@@ -4856,12 +4871,14 @@ export type BackendSetting = {
  * `GET /v1/desktop/sessions` carries it in the additive field
  * `delegated_cleanup_notice` (`null` or absent when there is nothing to say).
  *
- * CONSUMED ON READ: the first response that carries it flips the store's
- * `notice_acknowledged` flag on disk, so the server will never send it again.
- * That is why the renderer lifts it out of the response the moment it is read
- * (`desktopResult`) into `delegated-cleanup-notice-store`, which holds it until
- * the reader dismisses it - a notice kept only in the response that carried it
- * would be gone with the next re-render of whatever fetched it.
+ * SERVED UNTIL ACKNOWLEDGED: the GET is a non-consuming PEEK - every list
+ * answer keeps carrying the field while the store's `notice_acknowledged` flag
+ * is unset (which is what lets a second window see the same notice), and the
+ * dismissal's `POST /v1/desktop/delegated-cleanup-notice/ack` is the one write
+ * that flips it. The renderer lifts the field out of every answer at the
+ * transport (`desktopResult`) into `delegated-cleanup-notice-store`, which
+ * holds it until the reader dismisses it - a notice kept only in the response
+ * that carried it would be gone with the next re-render of whatever fetched it.
  */
 export type DelegatedCleanupNotice = {
 	/** Finished sentences, one per line; rendered verbatim, never re-worded. */
@@ -5247,6 +5264,17 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		/*
+		 * The one write behind the notice's lifecycle: the dismissal's ack. The GET
+		 * above is a PEEK (`delegated_cleanup_notice` stays on every answer until
+		 * this lands), so this is the only op that stops the store serving it -
+		 * idempotent, and sent once per dismissal.
+		 */
+		case "delegated_cleanup_notice.ack":
+			return {
+				path: "/v1/desktop/delegated-cleanup-notice/ack",
+				method: "POST",
+			};
 		case "sessions.search": {
 			// `encodeURIComponent` rather than interpolation: a query is whatever
 			// the user typed, and `&`, `#` or a space in it would otherwise change

@@ -5415,9 +5415,10 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 * deliberately: `desktopResult` lifts it out of every
 								 * `sessions.list` answer into `delegated-cleanup-notice-store`
 								 * (one place, so whichever of the five callers is served it, it
-								 * is kept), and the server serves it at most once per store. It is
-								 * declared so the next reader of this type can see the field the
-								 * wire carries rather than discovering it in a cast.
+								 * is kept), and the server serves the field on EVERY answer until
+								 * the dismissal acknowledges it. It is declared so the next reader
+								 * of this type can see the field the wire carries rather than
+								 * discovering it in a cast.
 								 */
 								delegated_cleanup_notice?: DelegatedCleanupNotice | null;
 								/**

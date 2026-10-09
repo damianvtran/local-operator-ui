@@ -53,6 +53,16 @@ const HOURS_PER_MONTH = 30 * HOURS_PER_DAY;
 const DAYS_FROM_HOURS = 72;
 
 /**
+ * Whole-number TEXT: digits and nothing else.
+ *
+ * The one spelling of "this text is a whole number" - `entryToDraft` passes
+ * anything else through verbatim so validation can refuse it, `validateHours`
+ * refuses it by name, and the control's entry split reads the same rule - so
+ * the three cannot drift. Top-level for `lint/performance/useTopLevelRegex`.
+ */
+export const WHOLE_NUMBER_TEXT = /^\d+$/;
+
+/**
  * The named stops, in hours: 2h, 6h, 12h, 24h, 48h (the default), 3d, 7d, 14d,
  * 30d. Clipped to the registry's range by `durationSpec`, so a stop outside it
  * is simply not offered.
@@ -163,7 +173,7 @@ export function entryToDraft(entry: {
 	unit: DurationUnit;
 }): string {
 	const text = entry.text.trim();
-	if (!/^\d+$/.test(text)) return text;
+	if (!WHOLE_NUMBER_TEXT.test(text)) return text;
 	return String(Number(text) * (entry.unit === "days" ? HOURS_PER_DAY : 1));
 }
 
@@ -212,7 +222,7 @@ export function validateHours(
 	spec: Pick<DurationSpec, "min" | "max">,
 ): DurationVerdict {
 	const text = draft.trim();
-	if (!/^\d+$/.test(text)) {
+	if (!WHOLE_NUMBER_TEXT.test(text)) {
 		return {
 			ok: false,
 			error: "Enter a whole number of hours or days.",

@@ -36,8 +36,11 @@ import React, { act } from "react";
 // React DOM feature-detects input events at import time, so give it a document
 // before loading it rather than activating its legacy IE event polyfill. The
 // component's reveal effect uses `requestAnimationFrame`, which jsdom only owns
-// when it is visual.
-const bootstrapDOM = new JSDOM("<!doctype html><html><body></body></html>");
+// when it is visual - the release cases at the end of this file drive that
+// effect, so the flag is ON.
+const bootstrapDOM = new JSDOM("<!doctype html><html><body></body></html>", {
+	pretendToBeVisual: true,
+});
 /*
  * jsdom's window IS the DOM, but it is not the global environment the bundled
  * component runs in: Radix's select and switch primitives reference
@@ -60,6 +63,15 @@ for (const key of Object.getOwnPropertyNames(bootstrapDOM.window)) {
 }
 globalThis.window = bootstrapDOM.window;
 globalThis.document = bootstrapDOM.window.document;
+/*
+ * The reveal effect's two jsdom holes, stubbed the way this repo's other
+ * DOM-driven suites stub them (`completion-view-ack.test.mjs`,
+ * `projects-entry-scroll.test.mjs`): `Element.scrollIntoView` is not
+ * implemented, and the effect builds its row selector with a BARE `CSS.escape`,
+ * which needs a global jsdom does not provide.
+ */
+globalThis.CSS = { escape: (value) => String(value) };
+bootstrapDOM.window.Element.prototype.scrollIntoView = () => {};
 const { createRoot } = await import("react-dom/client");
 after(() => {
 	bootstrapDOM.window.close();
@@ -141,7 +153,7 @@ const payload = JSON.parse(
 	),
 );
 
-const mount = async (t) => {
+const mount = async (t, props = {}) => {
 	/*
 	 * Teardown is armed FIRST, before anything this function creates exists. It is
 	 * registered ON THE TEST (`t.after`, "after this test, however it ended")
@@ -237,11 +249,28 @@ const mount = async (t) => {
 			createElement(
 				QueryClientProvider,
 				{ client: mounted.client },
-				createElement(BackendSettingsSection, {}),
+				createElement(BackendSettingsSection, props),
 			),
 		);
 	});
 	return mounted;
+};
+
+/**
+ * Re-render the same root with new props: how a /settings navigation target
+ * ARRIVES for an already-mounted page (the palette jump keeps the page's own
+ * state, `palette-search.ts:1331`, so `focusKey` changes under a live filter).
+ */
+const rerender = async (mounted, props) => {
+	await act(async () => {
+		mounted.root.render(
+			createElement(
+				QueryClientProvider,
+				{ client: mounted.client },
+				createElement(BackendSettingsSection, props),
+			),
+		);
+	});
 };
 
 const click = async (el) => {
@@ -324,7 +353,7 @@ test(
 );
 
 test(
-	"Collapse all with the tier shown, then a search: same, for all 19 sections",
+	"Collapse all with the tier shown, then a search: same, for all 22 sections",
 	{ timeout: TEST_TIMEOUT_MS },
 	async (t) => {
 		await mount(t);
@@ -366,5 +395,99 @@ test(
 			"clearing the query restores the arrival layout, not a query-shaped one",
 		);
 		assert.ok(rowShown("hosting"), "and Model's own row is on screen again");
+	},
+);
+
+/*
+ * ------------------------------------------------------------------ *
+ * The deep link under a live filter (agent review round 1, F2)
+ * ------------------------------------------------------------------ *
+ * The palette's `Settings: <key>` row navigates to `/settings?setting=<key>`
+ * and the route keeps the page's state (`palette-search.ts:1331`), so a jump
+ * lands under whatever filter the reader had typed. The section then has two
+ * decisions to agree with the ROW LIST (which folds `presentSetting`): whether
+ * the filter excludes the destination (clear it; the navigation named a key),
+ * and whether the destination is on screen yet. Both used to fold the raw wire
+ * copy, so a filter on a word only the registry's phrasing carries ("720",
+ * "48") kept its text while the row list excluded the row - the deep link
+ * opened the section with its destination hidden.
+ */
+
+/** The delegated age row: the deep-link destination these cases jump to. */
+const DELEGATED_AGE_KEY = "session.cleanup.delegated.max_age_hours";
+
+/** Whether the reveal has put focus inside the named row yet. */
+const focusedInto = (key) => {
+	const row = document.querySelector(`[data-setting-key="${key}"]`);
+	return row?.contains(document.activeElement) ?? false;
+};
+
+/** Wait for the reveal loop's rAF frames, bounded rather than assumed. */
+const settleReveal = async (key) => {
+	for (let i = 0; i < 20 && !focusedInto(key); i++) {
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 25));
+		});
+	}
+};
+
+test(
+	"a palette jump under a filter the presented copy does not match clears the filter and shows the row (agent review round 1, F2)",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		const mounted = await mount(t, { initialFilter: "720" });
+		/*
+		 * The defect's precondition: "720" lives only in the registry's raw help
+		 * ("2 to 720"), and the row list folds the desktop's copy - so the age row
+		 * is filtered OUT while the filter sits in the box.
+		 */
+		assert.equal(
+			rowShown(DELEGATED_AGE_KEY),
+			false,
+			"the raw-only word excludes the destination from the list",
+		);
+		await rerender(mounted, { focusKey: DELEGATED_AGE_KEY });
+		/*
+		 * The jump's contract: a filter the destination does not match is cleared
+		 * (the navigation named a key, and a key that cannot be seen is not a
+		 * destination), and the named row is on screen.
+		 */
+		assert.equal(
+			search().value,
+			"",
+			"the filter the destination cannot match is cleared",
+		);
+		assert.ok(rowShown(DELEGATED_AGE_KEY), "the named row is rendered");
+		await settleReveal(DELEGATED_AGE_KEY);
+		assert.ok(
+			focusedInto(DELEGATED_AGE_KEY),
+			"the reveal focuses the row the deep link named",
+		);
+	},
+);
+
+test(
+	"a palette jump under a filter the presented copy DOES match keeps the reader's filter (agent review round 1, F2)",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		const mounted = await mount(t, { initialFilter: "retention" });
+		// "retention" is in the age row's PRESENTED help - the copy the row list
+		// and its search fold - so the row is on screen to begin with, and the
+		// reader's filter must survive the jump rather than being cleared because
+		// the raw copy never says the word.
+		assert.ok(
+			rowShown(DELEGATED_AGE_KEY),
+			"the presented help's word admits the row",
+		);
+		await rerender(mounted, { focusKey: DELEGATED_AGE_KEY });
+		assert.equal(
+			search().value,
+			"retention",
+			"a filter the destination matches is kept",
+		);
+		assert.ok(
+			rowShown(DELEGATED_AGE_KEY),
+			"and the named row is still on screen",
+		);
 	},
 );

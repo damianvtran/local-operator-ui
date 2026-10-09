@@ -347,7 +347,7 @@ test("the core tier is small enough to be an everyday list", () => {
 		.filter(([, tier]) => tier === "core")
 		.map(([key]) => key);
 	// The budget, not a preference: the arrival frame at 1380x900 has to hold
-	// the filter row, 19 headers and these rows inside 1,600px, and the closed
+	// the filter row, 22 headers and these rows inside 1,600px, and the closed
 	// default state has to stay inside its own budget (asserted above).
 	assert.ok(
 		core.length >= 8 && core.length <= 20,

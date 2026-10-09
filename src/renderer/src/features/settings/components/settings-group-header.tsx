@@ -106,8 +106,19 @@ export const SettingsGroupHeader = ({
 			 * hierarchy's chrome exactly as designed.
 			 */
 			chevronClassName="text-ink-dim"
-			/* One shape for all 19 headers, which is what makes the arrival index
-			   scan as a list rather than as 19 differently-sized things.
+			/*
+			 * `firstLine`, because a header's mark belongs on the TITLE's line
+			 * (design round 1, D1): at a wrapping width the chevron sat on the
+			 * second line (measured at a 420px column, chevron centre 754 against
+			 * line-1 centre 734), reading as attached to the word "sessions"
+			 * rather than to the group it opens. The settings ROW already passes
+			 * this for the same reason ("a row's mark belongs on the label's
+			 * line", `backend-setting-row.tsx`), and this is the other half of
+			 * that rule.
+			 */
+			summaryAlign="firstLine"
+			/* One shape for all 22 headers, which is what makes the arrival index
+			   scan as a list rather than as 22 differently-sized things.
 
 			   The empty disclosed-content box this header used to grow is gone from
 			   the primitive itself (`children != null` now gates it), which removes the

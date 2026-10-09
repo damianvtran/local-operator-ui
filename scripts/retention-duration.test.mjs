@@ -1,7 +1,8 @@
 /*
  * The delegated-work retention window: the duration model, the range check that
  * stands between a draft and the wire, the control's gated and invalid states,
- * and the grouping of the two new registry sections.
+ * the grouping of the two new registry sections, and the one-time notice's wire
+ * lifecycle (peek-lift, dismissal-ack, tolerance).
  *
  * The rows are read from the COMMITTED registry projection
  * (`scripts/fixtures/backend-settings-registry.json`, derived from the backend's
@@ -87,7 +88,7 @@ const bundle = await build({
 			export { RetentionDurationControl } from "./src/renderer/src/features/settings/components/retention-duration-control";
 			export { BackendSettingRow } from "./src/renderer/src/features/settings/components/backend-setting-row";
 			export { parseDelegatedCleanupNotice, useDelegatedCleanupNoticeStore } from "./src/renderer/src/shared/store/delegated-cleanup-notice-store";
-			export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api";
+			export { desktopResult, dismissDelegatedCleanupNotice } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -503,46 +504,159 @@ test("the row explains the gate in the switch's own words", async (t) => {
  * The first-run notice's wire shape
  * ------------------------------------------------------------------ */
 
-test("a sessions.list answer carrying the notice lifts it into the store, once", async () => {
-	/*
-	 * THE REAL PATH the manager's brief is about: the notice rides
-	 * `sessions.list`, and the renderer consumes it at the transport
-	 * (`desktopResult`) rather than in any one caller - because five callers
-	 * issue this op and whichever asks first is served it. This drives that
-	 * function with a stubbed preload bridge and reads the store.
-	 */
+/** The wire's notice, as `notice_wire` spells it. */
+const WIRE_NOTICE = {
+	message: "Cleaned up 3 delegated sessions so far.",
+	removed: 3,
+	max_age_hours: 48,
+	in_progress: true,
+	first_removal_at: "2026-10-09T10:00:00-0400",
+	freed_bytes_estimate: null,
+	record: "~/.local-operator/sessions/cleanup.log",
+};
+
+/**
+ * A preload bridge whose list answers carry the notice until the ack lands.
+ *
+ * THE ROUTE IS A PEEK: `GET /v1/desktop/sessions` serves `delegated_cleanup_notice`
+ * on EVERY answer while the store is unacknowledged, and the dismissal's
+ * `delegated_cleanup_notice.ack` is the write that stops it. The stub models
+ * exactly that - it records every request, keeps carrying the field until the
+ * ack arrives (or forever, when `ackFails`), and can be flipped back to
+ * carrying for the failed-ack direction.
+ */
+const installNoticeBridge = ({ ackFails = false } = {}) => {
+	const requests = [];
+	let carrying = true;
 	globalThis.window.api = {
 		desktop: {
-			request: async () => ({
-				status: 200,
-				body: {
+			request: async (request) => {
+				requests.push(request);
+				if (request.op === "delegated_cleanup_notice.ack") {
+					if (ackFails) {
+						return {
+							status: 500,
+							body: { detail: "the ack could not be written" },
+						};
+					}
+					carrying = false;
+					return {
+						status: 200,
+						body: { status: 200, message: "ok", result: {} },
+					};
+				}
+				return {
 					status: 200,
-					message: "ok",
-					result: {
-						sessions: [],
-						delegated_cleanup_notice: {
-							message: "Cleaned up 3 delegated sessions so far.",
-							removed: 3,
-							max_age_hours: 48,
-							in_progress: true,
-							first_removal_at: "2026-10-09T10:00:00-0400",
-							freed_bytes_estimate: null,
-							record: "~/.local-operator/sessions/cleanup.log",
+					body: {
+						status: 200,
+						message: "ok",
+						result: {
+							sessions: [],
+							...(carrying ? { delegated_cleanup_notice: WIRE_NOTICE } : {}),
 						},
 					},
-				},
-			}),
+				};
+			},
 		},
 	};
+	return {
+		requests,
+		setCarrying: (value) => {
+			carrying = value;
+		},
+	};
+};
+
+test("a sessions.list answer carrying the notice lifts it into the store, once per acknowledgment", async () => {
+	/*
+	 * THE REAL PATH this contract is about: the notice rides `sessions.list`,
+	 * and the renderer lifts it at the transport (`desktopResult`) rather than in
+	 * any one caller - because five callers issue this op and, on the peek
+	 * contract, whichever asks first must not be the only one that ever sees it
+	 * (the round-1 defect was the FIRST read consuming it before the renderer
+	 * could). This drives that function with a stubbed bridge and reads the
+	 * store.
+	 */
+	m.useDelegatedCleanupNoticeStore.setState({ notice: null });
+	const bridge = installNoticeBridge();
+	// Read 1 and read 2 both carry the field, the way two of the five callers
+	// (the attach probe, the sidebar) would in one launch.
 	await m.desktopResult({ op: "sessions.list" });
 	const held = m.useDelegatedCleanupNoticeStore.getState().notice;
 	assert.equal(held?.removed, 3);
 	assert.equal(held?.in_progress, true);
-	// Dismissing clears it; the server will never send it again, so the store
-	// must not resurrect it on the next read that does not carry one.
-	m.useDelegatedCleanupNoticeStore.getState().dismiss();
+	await m.desktopResult({ op: "sessions.list" });
+	assert.equal(
+		m.useDelegatedCleanupNoticeStore.getState().notice,
+		held,
+		"a second identical arrival keeps the held reference - no re-render",
+	);
+	// Dismissal: the local clear, then the ack that stops the server serving
+	// the field.
+	await m.dismissDelegatedCleanupNotice();
+	assert.equal(m.useDelegatedCleanupNoticeStore.getState().notice, null);
+	assert.ok(
+		bridge.requests.some((r) => r.op === "delegated_cleanup_notice.ack"),
+		"dismiss must acknowledge the notice for the store",
+	);
+	// The next answer no longer carries it: nothing resurrects the notice.
+	await m.desktopResult({ op: "sessions.list" });
+	assert.equal(m.useDelegatedCleanupNoticeStore.getState().notice, null);
+	// And a LATER answer that carries it again re-lifts it - the failed-ack
+	// direction, which is acceptable: the notice is at-least-once client-side,
+	// and no dismissal may poison the lift.
+	bridge.setCarrying(true);
 	await m.desktopResult({ op: "sessions.list" });
 	assert.equal(m.useDelegatedCleanupNoticeStore.getState().notice?.removed, 3);
+});
+
+test("a failed ack keeps the local dismissal and reports nothing", async () => {
+	/*
+	 * The tolerance the lifecycle promises: the local clear is what the reader
+	 * asked for and it stands; the ack's failure is swallowed, so a refused
+	 * write cannot leave an unhandled rejection or a scary banner about a
+	 * notice the reader just dismissed. The field stays on the wire and the
+	 * notice may reappear on a later answer - acceptable, and the direction the
+	 * at-least-once notice wants.
+	 */
+	m.useDelegatedCleanupNoticeStore.setState({ notice: null });
+	const bridge = installNoticeBridge({ ackFails: true });
+	await m.desktopResult({ op: "sessions.list" });
+	assert.equal(m.useDelegatedCleanupNoticeStore.getState().notice?.removed, 3);
+	// Must RESOLVE: the dismissal is the promise this call makes, and it is
+	// kept even though the write was not.
+	await m.dismissDelegatedCleanupNotice();
+	assert.equal(m.useDelegatedCleanupNoticeStore.getState().notice, null);
+	assert.ok(
+		bridge.requests.some((r) => r.op === "delegated_cleanup_notice.ack"),
+		"the ack was attempted",
+	);
+	// The next read still carries the field (the ack never landed), so the
+	// notice re-lifts - the re-show a failed ack tolerates.
+	await m.desktopResult({ op: "sessions.list" });
+	assert.equal(m.useDelegatedCleanupNoticeStore.getState().notice?.removed, 3);
+});
+
+test("the notice store's storage factory refuses an absent localStorage (the sibling's guard)", () => {
+	/*
+	 * An anchor on the store's source, the shape
+	 * `update-indicator-segments.test.mjs` pins its sibling with. The BEHAVIOUR
+	 * cannot be driven from here: this file installs its `localStorage` stub
+	 * before the bundle loads, and the store is a module singleton - but the
+	 * guard is what keeps a Node harness WITHOUT one from watching the first
+	 * write reject asynchronously with "Cannot read properties of undefined
+	 * (reading 'setItem')" (the failure `update-notice-store.ts` documents and
+	 * this store was missing until agent review round 1, F3).
+	 */
+	const source = readFileSync(
+		"src/renderer/src/shared/store/delegated-cleanup-notice-store.ts",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/throw new Error\("no localStorage in this environment"\)/,
+		"the storage factory must THROW on an absent store so zustand degrades to in-memory",
+	);
 });
 
 test("the notice parser accepts the wire shape and refuses a message-less one", () => {

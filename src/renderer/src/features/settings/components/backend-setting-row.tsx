@@ -195,7 +195,7 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 			data-tier={tier}
 			className="border-b border-hairline"
 		>
-			<div className="flex flex-wrap items-start gap-x-4 gap-y-1 px-1 py-2.5">
+			<div className="flex flex-wrap items-start gap-x-4 gap-y-1 px-1 py-2.5 @container/settingsrow">
 				<div
 					className={cn(
 						"flex min-w-44 flex-col gap-0.5",
@@ -211,8 +211,19 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 							? durationRow
 								? /* The stops need the room a list editor does not: at the 40% a
 								     list gets, `Use default` beside nine stops orphaned `30d` on a
-								     second line. A third leaves the label a readable column. */
-									"shrink-0 basis-1/3"
+								     second line. A third leaves the label a readable column -
+								     except once the control WRAPS, below 480px of row: there the
+								     label column takes the full width, so the help spans the row
+								     instead of wrapping in a 156px column while the area right
+								     of it sits empty for its whole height (design round 1, D5).
+								     480 is arithmetic, not taste: 176 (`min-w-44`) + 16
+								     (`gap-x-4`) + 288 (`min-w-72` on the duration control) is
+								     exactly where this row's own wrap sends the control to the
+								     next line; a CONTAINER query on the row's content box is
+								     what makes the two rules unable to disagree about which
+								     layout is in force (a viewport breakpoint could not: the
+								     row's width is the settings column's, not the window's). */
+									"shrink-0 basis-1/3 @max-[480px]/settingsrow:basis-full"
 								: "shrink-0 basis-2/5"
 							: "flex-1",
 					)}
