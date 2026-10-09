@@ -1,0 +1,5355 @@
+{
+  "arm": "after",
+  "origin": "http://localhost:5481",
+  "cases": {
+    "s1": {
+      "title": "no asks on open",
+      "ok": true,
+      "ms": 3398,
+      "probe": {
+        "hash": "#/chat/bbbb11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": null,
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frame": "after/state-1-no-asks/localOperatorDark.webp"
+    },
+    "s2": {
+      "title": "pending on open",
+      "ok": true,
+      "ms": 5455,
+      "probe": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 59m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "probeAtOpen": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 59m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frame": "after/state-2-pending-on-open/localOperatorDark.webp",
+      "tap": {
+        "t0": 4.599999964237213,
+        "drawerSeenAtMs": 921,
+        "activeAtDrawer": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "focusLog": [
+          {
+            "t": 569,
+            "tag": "BUTTON",
+            "label": "Conversation actions",
+            "inDrawer": false,
+            "composer": false
+          },
+          {
+            "t": 573,
+            "tag": "TEXTAREA",
+            "label": "Message",
+            "inDrawer": false,
+            "composer": true
+          },
+          {
+            "t": 578,
+            "tag": "BUTTON",
+            "label": "Conversation actions",
+            "inDrawer": false,
+            "composer": false
+          },
+          {
+            "t": 579,
+            "tag": "TEXTAREA",
+            "label": "Message",
+            "inDrawer": false,
+            "composer": true
+          },
+          {
+            "t": 597,
+            "tag": "TEXTAREA",
+            "label": "Message",
+            "inDrawer": false,
+            "composer": true
+          }
+        ],
+        "focusIntoDrawer": 0
+      },
+      "timeline": {
+        "frames": 311,
+        "framesWithDrawer": 272,
+        "framesWithSlot": 272,
+        "firstDrawerAtMs": 921,
+        "firstDrawerRows": 1,
+        "framesWithDrawerAndNoRows": 0,
+        "composerFirst": {
+          "x": 409,
+          "w": 778
+        },
+        "composerSettled": {
+          "x": 292,
+          "w": 452
+        },
+        "transitions": [
+          {
+            "t": 2,
+            "hash": "aaaa11112222",
+            "drawer": false,
+            "surface": false,
+            "slot": false,
+            "rows": 0,
+            "chip": false,
+            "composer": null,
+            "chain": null,
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          },
+          {
+            "t": 629,
+            "hash": "aaaa11112222",
+            "drawer": false,
+            "surface": false,
+            "slot": false,
+            "rows": 0,
+            "chip": false,
+            "composer": {
+              "x": 409,
+              "w": 778
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 1028
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 1028
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          },
+          {
+            "t": 921,
+            "hash": "aaaa11112222",
+            "drawer": true,
+            "surface": true,
+            "slot": true,
+            "rows": 1,
+            "chip": true,
+            "composer": {
+              "x": 300,
+              "w": 436
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 300,
+                "w": 436
+              },
+              {
+                "n": "div.relative",
+                "x": 300,
+                "w": 436
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 284,
+                "w": 468
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 284,
+                "w": 468
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 468
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 468
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          },
+          {
+            "t": 932,
+            "hash": "aaaa11112222",
+            "drawer": true,
+            "surface": true,
+            "slot": true,
+            "rows": 1,
+            "chip": true,
+            "composer": {
+              "x": 292,
+              "w": 452
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 292,
+                "w": 452
+              },
+              {
+                "n": "div.relative",
+                "x": 292,
+                "w": 452
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 284,
+                "w": 468
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 284,
+                "w": 468
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 468
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 468
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          }
+        ]
+      }
+    },
+    "s2l": {
+      "title": "pending on open, light palette",
+      "ok": true,
+      "ms": 2138,
+      "probe": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 59m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frame": "after/state-2-pending-on-open/localOperatorLight.webp"
+    },
+    "s3": {
+      "title": "all addressed on open",
+      "ok": true,
+      "ms": 3499,
+      "probe": {
+        "hash": "#/chat/cccc11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "All asks settled"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frame": "after/state-3-all-addressed/localOperatorDark.webp"
+    },
+    "s17": {
+      "title": "a carried drawer onto a SETTLED conversation: closed, not carried (U3, remediation r1)",
+      "ok": true,
+      "ms": 9391,
+      "warmC": {
+        "hash": "#/chat/cccc11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "All asks settled"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "openedOnA": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 59m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "onSettledC": {
+        "hash": "#/chat/cccc11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "All asks settled"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "settleTimeline": {
+        "frames": 262,
+        "framesWithDrawer": 24,
+        "framesWithSlot": 24,
+        "firstDrawerAtMs": 1,
+        "firstDrawerRows": 1,
+        "framesWithDrawerAndNoRows": 4,
+        "composerFirst": {
+          "x": 292,
+          "w": 452
+        },
+        "composerSettled": {
+          "x": 409,
+          "w": 778
+        },
+        "transitions": [
+          {
+            "t": 1,
+            "hash": "aaaa11112222",
+            "drawer": true,
+            "surface": true,
+            "slot": true,
+            "rows": 1,
+            "chip": true,
+            "composer": {
+              "x": 292,
+              "w": 452
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 292,
+                "w": 452
+              },
+              {
+                "n": "div.relative",
+                "x": 292,
+                "w": 452
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 284,
+                "w": 468
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 284,
+                "w": 468
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 468
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 468
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          },
+          {
+            "t": 362,
+            "hash": "cccc11112222",
+            "drawer": true,
+            "surface": true,
+            "slot": true,
+            "rows": 0,
+            "chip": false,
+            "composer": {
+              "x": 300,
+              "w": 400
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 300,
+                "w": 400
+              },
+              {
+                "n": "div.relative",
+                "x": 300,
+                "w": 400
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 284,
+                "w": 432
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 284,
+                "w": 432
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 432
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 432
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          },
+          {
+            "t": 376,
+            "hash": "cccc11112222",
+            "drawer": true,
+            "surface": true,
+            "slot": true,
+            "rows": 0,
+            "chip": false,
+            "composer": {
+              "x": 292,
+              "w": 416
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 292,
+                "w": 416
+              },
+              {
+                "n": "div.relative",
+                "x": 292,
+                "w": 416
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 284,
+                "w": 432
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 284,
+                "w": 432
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 432
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 432
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          },
+          {
+            "t": 439,
+            "hash": "cccc11112222",
+            "drawer": false,
+            "surface": false,
+            "slot": false,
+            "rows": 0,
+            "chip": true,
+            "composer": {
+              "x": 401,
+              "w": 794
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 401,
+                "w": 794
+              },
+              {
+                "n": "div.relative",
+                "x": 401,
+                "w": 794
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 1028
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 1028
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          },
+          {
+            "t": 450,
+            "hash": "cccc11112222",
+            "drawer": false,
+            "surface": false,
+            "slot": false,
+            "rows": 0,
+            "chip": true,
+            "composer": {
+              "x": 409,
+              "w": 778
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 1028
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 1028
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          }
+        ]
+      },
+      "frameSettled": "after/state-17-carried-onto-settled-closed/localOperatorDark.webp"
+    },
+    "s11": {
+      "title": "a runtime with no queued-ask engine (unsupported / unpublished): nothing to open",
+      "ok": true,
+      "ms": 4906,
+      "probe": {
+        "hash": "#/chat/eeee11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": null,
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frame": "after/state-11-no-engine/localOperatorDark.webp"
+    },
+    "s6": {
+      "title": "composer holds a draft on open",
+      "ok": true,
+      "ms": 7125,
+      "withDraft": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "1 question waiting · expires in 59m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": "half a thought about the rollout window"
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frame": "after/state-6-composer-has-draft/localOperatorDark.webp",
+      "afterClear": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "1 question waiting · expires in 59m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      }
+    },
+    "s7": {
+      "title": "the drawer the policy opened is not carried onto a dismissed conversation",
+      "ok": true,
+      "ms": 9008,
+      "onA": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "backOnD": {
+        "hash": "#/chat/dddd11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "timeline": {
+        "frames": 262,
+        "framesWithDrawer": 19,
+        "framesWithSlot": 19,
+        "firstDrawerAtMs": 11,
+        "firstDrawerRows": 1,
+        "framesWithDrawerAndNoRows": 0,
+        "composerFirst": {
+          "x": 292,
+          "w": 452
+        },
+        "composerSettled": {
+          "x": 409,
+          "w": 778
+        },
+        "transitions": [
+          {
+            "t": 11,
+            "hash": "aaaa11112222",
+            "drawer": true,
+            "surface": true,
+            "slot": true,
+            "rows": 1,
+            "chip": true,
+            "composer": {
+              "x": 292,
+              "w": 452
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 292,
+                "w": 452
+              },
+              {
+                "n": "div.relative",
+                "x": 292,
+                "w": 452
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 284,
+                "w": 468
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 284,
+                "w": 468
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 468
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 468
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          },
+          {
+            "t": 353,
+            "hash": "dddd11112222",
+            "drawer": false,
+            "surface": false,
+            "slot": false,
+            "rows": 0,
+            "chip": false,
+            "composer": {
+              "x": 409,
+              "w": 778
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 1028
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 1028
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          },
+          {
+            "t": 411,
+            "hash": "dddd11112222",
+            "drawer": false,
+            "surface": false,
+            "slot": false,
+            "rows": 0,
+            "chip": true,
+            "composer": {
+              "x": 409,
+              "w": 778
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 1028
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 1028
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          }
+        ]
+      },
+      "frame": "after/state-7-carried-closed/localOperatorDark.webp"
+    },
+    "s9a": {
+      "title": "pending on open in a 1024x768 window",
+      "ok": true,
+      "ms": 1873,
+      "probe": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1024,
+          "h": 768
+        },
+        "overflowX": false,
+        "nav": null,
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 536,
+          "y": 0,
+          "w": 444,
+          "h": 768
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 88,
+          "y": 682,
+          "w": 416,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 1,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frame": "after/state-9a-1024/localOperatorDark.webp"
+    },
+    "s9b": {
+      "title": "pending on open in a 800x600 window",
+      "ok": true,
+      "ms": 1817,
+      "probe": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 800,
+          "h": 600
+        },
+        "overflowX": false,
+        "nav": null,
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 536,
+          "y": 0,
+          "w": 220,
+          "h": 600
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 88,
+          "y": 514,
+          "w": 416,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 1,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frame": "after/state-9b-800/localOperatorDark.webp"
+    },
+    "s12": {
+      "title": "Escape pressed in the composer with the drawer up: the lane's existing claim collapses the drawer, and it counts as a dismissal",
+      "ok": true,
+      "ms": 5557,
+      "beforeEscape": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "afterEscape": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "afterRefresh": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      }
+    },
+    "s13": {
+      "title": "the Other row: auto-open takes no focus into it, the user's press does, and a closed drawer is not re-opened over typed text",
+      "ok": true,
+      "ms": 7119,
+      "opened": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frameOpened": "after/state-13a-other-row-present/localOperatorDark.webp",
+      "afterRowPress": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Your answer to: Which environment should I deploy the release candidate to?",
+          "inDrawer": true,
+          "composer": false
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 1,
+          "fieldValue": "",
+          "fieldFocused": true
+        }
+      },
+      "typed": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Your answer to: Which environment should I deploy the release candidate to?",
+          "inDrawer": true,
+          "composer": false
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 1,
+          "fieldValue": "Roll out to the canary ring first",
+          "fieldFocused": true
+        }
+      },
+      "frameTyped": "after/state-13b-other-typed/localOperatorDark.webp",
+      "closedOverText": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "afterRefresh": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "reopenedByChip": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "BUTTON",
+          "label": null,
+          "inDrawer": true,
+          "composer": false
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 1,
+          "fieldValue": "Roll out to the canary ring first",
+          "fieldFocused": false
+        }
+      },
+      "frameReopened": "after/state-13c-reopened-by-the-user/localOperatorDark.webp"
+    },
+    "s14": {
+      "title": "a durable pane (the canvas) holds the slot: the policy borrows it, and the close gives it back",
+      "ok": true,
+      "ms": 3063,
+      "arrived": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frame": "after/state-14-canvas-holds-the-slot/localOperatorDark.webp",
+      "afterClose": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 1,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frameAfterClose": "after/state-14b-canvas-handed-back/localOperatorDark.webp"
+    },
+    "s10": {
+      "title": "closing the drawer with its X: where the keyboard lands",
+      "ok": true,
+      "ms": 2562,
+      "open": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "closed": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      }
+    },
+    "s4": {
+      "title": "dismissed while pending",
+      "ok": true,
+      "ms": 20238,
+      "opened": {
+        "hash": "#/chat/dddd11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "dismissed": {
+        "hash": "#/chat/dddd11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frameDismissed": "after/state-4a-dismissed/localOperatorDark.webp",
+      "afterRefresh": {
+        "hash": "#/chat/dddd11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "afterReRender": {
+        "hash": "#/chat/dddd11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "1 question waiting · expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "afterArrival": {
+        "hash": "#/chat/dddd11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "2 questions waiting · soonest ask expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frameArrival": "after/state-4b-new-ask-arrived/localOperatorDark.webp",
+      "awayOnB": {
+        "hash": "#/chat/bbbb11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": null,
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "backOnD": {
+        "hash": "#/chat/dddd11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "2 questions waiting · soonest ask expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "switchBackTimeline": {
+        "frames": 263,
+        "framesWithDrawer": 0,
+        "framesWithSlot": 0,
+        "firstDrawerAtMs": null,
+        "firstDrawerRows": null,
+        "framesWithDrawerAndNoRows": 0,
+        "composerFirst": {
+          "x": 409,
+          "w": 778
+        },
+        "composerSettled": {
+          "x": 409,
+          "w": 778
+        },
+        "transitions": [
+          {
+            "t": 2,
+            "hash": "bbbb11112222",
+            "drawer": false,
+            "surface": false,
+            "slot": false,
+            "rows": 0,
+            "chip": false,
+            "composer": {
+              "x": 409,
+              "w": 778
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 1028
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 1028
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          },
+          {
+            "t": 361,
+            "hash": "dddd11112222",
+            "drawer": false,
+            "surface": false,
+            "slot": false,
+            "rows": 0,
+            "chip": false,
+            "composer": {
+              "x": 409,
+              "w": 778
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 1028
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 1028
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          },
+          {
+            "t": 435,
+            "hash": "dddd11112222",
+            "drawer": false,
+            "surface": false,
+            "slot": false,
+            "rows": 0,
+            "chip": true,
+            "composer": {
+              "x": 409,
+              "w": 778
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 1028
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 1028
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          }
+        ]
+      },
+      "frameSwitchBack": "after/state-4c-switched-back/localOperatorDark.webp",
+      "timeOriginBefore": 1791505181354.1,
+      "timeOriginAfter": 1791505199943.9,
+      "afterReload": {
+        "hash": "#/chat/dddd11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open",
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "2 questions waiting · soonest ask expires in 58m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 2 questions waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 2 questions waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 2 questions waiting",
+        "canvas": 0,
+        "other": {
+          "row": 2,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frameReload": "after/state-4d-reload-opens-again/localOperatorDark.webp"
+    },
+    "s5": {
+      "title": "send a normal message with the drawer up",
+      "ok": true,
+      "ms": 3951,
+      "drawerUp": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 57m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "typed": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 57m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 801,
+          "w": 452,
+          "h": 47,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": "Carry on with the rest of the checklist - I will answer the question shortly."
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "sent": {
+        "hash": "#/chat/aaaa11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 57m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 820,
+          "w": 452,
+          "h": 28,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frame": "after/state-5-send-normal-message/localOperatorDark.webp",
+      "backend": {
+        "askEventKinds": [
+          "queued"
+        ],
+        "transcriptLines": 10,
+        "transcriptHasMessage": true
+      },
+      "records": [
+        {
+          "ask_id": "a-52e2",
+          "status": "open",
+          "created_at": 1791505080868,
+          "question_ids": [
+            "deploy-target"
+          ]
+        }
+      ]
+    },
+    "s8": {
+      "title": "an ask that arrives while the conversation is open does not open it; a new view of it does",
+      "ok": true,
+      "ms": 10192,
+      "opened": {
+        "hash": "#/chat/bbbb11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": null,
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "afterArrival": {
+        "hash": "#/chat/bbbb11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "1 question waiting · expires in 59m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frameArrival": "after/state-8a-arrival-stays-closed/localOperatorDark.webp",
+      "awayOnC": {
+        "hash": "#/chat/cccc11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "All asks settled"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "newView": {
+        "hash": "#/chat/bbbb11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 59m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frameNewView": "after/state-8b-new-view-opens/localOperatorDark.webp"
+    },
+    "s15": {
+      "title": "the dismissal names the asks it waved off: a partial resolve holds, a refill while away opens",
+      "ok": true,
+      "ms": 13785,
+      "recordsAtStart": [
+        {
+          "ask_id": "a-b6c6",
+          "status": "open",
+          "created_at": 1791505082260,
+          "question_ids": [
+            "deploy-target"
+          ]
+        },
+        {
+          "ask_id": "a-6b4a",
+          "status": "open",
+          "created_at": 1791505218291,
+          "question_ids": [
+            "region"
+          ]
+        }
+      ],
+      "opened": {
+        "hash": "#/chat/ffff11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open",
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "2 questions waiting · soonest ask expires in 57m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 2 questions waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 2 questions waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 2 questions waiting",
+        "canvas": 0,
+        "other": {
+          "row": 2,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "namedAtOpen": [
+        "a-b6c6",
+        "a-6b4a"
+      ],
+      "dismissedOverTwo": {
+        "hash": "#/chat/ffff11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "2 questions waiting · soonest ask expires in 57m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frameDismissed": "after/state-15a-dismissed-over-two/localOperatorDark.webp",
+      "afterPartialResolve": {
+        "hash": "#/chat/ffff11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "1 question waiting · expires in 59m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "partialTimeline": {
+        "frames": 263,
+        "framesWithDrawer": 0,
+        "framesWithSlot": 0,
+        "firstDrawerAtMs": null,
+        "firstDrawerRows": null,
+        "framesWithDrawerAndNoRows": 0,
+        "composerFirst": {
+          "x": 409,
+          "w": 778
+        },
+        "composerSettled": {
+          "x": 409,
+          "w": 778
+        },
+        "transitions": [
+          {
+            "t": 0,
+            "hash": "cccc11112222",
+            "drawer": false,
+            "surface": false,
+            "slot": false,
+            "rows": 0,
+            "chip": true,
+            "composer": {
+              "x": 409,
+              "w": 778
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 1028
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 1028
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          },
+          {
+            "t": 362,
+            "hash": "ffff11112222",
+            "drawer": false,
+            "surface": false,
+            "slot": false,
+            "rows": 0,
+            "chip": false,
+            "composer": {
+              "x": 409,
+              "w": 778
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 1028
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 1028
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          },
+          {
+            "t": 497,
+            "hash": "ffff11112222",
+            "drawer": false,
+            "surface": false,
+            "slot": false,
+            "rows": 0,
+            "chip": true,
+            "composer": {
+              "x": 409,
+              "w": 778
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 1028
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 1028
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          }
+        ]
+      },
+      "framePartial": "after/state-15b-partial-resolve-holds/localOperatorDark.webp",
+      "afterRefill": {
+        "hash": "#/chat/ffff11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 question waiting · expires in 59m"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 question waiting.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 question waiting."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 question waiting",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "namedAfterRefill": [
+        "a-5bc2"
+      ],
+      "frameRefill": "after/state-15c-refill-opens/localOperatorDark.webp",
+      "recordsAtEnd": [
+        {
+          "ask_id": "a-b6c6",
+          "status": "answered",
+          "created_at": 1791505082260,
+          "question_ids": [
+            "deploy-target"
+          ]
+        },
+        {
+          "ask_id": "a-6b4a",
+          "status": "answered",
+          "created_at": 1791505218291,
+          "question_ids": [
+            "region"
+          ]
+        },
+        {
+          "ask_id": "a-5bc2",
+          "status": "open",
+          "created_at": 1791505230257,
+          "question_ids": [
+            "window"
+          ]
+        }
+      ]
+    },
+    "s16": {
+      "title": "a list the wire could not carry whole: the dismissal holds until a complete frame shows nothing outstanding",
+      "ok": true,
+      "ms": 18217,
+      "askCountAtStart": 8,
+      "opened": {
+        "hash": "#/chat/abcd11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open",
+          "open",
+          "open",
+          "open",
+          "open",
+          "open",
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "8 outstanding"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 8 outstanding.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 8 outstanding."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 8 outstanding",
+        "canvas": 0,
+        "other": {
+          "row": 7,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "named": [
+        "a-9ef6",
+        "a-2b69",
+        "a-2b8b",
+        "a-d9fe",
+        "a-0283",
+        "a-3767",
+        "a-ace5"
+      ],
+      "frameTruncated": "after/state-16a-truncated-prefix-opens/localOperatorDark.webp",
+      "unnamed": [
+        "a-cff9"
+      ],
+      "dismissed": {
+        "hash": "#/chat/abcd11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "8 outstanding"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "afterNamedAnswered": {
+        "hash": "#/chat/abcd11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "1 outstanding"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "holdTimeline": {
+        "frames": 262,
+        "framesWithDrawer": 0,
+        "framesWithSlot": 0,
+        "firstDrawerAtMs": null,
+        "firstDrawerRows": null,
+        "framesWithDrawerAndNoRows": 0,
+        "composerFirst": {
+          "x": 409,
+          "w": 778
+        },
+        "composerSettled": {
+          "x": 409,
+          "w": 778
+        },
+        "transitions": [
+          {
+            "t": 11,
+            "hash": "cccc11112222",
+            "drawer": false,
+            "surface": false,
+            "slot": false,
+            "rows": 0,
+            "chip": true,
+            "composer": {
+              "x": 409,
+              "w": 778
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 1028
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 1028
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          },
+          {
+            "t": 354,
+            "hash": "abcd11112222",
+            "drawer": false,
+            "surface": false,
+            "slot": false,
+            "rows": 0,
+            "chip": false,
+            "composer": {
+              "x": 409,
+              "w": 778
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 1028
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 1028
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          },
+          {
+            "t": 435,
+            "hash": "abcd11112222",
+            "drawer": false,
+            "surface": false,
+            "slot": false,
+            "rows": 0,
+            "chip": true,
+            "composer": {
+              "x": 409,
+              "w": 778
+            },
+            "chain": [
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "div.relative",
+                "x": 409,
+                "w": 778
+              },
+              {
+                "n": "chat-input-textarea",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "div.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]",
+                "x": 393,
+                "w": 810
+              },
+              {
+                "n": "form.w-full",
+                "x": 284,
+                "w": 1028
+              },
+              {
+                "n": "div.w-full",
+                "x": 284,
+                "w": 1028
+              }
+            ],
+            "scrollbar": {
+              "inner": 1380,
+              "client": 1380
+            }
+          }
+        ]
+      },
+      "frameHolds": "after/state-16b-unknown-list-holds/localOperatorDark.webp",
+      "afterAllAnswered": {
+        "hash": "#/chat/abcd11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 0,
+        "closeAsks": 0,
+        "rows": [],
+        "slot": null,
+        "chip": {
+          "expanded": "false",
+          "text": "0 outstanding"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 409,
+          "y": 790,
+          "w": 778,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": ""
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": null,
+        "canvas": 0,
+        "other": {
+          "row": 0,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "afterNewBatch": {
+        "hash": "#/chat/abcd11112222",
+        "zone": "America/New_York",
+        "viewport": {
+          "w": 1380,
+          "h": 900
+        },
+        "overflowX": false,
+        "nav": {
+          "x": 0,
+          "y": 308,
+          "w": 260,
+          "h": 544
+        },
+        "drawer": 1,
+        "closeAsks": 1,
+        "rows": [
+          "open"
+        ],
+        "slot": {
+          "x": 776,
+          "y": 0,
+          "w": 560,
+          "h": 900
+        },
+        "chip": {
+          "expanded": "true",
+          "text": "1 outstanding"
+        },
+        "headerTrigger": 1,
+        "composer": {
+          "x": 292,
+          "y": 814,
+          "w": 452,
+          "h": 34,
+          "placeholder": "Ask anything. @ adds files, / runs commands",
+          "value": ""
+        },
+        "active": {
+          "tag": "TEXTAREA",
+          "label": "Message",
+          "inDrawer": false,
+          "composer": true
+        },
+        "liveRegion": "Opened your questions: 1 outstanding.",
+        "liveRegions": [
+          {
+            "i": 0,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 1,
+            "owner": "ask-open",
+            "text": "Opened your questions: 1 outstanding."
+          },
+          {
+            "i": 2,
+            "owner": "condense",
+            "text": ""
+          },
+          {
+            "i": 3,
+            "owner": null,
+            "text": ""
+          },
+          {
+            "i": 4,
+            "owner": null,
+            "text": ""
+          }
+        ],
+        "scope": "This conversation · 1 outstanding",
+        "canvas": 0,
+        "other": {
+          "row": 1,
+          "field": 0,
+          "fieldValue": null,
+          "fieldFocused": false
+        }
+      },
+      "frameNewBatch": "after/state-16c-complete-empty-frame-then-new-batch-opens/localOperatorDark.webp"
+    }
+  }
+}
