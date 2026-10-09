@@ -458,6 +458,12 @@ type UiPreferencesState = {
 	 * than merely cleared, so closing the drawer puts it back (see
 	 * `askDrawerEvictedPane`).
 	 *
+	 * IT ALSO CLEARS ANY OPEN REQUEST IN FLIGHT (`askOpenIntent`, round-2 N1): a
+	 * request names an open that is about to happen, so any newer statement about
+	 * the drawer - an open, a close, for this scope or the other - supersedes it.
+	 * The menu row's ONE caller writes its open first and its request second
+	 * (`requestAskOpen`), which is what keeps its own request alive.
+	 *
 	 * THE SCOPE IS A REQUIRED ARGUMENT, not defaulted, because it is the entry
 	 * point's whole contribution: a caller that does not know which queue it is
 	 * opening has no business opening this surface, and a default would silently
@@ -500,8 +506,10 @@ type UiPreferencesState = {
 	 * switch (and a scope swap swaps the mount), so a flag held in a mount would
 	 * either be forgotten by the remount it was set just before, or re-fire on
 	 * the remount it survived into. Here the drawer consumes it on the commit
-	 * that answers it — and clears it again on close, so a request that was never
-	 * answered cannot be inherited by the next mount.
+	 * that answers it and clears it on the mount's own close; `setAskDrawerOpen`
+	 * clears it on ANY open or close write besides (round-2 N1), so a request
+	 * that was never answered cannot be inherited by a later mount - not by the
+	 * same scope's next mount, and not by a mount of the other queue either.
 	 */
 	askOpenIntent: AskScope | null;
 
@@ -516,6 +524,11 @@ type UiPreferencesState = {
 	 * the rail item deliberately do not call it (their presses are read off
 	 * focus), and the open policy must not (its opens move no keyboard — the
 	 * lane's no-focus-steal promise).
+	 *
+	 * WRITTEN AFTER ITS OPEN, DELIBERATELY: `setAskDrawerOpen` supersedes any
+	 * request in flight, so a caller that requested first and opened second would
+	 * clear its own request - the row's order (open, then request) is what makes
+	 * the pair one act.
 	 */
 	requestAskOpen: (scope: AskScope) => void;
 
@@ -1888,11 +1901,24 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 							 * drawer outlives a switch (see `isAskDrawerOpen`).
 							 */
 							askDrawerEvictedPane: bound ? null : evictedFlag(state),
+							/*
+							 * AND ANY REQUEST IN FLIGHT IS SUPERSEDED (round-2 N1): an open is a
+							 * newer statement about the drawer than whatever request may be
+							 * racing it, and the row's own caller writes its open BEFORE its
+							 * request, so this never eats the pair it belongs to.
+							 */
+							askOpenIntent: null,
 						};
 					}
 					const closed = {
 						isAskDrawerOpen: false,
 						askDrawerEvictedPane: null,
+						/*
+						 * The close clears any pending request too (round-2 N1): once nothing is
+						 * open, a request that was never consumed has no open left to answer,
+						 * and the next mount of either scope must not inherit it.
+						 */
+						askOpenIntent: null,
 					} as const;
 					if (bound) {
 						/*

@@ -471,6 +471,35 @@ test("the scope travels with the flag and is never persisted", () => {
 	);
 	store.clearAskOpenIntent("fleet");
 	assert.equal(useUiPreferencesStore.getState().askOpenIntent, null);
+	/*
+	 * A CLOSE CLEARS A PENDING REQUEST, AND SO DOES ANY OPEN (round-2 N1): the
+	 * request names an open that is about to happen, and every `setAskDrawerOpen`
+	 * write - the close that ends one open, the open of either scope that begins
+	 * the next - is a newer statement about the drawer than the request it races.
+	 * The menu row's own order (open first, request second; its source shape is
+	 * pinned above) is what keeps its pair intact through its own open.
+	 */
+	store.requestAskOpen("fleet");
+	store.setAskDrawerOpen(false, "fleet");
+	assert.equal(
+		useUiPreferencesStore.getState().askOpenIntent,
+		null,
+		"the close write clears a request that was never answered",
+	);
+	store.requestAskOpen("session");
+	store.setAskDrawerOpen(true, "fleet");
+	assert.equal(
+		useUiPreferencesStore.getState().askOpenIntent,
+		null,
+		"an open for the OTHER scope supersedes it: a later mount of the queue it named cannot inherit it",
+	);
+	assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, true);
+	/* The row's own order - open, then request - leaves ITS request standing. */
+	store.setAskDrawerOpen(true, "session");
+	store.requestAskOpen("session");
+	assert.equal(useUiPreferencesStore.getState().askOpenIntent, "session");
+	store.setAskDrawerOpen(false, "session");
+	assert.equal(useUiPreferencesStore.getState().askOpenIntent, null);
 });
 
 test("the drawer wears the canvas family's width in either scope", () => {

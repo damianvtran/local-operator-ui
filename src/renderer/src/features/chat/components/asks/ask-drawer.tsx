@@ -488,13 +488,31 @@ export const AskDrawer = ({
 	 * menu's own internal churn (its portal furniture) is neither ours nor the
 	 * user's and is left alone.
 	 *
-	 * AND IT SETTLES QUIETLY: the teardown writes focus in more than one burst
-	 * (the focus scope and the modal layer each restore on their way out, and a
-	 * StrictMode pass doubles the effects that schedule them), so "the keyboard
-	 * is inside" after ONE answered write is not yet the end - each write lands
-	 * a focusin inside first, and only a full macrotask of quiet after the last
-	 * one settles the claim. Measured: two trigger writes in a StrictMode pass,
-	 * one otherwise.
+	 * AND IT SETTLES ONLY ONCE THE MENU IS OUT AND THE KEYBOARD HAS STAYED IN
+	 * (round-2 M1). "One quiet macrotask after the last write" was timing-fragile:
+	 * the restore is a `setTimeout(0)` the menu's teardown queues, and on a loaded
+	 * host its delivery can land after the drawer's own beat - reproduced
+	 * deterministically (a restore deferred past the old settle put the keyboard
+	 * back on the trigger with the drawer OPEN, which is Q1's defect). The settle
+	 * therefore waits on TWO facts, and the beats are TWO-STEP:
+	 *
+	 *  - THE MENU'S REMOVAL: the content node the row lived in is captured when
+	 *    the claim arms; while it is in the document no beat may settle, and its
+	 *    removal - watched, because nothing else is guaranteed to follow it -
+	 *    opens the chain. No node found at arm (a rig mounting the drawer alone)
+	 *    means there is nothing to wait for.
+	 *  - THE TWO-STEP BEAT: the first beat after a write or a removal observation
+	 *    can never END the claim, it only opens the chain; the next beat may
+	 *    settle, and every delivered write cancels the pending beat and re-opens
+	 *    the chain. A restore still in flight arrives while the chain is open, is
+	 *    answered, and re-opens it - which a single quiet beat could have settled
+	 *    ahead of. The teardown writes more than once (two trigger writes in a
+	 *    StrictMode pass, one otherwise), and this absorbs that second write.
+	 *
+	 * WHILE ARMED a trigger focusin is answered even with the menu gone (that
+	 * late write is what this whole wait exists for); once the claim has SETTLED,
+	 * a trigger focusin is the user's and is not answered - the disarm is what
+	 * keeps a deliberate Tab to the trigger from being bounced (round-2 N2).
 	 *
 	 * THIS IS NOT AN INTERCEPTION OF `onCloseAutoFocus` (which belongs to
 	 * `chat-header`'s menu, and is deliberately not touched): it is the request
@@ -504,12 +522,27 @@ export const AskDrawer = ({
 	const claimRef = useRef<{
 		attempts: number;
 		handler: ((event: FocusEvent) => void) | null;
-	}>({ attempts: 0, handler: null });
+		/** The menu content node the row lived in, captured when the claim arms. */
+		menu: Element | null;
+		/** Whether that node has left the document; the settle waits on this. */
+		menuGone: boolean;
+		/** The pending quiet beat and whether it may end the claim (see `armMenuClaim`). */
+		beat: ReturnType<typeof setTimeout> | null;
+		beatMaySettle: boolean;
+		/** Watches the captured menu out of the document (see `armMenuClaim`). */
+		observer: MutationObserver | null;
+	}>({
+		attempts: 0,
+		handler: null,
+		menu: null,
+		menuGone: false,
+		beat: null,
+		beatMaySettle: false,
+		observer: null,
+	});
 	/* Whether the claim reached a terminal state (success, a user's own focus, or
 	 * the bound); a mount that has one is never re-armed. */
 	const claimSettled = useRef(false);
-	/* The pending quiet-check (see `armMenuClaim`), cleared by every disarm. */
-	const claimCheck = useRef<ReturnType<typeof setTimeout> | null>(null);
 	/* The node the entry move landed on, for the claim to re-take (set at resolve). */
 	const landingRef = useRef<HTMLElement | null>(null);
 	const disarmMenuClaim = useCallback(() => {
@@ -518,39 +551,84 @@ export const AskDrawer = ({
 			document.removeEventListener("focusin", claim.handler, true);
 			claim.handler = null;
 		}
-		if (claimCheck.current !== null) {
-			clearTimeout(claimCheck.current);
-			claimCheck.current = null;
+		if (claim.beat !== null) {
+			clearTimeout(claim.beat);
+			claim.beat = null;
 		}
+		claim.observer?.disconnect();
+		claim.observer = null;
 	}, []);
 	const armMenuClaim = useCallback(() => {
 		const claim = claimRef.current;
 		if (claim.handler !== null || claimSettled.current) return;
 		claim.attempts = 0;
-		/**
-		 * One macrotask of quiet, then the claim is done - RESCHEDULED by every
-		 * write that lands the keyboard inside, so a burst is never mistaken for
-		 * the end (see the note at `claimRef`). If the check finds the keyboard
-		 * elsewhere, the claim stays armed: the next trigger focusin answers it.
+		/*
+		 * THE MENU THE ROW LIVED IN, captured here: the settle waits for THIS node
+		 * to leave the document, because a menu whose teardown is still running can
+		 * still write focus. `null` - no menu on the page, e.g. a rig that mounts
+		 * the drawer alone - means "already gone": the beats alone carry the settle.
 		 */
+		claim.menu = document.querySelector('[role="menu"]');
+		claim.menuGone = claim.menu === null || !claim.menu.isConnected;
 		const settle = () => {
 			claimSettled.current = true;
 			disarmMenuClaim();
 		};
-		const scheduleSettle = () => {
-			if (claimCheck.current !== null) clearTimeout(claimCheck.current);
-			claimCheck.current = setTimeout(() => {
-				claimCheck.current = null;
+		const menuGone = () => claim.menu === null || !claim.menu.isConnected;
+		/**
+		 * ONE BEAT, TWO STEPS (see the note at `claimRef`): a beat that MAY settle
+		 * is always preceded by one that may not, so no single quiet stretch can
+		 * end the claim while a teardown write is still in flight. `scheduleBeat`
+		 * is idempotent - any newer reason to wait replaces the pending beat - and
+		 * a beat that finds the menu still in the document or the keyboard outside
+		 * ends nothing: the removal observer or a later write opens the chain again.
+		 */
+		const scheduleBeat = (maySettle: boolean) => {
+			if (claim.beat !== null) clearTimeout(claim.beat);
+			claim.beatMaySettle = maySettle;
+			claim.beat = setTimeout(() => {
+				claim.beat = null;
 				if (claimSettled.current) return;
-				if (rootRef.current?.contains(document.activeElement)) settle();
+				if (!menuGone()) return;
+				if (!rootRef.current?.contains(document.activeElement)) return;
+				if (!claim.beatMaySettle) {
+					scheduleBeat(true);
+					return;
+				}
+				settle();
 			}, 0);
 		};
+		/*
+		 * THE REMOVAL, WATCHED. The settle's gate needs the menu's removal, and if
+		 * no write follows it nothing else would open the chain again - so the
+		 * observer is what turns "the menu left" into the beat that carries the
+		 * claim to its end. Guarded for a rig with no `MutationObserver` global:
+		 * the chain then depends on the writes alone, which every rig that mounts
+		 * a menu shims, and the real components always provide.
+		 */
+		if (
+			claim.menu !== null &&
+			!claim.menuGone &&
+			typeof MutationObserver !== "undefined"
+		) {
+			const observer = new MutationObserver(() => {
+				if (claimSettled.current) return;
+				if (claim.menu !== null && !claim.menu.isConnected) {
+					claim.menuGone = true;
+					observer.disconnect();
+					claim.observer = null;
+					scheduleBeat(false);
+				}
+			});
+			observer.observe(document.body, { childList: true, subtree: true });
+			claim.observer = observer;
+		}
 		const handler = (event: FocusEvent) => {
 			const target = event.target as Element | null;
 			if (target === null) return;
 			if (rootRef.current?.contains(target)) {
-				/* Where the press promised the keyboard: arm the quiet check. */
-				scheduleSettle();
+				/* Where the press promised the keyboard: open the quiet chain. */
+				scheduleBeat(false);
 				return;
 			}
 			if (target.matches(MENU_TRIGGER_SELECTOR)) {
