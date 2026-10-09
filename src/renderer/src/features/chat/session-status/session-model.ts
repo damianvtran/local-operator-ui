@@ -36,6 +36,7 @@
 import type {
 	CanonicalFrontendState,
 	CanonicalModel,
+	CanonicalModelAccess,
 } from "../../../../../shared/desktop-session-contract";
 
 export type ModelIdentity = {
@@ -707,4 +708,55 @@ export function reconcileEffort(
 		adjustable: true,
 		detail: `Reasoning effort. This model offers ${rungs.join(", ")}.`,
 	};
+}
+
+/**
+ * The session band's "Not signed in to <provider>" reading, or `null`.
+ *
+ * ## What this reads, and the two silences
+ *
+ * The runtime publishes `model_access` beside `selected_model` (see
+ * `CanonicalModelAccess`): a session's model is pinned in its journal and can
+ * outlive the credential that once made it runnable, and this is the one
+ * field that states the consequence. The reading exists ONLY for
+ * `signed_out`:
+ *
+ *   - `ok` is the healthy case and renders nothing;
+ *   - an ABSENT field is a host that predates the contract, and silence there
+ *     must not be read as "signed out" - the same rule the Radient verdict
+ *     reads `unknown` under (`use-radient-session-issue`). A nag invented from
+ *     an older backend's silence would be a claim the frame does not make.
+ *
+ * ## The label fallback
+ *
+ * `label` is the provider's human name for the sentence ("Anthropic (Claude
+ * Pro/Max)" reads better than `anthropic`), but it is display metadata and
+ * may arrive empty; the sentence still has to name something, so it falls
+ * back to the provider id. The PROVIDER (id) is what the Connect action
+ * needs, so it is never the label that travels to `openConnect`.
+ *
+ * A frame is untrusted wire data, so a field that is not a string is treated
+ * as not published rather than stringified - `"[object Object]"` in the
+ * sentence would be worse than silence.
+ */
+export type ModelAccessReading = {
+	/** Provider id - what the Connect action opens. */
+	provider: string;
+	/** The provider's human name for the sentence; never empty. */
+	label: string;
+};
+
+export function modelAccessReading(
+	frontend: CanonicalFrontendState | null | undefined,
+): ModelAccessReading | null {
+	const access: CanonicalModelAccess | null | undefined =
+		frontend?.model_access;
+	if (!access || access.state !== "signed_out") return null;
+	const provider = typeof access.provider === "string" ? access.provider : "";
+	if (!provider) return null;
+	const label =
+		typeof access.label === "string" && access.label.trim() !== ""
+			? access.label
+			: provider;
+	return { provider, label };
 }

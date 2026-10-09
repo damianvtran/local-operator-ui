@@ -148,8 +148,12 @@ type PageBook = ScanBook & { id: string };
  * — the second is dropped rather than kept as a duplicate tile — and the
  * document's `id` becomes the resolved path, which is the identity the store
  * dedupes on from then on.
+ *
+ * Exported for `scripts/mentioned-files.test.mjs`, which drives it against the
+ * real store: a rule that only exists inside a React effect is a rule nothing
+ * can fail.
  */
-function applyProbeResults(
+export function applyProbeResults(
 	conversationId: string,
 	results: ProbedFile[],
 ): void {
@@ -180,12 +184,21 @@ function applyProbeResults(
 		// A directory is not a missing file: it exists, it is simply not
 		// something a viewer can open - the click hands it to the OS. Only a path
 		// with nothing at it earns the missing-file receipt.
+		//
+		// A FAULT is the third answer (round 1, R1-2 + QA round 1, Q1): the probe
+		// could not look - a deadline under load - and heavy load is exactly when
+		// an EXISTING file's ask faults, so painting it "missing" would report a
+		// file gone on the strength of a stat that never happened. The tile stays
+		// unresolved (unmarked); the retry bookkeeping in the effect still re-asks
+		// it, so nothing is stranded.
 		const availability: CanvasDocument["availability"] =
-			result.exists && result.isFile
-				? "present"
-				: result.exists
-					? undefined
-					: "missing";
+			result.error !== undefined
+				? undefined
+				: result.exists && result.isFile
+					? "present"
+					: result.exists
+						? undefined
+						: "missing";
 		const updated: CanvasDocument = {
 			...document,
 			id: resolved,
@@ -335,6 +348,10 @@ export function useMentionedFiles({
 				for (const result of results) {
 					if (result.exists && result.isFile)
 						book.missing.delete(result.resolved);
+					// A fault (`error` set) stays in the retry set with the other unresolved
+					// answers: it painted nothing on the tile above, and this is what promises
+					// the next growth re-asks it rather than stranding the path (round 1,
+					// R1-2 + QA round 1, Q1).
 					else if (!result.exists) book.missing.add(result.resolved);
 				}
 			}

@@ -125,13 +125,17 @@ const { modelPickerMatchKey, matchModelPickerOptions } = await bundleInto(
 `,
 );
 
-const { catalogueListing, failedProviders, providerListingNotice } =
-	await bundleInto(
-		"catalogue-listing",
-		`
-	export { catalogueListing, failedProviders, providerListingNotice } from "./src/renderer/src/features/chat/pickers/model-catalogue-listing";
+const {
+	catalogueListing,
+	failedProviders,
+	providerListingNotice,
+	scopeCatalogue,
+} = await bundleInto(
+	"catalogue-listing",
+	`
+	export { catalogueListing, failedProviders, providerListingNotice, scopeCatalogue } from "./src/renderer/src/features/chat/pickers/model-catalogue-listing";
 `,
-	);
+);
 
 const { modelSelector } = await bundleInto(
 	"session-model",
@@ -884,6 +888,131 @@ test("the body's four states are ordered, and a note is not one of them", () => 
 	);
 });
 
+/* ------------------------------------------------------- the scope union */
+
+const scopeRow = (over = {}) => ({
+	provider: "anthropic",
+	model_id: "claude-opus-5",
+	selector: "anthropic/claude-opus-5",
+	label: "Claude Opus 5",
+	connected: true,
+	aggregated: false,
+	context_window: 200_000,
+	input_price: 3,
+	output_price: 15,
+	default_context_window: null,
+	max_context_window: null,
+	...over,
+});
+
+test("the usable scope keeps connected rows and the current row, and derives no count", () => {
+	/*
+	 * THE FALLBACK, on the shipped rule: an old backend answers `usable` with
+	 * everything and no `scope`, so the CLIENT filters. Two things must hold at
+	 * once — the filter runs on `connected`, and the current row survives it
+	 * whatever its state (the backend's own `picker_rows(usable, current)`
+	 * exemption, mirrored) — and a third is why `hidden` must stay null: the
+	 * count only ever comes off the wire, because a client-derived number would
+	 * be a mirror of an access predicate rather than the predicate.
+	 */
+	const rows = [
+		scopeRow(),
+		scopeRow({
+			provider: "zai",
+			model_id: "glm-5.2",
+			selector: "zai/glm-5.2",
+			connected: false,
+		}),
+		scopeRow({
+			provider: "openrouter",
+			model_id: "x-ai/grok-4.7",
+			selector: "openrouter/x-ai/grok-4.7",
+			connected: false,
+		}),
+	];
+	const doc = {
+		models: rows,
+		source: "initial",
+		errors: {},
+		credentials_known: true,
+	};
+	const scoped = scopeCatalogue(doc, "usable", "openrouter/x-ai/grok-4.7");
+	assert.deepEqual(
+		scoped.rows.map((row) => row.selector),
+		["anthropic/claude-opus-5", "openrouter/x-ai/grok-4.7"],
+		"connected rows stay and the current row is kept whatever its auth state",
+	);
+	assert.equal(
+		scoped.hidden,
+		null,
+		"no count is derived from a client-side filter",
+	);
+	assert.equal(
+		scoped.removed,
+		1,
+		"the rows the client dropped are counted, for the control's own visibility",
+	);
+
+	const all = scopeCatalogue(doc, "all", null);
+	assert.equal(all.rows.length, 3);
+	assert.equal(all.removed, 0);
+});
+
+test("an unreadable store is never filtered, and a wire usable answer is taken as it stands", () => {
+	/*
+	 * `credentials_known === false` is "show everything rather than claim the
+	 * user owns no models" carried into the scope: the flag's own contract.
+	 */
+	const rows = [
+		scopeRow(),
+		scopeRow({
+			provider: "zai",
+			model_id: "glm-5.2",
+			selector: "zai/glm-5.2",
+			connected: false,
+		}),
+	];
+	const unknownStore = scopeCatalogue(
+		{ models: rows, source: "initial", errors: {}, credentials_known: false },
+		"usable",
+		null,
+	);
+	assert.equal(unknownStore.rows.length, 2);
+	assert.equal(unknownStore.hidden, null);
+
+	/*
+	 * A WIRE `usable` answer is trusted as it stands — including the current row
+	 * the server kept, which a client filter would have to second-guess — and
+	 * `hidden` is the number the control prints.
+	 */
+	const wire = scopeCatalogue(
+		{
+			models: [rows[0]],
+			source: "live",
+			errors: {},
+			credentials_known: true,
+			scope: "usable",
+			hidden: 3,
+		},
+		"usable",
+		null,
+	);
+	assert.equal(wire.rows.length, 1);
+	assert.equal(wire.hidden, 3);
+	assert.equal(wire.removed, 0);
+
+	/*
+	 * And the inverse reading stays the same: a request for `all` against any
+	 * document is served whole — the wider view never filters.
+	 */
+	const requestedAll = scopeCatalogue(
+		{ models: rows, source: "initial", errors: {}, credentials_known: false },
+		"all",
+		null,
+	);
+	assert.equal(requestedAll.rows.length, 2);
+});
+
 /* -------------------------------------------------- naming and wiring */
 
 test("a spec with an empty half names nothing", () => {
@@ -966,13 +1095,29 @@ test("the adapter wires the decisions the tests above pin", () => {
 	);
 
 	/*
-	 * QA Q1: "switched and runnable" and "switched but needs sign-in" must not
-	 * produce the same strip. The caveat is appended to the owner's own text and
-	 * the tone steps off `success`; without both, the two outcomes read alike.
+	 * A NEEDS-SIGN-IN ROW STARTS CONNECT — one gesture, superseding QA Q1's
+	 * after-the-fact caveat. The caveat flow switched the session onto a model
+	 * it could not run and then warned about it, which left the session pinned
+	 * to a model that refuses every turn; the design's rule (mirroring the TUI,
+	 * where Enter on such a row runs `/login`) makes the pick itself the Connect
+	 * gesture, with the model untouched.
+	 *
+	 * Pinned as source text on the decisions, this file's discipline for
+	 * `destination-pickers.tsx` (it imports MUI, so the module is read rather
+	 * than executed): the guard reads the row's own auth state, the action is
+	 * the shared connect store, and the pick RETURNS rather than switching.
 	 */
-	assert.match(picker, /switchedNeedsSignIn/);
-	assert.match(picker, /tone: "warning"/);
-	assert.match(picker, /SIGN_IN_CAVEAT/);
+	assert.match(picker, /if \(rowAuth\.get\(value\) === "needs-sign-in"\)/);
+	assert.match(
+		picker,
+		/useConnectProviderStore[\s\S]{0,80}?\.openConnect\(\{ providerId: provider \}\)[\s\S]{0,40}?return;/,
+		"the connect gesture ends the pick without touching the model",
+	);
+	assert.doesNotMatch(
+		picker,
+		/SIGN_IN_CAVEAT/,
+		"the after-the-fact caveat cannot come back beside the connect gesture that replaced it",
+	);
 
 	// QA Q2: the in-force check mark follows the receipt, not the next owner
 	// frame, and is dropped once the authoritative selector agrees.
@@ -1021,8 +1166,8 @@ test("the picker lists the providers by itself, on the backend's cadence", () =>
 	);
 	assert.match(
 		picker,
-		/queryKey: \[\.\.\.desktopKeys\.catalogue, live\]/,
-		"one key prefix, so `invalidateQueries({queryKey: desktopKeys.catalogue})` drops the registry document and the live one together",
+		/queryKey: \[\.\.\.desktopKeys\.catalogue, live, scope\]/,
+		"one key prefix, so `invalidateQueries({queryKey: desktopKeys.catalogue})` drops the registry document, the live one and both scopes together",
 	);
 	assert.match(
 		picker,
@@ -1420,7 +1565,7 @@ test("one binding answers which model the session is on", () => {
 	);
 	assert.match(
 		memo,
-		/modelPickerOptions\(rows,\s*\{[\s\S]*?shownSelector,/,
+		/modelPickerOptions\(scoped\.rows as CatalogueRow\[\],\s*\{[\s\S]*?shownSelector,/,
 		"the memo hands the row builder the one binding, not a second reading",
 	);
 	assert.match(

@@ -136,3 +136,100 @@ export const providerListingNotice = (drawnFromRegistry: boolean): string =>
 	`The provider listing failed. The rows below are ${
 		drawnFromRegistry ? "the shipped models" : "the last listing that answered"
 	}; Refresh\u00a0from\u00a0providers tries again.`;
+
+/** The scope a catalogue can be asked for — the wire's own two values. */
+export type CatalogueScope = "usable" | "all";
+
+type CatalogueRow = DesktopModelCatalogue["models"][number];
+
+/**
+ * The row's selector, in the one spelling the wire and the rows share. The
+ * local fallback matters because an older backend may omit the field
+ * (`selector` is required by the contract but only since the same era as
+ * `scope`), and a row without one still has a provider and an id.
+ */
+function selectorOf(row: CatalogueRow): string {
+	return row.selector ?? `${row.provider}/${row.model_id}`;
+}
+
+export type ScopedCatalogue = {
+	/** The rows this view may list. */
+	rows: CatalogueRow[];
+	/**
+	 * The count the "Show all supported models (N need sign-in)" control may
+	 * PRINT, or `null` when there is no honest number to print.
+	 *
+	 * Only a wire `usable` answer carries one (`hidden`). The client-side
+	 * fallback deliberately does NOT manufacture one from the rows it filtered:
+	 * its filter mirrors the backend's own access predicate (flavours, revoked
+	 * rows, keyless locals) without being it, and a printed number that drifts
+	 * from the predicate would be contradicted by the rows below it.
+	 */
+	hidden: number | null;
+	/**
+	 * Rows this client dropped itself (the fallback), so the control can offer
+	 * the full list WITHOUT claiming a count — `removed > 0` is the whole of
+	 * what it vouches for.
+	 */
+	removed: number;
+};
+
+/**
+ * The rows a scope may list, from the document in hand.
+ *
+ * THE RULE, one place, because two readers must agree about it and the second
+ * one is easy to forget: a NEW backend filters server-side and reports what it
+ * did (`scope`, `hidden`), while a backend that predates the `scope` parameter
+ * answers with everything and says nothing — so THIS client applies the same
+ * filter to that answer, on `row.connected`, and shows no count.
+ *
+ * `current` is the session's model selector. Both halves of the filter keep
+ * that row whatever its auth state — the backend's `picker_rows(usable,
+ * current)` exemption, mirrored — because the one row a user must always see
+ * is the one the session is running.
+ *
+ * `credentials_known === false` means the store could not be read, so
+ * `connected` is the listing default rather than a statement about auth: the
+ * filter is not applied at all there, which is the existing rule ("show
+ * everything rather than claim the user owns no models") carried into the
+ * scope rather than a new one beside it.
+ */
+export function scopeCatalogue(
+	data: DesktopModelCatalogue | undefined,
+	scope: CatalogueScope,
+	current: string | null,
+): ScopedCatalogue {
+	const rows = data?.models ?? [];
+	if (!data) return { rows, hidden: null, removed: 0 };
+	/*
+	 * Absence is `all`, the same reading every other consumer of this contract
+	 * makes (`desktop-control-contract.ts`): a backend that answers without
+	 * `scope` cannot have filtered, whatever this client asked for.
+	 */
+	const docScope = data.scope ?? "all";
+	if (docScope === "usable") {
+		/*
+		 * A server-filtered `usable` answer is taken as it stands — filtering it
+		 * again could only drop the current-model row the backend kept, because
+		 * the client's predicate is a mirror and not the predicate.
+		 *
+		 * `hidden` is read off the document even when the VIEW is `all` (the
+		 * toggle's in-flight moment, or the count after a toggle): it was true
+		 * when the usable document was fetched and nothing in this render has
+		 * contradicted it, so the control keeps its number while the fuller list
+		 * loads rather than flickering between labelled states.
+		 */
+		return {
+			rows,
+			hidden: typeof data.hidden === "number" ? data.hidden : null,
+			removed: 0,
+		};
+	}
+	if (scope === "all" || data.credentials_known === false) {
+		return { rows, hidden: null, removed: 0 };
+	}
+	const kept = rows.filter(
+		(row) => row.connected || selectorOf(row) === current,
+	);
+	return { rows: kept, hidden: null, removed: rows.length - kept.length };
+}

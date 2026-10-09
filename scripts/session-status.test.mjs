@@ -68,6 +68,7 @@ const {
 	formatCost,
 	formatWindow,
 	modelIdentity,
+	modelAccessReading,
 	sessionCost,
 	specUnresolved,
 } = await import(
@@ -1395,4 +1396,65 @@ test("both pickers describe a row in the backend's words, not the live_state tok
 	// The field the rule reads has to be declared on the row this file's own read
 	// produces, or the label would be `undefined` on every row in the app.
 	assert.match(picker, /status\?: SessionCatalogueStatus;/);
+});
+
+/* ---- 8. model access: the band's reading -------------------------------- */
+
+test("the model-access reading exists only for `signed_out`, and never from a silence", () => {
+	/*
+	 * The band's whole rule, executed rather than read: `ok` renders nothing,
+	 * and an ABSENT field (an older host) is not a state either — a nag
+	 * invented from silence is a claim the frame does not make. Both are
+	 * asserted as `null` in one test because they are one rule.
+	 */
+	assert.equal(
+		modelAccessReading({
+			model_access: { state: "ok", provider: "anthropic", label: "Anthropic" },
+		}),
+		null,
+	);
+	assert.equal(modelAccessReading({}), null, "absence is not `signed_out`");
+	assert.equal(modelAccessReading(null), null);
+	assert.equal(modelAccessReading(undefined), null);
+
+	const reading = modelAccessReading({
+		model_access: {
+			state: "signed_out",
+			provider: "anthropic",
+			label: "Anthropic (Claude Pro/Max)",
+		},
+	});
+	assert.deepEqual(reading, {
+		provider: "anthropic",
+		label: "Anthropic (Claude Pro/Max)",
+	});
+
+	/*
+	 * The label is display metadata and may arrive empty; the sentence still
+	 * has to name something, and the PROVIDER is what the Connect action needs
+	 * — so the fallback fills the label from the id and never the other way.
+	 */
+	assert.deepEqual(
+		modelAccessReading({
+			model_access: { state: "signed_out", provider: "openai", label: "" },
+		}),
+		{ provider: "openai", label: "openai" },
+	);
+
+	/*
+	 * A frame is untrusted wire data: a non-string provider is not published, a
+	 * malformed state is not `signed_out`, and neither throws.
+	 */
+	assert.equal(
+		modelAccessReading({
+			model_access: { state: "signed_out", provider: 7, label: "x" },
+		}),
+		null,
+	);
+	assert.equal(
+		modelAccessReading({
+			model_access: { state: "logged-out", provider: "x", label: "" },
+		}),
+		null,
+	);
 });
