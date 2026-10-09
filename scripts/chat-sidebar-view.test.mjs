@@ -250,7 +250,7 @@ test("the foot control names the next page, bounded by what is left", () => {
  * four tests are the requests's four load-bearing clauses, one each, so that
  * breaking any of them reddens a named claim rather than a picture.
  */
-test("an expanded group draws the ladder's prefix, in the catalogue's own order", () => {
+test("an expanded group draws the ladder's prefix, in the order it is given", () => {
 	const rows = Array.from({ length: 41 }, (_, index) =>
 		row(`s${index}`, SECONDS(index + 1)),
 	);
@@ -265,7 +265,7 @@ test("an expanded group draws the ladder's prefix, in the catalogue's own order"
 	assert.deepEqual(
 		page.rows.map((entry) => entry.session_id),
 		rows.slice(0, 10).map((entry) => entry.session_id),
-		"the bound takes a PREFIX - it never re-sorts the group",
+		"the bound takes a PREFIX of the order it is handed, and re-sorts nothing",
 	);
 	assert.equal(page.lifted, false);
 	/*
@@ -305,9 +305,11 @@ test("the bound never hides live work: a running row is out of the quota", () =>
 	);
 	assert.equal(
 		page.rows.findIndex((entry) => entry.session_id === "s40"),
-		// Ten drawn rows, then the running one wherever it sits in the catalogue.
+		// Ten drawn rows, then the running one wherever it sits in the order the
+		// caller arranged (this fixture hands `entityRows` the catalogue's own, and
+		// the component hands it `pageOrder`'s).
 		10,
-		"and it is drawn IN PLACE, so the order is still the catalogue's",
+		"and it is drawn IN PLACE: the exemption adds a row, it does not move one",
 	);
 	assert.equal(page.rows.length, 11, "one extra row, not a re-sort");
 	/*
@@ -1071,16 +1073,16 @@ test("invariant 2: a search reaches past the page and reveals an unloaded match"
 });
 
 /*
- * INVARIANT 3 - the active rows sit above the rest WITHOUT inverting what is
- * below them.
- *
- * The operator's phrase was "sorting active to the top", and the hazard is the
- * naive implementation: a `sort()` on a boolean comparator is stable in modern
- * engines but a `sort()` on a status string is not, and either way the tempting
- * second pass - reverse the non-active rows so the active ones "rise" - buries
- * today's conversation under last week's.
+ * INVARIANT 3 - the rows READ in the order their time labels imply, which
+ * REPLACED "the active rows sit above the rest without inverting recency" on
+ * 2026-10-08 at the operator's instruction. The old shape lifted running rows
+ * and left everything else in the catalogue's arrival order - which is CREATION
+ * order (`session/catalog.py` ranks `(tier, wake band, -created_at, id)`) - so a
+ * conversation created days ago and answered an hour ago printed `1h` under
+ * rows that printed `6d`. The three tests below are the reversal's three
+ * clauses: the lift, the clock beneath it, and the running rows' own key.
  */
-test("invariant 3: active rows lead, recency below them is not inverted", () => {
+test("invariant 3: running rows lead, and every row below them is newest-first", () => {
 	const rows = [
 		row("today", SECONDS(1)),
 		row("older", SECONDS(100)),
@@ -1088,30 +1090,54 @@ test("invariant 3: active rows lead, recency below them is not inverted", () => 
 		row("yesterday", SECONDS(30)),
 		row("answer", SECONDS(300), "answer"),
 	];
-	const ordered = pageOrder(rows, "active-first");
+	const ordered = pageOrder(rows, "active-first", "active");
 	assert.deepEqual(
 		ordered.map((entry) => entry.session_id),
-		["busy", "answer", "today", "older", "yesterday"],
-		"the active pair keeps the catalogue's order, and the rest keeps its own",
+		["answer", "busy", "today", "yesterday", "older"],
+		/*
+		 * THE NEEDS-YOU ROW IS THE LIFT'S FIRST BAND - `answer` reads older than
+		 * `busy` on the activity clock (300h against 200h) and still leads it, because
+		 * a turn stopped on the reader is the one thing they must act on. Below the
+		 * lift the clock runs: today 1h, yesterday 30h, older 100h.
+		 */
+		"the lift leads, then the basis's clock decides",
 	);
 	assert.equal(isActiveRow(rows[2]), true);
 	assert.equal(isActiveRow(rows[0]), false);
 });
 
-test("invariant 3: an explicit recency order does not lift at all", () => {
+test("invariant 3: an explicit recency order does not lift, and keys running rows by their own clock", () => {
 	const rows = [
 		row("a", SECONDS(1)),
 		row("busy", SECONDS(200), "busy"),
 		row("b", SECONDS(2)),
 	];
+	/*
+	 * `recent` is ONE order over every row: no lift at all. The running row is
+	 * still keyed by `runningOrderMs` rather than by its activity - with no
+	 * `last_user_at` and no `created_at` in this fixture it has NO key, which sorts
+	 * it last, and that is the rule rather than an artifact: a running row is
+	 * never re-sorted by a response landing.
+	 */
 	assert.deepEqual(
-		pageOrder(rows, "recent").map((entry) => entry.session_id),
-		["a", "busy", "b"],
-		"the catalogue's order passes through untouched",
+		pageOrder(rows, "recent", "active").map((entry) => entry.session_id),
+		["a", "b", "busy"],
+		"no lift, the clock decides, and a keyless running row sorts last",
+	);
+	// With a last USER message the running row takes its place in the same order -
+	// this is the operator's "send a more recent message and it pops to the top".
+	const withMessage = [
+		row("a", SECONDS(1)),
+		{ ...row("busy", SECONDS(200), "busy"), last_user_at: SECONDS(0.1) },
+		row("b", SECONDS(2)),
+	];
+	assert.deepEqual(
+		pageOrder(withMessage, "recent", "active").map((entry) => entry.session_id),
+		["busy", "a", "b"],
 	);
 });
 
-test("the page order is a partition, never a sort: it allocates no times", () => {
+test("the page is cut from the ARRANGED list, never the other way round", () => {
 	// Three active rows out of order among six, and the page below a limit that
 	// cuts in the middle of the active block: every active row is still drawn.
 	const rows = [
@@ -1122,7 +1148,7 @@ test("the page order is a partition, never a sort: it allocates no times", () =>
 		row("c", SECONDS(3)),
 		row("busy3", SECONDS(52), "wedged"),
 	];
-	const page = pageRows(pageOrder(rows, "active-first"), {
+	const page = pageRows(pageOrder(rows, "active-first", "active"), {
 		limit: 10,
 		currentId: null,
 	});
