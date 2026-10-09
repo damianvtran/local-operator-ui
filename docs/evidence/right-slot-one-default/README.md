@@ -29,17 +29,18 @@ number below.
 BR=$(pwd)   # this branch's checkout, where the set lives
 git worktree add --detach ~/local-operator-ui-worktrees/right-slot-one-default-base f6d9bfc0a0f
 git -C ~/local-operator-ui-worktrees/right-slot-one-default-base apply "$BR"/docs/evidence/right-slot-one-default/base-fixture/shell.stories.patch
-(cd ~/local-operator-ui-worktrees/right-slot-one-default-base && ./node_modules/.bin/storybook dev -p 6395 --ci --no-open)
-./node_modules/.bin/storybook dev -p 6396 --ci --no-open
+(cd ~/local-operator-ui-worktrees/right-slot-one-default-base && ./node_modules/.bin/storybook dev -p 6397 --ci --no-open)
+./node_modules/.bin/storybook dev -p 6398 --ci --no-open
 # One rig, run once per tree: the label picks the folder and the expectations.
-env TZ=America/New_York node scripts/right-slot-one-default-evidence.mjs --label before --origin http://localhost:6395
-env TZ=America/New_York node scripts/right-slot-one-default-evidence.mjs --label after  --origin http://localhost:6396
+env TZ=America/New_York node scripts/right-slot-one-default-evidence.mjs --label before --origin http://localhost:6397
+env TZ=America/New_York node scripts/right-slot-one-default-evidence.mjs --label after  --origin http://localhost:6398
 ```
 
 The patch is the whole before-tree fixture, verified at this commit by re-running
 the rig on a fresh base worktree: it reproduces `before/readings.json` field for
-field (the re-shoot that added the 1440 frames also re-derived it). Its three
-restated prop sets are, verbatim:
+field (the `origin` field records the port that produced the run - provenance,
+excluded from that comparison; the ports above are the ones the committed
+readings record). Its three restated prop sets are, verbatim:
 
 - **Run**: `value = resizable ? min(max(drawn, 320), capacity) : drawn`,
   `min = resizable ? 320 : value`, `max = resizable ? min(640, capacity) : value`,
@@ -52,6 +53,14 @@ restated prop sets are, verbatim:
 
 where `drawn` is the slot width the frame's own resolver hands the arm (`raw` is
 the stored shared width before the resolver's clamp).
+
+**Fold note.** After any fold of this branch, re-run the declared-directory check
+over `docs/evidence/manifest.json`'s supplementary list before pushing: the
+merge's path-union can resurrect declarations for sets another branch deleted
+(it did, for five #895 sets, on two folds of this branch) and no local guard
+covers it. The check is one walk - every `supplementary[].path` must name a
+directory under `docs/evidence/` - and the manifest test's re-derive will not
+catch it either; only the frames walk or `pnpm check-evidence` does.
 
 The rig launches ONE private headless Chrome per run (mock-keychain switch, its
 own scratch `--user-data-dir`, its own process group, reaped by exact pid), and
