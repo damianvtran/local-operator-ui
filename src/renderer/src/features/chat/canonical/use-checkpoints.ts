@@ -7,6 +7,10 @@ import type {
 	DesktopRequest,
 } from "../../../../../shared/desktop-contract";
 import { CHECKPOINT_WARM_MAX_IDS } from "../../../../../shared/desktop-contract";
+import {
+	loadCheckpointManifest,
+	readCachedCheckpointManifest,
+} from "./checkpoint-manifest-cache";
 import { checkpointPendingIds } from "./checkpoint-model";
 
 /**
@@ -18,7 +22,10 @@ import { checkpointPendingIds } from "./checkpoint-model";
  * - The manifest is read once per conversation and re-read on demand; a cold
  *   or stale index answers `building` in well under a second (the scan runs in
  *   the backend's background), so the hook never waits on a scan and the rail
- *   paints ticks from whatever the last answer held.
+ *   paints ticks from whatever the last answer held. The read itself is
+ *   `checkpoint-manifest-cache.ts`'s — one request per ask, shared with the
+ *   conversation's own open-time prefetch, and the memory that seeds the first
+ *   render so the ticks ride the first contentful commit.
  * - `warm` is the user gesture's spend - hover names the ONE tick the reader
  *   looked at (`onHover` fires on the card's intent-delayed open, so a
  *   fly-over costs nothing). The rail deliberately does NOT spend on
@@ -85,8 +92,50 @@ const NO_CHECKPOINTS: Checkpoint[] = [];
 type LoadMode = "initial" | "refresh";
 
 export function useCheckpoints(sessionId: string): UseCheckpointsResult {
-	const [state, setState] = useState<CheckpointsState>("idle");
-	const [manifest, setManifest] = useState<CheckpointManifest | null>(null);
+	/*
+	 * SEEDED DURING THE FIRST RENDER, not from an effect - and that is the whole
+	 * point of the memory (first-paint audit, F10's sibling). An effect runs after
+	 * the commit that would have painted the rail, so a rail seeded there lands
+	 * one frame after the rows it indexes: the metric the audit is about is "the
+	 * first contentful frame IS the settled frame", and the rail's ticks are part
+	 * of the frame. The initialiser reads the window's own memory of this
+	 * conversation (`checkpoint-manifest-cache.ts`), which the conversation's own
+	 * open already warms, so the very first render of the transcript holds the
+	 * ticks it will end up with.
+	 *
+	 * The read still runs below, as a refresh, because the memory is a head start
+	 * and the manifest stays the authority — and a SECOND conversation on the same
+	 * mounted pane (the session prop changing under it, which is what a switch
+	 * does wherever the panel is not re-keyed) re-seeds the same way, below.
+	 */
+	const seeded = sessionId ? readCachedCheckpointManifest(sessionId) : null;
+	const [state, setState] = useState<CheckpointsState>(() =>
+		seeded ? "ready" : "idle",
+	);
+	const [manifest, setManifest] = useState<CheckpointManifest | null>(
+		() => seeded,
+	);
+	/*
+	 * A SWITCH RE-SEEDS WHILE RENDERING, and it has to be here rather than in the
+	 * mount effect one screen down: an effect's `setState` is a SECOND commit, so
+	 * the rail would land one frame after the rows on every switch — which is the
+	 * same defect this file exists to remove, one conversation further on
+	 * (measured on the built app: rows painted, rail element absent from the DOM,
+	 * rail present one frame later with its ticks). Adjusting state during a
+	 * render for a changed prop is React's own pattern for exactly this, and it
+	 * costs no extra commit: the re-render happens before anything is painted.
+	 *
+	 * The effect below keeps everything that is NOT state - the epoch bump that
+	 * releases the previous conversation's episode, the poll reset and the read
+	 * itself.
+	 */
+	const [seededFor, setSeededFor] = useState(sessionId);
+	if (seededFor !== sessionId) {
+		setSeededFor(sessionId);
+		const next = sessionId ? readCachedCheckpointManifest(sessionId) : null;
+		setManifest(next);
+		setState(next ? "ready" : "idle");
+	}
 
 	/*
 	 * One counter is the whole session guard: every conversation takes the next
@@ -149,10 +198,13 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 			if (inFlightEpoch.current === epoch) return;
 			inFlightEpoch.current = epoch;
 			try {
-				const next = await desktopResult<CheckpointManifest>({
-					op: "sessions.checkpoints",
-					sessionId: sessionRef.current,
-				});
+				/*
+				 * The read itself is `checkpoint-manifest-cache`'s, which is what makes
+				 * the open-time prefetch and this mount ONE request rather than two: the
+				 * prefetch is started by the pane that opens the conversation, and this
+				 * hook asks for the same thing a few tens of milliseconds later.
+				 */
+				const next = await loadCheckpointManifest(sessionRef.current);
 				if (epoch !== epochRef.current) return;
 				setManifest(next);
 				setState("ready");
@@ -270,13 +322,25 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 		pendingIds.current = new Set();
 		stopPoll();
 		loggedMessages.current = new Set();
-		setManifest(null);
+		/*
+		 * THE SAME MEMORY, FOR THE PATHS THAT RENDERED BEFORE IT WAS WARM: a pane
+		 * whose first render saw no cache entry (the answer had not landed yet) and
+		 * which re-renders before this effect runs gets the memory here, and a
+		 * switch that the render-time adjustment above already seeded re-states the
+		 * same value, which React discards. The read below still runs - it is the
+		 * authority - and it runs as a REFRESH, because a manifest we have is not
+		 * blanked by a re-read that fails: that is the same rule this hook already
+		 * applies to a failure after a manifest exists, and a memory this window
+		 * holds deserves it for the same reason.
+		 */
+		const seeded = sessionId ? readCachedCheckpointManifest(sessionId) : null;
+		setManifest(seeded);
 		if (!sessionId) {
 			setState("idle");
 			return;
 		}
-		setState("loading");
-		void load(epoch, "initial");
+		setState(seeded ? "ready" : "loading");
+		void load(epoch, seeded ? "refresh" : "initial");
 		return () => {
 			/*
 			 * A read in flight at unmount must not apply its answer or re-arm a

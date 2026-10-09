@@ -232,6 +232,14 @@ const bundle = await build({
 
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { writePaint, __resetPaintCache, readPaint } from "./src/renderer/src/shared/store/paint-cache";
+			/*
+			 * The settings arms below seed the persisted display flags, and they
+			 * seed them through the SHIPPED key and the SHIPPED flag names: a rig
+			 * that respelled either would keep passing after a rename that broke
+			 * every real window.
+			 */
+			export { HIDE_CROSS_SESSION_KEY } from "./src/renderer/src/features/chat/canonical/use-cross-session-hidden";
+			export { TURN_ANSWER_RAIL_KEY } from "./src/renderer/src/features/chat/canonical/turn-answer-rail";
 			export { applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 
 			/*
@@ -438,6 +446,8 @@ const {
 	__resetPaintCache,
 	applyHistoryPage,
 	EMPTY_TRANSCRIPT,
+	HIDE_CROSS_SESSION_KEY,
+	TURN_ANSWER_RAIL_KEY,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 const { QueryClient, QueryClientProvider } = await import(
@@ -508,7 +518,7 @@ const IN_FLIGHT_SEED = {
 };
 
 /** The frontend a LIVE owner snapshots mid-cycle. */
-const frontendState = () => ({
+const frontendState = (over = {}) => ({
 	state_version: 1,
 	epoch: EPOCH,
 	sequence: 5,
@@ -552,6 +562,13 @@ const frontendState = () => ({
 		cumulative_parent_cost: 0.12,
 		subagent_cost: 0,
 		cost_knowledge: "exact",
+		/*
+		 * Overridable, because one arm below needs a SETTLED conversation: an
+		 * answer the reader can see as the turn's closing row is the only row the
+		 * rail marks, and a live cycle in the same snapshot changes which row
+		 * that is. The default stays the mid-cycle shape every other arm reads.
+		 */
+		...over,
 	},
 	live_cursor: null,
 });
@@ -569,16 +586,26 @@ const openFrame = frame(1, "open", {
 	gap: false,
 	watch_ttl_seconds: 45,
 });
-const snapshotFrame = frame(2, "snapshot", {
-	frontend: frontendState(),
-	history: {
-		entries: PAGE_ENTRIES,
-		has_more: false,
-		cursor_missing: false,
-	},
-	cold: false,
-	cold_reason: null,
-});
+/**
+ * The snapshot frame, over any page.
+ *
+ * The page is a parameter because the settings arms below paint a page that
+ * CARRIES cross-session rows where the shipped fixture has none, and a rig that
+ * tested the filter against a page with nothing to filter would pass on any
+ * implementation at all.
+ */
+const snapshotFrameFor = (entries) =>
+	frame(2, "snapshot", {
+		frontend: frontendState(),
+		history: {
+			entries,
+			has_more: false,
+			cursor_missing: false,
+		},
+		cold: false,
+		cold_reason: null,
+	});
+const snapshotFrame = snapshotFrameFor(PAGE_ENTRIES);
 
 /* ------------------------------------------------------------------ the reads */
 
@@ -588,6 +615,17 @@ const readView = (container) => ({
 	bars: [...container.querySelectorAll("[data-turn-summary]")].map((bar) =>
 		(bar.textContent ?? "").replace(RE_WHITESPACE, " ").trim().slice(0, 44),
 	),
+	/*
+	 * THE ANSWER RAIL, counted rather than argued: askers wear
+	 * `data-turn-answer` from the election ALONE, so the mark itself is the
+	 * `border-l` the rail's class carries when the setting is on
+	 * (`turn-answer-mark-class`). Two numbers, because "no mark" and "no
+	 * elected answer" are different states and an arm that read only the first
+	 * could pass over a fixture that elects nothing.
+	 */
+	electedAnswers: container.querySelectorAll("[data-turn-answer]").length,
+	railMarks: container.querySelectorAll("[data-turn-answer][class*='border-l']")
+		.length,
 	workingLine:
 		container
 			.querySelector("[data-lo-working-line]")
@@ -643,7 +681,7 @@ const answerNetwork = async (request) => {
  * first sample differently (a cold mount and a mount that found a cached paint
  * are different states, and the table should say which one it read).
  */
-const mountArm = async (t, label = "mount") => {
+const mountArm = async (t, label = "mount", network = answerNetwork) => {
 	const container = document.createElement("div");
 	document.body.appendChild(container);
 	const client = new QueryClient({
@@ -669,7 +707,7 @@ const mountArm = async (t, label = "mount") => {
 		client.clear();
 		container.remove();
 	});
-	globalThis.__loadNet.network = answerNetwork;
+	globalThis.__loadNet.network = network;
 	const records = [];
 	const record = async (step) => {
 		await flushFrames();
@@ -921,4 +959,425 @@ test("the warm load: the window's memory stays off the screen until the page", a
 		false,
 		"the page's commit retires the cached-paint claim",
 	);
+});
+
+/* ------------------------------------------------- the settings settle (F10) */
+
+/*
+ * THE SETTINGS SETTLE BEFORE THE FIRST CONTENTFUL COMMIT.
+ *
+ * The audit's F10: "row visibility (`visibleRecords`) and the answer rail depend
+ * on a settings query that resolves AFTER the transcript can paint. With
+ * `display.hide_cross_session=true`, peer/send rows paint and are then removed.
+ * When the rail setting resolves, rail chrome appears."
+ *
+ * These arms script exactly that race — the answer HELD while the page lands,
+ * which is the shape the audit describes — and assert the property rather than
+ * the timing: no commit may paint a row the answer is about to take back, the
+ * answer's own commit is the FIRST contentful one, and the elected answer's rail
+ * mark is in that same commit. The control arms (setting off, and the rail's
+ * off) are what make the pair discriminating: they paint the very rows the
+ * "on" arm forbids, so a fixture that quietly stopped painting them, or an
+ * implementation that filtered unconditionally, would fail here rather than
+ * pass twice.
+ */
+
+/**
+ * The settings arms' own table: what each sample painted, in order.
+ *
+ * The same instrument the two arms above carry, for the same reason — the
+ * property is read off the sequence, and a reader debugging a red arm needs the
+ * sequence rather than the assertion that failed.
+ */
+const printSequence = (records, title) => {
+	console.log(`\n${title}:`);
+	for (const row of records) {
+		console.log(
+			`  ${row.step.padEnd(24)} commits=${String(row.commit).padStart(3)} rows=${String(row.rows).padStart(3)} elected=${row.electedAnswers} marks=${row.railMarks} placeholder=${row.placeholder}`,
+		);
+		console.log(`      ids: ${JSON.stringify(row.ids)}`);
+	}
+};
+
+/** A `settings.list` payload carrying the given display flags. */
+const settingsPayload = (flags) => ({
+	sections: [],
+	settings: Object.entries(flags).map(([key, value]) => ({ key, value })),
+});
+
+/** The capability answer every settings arm needs: a plane with the registry. */
+const CAPABILITIES_WITH_SETTINGS = {
+	desktop_available: true,
+	features: { settings: 1 },
+};
+
+/**
+ * The persisted seed the last window would have left, written before mounting.
+ *
+ * THE KEY IS SPELLED HERE rather than imported, and it is the one spelling in
+ * this file that is not the product's own: it is the PERSISTED contract (a
+ * store another window wrote, and another build reads), and spelling it in the
+ * rig is what lets these arms run against a tree from before the seed existed —
+ * which is how the discrimination below is measured. A rename on the branch is
+ * still caught, in the safe direction: the seed would not be found, the page
+ * would paint the rows it hides, and the arm fails.
+ */
+const DISPLAY_SEED_KEY = "display-settings";
+const seedDisplayFlags = (flags) =>
+	localStorage.setItem(DISPLAY_SEED_KEY, JSON.stringify(flags));
+/**
+ * A window that has never seen an answer, which is what the default-path arms
+ * are: the store is shared across every mount in this file (it is one jsdom),
+ * so an arm that wants "nothing seeded" has to say so rather than inherit the
+ * arm above it.
+ */
+const clearDisplayFlags = () => localStorage.removeItem(DISPLAY_SEED_KEY);
+
+/**
+ * A network whose `settings.list` answer is HELD until the arm releases it.
+ *
+ * Everything else is the shipped stub (`answerNetwork`), so the only scripted
+ * fact is the one under test: when the registry answers relative to the page.
+ */
+const heldSettings = () => {
+	/**
+	 * Every held read, not just the last: the query is shared, and a read that
+	 * was already in flight when a second one starts still has to be answered —
+	 * leaving one pending would hold the settings settle in the rig for a reason
+	 * the product does not have.
+	 */
+	const held = [];
+	/**
+	 * Whether the registry read has gone out, and who is waiting to be told.
+	 *
+	 * A LATCH, not just a list of resolvers: the query starts as soon as the
+	 * pane's capability answer arrives, which is inside `mountArm` - so by the
+	 * time an arm asks, the read has usually been seen already, and a
+	 * promise-without-a-latch would wait for a second request that never comes
+	 * (measured: the first shape of this hung the arm for the whole lane budget).
+	 */
+	let sawRequest = false;
+	const seen = [];
+	const network = async (request) => {
+		if (request.op === "capabilities") return CAPABILITIES_WITH_SETTINGS;
+		if (request.op === "settings.list") {
+			sawRequest = true;
+			for (const resolve of seen.splice(0)) resolve();
+			return await new Promise((resolve) => {
+				held.push(resolve);
+			});
+		}
+		return answerNetwork(request);
+	};
+	return {
+		network,
+		/**
+		 * Wait until the registry read is actually in flight.
+		 *
+		 * THE ARMS NEED THIS PRECONDITION, not just the mount: the hold is produced
+		 * by "an answer is owed", and a pane whose query has not started yet holds
+		 * nothing - it paints the page with the seed's own value, which is correct
+		 * and is not the state under test. Without it the arm raced the query's own
+		 * start (it failed once, on a fleet-bound host at load 200), and that race
+		 * was the RIG's, not the product's.
+		 */
+		requestSeen: () =>
+			sawRequest
+				? Promise.resolve()
+				: new Promise((resolve) => seen.push(resolve)),
+		/** Answer every held read; the caller flushes frames inside `act`. */
+		answer: async (flags) => {
+			const payload = settingsPayload(flags);
+			await act(async () => {
+				for (const resolve of held.splice(0)) resolve(payload);
+				/*
+				 * A REAL TICK, not just a flushed microtask queue: react-query settles
+				 * through the notify manager's own scheduled task, so a release that is
+				 * only awaited inside `act` leaves the query `fetching` (measured in this
+				 * rig: `await act(async () => {})` after the release still read
+				 * `pending`/`fetching`; a macrotask later the observer had it).
+				 */
+				await new Promise((settle) => setTimeout(settle, 0));
+			});
+		},
+	};
+};
+
+/**
+ * The hidden set this arm's page really paints, and the page that holds it.
+ *
+ * `peer1` is the durable half — an inbound receipt in the middle of the live
+ * tail, where `record`'s samples show custom rows are painted — and the send
+ * half rides the snapshot's own live seed, because a `send` row painted from
+ * the durable tail lands inside a condensed run and would not be observable as
+ * a painted row at all. Both are what `visibleRecords` drops, which is the
+ * point: the arm has to be able to see them being painted when nothing hides
+ * them, or it would pass on a fixture with nothing to hide.
+ */
+const CROSS_SESSION_IDS = ["peer1", "tool:c1"];
+const CROSS_ENTRIES = [
+	PAGE_ENTRIES[0],
+	/*
+	 * The run's FIRST call is the `send` one, and that is the position that
+	 * matters rather than a tidy story: a condensed run paints its anchor row
+	 * (`tool:c1` in every sample this rig takes) and no other, so the anchor is
+	 * the one place a tool row is observable as a painted row mid-run — which is
+	 * exactly what an arm about "was it painted and then removed" needs. Its
+	 * presence also changes the bar's count, which the samples carry.
+	 */
+	entry("t1", S + 2, {
+		kind: "message",
+		role: "tool",
+		tool_call_id: "c1",
+		tool_name: "send",
+		content: [{ type: "text", text: "delivered to the other session" }],
+		provider_payload: { duration_s: 0.4, details: {} },
+	}),
+	...WORK.slice(1),
+	...PAGE_ENTRIES.slice(-4),
+	entry("peer1", S + 210, {
+		kind: "custom",
+		custom_type: "peer_message",
+		details: { text: "Please re-run the export when the suite is green." },
+	}),
+	settledCall(89, S + 215),
+	settledCall(90, S + 218),
+];
+/** The in-flight `send` call: the same live seed shape, under the send tool. */
+const SEND_SEED = {
+	...IN_FLIGHT_SEED,
+	tool_name: "send",
+};
+/** The page plus the live send, as one snapshot frame. */
+const crossSnapshot = () =>
+	frame(2, "snapshot", {
+		frontend: frontendState({ live_events: [SEND_SEED] }),
+		history: { entries: CROSS_ENTRIES, has_more: false, cursor_missing: false },
+		cold: false,
+		cold_reason: null,
+	});
+
+test("the hide setting, last known ON: no commit paints a row the answer takes back", async (t) => {
+	__resetPaintCache();
+	seedDisplayFlags({ [HIDE_CROSS_SESSION_KEY]: true });
+	const settings = heldSettings();
+	const { records, record, send } = await mountArm(
+		t,
+		"mount (answer owed)",
+		settings.network,
+	);
+
+	await settings.requestSeen();
+	await send(openFrame);
+	await record("open");
+	await send(crossSnapshot());
+	await record("page (answer owed)");
+
+	/*
+	 * THE HOLD. The last known value says hidden and the answer that could
+	 * contradict it is still owed, so the pane withholds the records rather than
+	 * painting two rows it would have to take back one commit later.
+	 */
+	assert.equal(
+		records.at(-1).rows,
+		0,
+		`rows painted ahead of the answer that governs them: ${JSON.stringify(records.at(-1).ids)}`,
+	);
+
+	await settings.answer({ [HIDE_CROSS_SESSION_KEY]: true });
+	await record("settings: hidden");
+	printSequence(records, "the hide setting, last known ON");
+
+	const settled = records.at(-1);
+	assert.ok(
+		settled.rows > 0,
+		`the page painted once the answer landed: ${settled.rows}`,
+	);
+	assert.equal(
+		settled.ids.filter((id) => CROSS_SESSION_IDS.includes(id)).length,
+		0,
+		`the hidden rows are not in the page: ${JSON.stringify(settled.ids)}`,
+	);
+	assert.equal(
+		settled.railMarks,
+		records.at(-1).railMarks,
+		"the rail does not move in the answer's own commit either",
+	);
+
+	/*
+	 * THE INVARIANT THIS WHOLE ARM EXISTS FOR, read off every sample the drive
+	 * took rather than off the two ends: no commit in this sequence — before the
+	 * answer, in the answer's commit, or after it — ever painted one of the
+	 * hidden rows. On the pre-fix tree the page's own commit paints both of
+	 * them.
+	 */
+	for (const row of records) {
+		const painted = row.ids.filter((id) => CROSS_SESSION_IDS.includes(id));
+		assert.deepEqual(painted, [], `${row.step} painted a cross-session row`);
+	}
+});
+
+test("the same page with the setting off: nothing waits, and the rows paint", async (t) => {
+	/*
+	 * THE CONTROL, and half of what makes the arm above mean anything: this page
+	 * really does paint `peer1` and `send1` when nothing hides them, and it does
+	 * so while the registry answer is STILL OWED — the default path waits for
+	 * nothing (the operator's rule for this lane). On the pre-fix tree both arms
+	 * paint the rows; on the branch exactly one does.
+	 */
+	__resetPaintCache();
+	clearDisplayFlags();
+	const settings = heldSettings();
+	const { records, record, send } = await mountArm(
+		t,
+		"mount (answer owed)",
+		settings.network,
+	);
+
+	await settings.requestSeen();
+	await send(openFrame);
+	await record("open");
+	await send(crossSnapshot());
+	await record("page (answer owed)");
+
+	printSequence(records, "the setting off");
+	const painted = records.at(-1);
+	assert.ok(
+		painted.rows > 0,
+		`the page paints without the answer: ${painted.rows}`,
+	);
+	assert.deepEqual(
+		CROSS_SESSION_IDS.filter((id) => painted.ids.includes(id)),
+		CROSS_SESSION_IDS,
+		`the filter is off, so both rows paint: ${JSON.stringify(painted.ids)}`,
+	);
+
+	await settings.answer({ [HIDE_CROSS_SESSION_KEY]: false });
+	await record("settings: visible");
+	assert.deepEqual(
+		CROSS_SESSION_IDS.filter((id) => records.at(-1).ids.includes(id)),
+		CROSS_SESSION_IDS,
+		"and the answer changes nothing",
+	);
+});
+
+test("the answer rail, last known ON: the mark is in the first contentful commit", async (t) => {
+	/*
+	 * F10's second half. The rail is a mark on the elected answer, and the answer
+	 * row is painted with the page — so a setting that resolves after the page
+	 * adds the mark to a row the reader is already reading, and the row's box
+	 * moves with it (`-ml-[13px] border-l pl-3`, which nets to the same prose box
+	 * but is still a repaint under the reader).
+	 *
+	 * The fixture is a single settled turn with no calls between the question and
+	 * the answer, because an answer that closes a CONDENSED run is behind its own
+	 * bar and this arm is about what the page paints.
+	 */
+	__resetPaintCache();
+	seedDisplayFlags({ [TURN_ANSWER_RAIL_KEY]: true });
+	const settings = heldSettings();
+	const { records, record, send } = await mountArm(
+		t,
+		"mount (answer owed)",
+		settings.network,
+	);
+
+	const short = [
+		entry("u1", S, {
+			kind: "message",
+			role: "user",
+			content: [{ text: QUESTION }],
+		}),
+		entry("a1", S + 40, {
+			kind: "message",
+			role: "assistant",
+			content: [{ text: CLOSE }],
+			stop_reason: "stop",
+		}),
+	];
+
+	await settings.requestSeen();
+	await send(openFrame);
+	await record("open");
+	await send(
+		frame(2, "snapshot", {
+			frontend: frontendState({ streaming: false, live_events: [] }),
+			history: { entries: short, has_more: false, cursor_missing: false },
+			cold: false,
+			cold_reason: null,
+		}),
+	);
+	await record("page (answer owed)");
+
+	printSequence(records, "the answer rail, last known ON");
+	const first = records.at(-1);
+	assert.equal(
+		first.electedAnswers,
+		1,
+		`one elected answer is painted: ${JSON.stringify(first.ids)}`,
+	);
+	assert.equal(
+		first.railMarks,
+		1,
+		"the mark is on the answer in the commit that paints it",
+	);
+
+	await settings.answer({ [TURN_ANSWER_RAIL_KEY]: true });
+	await record("settings: rail on");
+	assert.equal(records.at(-1).railMarks, 1, "and the answer does not move it");
+});
+
+test("the same page with the rail off: the answer is elected and wears no mark", async (t) => {
+	/*
+	 * The rail arm's control. `data-turn-answer` is set from the ELECTION alone,
+	 * so an arm that only ever asserted `railMarks === 1` could be passing
+	 * because the mark is unconditional rather than because the setting was
+	 * settled: this arm reads the other side of the same row — one elected
+	 * answer, no mark — with the setting answered off and no seed.
+	 */
+	__resetPaintCache();
+	clearDisplayFlags();
+	const settings = heldSettings();
+	const { records, record, send } = await mountArm(
+		t,
+		"mount (answer owed)",
+		settings.network,
+	);
+
+	const short = [
+		entry("u1", S, {
+			kind: "message",
+			role: "user",
+			content: [{ text: QUESTION }],
+		}),
+		entry("a1", S + 40, {
+			kind: "message",
+			role: "assistant",
+			content: [{ text: CLOSE }],
+			stop_reason: "stop",
+		}),
+	];
+
+	await settings.requestSeen();
+	await send(openFrame);
+	await record("open");
+	await send(
+		frame(2, "snapshot", {
+			frontend: frontendState({ streaming: false, live_events: [] }),
+			history: { entries: short, has_more: false, cursor_missing: false },
+			cold: false,
+			cold_reason: null,
+		}),
+	);
+	await record("page (answer owed)");
+	assert.equal(
+		records.at(-1).electedAnswers,
+		1,
+		"the answer is elected with the setting off as well",
+	);
+	assert.equal(records.at(-1).railMarks, 0, "and it wears no mark");
+
+	await settings.answer({ [TURN_ANSWER_RAIL_KEY]: false });
+	await record("settings: rail off");
+	assert.equal(records.at(-1).railMarks, 0, "and the answer changes nothing");
 });

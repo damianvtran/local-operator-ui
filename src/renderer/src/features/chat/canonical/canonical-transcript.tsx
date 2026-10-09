@@ -217,7 +217,7 @@ import {
 import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
 import { useCheckpoints } from "./use-checkpoints";
-import { useCrossSessionHidden } from "./use-cross-session-hidden";
+import { useCrossSessionVisibility } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
 import { useScrollPaging } from "./use-scroll-paging";
 import { useTurnAnswerRail } from "./use-turn-answer-rail";
@@ -2636,8 +2636,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * below stay RAW on purpose: they answer "does this pane hold data", not
 	 * "what does it paint", and a session whose only rows are hidden must not
 	 * flip the pane's empty state.
+	 *
+	 * THE THIRD READING IS THE HOLD (first-paint audit, F10). `pending` is the
+	 * window in which the option was LAST KNOWN ON and its answer is still in
+	 * flight - the one window in which painting the records now would paint a
+	 * peer receipt or a `send` row that the answer is about to remove. The
+	 * records are withheld for it (`holdFiltering` below, at the three sites that
+	 * paint from a conversation) and the read is filtered throughout, so the
+	 * commit that ends the hold is the page's own: rows, hidden set and reading
+	 * all correct together, nothing taken back. An operator whose option is off
+	 * never reaches this state (`displayFlagReading`), which is what keeps the
+	 * default path's first paint waiting for nothing.
 	 */
-	const hide = useCrossSessionHidden();
+	const crossSession = useCrossSessionVisibility();
+	const hide = crossSession !== "visible";
+	const holdFiltering = crossSession === "pending";
 	/*
 	 * ONE read of the rail setting for the whole transcript, handed to the rows as
 	 * a boolean prop: the elected answer is the only row that consumes it, so a
@@ -4698,25 +4711,32 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    cursor (its rows are trimmed), which the slot reads as `exhausted`
 				    and says "Start of conversation" over a transcript that may be a
 				    thousand messages in. Measured on a captured frame, not inferred.
-				    The caption above already says the view is not authoritative. */}
-						{transcript.records.length > 0 && !stale && !missing && (
-							<OlderHistorySlot
-								state={slotState}
-								// A retry cannot succeed while the transport is down, and the
-								// transcript's own notice below already explains why. The slot
-								// drops its gesture hint rather than stacking a second claim on
-								// top of that one. `olderTransportDown` is the same assertion
-								// for a caller whose rows did NOT come from this session's
-								// stream (the child reader's page): it is the caller's own
-								// status, so a pane with no stream of its own is not read as a
-								// live one by default.
-								transportDown={olderTransportDown ?? status !== "live"}
-								onLoadOlder={requestOlder}
-								/* The `unproven` arm's control: the same read the cold
-								 * open fires, re-asked by the reader's own hand. */
-								onRetryHydration={onRetryHydration}
-							/>
-						)}
+				    The caption above already says the view is not authoritative.
+				    AND NOT WHILE THE FILTER IS HELD (`holdFiltering`): the slot is the
+				    top of a conversation, and a conversation whose rows are withheld for
+				    a settings answer is not a conversation this pane has painted. The
+				    two land in the same commit, which is the whole point of the hold. */}
+						{transcript.records.length > 0 &&
+							!stale &&
+							!missing &&
+							!holdFiltering && (
+								<OlderHistorySlot
+									state={slotState}
+									// A retry cannot succeed while the transport is down, and the
+									// transcript's own notice below already explains why. The slot
+									// drops its gesture hint rather than stacking a second claim on
+									// top of that one. `olderTransportDown` is the same assertion
+									// for a caller whose rows did NOT come from this session's
+									// stream (the child reader's page): it is the caller's own
+									// status, so a pane with no stream of its own is not read as a
+									// live one by default.
+									transportDown={olderTransportDown ?? status !== "live"}
+									onLoadOlder={requestOlder}
+									/* The `unproven` arm's control: the same read the cold
+									 * open fires, re-asked by the reader's own hand. */
+									onRetryHydration={onRetryHydration}
+								/>
+							)}
 
 						{/*
 						 * THE STALE CAPTION IS NOT PAINTED IN HERE ANY MORE (design round 2,
@@ -4837,7 +4857,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    `holdPlaceholder` pane has the cached paint in state and nothing of
 				    it on screen, so the page that ends the hold brings the rows and the
 				    readings in ONE commit instead of correcting a painted guess. */}
-						{!missing && !holdPlaceholder && (
+						{!missing && !holdPlaceholder && !holdFiltering && (
 							/*
 							 * THE PANE THIS CONVERSATION'S LINKS OPEN INTO, provided once for the
 							 * whole row list rather than threaded through the rows: the anchor that
@@ -5009,31 +5029,36 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * oldest row can never shift the conversation under the reader"), and it
 						 * is withheld on the same terms: the slot belongs to a CONVERSATION, not
 						 * to a turn, and the failure surfaces replace the rows rather than sit
-						 * above them.
+						 * above them. The settings hold is the third of those terms, for the
+						 * older-history slot's reason exactly: a working line speaks for the run
+						 * above it, and this pane has not painted that run yet.
 						 */}
-						{transcript.records.length > 0 && !stale && !missing && (
-							<div
-								data-lo-transcript-foot={true}
-								className={cn(
-									// On the `item` tier, not a tier of its own: the working line is
-									// the foot of the run above it and shares that run's rhythm. It
-									// takes slightly more than `trace` because it is the one row that
-									// is not a completed action, and slightly less than a turn
-									// boundary because the turn has not ended.
-									GAP.item[isSmallView ? 1 : 0],
-									"min-h-[1lh] font-mono text-mono-sm",
-								)}
-							>
-								{working && (
-									<WorkingLine
-										activity={working.activity}
-										phase={working.phase}
-										startedAt={working.startedAt}
-										clock={working.clock}
-									/>
-								)}
-							</div>
-						)}
+						{transcript.records.length > 0 &&
+							!stale &&
+							!missing &&
+							!holdFiltering && (
+								<div
+									data-lo-transcript-foot={true}
+									className={cn(
+										// On the `item` tier, not a tier of its own: the working line is
+										// the foot of the run above it and shares that run's rhythm. It
+										// takes slightly more than `trace` because it is the one row that
+										// is not a completed action, and slightly less than a turn
+										// boundary because the turn has not ended.
+										GAP.item[isSmallView ? 1 : 0],
+										"min-h-[1lh] font-mono text-mono-sm",
+									)}
+								>
+									{working && (
+										<WorkingLine
+											activity={working.activity}
+											phase={working.phase}
+											startedAt={working.startedAt}
+											clock={working.clock}
+										/>
+									)}
+								</div>
+							)}
 
 						{/*
 						 * NO GATE HERE. The pending question used to render as this list's

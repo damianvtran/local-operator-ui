@@ -926,9 +926,14 @@ test("the cached paint's rows and caption are withheld in the component, not onl
 		/\{stale && !holdPlaceholder && \(/,
 		"the stale caption must stand down while the pane holds",
 	);
+	// The rows site carries a THIRD term since the first-paint settle
+	// (`!holdFiltering`, the window in which the record filter's own answer is
+	// owed): the expression is still one line at the one site, which is what this
+	// assertion is for - a hold dropped from the gate fails here whether it is the
+	// cached paint's or the settings read's.
 	assert.match(
 		transcript,
-		/\{!missing && !holdPlaceholder && \(/,
+		/\{!missing && !holdPlaceholder && !holdFiltering && \(/,
 		"the rows must be suppressed while the pane holds",
 	);
 	// And the stop stays keyed on the painted rows, which is what the cached case
