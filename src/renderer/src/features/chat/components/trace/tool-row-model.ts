@@ -270,6 +270,113 @@ export function preferDeliveryState(
 }
 
 /**
+ * The canonical progress payload a frame carries, or `null` when its `details`
+ * say nothing in that contract's vocabulary.
+ *
+ * The shape test is the contract's own discriminator (harness PR #2089,
+ * `imagegen/rungs.progress_details`): every live `tool_execution_update`
+ * carries `stage` - present even when `null`, which is a mid-walk failure -
+ * and the terminal `ImageGenerationUnavailable` result carries `error_type`
+ * without one. EITHER key marks the payload as the progress contract's rather
+ * than another tool's detail object; `"stage" in details` alone would drop
+ * the settled failure's pair, and a looser gate would hand the carrier any
+ * tool's free-form `details` (the same reasoning the reducer's `artifactKind`
+ * states one layer down: a stray key must not turn a payload into something
+ * it is not).
+ *
+ * SCOPE, stated so the boundary is not re-derived: the gate is deliberately
+ * TOOL-AGNOSTIC. A non-imagegen frame whose free-form `details` happen to
+ * carry `stage`/`error_type` IS stored on the record — a tool's payload is
+ * its own business, and the reducer does not know which tools will say what —
+ * and it is INERT: `record.details` has exactly one reader (the image-gen
+ * card's adapter, which renders only for the detection set), so nothing
+ * paints it and the transcript's rendering is untouched. An un-gated payload
+ * (neither key present) is a no-op even at the record; the suite pins that
+ * half (agent review round 1, F1).
+ */
+function progressDetailsFrom(details: unknown): Record<string, unknown> | null {
+	if (!details || typeof details !== "object" || Array.isArray(details))
+		return null;
+	const record = details as Record<string, unknown>;
+	if (!("stage" in record) && !("error_type" in record)) return null;
+	return record;
+}
+
+/**
+ * The contract keys, in the order the wire emits them - the ones every reader
+ * of the payload consumes, and therefore the ones the equality read below
+ * compares. The keys beside them (`provider`, `model`, `elapsed_s`,
+ * `num_images`) evolve with the producer and reach no consumer yet; comparing
+ * them would defeat the identity rule for changes nothing reads.
+ */
+const PROGRESS_DETAIL_KEYS = [
+	"stage",
+	"queue_position",
+	"progress_fraction",
+	"log_lines",
+	"error",
+	"error_type",
+] as const;
+
+/** Whether two `log_lines` values state the same messages at the same times. */
+function sameLogLines(x: unknown, y: unknown): boolean {
+	if (x === y) return true;
+	if (!Array.isArray(x) || !Array.isArray(y) || x.length !== y.length)
+		return false;
+	for (let at = 0; at < x.length; at++) {
+		const a = x[at];
+		const b = y[at];
+		const aIsObject = Boolean(a) && typeof a === "object";
+		const bIsObject = Boolean(b) && typeof b === "object";
+		if (!aIsObject || !bIsObject) {
+			if (a !== b) return false;
+			continue;
+		}
+		const left = a as Record<string, unknown>;
+		const right = b as Record<string, unknown>;
+		if (left.message !== right.message || left.timestamp !== right.timestamp)
+			return false;
+	}
+	return true;
+}
+
+/** Whether two payloads state the same contract facts. */
+function sameProgressDetails(
+	a: Record<string, unknown>,
+	b: Record<string, unknown>,
+): boolean {
+	for (const key of PROGRESS_DETAIL_KEYS) {
+		const x = a[key];
+		const y = b[key];
+		if (key === "log_lines") {
+			if (!sameLogLines(x, y)) return false;
+			continue;
+		}
+		if (x !== y) return false;
+	}
+	return true;
+}
+
+/**
+ * The record's progress-details carrier after a frame, under `preferDiff`'s
+ * rules as `preferDeliveryState` states them: an absent (or unshaped, or
+ * budget-stripped) `details` says nothing and keeps `previous`, while a shaped
+ * payload is the producer's own statement and wins - except when the contract
+ * keys read equal, where `previous` is returned BY REFERENCE so the equality
+ * gate sees no change (`shallowEqual` compares by `!==`, and a fresh object of
+ * identical facts would re-render the row on every reconnect replay).
+ */
+export function preferProgressDetails(
+	details: unknown,
+	previous: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | null {
+	const shaped = progressDetailsFrom(details);
+	if (!shaped) return previous ?? null;
+	if (previous && sameProgressDetails(shaped, previous)) return previous;
+	return shaped;
+}
+
+/**
  * The trailing word a send row prints for a state, in the slot a failure's word
  * takes. Only the three states that need saying have one: a delivered row is
  * silent like every other success. Each word is distinct from the others with

@@ -8773,6 +8773,21 @@ export const STORIES = [
 	 */
 	["chat-image-generation--cancelled", 640, 300],
 	["chat-image-generation--affordances", 640, 640],
+	/*
+	 * The two cells the wiring round added (harness #2089's canonical payload
+	 * reaches the card): `mid-walk-failure` is a LIVE failure frame - the
+	 * wire's `stage: null` plus the `error`/`error_type` pair on an unsettled
+	 * call - and `already-finished` is the cancel conflict's receipt
+	 * (`error_type: media_already_completed`). Both are ONE-record Frame
+	 * stories, so 640 wide like `cancelled` above them: a 1280 frame buries a
+	 * single row's ink. The mid-walk frame is live-only by the wire's own
+	 * contract, and the conflict receipt - though the durable row carries its
+	 * pair too - has no other default-frame rendering, so the story set is
+	 * these states' one picture (agent review round 1, F2 lifted the earlier
+	 * "a durable transcript can hold neither", imprecise for the receipt).
+	 */
+	["chat-image-generation--mid-walk-failure", 640, 360],
+	["chat-image-generation--already-finished", 640, 260],
 	/* THE PRE-MARKER CONTINUATION ROWS. A goal-continuation row written before
 	   the `harness_injected` stamp existed carries no marker to read - and one
 	   still arrives from an owner on an older build - so hiding only stamped

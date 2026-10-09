@@ -14,9 +14,12 @@ import { renderToStaticMarkup } from "react-dom/server";
  *   - every record arm maps to the frozen state vocabulary, and the arms that
  *     settle first (an interrupt over a running call, a verdict over a phase)
  *     win in that order;
- *   - ABSENCE IS RENDERED AS ABSENCE: with no fraction, no logs and no queue
- *     position on any frame today, the mapping yields null/empty values the
- *     card reduces to, never an invented zero or placeholder line;
+ *   - ABSENCE IS RENDERED AS ABSENCE: a record whose canonical payload states
+ *     nothing (or carries none) yields null/empty values the card reduces to,
+ *     never an invented zero or placeholder line;
+ *   - the CANONICAL PAYLOAD reads field by field (harness PR #2089): position,
+ *     logs, fraction, the error pair, the mid-walk failure, the
+ *     `media_already_completed` receipt and a plain cancel's stage;
  *   - the affordance gating: only wired handlers draw controls, and only in
  *     states that can act on them;
  *   - the RENDER-level rules the model cannot see, against the real component
@@ -73,6 +76,19 @@ const tool = (over = {}) => ({
 	removed: 0,
 	diff: null,
 	stopped: false,
+	details: null,
+	...over,
+});
+
+/** The canonical payload as the wire emits it: every key present. */
+const canonical = (over = {}) => ({
+	tool_name: "generate_image",
+	stage: null,
+	queue_position: null,
+	progress_fraction: null,
+	log_lines: null,
+	error: null,
+	error_type: null,
 	...over,
 });
 
@@ -114,17 +130,16 @@ test("a dictated or waiting call maps to queued, with the byte count it has", ()
 			queuePosition: null,
 		},
 	);
-	// No frame carries a queue position yet: the slot states the absence, and
-	// the render's presence path is driven by the SSR pins below (and the
-	// ProgressFields story) until the wire freezes the field.
+	// A frame with no canonical payload states the absence; the render's
+	// presence path is driven by the read below (and the SSR pins).
 });
 
 test("a running call carries the call's own clock, and progress reports absence rather than guessing", () => {
 	const view = imageGenCardView(tool({ phase: "running", startedAt: 1234 }));
 	assert.equal(view.state, "running");
 	assert.equal(view.startedAtMs, 1234);
-	// No frame carries a fraction, a log line or a queue position yet: every
-	// absence stays an absence, so the card reduces instead of inventing.
+	// The frame stated none of the three: every absence stays an absence, so
+	// the card reduces instead of inventing.
 	assert.equal(view.progress.fraction, null);
 	assert.deepEqual(view.progress.logs, []);
 	assert.equal(view.progress.queuePosition, null);
@@ -132,6 +147,158 @@ test("a running call carries the call's own clock, and progress reports absence 
 	// not a zero, which would claim the call just began.
 	const noClock = imageGenCardView(tool({ phase: "running", startedAt: null }));
 	assert.equal(noClock.startedAtMs, null);
+});
+
+test("the canonical payload reads into the frozen slots, field by field", () => {
+	// A queued frame's stated position renders on the queued state.
+	assert.deepEqual(
+		imageGenCardView(
+			tool({
+				phase: "queued",
+				details: canonical({ stage: "queued", queue_position: 2 }),
+			}),
+		),
+		{
+			state: "queued",
+			composing: false,
+			argumentBytes: 0,
+			queuePosition: 2,
+		},
+	);
+	// A running frame's log lines come through in order, and its fraction —
+	// still null on every real frame — is carried without synthesis.
+	const running = imageGenCardView(
+		tool({
+			phase: "running",
+			startedAt: 7,
+			details: canonical({
+				stage: "in_progress",
+				log_lines: [
+					{ message: "step 1 of 4", timestamp: 1 },
+					{ message: "step 2 of 4", timestamp: 2 },
+				],
+			}),
+		}),
+	);
+	assert.equal(running.state, "running");
+	assert.deepEqual(running.progress.logs, ["step 1 of 4", "step 2 of 4"]);
+	assert.equal(running.progress.fraction, null);
+	// A frame that DOES carry a fraction (story-only until a provider reports
+	// one) passes it through untouched.
+	const fraction = imageGenCardView(
+		tool({ phase: "running", details: canonical({ progress_fraction: 0.5 }) }),
+	);
+	assert.equal(fraction.progress.fraction, 0.5);
+	// Absence on every branch: no payload, an unshaped object, or a non-object
+	// reads exactly as no frame at all (the reducer's shape gate documents why
+	// a stray `kind`-only object must not be interpreted as progress).
+	for (const details of [null, undefined, { kind: "something" }, []]) {
+		const view = imageGenCardView(tool({ phase: "running", details }));
+		assert.equal(view.progress.fraction, null);
+		assert.deepEqual(view.progress.logs, []);
+		assert.equal(view.progress.queuePosition, null);
+	}
+	// Malformed log entries are dropped, not guessed at.
+	const malformed = imageGenCardView(
+		tool({
+			phase: "running",
+			details: canonical({
+				log_lines: [{ message: 7 }, {}, "nope", { message: "ok" }],
+			}),
+		}),
+	);
+	assert.deepEqual(malformed.progress.logs, ["ok"]);
+	// A non-integer position is not a position.
+	const fractional = imageGenCardView(
+		tool({ phase: "queued", details: canonical({ queue_position: 1.5 }) }),
+	);
+	assert.equal(fractional.queuePosition, null);
+});
+
+test("the failure pair reads verbatim, the conflict is a receipt, and a plain cancel is cancelled", () => {
+	// A settled failure: the frozen `error` field is the message (falling back
+	// to the result's output when a frame carried none), `error_type` beside it.
+	const failed = imageGenCardView(
+		tool({
+			isError: true,
+			output: "the result's own text",
+			details: canonical({
+				error: "out of credits",
+				error_type: "insufficient_credits",
+			}),
+		}),
+	);
+	assert.deepEqual(failed, {
+		state: "failed",
+		message: "out of credits",
+		errorType: "insufficient_credits",
+	});
+	// The mid-walk frame (`stage: null`, the pair present, the call unsettled):
+	// the LIVE presentation with the sentence as its interim note (design round
+	// 1, D1) — never the settled failed arm — and the next frame's absence
+	// swaps the note with no state-level change and no control flicker.
+	const midWalk = imageGenCardView(
+		tool({
+			phase: "running",
+			startedAt: 3,
+			details: canonical({
+				error: "out of credits",
+				error_type: "insufficient_credits",
+			}),
+		}),
+	);
+	assert.deepEqual(midWalk, {
+		state: "running",
+		startedAtMs: 3,
+		progress: { fraction: null, logs: [], queuePosition: null },
+		note: "out of credits",
+	});
+	const recovered = imageGenCardView(
+		tool({
+			phase: "running",
+			startedAt: 3,
+			details: canonical({ stage: "queued", queue_position: 1 }),
+		}),
+	);
+	assert.equal(recovered.state, "running");
+	assert.equal(recovered.note, null);
+	// The conflict receipt: an error-shaped result whose code makes it the done
+	// state's already-finished receipt — a finish, never a failure.
+	const conflict = imageGenCardView(
+		tool({
+			isError: true,
+			output: "not cancelled — it had already completed",
+			details: canonical({
+				stage: "cancelled",
+				error:
+					"The generation had already completed when the cancel arrived; its result was discarded.",
+				error_type: "media_already_completed",
+			}),
+		}),
+	);
+	assert.deepEqual(conflict, {
+		state: "done",
+		images: [],
+		durationS: null,
+		receipt: "already-finished",
+	});
+	// A plain cancel's result: stage cancelled, no `error_type` — cancelled.
+	assert.deepEqual(
+		imageGenCardView(
+			tool({
+				isError: true,
+				output: "Cancelled",
+				details: canonical({ stage: "cancelled" }),
+			}),
+		),
+		{ state: "cancelled" },
+	);
+	// An error-shaped result with no canonical payload keeps the old read.
+	assert.deepEqual(imageGenCardView(tool({ isError: true, output: "boom" })), {
+		state: "failed",
+		message: "boom",
+		errorType: null,
+	});
 });
 
 test("a stop in flight folds over an unsettled call, and over nothing else", () => {
@@ -185,8 +352,8 @@ test("a failure carries the error text verbatim, and a verdict keeps its own", (
 	assert.deepEqual(provider, {
 		state: "failed",
 		message: "This generation failed before producing output.",
-		// The frozen `error_type` has no home on the wire yet; the view carries
-		// the slot so the read stays in this one module when it lands.
+		// The frozen `error_type` lives in the record's `details` carrier; a
+		// record that states none carries null, and the read stays in this module.
 		errorType: null,
 	});
 	// An error frame that carried no text states none — the card's absence
@@ -354,8 +521,8 @@ try {
 }
 
 /** The card rendered the way the app renders it, absent attachment scope. */
-const markupOf = (view) =>
-	renderToStaticMarkup(h(ImageGenCard, { view, scope: null }));
+const markupOf = (view, actions) =>
+	renderToStaticMarkup(h(ImageGenCard, { view, scope: null, actions }));
 
 /** The live-progress shape with every field negative (nothing on the wire). */
 const NO_PROGRESS = { fraction: null, logs: [], queuePosition: null };
@@ -470,4 +637,43 @@ test("a queued card states its queue position only when one exists (Q-1)", () =>
 	});
 	assert.equal(composing.includes("Writing the request"), true);
 	assert.match(composing, BYTE_COUNT);
+});
+
+/*
+ * The mid-walk failure's LIVE presentation (design round 1, D1): the call
+ * keeps its body, clock and Cancel while the sentence rides as a note under
+ * the live body — and the note's absence on the next frame IS the un-say (no
+ * latch, no state-level change, no control flicker).
+ */
+test("the mid-walk note rides under the live body, and the live affordances stay (D1)", () => {
+	const note = markupOf(
+		{
+			state: "running",
+			startedAtMs: 3000,
+			progress: NO_PROGRESS,
+			note: "out of credits",
+		},
+		{ onCancel: () => {} },
+	);
+	assert.equal(note.includes("data-imagegen-tile"), true);
+	assert.equal(note.includes("Generating image…"), true);
+	assert.equal(note.includes("data-imagegen-note"), true);
+	assert.equal(note.includes("out of credits"), true);
+	assert.equal(note.includes("Cancel"), true);
+
+	// The recovered frame: same state, the note gone — the control neither
+	// leaves nor disables, because no state the wire does not claim was painted.
+	const recovered = markupOf(
+		{
+			state: "running",
+			startedAtMs: 3000,
+			progress: NO_PROGRESS,
+			note: null,
+		},
+		{ onCancel: () => {} },
+	);
+	assert.equal(recovered.includes("data-imagegen-note"), false);
+	assert.equal(recovered.includes("out of credits"), false);
+	assert.equal(recovered.includes("data-imagegen-tile"), true);
+	assert.equal(recovered.includes("Cancel"), true);
 });

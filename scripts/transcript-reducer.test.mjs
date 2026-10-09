@@ -447,6 +447,172 @@ test("tool call lifecycle collapses to one row with output behind it", () => {
 	assert.equal(tools[0].args.path, "a.txt");
 });
 
+test("tool progress frames land on the record's details carrier", () => {
+	let state = EMPTY_TRANSCRIPT;
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "g1",
+			tool_name: "generate_image",
+			args: { prompt: "a cat" },
+		},
+		1,
+	);
+	const canonical = {
+		tool_name: "generate_image",
+		stage: "queued",
+		queue_position: 2,
+		progress_fraction: null,
+		log_lines: null,
+		error: null,
+		error_type: null,
+	};
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_update",
+			tool_call_id: "g1",
+			tool_name: "generate_image",
+			partial_result: {
+				content: [
+					{ type: "text", text: "Generating via Radient: queued, #2 — 3s" },
+				],
+				details: canonical,
+			},
+		},
+		2,
+	);
+	let row = state.records.find((r) => r.id === "tool:g1");
+	assert.equal(row.details.queue_position, 2);
+	// An equal replay returns the same reference, so the equality gate sees no
+	// change: a fresh decode of a frame that states nothing new must not
+	// re-render the row.
+	const before = row;
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_update",
+			tool_call_id: "g1",
+			tool_name: "generate_image",
+			partial_result: { content: [], details: { ...canonical } },
+		},
+		3,
+	);
+	row = state.records.find((r) => r.id === "tool:g1");
+	assert.equal(row, before, "an equal frame keeps the record identity");
+	// A frame whose details the live-event budget stripped says nothing and
+	// keeps what the row held.
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_update",
+			tool_call_id: "g1",
+			tool_name: "generate_image",
+			partial_result: { content: [] },
+		},
+		4,
+	);
+	assert.equal(
+		state.records.find((r) => r.id === "tool:g1").details.queue_position,
+		2,
+	);
+	// The settling result's own details land the same way — the conflict pair
+	// included, which is what the card's receipt reads.
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "g1",
+			tool_name: "generate_image",
+			is_error: true,
+			result: {
+				content: [
+					{ type: "text", text: "not cancelled — it had already completed" },
+				],
+				is_error: true,
+				details: {
+					stage: "cancelled",
+					error:
+						"The generation had already completed when the cancel arrived; its result was discarded.",
+					error_type: "media_already_completed",
+				},
+			},
+		},
+		5,
+	);
+	assert.equal(
+		state.records.find((r) => r.id === "tool:g1").details.error_type,
+		"media_already_completed",
+	);
+	// The durable half: the same facts off a stored row's provider_payload, so
+	// a reload reads the conflict the live frame painted.
+	const stored = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "t-g2",
+				ts: 10,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "g2",
+					tool_name: "generate_image",
+					content: [
+						{ type: "text", text: "not cancelled — it had already completed" },
+					],
+					is_error: true,
+					provider_payload: {
+						details: {
+							stage: "cancelled",
+							error_type: "media_already_completed",
+						},
+					},
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const durableRow = stored.records.find((r) => r.kind === "tool");
+	assert.equal(durableRow.details.error_type, "media_already_completed");
+	// THE NON-IMAGEGEN NO-OP (agent review round 1, F1): a frame outside the
+	// contract's vocabulary leaves the transcript state IDENTICAL — the gate
+	// returns before any upsert, so the common non-imagegen case is a true
+	// no-op, not a merely-equal rebuild. (A non-imagegen payload that happens
+	// to carry the gate key IS stored and is inert; the gate's scope comment
+	// carries the boundary.)
+	let plain = EMPTY_TRANSCRIPT;
+	plain = applyEvent(
+		plain,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "b1",
+			tool_name: "bash",
+			args: { command: "ls" },
+		},
+		1,
+	);
+	const before2 = plain;
+	plain = applyEvent(
+		plain,
+		{
+			type: "tool_execution_update",
+			tool_call_id: "b1",
+			tool_name: "bash",
+			partial_result: {
+				content: [{ type: "text", text: "chunk" }],
+				details: { pid: 42, chunk: "out" },
+			},
+		},
+		2,
+	);
+	assert.equal(
+		plain,
+		before2,
+		"an un-gated non-imagegen frame is a true no-op",
+	);
+});
+
 test("gap drops only live projections; clear is view-only", () => {
 	let state = EMPTY_TRANSCRIPT;
 	state = applyHistoryPage(state, {
