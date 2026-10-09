@@ -57,12 +57,12 @@ frames the design round's D4 added were shot from the tree of this round's commi
 (the scene's `--theme`/`--recents-full` arms above, both added by this round).
 `run-after.log` is 29 `[PASS]` and no `[FAIL]`; `run-before.log` is 22 `[PASS]`
 and no `[FAIL]`; `run-after-light.log` (the light frame) is 26 `[PASS]` and
-`run-full.log` (the full-pin frame) is 16 `[PASS]`, both with no `[FAIL]`, and
-both are committed beside the frames. `stub-requests.log` is the daemon's
-catalogue reads (`limit=500&include_archived=true -> 200 rows=6`). Two themes
-(`localOperatorDark` for seven frames, `localOperatorLight` for one), 1380x900 at
-dpr 2; the committed `.webp` files are `cwebp -q 90` conversions of the run's
-PNGs, un-resized. The run's scratch profile, config dir and log dir are
+`run-full.log` (the full-pin frame) is 16 `[PASS]`, all four with no `[FAIL]`,
+and all four are committed beside the frames, as is `stub-requests.log`, the
+daemon's catalogue reads (`limit=500&include_archived=true -> 200 rows=6`).
+Two themes (`localOperatorDark` for seven frames, `localOperatorLight` for one),
+1380x900 at dpr 2; the committed `.webp` files are `cwebp -q 90` conversions of
+the run's PNGs, un-resized. The run's scratch profile, config dir and log dir are
 throwaway; its log carries the readings that prove the app held no connection to
 the operator's own backend.
 
