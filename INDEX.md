@@ -18,8 +18,8 @@ have one frame each.
 | # | state | what the frame shows |
 | --- | --- | --- |
 | 01 | first stage | `Step 1 of 4 · 0:01 elapsed · about 25 s left` over the rail |
-| 02 | mid install | `Step 3 of 4 · 0:09 elapsed · about 9 s left` + `3 of 6 large downloads done · 55 packages in all.` |
-| 03 | slow network | `0:41 elapsed · taking longer than usual` — the estimate in words, never a negative count |
+| 02 | mid install | `Step 3 of 4 · 0:09 elapsed · about 15 s left` + `3 large downloads finished · 55 packages in all.` |
+| 03 | slow network | `0:41 elapsed · taking longer than usual` — the estimate in words, never a negative count — and `Fetching the large files…` above it |
 | 04 | verifying | `Step 4 of 4`, plain label `Starting it up` |
 | 05 | installed | every step complete, Cancel spent |
 | 06 | failure | unchanged failure composition (sentence + captured line) |
@@ -41,10 +41,11 @@ the same round).
 
 | # | state | what the frame shows |
 | --- | --- | --- |
-| 07 | step 1, collapsed | title `Connect an AI account`; intro naming Radient as easiest and xAI/OpenRouter/DeepSeek/local as `More providers`; featured rows Radient (Recommended) / Anthropic / OpenAI / Google |
-| 08 | step 1, disclosure open | trigger reads `More providers: xAI, OpenRouter, DeepSeek, local models and 6 more`; subscription and API-key groups behind it |
+| 07 | step 1, collapsed | title `Connect an AI account`; intro naming Radient as easiest and the rest as `More providers` (the brands are the trigger's line, not the prose - D6/D11); featured rows Radient (Recommended) / Anthropic / OpenAI / Google |
+| 08 | step 1, disclosure open | trigger reads `More providers: local models, xAI, OpenRouter, DeepSeek and 6 more` and the panel below leads with exactly those local rows (D8); the rest of the list continues past the fold |
 | 09 | step 3, no Aida | web search only, primary `Finish` |
-| 10 | step 3, Aida available | `Next: meet Ada`; ghost `Skip to chat`, primary `Meet Ada` (name read from `aida.status`, not spelled) |
+| 10 | step 3, Aida available | title `Web search, then meet Ada`; `Next: meet Ada`; ghost `Skip to chat`, primary `Meet Ada` (name read from `aida.status`, not spelled); the preview promises her hello, which is the ledger's `owed` path |
+| 13 | step 3, greeting settled | the same screen with `greeting_state: delivered`: no promise of a first hello - `Her conversation is where you pick up with her` (`aidaOwesGreeting`) |
 
 ## Aida's greeting (A4, U1)
 
@@ -90,19 +91,38 @@ Frames `07`/`08` were re-taken at the SHIPPED window (1380x900, previously
 | --- | --- |
 | viewport / dialog | 1380x900 / top 32, bottom 868 (836, the clamp), body 638x706 |
 | the four featured rows | 201.1 - 428.1 |
-| **the local group (LM Studio, Ollama, vLLM, llama.cpp, OpenAI-compatible)** | **559.1 - 843.1 - inside the body's 868** |
+| **the local group (LM Studio, Ollama, vLLM, llama.cpp, OpenAI-compatible)** | **559.1 - 843.1; the body ends at 798, not 868** |
 | the groups after it (Kimi onward) | 884.5 - 1436.9, i.e. the list visibly continues past the fold |
 | the whole list | 18 rows, `dialog 640x836 \| body 638x706 \| grid 590x1239.9` |
 
-Under the shipped group order the local rows sat BELOW the subscription and key
-groups, so the same measurement puts their first row at ~970 px - past the body's
-868 and off-screen; that is the derivation behind D1, from this frame's own row
-boxes rather than from arithmetic about an unseen render. The trigger's promise
-(`... local models and 6 more`) is now true on screen at the default size.
+**868 IS THE DIALOG'S EDGE, NOT THE BODY'S** (design round 2, D9; code review round
+2, M-2): the footer begins at ~799, so the body ends at 798. FOUR of the five
+local rows are fully on screen (559.1 - 787.1); the fifth, OpenAI-compatible,
+spans 787.1 - 843.1 and is cut by the footer, which is a scroll cue rather than a
+missing row. Under the shipped group order the same rows sat below the
+subscription and key groups, whose own rows start at ~970 - past the body and
+off-screen. Both readings come from this frame's row boxes rather than from
+arithmetic about an unseen render.
 
 The download line is monotonic in the re-shot `02`/`03`: `3 large downloads
 finished \u00b7 55 packages in all.` where the old shape read `3 of 6 ... done`
 and, on the pip fallback, `0 of N` over a growing denominator (D3/R2).
+
+## Round 2 remediation frames
+
+`after/` was re-shot again on 2026-10-08 for the round-2 batch, and three frames
+are CARRIED rather than re-shot:
+
+| frame | state | why |
+| --- | --- | --- |
+| `01` | re-shot | the estimate reads `about 30 s left` where the round-1 frame read 25: the darwin `environment` budget went 1.5 s -> 3 s (Q2-1) |
+| `02` | re-shot | its only pixel delta was the spinner's ANIMATION PHASE (a 26 x 27 px box on the ring; the status line and sub-progress text are byte-identical), so the round-1 frame was equally true - the re-shot one is carried here for uniformity |
+| `03` | re-shot | `Fetching the large files…` - the ellipsis (D12) |
+| `04` | re-shot | spinner phase only, as `02` |
+| `07`, `08` | re-shot | the intro lost its self-describing clause (D11) and the trigger now names the groups in the order the panel paints them (D8). The dialog is one copy line shorter, so the geometry JSON beside these two (a round-1 measurement, `dialog 640x531.8`) describes the previous render; the frames are the evidence for the new one |
+| `10` | re-shot | byte-differs from round 1 in one 20 px text band with the SAME text and the same dialog box: the paragraph became a single interpolated string, and the text run re-shapes under it. Not a copy change - recorded so nobody hunts for one |
+| `05`, `06`, `09`, `11`, `12` | CARRIED | byte-identical surfaces (`05`, `09`) or untouched ones (`06`, `11`, `12`) |
+| `13` | new | the settled-greeting copy. No geometry JSON: the capture ran without a measuring pass, and the host was under a disk/swap hold, so its dialog box is not quoted here rather than guessed |
 
 ## Measured install timings
 
