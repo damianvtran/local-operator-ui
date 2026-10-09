@@ -6,8 +6,6 @@
  */
 
 import type { AskScope } from "@features/chat/ask-queue";
-import { CHAT_MEASURE_OVERRIDE_VAR } from "@features/chat/chat-measure";
-import { clampChatMeasureWidth } from "@features/chat/chat-measure-drag";
 import {
 	CANVAS_PANE_MIN_PX,
 	CHAT_PANE_MIN_PX,
@@ -722,42 +720,6 @@ type UiPreferencesState = {
 	 * boundary for the same reason).
 	 */
 	chatSidebarListHeight: number | null;
-
-	/**
-	 * The reader's own width for the conversation column, in px, or `null` for
-	 * the shipped one.
-	 *
-	 * `null` is a first-class state rather than a missing value, exactly as
-	 * `chatSidebarListHeight`'s `null` is: it means "the shipped measure", which
-	 * is what every reader who has never dragged the handle sees, and it is what
-	 * the reset restores. The width itself belongs to the stylesheet
-	 * (`--lo-chat-measure-shipped` in `styles/index.css`) and this field is the
-	 * OVERRIDE of it, so this file never needs to know the shipped number.
-	 *
-	 * Like the list height, a number here is never rewritten by a window resize:
-	 * the RENDER clamps (the column cannot be wider than its pane), so a window
-	 * too small to honour the reader's choice does not destroy it.
-	 */
-	chatMeasureWidth: number | null;
-
-	/**
-	 * Set the conversation column's width, clamped to the draggable range.
-	 *
-	 * The clamp is `clampChatMeasureWidth`'s rather than this store's, and it is
-	 * applied HERE as well as at the drag: `localStorage` is not the setter's
-	 * path out, so a value written by an older build or by hand reaches the
-	 * document through this method, and the bounds have to hold on that path too.
-	 */
-	setChatMeasureWidth: (width: number) => void;
-
-	/**
-	 * Forget the reader's own width and go back to the shipped measure.
-	 *
-	 * Deliberately not "store the shipped width": storing a number would make
-	 * the reader's column stop following the product's when the shipped value
-	 * changes, which is the opposite of what a reset means.
-	 */
-	restoreDefaultChatMeasureWidth: () => void;
 
 	/**
 	 * Which of the sidebar's two regions is drawn first.
@@ -1635,26 +1597,51 @@ export const consoleUnseenForSession = (
 const EMPTY_CONSOLE_UNSEEN: ConsoleUnseenMark[] = [];
 
 /**
- * Publish the reader's own column width to the document, or clear it.
+ * The persisted blob's schema version, which `migrateUiPreferences` walks a stored
+ * blob up to.
  *
- * `null` REMOVES the property rather than writing the shipped number: the
- * stylesheet's chain already falls back to `--lo-chat-measure-shipped`, and
- * writing a number here would be a second copy of it in JavaScript, which is the
- * drift the one-home rule for this value exists to prevent.
+ * v1 is the one-slot pane width (#677). v2 (#895) DROPS `chatMeasureWidth`: the
+ * conversation column's two drag handles and the width they persisted were
+ * removed, so the column is the stylesheet's one 810px everywhere. A reader who
+ * had dragged it to 520 or to 1100 silently gets 810 - no toast, because a toast
+ * would describe a feature that no longer exists. Without this step the stale key
+ * would survive: zustand's default merge copies every persisted key onto the
+ * state, and the rest-spread in `persistedUiPreferences` would write it back to
+ * disk on every save, so it would sit in the profile forever, read by nothing.
  *
- * `document` is guarded so this module can be bundled where there is no DOM
- * (`scripts/*.test.mjs` bundles shipped TypeScript in memory). In that case
- * there is nothing to publish to and the store is still a correct store.
+ * No DOM cleanup rides with it. The inline `--lo-chat-measure-override` the old
+ * `onRehydrateStorage` published lived on the live renderer document only, and a
+ * relaunch starts from a document that never had it.
+ *
+ * THE COLLISION RULE FOR THE NEXT EDITOR. Other lanes may also bump this number
+ * (a future one-width-range change is the likely one), and two branches that
+ * each take "2" merge cleanly and then disagree about what v2 means. Whoever
+ * merges second renumbers, and decides after measuring rather than remembering:
+ * `git show origin/main:src/renderer/src/shared/store/ui-preferences-store.ts |
+ * grep 'version:'` for the value on main now, and whether that value shipped in a
+ * tag (a shipped number is spent - a profile stored at it will never run its step
+ * again, so a new step needs a new number). Then add the new step under its own
+ * `if (version < N)` in `migrateUiPreferences`; never edit a shipped step.
+ *
+ * THE RULE WAS EXERCISED ONCE, BY THE #894 FOLD: this branch first carried the
+ * right slot's memory as v2 beside a duplicate of #895's step; the fold onto
+ * `main` keeps #895's v2 (the copy that shipped) and renumbers the memory step
+ * to v3, dropping the duplicate.
+ *
+ * v3 (#894) IS THE RIGHT SLOT'S MEMORY: the four global pane flags stop being
+ * persisted and become the bound conversation's projection, so the step lifts
+ * whichever flag was true into `rightSlotLegacySeed` - the one-shot seed the
+ * first bind plants - and deletes the four keys.
  */
-const applyChatMeasureOverride = (width: number | null): void => {
-	if (typeof document === "undefined") return;
-	const root = document.documentElement;
-	if (width === null) {
-		root.style.removeProperty(CHAT_MEASURE_OVERRIDE_VAR);
-		return;
-	}
-	root.style.setProperty(CHAT_MEASURE_OVERRIDE_VAR, `${width}px`);
-};
+export const UI_PREFERENCES_VERSION = 3;
+
+/**
+ * The keys v2 removes from a stored blob. A list rather than a `delete
+ * blob.chatMeasureWidth` so the retired name is stated once, with the step that
+ * drops it, and the computed `delete` is the shape the lint accepts (the v1 fold
+ * below does the same).
+ */
+const RETIRED_IN_V2: readonly string[] = ["chatMeasureWidth"];
 
 export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
@@ -1679,7 +1666,6 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			chatSidebarRegions: DEFAULT_SIDEBAR_REGIONS,
 			chatSidebarView: DEFAULT_SIDEBAR_VIEW,
 			chatSidebarListHeight: null,
-			chatMeasureWidth: null,
 			chatSidebarOrder: "entities-first",
 			dismissedBuiltinOfferSignature: "",
 			isCanvasOpen: false,
@@ -2059,21 +2045,6 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				});
 			},
 
-			setChatMeasureWidth: (width: number) => {
-				const clamped = clampChatMeasureWidth(width);
-				applyChatMeasureOverride(clamped);
-				set({
-					chatMeasureWidth: clamped,
-				});
-			},
-
-			restoreDefaultChatMeasureWidth: () => {
-				applyChatMeasureOverride(null);
-				set({
-					chatMeasureWidth: null,
-				});
-			},
-
 			setChatSidebarOrder: (order: SidebarOrder) => {
 				set({
 					chatSidebarOrder: order,
@@ -2135,17 +2106,16 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			 *   legacy width the user had actually dragged. A blob that never carried
 			 *   any of the four keys seeds to 0, which is "every pane opens at its own
 			 *   seed".
-			 * - v2 IS `chatMeasureWidth`'S REMOVAL. It is the neighbouring lane's step,
-			 *   and it is spelled here because this branch had to land on `main` before
-			 *   that lane did; the guard is a `delete` of a key a v2 blob cannot carry,
-			 *   so a later rebase that keeps their step and drops this one is a trivial
-			 *   conflict rather than a behaviour question.
+			 * - v2 IS `chatMeasureWidth`'S REMOVAL (#895), kept exactly as `main` wrote
+			 *   it: this branch carried a duplicate of that step while it had to land
+			 *   before that lane, and the duplicate is dropped here rather than
+			 *   re-spelled - the chain keeps the copy that shipped.
 			 * - v3 IS THE RIGHT SLOT'S MEMORY (issue #894): the four global pane flags
 			 *   stop being persisted and become the bound conversation's projection, so
 			 *   the migration lifts whichever flag was true into `rightSlotLegacySeed`
 			 *   and deletes all four keys. See `migrateUiPreferences`.
 			 */
-			version: 3,
+			version: UI_PREFERENCES_VERSION,
 			migrate: migrateUiPreferences,
 			/*
 			 * WHAT A HYDRATED BLOB MAY SAY, and this is where the memory is sanitised
@@ -2173,22 +2143,8 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			 * being restored and the user opening it.
 			 */
 			partialize: persistedUiPreferences,
+
 			merge: mergePersistedUiPreferences,
-			/*
-			 * PUBLISH THE STORED WIDTH BEFORE THE FIRST PAINT.
-			 *
-			 * `localStorage` is synchronous, so zustand runs this during store
-			 * creation - which is module evaluation, before React renders anything.
-			 * A component effect instead would paint one frame at the shipped
-			 * width and then jump to the reader's, and the whole point of
-			 * remembering the width is that the column comes back where the reader
-			 * left it. `theme-provider.tsx` makes the same argument for
-			 * `useLayoutEffect` over `useEffect`; this is one step earlier still,
-			 * because there is no component to hook.
-			 */
-			onRehydrateStorage: () => (state) => {
-				applyChatMeasureOverride(state?.chatMeasureWidth ?? null);
-			},
 		},
 	),
 );
@@ -2382,27 +2338,11 @@ export function mergePersistedUiPreferences(
 }
 
 /**
- * v0's four per-surface widths, folded into v1's one `rightSlotWidth` (#677).
+ * Walk a stored blob up to `UI_PREFERENCES_VERSION`, one step per version.
  *
- * WHICH LEGACY WIDTH WINS, and why it is a rule rather than a judgement: the
- * four are read in the slot's own precedence order (canvas, run, browser,
- * console — the order `resolveRightSlotWidth` reads), and the FIRST value that
- * is neither absent nor its own default becomes the shared width. The others
- * are dropped. A profile where the user never dragged anything has all four at
- * their defaults, seeds 0, and therefore keeps opening each pane at its own
- * seed — the migration reproduces the fresh-profile experience rather than
- * freezing some default onto every pane.
- *
- * TWO HONEST CAVEATS, stated rather than discovered later:
- *
- * - A width dragged to exactly its default is indistinguishable from an
- *   untouched one and does not seed. Nothing is lost: the default IS the value
- *   that pane would open at.
- * - The console's default is measured from the shipping face, so a face or
- *   font step that changed since a value was stored reads as "dragged". A
- *   profile that never touched the console can therefore seed with a number
- *   that used to BE the console's default — a number that user was actually
- *   seeing, and a double-click away from being forgotten.
+ * Pure and exported so `scripts/right-slot-width.test.mjs` drives it directly:
+ * the steps are decisions about what a user's saved profile becomes, and they
+ * run once per profile, so a wrong one is not found by trying the app twice.
  *
  * ONE GUARD PER VERSION, IN ORDER, EACH WRITTEN TO BE IDEMPOTENT. The chain (rather
  * than an early return per version) is deliberate: these steps land from two lanes
@@ -2417,36 +2357,14 @@ export function migrateUiPreferences(
 	const blob: Record<string, unknown> = {
 		...((persisted ?? {}) as Record<string, unknown>),
 	};
-	if (version < 1) {
-		const seeds: Array<[string, number]> = [
-			["canvasWidth", DEFAULT_CANVAS_WIDTH],
-			["runPanelWidth", DEFAULT_RUN_PANEL_WIDTH],
-			["browserPanelWidth", DEFAULT_BROWSER_PANEL_WIDTH],
-			["consolePanelWidth", DEFAULT_CONSOLE_PANEL_WIDTH],
-		];
-		let shared = 0;
-		for (const [key, seed] of seeds) {
-			const value = blob[key];
-			if (typeof value === "number" && value > 0 && value !== seed) {
-				shared = value;
-				break;
-			}
-		}
-		for (const [key] of seeds) delete blob[key];
-		blob.rightSlotWidth = shared;
-	}
-	if (version < 2) {
-		/*
-		 * v2 REMOVES `chatMeasureWidth`, the neighbouring lane's step, spelled here
-		 * because this branch had to land on `main` first. A delete of a key no later
-		 * blob can carry, so the step is idempotent, and a rebase that keeps their copy
-		 * and drops this one is a conflict with no behaviour in it. Key-list form
-		 * deliberately, matching the v0 fold above and the v3 step below: these steps
-		 * remove a SET of keys, and a literal member delete is a shape change to an
-		 * open record rather than the removal of a named field.
-		 */
-		for (const key of ["chatMeasureWidth"]) delete blob[key];
-	}
+	/*
+	 * SEQUENTIAL STEPS, never an early return: zustand calls this once with the
+	 * STORED version, so a v0 blob has to pass through every step on its way to
+	 * the current one. Each step is guarded by the version that introduced it, so
+	 * a blob already past a step skips it untouched.
+	 */
+	if (version < 1) foldLegacyPaneWidths(blob);
+	if (version < 2) for (const key of RETIRED_IN_V2) delete blob[key];
 	if (version < 3) {
 		/*
 		 * v3 LIFTS THE FOUR GLOBAL FLAGS INTO THE ONE-SHOT SEED, and deletes them
@@ -2474,4 +2392,46 @@ export function migrateUiPreferences(
 		for (const pane of MEMORY_PANES) delete blob[memoryPaneFlag(pane)];
 	}
 	return blob;
+}
+
+/**
+ * v0's four per-surface widths, folded into v1's one `rightSlotWidth` (#677).
+ *
+ * WHICH LEGACY WIDTH WINS, and why it is a rule rather than a judgement: the
+ * four are read in the slot's own precedence order (canvas, run, browser,
+ * console — the order `resolveRightSlotWidth` reads), and the FIRST value that
+ * is neither absent nor its own default becomes the shared width. The others
+ * are dropped. A profile where the user never dragged anything has all four at
+ * their defaults, seeds 0, and therefore keeps opening each pane at its own
+ * seed — the migration reproduces the fresh-profile experience rather than
+ * freezing some default onto every pane.
+ *
+ * TWO HONEST CAVEATS, stated rather than discovered later:
+ *
+ * - A width dragged to exactly its default is indistinguishable from an
+ *   untouched one and does not seed. Nothing is lost: the default IS the value
+ *   that pane would open at.
+ * - The console's default is measured from the shipping face, so a face or
+ *   font step that changed since a value was stored reads as "dragged". A
+ *   profile that never touched the console can therefore seed with a number
+ *   that used to BE the console's default — a number that user was actually
+ *   seeing, and a double-click away from being forgotten.
+ */
+function foldLegacyPaneWidths(blob: Record<string, unknown>): void {
+	const seeds: Array<[string, number]> = [
+		["canvasWidth", DEFAULT_CANVAS_WIDTH],
+		["runPanelWidth", DEFAULT_RUN_PANEL_WIDTH],
+		["browserPanelWidth", DEFAULT_BROWSER_PANEL_WIDTH],
+		["consolePanelWidth", DEFAULT_CONSOLE_PANEL_WIDTH],
+	];
+	let shared = 0;
+	for (const [key, seed] of seeds) {
+		const value = blob[key];
+		if (typeof value === "number" && value > 0 && value !== seed) {
+			shared = value;
+			break;
+		}
+	}
+	for (const [key] of seeds) delete blob[key];
+	blob.rightSlotWidth = shared;
 }

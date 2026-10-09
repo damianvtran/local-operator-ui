@@ -28,7 +28,7 @@ globalThis.localStorage = {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { useUiPreferencesStore, persistedUiPreferences, migrateUiPreferences, resolveRightSlotWidth, resolveRightSlotOccupied, resolveRightSlotYieldsSidebar, resolveDrawnRightSlotPane, EMPTY_RIGHT_SLOT_ROUTE, DEFAULT_CANVAS_WIDTH, DEFAULT_RUN_PANEL_WIDTH, DEFAULT_BROWSER_PANEL_WIDTH, DEFAULT_CONSOLE_PANEL_WIDTH, RUN_PANEL_MIN_PX, BROWSER_PANEL_MIN_PX, CONSOLE_PANEL_MIN_PX } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			'export { useUiPreferencesStore, persistedUiPreferences, migrateUiPreferences, UI_PREFERENCES_VERSION, resolveRightSlotWidth, resolveRightSlotOccupied, resolveRightSlotYieldsSidebar, resolveDrawnRightSlotPane, EMPTY_RIGHT_SLOT_ROUTE, DEFAULT_CANVAS_WIDTH, DEFAULT_RUN_PANEL_WIDTH, DEFAULT_BROWSER_PANEL_WIDTH, DEFAULT_CONSOLE_PANEL_WIDTH, RUN_PANEL_MIN_PX, BROWSER_PANEL_MIN_PX, CONSOLE_PANEL_MIN_PX } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { CHAT_PANE_MIN_PX, CANVAS_PANE_MIN_PX, canvasDockWidth, resolveSidebarLayout, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_COLLAPSED_WIDTH, SIDEBAR_DOCK_MIN_PX } from "./src/renderer/src/features/chat/chat-sidebar-layout";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -53,6 +53,7 @@ const {
 	useUiPreferencesStore,
 	persistedUiPreferences,
 	migrateUiPreferences,
+	UI_PREFERENCES_VERSION,
 	resolveRightSlotWidth,
 	resolveRightSlotOccupied,
 	resolveRightSlotYieldsSidebar,
@@ -498,6 +499,33 @@ test("a blob with nothing dragged seeds unset, not some default", () => {
 	);
 });
 
+test("a blob already at the current version is passed through untouched", () => {
+	const blob = { rightSlotWidth: 712, themeName: "dracula" };
+	assert.deepEqual(migrateUiPreferences(blob, UI_PREFERENCES_VERSION), blob);
+});
+
+/*
+ * v2 (#895): the conversation column's two drag handles and the width they
+ * persisted are gone, so `chatMeasureWidth` is dropped from a stored blob. The
+ * cells below pin the three things the step has to get right: it drops ONLY the
+ * retired key, it runs for a blob that never saw v1 as well (zustand calls the
+ * migration once with the STORED version, so an early return after the #677 fold
+ * would leave a v0 blob's key behind), and it reaches the live store through a
+ * real rehydrate rather than only through the pure function.
+ */
+test("the persist version is 3, the step that drops chatMeasureWidth (#895)", () => {
+	assert.equal(UI_PREFERENCES_VERSION, 3);
+});
+
+test("a v1 blob loses only the retired chatMeasureWidth (#895)", () => {
+	const migrated = migrateUiPreferences(
+		{ chatMeasureWidth: 900, rightSlotWidth: 712, themeName: "dracula" },
+		1,
+	);
+	assert.equal("chatMeasureWidth" in migrated, false);
+	assert.deepEqual(migrated, { rightSlotWidth: 712, themeName: "dracula" });
+});
+
 test("a v1 blob is passed through untouched, apart from the v3 handover", () => {
 	const blob = { rightSlotWidth: 712, themeName: "dracula" };
 	assert.deepEqual(migrateUiPreferences(blob, 1), blob);
@@ -511,6 +539,65 @@ test("a v1 blob is passed through untouched, apart from the v3 handover", () => 
 	assert.equal(migrated.rightSlotWidth, 712);
 	assert.equal(migrated.rightSlotLegacySeed, "canvas");
 	assert.equal("isCanvasOpen" in migrated, false);
+});
+test("a v0 blob gets both the #677 fold and the chatMeasureWidth drop (#895)", () => {
+	const migrated = migrateUiPreferences(
+		{
+			themeName: "dracula",
+			chatMeasureWidth: 520,
+			canvasWidth: DEFAULT_CANVAS_WIDTH,
+			runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
+			browserPanelWidth: 700,
+			consolePanelWidth: DEFAULT_CONSOLE_PANEL_WIDTH,
+		},
+		0,
+	);
+	assert.equal(migrated.rightSlotWidth, 700, "the fold still ran");
+	assert.equal("browserPanelWidth" in migrated, false);
+	assert.equal("chatMeasureWidth" in migrated, false, "and so did the drop");
+	assert.equal(migrated.themeName, "dracula");
+});
+
+test("a stored v1 blob with a customised measure rehydrates to a store without it, rewritten at v3 (#895)", async () => {
+	/*
+	 * `persist.getOptions()` is deliberately not used: the store's own note at its
+	 * `partialize` records it failing on CI's node. A seeded blob and a real
+	 * `rehydrate()` is the path a relaunch takes.
+	 */
+	memory.set(
+		"ui-preferences-storage",
+		JSON.stringify({
+			state: {
+				chatMeasureWidth: 900,
+				themeName: "dracula",
+				rightSlotWidth: 640,
+			},
+			version: 1,
+		}),
+	);
+	await useUiPreferencesStore.persist.rehydrate();
+	const state = useUiPreferencesStore.getState();
+	assert.equal(
+		"chatMeasureWidth" in state,
+		false,
+		"the stale key must not survive zustand's default merge",
+	);
+	assert.equal(state.themeName, "dracula", "the rest of the blob is kept");
+	assert.equal(state.rightSlotWidth, 640);
+	const written = JSON.parse(memory.get("ui-preferences-storage"));
+	assert.equal(written.version, UI_PREFERENCES_VERSION);
+	assert.equal(
+		"chatMeasureWidth" in written.state,
+		false,
+		"the rewritten blob must not carry it forward",
+	);
+	assert.equal(written.state.rightSlotWidth, 640);
+	memory.delete("ui-preferences-storage");
+});
+
+test("the persisted projection of the live store has no chatMeasureWidth (#895)", () => {
+	const persisted = persistedUiPreferences(useUiPreferencesStore.getState());
+	assert.equal("chatMeasureWidth" in persisted, false);
 });
 
 /**
