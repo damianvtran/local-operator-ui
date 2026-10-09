@@ -4838,6 +4838,46 @@ export type BackendSetting = {
 	 * row (see `setting-control.tsx`).
 	 */
 	hotkey_scope?: "app" | "desktop" | null;
+	/**
+	 * A SIXTH additive field: what an `int`/`float` row COUNTS, as a plain
+	 * lowercase noun (`"hours"`), and `""` on every row that counts nothing in
+	 * particular. With `minimum`/`maximum` it is the whole contract a bounded
+	 * duration control needs, and it exists because a renderer cannot tell "this
+	 * int is hours" from its key. The stored value is ALWAYS in this unit: a
+	 * control that shows "7 days" writes 168. Absent on a server that predates it,
+	 * which is read as "no unit" and degrades to the plain number field the row
+	 * always had (the delegated-retention row has a key-keyed fallback, see
+	 * `retention-duration.ts`).
+	 */
+	unit?: string | null;
+};
+/**
+ * The one-time "delegated sessions were cleaned up" notice, as
+ * `GET /v1/desktop/sessions` carries it in the additive field
+ * `delegated_cleanup_notice` (`null` or absent when there is nothing to say).
+ *
+ * CONSUMED ON READ: the first response that carries it flips the store's
+ * `notice_acknowledged` flag on disk, so the server will never send it again.
+ * That is why the renderer lifts it out of the response the moment it is read
+ * (`desktopResult`) into `delegated-cleanup-notice-store`, which holds it until
+ * the reader dismisses it - a notice kept only in the response that carried it
+ * would be gone with the next re-render of whatever fetched it.
+ */
+export type DelegatedCleanupNotice = {
+	/** Finished sentences, one per line; rendered verbatim, never re-worded. */
+	message: string;
+	/** Sessions removed so far. */
+	removed: number;
+	/** The window the removal used, in hours. */
+	max_age_hours: number;
+	/** True while a backlog is still draining (the message already says "so far"). */
+	in_progress: boolean;
+	/** ISO timestamp of the first removal. */
+	first_removal_at: string;
+	/** A LOWER BOUND on the bytes freed (the sizer caps its walk), or null. */
+	freed_bytes_estimate: number | null;
+	/** Where the per-removal record lives, for display. */
+	record: string;
 };
 export type BackendSettings = {
 	sections: {

@@ -45,11 +45,17 @@ import { useQuery } from "@tanstack/react-query";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+	gateLabelFor,
+	presentSetting,
+	sectionTitle,
+} from "../backend-setting-copy";
+import {
 	type SettingTier,
 	allOpenTargets,
 	opensOnArrival,
 	tierFor,
 } from "../backend-settings-tiers";
+import { DELEGATED_SECTION } from "../retention-duration";
 import { BackendSettingRow, type SettingGate } from "./backend-setting-row";
 import {
 	type SettingDraft,
@@ -57,6 +63,7 @@ import {
 	editOutcome,
 	isDraftDirty,
 } from "./backend-settings-drafts";
+import { DelegatedRetentionCopy } from "./delegated-retention-copy";
 import { SettingsFilterBar } from "./settings-filter-bar";
 import { SettingsGroupHeader } from "./settings-group-header";
 
@@ -272,10 +279,16 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 			}
 			if (modifiedOnly && !isModified(setting)) return false;
 			if (!needle) return true;
+			/*
+			 * Searched on the words the reader SEES: a row whose label and help the
+			 * desktop re-words (`backend-setting-copy.ts`) must be found by that
+			 * copy ("retention" is in the age row's help and nowhere in the wire's).
+			 */
+			const shown = presentSetting(setting);
 			return fold(
 				[
-					setting.label,
-					setting.help,
+					shown.label,
+					shown.help,
 					setting.key,
 					setting.section,
 					setting.warning ?? "",
@@ -392,7 +405,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 			const gate = settings.settings.find((row) => row.key === key);
 			return {
 				key,
-				label: gate?.label ?? key,
+				label: gateLabelFor(key, gate?.label ?? key),
 				// The gate is the SERVER's value: a switch that has been flipped but
 				// not saved has not enabled anything yet.
 				on: gate?.value === true || gate?.value === "true",
@@ -859,7 +872,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 							 */}
 							<SettingsGroupHeader
 								key={`${section.name}:${open ? "open" : "closed"}`}
-								title={section.title}
+								title={sectionTitle(section)}
 								rowCount={rows.length}
 								advancedCount={advancedHeld}
 								scope={SCOPE_LABELS[section.scope]}
@@ -872,10 +885,16 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 								}
 							/>
 							<div hidden={!open} className="flex flex-col pb-3">
-								{section.description && (
-									<p className="px-1 pb-1 text-meta text-ink-dim">
-										{section.description}
-									</p>
+								{section.name === DELEGATED_SECTION ? (
+									// The desktop's own three-line explanation replaces the
+									// registry's single sentence for this group only.
+									<DelegatedRetentionCopy />
+								) : (
+									section.description && (
+										<p className="px-1 pb-1 text-meta text-ink-dim">
+											{section.description}
+										</p>
+									)
 								)}
 								{rows.length === 0 ? (
 									// An open section with nothing in it, said out loud

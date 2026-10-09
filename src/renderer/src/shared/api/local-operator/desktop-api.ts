@@ -22,6 +22,10 @@ import {
 	SESSION_IS_REMOTE_CODE,
 } from "../../../../../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../../../../../shared/desktop-stream-notice";
+import {
+	parseDelegatedCleanupNotice,
+	useDelegatedCleanupNoticeStore,
+} from "../../store/delegated-cleanup-notice-store";
 
 export type {
 	AuthOperation,
@@ -399,7 +403,28 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 			typeof envelope?.detail === "object" ? envelope.detail : undefined,
 		);
 	}
+	if (request.op === "sessions.list") {
+		liftDelegatedCleanupNotice(envelope?.result);
+	}
 	return envelope?.result as T;
+}
+
+/**
+ * Take the one-time delegated-cleanup notice out of a `sessions.list` answer.
+ *
+ * At the transport, not in any one caller, because the server consumes the
+ * notice on read and `sessions.list` has five callers (the sidebar head, the
+ * tail and scoped pages, the destination pickers, the mesh store): whichever
+ * asks first is served it, and a notice lifted only by the sidebar would be
+ * silently lost whenever a picker won the race. The store keeps it until the
+ * reader dismisses it.
+ */
+function liftDelegatedCleanupNotice(result: unknown): void {
+	if (typeof result !== "object" || result === null) return;
+	const notice = parseDelegatedCleanupNotice(
+		(result as { delegated_cleanup_notice?: unknown }).delegated_cleanup_notice,
+	);
+	if (notice) useDelegatedCleanupNoticeStore.getState().receive(notice);
 }
 
 /**
