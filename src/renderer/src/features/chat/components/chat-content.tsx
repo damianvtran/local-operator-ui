@@ -1732,8 +1732,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				 * is unchanged. On a draft (no `sessionId`) the hook waits forever and
 				 * the sentence stays empty, which is correct: there is no conversation
 				 * whose asks could open.
+				 *
+				 * `data-ask-open-announcer` NAMES THIS REGION FOR RIGS, the same way
+				 * `data-condense-announcement` names the transcript's (its comment states
+				 * the rule): `output[aria-live="polite"]` matches several regions on this
+				 * route, so a rig reading "the first one" reads whichever happens to
+				 * precede it and says nothing about this region (remediation round 1, D1).
 				 */}
-				<output className="sr-only" aria-live="polite">
+				<output data-ask-open-announcer="" className="sr-only" aria-live="polite">
 					{asksAnnouncement}
 				</output>
 				<div
