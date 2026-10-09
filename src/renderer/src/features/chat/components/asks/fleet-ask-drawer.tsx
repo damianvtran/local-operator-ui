@@ -46,7 +46,8 @@
  *
  * ## Escape, and the door that opens this pane
  *
- * The pane is opened from the conversation header's asks trigger, which is not
+ * The pane is opened from the panel rail's asks item (the conversation header's
+ * trigger until #896 moved it), which is not
  * inside the drawer, so the drawer's own `onKeyDown` never sees a press made on the
  * trigger and the lane's other Escape claim (`chat-page.tsx`) is session-scoped and
  * stands down here. This component therefore claims Escape at the WINDOW while it is
@@ -150,7 +151,7 @@ export const FleetAskDrawer = ({ onClose }: { onClose: () => void }) => {
 	 * scope is protected by `chat-page.tsx`'s listener, which is gated on the
 	 * session scope (`askExpanded`) and therefore stands down for this pane; the
 	 * fleet pane had only a React handler on its own `section`, and a React event
-	 * only bubbles from a node INSIDE that section. The door is the header trigger, so
+	 * only bubbles from a node INSIDE that section. The door is the rail item, so
 	 * before this an Escape pressed after opening the pane from the header reached
 	 * nothing in the lane - and fell to the app's interrupt rung, stopping the
 	 * agent's running turn (UX round 1, U1 / agent review round 1, F1). Focus now
