@@ -213,8 +213,7 @@ export type ImageGenCardView =
 			 * The LIVE queue position (1-based) of a waiting call, or `null` while
 			 * no frame states one — the same negativeable slot every progress fact
 			 * gets (see `ImageGenProgress`): the card draws no position rather than
-			 * a zero. No frame carries it today; when the harness freezes the
-			 * field, its read lands in `imageGenCardView` below and the state
+			 * a zero. Read from the canonical carrier's `queue_position`; the state
 			 * line's datum slot is its one consumer (round-1 QA Q-1).
 			 */
 			queuePosition: number | null;
@@ -228,6 +227,16 @@ export type ImageGenCardView =
 			 */
 			startedAtMs: number | null;
 			progress: ImageGenProgress;
+			/**
+			 * The interim's account of the last frame (design round 1, D1): the wire's
+			 * mid-walk failure sentence (`stage: null` plus the error pair, on a call
+			 * that continues), or `null` while no frame states one. A NOTE rather than
+			 * a state — a failure latch would misreport recovery — so it disappears
+			 * with the frame that carried it and paints nothing the wire did not
+			 * claim; the card renders it under the live body, the failed arm's
+			 * verbatim text.
+			 */
+			note: string | null;
 	  }
 	| {
 			state: "cancelling";
@@ -390,25 +399,23 @@ export function imageGenCardView(
 					progress: progressFrom(canonical),
 				};
 			/*
-			 * THE MID-WALK FAILURE — the wire's `stage: null` frame, whose semantics
-			 * ride the `error`/`error_type` pair ("the pair the surfaces branch
-			 * on"): a rung failed and the walk continues, so the card states the
-			 * failure's text VERBATIM in the failed presentation and the next
-			 * frame (the next rung's `queued`, or the terminal result) replaces it.
-			 * The design round ruled the SETTLED failure's copy, not this live arm's
-			 * (recorded in the PR body, not treated as ruled); the stopping overlay
-			 * above outranks it because the stop is the newer fact.
+			 * THE MID-WALK FAILURE rides as the interim's NOTE (design round 1, D1 —
+			 * this arm's first ruling; the PR body's "recorded, not ruled" note is
+			 * retired by it): the wire's `stage: null` frame names a rung failure on
+			 * a call that CONTINUES, so the call keeps its live presentation (tile,
+			 * state line, clock, Cancel) and states the pair's sentence as a note
+			 * line under the body — the failed arm's own text, VERBATIM, replaced
+			 * when the next frame arrives. Deliberately NOT a latch of the failure:
+			 * holding the note through a recovering run would misreport it, so
+			 * nothing the wire does not claim is painted, and the un-say is just
+			 * the note's absence on the next frame. The stopping overlay above
+			 * outranks it because the stop is the newer fact.
 			 */
-			if (canonical.error !== null)
-				return {
-					state: "failed",
-					message: canonical.error,
-					errorType: canonical.errorType,
-				};
 			return {
 				state: "running",
 				startedAtMs,
 				progress: progressFrom(canonical),
+				note: canonical.error,
 			};
 		}
 		case "done":

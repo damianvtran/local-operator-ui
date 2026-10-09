@@ -575,6 +575,42 @@ test("tool progress frames land on the record's details carrier", () => {
 	});
 	const durableRow = stored.records.find((r) => r.kind === "tool");
 	assert.equal(durableRow.details.error_type, "media_already_completed");
+	// THE NON-IMAGEGEN NO-OP (agent review round 1, F1): a frame outside the
+	// contract's vocabulary leaves the transcript state IDENTICAL — the gate
+	// returns before any upsert, so the common non-imagegen case is a true
+	// no-op, not a merely-equal rebuild. (A non-imagegen payload that happens
+	// to carry the gate key IS stored and is inert; the gate's scope comment
+	// carries the boundary.)
+	let plain = EMPTY_TRANSCRIPT;
+	plain = applyEvent(
+		plain,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "b1",
+			tool_name: "bash",
+			args: { command: "ls" },
+		},
+		1,
+	);
+	const before2 = plain;
+	plain = applyEvent(
+		plain,
+		{
+			type: "tool_execution_update",
+			tool_call_id: "b1",
+			tool_name: "bash",
+			partial_result: {
+				content: [{ type: "text", text: "chunk" }],
+				details: { pid: 42, chunk: "out" },
+			},
+		},
+		2,
+	);
+	assert.equal(
+		plain,
+		before2,
+		"an un-gated non-imagegen frame is a true no-op",
+	);
 });
 
 test("gap drops only live projections; clear is view-only", () => {
