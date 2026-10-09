@@ -33,11 +33,13 @@
  *   bound here can never see a key pressed on the trigger, which is the state
  *   the trigger's own click leaves focus in (round 1, U1-2).
  *
- * It does NOT own `isRunPanelOpen`: that is global and persisted (§ 3.5), like
- * the canvas's own flag, so switching conversations keeps the pane open on the
- * new session's data while the reader resets — a child belongs to one session's
- * lineage, and a reader pointed at another session's child is not a state
- * anything should be able to reach.
+ * It does NOT own `isRunPanelOpen`: that flag is the store's — since issue #894
+ * the live projection of the ACTIVE conversation's remembered pane
+ * (`rightSlotMemory` in `ui-preferences-store.ts`), never the window's — so a
+ * switch re-keys the pane to the destination's own memory instead of carrying
+ * this conversation's pane onto it. A child belongs to one session's lineage,
+ * and a reader pointed at another session's child is not a state anything
+ * should be able to reach.
  */
 
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
