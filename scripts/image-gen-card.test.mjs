@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { createElement as h } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 /*
  * The image-gen card's one adapter module (`image-gen-card-model.ts`), asserted
@@ -15,7 +18,11 @@ import { build } from "esbuild";
  *     position on any frame today, the mapping yields null/empty values the
  *     card reduces to, never an invented zero or placeholder line;
  *   - the affordance gating: only wired handlers draw controls, and only in
- *     states that can act on them.
+ *     states that can act on them;
+ *   - the RENDER-level rules the model cannot see, against the real component
+ *     server-rendered at the end of this file: the cancelling card's bar
+ *     follows the tile's own predicate, and a queued card states its queue
+ *     position only when one exists.
  *
  * The module is bundled rather than imported raw so the test runs against the
  * same TS the app compiles, the way `tool-row.test.mjs` bundles its model.
@@ -91,12 +98,25 @@ test("the detection set is the one frozen tool name", () => {
 test("a dictated or waiting call maps to queued, with the byte count it has", () => {
 	assert.deepEqual(
 		imageGenCardView(tool({ phase: "composing", argumentBytes: 2458 })),
-		{ state: "queued", composing: true, argumentBytes: 2458 },
+		{
+			state: "queued",
+			composing: true,
+			argumentBytes: 2458,
+			queuePosition: null,
+		},
 	);
 	assert.deepEqual(
 		imageGenCardView(tool({ phase: "queued", argumentBytes: 2458 })),
-		{ state: "queued", composing: false, argumentBytes: 2458 },
+		{
+			state: "queued",
+			composing: false,
+			argumentBytes: 2458,
+			queuePosition: null,
+		},
 	);
+	// No frame carries a queue position yet: the slot states the absence, and
+	// the render's presence path is driven by the SSR pins below (and the
+	// ProgressFields story) until the wire freezes the field.
 });
 
 test("a running call carries the call's own clock, and progress reports absence rather than guessing", () => {
@@ -271,4 +291,146 @@ test("controls render only where wired and where the state can act", () => {
 	);
 	// Cancel is not offered where it cannot act, even when wired.
 	assert.deepEqual(imageGenCardControls(failed, { onCancel: () => {} }), []);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE RENDER-LEVEL PINS. The bar's gate and the queue position are properties
+ * of the COMPONENT's output, not of the mapping, so they are asserted against
+ * the real card server-rendered — `canonical-notice.test.mjs`'s pattern. A
+ * SECOND bundle, component-side, so a component import failure cannot take the
+ * model tests above down with it.
+ */
+const componentBundle = await build({
+	stdin: {
+		contents: `export { ImageGenCard } from "./src/renderer/src/features/chat/canonical/image-gen-card";`,
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	mainFields: ["module", "main"],
+	conditions: ["import"],
+	jsx: "automatic",
+	alias: {
+		"@renderer": "./src/renderer/src",
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+		"@assets": "./src/renderer/src/assets",
+	},
+	loader: {
+		".css": "empty",
+		".svg": "text",
+		".png": "dataurl",
+		".webp": "dataurl",
+	},
+	/*
+	 * `{}` for `import.meta.env`, the value `canonical-notice.test.mjs` bakes
+	 * for the same reason: the shared config reads it at module scope and a
+	 * bare bundle throws before a test runs.
+	 */
+	define: { "import.meta.env": "{}" },
+	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
+});
+/*
+ * The component bundle is imported from a FILE, not a data: URL: it keeps
+ * `react` external (the renderer below must share this test's React instance),
+ * and a data: module cannot resolve a bare specifier at all -
+ * `ERR_UNSUPPORTED_RESOLVE_REQUEST` - where a file: URL resolves it through
+ * node_modules. `canonical-notice.test.mjs` writes its bundle for the same
+ * reason; it is unlinked in the `finally`.
+ */
+const componentBundlePath = new URL(
+	"./_image-gen-card.bundle.mjs",
+	import.meta.url,
+);
+await writeFile(componentBundlePath, componentBundle.outputFiles[0].text);
+let ImageGenCard;
+try {
+	({ ImageGenCard } = await import(componentBundlePath.href));
+} finally {
+	await unlink(componentBundlePath);
+}
+
+/** The card rendered the way the app renders it, absent attachment scope. */
+const markupOf = (view) =>
+	renderToStaticMarkup(h(ImageGenCard, { view, scope: null }));
+
+/** The live-progress shape with every field negative (nothing on the wire). */
+const NO_PROGRESS = { fraction: null, logs: [], queuePosition: null };
+
+/** The byte-count shape `formatBytes` writes, for the composing datum. */
+const BYTE_COUNT = /[0-9.]+ KB/;
+
+/*
+ * Both spellings of the generating body are pinned against the SAME render:
+ * a call that was never generating must show `Cancelling…` with neither the
+ * tile nor a `progressbar`, and one that was keeps both while the stop is in
+ * flight (round-1 review F3).
+ */
+test("a cancelling card wears the generating body only when one existed (F3)", () => {
+	const neverGenerated = markupOf({
+		state: "cancelling",
+		generating: false,
+		startedAtMs: null,
+		progress: NO_PROGRESS,
+	});
+	assert.equal(neverGenerated.includes('role="progressbar"'), false);
+	assert.equal(neverGenerated.includes("data-imagegen-tile"), false);
+	// The words are honest either way: the plain state line stays.
+	assert.equal(neverGenerated.includes("Cancelling"), true);
+
+	const wasGenerating = markupOf({
+		state: "cancelling",
+		generating: true,
+		startedAtMs: 5000,
+		progress: NO_PROGRESS,
+	});
+	assert.equal(wasGenerating.includes('role="progressbar"'), true);
+	assert.equal(wasGenerating.includes("data-imagegen-tile"), true);
+
+	// A running call had a generation by definition, so it always carries both.
+	const running = markupOf({
+		state: "running",
+		startedAtMs: null,
+		progress: NO_PROGRESS,
+	});
+	assert.equal(running.includes('role="progressbar"'), true);
+	assert.equal(running.includes("data-imagegen-tile"), true);
+});
+
+/*
+ * The queued state's datum slot: the position when one exists (the live
+ * field's one render — round-1 QA Q-1), the dictation's byte count as the
+ * fallback, and NOTHING when neither exists — absence must not become a zero
+ * or a placeholder.
+ */
+test("a queued card states its queue position only when one exists (Q-1)", () => {
+	const withPosition = markupOf({
+		state: "queued",
+		composing: false,
+		argumentBytes: 1900,
+		queuePosition: 2,
+	});
+	assert.equal(withPosition.includes("position 2"), true);
+
+	const without = markupOf({
+		state: "queued",
+		composing: false,
+		argumentBytes: 1900,
+		queuePosition: null,
+	});
+	assert.equal(without.includes("position"), false);
+	assert.equal(without.includes("Queued"), true);
+
+	// The dictation half still states its byte count.
+	const composing = markupOf({
+		state: "queued",
+		composing: true,
+		argumentBytes: 2480,
+		queuePosition: null,
+	});
+	assert.equal(composing.includes("Writing the request"), true);
+	assert.match(composing, BYTE_COUNT);
 });

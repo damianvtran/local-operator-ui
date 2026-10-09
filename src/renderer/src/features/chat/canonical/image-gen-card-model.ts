@@ -122,6 +122,15 @@ export type ImageGenCardView =
 			 */
 			composing: boolean;
 			argumentBytes: number;
+			/**
+			 * The LIVE queue position (1-based) of a waiting call, or `null` while
+			 * no frame states one — the same negativeable slot every progress fact
+			 * gets (see `ImageGenProgress`): the card draws no position rather than
+			 * a zero. No frame carries it today; when the harness freezes the
+			 * field, its read lands in `imageGenCardView` below and the state
+			 * line's datum slot is its one consumer (round-1 QA Q-1).
+			 */
+			queuePosition: number | null;
 	  }
 	| {
 			state: "running";
@@ -233,8 +242,10 @@ export function imageGenCardView(
 	/*
 	 * ARM 5, the unsettled phases. `stopping` (the pane's stop in flight) turns
 	 * both into the cancelling step — for `running` the call is still executing
-	 * and the tile stays; for `composing`/`queued` nothing was generating yet,
-	 * so the card must not grow a generating tile the state never had.
+	 * and the generating body stays; for `composing`/`queued` nothing was
+	 * generating yet, so the card must not grow a generating tile OR a progress
+	 * bar the state never had (the bar joined the tile's rule in round-1
+	 * remediation, F3; the component holds both behind one predicate).
 	 */
 	switch (record.phase) {
 		case "composing":
@@ -250,6 +261,13 @@ export function imageGenCardView(
 				state: "queued",
 				composing: record.phase === "composing",
 				argumentBytes: record.argumentBytes ?? 0,
+				/*
+				 * The frozen-field slot (see the header): nothing on today's records
+				 * carries a queue position, so the mapping states the absence — the
+				 * record's field names stop at this module, and when the wire freezes
+				 * the field its read is HERE.
+				 */
+				queuePosition: null,
 			};
 		}
 		case "running": {

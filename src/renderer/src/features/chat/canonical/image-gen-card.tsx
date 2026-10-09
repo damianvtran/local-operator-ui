@@ -13,8 +13,10 @@
  * THE SIX STATES, from `ImageGenCardView` (`image-gen-card-model.ts` — the one
  * module that knows the record's fields):
  *
- *   queued     an honest state line; NO generating tile, because nothing is
- *              being generated yet and the tile would borrow running's claim.
+ *   queued     an honest state line — its datum slot states the queue position
+ *              when the live field carries one, never an invented number — and
+ *              NO generating tile, because nothing is being generated yet and
+ *              the tile would borrow running's claim.
  *   running    the media-scale tile with the shimmer sweep, the state line
  *              with the call's own elapsed clock, the progress bar (pulsing
  *              while no fraction is known; the determinate fill when one is),
@@ -39,10 +41,13 @@
  *
  * THE MOTION BUDGET, stated because this file spends it. The shimmer sweep is
  * the surface's indeterminate element: `background-position` only, never a
- * layout property, and its keyframes END on a visible frame — `styles/index.css`
- * caps rather than cancels animation under reduced motion, so the cap parks a
- * visible tile instead of an empty box (`--animate-shimmer` carries the same
- * reasoning). PROVISIONAL, pending the design round: while no fraction is
+ * layout property, and its END frame is also the span's RESTING position
+ * (`bg-[position:-200%_50%]`, so where the sweep stops is off the tile) —
+ * `styles/index.css` caps rather than cancels animation under reduced motion,
+ * and the cap parks an animation on its end frame, so a reduced-motion reader
+ * gets the band parked off the tile with the `sunken` ground still reading —
+ * not the static half-band a bare base `0% 0%` drew (round-1 review F2;
+ * `--animate-shimmer` carries the same reasoning). PROVISIONAL, pending the design round: while no fraction is
  * known the Progress primitive's indeterminate pulse runs beside the tile's
  * sweep, two motions on one card; if the round reads that as one element too
  * many, the tile's sweep is the one to drop — the bar states the call's
@@ -122,7 +127,9 @@ function useElapsedSeconds(startedAtMs: number | null): number | null {
  * attachment frames' reserved boxes already use, 6px like every control-scale
  * frame. The sweep's band is `elevated` — an authored ground step, not a hex —
  * over a `background-size` of twice the tile so the band travels in from one
- * edge and out the other.
+ * edge and out the other; the span's RESTING position is the sweep's end
+ * frame (`bg-[position:-200%_50%]`), which is what makes the reduced-motion
+ * cap's parked state the bare tile rather than a half-band (header; F2).
  *
  * `aria-hidden`: the state line beside it is the announcement, and a decorative
  * field a screen reader cannot describe is not worth announcing (the same rule
@@ -143,6 +150,14 @@ function GeneratingTile() {
 					"animate-shimmer",
 					"bg-gradient-to-r from-transparent via-elevated to-transparent",
 					"bg-[length:200%_100%]",
+					/*
+					 * The RESTING position, equal to the sweep's END frame: the
+					 * reduced-motion cap parks the animation on its `to` frame, and a
+					 * bare base `0% 0%` would leave a static half-band across the tile
+					 * instead of the bare `sunken` ground (round-1 review F2; the
+					 * contract `--animate-pulse-visible`'s end-opaque keyframe keeps).
+					 */
+					"bg-[position:-200%_50%]",
 				)}
 			/>
 		</div>
@@ -163,7 +178,19 @@ function StateLine({
 	switch (view.state) {
 		case "queued":
 			text = view.composing ? "Writing the request…" : "Queued";
-			detail = view.argumentBytes > 0 ? formatBytes(view.argumentBytes) : null;
+			/*
+			 * The datum slot, one precedence: a STATED queue position wins (the
+			 * live field's only render, and the fact a waiting reader wants),
+			 * then the dictation's byte count when there is one, then nothing —
+			 * every branch negativeable, like the progress facts themselves
+			 * (round-1 QA Q-1: the slot existed with no consumer before this).
+			 */
+			detail =
+				view.queuePosition !== null
+					? `position ${view.queuePosition}`
+					: view.argumentBytes > 0
+						? formatBytes(view.argumentBytes)
+						: null;
 			break;
 		case "running":
 			text = "Generating image…";
@@ -257,6 +284,15 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 		editRestart: actions?.onEditRestart,
 	};
 	const unsettled = view.state === "running" || view.state === "cancelling";
+	/*
+	 * THE GENERATING BODY — tile and bar together — follows ONE predicate: a
+	 * `running` call had a generation by definition, and a `cancelling` call
+	 * keeps its body only if it was already generating. A call that never
+	 * generated grows NEITHER a tile nor a bar it never had (round-1 review
+	 * F3 put the bar behind the rule the tile already followed).
+	 */
+	const generatingBody =
+		unsettled && (view.state === "running" || view.generating);
 	const logTail =
 		unsettled && view.progress.logs.length > 0
 			? view.progress.logs[view.progress.logs.length - 1]
@@ -266,17 +302,17 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			data-imagegen-card={view.state}
 			className={cn("flex w-full flex-col gap-2")}
 		>
-			{unsettled && (view.state === "running" || view.generating) ? (
-				<GeneratingTile />
-			) : null}
+			{generatingBody ? <GeneratingTile /> : null}
 			<StateLine view={view} elapsed={elapsed} />
-			{unsettled ? (
+			{generatingBody ? (
 				/*
 				 * One bar, two modes, both the shared primitive's: no fraction
 				 * states the absence (`value={null}` is the primitive's indeterminate
 				 * state, and Radix reports it to assistive tech as exactly that); a
 				 * fraction fills it. It caps at the tile's width so the card's media
-				 * column reads as one edge.
+				 * column reads as one edge. It follows the tile's own predicate
+				 * (`generatingBody`), so a cancelling call that never generated
+				 * wears no bar (round-1 F3).
 				 */
 				<Progress
 					aria-label="Image generation progress"
