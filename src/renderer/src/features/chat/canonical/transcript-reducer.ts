@@ -978,6 +978,12 @@ function extractImages(
 	for (const block of content as ContentBlock[]) {
 		const kind = artifactKind(block);
 		if (kind === null && !isImageBlock(block)) continue;
+		// v1 mounts PICTURES only. A video/audio artifact in this array would be
+		// fetched by the kind-blind render path and fail `<img>` decode into a
+		// false "unavailable" receipt (review round 1, F2) — the same call the
+		// harness/TUI half makes ("contribute nothing yet"). Players extend THIS
+		// filter and the render together, not one of them.
+		if (kind !== null && kind !== "image") continue;
 		const entry: TranscriptImage = {
 			// Position among IMAGE-ish blocks only, so a text block appearing
 			// between two pictures cannot renumber them and remount both. An
@@ -1021,22 +1027,83 @@ function extractImages(
 const EMPTY_IMAGES: TranscriptImage[] = [];
 
 /**
- * Never let an empty extraction replace images a record already holds.
+ * How much artifact metadata an array carries — non-null fields, summed.
+ *
+ * A score rather than a flag because `kind` alone is not richness: a BARE
+ * artifact (kind + digest, no dimensions/name) and a fully described one both
+ * carry `kind`, and preferring "has kind" either way cannot tell which side
+ * learned more. The comparison this feeds is "which array is more
+ * informative", so it counts what there is to know.
+ */
+function metadataScore(images: TranscriptImage[]): number {
+	let score = 0;
+	for (const image of images) {
+		if (image.kind !== undefined) score += 1;
+		if (image.width != null) score += 1;
+		if (image.height != null) score += 1;
+		if (image.sizeBytes != null) score += 1;
+		if (image.durationS != null) score += 1;
+		if (image.name != null) score += 1;
+		if (image.sourceUrl != null) score += 1;
+	}
+	return score;
+}
+
+/**
+ * Pick between two arrays of the SAME pictures — the record's current array
+ * and a freshly extracted one, in either direction.
+ *
+ * Three rules, in order, each pinning a measured failure:
+ *
+ *  1. An empty side never wins over a non-empty one. The reconnect rule the
+ *     extractor's guard carried before this helper existed: a replayed end
+ *     whose bytes the live budget stripped carries no image blocks at all,
+ *     and letting it win would discard a resolvable digest the row already
+ *     held.
+ *  2. The side carrying MORE artifact metadata wins. Measured across both
+ *     directions in review round 1 (F1): `applyHistoryPage`'s tool coalesce
+ *     pinned the bare live array, so a durable row's dimensions/name never
+ *     landed; and a replay whose metadata fields were dropped demoted a rich
+ *     row to bare. Equal scores fall through to the caller's preference.
+ *  3. Otherwise the caller's `prefer` side wins, preserving each call site's
+ *     original preference: the live arm prefers the freshly extracted array
+ *     (its bytes are already decoded in this renderer), the durable coalesce
+ *     keeps the live array (sparing a re-fetch at the moment a turn settles).
+ *
+ * Identical contents return `current` by REFERENCE, which is the identity
+ * gate's whole point: a replayed row must not repaint the images it already
+ * holds.
+ */
+function pickImages(
+	incoming: TranscriptImage[],
+	current: TranscriptImage[],
+	prefer: "incoming" | "current",
+): TranscriptImage[] {
+	if (current.length === 0) return incoming;
+	if (incoming.length === 0) return current;
+	if (sameImages(incoming, current)) return current;
+	const incomingScore = metadataScore(incoming);
+	const currentScore = metadataScore(current);
+	if (incomingScore !== currentScore)
+		return incomingScore > currentScore ? incoming : current;
+	return prefer === "incoming" ? incoming : current;
+}
+
+/**
+ * The live arm's spelling of `pickImages`: prefer the freshly extracted array,
+ * with the empty-never-wins and metadata-never-demoted rules applied there.
  *
  * "This event carried no image blocks" and "this call produced no images" are
  * different claims, and only the second should be able to clear a row. The
  * reconnect seed makes the difference load-bearing: the backend strips image
  * bytes out of `live_events`, so a replayed `tool_execution_end` legitimately
  * arrives with nothing where a resolvable digest already sits.
- *
- * Returns the previous array by REFERENCE when it wins, so the identity gate in
- * `shallowEqual` still reports the record as unchanged.
  */
 function preferExisting(
 	next: TranscriptImage[],
 	previous: TranscriptImage[],
 ): TranscriptImage[] {
-	return next.length === 0 && previous.length > 0 ? previous : next;
+	return pickImages(next, previous, "incoming");
 }
 
 function sameImages(a: TranscriptImage[], b: TranscriptImage[]) {
@@ -3099,8 +3166,10 @@ export function applyHistoryPage(
 				// A durable row has DIGESTS, a live row has BYTES, and the bytes are
 				// already decoded in this renderer. Preferring the live array spares
 				// the row the user is looking at a needless round trip to the
-				// attachment endpoint at the exact moment the turn settles.
-				images: current.images.length ? current.images : record.images,
+				// attachment endpoint at the exact moment the turn settles — except
+				// where metadata is concerned, where the arriving durable row wins
+				// (see `pickImages`).
+				images: pickImages(record.images, current.images, "current"),
 			});
 			if (!shallowEqual(current, merged)) {
 				changed = true;
