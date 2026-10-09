@@ -17,9 +17,12 @@ import { build } from "esbuild";
  * than their strictness: (A) is the switch itself and (C) is the fleet drawer's
  * restore, both of which the global-flag store cannot answer at all. On `main`
  * every cell here fails at the bundle, because the follower and the memory do not
- * exist yet; the discriminating reading for A and C is the focused probe in the
- * evidence (`psr-894-main-probe`), which drives the shipped API those two cells
- * need against `main`'s store and prints the flags it reads.
+ * exist yet; the discriminating reading for A and C is the COMMITTED probe in the
+ * evidence - `docs/evidence/right-slot-memory/harness/probe-main-failures.mjs`,
+ * with its captured output in that directory's `probe-main-failures.json` - which
+ * bundles `main`'s OWN stores from a worktree it is handed and drives the same
+ * API these two cells need (agent review round 1, F3: the name used to live only
+ * in this header, so a reader could not re-run it).
  */
 const memory = new Map();
 globalThis.localStorage = {
