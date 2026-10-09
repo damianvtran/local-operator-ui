@@ -33,7 +33,6 @@
  */
 
 import { spawn } from "node:child_process";
-import { createRequire } from "node:module";
 import {
 	existsSync,
 	mkdirSync,
@@ -42,19 +41,25 @@ import {
 	readdirSync,
 	writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const require = createRequire(import.meta.url);
 const arg = (name, fallback = null) => {
 	const index = process.argv.indexOf(`--${name}`);
-	return index >= 0 && process.argv[index + 1] ? process.argv[index + 1] : fallback;
+	return index >= 0 && process.argv[index + 1]
+		? process.argv[index + 1]
+		: fallback;
 };
 const say = (line) => process.stdout.write(`${line}\n`);
 
 const SCENARIO = arg("scenario", "rest");
 const TREE = resolve(arg("tree", process.cwd()));
-const OUT = resolve(arg("out", join(TREE, "docs/evidence/wake-cancel-live/frames")));
+const OUT = resolve(
+	arg("out", join(TREE, "docs/evidence/wake-cancel-live/frames")),
+);
 const API = arg("api", "http://127.0.0.1:8080");
 const SESSION = arg("session");
 const WAKE = arg("wake", "w2");
@@ -74,7 +79,13 @@ if (API.includes(":1111")) {
 }
 
 const wait = (ms) => new Promise((done) => setTimeout(done, ms));
-const facts = { scenario: SCENARIO, tree: TREE, api: API, scratch: SCRATCH, steps: [] };
+const facts = {
+	scenario: SCENARIO,
+	tree: TREE,
+	api: API,
+	scratch: SCRATCH,
+	steps: [],
+};
 const record = (label, body) => {
 	facts.steps.push({ label, body });
 	say(`[step] ${label}: ${JSON.stringify(body).slice(0, 220)}`);
@@ -89,6 +100,23 @@ const record = (label, body) => {
  * outside the app). Empty rather than invented when the file is absent.
  */
 const DAEMON_LOG = arg("daemon-log", "");
+/*
+ * The capture relay's two files (see `harness/relay.mjs`): the control file the
+ * rig writes its hold knobs into, and the wire log it reads back. Absent (the
+ * default) means the scenarios run straight at the daemon and the receipt frames
+ * are not attempted.
+ */
+const RELAY_CONTROL = arg("relay-control", "");
+const RELAY_LOG = arg("relay-log", "");
+const setRelay = async (knobs) => {
+	if (RELAY_CONTROL === "") return;
+	writeFileSync(RELAY_CONTROL, `${JSON.stringify(knobs)}\n`);
+	await wait(150);
+};
+const relayLines = () =>
+	RELAY_LOG !== "" && existsSync(RELAY_LOG)
+		? readFileSync(RELAY_LOG, "utf8").split("\n").filter(Boolean)
+		: [];
 const daemonLog = () =>
 	DAEMON_LOG !== "" && existsSync(DAEMON_LOG)
 		? readFileSync(DAEMON_LOG, "utf8")
@@ -99,9 +127,23 @@ const daemonLines = (regex) =>
 		.filter((line) => regex.test(line));
 
 /** The wire side of a step: the daemon's own log lines for a route. */
-const recordWire = (label, regex) => record(`${label} (daemon log)`, daemonLines(regex));
+const recordWire = (label, regex) =>
+	record(`${label} (daemon log)`, daemonLines(regex));
 
 /* ---------------------------------------------------------------- launch */
+
+/*
+ * F5: EVERY launch carries the mock-keychain switch, and it is imported rather
+ * than typed. `scripts/chrome-keychain.mjs` owns the spelling and the measured
+ * reason: a process under a scratch HOME has no login keychain, so macOS asks
+ * the operator to CREATE one — a dialog on their screen, once per launch
+ * (OSCrypt; the same class `renderer-driver.mjs` handles on its Chrome side).
+ * Resolved from the TREE rather than from this file, because the rig is copied
+ * beside whichever worktree it drives (the README's before-half step).
+ */
+const { withMockKeychain } = await import(
+	pathToFileURL(join(TREE, "scripts/chrome-keychain.mjs")).href
+);
 
 const electron = require("electron");
 const appCwd = join(SCRATCH, "cwd");
@@ -138,19 +180,24 @@ mkdirSync(OUT, { recursive: true });
 
 const app = spawn(
 	electron,
-	[
+	withMockKeychain([
 		join(TREE, "out/main/index.js"),
 		"--window-mode=headless",
 		"--window-size=1380x900",
 		`--user-data-dir=${join(SCRATCH, "profile")}`,
 		`--remote-debugging-port=${PORT}`,
-	],
+	]),
 	/*
 	 * `detached`, so the app is its own process GROUP and the teardown can reap
 	 * the whole tree (main + GPU + renderer helpers) by exact negative pid — the
 	 * repo's own rule for every launch this rig makes.
 	 */
-	{ cwd: appCwd, env: childEnv, detached: true, stdio: ["ignore", "pipe", "pipe"] },
+	{
+		cwd: appCwd,
+		env: childEnv,
+		detached: true,
+		stdio: ["ignore", "pipe", "pipe"],
+	},
 );
 const appLog = [];
 app.stdout.on("data", (chunk) => appLog.push(String(chunk)));
@@ -232,7 +279,9 @@ const armAndCheck = async () => {
 const page = async () => {
 	for (let attempt = 0; attempt < 120; attempt += 1) {
 		try {
-			const list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
+			const list = await (
+				await fetch(`http://127.0.0.1:${PORT}/json/list`)
+			).json();
 			const found = list.find(
 				(entry) => entry.type === "page" && entry.url.includes("index.html"),
 			);
@@ -317,7 +366,8 @@ const pollTrace = async (ms = 2_400, everyMs = 80) => {
 	const trace = [];
 	const started = Date.now();
 	while (Date.now() - started < ms) {
-		trace.push(await evaluate(`(() => {
+		trace.push(
+			await evaluate(`(() => {
 			const section = [...document.querySelectorAll("section")].find((node) =>
 				(node.querySelector("span")?.textContent ?? "") === "Wakes");
 			return {
@@ -326,7 +376,8 @@ const pollTrace = async (ms = 2_400, everyMs = 80) => {
 				note: document.querySelector("[data-wake-cancel-note]")?.textContent ?? null,
 				card: document.querySelector("[data-wake-confirm]") !== null,
 			};
-		})()`));
+		})()`),
+		);
 		await wait(everyMs);
 	}
 	return trace;
@@ -344,7 +395,11 @@ const capture = async (label) => {
 	await wait(250);
 	const file = join(OUT, `${label}.png`);
 	if (!existsSync(file)) throw new Error(`capture wrote no file for ${label}`);
-	record(`capture ${label}`, { file, pixels: result?.pixels, viewport: result?.viewport });
+	record(`capture ${label}`, {
+		file,
+		pixels: result?.pixels,
+		viewport: result?.viewport,
+	});
 	return file;
 };
 
@@ -362,7 +417,9 @@ const press = async (selector) => {
 	 * is.
 	 */
 	if (entry?.hitTest !== true)
-		throw new Error(`press did not reach ${selector}: ${JSON.stringify(entry)}`);
+		throw new Error(
+			`press did not reach ${selector}: ${JSON.stringify(entry)}`,
+		);
 	return entry;
 };
 
@@ -374,7 +431,12 @@ const press = async (selector) => {
 const hover = async (selector) => {
 	const box = await verb("measure", { selector });
 	const { x, y } = box.centre;
-	await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, buttons: 0 });
+	await cdp("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x,
+		y,
+		buttons: 0,
+	});
 	await wait(200);
 	const hovering = await evaluate(
 		`document.querySelector(${JSON.stringify(selector)})?.matches(":hover") ?? false`,
@@ -436,8 +498,14 @@ const openSessionPane = async (sessionId, { expectRow = true } = {}) => {
 	await verb("navigate", `/chat/${sessionId}`);
 	await wait(600);
 	await dismissOnboarding();
-	const chip = '[data-status-wakes]';
-	if (!(await until(async () => evaluate(`document.querySelector(${JSON.stringify(chip)}) !== null`), 30_000)))
+	const chip = "[data-status-wakes]";
+	if (
+		!(await until(
+			async () =>
+				evaluate(`document.querySelector(${JSON.stringify(chip)}) !== null`),
+			30_000,
+		))
+	)
 		throw new Error("the wake chip never came on screen");
 	/*
 	 * The overlay probe, and its frame: when a press misses, the useful reading
@@ -464,28 +532,158 @@ const openSessionPane = async (sessionId, { expectRow = true } = {}) => {
 	await press(chip);
 	if (
 		expectRow &&
-		!(await until(async () => evaluate(`document.querySelector(${JSON.stringify(target)}) !== null`), 30_000))
+		!(await until(
+			async () =>
+				evaluate(`document.querySelector(${JSON.stringify(target)}) !== null`),
+			30_000,
+		))
 	)
 		throw new Error(`the wake row ${WAKE} never came on screen`);
 };
 
 const runRest = async () => {
 	await openSessionPane(SESSION);
+	/*
+	 * AT REST FIRST, THEN HOVERED (F4 / D3). The first revision captured both
+	 * AFTER the hover, and since a synthetic press moves no pointer but a CDP
+	 * `mouseMoved` does, the two frames came out byte-identical with the control
+	 * still hovered. The at-rest frame is therefore taken before any pointer
+	 * move, and the hover frame after one.
+	 */
 	record("pane at rest", await readPane());
+	await capture("pane-at-rest");
 	await hover(`[data-wake-cancel="${WAKE}"]`);
 	await capture("pane-hover");
-	await capture("pane-at-rest");
 };
 
 const runCancel = async () => {
 	await openSessionPane(SESSION);
 	await capture("cancel-before");
+	if (RELAY_CONTROL !== "") {
+		/*
+		 * ONE WINDOW IS HELD OPEN BY THE RELAY, and one only: the one-press
+		 * write's `Cancelling…`, by holding the DELETE's RESPONSE 1.2 s (the
+		 * request still reaches the daemon at once; what is late is the answer,
+		 * and with it the settle that follows). The `Cancelled` receipt itself is
+		 * NOT captured - its window is shorter than this host's capture path, and
+		 * the measurement behind that statement is in the branch below. The
+		 * `eventsDelayMs` and `desktopEventsDelayMs` knobs are kept from the
+		 * attempt and are load-bearing for nothing: they hold the re-reads the
+		 * mark was hoped to outlive (see `relay.mjs`; the README's limits
+		 * section records the negative result).
+		 */
+		await setRelay({ listDelayMs: 0, deleteDelayMs: 1200, eventsDelayMs: 2500 });
+		/*
+		 * THE PAGE'S OWN TRACE. `evaluate` round trips cost ~50-150 ms each, which
+		 * is longer than the windows under study, so the sampler runs INSIDE the
+		 * page at 40 ms and the rig reads the array back once. What it samples is
+		 * the pair the mark can hide in: the row's control (text + state attr)
+		 * and whether the row itself is in the list - a mark that never renders
+		 * and a row that leaves early look identical from outside.
+		 */
+		await evaluate(`(() => {
+			window.__wakeSamples = [];
+			window.__wakeSampler = window.setInterval(() => {
+				const control = document.querySelector('[data-wake-cancel="${WAKE}"]');
+				window.__wakeSamples.push({
+					t: Date.now(),
+					row: control === null ? null : control.textContent,
+					mark: control === null ? null : (control.getAttribute("data-wake-cancel-state") || null),
+					rows: document.querySelectorAll("[data-run-panel-row]").length,
+					cancel: document.querySelectorAll("[data-wake-cancel]").length,
+					ids: [...document.querySelectorAll("[data-wake-cancel]")].map((e) => e.getAttribute("data-wake-cancel")),
+					href: location.href,
+					ready: document.readyState,
+				});
+			}, 40);
+			return true;
+		})()`);
+		/*
+		 * The SAME query the sampler ticks, read once straight after install: if
+		 * this answers a row while the sampler's ticks answer none, the two
+		 * contexts are not the same document and the trace is an instrument
+		 * fault rather than a product reading.
+		 */
+		record(
+			"direct check before press",
+			await evaluate(`(() => {
+				const ids = [...document.querySelectorAll("[data-wake-cancel]")].map((e) => e.getAttribute("data-wake-cancel"));
+				return { ids, href: location.href };
+			})()`),
+		);
+		await press(`[data-wake-cancel="${WAKE}"]`);
+		const writing = await until(
+			async () =>
+				evaluate(`(() => {
+					const control = document.querySelector('[data-wake-cancel="${WAKE}"]');
+					return control !== null && control.textContent === "Cancelling…";
+				})()`),
+			5_000,
+		);
+		record("writing window seen", { writing });
+		await capture("cancel-writing");
+		/*
+		 * THE `Cancelled` FRAME IS NOT CAPTURABLE HERE, AND THIS IS THE
+		 * MEASUREMENT. The receipt mark is a ROW state; on this host the pressed
+		 * row left the DOM within 40 ms of the press in the page's own 40 ms
+		 * sampling (the same sampling the probe validated against direct reads),
+		 * i.e. before the held DELETE answer by over a second - so by the time the
+		 * settle's mark paints there is no row to paint it on. The window's own
+		 * captures lag the DOM by hundreds of ms in this headless mode (which is
+		 * also why round 1's two pairs came out byte-identical), so a shutter
+		 * cannot win this race either. QA round 1's DOM trace measured the mark at
+		 * +56 ms on their rig, where the row outlived the answer; the JSOM test
+		 * pins its rendering, and the Storybook cell `wake-cancel-cancelled`
+		 * captures it in a rendered browser. What this run does capture is the two
+		 * states either side of it: the in-flight verb (a real shot, the DELETE's
+		 * answer held by the relay) and the dropped row.
+		 */
+		const deleteLanded = await until(
+			async () =>
+				relayLines().some(
+					(line) => line.startsWith("DELETE ") && line.includes(WAKE) && /-> 2\d\d/.test(line),
+				),
+			12_000,
+		);
+		record("delete answered (relay log)", { deleteLanded });
+		/*
+		 * The churn itself, sampled across the re-read: the section's OWN row
+		 * count and the card/note predicates, four 80 ms samples deep (the trace
+		 * the round-1 set carried).
+		 */
+		record("churn trace", await pollTrace(1_200));
+		record("page trace (secondary)", await evaluate(`(() => {
+			window.clearInterval(window.__wakeSampler);
+			return { ticks: window.__wakeSamples.length, last: window.__wakeSamples.slice(-1)[0] };
+		})()`));
+		await setRelay({ listDelayMs: 0, deleteDelayMs: 0, eventsDelayMs: 0 });
+		const gone = await until(
+			async () => evaluate(`document.querySelector(${JSON.stringify(target)}) === null`),
+			30_000,
+		);
+		record("row dropped by the re-read", { gone });
+		await capture("cancel-gone");
+		record("relay log", relayLines().slice(-8));
+		recordWire("cancel delete", /DELETE \/v1\/desktop\/wakes\//);
+		return;
+	}
+	/*
+	 * The unheld path: one press, the receipt, the re-read — with the trace as
+	 * the only record of the two windows, because they are shorter than a capture
+	 * (the relay branch above is what makes frames of them).
+	 */
 	await press(`[data-wake-cancel="${WAKE}"]`);
 	const trace = await pollTrace();
 	record("churn trace", trace);
-	await capture("cancel-receipt");
+	/*
+	 * No `Cancelled` frame is claimed on this path either: the same measurement
+	 * as the relay branch's (the row outlives neither the settle nor the capture
+	 * path here), and the one-press receipt is covered by the jsdom test and the
+	 * design's `wake-cancel-cancelled` cell.
+	 */
 	const gone = await until(
-		async () => evaluate(`document.querySelector(${JSON.stringify(target)}) === null`),
+		async () =>
+			evaluate(`document.querySelector(${JSON.stringify(target)}) === null`),
 		30_000,
 	);
 	record("row dropped by the re-read", { gone });
@@ -529,7 +727,8 @@ const runRefusal = async () => {
 	}
 	await press(`[data-wake-cancel="${WAKE}"]`);
 	await until(
-		async () => evaluate(`document.querySelector("[data-wake-cancel-note]") !== null`),
+		async () =>
+			evaluate(`document.querySelector("[data-wake-cancel-note]") !== null`),
 		20_000,
 	);
 	await capture("refusal-sentence");
@@ -583,12 +782,87 @@ const runAida = async () => {
 	await until(async () => (await readCard()) !== null, 20_000);
 	await press("[data-wake-confirm-action]");
 	const gone = await until(
-		async () => evaluate(`document.querySelector(${JSON.stringify(target)}) === null`),
+		async () =>
+			evaluate(`document.querySelector(${JSON.stringify(target)}) === null`),
 		30_000,
 	);
 	record("her wake cancelled", { gone });
 	await capture("aida-cancelled");
 	recordWire("her cancel delete", /DELETE \/v1\/desktop\/wakes\//);
+};
+
+/**
+ * A one-off instrument check (not a first-class scenario): does the page-side
+ * sampler see the same DOM the direct evaluates do? Installs the sampler, reads
+ * the controls directly twice around a second of ticks, and prints both - the
+ * run that this exists for is the cancel receipt, whose first page trace showed
+ * `ids: [w1]` while a direct check a moment earlier showed `[w1, w2]`.
+ */
+const runProbeCancel = async () => {
+	await openSessionPane(SESSION);
+	const direct = () =>
+		evaluate(`(() => {
+			const ids = [...document.querySelectorAll("[data-wake-cancel]")].map((e) => e.getAttribute("data-wake-cancel"));
+			return { ids, rows: document.querySelectorAll("[data-run-panel-row]").length };
+		})()`);
+	record("direct before", await direct());
+	record(
+		"targets",
+		await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json().then((list) =>
+			list
+				.filter((entry) => entry.type === "page")
+				.map((entry) => ({ id: entry.id, url: entry.url, title: entry.title })),
+		),
+	);
+	record(
+		"doc marker (set)",
+		await evaluate(`(() => {
+			window.__probeDocId = (window.__probeDocId ?? 0) + 1;
+			window.__probeDocName = document.title + ":" + window.__probeDocId;
+			return window.__probeDocName;
+		})()`),
+	);
+	await evaluate(`(() => {
+		window.__probeSamples = [];
+		window.__probeSampler = window.setInterval(() => {
+			const ids = [...document.querySelectorAll("[data-wake-cancel]")].map((e) => e.getAttribute("data-wake-cancel"));
+			const frames = [...document.querySelectorAll("iframe")].map((f) => {
+				try {
+					return [...f.contentDocument.querySelectorAll("[data-wake-cancel]")].map((e) => e.getAttribute("data-wake-cancel"));
+				} catch (error) {
+					return "cross-origin:" + String(error).slice(0, 40);
+				}
+			});
+			window.__probeSamples.push({
+				t: Date.now(),
+				ids,
+				doc: window.__probeDocName,
+				name: window.name,
+				frames,
+				driver: typeof window.__loDevDriver,
+				rows: document.querySelectorAll("[data-run-panel-row]").length,
+			});
+		}, 40);
+		return true;
+	})()`);
+	await wait(1_000);
+	record(
+		"doc marker (read back)",
+		await evaluate(`window.__probeDocName`),
+	);
+	record("direct after", await direct());
+	/*
+	 * THE PRESS, SAMPLED. From here on the probe is the cancel scenario with the
+	 * trace kept WHOLE: the question it answers is exactly when the pressed row
+	 * leaves the DOM relative to the answer, with no capture in the way.
+	 */
+	await press(`[data-wake-cancel="${WAKE}"]`);
+	await wait(4_000);
+	record("direct after press", await direct());
+	record("sampler", await evaluate(`(() => {
+		window.clearInterval(window.__probeSampler);
+		return window.__probeSamples;
+	})()`));
 };
 
 /**
@@ -605,7 +879,10 @@ const runLiveRefusal = async () => {
 	const composer = '[data-tour-tag="chat-input-textarea"] textarea';
 	if (
 		!(await until(
-			async () => evaluate(`document.querySelector(${JSON.stringify(composer)}) !== null`),
+			async () =>
+				evaluate(
+					`document.querySelector(${JSON.stringify(composer)}) !== null`,
+				),
 			20_000,
 		))
 	)
@@ -679,7 +956,8 @@ const runLiveRefusal = async () => {
 		throw new Error(`the armed row ${minted} never came on screen`);
 	await press(`[data-wake-cancel="${minted}"]`);
 	const refused = await until(
-		async () => evaluate(`document.querySelector("[data-wake-cancel-note]") !== null`),
+		async () =>
+			evaluate(`document.querySelector("[data-wake-cancel-note]") !== null`),
 		20_000,
 	);
 	record("live refusal rendered", { refused });
@@ -703,6 +981,7 @@ try {
 	else if (SCENARIO === "refusal") await runRefusal();
 	else if (SCENARIO === "live-refusal") await runLiveRefusal();
 	else if (SCENARIO === "aida") await runAida();
+	else if (SCENARIO === "probe-cancel") await runProbeCancel();
 	else if (SCENARIO === "before") await runBefore();
 	else throw new Error(`unknown scenario ${SCENARIO}`);
 
@@ -715,7 +994,11 @@ try {
 	 * the wrapper records: the DELETE in the ISOLATED daemon's log, and the
 	 * operator's store unchanged.
 	 */
-	record("isolation", { apiBaseUrl: await evaluate("window.__loDevDriver.outDir ?? null") ? API : API });
+	record("isolation", {
+		apiBaseUrl: (await evaluate("window.__loDevDriver.outDir ?? null"))
+			? API
+			: API,
+	});
 } catch (error) {
 	record("failure", { message: String(error?.message ?? error) });
 	process.exitCode = 1;

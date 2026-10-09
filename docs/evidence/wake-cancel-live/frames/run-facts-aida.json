@@ -2,7 +2,7 @@
   "scenario": "aida",
   "tree": "/Users/damian/local-operator-ui-worktrees/wake-cancel-pane",
   "api": "http://127.0.0.1:8080",
-  "scratch": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/wake-cancel-rig-mJMOsD",
+  "scratch": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/wake-cancel-rig-v5U9nS",
   "steps": [
     {
       "label": "hello",
@@ -75,7 +75,7 @@
         "rows": [
           {
             "id": "w1",
-            "text": "5:58 PM EDT· every 4h4-hourly proactive check-in (operator-set cadence)4-hourly proactive check-in (operator-set cadence)Cancel"
+            "text": "9:49 PM EDT· every 4h4-hourly proactive check-in (operator-set cadence)4-hourly proactive check-in (operator-set cadence)Cancel"
           },
           {
             "id": "aida-cadence",
@@ -92,7 +92,7 @@
         ],
         "notes": [],
         "managed": [
-          "managed by AidaThis wake is managed by Aida: her engine re-arms it, so the app does not offer a cancel here. To stop her check-ins, pause her with /aida pause."
+          "managed by Aida"
         ],
         "retiredFooter": false
       }
@@ -130,7 +130,7 @@
       "label": "card",
       "body": {
         "label": "Cancel Aida's check-in?",
-        "text": "Cancel Aida's check-in?“4-hourly proactive check-in (operator-set…” will not fire again, and nothing re-creates it. Aida's own cadence is unaffected.KeepCancel check-in",
+        "text": "Cancel Aida's check-in?“4-hourly proactive check-in…” will not fire again, and nothing re-creates it. Aida's own cadence is unaffected.KeepCancel check-in",
         "refusal": "",
         "open": true
       }
@@ -161,7 +161,9 @@
     {
       "label": "keep sent nothing",
       "body": {
-        "deletesInDaemonLog": 7
+        "before": 14,
+        "after": 14,
+        "sent": 0
       }
     },
     {
@@ -204,14 +206,21 @@
     {
       "label": "her cancel delete (daemon log)",
       "body": [
-        "INFO:     127.0.0.1:55499 - \"DELETE /v1/desktop/wakes/1701e6fc975c/nope HTTP/1.1\" 422 Unprocessable Content",
-        "INFO:     127.0.0.1:55726 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
-        "INFO:     127.0.0.1:56210 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
-        "INFO:     127.0.0.1:56868 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
-        "INFO:     127.0.0.1:57467 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
-        "INFO:     127.0.0.1:59409 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
-        "INFO:     127.0.0.1:60352 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
-        "INFO:     127.0.0.1:60900 - \"DELETE /v1/desktop/wakes/1701e6fc975c/w1 HTTP/1.1\" 200 OK"
+        "INFO:     127.0.0.1:58068 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:60860 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:62522 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:63047 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:63654 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:49795 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:51011 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:51640 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:53003 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:55406 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:56544 - \"DELETE /v1/desktop/wakes/d02c4b26212c/w2 HTTP/1.1\" 200 OK",
+        "INFO:     127.0.0.1:57061 - \"DELETE /v1/desktop/wakes/1701e6fc975c/w1 HTTP/1.1\" 404 Not Found",
+        "INFO:     127.0.0.1:57858 - \"DELETE /v1/desktop/wakes/1701e6fc975c/w1 HTTP/1.1\" 404 Not Found",
+        "INFO:     127.0.0.1:57858 - \"DELETE /v1/desktop/wakes/1701e6fc975c/aida-cadence HTTP/1.1\" 422 Unprocessable Content",
+        "INFO:     127.0.0.1:58257 - \"DELETE /v1/desktop/wakes/1701e6fc975c/w1 HTTP/1.1\" 200 OK"
       ]
     },
     {
@@ -222,45 +231,45 @@
     }
   ],
   "appLog": [
-    "14:11:00.753 › Unpackaged instance: no packaged install state to leave alone.",
-    "14:11:00.753 › Periodic update checks scheduled (every 5 minutes)",
-    "14:11:00.754 › macOS auto-update requires app signing",
-    "14:11:00.754 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure",
-    "14:11:00.767 › [browser] denied a media permission request from (unknown origin)",
-    "14:11:00.768 › [browser] denied a media permission request from (unknown origin)",
-    "14:11:00.768 › [browser] denied a web-app-installation permission request from (unknown origin)",
-    "14:11:00.768 › [browser] denied a geolocation permission request from (unknown origin)",
+    "18:18:00.154 › macOS auto-update requires app signing",
+    "18:18:00.154 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure",
+    "18:18:00.171 › [browser] denied a media permission request from (unknown origin)",
+    "18:18:00.171 › [browser] denied a media permission request from (unknown origin)",
+    "18:18:00.171 › [browser] denied a web-app-installation permission request from (unknown origin)",
+    "18:18:00.171 › [browser] denied a geolocation permission request from (unknown origin)",
     "Error occurred in handler for 'mini-view:registration-get': Error: This window cannot read the hotkey registration.",
-    "    at /Users/damian/local-operator-ui-worktrees/wake-cancel-pane/out/main/index.js:43614:13",
+    "    at /Users/damian/local-operator-ui-worktrees/wake-cancel-pane/out/main/index.js:43638:13",
     "    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)",
     "    at Session.emit (node:events:514:28)",
-    "14:11:01.599 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf",
-    "14:11:01.602 › Checking for UI updates...",
-    "14:11:01.602 › Skip checkForUpdates because application is not packed and dev update config is not forced",
+    "18:18:00.834 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin:/Users/damian/.cargo/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin",
+    "18:18:00.835 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin:/Users/damian/.cargo/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin",
+    "18:18:00.891 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf",
+    "18:18:00.892 › Checking for UI updates...",
+    "18:18:00.893 › Skip checkForUpdates because application is not packed and dev update config is not forced",
     "Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'",
     "    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)",
     "    at Session.emit (node:events:514:28)",
     "Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'",
     "    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)",
     "    at Session.emit (node:events:514:28)",
-    "14:11:01.610 › [browser] denied a media permission request from (unknown origin)",
-    "14:11:01.610 › [browser] denied a media permission request from (unknown origin)",
-    "14:11:01.610 › [browser] denied a web-app-installation permission request from (unknown origin)",
-    "14:11:01.611 › [browser] denied a geolocation permission request from (unknown origin)",
-    "14:11:01.621 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)",
-    "14:11:01.623 › [browser] host on 127.0.0.1:60922 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/wake-cancel-rig-mJMOsD/profile/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))",
-    "(node:18663) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit",
+    "18:18:00.913 › [browser] denied a media permission request from (unknown origin)",
+    "18:18:00.914 › [browser] denied a media permission request from (unknown origin)",
+    "18:18:00.914 › [browser] denied a web-app-installation permission request from (unknown origin)",
+    "18:18:00.914 › [browser] denied a geolocation permission request from (unknown origin)",
+    "18:18:00.964 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)",
+    "18:18:00.967 › [browser] host on 127.0.0.1:58230 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/wake-cancel-rig-v5U9nS/profile/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))",
+    "(node:88932) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit",
     "(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)",
-    "14:11:02.258 › [browser] tab 1 navigated to about:blank",
+    "18:18:01.256 › [browser] tab 1 navigated to about:blank",
     "[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900",
-    "14:11:03.759 › Checking for updates... (silent mode: true)",
-    "14:11:03.759 › Skip checkForUpdates because application is not packed and dev update config is not forced",
-    "14:11:03.760 › Checking for backend updates... (silent mode: true)",
-    "14:11:03.760 › Skip backend update check in dev mode unless forced",
-    "14:11:10.729 › Backend health check response status: 200",
-    "14:11:15.758 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.",
-    "14:11:20.768 › Backend health check response status: 200",
-    "14:11:30.750 › Backend health check response status: 200",
+    "18:18:03.155 › Checking for updates... (silent mode: true)",
+    "18:18:03.155 › Skip checkForUpdates because application is not packed and dev update config is not forced",
+    "18:18:03.156 › Checking for backend updates... (silent mode: true)",
+    "18:18:03.156 › Skip backend update check in dev mode unless forced",
+    "18:18:10.130 › Backend health check response status: 200",
+    "18:18:15.154 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.",
+    "18:18:20.131 › Backend health check response status: 200",
+    "18:18:30.131 › Backend health check response status: 200",
     ""
   ]
 }
