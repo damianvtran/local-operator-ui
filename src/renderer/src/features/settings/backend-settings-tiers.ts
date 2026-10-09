@@ -137,13 +137,20 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	"keymap.quick_send": "core",
 	// approvals (1)
 	tool_approval_mode: "core",
-	// session (6)
+	// session (1), session_cleanup (5), session_delegated (2)
 	auto_save_conversation: "core",
 	"session.cleanup.enabled": "core",
 	"session.cleanup.max_sessions": "advanced",
 	"session.cleanup.max_inactive_days": "advanced",
 	"session.cleanup.max_total_bytes": "advanced",
 	"session.cleanup.remove_empty": "advanced",
+	// The delegated class is on by default and deletes data without being asked
+	// each time, so BOTH rows are everyday: the switch's label states the choice,
+	// and the window is the one number that choice depends on. The authoring
+	// rule's "tuning scalar" exclusion is about values nobody can reason about;
+	// this one is a duration with named stops, built so a reader can.
+	"session.cleanup.delegated.enabled": "core",
+	"session.cleanup.delegated.max_age_hours": "core",
 	// runtime (2)
 	"runtime.background_on_resume": "advanced",
 	"runtime.unattended_gate_timeout": "advanced",
