@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import {
 	BrowserWindow,
+	type BrowserWindowConstructorOptions,
 	Menu,
 	app,
 	dialog,
@@ -114,6 +115,7 @@ import { ViewerRecordPublisher } from "./viewer-record";
 import { attachWindowChrome, resolveLaunchWindowChrome } from "./window-chrome";
 import { openVettedExternal, popupVerdict } from "./window-guards";
 import {
+	guardDownloads,
 	guardNavigation,
 	guardPermissions,
 	guardPreviewResponses,
@@ -742,6 +744,34 @@ const openExternalVetted = (raw: unknown): Promise<boolean> =>
 		(message) => logger.warn(message, LogFileType.BACKEND),
 	);
 
+/**
+ * The sign-in popup's window options, supplied to `guardWindowOpen` at every
+ * install site - the main window and the mini view. ONE spelling, because the
+ * two guards must create the same window; the values themselves are unchanged
+ * from the pre-guard handler.
+ */
+const authPopupWindowOptions: BrowserWindowConstructorOptions = {
+	width: 800,
+	height: 700, // Increased height for better visibility
+	minWidth: 600,
+	minHeight: 500,
+	center: true,
+	frame: true,
+	autoHideMenuBar: false,
+	backgroundColor: "#FFFFFF",
+	webPreferences: {
+		contextIsolation: true,
+		nodeIntegration: false,
+		webSecurity: true,
+		allowRunningInsecureContent: false,
+		sandbox: true, // Enable sandbox for additional security
+		// Disable various features that aren't needed for auth
+		enableWebSQL: false,
+		navigateOnDragDrop: false,
+		spellcheck: false,
+	},
+};
+
 function createWindow(
 	initialSession: string | null = null,
 	openCatalogue = false,
@@ -1027,27 +1057,7 @@ function createWindow(
 		mainWindow.webContents,
 		popupVerdict,
 		openExternalVetted,
-		{
-			width: 800,
-			height: 700, // Increased height for better visibility
-			minWidth: 600,
-			minHeight: 500,
-			center: true,
-			frame: true,
-			autoHideMenuBar: false,
-			backgroundColor: "#FFFFFF",
-			webPreferences: {
-				contextIsolation: true,
-				nodeIntegration: false,
-				webSecurity: true,
-				allowRunningInsecureContent: false,
-				sandbox: true, // Enable sandbox for additional security
-				// Disable various features that aren't needed for auth
-				enableWebSQL: false,
-				navigateOnDragDrop: false,
-				spellcheck: false,
-			},
-		},
+		authPopupWindowOptions,
 		(m) => logger.warn(m, LogFileType.BACKEND),
 	);
 
@@ -1944,13 +1954,21 @@ app
 		 *
 		 * - permissions: deny by default (Electron otherwise approves EVERYTHING,
 		 *   for any frame), granting only what the app's own documents use.
-		 * - the HTML preview route gets a CSP and nosniff on its RESPONSE, because
-		 *   the daemon serves it bare and that route is another repository's.
+		 * - the backend's static serve family gets a CSP and nosniff on its
+		 *   RESPONSE, because the daemon serves it bare and that module is another
+		 *   repository's.
+		 * - downloads: deny by default (security review S-4) - an unhandled
+		 *   `will-download` runs the save routine, so without this any script that
+		 *   reaches an app document could start a download; the app's own export
+		 *   blobs are the one class kept (they keep the ordinary save dialog).
 		 */
 		guardPermissions(session.defaultSession, trustedRendererDocuments, (m) =>
 			logger.warn(m, LogFileType.BACKEND),
 		);
 		guardPreviewResponses(session.defaultSession);
+		guardDownloads(session.defaultSession, trustedRendererDocuments, (m) =>
+			logger.warn(m, LogFileType.BACKEND),
+		);
 
 		// Smoke-test hook for the npx sanity check in CI. Reaching this point
 		// proves what the old check only assumed: the main bundle actually loaded
@@ -2363,7 +2381,7 @@ app
 			windowMode: windowLaunch.mode,
 		});
 		if (hotkeysAllowed(windowLaunch.mode) || miniViewExerciser) {
-			miniView = createMiniView({
+			const quickSend = createMiniView({
 				url: miniViewUrlFor(rendererUrl),
 				preloadPath: join(__dirname, "../preload/index.js"),
 				show: windowLaunch.show,
@@ -2385,6 +2403,29 @@ app
 				}).mode,
 				report: reportRaise,
 			});
+			miniView = quickSend;
+			/*
+			 * THE MINI VIEW IS A MAIN WINDOW TOO (security review S-3): it carries
+			 * the app preload and `sandbox: false` and received none of the guards
+			 * above, so the next content surface mounted there - not the composer
+			 * that mounts today - would inherit an unguarded window with a bridge.
+			 * Navigation and popups are per-webContents; permissions and downloads
+			 * are already covered because it shares `session.defaultSession`. The
+			 * initial load is `createMiniView`'s own `loadURL`, which Electron does
+			 * not emit navigation events for, so attaching here cannot miss it.
+			 */
+			guardNavigation(
+				quickSend.window.webContents,
+				trustedRendererDocuments,
+				(m) => logger.warn(m, LogFileType.BACKEND),
+			);
+			guardWindowOpen(
+				quickSend.window.webContents,
+				popupVerdict,
+				openExternalVetted,
+				authPopupWindowOptions,
+				(m) => logger.warn(m, LogFileType.BACKEND),
+			);
 		}
 		if (hotkeysAllowed(windowLaunch.mode)) {
 			const initial = readQuickSendValue();

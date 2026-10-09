@@ -49,7 +49,9 @@ test("only http(s) and mailto: reach the OS, as the PARSED href", () => {
 		assert.equal(v.url, expected ?? raw);
 	};
 	ok("https://example.com/a?b=c#d");
-	ok("http://127.0.0.1:1111/x");
+	ok("https://8.8.8.8/x");
+	// 172.32.0.1 is outside 172.16/12; the range check must not reach it.
+	ok("https://172.32.0.1/");
 	ok("mailto:a@example.com?subject=hi");
 	// The parsed href is what is handed over, not the caller's spelling.
 	ok("  https://EXAMPLE.com  ", "https://example.com/");
@@ -73,6 +75,26 @@ test("everything else is refused, each by a named reason", () => {
 		[undefined, /not a string/],
 		[{ href: "https://example.com" }, /not a string/],
 		[`https://example.com/${"a".repeat(20000)}`, /too long/],
+		// Loopback and private-network targets (security review S-5): the
+		// user's browser must not be steered at local services.
+		["http://127.0.0.1:1111/x", /loopback or private/],
+		["http://127.1/", /loopback or private/],
+		["http://2130706433/", /loopback or private/],
+		["http://0x7f.0.0.1/", /loopback or private/],
+		["http://0177.0.0.1/", /loopback or private/],
+		["http://localhost/", /loopback or private/],
+		["http://localhost.:9/", /loopback or private/],
+		["http://sub.localhost/", /loopback or private/],
+		["http://10.0.0.5/", /loopback or private/],
+		["http://172.16.0.1/", /loopback or private/],
+		["http://172.31.255.254/", /loopback or private/],
+		["http://192.168.1.1/", /loopback or private/],
+		["http://169.254.169.254/latest/meta-data", /loopback or private/],
+		["http://0.0.0.0/", /loopback or private/],
+		["https://[::1]:8443/x", /loopback or private/],
+		["http://[::ffff:127.0.0.1]/x", /loopback or private/],
+		["http://[fe80::1]/x", /loopback or private/],
+		["http://[fd12:3456:789a::1]/x", /loopback or private/],
 	];
 	for (const [raw, reason] of refused) {
 		const v = guards.externalUrlVerdict(raw);
@@ -139,6 +161,8 @@ test("sign-in providers still get the sandboxed popup; lookalikes do not", () =>
 		"https://attacker.test/storagerelay",
 		"https://evilaccounts.google.com/",
 		"https://microsoftonline.com.attacker.test/",
+		// The right host with a non-default port is not the provider (S-2).
+		"https://accounts.google.com:8443/x",
 		"http://accounts.google.com/",
 		"https://user:pw@accounts.google.com/",
 	];
@@ -171,6 +195,40 @@ test("a non-auth window.open becomes a vetted external open or nothing", () => {
 	}
 });
 
+test("a created sign-in popup may travel only its own hosts and relays", () => {
+	const allowed = [
+		"about:blank",
+		"https://accounts.google.com/o/oauth2/v2/auth?client_id=x",
+		"https://sub.accounts.google.com/x",
+		"https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+		"storagerelay://https/localhost?id=auth1",
+		"msauth://com.local-operator/callback",
+		"msftauth://x",
+	];
+	for (const url of allowed)
+		assert.deepEqual(
+			guards.popupNavigationVerdict(url),
+			{ allowed: true },
+			url,
+		);
+
+	const denied = [
+		["file:///etc/hosts", /file:/],
+		["http://accounts.google.com/", /http:/],
+		["https://attacker.test/", /https:/],
+		["https://accounts.google.com.attacker.test/", /https:/],
+		["https://accounts.google.com:8443/x", /https:/],
+		["javascript:alert(1)", /javascript:/],
+		["data:text/html,x", /data:/],
+		["not a url", /not a URL/],
+	];
+	for (const [url, reason] of denied) {
+		const v = guards.popupNavigationVerdict(url);
+		assert.equal(v.allowed, false, url);
+		assert.match(v.reason, reason);
+	}
+});
+
 /** A fake `WebContents` recording what the guards installed. */
 const fakeContents = () => {
 	const listeners = new Map();
@@ -190,6 +248,10 @@ const fakeContents = () => {
 			return e;
 		},
 		open: (url) => openHandler({ url }),
+		emitCreateWindow: (child, details = {}) => {
+			for (const fn of listeners.get("did-create-window") ?? [])
+				fn({ webContents: child }, details);
+		},
 		listened: (event) => (listeners.get(event) ?? []).length,
 	};
 };
@@ -226,6 +288,32 @@ test("guardWindowOpen: auth keeps its options, external goes through the injecte
 		"https://accounts.google.com.attacker.test/",
 	]);
 	assert.match(logs.join("\n"), /denied window\.open: scheme file:/);
+
+	// The auth popup's own webContents gets its guard the moment it exists
+	// (security review S-2): its navigation is vetted and nested windows are
+	// denied outright.
+	const popup = fakeContents();
+	contents.emitCreateWindow(popup);
+	assert.equal(popup.listened("will-frame-navigate"), 1);
+	assert.equal(popup.listened("will-redirect"), 1);
+	const strayed = popup.emit("will-frame-navigate", {
+		url: "file:///etc/hosts",
+		isMainFrame: true,
+		isSameDocument: false,
+	});
+	assert.equal(strayed.defaultPrevented, true);
+	assert.match(
+		logs.join("\n"),
+		/blocked main-frame navigation to file:\/\/\/etc\/hosts/,
+	);
+	const travelled = popup.emit("will-frame-navigate", {
+		url: "https://accounts.google.com/o/oauth2/auth",
+		isMainFrame: true,
+		isSameDocument: false,
+	});
+	assert.equal(travelled.defaultPrevented, false);
+	assert.deepEqual(popup.open("https://anything.test/"), { action: "deny" });
+	assert.match(logs.join("\n"), /denied window\.open from the sign-in popup/);
 });
 
 // --- navigation ---------------------------------------------------------------
@@ -486,20 +574,35 @@ test("guardPermissions installs BOTH handlers and answers through the rule", () 
 
 // --- the preview's response policy ---------------------------------------------
 
-test("only the backend's preview route gets the preview policy", () => {
+test("the whole static serve family gets the policy, however the path is spelled", () => {
 	for (const url of [
 		"http://127.0.0.1:1111/v1/static/html?path=%2Ftmp%2Fa.html",
 		"http://localhost:9/v1/static/html",
+		// Security review S-1's repro: the core routes on the DECODED path.
+		"http://127.0.0.1:1111/v1/static/htm%6c?path=%2Ftmp%2Fa.html",
+		// The other encoding shapes a literal compare misses.
+		"http://127.0.0.1:1111/v1/static%2Fhtml?path=x",
+		"http://127.0.0.1:1111/v1/st%61tic/html",
+		"http://127.0.0.1:1111/v1/static/%2568tml",
+		"http://127.0.0.1:1111/V1/STATIC/HTML",
+		// Every sibling route inherits the policy: none can serve a scriptable
+		// document unpoliced (the S-1 second door was the SVG-capable images
+		// route).
+		"http://127.0.0.1:1111/v1/static/images?path=x.svg",
+		"http://127.0.0.1:1111/v1/static/videos?path=x.mp4",
+		"http://127.0.0.1:1111/v1/static/audio?path=x.mp3",
+		// A literal plus is a path character, not a space; still in the family.
+		"http://127.0.0.1:1111/v1/static/htm+l",
 	])
-		assert.equal(guards.isPreviewDocumentRequest(url), true, url);
+		assert.equal(guards.isStaticServeRequest(url), true, url);
 	for (const url of [
-		"http://127.0.0.1:1111/v1/static/images?path=x",
-		"http://127.0.0.1:1111/v1/static/html/extra",
+		"http://127.0.0.1:1111/v1/staticx/html",
+		"http://127.0.0.1:1111/v1/static",
 		"https://attacker.test/v1/static/html",
 		"file:///v1/static/html",
 		"nonsense",
 	])
-		assert.equal(guards.isPreviewDocumentRequest(url), false, url);
+		assert.equal(guards.isStaticServeRequest(url), false, url);
 });
 
 test("the preview CSP closes the loopback daemon, frames, forms and <base>", () => {
@@ -566,6 +669,31 @@ test("guardPreviewResponses rewrites only the preview route's headers", () => {
 	assert.deepEqual(answer.responseHeaders["Content-Security-Policy"], [
 		guards.PREVIEW_CSP,
 	]);
+	// The encoded path and a sibling route both carry it now (S-1).
+	listener(
+		{
+			url: "http://127.0.0.1:1111/v1/static/htm%6c?path=x",
+			responseHeaders: {},
+		},
+		(r) => {
+			answer = r;
+		},
+	);
+	assert.deepEqual(answer.responseHeaders["Content-Security-Policy"], [
+		guards.PREVIEW_CSP,
+	]);
+	listener(
+		{
+			url: "http://127.0.0.1:1111/v1/static/images?path=x.svg",
+			responseHeaders: {},
+		},
+		(r) => {
+			answer = r;
+		},
+	);
+	assert.deepEqual(answer.responseHeaders["Content-Security-Policy"], [
+		guards.PREVIEW_CSP,
+	]);
 	listener(
 		{ url: "http://127.0.0.1:1111/health", responseHeaders: {} },
 		(r) => {
@@ -573,6 +701,47 @@ test("guardPreviewResponses rewrites only the preview route's headers", () => {
 		},
 	);
 	assert.deepEqual(answer, {}, "every other response passes untouched");
+});
+
+// --- downloads -----------------------------------------------------------------
+
+test("downloads: deny by default, keep only the app's own export blob", () => {
+	const listeners = new Map();
+	const ses = {
+		on: (event, fn) =>
+			listeners.set(event, [...(listeners.get(event) ?? []), fn]),
+	};
+	const logs = [];
+	guards.guardDownloads(
+		ses,
+		() => TRUSTED,
+		(m) => logs.push(m),
+	);
+	const fire = (itemUrl, initiatorUrl) => {
+		const event = {
+			defaultPrevented: false,
+			preventDefault() {
+				this.defaultPrevented = true;
+			},
+		};
+		for (const fn of listeners.get("will-download") ?? [])
+			fn(event, { getURL: () => itemUrl }, { getURL: () => initiatorUrl });
+		return event.defaultPrevented;
+	};
+	// The app's exports (mermaid SVG, agent zip): a blob clicked from an app
+	// document; still reaches the ordinary save dialog. Both of the app's
+	// documents count (the dev-server spelling is trusted only when the launch
+	// actually loaded it, which is what `trustedRendererDocuments` carries).
+	assert.equal(fire("blob:file:///uuid-1234", APP_FILE), false);
+	assert.equal(fire("blob:file:///uuid-1234", MINI_FILE), false);
+	// Everything else is refused.
+	assert.equal(fire("https://attacker.test/x.dmg", APP_FILE), true);
+	assert.equal(fire("file:///etc/passwd", APP_FILE), true);
+	assert.equal(fire("data:text/plain,x", APP_FILE), true);
+	// A blob from a document that is not one of the app's is a foreign write.
+	assert.equal(fire("blob:file:///uuid-1234", "https://attacker.test/"), true);
+	assert.equal(fire("blob:file:///uuid-1234", ""), true);
+	assert.match(logs.join("\n"), /blocked a download/);
 });
 
 // --- source pins: the wiring and the sandbox attribute -------------------------
@@ -609,6 +778,7 @@ test("the main process installs every guard, before the first load", () => {
 		"guardWindowOpen(",
 		"guardPermissions(session.defaultSession",
 		"guardPreviewResponses(session.defaultSession",
+		"guardDownloads(session.defaultSession",
 	])
 		assert.ok(src.includes(call), `index.ts must call ${call}`);
 	const guardAt = src.indexOf("guardNavigation(mainWindow.webContents");
@@ -623,6 +793,16 @@ test("the main process installs every guard, before the first load", () => {
 		src.indexOf("setWindowOpenHandler") === -1,
 		"the popup policy is guardWindowOpen's; a second handler here would be a second answer",
 	);
+	// Security review S-3: the mini view must carry both per-webContents
+	// guards too.
+	assert.match(src, /guardNavigation\(\s*quickSend\.window\.webContents/);
+	assert.match(src, /guardWindowOpen\(\s*quickSend\.window\.webContents/);
+});
+
+test("the sign-in popup is guarded at creation, with the auth travel rules", () => {
+	const src = code("src/main/window-guards-electron.ts");
+	assert.match(src, /did-create-window/);
+	assert.match(src, /guardPopupNavigation\(window\.webContents/);
 });
 
 test("shell.openExternal is reached only through the vetted door in the main window's paths", () => {
