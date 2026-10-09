@@ -6,6 +6,7 @@ import {
 import type {
 	InstallFailure,
 	InstallPhase,
+	InstallTiming,
 } from "../../../../shared/install-progress";
 
 /**
@@ -48,9 +49,20 @@ export type InstallView = {
 	installed: boolean;
 	/** Present when the install failed; carries the phase and the reason. */
 	failure: InstallFailure | null;
+	/**
+	 * The main process's clock and sub-progress for the running phase, when the
+	 * payload carried them (first-run onboarding, U8/Q5). Null from an older main
+	 * process, and the panel then shows the step counter without a clock.
+	 */
+	timing: InstallTiming | null;
 };
 
-const INITIAL: InstallView = { phase: null, installed: false, failure: null };
+const INITIAL: InstallView = {
+	phase: null,
+	installed: false,
+	failure: null,
+	timing: null,
+};
 
 /**
  * Read the installer window's state off the main process's channel.
@@ -85,7 +97,12 @@ export function useInstallProgress(): {
 				const payload = args[0];
 				if (!isInstallProgressPayload(payload)) return;
 				if (payload.kind === "installed") {
-					setView({ phase: "verify", installed: true, failure: null });
+					setView({
+						phase: "verify",
+						installed: true,
+						failure: null,
+						timing: null,
+					});
 					return;
 				}
 				if (payload.kind === "failed") {
@@ -93,6 +110,7 @@ export function useInstallProgress(): {
 						phase: payload.failure.phase,
 						installed: false,
 						failure: payload.failure,
+						timing: null,
 					});
 					return;
 				}
@@ -100,6 +118,18 @@ export function useInstallProgress(): {
 					phase: payload.phase ?? null,
 					installed: false,
 					failure: null,
+					// The validator admitted the four fields together or not at all.
+					timing:
+						payload.startedAt !== undefined &&
+						payload.phaseStartedAt !== undefined &&
+						payload.platform !== undefined
+							? {
+									startedAt: payload.startedAt,
+									phaseStartedAt: payload.phaseStartedAt,
+									platform: payload.platform,
+									sub: payload.sub ?? null,
+								}
+							: null,
 				});
 			},
 		);

@@ -3,7 +3,7 @@ import {
 	useOnboardingStore,
 } from "@shared/store/onboarding-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useLayoutEffect } from "react";
+import { type ReactNode, useLayoutEffect } from "react";
 /* Also imported by the Storybook preview; kept here so the file is honest
    about what it needs to render, and so it renders if run in isolation. */
 import "../../../styles/index.css";
@@ -14,7 +14,7 @@ import { OnboardingModal } from "./onboarding-modal";
  *
  * ## Why every step has its own story
  *
- * The flow is six screens. Pacing is a property of the sequence, and you
+ * The flow is three screens and a conversation. Pacing is a property of the sequence, and you
  * cannot judge a sequence you can only enter at one end.
  *
  * ## Why `data-theme` goes on `documentElement`
@@ -67,5 +67,101 @@ export const DefaultModel: Story = {
 	args: { step: OnboardingStep.DEFAULT_MODEL },
 };
 
-/** Step 3: name and web search, both optional. */
+/** Step 3 against a backend WITHOUT Aida: web search, then "Finish". */
 export const Extras: Story = { args: { step: OnboardingStep.EXTRAS } };
+
+/*
+ * A desktop transport that answers the two reads the last step makes about her:
+ * the capability (`features.aida`) and her status document with a configured
+ * name. Installed per render and restored on unmount, for the reason
+ * `provider-setup.stories.tsx` gives beside its own bridge. Any other op is a
+ * loud failure rather than a quiet spinner.
+ */
+const AidaBridge = ({
+	name,
+	greetingState,
+	children,
+}: {
+	name: string;
+	/**
+	 * The ledger's state word, when the story is about it. OMITTED BY DEFAULT so
+	 * the fixtures that predate the ledger photograph the tolerant path - an older
+	 * backend's payload keeps the sentence that shipped.
+	 */
+	greetingState?: string | null;
+	children: ReactNode;
+}): ReactNode => {
+	useLayoutEffect(() => {
+		const page = window as unknown as {
+			api?: { desktop?: { request: (r: { op: string }) => Promise<unknown> } };
+		};
+		const api = page.api ?? {};
+		page.api = api;
+		const previous = api.desktop;
+		api.desktop = {
+			request: async (request) => {
+				const ok = (result: unknown) => ({ status: 200, body: { result } });
+				switch (request.op) {
+					case "capabilities":
+						return ok({
+							desktop_contract: 1,
+							desktop_available: true,
+							desktop_auth: "bearer",
+							features: { auth: 1, aida: 1 },
+						});
+					case "aida.status":
+						return ok({
+							enabled: true,
+							session_id: null,
+							paused: false,
+							greeted: greetingState === "delivered",
+							...(greetingState ? { greeting_state: greetingState } : {}),
+							name,
+						});
+					case "providers.list":
+						return ok({ providers: [] });
+					default:
+						throw new Error(
+							`unexpected desktop op in this story: ${request.op}`,
+						);
+				}
+			},
+		};
+		return () => {
+			api.desktop = previous;
+		};
+	}, [name, greetingState]);
+	return children;
+};
+
+/**
+ * Step 3 when setup ends in her conversation (first-run onboarding, U1/D12):
+ * "Next: meet <name>" says what the primary does before it is pressed, the
+ * primary reads "Meet <name>" with her LIVE name (here a renamed one, so the
+ * frame proves it is read rather than spelled), and the ghost names where it
+ * goes - "Skip to chat".
+ */
+export const ExtrasMeetAida: Story = {
+	args: { step: OnboardingStep.EXTRAS },
+	render: ({ step }) => (
+		<AidaBridge name="Ada">
+			<OnboardingFrame step={step} />
+		</AidaBridge>
+	),
+};
+
+/**
+ * Step 3 on an install whose greeting is already SETTLED - delivered, or skipped
+ * by someone who chose not to be greeted: the preview states what the button
+ * does and does not promise a first hello the user has already had (code review
+ * round 1's contract addendum, point 1; `aidaOwesGreeting`). The ledger word
+ * arrives on the same status document the name does.
+ */
+export const ExtrasMeetAidaDelivered: Story = {
+	args: { step: OnboardingStep.EXTRAS },
+	render: ({ step }) => (
+		<AidaBridge name="Ada" greetingState="delivered">
+			<OnboardingFrame step={step} />
+		</AidaBridge>
+	),
+};
