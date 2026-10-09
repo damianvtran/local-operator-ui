@@ -66,6 +66,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	FEATURED_PROVIDER_IDS,
 	GROUP_HEADINGS,
+	PROVIDER_DIALOG_GROUP_ORDER,
+	PROVIDER_PAGE_GROUP_ORDER,
 	type ProviderGroup,
 	RECOMMENDED_PROVIDER_ID,
 	addRowMeta,
@@ -855,25 +857,13 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	};
 
 	/*
-	 * WHICH GROUP LEADS DEPENDS ON THE SURFACE (design round 1, D1), and the
-	 * reason is the disclosure's own promise.
-	 *
-	 * In the dialog the trigger line names the local runtimes (`More providers:
-	 * xAI, OpenRouter, DeepSeek, local models and 6 more`), and they used to be
-	 * the LAST group — so opening the panel at the app's shipped 1380x900 window
-	 * left them below the fold under a footer that reads as the end of the list,
-	 * i.e. the one thing the trigger had just promised read as absent. First-run
-	 * is also exactly where a local model is a real answer (no account, nothing
-	 * to paste), so they lead here.
-	 *
-	 * The full page keeps the shipped order, which is the order the TUI's own
-	 * setup splash mirrors — a divergence this dialog owns deliberately rather
-	 * than a new convention: the dialog is the only surface whose heading promises
-	 * a group by name.
+	 * Which group leads depends on the surface; both orders live in the catalog
+	 * beside the trigger that promises them, so the summary and the rows cannot
+	 * drift apart about what a reader meets first (design round 2, D8).
 	 */
-	const groupOrder: ProviderGroup[] = featuredOnly
-		? ["local", "subscription", "key"]
-		: ["subscription", "key", "local"];
+	const groupOrder = featuredOnly
+		? PROVIDER_DIALOG_GROUP_ORDER
+		: PROVIDER_PAGE_GROUP_ORDER;
 	const nothingMatches = groupOrder.every(
 		(group) => groups[group].length === 0,
 	);
@@ -1082,7 +1072,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 						 * bare "More providers" hid xAI, OpenRouter, DeepSeek and the local
 						 * runtimes from anyone who did not think to open it.
 						 */
-						summary={moreProvidersSummary(rest)}
+						summary={moreProvidersSummary(rest, groupOrder)}
 						defaultOpen={focusGroup !== null || initialProviderId !== null}
 						chevron="trailing"
 					>

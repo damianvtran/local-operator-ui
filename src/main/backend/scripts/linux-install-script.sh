@@ -148,16 +148,21 @@ check_connectivity() {
   fi
 }
 
-# Call connectivity check
-check_connectivity
-
 # The `python` stage (code review round 1, R1): this script owns the same stage
 # macOS gets from `managed-python.ts` and Windows from its own marker - finding
 # (and, where there is none, refusing to guess about) the interpreter everything
 # below runs on. Without it the panel opened on "Step 2 of 4" with the rail's
 # first row never lit. `|LO1:` lines are the app's milestone vocabulary
 # (`src/shared/install-progress.ts`), matched on the WHOLE line.
+#
+# THE MARKER PRECEDES THE CONNECTIVITY PROBE (code review round 2, N-2, whose
+# whole complaint was that the stage is announced after it): that probe can spend
+# up to 2 x 30 s on a dead network, and it is the first work this stage does - so
+# the panel says "Getting ready" while it waits instead of showing a step with no
+# clock and no estimate for a minute.
 echo "|LO1:python"
+check_connectivity
+
 if [ -n "${PYTHON_BIN:-}" ]; then
   log "Using Python executable provided by installer: ${PYTHON_BIN}"
   # Verify the provided Python binary works on this architecture

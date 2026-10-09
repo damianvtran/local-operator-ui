@@ -127,14 +127,14 @@ export const INSTALL_PHASE_DETAILS: Record<InstallPhase, string> = {
  * it rather than counting into negative numbers.
  *
  * WHERE EACH NUMBER COMES FROM (cold uv cache, the bundled uv 0.12.17):
- *  - darwin: `environment` 1.2 s, `components` 7.6 s this author measured and
- *    8.08 s QA measured independently (resolve 0.9 s, download 6.1 s, install
- *    0.1 s), and `verify` 3.3 s (`serve` until `/health`), measured on an M-series
- *    Mac on 2026-10-08 by running the shipped script and the smoke probe's own
- *    command; `python` is the managed runtime copy, 5-8 s cold as the UX round
- *    measured it (`prepareAndInstall`'s note). Every baseline is the MEASURED
- *    figure plus headroom, never the figure itself - see the note on the darwin
- *    entry below.
+ *  - darwin: `environment` 1.2-1.9 s in this author's cold runs and 1.55 / 1.9 /
+ *    3.72 s in QA's three (round 2, Q2-1), `components` 7.6 s this author measured,
+ *    8.08 s QA measured independently and 10.55-15.56 s on three cold runs at load
+ *    ~50 (resolve 0.9 s, download 6.1 s, install 0.1 s), and `verify` 3.3 s
+ *    (`serve` until `/health`), measured on an M-series Mac on 2026-10-08 by
+ *    running the shipped script and the smoke probe's own command; `python` is the
+ *    managed runtime copy, 5-8 s cold as the UX round measured it
+ *    (`prepareAndInstall`'s note).
  *  - win32: `environment` 6.4 s and `components` 8.9 s from the uv arm of the
  *    install-scripts CI job (run 36646304432); `python` is `uv python install`,
  *    3.6 s on the Mac above, doubled for a slower disk and network. `verify` is
@@ -145,6 +145,14 @@ export const INSTALL_PHASE_DETAILS: Record<InstallPhase, string> = {
  *    datacentre link; the Mac's 7.6 s is used for `components` instead, because
  *    a user's link is not a datacentre's.
  *
+ * EVERY BASELINE THAT CAN OVERRUN CARRIES HEADROOM (code review round 2, M-3,
+ * and QA round 2's Q2-1): the four network- or disk-bound entries sit at
+ * ~1.6-1.7x their measured figure, so a cold run on a slower link is inside its
+ * budget rather than at its edge. The two that do not are deliberate and named
+ * here rather than left for a reader to notice: `python` on win32 is already the
+ * doubled reading, and `verify` on win32/linux is the token half second that
+ * `prepareAndInstall` never waits out.
+ *
  * Rounded UP to the half second: an estimate that runs out early reads as a
  * stall, one that finishes early reads as a pleasant surprise.
  */
@@ -153,23 +161,60 @@ export const INSTALL_PHASE_BASELINE_MS: Record<
 	Record<InstallPhase, number>
 > = {
 	/*
-	 * `components` carries headroom because QA's independent cold measurement of
-	 * that phase was 8.08 s against the 8.0 s this used to hold, which flipped a
-	 * perfectly normal install to "taking longer than usual" underneath the same
-	 * screen's "less than a minute" (QA round 1, Q-1). It is 14 s now: 1.73x that
-	 * reading and 1.35x this author's own worst cold run (10.40 s), so the word
-	 * appears when the phase really has outrun its work rather than at the end of
-	 * every install.
+	 * `environment` 3 s, up from the 1.5 s this held: QA's cold runs were
+	 * 1.55 / 1.9 / 3.72 s, so the old figure overran on EVERY ordinary install -
+	 * the one phase whose whole budget had no margin (QA round 2, Q2-1).
+	 *
+	 * `components` 14 s, because QA's independent cold measurement of that phase
+	 * was 8.08 s against the 8.0 s this used to hold, which flipped a perfectly
+	 * normal install to "taking longer than usual" underneath the same screen's
+	 * "less than a minute" (QA round 1, Q-1): 1.73x that reading, 1.35x this
+	 * author's worst cold run (10.40 s), and above QA's slowest loaded reading
+	 * (15.56 s) only by way of the 1.5x threshold in `installEta`.
+	 *
+	 * `python` 6 s and `verify` 4 s are the 5-8 s the UX round measured and the
+	 * 3.3 s smoke probe, rounded up; neither has the 1.6x the four above carry,
+	 * and `verify`'s 4 s is also the value the frames' "about 3 s left" is derived
+	 * from.
 	 */
 	darwin: {
 		python: 6_000,
-		environment: 1_500,
+		environment: 3_000,
 		components: 14_000,
 		verify: 4_000,
 	},
-	win32: { python: 7_500, environment: 6_500, components: 9_000, verify: 500 },
-	linux: { python: 500, environment: 3_500, components: 8_000, verify: 500 },
+	/*
+	 * 1.6x the CI job's 6.4 s and 8.9 s. The datacentre runner is FASTER than a
+	 * user's machine and link, which is why these were the pair most likely to
+	 * overrun in the field (code review round 2, M-3): 6.5 s and 9 s were the
+	 * measured figures themselves, not a budget derived from them.
+	 */
+	win32: {
+		python: 7_500,
+		environment: 10_000,
+		components: 14_000,
+		verify: 500,
+	},
+	/*
+	 * `environment` 5 s against the CI job's 3.2 s, `components` 12 s against the
+	 * Mac's 7.6 s (the figure the linux entry already prefers over the
+	 * datacentre's 1 s). Same reasoning as win32 above.
+	 */
+	linux: { python: 500, environment: 5_000, components: 12_000, verify: 500 },
 };
+
+/**
+ * How far past its baseline a phase may run before the window says so, as a
+ * MULTIPLE rather than a millisecond (QA round 2, Q2-1).
+ *
+ * The baselines above already carry headroom, so firing the sentence at 1.0x
+ * turned ordinary load noise into "taking longer than usual" underneath the same
+ * screen's "This usually takes less than a minute." - the same contradiction
+ * round 1 removed for one phase, removed here from the rule itself. 1.5x a
+ * budget that is already ~1.6x the measured figure means the sentence needs
+ * roughly 2.4x the measured work before it appears.
+ */
+export const INSTALL_OVERRUN_FACTOR = 1.5;
 
 /** The platforms the window has a baseline for; anything else reads as linux. */
 export type InstallPlatform = "darwin" | "win32" | "linux";
@@ -185,9 +230,12 @@ export function installPlatform(platform: string): InstallPlatform {
  *
  * Counts, never a fraction: uv announces the large downloads it STARTS
  * (`Downloading pillow (4.6MiB)`) and finishes (` Downloaded pillow`), and pip
- * announces each package it collects - neither says how many bytes remain. So
- * the window can say "3 of 6 downloads done", which is true, and nothing that
- * would need a total it does not have.
+ * announces each package it collects - neither says how many bytes remain, and
+ * neither says up front how many large files there will be. So the window says
+ * what is DONE (`3 large downloads finished \u00b7 55 packages in all.`) and,
+ * before the first completion, what is happening (`Fetching the large files...`);
+ * a denominator it does not have is never printed, because the one it used to
+ * print GREW as uv discovered work (design round 1, D3).
  */
 export type InstallSubProgress = {
 	/** `Resolved N packages`: how many packages the install will lay down. */
@@ -275,7 +323,7 @@ export function installSubProgressLine(
 	}
 	if (sub.collected > 0)
 		return `Fetched ${sub.collected} package${sub.collected === 1 ? "" : "s"} so far.`;
-	if (sub.downloadsStarted > 0) return "Fetching the large files...";
+	if (sub.downloadsStarted > 0) return "Fetching the large files\u2026";
 	if (sub.resolved !== null) return `Found ${sub.resolved} packages to fetch.`;
 	return null;
 }
@@ -295,8 +343,9 @@ export function formatElapsed(ms: number): string {
  *
  * ROUNDED TO 5 s ABOVE 10 s so the number does not twitch every second on a
  * screen whose whole job is to be calm, and NEVER negative: a phase that has
- * outrun its baseline is "taking longer than usual", which is the true thing to
- * say and the cue that something (usually the network) is slow.
+ * outrun its budget by `INSTALL_OVERRUN_FACTOR` is "taking longer than usual",
+ * which is the true thing to say and the cue that something (usually the network)
+ * is slow.
  */
 export function installEta(
 	platform: InstallPlatform,
@@ -305,12 +354,24 @@ export function installEta(
 ): string {
 	const baselines = INSTALL_PHASE_BASELINE_MS[platform];
 	const index = INSTALL_PHASES.indexOf(phase);
-	if (phaseElapsedMs > baselines[phase]) return "taking longer than usual";
+	/*
+	 * THE SENTENCE NEEDS 1.5x THE BASELINE, not one millisecond past it: the
+	 * budgets already carry headroom, so a rule that fired at 1.0x reported the
+	 * fleet's ordinary load noise as a stalled install (QA round 2, Q2-1).
+	 */
+	if (phaseElapsedMs > baselines[phase] * INSTALL_OVERRUN_FACTOR)
+		return "taking longer than usual";
 	const later = INSTALL_PHASES.slice(index + 1).reduce(
 		(sum, entry) => sum + baselines[entry],
 		0,
 	);
-	const left = baselines[phase] - phaseElapsedMs + later;
+	/*
+	 * A phase over its OWN budget but under the threshold shows what is left of
+	 * the later phases rather than a negative remainder - "about -3 s left" is not
+	 * a sentence this screen says, and the clamping is why 1.4x a baseline reads
+	 * as the work still to come instead of as a stall.
+	 */
+	const left = Math.max(0, baselines[phase] - phaseElapsedMs) + later;
 	const seconds = Math.max(1, Math.ceil(left / 1000));
 	if (seconds >= 90) return `about ${Math.round(seconds / 60)} min left`;
 	const shown = seconds > 10 ? Math.ceil(seconds / 5) * 5 : seconds;

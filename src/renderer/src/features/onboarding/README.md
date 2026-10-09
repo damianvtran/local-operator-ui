@@ -11,13 +11,18 @@ Three numbered steps in one dialog (`onboarding-modal.tsx`), then a conversation
    rows - Radient (recommended: one browser sign-in, nothing to paste), the two
    subscriptions people already pay for (ChatGPT, Claude) and one API-key
    provider (Google) - with everything else behind a "More providers" disclosure
-   whose label names what it holds (xAI, OpenRouter, DeepSeek, local models and
-   the count of the rest; `moreProvidersSummary` in `provider-catalog.ts`).
+   whose label names what it holds, in the order the panel will show it (the
+   dialog leads with the local runtimes, the page with the subscriptions; both
+   orders live in `provider-catalog.ts` beside `moreProvidersSummary`).
    Continue appears only once a provider is connected.
 2. **Your default model** (`steps/default-model-step.tsx`): the model new chats
    use, proposed from the account just connected.
-3. **Web search (optional)** (`steps/extras-step.tsx`): the free pool or the
-   user's own keys, and a preview of what happens next.
+3. **Web search, then meet <her name>** (`steps/extras-step.tsx`; "Web search
+   (optional)" when she is not available): the free pool or the user's own keys,
+   and a preview of what happens next. The preview promises that she speaks first
+   only while the greeting ledger still owes the user a hello
+   (`aidaOwesGreeting`); once it is delivered or skipped the step says what its
+   button does instead.
 
 The last step's primary button is **Meet <her name>** when Aida is available
 (the `aida` capability and `aida.enabled`, her live name from `aida.status`).

@@ -72,28 +72,80 @@ const MORE_PROVIDERS_NAMED = [
 const MORE_PROVIDERS_NAMED_LIMIT = 3;
 
 /**
+ * The group order the FULL PAGE renders, and the order the TUI's setup splash
+ * mirrors: subscriptions, then API keys, then the local runtimes.
+ */
+export const PROVIDER_PAGE_GROUP_ORDER: ProviderGroup[] = [
+	"subscription",
+	"key",
+	"local",
+];
+
+/**
+ * The group order the ONBOARDING DIALOG renders, local runtimes first.
+ *
+ * WHICH GROUP LEADS DEPENDS ON THE SURFACE (design round 1, D1), and the reason
+ * is the disclosure's own promise: the dialog's trigger names what is behind it,
+ * and a group named first but rendered last is the shape that read as absent
+ * under the dialog's footer. First-run is also exactly where a local model is a
+ * real answer (no account, nothing to paste). The dialog is the only surface
+ * whose heading promises a group by name, so the divergence is owned here rather
+ * than being a new convention for the page.
+ */
+export const PROVIDER_DIALOG_GROUP_ORDER: ProviderGroup[] = [
+	"local",
+	"subscription",
+	"key",
+];
+
+/**
  * What the "More providers" disclosure says is behind it (first-run onboarding,
- * D11): `More providers: xAI, OpenRouter, DeepSeek, local models and 8 more`.
+ * D11): `More providers: xAI, OpenRouter, DeepSeek, local models and 6 more`.
  *
  * DERIVED FROM THE ROWS IT HIDES, never written as a literal, so it cannot name a
  * provider that is not there or under-count the ones that are: the names are the
  * rows' own brands, "local models" appears only when the local group is
- * non-empty, and the count is exactly the rows not otherwise named.
+ * non-empty, and the count is exactly the cloud rows not otherwise named.
+ *
+ * THE NAMES FOLLOW THE RENDERED ORDER (design round 2, D8). The caller passes the
+ * group order it is about to paint, so a trigger that leads with the local
+ * runtimes names them first (`local models, xAI, OpenRouter ...`) instead of
+ * promising brands that sit several hundred pixels below the fold. Within a cloud
+ * group the names keep MORE_PROVIDERS_NAMED's order - the operator's
+ * must-stay-findable list - rather than the registry's row order, because that
+ * list is the promise the trigger is making.
  */
-export function moreProvidersSummary(rest: {
-	subscription: DesktopProvider[];
-	key: DesktopProvider[];
-	local: DesktopProvider[];
-}): string {
+export function moreProvidersSummary(
+	rest: {
+		subscription: DesktopProvider[];
+		key: DesktopProvider[];
+		local: DesktopProvider[];
+	},
+	order: ProviderGroup[] = PROVIDER_PAGE_GROUP_ORDER,
+): string {
 	const cloud = [...rest.subscription, ...rest.key];
-	const named = MORE_PROVIDERS_NAMED.map((id) =>
-		cloud.find((provider) => provider.id === id),
-	)
-		.filter((provider): provider is DesktopProvider => provider !== undefined)
-		.slice(0, MORE_PROVIDERS_NAMED_LIMIT);
-	const parts = named.map((provider) => brandOf(provider));
-	if (rest.local.length > 0) parts.push("local models");
-	const others = cloud.length - named.length;
+	const parts: string[] = [];
+	let named = 0;
+	for (const group of order) {
+		if (group === "local") {
+			/*
+			 * The group as ONE phrase: it is five runtime rows, and the trigger has
+			 * no room for "LM Studio, Ollama, vLLM, ..." - the disclosure names them
+			 * row by row.
+			 */
+			if (rest.local.length > 0) parts.push("local models");
+			continue;
+		}
+		const bucket = rest[group];
+		for (const id of MORE_PROVIDERS_NAMED) {
+			if (named >= MORE_PROVIDERS_NAMED_LIMIT) break;
+			const provider = bucket.find((row) => row.id === id);
+			if (!provider) continue;
+			parts.push(brandOf(provider));
+			named += 1;
+		}
+	}
+	const others = cloud.length - named;
 	if (parts.length === 0) return "More providers";
 	if (others > 0)
 		return `More providers: ${parts.join(", ")} and ${others} more`;

@@ -33,13 +33,15 @@ export const ConnectProviderStep: FC<ConnectProviderStepProps> = ({
 		 * The prose does NOT re-list the brands (design round 1, D6): the
 		 * disclosure's own trigger is derived from the census and names them, so two
 		 * enumerations on one screen could disagree with each other and with the
-		 * rows. The prose says where the rest are; the trigger says who they are.
+		 * rows. The prose says where the rest are; the trigger says who they are -
+		 * and it does not describe itself (design round 2, D11): "which names what
+		 * it holds" was a description of a description, on a screen whose next line
+		 * already names it.
 		 */}
 		<p className="text-body text-ink-muted">
 			Local Operator needs an AI account to work. Radient is the easiest: one
 			browser sign-in and nothing to paste. Already pay for ChatGPT or Claude?
-			Sign in with that instead. Anything else is under More providers below,
-			which names what it holds.
+			Sign in with that instead. Anything else is under More providers.
 		</p>
 		<ProviderGrid
 			context="dialog"

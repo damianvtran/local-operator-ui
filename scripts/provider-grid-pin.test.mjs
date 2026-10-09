@@ -44,6 +44,7 @@ const bundle = await build({
 			export { OnboardingStep } from "./src/renderer/src/shared/store/onboarding-store";
 			export { recommendedProvider, showsRecommendedCue, visibleProviders };
 			export { moreProvidersSummary } from "./src/renderer/src/features/providers/provider-catalog";
+			export { PROVIDER_DIALOG_GROUP_ORDER } from "./src/renderer/src/features/providers/provider-catalog";
 
 			export const renderProviderGrid = (client) =>
 				renderToStaticMarkup(
@@ -145,6 +146,7 @@ const {
 	showsRecommendedCue,
 	visibleProviders,
 	moreProvidersSummary,
+	PROVIDER_DIALOG_GROUP_ORDER,
 	STEP_PANEL_WIDTH,
 	ONBOARDING_PANEL_WIDTHS,
 	OnboardingStep,
@@ -728,6 +730,23 @@ test("the 'More providers' summary names the hidden rows and counts the rest exa
 		/^More providers: xAI, OpenRouter, DeepSeek, local models and \d+ more$/,
 	);
 	assert.equal(Number(summary.match(/and (\d+) more$/)[1]), cloud - 3);
+	/*
+	 * AND THE NAMES FOLLOW THE RENDERED ORDER (design round 2, D8): the dialog
+	 * leads with the local runtimes, so its trigger names them first instead of
+	 * promising three brands that sit ~143 px below its own fold. The count does
+	 * not move with the order - it is the cloud rows the disclosure holds beyond
+	 * the names, whatever order they are painted in.
+	 */
+	const dialogSummary = moreProvidersSummary(rest, PROVIDER_DIALOG_GROUP_ORDER);
+	assert.match(
+		dialogSummary,
+		/^More providers: local models, xAI, OpenRouter, DeepSeek and \d+ more$/,
+	);
+	assert.equal(
+		Number(dialogSummary.match(/and (\d+) more$/)[1]),
+		cloud - 3,
+		"the count does not depend on the order",
+	);
 	// No local rows, no "local models"; nothing to name, the bare label.
 	assert.doesNotMatch(
 		moreProvidersSummary({ ...rest, local: [] }),
@@ -737,11 +756,20 @@ test("the 'More providers' summary names the hidden rows and counts the rest exa
 		moreProvidersSummary({ subscription: [], key: [], local: [] }),
 		"More providers",
 	);
-	// The featured rows render on the step and the disclosure carries the summary.
+	/*
+	 * The featured rows render on the step and the disclosure carries the summary
+	 * of the shape it is IN - the dialog, whose groups lead with the local
+	 * runtimes. Asserting the PAGE order's string here would pin the very drift D8
+	 * removed: the trigger and the rows it promises have to agree.
+	 */
 	const html = renderFeatured(fixture);
 	for (const id of featured) assert.equal(rowCount(html, id), 1);
 	assert.ok(
-		html.includes(summary),
-		"the disclosure's trigger carries the summary",
+		html.includes(dialogSummary),
+		"the dialog's trigger carries the summary of its own order",
+	);
+	assert.ok(
+		!html.includes(`>${summary}<`),
+		"the page's order must not be the one the dialog promises",
 	);
 });

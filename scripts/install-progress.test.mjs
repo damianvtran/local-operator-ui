@@ -136,6 +136,7 @@ const {
 	isInstallProgressPayload,
 	EMPTY_SUB_PROGRESS,
 	INSTALL_EXPECTATION,
+	INSTALL_OVERRUN_FACTOR,
 	INSTALL_PHASE_BASELINE_MS,
 	foldInstallLine,
 	formatElapsed,
@@ -187,11 +188,13 @@ const SCRIPT_MARKERS = [
 		"src/main/backend/scripts/linux-install-script.sh",
 		{
 			/*
-			 * The stage's first statement: which interpreter everything below runs
-			 * on. Linux has no managed runtime to copy, so this IS its "Getting
-			 * ready" - the same work macOS reports from `managed-python.ts`.
+			 * The stage's first work: the connectivity probe, which can spend up to
+			 * 2 x 30 s on a dead network and therefore runs INSIDE the stage rather
+			 * than before it (code review round 2, N-2). Linux has no managed
+			 * runtime to copy, so this is its "Getting ready" - the same work macOS
+			 * reports from `managed-python.ts`.
 			 */
-			python: 'if [ -n "${PYTHON_BIN:-}" ]; then',
+			python: "check_connectivity",
 			environment: "Creating virtual environment at $VENV_PATH",
 			components: "UV_INSTALLED=false",
 		},
@@ -1241,7 +1244,7 @@ test("uv's own narration folds into counts, and the line only moves forward", ()
 	 */
 	assert.deepEqual(seen, [
 		"Found 55 packages to fetch.",
-		"Fetching the large files...",
+		"Fetching the large files\u2026",
 		"1 large download finished \u00b7 55 packages in all.",
 		"2 large downloads finished \u00b7 55 packages in all.",
 		"3 large downloads finished \u00b7 55 packages in all.",
@@ -1323,15 +1326,52 @@ test("the estimate is the measured baselines, rounded, and never negative", () =
 	assert.equal(installEta("darwin", "components", 0), "about 20 s left");
 	// Small numbers are exact, so the last seconds count down one by one.
 	assert.equal(installEta("darwin", "verify", 0), "about 4 s left");
-	// Outrunning a phase is said in words, never as a negative count.
+	// Outrunning a phase is said in words, never as a negative count - and the
+	// sentence needs INSTALL_OVERRUN_FACTOR times the budget, not one millisecond
+	// past it (QA round 2, Q2-1): at the budget itself the estimate is only the
+	// later phases' time, because the budget already carries headroom.
 	assert.equal(
-		installEta("darwin", "components", mac.components + 1),
+		installEta("darwin", "components", mac.components),
+		"about 4 s left",
+	);
+	assert.equal(
+		installEta("darwin", "components", mac.components * INSTALL_OVERRUN_FACTOR),
+		"about 4 s left",
+	);
+	assert.equal(
+		installEta(
+			"darwin",
+			"components",
+			mac.components * INSTALL_OVERRUN_FACTOR + 1,
+		),
 		"taking longer than usual",
 	);
 	assert.equal(installPlatform("freebsd"), "linux");
 	assert.equal(formatElapsed(0), "0:00");
 	assert.equal(formatElapsed(67_400), "1:07");
 	assert.doesNotMatch(INSTALL_EXPECTATION, MINUTES_WORD);
+});
+
+test("every baseline that can overrun carries headroom over its own measurement", () => {
+	/*
+	 * THE TABLE'S PROVENANCE CLAIM AS DATA (code review round 2, M-3): the comment
+	 * over `INSTALL_PHASE_BASELINE_MS` says the overrun-capable entries are the
+	 * measured figure plus 1.5x-or-more, and half of them were not - a datacentre
+	 * runner's own time is a measurement, not a budget. The measured figures are
+	 * the ones the comment names, so a re-pin to a measurement fails here rather
+	 * than in the field.
+	 */
+	const measured = {
+		darwin: { environment: 1_900, components: 8_080 },
+		win32: { environment: 6_400, components: 8_900 },
+		linux: { environment: 3_200, components: 7_600 },
+	};
+	for (const [platform, phases] of Object.entries(measured))
+		for (const [phase, ms] of Object.entries(phases))
+			assert.ok(
+				INSTALL_PHASE_BASELINE_MS[platform][phase] >= ms * 1.5,
+				`${platform} ${phase}: ${INSTALL_PHASE_BASELINE_MS[platform][phase]} ms is not 1.5x the measured ${ms} ms`,
+			);
 });
 
 test("a phase payload's timing is admitted whole or not at all", () => {
