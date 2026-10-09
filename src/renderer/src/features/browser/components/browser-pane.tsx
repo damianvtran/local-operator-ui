@@ -47,10 +47,11 @@ import { BrowserSurface } from "./browser-surface";
  * THE CHOICE LIVES IN THE STORE, NOT HERE (UX round 1, U3), and this file said
  * otherwise for one round: the pane is remounted when the conversation changes, so
  * a `useState` here reverted the lens to "This conversation" on every switch while
- * the pane itself stayed open at the width the user had dragged. The slot belongs
- * to the window, so its lens is the slot's state (`browserPaneScope`, beside
- * `isBrowserPaneOpen` and `rightSlotWidth`) and only the content follows the
- * conversation.
+ * the pane itself stayed open at the width the user had dragged. The lens is a MODE
+ * like the width — unlike the occupant, which since issue #894 is per-conversation
+ * memory (`rightSlotMemory`) — so it lives in the slot's state
+ * (`browserPaneScope`, beside `isBrowserPaneOpen` and `rightSlotWidth`) and only
+ * the content follows the conversation.
  *
  * TWO SCOPES GO DOWN, AND THE SWITCH MOVES ONLY ONE (spec 7.2; QA round 1's Q1 and
  * UX round 1's U1 are the same defect seen from two sides). The switch is about

@@ -853,11 +853,13 @@ test("the request is an event and not a preference: persisting it would run a sh
 	assert.equal("runPanelReveal" in persisted, false);
 	/*
 	 * AND THE OTHER HALF, so this cannot be satisfied by a filter that drops
-	 * everything: the pane's own open state IS a preference and must survive, which is
-	 * why "the pane was open when the app closed" is restored while "the user opened
-	 * it" is not.
+	 * everything: the pane's own open state IS durable — as the bound conversation's
+	 * entry in `rightSlotMemory` (issue #894), which is what a relaunch restores. What
+	 * must NOT come back is the bare flag: on its own it cannot say which conversation
+	 * was open, which is exactly the defect the memory replaces.
 	 */
-	assert.equal("isConsolePaneOpen" in persisted, true);
+	assert.equal("isConsolePaneOpen" in persisted, false);
+	assert.equal("rightSlotMemory" in persisted, true);
 	assert.equal(persisted.themeName, state.themeName);
 	/*
 	 * AND IT IS THE FILTER THE STORE SHIPS, not a second copy that happens to answer
