@@ -74,6 +74,15 @@ globalThis.window = DOM.window;
 globalThis.document = DOM.window.document;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 /*
+ * jsdom ships no `CSS` object, and the panel's focus-fallback effect builds its
+ * row selector with a BARE `CSS.escape` (the repo's idiom for a selector out of
+ * wire data — N2's fix). The same one-line shim the repo's other bare-escape
+ * harnesses install (`backend-settings-collapse.test.mjs`,
+ * `completion-view-ack.test.mjs`): the selector it produces is not what this
+ * file asserts, so identity-escape is enough here.
+ */
+globalThis.CSS = { escape: (value) => String(value) };
+/*
  * The frame loop, queued rather than run (the dismiss harness's reason): rimraf
  * / presence code that waits on a frame must not race a real clock, so frames
  * are drained only when the harness says so (`frame()`, inside `settle`).
@@ -355,13 +364,21 @@ test("a one-press refusal keeps its sentence on the row, and it survives the chu
 		"the refusal renders",
 	);
 	/*
-	 * BOTH halves of the brief's rule: the control column carries the short
-	 * `Cancel refused`, and the row carries the whole sentence — there is no card
-	 * on this path for it to live in, and it must be visible without hover.
+	 * ONE STATEMENT, and it is the row's: the short `Cancel refused` tag is
+	 * retired (design round 1, D5 — the tag and the sentence said the same thing
+	 * twice), the whole sentence stays on the row because there is no card on
+	 * this path for it to live in, and the control beside it remains LIVE as the
+	 * next attempt.
 	 */
 	assert.equal(
-		document.querySelector('[data-wake-cancel-state="refused"]')?.textContent,
-		"Cancel refused",
+		document.querySelector('[data-wake-cancel-state="refused"]'),
+		null,
+		"the short tag is gone",
+	);
+	assert.equal(
+		document.querySelector('[data-wake-cancel="w1"]')?.disabled,
+		false,
+		"and the control is still the next attempt",
 	);
 	assert.equal(
 		document.querySelector("[data-wake-cancel-note]")?.textContent,
@@ -420,23 +437,21 @@ test("an engine row offers no control, states who manages it, and sends nothing"
 	const managed = document.querySelector("[data-wake-managed]");
 	assert.ok(managed, "the engine row states its state");
 	/*
-	 * The VISIBLE words are short (a state, not a sentence), and the whole
-	 * sentence rides `title` and the sr-only twin — so the two assertions read
-	 * the two halves the row actually draws.
+	 * The VISIBLE state word is short, the whole sentence rides the state's
+	 * `title`, and — since design round 1's D2 — the SAME sentence is drawn
+	 * visibly as the row's note, because a lever reachable only by hover is a
+	 * lever a keyboard or touch reader never sees.
 	 */
-	assert.equal(
-		managed.querySelector('span[aria-hidden="true"]')?.textContent,
-		"managed by Aida",
-	);
-	assert.match(
-		managed.querySelector(".sr-only")?.textContent ?? "",
-		/\/aida pause/,
-		"the sr-only twin carries the lever that works",
-	);
+	assert.equal(managed.textContent?.trim(), "managed by Aida");
 	assert.match(
 		managed.getAttribute("title") ?? "",
 		/\/aida pause/,
-		"and so does the title",
+		"the title carries the lever that works",
+	);
+	assert.match(
+		document.querySelector("[data-wake-managed-note]")?.textContent ?? "",
+		/\/aida pause/,
+		"and so does the visible note",
 	);
 	assert.equal(
 		document.querySelector('[data-wake-cancel="aida-cadence"]'),
@@ -664,5 +679,130 @@ test("while a write is in flight the confirmation cannot be dismissed and keeps 
 		await settle(() => confirmCard() === null),
 		"and the landed write closes it",
 	);
+	await p.unmount();
+});
+
+test("a re-armed wake that inherits a freed handle is cancellable, not marked (Q1 / F2)", async () => {
+	const calls = [];
+	const successor = wireWake("w1", "Re-armed after the cancel", {
+		created_at: NOW_MS + 60_000,
+	});
+	const p = await mount({
+		wakes: [wireWake("w1", "First, and then cancelled")],
+		sessionId: "sess1",
+		aida: UNKNOWN_AIDA,
+		cancel: async (id) => {
+			calls.push(id);
+			return { ok: true };
+		},
+	});
+	await press(document.querySelector('[data-wake-cancel="w1"]'));
+	assert.ok(
+		await settle(
+			() =>
+				document.querySelector('[data-wake-cancel-state="cancelled"]') !== null,
+		),
+		"the receipt lands",
+	);
+	/*
+	 * THE RE-MINT: the backend mints the lowest free handle, so the schedule that
+	 * takes the cancelled one's place IS `w1` again — and a DIFFERENT schedule.
+	 * Keyed by the handle alone, this row rendered `Cancelled`, disabled (QA
+	 * round 1's Q1, reproduced on the live backend); keyed by handle + creation
+	 * instant (`wakeRowKey`) it is a stranger to the mark.
+	 */
+	await p.rerender({ wakes: [successor] });
+	const control = document.querySelector('[data-wake-cancel="w1"]');
+	assert.ok(control, "the successor is drawn");
+	assert.equal(
+		control.getAttribute("data-wake-cancel-state"),
+		null,
+		"the successor is NOT wearing its predecessor's receipt",
+	);
+	assert.equal(control.disabled, false, "and it can be cancelled");
+	await press(control);
+	assert.ok(
+		await settle(() => calls.length === 2),
+		"the press sent its own write",
+	);
+	assert.deepEqual(
+		calls,
+		["w1", "w1"],
+		"one request per press, on one handle, for two different schedules",
+	);
+	await p.unmount();
+});
+
+test("the one-press write shows `Cancelling…`, disabled, while it is in flight (F8)", async () => {
+	const gate = deferred();
+	const p = await mount({
+		wakes: [wireWake("w1", "A write the case can hold")],
+		sessionId: "sess1",
+		aida: UNKNOWN_AIDA,
+		cancel: async () => gate.promise,
+	});
+	const control = document.querySelector('[data-wake-cancel="w1"]');
+	await press(control);
+	assert.ok(
+		await settle(() => control.textContent === "Cancelling…"),
+		"the in-flight verb appears",
+	);
+	assert.equal(
+		control.disabled,
+		true,
+		"and a second press is refused while it holds",
+	);
+	await act(async () => gate.resolve({ ok: true }));
+	assert.ok(await settle(() => control.textContent === "Cancelled"));
+	await p.unmount();
+});
+
+test("an outside press dismisses the question, and a busy write refuses it (F8)", async () => {
+	const gate = deferred();
+	const p = await mount({
+		wakes: [
+			wireWake("w1", "4-hourly proactive check-in (operator-set cadence)"),
+		],
+		sessionId: HER_SESSION,
+		aida: RESOLVED_AIDA,
+		cancel: async () => gate.promise,
+	});
+	await press(document.querySelector('[data-wake-cancel="w1"]'));
+	assert.ok(await settle(() => confirmCard() !== null), "the question opens");
+	/*
+	 * OUTSIDE, on the window listener the popover registers (capture phase):
+	 * a pointerdown anywhere outside the card dismisses it, and the keyboard
+	 * goes back to the row's own control.
+	 */
+	document.body.dispatchEvent(
+		new DOM.window.Event("pointerdown", { bubbles: true }),
+	);
+	assert.ok(
+		await settle(() => confirmCard() === null),
+		"an outside press closes the question",
+	);
+	assert.ok(
+		await settle(
+			() =>
+				document.activeElement ===
+				document.querySelector('[data-wake-cancel="w1"]'),
+		),
+		"and focus is back on the control the question came from",
+	);
+	/* Reopened, a write in flight blocks the same dismissal. */
+	await press(document.querySelector('[data-wake-cancel="w1"]'));
+	assert.ok(await settle(() => confirmCard() !== null), "the question reopens");
+	await press(
+		Array.from(confirmCard().querySelectorAll("button")).find(
+			(button) => button.textContent === "Cancel check-in",
+		),
+	);
+	document.body.dispatchEvent(
+		new DOM.window.Event("pointerdown", { bubbles: true }),
+	);
+	await act(async () => {});
+	assert.ok(confirmCard() !== null, "the busy write keeps the card open");
+	await act(async () => gate.resolve({ ok: true }));
+	await settle(() => confirmCard() === null);
 	await p.unmount();
 });

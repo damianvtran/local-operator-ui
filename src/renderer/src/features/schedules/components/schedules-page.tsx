@@ -27,13 +27,17 @@ import {
  *
  * ## Why this page is where the confirm lives
  *
- * The run pane's Wakes section is a readout: a schedule is read there and
- * cancelled by the agent, which is right for a pane watching a live turn. This
- * page's job is managing scheduled work - it is where one is created - so the
- * bar moves here: each wake line offers `Cancel wake`, behind a confirm that
- * names the prompt and says the conversation stays. Pause is deliberately NOT
- * offered: the wake model has no `paused_at`, so a toggle could only be
- * implemented as cancel-and-re-arm, which would silently reset `fired_count`
+ * The run pane's Wakes section ALSO cancels now (the wakes control slice: a
+ * visible `Cancel` on every row, one press for an ordinary wake, a small card
+ * for the chief of staff's), so this page is no longer the only surface where a
+ * schedule can be stopped - the sentence this comment used to carry ("a schedule
+ * is read there and cancelled by the agent") was retired with that change (agent
+ * review round 1, F7). This page's job is managing scheduled work - it is where
+ * one is created - and it keeps its own bar: each wake line offers `Cancel wake`
+ * behind the page-level confirm that names the prompt and says the conversation
+ * stays. Pause is deliberately NOT offered: the wake model has no `paused_at`,
+ * so a toggle could only be implemented as cancel-and-re-arm, which would
+ * silently reset `fired_count`
  * and re-anchor a recurrence to the moment of the toggle.
  *
  * ## Freshness

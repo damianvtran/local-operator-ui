@@ -39,6 +39,7 @@
  * appears under the pointer is a state the reader has to hunt for.
  */
 import {
+	WakeManagedNote,
 	WakeManagedState,
 	WakeRowView,
 } from "@features/chat/components/run-details/run-detail-wakes";
@@ -110,11 +111,19 @@ const WakeLineItem: FC<{
 	<WakeRowView
 		row={wake}
 		trailingClause={wake.ranLabel || undefined}
+		/*
+		 * The managed line wears the SAME pair as the pane's (design round 1's D2
+		 * and the section's one-object-one-reading rule): the short state word in
+		 * the control column, where the line's missing `Cancel` would have been,
+		 * and the sentence — with the lever that works — as the line's note, so
+		 * the page and the pane cannot come to explain the same row two ways.
+		 */
 		note={
-			managedName === null ? undefined : <WakeManagedState name={managedName} />
+			managedName === null ? undefined : <WakeManagedNote name={managedName} />
 		}
 		action={
 			<>
+				{managedName !== null && <WakeManagedState name={managedName} />}
 				<Tooltip content="Edit wake">
 					<Button
 						variant="ghost"

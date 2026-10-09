@@ -1782,8 +1782,8 @@ export const WakeCancelCancelled: Story = {
 /**
  * A refused ONE-PRESS attempt: there is no card on this path, so the whole
  * sentence renders ON the row in the danger ink (`<output>`, the polite live
- * region) with the short `Cancel refused` beside the live control that is the
- * next attempt.
+ * region) as the row's own note line — the one statement of the refusal (design
+ * round 1, D5) — and the live control beside it is the next attempt.
  */
 const WAKE_OWNER_REFUSAL =
 	"This conversation is open in a running session, which owns its wakes. Nothing was written. Retry in a moment, or change them from that session.";
@@ -1808,9 +1808,10 @@ export const WakeCancelRefused: Story = {
 
 /**
  * The engine's row: `managed by Aida`, no control at all, and the sentence that
- * names the lever which works (`/aida pause`) on `title` and in the sr-only
- * twin. The ordinary `w1` beneath it keeps its one-press `Cancel`, so the frame
- * carries both verdicts of one model at once.
+ * names the lever which works (`/aida pause`) drawn VISIBLY as the row's note
+ * (design round 1, D2) with the same string on the state's `title`. The ordinary
+ * `w1` beneath it keeps its one-press `Cancel`, so the frame carries both
+ * verdicts of one model at once.
  */
 export const WakeManaged: Story = {
 	render: () => (
@@ -1891,6 +1892,60 @@ export const WakesControlsFloor320: Story = {
 			openPanel={true}
 		/>
 	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The 320px floor under the states the width budget is FOR (design round 1's
+ * D1): the yield rule and the full-width note line exist so a refusal, a managed
+ * sentence or an open card cannot squeeze the facts line at the narrowest pane.
+ * The monitors' own set carries `monitorsFloor320RefusalRecord` for the same
+ * reason; these three are that set's wake half.
+ */
+const WakesFloor320RefusedGround = () => {
+	useClickAndWait(WAKE_CANCEL_SELECTOR, "[data-wake-cancel-note]");
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.wakesOnly())}
+			width={320}
+			openPanel={true}
+			wakeControls={wakeControls({
+				cancel: async () => ({ ok: false, detail: WAKE_OWNER_REFUSAL }),
+			})}
+		/>
+	);
+};
+
+export const WakesControlsFloor320Refused: Story = {
+	render: () => <WakesFloor320RefusedGround />,
+	decorators: [withCanvasClosed],
+};
+
+export const WakesControlsFloor320Managed: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.wakesManaged())}
+			width={320}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+const WakesFloor320ChiefGround = () => {
+	useClickAndWait(WAKE_CANCEL_SELECTOR, "[data-wake-confirm]");
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.wakesOnly())}
+			width={320}
+			openPanel={true}
+			wakeAida={AIDA_HERS}
+		/>
+	);
+};
+
+export const WakesControlsFloor320Chief: Story = {
+	render: () => <WakesFloor320ChiefGround />,
 	decorators: [withCanvasClosed],
 };
 

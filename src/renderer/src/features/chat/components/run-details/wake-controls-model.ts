@@ -94,6 +94,22 @@ export type AidaWakeIdentity = {
 	name: string;
 };
 
+/**
+ * A row's identity for everything that has to remember it ACROSS a write.
+ *
+ * The handle alone is not one: the backend mints the lowest free id, so
+ * cancelling `w1` and arming again re-uses `w1` for a DIFFERENT schedule
+ * (measured: agent review round 1's F2 / QA round 1's Q1 - the new row rendered
+ * `Cancelled` and could not be cancelled). `created_at` is the wire's own
+ * discriminator; `?` is the fallback for a payload that did not carry one, and
+ * it is deliberately the value that still matches only itself rather than
+ * something that could be mistaken for a real instant.
+ */
+export const wakeRowKey = (row: {
+	id: string;
+	createdAt: number | null;
+}): string => `${row.id}:${row.createdAt ?? "?"}`;
+
 export const WAKE_CONTROL_MODES = ["managed", "confirm", "one-click"] as const;
 
 /** What a row's control column offers. */
@@ -157,14 +173,19 @@ export const managedWakeShortLabel = (name: string): string =>
 	`managed by ${name}`;
 
 /**
- * The managed row's full sentence, for the `title` and the `sr-only` twin.
+ * The managed row's sentence: why there is no cancel, and the lever that works.
  *
- * It names the lever that DOES work on these rows (`/aida pause`, the
- * `aida.control` route) rather than the cancel that does not: the row is not
- * offering an action, it is explaining why it has none.
+ * It names `/aida pause` (the `aida.control` route) rather than the cancel that
+ * does not exist here: the row is not offering an action, it is explaining why
+ * it has none. The name is the operator's own (`useAidaDisplayName`) and the
+ * sentence carries NO pronoun and no internal vocabulary — design round 1's D6:
+ * `her engine re-arms it` was reading a configurable assistant as fixed-gender
+ * and borrowing the code's word for a row the reader is deciding about. The
+ * sentence is rendered VISIBLY as the row's note (D2), with the same string on
+ * the state's `title`, so there is one copy in two places rather than two.
  */
 export const managedWakeNote = (name: string): string =>
-	`This wake is managed by ${name}: her engine re-arms it, so the app does not offer a cancel here. To stop her check-ins, pause her with /aida pause.`;
+	`This wake is ${name}'s own schedule, so it can't be cancelled here. To stop these check-ins, use /aida pause.`;
 
 /**
  * The confirmation's three strings, ONE home for both surfaces that ask.

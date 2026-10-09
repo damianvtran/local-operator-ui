@@ -387,8 +387,15 @@ never cut mid-word, the unbounded one has a second home.
     re-arms them, and the desktop route refuses those ids before any handler
     (see `wake-controls-model.ts` and the PR for the full arm-by-arm rule).
   - **The sentence's replacement is the control, not new copy.** A one-press
-    refusal renders its own sentence ON the row (there is no dialog on that
-    path), which is the one place this amendment adds text to a row.
+    refusal renders its own sentence ON the row as its own full-width note line
+    (there is no dialog on that path) — the ONE statement of the refusal: the
+    short `Cancel refused` tag that first sat beside it was retired in round 1
+    (D5) because the sentence already says it, and the control beside it is the
+    next attempt.
+  - **The managed state names its lever visibly.** An `aida-*` row says
+    `managed by {name}` in the control column AND draws the sentence
+    (`/aida pause`) as the row's note, rather than hiding the only lever that
+    works in a `title` a sighted keyboard or touch reader never reaches (D2).
 
   The decision record for the classification, the copy, the churn and the
   evidence lives in the PR that ships it; `docs/run-sidebar.md` is untouched

@@ -41,6 +41,7 @@ const bundle = await build({
 	},
 });
 const {
+	DESKTOP_REFUSAL_CODE,
 	desktopEndpoint,
 	desktopRequestSchema,
 	retryWakeWrite,
@@ -54,6 +55,7 @@ const {
 	wakeConfirmActionLabel,
 	managedWakeNote,
 	managedWakeShortLabel,
+	wakeRowKey,
 	attemptWakeCancel,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -237,11 +239,43 @@ test("the shared copy carries the named and neutral halves, and nothing else", (
 	);
 });
 
-test("the managed state names the lever that works", () => {
+test("the managed state names the lever that works, in the operator's own words", () => {
 	assert.equal(managedWakeShortLabel("Aida"), "managed by Aida");
 	const note = managedWakeNote("Aida");
 	assert.match(note, /\/aida pause/, "the sentence names the supported stop");
-	assert.match(note, /re-arms it/, "and says why there is no cancel here");
+	assert.match(
+		note,
+		/Aida's own schedule/,
+		"and says why there is no cancel here",
+	);
+	/*
+	 * The D6 pins: no fixed pronoun for a configurable name, and none of the
+	 * code's own vocabulary. Both were in the first revision's sentence.
+	 */
+	assert.doesNotMatch(note, /\bher\b|\bhis\b|\btheir\b/);
+	assert.doesNotMatch(note, /engine|re-arms|re-arm/);
+});
+
+test("a row's mark key is the handle PLUS its creation instant", () => {
+	/*
+	 * F2 / Q1's whole mechanism in one function: the backend re-mints the lowest
+	 * free handle, so `w1` is not an identity. A re-armed successor must produce a
+	 * DIFFERENT key, and the fallback (`?`) must match only another fallback.
+	 */
+	const first = { id: "w1", createdAt: 1_700_000_000_000 };
+	const successor = { id: "w1", createdAt: 1_700_000_500_000 };
+	assert.notEqual(wakeRowKey(first), wakeRowKey(successor));
+	assert.equal(
+		wakeRowKey(first),
+		wakeRowKey({ ...first }),
+		"stable for one row",
+	);
+	assert.equal(wakeRowKey({ id: "w1", createdAt: null }), "w1:?");
+	assert.notEqual(
+		wakeRowKey({ id: "w1", createdAt: null }),
+		wakeRowKey(first),
+		"a payload with no instant never matches one that has it",
+	);
 });
 
 /* ------------------------------------------------------------------- write */
@@ -251,8 +285,17 @@ test("the managed state names the lever that works", () => {
  * that never got an answer, nothing else. `failureCount < 1` is exactly one
  * retry (TanStack v5 calls the callback first with `failureCount === 0`).
  */
-test("the write retries once, and only a request that never got an answer", () => {
-	const refused = (status) => new DesktopControlError(status, "transport");
+/*
+ * The retry boundary, NARROWED in round 1 (F6): one re-send for a request that
+ * never got an answer, plus the route's own contention 503 — nothing else. The
+ * answered 503s (the three owner refusals) are the outcome itself, exactly the
+ * set the monitors' policy excludes, and the first revision's blanket
+ * `isServerUnreachable` reading re-sent them. `failureCount < 1` is exactly one
+ * retry (TanStack v5 calls the callback first with `failureCount === 0`).
+ */
+test("the write retries once, and only a request nothing answered", () => {
+	const refused = (status, code) =>
+		new DesktopControlError(status, "transport", undefined, code);
 	assert.equal(
 		retryWakeWrite(0, new DesktopControlError(null, "no response")),
 		true,
@@ -263,10 +306,24 @@ test("the write retries once, and only a request that never got an answer", () =
 		false,
 		"and only once",
 	);
+	/* Main's SYNTHESISED no-answer 503: the request never left or never returned. */
+	assert.equal(
+		retryWakeWrite(0, refused(503, DESKTOP_REFUSAL_CODE.transportFailed)),
+		true,
+	);
+	/* The route's own contention code: nothing was written, retrying is the fix. */
+	assert.equal(retryWakeWrite(0, refused(503, "wake_write_busy")), true);
+	/* The ANSWERED 503s: the owner refusals, which a re-send cannot repair. */
+	assert.equal(retryWakeWrite(0, refused(503, "wake_owner_present")), false);
+	assert.equal(retryWakeWrite(0, refused(503, "wake_owner_wedged")), false);
+	assert.equal(
+		retryWakeWrite(0, refused(503, "wake_owner_unavailable")),
+		false,
+	);
 	assert.equal(
 		retryWakeWrite(0, refused(503)),
-		true,
-		"the plane could not serve it",
+		false,
+		"a bare 503 is an answer",
 	);
 	assert.equal(
 		retryWakeWrite(0, refused(404)),

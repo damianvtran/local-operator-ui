@@ -615,6 +615,17 @@ export type WakeRow = {
 	dueLabel: string;
 	/** The recurrence interval in milliseconds, or `null` for a single shot. */
 	everyMs: number | null;
+	/**
+	 * When the schedule was planted, epoch MILLISECONDS, or `null` when the wire
+	 * did not carry it.
+	 *
+	 * THE ROW'S IDENTITY BEYOND ITS HANDLE, and the reason it is on this type: the
+	 * backend mints the LOWEST FREE id (`w{i}` for the first free slot,
+	 * `harness/wake.py`), so a wake cancelled and re-armed in the same
+	 * conversation gets the SAME `w1` back. Anything that remembers a row across
+	 * a write (the cancellation marks) has to tell the successor from the
+	 * predecessor, and `created_at` is what the wire carries for that
+	 * (`WakeState.created_at`, the schedule's own field).
 	/** Deliveries left, or `null` when the recurrence is not limit-bounded. */
 	remaining: number | null;
 	/**
@@ -1758,6 +1769,7 @@ const deriveWake = (
 			: Math.max(limit - (wireNumber(record.fired_count) ?? 0), 0));
 	return {
 		id: wireText(record.id) || `wake-${index}`,
+		createdAt: wireNumber(record.created_at),
 		message,
 		nextDueAt,
 		/*
