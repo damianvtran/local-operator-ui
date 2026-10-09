@@ -1854,6 +1854,163 @@ test("with autoFocus={false} the end of a dictation take still hands the caret b
 	}
 });
 
+test("the push-to-talk chord asks the box to be on screen (agent review round 1, MINOR-1)", async () => {
+	/*
+	 * WHY AN OFF-SCREEN BOX MUST REFUSE THE CHORD. The push-to-talk binding is a
+	 * WINDOW-level hold whose only feedback - the recording state, the confirm
+	 * control - renders inside this composer; on the projects page the strip
+	 * starts below the fold by design, so a chord at the top of the page used to
+	 * start a take nothing on screen showed. The composer now carries an
+	 * IntersectionObserver on its own textarea and the STT registration's
+	 * `isActive` reads it, FAIL-OPEN: with no report the chord keeps its old
+	 * answer, which is what keeps the chat and mini hosts exactly as they were.
+	 *
+	 * A CONTROLLABLE OBSERVER, installed for this case only: the harness defines
+	 * no observer at all (Node's realm has none, jsdom has none), so the
+	 * fail-open arm below is also the environment every OTHER case in this file
+	 * runs in - if the no-observer path refused a chord, the dictation cases
+	 * above would already be red.
+	 */
+	const previousObserver = globalThis.IntersectionObserver;
+	const observers = [];
+	globalThis.IntersectionObserver = class {
+		constructor(callback) {
+			this.callback = callback;
+			this.target = null;
+			observers.push(this);
+		}
+		observe(element) {
+			this.target = element;
+		}
+		unobserve() {}
+		disconnect() {}
+	};
+	mic.calls = 0;
+	mic.next = async () => fakeStream();
+	let frame;
+	try {
+		frame = await mount({
+			messages: [],
+			recordingProbe: {
+				canUseRadientSpeech: true,
+				speechBlock: "could-not-check",
+			},
+		});
+		const field = frame.textarea();
+		assert.ok(field, "the composer's field is mounted");
+		/* The mechanism is IN PLACE, or the fail-open arm below would pass on a
+		 * composer that never observed anything rather than one that did and had
+		 * no report yet. */
+		const observer = observers.find((entry) => entry.target === field);
+		assert.ok(
+			observer,
+			"the composer attached an observer to its own textarea",
+		);
+		const report = async (isIntersecting) => {
+			await act(async () => {
+				observer.callback([{ isIntersecting, target: field }], observer);
+			});
+			await settle();
+		};
+		const { code } = resolvePushToTalkBinding();
+		const hold = async () => {
+			await act(async () => {
+				window.dispatchEvent(
+					new window.KeyboardEvent("keydown", {
+						code,
+						bubbles: true,
+						cancelable: true,
+					}),
+				);
+			});
+			await settle();
+		};
+		const release = async () => {
+			await act(async () => {
+				window.dispatchEvent(
+					new window.KeyboardEvent("keyup", {
+						code,
+						bubbles: true,
+						cancelable: true,
+					}),
+				);
+			});
+			await settle();
+		};
+		/** No take is running or settling: recording and transcribing controls gone. */
+		const quiet = async () => {
+			for (let pass = 0; pass < 30; pass++) {
+				const busy = frame.container.querySelector(
+					'[aria-label="Confirm recording"], [data-preparing-indicator], [data-transcribing-indicator]',
+				);
+				if (busy === null) return true;
+				await settle();
+			}
+			return false;
+		};
+
+		/*
+		 * ARM 1 - NO REPORT YET (the fail-open arm, and the state every host with a
+		 * no-op rig runs in): the chord keeps its answer.
+		 */
+		const resting = mic.calls;
+		await hold();
+		assert.equal(
+			mic.calls,
+			resting + 1,
+			"with no report observed the chord starts a take exactly as it did before",
+		);
+		await release();
+		assert.ok(await quiet(), "the first take settles before the next arm");
+
+		/*
+		 * ARM 2 - REPORTED OFF SCREEN: the chord must NOT reach the capture path,
+		 * and nothing may render as if it had.
+		 */
+		await report(false);
+		const offScreen = mic.calls;
+		await hold();
+		assert.equal(
+			mic.calls,
+			offScreen,
+			"a box the reader cannot see must not answer the chord",
+		);
+		assert.equal(
+			frame.container.querySelector('[aria-label="Confirm recording"]'),
+			null,
+			"and no take's feedback exists off screen",
+		);
+		assert.equal(
+			frame.container.querySelector("[data-preparing-indicator]"),
+			null,
+			"the press's own acknowledgment must not fire either",
+		);
+		await release();
+
+		/*
+		 * ARM 3 - REPORTED ON SCREEN: the take starts as it always did.
+		 */
+		await report(true);
+		await hold();
+		assert.equal(
+			mic.calls,
+			offScreen + 1,
+			"on screen the chord starts the take - the gate is the box's visibility, not dictation itself",
+		);
+		assert.ok(
+			frame.container.querySelector('[aria-label="Confirm recording"]'),
+			"and the take's own feedback is what the gate protects",
+		);
+		await release();
+	} finally {
+		await act(async () => {
+			root?.unmount();
+		});
+		mic.next = null;
+		globalThis.IntersectionObserver = previousObserver;
+	}
+});
+
 /* ------------------------------------------------------------------ */
 /* 5. The seams are the composer's, not react-query's                   */
 /* ------------------------------------------------------------------ */
