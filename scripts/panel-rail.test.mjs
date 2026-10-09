@@ -1848,13 +1848,23 @@ test("the ... menu's asks row opens the drawer over an empty queue, and its door
 			"a door-opened mount is not auto-closed over the empty queue (the empty state keeps its door)",
 		);
 		/*
-		 * `This conversation's asks` - the drawer's own labelled section - is the
-		 * empty chain's last resort, and it is where the keyboard ends even though
-		 * Radix's first write after the pick is the trigger again: the drawer's claim
-		 * (`ask-drawer.tsx`'s "menu's restore, answered") answers the menu's teardown,
-		 * which is why this assertion reads containment rather than element
-		 * identity.
+		 * THE MENU'S TEARDOWN WRITES LAND IN THEIR OWN MACROTASK, so at the instant
+		 * this read, the keyboard can be mid-flight - on `body`, the menu item just
+		 * detached - while the restore (the trigger write the drawer's claim answers
+		 * into the pane) is still queued: measured in a jsdom probe against these
+		 * components, it was delivered AFTER the click's own awaited act in 5 of 10
+		 * runs, and reading that transient is what made this cell flake under load.
+		 * The contract is the SETTLED state - the claim answers the restore whenever
+		 * it is delivered - so the pin waits for the keyboard to land, bounded; a
+		 * regression that leaves it on the trigger or `body` still fails it (the
+		 * late-write fixture, in the Q1/M1 case below, stages that deterministically).
 		 */
+		for (
+			let i = 0;
+			i < 8 && !surface.contains(api.document.activeElement);
+			i += 1
+		)
+			await new Promise((resolve) => setTimeout(resolve, 0));
 		assert.ok(
 			surface.contains(api.document.activeElement),
 			"the entry move put the keyboard in the pane (the empty chain's last resort is the surface)",
@@ -1924,6 +1934,153 @@ test("the ... menu's asks row opens the drawer over an empty queue, and its door
 			useUiPreferencesStore.getState().isAskDrawerOpen,
 			false,
 			"and the drawer did not stay",
+		);
+	});
+});
+
+/*
+ * THE CLAIM ANSWERS A RESTORE THAT LANDS AFTER IT WOULD HAVE SETTLED (round-2
+ * M1), and once settled it is the user's, not the drawer's (round-2 N2).
+ *
+ * WHY IT EXISTS. The settle used to be "one macrotask of quiet after the last
+ * write landed the keyboard inside" - and the restore the menu performs is
+ * itself a `setTimeout(0)` its teardown queues, so on a loaded host the
+ * delivery can land AFTER that beat: the claim settled, the late write put the
+ * keyboard back on the `…` trigger, and the drawer stayed open with the
+ * keyboard outside it - the exact state the Q1 case above exists to prevent.
+ * This stages the loaded ordering deterministically (a scratch probe reproduced
+ * the old failure 3/3 under it): the restore is deferred one macrotask, with a
+ * second write one macrotask behind the first - the burst shape the teardown
+ * itself produces (two trigger writes in a StrictMode pass). The claim must
+ * answer both writes and end with the keyboard in the pane; then, with the
+ * claim settled, a deliberate focus on the trigger must STICK - the disarm is
+ * what stops the claim fighting a user's Tab (N2).
+ */
+test("a restore that lands after the drawer's own settle still ends inside, and a later move to the trigger sticks (Q1/M1)", async () => {
+	await mount(async (api) => {
+		reset(api);
+		const emptyFrame = { asks: [], asks_open: 0, asks_truncated: null };
+		const Harness = () => {
+			const asksOpen = useUiPreferencesStore(
+				(s) => s.isAskDrawerOpen && s.askDrawerScope === "session",
+			);
+			const drawerOpen = useUiPreferencesStore((s) => s.isAskDrawerOpen);
+			return React.createElement(
+				React.Fragment,
+				null,
+				React.createElement(
+					TooltipProvider,
+					null,
+					React.createElement(ChatHeader, {
+						agentName: "Core",
+						onOpenOptions: () => {},
+						runDetails: details(),
+						asksScope: "session",
+						asksOpen,
+						onToggleAsks: () => {
+							const state = useUiPreferencesStore.getState();
+							if (state.isAskDrawerOpen && state.askDrawerScope === "session") {
+								state.setAskDrawerOpen(false, "session");
+								return;
+							}
+							state.setAskDrawerOpen(true, "session");
+							state.requestAskOpen("session");
+						},
+					}),
+				),
+				drawerOpen
+					? React.createElement(AskDrawer, {
+							frontend: emptyFrame,
+							scope: "session",
+							onClose: () => {
+								useUiPreferencesStore
+									.getState()
+									.setAskDrawerOpen(false, "session");
+							},
+						})
+					: null,
+			);
+		};
+		const openMenu = async () => {
+			const trigger = api.$('[aria-label="Conversation actions"]');
+			assert.ok(trigger, "the menu trigger is in the header");
+			act(() => {
+				trigger.dispatchEvent(
+					new api.window.KeyboardEvent("keydown", {
+						key: "Enter",
+						bubbles: true,
+						cancelable: true,
+					}),
+				);
+			});
+			await act(async () => {});
+		};
+		const rowNamed = (text) =>
+			api
+				.$$('[role="menuitem"]')
+				.find((item) => item.textContent.trim() === text);
+		const turns = async (n) => {
+			for (let i = 0; i < n; i += 1)
+				await new Promise((resolve) => setTimeout(resolve, 0));
+		};
+
+		await api.render(React.createElement(Harness));
+
+		await openMenu();
+		const trigger = api.$('[aria-label="Conversation actions"]');
+		assert.ok(trigger, "the menu trigger is in the header");
+		/*
+		 * THE LOADED ORDERING, STAGED: the restore - the trigger's own focus write
+		 * on the menu's way out - is deferred one macrotask, and a second write
+		 * follows one macrotask behind the first. Under the old single-beat settle
+		 * this ends with the keyboard ON THE TRIGGER, drawer open.
+		 */
+		const restore = trigger.focus.bind(trigger);
+		let deferred = false;
+		trigger.focus = () => {
+			if (deferred) return restore();
+			deferred = true;
+			setTimeout(() => {
+				restore();
+				setTimeout(() => restore(), 0);
+			}, 0);
+		};
+		await api.click(rowNamed("Open asks"));
+		await act(async () => {});
+		await turns(12);
+		assert.ok(
+			deferred,
+			"the fixture engaged: the teardown wrote focus to the trigger, deferred",
+		);
+		const surface = api.$("[data-lo-ask-surfaces]");
+		assert.equal(
+			useUiPreferencesStore.getState().isAskDrawerOpen,
+			true,
+			"the row opened the drawer over the empty queue",
+		);
+		assert.ok(surface, "the door-opened mount is not auto-closed");
+		assert.ok(
+			surface.contains(api.document.activeElement),
+			"the late restore was answered: the keyboard is in the pane, never back on the trigger with the drawer open",
+		);
+		/*
+		 * AND THE DISARM IS REAL (N2): the claim's chain is all macrotasks and all
+		 * of them are delivered above, so it has settled - a deliberate focus on
+		 * the trigger is the user's and must stick. A claim still armed would
+		 * bounce it into the pane.
+		 */
+		const triggerNow = api.$('[aria-label="Conversation actions"]');
+		triggerNow.focus();
+		await turns(4);
+		assert.equal(
+			api.document.activeElement,
+			triggerNow,
+			"a settled claim does not bounce a deliberate move to the trigger",
+		);
+		assert.equal(
+			useUiPreferencesStore.getState().isAskDrawerOpen,
+			true,
+			"and the drawer stays up",
 		);
 	});
 });
