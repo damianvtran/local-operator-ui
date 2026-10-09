@@ -37,6 +37,7 @@ import {
 	peerFields,
 	sameSender,
 	wakeIsCatchup,
+	wakeIsHidden,
 } from "../components/trace/receipt-row-model";
 import {
 	type SendDeliveryState,
@@ -2599,9 +2600,15 @@ function durableRecord(
 		}
 		// A wake receipt is the delivery verbatim; the headline and the prompt are
 		// derived at paint time. The CATCH-UP is not a receipt — see
-		// `wakeIsCatchup` for the two surfaces that skip it and why.
+		// `wakeIsCatchup` for the two surfaces that skip it and why. A HIDDEN
+		// delivery (a patience fire, Aida's first-run trigger) is not one either:
+		// see `wakeIsHidden`. This one arm covers BOTH doors: a wake is a custom
+		// message, which the core never announces as a live user `message_start`
+		// (`session.py` emits that for role "user" Messages only), so its live
+		// arrival is a `history_delta` row - and that case maps every row through
+		// this same function.
 		if (customType === WAKE_PROMPT_CUSTOM_TYPE) {
-			if (wakeIsCatchup(details)) return null;
+			if (wakeIsCatchup(details) || wakeIsHidden(details)) return null;
 			const text = String(details.text ?? "");
 			if (!text.trim()) return null;
 			return { kind: "wake", id: entry.id, ts, text };
