@@ -72,7 +72,11 @@
  * reachable, one Shift+Tab up. Leaving returns focus to the door it was opened by,
  * but only when focus was actually stranded - a close from the composer leaves the
  * caret in the box where the user is typing, and moving it there would be the same
- * theft. The return is deferred one microtask because React runs an unmounting
+ * theft. A STRANDED close with NO door - the auto-opened drawer, where the policy
+ * moved no keyboard in and the default first act is to dismiss what the app opened
+ * (agent review round 1 / UX round 1, U1) - hands the caret back to the COMPOSER,
+ * the element that held it before the open, through `composer-field.ts`'s one
+ * hand-off. The return is deferred one microtask because React runs an unmounting
  * component's cleanup BEFORE it detaches the nodes, so a synchronous read would still
  * see the drawer's own focused child.
  */
@@ -98,6 +102,7 @@ import {
 	askScopeLine,
 	noopDraftChange,
 } from "../../ask-queue";
+import { handCaretToComposer } from "../../composer-caret";
 import { useAskClock } from "../../use-ask-clock";
 import { AskPanel } from "./ask-panel";
 
@@ -514,7 +519,25 @@ export const AskDrawer = ({
 				const active = document.activeElement;
 				if (active !== null && active !== document.body) return;
 				const door = doorRef.current as HTMLButtonElement | null;
-				if (door?.isConnected) door.focus();
+				if (door !== null) {
+					if (door.isConnected) door.focus();
+					return;
+				}
+				/*
+				 * NO DOOR WAS RECORDED, so there is none to go back to: this drawer was
+				 * opened by the POLICY (or pinned programmatically by a story or rig), and
+				 * the entry effect above deliberately moves no keyboard for anything but a
+				 * press. The caret went into the drawer, the drawer unmounted, focus fell to
+				 * `<body>` - and on the auto-opened drawer that is the DEFAULT first act
+				 * (dismiss what the app opened) with the reader's next keystrokes lost to
+				 * nothing (agent review round 1 / UX round 1, U1). The composer held the
+				 * keyboard before the policy opened the drawer (measured: the active element
+				 * at the open is the composer textarea), so the caret goes back there -
+				 * through the composer's own hand-off, which is the one door that clears
+				 * the "user took the box" flag (`composer-field.ts`), never a direct
+				 * `focus()` on a queried node.
+				 */
+				handCaretToComposer();
 			});
 		};
 	}, []);
