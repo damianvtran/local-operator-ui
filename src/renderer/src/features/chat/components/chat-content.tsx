@@ -60,6 +60,7 @@ import {
 	goalCapability,
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
+import { DelegatedCleanupNoticeBand } from "../../settings/components/delegated-cleanup-notice";
 import { gateIsSecret } from "../ask-answer";
 import type { AskDraft, AskOutcome, AskScope } from "../ask-queue";
 import {
@@ -2018,6 +2019,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 */}
 						<ChatStatusStrip />
 						<BackendCompatibilityBanner />
+						{/* The server's one-time "delegated sessions were cleaned up" news;
+						    renders nothing until it arrives and until dismissed. */}
+						<DelegatedCleanupNoticeBand />
 						{/*
 						 * The one delete confirmation, rendered here because this component owns
 						 * the conversation it asks about (`title`) and the run details whose
