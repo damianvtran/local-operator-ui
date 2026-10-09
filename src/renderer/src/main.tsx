@@ -20,6 +20,7 @@ import { GlobalScrollbarStyles } from "./shared/components/common/global-scrollb
 import { AuthProviders } from "./shared/providers/auth";
 import { FeatureFlagProvider } from "./shared/providers/feature-flags";
 import { installConversationInputSync } from "./shared/store/conversation-input-sync";
+import { installRightSlotMemoryFollower } from "./shared/store/right-slot-follower";
 import { ThemeProvider } from "./shared/themes/theme-provider";
 import { isDevelopmentMode } from "./shared/utils/env-utils";
 
@@ -74,6 +75,19 @@ window.__loSbUninstall = installScrollbarActivity();
  * it must outlive every render, and it must exist even if React fails to mount.
  */
 installConversationInputSync();
+
+/*
+ * THE RIGHT SLOT'S MEMORY IS PROJECTED BEFORE THE FIRST RENDER (issue #894).
+ *
+ * Installed here rather than in a component, on the same argument as the sync
+ * above: the bind must be a subscriber that outlives every render, and it must be
+ * in place BEFORE the first one. `localStorage` hydrates synchronously, so
+ * `installRightSlotMemoryFollower` reads the restored memory and writes the four
+ * flags during this line - which is what makes frame one the active
+ * conversation's own panel rather than an empty slot that fills in a frame later.
+ * `right-slot-follower.ts` carries the rest.
+ */
+installRightSlotMemoryFollower();
 
 document.addEventListener("DOMContentLoaded", () => {
 	/*

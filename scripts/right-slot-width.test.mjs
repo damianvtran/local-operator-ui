@@ -567,8 +567,8 @@ test("a blob already at the current version is passed through untouched", () => 
  * would leave a v0 blob's key behind), and it reaches the live store through a
  * real rehydrate rather than only through the pure function.
  */
-test("the persist version is 2, the step that drops chatMeasureWidth (#895)", () => {
-	assert.equal(UI_PREFERENCES_VERSION, 2);
+test("the persist version is 3, the step that drops chatMeasureWidth (#895)", () => {
+	assert.equal(UI_PREFERENCES_VERSION, 3);
 });
 
 test("a v1 blob loses only the retired chatMeasureWidth (#895)", () => {
@@ -580,6 +580,20 @@ test("a v1 blob loses only the retired chatMeasureWidth (#895)", () => {
 	assert.deepEqual(migrated, { rightSlotWidth: 712, themeName: "dracula" });
 });
 
+test("a v1 blob is passed through untouched, apart from the v3 handover", () => {
+	const blob = { rightSlotWidth: 712, themeName: "dracula" };
+	assert.deepEqual(migrateUiPreferences(blob, 1), blob);
+	/*
+	 * AND A v1 BLOB THAT CARRIED A SLOT FLAG IS THE ORDINARY #894 UPGRADE: the step
+	 * above cannot tell, because this blob has no flag to hand over. Every blob in the
+	 * field is v1 or v0, so the flag is what most profiles bring to this migration.
+	 */
+	const withFlag = { ...blob, isCanvasOpen: true };
+	const migrated = migrateUiPreferences(withFlag, 1);
+	assert.equal(migrated.rightSlotWidth, 712);
+	assert.equal(migrated.rightSlotLegacySeed, "canvas");
+	assert.equal("isCanvasOpen" in migrated, false);
+});
 test("a v0 blob gets both the #677 fold and the chatMeasureWidth drop (#895)", () => {
 	const migrated = migrateUiPreferences(
 		{
@@ -596,7 +610,7 @@ test("a v0 blob gets both the #677 fold and the chatMeasureWidth drop (#895)", (
 	assert.equal(migrated.themeName, "dracula");
 });
 
-test("a stored v1 blob with a customised measure rehydrates to a store without it, rewritten at v2 (#895)", async () => {
+test("a stored v1 blob with a customised measure rehydrates to a store without it, rewritten at v3 (#895)", async () => {
 	/*
 	 * `persist.getOptions()` is deliberately not used: the store's own note at its
 	 * `partialize` records it failing on CI's node. A seeded blob and a real
@@ -709,11 +723,19 @@ test("the asks drawer wears the canvas family's width, and takes the slot alone"
 	/*
 	 * AND THE DRAWER BORROWS THE SLOT RATHER THAN EVICTING IT (UX round 1, U6).
 	 *
-	 * The exclusivity above means opening the drawer writes `isCanvasOpen: false` -
-	 * and that flag is persisted, so a peek at a queue used to survive as a preference
-	 * the user never expressed: a relaunch came back with the canvas gone. The pane the
-	 * drawer displaced is recorded and given back on close, and what the snapshot
-	 * writes while the drawer is open is the durable pane rather than the borrow.
+	 * The exclusivity above means opening the drawer writes `isCanvasOpen: false`, so the
+	 * pane it displaced has to be given back on close rather than lost to a transient
+	 * surface. HOW that survives a relaunch changed in issue #894, and this cell is where
+	 * the change is visible.
+	 *
+	 * It used to be that flag's own persistence: the snapshot carried the displaced
+	 * pane's flag so a relaunch could not come back with the document missing. The four
+	 * flags are no longer persisted at all — the bound conversation's `rightSlotMemory`
+	 * entry is what a relaunch restores, and the drawer never writes it (it borrows the
+	 * slot, it does not claim it). In UNBOUND mode, which is what this file drives, there
+	 * is no memory to hold the answer and the borrow is a per-run record: a relaunch
+	 * deliberately forgets it, exactly as it forgets the drawer. What is asserted here is
+	 * both halves of that — the record is live, and no flag reaches the blob.
 	 */
 	useUiPreferencesStore.getState().setCanvasOpen(true);
 	useUiPreferencesStore.getState().setAskDrawerOpen(true, "session");
@@ -725,9 +747,14 @@ test("the asks drawer wears the canvas family's width, and takes the slot alone"
 	);
 	const whilePeeking = persistedUiPreferences(useUiPreferencesStore.getState());
 	assert.equal(
-		whilePeeking.isCanvasOpen,
-		true,
-		"a relaunch while the drawer is open still restores the document it covered",
+		"isCanvasOpen" in whilePeeking,
+		false,
+		"the displaced pane is not persisted as a flag (issue #894)",
+	);
+	assert.deepEqual(
+		whilePeeking.rightSlotMemory,
+		[],
+		"and this store is unbound, so there is no memory the relaunch could restore from",
 	);
 	assert.equal("isAskDrawerOpen" in whilePeeking, false);
 	assert.equal("askDrawerEvictedPane" in whilePeeking, false);
@@ -761,16 +788,21 @@ test("the asks drawer wears the canvas family's width, and takes the slot alone"
 	});
 	useUiPreferencesStore.getState().setConsolePaneOpen(false);
 
-	// AND IT IS THE ONE SLOT FLAG NOT PERSISTED: the canvas is a document a user
-	// keeps open across launches; the drawer is a reading of the queue that is
-	// there now, and a relaunch must not open a surface nobody opened.
+	// AND THE FLAGS THEMSELVES ARE NOT PERSISTED ANY MORE (issue #894): each is the
+	// bound conversation's projection of `rightSlotMemory`, and that memory is what goes
+	// to disk — a bare flag could not say which conversation it belonged to.
 	const persisted = persistedUiPreferences(useUiPreferencesStore.getState());
 	assert.equal(
 		"isAskDrawerOpen" in persisted,
 		false,
 		"the drawer must not be persisted",
 	);
-	assert.equal(typeof persisted.isCanvasOpen, "boolean");
+	assert.equal(
+		"isCanvasOpen" in persisted,
+		false,
+		"the four durable flags are the memory's projection and are not persisted",
+	);
+	assert.equal("rightSlotMemory" in persisted, true);
 });
 
 test("the panel rail's lit pane is the DRAWN pane, built from the same two inputs (#872)", () => {
