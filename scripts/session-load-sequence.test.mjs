@@ -1213,6 +1213,20 @@ const SEND_SEED = {
 	tool_name: "send",
 };
 /**
+ * The product's hold budget, RESPELT HERE ON PURPOSE (agent review round 3, R8).
+ *
+ * The arm's release assertions need a wait longer than it, and its pre-budget
+ * assertion needs to know whether the drive beat it - but this file must also
+ * BUNDLE against a tree that predates the constant (that is how the arms prove
+ * they discriminate), so it cannot import it. The number is a fact about the
+ * product the arm is allowed to know, and `use-display-flag.ts` is its source.
+ */
+const HOLD_BUDGET_MS = 150;
+
+/** Slack on that comparison: a sample must be clearly inside the budget. */
+const HOLD_BUDGET_MS_SLACK = 30;
+
+/**
  * How long the scripted failing read stays in flight before it rejects.
  *
  * A LOCAL RIG NUMBER, not the product's: the point is that the read has an
@@ -1558,16 +1572,35 @@ test("the hold's budget: a registry read that never answers releases the pane, f
 			settings.network,
 		);
 
+		const mountedAt = Date.now();
 		await settings.requestSeen();
 		await send(openFrame);
 		await record("open");
 		await send(crossSnapshot());
 		await record("page (read never answers)");
-		assert.equal(
-			records.at(-1).rows,
-			0,
-			`rows painted ahead of the answer that governs them: ${JSON.stringify(records.at(-1).ids)}`,
-		);
+		/*
+		 * THE HOLD IS ASSERTED ONLY WHILE THE BUDGET CANNOT HAVE FIRED (agent review
+		 * round 3, R8). This arm restores the REAL window timer — it has to, or the
+		 * budget could never fire and the release below would be untestable — so the
+		 * time from the mount to this sample is the host's, and under load it went
+		 * past 150 ms: the budget released first and this equality saw the released
+		 * rows (5, expected 0; 8 of 23 runs on the reviewer's host). The arm keeps the
+		 * claim for a drive that beat the budget, records the slower case instead of
+		 * asserting it, and leaves the invariant below — which no host can race — on
+		 * every sample either way.
+		 */
+		const elapsedMs = Date.now() - mountedAt;
+		if (elapsedMs + HOLD_BUDGET_MS_SLACK <= HOLD_BUDGET_MS) {
+			assert.equal(
+				records.at(-1).rows,
+				0,
+				`rows painted ahead of the answer that governs them: ${JSON.stringify(records.at(-1).ids)}`,
+			);
+		} else {
+			console.log(
+				`  (budget arm: the drive reached the page sample in ${elapsedMs} ms, past the ${HOLD_BUDGET_MS} ms budget - the hold assertion is skipped for this run, the invariant below is not)`,
+			);
+		}
 
 		/*
 		 * Past the budget, with no answer anywhere in sight. THE WAIT IS THIS

@@ -54,12 +54,28 @@ const bundle = await build({
 			 * arriving LATER when the advertised prop flips. Kept separate from
 			 * Harness above so no existing arm's request environment changes.
 			 */
-			function Prefetched({ sessionId, track, advertised }) {
-				useOpenPrefetch(sessionId, advertised === true);
+			/*
+			 * PARENT AND CHILD, because that is the app's order and the arms about the
+			 * marker depend on it (agent review round 3, R9): React runs the CHILD's
+			 * effects before the parent's, so here the hook's read starts first and the
+			 * parent's prefetch joins it in flight - the opposite of calling both in one
+			 * component, which is what the round pointed out the earlier harness did.
+			 * A withPrefetch of false is a hook-only mount: no warm at all.
+			 */
+			function Prefetched({ sessionId, track }) {
 				track(useCheckpoints(sessionId));
 				return null;
 			}
-			export function PrefetchHarness({ sessionId, track, advertised }) {
+			function PrefetchParent({ sessionId, track, advertised, withPrefetch }) {
+				if (withPrefetch) useOpenPrefetch(sessionId, advertised === true);
+				return createElement(Prefetched, { sessionId, track });
+			}
+			export function PrefetchHarness({
+				sessionId,
+				track,
+				advertised,
+				withPrefetch = true,
+			}) {
 				/*
 				 * The provider lives INSIDE the bundle, because react-query is bundled
 				 * here (only react and react-dom are external) - a QueryClient from the
@@ -73,7 +89,12 @@ const bundle = await build({
 				return createElement(
 					QueryClientProvider,
 					{ client },
-					createElement(Prefetched, { sessionId, track, advertised }),
+					createElement(PrefetchParent, {
+						sessionId,
+						track,
+						advertised,
+						withPrefetch,
+					}),
 				);
 			}
 		`,
@@ -218,7 +239,10 @@ function captureWarnings() {
  * A DOM and a root for one case, rendering the probe harness; the tracker hands
  * every render's result to the test.
  */
-async function mountHook(sessionId, { prefetch = false } = {}) {
+async function mountHook(
+	sessionId,
+	{ prefetch = false, withPrefetch = true } = {},
+) {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		url: "http://localhost/",
 	});
@@ -257,6 +281,7 @@ async function mountHook(sessionId, { prefetch = false } = {}) {
 							sessionId: id,
 							track,
 							advertised: advertised ?? advertisedNow,
+							withPrefetch,
 						})
 					: React.createElement(Harness, { sessionId: id, track }),
 			);
@@ -750,6 +775,45 @@ test("a served memory is CORRECTABLE: a later read's answer is what the rail pai
 		);
 	} finally {
 		await next.close();
+	}
+});
+
+test("a warm read that only JOINS the hook's own read leaves no marker behind (R9)", async (t) => {
+	/*
+	 * The app's effect order, which the earlier harness could not express: the
+	 * child's hook starts the read, the parent's prefetch joins it in flight. The
+	 * marker used to be added when the READ SETTLED, whoever started it - so a joined
+	 * read left a marker nobody consumed, and a later hook-only mount (same panel, no
+	 * new prefetch: the dev chat/raw tab) served a memory with no read left to
+	 * correct it: `reads=0`, `painted=["c1"]` while the journal held `c1,c2` (round 3,
+	 * R9). Only a request the warm itself started can leave that marker.
+	 */
+	freshWindow();
+	const first = backend([manifest([user()])]);
+	const opener = await mountHook("s1", { prefetch: true });
+	try {
+		await opener.flush();
+		assert.equal(first.length, 1, "one read, started by the hook and joined");
+	} finally {
+		await opener.close();
+	}
+
+	const second = backend([manifest([user(), completion()])]);
+	const again = await mountHook("s1", { prefetch: true, withPrefetch: false });
+	try {
+		await again.flush();
+		assert.equal(
+			second.length,
+			1,
+			"a hook-only remount reads rather than serving a leftover marker",
+		);
+		assert.equal(
+			again.latest().checkpoints.length,
+			2,
+			"and paints the journal's current manifest",
+		);
+	} finally {
+		await again.close();
 	}
 });
 

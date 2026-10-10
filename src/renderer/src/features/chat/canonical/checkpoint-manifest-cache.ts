@@ -100,7 +100,21 @@ export function readCachedCheckpointManifest(
 export function warmCheckpointManifest(
 	sessionId: string,
 ): Promise<CheckpointManifest> {
-	return loadCheckpointManifest(sessionId).then((manifest) => {
+	/*
+	 * THE MARKER MEANS THE OPEN'S READ STARTED THE REQUEST (agent review round 3,
+	 * R9). In the real tree the CHILD's `useCheckpoints` effect runs before the
+	 * parent's prefetch, so this call usually JOINS a read the hook already started
+	 * — and marking that one left a marker nobody would ever consume: the hook has
+	 * the answer through the join, and the marker then outlived its open, serving a
+	 * later hook-only remount a memory with no read left to correct it (`reads=0`,
+	 * `painted=["c1"]` while the journal held `c1,c2`). A joined read is the hook's
+	 * own answer and needs no marker; only a request this module started for the
+	 * open can be one a pane's first ask serves from.
+	 */
+	const started = !inFlight.has(sessionId);
+	const load = loadCheckpointManifest(sessionId);
+	if (!started) return load;
+	return load.then((manifest) => {
 		openedReads.add(sessionId);
 		return manifest;
 	});
