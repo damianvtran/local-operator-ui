@@ -960,7 +960,19 @@ export function MiniComposer() {
 	);
 
 	const sessionStatus = frontend
-		? { frontend, onCommand, effortEntities }
+		? {
+				frontend,
+				onCommand,
+				effortEntities,
+				/*
+				 * The published channel spend's gate, read here for the strip: the mini
+				 * view shows the same readings as the chat pane, and a mount that left
+				 * this false would print the inference-only figure beside a pane showing
+				 * the published total — the surface disagreement the channel ledger
+				 * exists to remove.
+				 */
+				costChannels: desktopFeatureEnabled(capabilities, "cost_channels"),
+			}
 		: undefined;
 
 	/* -- paint -------------------------------------------------------------- */
