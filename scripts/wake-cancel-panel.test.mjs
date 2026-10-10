@@ -241,6 +241,8 @@ const mount = async (initial) => {
 		root.render(element());
 	});
 	const handles = {
+		/* The root's own container, so a case can nest it under a pane marker. */
+		container,
 		rerender: async (updates) => {
 			props = { ...props, ...updates };
 			await act(async () => {
@@ -757,6 +759,95 @@ test("the one-press write shows `Cancelling…`, disabled, while it is in flight
 	await p.unmount();
 });
 
+test("a landed one-press cancel lands the keyboard on the next row's control (U1)", async () => {
+	/*
+	 * UX round 1's U1: after Enter on the row's control, focus fell to `<body>`
+	 * and the row left on the re-read. The successor is the landing stop. The
+	 * guard must not depend on the browser having moved off the disabled control
+	 * yet (jsdom keeps focus on one; Chromium blurs it; measured 2026-10-09) —
+	 * the resolution decides either way, which is why this case needs no stub.
+	 */
+	const p = await mount({
+		wakes: [
+			wireWake("w1", "First"),
+			wireWake("w2", "Second"),
+			wireWake("w3", "Third"),
+		],
+		sessionId: "sess1",
+		aida: UNKNOWN_AIDA,
+		cancel: async () => ({ ok: true }),
+	});
+	await press(document.querySelector('[data-wake-cancel="w2"]'));
+	assert.ok(
+		await settle(
+			() =>
+				document.activeElement ===
+				document.querySelector('[data-wake-cancel="w3"]'),
+		),
+		"the keyboard lands on the successor row's control",
+	);
+	await p.unmount();
+});
+
+test("a landed cancel with no row after it lands the keyboard on the pane (U1)", async () => {
+	/*
+	 * The last row's successor is nothing, and `<body>` is the one landing the
+	 * pane's standard forbids: the resolution falls to the pane's own focus
+	 * container (`run-panel.tsx`'s `[data-run-panel-pane]`, `tabIndex={-1}`).
+	 * The wrapper here is that marker; in the app the pane is the element that
+	 * already contains these rows.
+	 */
+	const pane = document.createElement("section");
+	pane.setAttribute("data-run-panel-pane", "");
+	pane.tabIndex = -1;
+	document.body.append(pane);
+	const p = await mount({
+		wakes: [wireWake("w1", "The only one")],
+		sessionId: "sess1",
+		aida: UNKNOWN_AIDA,
+		cancel: async () => ({ ok: true }),
+	});
+	pane.append(p.container);
+	await press(document.querySelector('[data-wake-cancel="w1"]'));
+	assert.ok(
+		await settle(() => document.activeElement === pane),
+		"the keyboard lands on the pane, not the body",
+	);
+	await p.unmount();
+});
+
+test("a refused press hands the keyboard back to its own retry control (U2)", async () => {
+	const gate = deferred();
+	const p = await mount({
+		wakes: [
+			wireWake("w1", "4-hourly proactive check-in (operator-set cadence)"),
+		],
+		sessionId: "sess1",
+		aida: UNKNOWN_AIDA,
+		cancel: async () => gate.promise,
+	});
+	const control = document.querySelector('[data-wake-cancel="w1"]');
+	await press(control);
+	/*
+	 * The live condition the refusal left behind: the browser moves focus off a
+	 * control that becomes DISABLED mid-write, and jsdom does not (measured), so
+	 * the case blurs it the way the platform would — the condition the fix
+	 * answers, not the fix itself.
+	 */
+	control.blur();
+	await act(async () => gate.resolve({ ok: false, detail: OWNER_REFUSAL }));
+	assert.ok(
+		await settle(() => document.activeElement === control),
+		"the surviving control — the next attempt — takes the keyboard back",
+	);
+	assert.equal(
+		document.querySelector("[data-wake-cancel-note]")?.textContent,
+		OWNER_REFUSAL,
+		"and the sentence is there for the press that follows",
+	);
+	await p.unmount();
+});
+
 test("an outside press dismisses the question, and a busy write refuses it (F8)", async () => {
 	const gate = deferred();
 	const p = await mount({
@@ -804,5 +895,51 @@ test("an outside press dismisses the question, and a busy write refuses it (F8)"
 	assert.ok(confirmCard() !== null, "the busy write keeps the card open");
 	await act(async () => gate.resolve({ ok: true }));
 	await settle(() => confirmCard() === null);
+	await p.unmount();
+});
+
+test("an outside press returns the keyboard while the card's Keep still holds it (U3)", async () => {
+	const p = await mount({
+		wakes: [
+			wireWake("w1", "4-hourly proactive check-in (operator-set cadence)"),
+		],
+		sessionId: HER_SESSION,
+		aida: RESOLVED_AIDA,
+		cancel: async () => ({ ok: true }),
+	});
+	const control = document.querySelector('[data-wake-cancel="w1"]');
+	await press(control);
+	assert.ok(await settle(() => confirmCard() !== null), "the question opens");
+	const keep = confirmCard().querySelector('[data-wake-confirm-keep=""]');
+	assert.ok(keep, "the safe action is drawn");
+	/*
+	 * THE LIVE ORDERING jsdom cannot reproduce: the press's focus default lands
+	 * AFTER the close commit, so at the instant the resolution runs the keyboard
+	 * is still on the card's own Keep — a fall-through, not a reader who moved
+	 * on purpose. The keyboard read is stubbed to that state for the close (the
+	 * `composer-tabs.test.mjs` precedent for stubbing exactly this platform
+	 * read), and dropped before the assertion reads the browser's own value:
+	 * the card, its dismissal, the resolution and the focus it asks for are all
+	 * real. Restoring the prototype's own descriptor is the `composer-tabs`
+	 * recipe (`delete` is a lint error in this tree).
+	 */
+	const realActiveElement = Object.getOwnPropertyDescriptor(
+		DOM.window.Document.prototype,
+		"activeElement",
+	);
+	Object.defineProperty(document, "activeElement", {
+		configurable: true,
+		get: () => keep,
+	});
+	await act(async () => {
+		document.body.dispatchEvent(
+			new DOM.window.Event("pointerdown", { bubbles: true }),
+		);
+	});
+	Object.defineProperty(document, "activeElement", realActiveElement);
+	assert.ok(
+		await settle(() => document.activeElement === control),
+		"the keyboard returns to the control the question came from",
+	);
 	await p.unmount();
 });

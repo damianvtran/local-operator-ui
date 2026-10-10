@@ -110,6 +110,32 @@ export const wakeRowKey = (row: {
 	createdAt: number | null;
 }): string => `${row.id}:${row.createdAt ?? "?"}`;
 
+/**
+ * The app's own sentence for one refusal code, or `null` to echo the backend's.
+ *
+ * UX round 1's U4 is the live one-press refusal: `No wake schedule with id
+ * 'w4' (known: w2, w1, w3)`. That sentence names raw handles AND the OTHER
+ * wakes in the list - names the reader never chose and cannot act on - where
+ * the truth they need is one line: the wake they pressed is already gone. The
+ * code is the machine fact (`wake_not_found`, the desktop refusal envelope's
+ * own `detail.code`) and the sentence is the app's, which is the transport's
+ * own rule for the pairing family (`userFacingMessage` in `desktop-api.ts`);
+ * reads structurally so a plain `{ code }` and the shipped error classes both
+ * carry, no class import here (this model's graph stays React-free).
+ *
+ * ONE code, and only where the backend's sentence is the defect: every other
+ * refusal keeps echoing the backend verbatim (the monitors' rule), so a
+ * rewording upstream is never hidden by a UI that guessed at prose. The
+ * caller composes: `wakeRefusalSentence(error) ?? userFacingMessage(...)`.
+ */
+export const wakeRefusalSentence = (error: unknown): string | null => {
+	const code =
+		typeof error === "object" && error !== null
+			? (error as { code?: unknown }).code
+			: null;
+	return code === "wake_not_found" ? "This wake is already gone." : null;
+};
+
 export const WAKE_CONTROL_MODES = ["managed", "confirm", "one-click"] as const;
 
 /** What a row's control column offers. */

@@ -34,7 +34,7 @@ import { resyncCanonicalSession } from "@shared/hooks/use-canonical-session";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import type { WakeCancelOutcome, WakeControls } from "./wake-controls-model";
-import { attemptWakeCancel } from "./wake-controls-model";
+import { attemptWakeCancel, wakeRefusalSentence } from "./wake-controls-model";
 
 /**
  * Re-exported so a consumer of this module reads one import for one control:
@@ -72,7 +72,12 @@ export const useWakeControls = ({
 			(wakeId: string): Promise<WakeCancelOutcome> =>
 				attemptWakeCancel({
 					run: () => mutateAsync(wakeId),
+					/*
+					 * ONE code is the app's own sentence and every other refusal echoes the
+					 * backend verbatim (U4; see `wakeRefusalSentence`).
+					 */
 					describe: (error) =>
+						wakeRefusalSentence(error) ??
 						userFacingMessage(error, "Could not cancel the wake."),
 					resync: () => {
 						/*
