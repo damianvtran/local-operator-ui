@@ -689,12 +689,14 @@ const DRAWABLE_ROUTE = {
 	runDetails: true,
 	session: true,
 	codeReview: true,
+	asksOffered: true,
 } as const;
 const EMPTY_ROUTE = {
 	mounted: false,
 	runDetails: false,
 	session: false,
 	codeReview: false,
+	asksOffered: false,
 } as const;
 
 /**

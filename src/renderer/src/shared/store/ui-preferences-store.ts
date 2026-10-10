@@ -27,6 +27,15 @@ import {
 	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 	type TranscriptDisplayMode,
 } from "@features/chat/transcript-display-mode";
+import {
+	captureRefusal,
+	normalizeChord,
+	sanitizeShortcutBindings,
+} from "@shared/keymap/keymap-chord";
+import type {
+	ActionId,
+	ShortcutBindings,
+} from "@shared/keymap/keymap-registry";
 import { DEFAULT_THEME } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
 import { create } from "zustand";
@@ -317,6 +326,29 @@ type UiPreferencesState = {
 	 * @param route - The route's facts
 	 */
 	setRightSlotRoute: (route: RightSlotRouteFacts) => void;
+
+	/**
+	 * THE USER'S SHORTCUT OVERRIDES (issue #928): action id → canonical chord,
+	 * for the actions a user has rebound. An absent action uses its registry
+	 * default, and a `null` write deletes the override — the product's reset
+	 * convention (`reset_setting` deletes; absence = default), which is also what
+	 * keeps a future default change correct for anyone who never overrode it.
+	 *
+	 * Writes are re-validated at this boundary (`normalizeChord` for the grammar,
+	 * `captureRefusal` for the reserved set and duplicates) the way the backend
+	 * re-validates every writer; the hydrating guard is
+	 * `sanitizeShortcutBindings` in `mergePersistedUiPreferences`, because
+	 * `localStorage` is not a trusted input and a hand-edited blob must not be
+	 * able to arm a chord the recorder would refuse.
+	 */
+	shortcutBindings: ShortcutBindings;
+
+	/**
+	 * Write or clear one action's chord override. `null` deletes it (back to the
+	 * action's default); a chord capture refuses, or one the canonical grammar
+	 * cannot spell, is not written at all.
+	 */
+	setShortcutBinding: (actionId: ActionId, chord: string | null) => void;
 
 	/**
 	 * Which list the browser pane's strip shows (spec 7.2).
@@ -1352,6 +1384,15 @@ export type RightSlotRouteFacts = {
 	 * not reserve an empty column with no door to close it (`rightSlotPaneDrawable`).
 	 */
 	codeReview: boolean;
+	/**
+	 * Whether this route's host OFFERS the asks door (issue #928): the item's own
+	 * `askOffered` rule (`published` in a conversation, `answered` at the top
+	 * level), published from the same value the rail reads so the rail item and
+	 * the chord cannot disagree about whether a door exists. The fleet scope's
+	 * home is the shell, so this is about the DOOR, not drawability —
+	 * `rightSlotPaneDrawable` keeps its own, wider ask rule.
+	 */
+	asksOffered: boolean;
 };
 
 /**
@@ -1363,6 +1404,7 @@ export const EMPTY_RIGHT_SLOT_ROUTE: RightSlotRouteFacts = Object.freeze({
 	runDetails: false,
 	session: false,
 	codeReview: false,
+	asksOffered: false,
 });
 
 /**
@@ -1887,6 +1929,9 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			/* Empty on a fresh install: the palette then draws no Recents section and
 			 * no heading, so the switcher's browse list is the one it always was. */
 			conversationRecents: [],
+			/* No overrides on a fresh install, and none for a user who never rebound
+			 * anything: every action dispatches on its registry default. */
+			shortcutBindings: {},
 
 			openCreateAgentDialog: () => {
 				set({ isCreateAgentDialogOpen: true });
@@ -2248,11 +2293,50 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 					 * duplicate and the slot resolver never learned the pane may draw
 					 * (the rail item stayed unlit on exactly F6's cold-relaunch case).
 					 */
-					current.codeReview === route.codeReview
+					current.codeReview === route.codeReview &&
+					/*
+					 * THE ASKS OFFER IS A ROUTE FACT TOO (issue #928): the dispatcher's door
+					 * table gates the ask chord on it, and it changes when the host's
+					 * capability or the view's published state does — ignoring it would
+					 * keep the chord dead until some other fact moved.
+					 */
+					current.asksOffered === route.asksOffered
 				) {
 					return;
 				}
 				set({ rightSlotRoute: { ...route } });
+			},
+
+			setShortcutBinding: (actionId, chord) => {
+				/*
+				 * NO-OP WRITES ARE REAL ANSWERS: a chord capture refuses, or one the
+				 * canonical grammar cannot spell, is not stored. The refusal is the
+				 * settings field's to show; the store's silence is the second line of the
+				 * same guard, so a hand-called setter cannot arm what the recorder would
+				 * not. The delete arm mirrors the product's reset convention: absence IS
+				 * the default.
+				 */
+				if (chord === null) {
+					set((state) => {
+						const next = { ...state.shortcutBindings };
+						delete next[actionId];
+						return { shortcutBindings: next };
+					});
+					return;
+				}
+				const normalized = normalizeChord(chord);
+				if (normalized === null) return;
+				if (
+					captureRefusal(normalized, actionId, get().shortcutBindings) !== null
+				) {
+					return;
+				}
+				set((state) => ({
+					shortcutBindings: {
+						...state.shortcutBindings,
+						[actionId]: normalized,
+					},
+				}));
 			},
 
 			setBrowserPaneScope: (scope: BrowserPaneScope) => {
@@ -2706,6 +2790,15 @@ export function mergePersistedUiPreferences(
 		rightSlotLegacySeed: isMemoryPane(blob.rightSlotLegacySeed)
 			? blob.rightSlotLegacySeed
 			: null,
+		/*
+		 * THE SHORTCUT OVERRIDES ARE RE-VALIDATED, never trusted (issue #928):
+		 * `localStorage` can be hand-edited, written by an older build, or left
+		 * half-written, and a chord stored there is loaded straight into the
+		 * dispatch map. `sanitizeShortcutBindings` drops non-strings, unknown ids,
+		 * unparseable/reserved chords and later duplicates — after `...rest`, so a
+		 * raw value can never ride in ahead of it.
+		 */
+		shortcutBindings: sanitizeShortcutBindings(blob.shortcutBindings),
 	};
 }
 

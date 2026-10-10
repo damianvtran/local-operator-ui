@@ -4115,6 +4115,104 @@ export const STORIES = [
 	["settings-speech--backend-older", 1024, 640, { dir: "backend-older" }],
 	["settings-speech--unreadable", 1024, 640, { dir: "unreadable" }],
 	/*
+	 * Settings -> Keyboard shortcuts (issue #928): the six registry rows, the
+	 * recorder's states and the Reset affordance. Five states, because each is a
+	 * claim one frame cannot carry — the default/unbound mix, populated
+	 * overrides, the recording focus, a REAL refusal (the story's play presses
+	 * the canvas chord at the console field) and the cleared row after a REAL
+	 * Reset press. Captured at 1024x640 like the settings-speech set beside it:
+	 * the section is one settings column in its own ground, and the rig grows
+	 * the viewport to the rendered height, so 640 is a floor rather than a crop.
+	 *
+	 * THE REFUSED AND CLEARED FRAMES ARE REACHED, NOT STAGED: their sentences
+	 * come from the shipped component handling a real keydown and a real click,
+	 * and the shutter-time claims below refuse a frame where the play's outcome is
+	 * missing. The keyboard rows read `Ctrl+…` here because the harness carries
+	 * no window-chrome facts — the display tables' shared fallback, exactly as
+	 * the mini view's own stories read it.
+	 */
+	[
+		"settings-keyboard-shortcuts--default-mix",
+		1024,
+		640,
+		{
+			expect: {
+				expression: `(() => {
+					const consoleField = document.querySelector('input[data-shortcut-action="panel.console"]');
+					if (!consoleField) return "the console row is not rendered";
+					if (consoleField.value !== "Ctrl+J") return "the console field reads " + JSON.stringify(consoleField.value) + ", not its shipped default";
+					const browserField = document.querySelector('input[data-shortcut-action="panel.browser"]');
+					if (!browserField) return "the browser row is not rendered";
+					if (browserField.value !== "No shortcut") return "an unbound row must read No shortcut, read " + JSON.stringify(browserField.value);
+					return true;
+				})()`,
+				message:
+					"the default/unbound mix shows the console's default chord and the unbound rows' No shortcut",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--overrides",
+		1024,
+		640,
+		{
+			expectPresent: 'button[aria-label="Reset Browser to its default"]',
+			expect: {
+				expression: `(() => {
+					const field = document.querySelector('input[data-shortcut-action="panel.browser"]');
+					if (!field) return "the browser row is not rendered";
+					if (field.value !== "Ctrl+I") return "the overridden row reads " + JSON.stringify(field.value) + ", not the stored chord";
+					return true;
+				})()`,
+				message:
+					"a populated override is on the row and its Reset is available",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--recording",
+		1024,
+		640,
+		{
+			expect: {
+				expression: `(() => {
+					const active = document.activeElement;
+					if (!active || active.getAttribute("data-shortcut-action") !== "panel.canvas") return "the canvas field does not hold focus, so the frame is not the recording state";
+					return true;
+				})()`,
+				message: "the recording state is the focused field",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--refused",
+		1024,
+		640,
+		{
+			expectSentence: {
+				selector: "output",
+				includes: "Already assigned to Open canvas.",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--cleared",
+		1024,
+		640,
+		{
+			expectGone: 'button[aria-label="Reset Browser to its default"]',
+			expect: {
+				expression: `(() => {
+					const field = document.querySelector('input[data-shortcut-action="panel.browser"]');
+					if (!field) return "the browser row is not rendered";
+					if (field.value !== "No shortcut") return "the cleared row reads " + JSON.stringify(field.value) + ", not No shortcut";
+					return true;
+				})()`,
+				message: "the cleared row is back to No shortcut with its Reset gone",
+			},
+		},
+	],
+	/*
 	 * And the state this list deliberately does NOT carry, so the omission is a
 	 * decision rather than an oversight: `no-sessions-at-all` renders ONE line (the
 	 * section asked the roster and there is nothing to borrow), so it never clears
@@ -5793,6 +5891,40 @@ export const STORIES = [
 	["navigation-panel-rail--browser-open-focused", 132, 184],
 	["navigation-panel-rail--browser-open-at-cap", 132, 184],
 	["navigation-panel-rail--console-open-blip", 132, 184],
+	/*
+	 * THE BOUND CHORD IN THE TOOLTIP (#928), the pair: the console ships
+	 * `primary+j` and its tooltip prints it in both registers, while an action
+	 * that ships unbound prints no parens at all. The rig's own pointer opens
+	 * the tooltip — `hoverSettleMs` 500 clears the wrapper's 400ms delay — and
+	 * the frame is 360 wide because a tooltip opens LEFT of its item and the
+	 * 132px rail-only frame would clip the sentence these two frames exist for.
+	 */
+	[
+		"navigation-panel-rail--console-chord-tooltip",
+		360,
+		184,
+		{
+			hover: '[data-panel-rail-item="console"]',
+			hoverSettleMs: 500,
+			expectSentence: {
+				selector: '[role="tooltip"]',
+				includes: "Open console (Ctrl+J)",
+			},
+		},
+	],
+	[
+		"navigation-panel-rail--browser-no-chord",
+		360,
+		184,
+		{
+			hover: '[data-panel-rail-item="browser"]',
+			hoverSettleMs: 500,
+			expectSentence: {
+				selector: '[role="tooltip"]',
+				includes: "Open browser",
+			},
+		},
+	],
 	/*
 	 * WINDOWS/LINUX CAPTION CLEARANCE - SIMULATED, NOT PHOTOGRAPHED (#872). This
 	 * host is macOS, so no frame here can show the OS buttons; these three arms set

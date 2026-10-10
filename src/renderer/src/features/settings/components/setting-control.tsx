@@ -33,6 +33,13 @@ import {
 	Switch,
 	Textarea,
 } from "@shared/components/ui";
+import {
+	CAPTURE_KEY_NAMES,
+	END_EDIT_KEYS,
+	MODIFIER_ONLY_KEYS,
+	captureModifierTokens,
+	composeCapturedChord,
+} from "@shared/keymap/chord-capture";
 import { cn } from "@shared/lib/utils";
 import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import {
@@ -80,47 +87,13 @@ export function controlSlot(kind: BackendSetting["kind"]): string {
 }
 
 /**
- * The keystroke names the runtime binds, for the keys whose `event.key` is not
- * already the name.
- *
- * Short and deliberate: Textual spells these in lower case (`space`, `escape`,
- * `up`), and a plain `event.key.toLowerCase()` would store `" "` and `"arrowup"`,
- * which the runtime cannot bind. Everything else — letters, digits, `f1`.. — is
- * correct after lower-casing.
+ * The keystroke names, the modifier-only keys, the edit-ending keys and the
+ * composition all live in `@shared/keymap/chord-capture` now (the registry's
+ * recorder imports the same set — issue #928). This module keeps only the
+ * backend grammar's spelling: what `hotkeyFromEvent` emits is byte-identical
+ * to what it emitted when these lived here, which is the pass condition for
+ * the extraction (every stored `keymap.*` row reads back the same).
  */
-const KEY_NAMES: Record<string, string> = {
-	" ": "space",
-	Spacebar: "space",
-	Escape: "escape",
-	Esc: "escape",
-	Enter: "enter",
-	Tab: "tab",
-	Backspace: "backspace",
-	Delete: "delete",
-	ArrowUp: "up",
-	ArrowDown: "down",
-	ArrowLeft: "left",
-	ArrowRight: "right",
-	Home: "home",
-	End: "end",
-	PageUp: "pageup",
-	PageDown: "pagedown",
-};
-
-/** A modifier pressed on its own is not a binding, and neither is IME. */
-const MODIFIER_KEYS = new Set(["Control", "Shift", "Alt", "Meta", "AltGraph"]);
-
-/**
- * The two keys that END an edit rather than spelling a binding.
- *
- * Every key-capture UI in this product's category (VS Code, JetBrains, macOS
- * shortcuts) treats Escape as cancel, and this field used to BIND it: pressing
- * the conventional way out of a recorder rewrote the binding to `escape`, dirty,
- * discoverable only by noticing the field had changed (UX round 1, U7). Enter is
- * excluded for the same reason `MODIFIER_KEYS` exists — it is a commit, not a
- * keystroke anybody means to bind while editing this row.
- */
-const END_EDIT_KEYS = new Set(["Escape", "Esc", "Enter"]);
 
 /**
  * The binding a keystroke spells, in the one order the registry stores.
@@ -136,15 +109,13 @@ export function hotkeyFromEvent(
 ): string {
 	// `isComposing` lives on the native event: an IME candidate window would
 	// otherwise bind whatever half-typed character the reader has so far.
-	if (MODIFIER_KEYS.has(event.key) || event.nativeEvent.isComposing) return "";
-	const parts: string[] = [];
-	if (event.ctrlKey) parts.push("ctrl");
-	if (event.altKey) parts.push("alt");
-	if (event.shiftKey) parts.push("shift");
-	if (event.metaKey) parts.push("meta");
-	const name = KEY_NAMES[event.key] ?? event.key.toLowerCase();
-	if (!name) return "";
-	return [...parts, name].join("+");
+	if (MODIFIER_ONLY_KEYS.has(event.key) || event.nativeEvent.isComposing) {
+		return "";
+	}
+	return composeCapturedChord(
+		captureModifierTokens(event),
+		CAPTURE_KEY_NAMES[event.key] ?? event.key.toLowerCase(),
+	);
 }
 
 /**
