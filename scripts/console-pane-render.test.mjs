@@ -160,7 +160,7 @@ globalThis.getComputedStyle = window.getComputedStyle.bind(window);
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { ConsolePane } from "./src/renderer/src/features/console/components/console-pane";',
+			'export { ConsolePane, EXIT_DISMISS_AFTER_MS } from "./src/renderer/src/features/console/components/console-pane";',
 			// The store is the real one: the user's open is raised through it, so the
 			// flow under test is the flow the header drives rather than a prop the
 			// harness invents.
@@ -217,6 +217,13 @@ const OUTPUT_KEPT = /Its output is kept\./;
  * must not be shown (U3). */
 const STILL_RUNNING = /is still running/;
 const IPC_WRAPPER = /Error invoking remote method/;
+/** #929's ended banner: the notice the beat stands on, asserted where the beat's
+ * own tests need to know the pane has SHOWN the exit. */
+const ENDED_NOTICE = /This terminal has ended/;
+/** #929's beat, imported from the pane rather than typed here: the tests below
+ * WAIT on it, and a second copy would silently stop matching the shipped number
+ * the day the design round tunes it. */
+const BEAT_MS = harness.EXIT_DISMISS_AFTER_MS;
 
 const SESSION = "session-render-test";
 
@@ -1059,6 +1066,360 @@ test("the output reassurance is said only where the row says its history persist
 			confirmDialog().textContent,
 			OUTPUT_KEPT,
 			"the question promised retention for a surface that is not retained",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+/*
+ * #929's THREE LIFECYCLE CASES, on the real pane, in one family, because they are
+ * one policy read three ways: a CLEAN exit clears itself after the beat (through
+ * the same dismissal the row's X runs), a non-zero exit keeps its row so the error
+ * stays readable, and a row restored from a previous run is never touched — there
+ * the history is the point. The unit suite (`console-pane.test.mjs`) pins the rule
+ * as a truth table; these pin what a reader of the pane would see: the notice, the
+ * wait, and the row's actual departure (or its staying).
+ *
+ * WHAT THEY CANNOT PROVE: pixels, and a real pty behind the exit. The exit here is
+ * main's listing changing shape — the same projection the app publishes — because
+ * that IS where the policy reads it from; the frames and the live rig own the rest.
+ */
+test("a clean exit clears itself after the beat, through the same dismissal the row's X runs (#929)", async () => {
+	resetIntent();
+	const running = surfaceRow("con:1:clean");
+	let listing = [running];
+	const bridge = installBridge({
+		surfaces: listing,
+		close: async ({ setListing: set, surface }) => {
+			listing = listing.filter((row) => row.surface !== surface);
+			set(listing);
+		},
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() =>
+			container.querySelector('[data-surface="con:1:clean"]'),
+		);
+		// The shell exits cleanly: main publishes it as the row's own fields — which
+		// is the projection the policy reads (the mirror's exit frame only refreshes
+		// this listing).
+		listing = [{ ...running, running: false, exit_code: 0, last_activity: 2 }];
+		bridge.setListing(listing);
+		bridge.fireStateChanged();
+		assert.ok(
+			await waitFor(() => ENDED_NOTICE.test(container.textContent ?? ""), {
+				timeoutMs: 15_000,
+			}),
+			"the pane never showed the ended notice the beat stands on",
+		);
+		/*
+		 * NOT AT THE MOMENT OF THE NOTICE: the close is the beat's, so at the instant
+		 * the ended banner is on screen nothing has reached the bridge yet — which is
+		 * what separates "after a beat" from "instantly".
+		 */
+		assert.equal(
+			bridge.calls.close.length,
+			0,
+			"the row was dismissed at the moment of the notice rather than after a beat",
+		);
+		/*
+		 * WAIT ON THE EVENT, NEVER ON THE CLOCK — and this suite learned why twice
+		 * (see `waitFor`'s own note). The one place a beat IS a clock fact, and the
+		 * mid-beat observation is deliberately NOT asserted here: measured on this
+		 * host (2026-10-10, fleet at load ~18), a `settle(10)` INSIDE this very
+		 * polling loop stretched to 9.4 s once the row had already gone, so a
+		 * "still present at half a beat" assertion is a coin toss under pressure.
+		 * What holds without a clock: the close has NOT happened when the notice is
+		 * on screen (above), it arrives (below, generously bounded), and it is the
+		 * row's own dismissal. The DELAY's size is pinned as policy: the pane arms
+		 * it with `EXIT_DISMISS_AFTER_MS` and `console-pane.test.mjs` holds that
+		 * constant's value to the brief, user-perceptible band.
+		 */
+		assert.ok(
+			await waitFor(
+				() => !container.querySelector('[data-surface="con:1:clean"]'),
+				{ timeoutMs: 30_000 },
+			),
+			"the row never cleared itself after the beat",
+		);
+		assert.deepEqual(
+			bridge.calls.close,
+			[{ surface: "con:1:clean", options: { retain: false } }],
+			"the automatic clearance is not the same dismissal the row's X runs (#929's one mechanism)",
+		);
+		// And the pane falls to its empty state, the same rule every dismissal follows.
+		assert.ok(
+			await waitFor(() => EMPTY_STATE.test(container.textContent ?? "")),
+			"the pane did not fall to its empty state after the automatic clearance",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("a non-zero exit keeps its row past the beat, so the error stays readable (#929)", async () => {
+	resetIntent();
+	const running = surfaceRow("con:1:error");
+	let listing = [running];
+	const bridge = installBridge({ surfaces: listing });
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() =>
+			container.querySelector('[data-surface="con:1:error"]'),
+		);
+		listing = [{ ...running, running: false, exit_code: 3, last_activity: 2 }];
+		bridge.setListing(listing);
+		bridge.fireStateChanged();
+		assert.ok(
+			await waitFor(() => ENDED_NOTICE.test(container.textContent ?? ""), {
+				timeoutMs: 15_000,
+			}),
+			"the pane never showed the ended notice, so the absence below is vacuous",
+		);
+		/*
+		 * AN ABSENCE IS OBSERVED OVER A WINDOW: the beat plus a margin, after which a
+		 * policy that cleared this row would have cleared it. The row must still be
+		 * there, and nothing may have reached the bridge.
+		 */
+		await settle(BEAT_MS + 2000);
+		assert.ok(
+			container.querySelector('[data-surface="con:1:error"]'),
+			"a non-zero exit's row was cleared — the error it carries must stay readable",
+		);
+		assert.equal(
+			bridge.calls.close.length,
+			0,
+			"a non-zero exit reached the host as a dismissal",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("a restored row is untouched by the beat: nothing ended in this run (#929)", async () => {
+	resetIntent();
+	// The relaunch shape, as the pane meets it: ended, code unobserved, `live` false.
+	const restored = surfaceRow("con:1:restored", {
+		running: false,
+		exit_code: null,
+		live: false,
+	});
+	const bridge = installBridge({ surfaces: [restored] });
+	const { root, container } = await mountPane();
+	try {
+		assert.ok(
+			await waitFor(() =>
+				container.querySelector('[data-surface="con:1:restored"]'),
+			),
+			"the restored row never rendered, so the absence below is vacuous",
+		);
+		await settle(BEAT_MS + 2000);
+		assert.ok(
+			container.querySelector('[data-surface="con:1:restored"]'),
+			"a restored row was cleared — nothing ended in this run, and the history is the point",
+		);
+		assert.equal(
+			bridge.calls.close.length,
+			0,
+			"a restored row reached the host as a dismissal",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("a row dismissed by hand during its beat is not dismissed a second time (#929)", async () => {
+	resetIntent();
+	const running = surfaceRow("con:1:raced");
+	let listing = [running];
+	const bridge = installBridge({
+		surfaces: listing,
+		close: async ({ setListing: set, surface }) => {
+			listing = listing.filter((row) => row.surface !== surface);
+			set(listing);
+		},
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() =>
+			container.querySelector('[data-surface="con:1:raced"]'),
+		);
+		listing = [{ ...running, running: false, exit_code: 0, last_activity: 2 }];
+		bridge.setListing(listing);
+		bridge.fireStateChanged();
+		assert.ok(
+			await waitFor(() => ENDED_NOTICE.test(container.textContent ?? ""), {
+				timeoutMs: 15_000,
+			}),
+			"the pane never showed the ended notice, so no beat was armed",
+		);
+		// The user's own X, inside the beat: one dismissal, the press's.
+		await press(
+			container.querySelector(
+				'[data-surface="con:1:raced"] [data-tour-tag="console-surface-close"]',
+			),
+		);
+		assert.ok(
+			await waitFor(
+				() => !container.querySelector('[data-surface="con:1:raced"]'),
+				{ timeoutMs: 15_000 },
+			),
+			"the row's own X did not dismiss it",
+		);
+		assert.equal(bridge.calls.close.length, 1);
+		/*
+		 * AND THE BEAT'S TIMER FINDS NOTHING TO DO: the row it was armed for is gone,
+		 * and a timer that closed anyway would be a second dismissal of a surface the
+		 * host no longer has (a rejection the user would never see, but the count is
+		 * the proof here).
+		 */
+		await settle(BEAT_MS + 1000);
+		assert.equal(
+			bridge.calls.close.length,
+			1,
+			"the beat dismissed a row the user had already dismissed",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+/*
+ * A PRESS INSIDE THE BEAT'S EXPIRY (agent review round 1, F-2), which the raced test
+ * above cannot cover: that one presses while the row is settled, so the beat's timer
+ * is already gone by the time the close lands. Here the press's close is STILL IN
+ * FLIGHT when the beat's expiry fires — the pane's own listing has not seen the
+ * removal yet, so the expiry re-checks, still finds a qualifying row, and issues a
+ * SECOND close, which the host refuses (`surface_unavailable`). The property at stake:
+ * that refusal must not cancel the focus handoff the WINNING dismissal owes. A refusal
+ * that left the row standing owes nothing and a racer that removed it must keep the
+ * handoff — and the catch cannot tell them apart by any listing it can see at its own
+ * moment (the winning close's removal may not have rendered yet), so the handoff effect
+ * — the one reader of the REAL listing — is the authority that decides. This cell is
+ * also the first exercised order for the second-close refusal at all.
+ */
+test("a press inside the beat's expiry keeps the winning dismissal's handoff (#929, F-2)", async () => {
+	resetIntent();
+	const clean = surfaceRow("con:1:raced2", {
+		running: false,
+		exit_code: 0,
+		last_activity: 2,
+	});
+	const neighbour = surfaceRow("con:2:neighbour");
+	let listing = [clean, neighbour];
+	let closeCalls = 0;
+	let releaseFirst = () => {};
+	const firstHeld = new Promise((resolve) => {
+		releaseFirst = resolve;
+	});
+	// Installs `window.api`; this test drives the interleave through the close
+	// callback above and counts the calls, so the handle itself is unused.
+	installBridge({
+		surfaces: listing,
+		close: async ({ setListing: set, surface }) => {
+			closeCalls += 1;
+			if (closeCalls === 1) {
+				/*
+				 * THE WINNING CLOSE (the press's). Main drops the surface as it processes
+				 * it and its reply carries the listing without it — but the reply is HELD
+				 * here, which is the interleave: the pane has not seen the removal yet.
+				 */
+				listing = listing.filter((row) => row.surface !== surface);
+				set(listing);
+				await firstHeld;
+				return;
+			}
+			/*
+			 * THE BEAT'S SECOND CLOSE, refused exactly as the host refuses a surface it
+			 * has already dropped — the hook re-reads before it rejects, as the real one
+			 * does.
+			 */
+			throw new Error(
+				"Error invoking remote method 'console-close-surface': Error: surface_unavailable: con:1:raced2 is no longer available",
+			);
+		},
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() =>
+			container.querySelector('[data-surface="con:1:raced2"]'),
+		);
+		/*
+		 * The keyboard sits IN the control the dismissal will remove — the stranded case
+		 * U1 exists for — and the beat is armed from the mount's own listing.
+		 */
+		const closeControl = container.querySelector(
+			'[data-surface="con:1:raced2"] [data-tour-tag="console-surface-close"]',
+		);
+		closeControl.focus();
+		await press(closeControl);
+		assert.equal(
+			closeCalls,
+			1,
+			"the press did not reach the bridge before the beat — the interleave was not staged",
+		);
+		assert.ok(
+			await waitFor(() => closeCalls === 2, { timeoutMs: BEAT_MS + 15_000 }),
+			"the beat never issued its second close, so the refusal order was not staged",
+		);
+		/*
+		 * AND THE HANDOFF SURVIVES THE REFUSAL: the row leaves (the winning close's
+		 * listing is what the refusal's re-read carries), and the keyboard lands on the
+		 * neighbour's tab rather than on `<body>`.
+		 */
+		assert.ok(
+			await waitFor(
+				() =>
+					document.activeElement ===
+					container.querySelector(
+						'[data-surface="con:2:neighbour"] [role="tab"]',
+					),
+				{ timeoutMs: 15_000 },
+			),
+			`the keyboard was left on ${
+				document.activeElement?.tagName ?? "nothing"
+			} — the refusal cancelled the winning dismissal's handoff`,
+		);
+	} finally {
+		releaseFirst();
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("the terminal's box paints the terminal's ground across the gutter, and the mirror keeps its inset (#929)", async () => {
+	/*
+	 * THE GROUND HALF's DOM shape: the box the mirror is OUTSIDE of — the one with the
+	 * `px-2` gutter and, since #929, the terminal's own ground — is what the ground
+	 * bleeds with, so the gutter and the foot show `sunken` and never the pane's
+	 * `elevated`. Asserting the CLASSES rather than computed colours is deliberate:
+	 * jsdom applies no stylesheet, so the class is the seam a render can be wrong
+	 * about; the pixels are the desk's frames, and `console-pane.test.mjs` pins the
+	 * class string against a splice.
+	 */
+	resetIntent();
+	installBridge({ surfaces: [surfaceRow("con:1:ground")] });
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() =>
+			container.querySelector('[data-tour-tag="console-mirror"]'),
+		);
+		const host = container.querySelector('[data-tour-tag="console-mirror"]');
+		assert.ok(host, "the mirror never rendered, so there is no box to judge");
+		const box = host.parentElement;
+		assert.ok(
+			box.classList.contains("px-2"),
+			"the terminal's box lost the gutter the grid is inset by",
+		);
+		assert.ok(
+			box.classList.contains("bg-sunken"),
+			"the terminal's box does not paint the terminal's ground, so the pane's ground frames it (#929)",
 		);
 	} finally {
 		root.unmount();

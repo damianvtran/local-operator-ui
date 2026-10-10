@@ -231,6 +231,12 @@ export const ConsoleEmpty: FC<{ onCreate: () => void; disabled?: boolean }> = ({
  * before this run existed and carries no code. `live` is whether the pty was ever
  * alive in this process; false is the relaunch case, where the honest sentence is
  * that the recorded history is what is on screen.
+ *
+ * IT IS ALSO THE BEAT'S NOTICE (#929, 2026-10-10): for a surface whose shell exited
+ * cleanly during this run, the pane lets this banner stand for
+ * `EXIT_DISMISS_AFTER_MS` (its own constant, in `console-pane.tsx`) and then clears
+ * the row — the banner is the frame that says what happened, and an instant removal
+ * would read as a crash. A non-zero code and a restored row keep it indefinitely.
  */
 export const ConsoleEndedBar: FC<{
 	exitCode: number | null;
