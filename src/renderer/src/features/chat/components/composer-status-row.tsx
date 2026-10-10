@@ -126,6 +126,7 @@ import {
 } from "lucide-react";
 import {
 	type ReactNode,
+	useCallback,
 	useEffect,
 	useLayoutEffect,
 	useRef,
@@ -1759,11 +1760,69 @@ export const ComposerStatusRow = ({
 	 * in it and nothing should move. The previous commit's answer has to be
 	 * remembered because by the time this effect runs focus is already on
 	 * `<body>` — and the remembered node is dropped the moment the row stops
-	 * holding focus, so a settle in a session whose user is typing in the
-	 * transcript cannot yank focus into the composer.
+	 * holding focus (the `focusout` listener below; `UX round 1, U1` found that
+	 * a commit cannot be that moment), so a settle in a session whose user is
+	 * typing in the transcript, or reading the pane, cannot yank focus into the
+	 * composer.
 	 */
 	const rowRef = useRef<HTMLDivElement | null>(null);
 	const previouslyFocused = useRef<HTMLElement | null>(null);
+	/*
+	 * THE MEMORY IS DROPPED WHEN FOCUS LEAVES THE ROW, by a native `focusout`
+	 * rather than by a commit. The effect below refreshes the memory only when
+	 * this row re-renders, and a reader tabbing out of a chip into the
+	 * run-details pane re-renders nothing here — measured live (UX round 1,
+	 * U1): the keyboard left the chip nine stops before the press that emptied
+	 * the list, the memory still named the chip, and the chip's unmount pulled
+	 * the reader into the composer. The listener is the refresh commits cannot
+	 * give: the memory is dropped as the reader leaves, so only a node that was
+	 * still HOLDING focus when it vanished can owe the composer a landing.
+	 *
+	 * THE LISTENER RIDES THE REF, not a mount effect (agent review round 3,
+	 * F11; QA round 3, Q5 — both measured it live: the listener never attached).
+	 * This row returns `null` while no chip would draw, so on a session's first
+	 * visit its first commit has no node at all; a `useEffect` with `[]` deps
+	 * runs against that empty commit and never re-runs. The ref callback
+	 * attaches whenever a node appears — a replaced div included — and detaches
+	 * when it goes.
+	 *
+	 * A `focusout` with no `relatedTarget` is either a move to the body or the
+	 * focused node's own removal; the removal is the case the restore exists
+	 * for, so the two are told apart once the task that removed it has finished
+	 * (the removed node is gone by then, and a reader who merely moved to the
+	 * body left a node that is not). A WINDOW BLUR also arrives with a null
+	 * `relatedTarget` while the node stays connected — and the restore must
+	 * survive it (a chip that vanishes while the window is backgrounded is
+	 * exactly the settle the restore exists for), which is what
+	 * `document.hasFocus()` decides: focus that left the DOCUMENT has not left
+	 * the row (F12).
+	 */
+	const rowListenerRef = useRef<((event: FocusEvent) => void) | null>(null);
+	const attachRow = useCallback((node: HTMLDivElement | null) => {
+		const previous = rowRef.current;
+		const previousListener = rowListenerRef.current;
+		if (previous !== null && previousListener !== null)
+			previous.removeEventListener("focusout", previousListener);
+		rowRef.current = node;
+		rowListenerRef.current = null;
+		if (node === null) return;
+		const onFocusOut = (event: FocusEvent) => {
+			const target = event.target;
+			if (!(target instanceof HTMLElement)) return;
+			const next = event.relatedTarget;
+			if (next instanceof Node && node.contains(next)) return;
+			if (next !== null) {
+				previouslyFocused.current = null;
+				return;
+			}
+			queueMicrotask(() => {
+				if (target.isConnected && document.hasFocus())
+					previouslyFocused.current = null;
+			});
+		};
+		rowListenerRef.current = onFocusOut;
+		node.addEventListener("focusout", onFocusOut);
+	}, []);
 	useEffect(() => {
 		const active = document.activeElement;
 		const focusedInRow =
@@ -2155,7 +2214,7 @@ export const ComposerStatusRow = ({
 
 	return (
 		<div
-			ref={rowRef}
+			ref={attachRow}
 			data-composer-status-row=""
 			className={cn(
 				CHAT_MEASURE,

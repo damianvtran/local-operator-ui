@@ -100,3 +100,12 @@ export type {
 	MonitorCancelOutcome,
 	MonitorControls,
 } from "./use-monitor-controls";
+export { useWakeControls } from "./use-wake-controls";
+export type {
+	WakeCancelOutcome,
+	WakeControls,
+} from "./use-wake-controls";
+export type {
+	AidaWakeIdentity,
+	WakeControlMode,
+} from "./wake-controls-model";

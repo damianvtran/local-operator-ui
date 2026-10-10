@@ -1,4 +1,8 @@
 import {
+	useAidaDisplayName,
+	useAidaTarget,
+} from "@features/aida/use-aida-target";
+import {
 	backendPaneSentence,
 	compatibilityBannerShown,
 } from "@shared/api/local-operator/backend-error";
@@ -157,11 +161,13 @@ import {
 } from "./chat-header-identity-model";
 import type { DirectoryWritePath } from "./directory-indicator";
 import {
+	type AidaWakeIdentity,
 	deriveRunDetails,
 	mcpErrorTexts,
 	useMcpRemedy,
 	useMonitorControls,
 	useRunPanelMcpServers,
+	useWakeControls,
 } from "./run-details";
 import { useSlashDispatch } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
@@ -953,6 +959,24 @@ function SessionPanel({
 	 */
 	const monitorControls = useMonitorControls({ sessionId });
 	const capabilities = useDesktopCapabilities();
+	/*
+	 * The pane's wake cancel, taken HERE beside the monitor controls for their
+	 * reason: this component owns the session identity. The guard's facts are read
+	 * at the same level, off the SAME shared `aida.status` cache entry the
+	 * sidebar reads (`use-aida-target.ts`), so the pane and the page cannot come
+	 * to disagree about whose conversation this is; the status read is what makes
+	 * the arm fail closed while her identity is unknown.
+	 */
+	const wakeControls = useWakeControls({ sessionId });
+	const wakeAidaEnabled = desktopFeatureEnabled(capabilities.data, "aida", 1);
+	const wakeAidaTarget = useAidaTarget(wakeAidaEnabled);
+	const wakeAidaName = useAidaDisplayName();
+	const wakeAida: AidaWakeIdentity = {
+		capability: wakeAidaEnabled,
+		statusResolved: wakeAidaTarget.isSuccess,
+		sessionId: wakeAidaTarget.data?.session_id ?? null,
+		name: wakeAidaName,
+	};
 	/*
 	 * The child reader is the one part of the panel that needs a route an older
 	 * backend does not have (`docs/run-sidebar.md` § 10.2), so it is the part that
@@ -4413,6 +4437,8 @@ function SessionPanel({
 					mcpGrantRunning={mcpGrantRunning}
 					mcpRemedy={mcpRemedy}
 					monitorControls={monitorControls}
+					wakeControls={wakeControls}
+					wakeAida={wakeAida}
 					childrenOpenable={childrenOpenable}
 					mentionsEnabled={mentionsEnabled}
 					mentionsUnsupported={mentionsUnsupported}
