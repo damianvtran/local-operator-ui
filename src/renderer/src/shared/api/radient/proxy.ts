@@ -67,7 +67,18 @@ export type RadientOperation =
 	| "memberships.list"
 	| "org_agents.list"
 	| "org_team.get"
-	| "org_teams.list";
+	| "org_teams.list"
+	/*
+	 * The verification-email resend the quota notice offers on an unverified
+	 * Radient account (core PR2). It maps to the upstream's JWT-only
+	 * `POST /auth/signup/resend` and takes no payload beyond its required
+	 * `request_id`; its own refusal codes are `signup_resend_rate_limited`
+	 * (429) and `signup_resend_nothing_to_resend` (409), and an older backend
+	 * answers the op itself with a masked 422. A three-way contract with
+	 * `desktop_radient.py`'s Literal and `desktop-contract.ts`'s request
+	 * schema, like every op above.
+	 */
+	| "signup.resend";
 
 export type RadientProxyArgs = {
 	operation: RadientOperation;
