@@ -183,6 +183,12 @@ const wakeFocusFellThrough = (active: Element | null, id: string): boolean =>
 let wakeLandingWatch: {
 	id: string;
 	node: HTMLElement;
+	/**
+	 * The conversation the landing belongs to. Handles collide across sessions
+	 * by construction (`w1`..), so this is what tells a session BOUNDARY from
+	 * the panel's own remount — and the remount is the pane's return (round 5).
+	 */
+	sessionId: string | null;
 	/** Set once the watch is holding for a home target to reappear. */
 	holdUntil: number | null;
 } | null = null;
@@ -239,9 +245,13 @@ const checkWakeLandingWatch = (): void => {
 };
 
 /** Watch a landing's node from OUTSIDE the panel that just moved the keyboard. */
-const holdWakeLanding = (id: string, node: HTMLElement): void => {
+const holdWakeLanding = (
+	id: string,
+	node: HTMLElement,
+	sessionId: string | null,
+): void => {
 	endWakeLandingWatch();
-	wakeLandingWatch = { id, node, holdUntil: null };
+	wakeLandingWatch = { id, node, sessionId, holdUntil: null };
 	wakeLandingObserver = new MutationObserver(checkWakeLandingWatch);
 	wakeLandingObserver.observe(document.documentElement, {
 		childList: true,
@@ -250,8 +260,23 @@ const holdWakeLanding = (id: string, node: HTMLElement): void => {
 };
 
 /**
- * A session switch closes the watch, as it closes everything else — and the
- * test harness closes it per case for the same reason.
+ * The session boundary: close a watch that belongs to ANOTHER conversation —
+ * and keep one that belongs to this one, because the reset effect's other
+ * caller is the panel's own MOUNT (round 5, measured live: the remount runs
+ * this 4–11 ms before the pane's return is delivered, and an unconditional
+ * clear disarmed the hold right there — 2/2 staged and 4/12 natural presses
+ * settled on `<body>`, every one of them a churn sample). The remount IS the
+ * pane's return, so its own conversation's landing must survive it.
+ */
+const endWakeLandingWatchUnless = (sessionId: string | null): void => {
+	if (wakeLandingWatch !== null && wakeLandingWatch.sessionId === sessionId)
+		return;
+	endWakeLandingWatch();
+};
+
+/**
+ * Unconditional close — the hard reset (and the test harness's per-case
+ * cleanup).
  */
 export const clearWakeLanding = (): void => endWakeLandingWatch();
 
@@ -386,11 +411,11 @@ export const useWakeCancel = ({
 		null,
 	);
 	/** Focus a resolved landing, and hold it against every churn that can take it. */
-	const landWake = useCallback((id: string) => {
+	const landWake = useCallback((id: string, sessionId: string | null) => {
 		const target = wakeCancelLanding(id);
 		if (target === null) return;
 		target.focus();
-		holdWakeLanding(id, target);
+		holdWakeLanding(id, target, sessionId);
 	}, []);
 
 	/*
@@ -403,11 +428,14 @@ export const useWakeCancel = ({
 	const pressKeepsFocusRef = useRef(false);
 
 	/*
-	 * A switch to another conversation closes everything this interaction holds.
-	 * Declared before the fallback effect so a switch nulls the row id before
-	 * the fallback can read it (effects run in declaration order).
+	 * A session boundary closes everything this interaction holds — and, for the
+	 * module watch, only a boundary does (`endWakeLandingWatchUnless`; round 5:
+	 * this effect also runs on the panel's own remount, which is the pane's
+	 * return, and the body now READS `sessionId`, so no dependency suppression
+	 * is needed for it either). Declared before the fallback effect so a switch
+	 * nulls the row id before the fallback can read it (effects run in
+	 * declaration order).
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the SESSION is the trigger, not a value the body reads - the reset must re-run when the conversation changes (the `use-scroll-paging.ts` precedent).
 	useEffect(() => {
 		setPending(null);
 		setAnchor(null);
@@ -416,7 +444,13 @@ export const useWakeCancel = ({
 		setCancelledKeys(new Set());
 		setRefusedKeys(new Map());
 		setOnePress(null);
-		clearWakeLanding();
+		/*
+		 * SESSION-BOUNDARY clear, not unconditional: this effect also runs on
+		 * every MOUNT, and the panel's remount is the pane's return — clearing
+		 * here disarmed the landing hold just before it (round 5). A watch for
+		 * another conversation still goes.
+		 */
+		endWakeLandingWatchUnless(sessionId);
 		pressKeepsFocusRef.current = false;
 		lastPressedIdRef.current = null;
 		lastPressedKeyRef.current = null;
@@ -444,8 +478,8 @@ export const useWakeCancel = ({
 		 */
 		if (pressKeepsFocus) return;
 		if (!wakeFocusFellThrough(document.activeElement, id)) return;
-		landWake(id);
-	}, [pending, landWake]);
+		landWake(id, sessionId);
+	}, [pending, landWake, sessionId]);
 
 	/** Drop a row's refusal record, if it has one. */
 	const clearRefused = useCallback((key: string) => {
@@ -571,8 +605,8 @@ export const useWakeCancel = ({
 	useEffect(() => {
 		if (onePress === null) return;
 		if (!wakeFocusFellThrough(document.activeElement, onePress.id)) return;
-		landWake(onePress.id);
-	}, [onePress, landWake]);
+		landWake(onePress.id, sessionId);
+	}, [onePress, landWake, sessionId]);
 
 	const stateFor = useCallback(
 		(row: WakeRow): WakeRowCancelState | undefined => {

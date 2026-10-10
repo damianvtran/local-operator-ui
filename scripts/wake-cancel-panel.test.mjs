@@ -920,6 +920,69 @@ test("a landing survives the panel's own unmount and returns to the pane (Q7)", 
 	returned.remove();
 });
 
+test("a held landing survives the panel's REMOUNT, the pane's own return (Q7 / round 5)", async () => {
+	/*
+	 * QA ROUND 5's hole, measured live: the watch armed at the unmount and was
+	 * then disarmed by the panel remount's own mount-run reset — 4–11 ms before
+	 * the pane's return was delivered (2/2 staged, 4/12 natural, every churn
+	 * sample of them). The case above models the return as a stub appended
+	 * beside a still-mounted body, so the mount-run clear never fired there.
+	 * This one drives the REAL order: unmount the hook with a landing pending
+	 * (the panel and its shell leave together), REMOUNT the same session, and
+	 * deliver the returned pane after the remount — exactly the live race.
+	 * A session boundary must still clear, and that is pinned by the module
+	 * rule (`endWakeLandingWatchUnless`) the case exercises through this order:
+	 * the kept watch proves the same-session arm, the harness's per-case clear
+	 * proves the boundary is where the watch ends here.
+	 */
+	const pane = document.createElement("section");
+	pane.setAttribute("data-run-panel-pane", "");
+	pane.tabIndex = -1;
+	document.body.append(pane);
+	const props = {
+		wakes: [
+			wireWake("w1", "First"),
+			wireWake("w2", "Second"),
+			wireWake("w3", "Third"),
+		],
+		sessionId: "sess1",
+		aida: UNKNOWN_AIDA,
+		cancel: async () => ({ ok: true }),
+	};
+	const first = await mount(props);
+	pane.append(first.container);
+	await press(document.querySelector('[data-wake-cancel="w2"]'));
+	assert.ok(
+		await settle(
+			() =>
+				document.activeElement ===
+				document.querySelector('[data-wake-cancel="w3"]'),
+		),
+		"the successor takes the keyboard first",
+	);
+	/* THE GATE: the shell and the panel leave in one beat — nothing to land on. */
+	pane.remove();
+	await first.unmount();
+	assert.equal(
+		document.activeElement,
+		document.body,
+		"the gap: the keyboard fell with the panel, the watch holds",
+	);
+	/* THE RETURN, in the live order: the hook remounts (same session) first... */
+	const second = await mount(props);
+	/* ...then the pane arrives. */
+	const returned = document.createElement("section");
+	returned.setAttribute("data-run-panel-pane", "");
+	returned.tabIndex = -1;
+	document.body.append(returned);
+	assert.ok(
+		await settle(() => document.activeElement === returned),
+		"the held landing survives the remount and lands on the returned pane",
+	);
+	await second.unmount();
+	returned.remove();
+});
+
 test("a refused press hands the keyboard back to its own retry control (U2)", async () => {
 	const gate = deferred();
 	const p = await mount({
