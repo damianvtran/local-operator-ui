@@ -20,7 +20,10 @@ import type { FC } from "react";
  * file swap and not an edit to the story.
  *
  * The inputs are the conversation stand-in's: a draft has no run details and no
- * session, so the rail shows only Browser and Canvas there, as the app does.
+ * session, so the rail shows Browser and Canvas there, as the app does. The asks
+ * item (#896) is OPT-IN through `railProps` - whether a host offers a door is the
+ * app's fact (`published`/`answered`) and a stand-in must not invent one; a story
+ * that means to photograph the fifth item sets `askOffered`.
  */
 export const ShellStoryRail: FC<{
 	details: ReturnType<typeof deriveRunDetails> | null;
@@ -28,6 +31,10 @@ export const ShellStoryRail: FC<{
 		browserAttentionCount?: number;
 		consoleUnseenCount?: number;
 		fileCount?: number;
+		/** Offer the asks item (#896), as a host that publishes a queue does. */
+		askOffered?: boolean;
+		/** The outstanding asks the badge counts; the name keeps the exact number. */
+		askCount?: number;
 	};
 }> = ({ details, railProps }) => (
 	<InPanelRailHost>
@@ -38,6 +45,11 @@ export const ShellStoryRail: FC<{
 			listOnScreen={false}
 			readerChildId={null}
 			browserAttentionCount={railProps.browserAttentionCount ?? 0}
+			askOffered={railProps.askOffered ?? false}
+			askCount={railProps.askCount ?? 0}
+			/* The scope rides the route, as `chat-content`'s does: a conversation's own
+			   queue in a conversation, the fleet's on a draft. */
+			askScope={details ? "session" : "fleet"}
 			consoleUnseenCount={railProps.consoleUnseenCount ?? 0}
 			consoleUnseenPulsing={false}
 			fileCount={railProps.fileCount ?? 0}
