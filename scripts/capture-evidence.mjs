@@ -11080,6 +11080,68 @@ export const STORIES = [
 	["chat-ask-gate-rows--raise-settled-expanded", 1280, 800],
 	["chat-ask-gate-rows--unreadable-live", 1280, 800],
 	["chat-ask-gate-rows--unreadable-settled", 1280, 800],
+
+	/*
+	 * THE PRE-EMPTIVE QUOTA NOTICE (the UI half of the sibling core PRs): one
+	 * quiet line on the empty chat band, its remedy links, and the resend
+	 * action's own states. The story drives the REAL line and hook over a
+	 * stubbed desktop transport, so a frame is a state the shipped container
+	 * can produce; the fixtures' words are the core builders' own.
+	 *
+	 * THE FOUR PRESSED ROWS carry `press:` + the phase marker their state
+	 * arrives under, because `sending`, `sent`, `rate-limited` and `dismissed`
+	 * are states a press produces rather than props: the shutter waits for
+	 * `data-quota-notice-resend-phase` (or the line's disappearance), so a frame
+	 * filed under a state is one the state was actually in. Each navigation
+	 * re-mounts and re-presses, so the 120 s cooldown cannot expire between
+	 * themes. The awaiting rows re-assert their marker at shutter time, and the
+	 * other four are resting states with no press.
+	 */
+	["chat-quota-notice--depleted", 900, 260],
+	["chat-quota-notice--unverified", 900, 260],
+	["chat-quota-notice--limit-reached", 900, 260],
+	[
+		"chat-quota-notice--sending",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-resend-action]",
+			expectPresent: "[data-quota-notice-resend-phase='sending']",
+		},
+	],
+	[
+		"chat-quota-notice--sent",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-resend-action]",
+			expectPresent: "[data-quota-notice-resend-phase='sent']",
+		},
+	],
+	[
+		"chat-quota-notice--rate-limited",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-resend-action]",
+			expectPresent: "[data-quota-notice-resend-phase='rate_limited']",
+		},
+	],
+	[
+		"chat-quota-notice--dismissed",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-dismiss]",
+			expectGone: "[data-quota-notice-line]",
+		},
+	],
+	/*
+	 * THE NARROW CELL: `narrow-width` pins its own 420px measure in the story,
+	 * so the wrap is a property of the surface rather than of the capture
+	 * viewport — the story's internal maxWidth is what every theme then frames.
+	 */
+	["chat-quota-notice--narrow-width", 480, 320],
 ];
 
 /**
