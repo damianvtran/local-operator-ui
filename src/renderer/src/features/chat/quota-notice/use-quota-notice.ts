@@ -463,6 +463,8 @@ export function useQuotaNotice(
 		if (!provided || resendRef.current || view.disabled || !view.offered)
 			return;
 		resendRef.current = true;
+		/* A resend press supersedes the re-read's cue (U9's ordering rule). */
+		setRefreshCue("idle");
 		setResendState({ kind: "sending" });
 		void (async () => {
 			try {
@@ -551,12 +553,14 @@ export function useQuotaNotice(
 
 	const resend = quotaResendView(resendState, nowMs);
 	/*
-	 * ONE STATUS SLOT. The resend press's outcome wins while it has one (it
-	 * describes the press the user just made); otherwise the re-read's cue.
-	 * They cannot both be live in practice, and a single slot is what keeps
-	 * the row's geometry stable when either appears.
+	 * ONE STATUS SLOT, NEWEST PRESS FIRST (U9). The re-read's cue takes the slot
+	 * whenever it is non-idle — while checking, and while its settled sentence
+	 * stands — because a re-read that says nothing after a press is the U2
+	 * defect again; the resend sentence is what remains when the cue is spent.
+	 * The ordering stays honest because each press clears the OTHER's cue as it
+	 * starts (below), so a newer press is never hidden by an older sentence.
 	 */
-	const statusSentence = resend.sentence ?? quotaRefreshSentence(refreshCue);
+	const statusSentence = quotaRefreshSentence(refreshCue) ?? resend.sentence;
 
 	if (answer === null || dismissed) return { visible: false };
 	return {
