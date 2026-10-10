@@ -22,6 +22,8 @@
  *   panels are given numbers and format them once.
  */
 
+import { formatNumber } from "@shared/i18n";
+
 /** The unknown sentinel. One character, the same one `info/model.py` uses. */
 export const UNKNOWN = "—";
 
@@ -138,7 +140,7 @@ export function formatWindow(n: number): string {
  * whole of its formatting.
  */
 export function formatCount(n: number): string {
-	return new Intl.NumberFormat("en-US").format(Math.trunc(n));
+	return formatNumber(Math.trunc(n));
 }
 
 /**
@@ -179,7 +181,7 @@ const roundHalfEven = (value: number): number => {
 export function formatMs(value: number | null | undefined): string {
 	if (value === null || value === undefined) return UNKNOWN_WORD;
 	if (Math.abs(value) < 1000) {
-		return `${new Intl.NumberFormat("en-US").format(roundHalfEven(value))} ms`;
+		return `${formatNumber(roundHalfEven(value))} ms`;
 	}
 	return `${(value / 1000).toFixed(1)} s`;
 }
