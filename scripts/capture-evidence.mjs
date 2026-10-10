@@ -4175,6 +4175,15 @@ export const STORIES = [
 	["chat-session-status-strip--channels-gated", 860, 480],
 	["chat-session-status-strip--channels-zero-states", 860, 480],
 	/*
+	 * The two round-3 states (design D3-1): the children parenthetical with a
+	 * floored inference row — the longest clause the composition produces, so
+	 * the tooltip needs 720 where `channels-tooltip` needs 680 — and the
+	 * dropped-row payload, whose empty row list sits beside the panel's
+	 * "could not be read" sentence (the panel half is
+	 * `channels-dropped-row-end`). Both are dark+light narrowed runs. */
+	["chat-session-status-strip--channels-children-floored", 860, 720],
+	["chat-session-status-strip--channels-dropped-row", 860, 520],
+	/*
 	 * The sidebar's session-status mark, in the one place it can be photographed
 	 * as a specimen: the read/unread matrix, every code beside its own name (see
 	 * the note below for why the live sidebar frames are not a substitute). Added
@@ -9367,6 +9376,26 @@ export const STORIES = [
 		720,
 		1240,
 		{ dir: "channels-narrow", scrollToEnd: "[data-panel-body]" },
+	],
+	/*
+	 * The round-3 evidence states (design D3-1), scrolled to the section like
+	 * every By-channel frame: the children parenthetical + floored `+`
+	 * remainder clause on one object, and the dropped-row empty state's own
+	 * sentence. A dark+light narrowed run (`--themes=localOperatorDark,
+	 * localOperatorLight`) rather than the sweep's twelve — these states
+	 * photograph one clause each, not a palette sweep.
+	 */
+	[
+		"panels-analytics--channels-children-floored",
+		1140,
+		1240,
+		{ dir: "channels-children-floored-end", scrollToEnd: "[data-panel-body]" },
+	],
+	[
+		"panels-analytics--channels-dropped-row",
+		1140,
+		1140,
+		{ dir: "channels-dropped-row-end", scrollToEnd: "[data-panel-body]" },
 	],
 
 	/*

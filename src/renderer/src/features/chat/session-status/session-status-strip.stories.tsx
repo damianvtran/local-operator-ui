@@ -1391,6 +1391,48 @@ const CHANNELS_UNTRACKED: CanonicalSpendChannels = {
 };
 
 /**
+ * The two round-3 evidence states, on one object each (design round 3, D3-1:
+ * both clauses were pinned by the node suite and had no frame — every
+ * `children:` in these stories was `total_micro: 0` and the one floored row
+ * fed the Billed bucket, so neither rendered).
+ *
+ * Children-floored: `not_tracked_micro` already covers the children bundle,
+ * so the remainder names its share as a parenthetical — and the inference row
+ * is `partial`, so both the remainder and the row it aggregates carry the
+ * strip's `≥`. This is the longest clause the composition line can produce.
+ */
+const CHANNELS_CHILDREN_FLOORED: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 1_516_000,
+	knowledge: "partial",
+	by_basis: {
+		billed: 53_000,
+		subscription_api_equivalent: 53_000,
+		estimated: 10_000,
+		not_tracked_micro: 1_400_000,
+		not_tracked_calls: 1,
+	},
+	rows: [
+		{ ...SPEND_CHANNELS.rows[0], knowledge: "partial" },
+		...SPEND_CHANNELS.rows.slice(1),
+	],
+	children: { total_micro: 500_000, knowledge: "exact" },
+};
+
+/**
+ * Dropped-row: one malformed row, as a hostile or older producer could send
+ * it. Every reader filters it (`Boolean(row)`), so the strip simply lists no
+ * rows — the PANEL is where the drop gets its sentence ("could not be
+ * read"), which is why both surfaces are shot. The cast is the point: the
+ * wire may break this shape, and the fixture must be able to say so.
+ */
+const CHANNELS_DROPPED_ROW: CanonicalSpendChannels = {
+	...SPEND_CHANNELS,
+	rows: [null] as unknown as CanonicalSpendChannels["rows"],
+};
+
+/**
  * The spend reading focused by its own ACCESSIBLE NAME.
  *
  * `buttons[last]` is what the older tooltip stories use, and on this strip it
@@ -1480,6 +1522,56 @@ export const ChannelsUntracked: Story = {
 				Not tracked: a pre-feature conversation says so instead of implying $0
 				of channel spend, and the chip carries the asterisk the sentence
 				explains.
+			</p>
+		</div>
+	),
+};
+
+/**
+ * The remainder's two round-3 clauses, in the frame (design round 3, D3-1):
+ * the subagent share named inside the clause it belongs to, and the `≥`
+ * register on both the remainder and the floored inference row that feeds it.
+ */
+export const ChannelsChildrenFloored: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame>
+				<FocusedSpend
+					override={{
+						spend_channels: CHANNELS_CHILDREN_FLOORED,
+						cumulative_parent_cost: 0.9,
+					}}
+				/>
+			</Frame>
+			<p className="px-6 pt-2 text-ink-dim text-meta">
+				Children and floor: the composition names the subagent share inside the
+				remainder it belongs to, and a floored inference row puts the strip's
+				mark on both the clause and the row.
+			</p>
+		</div>
+	),
+};
+
+/**
+ * The malformed-wire state, in the frame: a row every reader drops, and a
+ * composition that still reconciles beside the empty row list. The panel
+ * carries the drop's own sentence; this is the strip half of the payload.
+ */
+export const ChannelsDroppedRow: Story = {
+	render: () => (
+		<div className="flex min-h-[420px] flex-col justify-end bg-canvas p-2">
+			<Frame>
+				<FocusedSpend
+					override={{
+						spend_channels: CHANNELS_DROPPED_ROW,
+						cumulative_parent_cost: 0.9,
+					}}
+				/>
+			</Frame>
+			<p className="px-6 pt-2 text-ink-dim text-meta">
+				Dropped row: one malformed row is filtered by every reader, so the
+				breakdown lists none; the panel says "could not be read" rather than "no
+				rows" under the nonzero total.
 			</p>
 		</div>
 	),

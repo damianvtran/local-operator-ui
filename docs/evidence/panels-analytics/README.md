@@ -30,6 +30,23 @@ and — only while something is narrowing — the match line on a row of its own
 beneath them), and a pager under the table's legend, which replaces the
 `+N more not shown` line that used to end the section.
 
+## The By-channel states, and the mixed palettes
+
+The cost-channels change added the section's own states (`channels*`), and
+design round 3's D3-1 added the two below — the clauses its node suite pinned
+but no story exercised. The `channels*` states carry the sweep's twelve themes
+like the rest of this set; the two D3-1 states photograph one clause each and
+were shot as dark+light narrowed runs
+(`--themes=localOperatorDark,localOperatorLight`). A state's own capture
+command is the record of its palettes: this is the mixed-set class
+`scripts/check-evidence-palettes.mjs`'s header names, which is why
+`panels-analytics` is not in its one-list-per-set budget table.
+
+| directory | story | what the frame shows |
+| --- | --- | --- |
+| `channels-children-floored-end/` | `panels-analytics--channels-children-floored` | The composition's longest clause at rest: the subagent share named inside the remainder it belongs to (`$0.500 subagent sessions`), the floored remainder's trailing `+`, and the `$0.900+` inference row that feeds it — 0.116 + 1.400 = 1.516, the published total. |
+| `channels-dropped-row-end/` | `panels-analytics--channels-dropped-row` | The malformed-wire state (round 2, Q6): one non-object row is dropped, so the table is empty under the object's nonzero total and says `Channel rows in this conversation could not be read.` rather than the neutral empty copy. |
+
 ## The by-session states, and the two scroll positions
 
 | directory | story | what the frame shows |
