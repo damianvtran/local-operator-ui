@@ -182,6 +182,17 @@ export function MiniComposer() {
 	const [platform] = useState<MiniViewPlatform>(rendererPlatform);
 
 	const capabilitiesRef = useRef<DesktopCapabilities | null>(null);
+	/**
+	 * The same negotiation as STATE, for the render-time readers.
+	 *
+	 * The ref serves the callbacks (`input_mode`, the seat gates). The strip's
+	 * `costChannels` flag has to REPAINT when the answer lands, and a ref read
+	 * at render would keep the pre-negotiation `false` until some unrelated
+	 * frame moved — so the negotiation writes both, at every site.
+	 */
+	const [capabilities, setCapabilities] = useState<DesktopCapabilities | null>(
+		null,
+	);
 	const inputRef = useRef<MessageInputHandle | null>(null);
 	const contentRef = useRef<HTMLDivElement | null>(null);
 	const sentTimerRef = useRef<number | null>(null);
@@ -343,6 +354,7 @@ export function MiniComposer() {
 		}
 		if (capabilities === null) {
 			capabilitiesRef.current = null;
+			setCapabilities(null);
 			seatRef.current = null;
 			update((current) =>
 				miniFrameTransitions.noted(
@@ -353,6 +365,7 @@ export function MiniComposer() {
 			return null;
 		}
 		capabilitiesRef.current = capabilities;
+		setCapabilities(capabilities);
 		if (!desktopFeatureEnabled(capabilities, "aida", 1)) {
 			seatRef.current = null;
 			update((current) =>
@@ -770,6 +783,7 @@ export function MiniComposer() {
 					op: "capabilities",
 				});
 				capabilitiesRef.current = capabilities;
+				setCapabilities(capabilities);
 				if (!desktopFeatureEnabled(capabilities, "aida", 1)) return;
 			} catch {
 				return;
