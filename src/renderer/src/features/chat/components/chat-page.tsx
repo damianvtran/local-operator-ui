@@ -4043,6 +4043,18 @@ function SessionPanel({
 						 * would then refuse (round 1, U3).
 						 */
 						effortEntities: effortEntities.data?.entities,
+						/*
+						 * The published per-channel spend's gate (the cost-channels project):
+						 * `features.cost_channels` is what promises the snapshot's
+						 * `spend_channels` object, and the strip reads it under this flag
+						 * only. In the deps beside `effortEntities`, for its reason: the
+						 * capability answer can land after the first paint and the memo
+						 * must re-evaluate when it does.
+						 */
+						costChannels: desktopFeatureEnabled(
+							capabilities.data,
+							"cost_channels",
+						),
 					}
 				: undefined,
 		[
@@ -4053,6 +4065,7 @@ function SessionPanel({
 			canonical.pendingModel,
 			stableDispatchFromControl,
 			effortEntities.data,
+			capabilities.data,
 		],
 	);
 
@@ -4380,6 +4393,16 @@ function SessionPanel({
 										onOpenDraftPicker: draftPickable
 											? openDraftPicker
 											: undefined,
+										/*
+										 * Inert for a draft today — no session, so no channel
+										 * ledger — but passed under the SAME gate as the live
+										 * branch, so a preview that some day carries the object
+										 * is read by one rule rather than a draft-only copy.
+										 */
+										costChannels: desktopFeatureEnabled(
+											capabilities.data,
+											"cost_channels",
+										),
 									}
 								: draftResolution
 									? {
@@ -4395,6 +4418,11 @@ function SessionPanel({
 											/* No snapshot and no reading: the draft's model is NOT resolved. */
 											draftResolved: false,
 											draftResolution,
+											/* Inert here too; see the branch above. */
+											costChannels: desktopFeatureEnabled(
+												capabilities.data,
+												"cost_channels",
+											),
 										}
 									: undefined
 					}

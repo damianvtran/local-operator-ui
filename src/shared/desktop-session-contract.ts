@@ -1063,6 +1063,99 @@ export type CanonicalModelAccess = {
 	label: string;
 };
 
+/**
+ * One aggregated row of the backend's `spend_channels` object (wire v1).
+ *
+ * The backend groups before publishing, so the rows are NOT a client-side
+ * rollup: one row per inference identity (`label` = `provider/model`) plus one
+ * per `(channel, provider, model, unit)` group. A renderer lists them; it never
+ * re-sums them, because the one arithmetic site is the backend's `combine()`
+ * and every surface reading a locally-summed figure is how surfaces came to
+ * disagree in the first place.
+ *
+ * `amount_micro` is INTEGER micro-USD, and `null` means unknown — NEVER zero.
+ * A call that could not be sized and a call that was free are different facts,
+ * and only `row.knowledge` says which reading applies (`unknown` = nothing in
+ * the group was sized; `partial` = some was).
+ *
+ * `channel` and `basis` stay plain `string`s rather than closed unions, for the
+ * reason `SessionCatalogueStatus.code` gives above: the vocabulary belongs to
+ * the backend, which grows it without this file changing, and a renderer's job
+ * with a word it does not know is to show it rather than to fail to compile.
+ * The words this build knows are in `session-cost.ts`'s channel section; the
+ * wire's `basis` spelling is underscored (`subscription_api_equivalent`).
+ */
+export type CanonicalSpendChannelRow = {
+	channel: string;
+	provider: string;
+	model: string;
+	/** The inference identity bucket key, or "" on a channel row. */
+	label: string;
+	units: number;
+	unit: string;
+	/** Integer micro-USD. `null` = unknown, never a fabricated zero. */
+	amount_micro: number | null;
+	knowledge: "unknown" | "exact" | "partial" | "floor";
+	/** Billing bases present in the group, e.g. `["billed", "not_tracked"]`. */
+	basis: string[];
+	price_versions: string[];
+};
+
+/** The subagent/forked-children contribution already inside the grand total. */
+export type CanonicalSpendChildren = {
+	/** Integer micro-USD; always a stated number (0 = stated zero). */
+	total_micro: number;
+	knowledge: "unknown" | "exact" | "partial" | "floor";
+};
+
+/**
+ * The backend-published per-channel spend (`FrontendSessionState.spend_channels`).
+ *
+ * ONE object every surface renders (the frozen wire contract is
+ * `docs/design/spend-channels.md` in the backend repo; this build types it from
+ * the golden fixture `scripts/fixtures/spend-channels-v1.json`) so that the
+ * composer strip, `/analytics` and every future surface cannot disagree about
+ * what a session cost. Present only on a backend with the channel ledger
+ * (`features.cost_channels >= 1`); absent on an old server, where the UI keeps
+ * its legacy inference-only rendering unchanged.
+ *
+ * `total_micro` is the GRAND total — inference, channel records and children —
+ * as integer micro-USD, and it is the figure surfaces show. Do NOT recompute it
+ * from the parts: the backend's `combine()` is the one arithmetic site, and
+ * re-adding locally is exactly the class of defect this object exists to
+ * remove. `children.total_micro` is already a component of the total, not an
+ * extra summand.
+ *
+ * `tracked: false` means the session's journal carries no channel `start`
+ * marker (a pre-feature conversation): the total is inference-only and every
+ * surface must SAY "channels not tracked" rather than imply $0 of channel
+ * spend. `knowledge` uses the same four rungs as `cost_knowledge`; absence of
+ * the whole object is NOT a zero — never paint $0 for it.
+ */
+export type CanonicalSpendChannels = {
+	/** Wire version. An unknown version must render its legacy view, not this. */
+	version: number;
+	tracked: boolean;
+	/** Integer micro-USD, grand total (inference + channels + children). */
+	total_micro: number;
+	knowledge: "unknown" | "exact" | "partial" | "floor";
+	/**
+	 * Money per billing basis: the three money keys are micro-USD sums and
+	 * `not_tracked_calls` is a COUNT (of records with no trackable money basis).
+	 * Subscription dollars stay in their own bucket and are never added into
+	 * `billed` — a plan-funded call is not cash.
+	 */
+	by_basis: {
+		billed?: number;
+		subscription_api_equivalent?: number;
+		estimated?: number;
+		not_tracked_calls?: number;
+		[basis: string]: number | undefined;
+	};
+	rows: CanonicalSpendChannelRow[];
+	children: CanonicalSpendChildren;
+};
+
 export type CanonicalFrontendState = {
 	attention?: CompletionAttention;
 	state_version: number;
@@ -1217,6 +1310,21 @@ export type CanonicalFrontendState = {
 	 */
 	subagent_cost_knowledge?: "unknown" | "exact" | "partial" | "floor" | null;
 	cost_knowledge: "unknown" | "exact" | "partial" | "floor";
+	/**
+	 * The published per-channel spend, when the host has the channel ledger.
+	 *
+	 * ADDITIVE and optional: absent on an old backend (a reader then renders the
+	 * legacy inference-only view) and `null`/absent whenever this host cannot
+	 * publish the object (a reduced facade, an embedded host) — never a claim of
+	 * zero. Gated at the render edge on `features.cost_channels >= 1`, because a
+	 * backend that does not advertise the capability does not promise the field's
+	 * semantics even if an object appears.
+	 *
+	 * Read ONLY through `session-cost.ts` (`sessionCost`'s channel branch and the
+	 * breakdown helpers): that module owns the do-not-recompute rule, the
+	 * tracked=false sentence, and the one formatting ladder the strip uses.
+	 */
+	spend_channels?: CanonicalSpendChannels | null;
 	/**
 	 * The most recent turn's token usage, when the owner reported one.
 	 *

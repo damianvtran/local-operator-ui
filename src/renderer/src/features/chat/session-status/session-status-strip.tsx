@@ -17,6 +17,7 @@ import type { ContextReading } from "./session-context";
 import { contextReading, contextTooltipLines } from "./session-context";
 import {
 	type SessionCostInput,
+	channelBreakdownLines,
 	costTooltip,
 	sessionCost,
 } from "./session-cost";
@@ -240,6 +241,24 @@ export type SessionStatusStripProps = {
 	 * well as the width. See the reading's own comment for the measurements.
 	 */
 	controlsThirdBox?: boolean;
+	/**
+	 * Whether the backend advertises `features.cost_channels` — the gate for the
+	 * published per-channel spend (the cost-channels project's wire object).
+	 *
+	 * TOLD, never queried here, and told for the reason `held` and `draft` are:
+	 * this component calls no query hooks — it renders in stories AND in the
+	 * Node `renderToStaticMarkup` harness (`composer-readings.test.mjs`), which
+	 * has no query client — so the capability is the pane's fact, read once by
+	 * the pane from `useDesktopCapabilities` and passed down.
+	 *
+	 * False/absent keeps TODAY's rendering exactly: the legacy inference-only
+	 * port in `session-cost.ts`. When true AND the snapshot carries a usable
+	 * `spend_channels` object, the spend reading shows the backend's PUBLISHED
+	 * grand total (never a locally re-summed one) and its tooltip carries the
+	 * by-channel breakdown; `session-cost.ts` owns both rules, including the
+	 * fallback to legacy for a malformed or future-version object.
+	 */
+	costChannels?: boolean;
 	className?: string;
 };
 
@@ -770,6 +789,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	draftResolution,
 	readingsDropped = false,
 	controlsThirdBox = false,
+	costChannels = false,
 	className,
 }) => {
 	/*
@@ -870,7 +890,9 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 		context_window: frontend?.context_window,
 		context_is_estimate: frontend?.context_is_estimate,
 	});
-	const cost = sessionCost(frontend ?? NO_SPEND, frontend?.last_usage);
+	const cost = sessionCost(frontend ?? NO_SPEND, frontend?.last_usage, {
+		costChannels,
+	});
 	/*
 	 * Active time: banked seconds plus the open turn, or `null` for a session
 	 * that has done nothing. A draft needs no branch here — its
@@ -1359,7 +1381,15 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			{cost.text && (
 				<Reading
 					label={costTooltip(cost)}
-					tooltip={<TooltipLines lines={[cost.text, costTooltip(cost)]} />}
+					tooltip={
+						<TooltipLines
+							lines={[
+								cost.text,
+								costTooltip(cost),
+								...(cost.channels ? channelBreakdownLines(cost.channels) : []),
+							]}
+						/>
+					}
 					// Never a control, in any state: `/usage` is a different question
 					// (this account's billing), so there is no picker this reading could
 					// ever open and nothing for a disabled button to be disabled FOR.
