@@ -96,12 +96,13 @@ export type OpenFrameFacts = {
  *    one row per CALL, not per message pair);
  *  - a `completion_attention` entry becomes a NOTICE row keyed by its ANCHOR
  *    (`id: details.anchor`) - which is what the marker is ABOUT, and is neither the
- *    entry's id nor always a row id (the runtime's `provisional_anchor` is
- *    `completion-<token>`, and a label is legal). A marker without an anchor paints
- *    nothing at all, so its key is only ever a lookup nobody can hit. The one
- *    residual edge this arm can open - an anchor that names a row the page does not
- *    carry - is recorded on `openFrameCoversHeld`'s `carried` parameter, where a
- *    guard would have to live (agent review round 5, R5-m2).
+ *    entry's id nor always a row id: a completed run's marker is anchored to a real
+ *    message id, a provisional one to `completion-<token>`, and a label is legal. A
+ *    marker without an anchor paints nothing at all, so its key is only ever a
+ *    lookup nobody can hit. The residual edge this arm can open - an anchor naming a
+ *    row the page does not carry - is recorded on `openFrameCoversHeld`'s `carried`
+ *    parameter, where the guard would have to live (agent review rounds 5 and 6,
+ *    R5-m2).
  */
 export function entryRecordKey(
 	entry: DesktopHistoryPage["entries"][number],
@@ -328,15 +329,19 @@ export function openFrameCoversHeld(
 	 * rows it is holding, and this function must not grow a second spelling of it.
 	 *
 	 * A KNOWN LIMITATION, RECORDED WHERE A GUARD WOULD GO (agent review round 5,
-	 * R5-m2). A row whose key is in this set is SKIPPED below - the page carried it,
-	 * so there is no seam for the span test to find. That is sound for every key the
-	 * mapping produces today, with one residual edge: a completion marker keys by its
-	 * ANCHOR, and an anchor that ever NAMES A ROW ID the page does not itself carry
-	 * would let a held row with that id be skipped, suppressing a walk it owed. The
-	 * reviewer could not construct that shape in the runtime (`provisional_anchor` is
-	 * `completion-<token>`, and a label names no row), so no guard is added yet - and
-	 * the guard this wants, if an anchor ever becomes a row reference, is to skip only
-	 * a key the mapping DERIVED from an entry, never one an entry merely POINTED at.
+	 * R5-m2; wording corrected in round 6). A row whose key is in this set is SKIPPED
+	 * below - the page carried it, so there is no seam for the span test to find. That
+	 * is sound for every key the mapping produces today, with one residual edge: a
+	 * completion marker keys by its ANCHOR, and an anchor is NOT always synthetic - a
+	 * completed run's marker is anchored to a real message id, while a provisional one
+	 * carries `completion-<token>`. An anchor that names a row the PAGE did not itself
+	 * carry (that row aged out of the tail window) therefore puts a key in this set
+	 * which no row on the page answers for, and a held row with that id would be
+	 * skipped rather than walked. The guard this wants is to skip only a key the
+	 * mapping DERIVED from an entry, and to resolve an anchor key against the page's
+	 * own rows first - so a held row the page cannot account for still runs the span
+	 * test. It is recorded rather than built because no runtime case was found that
+	 * reaches it, not because the vocabulary excludes one.
 	 */
 	carried: ReadonlySet<string>,
 ): boolean {

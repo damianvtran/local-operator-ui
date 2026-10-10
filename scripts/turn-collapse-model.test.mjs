@@ -3067,23 +3067,35 @@ test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
 	 * it was added - the reviewer measured `12 / 33 s` stated where the core published
 	 * `9 / 24 s`.
 	 *
-	 * WHAT THIS TEST DISCRIMINATES (agent review round 5, R5-m1, which corrected an
-	 * earlier claim that it caught the inflation on any shape): the page's NEWEST
-	 * carried row has to be one the old rule could not match, or the old watermark
-	 * lands on the last row anyway and nothing inflates. So the shape is: six tool
-	 * rounds, a `completion_attention` marker whose ANCHOR is a mid-run row, the
-	 * closing statement, and then ONE MORE TOOL ROUND - the page ends on a tool row,
-	 * which is exactly the runtime's woken shape. Both classes are then load-bearing:
-	 * the six matched tool rows before the marker, and the seventh after the closing
-	 * statement. Under the entry-id rule the watermark stops at the marker's anchor
-	 * (or the statement) and the trailing tool rows are counted as new work - my
-	 * derivation for this fixture is `10 / 30 s` where the wire says `7 / 21 s`, to be
-	 * confirmed by the arm the host hold has deferred.
+	 * WHAT THIS TEST DISCRIMINATES (agent review rounds 5 and 6, R5-m1 and R6-1): the
+	 * page's NEWEST carried row has to be one the old rule could not match, or the old
+	 * watermark lands on the last row anyway and nothing inflates. So the shape is:
+	 * six tool rounds, a `completion_attention` marker anchored to a mid-run row, the
+	 * closing statement, and then ONE MORE TOOL ROUND WHOSE CLOCK IS AFTER THE
+	 * STATEMENT - the page ends on a tool row, which is the runtime's woken shape (the
+	 * round-4 real page carries the woken rounds at `031-033.5` against the marker's
+	 * `030`).
+	 *
+	 * THE CLOCK IS THE POINT (R6-1): a page's entry order is not the row order - the
+	 * reducer merges a page in TIME order - so a trailing round stamped EARLIER than
+	 * the statement is a back-fill that leaves the statement last, the old watermark on
+	 * it, and nothing to discriminate. Stamped after it, the row list ends on
+	 * `tool:call_7`, and at `806416cc73f` the appended list is exactly
+	 * `[tool:call_7]`: the carried-set assertion fails there and the ladder states
+	 * `7 / 21 s` (the wire's own, by coincidence - the old rule inflates the fact to
+	 * `8 / 24` and D1's after-answer subtraction hands the ladder those figures back),
+	 * where here it states the turn's own `6 / 18 s`.
 	 */
-	const round = (n) => [
+	/*
+	 * `at` IS THE ENTRY'S CLOCK, and it is a parameter because the row order is the
+	 * TIME order (R6-1): a round appended to the page after the closing statement must
+	 * be stamped after it, or it merges in where its ts says and the page's newest row
+	 * stays the statement.
+	 */
+	const round = (n, at = 100 + n) => [
 		{
 			id: `a${n}`,
-			ts: 100 + n,
+			ts: at,
 			type: "message",
 			payload: {
 				kind: "message",
@@ -3101,7 +3113,7 @@ test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
 		},
 		{
 			id: `t${n}`,
-			ts: 100 + n + 0.5,
+			ts: at + 0.5,
 			type: "message",
 			payload: {
 				kind: "message",
@@ -3146,11 +3158,12 @@ test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
 			},
 		},
 		/*
-		 * THE TRAILING ROUND is what makes this a discriminator (R5-m1): the page's newest
-		 * carried row is a TOOL row, so the old entry-id rule - whose last match is the
-		 * marker's anchor row - counts this round as work that arrived after the page.
+		 * THE TRAILING ROUND is what makes this a discriminator (R5-m1), and its CLOCK is
+		 * what makes the trailing-ness real (R6-1): the statement is stamped 130 and this
+		 * round 140, so the row list ends on `tool:call_7` and the old entry-id rule's last
+		 * match is the statement, leaving exactly this round appended.
 		 */
-		...round(7),
+		...round(7, 140),
 	];
 	const page = {
 		entries,
@@ -3212,9 +3225,9 @@ test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
 	/*
 	 * The wire's own `7 / 21 s` is the RUN's; the ladder is the TURN's pre-answer work
 	 * (D1), so it states the 7th round's rows where they are - in the trailing,
-	 * after-answer span - and the figure here is 6 rounds. Nothing is ADDED. Under the
-	 * entry-id rule this reads `10 / 30 s`: the three rows after the marker's anchor
-	 * counted twice.
+	 * after-answer span - and the figure here is 6 rounds. Nothing is ADDED. At
+	 * `806416cc73f` this reads `7 / 21 s`: the trailing round is appended by the old
+	 * rule, and the subtraction hands the ladder the inflated fact back.
 	 */
 	assert.equal(
 		run.facts.actions,
