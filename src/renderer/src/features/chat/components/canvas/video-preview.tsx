@@ -88,6 +88,7 @@ const VideoPreviewComponent: FC<{ document: CanvasDocument }> = ({
 			<ViewerChrome path={document.path} />
 			{source === "route" ? (
 				<RouteVideo
+					key={version}
 					document={document}
 					version={version}
 					onUnavailable={() => setSource("bytes")}
@@ -117,16 +118,45 @@ const RouteVideo: FC<{
 		[client, document.path, version],
 	);
 
+	/*
+	 * HELD BACK UNTIL IT HAS SOMETHING TO SAY (design round 1, D4). For a file the
+	 * route refuses - which is the case this PR exists for - the element errors
+	 * within a millisecond and the bytes path takes over ~150ms later; painting
+	 * the element in between put a dead `<video controls>` on screen for that
+	 * interval. The element stays MOUNTED (it has to, to load) but invisible, and
+	 * the quiet "Opening…" state the bytes path also shows holds the pane, so the
+	 * route-to-bytes handover reads as one continuous wait. Keyed on `version`
+	 * because a re-read re-creates the element and must hold it back again.
+	 *
+	 * An IPC-first order for out-of-root files was considered and not taken: the
+	 * renderer does not know the daemon's served roots (the list is the core's,
+	 * #2134), so choosing a path per file would be guessing, and getting it wrong
+	 * for an in-root file would drop the Range streaming this order exists to keep.
+	 */
+	const [loaded, setLoaded] = useState(false);
 	return (
-		<div className={cn("flex flex-1 items-center justify-center bg-sunken")}>
+		<div
+			className={cn(
+				"relative flex flex-1 items-center justify-center bg-sunken",
+			)}
+		>
+			{loaded ? null : (
+				<div className={cn("absolute inset-0")}>
+					<FileViewerState quiet title="Opening…" />
+				</div>
+			)}
 			{/* biome-ignore lint/a11y/useMediaCaption: the operator's own video file has no caption track to offer. */}
 			<video
 				key={version}
 				src={url}
 				controls
 				preload="metadata"
+				onLoadedMetadata={() => setLoaded(true)}
 				onError={onUnavailable}
-				className={cn("max-h-full max-w-full object-contain")}
+				className={cn(
+					"max-h-full max-w-full object-contain",
+					loaded ? null : "invisible",
+				)}
 			/>
 		</div>
 	);

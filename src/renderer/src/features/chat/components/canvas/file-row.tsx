@@ -7,6 +7,7 @@ import { stripFileUrl } from "@features/chat/utils/canvas-document";
 import { mimeTypeForPath } from "@features/chat/utils/file-kind";
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { Tooltip } from "@shared/components/ui";
+import { useEverInView } from "@shared/hooks/use-ever-in-view";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { cn } from "@shared/lib/utils";
 import {
@@ -21,7 +22,7 @@ import {
 	Presentation,
 	ScrollText,
 } from "lucide-react";
-import { type FC, memo } from "react";
+import { type FC, memo, useState } from "react";
 import type { Ref } from "react";
 import type { FileRow } from "./file-rows";
 
@@ -133,6 +134,18 @@ const TypeGlyph: FC<{ row: FileRow }> = ({ row }) => {
 };
 
 /**
+ * The largest file a 28px thumbnail may pull across IPC.
+ *
+ * `MAX_FILE_READ_BYTES` (64 MiB) is the VIEWER's ceiling, where the whole file
+ * is the content. A thumbnail shows a few hundred pixels of it, so the same read
+ * is mostly waste: a row for a 60 MiB screen recording would hold 60 MiB of blob
+ * in the renderer to paint a still. Over this, the row wears its type glyph -
+ * the same fallback a failed read gets - and the viewer (a click away) still
+ * opens the file in full (agent review round 1, R2).
+ */
+const ROW_THUMBNAIL_MAX_BYTES = 16 * 1024 * 1024;
+
+/**
  * A media row's leading visual, and where its pixels come from.
  *
  * The bytes come over the app's own file bridge (`use-file-blob-url`) — the
@@ -142,10 +155,20 @@ const TypeGlyph: FC<{ row: FileRow }> = ({ row }) => {
  * painted nothing while the row claimed it was a picture. The bridge reads by
  * path regardless of the roots, and needs no backend at all.
  *
+ * THE READ WAITS FOR THE ROW TO BE NEAR THE VIEWPORT (`useEverInView`), because
+ * the grid maps every row and has no virtualisation: the `loading="lazy"` that
+ * used to defer an image's request defers nothing once the bytes are fetched by
+ * a hook, so without the gate N media rows read N files at mount. The wrapper
+ * is split from the reader below because a hook cannot be called conditionally;
+ * until the row has been seen, the slot holds its ground exactly as it does
+ * while a read is in flight.
+ *
  * Loading keeps the established shape: the slot holds its ground until the
- * bytes land. A read that cannot land falls back to the row's own type glyph,
- * which is what every non-media row already shows — an unreadable thumbnail
- * must not look like an unreadable row.
+ * bytes land. A read that cannot land - or lands and cannot be DECODED (a
+ * truncated file, or a format Chromium has no decoder for such as `.heic`,
+ * which the route used to convert to PNG) - falls back to the row's own type
+ * glyph, which is what every non-media row already shows: an unreadable
+ * thumbnail must not look like an unreadable row (design round 1, D1).
  *
  * The plate's classes arrive from the ROW, not from this component, so
  * `chat-sidebar-selection.test.mjs` reads them at the call site — that scan is
@@ -156,15 +179,36 @@ const RowThumbnail: FC<{ row: FileRow; className: string }> = ({
 	row,
 	className,
 }) => {
+	const [ref, seen] = useEverInView();
+	return (
+		<span ref={ref} className={cn("flex size-7 items-center justify-center")}>
+			{seen ? (
+				<RowThumbnailReader row={row} className={className} />
+			) : (
+				<span className={cn("size-7 rounded-sm bg-sunken")} />
+			)}
+		</span>
+	);
+};
+
+const RowThumbnailReader: FC<{ row: FileRow; className: string }> = ({
+	row,
+	className,
+}) => {
 	const { document } = row;
 	const state = useFileBlobUrl(document.path, {
 		mtimeMs: document.lastAgentModified,
 		mimeType: mimeTypeForPath(document.path),
 		sizeBytes: document.sizeBytes,
+		maxBytes: ROW_THUMBNAIL_MAX_BYTES,
 	});
 	const url = state.status === "ready" ? state.url : null;
+	// Keyed on the URL it describes: a rewritten file is a new blob, and a decode
+	// failure of the OLD bytes must not condemn the new ones.
+	const [undecodableUrl, setUndecodableUrl] = useState<string | null>(null);
+	const decodable = url !== null && url !== undecodableUrl;
 
-	if (url && row.media === "image") {
+	if (decodable && row.media === "image") {
 		return (
 			<img
 				src={url}
@@ -173,14 +217,20 @@ const RowThumbnail: FC<{ row: FileRow; className: string }> = ({
 				alt=""
 				loading="lazy"
 				decoding="async"
+				onError={() => setUndecodableUrl(url)}
 				className={className}
 			/>
 		);
 	}
-	if (url && row.media === "video") {
+	if (decodable && row.media === "video") {
 		return (
 			// biome-ignore lint/a11y/useMediaCaption: a user's own attached video has no caption track to offer.
-			<video src={url} preload="metadata" className={className} />
+			<video
+				src={url}
+				preload="metadata"
+				onError={() => setUndecodableUrl(url)}
+				className={className}
+			/>
 		);
 	}
 	if (state.status === "loading") {

@@ -1,10 +1,13 @@
 import { mimeTypeForPath } from "@features/chat/utils/file-kind";
 import { Button, Tooltip } from "@shared/components/ui";
-import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
+import {
+	previewFailureReason,
+	useFileBlobUrl,
+} from "@shared/hooks/use-file-blob-url";
 import { cn } from "@shared/lib/utils";
 import { File, X } from "lucide-react";
 import type { FC } from "react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 /**
  * Props for the AttachmentsPreview component
@@ -144,9 +147,19 @@ type AttachmentTileProps = {
  * is running at all; `data:`/`http(s):` attachments are used as they are.
  *
  * A read that cannot land — over the 64 MiB preview cap, a file that moved —
+ * or lands and cannot be DECODED (a truncated image, a codec Chromium lacks)
  * falls back to the same name-and-icon body a non-media file gets, and the
- * hover preview stays empty. Both degrades are stated rather than dressed as a
+ * hover preview is not rendered at all (an empty elevated box over nothing was
+ * the alternative; design round 1, D1/D2). The tile says WHY in its `title`
+ * (too large / no longer exists / could not be read) rather than looking the
+ * same for every cause (D5). Both degrades are stated rather than dressed as a
  * picture that is still coming.
+ *
+ * NO MTIME is passed, because a composer tile holds a bare path and a renderer
+ * cannot `stat`: `useFileBlobUrl` then keeps the read private to this tile
+ * instead of sharing it by path, so a file rewritten between two attaches is
+ * re-read (agent review round 1, R1). The tile's own panel and thumbnail share
+ * this ONE hook call, so a tile is still one read.
  */
 const AttachmentTile: FC<AttachmentTileProps> = ({
 	attachment,
@@ -159,7 +172,21 @@ const AttachmentTile: FC<AttachmentTileProps> = ({
 	const state = useFileBlobUrl(attachment, {
 		mimeType: mimeTypeForPath(attachment),
 	});
-	const url = state.status === "ready" ? state.url : null;
+	const readyUrl = state.status === "ready" ? state.url : null;
+	// Keyed on the URL it describes, so a rewritten file (a new blob) is judged
+	// afresh rather than condemned by the old bytes' failure.
+	const [undecodableUrl, setUndecodableUrl] = useState<string | null>(null);
+	const url =
+		readyUrl !== null && readyUrl !== undecodableUrl ? readyUrl : null;
+	const degraded =
+		state.status === "unavailable" ||
+		(readyUrl !== null && readyUrl === undecodableUrl);
+	const reason =
+		state.status === "unavailable"
+			? previewFailureReason(state.code)
+			: degraded
+				? "Could not be previewed"
+				: null;
 
 	/*
 	 * A non-media file has nothing to show but its name, so the name is the tile
@@ -183,11 +210,12 @@ const AttachmentTile: FC<AttachmentTileProps> = ({
 
 	return (
 		<div className={cn("group relative")}>
-			<div className={TILE}>
+			<div className={TILE} title={reason ?? undefined}>
 				{url && image ? (
 					<img
 						src={url}
 						alt={fileName}
+						onError={() => setUndecodableUrl(url)}
 						className={cn("size-full object-cover")}
 					/>
 				) : url && video ? (
@@ -195,15 +223,16 @@ const AttachmentTile: FC<AttachmentTileProps> = ({
 						src={url}
 						preload="metadata"
 						muted
+						onError={() => setUndecodableUrl(url)}
 						className={cn("size-full object-cover")}
 					/>
 				) : !image && !video ? (
 					fileBody
-				) : state.status === "unavailable" ? (
+				) : degraded ? (
 					fileBody
 				) : null}
 				{/* Pasted images have no name, so the strip would be an empty bar. */}
-				{(image || video) && fileName && state.status !== "unavailable" && (
+				{(image || video) && fileName && !degraded && (
 					<span
 						className={cn(
 							"absolute inset-x-0 bottom-0 truncate",
@@ -231,7 +260,7 @@ const AttachmentTile: FC<AttachmentTileProps> = ({
 					</Button>
 				</Tooltip>
 			</div>
-			{(image || video) && (
+			{(image || video) && url && (
 				<div className={LARGE_PREVIEW}>
 					{url && image ? (
 						<img

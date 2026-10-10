@@ -23,7 +23,10 @@
 
 import type { AgentExecutionRecord } from "@shared/api/local-operator";
 import { Disclosure } from "@shared/components/ui/disclosure";
-import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
+import {
+	previewFailureReason,
+	useFileBlobUrl,
+} from "@shared/hooks/use-file-blob-url";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { type FC, memo, useCallback } from "react";
@@ -177,6 +180,30 @@ const ImageFileAttachment: FC<{
 	return <BrokenAttachment name={getFileName(file)} />;
 };
 
+/**
+ * The receipt for a media attachment whose bytes did not land, saying the thing
+ * that is true. An in-root video over the 64 MiB cap used to STREAM from the
+ * route; it now cannot be previewed here, and "may be incomplete, deleted, or
+ * moved" is false for it — the file is fine, so the state says so and offers the
+ * OS, which plays anything (agent review round 1, R5).
+ */
+const UnavailableMedia: FC<{
+	file: string;
+	code: Parameters<typeof previewFailureReason>[0];
+}> = ({ file, code }) => {
+	if (code !== "too-large") return <InvalidAttachment file={file} />;
+	const normalizedPath = file.startsWith("file://") ? file.substring(7) : file;
+	return (
+		<InvalidAttachment
+			file={file}
+			reason={`is ${previewFailureReason(code)?.toLowerCase()}`}
+			onOpen={() => {
+				void window.api.openFile(normalizedPath);
+			}}
+		/>
+	);
+};
+
 const VideoFileAttachment: FC<{
 	file: string;
 	onClick: (file: string) => void;
@@ -184,15 +211,23 @@ const VideoFileAttachment: FC<{
 }> = ({ file, onClick, conversationId }) => {
 	const state = useFileBlobUrl(file, { mimeType: mimeTypeForPath(file) });
 	if (state.status === "unavailable") {
-		return <InvalidAttachment file={file} />;
+		return <UnavailableMedia file={file} code={state.code} />;
 	}
 	if (state.status === "loading") {
 		/*
 		 * The element cannot be mounted without its source, and mounting one with
 		 * the empty string would flash the invalid receipt the unavailable case
-		 * shows for a reason. The read is local; this is a frame or two.
+		 * shows for a reason. The reserved box holds the place for the frame or two
+		 * a local read takes, so the message does not reflow when the video lands
+		 * (design round 1, D7). NOTE: the legacy `MessageItem` is mounted only by
+		 * stories in this app, so this state has been reviewed in code and not
+		 * photographed.
 		 */
-		return null;
+		return (
+			<div className="inline-block max-w-full" aria-hidden={true}>
+				<AttachmentFrame data-attachment-reserved="" />
+			</div>
+		);
 	}
 	return (
 		<VideoAttachment
@@ -210,10 +245,18 @@ const AudioFileAttachment: FC<{ file: string; isUser: boolean }> = ({
 }) => {
 	const state = useFileBlobUrl(file, { mimeType: mimeTypeForPath(file) });
 	if (state.status === "unavailable") {
-		return <InvalidAttachment file={file} />;
+		return <UnavailableMedia file={file} code={state.code} />;
 	}
 	if (state.status === "loading") {
-		return null;
+		// The player's own outer box (width cap, border, padding), so the message
+		// does not reflow when the player lands (design round 1, D7; code-reviewed,
+		// not photographed — see the video wrapper).
+		return (
+			<div
+				aria-hidden={true}
+				className="h-11 w-full max-w-[600px] rounded-sm border border-hairline bg-sunken"
+			/>
+		);
 	}
 	return <AudioAttachment content={state.url} isUser={isUser} />;
 };
