@@ -11080,6 +11080,115 @@ export const STORIES = [
 	["chat-ask-gate-rows--raise-settled-expanded", 1280, 800],
 	["chat-ask-gate-rows--unreadable-live", 1280, 800],
 	["chat-ask-gate-rows--unreadable-settled", 1280, 800],
+
+	/*
+	 * THE PRE-EMPTIVE QUOTA NOTICE (the UI half of the sibling core PRs): one
+	 * quiet line on the empty chat band, its remedy links, and the resend
+	 * action's own states. The story drives the REAL line and hook over a
+	 * stubbed desktop transport, so a frame is a state the shipped container
+	 * can produce; the fixtures' words are the core builders' own.
+	 *
+	 * THE FOUR PRESSED ROWS carry `press:` + the phase marker their state
+	 * arrives under, because `sending`, `sent`, `rate-limited` and `dismissed`
+	 * are states a press produces rather than props: the shutter waits for
+	 * `data-quota-notice-resend-phase` (or the line's disappearance), so a frame
+	 * filed under a state is one the state was actually in. Each navigation
+	 * re-mounts and re-presses, so the 120 s cooldown cannot expire between
+	 * themes. The awaiting rows re-assert their marker at shutter time, and the
+	 * other four are resting states with no press.
+	 */
+	["chat-quota-notice--depleted", 900, 260],
+	["chat-quota-notice--unverified", 900, 260],
+	["chat-quota-notice--limit-reached", 900, 260],
+	[
+		"chat-quota-notice--sending",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-resend-action]",
+			expectPresent: "[data-quota-notice-resend-phase='sending']",
+		},
+	],
+	[
+		"chat-quota-notice--sent",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-resend-action]",
+			expectPresent: "[data-quota-notice-resend-phase='sent']",
+		},
+	],
+	[
+		"chat-quota-notice--rate-limited",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-resend-action]",
+			expectPresent: "[data-quota-notice-resend-phase='rate_limited']",
+		},
+	],
+	[
+		"chat-quota-notice--dismissed",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-dismiss]",
+			expectGone: "[data-quota-notice-line]",
+		},
+	],
+	/*
+	 * THE NARROW CELL: `narrow-width` pins its own 420px measure in the story,
+	 * so the wrap is a property of the surface rather than of the capture
+	 * viewport — the story's internal maxWidth is what every theme then frames.
+	 */
+	["chat-quota-notice--narrow-width", 480, 320],
+	/*
+	 * ROUND 1'S TWO NEW COPY STATES: a retryable failure, and a re-read that
+	 * came back unchanged. Both are presses ('failed' waits on the phase marker,
+	 * the cue on the status slot), so a frame filed under one is one the state
+	 * was in.
+	 */
+	[
+		"chat-quota-notice--resend-failed",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-resend-action]",
+			expectPresent: "[data-quota-notice-resend-phase='failed']",
+		},
+	],
+	[
+		"chat-quota-notice--refresh-unchanged",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-refresh-action]",
+			expectPresent: "[data-quota-notice-status]",
+		},
+	],
+	/*
+	 * THE REAL COMPOSER, the pair design round 1's D1 asked for: the shipped
+	 * `MessageInput` on its fixed-height column with the notice, and the same
+	 * story after a real Dismiss — the two frames the measured pair in
+	 * `scripts/quota-notice-geometry.mjs` sits beside (its numbers prove the
+	 * foot's top does not move; these show what the state looks like).
+	 */
+	[
+		"chat-message-input--quota-notice",
+		1024,
+		820,
+		{ expectPresent: "[data-quota-notice-line]" },
+	],
+	[
+		"chat-message-input--quota-notice",
+		1024,
+		820,
+		{
+			press: "[data-quota-notice-dismiss]",
+			expectGone: "[data-quota-notice-line]",
+			dir: "notice-dismissed",
+		},
+	],
 	/*
 	 * THE CODE REVIEW PANE AND ITS TWO DOORS (per-session code requests, PR2;
 	 * `code-review-pane.stories.tsx`, `composer-status-row.stories.tsx` and

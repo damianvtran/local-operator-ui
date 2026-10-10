@@ -182,6 +182,25 @@ const buttonVariants = cva(
 					"active:underline active:decoration-2",
 					"disabled:text-ink-disabled disabled:no-underline",
 				],
+				/*
+				 * A QUIET LINK: the `link` variant's shape, hover and active
+				 * behaviour at the metadata ink rather than the accent.
+				 *
+				 * WHY IT EXISTS. The quota notice's four controls were all accent
+				 * links, so its Dismiss read as loudly as its remedies — "emphasis
+				 * everywhere is emphasis nowhere" (design round 1, D3; the same
+				 * budget `low-credits-dialog.tsx` records). A control that is NOT a
+				 * remedy belongs to `ink-dim`'s tier, and this is that tier with the
+				 * link affordance intact: underline on hover, no fill, no border.
+				 * Hover steps UP to `ink` so the affordance is never carried by
+				 * colour alone.
+				 */
+				linkQuiet: [
+					"h-auto rounded-xs p-0 text-ink-dim underline-offset-4",
+					"hover:text-ink hover:underline",
+					"active:underline active:decoration-2",
+					"disabled:text-ink-disabled disabled:no-underline",
+				],
 			},
 		},
 		defaultVariants: { variant: "secondary", size: "md" },

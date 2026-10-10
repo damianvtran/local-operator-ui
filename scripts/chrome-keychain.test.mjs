@@ -541,6 +541,12 @@ const CHROME_LAUNCH_SITES = [
 		1,
 		"measures the credits-guidance row's pre-settle insertion shift (the account read held so the un-inserted row is still) and the 420-wide wrap readings for the longest copy, from the live DOM - one private headless Chrome for both phases through the same helper (registered by its PR's review remediation: an unlisted launch site fails Desktop Tests)",
 	),
+	guarded(
+		"scripts/quota-notice-geometry.mjs",
+		"spawn",
+		1,
+		"measures the quota notice's arrival above the composer - the foot's top-edge shift and the line's clearance against the box, the verdict held so the pre-line layout is still - from the live DOM, one private headless Chrome through the same helper (registered by its PR's CI catch-up: an unlisted launch site fails Desktop Tests)",
+	),
 ];
 
 const key = (row) => `${row.file}#${row.name}#${row.index}`;
