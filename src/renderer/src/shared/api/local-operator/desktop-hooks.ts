@@ -695,7 +695,7 @@ export type DesktopFeature =
 	 * older backend, and the notice's contract is "show nothing", not "retry"
 	 * or "update the backend".
 	 */
-	| "quota_notice";
+	| "quota_notice"
 	/**
 	 * THE PER-SESSION CODE REQUEST LEDGER (`features.code_requests`): the
 	 * `code_requests.list` read and its refresh, i.e. the Code review pane, the
