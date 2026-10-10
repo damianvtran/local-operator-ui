@@ -1156,7 +1156,9 @@ at rest, the three performed presses with the wire each moved, and the refusal. 
 under them** (`docs/evidence/composer-status-rows/`, whose README states every
 command, state and limit): the goal's and the loop's own rows, with before/after
 halves at the three widths the change is argued at - 900, the shared-line band
-(520) and the 240 band - plus the 172 floor, the three single-source states, the
+(520) and the 240 band - plus the 172px floor with both halves (its before half
+joined the set in the remediation pass; the pair's only pixel deltas are the two
+animated spinner phases), the three single-source states, the
 long goal beside the long clause, the expanded body, the goal's dismiss revealed,
 and the all-absent state. The swept set's re-capture stays OWED as above, and
 `composer-status-clear`'s frames are now themselves pictures of the row before
@@ -1984,7 +1986,7 @@ both load-bearing to know:
 | **520px** (the shared-line band) | goal `144px (text 75/188)` beside the loop; row 54px | goal `257px (text 188/188)` on its own line, loop `269px` on the next; row 80px |
 | **900px** | goal and loop share line 1 with the loop at the trailing edge; counts wrapped to line 2; row 58px | goal line, loop line, counts line; row **84px** |
 | **240px** | already one element per line (the wrap had stacked it); row 158px | **unchanged**: row 158px, goal `141px (text 71/188)`, loop figure dropped - both palettes |
-| **172px floor** | row 158px, `26px` dismisses | **unchanged** - identical facts on both sides |
+| **172px floor** | row 158px, `26px` dismisses | **unchanged** - identical facts on both sides (`before-172/` + `rows-172/`; the pair's only pixel deltas are the two animated spinner phases) |
 
 **520 is in the set because the other widths do not carry the delta**: at 240 and
 172 the old wrap had already separated the chips, and at 900 the goal showed its
@@ -2037,10 +2039,10 @@ chip takes the `-ml-1.5` cancellation (`FIRST_CHIP`) again (§ 13.6's amendment)
 
 ### 15.8 Evidence and tests
 
-`docs/evidence/composer-status-rows/` carries 24 frames over 12 surfaces in both
-brand palettes: before/after halves at 900, 240 and 520, and the after states at
-172, the three single-source lines, the long goal and long clause, the expanded
-body, the goal's dismiss revealed, and the all-absent state. Its README names every
+`docs/evidence/composer-status-rows/` carries 26 frames over 13 surfaces in both
+brand palettes: before/after halves at 900, 240, 520 and the 172px floor, and the
+after states: the three single-source lines, the long goal and long clause, the
+expanded body, the goal's dismiss revealed, and the all-absent state. Its README names every
 command, state and limit, including the before half's provenance (the base commit's
 component with only the story file added). `scripts/composer-tabs.test.mjs`
 extends its layout pins: the two `CHIP_LINE` wrappers and their DOM order, the
@@ -2048,3 +2050,27 @@ retired switch (`doesNotMatch`), and the D2 floor's re-derivation - 101 tests pa
 on this head (`node scripts/run-desktop-tests.mjs scripts/composer-tabs.test.mjs`).
 `scripts/capture-evidence.mjs` declares the nine new stories as rig tuples, so the
 sweep - wherever it may run - renders them.
+
+### 15.9 The line-starts' stagger: kept, not made flush (design round 1's D1)
+
+The goal's line begins ~6px of BOX left of the loop's and the counts' lines: the
+goal chip carries the first-chip cancellation (`FIRST_CHIP`,
+`composer-status-row.tsx:892`), because the rule is ROW-scoped - "the row's first
+chip", and the goal renders first whenever it is present - while the two lines
+below start at the content edge with their chips' own padding intact. Measured
+live at 900 (design round 1's D1): icon boxes goal chevron x=85 vs loop icon x=91
+and plan icon x=91; the leftmost INK on the committed frames: goal 89.5, loop
+92.0, counts 91.5 CSS px - a ~2.0-2.5px optical stagger, most of the box
+difference eaten by the chevron's own bearing. The stagger PREDATES this change:
+`before-900/` prints the same 89.5-vs-91.5 relationship, and the per-row
+arrangement is only what makes three parallel starts comparable.
+
+**Kept deliberately; both alternatives cost more than the nit.** Extending the
+cancellation per line would move the loop's and the counts' hit boxes and hover
+grounds 6px left of the content edge (into the row's own padding, where the
+goal's box already sits) and re-shoot every affected frame for a 2px optical
+difference - against a reveal scope measured on the chip's own line (§ 12.2).
+Removing the goal's cancellation would move the ROW's first ink 6px right of the
+content edge the row's padding defines, changing a relationship older than this
+change for no asked-for benefit. The decision moves no pixels, so no frame was
+re-captured for it; recorded here as D1 asks.

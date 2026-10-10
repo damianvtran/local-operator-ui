@@ -4788,8 +4788,10 @@ export const STORIES = [
 	   state the sweep never renders.
 
 	   THE WIDTHS ARE THE STORIES' OWN, sized like the floor above: `Composer`'s outer
-	   box is band width + the box's 48px of `p-6`, so the 240 and 172 bands are 300
-	   wide, the 520 band is 700, and the 900-width stories are 1000.
+	   box is the band width plus the box's 48px of `p-6` (288 for the 240 band, 220
+	   for the floor), and the tuples below give the 240/172 stories 300 of viewport —
+	   the floor precedent's own safe width, above both outer boxes — the 520 band 700
+	   (>= its 568) and the 900-width stories 1000 (>= their 948).
 
 	   THE DISMISS-FOCUS STORY FOCUSES PROGRAMMATICALLY, like
 	   `--goal-done-dismiss-focus` above and for the same reason: this rig has no

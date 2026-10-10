@@ -1720,7 +1720,10 @@ export const GoalLoopRows: Story = {
 /**
  * The copy rules' own boundary with a pixel above it: 240, where `@max-[240px]`
  * has NOT fired yet (Tailwind v4's `@max-` is exclusive, so the step is strictly
- * below this width — the word and the figure are still painted here).
+ * below this width). The dismiss's WORD is still painted here; the loop's FIGURE
+ * is not — and not because of this step: the measured fit (`itemFits`, § 12.5)
+ * drops it whenever the item's line cannot carry the full clause, and 224px of
+ * line cannot carry 269px of clause. Both halves' frames print `Loop: running`.
  */
 export const GoalLoopRowsBand240: Story = {
 	render: () => (
@@ -1732,6 +1735,10 @@ export const GoalLoopRowsBand240: Story = {
 
 /**
  * The app's real floor: 172px of column with the canvas holding the right slot.
+ * Neutral label like its siblings: this story is captured on both sides of the
+ * change (`docs/evidence/composer-status-rows/`; the floor's before half joined
+ * the set in the remediation pass, and the pair is pixel-scanned against its
+ * after).
  */
 export const GoalLoopRowsFloor: Story = {
 	render: () => (
@@ -1755,7 +1762,7 @@ export const GoalLoopRowsFloor: Story = {
  * the old layout gave the goal item `min-w-[140px]` less the loop's 269px, and the
  * BEFORE frame reads the truncation that follows; the AFTER frame reads the goal's
  * whole line. 520 rather than 460: 140 + 8 + 269 = 417 is what fits a shared line,
- * and 460's own content box (412) is one pixel-short of it — the wrap has already
+ * and 460's own content box (412) is five pixels short of it — the wrap has already
  * fired there, so 460 is a different claim (the `ActivityWidths` story's).
  *
  * Neutral label like its siblings: this story is captured on both sides of the
