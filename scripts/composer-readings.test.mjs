@@ -1128,66 +1128,127 @@ test("a draft renders four fewer claims than a running session: no cost, no dura
 	assert.doesNotMatch(ran, /aria-label="Active time[^"]*"[^>]*aria-disabled/);
 });
 
-test("duration is the only reading that may be shed, and it sheds on the band and on the third control box", () => {
+test("the narrow ladder sheds duration, then effort, then cost, then context - and nothing else may be shed", () => {
 	const strip = readFileSync(
 		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
 		"utf8",
 	);
 
 	/*
-	 * TWO WAYS TO BE SHED, and the tests are two assertions rather than one.
+	 * THE LADDER (issue #918). Four rungs, in the terminal band's own
+	 * `_DROP_LADDER` order: the active-time reading first (it is the one
+	 * reading re-derivable from the transcript), then effort (a static
+	 * setting), then cost, and context last (the reading the band keeps the
+	 * longest). Each rung sheds below a container threshold, and one step
+	 * earlier while the composer draws a THIRD control box - the state half
+	 * of #788 - because that box costs the row 36px at every width.
 	 *
-	 * THE WIDTH'S SHED IS STILL THE BAND, and it is still a container-range query:
-	 * a single `@max` would hide it at the wrapped widths too, where the cluster
-	 * owns its own line and has room for it (D20 rung 3). `hidden`, not `sr-only` -
-	 * a shed reading does not exist, unlike the chip's icon-only text, which is
-	 * still readable by a screen reader.
+	 * The thresholds are the fit points measured in
+	 * `docs/evidence/composer-readings-shed/` (frames and `numbers.json`),
+	 * each derived rung rounded onto the 5px grid its neighbours sit on and
+	 * clearing its fit by 0.5-8px (so the third-box rung of a pair lands
+	 * 30/35/35px above its two-box twin against the fits' uniform 36px
+	 * step); the class strings carry the ladder, so the values are asserted
+	 * here.
+	 * `hidden`, not `sr-only` - a shed reading does not exist, unlike the
+	 * chip's icon-only text, which is still readable by a screen reader.
 	 */
 	assert.match(
 		strip,
-		/: "@min-\[750px\]\/chatcol:@max-\[860px\]\/chatcol:hidden"/,
-		"duration must drop between the wrap threshold and the width where five readings fit WHEN the controls are the mic+Send pair",
+		/controlsThirdBox\s*\n?\s*\?\s*"hidden"\s*\n?\s*:\s*"@max-\[860px\]\/chatcol:hidden"/,
+		"duration is the first rung: shed on the state, and below container 860 at every narrower column (the two-line layout's 750 lower edge is retired)",
+	);
+	assert.match(
+		strip,
+		/controlsThirdBox\s*\n?\s*\?\s*"@max-\[780px\]\/chatcol:hidden"\s*\n?\s*:\s*"@max-\[750px\]\/chatcol:hidden"/,
+		"effort is the second rung, its third-box value 30px above its two-box one (each fit moves 36; the values round onto the 5px grid)",
+	);
+	assert.match(
+		strip,
+		/controlsThirdBox\s*\n?\s*\?\s*"@max-\[740px\]\/chatcol:hidden"\s*\n?\s*:\s*"@max-\[705px\]\/chatcol:hidden"/,
+		"cost is the third rung, same state step",
+	);
+	assert.match(
+		strip,
+		/controlsThirdBox\s*\n?\s*\?\s*"@max-\[675px\]\/chatcol:hidden"\s*\n?\s*:\s*"@max-\[640px\]\/chatcol:hidden"/,
+		"context is the last rung: when it goes, the row is down to the model alone",
 	);
 	/*
-	 * AND THE STATE'S SHED IS UNCONDITIONAL (issue #788). While the composer draws a
-	 * THIRD box in the controls group - the Stop square, the post-stop grace
-	 * window's reserved slot, or a live recording's - the group is 104px where the
-	 * band was derived against 68, the row does not grow with the column (the
-	 * composer box is capped at `--lo-chat-measure`), and the fullest cluster
-	 * therefore overruns the controls at EVERY width above the band. A container
-	 * query cannot see a sibling appear, so the reading sheds on the state: bare
-	 * `hidden`, with no range-query prefix, on the row's own predicate.
+	 * AND THE STATE'S HALF IS STILL UNCONDITIONAL (issue #788). While the
+	 * composer draws a THIRD box in the controls group - the Stop square, the
+	 * post-stop grace window's reserved slot, or a live recording's - the group
+	 * is 104px where the band was derived against 68, and no container query can
+	 * see a sibling appear, so every rung reads the state as well as the width:
+	 * the bare `hidden` for the duration, and for the three value readings a
+	 * third-box value one state step above its two-box twin - the fits move by
+	 * 36px, the values round onto the 5px grid, so the twins read 30/35/35px
+	 * apart (asserted above). `hidden`, never `sr-only`: a shed
+	 * reading does not exist, and a reading that still exists at zero size keeps
+	 * claiming to a screen reader.
 	 */
-	assert.match(
-		strip,
-		/controlsThirdBox\s*\n?\s*\?\s*"hidden"\s*\n?\s*:\s*"@min-\[750px\]\/chatcol:@max-\[860px\]\/chatcol:hidden"/,
-		"while a third control box is drawn the duration must shed at every width, not only inside the band",
-	);
 	assert.doesNotMatch(strip, /@max-\[860px\]\/chatcol:sr-only/);
+	assert.doesNotMatch(strip, /chatcol:sr-only/);
 
 	/*
-	 * And it is the only READING that may be shed: the other four are protected by
-	 * R8/R14, so a `hidden` on a reading is a reading being dropped that the
-	 * design says must never drop.
-	 *
-	 * ONE other range-hidden class is allowed in this file and it is NOT a reading:
-	 * the held cluster's visible mark is hidden below the wrap threshold, where the
-	 * design round measured ~23px free and the word would push the mic and send
-	 * onto a third line - the defect design round 1.5's D9 fixed. It is named by
-	 * its own class rather than counted, so a THIRD `chatcol:hidden` still fails
-	 * here, and the statement is not lost at that width: the group name reaches
-	 * assistive technology and the tooltips reach a pointer. The bare `hidden`
-	 * above carries no `chatcol:` and so is not part of this set - which is why
-	 * the state's shed is asserted by its own expression above rather than
-	 * counted here.
+	 * And the four rungs are the ONLY shed: this is the complete set of
+	 * `chatcol:hidden` strings in the file, so a `hidden` appearing on another
+	 * reading - or a fifth rung smuggled in - fails here. The held cluster's
+	 * mark is the one non-reading in the set: it is hidden below the wrap
+	 * threshold because it is a word, not a value, and the narrow row has width
+	 * only for the readings themselves; the statement survives on the group
+	 * name and the tooltips. The bare `hidden` rungs carry no `chatcol:` and so
+	 * are not part of this set - which is why the state's shed is asserted by
+	 * its own expression above rather than counted here.
 	 */
 	assert.deepEqual(
 		(strip.match(/[^\s"]*chatcol:hidden/g) ?? []).sort(),
 		[
+			"@max-[640px]/chatcol:hidden",
+			"@max-[675px]/chatcol:hidden",
+			"@max-[705px]/chatcol:hidden",
+			"@max-[740px]/chatcol:hidden",
 			"@max-[750px]/chatcol:hidden",
-			"@min-[750px]/chatcol:@max-[860px]/chatcol:hidden",
+			"@max-[750px]/chatcol:hidden",
+			"@max-[780px]/chatcol:hidden",
+			"@max-[860px]/chatcol:hidden",
 		].sort(),
-		"only the duration reading and the held mark may be range-hidden, and the mark is not a reading",
+		"only the ladder's rungs and the held mark may be range-hidden, and the mark is not a reading",
+	);
+
+	/*
+	 * And the rungs only ever tighten as the ladder descends: each reading
+	 * gives up at a narrower column than the one before it, in BOTH state
+	 * columns, so the readings step out in order instead of flickering between
+	 * bands. Parsed from the literals asserted above - read in SHED order
+	 * (duration, effort, cost, context), which is not the file's own order
+	 * (that is the cluster's render order: effort, context, cost, duration) -
+	 * so a re-tuned threshold cannot silently invert the ladder.
+	 */
+	const parsed = [
+		...strip.matchAll(
+			/controlsThirdBox\s*\n?\s*\?\s*"(?:hidden|@max-\[(\d+)px\]\/chatcol:hidden)"\s*\n?\s*:\s*"@max-\[(\d+)px\]\/chatcol:hidden"/g,
+		),
+	];
+	assert.equal(parsed.length, 4, "one rung per value reading");
+	const [effort, context, cost, duration] = parsed;
+	/*
+	 * Group 1 is the third-box column's threshold and group 2 the idle one,
+	 * except for the duration, whose state column is the bare `hidden` (it
+	 * sheds at every width); it leads as the widest step.
+	 */
+	const thresholds = [
+		Number.POSITIVE_INFINITY,
+		duration[2],
+		effort[1],
+		effort[2],
+		cost[1],
+		cost[2],
+		context[1],
+		context[2],
+	].map(Number);
+	assert.ok(
+		thresholds.every((x, i) => i === 0 || x < thresholds[i - 1]),
+		`the ladder's thresholds must only tighten as it descends, and a third control box must never shed a rung later than the two-box row: ${thresholds.join(" > ")}`,
 	);
 });
 
@@ -1198,11 +1259,14 @@ test("the shed's state comes from the row's own third-box predicate, computed on
 	);
 
 	/*
-	 * ONE PREDICATE, TWO READERS (issue #788). The strip sheds on whether a third
-	 * control box is drawn, and that is the same question the slot's own JSX asks -
-	 * so it is computed once, from the row's own terms, and both read it. A fix
-	 * that restated the condition at the strip's mount would drift the moment the
-	 * slot's gate changed, which is what these four terms and the two joins pin.
+	 * ONE PREDICATE, MANY READERS (issues #788 and #918). The strip sheds on
+	 * whether a third control box is drawn, and that is the same question the
+	 * slot's own JSX asks - so it is computed once, from the row's own terms,
+	 * and every reader takes it. A fix that restated the condition at the
+	 * strip's mount would drift the moment the slot's gate changed, which is
+	 * what these four terms and the two joins pin; the strip's four rungs are
+	 * the second family of readers, and a fifth reader would be a fifth place
+	 * for the state question to be answered.
 	 */
 	assert.match(
 		row,
@@ -1231,6 +1295,11 @@ test("the shed's state comes from the row's own third-box predicate, computed on
 	);
 	assert.match(strip, /controlsThirdBox\?: boolean;/);
 	assert.match(strip, /controlsThirdBox = false,/);
+	assert.equal(
+		(strip.match(/controlsThirdBox\s*\?\s+"/g) ?? []).length,
+		4,
+		"exactly the four rungs switch on the row's predicate (a space or newline between the name and `?`, so the `?:` of the prop's type does not count)",
+	);
 });
 
 test("the value readings hold their width; only the model name yields", () => {
