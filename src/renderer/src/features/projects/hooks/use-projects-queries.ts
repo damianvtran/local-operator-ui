@@ -28,7 +28,10 @@
  * rather than at request time.
  */
 
-import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
+import {
+	retryDesktopMutation,
+	retryDesktopQuery,
+} from "@shared/api/local-operator/backend-error";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	useMutation,
@@ -175,15 +178,39 @@ export type ProjectEditFields = {
 	estimate_unit?: "points" | "days";
 };
 
+/**
+ * The PATCH answer: the summary row plus the daemon's marker that this write
+ * closed the project OVER open milestones (`forced_done`, absent on a daemon
+ * that predates `projects_force_done`).
+ */
+export type DesktopProjectPatched = DesktopProject & { forced_done?: boolean };
+
+/**
+ * The update, one PATCH.
+ *
+ * `forceDone` is the deliberate close: it travels as the op's top-level
+ * `force_done: true` (never inside `fields`), only when the caller has the
+ * `projects_force_done` capability AND the reader confirmed - see
+ * `ProjectDoneAnywayDialog`. Left unset the body is exactly what it was.
+ *
+ * RETRY: a 4xx is a refusal, not a hiccup, so it is not re-sent
+ * (`retryDesktopMutation`); a transport failure keeps the app's single retry.
+ */
 export function useUpdateProject() {
 	const invalidate = useInvalidateProjects();
 	return useMutation({
-		mutationFn: (input: { key: string; fields: ProjectEditFields }) =>
-			desktopResult<DesktopProject>({
+		mutationFn: (input: {
+			key: string;
+			fields: ProjectEditFields;
+			forceDone?: boolean;
+		}) =>
+			desktopResult<DesktopProjectPatched>({
 				op: "projects.update",
 				key: input.key,
 				fields: input.fields,
+				...(input.forceDone === true ? { force_done: true } : {}),
 			}),
+		retry: retryDesktopMutation,
 		onSuccess: () => invalidate(),
 	});
 }
