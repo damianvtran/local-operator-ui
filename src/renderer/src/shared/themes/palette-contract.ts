@@ -40,7 +40,7 @@
 /*
  * The role set, and the one place it has two of something.
  *
- * 36 roles today, and exactly one of them is a second hue: `accentAlt` /
+ * 38 roles today, and exactly one of them is a second hue: `accentAlt` /
  * `accentAltWash` sit beside `accent` / `accentWash` as the theme's decorative
  * pair, while every STATE role — hover, selection, checked, focus, in-flight —
  * stays on the primary accent. The split is deliberate and is what `docs/
@@ -252,6 +252,64 @@ export type ThemePalette = {
 	 * spend while the fill vanishes in a greyscale render.
 	 */
 	messageSurface: string;
+	/**
+	 * The media tile's own surface: `sunken` stepped away from `canvas` until
+	 * the fill clears a ΔE00 4.0 floor off the canvas.
+	 *
+	 * ## Why its own role, rather than `sunken`
+	 *
+	 * The condensed strip's tile is BORDERLESS AT REST - the edge returns only on
+	 * hover and keyboard focus - so the fill IS the tile's extent at rest: a
+	 * picture whose own canvas is the page's tone has ~1.0:1 against the page,
+	 * and the shared `sunken` well behind it measures as low as 2.00 ΔE00
+	 * (iceberg, `neonNoir`), so on those palettes the tile had no extent a reader
+	 * could find. `sunken` is the app-wide recessed ground (wells, tracks, code
+	 * grounds) and cannot be deepened for one object, so the fill splits off it:
+	 * the tile moves without repainting every well in the app.
+	 *
+	 * ## The floor, and why 4.0
+	 *
+	 * 4.0 is `LINE_SEPARATION_FLOOR`, the file's own findability floor for the
+	 * smallest mark the eye must find - and in the worst case the mark IS that
+	 * small: a picture that fills the slot shows the well only as a ~1px ring at
+	 * the picture's edge and corners, which is exactly the 1px-rule case the
+	 * floor was written for rather than the field floor (2.0, for adjacent
+	 * ground fields). It also sits under the cue the hover state carries (the
+	 * returning `borderControl` edge), so the edge still reads as the stronger,
+	 * state-only mark - and THAT 3:1 is the GROUND's pairing, not this fill's:
+	 * the edge is asserted against the four grounds (>= 3.01 measured across the
+	 * fleet), the outer side, which is the side the tile's silhouette is read
+	 * against; against `mediaSurface` it measures below 3:1 on 10 light palettes
+	 * (2.78 worst, `catppuccinLatte`) and that inner pair is deliberately NOT
+	 * asserted - it is not the side the cue is read from (design round 1, D1;
+	 * the hovered state is a frame, `chat-media-slot-fill/letterbox-hover/`).
+	 * The lightness half (>= 2.5 L* in MAGNITUDE, the same half the user-message
+	 * fill carries) is asserted with it: this role steps DOWN where that one
+	 * steps up, and the half is direction-agnostic because ΔE00 is a budget a
+	 * chroma-only step can spend while the fill vanishes in a greyscale render.
+	 *
+	 * ## How a value is authored
+	 *
+	 * The first clearing step along the `canvas` -> `sunken` line CONTINUED
+	 * past `sunken` - the palette's own recessed ramp, so the tile keeps the
+	 * theme's cast where the ramp has room (the one palette where it does not is
+	 * `localOperatorDark`, whose deep step lands near neutral - LCh hue
+	 * ~89° -> 74° -> 20°, chroma ~3.1 -> 1.0, measured and imperceptible off the
+	 * page) - whose ΔE00 off `canvas` clears the floor; where `sunken`
+	 * itself already clears both halves, the value IS `sunken`. The direction is
+	 * the point: a slot is a well, so its fill deepens away from `canvas`;
+	 * stepping up the ladder would cross `canvas` and turn the well into a
+	 * raised plate, which `sunken`'s own doc says a well is not. Authored as the
+	 * first clearing step on that line, not a global minimisation: the line is
+	 * kept so the tile wears the palette's own ramp rather than a value bent
+	 * toward the floor. The lightness half is what GATES the stop on five
+	 * palettes (`synth`, whose well already clears ΔE00 and fails only the half;
+	 * `matrix`, `neon`, `outrun`, `rosePineDawn` - each has a ΔE00-clearing
+	 * candidate one step earlier whose L* is still short; their own comments
+	 * carry the readings), which is why those five land above the floor rather
+	 * than on it.
+	 */
+	mediaSurface: string;
 	/**
 	 * The row the POINTER is on. A STATE of a list row, not a ground.
 	 *
