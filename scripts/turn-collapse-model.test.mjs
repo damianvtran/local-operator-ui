@@ -16,6 +16,7 @@
  * that. This file says the plan is right.
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 import { FakeJournal } from "./loader-journal-fixture.mjs";
@@ -67,6 +68,8 @@ const {
 	applyEvent,
 	EMPTY_TRANSCRIPT,
 	visibleRecords,
+	quietGroupsOf,
+	quietGroupOfSegment,
 } = await import(moduleUrl);
 
 /* ------------------------------- fixtures ------------------------------- */
@@ -581,7 +584,15 @@ test("in-turn receipts hide with the work; the pinned kinds keep their place", (
 				id: "r1",
 				ts: TS,
 				body: "from a peer",
-				sender: {},
+				/* The full sender shape the reducer guarantees (see `peerFields`):
+				 * the quiet group's sender summary reads it, and `{}` used to throw. */
+				sender: {
+					pid: "",
+					conversationName: "",
+					cwd: "",
+					sessionId: "",
+					modelLabel: "",
+				},
 			},
 			gap: "turn",
 			closesTurn: false,
@@ -1187,7 +1198,19 @@ test("hidden cross-session rows never reach the bar: counts equal the visible sp
 	/* The peer receipt inside the span, in the pinned-row test's own shape. */
 	const records = [
 		opening,
-		{ kind: "peer", id: "p1", ts: TS + 50, body: "from a peer", sender: {} },
+		{
+			kind: "peer",
+			id: "p1",
+			ts: TS + 50,
+			body: "from a peer",
+			sender: {
+				pid: "",
+				conversationName: "",
+				cwd: "",
+				sessionId: "",
+				modelLabel: "",
+			},
+		},
 		...rest,
 	];
 	const sendId = records.find(
@@ -2220,4 +2243,312 @@ test("#665: a pinned row between two hidden spans does not sit after a bar that 
 		bars,
 		"one bar per contiguous hidden span: the model must emit as many segments as there are spans",
 	);
+});
+
+/* -------------- the quiet turn: the close, the gate, the group (S2) ------------- */
+
+/*
+ * THE QUIET CLOSE (design §5, rev 2). Core persists `no_reply` as two ordinary
+ * tool rows; this side's job is structural: the settled call CLOSES its cycle
+ * (the tail settles, the span condenses), it never becomes the elected answer
+ * (nothing may caption, stamp or foot a message the reader was never handed),
+ * and the row itself paints nothing. The group fold rides the same rows - see
+ * `QuietGroup` for the shape and the shared parity fixture below for the
+ * cross-client contract.
+ */
+
+const quiet = (id, extra = {}) =>
+	tool(id, { toolName: "no_reply", phase: "done", ...extra }, "trace");
+const peerRow = (id, extra = {}) =>
+	row(
+		id,
+		"peer",
+		{
+			body: "peer",
+			sender: {
+				pid: "",
+				conversationName: "",
+				cwd: "",
+				sessionId: "",
+				modelLabel: "",
+			},
+			...extra,
+		},
+		"trace",
+	);
+
+test("the R1 pin: a settled quiet close anchors the bar, and the bar carries the turn - no answer, no stamp, no foot", () => {
+	const rows = [
+		user("u1"),
+		peerRow("p1"),
+		tool("t1", { durationS: 3 }, "trace"),
+		quiet("q1"),
+	];
+	const [plan] = planOf(rows).runs;
+	assert.equal(
+		plan.run.quietCloseId,
+		"q1",
+		"the run carries the quiet close as its own anchor",
+	);
+	assert.equal(
+		plan.run.closingAnswerId,
+		null,
+		"and carries it nowhere near the answer: no caption, no stamp, no foot",
+	);
+	assert.equal(plan.answerId, null, "nothing is elected");
+	const [seg] = plan.segments;
+	assert.equal(seg.collapsed, true, "the bar is present");
+	assert.deepEqual(
+		seg.segmentIds,
+		["p1", "t1", "q1"],
+		"the quiet row hides inside its own bar",
+	);
+	assert.equal(seg.completed, true, "the completed mark is the bar's");
+	assert.equal(
+		seg.facts.actions,
+		1,
+		"actions=1: only the work tool - the quiet call is excluded",
+	);
+	assert.equal(seg.facts.durationS, 3);
+	assert.equal(seg.stampTs, null, "no stamp");
+	assert.equal(
+		seg.label,
+		"Peer message",
+		"below the group minimum the opener's own label survives",
+	);
+	const built = buildRows(
+		rows.map((r) => r.record),
+		[],
+	);
+	assert.equal(
+		built.some((r) => r.closesTurn),
+		false,
+		"no row carries closesTurn, so no caption and no foot exist anywhere",
+	);
+});
+
+test("the gate's third anchor: a head-cut quiet run still condenses, on quietCloseId and not on a fake answer", () => {
+	const rows = [peerRow("p1"), tool("t1", {}, "trace"), quiet("q1")];
+	const [plan] = planOf(rows, true).runs;
+	assert.equal(plan.run.opensWithUserRow, false, "the head is cut");
+	assert.equal(plan.run.closingAnswerId, null);
+	assert.equal(plan.run.quietCloseId, "q1");
+	assert.equal(
+		plan.collapses,
+		true,
+		"without the third anchor this run would refuse to build a bar",
+	);
+	const [seg] = plan.segments;
+	assert.equal(seg.collapsed, true);
+	assert.equal(seg.completed, true);
+	assert.equal(
+		seg.facts.partial,
+		true,
+		"head-cut: the count is a minimum and the bar says so",
+	);
+	assert.equal(seg.facts.durationS, null, "and no duration is fabricated");
+});
+
+test("a quiet close settles the tail; the earlier answer is neither swallowed nor re-elected", () => {
+	/*
+	 * `U A1(stop) P T Q`: the first close was already handed over, so the quiet
+	 * tail must elect NOTHING - re-electing A1 would label the run's end with an
+	 * earlier answer (the same shape a textless tail has always had).
+	 */
+	const rows = [
+		user("u1"),
+		answer("a1"),
+		peerRow("p1"),
+		tool("t1", {}, "trace"),
+		quiet("q1"),
+	];
+	const [plan] = planOf(rows).runs;
+	assert.equal(plan.answerId, null, "no answer is elected for the run");
+	assert.deepEqual(
+		plan.segments.map((s) => s.segmentIds),
+		[["p1", "t1", "q1"]],
+		"the peer span condenses as one bar",
+	);
+	assert.equal(plan.segments[0].collapsed, true);
+	assert.equal(
+		plan.hidden.some((r) => r.record.id === "a1"),
+		false,
+		"the earlier answer stays visible; the bar never takes it",
+	);
+});
+
+test("a receipt appended after a quiet close keeps the settled span a bar (the group override), and the count is the only thing that grows", () => {
+	const settled = [
+		user("u1"),
+		peerRow("p1"),
+		tool("t1", {}, "trace"),
+		quiet("q1"),
+	];
+	const before = planOf(settled, true).runs[0];
+	assert.equal(before.segments[0].collapsed, true, "settled: the bar draws");
+	const after = planOf([...settled, peerRow("p2")], true).runs[0];
+	/*
+	 * A second receipt makes the span a GROUP (two triggers, nothing visible
+	 * between them), and a group keeps its bar while it grows. Without the
+	 * exemption the extended span would cross `liveFrom` and un-condense every
+	 * receipt the reader had already seen settle - the jitter the group exists
+	 * to remove, measured on the operator's own report.
+	 */
+	assert.equal(after.segments.length, 1);
+	assert.equal(after.segments[0].collapsed, true, "the group bar stays");
+	assert.equal(
+		after.segments[0].key,
+		"qg:p1",
+		"the group speaks with its own stable key",
+	);
+	assert.equal(after.segments[0].facts.group?.count, 2);
+	assert.equal(after.segments[0].label, "Peer messages");
+	const grown = planOf(
+		[...settled, peerRow("p2"), quiet("q2"), peerRow("p3")],
+		true,
+	).runs[0];
+	assert.equal(grown.segments.length, 1, "still one bar");
+	assert.equal(grown.segments[0].key, "qg:p1", "the key never moves");
+	assert.equal(grown.segments[0].collapsed, true, "and it stays a bar");
+	assert.equal(
+		grown.segments[0].facts.group?.count,
+		3,
+		"the count is the only thing that grew",
+	);
+	assert.equal(grown.segments[0].label, "Peer messages");
+});
+
+test("facts freeze when the group closes, and the open tail may grow (the latch, design §5)", () => {
+	const closedBefore = quietGroupsOf(
+		[peerRow("p1"), peerRow("p2"), user("u1")].map((r) => r.record),
+	);
+	assert.equal(closedBefore[0].open, false, "a later visible row closes it");
+	const closedAfter = quietGroupsOf(
+		[
+			peerRow("p1"),
+			peerRow("p2"),
+			user("u1"),
+			peerRow("p3"),
+			peerRow("p4"),
+		].map((r) => r.record),
+	);
+	assert.equal(closedAfter.length, 2, "the new receipts form their own group");
+	assert.deepEqual(
+		closedAfter[0],
+		closedBefore[0],
+		"the closed group is byte-identical after the append",
+	);
+	const openBefore = quietGroupsOf(
+		[peerRow("p3"), peerRow("p4")].map((r) => r.record),
+	);
+	assert.equal(openBefore[0].open, true, "the tail group is open");
+	const openAfter = quietGroupsOf(
+		[peerRow("p3"), peerRow("p4"), peerRow("p5")].map((r) => r.record),
+	);
+	assert.equal(openAfter[0].key, "qg:p3", "the key never moves while it grows");
+	assert.equal(
+		openAfter[0].count,
+		3,
+		"the open tail group may increase its count",
+	);
+});
+
+/* ------------------- the shared parity fixture (design §5) ------------------- */
+
+/*
+ * The fixture is the CROSS-CLIENT contract (see its own header): the native,
+ * relay-web and TUI slices copy it and check their derivation against the same
+ * cases. Here it is checked against the UI's own entry points - the whole-list
+ * scanner for the definition, and the segment-level lookup for the span cases
+ * (head-cut times and the "a bar states a whole group, never a fragment" rule).
+ */
+const QUIET_GROUPS_PARITY = JSON.parse(
+	readFileSync(
+		new URL("./fixtures/quiet-groups.parity.json", import.meta.url),
+		"utf8",
+	),
+);
+
+/** A fixture row, expanded to the fields the group vocabulary reads. */
+const fixtureRecord = (row) => {
+	switch (row.kind) {
+		case "user":
+			return { kind: "user", id: row.id, ts: row.ts, text: row.text ?? "hi" };
+		case "peer":
+			return {
+				kind: "peer",
+				id: row.id,
+				ts: row.ts,
+				body: row.body ?? "peer",
+				sender: {
+					pid: "",
+					conversationName: "",
+					cwd: "",
+					sessionId: "",
+					modelLabel: "",
+					...(row.sender ?? {}),
+				},
+			};
+		case "wake":
+			return { kind: "wake", id: row.id, ts: row.ts, text: row.text ?? "wake" };
+		case "custom":
+			return {
+				kind: "custom",
+				id: row.id,
+				ts: row.ts,
+				customType: row.customType,
+				text: row.text ?? "",
+				level: row.level ?? "info",
+			};
+		case "tool":
+			return {
+				kind: "tool",
+				id: row.id,
+				ts: row.ts,
+				toolName: row.toolName,
+				phase: row.phase ?? "done",
+				isError: row.isError ?? false,
+				stopped: false,
+				neverSent: false,
+				notRunReason: null,
+				durationS: row.durationS ?? null,
+			};
+		case "assistant":
+			return {
+				kind: "assistant",
+				id: row.id,
+				ts: row.ts,
+				text: row.text ?? "text",
+				streaming: false,
+				stopReason: row.stopReason ?? "stop",
+			};
+		case "notice":
+			return {
+				kind: "notice",
+				id: row.id,
+				ts: row.ts,
+				text: row.text ?? "notice",
+				level: row.level ?? "info",
+				complete: row.complete ?? false,
+			};
+		default:
+			throw new Error(`unhandled fixture row kind: ${row.kind}`);
+	}
+};
+
+test("the quiet-group derivation matches the shared parity fixture, case by case", () => {
+	for (const entry of QUIET_GROUPS_PARITY.cases) {
+		const records = entry.rows.map(fixtureRecord);
+		const actual = entry.span
+			? quietGroupOfSegment(
+					records,
+					{ from: entry.span[0], to: entry.span[1] },
+					{
+						spanHeadLoaded: entry.spanHeadLoaded ?? true,
+						open: entry.open,
+					},
+				)
+			: quietGroupsOf(records);
+		assert.deepEqual(actual, entry.expected, entry.name);
+	}
 });

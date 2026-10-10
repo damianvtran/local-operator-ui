@@ -143,6 +143,15 @@ export type TurnSummaryProps = {
 	 * by a stop marker, on either side of the answer (`segmentIsCompleted`).
 	 */
 	completed?: boolean;
+	/**
+	 * The quiet group's clauses, when this bar is one (design §5, rev 2): the
+	 * count of delivery receipts and their span, printed INSTEAD of `Took`/`N
+	 * actions` - a group counts receipts, not work, and its expansion lists the
+	 * work. `spanS` null states no duration (a head-cut group; the count then
+	 * carries the minimum marker on the shared `partial` fact). The family word
+	 * arrives through `label` - this prop is the arithmetic only.
+	 */
+	group?: { count: number; spanS: number | null } | null;
 	/** Controlled open state — the transcript owns the reader's expansion. */
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -202,6 +211,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	children,
 	condensedMedia,
 	mediaCount = 0,
+	group = null,
 }) => {
 	/*
 	 * The count clause and the sentence behind it, derived once: the visible words
@@ -217,6 +227,16 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	const actionClauseTitle = `At least ${
 		actionCount === 1 ? "1 action" : `${actionCount} actions`
 	} — earlier rows of this turn are not loaded`;
+	/*
+	 * The group count's own words for hover and AT: the visible line carries a
+	 * bare number (the copy is `Peer messages · 12 · 2h 14m`), so the "at least"
+	 * claim a head-cut group makes lives here, stated the way the action clause
+	 * states its own - never a second reading of the same number.
+	 */
+	const groupClauseTitle =
+		group === null
+			? null
+			: `At least ${group.count} messages — earlier rows are not loaded`;
 
 	/*
 	 * The bar's root, held so the strip's `+N` press can hand focus to the bar's
@@ -359,29 +379,63 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 								/>
 							</>
 						)}
-						{label !== null && (durationS !== null || actionCount > 0) && (
-							<Dot />
-						)}
-						{durationS !== null && (
-							<span className={cn("shrink-0 text-body-sm text-ink-muted")}>
-								Took {formatDuration(durationS)}
-							</span>
-						)}
-						{durationS !== null && actionCount > 0 && <Dot />}
-						{actionCount > 0 && (
-							<span
-								className={cn("shrink-0 text-body-sm text-ink-muted")}
-								/*
-								 * The words carry the marker for AT: `307+ actions` reads as a
-								 * range only if the `+` is announced, and a `title` gives the
-								 * sighted reader the same sentence on hover. Both are the same
-								 * claim the visible glyph makes - a minimum, not a total.
-								 */
-								title={partial ? actionClauseTitle : undefined}
-								aria-label={partial ? actionClauseTitle : undefined}
-							>
-								{actionClause}
-							</span>
+						{/*
+						 * A GROUP BAR SPEAKS IN RECEIPTS (design §5): count then receipt span,
+						 * instead of `Took`/`N actions` - the work inside the group is what the
+						 * expansion lists, and the span is RECEIPT time, so it prints bare (no
+						 * `Took`, which would claim the bar counts work). A head-cut group
+						 * states `N+` and no duration, per the end-loaded rule.
+						 */}
+						{group !== null ? (
+							<>
+								{label !== null && <Dot />}
+								<span
+									className={cn("shrink-0 text-body-sm text-ink-muted")}
+									title={partial ? (groupClauseTitle ?? undefined) : undefined}
+									aria-label={
+										partial ? (groupClauseTitle ?? undefined) : undefined
+									}
+								>
+									{partial ? `${group.count}+` : `${group.count}`}
+								</span>
+								{group.spanS !== null && (
+									<>
+										<Dot />
+										<span
+											className={cn("shrink-0 text-body-sm text-ink-muted")}
+										>
+											{formatDuration(group.spanS)}
+										</span>
+									</>
+								)}
+							</>
+						) : (
+							<>
+								{label !== null && (durationS !== null || actionCount > 0) && (
+									<Dot />
+								)}
+								{durationS !== null && (
+									<span className={cn("shrink-0 text-body-sm text-ink-muted")}>
+										Took {formatDuration(durationS)}
+									</span>
+								)}
+								{durationS !== null && actionCount > 0 && <Dot />}
+								{actionCount > 0 && (
+									<span
+										className={cn("shrink-0 text-body-sm text-ink-muted")}
+										/*
+										 * The words carry the marker for AT: `307+ actions` reads as a
+										 * range only if the `+` is announced, and a `title` gives the
+										 * sighted reader the same sentence on hover. Both are the same
+										 * claim the visible glyph makes - a minimum, not a total.
+										 */
+										title={partial ? actionClauseTitle : undefined}
+										aria-label={partial ? actionClauseTitle : undefined}
+									>
+										{actionClause}
+									</span>
+								)}
+							</>
 						)}
 						{/*
 						 * How many pictures the span produced, as the count the strip cannot

@@ -217,6 +217,7 @@ import {
 	widenTarget,
 	windowTopRun,
 } from "./turn-collapse-model";
+import { isQuietTurnCall } from "./turn-segments";
 import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
 import { useCheckpoints } from "./use-checkpoints";
@@ -275,6 +276,24 @@ const WINDOW_ALIGN_MAX_EXTRA = 300;
 /* (`ALIGN_WALK_MAX_PAGES`, the walk's bound, lives in `turn-collapse-model.ts`
  * beside the decision that spends it.) */
 
+const QUIET_GROUP_UNITS_PER_SECOND = 1000;
+
+/**
+ * A quiet group's receipt span, in the seconds `formatDuration` reads, or null
+ * when the group states none (a head-cut span carries null times - see
+ * `QuietGroup` - and the bar then states no duration, the end-loaded rule).
+ *
+ * The span is RECEIPT time, not worked time: `Took` would claim work the bar's
+ * own line does not count, so a group bar prints the duration bare.
+ */
+function quietGroupSpanS(group: {
+	firstTs: number | null;
+	lastTs: number | null;
+}): number | null {
+	if (group.firstTs === null || group.lastTs === null) return null;
+	return (group.lastTs - group.firstTs) / QUIET_GROUP_UNITS_PER_SECOND;
+}
+
 /**
  * What a bar's appearance says out loud (the settle announcement's sentence).
  *
@@ -286,15 +305,28 @@ const WINDOW_ALIGN_MAX_EXTRA = 300;
  */
 function condenseSentence(segment: SegmentPlan): string {
 	const parts: string[] = [];
-	if (segment.facts.durationS !== null) {
-		parts.push(`took ${formatDuration(segment.facts.durationS)}`);
-	}
-	if (segment.facts.actions > 0) {
-		parts.push(
-			segment.facts.actions === 1
-				? "1 action"
-				: `${segment.facts.actions} actions`,
-		);
+	if (segment.facts.group !== null) {
+		/*
+		 * A GROUP BAR'S SENTENCE IS THE GROUP'S OWN CLAUSES (design §5): the count
+		 * of receipts and the receipt span the line states - never the segment's
+		 * `took`/`N actions`, which a group bar does not print either (the count it
+		 * prints counts receipts). Same rule as below: the span clause only when
+		 * the bar carries one.
+		 */
+		parts.push(`${segment.facts.group.count} messages`);
+		const spanS = quietGroupSpanS(segment.facts.group);
+		if (spanS !== null) parts.push(formatDuration(spanS));
+	} else {
+		if (segment.facts.durationS !== null) {
+			parts.push(`took ${formatDuration(segment.facts.durationS)}`);
+		}
+		if (segment.facts.actions > 0) {
+			parts.push(
+				segment.facts.actions === 1
+					? "1 action"
+					: `${segment.facts.actions} actions`,
+			);
+		}
 	}
 	/*
 	 * A labelled bar states its own kind first ("Wake: 8 actions."): a
@@ -2450,6 +2482,17 @@ const TranscriptRow = memo(function TranscriptRow({
 			);
 			break;
 		case "tool":
+			/*
+			 * THE QUIET CALL IS HIDDEN AT PAINT (design §5; §10.10). Core's S0a half
+			 * keeps the name OUT of its `HIDDEN_TOOL_NAMES` (rows.py), which is why the
+			 * row reaches this list at all; the reader never sees it, so here the
+			 * wrapper and the ledger row both go. An old build showing a small
+			 * `no_reply` tool row is the accepted degradation.
+			 */
+			if (isQuietTurnCall(record)) {
+				body = null;
+				break;
+			}
 			body = (
 				/*
 				 * The redesign's `ToolRow` takes `record`, the two layout flags and
@@ -3159,7 +3202,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				row.record.kind === "tool" ? row.record.startedAt : null,
 			endedAtOf: (row) =>
 				row.record.kind === "tool" ? row.record.endedAt : null,
-			isFoldable: (row) => row.record.kind === "tool",
+			isFoldable: (row) =>
+				row.record.kind === "tool" && !isQuietTurnCall(row.record),
 		});
 		return groups.map((group) =>
 			group.kind === "run"
@@ -3218,7 +3262,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * definition, so the bars of a ladder add up to this figure (#708 D1).
 			 */
 			durationOf: workedSecondsOf,
-			isAction: (row) => row.record.kind === "tool",
+			isAction: (row) =>
+				row.record.kind === "tool" && !isQuietTurnCall(row.record),
 			opensRun: (row) => openerIds.has(row.record.id),
 		});
 	}, [rowsKey]);
@@ -4934,6 +4979,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 											 */
 											partial={entry.segment.facts.partial}
 											title={entry.segment.facts.title}
+											/*
+											 * The quiet group's own clauses, when this bar is one (design §5):
+											 * the family word arrives as `label`, and the count/span here. The
+											 * bar prints them INSTEAD of `Took`/`N actions` - a group
+											 * counts receipts, not work - and the span is null for a
+											 * head-cut group, which states `N+` and no duration.
+											 */
+											group={
+												entry.segment.facts.group === null
+													? null
+													: {
+															count: entry.segment.facts.group.count,
+															spanS: quietGroupSpanS(entry.segment.facts.group),
+														}
+											}
 											stampTs={entry.segment.stampTs}
 											label={entry.segment.label}
 											completed={entry.segment.completed}

@@ -58,7 +58,7 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/canonical/turn-segments";',
 			'export * from "./src/renderer/src/features/chat/transcript-display-mode";',
 			'export { paintsSomething, isStatementRow, runsOf, closingAnswerIds, buildRows } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
-			'export { collapsePlan, staysVisibleWhileCollapsed } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
+			'export { collapsePlan, staysVisibleWhileCollapsed, quietGroupOfSegment } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
 			'export { applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 			/*
 			 * The store joins the bundle for the DISPLAY-MODE PERSISTENCE case, for the
@@ -87,6 +87,7 @@ const {
 	closingAnswerIds,
 	collapsePlan,
 	cyclesOf,
+	electAnswer,
 	EMPTY_TRANSCRIPT,
 	isCompletionMarker,
 	isStatementRow,
@@ -95,6 +96,7 @@ const {
 	partitionRun,
 	paintsSomething,
 	persistedUiPreferences,
+	quietGroupOfSegment,
 	reportsCompletedThought,
 	runsOf,
 	segmentIsCompleted,
@@ -182,13 +184,53 @@ const RECORDS = {
 		id,
 		ts: TS + i,
 		body: "peer",
-		sender: {},
+		/*
+		 * The FULL sender shape the reducer's `peerFields` guarantees. It used to
+		 * be `{}` - a laxity nothing read until the quiet group's sender summary
+		 * called `peerIdentity` on it and `sender.cwd.replace` threw (the `P` arm's
+		 * crash pinned the contract harder than any comment had).
+		 */
+		sender: {
+			pid: "",
+			conversationName: "",
+			cwd: "",
+			sessionId: "",
+			modelLabel: "",
+		},
 	}),
 	J: (id, i) => custom(id, i, "job_result"),
 	H: (id, i) => custom(id, i, "hub_message"),
 	X: (id, i) => custom(id, i, "monitor_prompt"),
 	Q: (id, i) => custom(id, i, "session_mcp_unavailable"),
 	I: (id, i) => custom(id, i, "session_incident", "error"),
+	/*
+	 * The quiet-turn tokens (S2): `Z` is a SETTLED `no_reply` call (a close),
+	 * `R` the same call still running (not one). `Q` was taken by the MCP custom.
+	 */
+	Z: (id, i) => ({
+		kind: "tool",
+		id,
+		ts: TS + i,
+		toolName: "no_reply",
+		isError: false,
+		stopped: false,
+		neverSent: false,
+		notRunReason: null,
+		endedAt: null,
+		phase: "done",
+	}),
+	R: (id, i) => ({
+		kind: "tool",
+		id,
+		ts: TS + i,
+		toolName: "no_reply",
+		isError: false,
+		stopped: false,
+		neverSent: false,
+		notRunReason: null,
+		endedAt: null,
+		phase: "running",
+	}),
 	M: (id, i) => ({
 		kind: "notice",
 		id,
@@ -1842,13 +1884,25 @@ test("case 2 RESIDUAL (named): an undeclared answer a later step demotes is abso
  * it: the first answer is neither hidden inside the span nor renamed by the
  * second one arriving. Kept synthetic: the ids come from `seq()`, not a journal.
  */
-test("case 2: two peer receipts between two stop answers bar on their own, and the first answer stays visible", () => {
+test("case 2: two peer receipts between two stop answers become a group of their own, and the first answer stays visible", () => {
 	const [run] = planFor("U A P P A", false);
+	/*
+	 * The span is ANCHORED on the row that ends it - the second answer - so a
+	 * later span can never inherit its key, and the first answer is neither
+	 * hidden inside the span nor renamed by the second one arriving.
+	 *
+	 * Since the quiet-group slice (design §5) the same span is ALSO a group:
+	 * two receipts with nothing the reader can see between them, so its key is
+	 * the group's own stable `qg:<first row>` and its facts state the receipt
+	 * count instead of the action clauses (pinned above in the quiet-turn
+	 * section; here the point is only that the first answer is untouched).
+	 */
 	assert.deepEqual(
 		run.segments.map((s) => [s.key, s.segmentIds, s.collapsed]),
-		[["seg:A4", ["P2", "P3"], true]],
-		"one span, anchored on the second answer and holding exactly the two peers",
+		[["qg:P2", ["P2", "P3"], true]],
+		"one span, keyed by the group's first row and holding exactly the two peers",
 	);
+	assert.equal(run.segments[0].facts.group?.count, 2);
 	const hidden = new Set(run.segments.flatMap((s) => s.segmentIds));
 	assert.equal(hidden.has("A1"), false, "the first answer is not swallowed");
 	assert.equal(
@@ -2086,4 +2140,120 @@ test("the display mode survives a relaunch, and an unknown stored token comes ba
 		"by-turn",
 		"and the other mode came back",
 	);
+});
+
+/* --------------- the quiet turn: close, election, marks (S2) --------------- */
+
+/*
+ * THE QUIET CLOSE (design §5, rev 2). `no_reply` arrives as two ordinary tool
+ * rows; the SETTLED call is a structural close - it ends its cycle, settles the
+ * tail, and can never become the elected answer. The row is hidden at paint by
+ * the renderer; these tests are the arithmetic half.
+ */
+
+test("a settled `no_reply` call is a structural close; an in-flight one is not", () => {
+	const settledRecords = seq("U T Z");
+	const settled = cyclesOf(settledRecords, paintsSomething);
+	assert.equal(settled.length, 1, "the quiet call closes the cycle");
+	assert.equal(settled[0].closeIndex, 2);
+	assert.equal(settledRecords[settled[0].closeIndex].id, "Z2");
+	const runningRecords = seq("U T R");
+	assert.equal(
+		cyclesOf(runningRecords, paintsSomething).length,
+		0,
+		"a running quiet call is a call still running, not a close",
+	);
+});
+
+test("electAnswer: a quiet close is no candidate, and the election does not fall back to an earlier close", () => {
+	/*
+	 * `U A P Z K`: a real close (A1), a later quiet close (Z), then a terminal
+	 * marker. That marker puts the record scan into its "follow-up that died"
+	 * arm - the one shape that reaches the election loop with the QUIET cycle as
+	 * the last response one. The answer must be NOTHING: electing Z would label
+	 * a row that paints nothing, and falling back to A1 would label the run's
+	 * end with an answer that was already handed over.
+	 */
+	const records = seq("U A P Z K");
+	const cycles = cyclesOf(records, paintsSomething);
+	assert.equal(cycles.length, 2, "A1 and Z are both closes");
+	assert.equal(cycles[cycles.length - 1].class, "response");
+	assert.equal(
+		electAnswer(records, cycles, OPTS),
+		null,
+		"no candidate, no fallback",
+	);
+	/*
+	 * The CONTROL: without the quiet close the same shape elects A1 - the
+	 * shipped follow-up-died rule, unchanged.
+	 */
+	const control = seq("U A P K");
+	const controlCycles = cyclesOf(control, paintsSomething);
+	assert.equal(
+		electAnswer(control, controlCycles, OPTS)?.closeIndex,
+		1,
+		"the control still elects the previous close",
+	);
+});
+
+test("partitionRun keeps the quiet close inside the span (hidden at paint), and elects nothing", () => {
+	const { records, result } = partition("U P T Z");
+	assert.equal(
+		result.visible.has(3),
+		false,
+		"the quiet row is not forced visible by V1/V2",
+	);
+	assert.deepEqual(
+		result.segments,
+		[{ from: 1, to: 3 }],
+		"one span over the receipt, the call and the close",
+	);
+	assert.equal(result.answer, null, "nothing is elected");
+	assert.equal(
+		boundaryKindOf(records[3]),
+		null,
+		"it is not a terminal marker either: the quiet close is its own vocabulary",
+	);
+});
+
+test("segmentIsCompleted: a bar governed by a quiet close carries the mark, labelled or not", () => {
+	/*
+	 * The pre-answer exemption exists because the answer is the visible statement
+	 * that the work finished - and a quiet close is the opposite case: its row is
+	 * never painted, so its bar is the only place the completion can be stated.
+	 */
+	const records = seq("U T Z");
+	const cycles = cyclesOf(records, paintsSomething);
+	assert.equal(
+		segmentIsCompleted(records, cycles, { from: 1, to: 2 }, null, false, 2),
+		true,
+		"an unlabelled quiet bar is still marked complete",
+	);
+	assert.equal(
+		segmentIsCompleted(records, cycles, { from: 1, to: 2 }, null, true, 2),
+		true,
+		"a labelled one too",
+	);
+	assert.equal(
+		segmentIsCompleted(records, cycles, { from: 1, to: 2 }, null, false, null),
+		false,
+		"with no closer at all the old rule stands",
+	);
+});
+
+test("labelOfSegment states the group's family word; below the minimum the opener's label survives", () => {
+	const cases = [
+		["U P P", "Peer messages"],
+		["U W W", "Wake messages"],
+		["U P W", "Messages"],
+		["U J J", "Job results"],
+		["U P T Z", "Peer message"],
+	];
+	for (const [spec, word] of cases) {
+		const records = seq(spec);
+		const cycles = cyclesOf(records, paintsSomething);
+		const span = { from: 1, to: records.length - 1 };
+		const group = quietGroupOfSegment(records, span);
+		assert.equal(labelOfSegment(records, cycles, span, group), word, spec);
+	}
 });
