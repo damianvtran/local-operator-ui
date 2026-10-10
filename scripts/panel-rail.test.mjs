@@ -277,13 +277,29 @@ async function mount(render) {
 	}
 }
 
-const DRAWABLE = { mounted: true, runDetails: true, session: true };
-const DRAFT = { mounted: true, runDetails: false, session: false };
+const DRAWABLE = {
+	mounted: true,
+	runDetails: true,
+	session: true,
+	/*
+	 * The capability is a route fact since remediation round 1 (F6): the code
+	 * item's `aria-pressed` reads `resolveDrawnRightSlotPane`, whose `code`
+	 * branch requires it, so a narrative route without it would light nothing.
+	 */
+	codeReview: true,
+};
+const DRAFT = {
+	mounted: true,
+	runDetails: false,
+	session: false,
+	codeReview: false,
+};
 const NO_PANES = {
 	isRunPanelOpen: false,
 	isCanvasOpen: false,
 	isBrowserPaneOpen: false,
 	isConsolePaneOpen: false,
+	isCodeReviewPaneOpen: false,
 	isAskDrawerOpen: false,
 	askDrawerScope: "session",
 	askDrawerEvictedPane: null,
@@ -297,10 +313,14 @@ const details = () => deriveRunDetails(fixtures.settled());
  * and the cells that need a count pass it. A draft was never reachable with an
  * unoffered item before this, so offering it here is what keeps the fifth item
  * under test in the same mounts as its four siblings.
+ *
+ * The code door's own harness contract (#927) keeps the `sessionId` override the
+ * draft cells use, and derives the offer from the session as `chat-content` does.
  */
-const rail = (overrides = {}) =>
-	React.createElement(PanelRail, {
-		sessionId: "session-1",
+const rail = (overrides = {}) => {
+	const { sessionId = "session-1", ...rest } = overrides;
+	return React.createElement(PanelRail, {
+		sessionId,
 		runDetails: details(),
 		mcpServers: [],
 		listOnScreen: false,
@@ -312,8 +332,19 @@ const rail = (overrides = {}) =>
 		consoleUnseenCount: 0,
 		consoleUnseenPulsing: false,
 		fileCount: 0,
-		...overrides,
+		/*
+		 * The code review door's offer mirrors `chat-content`'s own derivation
+		 * (§M.1): the capability AND a session on the route - so the draft arms
+		 * below, which pass `sessionId: null`, get the pre-feature rail without
+		 * having to restate it.
+		 */
+		codeOffered: sessionId !== null,
+		codeOpened: 0,
+		codeMentioned: 0,
+		codeAttention: null,
+		...rest,
 	});
+};
 
 /** Every case starts from a closed slot on a drawable route. */
 const reset = (api, route = DRAWABLE) =>
@@ -330,7 +361,15 @@ test("the rail is ONE vertical toolbar with a name, in the fixed order", async (
 		assert.equal(toolbar.getAttribute("role"), "toolbar");
 		assert.equal(toolbar.getAttribute("aria-orientation"), "vertical");
 		assert.equal(toolbar.getAttribute("aria-label"), "Panels");
-		assert.deepEqual(api.ids(), ["run", "ask", "browser", "console", "canvas"]);
+		assert.deepEqual(api.ids(), [
+			"run",
+			"ask",
+			"browser",
+			"console",
+			"canvas",
+			"code",
+		]);
+
 		assert.deepEqual(api.ids(), [...PANEL_RAIL_ORDER]);
 		/* The asks item sits SECOND (#896), its historical slot: the pre-#872 header
 		   ran Run -> Asks -> Browser -> Console -> Canvas. */
@@ -353,7 +392,7 @@ test("one tab stop: exactly one item is tabbable, and it follows focus", async (
 		assert.equal(
 			api.items().filter((item) => item.getAttribute("tabindex") === "-1")
 				.length,
-			4,
+			5,
 		);
 		/* Focus entering on another item (a click, a pointer) moves the stop with it. */
 		act(() => api.item("console").focus());
@@ -378,10 +417,10 @@ test("ArrowUp/ArrowDown walk the items, Home/End take the ends, and the walk is 
 		await api.key(api.item("console"), "ArrowUp");
 		assert.equal(active(), "browser");
 		await api.key(api.item("browser"), "End");
-		assert.equal(active(), "canvas");
-		await api.key(api.item("canvas"), "ArrowDown");
-		assert.equal(active(), "canvas", "bounded at the end, not wrapping");
-		await api.key(api.item("canvas"), "Home");
+		assert.equal(active(), "code", "the sixth item is the last");
+		await api.key(api.item("code"), "ArrowDown");
+		assert.equal(active(), "code", "bounded at the end, not wrapping");
+		await api.key(api.item("code"), "Home");
 		assert.equal(active(), "run");
 		await api.key(api.item("run"), "ArrowUp");
 		assert.equal(active(), "run", "bounded at the start, not wrapping");
@@ -401,7 +440,7 @@ test("ArrowUp/ArrowDown walk the items, Home/End take the ends, and the walk is 
 	});
 });
 
-test("aria-pressed follows each of the five store flags, one at a time", async () => {
+test("aria-pressed follows each of the six store flags, one at a time", async () => {
 	await mount(async (api) => {
 		for (const [flag, id] of [
 			["isRunPanelOpen", "run"],
@@ -411,6 +450,7 @@ test("aria-pressed follows each of the five store flags, one at a time", async (
 			/* The fifth state (#896): the drawer holds the slot, so the ASKS item is the
 			   lit one - the fix the issue names, where the rail used to light nothing. */
 			["isAskDrawerOpen", "ask"],
+			["isCodeReviewPaneOpen", "code"],
 		]) {
 			reset(api);
 			await api.render(rail());
@@ -504,6 +544,7 @@ test("a claimed pane the route cannot draw lights NOTHING (the drawable-aware se
 			"isConsolePaneOpen",
 			"isCanvasOpen",
 			"isAskDrawerOpen",
+			"isCodeReviewPaneOpen",
 		]) {
 			reset(api, { mounted: false, runDetails: false, session: false });
 			api.store({ [flag]: true });
@@ -546,10 +587,17 @@ test("a panel the route cannot draw is ABSENT, not disabled", async () => {
 		}
 		assert.equal(api.$("[data-run-panel-trigger]"), null);
 		assert.equal(api.$("[data-tour-tag=console-pane-trigger]"), null);
-		/* A conversation with a session but no run view model: Console without Run. */
+		/* A conversation with a session but no run view model: Console without Run
+		   (and the code review door, which needs only the session - §M.1). */
 		reset(api, { mounted: true, runDetails: false, session: true });
 		await api.render(rail({ runDetails: null }));
-		assert.deepEqual(api.ids(), ["ask", "browser", "console", "canvas"]);
+		assert.deepEqual(api.ids(), [
+			"ask",
+			"browser",
+			"console",
+			"canvas",
+			"code",
+		]);
 	});
 });
 
@@ -571,7 +619,13 @@ test("the asks item follows the host's offer, and its labels carry the scope and
 			null,
 			"absent, not disabled, where no host offers a door",
 		);
-		assert.deepEqual(api.ids(), ["run", "browser", "console", "canvas"]);
+		assert.deepEqual(api.ids(), [
+			"run",
+			"browser",
+			"console",
+			"canvas",
+			"code",
+		]);
 		await api.render(
 			rail({ askOffered: true, askCount: 3, askScope: "session" }),
 		);

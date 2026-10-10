@@ -959,6 +959,7 @@ const EMPTY_ROUTE = {
 	mounted: false,
 	runDetails: false,
 	session: false,
+	codeReview: false,
 } as const;
 
 /*
@@ -974,6 +975,7 @@ const DRAWABLE_ROUTE = {
 	mounted: true,
 	runDetails: true,
 	session: true,
+	codeReview: true,
 } as const;
 
 /**
@@ -2029,7 +2031,12 @@ export const ChatDockRunPanelOnDraft: Story = {
 			useUiPreferencesStore.setState({
 				isRunPanelOpen: true,
 				rightSlotWidth,
-				rightSlotRoute: { mounted: true, runDetails: false, session: false },
+				rightSlotRoute: {
+					mounted: true,
+					runDetails: false,
+					session: false,
+					codeReview: false,
+				},
 			});
 			return () => {
 				useUiPreferencesStore.setState({
@@ -2054,7 +2061,12 @@ export const ChatDockAsksOnDraft: Story = {
 				isAskDrawerOpen: true,
 				askDrawerScope: "session",
 				rightSlotWidth,
-				rightSlotRoute: { mounted: true, runDetails: false, session: false },
+				rightSlotRoute: {
+					mounted: true,
+					runDetails: false,
+					session: false,
+					codeReview: false,
+				},
 			});
 			return () => {
 				useUiPreferencesStore.setState({
