@@ -818,12 +818,13 @@ test("a landed cancel with no row after it lands the keyboard on the pane (U1)",
 
 test("a successor taken away by the re-read's churn lands on the pane (F13)", async () => {
 	/*
-	 * AGENT REVIEW ROUND 3's F13: the landing was resolved once, and the
-	 * re-read's own churn — the pane re-renders with an EMPTY wakes list for a
-	 * moment, the frame this interaction's header documents — unmounts the node
-	 * the keyboard was just given, dropping focus to `<body>` (jsdom clears a
-	 * removed active element the same way, measured; Blink's removal path
-	 * agrees). The watcher re-resolves once: the pane takes the keyboard.
+	 * AGENT REVIEW ROUND 3's F13 (QA round 4's Q7 extends the same watch): the
+	 * landing was resolved once, and the re-read's own churn — the pane
+	 * re-renders with an EMPTY wakes list for a moment, the frame this
+	 * interaction's header documents — unmounts the node the keyboard was just
+	 * given, dropping focus to `<body>` (jsdom clears a removed active element
+	 * the same way, measured; Blink's removal path agrees). The module-scope
+	 * watcher re-resolves once: the pane takes the keyboard.
 	 */
 	const pane = document.createElement("section");
 	pane.setAttribute("data-run-panel-pane", "");
@@ -855,6 +856,55 @@ test("a successor taken away by the re-read's churn lands on the pane (F13)", as
 		"the churn's removal does not leave the keyboard on the body",
 	);
 	await p.unmount();
+});
+
+test("a landing survives the panel's own unmount and returns to the pane (Q7)", async () => {
+	/*
+	 * QA ROUND 4's Q7: the resync reconnects the stream, an `open{gap}` commit
+	 * nulls `frontend` for a beat, `runDetails` goes with it, and the WHOLE run
+	 * panel — the hook, its effects, and the node the keyboard was on —
+	 * unmounts at once (4/13 natural presses settled on `<body>`; the panel
+	 * back 13–700 ms later, nothing re-resolving). The watch now lives at
+	 * module scope, so it outlives the unmount: with no home on screen it holds
+	 * (bounded), and the pane's return is itself the mutation that ends it.
+	 * The pane stub below is the panel's slot; here it leaves and comes back
+	 * the way the gate's remount does.
+	 */
+	const p = await mount({
+		wakes: [
+			wireWake("w1", "First"),
+			wireWake("w2", "Second"),
+			wireWake("w3", "Third"),
+		],
+		sessionId: "sess1",
+		aida: UNKNOWN_AIDA,
+		cancel: async () => ({ ok: true }),
+	});
+	await press(document.querySelector('[data-wake-cancel="w2"]'));
+	assert.ok(
+		await settle(
+			() =>
+				document.activeElement ===
+				document.querySelector('[data-wake-cancel="w3"]'),
+		),
+		"the successor takes the keyboard first",
+	);
+	/*
+	 * THE GATE'S GAP: everything inside the panel goes, the landing's node
+	 * with it. jsdom moves a removed active element to the body (measured);
+	 * the watch must not leave it there.
+	 */
+	await p.unmount();
+	/* THE PANE RETURNS: a mutation the module watcher sees, like the gate's. */
+	const returned = document.createElement("section");
+	returned.setAttribute("data-run-panel-pane", "");
+	returned.tabIndex = -1;
+	document.body.append(returned);
+	assert.ok(
+		await settle(() => document.activeElement === returned),
+		"the keyboard holds through the gap and lands on the returned pane",
+	);
+	returned.remove();
 });
 
 test("a refused press hands the keyboard back to its own retry control (U2)", async () => {
@@ -996,5 +1046,55 @@ test("an outside press returns the keyboard while the card's Keep still holds it
 		await settle(() => document.activeElement === control),
 		"the keyboard returns to the control the question came from",
 	);
+	await p.unmount();
+});
+
+test("an outside press on a focusable target keeps the press's own intent (F15)", async () => {
+	/*
+	 * F15, refining Q6: cancelling the dismissing press's `pointerdown` also
+	 * swallowed its compatibility mouse events, so a press aimed at something
+	 * that can take focus — the composer, in the app — neither focused it nor
+	 * placed a caret, and the landing stole the keyboard first. The cancel is
+	 * now reserved for targets that cannot hold focus (the chrome arm pinned
+	 * in the U3 case); on a focusable target the default is left alone and the
+	 * landing stands down. jsdom lands no default, so the pin here is the two
+	 * facts the browser acts on: the press is NOT cancelled, and the landing
+	 * did not move the keyboard onto the row's control.
+	 */
+	const p = await mount({
+		wakes: [
+			wireWake("w1", "4-hourly proactive check-in (operator-set cadence)"),
+		],
+		sessionId: HER_SESSION,
+		aida: RESOLVED_AIDA,
+		cancel: async () => ({ ok: true }),
+	});
+	const control = document.querySelector('[data-wake-cancel="w1"]');
+	await press(control);
+	assert.ok(await settle(() => confirmCard() !== null), "the question opens");
+	const field = document.createElement("textarea");
+	document.body.append(field);
+	const dismissal = new DOM.window.Event("pointerdown", {
+		bubbles: true,
+		cancelable: true,
+	});
+	await act(async () => {
+		field.dispatchEvent(dismissal);
+	});
+	assert.equal(
+		dismissal.defaultPrevented,
+		false,
+		"a focusable target's press is not cancelled (F15)",
+	);
+	assert.ok(
+		await settle(() => confirmCard() === null),
+		"and it still dismisses the question",
+	);
+	assert.notEqual(
+		document.activeElement,
+		control,
+		"the landing stood down: the keyboard was not moved to the row's control",
+	);
+	field.remove();
 	await p.unmount();
 });
