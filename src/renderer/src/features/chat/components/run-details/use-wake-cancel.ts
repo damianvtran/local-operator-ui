@@ -51,6 +51,26 @@
  *   round 1, D5: one statement, and the control beside it is still the next
  *   attempt).
  *
+ * ## Where the keyboard lands after a write (UX round 1, U1-U3)
+ *
+ * A landed cancel takes its row off the canonical list, and the control that
+ * was pressed with it — the browser drops focus to `<body>`, which is the one
+ * outcome the pane's own standard forbids. Every close path therefore hands the
+ * keyboard to a resolved LANDING STOP (`wakeCancelLanding`): the pressed row's
+ * own control while it is still a control (a dismissal or a refusal — the next
+ * attempt is itself, U2), otherwise the successor row's control, otherwise the
+ * pane ([`data-run-panel-pane`] — a programmatic focus container,
+ * `run-panel.tsx`), never `<body>`.
+ *
+ * The card's dismissal fires the same resolution from the effect watching
+ * `pending`; the one-press path fires it from the effect watching `onePress`.
+ * Both ask "did focus fall through?" first — a focus that is already somewhere
+ * real is left exactly where it is. The card's own element counts as nowhere on
+ * the outside-press path (U3): the press's focus default lands AFTER this
+ * commit, so at the instant the question closes the keyboard is still on the
+ * card's Keep, and a check against `<body>` alone missed the one dismissal that
+ * left nobody holding it.
+ *
  * Everything resets when the SESSION changes: wake handles are per-session
  * (`w1`..), so a pending row or a mark from one conversation must not be read
  * against another conversation's list.
@@ -59,6 +79,83 @@ import { wakePromptHead } from "@features/schedules/scheduled-task-model";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { WakeRow } from "./run-detail-model";
 import { type WakeControls, wakeRowKey } from "./wake-controls-model";
+
+/*
+ * THE LANDING STOPS, resolved from the DOM at the moment an outcome is known.
+ * The pane's rows are the only surfaces that carry `[data-wake-cancel]` (the
+ * Schedules page's lines do not), so a document query is pane-local, and the
+ * same selector idiom the card path and the monitors' fallback already use.
+ */
+
+/** The pressed row's own control, by handle. */
+const wakeCancelControl = (id: string): HTMLElement | null =>
+	document.querySelector<HTMLElement>(`[data-wake-cancel="${CSS.escape(id)}"]`);
+
+/**
+ * The NEXT wake row's control after the pressed one, when a later row exists.
+ *
+ * The section's DOM order is its list order, and the pressed control is
+ * DISABLED by its own mark while the re-read is in flight, so the successor is
+ * the next control that can still take the keyboard. A pressed control that the
+ * re-read already dropped has no position to count from and answers `null` -
+ * the caller falls back.
+ */
+const successorWakeCancelControl = (id: string): HTMLElement | null => {
+	const pressed = wakeCancelControl(id);
+	if (pressed === null) return null;
+	const controls = [
+		...document.querySelectorAll<HTMLElement>("[data-wake-cancel]"),
+	];
+	for (let i = controls.indexOf(pressed) + 1; i < controls.length; i += 1) {
+		if (!controls[i].hasAttribute("disabled")) return controls[i];
+	}
+	return null;
+};
+
+/** The pane's own focus container (`run-panel.tsx`'s `[data-run-panel-pane]`). */
+const wakePaneFocusTarget = (): HTMLElement | null =>
+	document.querySelector<HTMLElement>("[data-run-panel-pane]");
+
+/**
+ * Where a closed question's keyboard lands, for every outcome.
+ *
+ * The row's own control while it is still a control: a dismissal hands the
+ * keyboard back to where the question came from, and a refusal's row stays
+ * live as its own next attempt (U2). Otherwise the act landed (or is landing) -
+ * the control is disabled by its mark or gone with the row - and the same act's
+ * successor is the next row's control, else the pane itself (U1's rule).
+ */
+const wakeCancelLanding = (id: string): HTMLElement | null => {
+	const control = wakeCancelControl(id);
+	if (control !== null && !control.hasAttribute("disabled")) return control;
+	return successorWakeCancelControl(id) ?? wakePaneFocusTarget();
+};
+
+/**
+ * Whether the keyboard fell through after a close or a write, for the effects
+ * below; the resolution itself decides where it lands.
+ *
+ * The arms:
+ * - nothing, or the `<body>` — the browser dropped focus and nobody caught it;
+ * - the CLOSING CARD's own element — the outside press (U3) resolves its focus
+ *   default AFTER the commit that closed the question, so the card still holds
+ *   it at the instant this is asked; a press on a real control keeps that
+ *   control's own focus and is left alone (U2's rule);
+ * - the pressed row's own control — whether the browser has moved off it yet is
+ *   the engine's timing, not the outcome (`wakeCancelLanding` hands a live
+ *   control back to itself, a no-op), and the resolution must not depend on
+ *   that timing: jsdom keeps focus on a disabled button where Chromium blurs
+ *   it (measured 2026-10-09), and the keyboard must land the same way in both;
+ * - a DISABLED control — a control that cannot act is not holding the keyboard.
+ */
+const wakeFocusFellThrough = (active: Element | null, id: string): boolean =>
+	active === null ||
+	active === document.body ||
+	active.closest("[data-wake-confirm]") !== null ||
+	active === wakeCancelControl(id) ||
+	(active instanceof HTMLElement &&
+		"disabled" in active &&
+		(active as { disabled: boolean }).disabled);
 
 /** The pressed control's viewport box, frozen at press time. */
 export type WakeAnchorRect = {
@@ -175,6 +272,16 @@ export const useWakeCancel = ({
 	 * must not match a re-minted row that inherited the pressed handle.
 	 */
 	const lastPressedKeyRef = useRef<string | null>(null);
+	/*
+	 * The ONE-PRESS write's last settled attempt, as the trigger for the focus
+	 * handoff below. A counter, not a boolean: a second attempt on the same row
+	 * (a refused press, then another) has to be a second change, or the second
+	 * landing never runs (the `refusalSeq` rule). Distinct from `pending`, which
+	 * this path never sets.
+	 */
+	const [onePress, setOnePress] = useState<{ id: string; seq: number } | null>(
+		null,
+	);
 
 	/*
 	 * A switch to another conversation closes everything this interaction holds.
@@ -189,31 +296,25 @@ export const useWakeCancel = ({
 		setBusy(false);
 		setCancelledKeys(new Set());
 		setRefusedKeys(new Map());
+		setOnePress(null);
 		lastPressedIdRef.current = null;
 		lastPressedKeyRef.current = null;
 	}, [sessionId]);
 
 	/*
-	 * FOCUS FALLS BACK TO THE ROW'S OWN CONTROL. The popover restores focus to
-	 * the opener its layer captured while that opener is still connected; when
-	 * it could not (the opener went away with its row, or the layer never held
-	 * one), the row's control is the successor of the same act. Only when focus
-	 * went NOWHERE: a focus already restored is left exactly where it is.
+	 * FOCUS FALLS BACK TO THE RESOLVED LANDING STOP (the header's rules). The
+	 * popover restores focus to the opener it captured while that opener is
+	 * still connected; when it could not (the opener went away with its row, or
+	 * the layer never held one), the landing resolution replaces it. Only when
+	 * focus FELL THROUGH: a focus already restored, or moved somewhere real, is
+	 * left exactly where it is.
 	 */
 	useEffect(() => {
 		if (pending !== null) return;
 		const id = lastPressedIdRef.current;
 		if (id === null) return;
-		if (document.activeElement !== document.body) return;
-		/*
-		 * The id goes into a SELECTOR, so it is escaped: the client schema admits
-		 * any string up to 64 characters, and a handle that is not selector-safe
-		 * must not make this effect throw (N2; `CSS.escape` is the pane's own
-		 * idiom).
-		 */
-		document
-			.querySelector<HTMLElement>(`[data-wake-cancel="${CSS.escape(id)}"]`)
-			?.focus();
+		if (!wakeFocusFellThrough(document.activeElement, id)) return;
+		wakeCancelLanding(id)?.focus();
 	}, [pending]);
 
 	/** Drop a row's refusal record, if it has one. */
@@ -263,6 +364,10 @@ export const useWakeCancel = ({
 					const outcome = await controls.cancel(row.id);
 					setBusy(false);
 					settle(key, outcome.ok, outcome.ok ? "" : outcome.detail);
+					setOnePress((prev) => ({
+						id: row.id,
+						seq: (prev?.seq ?? 0) + 1,
+					}));
 				})();
 				return;
 			}
@@ -322,6 +427,18 @@ export const useWakeCancel = ({
 			setRefusalSeq((seq) => seq + 1);
 		})();
 	}, [pending, busy, controls, clearRefused]);
+
+	/*
+	 * THE ONE-PRESS WRITE'S OWN LANDING (U1). Its row may be marked and disabled,
+	 * or already re-read away, by the time this runs — `wakeCancelLanding`
+	 * resolves both to the successor, else the pane. A refused attempt's row is
+	 * live again and its own control takes the keyboard back (U2).
+	 */
+	useEffect(() => {
+		if (onePress === null) return;
+		if (!wakeFocusFellThrough(document.activeElement, onePress.id)) return;
+		wakeCancelLanding(onePress.id)?.focus();
+	}, [onePress]);
 
 	const stateFor = useCallback(
 		(row: WakeRow): WakeRowCancelState | undefined => {

@@ -2906,6 +2906,22 @@ test("the refocus answers for the focused NODE, not for a chip count", () => {
 	// magnet that pulls focus out of a transcript mid-sentence.
 	assert.match(row, /previouslyFocused\.current = focusedInRow;/);
 	assert.match(row, /rowRef\.current\?\.contains\(active\) === true/);
+	/*
+	 * And the memory is refreshed by the READER'S OWN DEPARTURE, not by a commit
+	 * (UX round 1, U1's composer half): the `focusout` listener drops it the
+	 * moment focus leaves the row, and a node the browser removed mid-write is
+	 * kept for the commit effect (`isConnected` tells them apart). Both halves
+	 * are pinned here and driven below.
+	 */
+	assert.match(row, /row\.addEventListener\("focusout", onFocusOut\)/);
+	assert.match(
+		row,
+		/if \(next !== null\) \{\s*previouslyFocused\.current = null;/,
+	);
+	assert.match(
+		row,
+		/if \(target\.isConnected\) previouslyFocused\.current = null;/,
+	);
 	// The prop is optional, so a story that renders the row alone need not
 	// invent a focus target.
 	assert.match(row, /onFocusComposer\?: \(\) => void;/);
@@ -3099,6 +3115,98 @@ test("the shipped row hands focus back on a same-count swap, driven", async () =
 			1,
 			"a chip unmounting while the user is in the composer pulls nothing",
 		);
+	} finally {
+		console.error = realError;
+		cleanup();
+	}
+	assert.ok(
+		quiet.every((message) => message.includes("not wrapped in act")),
+		`React reported something the harness does not expect: ${quiet.join(" | ")}`,
+	);
+});
+
+test("a chip whose reader left cannot pull the keyboard back when it unmounts (U1)", async () => {
+	/*
+	 * THE COMPOSER HALF OF U1, walked live before this fix: the reader tabbed out
+	 * of the chip into the run-details pane nine stops before the write that
+	 * emptied the list, and the chip's unmount yanked them into the composer. The
+	 * commit that could have refreshed the memory never ran in this row while the
+	 * reader was away, so the fence is the `focusout` the reader's own departure
+	 * fires: the memory is dropped as they leave. This case drives the departure
+	 * (a real focusout out of the row) and then the unmount, and asserts the row
+	 * stays silent — the contrast case above asserts the restore the fence must
+	 * NOT break (a chip still holding focus when it vanishes).
+	 */
+	const { window: dom, root, cleanup } = await domHarness();
+	const quiet = [];
+	const realError = console.error;
+	console.error = (...args) => void quiet.push(String(args[0]));
+	try {
+		const h = createElement;
+		let refocuses = 0;
+		const composerField = () => dom.document.getElementById("composer");
+		const element = (jobs) =>
+			h(
+				"div",
+				null,
+				h(ComposerStatusRow, {
+					frontend: frontend(""),
+					runDetails: detailsWith(jobs),
+					onFocusComposer: () => {
+						refocuses += 1;
+						composerField().focus();
+					},
+				}),
+				h("textarea", { id: "composer", readOnly: true }),
+			);
+		const running = () => [wireJob("s1", "bash", "running", "bash: sleep 60")];
+		const delegate = () => [
+			wireJob("c1", "task", "running", "Draft the summary"),
+		];
+
+		const realActiveElement = Object.getOwnPropertyDescriptor(
+			dom.window.Document.prototype,
+			"activeElement",
+		);
+		let active = null;
+		Object.defineProperty(dom.document, "activeElement", {
+			configurable: true,
+			get: () => active,
+		});
+
+		await act(async () => void root.render(element(running())));
+		const chip = dom.document.querySelector("[data-status-jobs]");
+		assert.ok(chip, "a running tool job draws the jobs chip");
+		active = chip;
+		await act(async () => void root.render(element(running())));
+		assert.equal(refocuses, 0, "nothing is owed while the focused chip lives");
+
+		/*
+		 * The reader leaves, with the event the browser fires for it and the stub
+		 * following to say where focus went. The event is dispatched because the
+		 * stub replaces the platform read, not the platform behaviour — jsdom
+		 * would otherwise record no departure at all.
+		 */
+		await act(async () => {
+			chip.dispatchEvent(
+				new dom.window.FocusEvent("focusout", {
+					bubbles: true,
+					relatedTarget: dom.document.body,
+				}),
+			);
+		});
+		active = dom.document.body;
+		await act(async () => void root.render(element(delegate())));
+		assert.ok(
+			!dom.document.body.contains(chip),
+			"the chip unmounted with the reader away",
+		);
+		assert.equal(
+			refocuses,
+			0,
+			"a chip unmounting after the reader left pulls nothing",
+		);
+		Object.defineProperty(dom.document, "activeElement", realActiveElement);
 	} finally {
 		console.error = realError;
 		cleanup();
