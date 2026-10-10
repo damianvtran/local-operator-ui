@@ -8,6 +8,7 @@ import {
 	emptyList,
 	linkOnlyList,
 	list,
+	pendingList,
 	populatedRows,
 	rateLimitedList,
 	staleList,
@@ -244,7 +245,10 @@ export const Stale: Story = {
 	),
 };
 
-/** Mixed partial failure: rows stay, each carrying its own caption. */
+/**
+ * Mixed partial failure: rows stay, each carrying its own stale caption
+ * (`fetch_state: "stale"` - last-known data under a failed revalidation).
+ */
 export const CouldNotRefresh: Story = {
 	render: () => (
 		<Frame height={520}>
@@ -255,6 +259,27 @@ export const CouldNotRefresh: Story = {
 				onRefresh={() => undefined}
 				onClose={() => undefined}
 				nowMs={FIXTURE_NOW_MS}
+			/>
+		</Frame>
+	),
+};
+
+/**
+ * Pending: a fetch that has not resolved - the loading line, never a remedy
+ * (design §4). `pendingRevealMs={0}` pins the REVEALED frame; the reveal
+ * delay itself (nothing paints under 500 ms) is a mechanism, not a still.
+ */
+export const Pending: Story = {
+	render: () => (
+		<Frame height={340}>
+			<CodeReviewPaneBody
+				phase="ready"
+				data={pendingList()}
+				refreshing={false}
+				onRefresh={() => undefined}
+				onClose={() => undefined}
+				nowMs={FIXTURE_NOW_MS}
+				pendingRevealMs={0}
 			/>
 		</Frame>
 	),

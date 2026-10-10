@@ -543,9 +543,73 @@ export function refreshCaption(row: CodeRequestRow): string | null {
 }
 
 /**
- * The row's ONE quiet line under the meta figures — the backend's own words
- * about a row whose state could not be read, in precedence order (QA round 2,
- * Q-11):
+ * How far a row's FORGE read has got - the wire's `fetch_state` (design §1).
+ * `pending` is the one state that renders as a LOADING line, not as copy: the
+ * wire states the FACT (no resolved attempt), the pane states the word.
+ */
+export type FetchState =
+	| "pending"
+	| "ready"
+	| "stale"
+	| "unauthenticated"
+	| "cooling"
+	| "failed"
+	| "untracked";
+
+/** The vocabulary above as a value list, for the one membership check. */
+const FETCH_STATES: readonly FetchState[] = [
+	"pending",
+	"ready",
+	"stale",
+	"unauthenticated",
+	"cooling",
+	"failed",
+	"untracked",
+];
+
+/**
+ * The row's fetch state, or null when the field is absent or carries a word
+ * this build does not know. Both cases mean "render as if the field did not
+ * exist": absent is an older backend, and an unrecognised word is a newer
+ * one - the legacy path claims nothing either way.
+ */
+export function fetchStateOf(row: CodeRequestRow): FetchState | null {
+	const value = row.fetch_state;
+	return typeof value === "string" &&
+		(FETCH_STATES as readonly string[]).includes(value)
+		? (value as FetchState)
+		: null;
+}
+
+/**
+ * Whether the row's first state read has not resolved yet. The row renders
+ * the loading line for exactly this state (design §4).
+ */
+export function rowIsLoading(row: CodeRequestRow): boolean {
+	return fetchStateOf(row) === "pending";
+}
+
+/**
+ * How long a row must be continuously pending before its loading line paints
+ * - §4's no-flicker mechanism: a fetch that resolves under this delay never
+ * paints anything, so no flash. Constant by design: the design round may tune
+ * this value, never the mechanism, and stories pin the REVEALED frame with 0.
+ */
+export const PENDING_REVEAL_MS = 500;
+
+/**
+ * The row's ONE quiet line under the meta figures.
+ *
+ * WITH `fetch_state` ON THE WIRE (design §4) this is a switch on it: a
+ * `pending` row returns null - the row renders the loading line instead, and
+ * a remedy must never be claimed while the first read is in flight; `stale`
+ * leads with its own state word so a failed revalidation is not read as a
+ * failed ATTEMPT; only `unauthenticated`/`untracked`/`cooling` may carry the
+ * sign-in or "not tracked" remedy, and each reads the backend's own sentence
+ * (`reason`) first. Nothing here derives a CLI or a cause.
+ *
+ * ABSENT `fetch_state` (an older backend) keeps today's exact legacy logic
+ * byte-for-byte - the QA round 2 Q-11 pins run on this branch:
  *
  * - a LINK-ONLY row shows its `reason` when the backend sent one (a cold row
  *   on a cooling host reads `cooling — this host is rate-limited until ...;
@@ -553,13 +617,42 @@ export function refreshCaption(row: CodeRequestRow): string | null {
  *   act on), else the per-forge `link_only_hint`;
  * - a tracked row shows its `refresh_error` (prefixed) when the last attempt
  *   failed, else the bare `reason` when the backend attached one.
- *
- * Every string is the backend's; nothing here derives a CLI or a cause.
  */
 export function rowNotice(row: CodeRequestRow): string | null {
-	if (row.link_only) return row.reason ?? linkOnlyRemedy(row);
-	if (row.refresh_error) return refreshCaption(row);
-	return row.reason ?? null;
+	const state = fetchStateOf(row);
+	if (state === null) {
+		if (row.link_only) return row.reason ?? linkOnlyRemedy(row);
+		if (row.refresh_error) return refreshCaption(row);
+		return row.reason ?? null;
+	}
+	switch (state) {
+		case "pending":
+			/* The row renders a loading line instead (§4); never a remedy. */
+			return null;
+		case "ready":
+			return row.refresh_error ? refreshCaption(row) : (row.reason ?? null);
+		case "stale":
+			return row.refresh_error
+				? `Stale — last known, not current: ${row.refresh_error}`
+				: "Stale — last known state, not current.";
+		case "unauthenticated":
+			/* The resolved no-login outcome - the remedy lives here. */
+			return row.reason ?? linkOnlyRemedy(row);
+		case "cooling":
+			return (
+				row.reason ??
+				"Cooling — this host is rate-limited; nothing was fetched yet."
+			);
+		case "failed":
+			return (
+				row.reason ??
+				refreshCaption(row) ??
+				"Couldn't fetch this pass — will retry."
+			);
+		case "untracked":
+			/* The hint is a genuine "not tracked" signal here. */
+			return row.reason ?? linkOnlyRemedy(row);
+	}
 }
 
 /**
@@ -678,6 +771,11 @@ export function identityLabel(
  * One derived string rather than the concatenated row text, because the
  * concatenation read lane clauses in visual order with no punctuation and
  * never said the press leaves the app (the press opens the SYSTEM browser).
+ *
+ * A PENDING row's clause is `fetching its current state` (design §4): the
+ * state is announced immediately - never delayed like the visual line - and
+ * never in the remedy's words, because the sign-in sentence must not be heard
+ * for a row whose first read has not resolved.
  */
 export function rowAriaLabel(row: CodeRequestRow): string {
 	const title = row.summary?.title ?? row.url;
@@ -687,6 +785,8 @@ export function rowAriaLabel(row: CodeRequestRow): string {
 	const clauses = laneLines(row).map((line) => line.clause);
 	if (clauses.length > 0) {
 		parts.push(clauses.join("; "));
+	} else if (rowIsLoading(row)) {
+		parts.push("fetching its current state");
 	} else if (row.link_only) {
 		parts.push(linkOnlyRemedy(row));
 	}
