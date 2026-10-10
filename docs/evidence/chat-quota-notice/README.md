@@ -39,29 +39,62 @@ because the line is a text-and-link surface and the roles it names
 pins the longest copy (`unverified`'s two lines and URL) into the narrow cell,
 because wrapping is the failure this row exists to catch.
 
-## The composer-geometry pair (design round 1, D1)
+## The composer-geometry pair (design round 1, D1; clearance D6)
 
 The line is a band child ABOVE the composer's foot, so the splash yields the
 space and the composer does not move when the line arrives, clears, or is
-dismissed. `scripts/quota-notice-geometry.mjs` measures that on the real
-composer — `[data-lo-composer-foot]`'s top edge in both states, in the same
-page, with the verdict held long enough to catch the pre-line layout:
+dismissed. The wrapper carries `mb-2` as well as `mt-2` (design D6 — the line's
+action row sat flush on the box's top border), and the probe now measures the
+clearance as well as the shift:
 
 ```
 node scripts/quota-notice-geometry.mjs http://localhost:6017
 
 chat-message-input--quota-notice  @ 1024x820
   arrival     foot top=567.4 bottom=677.4 (h 110)  ->  top=567.4 bottom=677.4 (h 110)
-              splash h 498 -> 441.8  (the space the line took)
+              splash h 490 -> 433.8  (the space the line took)
               FOOT TOP SHIFT 0
+              line bottom 559.4 -> foot top 567.4  CLEARANCE 8
   dismissal   foot top=567.4 bottom=677.4 (h 110)  ->  top=567.4 bottom=677.4 (h 110)
               FOOT TOP SHIFT 0
+              line bottom 559.4 -> foot top 567.4  CLEARANCE 8
 ```
 
-The splash pays for the line (498 → 441.8 px), the foot does not move, and the
-probe exits non-zero if either transition shifts it by more than 1 px — so a
-future mount inside the form fails the rig instead of needing a reader to spot
-the 37 px.
+The splash pays for the line (490 → 433.8 px, the line plus its two 8px
+margins), the foot does not move, and the probe exits non-zero if either
+transition shifts it by more than 1 px OR if a present line has less than 4 px
+of clearance above the box — so a future mount inside the form, or a lost
+`mb-2`, fails the rig instead of needing a reader to spot it.
+
+### The status sentence at the narrow measure (design N6)
+
+Measured in the browser at the `chat-quota-notice--narrow-width` story's own
+420 px measure, after a real Resend press (localOperatorLight): the action row
+is 420×38.8 and wraps to two lines; the dot + sentence group is **239.8×17.4
+on the second line, starting at the row's left edge** (dot `430,221.39`,
+output `430,219.89` — same line, dot leading), with no horizontal overflow.
+The separator lives INSIDE the output precisely because the first arrangement
+(a sibling `·` flex item) orphaned it at 420: measured then, the dot sat at
+`832.79,198.49` at the END of the first line while the sentence started
+alone on the second. The rate-limited sentence's natural width is 290.4 px, so
+it also fits within the 420 measure. Nothing overflows `scrollWidth` in any
+of these readings.
+
+### Below the app's own floor (review R2-m2)
+
+At a **480 px-tall viewport** — below `WINDOW_MIN_HEIGHT = 600`
+(`src/main/window-mode.ts`), so unreachable in the shipped window — the empty
+band's content (splash minimum + line + foot, ≈640 px) exceeds the viewport
+and the page does not scroll: the notice sits at `top 503.2..559.4`, the
+Dismiss centre resolves to nothing (`elementFromPoint` → null, dismiss rect
+`542..559.4` outside `innerHeight 480`), and a press clears nothing. That is
+the reviewer's "Dismiss did not clear the line" at ~480: a probe artefact of
+emulating below the app's floor, not a product defect. At 600 (the floor) the
+same rects are inside the viewport, `elementFromPoint` is the dismiss button,
+and the press clears the line — measured 2026-10-10 on this tree. The
+empty-band overflow at sub-600 heights is pre-existing (the band needs
+splash+foot alone ≈608 px without the notice); the notice adds 64 px to it at
+volumes the app's window cannot reach.
 
 ## What produced these frames
 
