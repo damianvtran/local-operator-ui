@@ -933,8 +933,8 @@ test("every session-status producer threads the channel gate", () => {
 			/costChannels/.test(text),
 			`${file} writes sessionStatus= but does not thread costChannels`,
 		);
-		let cursor = 0;
-		while ((cursor = text.indexOf("sessionStatus=", cursor)) !== -1) {
+		let cursor = text.indexOf("sessionStatus=");
+		while (cursor !== -1) {
 			let depth = 0;
 			let end = cursor;
 			for (
@@ -960,7 +960,7 @@ test("every session-status producer threads the channel gate", () => {
 				gates >= literals,
 				`${file} builds ${literals} status literal(s) at ${cursor} but threads ${gates} gate(s)`,
 			);
-			cursor += 1;
+			cursor = text.indexOf("sessionStatus=", cursor + 1);
 		}
 	}
 	/*
