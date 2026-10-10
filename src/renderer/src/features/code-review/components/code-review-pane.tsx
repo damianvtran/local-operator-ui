@@ -421,11 +421,23 @@ export const CodeReviewPane: FC<CodeReviewPaneProps> = ({
 		setFeedback("pressed");
 		setFailure(null);
 		refresh.mutate(undefined, {
-			onError: (error) =>
+			/*
+			 * A FAILED POST RETURNS THE CUE TO IDLE (round-3 m-A / U22). Leaving
+			 * `feedback` at "pressed" made the state machine outlive its press:
+			 * the NEXT unrelated read - the feed frame's refetch, the 60 s
+			 * timer - tripped `refetchSeen`, and its settle flipped the cue to
+			 * "checked", so "Refreshing" and "Checked just now" appeared with no
+			 * press at all. The failure line below is the press's answer; the
+			 * spin must not keep waiting for an answer that already came.
+			 */
+			onError: (error) => {
+				refetchSeen.current = false;
+				setFeedback("idle");
 				setFailure({
 					at: Date.now(),
 					message: error instanceof Error ? error.message : "try again",
-				}),
+				});
+			},
 		});
 	};
 
