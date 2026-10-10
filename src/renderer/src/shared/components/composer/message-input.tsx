@@ -92,6 +92,7 @@ import {
 import {
 	bandYieldsToRadientIssue,
 	modelAccessReading,
+	radientCalloutOwnsTheSignIn,
 } from "@features/chat/session-status/session-model";
 import { SessionModelAccessBand } from "@features/chat/session-status/session-model-access";
 import { SessionStatusStrip } from "@features/chat/session-status/session-status-strip";
@@ -7394,19 +7395,22 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				? modelAccessReading(sessionStatus.frontend)
 				: null;
 		/*
-		 * ONE MISSING SIGN-IN, ONE BLOCK (agent review round 1, R1-6). A
-		 * `radient/auto` session whose connector verdict says sign-in is required
-		 * while `model_access` also reports `signed_out` for radient would stack the
-		 * Radient callout and the band — two entrances to one remedy; the callout
-		 * is the more specific half, so the band yields while it is visible
-		 * (`bandYieldsToRadientIssue` states the rule; any other provider cannot
-		 * collide with the connector).
+		 * ONE MISSING SIGN-IN, ONE BLOCK (agent review round 1, R1-6; narrowed by
+		 * design round 2, D7). A `radient/auto` session whose connector verdict says
+		 * sign-in is required while `model_access` also reports `signed_out` for
+		 * radient would stack the Radient callout and the band — two entrances to one
+		 * remedy — so the band yields while the callout OWNS the sign-in. D7: the
+		 * callout only owns it while it carries the remedy itself (its `Sign in` /
+		 * `Retry`, or a flow in flight) — the `settled` refusals and `input-required`
+		 * offer no sign-in action, and there the band's `Switch model` is the only one
+		 * on screen, so those states keep it (`radientCalloutOwnsTheSignIn` states
+		 * why; any other provider cannot collide with the connector).
 		 */
 		const modelAccessBlock =
 			modelAccess &&
 			!bandYieldsToRadientIssue(
 				modelAccess,
-				radientIssue.issue.kind !== "hidden",
+				radientCalloutOwnsTheSignIn(radientIssue.issue),
 			) ? (
 				<output className={cn(CHAT_MEASURE, "block pb-2")}>
 					<SessionModelAccessBand

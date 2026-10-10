@@ -38,6 +38,7 @@ import type {
 	CanonicalModel,
 	CanonicalModelAccess,
 } from "../../../../../shared/desktop-session-contract";
+import type { RadientSessionIssue } from "../../../shared/hooks/use-radient-session-issue";
 
 export type ModelIdentity = {
 	/** What the chip prints: the human name if resolution found one, else the id. */
@@ -762,8 +763,33 @@ export function modelAccessReading(
 }
 
 /**
+ * The states where the Radient callout IS the sign-in: it offers it
+ * (`needs-sign-in`), is running it (`signing-in`), or offers its retry
+ * (`settled` with `canRetry`).
+ *
+ * WHY THE SET IS THIS NARROW (design round 2, D7). The band yields to the
+ * callout (R1-6) so one missing sign-in reads as one block — and yielding takes
+ * the band's `Switch model` with it, which the callout does not offer in any
+ * state. That is the right trade exactly while the callout carries the remedy
+ * itself: its `Sign in to Radient` button, its `Retry`, or a flow already in
+ * flight. In the states that offer no sign-in action — `settled` refusals
+ * (`sign-in-active`, `no-browser-flow`: a pointer and a dismissal, nothing to
+ * press toward a sign-in) and `input-required` — the band stays, because
+ * there its two exits are the only ones on screen.
+ */
+export function radientCalloutOwnsTheSignIn(
+	issue: RadientSessionIssue,
+): boolean {
+	return (
+		issue.kind === "needs-sign-in" ||
+		issue.kind === "signing-in" ||
+		(issue.kind === "settled" && issue.canRetry)
+	);
+}
+
+/**
  * Whether the model-access band yields to the Radient callout (agent review
- * round 1, R1-6).
+ * round 1, R1-6; narrowed by design round 2, D7).
  *
  * The two standing blocks can name the SAME missing sign-in: a `radient/auto`
  * session whose connector verdict says sign-in is required AND whose
@@ -771,13 +797,14 @@ export function modelAccessReading(
  * the band, each offering its own entrance to the same remedy
  * (`radientIssue.start` vs `openConnect`). The callout is the more specific
  * half — it names the connector, polls its state and starts that sign-in — so
- * the band yields while it is visible and one fact reads as one block. Any
- * other provider cannot collide with the Radient connector, so this is the
- * whole of the rule.
+ * the band yields while the callout OWNS the sign-in
+ * (`radientCalloutOwnsTheSignIn` states which states those are, and why the
+ * refusals are not among them). Any other provider cannot collide with the
+ * Radient connector, so this is the whole of the rule.
  */
 export function bandYieldsToRadientIssue(
 	access: { provider: string },
-	radientIssueVisible: boolean,
+	radientCalloutOwnsTheSignIn: boolean,
 ): boolean {
-	return radientIssueVisible && access.provider === "radient";
+	return radientCalloutOwnsTheSignIn && access.provider === "radient";
 }

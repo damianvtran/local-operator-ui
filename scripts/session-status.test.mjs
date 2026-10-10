@@ -49,6 +49,7 @@ const bundle = await build({
 });
 const {
 	bandYieldsToRadientIssue,
+	radientCalloutOwnsTheSignIn,
 	CONTEXT_COLOR_BANDS,
 	pyFixed,
 	reconcileEffort,
@@ -1481,5 +1482,69 @@ test("the band yields to the Radient callout when both name one missing sign-in 
 		),
 		false,
 		"an anthropic model's sign-in has nothing to do with the Radient connector",
+	);
+});
+
+test("the yielded-to callout must OWN the sign-in (design round 2, D7)", () => {
+	/*
+	 * Narrowed from "any visible callout kind" to "the callout carries the
+	 * remedy": yielding takes the band's `Switch model` with it, and the
+	 * callout does not offer one in ANY state — so the trade is only right
+	 * while the callout itself is the way to sign in. The refusal and
+	 * `input-required` arms keep the band, whose two exits are then the only
+	 * ones on screen. The side matrix is driven through
+	 * `bandYieldsToRadientIssue` too, so the composite rule is asserted rather
+	 * than only its half.
+	 */
+	const radient = { provider: "radient", label: "Radient" };
+	const owns = (issue) =>
+		radientCalloutOwnsTheSignIn(issue) &&
+		bandYieldsToRadientIssue(radient, true);
+	assert.equal(
+		owns({ kind: "needs-sign-in", remedy: {} }),
+		true,
+		"the callout's own Sign in is the remedy",
+	);
+	assert.equal(
+		owns({ kind: "signing-in" }),
+		true,
+		"a flow in flight is the remedy being carried out",
+	);
+	assert.equal(
+		owns({ kind: "settled", message: "", canRetry: true }),
+		true,
+		"settled with a retry offers the same entrance",
+	);
+	assert.equal(
+		owns({
+			kind: "settled",
+			message: "",
+			canRetry: false,
+			refusal: "sign-in-active",
+		}),
+		false,
+		"a refusal offers a pointer and a dismissal, not a sign-in — the band keeps Switch model",
+	);
+	assert.equal(
+		owns({
+			kind: "settled",
+			message: "",
+			canRetry: false,
+			refusal: "no-browser-flow",
+		}),
+		false,
+	);
+	assert.equal(
+		owns({
+			kind: "input-required",
+			message: "finish the sign-in in your browser",
+		}),
+		false,
+		"the callout asks for input; no sign-in action of its own to press",
+	);
+	assert.equal(
+		owns({ kind: "hidden" }),
+		false,
+		"nothing visible, nothing to yield to",
 	);
 });
