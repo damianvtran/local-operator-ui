@@ -3807,6 +3807,21 @@ export type DesktopCodeRequestRow = {
 	stale?: boolean;
 	/** A failed refresh left the last known data in place; this is why. */
 	refresh_error?: string | null;
+	/**
+	 * How far this row's FORGE read has got, independent of `link_only`
+	 * (which only says whether there is data to draw). `pending`: a fetchable
+	 * row whose first state read has not resolved yet - render loading, never
+	 * a remedy. `ready`: resolved with data. `stale`: has last-known data but
+	 * the last revalidation failed. `unauthenticated`: a read RESOLVED without
+	 * a usable credential - the sign-in remedy belongs here. `cooling`: the
+	 * host is rate-limited and this row has no data yet. `failed`: a read
+	 * resolved as a non-credential failure. `untracked`: the host/ref is not
+	 * fetchable in this build - the link-only sentence is the whole state.
+	 * Absent on an older backend: render as if the field did not exist
+	 * (pre-loading-state copy), which `fetchStateOf` in the code-review model
+	 * does by returning null.
+	 */
+	fetch_state?: string | null;
 };
 
 /**

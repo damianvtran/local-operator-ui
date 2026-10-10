@@ -55,6 +55,14 @@ const row = (
 	fetched_at: at(1),
 	stale: false,
 	refresh_error: null,
+	/*
+	 * fetch_state defaults to the POPULATED state: a fixture row with data and
+	 * no recorded failure is `ready`, and the sets that model other states
+	 * override it (link-only -> unauthenticated/untracked, could-not-refresh
+	 * -> stale, the pending set -> pending/cooling/failed). Every fixture row
+	 * carries the field so no frame exercises the legacy branch by accident.
+	 */
+	fetch_state: "ready",
 	...partial,
 });
 
@@ -361,7 +369,12 @@ export const list = (
 /** Empty: the design's sentence is the whole frame (§6). */
 export const emptyList = (): DesktopCodeRequestsList => list([]);
 
-/** Link-only: no summary and no lanes - the two lines and the caption (§1). */
+/**
+ * Link-only: no summary and no lanes - the two lines and the caption (§1),
+ * now driven by `fetch_state` (design §4): the github/gitlab rows are
+ * resolved no-login outcomes (`unauthenticated`), the gitea row is a host
+ * this build cannot track (`untracked`).
+ */
 export const linkOnlyList = (): DesktopCodeRequestsList =>
 	list([
 		row({
@@ -372,6 +385,7 @@ export const linkOnlyList = (): DesktopCodeRequestsList =>
 			project: "minervaai/minerva",
 			url: "https://gitlab.com/minervaai/minerva/-/merge_requests/8812",
 			link_only: true,
+			fetch_state: "unauthenticated",
 			link_only_hint:
 				"Link only — sign in with the glab CLI to track this one.",
 			summary: null,
@@ -390,6 +404,7 @@ export const linkOnlyList = (): DesktopCodeRequestsList =>
 			project: "somebody/notes",
 			url: "https://codeberg.org/somebody/notes/pulls/88",
 			link_only: true,
+			fetch_state: "untracked",
 			link_only_hint: "Link only — this host isn't tracked yet.",
 			summary: null,
 			mention: { sources: ["assistant"], count: 1, last_at: at(12) },
@@ -399,6 +414,7 @@ export const linkOnlyList = (): DesktopCodeRequestsList =>
 			number: 2090,
 			relation: "mentioned",
 			link_only: true,
+			fetch_state: "unauthenticated",
 			link_only_hint: "Link only — sign in with the gh CLI to track this one.",
 			summary: null,
 			mention: { sources: ["user"], count: 1, last_at: at(30) },
@@ -473,11 +489,66 @@ export const couldNotRefreshList = (): DesktopCodeRequestsList =>
 				...entry,
 				stale: true,
 				/*
+				 * `stale` on the wire (design §4): last-known data under a failed
+				 * revalidation. The notice leads with the state's own words
+				 * (`Stale — last known, not current:`) and keeps the backend's
+				 * sentence verbatim after that lead.
+				 */
+				fetch_state: "stale",
+				/*
 				 * The backend's own sentence, verbatim (UX round 1, U5): QA's real
 				 * bad-token run produced exactly this string, and the row renders it
-				 * after `Couldn't refresh —` rather than paraphrasing the cause.
+				 * behind the stale lead rather than paraphrasing the cause.
 				 */
 				refresh_error:
 					"credential rejected — sign in again with gh/glab, then refresh.",
 			})),
 	);
+
+/**
+ * Pending: a fetch that has not resolved yet (design §4/§5) - the states the
+ * pane must render WITHOUT the sign-in remedy. The first row is the defect's
+ * own case: a fetchable row whose first read is still in flight, with no
+ * `link_only_hint` on the wire (the core suppresses it while pending). The
+ * second is a never-fetched row on a cooling host; the third resolved as a
+ * non-credential failure. Each carries its own sentence, or none.
+ */
+export const pendingList = (): DesktopCodeRequestsList =>
+	list([
+		row({
+			key: "gh:2110",
+			number: 2110,
+			relation: "opened",
+			link_only: true,
+			fetch_state: "pending",
+			summary: null,
+			mention: { sources: ["tool_create"], count: 1, last_at: at(2) },
+		}),
+		row({
+			key: "gl:9021",
+			number: 9021,
+			relation: "opened",
+			forge: "gitlab",
+			project: "minervaai/minerva",
+			url: "https://gitlab.com/minervaai/minerva/-/merge_requests/9021",
+			link_only: true,
+			fetch_state: "cooling",
+			/* The same instant the reason sentence names (FIXTURE_NOW_MS + 2h). */
+			cooling_until: seconds(FIXTURE_NOW_MS + 2 * 3_600_000),
+			reason:
+				"cooling — this host is rate-limited until 2026-10-09T14:00:00Z; nothing was fetched yet",
+			summary: null,
+			mention: { sources: ["user"], count: 1, last_at: at(6) },
+		}),
+		row({
+			key: "gh:2112",
+			number: 2112,
+			relation: "opened",
+			link_only: true,
+			fetch_state: "failed",
+			reason: "refresh failed (server 503); keeping the last known data",
+			refresh_error: "refresh failed (server 503); keeping the last known data",
+			summary: null,
+			mention: { sources: ["assistant"], count: 1, last_at: at(9) },
+		}),
+	]);
