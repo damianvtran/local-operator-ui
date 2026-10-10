@@ -48,6 +48,13 @@ export const SET_BUDGETS = {
 		"obsidian",
 		"radient",
 	],
+	"chat-media-slot-fill": [
+		"iceberg",
+		"neonNoir",
+		"localOperatorLight",
+		"localOperatorDark",
+		"ayuMirage",
+	],
 	"chat-trace-fold": ["localOperatorDark", "localOperatorLight"],
 };
 
