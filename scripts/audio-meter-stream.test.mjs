@@ -307,6 +307,11 @@ test("a wiring failure while live reaches the fallback, and stop() still release
 	await settleMicrotasks();
 
 	assert.equal(
+		factoryFailure.errors.length,
+		1,
+		"the factory failure must reach the fallback exactly once - a duplicate onError would start a second fallback loop",
+	);
+	assert.equal(
 		factoryFailure.errors[0],
 		factoryRefusal,
 		"a factory failure must reach the fallback rather than vanish",
@@ -345,6 +350,11 @@ test("a wiring failure while live reaches the fallback, and stop() still release
 	wiringFailure.gate.resolve(wiringStream);
 	await settleMicrotasks();
 
+	assert.equal(
+		wiringFailure.errors.length,
+		1,
+		"the wiring failure must reach the fallback exactly once - a duplicate onError would start a second fallback loop",
+	);
 	assert.equal(
 		wiringFailure.errors[0],
 		sourceRefusal,
