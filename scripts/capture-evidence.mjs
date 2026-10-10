@@ -3888,6 +3888,34 @@ export const STORIES = [
 	["chat-run-panel--monitor-cancel-refused", 1280, 820],
 	["chat-run-panel--monitor-cancel-cancelled", 1280, 820],
 	["chat-run-panel--monitor-cancel-refusal-record", 1280, 820],
+	/*
+	 * The WAKES section's cancel affordance (the wakes control slice), the
+	 * monitors' block one list over and deliberately the same shape: the control
+	 * under the pointer, the point's `:focus-visible` ring, the `Cancelled`
+	 * receipt a one-press write leaves, the refusal's sentence as the row's own
+	 * note (there is no card on the one-press path), the managed row with the
+	 * visible lever (`/aida pause`), the chief of staff's confirmation and its
+	 * refused state, and four 320px-floor frames the width budget is read off —
+	 * the refused floor is the state design round 1's D1 was measured in. The
+	 * one-press cells hold their own shutter until the state lands; the hover
+	 * goes through the rig's real pointer.
+	 */
+	[
+		"chat-run-panel--wake-cancel-hover",
+		1280,
+		820,
+		{ hover: '[data-wake-cancel="w1"]', hoverSettleMs: 400 },
+	],
+	["chat-run-panel--wake-cancel-focus", 1280, 820],
+	["chat-run-panel--wake-cancel-cancelled", 1280, 820],
+	["chat-run-panel--wake-cancel-refused", 1280, 820],
+	["chat-run-panel--wake-managed", 1280, 820],
+	["chat-run-panel--wake-chief-confirm", 1280, 820],
+	["chat-run-panel--wake-chief-refused", 1280, 820],
+	["chat-run-panel--wakes-controls-floor-320", 1280, 700],
+	["chat-run-panel--wakes-controls-floor-320-refused", 1280, 700],
+	["chat-run-panel--wakes-controls-floor-320-managed", 1280, 700],
+	["chat-run-panel--wakes-controls-floor-320-chief", 1280, 700],
 	/* The trigger's activity blip: the pane is CLOSED and a child is running, so
 	   the dot is drawn in `info`. Read against `trigger-idle` (nothing to say) and
 	   `panel-empty` (pane open, no activity ink) — the ink switch is the whole claim
@@ -4768,6 +4796,38 @@ export const STORIES = [
 	 */
 	["chat-composer-status-row--goal-tooltip-floor", 300, 620],
 	["chat-composer-status-row--goal-capability-off", 1000, 520],
+	/* THE GOAL'S AND THE LOOP'S OWN ROWS (this change): the operator's own ask, the
+	   three widths it is argued at, and the states the per-row arrangement's empty
+	   cases and interactions live in.
+
+	   WHY THEY ARE HERE. The row's arrangement moved in this change - the goal and the
+	   loop each own a full-width line, the count strip keeps its own - and the states
+	   a reviewer has to judge are the ones no earlier frame can show: six chips with
+	   the goal and the loop apart (900, the 520px band where the two used to SHARE a
+	   line, and the 240 band), the app's floor, each source alone, the long goal and
+	   the long clause beside each other, the expanded body in the per-row form, the
+	   goal's dismiss revealed, and the all-absent state. A story nobody captures is a
+	   state the sweep never renders.
+
+	   THE WIDTHS ARE THE STORIES' OWN, sized like the floor above: `Composer`'s outer
+	   box is the band width plus the box's 48px of `p-6` (288 for the 240 band, 220
+	   for the floor), and the tuples below give the 240/172 stories 300 of viewport —
+	   the floor precedent's own safe width, above both outer boxes — the 520 band 700
+	   (>= its 568) and the 900-width stories 1000 (>= their 948).
+
+	   THE DISMISS-FOCUS STORY FOCUSES PROGRAMMATICALLY, like
+	   `--goal-done-dismiss-focus` above and for the same reason: this rig has no
+	   hover verb, and the story's own effect paints the same held box a pointer
+	   would, so a still of it carries the reveal. */
+	["chat-composer-status-row--goal-loop-rows", 1000, 500],
+	["chat-composer-status-row--goal-loop-rows-band-240", 300, 640],
+	["chat-composer-status-row--goal-loop-rows-band-520", 700, 520],
+	["chat-composer-status-row--goal-loop-rows-floor", 300, 640],
+	["chat-composer-status-row--goal-loop-rows-alone", 1000, 560],
+	["chat-composer-status-row--goal-loop-rows-long", 1000, 560],
+	["chat-composer-status-row--goal-loop-rows-expanded", 1000, 560],
+	["chat-composer-status-row--goal-loop-rows-dismiss-focus", 1000, 560],
+	["chat-composer-status-row--goal-loop-rows-empty", 1000, 300],
 	/* The activity mark with motion reduced, which is the OTHER half of the paint
 	   the mark's own animation cannot prove: `styles/index.css` CAPS durations at
 	   0.01ms rather than cancelling anything, so the frame has to show that the
@@ -11183,6 +11243,115 @@ export const STORIES = [
 	["chat-ask-gate-rows--raise-settled-expanded", 1280, 800],
 	["chat-ask-gate-rows--unreadable-live", 1280, 800],
 	["chat-ask-gate-rows--unreadable-settled", 1280, 800],
+
+	/*
+	 * THE PRE-EMPTIVE QUOTA NOTICE (the UI half of the sibling core PRs): one
+	 * quiet line on the empty chat band, its remedy links, and the resend
+	 * action's own states. The story drives the REAL line and hook over a
+	 * stubbed desktop transport, so a frame is a state the shipped container
+	 * can produce; the fixtures' words are the core builders' own.
+	 *
+	 * THE FOUR PRESSED ROWS carry `press:` + the phase marker their state
+	 * arrives under, because `sending`, `sent`, `rate-limited` and `dismissed`
+	 * are states a press produces rather than props: the shutter waits for
+	 * `data-quota-notice-resend-phase` (or the line's disappearance), so a frame
+	 * filed under a state is one the state was actually in. Each navigation
+	 * re-mounts and re-presses, so the 120 s cooldown cannot expire between
+	 * themes. The awaiting rows re-assert their marker at shutter time, and the
+	 * other four are resting states with no press.
+	 */
+	["chat-quota-notice--depleted", 900, 260],
+	["chat-quota-notice--unverified", 900, 260],
+	["chat-quota-notice--limit-reached", 900, 260],
+	[
+		"chat-quota-notice--sending",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-resend-action]",
+			expectPresent: "[data-quota-notice-resend-phase='sending']",
+		},
+	],
+	[
+		"chat-quota-notice--sent",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-resend-action]",
+			expectPresent: "[data-quota-notice-resend-phase='sent']",
+		},
+	],
+	[
+		"chat-quota-notice--rate-limited",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-resend-action]",
+			expectPresent: "[data-quota-notice-resend-phase='rate_limited']",
+		},
+	],
+	[
+		"chat-quota-notice--dismissed",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-dismiss]",
+			expectGone: "[data-quota-notice-line]",
+		},
+	],
+	/*
+	 * THE NARROW CELL: `narrow-width` pins its own 420px measure in the story,
+	 * so the wrap is a property of the surface rather than of the capture
+	 * viewport — the story's internal maxWidth is what every theme then frames.
+	 */
+	["chat-quota-notice--narrow-width", 480, 320],
+	/*
+	 * ROUND 1'S TWO NEW COPY STATES: a retryable failure, and a re-read that
+	 * came back unchanged. Both are presses ('failed' waits on the phase marker,
+	 * the cue on the status slot), so a frame filed under one is one the state
+	 * was in.
+	 */
+	[
+		"chat-quota-notice--resend-failed",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-resend-action]",
+			expectPresent: "[data-quota-notice-resend-phase='failed']",
+		},
+	],
+	[
+		"chat-quota-notice--refresh-unchanged",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-refresh-action]",
+			expectPresent: "[data-quota-notice-status]",
+		},
+	],
+	/*
+	 * THE REAL COMPOSER, the pair design round 1's D1 asked for: the shipped
+	 * `MessageInput` on its fixed-height column with the notice, and the same
+	 * story after a real Dismiss — the two frames the measured pair in
+	 * `scripts/quota-notice-geometry.mjs` sits beside (its numbers prove the
+	 * foot's top does not move; these show what the state looks like).
+	 */
+	[
+		"chat-message-input--quota-notice",
+		1024,
+		820,
+		{ expectPresent: "[data-quota-notice-line]" },
+	],
+	[
+		"chat-message-input--quota-notice",
+		1024,
+		820,
+		{
+			press: "[data-quota-notice-dismiss]",
+			expectGone: "[data-quota-notice-line]",
+			dir: "notice-dismissed",
+		},
+	],
 	/*
 	 * THE CODE REVIEW PANE AND ITS TWO DOORS (per-session code requests, PR2;
 	 * `code-review-pane.stories.tsx`, `composer-status-row.stories.tsx` and

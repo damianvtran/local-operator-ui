@@ -40,6 +40,27 @@ import { CodeEditor } from "./code-editor";
  * keep them under), and a `<form>` submit does nothing. A page that merely
  * renders - markup, CSS, inline or CDN scripts, canvas, SVG, https `fetch` -
  * works as before.
+ *
+ * WHY THIS VIEWER KEEPS THE STATIC ROUTE, moved readers and all. The other
+ * local-file surfaces now read their bytes over the app's own bridge
+ * (`use-file-blob-url`), which serves a path regardless of the daemon's
+ * configured roots. This frame does NOT follow them, and the paragraph above is
+ * the reason: the sandbox is only half of the containment, and the route's
+ * response policy (`PREVIEW_CSP`, added by main to the served document) is the
+ * other half. A `blob:` frame is not unrestricted - a `blob:` document INHERITS
+ * its creator's policy container, here the APP's meta CSP (`script-src 'self'`,
+ * a `connect-src` that lists the loopback daemon) - but that is the WRONG policy
+ * for a preview: it would refuse the page's own inline scripts and hold it to
+ * the app's connection allowlist instead of `PREVIEW_CSP`'s. (Inheritance is the
+ * HTML spec's rule for `blob:`; it was not measured in this app, which is why
+ * this comment states the mismatch and not an exploit.) The route and its policy
+ * are one pair; giving up the route gives up the policy.
+ * Cost, stated: an HTML file outside every served root still gets the route's
+ * 403 inside the frame, whose body names the `static.roots` remedy. A titled
+ * state like the sibling viewers' would need a pre-flight of the route, and the
+ * core (#2134) no longer echoes CORS for a foreign origin, which the app's
+ * `file://` document is - so the pre-flight cannot read the status. Left as is
+ * and recorded as a follow-up rather than guessed at.
  */
 export const PREVIEW_SANDBOX = "allow-scripts";
 

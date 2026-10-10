@@ -1,0 +1,155 @@
+{
+  "scenario": "before",
+  "tree": "/Users/damian/local-operator-ui-worktrees/wake-cancel-before",
+  "api": "http://127.0.0.1:8080",
+  "scratch": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/wake-cancel-rig-0o4tqs",
+  "steps": [
+    {
+      "label": "hello",
+      "body": {
+        "apiBaseUrl": "http://127.0.0.1:8080",
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      }
+    },
+    {
+      "label": "press [data-rig-skip]",
+      "body": {
+        "target": "button \"Skip for now\"",
+        "hitTest": true,
+        "disabled": false
+      }
+    },
+    {
+      "label": "onboarding dismissed",
+      "body": {
+        "control": "[data-rig-skip]"
+      }
+    },
+    {
+      "label": "chip overlay probe",
+      "body": {
+        "at": {
+          "x": 462,
+          "y": 754
+        },
+        "stack": [
+          "button#.inline-flex h-6 min-w-0 shrink-0 items-c|pe=auto|pos=static|z=auto",
+          "div#.flex min-w-0 flex-wrap items-center gap-|pe=auto|pos=static|z=auto",
+          "div#.w-full @min-[750px]/chatcol:max-w-[var(-|pe=auto|pos=static|z=auto",
+          "form#.w-full|pe=auto|pos=static|z=auto",
+          "div#.w-full|pe=auto|pos=static|z=auto"
+        ]
+      }
+    },
+    {
+      "label": "capture debug-before-chip",
+      "body": {
+        "file": "/Users/damian/.local-operator/sessions/9949d35bf79e/scratchpad/iso-backend/frames-before/debug-before-chip.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      }
+    },
+    {
+      "label": "press [data-status-wakes]",
+      "body": {
+        "target": "button \"Open the wakes in run details — 2 wakes armed\"",
+        "hitTest": true,
+        "disabled": false
+      }
+    },
+    {
+      "label": "capture pane-before-no-control",
+      "body": {
+        "file": "/Users/damian/.local-operator/sessions/9949d35bf79e/scratchpad/iso-backend/frames-before/pane-before-no-control.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      }
+    },
+    {
+      "label": "pane before",
+      "body": {
+        "section": true,
+        "rows": [
+          {
+            "id": "w2",
+            "text": "Oct 11 2:18 PM EDT· onceSweep the ingest queue for stuck rowsSweep the ingest queue for stuck rows"
+          },
+          {
+            "id": "w1",
+            "text": "Oct 12 1:56 PM EDT· onceCheck the 09:00 deploy finishedCheck the 09:00 deploy finished"
+          }
+        ],
+        "cancels": [],
+        "notes": [],
+        "managed": [],
+        "retiredFooter": true
+      }
+    },
+    {
+      "label": "isolation",
+      "body": {
+        "apiBaseUrl": "http://127.0.0.1:8080"
+      }
+    }
+  ],
+  "appLog": [
+    "mini-view: not registered (window mode headless)",
+    "14:19:32.255 › [discovery] record directory /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/wake-cancel-rig-0o4tqs/.local-operator/run/serve (0 record(s))",
+    "14:19:32.355 › [discovery] rejected http://127.0.0.1:8080: identity-mismatch (a daemon answered but no serve record describes http://127.0.0.1:8080, so it cannot be proven to be the one this app found)",
+    "14:19:32.355 › [discovery] no valid daemon among 0 record(s) (directory absent)",
+    "14:19:32.356 › Deprecated: no serve records found. Falling back to the fixed-port probe at http://127.0.0.1:8080/health for a daemon predating the record format. This fallback is scheduled for removal (design §8).",
+    "14:19:32.414 › Adopted a pre-record daemon at http://127.0.0.1:8080 (v0.68.18) through the deprecated fallback.",
+    "14:19:32.416 › Discovered a daemon; the backend manager is configured not to spawn or kill one.",
+    "14:19:32.453 › Update service initialized. Dev mode: true, NPX install: false",
+    "14:19:32.454 › Unpackaged instance: no packaged install state to leave alone.",
+    "14:19:32.455 › Periodic update checks scheduled (every 5 minutes)",
+    "14:19:32.456 › macOS auto-update requires app signing",
+    "14:19:32.457 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure",
+    "14:19:32.475 › [browser] denied a media permission request from (unknown origin)",
+    "14:19:32.475 › [browser] denied a media permission request from (unknown origin)",
+    "14:19:32.476 › [browser] denied a web-app-installation permission request from (unknown origin)",
+    "14:19:32.477 › [browser] denied a geolocation permission request from (unknown origin)",
+    "14:19:33.402 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin:/Users/damian/.cargo/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin",
+    "14:19:33.402 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin:/Users/damian/.cargo/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin",
+    "14:19:33.405 › [browser] denied a media permission request from (unknown origin)",
+    "14:19:33.406 › [browser] denied a media permission request from (unknown origin)",
+    "14:19:33.407 › [browser] denied a web-app-installation permission request from (unknown origin)",
+    "14:19:33.407 › [browser] denied a geolocation permission request from (unknown origin)",
+    "14:19:33.496 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)",
+    "14:19:33.498 › [browser] host on 127.0.0.1:49815 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/wake-cancel-rig-0o4tqs/profile/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))",
+    "Error occurred in handler for 'mini-view:registration-get': Error: This window cannot read the hotkey registration.",
+    "    at /Users/damian/local-operator-ui-worktrees/wake-cancel-before/out/main/index.js:43614:13",
+    "    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)",
+    "    at Session.emit (node:events:514:28)",
+    "14:19:33.640 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf",
+    "14:19:33.641 › Checking for UI updates...",
+    "14:19:33.642 › Skip checkForUpdates because application is not packed and dev update config is not forced",
+    "(node:35618) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit",
+    "(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)",
+    "14:19:34.076 › [browser] tab 1 navigated to about:blank",
+    "[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900",
+    "14:19:35.458 › Checking for updates... (silent mode: true)",
+    "14:19:35.459 › Skip checkForUpdates because application is not packed and dev update config is not forced",
+    "14:19:35.459 › Checking for backend updates... (silent mode: true)",
+    "14:19:35.459 › Skip backend update check in dev mode unless forced",
+    ""
+  ]
+}

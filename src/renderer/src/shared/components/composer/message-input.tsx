@@ -290,6 +290,12 @@ import {
 	CredentialOverlay,
 	composerTextBox,
 } from "@features/chat/components/credential-overlay";
+/*
+ * The pre-emptive quota notice (design §6): its own line beside the connect
+ * line above, on the empty band only. Imported like the connect card next
+ * door, and the module documents its own lift discipline.
+ */
+import { QuotaNoticeLine } from "@features/chat/quota-notice/quota-notice-line";
 import {
 	ConnectProviderCard,
 	NoProviderLine,
@@ -1982,6 +1988,28 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * chips wrap because `MeasuredSuggestionStack` measures what fits.
 		 */
 		const showEmptyChatPrompt = bandCentred;
+
+		/*
+		 * THE MODEL THE QUOTA NOTICE IS ABOUT (review R1-M1 / Q3): the pane's own
+		 * pick, which is what the next send will use, and only when the pane has
+		 * none does the hook fall back to the machine default.
+		 *
+		 * The pair is the CHIP'S own source (`effective_model ?? selected_model`),
+		 * read the same way `useSlashCompletion` reads it a few lines below, so
+		 * the line and the chip cannot name different models. A new-conversation
+		 * pane's pick deliberately does not write the default
+		 * (`destination-pickers.tsx`), which is exactly why the default alone was
+		 * the wrong account to check.
+		 */
+		const quotaNoticeSelection = useMemo(() => {
+			const model =
+				sessionStatus?.frontend?.effective_model ??
+				sessionStatus?.frontend?.selected_model ??
+				null;
+			return model
+				? { provider: model.provider, model_id: model.model_id }
+				: null;
+		}, [sessionStatus]);
 
 		/*
 		 * The empty chat's sample, drawn once and HELD for this composer's mount.
@@ -9716,6 +9744,51 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						) : null}
 					</div>
 				</div>
+				{/*
+				 * THE PRE-EMPTIVE QUOTA NOTICE (design §6). One quiet line on the
+				 * band, shown BEFORE the first send rather than after the refusal: an
+				 * account with no credit left, or a spent plan window, is a fact the
+				 * backend can state, and the user can act on it without typing first.
+				 *
+				 * IT SITS ABOVE THE FOOT, NOT INSIDE THE FORM (design round 1 D1,
+				 * agent R1-M3, UX U6 — the converged major). Mounted below the box it
+				 * pushed the bottom-anchored composer UP by the line's own height
+				 * (measured: 37 px for `depleted`, 54 px for `unverified`) the moment
+				 * an async read landed, and back down when the line cleared — the
+				 * input moved under the pointer ~2 s after first paint on a cold
+				 * load. Above the foot it is a band child beside the splash, and the
+				 * splash yields its `grow` instead: the box's top edge is the same
+				 * whether the line is there or not, which is the invariant this
+				 * band's layout was built on (see the splash's own note). The pair
+				 * that proves it — `[data-lo-composer-foot]`'s top with and without
+				 * the line, on the real composer — is
+				 * `scripts/quota-notice-geometry.mjs`, recorded in
+				 * `docs/evidence/chat-quota-notice/README.md`.
+				 *
+				 * EMPTY BAND ONLY, expressed by the same `showEmptyChatPrompt` the
+				 * splash and the connect line read: the notice advises a send that
+				 * has not happened, so it has nothing to say once the conversation
+				 * has content — and the read is disabled with the mount, which is what
+				 * "enabled only on an empty session" means here.
+				 *
+				 * The SELECTION is the pane's own model pick, so the verdict is about
+				 * the account the next send would actually use; the hook falls back
+				 * to the config default only when the pane has none (its docstring
+				 * carries that reasoning).
+				 *
+				 * `mb-2` AS WELL AS `mt-2` (design D6): the line sits above the foot,
+				 * so without a bottom margin its action row is flush on the composer
+				 * box's top border (measured: line bottom == foot top == 567.4, gap 0;
+				 * the links' underlines touched the border in the frames). The
+				 * clearance comes out of the SPLASH, not the foot — the probe in
+				 * `scripts/quota-notice-geometry.mjs` re-derives both the foot's top
+				 * (still 567.4) and the new gap.
+				 */}
+				{showEmptyChatPrompt ? (
+					<div className={cn("mb-2 mt-2", CHAT_MEASURE)}>
+						<QuotaNoticeLine selection={quotaNoticeSelection} />
+					</div>
+				) : null}
 				{/*
 				 * THE FOOT: the composer's form, docked. Its node is handed to the
 				 * suggestion cap as the third term of its budget, because the chips now
