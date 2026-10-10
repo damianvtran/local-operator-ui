@@ -603,13 +603,25 @@ test("a marker's own installer pid wins over the install job", () => {
 	);
 
 	// And the predicate on top of it keeps its own three facts.
+	//
+	// The two markers below are stamped FROM `now` rather than from the wall
+	// clock after it: `markerOf` dates its marker when it is CALLED, so a
+	// millisecond ticking between the `now` capture and the call made the age
+	// negative — read as "not in flight" — and failed the first assertion.
+	// Measured 2026-10-10: 1 in 10 sequential local runs, and on CI the same
+	// day, in a file byte-identical to `main`'s (a pre-existing race, fixed
+	// here because it gated this branch's desktop suite).
 	const now = Date.now();
+	const markerAt = (installerPid) => ({
+		...markerOf(installerPid),
+		startedAt: new Date(now).toISOString(),
+	});
 	assert.equal(
-		isInstallInFlight({ marker: markerOf(1), installerRunning: true, now }),
+		isInstallInFlight({ marker: markerAt(1), installerRunning: true, now }),
 		true,
 	);
 	assert.equal(
-		isInstallInFlight({ marker: markerOf(1), installerRunning: false, now }),
+		isInstallInFlight({ marker: markerAt(1), installerRunning: false, now }),
 		false,
 	);
 	assert.equal(

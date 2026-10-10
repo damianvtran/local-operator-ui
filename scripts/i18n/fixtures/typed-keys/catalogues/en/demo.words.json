@@ -1,0 +1,7 @@
+{
+	"demo.words.hello": "Hello, {name}!",
+	"demo.words.files": "{count, plural, one {# file} other {# files}}",
+	"demo.words.updated": "Updated {when, date, short}",
+	"demo.words.plain": "plain text, no params",
+	"demo.words.pick": "{choice, select, a {Alpha} other {Other}}"
+}
