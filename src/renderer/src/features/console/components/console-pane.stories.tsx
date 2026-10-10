@@ -449,7 +449,12 @@ export const Unavailable: Story = {
 };
 
 /** Ended over recorded history (§7.3), with the exit code it was observed to
- * carry. */
+ * carry.
+ *
+ * #929, 2026-10-10: in the LIVE app a clean exit's row clears itself one beat
+ * (`EXIT_DISMISS_AFTER_MS`) after the pane shows it ended, so this frame is the
+ * state the beat stands on — the fixture's bridge answers a close without removing
+ * the row, so the frame holds and the clearing stays pinned by the render suite. */
 export const Ended: Story = {
 	render: () => (
 		<Frame
@@ -466,7 +471,11 @@ export const Ended: Story = {
 };
 
 /** A surface restored after a relaunch: nothing is running and nothing will be,
- * so the sentence says so rather than implying a dead terminal. */
+ * so the sentence says so rather than implying a dead terminal.
+ *
+ * #929, 2026-10-10: this is the case the pane's auto-clearing default must NOT
+ * take — nothing ended in this run, and the history is the point, so the row stays
+ * until the user dismisses it. */
 export const Restored: Story = {
 	render: () => (
 		<Frame

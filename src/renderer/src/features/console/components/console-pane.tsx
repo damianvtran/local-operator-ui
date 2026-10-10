@@ -10,6 +10,7 @@ import { useConsoleBlipPulse } from "../hooks/use-console-attention";
 import { useConsoleSession } from "../hooks/use-console-session";
 import {
 	type ConsoleSurface,
+	clearsItselfAfterExit,
 	consoleOpenAction,
 	pickActiveSurface,
 	surfaceTitle,
@@ -41,6 +42,24 @@ import {
  */
 const REVEAL_ON_HOVER_OR_FOCUS =
 	"pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100";
+
+/**
+ * HOW LONG A CLEAN EXIT'S ENDED NOTICE STANDS BEFORE ITS SURFACE CLEARS ITSELF
+ * (#929).
+ *
+ * The beat IS the notice: a shell that exits from under a user replaces its
+ * terminal with the ended banner (its exit code on the banner's second line), and
+ * that banner needs to be readable before the row goes — an instant removal would
+ * read as a crash. Four seconds is sized on the notice rather than the queue:
+ * long enough for a glance at the two lines, short enough that a window of
+ * cleanly-exited shells does not need clearing out by hand.
+ *
+ * THE POLICY IS `clearsItselfAfterExit`'s (clean exit only; a non-zero code and a
+ * restored row stay); this constant is only how long the pane waits before it
+ * runs the same dismissal the row's X runs. Exported because the render suite
+ * drives real timers and must wait on THIS number rather than on a copy of it.
+ */
+export const EXIT_DISMISS_AFTER_MS = 4000;
 
 /**
  * The console: the FOURTH occupant of the conversation's right slot.
@@ -223,14 +242,39 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 * `retain` default for a user's surface is ON, so a dismissal that did not say
 	 * this would be restored at the next launch, which is exactly the friction
 	 * #754's repro reports ("restart the app: the ended tab is still in the strip").
+	 *
+	 * AMENDED (#929, 2026-10-10): an ended surface no longer waits for its X at all —
+	 * a shell that exited CLEANLY during this run has its row cleared by the pane
+	 * itself after `EXIT_DISMISS_AFTER_MS`, one beat of the ended banner as the
+	 * notice, through this same dismissal (the beat effect below). The X keeps every
+	 * case the beat does not take: a non-zero exit code STAYS so the error remains
+	 * readable, a row restored from history STAYS because there the history is the
+	 * point, and both are dismissed by hand exactly as before. One dismissal, two
+	 * triggers — never a second mechanism for the automatic one.
 	 */
 	const requestSurfaceClose = (row: ConsoleSurface) => {
 		setCloseRefusal(null);
-		focusAfterRemoval.current = row.surface;
 		if (row.running) {
+			focusAfterRemoval.current = row.surface;
 			setPendingClose(row.surface);
 			return;
 		}
+		dismissEndedSurface(row);
+	};
+
+	/**
+	 * The dismissal itself, in ONE place because it now has TWO triggers (the row's X
+	 * and #929's beat): `retain: false` is what removes the surface from the retained
+	 * registry, and a second call site spelling it itself is how the two would drift.
+	 *
+	 * The handoff bookkeeping is set before the call for the same reason the press
+	 * path always set it: if the row IS removed, the keyboard it may have been inside
+	 * is owed a home (the effect below reads it back off the listing), and a REFUSED
+	 * close — a racer that removed the surface first is the one this path really
+	 * meets — clears it again: nothing left, so nothing is owed.
+	 */
+	const dismissEndedSurface = (row: ConsoleSurface) => {
+		focusAfterRemoval.current = row.surface;
 		void session.closeSurface(row.surface, { retain: false }).catch(() => {
 			/*
 			 * A dismissal that did NOT leave is a row that is still where it was: nothing
@@ -293,6 +337,92 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		 */
 		if (entry) focusAfterRemoval.current = null;
 	}, [pendingClose, surfaces]);
+
+	/**
+	 * The latest listing for the beat's callback, which fires after a render or many
+	 * and must judge the row against the surfaces as they are NOW — not as they were
+	 * when the timer was armed (the row may have been dismissed by hand, or by an
+	 * agent's close, while the beat ran).
+	 */
+	const latestSurfaces = useRef(surfaces);
+	latestSurfaces.current = surfaces;
+	/** One beat timer per surface, keyed by id. A REF rather than state because
+	 * nothing paints from it and a re-render must not restart a beat. */
+	const exitDismissTimers = useRef(
+		new Map<string, ReturnType<typeof setTimeout>>(),
+	);
+	/**
+	 * The dismissal helper, read through a ref for the same reason `latestSurfaces`
+	 * is one: the beat's effect keys on the LISTING alone, and depending on a
+	 * function re-created every render would either re-run it constantly or lie
+	 * about what the timer's callback actually reads. The press path calls
+	 * `dismissEndedSurface` directly; only the timer goes through this.
+	 */
+	const dismissEndedSurfaceRef = useRef(dismissEndedSurface);
+	dismissEndedSurfaceRef.current = dismissEndedSurface;
+
+	/*
+	 * THE CLEAN EXIT'S BEAT (#929): a surface whose shell exited CLEANLY during this
+	 * run clears itself one beat after this pane shows it ended, through the SAME
+	 * dismissal the row's X runs (`dismissEndedSurface`) — no second mechanism and no
+	 * quiet path to main.
+	 *
+	 * THE DECISION IS THE LISTING'S, not the exit frame's: `clearsItselfAfterExit`
+	 * reads `(live, running, exit_code)`, which is already main's own projection of
+	 * the exit — the mirror's exit event only refreshes this listing, so the policy
+	 * has one input and no row reconstructed from history (`live: false`) can ever
+	 * qualify.
+	 *
+	 * THE BEAT STARTS WHEN THE PANE FIRST SEES the qualifying row — the exit arriving
+	 * under an open pane is that moment, and a surface that ended while the pane was
+	 * closed or in another conversation gets its beat on the next open, from the same
+	 * code path. That is deliberate: the beat is the NOTICE (the ended banner with
+	 * its exit code), and a notice a user can see requires a pane. What must NOT
+	 * happen either way is a beat that lives past its subject, which is why the
+	 * timer is dropped when the row leaves the listing and re-checks the row — gone,
+	 * running again, no longer a clean exit — at expiry, so a manual X during the
+	 * beat is not followed by a second close.
+	 */
+	useEffect(() => {
+		const timers = exitDismissTimers.current;
+		const wanted = new Set<string>();
+		for (const row of surfaces) {
+			if (!clearsItselfAfterExit(row)) continue;
+			wanted.add(row.surface);
+			if (timers.has(row.surface)) continue;
+			timers.set(
+				row.surface,
+				setTimeout(() => {
+					timers.delete(row.surface);
+					const current = latestSurfaces.current.find(
+						(candidate) => candidate.surface === row.surface,
+					);
+					if (!current || !clearsItselfAfterExit(current)) return;
+					dismissEndedSurfaceRef.current(current);
+				}, EXIT_DISMISS_AFTER_MS),
+			);
+		}
+		for (const [surface, timer] of timers) {
+			if (wanted.has(surface)) continue;
+			clearTimeout(timer);
+			timers.delete(surface);
+		}
+	}, [surfaces]);
+
+	/*
+	 * A BEAT BELONGS TO A MOUNTED PANE. Unmounting clears every timer: the notice is
+	 * the pane's, and leaving one armed would fire a dismissal against a hook that
+	 * has gone — which a remount would answer with a fresh beat anyway (the row still
+	 * being listed, still qualifying).
+	 */
+	useEffect(
+		() => () => {
+			for (const timer of exitDismissTimers.current.values())
+				clearTimeout(timer);
+			exitDismissTimers.current.clear();
+		},
+		[],
+	);
 
 	/*
 	 * THE HANDOFF (UX round 1, U1). The target is the row that now holds the lens —
@@ -656,8 +786,25 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				 * of chrome in the slot's default (`DEFAULT_RIGHT_SLOT_WIDTH` is 80
 				 * columns plus those 16, pinned by `scripts/console-pane.test.mjs`) is
 				 * now exactly these two.
+				 *
+				 * AMENDED (#929, 2026-10-10): "a gutter of ground" then described
+				 * RUN-OFF — pane background at the terminal's edge — and a band of it
+				 * still framed the terminal wherever this box had no ground of its own:
+				 * the padding left and right, and the cell-height main's floor division
+				 * leaves unconsumed at the box's foot. The box now paints the terminal's
+				 * OWN ground (`bg-sunken`, §9's ground for the mirror) across its whole
+				 * box, so the 8 px still inset the GRID — the 16 px above is still
+				 * exactly these two — and the gutter is the terminal's ground rather
+				 * than the pane's. The ground is painted HERE rather than on the
+				 * mirror's own root because the padding sits OUTSIDE the mirror's box:
+				 * a ground on the mirror could never reach the gutter, and the
+				 * mirror's own stated ground (§9) is this box's background showing
+				 * wherever the grid does not paint. `scripts/console-pane.test.mjs`
+				 * pins the class string; the frames pin the pixels.
 				 */}
-				<div className={cn("relative flex min-h-0 grow flex-col px-2")}>
+				<div
+					className={cn("relative flex min-h-0 grow flex-col px-2 bg-sunken")}
+				>
 					{/*
 					 * `key` ON THE SURFACE, and it is the re-attach rule rather than a
 					 * micro-optimisation: one mirror holds one subscription and one terminal,
