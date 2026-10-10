@@ -136,6 +136,10 @@ const bundle = await build({
 		contents: [
 			'export { RunDetailsPanel } from "./src/renderer/src/features/chat/components/run-details/run-details-panel";',
 			'export { deriveRunDetails } from "./src/renderer/src/features/chat/components/run-details/run-detail-model";',
+			// The landing watch lives at MODULE scope (Q7), so a case's hold would
+			// otherwise outlive the case: the harness closes it per case, the way a
+			// session switch closes it in the app.
+			'export { clearWakeLanding } from "./src/renderer/src/features/chat/components/run-details/use-wake-cancel";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -156,7 +160,9 @@ const bundle = await build({
 const bundlePath = new URL("._wake-cancel-panel.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(() => unlink(bundlePath).catch(() => undefined));
-const { RunDetailsPanel, deriveRunDetails } = await import(bundlePath.href);
+const { RunDetailsPanel, deriveRunDetails, clearWakeLanding } = await import(
+	bundlePath.href
+);
 const { createRoot } = await import("react-dom/client");
 
 /* ------------------------------------------------------------------ fixtures */
@@ -263,6 +269,13 @@ const mount = async (initial) => {
 afterEach(async () => {
 	for (const handle of mounted.splice(0)) await handle.unmount();
 	document.body.innerHTML = "";
+	/*
+	 * And the module watch, for the reason above it: a hold armed by one case
+	 * would otherwise resolve against the NEXT case's DOM (or its timer would
+	 * cut a later case's hold short), which is harness life leaking across
+	 * cases rather than anything the shipped code does.
+	 */
+	clearWakeLanding();
 });
 
 /** Flush microtasks and effects until `predicate` holds, bounded. */
