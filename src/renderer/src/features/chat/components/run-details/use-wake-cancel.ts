@@ -175,10 +175,12 @@ const wakeFocusFellThrough = (active: Element | null, id: string): boolean =>
  * that placement: the resync's `open{gap}` commit unmounts the panel the hook
  * lives in, taking the watch with it, and the keyboard settles on `<body>`
  * with nothing left to re-resolve. This registry outlives every unmount: one
- * watch at a time, armed when a landing moves the keyboard, and ended on the
- * first resolution — a pane it can see, the pane's own opener (the close
- * destination `run-details-trigger.tsx` uses), or a brief HOLD until the pane
- * comes back (13–700 ms measured) rather than camping on a stale landing.
+ * watch at a time, armed when a landing moves the keyboard — a pane it can
+ * see, the pane's own opener (the close destination `run-details-trigger.tsx`
+ * uses), or a brief HOLD until the pane comes back (13–700 ms measured) rather
+ * than camping on a stale landing — and a HOME keeps the guard alive (U5): the
+ * resync churns in waves, so the guard re-arms on the node it just focused
+ * until a real ending (the reader moves the keyboard, or the settle bound).
  */
 let wakeLandingWatch: {
 	id: string;
@@ -189,7 +191,11 @@ let wakeLandingWatch: {
 	 * the panel's own remount — and the remount is the pane's return (round 5).
 	 */
 	sessionId: string | null;
-	/** Set once the watch is holding for a home target to reappear. */
+	/**
+	 * The settle bound: set when the watch holds with no home on screen, and
+	 * armed from the start on a re-arm (U5) — its timer ends the guard silently
+	 * once the remounts stop.
+	 */
 	holdUntil: number | null;
 } | null = null;
 let wakeLandingObserver: MutationObserver | null = null;
@@ -226,8 +232,19 @@ const checkWakeLandingWatch = (): void => {
 	}
 	const home = wakeLandingHome();
 	if (home !== null) {
-		endWakeLandingWatch();
+		/*
+		 * A HOME IS THERE — land it, and KEEP GUARDING (U5): the resync churns
+		 * in WAVES, so the pane that receives the keyboard now can itself be
+		 * replaced while the resync is still settling. UX round 2 measured the
+		 * cost of ending here: the guard landed the pane, the fallback effect
+		 * then read the pane as a real owner and declined its own watch (`no new
+		 * observer follows the landing`), and the next wave removed the landed
+		 * node — the keyboard sat on `<body>` for 70.5 ms with nothing left to
+		 * re-resolve (1 of 10 churn samples, timing-dependent). The guard
+		 * re-arms on the node it just focused, home or opener.
+		 */
 		home.focus();
+		rearmWakeLandingWatch(watch.id, home, watch.sessionId);
 		return;
 	}
 	/*
@@ -257,6 +274,24 @@ const holdWakeLanding = (
 		childList: true,
 		subtree: true,
 	});
+};
+
+/**
+ * Re-arm the guard on the home a resolution just focused (U5). Its work — seeing
+ * the resync's last wave through — is bounded like a hold's: the settle bound is
+ * armed from the start, and a silent expiry moves nothing. A later gap keeps the
+ * re-arm's remaining bound (the hold branch only starts one when it has none)
+ * rather than extending it, so nothing camps.
+ */
+const rearmWakeLandingWatch = (
+	id: string,
+	node: HTMLElement,
+	sessionId: string | null,
+): void => {
+	holdWakeLanding(id, node, sessionId);
+	if (wakeLandingWatch === null) return;
+	wakeLandingWatch.holdUntil = Date.now() + WAKE_LANDING_HOLD_MS;
+	wakeLandingHoldTimer = setTimeout(endWakeLandingWatch, WAKE_LANDING_HOLD_MS);
 };
 
 /**
