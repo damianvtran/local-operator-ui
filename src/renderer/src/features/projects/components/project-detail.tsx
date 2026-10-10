@@ -221,8 +221,12 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 	 * `useCallback`: it is created after the early returns, and a hook cannot
 	 * live there; nothing downstream memoises on its identity.
 	 */
-	const commitFields: CommitProjectFields = (fields) =>
-		update.mutateAsync({ key: project.id, fields }).then(() => undefined);
+	const commitFields: CommitProjectFields = (fields, options) =>
+		update.mutateAsync({
+			key: project.id,
+			fields,
+			...(options?.forceDone === true ? { forceDone: true } : {}),
+		});
 	/*
 	 * THE TEAM'S HUMAN NAME (the team-labels lane, `69d088ec52`, carried through
 	 * this slice's restructure): the Properties Team row DISPLAYS the
