@@ -1889,18 +1889,21 @@ test("case 2: two peer receipts between two stop answers become a group of their
 	/*
 	 * The span is ANCHORED on the row that ends it - the second answer - so a
 	 * later span can never inherit its key, and the first answer is neither
-	 * hidden inside the span nor renamed by the second one arriving.
+	 * hidden inside the span nor renamed by the second one arriving. (This span
+	 * cannot receive appended rows - it does not end at the newest run's end -
+	 * so it keeps the visible anchor even though it IS a group; only the
+	 * appendable tail span carries the `qg:` key, design round F3.)
 	 *
 	 * Since the quiet-group slice (design §5) the same span is ALSO a group:
-	 * two receipts with nothing the reader can see between them, so its key is
-	 * the group's own stable `qg:<first row>` and its facts state the receipt
-	 * count instead of the action clauses (pinned above in the quiet-turn
-	 * section; here the point is only that the first answer is untouched).
+	 * two receipts with nothing the reader can see between them, so its facts
+	 * state the receipt count instead of the action clauses (pinned above in the
+	 * quiet-turn section; here the point is only that the first answer is
+	 * untouched).
 	 */
 	assert.deepEqual(
 		run.segments.map((s) => [s.key, s.segmentIds, s.collapsed]),
-		[["qg:P2", ["P2", "P3"], true]],
-		"one span, keyed by the group's first row and holding exactly the two peers",
+		[["seg:A4", ["P2", "P3"], true]],
+		"one span, anchored on the second answer and holding exactly the two peers",
 	);
 	assert.equal(run.segments[0].facts.group?.count, 2);
 	const hidden = new Set(run.segments.flatMap((s) => s.segmentIds));
@@ -2165,6 +2168,28 @@ test("a settled `no_reply` call is a structural close; an in-flight one is not",
 	);
 });
 
+test("a REFUSED or aborted quiet call is not a close: the turn did not end quietly", () => {
+	/*
+	 * Design §5's refusal path: a person asked this turn, so core answers
+	 * `no_reply` with an `is_error` result and the model writes text instead -
+	 * the errored row must NOT settle the tail, or the bar would announce a
+	 * quiet end and swallow the answer about to arrive. An aborted call (the
+	 * reader stopped the turn) is the same kind of non-end.
+	 */
+	for (const override of [{ isError: true }, { stopped: true }]) {
+		const records = seq("U T Z");
+		records[2] = { ...records[2], ...override };
+		assert.equal(
+			cyclesOf(records, paintsSomething).length,
+			0,
+			`the row closes nothing: ${JSON.stringify(override)}`,
+		);
+	}
+	/* The control: the same rows settled cleanly DO close (pinned above already,
+	 * restated here so the exclusion is not vacuous). */
+	assert.equal(cyclesOf(seq("U T Z"), paintsSomething).length, 1);
+});
+
 test("electAnswer: a quiet close is no candidate, and the election does not fall back to an earlier close", () => {
 	/*
 	 * `U A P Z K`: a real close (A1), a later quiet close (Z), then a terminal
@@ -2245,6 +2270,7 @@ test("labelOfSegment states the group's family word; below the minimum the opene
 	const cases = [
 		["U P P", "Peer messages"],
 		["U W W", "Wake messages"],
+		["U X X", "Monitor messages"],
 		["U P W", "Messages"],
 		["U J J", "Job results"],
 		["U P T Z", "Peer message"],

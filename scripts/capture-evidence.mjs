@@ -996,6 +996,29 @@ export const STORIES = [
 	["chat-turn-collapse--restored", 1280, 900],
 	["chat-turn-collapse--running", 1280, 900],
 	/*
+	 * THE QUIET TURN'S OWN STATES (quiet-turn design §5, UI slice S2): a settled
+	 * `no_reply` closes the turn - the bar carries the summary, the completed
+	 * mark and no caption/stamp/foot, and the row itself never paints - and a
+	 * run of delivery receipts folds as ONE group line. `quiet-close` is the R1
+	 * pin's literal shape (`[peer][tool][no_reply]`, head-cut); `collapsed` and
+	 * `open-tail` are the no-jitter PAIR (the group at twelve receipts, then the
+	 * thirteenth landing while its call runs - the count grows, the bar does
+	 * not); `expanded` is the press (the bar's own control, like `failed`'s
+	 * second row); `head-cut` states the minimum count and no span; `mixed`
+	 * states `Messages` over peer + wake receipts.
+	 */
+	["chat-turn-collapse--quiet-close", 1280, 900],
+	["chat-turn-collapse--quiet-group-collapsed", 1280, 900],
+	["chat-turn-collapse--quiet-group-open-tail", 1280, 900],
+	[
+		"chat-turn-collapse--quiet-group-expanded",
+		1280,
+		900,
+		{ press: '[data-turn-summary] button[aria-expanded="false"]' },
+	],
+	["chat-turn-collapse--quiet-group-head-cut", 1280, 900],
+	["chat-turn-collapse--quiet-group-mixed", 1280, 900],
+	/*
 	 * THE ROUND-1 CELLS (review round 1): `narration` answers design D4a (the
 	 * span-only sentence, §5 case 3), `pinned` answers design D4b / §11-R4 (a
 	 * pinned statement inside the span, on a frame), and `parked` answers

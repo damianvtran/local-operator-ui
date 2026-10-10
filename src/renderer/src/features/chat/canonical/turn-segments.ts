@@ -63,7 +63,10 @@ import {
 	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 	type TranscriptDisplayMode,
 } from "../transcript-display-mode";
-import type { TranscriptRecord } from "./transcript-reducer";
+import {
+	type TranscriptRecord,
+	isInterruptedFault,
+} from "./transcript-reducer";
 
 export type TriggerKind =
 	| "user"
@@ -128,12 +131,32 @@ export function isQuietTurnCall(
 }
 
 /**
- * The row CLOSES its cycle: the call is settled (`phase === "done"`). Only a
- * settled call is a close - an in-flight one is a call still running, and
- * reading it as a close would retire the tail before the turn has ended.
+ * The row CLOSES its cycle: the call is settled (`phase === "done"`) and it
+ * genuinely ran - a refused, never-sent or aborted call did not end the turn.
+ *
+ * THE REFUSAL IS THE LIVE CASE (design §5): when a person asked this turn, core
+ * answers `no_reply` with an `is_error` result and the model writes text
+ * instead - so an errored quiet call must NOT settle the tail, or the bar would
+ * announce a quiet end and swallow the answer that is about to arrive. The
+ * same exclusion set serves the other non-ends: a never-sent call (the turn
+ * died while it was being dictated) and an aborted one (the reader stopped the
+ * turn). It is `isFailedCall`'s own never-run/interrupt reading, inverted, so
+ * "closed" and "failed" can never both be true of one row.
+ *
+ * An in-flight call (`phase !== "done"`) is a call still running: reading it as
+ * a close would retire the tail before the turn has ended.
  */
 export function isQuietTurnClose(record: TranscriptRecord): boolean {
-	return isQuietTurnCall(record) && record.phase === "done";
+	if (!isQuietTurnCall(record)) return false;
+	if (record.phase !== "done") return false;
+	if (record.isError === true) return false;
+	if (record.stopped === true) return false;
+	if (record.neverSent === true) return false;
+	if (record.notRunReason !== null && record.notRunReason !== undefined) {
+		return false;
+	}
+	if (isInterruptedFault(record.notRunKind)) return false;
+	return true;
 }
 
 /** The trigger a record is, or null when it starts nothing. */

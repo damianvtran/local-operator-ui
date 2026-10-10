@@ -505,6 +505,179 @@
 				}
 			],
 			"expected": null
+		},
+		{
+			"name": "a compaction statement (the pinned memory row) splits a group: both entry points refuse to fold across it",
+			"rows": [
+				{
+					"kind": "peer",
+					"id": "p1",
+					"ts": 1000000,
+					"body": "a"
+				},
+				{
+					"kind": "peer",
+					"id": "p2",
+					"ts": 1000060,
+					"body": "b"
+				},
+				{
+					"kind": "compaction",
+					"id": "c3",
+					"ts": 1000120,
+					"text": "Context compacted",
+					"before": 41000
+				},
+				{
+					"kind": "peer",
+					"id": "p4",
+					"ts": 1000180,
+					"body": "c"
+				},
+				{
+					"kind": "peer",
+					"id": "p5",
+					"ts": 1000240,
+					"body": "d"
+				}
+			],
+			"expected": [
+				{
+					"key": "qg:p1",
+					"family": "peer",
+					"count": 2,
+					"firstTs": 1000000,
+					"lastTs": 1000060,
+					"senders": [
+						{
+							"label": "another session",
+							"count": 2
+						}
+					],
+					"actions": 0,
+					"failed": 0,
+					"open": false,
+					"rowIds": ["p1", "p2"]
+				},
+				{
+					"key": "qg:p4",
+					"family": "peer",
+					"count": 2,
+					"firstTs": 1000180,
+					"lastTs": 1000240,
+					"senders": [
+						{
+							"label": "another session",
+							"count": 2
+						}
+					],
+					"actions": 0,
+					"failed": 0,
+					"open": true,
+					"rowIds": ["p4", "p5"]
+				}
+			]
+		},
+		{
+			"name": "a wake-only run states the wake family",
+			"rows": [
+				{
+					"kind": "wake",
+					"id": "w1",
+					"ts": 1000000,
+					"text": "wake"
+				},
+				{
+					"kind": "wake",
+					"id": "w2",
+					"ts": 1000060,
+					"text": "wake"
+				}
+			],
+			"expected": [
+				{
+					"key": "qg:w1",
+					"family": "wake",
+					"count": 2,
+					"firstTs": 1000000,
+					"lastTs": 1000060,
+					"senders": [],
+					"actions": 0,
+					"failed": 0,
+					"open": true,
+					"rowIds": ["w1", "w2"]
+				}
+			]
+		},
+		{
+			"name": "a monitor-only run states the monitor family",
+			"rows": [
+				{
+					"kind": "custom",
+					"id": "x1",
+					"ts": 1000000,
+					"customType": "monitor_prompt",
+					"text": "(monitor) queue depth",
+					"level": "info"
+				},
+				{
+					"kind": "custom",
+					"id": "x2",
+					"ts": 1000060,
+					"customType": "monitor_prompt",
+					"text": "(monitor) queue depth",
+					"level": "info"
+				}
+			],
+			"expected": [
+				{
+					"key": "qg:x1",
+					"family": "monitor",
+					"count": 2,
+					"firstTs": 1000000,
+					"lastTs": 1000060,
+					"senders": [],
+					"actions": 0,
+					"failed": 0,
+					"open": true,
+					"rowIds": ["x1", "x2"]
+				}
+			]
+		},
+		{
+			"name": "a job-only run states the job family",
+			"rows": [
+				{
+					"kind": "custom",
+					"id": "j1",
+					"ts": 1000000,
+					"customType": "job_result",
+					"text": "job done",
+					"level": "info"
+				},
+				{
+					"kind": "custom",
+					"id": "j2",
+					"ts": 1000060,
+					"customType": "job_result",
+					"text": "job done",
+					"level": "info"
+				}
+			],
+			"expected": [
+				{
+					"key": "qg:j1",
+					"family": "job",
+					"count": 2,
+					"firstTs": 1000000,
+					"lastTs": 1000060,
+					"senders": [],
+					"actions": 0,
+					"failed": 0,
+					"open": true,
+					"rowIds": ["j1", "j2"]
+				}
+			]
 		}
 	]
 }

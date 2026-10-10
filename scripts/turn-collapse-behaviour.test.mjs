@@ -3010,3 +3010,50 @@ test("a receipt appended to the open group's tail updates the count without remo
 		"still one bar",
 	);
 });
+
+test("F3: the receipt that forms the group neither re-collapses the bar nor re-announces it", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * The design-round finding at the operator's requirement: the below-minimum
+	 * quiet bar and the group it grows into are ONE bar to the reader. The second
+	 * receipt must land inside the reader's open expansion (same key -> same
+	 * element) and the settle announcement must not fire again for it.
+	 */
+	const settled = [
+		userRecord("user:1"),
+		peerRecord("peer:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		quietRecord("quiet:1", { ts: TS + 2_000 }),
+	];
+	const mounted = await mount(t, settled);
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	const summary = bar(mounted);
+	assert.ok(summary, "the bar draws");
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "peer:1"), "the reader expanded it");
+	const announced = region();
+	await mounted.render([...settled, peerRecord("peer:2", { ts: TS + 4_000 })]);
+	await flushFrames();
+	assert.equal(
+		bar(mounted),
+		summary,
+		"the very same bar element, not a remount",
+	);
+	assert.ok(
+		rowBox(mounted, "peer:2"),
+		"the new receipt mounts inside the open expansion",
+	);
+	assert.equal(
+		region(),
+		announced,
+		"no second announcement: the bar is the same bar",
+	);
+	assert.equal(
+		bar(mounted).getAttribute("data-segment-ids"),
+		"peer:1 tool:1 quiet:1 peer:2",
+		"the bar now hides the grown span, row for row",
+	);
+});
