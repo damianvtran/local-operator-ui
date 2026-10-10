@@ -1782,10 +1782,15 @@ function factAppendedRows(
 		 * was never sent (`neverSent`/`notRunReason`), is not a row the wire's
 		 * `action_count` counted either, so adding it would state a figure no read can
 		 * confirm.
+		 *
+		 * ABSENT IS NULL HERE (agent review round 5, n1): the sibling readers of these two
+		 * fields (`buildRows`, the trace fold) answer the same question with `?? null`, and
+		 * a `!== null` on the raw value would read a record that simply omits the key as
+		 * "not run" - refusing a fact the refuser was never about.
 		 */
 		if (!row.record.id.startsWith("tool:")) return null;
-		if (row.record.neverSent === true || row.record.notRunReason !== null)
-			return null;
+		if (row.record.neverSent === true) return null;
+		if ((row.record.notRunReason ?? null) !== null) return null;
 		appended.push(row);
 	}
 	return appended;

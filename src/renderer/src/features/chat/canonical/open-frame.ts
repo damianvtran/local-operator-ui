@@ -98,7 +98,10 @@ export type OpenFrameFacts = {
  *    (`id: details.anchor`) - which is what the marker is ABOUT, and is neither the
  *    entry's id nor always a row id (the runtime's `provisional_anchor` is
  *    `completion-<token>`, and a label is legal). A marker without an anchor paints
- *    nothing at all, so its key is only ever a lookup nobody can hit.
+ *    nothing at all, so its key is only ever a lookup nobody can hit. The one
+ *    residual edge this arm can open - an anchor that names a row the page does not
+ *    carry - is recorded on `openFrameCoversHeld`'s `carried` parameter, where a
+ *    guard would have to live (agent review round 5, R5-m2).
  */
 export function entryRecordKey(
 	entry: DesktopHistoryPage["entries"][number],
@@ -323,6 +326,17 @@ export function openFrameCoversHeld(
 	 * (defined in this module: a tool entry keys by its CALL id, a completion marker
 	 * by its anchor). Passed in rather than derived here because the caller maps the
 	 * rows it is holding, and this function must not grow a second spelling of it.
+	 *
+	 * A KNOWN LIMITATION, RECORDED WHERE A GUARD WOULD GO (agent review round 5,
+	 * R5-m2). A row whose key is in this set is SKIPPED below - the page carried it,
+	 * so there is no seam for the span test to find. That is sound for every key the
+	 * mapping produces today, with one residual edge: a completion marker keys by its
+	 * ANCHOR, and an anchor that ever NAMES A ROW ID the page does not itself carry
+	 * would let a held row with that id be skipped, suppressing a walk it owed. The
+	 * reviewer could not construct that shape in the runtime (`provisional_anchor` is
+	 * `completion-<token>`, and a label names no row), so no guard is added yet - and
+	 * the guard this wants, if an anchor ever becomes a row reference, is to skip only
+	 * a key the mapping DERIVED from an entry, never one an entry merely POINTED at.
 	 */
 	carried: ReadonlySet<string>,
 ): boolean {

@@ -3061,17 +3061,24 @@ test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
 	 * THE INVARIANT (agent review round 4, B3): a page applied with its OWN facts and
 	 * its OWN identity describes exactly the rows it carried, so the plan must add
 	 * NOTHING and state the wire's own figures. It failed on every shape whose page
-	 * carried tool rows: the identity held ENTRY ids while the client's rows key
-	 * `tool:<tool_call_id>`, so the exclusion arm matched no tool row, the watermark
-	 * fell back to the newest non-tool row, and every tool row after it was added -
-	 * the reviewer measured `12 / 33 s` stated where the core published `9 / 24 s`.
+	 * carried tool rows after its newest MATCHED row: the identity held ENTRY ids
+	 * while the client's rows key `tool:<tool_call_id>`, so the exclusion arm matched
+	 * no tool row, the watermark fell back to an older row, and every tool row after
+	 * it was added - the reviewer measured `12 / 33 s` stated where the core published
+	 * `9 / 24 s`.
 	 *
-	 * THE PAGE IS THE SHAPE THE RUNTIME WRITES, marker included: six tool rounds, then
-	 * a `completion_attention` marker whose ANCHOR is a mid-run row (its client row
-	 * merges at the anchor's position, so three tool rows sit after the newest row the
-	 * old rule could match), then the closing statement. The mapping has to answer for
-	 * both classes - a tool entry by its call id, the marker by its anchor - or the
-	 * rows after it read as new work.
+	 * WHAT THIS TEST DISCRIMINATES (agent review round 5, R5-m1, which corrected an
+	 * earlier claim that it caught the inflation on any shape): the page's NEWEST
+	 * carried row has to be one the old rule could not match, or the old watermark
+	 * lands on the last row anyway and nothing inflates. So the shape is: six tool
+	 * rounds, a `completion_attention` marker whose ANCHOR is a mid-run row, the
+	 * closing statement, and then ONE MORE TOOL ROUND - the page ends on a tool row,
+	 * which is exactly the runtime's woken shape. Both classes are then load-bearing:
+	 * the six matched tool rows before the marker, and the seventh after the closing
+	 * statement. Under the entry-id rule the watermark stops at the marker's anchor
+	 * (or the statement) and the trailing tool rows are counted as new work - my
+	 * derivation for this fixture is `10 / 30 s` where the wire says `7 / 21 s`, to be
+	 * confirmed by the arm the host hold has deferred.
 	 */
 	const round = (n) => [
 		{
@@ -3138,6 +3145,12 @@ test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
 				stop_reason: "endTurn",
 			},
 		},
+		/*
+		 * THE TRAILING ROUND is what makes this a discriminator (R5-m1): the page's newest
+		 * carried row is a TOOL row, so the old entry-id rule - whose last match is the
+		 * marker's anchor row - counts this round as work that arrived after the page.
+		 */
+		...round(7),
 	];
 	const page = {
 		entries,
@@ -3152,9 +3165,9 @@ test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
 				closing_answer_id: "ans",
 				settled: true,
 				outcome: "interrupted",
-				action_count: 6,
+				action_count: 7,
 				failed_count: 0,
-				worked_seconds: 18,
+				worked_seconds: 21,
 				complete: true,
 			},
 		],
@@ -3163,7 +3176,7 @@ test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
 	assert.ok(facts, "the page carries facts");
 	/*
 	 * The identity is what the page's rows KEY, not what its entries are called: the
-	 * six tool rows by call id, the marker by its anchor. The assistant entries that
+	 * seven tool rows by call id, the marker by its anchor. The assistant entries that
 	 * carry the calls fall back to their own ids - keys no row uses, since the reducer
 	 * merges a call pair into one tool row - so they are in the set and harmless.
 	 */
@@ -3176,6 +3189,7 @@ test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
 			"a4",
 			"a5",
 			"a6",
+			"a7",
 			"ans",
 			"tool:call_1",
 			"tool:call_2",
@@ -3183,6 +3197,7 @@ test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
 			"tool:call_4",
 			"tool:call_5",
 			"tool:call_6",
+			"tool:call_7",
 		],
 		"the carried set is row keys: tool calls by call id, the marker by its anchor",
 	);
@@ -3194,17 +3209,45 @@ test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
 	});
 	const run = plan.runs[0];
 	assert.equal(run.factApplied, true, "the page's own facts apply");
+	/*
+	 * The wire's own `7 / 21 s` is the RUN's; the ladder is the TURN's pre-answer work
+	 * (D1), so it states the 7th round's rows where they are - in the trailing,
+	 * after-answer span - and the figure here is 6 rounds. Nothing is ADDED. Under the
+	 * entry-id rule this reads `10 / 30 s`: the three rows after the marker's anchor
+	 * counted twice.
+	 */
 	assert.equal(
 		run.facts.actions,
 		6,
-		"nothing is added: the wire's count is the rows the page carried",
+		"the turn's own pre-answer work, not the wire's total plus the page's own rows",
 	);
-	assert.equal(run.facts.durationS, 18, "and its seconds");
+	assert.equal(run.facts.durationS, 18, "and its seconds: six rounds of 3 s");
 	assert.equal(
 		run.facts.partial,
 		false,
 		"a served page is exact, and the turn is not live",
 	);
+	/*
+	 * A LIVE PANE WITH APPENDED ROWS wears the `+` on BOTH figures (agent review round
+	 * 5, n2: the ladder's term had no arm). The carried set is the page's own minus two
+	 * trailing tool roounds, so those two are exactly what `factAppendedRows` finds; the
+	 * correction is exact for the rows in hand, but a streaming turn cannot know it has
+	 * them all, and the ladder a future reader inherits must not disagree with the bars.
+	 */
+	const trimmed = new Set(facts.page.ids);
+	trimmed.delete("tool:call_6");
+	trimmed.delete("tool:call_7");
+	const liveAppended = collapsePlan(rows, {
+		live: true,
+		runFacts: facts.runs,
+		factPage: { ids: trimmed, newestKey: "tool:call_5" },
+	}).runs[0];
+	assert.equal(
+		liveAppended.segments[0].facts.partial,
+		true,
+		"the bar says `+` while a live turn is corrected (B2's live term)",
+	);
+	assert.equal(liveAppended.facts.partial, true, "and the ladder agrees (m2)");
 });
 
 test("a fact is split by the hidden cross-session work, or refused (F2)", () => {
