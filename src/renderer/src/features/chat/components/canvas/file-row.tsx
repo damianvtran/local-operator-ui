@@ -146,8 +146,16 @@ const TypeGlyph: FC<{ row: FileRow }> = ({ row }) => {
  * bytes land. A read that cannot land falls back to the row's own type glyph,
  * which is what every non-media row already shows — an unreadable thumbnail
  * must not look like an unreadable row.
+ *
+ * The plate's classes arrive from the ROW, not from this component, so
+ * `chat-sidebar-selection.test.mjs` reads them at the call site — that scan is
+ * what keeps the slot's ground and its `object-cover` exemption in step with
+ * the palette contract (`PLATES_INSIDE_ROW_STATES`).
  */
-const RowThumbnail: FC<{ row: FileRow }> = ({ row }) => {
+const RowThumbnail: FC<{ row: FileRow; className: string }> = ({
+	row,
+	className,
+}) => {
 	const { document } = row;
 	const state = useFileBlobUrl(document.path, {
 		mtimeMs: document.lastAgentModified,
@@ -165,18 +173,14 @@ const RowThumbnail: FC<{ row: FileRow }> = ({ row }) => {
 				alt=""
 				loading="lazy"
 				decoding="async"
-				className={cn("size-7 rounded-sm bg-sunken object-cover")}
+				className={className}
 			/>
 		);
 	}
 	if (url && row.media === "video") {
 		return (
 			// biome-ignore lint/a11y/useMediaCaption: a user's own attached video has no caption track to offer.
-			<video
-				src={url}
-				preload="metadata"
-				className={cn("size-7 rounded-sm bg-sunken object-cover")}
-			/>
+			<video src={url} preload="metadata" className={className} />
 		);
 	}
 	if (state.status === "loading") {
@@ -250,7 +254,14 @@ const FileRowItemComponent = ({
 					)}
 				>
 					<span className={cn("flex w-7 shrink-0 items-center justify-center")}>
-						{row.media ? <RowThumbnail row={row} /> : <TypeGlyph row={row} />}
+						{row.media ? (
+							<RowThumbnail
+								row={row}
+								className={cn("size-7 rounded-sm bg-sunken object-cover")}
+							/>
+						) : (
+							<TypeGlyph row={row} />
+						)}
 					</span>
 					{/*
 					 * `flex-1` with a zero basis: the name takes the row's free space and
