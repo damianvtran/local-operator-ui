@@ -3067,24 +3067,37 @@ test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
 	 * it was added - the reviewer measured `12 / 33 s` stated where the core published
 	 * `9 / 24 s`.
 	 *
-	 * WHAT THIS TEST DISCRIMINATES (agent review rounds 5 and 6, R5-m1 and R6-1): the
+	 * WHAT THIS TEST DISCRIMINATES (agent review rounds 5-7, R5-m1, R6-1, R7-1): the
 	 * page's NEWEST carried row has to be one the old rule could not match, or the old
 	 * watermark lands on the last row anyway and nothing inflates. So the shape is:
 	 * six tool rounds, a `completion_attention` marker anchored to a mid-run row, the
 	 * closing statement, and then ONE MORE TOOL ROUND WHOSE CLOCK IS AFTER THE
-	 * STATEMENT - the page ends on a tool row, which is the runtime's woken shape (the
-	 * round-4 real page carries the woken rounds at `031-033.5` against the marker's
-	 * `030`).
+	 * STATEMENT - the page ends on a tool row, which is the runtime's woken shape. (The
+	 * `031-033.5` against `030` capture for the round-4 real page is the round-6
+	 * review's, quoted on this PR; it is not in the repository, so nothing here rests
+	 * on it.)
 	 *
 	 * THE CLOCK IS THE POINT (R6-1): a page's entry order is not the row order - the
 	 * reducer merges a page in TIME order - so a trailing round stamped EARLIER than
 	 * the statement is a back-fill that leaves the statement last, the old watermark on
 	 * it, and nothing to discriminate. Stamped after it, the row list ends on
-	 * `tool:call_7`, and at `806416cc73f` the appended list is exactly
-	 * `[tool:call_7]`: the carried-set assertion fails there and the ladder states
-	 * `7 / 21 s` (the wire's own, by coincidence - the old rule inflates the fact to
-	 * `8 / 24` and D1's after-answer subtraction hands the ladder those figures back),
-	 * where here it states the turn's own `6 / 18 s`.
+	 * `tool:call_7`.
+	 *
+	 * A RUN THAT ENDS ON A TOOL ROW HAS NO ELECTED ANSWER (R7-1), and that is what the
+	 * figures below state: a step row after the statement with no trigger between them
+	 * means the statement is not a close, `cycles` is empty and `electAnswer` refuses,
+	 * so every span is pre-answer - the ladder SUMS the spans and, by the cut span's own
+	 * construction (cut = the fact's totals minus the others), that sum IS the wire's
+	 * own `7 / 21 s`. Same rule as F3's arm and `turn-segments.test.mjs`'s "a run that
+	 * ends on a tool row elects nothing".
+	 *
+	 * AND THAT IS STILL A DISCRIMINATOR: at `806416cc73f` the watermark is the
+	 * statement's row in the raw-entry-id set, so the appended list is exactly
+	 * `[tool:call_7]`, the fact inflates to `8 / 24`, and - with no answer elected there
+	 * either, so nothing to subtract - the ladder states `8 / 24`. If the election
+	 * reading is wrong and an answer IS elected, the after-answer span's own row comes
+	 * back out and the pair reads `7 / 21` there against `6 / 18` here; either way the
+	 * arm fails at the old head and passes here.
 	 */
 	/*
 	 * `at` IS THE ENTRY'S CLOCK, and it is a parameter because the row order is the
@@ -3223,18 +3236,17 @@ test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
 	const run = plan.runs[0];
 	assert.equal(run.factApplied, true, "the page's own facts apply");
 	/*
-	 * The wire's own `7 / 21 s` is the RUN's; the ladder is the TURN's pre-answer work
-	 * (D1), so it states the 7th round's rows where they are - in the trailing,
-	 * after-answer span - and the figure here is 6 rounds. Nothing is ADDED. At
-	 * `806416cc73f` this reads `7 / 21 s`: the trailing round is appended by the old
-	 * rule, and the subtraction hands the ladder the inflated fact back.
+	 * NOTHING IS ADDED, AND WITH NO ANSWER ELECTED THE LADDER IS THE WIRE'S OWN
+	 * (R7-1): every span is pre-answer, so the figures here are the wire's `7 / 21 s`,
+	 * and the discrimination lives at `806416cc73f` - where the same shape reads
+	 * `8 / 24`, the appended `tool:call_7` held in the fact.
 	 */
 	assert.equal(
 		run.facts.actions,
-		6,
-		"the turn's own pre-answer work, not the wire's total plus the page's own rows",
+		7,
+		"the wire's own total: a run ending on a tool row elects no answer to subtract",
 	);
-	assert.equal(run.facts.durationS, 18, "and its seconds: six rounds of 3 s");
+	assert.equal(run.facts.durationS, 21, "and its seconds: seven rounds of 3 s");
 	assert.equal(
 		run.facts.partial,
 		false,
