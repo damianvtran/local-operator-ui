@@ -11,7 +11,13 @@
 
 import { displayName } from "../components/trace/tool-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
-import { cyclesOf, electAnswer, isTerminalMarker } from "./turn-segments";
+import {
+	cyclesOf,
+	electAnswer,
+	isQuietTurnCall,
+	isQuietTurnClose,
+	isTerminalMarker,
+} from "./turn-segments";
 
 /**
  * A notice's body split into the line its row paints and the rest of it, if any.
@@ -110,12 +116,21 @@ type TurnSpan = {
 	/** The opening user item's index, or null for a run whose head is cut off. */
 	openingUserIndex: number | null;
 	/**
-	 * Why the run ended, for diagnostics and tests: `answer`/`marker` name the
-	 * closure the NEXT user row saw, `end` is the list running out.
+	 * Why the run ended, for diagnostics and tests: `answer`/`quiet`/`marker`
+	 * name the closure the NEXT user row saw (`quiet` is a settled `no_reply`
+	 * close, which ends the turn without handing anything over), `end` is the
+	 * list running out.
 	 */
-	boundary: "answer" | "marker" | "end";
+	boundary: "answer" | "quiet" | "marker" | "end";
 	/** The settled assistant that closes this run, when its tail is one. */
 	closingAnswerId: string | null;
+	/**
+	 * The run's LAST settled quiet close (`no_reply`), when it has one: the
+	 * closure anchor that is not an answer - the collapsible gate carries it
+	 * (`turn-collapse-model.ts`) while `closingAnswerId` stays null, so no
+	 * caption, stamp or foot claims a message the reader was never handed.
+	 */
+	quietCloseId: string | null;
 };
 
 /**
@@ -169,11 +184,13 @@ function walkTurns<T>(
 	let last: TranscriptRecord | null = null;
 	/** A terminal marker (the shared boundary vocabulary) since the run opened. */
 	let sawTerminal = false;
+	/** A settled quiet close (see `isQuietTurnClose`) since the run opened. */
+	let sawQuietClose = false;
 	/** Has the open run done any WORK of its own (a tool or assistant row)? */
 	let sawWork = false;
 
 	const closed = (): boolean =>
-		sawTerminal || settledTail() || nothingHasRunYet();
+		sawTerminal || sawQuietClose || settledTail() || nothingHasRunYet();
 	/** Whether the open run's tail is a settled answer (the OLD closure test). */
 	const settledTail = (): boolean =>
 		last !== null && last.kind === "assistant" && !last.streaming;
@@ -207,20 +224,39 @@ function walkTurns<T>(
 	 * WHICH row of a run is its answer, not about which rows END a run; only the
 	 * latter changed here, and the gate stays exactly as it was.
 	 */
-	const closing = (from: number, to: number): string | null => {
+	const closing = (
+		from: number,
+		to: number,
+	): { answerId: string | null; quietCloseId: string | null } => {
 		const records: TranscriptRecord[] = [];
 		for (let i = from; i <= to; i += 1) records.push(recordOf(items[i]));
-		const answer = electAnswer(records, cyclesOf(records, paintsSomething), {
+		const cycles = cyclesOf(records, paintsSomething);
+		const answer = electAnswer(records, cycles, {
 			paints: paintsSomething,
 			isStatement: isStatementRow,
 		});
-		return answer === null ? null : records[answer.closeIndex].id;
+		/*
+		 * The quiet close is read off the SAME cycle chain the election reads: a
+		 * cycle whose close is a settled quiet call. Last one wins - the run's
+		 * LATEST quiet close is the closure a later span's bar states.
+		 */
+		let quietCloseId: string | null = null;
+		for (const cycle of cycles) {
+			const close = records[cycle.closeIndex];
+			if (isQuietTurnClose(close)) quietCloseId = close.id;
+		}
+		return {
+			answerId: answer === null ? null : records[answer.closeIndex].id,
+			quietCloseId,
+		};
 	};
 	const flush = (boundary: TurnSpan["boundary"], endIndex: number) => {
 		if (open === null) return;
 		open.endIndex = endIndex;
 		open.boundary = boundary;
-		open.closingAnswerId = closing(open.openingIndex, endIndex);
+		const closingIds = closing(open.openingIndex, endIndex);
+		open.closingAnswerId = closingIds.answerId;
+		open.quietCloseId = closingIds.quietCloseId;
 		spans.push(open);
 		open = null;
 	};
@@ -239,6 +275,7 @@ function walkTurns<T>(
 	): TurnSpan => {
 		last = null;
 		sawTerminal = false;
+		sawQuietClose = false;
 		sawWork = false;
 		return {
 			openingIndex: index,
@@ -246,6 +283,7 @@ function walkTurns<T>(
 			openingUserIndex,
 			boundary: "end",
 			closingAnswerId: null,
+			quietCloseId: null,
 		};
 	};
 
@@ -259,7 +297,10 @@ function walkTurns<T>(
 				 * hand the reader; a completion marker only when there is no answer.
 				 */
 				if (open !== null) {
-					flush(settledTail() ? "answer" : "marker", index - 1);
+					flush(
+						settledTail() ? "answer" : sawQuietClose ? "quiet" : "marker",
+						index - 1,
+					);
 				}
 				open = openRun(index, index);
 			}
@@ -282,6 +323,7 @@ function walkTurns<T>(
 		}
 		if (paintsSomething(record) && !isStatementRow(record)) last = record;
 		if (isTerminalMarker(record)) sawTerminal = true;
+		if (isQuietTurnClose(record)) sawQuietClose = true;
 		if (record.kind === "tool" || record.kind === "assistant") sawWork = true;
 		open.endIndex = index;
 	});
@@ -328,6 +370,14 @@ export type TurnRun = {
 	boundary: TurnSpan["boundary"];
 	/** The settled assistant row that closes this run, when it has one. */
 	closingAnswerId: string | null;
+	/**
+	 * The run's last settled quiet close (`no_reply`), when it has one: the
+	 * closure anchor that is NOT an answer. The collapsible gate reads it
+	 * (having its closing anchor in the run is what lets a quiet run condense),
+	 * while `closingAnswerId` stays null so no caption or stamp claims a
+	 * message the reader was never handed.
+	 */
+	quietCloseId: string | null;
 };
 
 /**
@@ -345,6 +395,7 @@ export function runsOf(rows: Row[]): TurnRun[] {
 		endIndex: span.endIndex,
 		boundary: span.boundary,
 		closingAnswerId: span.closingAnswerId,
+		quietCloseId: span.quietCloseId,
 	}));
 }
 
@@ -576,7 +627,15 @@ export function buildRows(
 				? prior
 				: { record, gap, closesTurn },
 		);
-		previous = record;
+		/*
+		 * A quiet call NEVER becomes `previous`: the row paints nothing
+		 * (`TranscriptRow` drops it), so the row after it must take its gap from
+		 * the last row the reader can actually SEE - exactly the invisible-row
+		 * trap the assistant arm above documents (a minted wrapper for an
+		 * invisible row broke the trace-adjacency chain and spaced two adjacent
+		 * tool rows 48px apart).
+		 */
+		if (!isQuietTurnCall(record)) previous = record;
 	}
 	return rows;
 }

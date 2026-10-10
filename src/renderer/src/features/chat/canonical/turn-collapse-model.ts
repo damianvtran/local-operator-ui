@@ -47,6 +47,11 @@
  * session's shared outcome predicate the day it lands.
  */
 
+import {
+	EMPTY_SENDER,
+	type PeerSender,
+	peerIdentity,
+} from "../components/trace/receipt-row-model";
 import { isPartialDelivery } from "../components/trace/tool-row-model";
 import type { TranscriptDisplayMode } from "../transcript-display-mode";
 import { freezeRecordDeep } from "./record-immutability";
@@ -69,14 +74,18 @@ import {
 	runsOf,
 } from "./transcript-rows";
 import {
+	type QuietGroupFamily,
 	type SegmentSpan,
+	type TriggerKind,
 	type TurnCycle,
 	boundaryKindOf,
+	isQuietTurnCall,
 	isTerminalMarker,
 	labelOfSegment,
 	partitionRun,
 	reportsCompletedThought,
 	segmentIsCompleted,
+	triggerOf,
 } from "./turn-segments";
 
 /**
@@ -168,6 +177,250 @@ export function isFailedCall(record: TranscriptRecord): boolean {
 	return true;
 }
 
+/** ONE QUIET GROUP'S sender entry (design §5, rev 2): the identity line and
+ * how many receipts this sender contributed. */
+export type QuietGroupSender = {
+	/** `peerIdentity`'s own spelling - quoted name, basename, id prefix or pid. */
+	label: string;
+	count: number;
+};
+
+/**
+ * ONE QUIET GROUP (design §5, rev 2): a client-derived fold over a run's
+ * delivery receipts. No wire kind, no capability flag, no server field - the
+ * group is a PURE function of the rows on hand, and the definition is pinned
+ * across surfaces by the shared parity fixture
+ * (`scripts/fixtures/quiet-groups.parity.json`, copied by the native / relay /
+ * TUI slices the same way `format.parity.json` is).
+ *
+ * WHAT IT IS. A maximal run of >= 2 TRIGGER rows (`peer`, `hub_message`,
+ * `wake`, `monitor_prompt`, `job_result`) with nothing the reader can see
+ * between them: a `user` row, a terminal marker (`boundaryKindOf`) or visible
+ * assistant text splits it (`groupSplitterOf`). Tool rows - the quiet call
+ * included - and rows that paint nothing sit inside it. ONE receipt is not a
+ * group at all: its bar keeps the ordinary facts (design §5, sub-case i).
+ *
+ * WHERE THE NAME LIVES: `labelOfSegment` is handed the group and states the
+ * family's plural word; `TurnSummaryFacts.group` carries it to the bar. The
+ * `key` is the group's stable identity (`qg:<first row id>`): rows append at
+ * the tail and the key never moves, so a growing group's bar is never remounted
+ * - the reader's expansion survives the append (the jitter `SegmentPlan.key`'s
+ * rule exists to prevent).
+ *
+ * FACTS FREEZE WHEN THE GROUP CLOSES (the latch, design §5): a closed group's
+ * boundary is fixed - later appends land outside it - so its count, span and
+ * senders cannot move again. The OPEN tail group is the one that grows: its
+ * count increases as receipts arrive while the bar stays a single line.
+ *
+ * HEAD-CUT (the end-loaded rule): a group whose span's head is cut states NO
+ * times (null - the true span is unknowable from the loaded rows) and its count
+ * is a minimum, which the bar states in its own `partial` vocabulary. Facts
+ * come only from rows on hand; no paging, no server field.
+ */
+export type QuietGroup = {
+	/** `qg:<first row id>` - stable across appends (see the doc above). */
+	key: string;
+	/** The family the trigger rows compose; `mixed` when more than one. */
+	family: QuietGroupFamily;
+	/** Trigger rows in the group (>= 2 by construction). */
+	count: number;
+	/** First trigger's instant; null when the span's head is cut (no span to state). */
+	firstTs: number | null;
+	/** Last trigger's instant; null when the span's head is cut. */
+	lastTs: number | null;
+	/**
+	 * Peer-family senders, by count: the top 2, then one aggregate entry whose
+	 * label is `<N> more` for the remaining distinct senders and whose count is
+	 * their receipts. Empty for every other family (the shape is peer-only).
+	 */
+	senders: QuietGroupSender[];
+	/** Non-quiet tool rows in the group. */
+	actions: number;
+	/** Of `actions`, the rows whose outcome is a genuine error (`isFailedCall`). */
+	failed: number;
+	/** It is the tail and no later visible row exists (the group may still grow). */
+	open: boolean;
+	/** Every row of the group, in order. */
+	rowIds: string[];
+};
+
+/** The family a trigger row belongs to; null for `user`, which splits groups. */
+function quietFamilyOf(trigger: TriggerKind): QuietGroupFamily | null {
+	switch (trigger) {
+		case "peer":
+		case "hub_message":
+			return "peer";
+		case "wake":
+			return "wake";
+		case "monitor_prompt":
+			return "monitor";
+		case "job_result":
+			return "job";
+		default:
+			return null;
+	}
+}
+
+/**
+ * Does this row SPLIT a quiet group? The design's boundary vocabulary (§5): a
+ * `user` row splits, a terminal marker splits (completion / `closed` / `retired`
+ * receipts - the same `boundaryKindOf` set that ends turns), and visible
+ * assistant text splits. Everything else - tool rows, quiet calls, rows that
+ * paint nothing - may sit inside.
+ *
+ * THE ASSISTANT ARM IS `paintsSomething`'s own rule, called rather than
+ * respelled: a row that paints no text is invisible, and an invisible row
+ * cannot split what the reader sees as one run of receipts.
+ */
+function groupSplitterOf(record: TranscriptRecord): boolean {
+	if (record.kind === "user") return true;
+	if (boundaryKindOf(record) === "terminal") return true;
+	return record.kind === "assistant" && paintsSomething(record);
+}
+
+/** A trigger row the group COUNTS: every trigger kind but `user`. */
+function isQuietGroupTrigger(record: TranscriptRecord): boolean {
+	const trigger = triggerOf(record);
+	return trigger !== null && trigger !== "user";
+}
+
+/**
+ * The identity a peer receipt contributes to a group's sender summary.
+ *
+ * `peerIdentity` reads a FULL `PeerSender` (the reducer's `peerFields` shape,
+ * every field a string). Hand-built rows - the model suites' fixtures, the
+ * per-pass sweep's mutated records - can carry a partial sender or none at all,
+ * and the derivation must stay TOTAL over the record space rather than take the
+ * plan down: missing fields fill with the ladder's own empties, which lands a
+ * senderless receipt on `another session` exactly as its row would.
+ */
+function quietSenderOf(record: { sender?: PeerSender }): string {
+	return peerIdentity({ ...EMPTY_SENDER, ...(record.sender ?? {}) });
+}
+
+/**
+ * The quiet group a single span IS, or null when the span is not one.
+ *
+ * THE SPAN MUST BE THE WHOLE GROUP (design §5): its neighbours must be
+ * splitters or the list's edges (`quietGroupsOf` builds spans that way), and no
+ * splitter may sit inside. A span that merely OVERLAPS a group - a pinned row
+ * that is not a splitter (a compaction receipt) cuts one in two - refuses here
+ * instead of stating a count over part of something: the bars degrade to their
+ * per-cycle labels, which is the safe direction.
+ *
+ * `spanHeadLoaded` (default true) is the caller's own head-cut verdict for this
+ * span (see `planRun`): false nulls the times and leaves the count a minimum.
+ * `open` (default: the span reaches the list's end) is the tail fact the
+ * growing-group rule reads; `planRun` refines it for a run that is not the
+ * conversation's last.
+ */
+export function quietGroupOfSegment(
+	records: readonly TranscriptRecord[],
+	span: SegmentSpan,
+	options: {
+		spanHeadLoaded?: boolean;
+		open?: boolean;
+	} = {},
+): QuietGroup | null {
+	const headLoaded = options.spanHeadLoaded ?? true;
+	for (let i = span.from; i <= span.to; i += 1) {
+		if (groupSplitterOf(records[i])) return null;
+	}
+	if (span.from > 0 && !groupSplitterOf(records[span.from - 1])) return null;
+	if (span.to + 1 < records.length && !groupSplitterOf(records[span.to + 1])) {
+		return null;
+	}
+	const triggers: TranscriptRecord[] = [];
+	for (let i = span.from; i <= span.to; i += 1) {
+		if (isQuietGroupTrigger(records[i])) triggers.push(records[i]);
+	}
+	if (triggers.length < 2) return null;
+	const first = triggers[0];
+	const last = triggers[triggers.length - 1];
+	let actions = 0;
+	let failed = 0;
+	/* Peer senders keep their first-appearance order for the tie-break below. */
+	const senderCounts = new Map<string, number>();
+	for (let i = span.from; i <= span.to; i += 1) {
+		const record = records[i];
+		if (record.kind === "tool" && !isQuietTurnCall(record)) {
+			actions += 1;
+			if (isFailedCall(record)) failed += 1;
+			continue;
+		}
+		if (record.kind === "peer") {
+			const label = quietSenderOf(record);
+			senderCounts.set(label, (senderCounts.get(label) ?? 0) + 1);
+		}
+	}
+	let family: QuietGroupFamily | null = null;
+	let mixed = false;
+	for (const trigger of triggers) {
+		const triggerFamily = quietFamilyOf(triggerOf(trigger) as TriggerKind);
+		if (triggerFamily === null) continue;
+		if (family === null) family = triggerFamily;
+		else if (family !== triggerFamily) mixed = true;
+	}
+	const familyFinal: QuietGroupFamily = mixed ? "mixed" : (family ?? "mixed");
+	const senders: QuietGroupSender[] = [];
+	if (familyFinal === "peer") {
+		const entries = [...senderCounts.entries()].map(([label, count]) => ({
+			label,
+			count,
+		}));
+		const order = new Map(entries.map((entry, index) => [entry.label, index]));
+		entries.sort(
+			(a, b) =>
+				b.count - a.count ||
+				(order.get(a.label) ?? 0) - (order.get(b.label) ?? 0),
+		);
+		const top = entries.slice(0, 2);
+		if (entries.length > 2) {
+			let rest = 0;
+			for (const entry of entries.slice(2)) rest += entry.count;
+			top.push({ label: `${entries.length - 2} more`, count: rest });
+		}
+		senders.push(...top);
+	}
+	const rowIds: string[] = [];
+	for (let i = span.from; i <= span.to; i += 1) rowIds.push(records[i].id);
+	return {
+		key: `qg:${first.id}`,
+		family: familyFinal,
+		count: triggers.length,
+		firstTs: headLoaded ? first.ts : null,
+		lastTs: headLoaded ? last.ts : null,
+		senders,
+		actions,
+		failed,
+		open: options.open ?? span.to === records.length - 1,
+		rowIds,
+	};
+}
+
+/**
+ * Every quiet group in a records list, in order: the stretches between
+ * splitters, each scored by `quietGroupOfSegment` (so a stretch with fewer than
+ * two triggers yields none). This is the DEFINITION-level entry the shared
+ * parity fixture drives; the UI's own planning asks per segment, which is where
+ * the head-cut and tail facts are known.
+ */
+export function quietGroupsOf(
+	records: readonly TranscriptRecord[],
+): QuietGroup[] {
+	const groups: QuietGroup[] = [];
+	let start = 0;
+	for (let i = 0; i <= records.length; i += 1) {
+		if (i < records.length && !groupSplitterOf(records[i])) continue;
+		if (i > start) {
+			const group = quietGroupOfSegment(records, { from: start, to: i - 1 });
+			if (group !== null) groups.push(group);
+		}
+		start = i + 1;
+	}
+	return groups;
+}
+
 /**
  * The bar's facts, in the order a reader needs them.
  *
@@ -205,6 +458,20 @@ export type TurnSummaryFacts = {
 	firstFailedId: string | null;
 	/** The fold-style class sentence (`foldSummary`), or null with no actions. */
 	title: string | null;
+	/**
+	 * The quiet group this span IS, when it is one (design §5, rev 2): the bar over
+	 * a run of delivery receipts states the family's plural word, the count and the
+	 * receipt span instead of the ordinary duration/action clauses — see
+	 * `QuietGroup` for the facts and `quietGroupOfSegment` for when a span is one.
+	 * Null for every ordinary span, and for a quiet span below the group minimum
+	 * (one receipt is not a group; its bar keeps the ordinary facts).
+	 *
+	 * THE RUN-LEVEL `facts` (the turn's own totals on `RunCollapsePlan`) keep this
+	 * null: a group is a statement about ONE SPAN's rows, and only the span knows
+	 * its own boundary. The suites that read the run-level facts read the turn's
+	 * arithmetic; the group's facts live on the segment the bar stands for.
+	 */
+	group: QuietGroup | null;
 };
 
 /**
@@ -1326,12 +1593,25 @@ function factsOf(
 		partial: boolean;
 		/** Whether the span's own head is loaded (see the duration's gate below). */
 		headLoaded: boolean;
+		/** The quiet group this span IS, when it is one (see `TurnSummaryFacts.group`). */
+		group?: QuietGroup | null;
 	},
 ): TurnSummaryFacts {
+	/*
+	 * THE QUIET CALL IS NOT WORK (design §5(e)): it closes the turn, it is not an
+	 * action inside it, so it is subtracted from both the count and the worked
+	 * sum - the same exclusion core's `without_ask_gate_divert` makes for a divert
+	 * (`harness/rows.py`), and the reason `[peer][tool][no_reply]` states `1
+	 * action` and not two. Filtering the rows ONCE keeps the sum a single spelling
+	 * of `workedSeconds`.
+	 */
+	const workRows = rows.filter(
+		(row) => !(row.record.kind === "tool" && isQuietTurnCall(row.record)),
+	);
 	const actions: FoldableAction[] = [];
 	let failed = 0;
 	let firstFailedId: string | null = null;
-	for (const row of rows) {
+	for (const row of workRows) {
 		if (row.record.kind !== "tool") continue;
 		const failedHere = isFailedCall(row.record);
 		actions.push({ name: ledgerName(row.record), failed: failedHere });
@@ -1340,7 +1620,7 @@ function factsOf(
 			firstFailedId ??= row.record.id;
 		}
 	}
-	const worked = workedSeconds(rows);
+	const worked = workedSeconds(workRows);
 	return {
 		/*
 		 * Shown iff the span's calls reported at least a second - never a `0s`
@@ -1361,6 +1641,7 @@ function factsOf(
 		failed,
 		firstFailedId,
 		title: actions.length > 0 ? foldSummary(actions) : null,
+		group: options.group ?? null,
 	};
 }
 
@@ -1392,7 +1673,12 @@ function factsOf(
  *   `stop` yield, so `[U T T A(stop) T]` has tool work after it and no new trigger,
  *   which `cyclesOf` reads as narration. Without this clause the idle plan
  *   (`U T T A`) condensed the first span and the live plan (`U T T A T`) drew it
- *   in place again - the same flip, with no wake in it.
+ *   in place again - the same flip, with no wake in it;
+ * - a QUIET close (a settled `no_reply`; design §5). It arrives through the cycle
+ *   loop above like any other close - its row is not an assistant, so the
+ *   `toolUse` skip does not apply - and that is the whole mechanism: the tail
+ *   settles (`liveFrom` moves past the quiet row) and the working line retires,
+ *   with nothing claiming an answer was handed over.
  */
 function settledCloseOf(
 	records: readonly TranscriptRecord[],
@@ -1451,6 +1737,19 @@ function planRun(
 	});
 	const answerAt = partition.answer?.closeIndex ?? null;
 	const answerId = answerAt === null ? null : records[answerAt].id;
+	/*
+	 * The run's last settled quiet close, as an index (design §5): the completion
+	 * anchor a bar can lean on where no answer exists, AND the closer position the
+	 * completion mark reads. `-1` from the lookup means the id was not found in
+	 * this run's own records, which cannot happen for an id `runsOf` minted over
+	 * the same rows - the guard is here so a future caller cannot pass a stranger
+	 * in and get an index of `-1` read as "a close before every row".
+	 */
+	const quietCloseAt = (() => {
+		if (run.quietCloseId === null) return null;
+		const at = records.findIndex((record) => record.id === run.quietCloseId);
+		return at === -1 ? null : at;
+	})();
 
 	/* The pre-answer span nearest the answer carries the turn's one stamp. */
 	let nearest = -1;
@@ -1463,7 +1762,15 @@ function planRun(
 	).length;
 	const collapsible =
 		partition.segments.length > 0 &&
-		(run.opensWithUserRow || run.closingAnswerId !== null);
+		(run.opensWithUserRow ||
+			run.closingAnswerId !== null ||
+			/*
+			 * The quiet close is the third closing anchor (design §5(b)): a run that
+			 * handed nothing over still ended, and the gate exists precisely so a run
+			 * with its closing anchor in the list may condense from the loaded span.
+			 * It rides its OWN field, never `closingAnswerId` - see `TurnRun`.
+			 */
+			run.quietCloseId !== null);
 	/*
 	 * Rows at or after this index belong to the cycle still being written; -1
 	 * means nothing is in flight (the pane is not live), so every span may condense.
@@ -1474,24 +1781,55 @@ function planRun(
 		(span: SegmentSpan, i): SegmentPlan => {
 			const segRows = runRows.slice(span.from, span.to + 1);
 			const afterAnswer = answerAt !== null && span.from > answerAt;
-			/* The key's rule (and the aliasing it prevents) is `SegmentPlan.key`'s. */
-			const key = `seg:${
-				afterAnswer
-					? segRows[0].record.id
-					: (runRows[span.to + 1] ?? segRows[segRows.length - 1]).record.id
-			}`;
-
 			/*
-			 * A span whose head is the loaded edge (the head-cut run's first span) states
-			 * no duration; every other span states the worked time of ITS OWN rows, so
-			 * the pre-answer bars add up to the foot's figure.
+			 * THE GROUP, when this span is one (design §5): >= 2 delivery receipts
+			 * with nothing the reader can see between them. `spanHeadLoaded` is this
+			 * span's own head-cut verdict (below), and `open` states whether a LATER
+			 * visible row exists anywhere in the load: only the conversation's last
+			 * run can grow from its tail, so only there can the group still grow.
+			 */
+			/*
+			 * This span's own head-cut verdict: the FIRST span of a run that does not
+			 * open with its user row starts at the loaded edge, not at the turn's own
+			 * beginning - so it states no duration and its counts are minimums, while
+			 * every other span states the worked time of ITS OWN rows (the pre-answer
+			 * bars add up to the foot's figure).
 			 */
 			const headLoaded = !(span.from === 0 && !run.opensWithUserRow);
+			const group = quietGroupOfSegment(records, span, {
+				spanHeadLoaded: headLoaded,
+				open:
+					span.to === records.length - 1 && run.endIndex === rows.length - 1,
+			});
+			/*
+			 * The key's rule (and the aliasing it prevents) is `SegmentPlan.key`'s;
+			 * a GROUP speaks with its own stable key (`qg:<first row>`) so a growing
+			 * tail's bar is never remounted - rows append, the key never moves.
+			 */
+			const key =
+				group !== null
+					? group.key
+					: `seg:${
+							afterAnswer
+								? segRows[0].record.id
+								: (runRows[span.to + 1] ?? segRows[segRows.length - 1]).record
+										.id
+						}`;
 
-			const label = labelOfSegment(records, partition.cycles, span);
+			const label = labelOfSegment(records, partition.cycles, span, group);
+			/*
+			 * A GROUP BAR STAYS A BAR WHILE IT GROWS (design §5, rev 2): the open tail
+			 * group "may increase its count (single-line bar, no geometry change)" -
+			 * so a span that IS a group is exempt from the live split. Without the
+			 * exemption a receipt arriving after the group settled extends the span
+			 * past `liveFrom` and un-condenses ALL of it (every receipt the reader had
+			 * already seen settle unrolling again) - the jitter the group shape exists
+			 * to remove. The rows a group hides are receipts and their calls; the
+			 * working line still states what is being written.
+			 */
 			const collapsedHere =
 				collapsible &&
-				(liveFrom < 0 || span.to < liveFrom) &&
+				(liveFrom < 0 || span.to < liveFrom || group !== null) &&
 				!(
 					focusHold !== null &&
 					!openRuns.has(key) &&
@@ -1511,13 +1849,18 @@ function planRun(
 					span,
 					answerAt,
 					label !== null,
+					quietCloseAt,
 				),
 				collapsed: collapsedHere,
 				stampTs:
 					i === nearest && answerAt !== null && preAnswerCount === 1
 						? records[answerAt].ts
 						: null,
-				facts: factsOf(segRows, { partial: !headLoaded, headLoaded }),
+				facts: factsOf(segRows, {
+					partial: !headLoaded,
+					headLoaded,
+					group,
+				}),
 			};
 		},
 	);

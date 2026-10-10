@@ -7903,3 +7903,73 @@ test("a reconnect seed drops a diverted ask's retained end and suppresses its co
 	);
 	assert.equal(rows[0].phase, "composing");
 });
+
+/* --------------- the quiet turn arrives as ordinary rows (S2) --------------- */
+
+/*
+ * The quiet turn has NO wire kind: core persists `no_reply` as an ordinary
+ * assistant tool call and its tool result, and the reducer's contract is that it
+ * treats them as exactly that. These cases pin "ordinary" - the pair folds with
+ * the same fields any tool row has, live and replayed, and nothing here is
+ * special-cased. The UI hides the row at PAINT and reads its name structurally
+ * (`turn-segments.ts`'s `isQuietTurnCall`); CORE deliberately keeps the name out
+ * of its `HIDDEN_TOOL_NAMES` (rows.py), because history windows subtract that
+ * set and the collapse model needs the row as its structural close.
+ */
+test("a `no_reply` call folds as an ordinary tool row, live and replayed", () => {
+	let live = EMPTY_TRANSCRIPT;
+	live = applyEvent(
+		live,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-quiet",
+			tool_name: "no_reply",
+			args: {},
+		},
+		10,
+	);
+	live = applyEvent(
+		live,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-quiet",
+			tool_name: "no_reply",
+			result: { content: [{ type: "text", text: "Quiet." }] },
+			is_error: false,
+			duration_s: 0.01,
+		},
+		11,
+	);
+	const [liveRow] = toolRows(live);
+	assert.equal(liveRow.toolName, "no_reply");
+	assert.equal(liveRow.phase, "done");
+	assert.equal(liveRow.isError, false);
+	assert.equal(liveRow.durationS, 0.01);
+	/*
+	 * The durable replay: the same pair read off a history page. The facts the
+	 * quiet-close rule reads (name, phase) are identical - the row is the same
+	 * row, and a reload does not degrade it.
+	 */
+	const durable = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "e-quiet",
+				ts: 20,
+				type: "message",
+				payload: {
+					kind: "message",
+					role: "tool",
+					tool_call_id: "c-quiet",
+					tool_name: "no_reply",
+					content: [{ type: "text", text: "Quiet." }],
+					provider_payload: { duration_s: 0.01, details: {} },
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const [durableRow] = toolRows(durable);
+	assert.equal(durableRow.toolName, "no_reply");
+	assert.equal(durableRow.phase, "done");
+});
