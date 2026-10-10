@@ -850,8 +850,10 @@ export const STORIES = [
 	 *   capture of this app, downscaled to the fixture size. A text-heavy
 	 *   screenshot at 96px wide is a smear, and the frame says so.
 	 * - `image-tones` is D2's defect case in both palettes at once - each tile
-	 *   holds a picture whose own canvas IS the page's ground, so the tile's edge
-	 *   is the only thing that gives it an extent.
+	 *   holds a picture whose own canvas IS the page's ground, so the tile's extent
+	 *   was the edge's alone, the case the `mediaSurface` fill role now answers
+	 *   (this cell's committed frames predate the role; the before/after pair is
+	 *   the `chat-media-slot-fill` set).
 	 * - `image-unavailable` is the compact receipt, the one tile state whose SHAPE
 	 *   is new (prose would blow the 78px strip - it was 66px before the tile
 	 *   grew).
@@ -1607,6 +1609,57 @@ export const STORIES = [
 	 * margin, and the widest step of all, which the change does NOT move.
 	 */
 	["chat-canonical-message-surface--user-turn", 1024, 560],
+	/*
+	 * THE MEDIA TILE'S OWN SURFACE (the borderless tile's fill role). The tile is
+	 * BORDERLESS AT REST, so its extent is its fill, and the shared `sunken` well
+	 * measured as low as 2.00 ΔE00 off the canvas (iceberg, `neonNoir`) - this row
+	 * is the AFTER half of the pair its fill is judged on; the BEFORE half is the
+	 * declared supplementary set `../chat-media-slot-fill-before/` - the same
+	 * story on the pre-change tree, its title suffixed `before` for the run so the
+	 * ids land in their own surface directory. Five themes only, chosen from the
+	 * audit's extremes rather than taste (the story's own docblock carries the
+	 * picks): the two worst steps in the fleet, the brand pair the loss was
+	 * measured on, and one palette that already clears the floor, so the pair
+	 * shows both that the fill moves what fails it and that it leaves what already
+	 * clears it alone.
+	 */
+	["chat-media-slot-fill--rest", 1280, 200],
+	/*
+	 * ROUND 1'S REMEDIATION STATES, both capture-only additions (design round 1
+	 * D1/D2, the reviewer's NIT-2). `letterbox-hover` is the RETURNING EDGE on
+	 * the letterboxed portrait - the rig moves the real pointer onto the third
+	 * tile of the resting story, and the palette is `catppuccinLatte` on purpose:
+	 * it is where `border-control` against the new fill is weakest (2.78:1), so
+	 * the frame is the stress case rather than a comfortable one (the edge's own
+	 * 3:1 is the ground's pairing - see the role's doc). `mixed-row` is the
+	 * failed tile's receipt (edge + `sunken`) BETWEEN two working tiles, in the
+	 * two palettes the design round named, so the fill step the receipt's edge
+	 * masks is on the record as a frame.
+	 *
+	 * The set's states now carry different palette lists (rest: five;
+	 * `letterbox-hover`: `catppuccinLatte`; `mixed-row`: `catppuccinLatte` +
+	 * `localOperatorDark`), which is why the set is NOT in `SET_BUDGETS` - the
+	 * table's one-list-per-set shape cannot express it (the class its header
+	 * names) - and the set README documents each state's own command.
+	 */
+	[
+		"chat-media-slot-fill--rest",
+		1280,
+		200,
+		{
+			hover: "[data-fold-media] li:nth-child(3) button",
+			dir: "letterbox-hover",
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"chat-media-slot-fill--mixed-row",
+		1280,
+		200,
+		{
+			expectPresent: '[role="img"][aria-label*="stored copy is not available"]',
+		},
+	],
 	/*
 	 * THE MARKDOWN TABLE'S COLUMN WIDTHS (operator report, 2026-09-30): a table
 	 * the agent wrote into an answer rendered with its short columns squeezed

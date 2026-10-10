@@ -44,7 +44,7 @@ graph LR
 ```
 
 - **`src/renderer/src/shared/themes/palettes/*.ts`** — the single source of
-  truth. Fifty-nine `ThemePalette` objects, 36 roles each, every value a literal
+  truth. Fifty-nine `ThemePalette` objects, 38 roles each, every value a literal
   string.
 - **MUI** consumes them as hex, because roughly 299 `alpha()` call sites need a
   real colour and cannot take a `var()`. This half shrinks as the port
@@ -148,6 +148,28 @@ themes". 4.0 sits at or below the step the same column's composer carries
 `catppuccinFrappe`'s block steps 4.26 against its composer's 4.23, 0.03 over and
 below any perceptual step - so the block reads as the quietest object on the
 screen, that single exception stated rather than rounded away.
+
+**The media tile's fill is a role of its own.** `media-surface` is the borderless
+condensed strip tile's ground — not a fifth ground and not a state: the tile draws
+**no edge at rest** (the ring went at the operator's ask; it returns only on hover
+and keyboard focus, the states in which the tile is a control), so the fill **is**
+the tile's extent — and the shared `sunken` well could not carry it, measuring below
+ΔE00 4.0 off the canvas on **55 of the 59** palettes and bottoming at **2.00**
+(`iceberg`, `neonNoir`; the 56th mover, `synth`, clears ΔE00 9.03 and moves for the
+lightness half alone), which is the tile a page-toned picture had. It carries its
+own findability floor — **ΔE00 4.0 off the canvas** it is drawn on, with a **≥ 2.5
+`L*`** step in magnitude — authored as the first clearing step along `canvas` →
+`sunken` continued **away from the canvas** (the palette's own recessed ramp), or
+`sunken` itself where that already clears the floor (three palettes: `ayuMirage`,
+`duskfox`, `forest`). The direction is the object: a slot is a well, so its fill
+deepens away from canvas; stepping up the ladder would cross `canvas` and make it a
+raised plate. 4.0 is the floor for the smallest mark the eye must find, and at a
+picture that fills the slot the well's whole visible extent IS that small — a ~1px
+ring at the picture's edge and corners — which is why the 1px-mark floor is the
+right one rather than the field floor. The returning edge (`border-control`, ≥ 3:1
+on every ground — the OUTER pairing, the side the silhouette is read against;
+against the fill it measures below 3:1 on ten light palettes and is deliberately
+not asserted, see the role's doc) stays the stronger, state-only cue.
 
 There are **two state roles, and each is a rung of the panel's own ladder**: `rowHover`,
 the fill of the row under the pointer, and `rowSelected`, the fill of the row the
@@ -548,6 +570,7 @@ the weakest pair anywhere in the system is sage at 8.4.
 | Any adjacent ground pair | ΔE00 2.0 |
 | The user message block's fill (`message-surface`) off the canvas it is drawn on | ΔE00 4.0, and a ≥ 2.5 `L*` step |
 | `ink` / `ink-muted` / `ink-dim` on the user message block's fill | 7:1 / 5.5:1 / 5.0:1 |
+| The media tile's fill (`media-surface`) off the canvas it is drawn on | ΔE00 4.0, and a ≥ 2.5 `L*` step |
 | The palette/picker active row (`sunken`) against the dialog's `elevated` | ΔE00 3.0, and a ≥ 2 `L*` step |
 | `accent-wash` against every ground it is painted on | ΔE00 2.0 |
 | The keycap's ground (`sunken`) against every ground it can be painted on | ΔE00 2.0 (the two row roles are withdrawn from this pair: a backdrop-relative fill IS a rung of the ladder, and the cap carries no fill of its own any more) |
