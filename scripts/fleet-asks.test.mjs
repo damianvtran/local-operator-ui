@@ -670,10 +670,25 @@ test("the asks door left the sidebar for the conversation header, and then for t
 		/data-tour-tag="ask-pane-trigger"/,
 		"the rail no longer carries the asks item, which is the door the selector above names.",
 	);
+	/*
+	 * WHERE THE PRESS LIVES MOVED (issue #928), WHAT IT DOES DID NOT: the rail's
+	 * ask item now presses through the shared toggle (`panel-rail-actions.ts`)
+	 * that the keyboard chord runs too, so the scan follows the sequence to its
+	 * one home and pairs it with the rail's call - the door must still arrive
+	 * from the rail item, in the ITEM's own scope.
+	 */
+	const railActions = read(
+		"src/renderer/src/shared/components/navigation/panel-rail-actions.ts",
+	);
+	assert.match(
+		railActions,
+		/setAskDrawerOpen\(\s*!\(state\.isAskDrawerOpen && state\.askDrawerScope === context\.askScope\),\s*context\.askScope,\s*\)/,
+		"the shared toggle must be the header trigger's old door: a toggle in the ITEM's own scope (this scope open closes; the other scope's open is replaced).",
+	);
 	assert.match(
 		rail,
-		/setAskDrawerOpen\(\s*!\(isAskDrawerOpen && askDrawerScope === askScope\),\s*askScope,/,
-		"the rail press must be the header trigger's old door: a toggle in the ITEM's own scope (this scope open closes; the other scope's open is replaced).",
+		/togglePanelRailItem\("ask", actionContext\)/,
+		"the rail's asks item must press through the shared toggle, so the item and the chord run one path.",
 	);
 	const content = read(
 		"src/renderer/src/features/chat/components/chat-content.tsx",
