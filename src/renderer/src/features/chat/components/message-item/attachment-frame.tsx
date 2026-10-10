@@ -53,7 +53,7 @@ export type AttachmentFrameProps = {
 	 * the tile's extent at rest is its own fill, and the shared `sunken` step could
 	 * not carry it: a picture whose own canvas is the page's tone has ~1.0:1
 	 * against the page (the `image-tones` fixtures), the well behind it measured
-	 * ~1.07:1, and as a ΔE00 step the shared well fell below 4.0 on 56 of the 59
+	 * ~1.07:1, and as a ΔE00 step the shared well fell below 4.0 on 55 of the 59
 	 * palettes - as low as 2.00 (iceberg, `neonNoir`). The `control` boundary
 	 * therefore wears `mediaSurface`, the role authored for exactly this slot:
 	 * `sunken` stepped away from `canvas` until the fill clears a ΔE00 4.0 floor
@@ -61,7 +61,15 @@ export type AttachmentFrameProps = {
 	 * picture's tile separates at rest - by the ~1px ring the well shows at a
 	 * filling picture's edge and corners, and by the letterbox mats a contained
 	 * portrait sits between. `border-control` remains the stronger cue and still
-	 * returns where the tile is a control (hover, keyboard focus).
+	 * returns where the tile is a control (hover, keyboard focus). THE RETURNING
+	 * EDGE'S 3:1 IS THE GROUND'S, NOT THE FILL'S (design round 1, D1):
+	 * `border-control` is asserted against the four grounds - >= 3.01 measured
+	 * across the fleet, and the outer side is the side the tile's silhouette is
+	 * read against - and deliberately NOT against `mediaSurface`, where it
+	 * measures below 3:1 on 10 light palettes (2.78 worst, `catppuccinLatte`);
+	 * no floor or claim is attached to that inner pair.
+	 * `docs/evidence/chat-media-slot-fill/letterbox-hover/` carries the hovered
+	 * state as a frame.
 	 */
 	boundary?: "hairline" | "control";
 } & Omit<ComponentPropsWithoutRef<"div">, "children" | "className">;

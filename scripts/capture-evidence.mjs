@@ -1625,6 +1625,42 @@ export const STORIES = [
 	 */
 	["chat-media-slot-fill--rest", 1280, 200],
 	/*
+	 * ROUND 1'S REMEDIATION STATES, both capture-only additions (design round 1
+	 * D1/D2, the reviewer's NIT-2). `letterbox-hover` is the RETURNING EDGE on
+	 * the letterboxed portrait - the rig moves the real pointer onto the third
+	 * tile of the resting story, and the palette is `catppuccinLatte` on purpose:
+	 * it is where `border-control` against the new fill is weakest (2.78:1), so
+	 * the frame is the stress case rather than a comfortable one (the edge's own
+	 * 3:1 is the ground's pairing - see the role's doc). `mixed-row` is the
+	 * failed tile's receipt (edge + `sunken`) BETWEEN two working tiles, in the
+	 * two palettes the design round named, so the fill step the receipt's edge
+	 * masks is on the record as a frame.
+	 *
+	 * The set's states now carry different palette lists (rest: five;
+	 * `letterbox-hover`: `catppuccinLatte`; `mixed-row`: `catppuccinLatte` +
+	 * `localOperatorDark`), which is why the set is NOT in `SET_BUDGETS` - the
+	 * table's one-list-per-set shape cannot express it (the class its header
+	 * names) - and the set README documents each state's own command.
+	 */
+	[
+		"chat-media-slot-fill--rest",
+		1280,
+		200,
+		{
+			hover: "[data-fold-media] li:nth-child(3) button",
+			dir: "letterbox-hover",
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"chat-media-slot-fill--mixed-row",
+		1280,
+		200,
+		{
+			expectPresent: '[role="img"][aria-label*="stored copy is not available"]',
+		},
+	],
+	/*
 	 * THE MARKDOWN TABLE'S COLUMN WIDTHS (operator report, 2026-09-30): a table
 	 * the agent wrote into an answer rendered with its short columns squeezed
 	 * to a few pixels - the reported cells `#684 (1a)` and `MERGED f11952f1d2`
