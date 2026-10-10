@@ -137,6 +137,56 @@ export const providerListingNotice = (drawnFromRegistry: boolean): string =>
 		drawnFromRegistry ? "the shipped models" : "the last listing that answered"
 	}; Refresh\u00a0from\u00a0providers tries again.`;
 
+/**
+ * The document the picker DRAWS, and whether it is a registry read.
+ *
+ * The draw order is the live answer when there is one — a failed SAME-KEY
+ * refetch keeps `data`, so a failure does not necessarily empty this slot —
+ * the current scope's registry read otherwise, then the held USABLE document:
+ * the answer the default view was drawing, kept so a failed reveal degrades to
+ * the rows the user pressed the control on rather than to a wall of text
+ * (agent review round 1, R1-2). Its registry twin is the last resort, for the
+ * state where the live answer never landed (a failed provider listing, where
+ * the registry rows stand alone).
+ *
+ * `drawnFromRegistry` says which sentence the failure note must print
+ * (`providerListingNotice`): true exactly when the drawn document IS a registry
+ * read — this scope's registry or the held usable one — and false when it is a
+ * live answer or the held copy of one. Selection and provenance live in one
+ * function so a refactor cannot keep the note's text while breaking its meaning
+ * (agent review round 2, M1 — the held registry document was being drawn under
+ * a sentence about the last listing; the same rule for the same-key case was
+ * round 2 code review R2-1).
+ */
+export function drawnCatalogue(input: {
+	catalogue?: DesktopModelCatalogue;
+	registry?: DesktopModelCatalogue;
+	usable?: DesktopModelCatalogue;
+	registryUsable?: DesktopModelCatalogue;
+	showAll: boolean;
+}): {
+	document: DesktopModelCatalogue | undefined;
+	drawnFromRegistry: boolean;
+} {
+	const heldUsable = input.showAll ? input.usable : undefined;
+	const heldRegistry =
+		input.showAll && input.usable === undefined
+			? input.registryUsable
+			: undefined;
+	const document =
+		input.catalogue ?? input.registry ?? heldUsable ?? heldRegistry;
+	/*
+	 * Identity comparisons rather than a second boolean threaded beside the
+	 * document: the two cannot drift out of step about the same value, and a
+	 * held copy of a LIVE answer is named for what it is.
+	 */
+	const drawnFromRegistry =
+		input.catalogue === undefined &&
+		document !== undefined &&
+		(document === input.registry || document === heldRegistry);
+	return { document, drawnFromRegistry };
+}
+
 /** The scope a catalogue can be asked for — the wire's own two values. */
 export type CatalogueScope = "usable" | "all";
 

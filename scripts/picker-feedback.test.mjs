@@ -129,6 +129,7 @@ const {
 	catalogueListing,
 	catalogueSelectorOf,
 	connectProviderForSelector,
+	drawnCatalogue,
 	failedProviders,
 	providerListingNotice,
 	rowAuthOf,
@@ -136,7 +137,7 @@ const {
 } = await bundleInto(
 	"catalogue-listing",
 	`
-	export { catalogueListing, catalogueSelectorOf, connectProviderForSelector, failedProviders, providerListingNotice, rowAuthOf, scopeCatalogue } from "./src/renderer/src/features/chat/pickers/model-catalogue-listing";
+	export { catalogueListing, catalogueSelectorOf, connectProviderForSelector, drawnCatalogue, failedProviders, providerListingNotice, rowAuthOf, scopeCatalogue } from "./src/renderer/src/features/chat/pickers/model-catalogue-listing";
 `,
 );
 
@@ -888,6 +889,120 @@ test("a failed read with rows in hand is a note, not a wall of error text", () =
 	assert.match(emptyRows.loadError ?? "", /transport refused/);
 });
 
+test("the reveal's failed read draws the document the user was looking at", () => {
+	/*
+	 * Agent review round 2, M1 and M2, EXECUTED rather than pinned: M2's point
+	 * was that the failed-reveal semantics were covered by a regex over source
+	 * text, which a refactor can keep while breaking the meaning. The two facts
+	 * that matter are which document is drawn and which sentence the note
+	 * prints, and both now come from `drawnCatalogue` — the function the picker
+	 * itself draws through — so this drives it in each state that can reach it.
+	 */
+	const stringify = (error) =>
+		error instanceof Error ? error.message : String(error);
+	const registryUsable = {
+		models: [{ provider: "anthropic", model_id: "claude-opus-5" }],
+		source: "initial",
+		errors: {},
+		credentials_known: true,
+	};
+	const liveUsable = {
+		...registryUsable,
+		source: "live",
+		models: [{ provider: "anthropic", model_id: "claude-opus-5-5" }],
+	};
+	const failedReveal = {
+		isError: true,
+		error: new Error("the reveal failed"),
+	};
+	/*
+	 * THE M1 CASE: after the automatic promotion the user was looking at the
+	 * LIVE answer, so that is the document a failed reveal must keep — held
+	 * from the registry key instead, the picker drew shipped models under a
+	 * sentence about "the last listing that answered".
+	 */
+	const heldLive = drawnCatalogue({
+		catalogue: undefined,
+		registry: undefined,
+		usable: liveUsable,
+		registryUsable,
+		showAll: true,
+	});
+	assert.equal(heldLive.document, liveUsable);
+	assert.equal(heldLive.drawnFromRegistry, false);
+	assert.match(
+		catalogueListing(
+			heldLive.document,
+			failedReveal,
+			stringify,
+			heldLive.drawnFromRegistry,
+		).notice ?? "",
+		/the last listing that answered/,
+	);
+	/*
+	 * And the hole the old fallback left behind: when the live answer never
+	 * landed (a failed provider listing — the `live-listing-failed` frame), the
+	 * registry twin stands in, and the note must say what those rows ARE —
+	 * shipped models — rather than call them an answer that never came.
+	 */
+	const heldRegistry = drawnCatalogue({
+		catalogue: undefined,
+		registry: undefined,
+		usable: undefined,
+		registryUsable,
+		showAll: true,
+	});
+	assert.equal(heldRegistry.document, registryUsable);
+	assert.equal(heldRegistry.drawnFromRegistry, true);
+	assert.match(
+		catalogueListing(
+			heldRegistry.document,
+			failedReveal,
+			stringify,
+			heldRegistry.drawnFromRegistry,
+		).notice ?? "",
+		/the shipped models/,
+	);
+	/*
+	 * The ordinary precedence, unchanged: the live answer wins; the current
+	 * scope's registry stands in for a pre-reveal live failure (round 2, code
+	 * review R2-1) and is NAMED as the registry; and a held document is only
+	 * ever consulted while the wider list is shown.
+	 */
+	assert.equal(
+		drawnCatalogue({
+			catalogue: liveUsable,
+			registry: registryUsable,
+			usable: liveUsable,
+			registryUsable,
+			showAll: true,
+		}).document,
+		liveUsable,
+	);
+	const preReveal = drawnCatalogue({
+		catalogue: undefined,
+		registry: registryUsable,
+		usable: undefined,
+		registryUsable: undefined,
+		showAll: false,
+	});
+	assert.equal(preReveal.document, registryUsable);
+	assert.equal(preReveal.drawnFromRegistry, true);
+	const defaultView = drawnCatalogue({
+		catalogue: liveUsable,
+		registry: undefined,
+		usable: liveUsable,
+		registryUsable,
+		showAll: false,
+	});
+	assert.equal(defaultView.document, liveUsable);
+	assert.equal(
+		defaultView.drawnFromRegistry,
+		false,
+		"a live document is never called the shipped models",
+	);
+});
+
 test("the body's four states are ordered, and a note is not one of them", () => {
 	assert.equal(
 		pickerBodyKind({ loading: true, loadError: "x", rowCount: 3 }),
@@ -1238,15 +1353,20 @@ test("the round-1 remediation's decisions are pinned where they live", () => {
 		/known && !row\.connected \? ", no credential"/,
 		"the old caveat expression cannot come back beside the shared one",
 	);
-	// R1-2: the reveal's failed read degrades to the rows the dialog had.
+	// R1-2: the reveal's failed read degrades to the rows the dialog had —
+	// re-pointed in the close-out round, because selection and provenance now
+	// come from `drawnCatalogue`, their one home (agent review round 2, M1/M2),
+	// and the executed half lives in its own test above.
 	assert.match(
 		picker,
-		/catalogue\.data \?\?\s*\n\s*registry\.data \?\?\s*\n\s*\(showAll \? usableDocument\.data : undefined\);/,
+		/const drawn = drawnCatalogue\(\{\s*\n\s*catalogue: catalogue\.data,/,
 	);
-	// R1-3: the count's own document stays observable while the wider list is shown.
+	assert.match(picker, /drawn\.drawnFromRegistry,/);
+	// R1-3: the count's own document stays observable while the wider list is
+	// shown — the LIVE entry (M4: the same source the printed number came from).
 	assert.match(
 		picker,
-		/queryKey: \[\.\.\.desktopKeys\.catalogue, false, "usable"\]/,
+		/queryKey: \[\.\.\.desktopKeys\.catalogue, live, "usable"\]/,
 	);
 	assert.match(picker, /enabled: showAll/);
 	// D2/Q-1: the option carries what a pick does, read off the one auth answer.
@@ -1270,6 +1390,49 @@ test("the round-1 remediation's decisions are pinned where they live", () => {
 	// U1: focus returns to where the Connect started.
 	assert.match(dialog, /onCloseAutoFocus/);
 	assert.match(dialog, /opener\.current/);
+});
+
+test("the close-out round's decisions are pinned where they live", () => {
+	/*
+	 * Same discipline as the round-1 pin above: one pin per decision a later
+	 * edit could quietly revert, read from the file that owns it.
+	 */
+	const picker = source("features/chat/pickers/destination-pickers.tsx");
+	const composer = source("shared/components/composer/message-input.tsx");
+	const slash = source("features/chat/components/slash-commands.tsx");
+
+	// M1: the held document is the LIVE usable entry — the answer the user was
+	// looking at — with the registry read enabled only to fill the hole where
+	// that never landed (M4: the count's observer reads the same source the
+	// printed number came from).
+	assert.match(
+		picker,
+		/queryKey: \[\.\.\.desktopKeys\.catalogue, live, "usable"\]/,
+	);
+	assert.match(
+		picker,
+		/enabled: showAll && usableDocument\.data === undefined/,
+	);
+	assert.match(picker, /live,\s*\n\s*scope: "usable",/);
+	assert.match(picker, /const catalogueDocument = drawn\.document;/);
+
+	// D7: the band yields only where the callout OWNS the sign-in (its own
+	// `Sign in`/`Retry`, or a flow in flight), not for refusals or
+	// `input-required`, where the band's `Switch model` is the only one there is.
+	assert.match(composer, /radientCalloutOwnsTheSignIn\(radientIssue\.issue\)/);
+	assert.doesNotMatch(
+		composer,
+		/bandYieldsToRadientIssue\(\s*\n?\s*modelAccess,\s*\n?\s*radientIssue\.issue\.kind !== "hidden"/,
+		"the all-kinds yield cannot come back",
+	);
+
+	// U4: the inline footer's connect sentence reads the same resolver the
+	// submission's interception does, over the same table.
+	assert.match(
+		slash,
+		/connectProviderForSelector\(\s*state\.argumentList\.rows, activeArgument\.value\)/,
+	);
+	assert.match(slash, /connect: activeConnectProvider,/);
 });
 
 test("the picker lists the providers by itself, on the backend's cadence", () => {
@@ -1350,8 +1513,8 @@ test("the picker lists the providers by itself, on the backend's cadence", () =>
 	);
 	assert.match(
 		picker,
-		/const catalogueDocument =\s*\n\s*catalogue\.data \?\?\s*\n\s*registry\.data \?\?\s*\n\s*\(showAll \? usableDocument\.data : undefined\);/,
-		"the picker draws the live answer when it has one, the registry's own document otherwise, and the held usable document last, which is what keeps the painted rows through a failed live read (review round 1, R1-1; extended by round 1's R1-2 for the reveal's failed read)",
+		/const catalogueDocument = drawn\.document;/,
+		"the picker draws what `drawnCatalogue` selected — the live answer, the registry's own document, the held live-usable document, then its registry twin — which is what keeps painted rows through a failed read (round 1 R1-1/R1-2; re-pointed in the close-out round, M1)",
 	);
 });
 

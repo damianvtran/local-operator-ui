@@ -9053,6 +9053,11 @@ export const STORIES = [
 	["chat-slash-completion--argument-phase-empty", 768, 300],
 	/* The shed order under pressure: numbers dropped, name kept. */
 	["chat-slash-completion--argument-phase-narrow-composer", 378, 300],
+	/* A pick that CONNECTS: the `/model` list's needs-sign-in row and the connect
+	   footer on both lines (U4, the inline counterpart of the dialog's D2
+	   frame), with the longer completing sentence at the narrowest supported
+	   width as the second case. */
+	["chat-slash-completion--argument-phase-needs-sign-in", 980, 620],
 	/* A command typed into a sentence, the list above the prose. */
 	/* The mid-draft state round-1 D1 judged AND the state the fix puts in its
 	   place, as the two cases of one board — the after-picture is absence, and a

@@ -115,6 +115,7 @@ import {
 	type CatalogueScope,
 	type RowAuth,
 	catalogueListing,
+	drawnCatalogue,
 	rowAuthOf,
 	scopeCatalogue,
 	catalogueSelectorOf as selectorOf,
@@ -849,7 +850,8 @@ export const ModelPicker: FC<PickerContext> = ({
 	/*
 	 * THE USABLE DOCUMENT, KEPT ACTIVE WHILE THE WIDER LIST IS SHOWN — one
 	 * observer serving the two readings that could otherwise go stale together
-	 * (agent review round 1, R1-2 and R1-3).
+	 * (agent review round 1, R1-2 and R1-3), re-pointed at the LIVE entry by
+	 * agent review round 2 (M1/M4).
 	 *
 	 * R1-2, THE FALLBACK: a failed `Show all` read had nothing behind it. The
 	 * reveal is a KEY CHANGE ([…, "usable"] -> […, "all"]), `keepPreviousData`
@@ -858,24 +860,49 @@ export const ModelPicker: FC<PickerContext> = ({
 	 * entry was ever written and `catalogueListing`'s `isError` branch put the
 	 * error text where the rows had been, over a dialog that had rows a moment
 	 * earlier (its own docstring's rule: a failed read is only a wall of text
-	 * when there is nothing to draw). The rows it had are THIS document's, so
-	 * holding it is what makes the reveal's failure degrade to the list the user
-	 * was looking at plus the existing listing-failed note.
+	 * when there is nothing to draw).
 	 *
-	 * R1-3, THE COUNT: the control prints `hidden` from a `usable` answer, and
+	 * M1, WHICH entry: the answer the user was LOOKING AT is the LIVE one once
+	 * the automatic promotion has run — the first version held the `[false,
+	 * "usable"]` registry entry, so after live promotion a failed reveal drew
+	 * the shipped models under a note calling them "the last listing that
+	 * answered". Keying this observer on `live` matches the entry to the
+	 * document the default view was drawing, including the pre-promotion
+	 * window, where `live` is still false and the two are the same document.
+	 *
+	 * M4, THE COUNT: the control prints `hidden` from a `usable` answer, and
 	 * while the wider list is shown the ACTIVE catalogue query is the `all` one —
 	 * so a credential-change invalidation refetched everything except the
 	 * document the number comes from, and the kept label could outlive the state
-	 * it describes ("2 need sign-in" over a row that just connected). Active
-	 * here, the same invalidation refreshes it, and the effect below feeds the
-	 * refreshed number to the control.
-	 *
-	 * `enabled: showAll` and the registry observer's `staleTime`, so the three
-	 * readers of this entry cannot disagree about freshness. It never fetches
-	 * while the default view is shown — the catalogue query above owns the
-	 * registry fetch there, and this is merely its cache entry.
+	 * it describes ("2 need sign-in" over a row that just connected). This
+	 * observer IS the live entry the default view's number came from, so the
+	 * refreshed number below cannot flip sources; `enabled: showAll` and the
+	 * registry observer's `staleTime`, so the readers of this entry cannot
+	 * disagree about freshness. It never fetches while the default view is
+	 * shown — the catalogue query above owns that entry there.
 	 */
 	const usableDocument = useQuery({
+		queryKey: [...desktopKeys.catalogue, live, "usable"],
+		queryFn: () =>
+			desktopResult<DesktopModelCatalogue>({
+				op: "models.catalogue",
+				live,
+				scope: "usable",
+			}),
+		enabled: showAll,
+		staleTime: 60_000,
+	});
+	/*
+	 * THE REGISTRY READING OF THE SAME ENTRY, as the fallback's fallback: the
+	 * state where the live answer never landed (a failed provider listing — the
+	 * `live-listing-failed` frame, where the registry rows stand alone) leaves
+	 * `[true, "usable"]` empty, so a failed reveal there still needs SOMETHING
+	 * to draw. Enabled only while that hole exists and the wider list is shown,
+	 * so in the ordinary flow it never fetches and stays what the pre-promotion
+	 * paint already wrote; when enabled, react-query serves its cache entry or
+	 * refetches it on the usual freshness rules.
+	 */
+	const usableRegistryDocument = useQuery({
 		queryKey: [...desktopKeys.catalogue, false, "usable"],
 		queryFn: () =>
 			desktopResult<DesktopModelCatalogue>({
@@ -883,20 +910,23 @@ export const ModelPicker: FC<PickerContext> = ({
 				live: false,
 				scope: "usable",
 			}),
-		enabled: showAll,
+		enabled: showAll && usableDocument.data === undefined,
 		staleTime: 60_000,
 	});
 	/*
-	 * What the picker DRAWS, which is the live answer when there is one, the
-	 * registry's document otherwise, and the held usable document last: a failed
-	 * live read falls back to the rows the dialog opened on rather than to
-	 * nothing, and a failed REVEAL falls back to the rows it was drawing when the
-	 * user pressed the control (R1-2).
+	 * What the picker DRAWS, and whether that is a registry read — the selection
+	 * and the provenance from ONE place (`drawnCatalogue`), because the note's
+	 * sentence has to describe the document that actually stands in (round 2
+	 * code review R2-1 for the same-key case, M1 for the held registry one).
 	 */
-	const catalogueDocument =
-		catalogue.data ??
-		registry.data ??
-		(showAll ? usableDocument.data : undefined);
+	const drawn = drawnCatalogue({
+		catalogue: catalogue.data,
+		registry: registry.data,
+		usable: usableDocument.data,
+		registryUsable: usableRegistryDocument.data,
+		showAll,
+	});
+	const catalogueDocument = drawn.document;
 	/*
 	 * Only a LIVE fetch says the listing is running: it is the one that re-lists the
 	 * providers, whichever started it - the automatic promotion above or the
@@ -1039,19 +1069,16 @@ export const ModelPicker: FC<PickerContext> = ({
 	}, [catalogueDocument, scoped, shownSelector]);
 
 	/*
-	 * Which document was actually drawn, for the failure note's provenance clause:
-	 * the live answer when the live query has one - a failed SAME-KEY refetch keeps
-	 * `data`, which is how the note came to claim the rows below were the shipped
-	 * models while it was drawing a provider's own (round 2, code review R2-1) -
-	 * the registry's document when that is what stands in, and NOT the held usable
-	 * document: rows kept from the default view are "the last listing that
-	 * answered", not this scope's shipped registry (round 1, R1-2's fallback).
+	 * The listing call takes the provenance `drawnCatalogue` decided above — one
+	 * place pairs the document with its sentence, so the note cannot keep its
+	 * text while describing a different document (round 1 R1-2's fallback,
+	 * round 2 code review R2-1, agent review round 2 M1).
 	 */
 	const listing = catalogueListing(
 		catalogueDocument,
 		catalogue,
 		errorText,
-		catalogue.data === undefined && registry.data !== undefined,
+		drawn.drawnFromRegistry,
 	);
 
 	/*
@@ -1084,13 +1111,14 @@ export const ModelPicker: FC<PickerContext> = ({
 		if (hiddenOnWire !== null) setLastHidden(hiddenOnWire);
 	}, [hiddenOnWire]);
 	/*
-	 * R1-3's refresh half: the observer above is ACTIVE while the wider list is
-	 * shown, so a credential-change invalidation refetches the document the
-	 * count comes from, and the refreshed `hidden` lands here without the user
-	 * having to untick the control. A `usable` answer's number describes the
-	 * rows exactly when it is fetched — after a sign-in it drops, and the label
-	 * that says "2 need sign-in" stops being true of a list where one of them
-	 * just connected.
+	 * R1-3's refresh half (M4: from the SAME source the number came from): the
+	 * observer above is the live `usable` entry while the wider list is shown —
+	 * exactly what the default view's number was read off — so a
+	 * credential-change invalidation refetches the document the count comes from,
+	 * and the refreshed `hidden` lands here without the user having to untick the
+	 * control. A `usable` answer's number describes the rows exactly when it is
+	 * fetched — after a sign-in it drops, and the label that says "2 need
+	 * sign-in" stops being true of a list where one of them just connected.
 	 */
 	useEffect(() => {
 		const hidden = usableDocument.data?.hidden;
