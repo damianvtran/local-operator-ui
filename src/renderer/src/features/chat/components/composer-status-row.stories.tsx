@@ -36,15 +36,21 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { useEffect, useRef, useState } from "react";
+import { type FC, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import "../../../styles/index.css";
+import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { MessageInput } from "@shared/components/composer/message-input";
 import { cn } from "@shared/lib/utils";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { DesktopLoopState } from "../../../../../../src/shared/desktop-control-contract";
 import type {
 	CanonicalFrontendState,
 	PendingAsk,
 } from "../../../../../../src/shared/desktop-session-contract";
+import { list, populatedRows } from "../../code-review/code-review-fixtures";
+import { codeRequestsKeys } from "../../code-review/hooks/use-code-requests";
 import { EMPTY_DRAFTS } from "../ask-queue";
 import { AskDrawer } from "./asks/ask-drawer";
 import { ComposerStatusRow } from "./composer-status-row";
@@ -2933,5 +2939,165 @@ export const AskDrivenDrawerOpen: Story = {
 			label="drawer open: the composer beside it is an ordinary conversation box"
 			asks={[ASK_OPEN]}
 		/>
+	),
+};
+
+/*
+ * THE CODE REQUEST CHIP (built spec §7; manager decision §M.2): the counts
+ * chip after the monitors chip, its gate "at least one visible row" and its
+ * press a REVEAL of the right-slot pane - never a toggle.
+ *
+ * WHY THIS STORY SEEDS THE QUERY CACHE. The chip's gate and its counts come off
+ * the ledger query, so a story that rendered the row without one would
+ * photograph the chip's absence for the chip's state. The alternatives are the
+ * browser pane's own two: a prop path that exists only for stories (a second way
+ * to feed a component whose input is deliberately the cache) or a stubbed
+ * desktop bridge (which exercises transport the pane's tests already drive).
+ * This hands the provider a client whose cache already holds the two documents
+ * the chip reads - the capability negotiation and the session's list - and
+ * publishes the route fact `chat-content` publishes, so the chip's door exists
+ * exactly as it does in the app.
+ */
+const CHIP_SESSION_ID = "a1b2c3d4e5f6";
+
+/** A frontend snapshot that also names its session - the one field the chip addresses. */
+const chipFrontend = (goal: string): CanonicalFrontendState =>
+	({ goal, loop: null, session_id: CHIP_SESSION_ID }) as CanonicalFrontendState;
+
+const codeChipClient = (): QueryClient => {
+	const client = new QueryClient({
+		defaultOptions: {
+			queries: {
+				retry: false,
+				staleTime: Number.POSITIVE_INFINITY,
+				refetchOnWindowFocus: false,
+			},
+		},
+	});
+	client.setQueryData(desktopKeys.capabilities, {
+		desktop_contract: 1,
+		desktop_available: true,
+		desktop_auth: "bearer",
+		features: { code_requests: 1 },
+	});
+	client.setQueryData(
+		codeRequestsKeys.session(CHIP_SESSION_ID),
+		list(populatedRows().slice(0, 3)),
+	);
+	return client;
+};
+
+/** Publishes the route fact `chat-content` publishes, so the chip's door exists. */
+const CodeChipHost: FC<{ children: ReactNode }> = ({ children }) => {
+	useLayoutEffect(() => {
+		useUiPreferencesStore.setState({
+			rightSlotRoute: {
+				mounted: true,
+				runDetails: false,
+				session: true,
+				codeReview: true,
+			},
+		});
+		return () =>
+			useUiPreferencesStore.setState({
+				rightSlotRoute: {
+					mounted: false,
+					runDetails: false,
+					session: false,
+					codeReview: false,
+				},
+			});
+	}, []);
+	return <>{children}</>;
+};
+
+/**
+ * The chip's crowded case (design round 1, D7): a to-do, a wake and a watch
+ * beside the code chip - the four-chip row the designer measured at 469px
+ * against a 416px box, where the code chip wraps alone onto line 2. The story
+ * exists so the wrap is LOOKED AT rather than argued from widths.
+ */
+const CHIP_SIBLINGS: RunDetails = deriveRunDetails({
+	jobs: [],
+	todos: planOf(["pending"]),
+	wakes: [wakeOf("w1", "Stand-up reminder", 12)],
+	monitors: [monitorOf("m1", "loom-pr-1710", 1)],
+	nowMs: WAKE_NOW_MS,
+});
+
+export const CodeRequestsChip: Story = {
+	render: () => (
+		<QueryClientProvider client={codeChipClient()}>
+			<CodeChipHost>
+				<div className={cn("flex flex-col gap-4")}>
+					<Band
+						label="The code request chip alone: three visible rows, nothing else on the row"
+						frontend={chipFrontend("")}
+						runDetails={null}
+					/>
+					<Band
+						label="Beside the goal: the counts chip follows the reading it sits after"
+						frontend={chipFrontend(SHORT_GOAL)}
+						runDetails={null}
+					/>
+					<Band
+						label="With a to-do, a wake and a watch: the four-chip row wraps, and the code chip lands alone on line 2"
+						frontend={chipFrontend("")}
+						runDetails={CHIP_SIBLINGS}
+					/>
+				</div>
+			</CodeChipHost>
+		</QueryClientProvider>
+	),
+};
+
+/**
+ * The showing lip (UX round 2, U18): the pane this chip opens is the DRAWN
+ * occupant, so the chip wears the pressed pair (`bg-accent-wash text-ink` - the
+ * rail item's own meaning, "the surface this door opens is on screen") and its
+ * tooltip and announced name read `Code review is showing`. A frame cannot show
+ * a tooltip, so this band carries the PAINT; the flipped name is pinned in
+ * `code-review-model.test.mjs`. The host pins the drawn state through the
+ * store's own route facts - the same facts `chat-content` publishes - rather
+ * than the chip's claim flag alone, because the resolution reads the pair.
+ */
+const CodeChipShowingHost: FC<{ children: ReactNode }> = ({ children }) => {
+	useLayoutEffect(() => {
+		useUiPreferencesStore.setState({
+			rightSlotRoute: {
+				mounted: true,
+				runDetails: false,
+				session: true,
+				codeReview: true,
+			},
+			isCodeReviewPaneOpen: true,
+		});
+		return () =>
+			useUiPreferencesStore.setState({
+				rightSlotRoute: {
+					mounted: false,
+					runDetails: false,
+					session: false,
+					codeReview: false,
+				},
+				isCodeReviewPaneOpen: false,
+			});
+	}, []);
+	return <>{children}</>;
+};
+
+export const CodeRequestsChipShowing: Story = {
+	render: () => (
+		<QueryClientProvider client={codeChipClient()}>
+			<CodeChipShowingHost>
+				<div className={cn("flex flex-col gap-4")}>
+					<Band
+						label="While the pane is showing: the chip states it in the same register the rail item uses"
+						frontend={chipFrontend("")}
+						runDetails={null}
+					/>
+				</div>
+			</CodeChipShowingHost>
+		</QueryClientProvider>
 	),
 };
