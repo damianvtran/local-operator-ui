@@ -199,22 +199,44 @@ export type SpendChannelsReading = {
 	knowledge: CostKnowledge;
 	/** Non-zero money buckets, in the contract's order (`by_basis`). */
 	byBasis: Array<{ basis: string; micro: number }>;
+	/**
+	 * `by_basis.not_tracked_micro` — the published micro-USD amount whose
+	 * billing basis is not tracked yet (the session's own inference pre-PR-3
+	 * plus the children bundle). ADDITIVE on v1: an absent key reads as 0, and
+	 * the composition line then says the count without a money clause. Never
+	 * derived here — the round-2 review's MAJOR: the summary used to SUM
+	 * inference row amounts for this figure, which no UI may do.
+	 */
+	notTrackedMicro: number;
 	/** The `not_tracked_calls` COUNT — records with no trackable basis. */
 	notTrackedCalls: number;
+	/**
+	 * `children.total_micro` (published), or null when the block is absent —
+	 * rendered as the share of the not-tracked money that is subagent sessions.
+	 */
+	childrenMicro: number | null;
+	/** The children block's own rung; decides the remainder's floor mark. */
+	childrenKnowledge: CostKnowledge;
 	/** One entry per published row, spelled (see `ChannelBreakdownRow`). */
 	rows: ChannelBreakdownRow[];
+	/**
+	 * Rows the wire sent that this build could not read (non-object entries),
+	 * dropped by the same filter every reader shares. The panel uses it to say
+	 * "could not be read" rather than "no rows" when a malformed row would
+	 * otherwise leave an empty table under a nonzero total (QA round 2, Q6).
+	 */
+	rowsDropped: number;
 };
 
 /**
  * One published row as the surfaces render it.
  *
  * `name`/`amount`/`basis` are display strings (the money already through the
- * caller's ladder in the strip's reading). The three remaining fields exist
- * for the SUMMARY's composition line rather than for display: the strip and
- * the panel both need "the stated inference money whose basis columns have
- * not landed yet", and that question is asked of the wire values rather than
- * of the words (`basisKeys` keeps the spellings as sent, where
- * `not_tracked` is the placeholder).
+ * caller's ladder in the strip's reading). `channel`/`amountMicro`/`floor`
+ * exist for the SUMMARY's floor test and the panel's row marks: a remainder
+ * built from floored inference money (or a floored children block) carries
+ * the surface's lower-bound mark, so the composition line and the row that
+ * feeds it cannot disagree about which is the lower bound.
  */
 export type ChannelBreakdownRow = {
 	/** `Inference · anthropic/claude-sonnet-5-5`; see `channelRowName`. */
@@ -228,10 +250,8 @@ export type ChannelBreakdownRow = {
 	basis: string;
 	/** The wire channel word; `inference` marks the PR-3 placeholder rows. */
 	channel: string;
-	/** The published integer, or null; the summary sums these (exactly). */
+	/** The published integer, or null (null is a count, never money). */
 	amountMicro: number | null;
-	/** The basis spellings exactly as the wire sent them. */
-	basisKeys: string[];
 	/** `partial`/`floor` knowledge: the row's amount is a lower bound. */
 	floor: boolean;
 };
@@ -489,7 +509,6 @@ function channelRow(row: CanonicalSpendChannelRow): ChannelBreakdownRow {
 			typeof row.amount_micro === "number" && Number.isFinite(row.amount_micro)
 				? row.amount_micro
 				: null,
-		basisKeys: bases,
 		floor: isFloorKnowledge(rung(row.knowledge)),
 	};
 }
@@ -509,11 +528,18 @@ export function channelsReading(value: unknown): SpendChannelsReading | null {
 	const rawBasis = value.by_basis;
 	const byBasis: SpendChannelsReading["byBasis"] = [];
 	let notTrackedCalls = 0;
+	let notTrackedMicro = 0;
 	if (rawBasis && typeof rawBasis === "object") {
 		for (const [basis, bucket] of Object.entries(rawBasis)) {
 			if (typeof bucket !== "number" || !Number.isFinite(bucket)) continue;
 			if (basis === "not_tracked_calls") {
 				notTrackedCalls = Math.max(0, Math.trunc(bucket));
+				continue;
+			}
+			if (basis === "not_tracked_micro") {
+				/* The published remainder — read, never derived. Absent (an older
+				 * producer) stays 0 and the summary says the count without money. */
+				notTrackedMicro = Math.max(0, Math.trunc(bucket));
 				continue;
 			}
 			/* Zero buckets are left out of the summary: "Billed $0.0000" is a
@@ -526,13 +552,24 @@ export function channelsReading(value: unknown): SpendChannelsReading | null {
 		(row): row is CanonicalSpendChannelRow =>
 			Boolean(row) && typeof row === "object",
 	);
+	const children = value.children;
 	return {
 		tracked: value.tracked,
 		totalMicro: value.total_micro,
 		knowledge: rung(value.knowledge),
 		byBasis,
+		notTrackedMicro,
 		notTrackedCalls,
+		childrenMicro:
+			children && typeof children === "object"
+				? finite(children.total_micro)
+				: null,
+		childrenKnowledge:
+			children && typeof children === "object"
+				? rung(children.knowledge)
+				: "unknown",
 		rows: rows.map(channelRow),
+		rowsDropped: value.rows.length - rows.length,
 	};
 }
 
@@ -540,37 +577,60 @@ export function channelsReading(value: unknown): SpendChannelsReading | null {
  * The composition line — the figure's parts in one place a reader can add up:
  *
  *   `Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $0.900
- *    inference (no basis recorded yet) · 2 records without a price`
+ *    without a tracked basis yet · 1 record without a price`
  *
- * or `null` when nothing is stated. Three rules, each from a round-1 finding:
+ * or `null` when nothing is stated. The rules:
  *
  * - The money buckets keep billed, plan-funded and estimated money apart (the
- *   contract's `by_basis`), so the total's excess over "Billed" is visible
- *   rather than implied (D1).
- * - The inference remainder names what the buckets do NOT cover. Until the
- *   backend's basis columns land (PR-3) inference rows carry the
- *   `not_tracked` placeholder, so their stated amounts are summed HERE —
- *   exact integer addition over published values, never a recomputation of the
- *   total — and the clause says plainly why they sit outside a bucket (D1).
+ *   contract's `by_basis`).
+ * - The not-tracked money comes from the PUBLISHED `not_tracked_micro`, never
+ *   from summing rows: round 2's review reproduced a two-inference-row
+ *   payload whose client-side sum printed a figure that appears nowhere on
+ *   the wire, and the backend now publishes the amount so no UI re-sums it
+ *   (`channel_spend.py`: the backend's `combine()` is the one arithmetic
+ *   site). An absent key — an older producer — prints the count with NO money
+ *   clause.
+ * - The clause names the children share inside it — `(… subagent sessions)` —
+ *   because `not_tracked_micro` already INCLUDES the children bundle ("the
+ *   session's own inference plus the children bundle"): a free-standing part
+ *   would read as an extra summand and break the very reconciliation this
+ *   line exists for.
+ * - The remainder carries the surface's lower-bound mark when the money it is
+ *   built from is a lower bound — a floored inference row or a floored
+ *   children block — so the line cannot say `$X` where the row it aggregates
+ *   says `≥$X` (round 2, MINOR-2).
  * - The count gets a noun, and it is withheld for a tracked=false session,
- *   whose sentence already scopes the figure: `1 record without a price`
- *   under "channels are not tracked" read as a contradiction (D2).
+ *   whose sentence already scopes the figure (round 1, D2).
  *
  * `money` is the caller's ladder (the strip's and the panel's differ by the
- * design's own deferral); the COMPOSITION is one site, which is what the
- * panel's shared use of this function buys.
+ * design's own deferral), `markFloor` the caller's lower-bound register — the
+ * strip prefixes `≥` like the band, the panel suffixes `+` like the TUI's
+ * table cells (`analytics_panel.py` `_cost_cell`) — and the COMPOSITION is
+ * one site, which is what the panel's shared use of this function buys.
  */
 export function channelSummaryLine(
 	reading: SpendChannelsReading,
 	money: (micro: number) => string,
+	markFloor: (text: string) => string,
 ): string | null {
 	const parts = reading.byBasis.map(
 		(bucket) =>
 			`${capitalise(channelBasisLabel(bucket.basis))} ${money(bucket.micro)}`,
 	);
-	const remainder = inferenceWithoutBasisMicro(reading);
+	const remainder = reading.notTrackedMicro;
 	if (remainder > 0) {
-		parts.push(`${money(remainder)} inference (no basis recorded yet)`);
+		const children =
+			reading.childrenMicro !== null && reading.childrenMicro > 0
+				? ` (${money(reading.childrenMicro)} subagent sessions)`
+				: "";
+		/*
+		 * The mark lands on the MONEY, not the sentence: the panel's register is
+		 * a trailing `+` (`$0.900+ ...`), the strip's a leading `≥`, and wrapping
+		 * the whole figure would push the panel's plus past "…basis yet".
+		 */
+		const moneyText = money(remainder);
+		const marked = remainderIsFloor(reading) ? markFloor(moneyText) : moneyText;
+		parts.push(`${marked} without a tracked basis yet${children}`);
 	}
 	if (reading.tracked && reading.notTrackedCalls > 0) {
 		const count = reading.notTrackedCalls;
@@ -581,17 +641,24 @@ export function channelSummaryLine(
 	return parts.length > 0 ? parts.join(" · ") : null;
 }
 
-/** The stated inference money whose basis columns have not landed yet. */
-function inferenceWithoutBasisMicro(reading: SpendChannelsReading): number {
-	return reading.rows
-		.filter(
-			(row) =>
-				row.channel === "inference" &&
-				row.amountMicro !== null &&
-				(row.basisKeys.length === 0 ||
-					row.basisKeys.every((key) => key === "not_tracked")),
-		)
-		.reduce((sum, row) => sum + (row.amountMicro ?? 0), 0);
+/**
+ * Whether the published remainder is a lower bound.
+ *
+ * The remainder is the session's own inference (its rows are listed) plus the
+ * children bundle (which carries its own rung): it is a floor when either
+ * contributor is one. A predicate over published values — never a sum — which
+ * is why it survives the "no UI arithmetic" rule the figure's read answers
+ * to.
+ */
+function remainderIsFloor(reading: SpendChannelsReading): boolean {
+	const inferenceFloored = reading.rows.some(
+		(row) =>
+			row.channel === "inference" && row.floor && row.amountMicro !== null,
+	);
+	const childrenFloored =
+		(reading.childrenMicro ?? 0) > 0 &&
+		isFloorKnowledge(reading.childrenKnowledge);
+	return inferenceFloored || childrenFloored;
 }
 
 /**
@@ -633,9 +700,14 @@ export function channelBreakdown(
 ): ChannelBreakdown {
 	return {
 		planClause: channelPlanClause(reading, microUsdText),
-		summary: channelSummaryLine(reading, microUsdText),
+		summary: channelSummaryLine(reading, microUsdText, floorMark),
 		rows: reading.rows,
 	};
+}
+
+/** The strip's lower-bound register: the band's `≥`, prefixed. */
+function floorMark(text: string): string {
+	return `${FLOOR_MARK}${text}`;
 }
 
 /**

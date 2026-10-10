@@ -1279,7 +1279,8 @@ const SPEND_CHANNELS: CanonicalSpendChannels = {
 		billed: 53_000,
 		subscription_api_equivalent: 53_000,
 		estimated: 10_000,
-		not_tracked_calls: 2,
+		not_tracked_micro: 900_000,
+		not_tracked_calls: 1,
 	},
 	rows: [
 		{
@@ -1321,18 +1322,6 @@ const SPEND_CHANNELS: CanonicalSpendChannels = {
 			price_versions: ["Radient GET /tools/media/status cost_usd"],
 		},
 		{
-			channel: "read",
-			provider: "deepseek:read",
-			model: "",
-			label: "",
-			units: 1,
-			unit: "reads",
-			amount_micro: 2_000,
-			knowledge: "exact",
-			basis: ["estimated"],
-			price_versions: ["client-search-table-2026-09"],
-		},
-		{
 			channel: "search",
 			provider: "tavily",
 			model: "",
@@ -1340,6 +1329,18 @@ const SPEND_CHANNELS: CanonicalSpendChannels = {
 			units: 1,
 			unit: "searches",
 			amount_micro: 8_000,
+			knowledge: "exact",
+			basis: ["estimated"],
+			price_versions: ["client-search-table-2026-09"],
+		},
+		{
+			channel: "read",
+			provider: "deepseek:read",
+			model: "",
+			label: "",
+			units: 1,
+			unit: "reads",
+			amount_micro: 2_000,
 			knowledge: "exact",
 			basis: ["estimated"],
 			price_versions: ["client-search-table-2026-09"],
@@ -1357,11 +1358,19 @@ const CHANNELS_UNTRACKED: CanonicalSpendChannels = {
 	version: 1,
 	tracked: false,
 	total_micro: 900_000,
-	knowledge: "exact",
+	/*
+	 * `partial`, on the wire's own invariant: `tracked: false` implies the
+	 * knowledge is at most `partial` (the journal was not keeping channel
+	 * rows, so the total cannot be the whole story — see `combine()` in
+	 * `channel_spend.py`). An `exact` untracked session is not a state the
+	 * backend can publish.
+	 */
+	knowledge: "partial",
 	by_basis: {
 		billed: 0,
 		subscription_api_equivalent: 0,
 		estimated: 0,
+		not_tracked_micro: 900_000,
 		not_tracked_calls: 1,
 	},
 	rows: [

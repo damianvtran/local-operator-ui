@@ -43,23 +43,6 @@ export const UNKNOWN_WORD = "unknown";
  * - small sums keep more precision, because a fresh install's spend is
  *   fractions of a cent and rounding it to `$0.00` would read as free.
  *
- * `costKnownCalls < calls` implies `costKnownCalls > 0` on any payload the
- * routes produce, but the two tests are ordered defensively: the unknown case
- * is the one that must never grow a `+`.
- */
-/**
- * Money, from integer micro-USD (`analytics_panel.py` `format_cost`).
- *
- * Three honest answers, because collapsing them lies:
- *
- * - nothing priceable (`costKnownCalls === 0`) renders {@link UNKNOWN}, never
- *   `$0.00` — free and unknown are different facts, and a local-model-only run
- *   is the common case that produces the second;
- * - a partial figure takes a trailing `+`, marking it a LOWER BOUND, so it is
- *   never read as the whole bill;
- * - small sums keep more precision, because a fresh install's spend is
- *   fractions of a cent and rounding it to `$0.00` would read as free.
- *
  * The digits round through {@link pyFixed}, not `toFixed`: QA round 1 (Q2)
  * swept the whole money range against the strip and found six tie values where
  * this panel and the composer chip printed one digit apart on the SAME micro

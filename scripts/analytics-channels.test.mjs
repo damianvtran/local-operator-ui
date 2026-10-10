@@ -77,44 +77,23 @@ test("the fixture renders as the panel's table, in this panel's ladder", () => {
 	);
 	assert.equal(
 		view.basisLine,
-		"Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $0.900 inference (no basis recorded yet) · 2 records without a price",
+		"Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $0.900 without a tracked basis yet · 1 record without a price",
 	);
-	assert.deepEqual(view.rows, [
-		{
-			key: "0:Inference · anthropic/claude-sonnet-5-5",
-			name: "Inference · anthropic/claude-sonnet-5-5",
-			spend: "$0.900",
-			// The inference placeholder basis (`not_tracked`) is not a row word
-			// beside a sized figure — the composition's inference clause carries
-			// it — and this panel's convention for "nothing" is `—` (D5).
-			basis: "—",
-		},
-		{
-			key: "1:Image · openai-sub/gpt-image-2",
-			name: "Image · openai-sub/gpt-image-2",
-			spend: "$0.053",
-			basis: "API-equivalent",
-		},
-		{
-			key: "2:Image · radient/gpt-image-2",
-			name: "Image · radient/gpt-image-2",
-			// `partial` row knowledge: a lower bound, marked the panel's way.
-			spend: "$0.053+",
-			basis: "Billed",
-		},
-		{
-			key: "3:Read · deepseek:read",
-			name: "Read · deepseek:read",
-			spend: "$0.0020",
-			basis: "Estimated",
-		},
-		{
-			key: "4:Search · tavily",
-			name: "Search · tavily",
-			spend: "$0.0080",
-			basis: "Estimated",
-		},
-	]);
+	assert.deepEqual(
+		view.rows.map((row) => [row.name, row.spend, row.basis]),
+		[
+			["Inference · anthropic/claude-sonnet-5-5", "$0.900", "—"],
+			["Image · openai-sub/gpt-image-2", "$0.053", "API-equivalent"],
+			["Image · radient/gpt-image-2", "$0.053+", "Billed"],
+			["Search · tavily", "$0.0080", "Estimated"],
+			["Read · deepseek:read", "$0.0020", "Estimated"],
+		],
+	);
+	// Every row's key is its index-prefixed name (the index disambiguates
+	// rows that share a name); the projection above checks the visible cells.
+	view.rows.forEach((row, index) =>
+		assert.equal(row.key, `${index}:${row.name}`),
+	);
 });
 
 test("an unusable object renders as null, so the section does not exist", () => {
@@ -225,18 +204,36 @@ test("tracked=false is carried through for the section's own sentence", () => {
 	assert.equal(view.tracked, false);
 	// The count is withheld for a tracked=false session: `N records without a
 	// price` under the section's "not tracked" sentence read as a
-	// contradiction (D2). The buckets and the inference clause stay.
+	// contradiction (D2). The buckets and the not-tracked money stay itemised.
 	assert.doesNotMatch(view.basisLine, /without a price/);
-	assert.match(view.basisLine, /\$0\.900 inference \(no basis recorded yet\)/);
+	assert.match(view.basisLine, /\$0\.900 without a tracked basis yet/);
 });
 
 test("a null row renders as no rows rather than taking the panel down", () => {
 	// MINOR-2: `rows: [null]` used to throw inside the model (reading
 	// `channel` off null) while the strip's own reading filtered it — one
-	// malformed row must fall back, not crash the panel.
+	// malformed row must fall back, not crash the panel. The drop is COUNTED
+	// so the table can say "could not be read" instead of "no rows" (Q6).
 	const view = channelsView({ ...SPEND_CHANNELS, rows: [null] });
 	assert.ok(view);
 	assert.deepEqual(view.rows, []);
+	assert.equal(view.rowsDropped, 1);
+});
+
+test("the panel's remainder register is a suffix `+`, the strip's a prefix `≥`", () => {
+	/*
+	 * The same published remainder, one floored contributor: the strip's
+	 * register is the band's `≥` prefix, the panel's is the TUI table cell's
+	 * trailing `+` (analytics_panel.py `_cost_cell`) — round 2, MINOR-2, and
+	 * the two-surface half of the strip's own floor test.
+	 */
+	const flooredRow = { ...SPEND_CHANNELS.rows[0], knowledge: "partial" };
+	const view = channelsView({
+		...SPEND_CHANNELS,
+		rows: [flooredRow, ...SPEND_CHANNELS.rows.slice(1)],
+	});
+	assert.ok(view);
+	assert.match(view.basisLine, /\$0\.900\+ without a tracked basis yet/);
 });
 
 test("the strip and the panel round a tie the same way (QA round 1, Q2)", () => {
