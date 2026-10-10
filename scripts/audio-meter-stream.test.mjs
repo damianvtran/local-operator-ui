@@ -91,8 +91,15 @@ const deferred = () => {
 	return { promise, resolve, reject };
 };
 
-/** One session under test: its seams faked, every interaction recorded. */
-const startSession = () => {
+/**
+ * One session under test: its seams faked, every interaction recorded.
+ *
+ * `createAudioContext` is overridable so a case can fail the wiring without
+ * losing the recording - an override's result is still pushed into `contexts`
+ * (a factory that throws pushes nothing, which is its point), and both arms
+ * are what the release assertions read.
+ */
+const startSession = (overrides = {}) => {
 	const gate = deferred();
 	const contexts = [];
 	const analysers = [];
@@ -104,7 +111,9 @@ const startSession = () => {
 			return gate.promise;
 		},
 		createAudioContext: () => {
-			const context = createContext();
+			const context = overrides.createAudioContext
+				? overrides.createAudioContext()
+				: createContext();
 			contexts.push(context);
 			return context;
 		},
@@ -282,4 +291,85 @@ test("a session releases only the stream it acquired", async () => {
 		"its own release still works",
 	);
 	assert.equal(second.contexts[0].closeCalls, 1);
+});
+
+test("a wiring failure while live reaches the fallback, and stop() still releases the stream", async () => {
+	// The context factory itself refuses: no context exists and no analyser is
+	// wired, and the acquired stream is still the session's to release.
+	const factoryRefusal = new Error("AudioContext unavailable");
+	const factoryFailure = startSession({
+		createAudioContext: () => {
+			throw factoryRefusal;
+		},
+	});
+	const factoryStream = createStream();
+	factoryFailure.gate.resolve(factoryStream);
+	await settleMicrotasks();
+
+	assert.equal(
+		factoryFailure.errors[0],
+		factoryRefusal,
+		"a factory failure must reach the fallback rather than vanish",
+	);
+	assert.equal(
+		factoryFailure.analysers.length,
+		0,
+		"nothing was wired, so no analyser may be handed over",
+	);
+	assert.deepEqual(
+		stopCalls(factoryStream),
+		[0, 0],
+		"the fallback paints for a live take: nothing is stopped before release",
+	);
+	factoryFailure.handle.stop();
+	assert.deepEqual(
+		stopCalls(factoryStream),
+		[1, 1],
+		"stop() must still stop the acquired tracks, exactly once",
+	);
+
+	// The context exists but the source wiring refuses: the context the session
+	// created must be closed by the same release that stops the stream, and not
+	// a moment earlier.
+	const sourceRefusal = new Error("source refused");
+	const wiringFailure = startSession({
+		createAudioContext: () => {
+			const context = createContext();
+			context.createMediaStreamSource = () => {
+				throw sourceRefusal;
+			};
+			return context;
+		},
+	});
+	const wiringStream = createStream();
+	wiringFailure.gate.resolve(wiringStream);
+	await settleMicrotasks();
+
+	assert.equal(
+		wiringFailure.errors[0],
+		sourceRefusal,
+		"the wiring failure must reach the fallback",
+	);
+	assert.equal(
+		wiringFailure.contexts.length,
+		1,
+		"the created context is the session's - the failure must not drop it",
+	);
+	assert.equal(
+		wiringFailure.contexts[0].state,
+		"running",
+		"the live session still owns its context before any release",
+	);
+	wiringFailure.handle.stop();
+	assert.deepEqual(
+		stopCalls(wiringStream),
+		[1, 1],
+		"stop() stops the acquired tracks exactly once",
+	);
+	assert.equal(
+		wiringFailure.contexts[0].closeCalls,
+		1,
+		"stop() closes the context the failed wiring created",
+	);
+	assert.equal(wiringFailure.contexts[0].state, "closed");
 });
