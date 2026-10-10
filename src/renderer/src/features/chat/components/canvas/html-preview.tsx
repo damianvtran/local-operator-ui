@@ -40,6 +40,19 @@ import { CodeEditor } from "./code-editor";
  * keep them under), and a `<form>` submit does nothing. A page that merely
  * renders - markup, CSS, inline or CDN scripts, canvas, SVG, https `fetch` -
  * works as before.
+ *
+ * WHY THIS VIEWER KEEPS THE STATIC ROUTE, moved readers and all. The other
+ * local-file surfaces now read their bytes over the app's own bridge
+ * (`use-file-blob-url`), which serves a path regardless of the daemon's
+ * configured roots. This frame does NOT follow them, and the paragraph above is
+ * the reason: the sandbox is only half of the containment, and the route's
+ * response policy (`PREVIEW_CSP`) is the other half. A `blob:` document is
+ * constructed in this renderer and framed locally, so no response policy is
+ * applied to it, and the page's own `fetch()` to the loopback daemon would face
+ * no `connect-src` refusal - the vector this comment's contract closes. The
+ * route and its policy are one pair; giving up the route gives up the policy.
+ * Cost, stated: an HTML file outside every served root still gets the route's
+ * 403 inside the frame, whose body names the `static.roots` remedy.
  */
 export const PREVIEW_SANDBOX = "allow-scripts";
 
