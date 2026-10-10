@@ -1145,8 +1145,11 @@ test("the narrow ladder sheds duration, then effort, then cost, then context - a
 	 *
 	 * The thresholds are the fit points measured in
 	 * `docs/evidence/composer-readings-shed/` (frames and `numbers.json`),
-	 * each rounded out to the nearest whole container value above its fit;
-	 * the class strings carry the ladder, so the values are asserted here.
+	 * each derived rung rounded onto the 5px grid its neighbours sit on and
+	 * clearing its fit by 0.5-8px (so the third-box rung of a pair lands
+	 * 30/35/35px above its two-box twin against the fits' uniform 36px
+	 * step); the class strings carry the ladder, so the values are asserted
+	 * here.
 	 * `hidden`, not `sr-only` - a shed reading does not exist, unlike the
 	 * chip's icon-only text, which is still readable by a screen reader.
 	 */
@@ -1158,7 +1161,7 @@ test("the narrow ladder sheds duration, then effort, then cost, then context - a
 	assert.match(
 		strip,
 		/controlsThirdBox\s*\n?\s*\?\s*"@max-\[780px\]\/chatcol:hidden"\s*\n?\s*:\s*"@max-\[750px\]\/chatcol:hidden"/,
-		"effort is the second rung, one 36px state step below the duration's fit side",
+		"effort is the second rung, its third-box value 30px above its two-box one (each fit moves 36; the values round onto the 5px grid)",
 	);
 	assert.match(
 		strip,
@@ -1176,8 +1179,10 @@ test("the narrow ladder sheds duration, then effort, then cost, then context - a
 	 * post-stop grace window's reserved slot, or a live recording's - the group
 	 * is 104px where the band was derived against 68, and no container query can
 	 * see a sibling appear, so every rung reads the state as well as the width:
-	 * the bare `hidden` for the duration, and one 36px step earlier for the
-	 * three value readings (asserted above). `hidden`, never `sr-only`: a shed
+	 * the bare `hidden` for the duration, and for the three value readings a
+	 * third-box value one state step above its two-box twin - the fits move by
+	 * 36px, the values round onto the 5px grid, so the twins read 30/35/35px
+	 * apart (asserted above). `hidden`, never `sr-only`: a shed
 	 * reading does not exist, and a reading that still exists at zero size keeps
 	 * claiming to a screen reader.
 	 */

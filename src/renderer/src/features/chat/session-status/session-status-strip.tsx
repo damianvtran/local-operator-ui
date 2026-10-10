@@ -1587,11 +1587,13 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					 * COLUMN is, and the fact that shrank this row's budget - a third
 					 * control box - is a fact about state rather than width. The
 					 * width's is one range now: shed below container 860, at every
-					 * narrower column - inside the old band's span because five readings
-					 * do not fit the two-box row there, and below 750 because the
-					 * two-line layout that made room for this reading is gone (issue
-					 * #918). No `cn` merging is needed — the two are mutually exclusive
-					 * strings.
+					 * narrower column - it spans the old band's range, where five
+					 * readings do not fit the two-box row below container ~781, and
+					 * above that fit it keeps the band's 860 edge rather than
+					 * re-deriving an idle-only value (one value serves both states),
+					 * and it continues below 750 because the two-line layout that
+					 * made room for this reading is gone (issue #918). No `cn`
+					 * merging is needed — the two are mutually exclusive strings.
 					 */
 					className={
 						controlsThirdBox ? "hidden" : "@max-[860px]/chatcol:hidden"
