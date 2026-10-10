@@ -3,10 +3,7 @@ import type {
 	DesktopUsageAggregate,
 	DesktopUsagePeriod,
 } from "../../../../../../shared/desktop-contract";
-import type {
-	CanonicalSpendChannelRow,
-	CanonicalSpendChannels,
-} from "../../../../../../shared/desktop-session-contract";
+import type { CanonicalSpendChannelRow } from "../../../../../../shared/desktop-session-contract";
 import {
 	channelBasisLabel,
 	channelBasisWords,
