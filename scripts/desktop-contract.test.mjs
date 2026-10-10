@@ -50,6 +50,7 @@ const {
 	desktopAnswerProvesPairing,
 	trustedDesktopFrame,
 	registerDesktopIPC,
+	isAdmittedSender,
 	guardForegroundReceipts,
 	rememberPickedDirectory,
 	withRememberedDirectory,
@@ -1098,6 +1099,78 @@ test("sender URL allows only packaged file or exact dev origin", () => {
 	);
 	assert.ok(
 		!trustedDesktopFrame("http://localhost:5188", "http://localhost:5187"),
+	);
+});
+
+test("the local-file handlers' sender test admits only a window's main frame on its own document", () => {
+	/*
+	 * `read-file-bytes` and `probe-files` take AGENT-SUPPLIED paths now (message
+	 * attachments), so their lock is the sender (agent review round 1, R3). This
+	 * pins the rule they share with the desktop plane: sender AND main frame AND
+	 * the window's own URL, each window on its own document only.
+	 */
+	const mainFrame = { url: "file:///app/index.html#/chat" };
+	const mainContents = { mainFrame };
+	const mainWindow = { webContents: mainContents, isDestroyed: () => false };
+	const miniFrame = { url: "file:///app/mini.html" };
+	const miniContents = { mainFrame: miniFrame };
+	const miniWindow = { webContents: miniContents, isDestroyed: () => false };
+	const admitted = [
+		{ window: mainWindow, url: "file:///app/index.html" },
+		{ window: miniWindow, url: "file:///app/mini.html" },
+	];
+	const event = (sender, senderFrame) => ({ sender, senderFrame });
+
+	assert.ok(isAdmittedSender(event(mainContents, mainFrame), admitted));
+	assert.ok(isAdmittedSender(event(miniContents, miniFrame), admitted));
+	// A child frame of the main window: right sender, wrong frame.
+	assert.ok(
+		!isAdmittedSender(
+			event(mainContents, { url: "file:///app/index.html" }),
+			admitted,
+		),
+	);
+	// The main window's contents navigated to a foreign page that kept the preload.
+	const hijacked = { url: "https://evil.example/" };
+	assert.ok(
+		!isAdmittedSender(event({ mainFrame: hijacked }, hijacked), [
+			{
+				window: {
+					webContents: { mainFrame: hijacked },
+					isDestroyed: () => false,
+				},
+				url: "file:///app/index.html",
+			},
+		]),
+	);
+	// Each window is admitted only on its OWN document: the mini window showing
+	// the main document's URL is not the mini window.
+	const crossed = { url: "file:///app/index.html" };
+	assert.ok(
+		!isAdmittedSender(event({ mainFrame: crossed }, crossed), [
+			{
+				window: {
+					webContents: { mainFrame: crossed },
+					isDestroyed: () => false,
+				},
+				url: "file:///app/mini.html",
+			},
+		]),
+	);
+	// Another window's webContents, a destroyed window, and no window at all.
+	assert.ok(!isAdmittedSender(event({ mainFrame: {} }, {}), admitted));
+	assert.ok(
+		!isAdmittedSender(event(mainContents, mainFrame), [
+			{
+				window: { ...mainWindow, isDestroyed: () => true },
+				url: "file:///app/index.html",
+			},
+		]),
+	);
+	assert.ok(
+		!isAdmittedSender(event(mainContents, mainFrame), [
+			{ window: null, url: "file:///app/index.html" },
+		]),
 	);
 });
 
