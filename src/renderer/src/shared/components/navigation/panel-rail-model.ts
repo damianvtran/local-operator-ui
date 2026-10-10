@@ -37,13 +37,14 @@ import {
 } from "@features/chat/ask-queue";
 
 /**
- * The five triggers, in the rail's fixed top-to-bottom order.
+ * The six triggers, in the rail's fixed top-to-bottom order.
  *
  * ASK GOES SECOND, its historical slot (#896). The pre-#872 header order was
  * Run -> Asks -> Browser -> Console -> Canvas (`9c0da1382af^`'s `chat-header.tsx`),
  * and the four panel triggers moved to the rail with their relative order
  * preserved; the asks trigger's return to its old position is the fifth item
- * arriving where it always stood.
+ * arriving where it always stood. CODE REVIEW IS APPENDED LAST (the #927 fold
+ * onto #917): its appearing moves nothing above it.
  */
 export const PANEL_RAIL_ORDER = [
 	"run",
@@ -51,6 +52,7 @@ export const PANEL_RAIL_ORDER = [
 	"browser",
 	"console",
 	"canvas",
+	"code",
 ] as const;
 
 export type PanelRailItemId = (typeof PANEL_RAIL_ORDER)[number];
@@ -133,5 +135,50 @@ export function askRailLabels(
 			count > 0
 				? `Asks, ${askScopeSubject(scope)}, ${count} waiting or moved on`
 				: `Asks, ${askScopeSubject(scope)}`,
+	};
+}
+
+/**
+ * The code review item's tooltip and accessible name (§8).
+ *
+ * APPENDED LAST, which is why the item may appear mid-session without moving
+ * anything above it (the rail's own order note). The counts are `opened` and
+ * `mentioned` - the two groups the pane draws - and a zero half is dropped,
+ * because "0 mentioned" beside a count of everything states nothing; the mark
+ * for attention adds its own clause (`checks failing` / `findings open`), the
+ * chip's own tail.
+ *
+ * The CAP is never applied here (the file's own rule): the name a screen reader
+ * hears carries the exact numbers.
+ */
+export function codeRailLabels(
+	open: boolean,
+	opened: number,
+	mentioned: number,
+	attention: string | null,
+): { tooltip: string; aria: string } {
+	const verb = open ? "Close" : "Open";
+	const halves = [
+		opened > 0 ? `${opened} opened` : null,
+		mentioned > 0 ? `${mentioned} mentioned` : null,
+	].filter((half): half is string => half !== null);
+	const details = halves.length > 0 ? halves.join(", ") : "";
+	/*
+	 * THE CAUSE, NAMED IN BOTH REGISTERS (design round 1, D5 / UX U6): the
+	 * marker used to say "findings open" for a red pipeline, and the sighted
+	 * tooltip did not carry it at all - the dot had no visible explanation.
+	 * `attention` is the cause string (`checks failing` / `findings open` /
+	 * both), not a boolean.
+	 */
+	const mark = attention ? `, ${attention}` : "";
+	if (details === "") {
+		return {
+			tooltip: `${verb} code review${mark}`,
+			aria: `Code review${mark}`,
+		};
+	}
+	return {
+		tooltip: `${verb} code review — ${details}${mark}`,
+		aria: `Code review, ${details}${mark}`,
 	};
 }

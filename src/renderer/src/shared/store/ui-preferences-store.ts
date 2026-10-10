@@ -100,10 +100,10 @@ type UiPreferencesState = {
 	 * The flag is the live PROJECTION of one conversation's memory
 	 * (`rightSlotMemory`, read through `memoryProject`), not a global preference:
 	 * each conversation remembers its own occupant, `bindRightSlotKey` writes these
-	 * four flags from the memory when the active conversation moves, and a read here
+	 * flags from the memory when the active conversation moves, and a read here
 	 * is therefore "what this conversation had open" — which is what arrives on the
 	 * same frame as the transcript it belongs to. A conversation with no memory
-	 * projects to all four false, so a switch shows no panel rather than the
+	 * projects to every flag false, so a switch shows no panel rather than the
 	 * previous conversation's. UNBOUND (`rightSlotKey === undefined`) the flag
 	 * behaves exactly as the global boolean it always was — see `rightSlotKey`.
 	 */
@@ -195,9 +195,9 @@ type UiPreferencesState = {
 	 * WHAT EACH CONVERSATION REMEMBERS — newest last, at most one entry per
 	 * conversation (`right-slot-memory.ts` states the shape and its rules).
 	 *
-	 * The four durable flags above are its PROJECTION for the bound conversation: a
+	 * The durable flags above are its PROJECTION for the bound conversation: a
 	 * claim writes the entry and the flag in one `set()`, a close deletes the entry
-	 * it owns, and `bindRightSlotKey` writes all four flags from the memory when the
+	 * it owns, and `bindRightSlotKey` writes all the flags from the memory when the
 	 * active conversation moves. PERSISTED (minus the `draft:` entries, which are a
 	 * launch's own rows), so returning to a conversation after a relaunch restores
 	 * its panel without a frame of the wrong one.
@@ -222,7 +222,7 @@ type UiPreferencesState = {
 
 	/**
 	 * Bind the slot to a conversation, and project that conversation's memory onto
-	 * the four flags. Called by `right-slot-follower.ts` alone, and by the suites.
+	 * the flags. Called by `right-slot-follower.ts` alone, and by the suites.
 	 *
 	 * ONE `set()`, always: the slot's readers are the rail, the header, the lane and
 	 * the slot's own width resolver, and a bind that moved the flags in two steps
@@ -351,6 +351,27 @@ type UiPreferencesState = {
 	isConsolePaneOpen: boolean;
 
 	/**
+	 * Whether the CODE REVIEW pane is open (a durable occupant of the right slot,
+	 * arriving after the asks drawer).
+	 *
+	 * Per conversation, for the reason `isBrowserPaneOpen` states: the pane's
+	 * subject is exactly one session's ledger of PRs/MRs (derived from THAT
+	 * conversation's transcript, plus its own fetch cache), so remembering it per
+	 * conversation is the same rule its content already follows — and it is
+	 * one-at-a-time with its siblings through `claimRightSlot`.
+	 *
+	 * IT IS A DURABLE OCCUPANT, so it is remembered in the per-conversation memory
+	 * beside the four that predate it (`right-slot-memory`). Its DOOR is
+	 * capability-gated (`features.code_requests`; the rail item and the composer
+	 * chip are the two presses that set this flag), which means a flag restored from
+	 * memory on a backend that no longer serves the feature claims the slot without
+	 * a pane to draw — the state is cleared by the next claim of ANY other pane or
+	 * by the drawer, exactly as two panes' claims clear each other, and it cannot be
+	 * entered on such a backend because both doors are absent there.
+	 */
+	isCodeReviewPaneOpen: boolean;
+
+	/**
 	 * Whether the ASKS drawer is open (the FIFTH occupant of the right slot).
 	 *
 	 * IT IS THE ASK LANE'S ONE FLAG, and that is why it lives here rather than in
@@ -383,9 +404,9 @@ type UiPreferencesState = {
 	 * was the sharp edge of keeping it; with the routing retired the composer is
 	 * unaffected and what remains is a drawer the user can see and close.)
 	 *
-	 * IT IS KEPT, deliberately, and since issue #894 the drawer is the ONLY one of the
-	 * five that follows the user across conversations: the four durable panes are
-	 * per-conversation memory now, while a DRAWER is a reading of the queue you have
+	 * IT IS KEPT, deliberately, and since issue #894 the drawer is the ONLY pane that
+	 * follows the user across conversations: the durable panes are per-conversation
+	 * memory now, while a DRAWER is a reading of the queue you have
 	 * right now rather than a document you keep open (the same distinction that keeps
 	 * this flag out of persistence). The design note's §4.4 sentence ("opening from
 	 * inside a session can never present another session's questions") is about the
@@ -439,7 +460,7 @@ type UiPreferencesState = {
 	 *
 	 * A RECORD OF A BORROW, NOT A PREFERENCE, and it exists because the exclusivity
 	 * rule and the persistence rule pull in opposite directions: the drawer must clear
-	 * the other four flags to hold the slot (`claimRightSlot`), while those flags are
+	 * the other flags to hold the slot (`claimRightSlot`), while those flags are
 	 * exactly what a relaunch restores - so without this the drawer's clearance would
 	 * be written to disk as the user's own choice to close the canvas.
 	 *
@@ -602,6 +623,16 @@ type UiPreferencesState = {
 	setConsolePaneOpen: (open: boolean) => void;
 
 	/**
+	 * Set the code review pane open state.
+	 *
+	 * Opening it closes every other occupant, by the same construction as theirs:
+	 * one slot, one pane.
+	 *
+	 * @param open - Whether the code review pane should be open
+	 */
+	setCodeReviewPaneOpen: (open: boolean) => void;
+
+	/**
 	 * Which surface the console pane is showing.
 	 *
 	 * THE SLOT'S STATE, NOT THE PANE'S (design 6.1), for the reason
@@ -678,6 +709,27 @@ type UiPreferencesState = {
 	 * @param section - Which of the pane's sections to bring into view
 	 */
 	revealRunPanelSection: (section: RunPanelSection) => void;
+
+	/**
+	 * A one-shot request to bring the CODE REVIEW pane to attention (UX round 1,
+	 * U11). The chip's press while the pane is already open behaves like the
+	 * monitors chip's reveal rather than a no-op: the request re-runs, and the
+	 * pane's own effect answers it by taking focus (its root is `tabIndex={-1}`)
+	 * - the code pane has no sections to scroll, so focus is the whole of what a
+	 * reveal can be here.
+	 */
+	codeReviewReveal: CodeReviewReveal | null;
+
+	/** Open the code review pane and ask it to take attention; see the field. */
+	revealCodeReviewPane: () => void;
+
+	/**
+	 * Retires a request the pane has acted on.
+	 *
+	 * @param nonce - The request's own nonce. An effect finishing older work must
+	 * not consume a newer request that arrived while it ran.
+	 */
+	clearCodeReviewReveal: (nonce: number) => void;
 
 	/**
 	 * Retires a request the pane has acted on.
@@ -1027,20 +1079,24 @@ export type RunPanelSection =
 export type BrowserPaneScope = "conversation" | "all";
 
 /**
- * The four DURABLE occupants of the right slot, named by the FLAG that owns each.
+ * The FIVE DURABLE occupants of the right slot, named by the FLAG that owns each.
  *
- * The asks drawer is the slot's fifth pane and the only TRANSIENT one (see
- * `isAskDrawerOpen`): opening it takes the slot from one of these, and this union is
+ * The asks drawer is the slot's transient pane and the only one outside this set
+ * (see `isAskDrawerOpen`): opening it takes the slot from one of these, and this union is
  * what lets that borrow be RECORDED and given back (UX round 1, U6). Naming the flag
  * rather than the pane (`RightSlotPane`'s names are the short ones) is deliberate:
  * giving the slot back is one write to one field, so the record and the write have to
  * agree on the field's own name.
+ *
+ * `isCodeReviewPaneOpen` is the newest member, appended so the four that predate it
+ * keep their positions in every reader that walks this order.
  */
 export type DurableRightSlotPane =
 	| "isCanvasOpen"
 	| "isRunPanelOpen"
 	| "isBrowserPaneOpen"
-	| "isConsolePaneOpen";
+	| "isConsolePaneOpen"
+	| "isCodeReviewPaneOpen";
 
 /**
  * The flag that owns each durable pane, keyed by the SHORT name the slot's own
@@ -1060,6 +1116,7 @@ const DURABLE_PANE_FLAG: Record<
 	run: "isRunPanelOpen",
 	browser: "isBrowserPaneOpen",
 	console: "isConsolePaneOpen",
+	code: "isCodeReviewPaneOpen",
 };
 
 /**
@@ -1076,6 +1133,7 @@ const activeRightSlotPane = (state: {
 	isRunPanelOpen: boolean;
 	isBrowserPaneOpen: boolean;
 	isConsolePaneOpen: boolean;
+	isCodeReviewPaneOpen: boolean;
 	isAskDrawerOpen: boolean;
 }): RightSlotPane | null =>
 	state.isCanvasOpen
@@ -1086,9 +1144,11 @@ const activeRightSlotPane = (state: {
 				? "browser"
 				: state.isConsolePaneOpen
 					? "console"
-					: state.isAskDrawerOpen
-						? "ask"
-						: null;
+					: state.isCodeReviewPaneOpen
+						? "code"
+						: state.isAskDrawerOpen
+							? "ask"
+							: null;
 
 /**
  * Whether the current route can actually DRAW the pane that holds the slot.
@@ -1120,6 +1180,19 @@ const rightSlotPaneDrawable = (
 	}
 	if (!state.rightSlotRoute.mounted) return false;
 	/*
+	 * The code review pane's mount needs a CONVERSATION and the capability (the
+	 * same two terms `chat-content` mounts the pane behind): its subject is one
+	 * session's ledger, and against an older backend the routes it reads do not
+	 * exist. Both are route facts rather than second derivations here, so the
+	 * pane's mount and the slot's answer cannot drift - a flag restored on a
+	 * draft or on a downgraded backend releases the slot instead of claiming it
+	 * (agent review F6: a remembered pane reserved an empty 640px column with
+	 * no rail door, because the door is gated on the same capability).
+	 */
+	if (pane === "code") {
+		return state.rightSlotRoute.session && state.rightSlotRoute.codeReview;
+	}
+	/*
 	 * The run panel's mount gate is `runDetails`; the canvas, browser and console
 	 * mount whenever their flags are set on a chat route, so `mounted` is the
 	 * whole of their condition.
@@ -1139,6 +1212,7 @@ const evictedFlag = (state: {
 	isRunPanelOpen: boolean;
 	isBrowserPaneOpen: boolean;
 	isConsolePaneOpen: boolean;
+	isCodeReviewPaneOpen: boolean;
 	isAskDrawerOpen: boolean;
 }): DurableRightSlotPane | null => {
 	const pane = activeRightSlotPane(state);
@@ -1146,13 +1220,14 @@ const evictedFlag = (state: {
 };
 
 /**
- * Claiming the right slot for one of the FOUR panes that can live in it.
+ * Claiming the right slot for one of the panes that can live in it.
  *
- * The rule, stated once because three of the four panes' docs point at it: the
- * right slot holds one pane at a time, so opening one closes the others by
- * construction, and no call site has to remember which ones to clear. The console
- * is the fourth (design 6.1), and it cost exactly what the third one's arrival
- * predicted it would: one more name in this union and one more `===` below.
+ * The rule, stated once because the panes' docs point at it: the right slot holds
+ * one pane at a time, so opening one closes the others by construction, and no
+ * call site has to remember which ones to clear. Each arrival cost exactly what
+ * the previous one's predicted: one more name in this union and one more `===`
+ * below (the console was the fourth, the code review pane is the fifth durable
+ * one).
  *
  * The slot holds ONE pane, so every claim is "this side wins and the other two are
  * cleared" - a rule that was written out at each of the three call sites until
@@ -1177,6 +1252,7 @@ const claimRightSlot = (
 		| "isCanvasOpen"
 		| "isBrowserPaneOpen"
 		| "isConsolePaneOpen"
+		| "isCodeReviewPaneOpen"
 		| "isAskDrawerOpen",
 ): Pick<
 	UiPreferencesState,
@@ -1184,6 +1260,7 @@ const claimRightSlot = (
 	| "isCanvasOpen"
 	| "isBrowserPaneOpen"
 	| "isConsolePaneOpen"
+	| "isCodeReviewPaneOpen"
 	| "isAskDrawerOpen"
 	/*
 	 * AND ANY RECORDED BORROW IS FORFEIT. A durable pane claiming the slot is the user
@@ -1197,6 +1274,7 @@ const claimRightSlot = (
 	isCanvasOpen: pane === "isCanvasOpen",
 	isBrowserPaneOpen: pane === "isBrowserPaneOpen",
 	isConsolePaneOpen: pane === "isConsolePaneOpen",
+	isCodeReviewPaneOpen: pane === "isCodeReviewPaneOpen",
 	isAskDrawerOpen: pane === "isAskDrawerOpen",
 	askDrawerEvictedPane: null,
 });
@@ -1242,7 +1320,13 @@ const releasedMemory = (
 	return memory === state.rightSlotMemory ? {} : { rightSlotMemory: memory };
 };
 
-export type RightSlotPane = "canvas" | "run" | "browser" | "console" | "ask";
+export type RightSlotPane =
+	| "canvas"
+	| "run"
+	| "browser"
+	| "console"
+	| "code"
+	| "ask";
 
 /**
  * WHAT THE CURRENT ROUTE CAN RENDER, in the slot's own terms (#868).
@@ -1261,6 +1345,13 @@ export type RightSlotRouteFacts = {
 	mounted: boolean;
 	runDetails: boolean;
 	session: boolean;
+	/**
+	 * The route's backend serves `features.code_requests` (agent review F6). The
+	 * code pane's mount condition reads this fact, and so does the slot's
+	 * drawability: a remembered pane on a backend that lost the capability must
+	 * not reserve an empty column with no door to close it (`rightSlotPaneDrawable`).
+	 */
+	codeReview: boolean;
 };
 
 /**
@@ -1271,6 +1362,7 @@ export const EMPTY_RIGHT_SLOT_ROUTE: RightSlotRouteFacts = Object.freeze({
 	mounted: false,
 	runDetails: false,
 	session: false,
+	codeReview: false,
 });
 
 /**
@@ -1336,8 +1428,8 @@ export const EMPTY_RIGHT_SLOT_MEMORY: RightSlotMemory = Object.freeze([]);
  * records for the canvas). The preference is the honest answer, and the measured
  * row corrects it in the same commit.
  *
- * Precedence is the reading order of the four and it only matters if the store's
- * own invariant ever breaks: `claimRightSlot` above makes the four flags mutually
+ * Precedence is the reading order of the five and it only matters if the store's
+ * own invariant ever breaks: `claimRightSlot` above makes the flags mutually
  * exclusive by construction, so at most one of them is ever true.
  *
  * AND A CLAIMED PANE IS NOT YET A DRAWN ONE (#868): the flags persist across
@@ -1396,6 +1488,18 @@ export function resolveRightSlotWidth(
 		case "console":
 			preferred = Math.max(
 				CONSOLE_PANEL_MIN_PX,
+				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
+			);
+			break;
+		/*
+		 * THE CODE REVIEW PANE WEARS THE RUN PANEL'S LADDER, deliberately (design
+		 * §9: "the run pane's ladder (min 320, max 640)"): its rows are the same
+		 * kind of prose-and-figures content the run panel draws, so one floor for
+		 * the two is one number to keep true rather than two that can drift.
+		 */
+		case "code":
+			preferred = Math.max(
+				RUN_PANEL_MIN_PX,
 				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
 			);
 			break;
@@ -1477,6 +1581,15 @@ export function resolveRightSlotYieldsSidebar(
 		(pane === "canvas" || pane === "ask") && rightSlotPaneDrawable(pane, state)
 	);
 }
+
+/**
+ * A one-shot request to bring the code review pane to attention (UX round 1,
+ * U11): the chip's press while the pane is open re-requests, and the pane
+ * answers by focusing its own root. A nonce so two presses are two requests.
+ */
+export type CodeReviewReveal = {
+	nonce: number;
+};
 
 /**
  * A one-shot request to bring one of the pane's sections into view.
@@ -1746,8 +1859,9 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			isRunPanelOpen: false,
 			isBrowserPaneOpen: false,
 			isConsolePaneOpen: false,
+			isCodeReviewPaneOpen: false,
 			/*
-			 * The memory the four flags above are the projection of (issue #894):
+			 * The memory the flags above are the projection of (issue #894):
 			 * nothing bound, nothing remembered, no handed-over seed. See
 			 * `rightSlotKey` for what each of the three means.
 			 */
@@ -1761,6 +1875,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			rightSlotRoute: EMPTY_RIGHT_SLOT_ROUTE,
 			consoleOpenIntent: null,
 			runPanelReveal: null,
+			codeReviewReveal: null,
 			browserPaneScope: "conversation",
 			consoleActiveSurface: null,
 			consoleUnseen: EMPTY_CONSOLE_UNSEEN,
@@ -1880,6 +1995,39 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 								...releasedMemory(state, "console"),
 							},
 				);
+			},
+
+			setCodeReviewPaneOpen: (open: boolean) => {
+				set((state) =>
+					open
+						? {
+								...claimRightSlot("isCodeReviewPaneOpen"),
+								...claimedMemory(state, "code"),
+							}
+						: {
+								isCodeReviewPaneOpen: false,
+								...releasedMemory(state, "code"),
+							},
+				);
+			},
+
+			clearCodeReviewReveal: (nonce: number) => {
+				set((state) =>
+					state.codeReviewReveal?.nonce === nonce
+						? { codeReviewReveal: null }
+						: {},
+				);
+			},
+
+			revealCodeReviewPane: () => {
+				set((state) => ({
+					// The claim is spread rather than restated: see `claimRightSlot`.
+					...claimRightSlot("isCodeReviewPaneOpen"),
+					...claimedMemory(state, "code"),
+					codeReviewReveal: {
+						nonce: (state.codeReviewReveal?.nonce ?? 0) + 1,
+					},
+				}));
 			},
 
 			setAskDrawerOpen: (open: boolean, scope: AskScope) => {
@@ -2092,7 +2240,15 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				if (
 					current.mounted === route.mounted &&
 					current.runDetails === route.runDetails &&
-					current.session === route.session
+					current.session === route.session &&
+					/*
+					 * THE CAPABILITY IS A FACT OF THE ROUTE (agent review round 2, M1):
+					 * `codeReviewEnabled` starts false while `capabilities.data` is
+					 * pending, so without this term the later `true` was dropped as a
+					 * duplicate and the slot resolver never learned the pane may draw
+					 * (the rail item stayed unlit on exactly F6's cold-relaunch case).
+					 */
+					current.codeReview === route.codeReview
 				) {
 					return;
 				}
@@ -2252,7 +2408,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			 *
 			 * `runPanelReveal` is deliberately NOT persisted, and the FILTER is where
 			 * that lives — every other field keeps the default "persist it" behaviour
-			 * this store has always had, apart from the four flags and the bind key
+			 * this store has always had, apart from the flags and the bind key
 			 * (see `persistedUiPreferences`).
 			 *
 			 * Persisting it would outlive the event it describes: a request that was
@@ -2395,6 +2551,7 @@ export function parseConversationRecents(value: unknown): string[] {
 export function persistedUiPreferences<
 	T extends {
 		runPanelReveal: unknown;
+		codeReviewReveal: unknown;
 		consoleOpenIntent: unknown;
 		askOpenIntent: unknown;
 		isAskDrawerOpen: unknown;
@@ -2405,6 +2562,7 @@ export function persistedUiPreferences<
 		isRunPanelOpen: unknown;
 		isBrowserPaneOpen: unknown;
 		isConsolePaneOpen: unknown;
+		isCodeReviewPaneOpen: unknown;
 		rightSlotKey: unknown;
 		rightSlotMemory: RightSlotMemory;
 	},
@@ -2413,6 +2571,7 @@ export function persistedUiPreferences<
 ): Omit<
 	T,
 	| "runPanelReveal"
+	| "codeReviewReveal"
 	| "consoleOpenIntent"
 	| "askOpenIntent"
 	| "isAskDrawerOpen"
@@ -2423,10 +2582,12 @@ export function persistedUiPreferences<
 	| "isRunPanelOpen"
 	| "isBrowserPaneOpen"
 	| "isConsolePaneOpen"
+	| "isCodeReviewPaneOpen"
 	| "rightSlotKey"
 > {
 	const {
 		runPanelReveal: _pending,
+		codeReviewReveal: _reveal,
 		consoleOpenIntent: _intent,
 		/* The menu row's open request (round-1 Q1): the drawer consumes it on the
 		 * commit that answers it, so a restored copy would open a surface nobody
@@ -2436,7 +2597,7 @@ export function persistedUiPreferences<
 		 * THE ASKS DRAWER IS NOT PERSISTED, and it is excluded here rather than in the
 		 * flag's own note because this is where the decision is executed (see
 		 * `isAskDrawerOpen` for the argument): a relaunch must not reopen a surface nobody
-		 * opened this launch. The four durable panes are restored from the memory, which
+		 * opened this launch. The durable panes are restored from the memory, which
 		 * is per conversation; the drawer holds a queue, which the session republishes on
 		 * its own.
 		 */
@@ -2453,11 +2614,14 @@ export function persistedUiPreferences<
 		 * THE FLAGS AND THE BIND, excluded together because they are one fact: the flags
 		 * are `rightSlotMemory`'s projection for `rightSlotKey`, and a persisted key
 		 * would name a conversation from the previous process (see `rightSlotKey`).
+		 * `isCodeReviewPaneOpen` is in this list from its arrival: the memory is what
+		 * persists the code review pane, never the flag.
 		 */
 		isCanvasOpen: _canvas,
 		isRunPanelOpen: _run,
 		isBrowserPaneOpen: _browser,
 		isConsolePaneOpen: _console,
+		isCodeReviewPaneOpen: _code,
 		rightSlotKey: _key,
 		...persisted
 	} = state;
@@ -2509,10 +2673,13 @@ function persistableRightSlotMemory(
  *   review round 1, F2): `...rest` used to carry any value a hand-edited blob held
  *   straight to the first bind, which planted it as an entry the projection can
  *   never draw. The seed is a pane name or nothing;
- * - the four flag keys are dropped if a blob still carries one. The migration
+ * - the flag keys are dropped if a blob still carries one. The migration
  *   deletes them, so this only fires for a blob that never went through it (a hand
  *   edit, or a build-order accident), and what it prevents is the one thing the
  *   inversion cannot allow: a flag set on screen with no conversation holding it.
+ *   `isCodeReviewPaneOpen` is in the list for its own bonus: it was never a
+ *   persisted flag on ANY version, so a blob carrying it is exactly the hand-edit
+ *   case.
  *
  * `rightSlotKey` is taken from the CURRENT state rather than the blob, which is
  * `undefined`: the bind is a launch's own act, redone by the follower before the first
@@ -2528,6 +2695,7 @@ export function mergePersistedUiPreferences(
 		isRunPanelOpen: _run,
 		isBrowserPaneOpen: _browser,
 		isConsolePaneOpen: _console,
+		isCodeReviewPaneOpen: _code,
 		...rest
 	} = blob;
 	return {
