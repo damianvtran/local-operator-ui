@@ -21,17 +21,17 @@
  * `response`-typed record.
  */
 
-import {
-	type AgentExecutionRecord,
-	type LocalOperatorClient,
-	createLocalOperatorClient,
-} from "@shared/api/local-operator";
+import type { AgentExecutionRecord } from "@shared/api/local-operator";
 import { Disclosure } from "@shared/components/ui/disclosure";
-import { apiConfig } from "@shared/config";
+import {
+	previewFailureReason,
+	useFileBlobUrl,
+} from "@shared/hooks/use-file-blob-url";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { type FC, memo, useCallback } from "react";
 import type { Message } from "../../types/message";
+import { mimeTypeForPath } from "../../utils/file-kind";
 import { getFileName } from "../../utils/get-file-name";
 import { isMessageHidden } from "../../utils/message-grouping";
 import {
@@ -40,11 +40,13 @@ import {
 	SecurityNotice,
 	TraceLine,
 } from "../trace";
+import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
 import { AudioAttachment } from "./audio-attachment";
 import { CodeBlock } from "./code-block";
 import { ErrorBlock } from "./error-block";
 import { FileAttachment } from "./file-attachment";
 import { ImageAttachment } from "./image-attachment";
+import { InvalidAttachment } from "./invalid-attachment";
 import { LogBlock } from "./log-block";
 import { MessageContainer } from "./message-container";
 import { MessageContent } from "./message-content";
@@ -136,37 +138,127 @@ const isAudio = (path: string): boolean => {
 };
 
 /**
- * Gets the appropriate URL for an attachment
- * @param client - The Local Operator client
- * @param path - The file path or URL
- * @returns The URL to access the attachment
+ * One message attachment's bytes, over the app's own file bridge.
+ *
+ * Attachments arrive as PATHS on disk — the helper that used to live here
+ * spelled them as `/v1/static/*` URLs — and that route serves only the daemon's
+ * configured roots, so a file outside them (agent output in `/tmp`, a render in
+ * `/var/folders`, a mention on another volume) painted nothing. The bridge
+ * (`use-file-blob-url`) reads by path regardless of roots and needs no backend
+ * at all; a `data:`/`http(s):` attachment passes straight through it.
+ *
+ * The wrappers below keep each attachment component's own states: while the
+ * bytes are on their way the caller shows the shape it shows for a picture that
+ * has not decoded (or, where an element cannot exist without a source, holds
+ * nothing for the frame or two a local read takes), and a read that cannot land
+ * gets the same named receipt a decode failure gets. There is no second
+ * implementation of any of those states here.
  */
-const getAttachmentUrl = (
-	client: LocalOperatorClient,
-	path: string,
-): string => {
-	// If it's a web URL, return it as is
-	if (path.startsWith("http")) {
-		return path;
+const ImageFileAttachment: FC<{
+	file: string;
+	conversationId: string;
+}> = ({ file, conversationId }) => {
+	const state = useFileBlobUrl(file, { mimeType: mimeTypeForPath(file) });
+	if (state.status === "ready") {
+		return (
+			<ImageAttachment
+				file={file}
+				src={state.url}
+				conversationId={conversationId}
+			/>
+		);
 	}
-
-	// For local files, normalize the path and use appropriate endpoint
-	const normalizedPath = path.startsWith("file://") ? path : `file://${path}`;
-
-	if (isImage(path)) {
-		return client.static.getImageUrl(normalizedPath);
+	if (state.status === "loading") {
+		/* The reserved box canonical rows use while a picture is on its way, so
+		   the message does not reflow the moment the bytes land. */
+		return (
+			<div className="inline-block max-w-full" aria-hidden={true}>
+				<AttachmentFrame data-attachment-reserved="" />
+			</div>
+		);
 	}
+	return <BrokenAttachment name={getFileName(file)} />;
+};
 
-	if (isVideo(path)) {
-		return client.static.getVideoUrl(normalizedPath);
+/**
+ * The receipt for a media attachment whose bytes did not land, saying the thing
+ * that is true. An in-root video over the 64 MiB cap used to STREAM from the
+ * route; it now cannot be previewed here, and "may be incomplete, deleted, or
+ * moved" is false for it — the file is fine, so the state says so and offers the
+ * OS, which plays anything (agent review round 1, R5).
+ */
+const UnavailableMedia: FC<{
+	file: string;
+	code: Parameters<typeof previewFailureReason>[0];
+}> = ({ file, code }) => {
+	if (code !== "too-large") return <InvalidAttachment file={file} />;
+	const normalizedPath = file.startsWith("file://") ? file.substring(7) : file;
+	return (
+		<InvalidAttachment
+			file={file}
+			reason={`is ${previewFailureReason(code)?.toLowerCase()}`}
+			onOpen={() => {
+				void window.api.openFile(normalizedPath);
+			}}
+		/>
+	);
+};
+
+const VideoFileAttachment: FC<{
+	file: string;
+	onClick: (file: string) => void;
+	conversationId: string;
+}> = ({ file, onClick, conversationId }) => {
+	const state = useFileBlobUrl(file, { mimeType: mimeTypeForPath(file) });
+	if (state.status === "unavailable") {
+		return <UnavailableMedia file={file} code={state.code} />;
 	}
-
-	if (isAudio(path)) {
-		return client.static.getAudioUrl(normalizedPath);
+	if (state.status === "loading") {
+		/*
+		 * The element cannot be mounted without its source, and mounting one with
+		 * the empty string would flash the invalid receipt the unavailable case
+		 * shows for a reason. The reserved box holds the place for the frame or two
+		 * a local read takes, so the message does not reflow when the video lands
+		 * (design round 1, D7). NOTE: the legacy `MessageItem` is mounted only by
+		 * stories in this app, so this state has been reviewed in code and not
+		 * photographed.
+		 */
+		return (
+			<div className="inline-block max-w-full" aria-hidden={true}>
+				<AttachmentFrame data-attachment-reserved="" />
+			</div>
+		);
 	}
+	return (
+		<VideoAttachment
+			file={file}
+			src={state.url}
+			onClick={onClick}
+			conversationId={conversationId}
+		/>
+	);
+};
 
-	// For other file types, return the original path
-	return path;
+const AudioFileAttachment: FC<{ file: string; isUser: boolean }> = ({
+	file,
+	isUser,
+}) => {
+	const state = useFileBlobUrl(file, { mimeType: mimeTypeForPath(file) });
+	if (state.status === "unavailable") {
+		return <UnavailableMedia file={file} code={state.code} />;
+	}
+	if (state.status === "loading") {
+		// The player's own outer box (width cap, border, padding), so the message
+		// does not reflow when the player lands (design round 1, D7; code-reviewed,
+		// not photographed — see the video wrapper).
+		return (
+			<div
+				aria-hidden={true}
+				className="h-11 w-full max-w-[600px] rounded-sm border border-hairline bg-sunken"
+			/>
+		);
+	}
+	return <AudioAttachment content={state.url} isUser={isUser} />;
 };
 
 /**
@@ -204,22 +296,6 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		 * exist, since a canonical content block carries text or image and never
 		 * a file list).
 		 */
-
-		/*
-		 * Built HERE, at click time, rather than at module load.
-		 *
-		 * `apiConfig.baseUrl` follows the daemon MAIN is attached to, which is only
-		 * known after discovery; a client constructed at import captured the
-		 * configured origin for the life of the window, so this component would have
-		 * dialled a different server than main is streaming from - the "two clients
-		 * of two servers" case `api-config.ts` exists to prevent. Its siblings in
-		 * this folder read the getter the same way.
-		 */
-		const getUrl = useCallback(
-			(path: string) =>
-				getAttachmentUrl(createLocalOperatorClient(apiConfig.baseUrl), path),
-			[],
-		);
 
 		/**
 		 * Handles clicking on a file attachment: web URLs open in the default
@@ -279,10 +355,9 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				{imageFiles.length > 0 && (
 					<div className="mb-2 flex flex-col gap-2">
 						{imageFiles.map((file) => (
-							<ImageAttachment
+							<ImageFileAttachment
 								key={`${message.id}-${file}`}
 								file={file}
-								src={getUrl(file)}
 								conversationId={conversationId}
 							/>
 						))}
@@ -291,10 +366,9 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				{videoFiles.length > 0 && (
 					<div className="mb-2 flex flex-col gap-2">
 						{videoFiles.map((file) => (
-							<VideoAttachment
+							<VideoFileAttachment
 								key={`${message.id}-${file}`}
 								file={file}
-								src={getUrl(file)}
 								onClick={handleFileClick}
 								conversationId={conversationId}
 							/>
@@ -304,9 +378,9 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				{audioFiles.length > 0 && (
 					<div className="mb-2 flex flex-col gap-2">
 						{audioFiles.map((file) => (
-							<AudioAttachment
+							<AudioFileAttachment
 								key={`${message.id}-${file}`}
-								content={getUrl(file)}
+								file={file}
 								isUser={isUser}
 							/>
 						))}
