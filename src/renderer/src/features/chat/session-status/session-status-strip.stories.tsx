@@ -37,7 +37,10 @@ import type { Meta, StoryObj } from "@storybook/react";
 import type { FC } from "react";
 import { useEffect, useRef } from "react";
 import "../../../styles/index.css";
-import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
+import type {
+	CanonicalFrontendState,
+	CanonicalSpendChannels,
+} from "../../../../../../src/shared/desktop-session-contract";
 import { SessionStatusStrip } from "./session-status-strip";
 
 /**
@@ -650,10 +653,17 @@ export const CostTooltip: Story = {
 		const Focused = () => {
 			const host = useRef<HTMLDivElement>(null);
 			useEffect(() => {
-				const buttons = host.current?.querySelectorAll("button");
-				// Model, effort, context, cost: the spend is the last one.
-				const last = buttons?.[(buttons?.length ?? 1) - 1];
-				(last as HTMLButtonElement | undefined)?.focus();
+				/*
+				 * By ACCESSIBLE NAME, not by button index. The spend reading is a
+				 * focusable `span` (`readout`), so "the last button" is the CONTEXT
+				 * chip — and the frames this story committed under the cost-tooltip
+				 * name photographed the context panel because of it. The selector
+				 * names the reading it means, so a change to the cluster's order or
+				 * affordances cannot silently re-point it.
+				 */
+				host.current
+					?.querySelector<HTMLElement>('[aria-label^="Session spend"]')
+					?.focus();
 			}, []);
 			return (
 				<div ref={host}>
@@ -1245,6 +1255,256 @@ export const CommandsOff: Story = {
 						cumulative_parent_cost: 0.003018,
 						cost_knowledge: "exact",
 					})}
+				/>
+			</Frame>
+		</div>
+	),
+};
+
+/* ---- the published channel spend (the cost-channels project) ------------ */
+
+/**
+ * The backend's golden fixture for `spend_channels` v1
+ * (`scripts/fixtures/spend-channels-v1.json`), copied — the frames below must
+ * photograph the frozen wire, not a plausible-looking idea of it, and a story
+ * that imported the file across the scripts/src boundary would be the only
+ * one in this set to do so.
+ */
+const SPEND_CHANNELS: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 1_016_000,
+	knowledge: "partial",
+	by_basis: {
+		billed: 53_000,
+		subscription_api_equivalent: 53_000,
+		estimated: 10_000,
+		not_tracked_calls: 2,
+	},
+	rows: [
+		{
+			channel: "inference",
+			provider: "anthropic",
+			model: "claude-sonnet-5-5",
+			label: "anthropic/claude-sonnet-5-5",
+			units: 12,
+			unit: "calls",
+			amount_micro: 900_000,
+			knowledge: "exact",
+			basis: ["not_tracked"],
+			price_versions: [],
+		},
+		{
+			channel: "image",
+			provider: "openai-sub",
+			model: "gpt-image-2",
+			label: "",
+			units: 1,
+			unit: "images",
+			amount_micro: 53_000,
+			knowledge: "exact",
+			basis: ["subscription_api_equivalent"],
+			price_versions: [
+				"OpenAI image-generation pricing (gpt-image-2, 1024x1024 medium, 2026-10-09)",
+			],
+		},
+		{
+			channel: "image",
+			provider: "radient",
+			model: "gpt-image-2",
+			label: "",
+			units: 3,
+			unit: "images",
+			amount_micro: 53_000,
+			knowledge: "partial",
+			basis: ["billed", "not_tracked"],
+			price_versions: ["Radient GET /tools/media/status cost_usd"],
+		},
+		{
+			channel: "read",
+			provider: "deepseek:read",
+			model: "",
+			label: "",
+			units: 1,
+			unit: "reads",
+			amount_micro: 2_000,
+			knowledge: "exact",
+			basis: ["estimated"],
+			price_versions: ["client-search-table-2026-09"],
+		},
+		{
+			channel: "search",
+			provider: "tavily",
+			model: "",
+			label: "",
+			units: 1,
+			unit: "searches",
+			amount_micro: 8_000,
+			knowledge: "exact",
+			basis: ["estimated"],
+			price_versions: ["client-search-table-2026-09"],
+		},
+	],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+/**
+ * A pre-feature conversation: no channel `start` marker, so the ledger was not
+ * tracking when it ran. Inference-only money, and every surface must SAY
+ * "channels not tracked" rather than let the figure read as the whole story.
+ */
+const CHANNELS_UNTRACKED: CanonicalSpendChannels = {
+	version: 1,
+	tracked: false,
+	total_micro: 900_000,
+	knowledge: "exact",
+	by_basis: {
+		billed: 0,
+		subscription_api_equivalent: 0,
+		estimated: 0,
+		not_tracked_calls: 1,
+	},
+	rows: [
+		{
+			channel: "inference",
+			provider: "anthropic",
+			model: "claude-sonnet-5-5",
+			label: "anthropic/claude-sonnet-5-5",
+			units: 12,
+			unit: "calls",
+			amount_micro: 900_000,
+			knowledge: "exact",
+			basis: ["not_tracked"],
+			price_versions: [],
+		},
+	],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+/**
+ * The spend reading focused by its own ACCESSIBLE NAME.
+ *
+ * `buttons[last]` is what the older tooltip stories use, and on this strip it
+ * focuses the CONTEXT chip: the spend reading is a focusable `span`
+ * (`readout`), not a button, so a button-index selector silently photographs
+ * the wrong tooltip — the committed `cost-tooltip` frame shows the context
+ * panel for exactly that reason. A selector that names the reading cannot
+ * drift when the cluster's order changes.
+ */
+const FocusedSpend = ({
+	override,
+	costChannels = true,
+}: {
+	override: Partial<CanonicalFrontendState>;
+	costChannels?: boolean;
+}) => {
+	const host = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		host.current
+			?.querySelector<HTMLElement>('[aria-label^="Session spend"]')
+			?.focus();
+	}, []);
+	return (
+		<div ref={host}>
+			<SessionStatusStrip
+				frontend={state({
+					effective_model: GPT_5,
+					context_tokens: 13_591,
+					context_window: 400_000,
+					cumulative_parent_cost: 0.9,
+					cost_knowledge: "exact",
+					...override,
+				})}
+				onCommand={() => undefined}
+				costChannels={costChannels}
+			/>
+		</div>
+	);
+};
+
+/**
+ * The by-channel breakdown, opened the way a keyboard user opens it.
+ *
+ * This is the frame the strip's whole cost-channels story exists for: the
+ * published total (`≥$1.02` — the object's knowledge is `partial`), the
+ * by-basis line that keeps BILLED money apart from a plan's API-equivalent
+ * dollars and from a catalogue estimate, and one line per published row with
+ * its own basis word. A `null` amount would read `not tracked` here — never
+ * `$0.0000` — and the summary's count is the wire's own record count.
+ */
+export const ChannelsTooltip: Story = {
+	render: () => (
+		<div className="flex min-h-[520px] flex-col justify-end bg-canvas p-2">
+			<Frame label="Channels tooltip: the published total, the by-basis line and every channel row">
+				<FocusedSpend
+					override={{
+						spend_channels: SPEND_CHANNELS,
+						cumulative_parent_cost: 0.9,
+					}}
+				/>
+			</Frame>
+		</div>
+	),
+};
+
+/** An untracked session: the mandatory sentence, and the absence of a $0. */
+export const ChannelsUntracked: Story = {
+	render: () => (
+		<div className="flex min-h-[340px] flex-col justify-end bg-canvas p-2">
+			<Frame label="Not tracked: a pre-feature conversation says so instead of implying $0 of channel spend">
+				<FocusedSpend
+					override={{
+						spend_channels: CHANNELS_UNTRACKED,
+						cumulative_parent_cost: 0.9,
+					}}
+				/>
+			</Frame>
+		</div>
+	),
+};
+
+/**
+ * The gate itself: the SAME snapshot on a backend without
+ * `features.cost_channels`, and the same reading on a snapshot with no object.
+ *
+ * Both frames must show today's inference-only number and no channel story at
+ * all — the promise that makes this change safe on old servers in both
+ * directions.
+ */
+export const ChannelsGated: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame
+				width={900}
+				label="Capability off: the same snapshot keeps today's inference-only figure"
+			>
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: GPT_5,
+						context_tokens: 13_591,
+						context_window: 400_000,
+						cumulative_parent_cost: 0.9,
+						cost_knowledge: "exact",
+						spend_channels: SPEND_CHANNELS,
+					})}
+					onCommand={() => undefined}
+					costChannels={false}
+				/>
+			</Frame>
+			<Frame
+				width={900}
+				label="Object absent: an old server's snapshot, the same figure and no breakdown"
+			>
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: GPT_5,
+						context_tokens: 13_591,
+						context_window: 400_000,
+						cumulative_parent_cost: 0.9,
+						cost_knowledge: "exact",
+					})}
+					onCommand={() => undefined}
+					costChannels={true}
 				/>
 			</Frame>
 		</div>

@@ -44,6 +44,7 @@ import type {
 	DesktopModelRate,
 	DesktopUsageAggregate,
 } from "../../../../../../shared/desktop-contract";
+import type { CanonicalSpendChannels } from "../../../../../../shared/desktop-session-contract";
 import "../../../../styles/index.css";
 import {
 	desktopRequestDeadlineDetail,
@@ -1535,5 +1536,175 @@ export const SessionNarrow720: Story = {
 		).toBeTruthy();
 		await expect(screen.getByRole("button", { name: "Last" })).toBeTruthy();
 		await expect(rowCount()).toBe(20);
+	},
+};
+
+/* ---- the By-channel section (the cost-channels project) ------------------ */
+
+/**
+ * The conversation's published channel spend, off the backend's golden fixture
+ * (`scripts/fixtures/spend-channels-v1.json`), copied for the reason the strip
+ * stories copy it: the frames photograph the frozen wire, not an idea of it.
+ */
+const SPEND_CHANNELS: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 1_016_000,
+	knowledge: "partial",
+	by_basis: {
+		billed: 53_000,
+		subscription_api_equivalent: 53_000,
+		estimated: 10_000,
+		not_tracked_calls: 2,
+	},
+	rows: [
+		{
+			channel: "inference",
+			provider: "anthropic",
+			model: "claude-sonnet-5-5",
+			label: "anthropic/claude-sonnet-5-5",
+			units: 12,
+			unit: "calls",
+			amount_micro: 900_000,
+			knowledge: "exact",
+			basis: ["not_tracked"],
+			price_versions: [],
+		},
+		{
+			channel: "image",
+			provider: "openai-sub",
+			model: "gpt-image-2",
+			label: "",
+			units: 1,
+			unit: "images",
+			amount_micro: 53_000,
+			knowledge: "exact",
+			basis: ["subscription_api_equivalent"],
+			price_versions: [
+				"OpenAI image-generation pricing (gpt-image-2, 1024x1024 medium, 2026-10-09)",
+			],
+		},
+		{
+			channel: "image",
+			provider: "radient",
+			model: "gpt-image-2",
+			label: "",
+			units: 3,
+			unit: "images",
+			amount_micro: 53_000,
+			knowledge: "partial",
+			basis: ["billed", "not_tracked"],
+			price_versions: ["Radient GET /tools/media/status cost_usd"],
+		},
+		{
+			channel: "read",
+			provider: "deepseek:read",
+			model: "",
+			label: "",
+			units: 1,
+			unit: "reads",
+			amount_micro: 2_000,
+			knowledge: "exact",
+			basis: ["estimated"],
+			price_versions: ["client-search-table-2026-09"],
+		},
+		{
+			channel: "search",
+			provider: "tavily",
+			model: "",
+			label: "",
+			units: 1,
+			unit: "searches",
+			amount_micro: 8_000,
+			knowledge: "exact",
+			basis: ["estimated"],
+			price_versions: ["client-search-table-2026-09"],
+		},
+	],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+/**
+ * A pre-feature conversation: the section must render the sentence, not an
+ * empty channel grid that would read as $0 of channel spend.
+ */
+const CHANNELS_UNTRACKED: CanonicalSpendChannels = {
+	version: 1,
+	tracked: false,
+	total_micro: 900_000,
+	knowledge: "exact",
+	by_basis: {
+		billed: 0,
+		subscription_api_equivalent: 0,
+		estimated: 0,
+		not_tracked_calls: 1,
+	},
+	rows: [
+		{
+			channel: "inference",
+			provider: "anthropic",
+			model: "claude-sonnet-5-5",
+			label: "anthropic/claude-sonnet-5-5",
+			units: 12,
+			unit: "calls",
+			amount_micro: 900_000,
+			knowledge: "exact",
+			basis: ["not_tracked"],
+			price_versions: [],
+		},
+	],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+/**
+ * The By-channel section over the golden fixture.
+ *
+ * The section is the panel's one surface for money the token ledger cannot
+ * see, read off the conversation's published object: the total is the
+ * BACKEND's (never re-summed, and `+` because the object's knowledge is
+ * partial), the by-basis line keeps billed apart from a plan's API-equivalent
+ * dollars and from catalogue estimates, and every row carries its own basis
+ * word. The meta names the scope (`This conversation, all time`) on purpose:
+ * unlike every section above it, this one is not windowed by the toolbar.
+ */
+export const Channels: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+		channels: SPEND_CHANNELS,
+		channelsEnabled: true,
+	},
+};
+
+/** Untracked: the mandatory sentence above the numbers it qualifies. */
+export const ChannelsUntracked: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+		channels: CHANNELS_UNTRACKED,
+		channelsEnabled: true,
+	},
+};
+
+/**
+ * The gate: the same object on a backend that does not advertise
+ * `features.cost_channels` — the section must not exist, and this frame is the
+ * evidence that an old server sees exactly today's panel.
+ */
+export const ChannelsGated: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+		channels: SPEND_CHANNELS,
+		channelsEnabled: false,
 	},
 };

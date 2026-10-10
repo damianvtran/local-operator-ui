@@ -4162,6 +4162,18 @@ export const STORIES = [
 	["chat-session-status-strip--tooltip-honesty", 860, 400],
 	["chat-session-status-strip--cost-tooltip", 860, 400],
 	/*
+	 * THE CHANNEL STORIES (the cost-channels project). The tooltip frames need
+	 * the vertical room of the whole breakdown: the trigger sits at the bottom
+	 * of the canvas and the panel opens ABOVE it, so the declared height is what
+	 * keeps every line inside the shutter — 620 for the eight-line
+	 * summary-plus-rows panel, 420 for the untracked sentence's three.
+	 * `channels-gated` stacks two strips and opens no tooltip, so it is the
+	 * height of two plain frames.
+	 */
+	["chat-session-status-strip--channels-tooltip", 860, 620],
+	["chat-session-status-strip--channels-untracked", 860, 420],
+	["chat-session-status-strip--channels-gated", 860, 480],
+	/*
 	 * The sidebar's session-status mark, in the one place it can be photographed
 	 * as a specimen: the read/unread matrix, every code beside its own name (see
 	 * the note below for why the live sidebar frames are not a substitute). Added
@@ -9294,6 +9306,36 @@ export const STORIES = [
 	["panels-analytics--unavailable", 1140, 400],
 	["panels-analytics--dense", 1140, 1100],
 	["panels-analytics--narrow", 720, 980],
+	/*
+	 * THE BY-CHANNEL SECTION (the cost-channels project). `channels` is
+	 * `populated` plus the golden fixture's five-row table (~one table taller
+	 * than the 980 frames above); `channels-untracked` is the same with a
+	 * one-row table and the mandatory sentence; `channels-gated` is the same
+	 * object on a backend that does not advertise the capability, and its
+	 * height is `populated`'s because the section must not exist at all.
+	 */
+	["panels-analytics--channels", 1140, 1240],
+	/*
+	 * The section itself sits BELOW the fold, and the at-rest frame cannot
+	 * reach it: the panel body is capped at `min(76vh, 760px)`, so a taller
+	 * viewport only adds margin (the measurement is `unnamed-sessions`'). The
+	 * scrolled frame is the evidence for the section; the at-rest one is the
+	 * evidence that everything above it is unchanged.
+	 */
+	[
+		"panels-analytics--channels",
+		1140,
+		1240,
+		{ dir: "channels-end", scrollToEnd: "[data-panel-body]" },
+	],
+	["panels-analytics--channels-untracked", 1140, 1140],
+	[
+		"panels-analytics--channels-untracked",
+		1140,
+		1140,
+		{ dir: "channels-untracked-end", scrollToEnd: "[data-panel-body]" },
+	],
+	["panels-analytics--channels-gated", 1140, 980],
 
 	/*
 	 * THE BY-SESSION TABLE'S OWN STATES: paging, sorting, search, the filter.
