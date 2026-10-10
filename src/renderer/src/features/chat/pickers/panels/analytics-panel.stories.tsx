@@ -1795,3 +1795,70 @@ export const ChannelsNoRows: Story = {
 		channelsEnabled: true,
 	},
 };
+
+/**
+ * The two round-3 evidence states, the panel half (design round 3, D3-1:
+ * every `children:` in this file was `total_micro: 0`, the one floored row
+ * fed the Billed bucket, and no story had a dropped row — so the child
+ * parenthetical, the floored `+` remainder, and the drop's own sentence were
+ * pinned by tests and in no frame).
+ *
+ * Children-floored: `not_tracked_micro` covers the children bundle, so the
+ * remainder names its share as a parenthetical; the inference row is
+ * `partial`, so the remainder and the row both carry the panel's trailing
+ * `+`. This is the longest clause the composition line can produce.
+ */
+const CHANNELS_CHILDREN_FLOORED: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 1_516_000,
+	knowledge: "partial",
+	by_basis: {
+		billed: 53_000,
+		subscription_api_equivalent: 53_000,
+		estimated: 10_000,
+		not_tracked_micro: 1_400_000,
+		not_tracked_calls: 1,
+	},
+	rows: [
+		{ ...SPEND_CHANNELS.rows[0], knowledge: "partial" },
+		...SPEND_CHANNELS.rows.slice(1),
+	],
+	children: { total_micro: 500_000, knowledge: "exact" },
+};
+
+/**
+ * Dropped-row: one malformed row, as a hostile or older producer could send
+ * it. The reading filters it, and because the table is then EMPTY under the
+ * object's nonzero total, the panel says "could not be read" rather than the
+ * neutral "no channel rows" (round 2, Q6). The cast is the point: the wire
+ * may break this shape, and the fixture must be able to say so.
+ */
+const CHANNELS_DROPPED_ROW: CanonicalSpendChannels = {
+	...SPEND_CHANNELS,
+	rows: [null] as unknown as CanonicalSpendChannels["rows"],
+};
+
+export const ChannelsChildrenFloored: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+		channels: CHANNELS_CHILDREN_FLOORED,
+		channelsEnabled: true,
+	},
+};
+
+export const ChannelsDroppedRow: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+		channels: CHANNELS_DROPPED_ROW,
+		channelsEnabled: true,
+	},
+};
