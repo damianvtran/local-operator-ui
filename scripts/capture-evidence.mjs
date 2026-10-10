@@ -11108,6 +11108,45 @@ export const STORIES = [
 	["chat-ask-gate-rows--raise-settled-expanded", 1280, 800],
 	["chat-ask-gate-rows--unreadable-live", 1280, 800],
 	["chat-ask-gate-rows--unreadable-settled", 1280, 800],
+	/*
+	 * THE CODE REVIEW PANE AND ITS TWO DOORS (per-session code requests, PR2;
+	 * `code-review-pane.stories.tsx`, `composer-status-row.stories.tsx` and
+	 * `panel-rail.stories.tsx`).
+	 *
+	 * THE PANE IS CAPTURED AT THE SLOT'S OWN DEFAULT WIDTH - an evidence frame of a
+	 * pane is the pane (the console set's rule) - because the row's truncation and
+	 * the strip's fit are functions of exactly this width; a 1280-wide frame would
+	 * photograph a layout nobody gets. Heights are per state and tight to content,
+	 * which is also the direction `check-evidence`'s uniformity ceiling pushes.
+	 *
+	 * THE FOUR STATES THE PR BODY CARRIES are populated, empty, loading and error;
+	 * the other frames are the remaining rungs of §6 (link-only, the pane-level
+	 * cooling line, staleness, and the mixed partial failure where rows stay and
+	 * each carries its own caption) plus the bar's refreshing posture. The rail's
+	 * three frames are 220 tall against the others' 184: five items do not fit in
+	 * 184, and a clipped fifth door would be a frame of a layout the app does not
+	 * have.
+	 */
+	["code-review-pane--populated", 640, 960],
+	["code-review-pane--empty", 640, 300],
+	["code-review-pane--loading", 640, 300],
+	["code-review-pane--scanning", 640, 300],
+	["code-review-pane--error-state", 640, 300],
+	["code-review-pane--link-only", 640, 340],
+	["code-review-pane--rate-limited", 640, 340],
+	["code-review-pane--stale", 640, 340],
+	["code-review-pane--could-not-refresh", 640, 520],
+	["code-review-pane--refresh-failed", 640, 420],
+	["code-review-pane--refreshing", 640, 340],
+	["code-review-pane--narrow", 320, 460],
+	["code-review-pane--narrow-refresh-failed", 320, 420],
+	["code-review-pane--row-hover", 640, 260],
+	["code-review-pane--row-focus", 640, 260],
+	["navigation-panel-rail--code-item", 132, 220],
+	["navigation-panel-rail--code-attention", 132, 220],
+	["navigation-panel-rail--code-open", 132, 220],
+	["chat-composer-status-row--code-requests-chip", 1000, 760],
+	["chat-composer-status-row--code-requests-chip-showing", 1000, 300],
 ];
 
 /**

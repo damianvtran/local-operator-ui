@@ -46,12 +46,13 @@ type OpenFlag =
 	| "isBrowserPaneOpen"
 	| "isConsolePaneOpen"
 	| "isCanvasOpen"
+	| "isCodeReviewPaneOpen"
 	| "isAskDrawerOpen";
 
 const Rail: FC<{
 	open?: OpenFlag;
 	/** Focus this item with the keyboard modality, so `:focus-visible` is the frame's state. */
-	focusItem?: "run" | "ask" | "browser" | "console" | "canvas";
+	focusItem?: "run" | "ask" | "browser" | "console" | "canvas" | "code";
 	details?: ReturnType<typeof deriveRunDetails> | null;
 	sessionId?: string | null;
 	browserAttentionCount?: number;
@@ -62,6 +63,23 @@ const Rail: FC<{
 	consoleUnseenCount?: number;
 	consoleUnseenPulsing?: boolean;
 	fileCount?: number;
+	/*
+	 * THE CODE REVIEW DOOR'S OWN FOUR (/PR2): whether it is offered at all and
+	 * the two counts its name carries. `offered` is `chat-content`'s answer
+	 * (`features.code_requests` AND a session): false here is the pre-feature
+	 * rail, which is the state a fresh backend shows.
+	 */
+	codeOffered?: boolean;
+	codeOpened?: number;
+	codeMentioned?: number;
+	codeAttention?: string | null;
+	/*
+	 * The frame's height, defaulting to the four-door 184 the other frames hold.
+	 * The five-door rail needs its own: 5 x 32px items + 4 x 4px gaps + the
+	 * container's own padding past 184, and a clipped fifth item would be a frame
+	 * of a layout the app does not have.
+	 */
+	height?: number;
 }> = ({
 	open,
 	focusItem,
@@ -74,6 +92,11 @@ const Rail: FC<{
 	consoleUnseenCount = 0,
 	consoleUnseenPulsing = false,
 	fileCount = 0,
+	codeOffered = false,
+	codeOpened = 0,
+	codeMentioned = 0,
+	codeAttention = null,
+	height = 184,
 }) => {
 	useLayoutEffect(() => {
 		useUiPreferencesStore.setState({
@@ -81,6 +104,7 @@ const Rail: FC<{
 			isBrowserPaneOpen: open === "isBrowserPaneOpen",
 			isConsolePaneOpen: open === "isConsolePaneOpen",
 			isCanvasOpen: open === "isCanvasOpen",
+			isCodeReviewPaneOpen: open === "isCodeReviewPaneOpen",
 			isAskDrawerOpen: open === "isAskDrawerOpen",
 			/* The scope rides the open, as the store writes them together; a lit ask
 			   frame needs it for the drawable check and the labels. */
@@ -93,6 +117,7 @@ const Rail: FC<{
 				isBrowserPaneOpen: false,
 				isConsolePaneOpen: false,
 				isCanvasOpen: false,
+				isCodeReviewPaneOpen: false,
 				isAskDrawerOpen: false,
 			});
 	}, [open, askScope]);
@@ -110,7 +135,8 @@ const Rail: FC<{
 	return (
 		<div
 			data-testid="rail-frame"
-			className="flex h-[184px] w-[132px] bg-canvas"
+			className="flex w-[132px] bg-canvas"
+			style={{ height }}
 		>
 			<div className="flex-1 bg-elevated" />
 			<PanelRailFrame
@@ -123,6 +149,10 @@ const Rail: FC<{
 				consoleUnseenCount={consoleUnseenCount}
 				consoleUnseenPulsing={consoleUnseenPulsing}
 				fileCount={fileCount}
+				codeOffered={codeOffered}
+				codeOpened={codeOpened}
+				codeMentioned={codeMentioned}
+				codeAttention={codeAttention}
 			/>
 		</div>
 	);
@@ -223,6 +253,53 @@ export const ConsoleOpenBlip: Story = {
 };
 
 /*
+ * THE CODE REVIEW DOOR (built spec §8, manager decision §M.1): appended LAST so
+ * its arrival moves nothing above it, offered wherever the pane can exist (the
+ * capability is set and the route has a session), with the attention dot on a
+ * real open row with checks failing or findings open.
+ *
+ * The frame is 220 rather than the four-door 184: the five doors this story
+ * offers plus the gaps and the container's own padding exceed 184, and a frame
+ * that clipped the fifth item would be a photograph of a layout the app does
+ * not have - the same class of defect the installer's 900x700 frame recorded in
+ * the capture set's own notes. (The asks item above is also offered in the app
+ * once #896 and this fold are both in main; these frames keep askOffered false
+ * so the code door is photographed on the same five-door rail it grew on.)
+ */
+/** Offered, quiet: counts in the name, no dot. */
+export const CodeItem: Story = {
+	render: () => (
+		<Rail codeOffered={true} codeOpened={2} codeMentioned={1} height={220} />
+	),
+};
+
+/** Offered with the attention dot: an open row's checks are failing (U6's cause). */
+export const CodeAttention: Story = {
+	render: () => (
+		<Rail
+			codeOffered={true}
+			codeOpened={2}
+			codeMentioned={1}
+			codeAttention={"checks failing"}
+			height={220}
+		/>
+	),
+};
+
+/** The door lit: the code review pane is the drawn occupant. */
+export const CodeOpen: Story = {
+	render: () => (
+		<Rail
+			open="isCodeReviewPaneOpen"
+			codeOffered={true}
+			codeOpened={2}
+			codeMentioned={1}
+			height={220}
+		/>
+	),
+};
+
+/**
  * THE ASKS ITEM (#896). The door that used to live in the chat header, second in
  * the rail - its historical slot, the pre-#872 header order's (Run -> Asks ->
  * Browser -> Console -> Canvas). Same tag (`ask-pane-trigger`, the drawer's

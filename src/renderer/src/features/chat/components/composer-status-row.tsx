@@ -104,7 +104,10 @@
 import { Tooltip } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import {
+	resolveDrawnRightSlotPane,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import {
 	dismissToast,
 	showErrorToast,
@@ -114,6 +117,7 @@ import {
 	AlarmClock,
 	Check,
 	CircleCheck,
+	GitPullRequest,
 	HelpCircle,
 	Info,
 	Repeat,
@@ -134,6 +138,8 @@ import {
 	goalCapability,
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
+import { chipClause } from "../../code-review/code-review-model";
+import { useCodeRequestsChip } from "../../code-review/hooks/use-code-requests";
 import {
 	type AskOutcome,
 	askChipCountClause,
@@ -1335,6 +1341,9 @@ export const ComposerStatusRow = ({
 	const revealPlan = useUiPreferencesStore(
 		(state) => state.revealRunPanelSection,
 	);
+	const revealCodeReviewPane = useUiPreferencesStore(
+		(state) => state.revealCodeReviewPane,
+	);
 	/*
 	 * ONE command channel PER CONTROL, and it is the pickers' own hook rather than a
 	 * second way to reach a session command (`use-picker-backend.ts`): the receipt it
@@ -1494,6 +1503,33 @@ export const ComposerStatusRow = ({
 	 */
 	const monitors = runDetails?.monitors ?? [];
 	const showMonitors = monitors.length > 0;
+	/*
+	 * The CODE REQUEST chip's gate and counts, in one hook (§M.2): at least one
+	 * VISIBLE row, off the same ledger query the pane reads - tool-output-only
+	 * mentions are collapsed by the backend and do not count, and a session whose
+	 * window has no right slot (the mini quick-send window) is not offered the
+	 * chip at all, because its press would open nothing. The label is ONE derived
+	 * string for the tooltip and the announced name, the monitors chip's rule.
+	 *
+	 * The chip is NOT a toggle: its press ensures the pane is open and never
+	 * closes it ("a chip reveals, it does not toggle", cst.md §5.2; a genuine
+	 * click still focuses the button by the browser's own rule).
+	 */
+	/*
+	 * THE SHOWING STATE (UX round 2, U18): read from what is DRAWN, not the
+	 * flag - the rail item's own selector - because the chip's cue claims the
+	 * pane is on screen, and the flag can outlive the route that can draw it.
+	 * It feeds the chip's lip (label + pressed ground) and nothing else; the
+	 * press still never closes.
+	 */
+	const codePaneShowing = useUiPreferencesStore(
+		(state) => resolveDrawnRightSlotPane(state) === "code",
+	);
+	const codeChip = useCodeRequestsChip(
+		frontend?.session_id ?? null,
+		codePaneShowing,
+	);
+	const showCode = codeChip.show;
 	/*
 	 * The ask item's gate: a host that WIRES the lane, the lane is bounded by the WIRE,
 	 * and the queue must actually carry a row.
@@ -1934,6 +1970,7 @@ export const ComposerStatusRow = ({
 		!showAsks &&
 		!showWakes &&
 		!showMonitors &&
+		!showCode &&
 		!children &&
 		!jobs
 	)
@@ -2022,7 +2059,8 @@ export const ComposerStatusRow = ({
 	const asksFirst = groupIsFirst && !showPlan;
 	const wakesFirst = asksFirst && !showAsks;
 	const monitorsFirst = wakesFirst && !showWakes;
-	const subagentsFirst = monitorsFirst && !showMonitors;
+	const codeFirst = monitorsFirst && !showMonitors;
+	const subagentsFirst = codeFirst && !showCode;
 	/*
 	 * ...and the jobs chip is first only when NONE of the chips ahead of it
 	 * rendered, which is a different question from "the subagents chip is not the
@@ -2725,6 +2763,7 @@ export const ComposerStatusRow = ({
 				showAsks ||
 				showWakes ||
 				showMonitors ||
+				showCode ||
 				children ||
 				jobs) && (
 				<div
@@ -3047,6 +3086,57 @@ export const ComposerStatusRow = ({
 									className={cn("size-3.5 shrink-0")}
 								/>
 								{monitorClause(monitors.length)}
+							</button>
+						</Tooltip>
+					)}
+
+					{/*
+					 * THE CODE REQUEST chip, after the monitors chip in the counts group (§7):
+					 * one press CLAIMS the slot for the Code review pane (ensure open, never
+					 * closes - a chip reveals, it does not toggle), and it moves no focus into
+					 * the pane. The glyph is the pane's own (`GitPullRequest`, the rail item's),
+					 * so it means "code review" on both surfaces; the label is the one derived
+					 * string `useCodeRequestsChip` built, serving the tooltip and the announced
+					 * name at once.
+					 *
+					 * `data-status-code-requests` is the story/test hook (the neighbours' own
+					 * `data-status-*` convention), and the count rides the visible clause - "3
+					 * code requests" - never a bare number, because the row's grammar reads
+					 * `[mark] [clause]` for every chip on it.
+					 */}
+					{showCode && (
+						<Tooltip content={codeChip.label} side="top">
+							<button
+								type="button"
+								data-status-code-requests=""
+								{...(codePaneShowing
+									? { "data-code-requests-showing": "" }
+									: {})}
+								aria-label={codeChip.label}
+								/*
+								 * THE SHOWING LIP (UX round 2, U18): a press while the pane is
+								 * open moved focus somewhere invisible, so the chip now states
+								 * its fact - the rail item's own LIT pair (`bg-row-selected
+								 * text-accent`, `panel-rail-item.tsx`, the pair the contrast
+								 * contract already holds) and the label/name flip to `Code
+								 * review is showing - ...` above. NO `aria-pressed`: this
+								 * row's pinned rule (composer-tabs.test.mjs: "no `aria-pressed`
+								 * and no pressed ground" - the chip reveals and is not a
+								 * toggle) is exactly why the state rides the NAME and the
+								 * ground, not a toggle role, and the press still never closes.
+								 */
+								onClick={() => revealCodeReviewPane()}
+								className={cn(
+									CHIP_CONTROL,
+									codeFirst ? FIRST_CHIP : undefined,
+									codePaneShowing && "bg-row-selected text-accent",
+								)}
+							>
+								<GitPullRequest
+									aria-hidden={true}
+									className={cn("size-3.5 shrink-0")}
+								/>
+								{chipClause(codeChip.count)}
 							</button>
 						</Tooltip>
 					)}
