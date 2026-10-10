@@ -53,6 +53,10 @@ export const ShellStoryRail: FC<{
 			consoleUnseenCount={railProps.consoleUnseenCount ?? 0}
 			consoleUnseenPulsing={false}
 			fileCount={railProps.fileCount ?? 0}
+			codeOffered={false}
+			codeOpened={0}
+			codeMentioned={0}
+			codeAttention={null}
 		/>
 	</InPanelRailHost>
 );

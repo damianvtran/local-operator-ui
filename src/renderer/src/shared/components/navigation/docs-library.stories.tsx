@@ -688,11 +688,13 @@ const DRAWABLE_ROUTE = {
 	mounted: true,
 	runDetails: true,
 	session: true,
+	codeReview: true,
 } as const;
 const EMPTY_ROUTE = {
 	mounted: false,
 	runDetails: false,
 	session: false,
+	codeReview: false,
 } as const;
 
 /**
@@ -808,6 +810,10 @@ const AppShell: FC<{
 								consoleUnseenCount={0}
 								consoleUnseenPulsing={false}
 								fileCount={0}
+								codeOffered={false}
+								codeOpened={0}
+								codeMentioned={0}
+								codeAttention={null}
 							/>
 						</InPanelRailHost>
 					</main>

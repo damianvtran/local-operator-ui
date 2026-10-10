@@ -1,5 +1,11 @@
 import { BrowserPane } from "@features/browser/components/browser-pane";
 import { useConversationApprovals } from "@features/browser/hooks/use-conversation-approvals";
+import {
+	attentionCause,
+	groupRows,
+} from "@features/code-review/code-review-model";
+import { CodeReviewPane } from "@features/code-review/components/code-review-pane";
+import { useCodeRequests } from "@features/code-review/hooks/use-code-requests";
 import { ConsolePane } from "@features/console/components/console-pane";
 import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attention";
 import { useProviderStatus } from "@features/providers/use-provider-status";
@@ -880,6 +886,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			capabilities.data,
 			"session_delete",
 		);
+		/*
+		 * THE CODE REVIEW SURFACE'S CAPABILITY (`features.code_requests`, the
+		 * design record §D.6's own key). Read here because this component is where
+		 * the session's identity lives and the three readers - the rail item's offer,
+		 * the pane's mount and the composer chip's own gate - must not disagree about
+		 * whether this backend serves the ledger at all. Absent ⇒ neither door nor
+		 * pane is mounted (never mounted-and-disabled), which is the pre-feature
+		 * surface exactly; the chip's query is disabled at the hook for the same
+		 * answer (a read fired before the capability arrives would 404 against an
+		 * older backend, the fail-closed rule the whole desktop plane follows).
+		 */
+		const codeReviewEnabled = desktopFeatureEnabled(
+			capabilities.data,
+			"code_requests",
+		);
 		const archived = useCanonicalSessionsStore((state) =>
 			sessionId
 				? (state.archiveFacts[sessionId]?.archived ??
@@ -1258,6 +1279,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * (#677) - so the user can still reach 100 columns by dragging.
 		 */
 		const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
+		const isCodeReviewPaneOpen = useUiPreferencesStore(
+			(s) => s.isCodeReviewPaneOpen,
+		);
 		/*
 		 * THE ASKS DRAWER, the right slot's FIFTH occupant, read here for the reason the
 		 * browser pane's block above states: the store owns the flag (the composer chip
@@ -1346,8 +1370,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				mounted: true,
 				runDetails: hasRunDetails,
 				session: hasSession,
+				/*
+				 * THE CAPABILITY IS A ROUTE FACT (agent review F6): the code pane's mount
+				 * reads `codeReviewEnabled`, so the slot's drawability must read the same
+				 * answer - a remembered pane on a backend that lost the feature otherwise
+				 * reserves an empty column whose rail door is absent too.
+				 */
+				codeReview: codeReviewEnabled,
 			});
-		}, [setRightSlotRoute, hasRunDetails, hasSession]);
+		}, [setRightSlotRoute, hasRunDetails, hasSession, codeReviewEnabled]);
 		/*
 		 * The unmount reset: a route with no chat surface draws none of the five.
 		 *
@@ -1439,6 +1470,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			CONSOLE_PANEL_MIN_PX,
 			rightSlotWidth === 0 ? DEFAULT_RIGHT_SLOT_WIDTH : rightSlotWidth,
 		);
+		const setCodeReviewPaneOpen = useUiPreferencesStore(
+			(s) => s.setCodeReviewPaneOpen,
+		);
+		/*
+		 * THE CODE REVIEW PANE WEARS THE RUN PANEL'S LADDER (§9: "min 320, max
+		 * 640"), deliberately: the pane draws the same kind of prose-and-figures
+		 * rows the run panel does, so one pair of numbers is one thing to keep true
+		 * rather than two that can drift. `RUN_PANEL_MIN_PX` is the width the
+		 * resolver's own `case "code"` uses, so the divider's range and the drawn
+		 * width agree by construction.
+		 */
+		const effectiveCodePanelWidth = Math.max(
+			RUN_PANEL_MIN_PX,
+			rightSlotWidth === 0 ? DEFAULT_RIGHT_SLOT_WIDTH : rightSlotWidth,
+		);
 
 		/*
 		 * How much THIS conversation's console has finished unseen, for the header's
@@ -1459,6 +1505,32 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			[consoleUnseenAll, sessionId],
 		);
 		const consoleUnseenPulsing = useConsoleBlipPulse(consoleUnseenMarks);
+
+		/*
+		 * THE CODE REQUEST LEDGER, read here for the rail item's name and its
+		 * attention dot. THE RAIL IS AMBIENT CHROME and declares itself NOT visible
+		 * to the poll gate (its counts ride the desktop-feed frame and the
+		 * window-focus refetch, §D.5); the PANE is the one surface whose presence
+		 * turns the 60 s interval on (as amended by QA round 1, Q-2: the chip is a
+		 * door, not a timer). The query is the same key every surface reads, so the
+		 * pane's mount, the chip and this read share one cache entry rather than
+		 * three.
+		 */
+		const codeRequestsQuery = useCodeRequests(sessionId ?? null, {
+			/*
+			 * THE RAIL DOES NOT POLL. It is ambient chrome whose counts ride the feed
+			 * frame and the window-focus refetch (§D.5); `sessionLive` is irrelevant
+			 * with `visible: false`, so it is stated as the false it is rather than
+			 * read from the transport - "live" now means A TURN IS RUNNING (the
+			 * amended rule QA round 1's Q-2 forced), and only the pane's timer reads
+			 * it.
+			 */
+			visible: false,
+			sessionLive: false,
+		});
+		const codeRows = codeRequestsQuery.data?.rows ?? [];
+		const codeGroups = groupRows(codeRows);
+		const codeAttentionCause = attentionCause(codeRows);
 
 		/*
 		 * How many approvals THIS conversation's agent is waiting on, for the header
@@ -1706,6 +1778,27 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const handleConsolePanelWidthReset = useCallback(() => {
 			handleConsolePanelWidthChange(0);
 		}, [handleConsolePanelWidthChange]);
+
+		const codeSlotCapacity =
+			paneRowWidth > 0
+				? Math.max(0, paneRowWidth - CHAT_PANE_MIN_PX)
+				: effectiveCodePanelWidth;
+		const codeDivider = rightSlotDividerContract({
+			capacity: codeSlotCapacity,
+			min: RUN_PANEL_MIN_PX,
+			max: RUN_PANEL_MAX_PX,
+			drawn: Math.min(effectiveCodePanelWidth, codeSlotCapacity),
+		});
+		const handleCodePanelWidthChange = useCallback(
+			(width: number) => {
+				if (!codeDivider.resizable) return;
+				setRightSlotWidth(width);
+			},
+			[codeDivider.resizable, setRightSlotWidth],
+		);
+		const handleCodePanelWidthReset = useCallback(() => {
+			handleCodePanelWidthChange(0);
+		}, [handleCodePanelWidthChange]);
 
 		const handleChangeActiveDocument = useCallback(
 			(documentId: string) => setSelectedTab(conversationId, documentId),
@@ -2029,6 +2122,24 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 * is there for that case.
 										 */
 										undefined
+							}
+							onOpenCodeReview={
+								codeReviewEnabled && hasSession
+									? /*
+										 * THE CODE REVIEW ENTRY (agent review round 1, N1): the `...` menu is
+										 * the keyboard door every other pane has ("so nothing is unreachable
+										 * at 800"), and its absence here left the pane rail-only. The write
+										 * toggles, and the header's own label reads the same store field, so
+										 * the two cannot disagree - `getState` rather than a rendered value
+										 * because the press must see the CURRENT pane, exactly as the canvas
+										 * row's own write does. Gated on the capability and a conversation,
+										 * the same pair the pane's mount is gated on (F6).
+										 */
+										() =>
+											setCodeReviewPaneOpen(
+												!useUiPreferencesStore.getState().isCodeReviewPaneOpen,
+											)
+									: undefined
 							}
 						/>
 						{/*
@@ -2983,8 +3094,51 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					</>
 				)}
 				{/*
-				 * THE PANEL RAIL (#872, #896), rendered here and drawn at the window's edge.
-				 * This component owns every input the five items need (the conversation, the
+				 * THE CODE REVIEW PANE. Mounted only where it has a SUBJECT - a
+				 * conversation - and only where the backend serves its feature
+				 * (`codeReviewEnabled`): on a draft there is no ledger to draw, and against
+				 * an older backend the routes this pane reads do not exist. The store's own
+				 * drawable check (`rightSlotPaneDrawable`) releases the slot on a draft for
+				 * the same reason, so the claimed flag and the drawn pane agree; a flag
+				 * restored on a backend that lost the feature is the one documented edge
+				 * (`isCodeReviewPaneOpen`'s note), and it clears on the next claim of any
+				 * other pane.
+				 */}
+				{isCodeReviewPaneOpen &&
+					codeReviewEnabled &&
+					sessionId !== undefined && (
+						<>
+							<ResizableDivider
+								sidebarWidth={codeDivider.value}
+								onSidebarWidthChange={handleCodePanelWidthChange}
+								minWidth={codeDivider.minWidth}
+								maxWidth={codeDivider.maxWidth}
+								side="left"
+								onDoubleClick={handleCodePanelWidthReset}
+								label="Resize code review. Double-click resets the shared pane width."
+							/>
+							<PaneSlot
+								width={effectiveCodePanelWidth}
+								tourTag="code-review-pane-slot"
+							>
+								<CodeReviewPane
+									sessionId={sessionId}
+									/*
+									 * THE POLL GATE'S "live", the Stop control's own reading (`turnAlive`, the
+									 * frontend's `streaming` flag through the held frame): a turn is RUNNING.
+									 * The transport-attached reading this replaced was true for every open
+									 * window, so an idle conversation with the pane open polled forever (QA
+									 * round 1, Q-2 / review F5).
+									 */
+									sessionLive={canonical?.turnAlive === true}
+									onClose={() => setCodeReviewPaneOpen(false)}
+								/>
+							</PaneSlot>
+						</>
+					)}
+				{/*
+				 * THE PANEL RAIL (#872, #896, #927), rendered here and drawn at the window's edge.
+				 * This component owns every input the six items need (the conversation,
 				 * run view model and its acknowledgement context, the approvals count, the
 				 * asks door's offered rule, count and scope, the console's unseen marks, the
 				 * file count), and the shell owns the element
@@ -3014,6 +3168,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						consoleUnseenCount={consoleUnseenMarks.length}
 						consoleUnseenPulsing={consoleUnseenPulsing}
 						fileCount={mentionedFileCount}
+						codeOffered={codeReviewEnabled && hasSession}
+						codeOpened={codeGroups.opened.length}
+						codeMentioned={codeGroups.mentioned.length}
+						codeAttention={codeAttentionCause}
 					/>
 				</InPanelRailHost>
 			</div>
