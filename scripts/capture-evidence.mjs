@@ -677,6 +677,63 @@ export const STORIES = [
 	["settings-radient-account--verify-none", 1280, 480],
 	["settings-radient-account--claimed", 1280, 400],
 
+	/*
+	 * The chat row for a Radient run refused for want of credits, one frame per
+	 * account state the guidance can take (the story drives the real account read
+	 * through a stubbed desktop transport). `non-radient-rate-limit` is the control
+	 * that must look like it did before. The shutter holds until the guidance
+	 * box (or, for the control, the row's own action) is in the DOM, because the
+	 * box paints only after the account read settles.
+	 */
+	[
+		"chat-radient-out-of-credits--unverified-pending",
+		1280,
+		260,
+		{ expectPresent: "[data-radient-credits-state=unverified]" },
+	],
+	[
+		"chat-radient-out-of-credits--unverified-expired",
+		1280,
+		260,
+		{ expectPresent: "[data-radient-credits-state=unverified]" },
+	],
+	[
+		"chat-radient-out-of-credits--unverified-none",
+		1280,
+		260,
+		{ expectPresent: "[data-radient-credits-state=unverified]" },
+	],
+	[
+		"chat-radient-out-of-credits--verified-bonus-available",
+		1280,
+		260,
+		{ expectPresent: "[data-radient-credits-state=verified]" },
+	],
+	[
+		"chat-radient-out-of-credits--verified-bonus-received",
+		1280,
+		260,
+		{ expectPresent: "[data-radient-credits-state=verified]" },
+	],
+	[
+		"chat-radient-out-of-credits--verified-older-backend",
+		1280,
+		260,
+		{ expectPresent: "[data-radient-credits-state=verified]" },
+	],
+	[
+		"chat-radient-out-of-credits--account-unreadable",
+		1280,
+		300,
+		{ expectPresent: "[data-radient-credits-state=unknown]" },
+	],
+	[
+		"chat-radient-out-of-credits--non-radient-rate-limit",
+		1280,
+		160,
+		{ expectPresent: 'a[href*="section=providers"]' },
+	],
+
 	["chat-trace--conversation", 1280, 1308],
 	["chat-trace--conversation-with-reasoning", 1280, 1409],
 	["chat-trace--conversation-reasoning-open", 1280, 3327],
