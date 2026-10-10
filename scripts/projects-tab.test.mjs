@@ -1284,14 +1284,15 @@ test("a start-session toast names the target it started with", () => {
 test("the done-gate refusal is re-spoken as something this dialog can do", () => {
 	/*
 	 * The daemon's sentence verbatim (project-lifecycle's `_refuse_done_if_
-	 * incomplete`): the names and counts are the useful half and must survive;
+	 * incomplete`): the names and counts are the useful half and must survive
+	 * (unquoted since round 1's U4/D8, see `refusalCopy`'s own note);
 	 * the `force_done=true` tail is a tool-call field the desktop update body
 	 * does not carry, so it must not reach the dialog.
 	 */
 	const daemon =
 		"cannot set status 'done': 2 milestones still incomplete ('alpha', 'beta') — complete them, or pass force_done=true to close with them open";
 	const copy = refusalCopy(daemon);
-	assert.ok(copy.includes("'alpha', 'beta'"), "the incomplete names survive");
+	assert.ok(copy.includes("alpha and beta"), "the incomplete names survive");
 	assert.ok(
 		!copy.includes("force_done"),
 		"the field this dialog cannot send is gone",
@@ -1307,7 +1308,7 @@ test("the done-gate refusal is re-spoken as something this dialog can do", () =>
 	 */
 	assert.equal(
 		copy,
-		"This can't be marked done yet: 2 milestones are still incomplete ('alpha', 'beta'). Complete or remove the incomplete milestones, then mark it done.",
+		"This can't be marked done yet: 2 milestones are still incomplete (alpha and beta). Complete or remove the incomplete milestones, then mark it done.",
 	);
 	/* Every other refusal is shown as written, never silently reworded. */
 	assert.equal(
