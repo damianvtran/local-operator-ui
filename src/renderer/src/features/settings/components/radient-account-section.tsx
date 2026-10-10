@@ -15,6 +15,13 @@ import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query";
 import { isRadientAccountFailure } from "@shared/hooks/use-radient-user-query";
 import { useUserStore } from "@shared/store/user-store";
 import { formatCalendarDate } from "@shared/utils/date-utils";
+import {
+	RADIENT_VERIFY_URL,
+	consoleUrl,
+	freeCreditsText,
+	openConsolePage,
+	verifyCopy,
+} from "@shared/utils/radient-account-copy";
 import { Info, LogOut } from "lucide-react";
 import { type FC, useCallback, useMemo } from "react";
 import { InfoGrid, InfoItem } from "./settings-section";
@@ -39,53 +46,6 @@ type RadientAccountSectionProps = {
  * (`window.api.openExternal`, the same call `use-low-credits-dialog` makes),
  * with the browser fallback for Storybook and any non-Electron host.
  */
-const freeCreditsText = (amount: number | undefined): string => {
-	if (typeof amount !== "number" || !Number.isFinite(amount))
-		return "your free credits";
-	return `$${amount.toFixed(2)} in free credits`;
-};
-
-const VERIFY_CLAIM_URL = "https://console.radienthq.com/dashboard/verification";
-
-const verifyCopy = (
-	grant: AccountVerification["signup_grant"],
-	amountText: string,
-): { sentence: string; action: string } => {
-	if (grant === "pending")
-		return {
-			sentence: `Verify your email to claim ${amountText}. Check your inbox for the link Radient sent.`,
-			action: "Open verification page",
-		};
-	if (grant === "expired")
-		return {
-			/*
-			 * The window that lapsed is the LINK's, not the grant's: the verification
-			 * service's `Reissue` mints a fresh link while the grant is still
-			 * unclaimed (agent-server `signup_verification_service.go`), which is why
-			 * the amount stays on this arm (`grant_amount` is attached for pending
-			 * and expired alike) and the console page is where the new one is asked
-			 * for. What drops, rather than weakens, is the instruction to check the
-			 * inbox - that mail expired with the window (UX round 1, U1).
-			 */
-			sentence: `The link to claim ${amountText} has expired. Request a new one from the verification page.`,
-			action: "Request a new link",
-		};
-	/*
-	 * `none` (and the gated-out `claimed`, which never reaches this render): no
-	 * ticket was ever issued - or none survives - so there is no grant to
-	 * promise and nothing that could be called "new". The copy points at the
-	 * console to CHECK the account instead, and carries no amount: the frozen
-	 * contract attaches `grant_amount` only for pending/expired, and this arm
-	 * must not dress a missing answer as a figure (UX round 1, U1; the previous
-	 * wording promised a claim the state does not support).
-	 */
-	return {
-		sentence:
-			"No signup grant is attached to this account. Open the verification page to check the account.",
-		action: "Open verification page",
-	};
-};
-
 const VerifyToClaimCallout: FC<{ verification: AccountVerification }> = ({
 	verification,
 }) => {
@@ -95,7 +55,7 @@ const VerifyToClaimCallout: FC<{ verification: AccountVerification }> = ({
 		verification.signup_grant,
 		freeCreditsText(amount),
 	);
-	const claimUrl = verification.claim_url || VERIFY_CLAIM_URL;
+	const claimUrl = consoleUrl(verification.claim_url, RADIENT_VERIFY_URL);
 
 	return (
 		<div className="mt-8 flex items-start gap-3 rounded-sm border border-hairline bg-surface p-3">
@@ -108,13 +68,7 @@ const VerifyToClaimCallout: FC<{ verification: AccountVerification }> = ({
 				<Button
 					variant="secondary"
 					size="sm"
-					onClick={() => {
-						if (window.api?.openExternal) {
-							window.api.openExternal(claimUrl);
-						} else {
-							window.open(claimUrl, "_blank");
-						}
-					}}
+					onClick={() => openConsolePage(claimUrl)}
 				>
 					{action}
 				</Button>
