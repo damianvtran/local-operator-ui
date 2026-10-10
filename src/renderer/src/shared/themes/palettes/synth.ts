@@ -63,6 +63,10 @@ export const synth: ThemeDefinition = {
 		// The user block's fill: `surface` itself, which already clears the
 		// role's ΔE00 4.0 floor off this canvas (measured 6.23).
 		messageSurface: "#2E1D42",
+		// The media slot's well: `sunken` stepped deeper until it clears the
+		// role's lightness half - the well already carries ΔE00 9.03 off this canvas,
+		// where `sunken` alone sits at 2.36 L* (under the role's 2.5).
+		mediaSurface: "#1b1a1f",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
