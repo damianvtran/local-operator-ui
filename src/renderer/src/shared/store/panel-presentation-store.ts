@@ -129,6 +129,24 @@ export type PanelRequest = {
 	 * answer that question.
 	 */
 	entryExcerpt?: string;
+	/**
+	 * How the requester names the ADDRESSED conversation back to the reader, as
+	 * the row that raised the request drew it (#920).
+	 *
+	 * THE SAME RULE AS `entryExcerpt`, ONE LEVEL UP: a requester's copy of a
+	 * fact, not something the presenter can derive. The presenter holds a pane,
+	 * not the row that was pointed at, so for a conversation the user never
+	 * opened the pane has no reading of its name at all - and the rename
+	 * picker's field must open on the ROW's current name, because seeding it
+	 * from the pane's own `conversation_title` would offer the WRONG
+	 * conversation's name to someone renaming a row they have not opened (the
+	 * asymmetry #920 exists for).
+	 *
+	 * It follows its target: spread as absent unless an addressed conversation
+	 * is ALSO named, exactly as `entryExcerpt` follows `entryId` - a name with
+	 * no conversation to attach it to names nothing.
+	 */
+	subjectName?: string;
 };
 
 /**
@@ -149,18 +167,22 @@ type PanelPresentationState = {
 	 * (see `PanelRequest.invoker`); omitted only where the caller has none to name.
 	 * `sessionId` names the conversation the request addresses when the requester
 	 * is outside the pane (see `PanelRequest.sessionId`); the palette never passes it.
-	 * `entryId` names the transcript entry the destination acts on, when it acts
-	 * on one, and `entry.excerpt` is how to name it back to the reader (see
-	 * `PanelRequest.entryExcerpt`). The object rather than two positional strings
-	 * because they are two halves of one fact: a cut point is useless to a
-	 * destination that cannot say WHICH message it is, and a position whose only
+	 * `facts` carries the requester's copy of what the presenter cannot derive,
+	 * each member only when set: `facts.id`/`facts.excerpt` name the transcript
+	 * entry a destination acts on and how to label it (see
+	 * `PanelRequest.entryId`/`PanelRequest.entryExcerpt`), and `facts.subjectName`
+	 * is how the requester names the ADDRESSED conversation (see
+	 * `PanelRequest.subjectName`, #920). The object rather than positional
+	 * strings because the halves of one fact stay together: a cut point is
+	 * useless to a destination that cannot say WHICH message it is, a name is
+	 * useless with no conversation to attach it to, and a position whose only
 	 * caller passes both by construction is the shape that cannot drift apart.
 	 */
 	requestPanel: (
 		destination: string,
 		invoker?: HTMLElement | null,
 		sessionId?: string,
-		entry?: { id: string; excerpt?: string },
+		facts?: { id?: string; excerpt?: string; subjectName?: string },
 	) => void;
 	/** Retire a request, by nonce. */
 	consumePanel: (nonce: number) => void;
@@ -246,7 +268,7 @@ let claims = 0;
 export const usePanelPresentationStore = create<PanelPresentationState>(
 	(set) => ({
 		request: null,
-		requestPanel: (destination, invoker, sessionId, entry) => {
+		requestPanel: (destination, invoker, sessionId, facts) => {
 			nextNonce += 1;
 			set({
 				request: {
@@ -261,11 +283,17 @@ export const usePanelPresentationStore = create<PanelPresentationState>(
 					 * The same rule one level down, and the same reason it is a spread: an
 					 * empty id names no entry, so it is ABSENT rather than a blank the
 					 * presenter has to tell apart from "no cut point". The excerpt follows
-					 * the id - a label for a target that is not there names nothing.
+					 * the id - a label for a target that is not there names nothing - and
+					 * the subject's name follows the ADDRESSED conversation by the same
+					 * rule (#920): a name with no conversation to attach it to is as
+					 * meaningless as an excerpt with no entry.
 					 */
-					...(entry?.id ? { entryId: entry.id } : {}),
-					...(entry?.id && entry.excerpt
-						? { entryExcerpt: entry.excerpt }
+					...(facts?.id ? { entryId: facts.id } : {}),
+					...(facts?.id && facts.excerpt
+						? { entryExcerpt: facts.excerpt }
+						: {}),
+					...(sessionId && facts?.subjectName
+						? { subjectName: facts.subjectName }
 						: {}),
 				},
 			});

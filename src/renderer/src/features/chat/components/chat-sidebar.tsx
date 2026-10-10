@@ -94,6 +94,7 @@ import {
 	type LucideIcon,
 	MessageSquarePlus,
 	MoreHorizontal,
+	Pencil,
 	Pin,
 	PinOff,
 	Plus,
@@ -5837,7 +5838,7 @@ export function ChatSidebar({
 				 * to spend.
 				 *
 				 * FORK IS THE THIRD ROW (#739, re-ordered by the round-1 design review, D2), and
-				 * it differs from the five around it in mechanism: there is no row control to
+				 * it differs from the six around it in mechanism: there is no row control to
 				 * press, so it opens the register's own `session.fork` picker for THIS row's
 				 * conversation through the panel-presentation store (see its `onSelect`). It
 				 * carries NO chord, because fork has none - `/fork` and the palette are its other
@@ -5845,29 +5846,34 @@ export function ChatSidebar({
 				 * chord would be a hint for a gesture that does nothing. It is drawn from the
 				 * sidebar's own `unstarted` statement (`forkable`, above).
 				 *
-				 * THE MENU'S CAP IS SIX ROWS, and the rule - not a number - is what the design
+				 * THE MENU'S CAP IS SEVEN ROWS, and the rule - not a number - is what the design
 				 * record now concludes with: a row earns its place by being an act on THIS row
 				 * that has NO OTHER DOOR THE USER CAN FIND. Archive and Pin qualify (the strip's
 				 * pair is `tabIndex={-1}` and reachable only through chords the row prints
 				 * nowhere); the Move pair qualifies as WCAG 2.5.7's single-pointer path, which the
 				 * deleted arrow buttons used to carry; Fork qualifies because it is the only door
 				 * that names the ROW's conversation - neither `/fork` nor the palette can, as both
-				 * act on the pane's; and COPY SESSION ID (#893) is the sixth, admitted by the same
+				 * act on the pane's; COPY SESSION ID (#893) is the sixth, admitted by the same
 				 * test - the row's own id has NO other door TODAY (the header's overflow menu names
 				 * the PANE's conversation, which is generally not the row's, and nothing on the row
-				 * reveals the id), so the number moved rather than a row being replaced. A seventh
-				 * act is admitted only by passing that test; otherwise it replaces a row or finds
-				 * another surface. The cap's widest state is a pinned row, where the Move rows draw
-				 * their full chords - it now draws SIX rows, so the pinned-row frame and its
-				 * measurement are re-derived in the evidence pass
+				 * reveals the id), so the number moved rather than a row being replaced; and
+				 * RENAME CONVERSATION (#920) is the seventh, admitted by the same test - the doors
+				 * that already exist act on the PANE's conversation, not this row's: the header's
+				 * inline editor is threaded the page's own `sessionId` (`chat-page.tsx`), and
+				 * `/rename` from the composer or the palette is the pane's too, so for a row the
+				 * user has NOT opened NEITHER door reaches it - which is the whole asymmetry the
+				 * row menu exists for. Each raise moved the number rather than replacing a row,
+				 * and the cap's widest state is a pinned row, where the Move rows draw their full
+				 * chords - it now draws SEVEN rows, so the pinned-row frame and its measurement
+				 * are re-derived in the evidence pass
 				 * (`docs/evidence/chat-sidebar-row-context-menu/README.md`); the five-row panel this
 				 * note used to carry (296 × 184 at a 280px sidebar) no longer describes it, and no
 				 * replacement figure is written here, because a number this file cannot render is a
 				 * number it must not claim. Around eight rows or ~280px tall is where the answer
 				 * changes from "grow" to "submenu or another surface".
 				 * `scripts/chat-sidebar-row-menu.test.mjs`
-				 * counts the items and pins their order, so a seventh is a failing assertion rather
-				 * than a quiet addition.
+				 * counts the items and pins their order, so an eighth row - or a re-order - is a
+				 * failing assertion rather than a quiet addition.
 				 */}
 				<ContextMenuContent
 					onFocus={(event) => {
@@ -6017,10 +6023,11 @@ export function ChatSidebar({
 					 * owning device's id; see `copy-session-id.ts`).
 					 *
 					 * SLOT 4, between Fork and the Move pair, and it OBEYS the ordering rule §1
-					 * states rather than bending it: rows 1-2 are the mirrored pair, row 3 is the
-					 * menu's UNCONDITIONAL singleton, and the CONDITIONAL block (the Move pair)
-					 * trails as a unit. This item is unconditional too, so it takes its place
-					 * beside Fork in the unconditional run and keeps one identity in every state -
+					 * states rather than bending it: rows 1-2 are the mirrored pair, row 3
+					 * begins the menu's UNCONDITIONAL run, and the CONDITIONAL block (the Move
+					 * pair) trails as a unit. This item is unconditional too, so it takes its
+					 * place beside Fork in the unconditional run and keeps one identity in
+					 * every state -
 					 * a conditional act does not take a slot above an unconditional one, and none of
 					 * the two acts above it is displaced.
 					 *
@@ -6037,6 +6044,60 @@ export function ChatSidebar({
 					<ContextMenuItem onSelect={() => void copySessionId(row.session_id)}>
 						<Copy aria-hidden="true" />
 						<span>Copy session ID</span>
+					</ContextMenuItem>
+					{/*
+					 * RENAME CONVERSATION (#920), SLOT 5, and the seventh row the menu has carried.
+					 * It joins the UNCONDITIONAL run's END by the reasoning Copy did (#893): renaming
+					 * is an act on every row the menu is drawn on - a conversation the user never
+					 * opened included, which is the whole point - so it cannot take a conditional
+					 * slot, and appending keeps every earlier slot's identity in every state while
+					 * the conditional Move block stays adjacent and trailing.
+					 *
+					 * IT PASSES THE MENU'S ADMISSION RULE because the doors that already exist act
+					 * on the PANE's conversation, not this row's: the header's inline editor is
+					 * threaded the page's own `sessionId` (`chat-page.tsx`), and `/rename` from the
+					 * composer or the palette is the pane's too - rename a row the user has NOT
+					 * opened and neither reaches it. This menu is the only surface scoped to an
+					 * arbitrary row, which is the asymmetry the admission rule is written for (see
+					 * the block comment above).
+					 *
+					 * HOW IT OPENS: the register's own `session.rename` picker - the same dialog the
+					 * bare `/rename` and the palette present, whose submit is `sessions.command`
+					 * `rename` through `useSessionCommand` - asked for the way the Fork item above
+					 * asks, because the sidebar owns no presenter. The request names THIS row's
+					 * conversation (the pane's own is generally not the row's) AND carries the name
+					 * the row draws (`row.title || "Untitled chat"`), so the dialog's field opens on
+					 * the name the user pointed at rather than on the pane's title - the row is the
+					 * only party that holds its own name (see `PanelRequest.subjectName`). A third
+					 * door to ONE write, not a second mechanism.
+					 *
+					 * THE INVOKER IS THE ROW'S OWN BUTTON, not the item, for the reason the Fork
+					 * item names: the item unmounts with the menu, and the row's button is the node
+					 * the menu's own close returns to, so Escape from the picker lands where Escape
+					 * from the menu would have. NO CHORD: nothing, on the row or in the palette,
+					 * binds a rename gesture, and a `KeyboardShortcut` here would print a hint for
+					 * one that does nothing (Fork's rule, verbatim).
+					 */}
+					<ContextMenuItem
+						onSelect={() => {
+							requestPanel(
+								"session.rename",
+								document.querySelector<HTMLElement>(
+									`[data-session-row="${CSS.escape(row.session_id)}"] [data-chat-row]`,
+								),
+								row.session_id,
+								{ subjectName: row.title || "Untitled chat" },
+							);
+							// The palette's own guard, minus its first clause (the Fork item's
+							// reasoning, verbatim): `session.rename` is pane-only, so the request
+							// is written FIRST - one written after the navigation would race the
+							// pane's mount - and the route moves only when no pane is there to
+							// present it.
+							if (!location.pathname.startsWith("/chat")) navigate("/chat");
+						}}
+					>
+						<Pencil aria-hidden="true" />
+						<span>Rename conversation</span>
 					</ContextMenuItem>
 					{offersMove && (
 						<>
