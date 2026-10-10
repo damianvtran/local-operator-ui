@@ -9,6 +9,14 @@ merged GitLab MR (`minervaai/minerva-skills!57`, state-only `CI passed`,
 `Round 3 · terminal`). Every summary, lane, CI figure and comment count is the
 PR1b backend's own fetch of the real refs; nothing about them is fabricated.
 
+Both files are theme-named (`localOperatorDark.png`, `localOperatorLight.png`),
+and that is load-bearing rather than cosmetic: the sweep judges a `.png` whose
+stem resolves to a palette as a frame of that theme, so this set's declaration
+carries `frames: 2` and both are re-judged on every `pnpm check-evidence` run.
+An earlier declaration of this set said 0, and CI's Evidence Frames job refused
+it with `supplementary[204] (code-review-real) claims 0 frames; 2 are on disk` -
+which is the failure this paragraph exists to keep from coming back.
+
 ## What produced them
 
 A session-owned rig (round-2 remediation m2), not the storybook sweep. In one

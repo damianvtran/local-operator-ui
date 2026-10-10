@@ -9689,7 +9689,7 @@
     },
     {
       "path": "code-review-real",
-      "frames": 0,
+      "frames": 2,
       "capturedAtHead": "bcba58d0fe7",
       "capturedAt": "2026-10-10T02:06:32.968Z",
       "source": "A session-owned rig (round-2 remediation m2), NOT the sweep: one user session was seeded into an isolated config root (its transcript carries an opened row - a `gh pr create` bash call with the real tool-result shape, `exit code: 0` + the stdout/stderr sections - and two mentioned refs in URL form) and served by the PR1b backend worktree at `039476dff3` (`local-operator serve` with its own HOME/config/log dirs, a run-chosen `LOCAL_OPERATOR_DESKTOP_TOKEN`, and forge tokens by environment only); this branch's BUILT renderer ran headless against it and the pane was opened through the app's own dev-driver verbs (navigate, `press` on the rail's code item) and photographed by the app's own `webContents.capturePage()` at devicePixelRatio 2, cropped to the pane's bounding rect (596x868 CSS). The route proof ran before the boot: the code-requests GET returned all three rows with summaries from the live fetch. The frames depict a build of `bcba58d0fe7`'s src; the seeded half is only the session transcript that makes the rows exist - every summary, lane, CI figure and comment count in the pixels is the forges' own, and the set's README carries the full command.",
