@@ -68,6 +68,9 @@ export const neon: ThemeDefinition = {
 		// The media slot's well: ΔE00 4.06 off the canvas, where `sunken` alone
 		// measures 3.62 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
+		// The LIGHTNESS half gates the stop here: a ΔE00-clearing candidate
+		// (`#1B1B1E`, 2.34 L*) comes earlier on the line, so the walk carries it
+		// one step further to this value, which clears both halves (2.70 L*).
 		mediaSurface: "#1b1a1e",
 
 		/*

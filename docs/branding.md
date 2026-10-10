@@ -154,8 +154,9 @@ condensed strip tile's ground — not a fifth ground and not a state: the tile d
 **no edge at rest** (the ring went at the operator's ask; it returns only on hover
 and keyboard focus, the states in which the tile is a control), so the fill **is**
 the tile's extent — and the shared `sunken` well could not carry it, measuring below
-ΔE00 4.0 off the canvas on **56 of the 59** palettes and bottoming at **2.00**
-(`iceberg`, `neonNoir`), which is the tile a page-toned picture had. It carries its
+ΔE00 4.0 off the canvas on **55 of the 59** palettes and bottoming at **2.00**
+(`iceberg`, `neonNoir`; the 56th mover, `synth`, clears ΔE00 9.03 and moves for the
+lightness half alone), which is the tile a page-toned picture had. It carries its
 own findability floor — **ΔE00 4.0 off the canvas** it is drawn on, with a **≥ 2.5
 `L*`** step in magnitude — authored as the first clearing step along `canvas` →
 `sunken` continued **away from the canvas** (the palette's own recessed ramp), or
@@ -166,7 +167,9 @@ raised plate. 4.0 is the floor for the smallest mark the eye must find, and at a
 picture that fills the slot the well's whole visible extent IS that small — a ~1px
 ring at the picture's edge and corners — which is why the 1px-mark floor is the
 right one rather than the field floor. The returning edge (`border-control`, ≥ 3:1
-on every ground) stays the stronger, state-only cue.
+on every ground — the OUTER pairing, the side the silhouette is read against;
+against the fill it measures below 3:1 on ten light palettes and is deliberately
+not asserted, see the role's doc) stays the stronger, state-only cue.
 
 There are **two state roles, and each is a rung of the panel's own ladder**: `rowHover`,
 the fill of the row under the pointer, and `rowSelected`, the fill of the row the

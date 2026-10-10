@@ -275,25 +275,39 @@ export type ThemePalette = {
 	 * the picture's edge and corners, which is exactly the 1px-rule case the
 	 * floor was written for rather than the field floor (2.0, for adjacent
 	 * ground fields). It also sits under the cue the hover state carries (the
-	 * returning `borderControl` edge, >= 3:1 on every ground), so the edge still
-	 * reads as the stronger, state-only mark. The lightness half (>= 2.5 L* in
-	 * MAGNITUDE, the same half the user-message fill carries) is asserted with
-	 * it: this role steps DOWN where that one steps up, and the half is
-	 * direction-agnostic because ΔE00 is a budget a chroma-only step can spend
-	 * while the fill vanishes in a greyscale render.
+	 * returning `borderControl` edge), so the edge still reads as the stronger,
+	 * state-only mark - and THAT 3:1 is the GROUND's pairing, not this fill's:
+	 * the edge is asserted against the four grounds (>= 3.01 measured across the
+	 * fleet), the outer side, which is the side the tile's silhouette is read
+	 * against; against `mediaSurface` it measures below 3:1 on 10 light palettes
+	 * (2.78 worst, `catppuccinLatte`) and that inner pair is deliberately NOT
+	 * asserted - it is not the side the cue is read from (design round 1, D1;
+	 * the hovered state is a frame, `chat-media-slot-fill/letterbox-hover/`).
+	 * The lightness half (>= 2.5 L* in MAGNITUDE, the same half the user-message
+	 * fill carries) is asserted with it: this role steps DOWN where that one
+	 * steps up, and the half is direction-agnostic because ΔE00 is a budget a
+	 * chroma-only step can spend while the fill vanishes in a greyscale render.
 	 *
 	 * ## How a value is authored
 	 *
 	 * The first clearing step along the `canvas` -> `sunken` line CONTINUED
 	 * past `sunken` - the palette's own recessed ramp, so the tile keeps the
-	 * theme's cast - whose ΔE00 off `canvas` clears the floor; where `sunken`
+	 * theme's cast where the ramp has room (the one palette where it does not is
+	 * `localOperatorDark`, whose deep step lands near neutral - LCh hue
+	 * ~89° -> 74° -> 20°, chroma ~3.1 -> 1.0, measured and imperceptible off the
+	 * page) - whose ΔE00 off `canvas` clears the floor; where `sunken`
 	 * itself already clears both halves, the value IS `sunken`. The direction is
 	 * the point: a slot is a well, so its fill deepens away from `canvas`;
 	 * stepping up the ladder would cross `canvas` and turn the well into a
 	 * raised plate, which `sunken`'s own doc says a well is not. Authored as the
 	 * first clearing step on that line, not a global minimisation: the line is
 	 * kept so the tile wears the palette's own ramp rather than a value bent
-	 * toward the floor.
+	 * toward the floor. The lightness half is what GATES the stop on five
+	 * palettes (`synth`, whose well already clears ΔE00 and fails only the half;
+	 * `matrix`, `neon`, `outrun`, `rosePineDawn` - each has a ΔE00-clearing
+	 * candidate one step earlier whose L* is still short; their own comments
+	 * carry the readings), which is why those five land above the floor rather
+	 * than on it.
 	 */
 	mediaSurface: string;
 	/**

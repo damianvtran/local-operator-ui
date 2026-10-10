@@ -19,6 +19,14 @@
  * clears the floor at rest, so the change does NOT move it - the pair's
  * control, expected byte-identical across the halves.
  *
+ * `MixedRow` is the one state the pair cannot carry (design round 1, D2; the
+ * reviewer's NIT-2): a failed tile's receipt - edge + `sunken` - BETWEEN two
+ * working tiles, so the fill step this role adds is seen in a mixed row rather
+ * than inferred from the receipt's own frame. The hover state needs no story:
+ * the rig moves the real pointer onto the letterboxed tile of `Rest` itself
+ * (`letterbox-hover` in the set, `catppuccinLatte` - the palette where the
+ * edge against the new fill is weakest).
+ *
  * The strip is the real `FoldMedia` on the same sheet the trace-fold strip
  * frames use, at the same 1280 wide, so a reviewer can hold these against
  * `chat-trace-fold/image-tones` and `images-many` - the pre-change frames
@@ -54,6 +62,18 @@ const IMAGES = [
 	shot("darkCanvas", FOLD_DARK_CANVAS, 4),
 ];
 
+/*
+ * The receipt's fixture, the shape the trace-fold set uses: a digest with no
+ * scope to ask for bytes, which is the store's own "nothing to show" state and
+ * reaches the compact receipt without a request.
+ */
+const MISSING_SHOT: TranscriptImage = {
+	id: "media-slot-fill:missing",
+	data: null,
+	attachment: "9f2c41ab73de5086c1b7a4e2d39f6a08",
+	mimeType: "image/png",
+};
+
 const meta: Meta = {
 	title: "Chat/Media slot fill",
 	parameters: { layout: "fullscreen" },
@@ -62,16 +82,23 @@ export default meta;
 
 type Story = StoryObj;
 
-const Sheet = () => (
+const Sheet = ({
+	images = IMAGES,
+}: { images?: readonly TranscriptImage[] }) => (
 	<div className="max-w-[760px] p-8">
 		<p className="mb-2 text-body-sm text-ink-muted">
 			Ran the suite, fixed the two failures, and pushed the branch.
 		</p>
-		<FoldMedia images={IMAGES} scope={null} onRevealMore={() => {}} />
+		<FoldMedia images={images} scope={null} onRevealMore={() => {}} />
 	</div>
 );
 
 /** The strip at rest: the page-toned and letterboxed tiles, beside the control. */
 export const Rest: Story = {
 	render: () => <Sheet />,
+};
+
+/** The mixed row: the failed tile's receipt between two working tiles. */
+export const MixedRow: Story = {
+	render: () => <Sheet images={[IMAGES[1], MISSING_SHOT, IMAGES[2]]} />,
 };

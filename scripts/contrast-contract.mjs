@@ -332,15 +332,26 @@ const MESSAGE_SURFACE_LIGHTNESS_STEP = 2.5;
  * The media tile's fill. Its extent at rest IS the fill (the borderless tile
  * draws no edge until hover or focus), so it needs a findability floor of its
  * own, and the shared `sunken` well cannot carry one: as a ΔE00 step off the
- * `canvas` it falls below 4.0 on 56 of the 59 palettes - bottoming at 2.00
- * (`iceberg`, `neonNoir`) - which is the extent a page-toned picture's tile
- * had. 4.0 is this file's floor for the smallest mark the eye must find
+ * `canvas` it falls below 4.0 on 55 of the 59 palettes - bottoming at 2.00
+ * (`iceberg`, `neonNoir`); the 56th mover, `synth`, clears ΔE00 9.03 and moves
+ * for the lightness half alone - which is the extent a page-toned picture's
+ * tile had. 4.0 is this file's floor for the smallest mark the eye must find
  * (`LINE_SEPARATION_FLOOR`) - and in the worst case the mark IS that small: a
  * picture that fills the slot shows the well only as a ~1px ring at the
  * picture's edge and corners. The lightness half is asserted with it - at
  * least 2.5 `L*` in MAGNITUDE, the half the message block's fill carries -
  * because this fill steps down where that one steps up, and ΔE00 is a budget a
  * chroma-only step can spend while the fill vanishes in a greyscale render.
+ *
+ * THE WORST REALISED MARGIN IS ROUNDING-THIN: `oneDark` clears by 0.0012 ΔE00
+ * after 8-bit rounding, so a single-LSB edit to that palette would flip this
+ * assertion - which is why it is re-derived for every palette on every run
+ * rather than spot-checked. The returning hover/focus edge is deliberately NOT
+ * asserted against this fill: its >= 3:1 is the GROUND relationship
+ * (`borderControl` on the four grounds, >= 3.01 across the fleet), the side
+ * the tile's silhouette is read against, and against `mediaSurface` the edge
+ * falls below 3:1 on 10 light palettes (2.78 worst, `catppuccinLatte`) - an
+ * inner pair the cue is not read from (design round 1, D1).
  */
 const MEDIA_SURFACE_DELTA_E = 4.0;
 const MEDIA_SURFACE_LIGHTNESS_STEP = 2.5;
@@ -6010,7 +6021,7 @@ for (const { id, palette: p } of palettes) {
 	/*
 	 * 6c. The media tile's fill: the tile's extent at rest IS the fill (it draws
 	 * no edge until hover/focus), so it has to be findable, and the shared
-	 * `sunken` well it used to wear cannot carry that - below ΔE00 4.0 on 56 of
+	 * `sunken` well it used to wear cannot carry that - below ΔE00 4.0 on 55 of
 	 * the 59 palettes, bottoming at 2.00 (`iceberg`, `neonNoir`) - which is the
 	 * tile a page-toned picture had. The floor is `MEDIA_SURFACE_DELTA_E` (its own
 	 * comment carries why 4.0), measured off `canvas` - the ground the strip is
@@ -6018,7 +6029,12 @@ for (const { id, palette: p } of palettes) {
 	 * cannot pass while the fill vanishes in a greyscale render. No ink sits on
 	 * this fill (the failed-tile receipt is the one tile state with a glyph, and
 	 * it keeps `sunken`; see its pin below), so there is no ink row here, unlike
-	 * `messageSurface`'s.
+	 * `messageSurface`'s. The fill is also deliberately not paired with the
+	 * returning edge: `borderControl`'s >= 3:1 is the ground relationship (see
+	 * `MEDIA_SURFACE_DELTA_E`'s comment), so no edge-vs-fill row exists here and
+	 * none should be added - on 10 light palettes that pairing measures below
+	 * 3:1 (2.78 worst, `catppuccinLatte`), and the frame the design round asked
+	 * for lives in `docs/evidence/chat-media-slot-fill/letterbox-hover/`.
 	 */
 	{
 		/* Absent values are the completeness check's business; a PRESENT but
