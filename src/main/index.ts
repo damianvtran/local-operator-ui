@@ -72,7 +72,11 @@ import {
 } from "./browser/consent-click";
 import { createSessionCookieQuitHold } from "./browser/session-cookie-quit-hold";
 import { consoleCaptureUrlFor } from "./console/capture-url";
-import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
+import {
+	guardForegroundReceipts,
+	isAdmittedSender,
+	registerDesktopIPC,
+} from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import {
 	describeDevDriverArming,
@@ -2677,6 +2681,37 @@ app
 		);
 
 		/*
+		 * WHO MAY ASK MAIN TO LOOK AT A LOCAL FILE (`probe-files`, `read-file-bytes`).
+		 *
+		 * Previews now route AGENT-SUPPLIED paths into these two channels (message
+		 * attachments, composer tiles, Files-grid thumbnails), and their path rule
+		 * is only `~`/cwd resolution, a `stat` and the 64 MiB cap - there is no root
+		 * list, because the app is the user's own and the user may open any file
+		 * they can read. What keeps a foreign document away from them is therefore
+		 * the SENDER: the main frame of one of the app's own windows, on that
+		 * window's own trusted document - the same test the desktop plane applies
+		 * (`isAdmittedSender`). Two windows qualify and each is admitted only on its
+		 * own URL: the main window, and the Quick send mini view, whose composer
+		 * renders attachment tiles and resolves `@` mentions through these channels.
+		 * A sandboxed preview frame never gets this far (it has no `window.api`),
+		 * so this is a second lock, not the only one.
+		 */
+		const trustedLocalFileSenders = () => [
+			{ window: mainWindow, url: rendererUrl },
+			...(miniView === null
+				? []
+				: [{ window: miniView.window, url: miniViewUrlFor(rendererUrl) }]),
+		];
+		const authorizeLocalFileSender = (
+			event: Parameters<typeof isAdmittedSender>[0],
+			what: string,
+		): void => {
+			if (!isAdmittedSender(event, trustedLocalFileSenders())) {
+				throw new Error(`This window cannot ${what}.`);
+			}
+		};
+
+		/*
 		 * Existence and identity for the Files panel, in one batched call.
 		 *
 		 * The renderer cannot stat (`nodeIntegration: false`,
@@ -2705,7 +2740,8 @@ app
 		 */
 		ipcMain.handle(
 			"probe-files",
-			async (_, paths: unknown, cwd?: string): Promise<ProbedFile[]> => {
+			async (event, paths: unknown, cwd?: string): Promise<ProbedFile[]> => {
+				authorizeLocalFileSender(event, "probe files");
 				const asked = Array.isArray(paths)
 					? paths.filter((path): path is string => typeof path === "string")
 					: [];
@@ -2762,10 +2798,21 @@ app
 		ipcMain.handle(
 			"read-file-bytes",
 			async (
-				_,
+				event,
 				filePath: string,
 				maxBytes: number = MAX_FILE_READ_BYTES,
 			): Promise<ReadFileBytesResponse> => {
+				if (!isAdmittedSender(event, trustedLocalFileSenders())) {
+					// Answered, not thrown: every caller of this channel is a
+					// `useFileBlobUrl` that renders `unavailable` from the shape, and
+					// a refusal that threw would surface as an `unreadable` with the
+					// engine's wrapping instead of this sentence.
+					return {
+						success: false,
+						code: "unreadable",
+						error: "This window cannot read local files.",
+					};
+				}
 				const cap =
 					Number.isFinite(maxBytes) && maxBytes > 0
 						? Math.min(maxBytes, MAX_FILE_READ_BYTES)

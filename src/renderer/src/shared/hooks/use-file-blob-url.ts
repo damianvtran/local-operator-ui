@@ -17,14 +17,23 @@
  * in `shared/lib/blob-url-cache`, shared with attachment images, so there is one
  * implementation of it rather than two.
  *
- * **The cache key is `path:mtime`.** A digest is immutable, a file is not: an
- * agent rewriting the file the user is looking at must not keep showing the
- * version that was on disk when the panel opened. `mtimeMs` comes from the
- * probe, which is why it is a parameter — a renderer cannot `stat`. The scope is
- * exactly that: the key changes when the CALLER supplies a different mtime, so
- * the grid's click handler threads the probe's `lastAgentModified` through the
- * document it opens, and a tab opened without one keeps serving the bytes it
- * first read.
+ * **The cache key is `path:mtime:size`, and a caller with no mtime shares
+ * nothing.** A digest is immutable, a file is not: an agent rewriting the file
+ * the user is looking at must not keep showing the version that was on disk when
+ * the panel opened. `mtimeMs` comes from the probe, which is why it is a
+ * parameter — a renderer cannot `stat`. The key changes when the CALLER supplies
+ * a different mtime or size, so the grid's click handler threads the probe's
+ * `lastAgentModified` through the document it opens.
+ *
+ * A caller that CANNOT stat (a message attachment, a composer tile: they hold a
+ * bare path) used to key on `path:0`, and two holders of one path then shared
+ * whichever bytes the first read — so an agent that rewrites `/tmp/plot.png`
+ * between turns showed the OLD picture in the newer message while the older one
+ * was still mounted (agent review round 1, R1). With no mtime there is no
+ * evidence two reads are the same file, so the entry is private to the holder:
+ * its own key, its own read, revoked on its own unmount. The cost is one read per
+ * holder instead of one per path, which is what the route this replaced paid on
+ * every request.
  *
  * Failure is STATE, not an exception, because the viewer must say something
  * specific: "too large to preview" offers the OS, "not found" says so, and
@@ -38,6 +47,13 @@
  * by the element itself; there is nothing for the bridge to read and nothing
  * this hook revokes. A `file://` spelling of a local path is normalised instead
  * (the bridge speaks bare paths), so both spellings are one cache entry.
+ *
+ * **A relative path resolves against Electron MAIN's working directory.** Main
+ * resolves it (`resolveUserPath`, `~` and cwd), where the route this replaced
+ * resolved it against the DAEMON's, and the cache key carries no cwd. Legacy
+ * payloads with a relative path are the only caller affected, and a path that
+ * the two processes would resolve differently was already ambiguous (agent
+ * review round 1, R9).
  */
 
 import {
@@ -78,11 +94,66 @@ type FileBlobOptions = {
 	 * something the tile already knew.
 	 */
 	sizeBytes?: number | null;
+	/**
+	 * A ceiling BELOW `MAX_FILE_READ_BYTES`, for a surface whose picture is much
+	 * smaller than its file (a 28px video thumbnail must not pull 64 MiB across
+	 * IPC for one still). Enforced twice: here, against the probe's size, so the
+	 * state is stated without a read; and by main, against `stat`, for a caller
+	 * that has no size (the bridge's own `maxBytes` argument) — so the ceiling
+	 * holds whether or not the size was known.
+	 */
+	maxBytes?: number | null;
 };
 
-/** The cache key. Path plus modification, because a file is mutable. */
-const cacheKey = (path: string, mtimeMs: number | null | undefined): string =>
-	`file:${path}:${mtimeMs ?? 0}`;
+/**
+ * The short, user-facing reason a preview is missing, for surfaces too small to
+ * carry a sentence (a composer tile's tooltip). The viewers keep their own
+ * longer copy beside their own layout; this is the one-line form so a tile can
+ * say WHY rather than look the same for every failure (design round 1, D5).
+ * `null` for `no-bridge`, which is a fact about the host and not the file.
+ */
+export function previewFailureReason(
+	code: ReadFileBytesFailure | "no-bridge",
+): string | null {
+	switch (code) {
+		case "too-large":
+			return "Too large to preview";
+		case "not-found":
+			return "File no longer exists";
+		case "not-a-file":
+			return "Not a file";
+		case "unreadable":
+			return "Could not be read";
+		case "no-bridge":
+			return null;
+	}
+}
+
+/**
+ * Source of the per-holder ids that keep an mtime-less entry private. Module
+ * state because ids must be unique across every mounted holder, not per hook
+ * instance; it only ever counts up, so the StrictMode double-invoked
+ * initializer that draws one and discards it costs nothing.
+ */
+let nextHolderId = 0;
+
+/**
+ * The cache key. Path plus modification and size, because a file is mutable.
+ *
+ * Without an mtime the key is the HOLDER's, never the path's (see the header):
+ * keying on a constant for "unknown" is what let a second holder join the first
+ * holder's stale bytes. Size rides along when the caller has it, because a
+ * rewrite inside one filesystem tick keeps the mtime and rarely keeps the size.
+ */
+const cacheKey = (
+	path: string,
+	mtimeMs: number | null | undefined,
+	sizeBytes: number | null | undefined,
+	holderId: number,
+): string =>
+	mtimeMs === null || mtimeMs === undefined
+		? `file:${path}:holder-${holderId}`
+		: `file:${path}:${mtimeMs}:${sizeBytes ?? ""}`;
 
 /**
  * `file://` is a spelling of the same path, not an origin: the bridge and the
@@ -103,7 +174,7 @@ const isDirectUrl = (path: string): boolean =>
 
 export function useFileBlobUrl(
 	path: string,
-	{ mtimeMs, mimeType, sizeBytes }: FileBlobOptions,
+	{ mtimeMs, mimeType, sizeBytes, maxBytes }: FileBlobOptions,
 ): FileBlobState {
 	const filePath = stripFileUrl(path);
 	/*
@@ -115,13 +186,17 @@ export function useFileBlobUrl(
 	 * been handed in full.
 	 */
 	const direct = isDirectUrl(filePath) ? filePath : null;
-	const key = cacheKey(filePath, mtimeMs);
+	// A lazy initializer, so the id is drawn once per holder and survives
+	// re-renders; the key it feeds is stable for the holder's whole life.
+	const [holderId] = useState(() => nextHolderId++);
+	const key = cacheKey(filePath, mtimeMs, sizeBytes, holderId);
 	/*
 	 * The same argument one step earlier for size: a file the probe measured as
 	 * over the read cap is refused by main without being read, so the viewer
 	 * states it without asking.
 	 */
-	const overCap = direct === null && (sizeBytes ?? 0) > MAX_FILE_READ_BYTES;
+	const cap = Math.min(maxBytes ?? MAX_FILE_READ_BYTES, MAX_FILE_READ_BYTES);
+	const overCap = direct === null && (sizeBytes ?? 0) > cap;
 	// PEEK, never retain: a `useState` initializer is double-invoked under
 	// `StrictMode` (`main.tsx`), and a retain there adds a reference no unmount
 	// can pay back. The effect below owns every reference.
@@ -132,7 +207,7 @@ export function useFileBlobUrl(
 				status: "unavailable",
 				url: null,
 				code: "too-large",
-				message: `${filePath} is ${sizeBytes} bytes, over the ${MAX_FILE_READ_BYTES}-byte preview cap`,
+				message: `${filePath} is ${sizeBytes} bytes, over the ${cap}-byte preview cap`,
 				sizeBytes: sizeBytes ?? undefined,
 			};
 		const cached = peek(key);
@@ -169,7 +244,9 @@ export function useFileBlobUrl(
 
 		void (async () => {
 			try {
-				const result = await window.api.readFileBytes(filePath);
+				// `cap` rides along so main refuses an over-ceiling file by `stat`
+				// even when the caller had no size to refuse it with.
+				const result = await window.api.readFileBytes(filePath, cap);
 				if (!live) return;
 				if (!result.success) {
 					setState({
@@ -209,7 +286,7 @@ export function useFileBlobUrl(
 			live = false;
 			release(key);
 		};
-	}, [direct, overCap, key, mimeType, filePath]);
+	}, [direct, overCap, key, mimeType, filePath, cap]);
 
 	return state;
 }

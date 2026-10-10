@@ -312,15 +312,18 @@ test("bytes come from the bridge and the blob is revoked on unmount", async () =
 	assert.equal(blobs.revoked, 1);
 });
 
-test("the bytes are cached: a second holder reads nothing", async () => {
+test("the bytes are cached: a second holder of the SAME version reads nothing", async () => {
 	reset();
 	const path = pathFor("b.png");
-	const first = mountFile(path);
+	// An mtime is the evidence that two holders mean the same file; without one
+	// the entry is private (next test), so the sharing is asserted WITH one.
+	const withMtime = { mimeType: "image/png", mtimeMs: 7, sizeBytes: 3 };
+	const first = mountFile(path, withMtime);
 	settleLast(bytes());
 	await tick();
 	const url = first.value.url;
 
-	const second = mountFile(path);
+	const second = mountFile(path, withMtime);
 	assert.equal(
 		second.value.status,
 		"ready",
@@ -331,7 +334,15 @@ test("the bytes are cached: a second holder reads nothing", async () => {
 
 	// Two holders, one blob: the first unmount must not revoke under the second.
 	first.unmount();
+	/*
+	 * AFTER A TICK: the last release revokes at the end of the task (cache rule
+	 * 3), so a synchronous check passes even when the first holder never took a
+	 * reference of its own (agent review round 1, R4: dropping the retain after
+	 * publish survived the earlier form of this test).
+	 */
+	await tick();
 	assert.equal(blobs.live.size, 1, "one holder still rendering");
+	assert.ok(blobs.live.has(second.value.url), "and it is the live holder's");
 	second.unmount();
 	await tick();
 	assert.equal(blobs.live.size, 0, "the last unmount revokes");
@@ -341,7 +352,10 @@ test("the bytes are cached: a second holder reads nothing", async () => {
 test("`file://` and a bare path are one cache entry", async () => {
 	reset();
 	const path = pathFor("c.png");
-	const withScheme = mountFile(`file://${path}`);
+	// An mtime, because without one an entry is private to its holder and the
+	// two spellings could not meet in the cache at all.
+	const shared = { mimeType: "image/png", mtimeMs: 5 };
+	const withScheme = mountFile(`file://${path}`, shared);
 	assert.equal(reads.length, 1);
 	assert.equal(
 		reads[0].path,
@@ -353,7 +367,7 @@ test("`file://` and a bare path are one cache entry", async () => {
 	const url = withScheme.value.url;
 	withScheme.unmount();
 
-	const bare = mountFile(path);
+	const bare = mountFile(path, shared);
 	assert.equal(bare.value.status, "ready", "the other spelling is warm");
 	assert.equal(bare.value.url, url);
 	assert.equal(reads.length, 0, "and does not re-read");
@@ -401,10 +415,14 @@ test("a rewrite is a different cache entry (the mtime is the key)", async () => 
 	settleLast(bytes());
 	await tick();
 	const url = first.value.url;
-	first.unmount();
-	await tick();
-	assert.equal(blobs.live.size, 0, "the old bytes are gone");
 
+	/*
+	 * The FIRST HOLDER STAYS MOUNTED. With it unmounted and revoked, the second
+	 * mount is cold under ANY key, so a key that ignored the mtime would pass
+	 * (mutating `cacheKey` to drop the mtime left the earlier version of this test
+	 * green: agent review round 1, R4). Live, a key that ignored the mtime would
+	 * hand the new holder the old holder's blob and read nothing.
+	 */
 	const rewritten = mountFile(path, { mimeType: "image/png", mtimeMs: 2 });
 	assert.equal(rewritten.value.status, "loading", "a new mtime is a cold key");
 	assert.equal(reads.length, 1, "and re-reads");
@@ -412,7 +430,119 @@ test("a rewrite is a different cache entry (the mtime is the key)", async () => 
 	await tick();
 	assert.equal(rewritten.value.status, "ready");
 	assert.notEqual(rewritten.value.url, url, "new bytes, new blob URL");
+	assert.equal(blobs.live.size, 2, "both versions are live, one per holder");
+
+	first.unmount();
+	await tick();
+	assert.equal(blobs.live.size, 1, "the old version dies with its holder");
+	assert.ok(
+		blobs.live.has(rewritten.value.url),
+		"and the revoke took the OLD blob, not the new one",
+	);
 	rewritten.unmount();
+	await tick();
+	assert.equal(blobs.live.size, 0);
+});
+
+test("the same mtime with a different size is a different entry", async () => {
+	reset();
+	const path = pathFor("same-tick.png");
+	const first = mountFile(path, {
+		mimeType: "image/png",
+		mtimeMs: 9,
+		sizeBytes: 3,
+	});
+	settleLast(bytes());
+	await tick();
+	// Two writes inside one filesystem tick keep the mtime and rarely the size.
+	const second = mountFile(path, {
+		mimeType: "image/png",
+		mtimeMs: 9,
+		sizeBytes: 4,
+	});
+	assert.equal(second.value.status, "loading", "size is part of the key");
+	assert.equal(reads.length, 1);
+	settleLast(bytes(4));
+	await tick();
+	first.unmount();
+	second.unmount();
+	await tick();
+	assert.equal(blobs.live.size, 0);
+});
+
+test("with NO mtime, two holders of one path never share bytes (R1)", async () => {
+	reset();
+	const path = pathFor("plot.png");
+	/*
+	 * The agent flow that made this a major: message A mounts and reads v1, the
+	 * agent rewrites the same path, message B mounts while A is still on screen.
+	 * Keyed on `path:0`, B joined A's blob and read nothing - the old route
+	 * re-read the disk per request. A caller that cannot stat has no evidence the
+	 * two reads are one file, so each holder reads for itself.
+	 */
+	const a = mountFile(path); // no mtime, as a message attachment passes
+	settleLast(bytes(3));
+	await tick();
+	const b = mountFile(path);
+	assert.equal(b.value.status, "loading", "the second holder is cold");
+	assert.equal(reads.length, 1, "and reads the disk itself");
+	settleLast(bytes(9));
+	await tick();
+	assert.notEqual(b.value.url, a.value.url, "its own bytes, its own blob");
+	assert.equal(blobs.live.size, 2);
+
+	a.unmount();
+	await tick();
+	assert.equal(blobs.live.size, 1, "A's unmount revokes only A's blob");
+	assert.ok(blobs.live.has(b.value.url));
+	b.unmount();
+	await tick();
+	assert.equal(blobs.live.size, 0, "and nothing is left behind");
+});
+
+test("an mtime-less holder keeps its own entry across re-renders and StrictMode", async () => {
+	reset();
+	const path = pathFor("strict-private.png");
+	const view = mountFile(path, { mimeType: "image/png" }, { strict: true });
+	const [first, second] = reads;
+	reads.length = 0;
+	first.resolve(bytes());
+	second.resolve(bytes());
+	await tick();
+	assert.equal(view.value.status, "ready");
+	assert.equal(blobs.live.size, 1, "one blob for the one holder");
+	view.unmount();
+	await tick();
+	assert.equal(blobs.live.size, 0, "released with its own key");
+});
+
+test("a thumbnail ceiling refuses an over-ceiling file WITHOUT a read, and tells main the ceiling", async () => {
+	reset();
+	const path = pathFor("big-clip.mp4");
+	const ceiling = 16 * 1024 * 1024;
+	const over = mountFile(path, {
+		mimeType: "video/mp4",
+		sizeBytes: ceiling + 1,
+		maxBytes: ceiling,
+	});
+	assert.equal(over.value.status, "unavailable");
+	assert.equal(over.value.code, "too-large");
+	assert.equal(reads.length, 0, "no bytes cross the boundary for a still");
+	over.unmount();
+
+	// A caller with no size still gets the ceiling enforced - by main, which is
+	// handed it as the bridge's second argument.
+	const seen = [];
+	globalThis.window.api.readFileBytes = (p, max) => {
+		seen.push(max);
+		return new Promise(() => {});
+	};
+	const unsized = mountFile(pathFor("unsized.mp4"), {
+		mimeType: "video/mp4",
+		maxBytes: ceiling,
+	});
+	assert.deepEqual(seen, [ceiling], "main is told the ceiling");
+	unsized.unmount();
 	await tick();
 });
 

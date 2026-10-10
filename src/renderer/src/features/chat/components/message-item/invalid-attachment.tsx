@@ -5,6 +5,14 @@ import type { FC } from "react";
  */
 export type InvalidAttachmentProps = {
 	file: string;
+	/**
+	 * The specific reason, when the caller knows one ("is too large to preview").
+	 * The default sentence guesses at three causes (incomplete, deleted, moved),
+	 * which is wrong for a file that is fine and merely over the preview cap.
+	 */
+	reason?: string;
+	/** Hands the file to the OS; offered when a preview is impossible but the file is fine. */
+	onOpen?: () => void;
 };
 
 /**
@@ -22,7 +30,11 @@ const getFileName = (path: string): string => {
 /**
  * Component for displaying invalid file attachments
  */
-export const InvalidAttachment: FC<InvalidAttachmentProps> = ({ file }) => {
+export const InvalidAttachment: FC<InvalidAttachmentProps> = ({
+	file,
+	reason,
+	onOpen,
+}) => {
 	return (
 		<div
 			className="mt-2 flex w-fit max-w-full items-center rounded-sm border border-warning-border bg-warning-wash px-3 py-2 text-warning"
@@ -32,9 +44,19 @@ export const InvalidAttachment: FC<InvalidAttachmentProps> = ({ file }) => {
 				<CircleAlert size={14} />
 			</span>
 			<span className="max-w-full truncate text-body-sm">
-				{getFileName(file)} is not viewable (file may be incomplete, deleted, or
-				moved)
+				{reason
+					? `${getFileName(file)} ${reason}`
+					: `${getFileName(file)} is not viewable (file may be incomplete, deleted, or moved)`}
 			</span>
+			{onOpen ? (
+				<button
+					type="button"
+					onClick={onOpen}
+					className="ml-3 shrink-0 text-body-sm underline underline-offset-2"
+				>
+					Open
+				</button>
+			) : null}
 		</div>
 	);
 };
