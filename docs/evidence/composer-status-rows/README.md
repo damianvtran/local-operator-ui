@@ -24,7 +24,7 @@ Chromium** — the same policy and the same divergence the two earlier sets reco
 
 | Half | Frames | Shot from |
 |---|---|---|
-| BEFORE | `before-900/`, `before-240/`, `before-520/` | the BASE component (`b53efe973ea`'s `composer-status-row.tsx`, restored for the pass) with this change's story file — the pair must be the same story and the same args on both sides, so the stories that carry it are this change's; the COMPONENT was untouched, and the frames print the old arrangement's own numbers |
+| BEFORE | `before-900/`, `before-240/`, `before-520/`, `before-172/` | the BASE component (`b53efe973ea`'s `composer-status-row.tsx`, restored for the pass) with this change's story file — the pair must be the same story and the same args on both sides, so the stories that carry it are this change's; the COMPONENT was untouched, and the frames print the old arrangement's own numbers |
 | AFTER | `rows-900/`, `rows-240/`, `rows-520/`, `rows-172/`, `rows-alone/`, `rows-long/`, `rows-expanded/`, `rows-dismiss-focus/`, `rows-empty/` | this change's tree (component and stories), the same stories and args as the before half where a pair exists |
 
 **The story labels are deliberately NEUTRAL** ("900: the goal, the loop and the
@@ -68,8 +68,8 @@ http://localhost:6018/iframe.html?id=chat-composer-status-row--goal-loop-rows-di
 http://localhost:6018/iframe.html?id=chat-composer-status-row--goal-loop-rows-empty&viewMode=story&args=theme:localOperatorDark
 ```
 
-The conversion: the browser's PNGs (2560x1440 device px for a 1024x576 CSS
-viewport, the host's own 2.5x scale) are written as LOSSLESS WebP at that scale
+The conversion: the browser's PNGs (2560x1440 device px for a 1280x720 CSS
+viewport, the browser's own 2x scale) are written as LOSSLESS WebP at that scale
 with the repo's `sharp`, three channels like every committed frame in this
 repository, and every file was proven pixel-identical (decoded back and compared
 byte for byte) before it was kept. The conversion script is a scratch file in the
@@ -90,9 +90,10 @@ implied:
   class-string parity pin and `scripts/contrast-contract.mjs`'s `reading button,
   hovered` row stand in for it, exactly as the earlier set recorded.
 - **The dismiss's own tooltip IS painted in that frame** (the focus opens it in
-  this host), which overlaps the counts row below; the frame's claim is the
-  reveal's geometry (`dismiss gap 0px` at the chip's trailing edge in the goal's
-  own row), and the caption says the tooltip is open.
+  this host), and it paints ABOVE the goal's line — over the story label above
+  it, not over the counts row below; the frame's claim is the reveal's geometry
+  (`dismiss gap 0px` at the chip's trailing edge in the goal's own row), and the
+  caption says the tooltip is open.
 
 ## The frames
 
@@ -104,7 +105,8 @@ implied:
 | [`rows-240/`](rows-240/) | **A measured no-op**: identical facts on this side — `goal 141px (text 71/188)`, `loop item 196px`, row `158px`, `overflowX 0px`. The band's frames exist to say what did NOT move, and to pin the copy rules' boundary against the arrangement's retirement. |
 | [`before-520/`](before-520/) | **THE MOTIVATING DEFECT, as a number**: `Goal: Reconcil…` — `144px (text 75/188)` — beside `Loop: running, 2 of 5 turns`; row `54px`. This is the band where the two chips shared a line (§ the argument above). |
 | [`rows-520/`](rows-520/) | **The fix, measured**: the same story, `goal 257px (text 188/188)` on its own line, the loop below, the counts below that; row `80px`. |
-| [`rows-172/`](rows-172/) | **The app's real floor, both sides identical**: `goal 136px (text 67/188)`, `loop item 136px`, `26px` dismisses, row `158px`, `overflowX 0px` — the other width the retired `flex-col` step was argued at. |
+| [`before-172/`](before-172/) | **The floor's before half** — the base component with this change's story file, the other before dirs' shape, added in the remediation pass: `goal 136px (text 67/188)`, `loop item 136px`, `26px` dismisses, row `158px`, `overflowX 0px`. Pixel-scanned against [`rows-172/`](rows-172/): the pair differs only in the two animated spinner phases — 602 of 3,686,400 px (dark), 636 (light), one 28x28 device box each. |
+| [`rows-172/`](rows-172/) | **The app's real floor, both sides identical (`before-172/` above carries the scan)**: `goal 136px (text 67/188)`, `loop item 136px`, `26px` dismisses, row `158px`, `overflowX 0px` — the other width the retired `flex-col` step was argued at, and the change's second measured no-op. |
 | [`rows-alone/`](rows-alone/) | **The three single-source lines**, one band each: goal alone (row `32px`, 1 dismiss `89px`), loop alone (row `32px`, 1 dismiss `86px`), counts alone (row `32px`, 1 chip, 0 dismisses — and the plan chip takes the first-chip cancellation). The gates that keep an absent source from drawing a line. |
 | [`rows-long/`](rows-long/) | **The two unbounded values on their own rows**: `goal 695px (text 625/1956)` — the truncation happens against the row's own width — and `loop item 276px in 810px: "Loop: running, 2 of 25 turns"` — the long clause kept whole. Row `84px`. |
 | [`rows-expanded/`](rows-expanded/) | **The expanded body in the per-row form**, opened by a click on the real trigger: row `112px` (the body's own 24px and its gap over the 84px collapsed), `goal 257px (text 188/188)`, with the loop and the counts keeping their rows below. |
