@@ -2082,6 +2082,26 @@ function forgetReplayBorn(
 	for (const entry of entries) replayBorn.delete(entryRecordKey(entry));
 }
 
+/**
+ * A journal page delivered these entries, so their `record.ts` is the JOURNAL's
+ * (`entry.ts * 1000`) rather than a receipt stamp - the property `pageBornIds`
+ * exists to gate (agent review round 1, F7).
+ *
+ * EVERY SITE THAT APPLIES A PAGE CALLS THIS, which is round 2's M1: the rule was
+ * registered on the FRAMES path alone, so a held row delivered by a `/history`
+ * read or by the events-stream snapshot carried no journal instant, the
+ * reconciliation arm declined, and the walk ran - conservative, but it left the
+ * arm F4 made reachable dead for exactly the panes whose rows came from a read.
+ * One spelling, called wherever `forgetReplayBorn` is called, because the two
+ * always answer the same event: a page named these entries.
+ */
+function markPageBorn(
+	pageBorn: Set<string>,
+	entries: DesktopHistoryPage["entries"],
+): void {
+	for (const entry of entries) pageBorn.add(entryRecordKey(entry));
+}
+
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
@@ -3237,6 +3257,7 @@ export function useCanonicalSessionStream(
 				// Merged even when it is the page we already have: durable rows win
 				// by id, so a repeat is free and a partial one is completed.
 				forgetReplayBorn(replayBornIds.current, page.entries);
+				markPageBorn(pageBornIds.current, page.entries);
 				commitView((state) => {
 					const transcript = applyHistoryPage(state.transcript, page);
 					/*
@@ -3766,10 +3787,12 @@ export function useCanonicalSessionStream(
 			const paintedEntryIds = new Set<string>();
 			for (const frame of frames) {
 				if (frame.type !== "snapshot") continue;
+				// The page's own rows, for `pageBornIds`' journal-clock rule (round 2, M1):
+				// this batch path and the event handler below are the two ways a frame's
+				// page reaches the pane.
+				markPageBorn(pageBornIds.current, frame.payload.history.entries);
 				for (const entry of frame.payload.history.entries) {
 					paintedEntryIds.add(entryRecordKey(entry));
-					// The page's own rows, for `pageBornIds`' journal-clock rule (F7).
-					pageBornIds.current.add(entryRecordKey(entry));
 					const calls = entry.payload?.tool_calls;
 					if (!Array.isArray(calls)) continue;
 					for (const call of calls as Record<string, unknown>[]) {
@@ -4140,6 +4163,8 @@ export function useCanonicalSessionStream(
 									replayBornIds.current,
 									snapshot.history.entries,
 								);
+								// And their instants are the journal's (round 2, M1).
+								markPageBorn(pageBornIds.current, snapshot.history.entries);
 							}
 							/*
 							 * AND A SNAPSHOT RESOLVES A HELD SEND (§F2's last bullet, UX round 1's
@@ -5531,6 +5556,7 @@ export function useCanonicalSessionStream(
 					}),
 				}));
 				forgetReplayBorn(replayBornIds.current, page.entries);
+				markPageBorn(pageBornIds.current, page.entries);
 				/*
 				 * Scoped to THIS pass: an outcome written at or after the receipt that
 				 * scheduled the read. An older pass's row — any session's whose last 100

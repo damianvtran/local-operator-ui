@@ -3043,29 +3043,43 @@ test("a fact is split by the hidden cross-session work, or refused (F2)", () => 
 	);
 });
 
-test("a re-keyed run keeps its fact, and the follow-up is added on top (F3)", () => {
-	const rows = [
-		tool("t1", { ts: TS, durationS: 10 }),
-		tool("t2", { ts: TS + 1, durationS: 20 }),
-		answer("a1", { ts: TS + 5_000 }),
-		/* A wake and its follow-up work: no user row, so the run continues - and it
-		 * now ENDS on a tool row, which is the case `electAnswer` refuses to call an
-		 * answer (`transcript-rows.ts`), so the run's key moves from `a1` to `t4`. */
-		row("w1", "wake", { text: "a wake delivery" }),
-		tool("t3", { ts: TS + 6_000, durationS: 5 }),
-		tool("t4", { ts: TS + 7_000, durationS: 5 }),
-	];
+test("a woken run states the wire's own totals, and its re-key keeps the fact (F3, B1)", () => {
+	/*
+	 * THE OPERATOR'S WOKEN-RUN SHAPE, which is what round 2's B1 measured. A run
+	 * that answered and was then woken keeps working, and THE CORE COUNTS THAT
+	 * WORK: a wake, a job result or a peer follow-up continues the run
+	 * (`transcript_index._track_run`'s non-user arm never consults
+	 * `_run_closed()`, which is the very reason a run re-keys at all), and
+	 * `_emit_runs` publishes `action_count` untrimmed. #2102's own F4 note
+	 * measures it: a woken run reports `settled: true, actions: 1` and later
+	 * `actions: 3` under the SAME key. So the wire's figures are the run's totals
+	 * as published, and `closing_answer_id` marks where the ANSWER was elected,
+	 * not where the counting stopped.
+	 */
+	const rows = [];
+	for (let i = 1; i <= 30; i += 1)
+		rows.push(tool(`x${i}`, { ts: TS + i, durationS: 2 }));
+	rows.push(answer("a0", { ts: TS + 100 }));
+	/* The wake's own three calls: no user row, so the run continues - and it now
+	 * ENDS on a tool row, which is the case `electAnswer` refuses to call an
+	 * answer (`transcript-rows.ts`), so the run's key moves off `a0`. */
+	for (let i = 1; i <= 3; i += 1)
+		rows.push(tool(`y${i}`, { ts: TS + 200 + i, durationS: 1 }));
 	const facts = new Map([
 		[
-			"a1",
-			fact(2, 30, { closingAnswerId: "a1", openingUserId: "the-run-head" }),
+			"a0",
+			fact(33, 63, {
+				closingAnswerId: "a0",
+				openingUserId: "the-run-head",
+				failed: 1,
+			}),
 		],
 	]);
 	const plan = collapsePlan(rows, { live: false, runFacts: facts });
 	const run = plan.runs[0];
 	assert.equal(
 		run.key,
-		"t4",
+		"y3",
 		"the run re-keys to its newest row once it has no closing answer",
 	);
 	assert.equal(
@@ -3074,57 +3088,167 @@ test("a re-keyed run keeps its fact, and the follow-up is added on top (F3)", ()
 		"and the fact is still found, by the run's own rows rather than its key",
 	);
 	/*
-	 * THE FIGURES: the fact's span (2 actions, 30s) PLUS the follow-up's own rows,
-	 * which the client holds in full and the server's total does not cover - then
-	 * minus every other bar's loaded work, exactly as before. The cut span here is
-	 * the first bar, which hides `t1, t2`; the wake splits the run, so the
-	 * follow-up's two calls sit in the second bar and are subtracted back out.
+	 * THE FIGURES, and this is B1: the wire's `action_count` (33) ALREADY includes
+	 * the three woken calls, so the head-cut bar must state its own share of that
+	 * figure - 30, the pre-answer calls; the other three sit in the follow-up bar
+	 * and are subtracted back out - and NOT 33 + 3 = 36. The earlier addition
+	 * painted 36 with `partial: false`, i.e. a wrong number presented as exact,
+	 * with the walk retired so nothing could ever correct it.
 	 */
 	assert.equal(
+		run.segments.length,
+		1,
+		"no pinned row separates the wake's calls, so the run is ONE span",
+	);
+	assert.equal(
 		run.segments[0].facts.actions,
-		2,
-		"the head-cut bar states the run's own pre-answer count",
+		33,
+		"the bar states the wire's own count - not 36: the tail is NOT added again",
+	);
+	assert.equal(
+		run.segments[0].facts.durationS,
+		63,
+		"and the wire's own seconds, not 66",
+	);
+	assert.equal(
+		run.segments[0].facts.partial,
+		false,
+		"exact, because the wire's figure covers the woken work",
 	);
 	assert.equal(
 		run.facts.actions,
-		4,
-		"the turn's figure carries the follow-up: two in the fact's span, two after it",
+		33,
+		"the turn's figure is the same 33, and the bars still sum to it (D1)",
 	);
 	assert.equal(
-		run.facts.partial,
-		false,
-		"exact, because the fact and the rows together are the whole run",
+		run.facts.failed,
+		1,
+		"the wire's failures, not added a second time (round 2, B1)",
 	);
 	/*
-	 * A failed call after the answer is the run's, too (F9): the run-level figure
-	 * counts the span its `actions` above count, so the two cannot disagree.
+	 * THE SAME RUN WITH A PINNED ROW between the answer and the wake's calls: the
+	 * partition now splits the run, and the subtraction that has always run for
+	 * siblings takes the follow-up bar's own rows back out - so the head-cut bar
+	 * states 30, the follow-up bar 3, and the two still sum to the wire's 33.
 	 */
-	const failedRows = [
+	const split = [
 		tool("t1", { ts: TS, durationS: 10 }),
 		answer("a1", { ts: TS + 5_000 }),
 		row("w1", "wake", { text: "a wake delivery" }),
-		tool("t3", { ts: TS + 6_000, durationS: 5, isError: true }),
+		tool("t2", { ts: TS + 6_000, durationS: 5 }),
+		tool("t3", { ts: TS + 7_000, durationS: 5 }),
 	];
-	const failedPlan = collapsePlan(failedRows, {
+	const splitPlan = collapsePlan(split, {
 		live: false,
 		runFacts: new Map([
-			["a1", fact(1, 10, { closingAnswerId: "a1", failed: 0 })],
+			[
+				"a1",
+				fact(3, 20, { closingAnswerId: "a1", openingUserId: "the-run-head" }),
+			],
 		]),
 	}).runs[0];
 	assert.equal(
-		failedPlan.facts.failed,
+		splitPlan.segments[0].facts.actions,
 		1,
-		"the follow-up's failure is inside the span the run-level count describes",
+		"the head-cut bar states the run's count minus the follow-up bar's rows",
+	);
+	assert.equal(
+		splitPlan.segments[0].facts.actions + splitPlan.segments[1].facts.actions,
+		3,
+		"and the bars sum to the wire's own figure",
 	);
 	/*
 	 * AND THE WALK IS RETIRED FOR THAT RE-KEYED RUN: the whole point of keeping the
 	 * fact attached is that the bar is exact, so no read is owed - which is what
-	 * the base did by WALKING (the walk it retired in this lane).
+	 * the base did by WALKING (the walk this lane retired).
 	 */
 	assert.equal(
 		alignWalkRunKeyConfirmed(plan, null),
 		null,
 		"the re-keyed run's bar is whole, so the walk stands down",
+	);
+});
+
+test("a figure below the rows the bar itself hides keeps its `+` (M2)", () => {
+	/*
+	 * THE FLOOR CHECK (agent review round 2, M2). The subtraction trusts the wire's
+	 * split, and the one known divergence is a `send` whose body the index dropped:
+	 * `transcript_index` counts it in `action_count` BEFORE the `body_dropped`
+	 * branch and increments `cross_actions` inside that branch's `else`, so it is
+	 * in the total, absent from the split, and still hidden by this reader's own
+	 * filter. The wire marks that row's run `complete: false` (a floor), which is
+	 * the primary marker; this check is the client's own net for a figure that
+	 * cannot be the span's total whatever the wire says - a count below the number
+	 * of tool rows the bar itself hides.
+	 */
+	const rows = [
+		tool("t1", { ts: TS, durationS: 10 }),
+		tool("t2", { ts: TS + 1, durationS: 10 }),
+		tool("t3", { ts: TS + 2, durationS: 10 }),
+		answer("a1", { ts: TS + 5_000 }),
+	];
+	const short = collapsePlan(rows, {
+		live: false,
+		hideCrossSession: true,
+		// The server counted five tool rows and split three of them away: the bar
+		// would state 2 while hiding the three it has in hand, which cannot be right.
+		runFacts: new Map([
+			[
+				"a1",
+				fact(5, 50, {
+					crossSessionActions: 3,
+					crossSessionWorkedSeconds: 30,
+				}),
+			],
+		]),
+	}).runs[0];
+	assert.equal(short.factApplied, true, "the fact applies");
+	assert.equal(
+		short.segments[0].facts.actions,
+		2,
+		"the wire's count minus its split",
+	);
+	assert.equal(
+		short.segments[0].facts.partial,
+		true,
+		"but the bar hides three rows, so the figure stays a floor",
+	);
+	assert.equal(
+		short.facts.partial,
+		true,
+		"and the run-level figure says the same",
+	);
+	/*
+	 * The discriminating direction: a figure that covers the rows the bar hides is
+	 * exact, and keeps the fact's own duration.
+	 */
+	const exact = collapsePlan(rows, {
+		live: false,
+		hideCrossSession: true,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(4, 40, {
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	}).runs[0];
+	assert.equal(
+		exact.segments[0].facts.actions,
+		3,
+		"4 - 1 hidden = the three in hand",
+	);
+	assert.equal(
+		exact.segments[0].facts.partial,
+		false,
+		"a figure that covers its own rows is exact",
+	);
+	assert.equal(
+		exact.segments[0].facts.durationS,
+		30,
+		"and keeps the split duration",
 	);
 });
 

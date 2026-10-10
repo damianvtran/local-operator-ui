@@ -140,12 +140,14 @@ export function openFrameFacts(
 			crossSessionWorkedSeconds: wireSeconds(run.cross_session_worked_seconds),
 		};
 		lookup.set(run.run_key, fact);
+		/*
+		 * THE NORMALISED FIELDS, not the raw ones (agent review round 2, N2): the
+		 * guards and the normalisation agree today (an empty string never reaches
+		 * the second `set`), and reading the fact's own fields is what keeps them
+		 * from drifting when one of them moves.
+		 */
 		if (fact.openingUserId !== null) lookup.set(fact.openingUserId, fact);
-		if (
-			typeof run.closing_answer_id === "string" &&
-			run.closing_answer_id.length > 0
-		)
-			lookup.set(run.closing_answer_id, fact);
+		if (fact.closingAnswerId !== null) lookup.set(fact.closingAnswerId, fact);
 	}
 	if (lookup.size === 0) return null;
 	return { runs: lookup };

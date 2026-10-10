@@ -1622,14 +1622,6 @@ function factForRun(
 	return null;
 }
 
-/** Where the fact's own span ends in this run's rows, or -1 when it names none. */
-function factAnswerAt(rows: readonly Row[], fact: RunFact): number {
-	if (fact.closingAnswerId === null) return -1;
-	for (let i = rows.length - 1; i >= 0; i -= 1)
-		if (rows[i].record.id === fact.closingAnswerId) return i;
-	return -1;
-}
-
 /** A run's own totals, as `factTotalsFor` states them for one reader. */
 type FactTotals = {
 	actions: number;
@@ -1639,72 +1631,75 @@ type FactTotals = {
 };
 
 /**
- * The run's totals AS THIS READER COUNTS THEM, or null when the fact cannot be
+ * The run's totals AS THE WIRE PUBLISHED THEM, or null when the fact cannot be
  * applied to this reader's rows at all.
  *
- * TWO CORRECTIONS, both of them the difference between the server's population
- * and the client's:
+ * ONE CORRECTION, and it is the difference between the server's population and
+ * the client's:
  *
- * - THE FOLLOW-UP IS ADDED. The server's run ends at its elected answer; the
- *   client's run continues through a wake, a job result or a peer follow-up
- *   (F3), and those rows' work is on screen inside the very spans the bar
- *   stands for. So the totals are the fact's span PLUS everything after its
- *   answer, which the client holds in full - and the subtraction below then
- *   removes the siblings' loaded work exactly as it did before.
- * - THE HIDDEN CROSS-SESSION WORK IS SUBTRACTED (F2). With `hide_cross_session`
- *   on, the plan runs over `visibleRecords(records, true)`, which drops the
- *   `send` tool rows and the peer receipts; the server's `action_count` counts
- *   them. Subtracting the filtered siblings from the unfiltered total put them
- *   back into the bar (measured: `3 actions` where the visible span holds `2`).
+ * - THE HIDDEN CROSS-SESSION WORK IS SUBTRACTED (agent review round 1, F2).
+ *   With `hide_cross_session` on, the plan runs over
+ *   `visibleRecords(records, true)`, which drops the `send` tool rows and the
+ *   peer receipts; the server's `action_count` counts them. Subtracting the
+ *   filtered siblings from the unfiltered total put them back into the bar
+ *   (measured: `3 actions` where the visible span holds `2`).
  *
- * AND WHEN IT CANNOT SPLIT THEM IT REFUSES, rather than guessing: with the
- * setting on and no `crossSessionActions` from the backend, the fact's count
- * may include rows this reader never sees, so there is no honest figure to state
- * - the loaded fold stands, the bar keeps its `+`, and the walk stays armed to
- * complete it (`alignWalkRunKeyConfirmed` reads the same refusal). The duration
- * follows the same rule one step further: it is kept when the hidden rows are
- * provably absent (`crossSessionActions === 0`) or when the backend states their
- * seconds, and dropped otherwise, because a `Took` that includes work the bar
- * does not show is the same class of lie as a count that does.
+ * AND NOTHING IS ADDED, which is what round 2's B1 is about. An earlier revision
+ * added every row after `fact.closingAnswerId` on the premise that the server's
+ * run ends at its elected answer. IT DOES NOT: the core keeps accumulating every
+ * tool row it touches while a run is open - a wake, a job result or a peer
+ * follow-up continues the run (`transcript_index.py::_track_run`'s non-user arm
+ * never consults `_run_closed()`, which is the very reason a run re-keys at all,
+ * F3) - and `_emit_runs` publishes `action_count` untrimmed. #2102's own F4 note
+ * measures it: a woken run reports `settled: true, actions: 1` and later
+ * `actions: 3` under the SAME key. So `closing_answer_id` names where the run's
+ * ANSWER was elected, not where its counting stopped, and the wire's figures are
+ * already the run's totals as published. Adding the tail again painted
+ * `36 actions / 66 s` for a run whose own figure was `33 / 63 s`, with
+ * `partial: false` claiming exactness and the walk retired: the wrong number was
+ * FINAL, which is the one outcome this whole lane exists to prevent.
+ *
+ * A ROW THAT ARRIVED AFTER THE PAGE WAS PUBLISHED is therefore the only case
+ * where the wire can be SHORT, and it cannot be told from the rows the fact did
+ * count by any clock this client may compare (the F7 lesson: a live row's
+ * instant is a receipt stamp, not the journal's). It is caught where it is
+ * visible instead - if a bar's own hidden tool rows outnumber the figure it
+ * states, the figure is a floor and keeps the `+` (see the floor check in
+ * `planRun`).
+ *
+ * AND WHEN IT CANNOT SPLIT THE HIDDEN WORK IT REFUSES, rather than guessing:
+ * with the setting on and no `crossSessionActions` from the backend, the fact's
+ * count may include rows this reader never sees, so there is no honest figure to
+ * state - the loaded fold stands, the bar keeps its `+`, and the walk stays
+ * armed to complete it (`alignWalkRunKeyConfirmed` reads the same refusal). The
+ * duration follows the same rule one step further: it is kept when the hidden
+ * rows are provably absent (`crossSessionActions === 0`) or when the backend
+ * states their seconds, and dropped otherwise, because a `Took` that includes
+ * work the bar does not show is the same class of lie as a count that does.
  */
 function factTotalsFor(
 	fact: RunFact | null,
-	runRows: readonly Row[],
 	hideCrossSession: boolean,
 ): FactTotals | null {
 	if (fact === null) return null;
-	let factActions = fact.actions;
-	let factWorked = fact.workedSeconds;
+	let actions = fact.actions;
+	let worked = fact.workedSeconds;
 	if (hideCrossSession) {
 		const hidden = fact.crossSessionActions;
 		if (hidden === null) return null;
-		factActions = Math.max(0, factActions - hidden);
-		if (factWorked !== null) {
+		actions = Math.max(0, actions - hidden);
+		if (worked !== null) {
 			const hiddenWorked = fact.crossSessionWorkedSeconds;
-			if (hiddenWorked !== null)
-				factWorked = Math.max(0, factWorked - hiddenWorked);
-			else if (hidden > 0) factWorked = null;
+			if (hiddenWorked !== null) worked = Math.max(0, worked - hiddenWorked);
+			else if (hidden > 0) worked = null;
 		}
 	}
-	/*
-	 * THE FOLLOW-UP, and `-1` (the wire named no closing answer) means NONE rather
-	 * than "everything": a fact without a closing answer cannot say where its own
-	 * span ends, so the client adds nothing and the fact's total stands as the
-	 * run's - which is the shape a run with no answer at all has anyway (an
-	 * interrupted run), and the one the pre-F3 subtraction always assumed.
-	 */
-	const answerAt = factAnswerAt(runRows, fact);
-	const after = answerAt < 0 ? [] : runRows.slice(answerAt + 1);
-	let actions = factActions;
-	let worked = factWorked === null ? null : factWorked;
-	let failed = fact.failed;
-	for (const row of after) {
-		if (row.record.kind !== "tool") continue;
-		actions += 1;
-		if (isFailedCall(row.record)) failed += 1;
-		if (worked !== null) worked += workedSeconds([row]) ?? 0;
-	}
-	return { actions, workedSeconds: worked, failed, complete: fact.complete };
+	return {
+		actions,
+		workedSeconds: worked,
+		failed: fact.failed,
+		complete: fact.complete,
+	};
 }
 
 function planRun(
@@ -1761,7 +1756,7 @@ function planRun(
 	 * gate both read. See `factTotalsFor` for the two corrections and why a
 	 * refusal is the honest answer rather than a guess.
 	 */
-	const factTotals = factTotalsFor(fact, runRows, hideCrossSession);
+	const factTotals = factTotalsFor(fact, hideCrossSession);
 	/*
 	 * WHETHER THE PLAN'S OPENING ROW IS THE RUN'S OWN HEAD, which is the only
 	 * question a fragment's figures hang on.
@@ -1909,6 +1904,12 @@ function planRun(
 	 * answer it had - the fallback is the point, not a degradation.
 	 */
 	const cutSegment = cutSpan >= 0 ? segments[cutSpan] : null;
+	/*
+	 * Whether the cut span's figure is a FLOOR rather than its total (see the floor
+	 * check below). Declared here because the run-level ladder states the same
+	 * thing about the figure it sums.
+	 */
+	let cutIsFloor = false;
 	if (factTotals !== null && cutSegment !== null) {
 		let knownActions = 0;
 		let knownWorked = 0;
@@ -1922,6 +1923,22 @@ function planRun(
 			factTotals.workedSeconds === null
 				? null
 				: Math.max(0, factTotals.workedSeconds - knownWorked);
+		/*
+		 * THE FLOOR CHECK (agent review round 2, M2). A figure below the number of tool
+		 * rows the bar itself hides cannot be the span's total, whatever the wire
+		 * says: the count is then a FLOOR, and the bar has exactly one way to say so -
+		 * the `+`. Two things make it bite: a hidden cross-session row the backend
+		 * counted in `action_count` but not in the split it publishes (a `send` whose
+		 * body was dropped is counted before the `body_dropped` branch and skipped by
+		 * it), and a row that arrived after the page was published, which the wire had
+		 * not seen. Both are cases where the honest answer is "it is bigger than this",
+		 * and the alternative - a `partial: false` number that the rows underneath it
+		 * already contradict - is the class of claim this lane exists to delete.
+		 */
+		const hiddenTools = cutSegment.rows.filter(
+			(row) => row.record.kind === "tool",
+		).length;
+		cutIsFloor = hiddenTools > actions;
 		segments[cutSpan] = {
 			...cutSegment,
 			facts: {
@@ -1936,9 +1953,11 @@ function planRun(
 				durationS: worked !== null && worked >= 1 ? worked : null,
 				/*
 				 * `complete: false` is the server saying the index dropped a row body
-				 * inside this run, so the count is a FLOOR - the bar's `+`.
+				 * inside this run, so the count is a FLOOR - the bar's `+` - and the
+				 * floor check above is the client's own version of the same statement,
+				 * for the rows the server could not have counted.
 				 */
-				partial: !factTotals.complete,
+				partial: !factTotals.complete || cutIsFloor,
 			},
 		};
 	}
@@ -1971,12 +1990,17 @@ function planRun(
 		return {
 			actions,
 			worked,
-			partial: !factTotals.complete,
+			partial: !factTotals.complete || cutIsFloor,
 			/*
-			 * The run-level `failed` describes the SAME span its `actions` above do
-			 * (agent review round 1, F9): `factTotals.failed` counts the fact's
-			 * failures plus the follow-up's own, so the two figures cannot describe
-			 * different spans when this grows a reader.
+			 * The run-level `failed` is the WIRE's own count for the run as
+			 * published - the same population `action_count` covers - so it cannot
+			 * be a double count (round 2, B1: a woken run's follow-up is already
+			 * inside the wire's figure) and cannot disagree with the figure it came
+			 * from. It is deliberately NOT the ladder's population: `actions` above
+			 * is the turn's PRE-ANSWER work by D1's rule, while the wire counts a
+			 * woken run's post-answer rows too. Nothing reads this figure today; a
+			 * future reader that wants the turn's own failures must sum them from
+			 * the bars rather than take this one.
 			 */
 			failed: factTotals.failed,
 		};
