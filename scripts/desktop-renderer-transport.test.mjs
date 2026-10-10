@@ -242,6 +242,72 @@ test("a refusal whose sentence arrives as a string detail is not dropped", async
 	);
 });
 
+// All THREE shapes a refusal `detail` has crossed this wire in, pinned together:
+// a bare string, an object with `message`, and the core's i18n envelope
+// `{code, params, text}` (RFC §2.6) - whose `text` is exactly the sentence
+// string-only readers display. The settings surface answers with the envelope
+// from newer servers, so a `desktopResult` that read only the first two shapes
+// put the placeholder ("This server did not answer the request for its desktop
+// controls.") over the server's own sentence on every settings load, save and
+// reset - the rows this pin exists for.
+test("all three refusal detail shapes reach the error sentence", async () => {
+	const cases = [
+		{
+			shape: "a string detail",
+			body: { detail: "This answer belongs to an earlier session owner" },
+			sentence: "This answer belongs to an earlier session owner",
+			code: undefined,
+		},
+		{
+			shape: "an object with `message`",
+			body: {
+				detail: {
+					code: "unresolved_attachment",
+					message: "Choose an available profile or detach it before sending.",
+				},
+			},
+			sentence: "Choose an available profile or detach it before sending.",
+			code: "unresolved_attachment",
+		},
+		{
+			shape: "the i18n envelope's `text`",
+			body: {
+				detail: {
+					code: "wire.errors.settings.config_unreadable",
+					params: {},
+					text: "The configuration file cannot be read. Repair it before saving.",
+				},
+			},
+			sentence:
+				"The configuration file cannot be read. Repair it before saving.",
+			code: "wire.errors.settings.config_unreadable",
+		},
+	];
+	for (const { shape, body, sentence, code } of cases) {
+		const { desktopResult, DesktopControlError } = await loadTransport(
+			async () => ({ status: 409, body }),
+		);
+		const failure = await desktopResult({ op: "settings.list" }).then(
+			() => null,
+			(error) => error,
+		);
+		assert.ok(
+			failure instanceof DesktopControlError,
+			`a 409 carrying ${shape} must reject as the transport's own error`,
+		);
+		assert.equal(
+			failure.message,
+			sentence,
+			`the sentence in ${shape} must reach the error rather than a status-derived fallback`,
+		);
+		assert.equal(
+			failure.code,
+			code,
+			`the code in ${shape} must arrive unchanged (or be absent when the body declares none)`,
+		);
+	}
+});
+
 // The image ladder is renderer code with no transport of its own, but it is the
 // reason a message fits: without it, an 8.5 MB Retina screenshot fails at any
 // budget this pipe can offer. It is bundled and driven here rather than mocked,
