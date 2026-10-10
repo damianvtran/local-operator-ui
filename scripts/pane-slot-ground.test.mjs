@@ -153,11 +153,14 @@ const DRAG_IN_SLOT = /<PaneSlot[\s\S]{0,400}?data-titlebar-drag/;
  * work `useTopLevelRegex` is right to refuse. */
 const ASK_SLOT_MODE = /data-ask-mode=\{canvasDocked \? "docked" : "overlay"\}/;
 const RIGHT_SLOT_OCCUPIED = /const rightSlotOccupied =([\s\S]{0,400}?);/;
-/* #868's publisher and mount-gate reads, at module scope for the same reason. */
+/* #868's publisher and mount-gate reads, at module scope for the same reason.
+ * The publisher's shape gained `asksOffered` in #928 (the door fact the ask
+ * chord's gate reads); the claim below still stands as "the published facts are
+ * the mount gates' own terms", one term wider. */
 const ROUTE_PUBLISH =
-	/setRightSlotRoute\(\{\s*mounted: true,\s*runDetails: hasRunDetails,\s*session: hasSession,\s*codeReview: codeReviewEnabled,\s*\}\)/;
+	/setRightSlotRoute\(\{\s*mounted: true,\s*runDetails: hasRunDetails,\s*session: hasSession,\s*codeReview: codeReviewEnabled,\s*asksOffered: headerAsksOffered,\s*\}\)/;
 const ROUTE_PUBLISH_DEPS =
-	/\[setRightSlotRoute, hasRunDetails, hasSession, codeReviewEnabled\]/;
+	/\[\s*setRightSlotRoute,\s*hasRunDetails,\s*hasSession,\s*codeReviewEnabled,\s*headerAsksOffered,\s*\]/;
 const HAS_RUN_DETAILS = /const hasRunDetails = Boolean\(runDetails\);/;
 const HAS_SESSION = /const hasSession = Boolean\(sessionId\);/;
 const SESSION_ASKS_GATE =
@@ -552,7 +555,7 @@ test("the drawer's slot is readable, and the header's OS corner is reserved for 
 
 test("the published route facts are the mount gates' own terms (#868)", () => {
 	/*
-	 * THE LINK THE FIX RESTS ON, pinned. `rightSlotRoute` is a COPY of four
+	 * THE LINK THE FIX RESTS ON, pinned. `rightSlotRoute` is a COPY of the
 	 * conditions that live in `chat-content`'s JSX; the store answers from the
 	 * copy, so a gate that grew a term the copy does not know would draw (or fail
 	 * to draw) a pane the lane, the column and the header disagree about - the
@@ -570,7 +573,7 @@ test("the published route facts are the mount gates' own terms (#868)", () => {
 	);
 	assert.ok(
 		ROUTE_PUBLISH.test(content) && ROUTE_PUBLISH_DEPS.test(content),
-		`${CHAT_CONTENT} no longer publishes { mounted: true, runDetails, session, codeReview } keyed on the booleans. Keying on the \`runDetails\` object re-publishes identical facts on every frame of a live run.`,
+		`${CHAT_CONTENT} no longer publishes { mounted: true, runDetails, session, codeReview, asksOffered } keyed on the booleans. Keying on the \`runDetails\` object re-publishes identical facts on every frame of a live run.`,
 	);
 	// The code pane's mount gate is the capability AND the session (F6), the
 	// two terms `rightSlotPaneDrawable`'s own `code` branch encodes.
