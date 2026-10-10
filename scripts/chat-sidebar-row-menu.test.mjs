@@ -215,6 +215,7 @@ test("Fork is the menu's third row: its order, copy, withheld condition and wiri
 	const pinAt = MENU.indexOf('pressRowAct(row.session_id, "pin")');
 	const forkAt = MENU.indexOf('"session.fork"');
 	const copyAt = MENU.indexOf("copySessionId(row.session_id)");
+	const renameAt = MENU.indexOf('"session.rename"');
 	const moveUpAt = MENU.indexOf("movePinnedRow(row.session_id, -1, true)");
 	const moveDownAt = MENU.indexOf("movePinnedRow(row.session_id, 1, true)");
 	assert.ok(
@@ -222,14 +223,15 @@ test("Fork is the menu's third row: its order, copy, withheld condition and wiri
 			archiveAt < pinAt &&
 			pinAt < forkAt &&
 			forkAt < copyAt &&
-			copyAt < moveUpAt &&
+			copyAt < renameAt &&
+			renameAt < moveUpAt &&
 			moveUpAt < moveDownAt,
-		"the menu no longer reads Archive, Pin, Fork, Copy session ID, Move up, Move down (D2, #893) - the mirrored pair, the unconditional run, then the conditional block",
+		"the menu no longer reads Archive, Pin, Fork, Copy session ID, Rename conversation, Move up, Move down (D2, #893, #920) - the mirrored pair, the unconditional run, then the conditional block",
 	);
 	assert.equal(
 		MENU.split("<ContextMenuItem").length - 1,
-		6,
-		"the menu's row count moved without this file: the six-row budget (design \u00a77) is #743's four plus #739's Fork plus #893's Copy session ID, and Copy passed the rule a seventh would have to pass - the ROW-scoped id has no other door (the header's overflow names the PANE's session), so the number moved rather than a row being replaced",
+		7,
+		"the menu's row count moved without this file: the seven-row budget (design \u00a77) is #743's four plus #739's Fork plus #893's Copy session ID plus #920's Rename conversation, and each addition passed the rule an eighth would have to pass - the act must be one on THIS row with no other door (the row-scoped id has none: the header's overflow names the PANE's session; so does the row-scoped name: the header's inline editor and /rename write the PANE's conversation), so the number moved rather than a row being replaced",
 	);
 	/*
 	 * COPY: verb + object, the pair's register, with the icon `aria-hidden` like
@@ -385,6 +387,115 @@ test("Copy session ID is the menu's sixth row, unconditional and chord-free (#89
 		item.includes("KeyboardShortcut"),
 		false,
 		"the copy item prints a chord, but no chord is bound to copying a session id",
+	);
+});
+
+test("Rename conversation is the menu's fifth row, and it acts on the row it was opened on (#920)", () => {
+	/*
+	 * The act that spent the seventh slot (#920). Like Fork and Copy it is a plain
+	 * press on no row control, so the pins read the four things that make it this
+	 * menu's item: it is drawn unconditionally, it addresses THIS row's conversation
+	 * (never the pane's - the asymmetry the issue is about), it carries the name the
+	 * row DRAWS so the dialog cannot open on the other conversation's name, and its
+	 * label and glyph are the ones the design record names. Its wiring is the Fork
+	 * item's, read the same way: a request through the panel-presentation store that
+	 * names the row's own button as the invoker and the row's id as the subject.
+	 */
+	const itemAt = MENU.indexOf('"session.rename"');
+	assert.notEqual(
+		itemAt,
+		-1,
+		"the Rename conversation item is gone from the row menu",
+	);
+	const tagAt = MENU.lastIndexOf("<ContextMenuItem", itemAt);
+	assert.ok(
+		tagAt !== -1 && tagAt < itemAt,
+		"the rename request is no longer an item's `onSelect`",
+	);
+	const item = MENU.slice(tagAt, MENU.indexOf("</ContextMenuItem>", itemAt));
+	/*
+	 * UNCONDITIONAL, like Fork and Copy and unlike the two above them and the Move
+	 * pair below: renaming needs a conversation, and every row IS one - a row whose
+	 * pin state is unknown, a row behind the archived list, a remote row - so there
+	 * is no predicate it could honestly be gated on, and none is authored.
+	 */
+	const gap = MENU.slice(MENU.lastIndexOf("</ContextMenuItem>", itemAt), tagAt);
+	assert.equal(
+		/&&/.test(gap),
+		false,
+		"the Rename item gained a gate - it is drawn whenever the menu is, like Fork and Copy, because every row has a conversation to rename",
+	);
+	assert.equal(
+		/disabled/.test(item),
+		false,
+		"the Rename item is disabled rather than unconditional: it has no unusable state",
+	);
+	/*
+	 * LABEL AND GLYPH: verb + object, the register the sibling items share, and the
+	 * same pencil the header's rename control wears (`chat-header.tsx`) with the
+	 * `aria-hidden` mark every glyph in this menu carries. It opens the register's
+	 * own dialog, so the label deliberately carries no ellipsis - the spelling the
+	 * header control and that dialog both use.
+	 */
+	assert.ok(
+		item.includes("<span>Rename conversation</span>"),
+		"the rename item's label moved: it reads `Rename conversation`, the spelling the header control and the dialog both use",
+	);
+	assert.ok(
+		item.includes('<Pencil aria-hidden="true" />'),
+		"the rename item's glyph is no longer the header control's pencil, aria-hidden",
+	);
+	/*
+	 * NO CHORD, the rule Fork's and Copy's own tests state: nothing binds a rename
+	 * gesture, and a `KeyboardShortcut` here would print a hint for a gesture that
+	 * does nothing.
+	 */
+	assert.equal(
+		item.includes("KeyboardShortcut"),
+		false,
+		"the rename item prints a chord, but no chord is bound to renaming",
+	);
+	/*
+	 * THE WIRING: the register's own picker, asked for through the panel-presentation
+	 * store (the Fork item's idiom) for THIS row's conversation - not the pane's - and
+	 * with the ROW's displayed name riding along, so the dialog's field cannot open on
+	 * the pane's title. The invoker is the row's own button, not the item, which
+	 * unmounts with the menu.
+	 */
+	assert.ok(
+		item.includes("requestPanel("),
+		"the rename item no longer asks the panel-presentation store",
+	);
+	const request = between(item, "requestPanel(", ");");
+	assert.ok(
+		request.includes('"session.rename"') &&
+			request.includes("[data-chat-row]") &&
+			request.includes("row.session_id,"),
+		"the request no longer names the register's rename picker, the row's own button as the invoker, and the row's conversation",
+	);
+	assert.ok(
+		request.includes('{ subjectName: row.title || "Untitled chat" }'),
+		"the request no longer carries the name the row DRAWS - the presenter holds a pane, not the row that was pointed at",
+	);
+	assert.ok(
+		item.includes(
+			'if (!location.pathname.startsWith("/chat")) navigate("/chat");',
+		),
+		"the rename item no longer routes to the pane only when none is mounted (the palette's idiom)",
+	);
+	assert.ok(
+		item.indexOf("requestPanel(") < item.indexOf('navigate("/chat")'),
+		"the request must be written BEFORE the navigation, or it races the pane's mount",
+	);
+	/*
+	 * NO SECOND RENAME IMPLEMENTATION: the sidebar neither imports the picker nor
+	 * posts the command itself - the write is the pane's, and the header's inline
+	 * editor submits the same `sessions.command` `rename` through the same hook.
+	 */
+	assert.equal(
+		/RenamePicker|sessions\.command|desktopResult/.test(SIDEBAR_CODE),
+		false,
+		"the sidebar carries its own rename - the picker is the register's and the pane presents it",
 	);
 });
 
