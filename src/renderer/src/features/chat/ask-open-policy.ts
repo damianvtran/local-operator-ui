@@ -43,7 +43,7 @@
  *     never acts on a frame that has not actually answered.
  *  6. AN AUTO-OPEN IS NOT A DOOR PRESS: it must not look like one to the drawer's
  *     door-focus signal (`ask-drawer.tsx`'s `openedByDoor`), which means "the user
- *     pressed the chip or the header trigger" and nothing else.
+ *     pressed the chip or the asks door" and nothing else.
  *
  * ## Why a module and not conditions in an effect
  *
@@ -237,7 +237,7 @@ export type AskOpenInput = {
 	composerHasText: boolean;
 	/**
 	 * Whether the keyboard is on one of the drawer's two DOORS (the composer chip or the
-	 * header trigger) at this instant.
+	 * asks door) at this instant.
 	 *
 	 * RULE 6 AS A FACT RATHER THAN A PROMISE. The drawer decides "the user pressed a door"
 	 * by reading what held focus when it mounted (`ask-drawer.tsx`'s entry effect), and
@@ -660,7 +660,7 @@ export type AskOpenObservation = {
  *
  * THE CLOSE WATCH LIVES HERE, not in each close door. The drawer is closed by the
  * chrome's X, by Escape inside it, by the window-level Escape claim, by a toggle on
- * the composer chip, by a toggle on the header trigger, and by another pane claiming
+ * the composer chip, by a toggle on the asks door, and by another pane claiming
  * the slot - six writers to one store flag. Wrapping each would be six places to
  * forget; observing the flag's open -> closed edge catches all of them, and a pane
  * that replaced the drawer is correctly a dismissal too (the user chose something

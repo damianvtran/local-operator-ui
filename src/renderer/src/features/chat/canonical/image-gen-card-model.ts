@@ -33,7 +33,7 @@
  * KNOWLEDGE LIVES HERE — `canonicalProgress` below is the surface's one
  * reader, and the mapping renders the REDUCED state honestly when a frame
  * states nothing (a `null` fraction draws no bar, no log lines draw no tail,
- * no position states none): absence is rendered, never filled in. The
+ * no queue depth states none): absence is rendered, never filled in. The
  * generated image still arrives through `record.images` — the attachments
  * lane's extraction, which is also what the fold's media counting reads.
  *
@@ -94,8 +94,9 @@ export function isImageGenTool(toolName: string): boolean {
  * EVERY FIELD IS NEGATIVEABLE and every absence renders as a reduced state,
  * never as invented copy: `fraction: null` draws the indeterminate branch,
  * `logs: []` draws no log line at all, `queuePosition: null` states no
- * position. `fraction` is a 0..1 ratio when a producer states one; the
- * queue position is 1-based when one exists.
+ * queue depth. `fraction` is a 0..1 ratio when a producer states one;
+ * `queuePosition` keeps the wire's name but COUNTS REQUESTS AHEAD of this
+ * one (0 = nothing ahead), not a 1-based rank — the card words it "N ahead".
  */
 export type ImageGenProgress = {
 	fraction: number | null;
@@ -210,10 +211,12 @@ export type ImageGenCardView =
 			composing: boolean;
 			argumentBytes: number;
 			/**
-			 * The LIVE queue position (1-based) of a waiting call, or `null` while
-			 * no frame states one — the same negativeable slot every progress fact
-			 * gets (see `ImageGenProgress`): the card draws no position rather than
-			 * a zero. Read from the canonical carrier's `queue_position`; the state
+			 * The LIVE queue depth of a waiting call — the number of requests AHEAD
+			 * of it, so 0 is a real reading ("nothing ahead"), not a rank — or
+			 * `null` while no frame states one — the same negativeable slot every
+			 * progress fact gets (see `ImageGenProgress`): the card draws nothing
+			 * rather than an invented count. Read from the canonical carrier's
+			 * `queue_position` (the wire's name for it); the state
 			 * line's datum slot is its one consumer (round-1 QA Q-1).
 			 */
 			queuePosition: number | null;
@@ -270,9 +273,11 @@ export type ImageGenCardView =
 			 */
 			message: string | null;
 			/**
-			 * The frozen `error_type` once the field lands (FAL's structured code or
-			 * a `media_*` platform code), carried for structure rather than display.
-			 * `null` today: the field has no home on the wire yet.
+			 * The frozen `error_type` (FAL's structured code or a `media_*` platform
+			 * code), carried for structure rather than display; `null` when no frame
+			 * states one. The field is wired (harness PR #2089; `canonicalProgress`
+			 * reads it): `media_already_completed` and a plain cancel's absent type
+			 * are what decide the state above.
 			 */
 			errorType: string | null;
 	  }

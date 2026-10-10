@@ -6297,8 +6297,10 @@ export function desktopEndpoint(request: DesktopRequest): {
  * A bound rather than a guess: a stat on an unmounted network path can hang for
  * seconds, so the renderer chunks its probe requests and main refuses anything
  * larger rather than turning one call into a stall. 64 is comfortably more than
- * a panel's worth of tiles while keeping a single synchronous batch short. The
- * panel's own list is bounded by the conversation, not by this number: a
+ * a panel's worth of tiles while keeping a single batch's work short - the probe
+ * itself is asynchronous and bounded (`src/main/directory-listing.ts`,
+ * `PROBE_CONCURRENCY`), so this number bounds the request, not the event loop.
+ * The panel's own list is bounded by the conversation, not by this number: a
  * transcript with hundreds of mentions is probed in chunks of 64, and the
  * extractor no longer caps its output at all (it used to stop at 200 paths,
  * which is what made the tail of a long conversation unreachable).
@@ -6371,10 +6373,17 @@ export type ProbedFile = {
 	/** Modification time, ms since epoch, or `null`. */
 	mtimeMs: number | null;
 	/**
-	 * Present only when `stat` itself failed (permission, a broken mount) rather
-	 * than answering "no such file". Both report `exists: false`; this says
-	 * which one happened, because "deleted" and "cannot look" deserve different
-	 * words in a bug report.
+	 * Present only when the probe could not ANSWER: `stat`/`realpath` failed
+	 * (permission, a broken mount) or the probe exceeded its deadline, rather
+	 * than the filesystem reporting "no such file". Both a fault and a miss
+	 * report `exists: false`, so THIS FIELD IS THE DISCRIMINANT between them,
+	 * and consumers must branch on it: a fault is UNKNOWN - the Files panel
+	 * leaves such a path unmarked and the link surfaces keep it unanswered,
+	 * while the existing retry cadence re-asks it - and only `exists: false`
+	 * with NO `error` is the absence the "gone" receipts are painted from
+	 * (remediation round 1, R1-2; QA round 1, Q1). It says which one happened
+	 * because "deleted" and "cannot look" deserve different words in a bug
+	 * report AND different behaviour on screen.
 	 */
 	error?: string;
 	/**
