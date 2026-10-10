@@ -4,8 +4,10 @@ import type {
 	CanvasDocumentType,
 } from "@features/chat/types/canvas";
 import { stripFileUrl } from "@features/chat/utils/canvas-document";
+import { mimeTypeForPath } from "@features/chat/utils/file-kind";
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { Tooltip } from "@shared/components/ui";
+import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { cn } from "@shared/lib/utils";
 import {
 	Archive,
@@ -19,7 +21,7 @@ import {
 	Presentation,
 	ScrollText,
 } from "lucide-react";
-import { memo } from "react";
+import { type FC, memo } from "react";
 import type { Ref } from "react";
 import type { FileRow } from "./file-rows";
 
@@ -99,12 +101,6 @@ const SIZE_META = "@max-[34rem]/fileslist:hidden";
 
 export type FileRowItemProps = {
 	row: FileRow;
-	/**
-	 * Resolves a row's path to a URL the renderer may load. Only media rows use
-	 * it; it is a prop rather than a client built here so the panel owns the one
-	 * client and every row shares it.
-	 */
-	getUrl: (path: string) => string;
 	/** This file is the one open in the Documents view. */
 	current: boolean;
 	onOpen: (document: CanvasDocument) => void;
@@ -117,9 +113,80 @@ export type FileRowItemProps = {
 	buttonRef?: Ref<HTMLButtonElement>;
 };
 
+/**
+ * The type glyph a row shows when it has no thumbnail to show.
+ *
+ * No `bg-sunken` tile behind the glyph. A ground step that measures ΔE00
+ * 1.23–1.89 against its neighbour in four palettes is a box that is not there,
+ * and `ink-dim` is the caption and placeholder ink — a row's type marker is not
+ * a caption.
+ */
+const TypeGlyph: FC<{ row: FileRow }> = ({ row }) => {
+	const Icon = getIconForFileType(row.document.type);
+	return (
+		<Icon
+			size={16}
+			aria-hidden="true"
+			className={cn(row.missing ? "text-ink-disabled" : "text-ink-muted")}
+		/>
+	);
+};
+
+/**
+ * A media row's leading visual, and where its pixels come from.
+ *
+ * The bytes come over the app's own file bridge (`use-file-blob-url`) — the
+ * same door the viewers use — NOT the backend's static route this used to ask.
+ * That route serves only the daemon's configured roots, so a file the agent
+ * wrote to a scratch directory, or one the user named outside the workspace,
+ * painted nothing while the row claimed it was a picture. The bridge reads by
+ * path regardless of the roots, and needs no backend at all.
+ *
+ * Loading keeps the established shape: the slot holds its ground until the
+ * bytes land. A read that cannot land falls back to the row's own type glyph,
+ * which is what every non-media row already shows — an unreadable thumbnail
+ * must not look like an unreadable row.
+ */
+const RowThumbnail: FC<{ row: FileRow }> = ({ row }) => {
+	const { document } = row;
+	const state = useFileBlobUrl(document.path, {
+		mtimeMs: document.lastAgentModified,
+		mimeType: mimeTypeForPath(document.path),
+		sizeBytes: document.sizeBytes,
+	});
+	const url = state.status === "ready" ? state.url : null;
+
+	if (url && row.media === "image") {
+		return (
+			<img
+				src={url}
+				// The row's own text already names the file, so the thumbnail is
+				// decorative here: an alt of the name would announce it twice.
+				alt=""
+				loading="lazy"
+				decoding="async"
+				className={cn("size-7 rounded-sm bg-sunken object-cover")}
+			/>
+		);
+	}
+	if (url && row.media === "video") {
+		return (
+			// biome-ignore lint/a11y/useMediaCaption: a user's own attached video has no caption track to offer.
+			<video
+				src={url}
+				preload="metadata"
+				className={cn("size-7 rounded-sm bg-sunken object-cover")}
+			/>
+		);
+	}
+	if (state.status === "loading") {
+		return <span className={cn("size-7 rounded-sm bg-sunken")} />;
+	}
+	return <TypeGlyph row={row} />;
+};
+
 const FileRowItemComponent = ({
 	row,
-	getUrl,
 	current,
 	onOpen,
 	buttonRef,
@@ -136,7 +203,6 @@ const FileRowItemComponent = ({
 		: document.path;
 	const isLocalFile =
 		!document.path.startsWith("data:") && !document.path.startsWith("http");
-	const Icon = getIconForFileType(document.type);
 
 	return (
 		/*
@@ -184,38 +250,7 @@ const FileRowItemComponent = ({
 					)}
 				>
 					<span className={cn("flex w-7 shrink-0 items-center justify-center")}>
-						{row.media === "image" ? (
-							<img
-								src={getUrl(document.path)}
-								// The row's own text already names the file, so the thumbnail is
-								// decorative here: an alt of the name would announce it twice.
-								alt=""
-								loading="lazy"
-								decoding="async"
-								className={cn("size-7 rounded-sm bg-sunken object-cover")}
-							/>
-						) : row.media === "video" ? (
-							// biome-ignore lint/a11y/useMediaCaption: a user's own attached video has no caption track to offer.
-							<video
-								src={getUrl(document.path)}
-								preload="metadata"
-								className={cn("size-7 rounded-sm bg-sunken object-cover")}
-							/>
-						) : (
-							/*
-							 * No `bg-sunken` tile behind the glyph. A ground step that
-							 * measures ΔE00 1.23–1.89 against its neighbour in four palettes
-							 * is a box that is not there, and `ink-dim` is the caption and
-							 * placeholder ink — a row's type marker is not a caption.
-							 */
-							<Icon
-								size={16}
-								aria-hidden="true"
-								className={cn(
-									row.missing ? "text-ink-disabled" : "text-ink-muted",
-								)}
-							/>
-						)}
+						{row.media ? <RowThumbnail row={row} /> : <TypeGlyph row={row} />}
 					</span>
 					{/*
 					 * `flex-1` with a zero basis: the name takes the row's free space and

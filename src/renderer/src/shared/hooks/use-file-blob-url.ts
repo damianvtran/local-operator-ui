@@ -1,6 +1,6 @@
 /**
- * A local file's bytes as an object URL, for the viewers that show a format the
- * renderer has no other way to paint (PDF, image, audio).
+ * A local file's bytes as an object URL, for every surface that shows a format
+ * the renderer has no other way to paint (PDF, image, audio, video thumbnails).
  *
  * Three decisions, each with a reason:
  *
@@ -29,6 +29,15 @@
  * Failure is STATE, not an exception, because the viewer must say something
  * specific: "too large to preview" offers the OS, "not found" says so, and
  * neither is a spinner that never resolves.
+ *
+ * **A path that is already a URL passes straight through.** The composer's
+ * staging tiles and the transcript's attachments hand over a MIXED list —
+ * picked files, pasted `data:` images, `http(s):` URLs — and the caller should
+ * not have to branch on where each one's bytes live before it can ask for a
+ * URL. `data:` carries its bytes in the string and an `http(s):` one is fetched
+ * by the element itself; there is nothing for the bridge to read and nothing
+ * this hook revokes. A `file://` spelling of a local path is normalised instead
+ * (the bridge speaks bare paths), so both spellings are one cache entry.
  */
 
 import {
@@ -75,37 +84,55 @@ type FileBlobOptions = {
 const cacheKey = (path: string, mtimeMs: number | null | undefined): string =>
 	`file:${path}:${mtimeMs ?? 0}`;
 
+/**
+ * `file://` is a spelling of the same path, not an origin: the bridge and the
+ * cache both speak bare paths, and legacy message payloads are the caller that
+ * still writes it.
+ */
+const stripFileUrl = (path: string): string =>
+	path.startsWith("file://") ? path.slice("file://".length) : path;
+
+/**
+ * A path that is already a URL, so there are no bytes to read: `data:` carries
+ * its own, `http(s):` is fetched by the element that renders it.
+ */
+const isDirectUrl = (path: string): boolean =>
+	path.startsWith("data:") ||
+	path.startsWith("http://") ||
+	path.startsWith("https://");
+
 export function useFileBlobUrl(
 	path: string,
 	{ mtimeMs, mimeType, sizeBytes }: FileBlobOptions,
 ): FileBlobState {
-	const key = cacheKey(path, mtimeMs);
+	const filePath = stripFileUrl(path);
 	/*
-	 * A `data:` document is already a URL, so there is nothing to fetch and
-	 * nothing to revoke. This is settled here rather than at the three call sites
+	 * A `data:`/`http(s):` document is already a URL, so there is nothing to fetch
+	 * and nothing to revoke. This is settled here rather than at the call sites
 	 * that used to pass `enabled: !path.startsWith("data:")`: passing `enabled`
 	 * false made the effect return before touching state, so the hook answered
 	 * `loading` forever and the viewer said "Opening…" about a document it had
 	 * been handed in full.
 	 */
-	const isDataUri = path.startsWith("data:");
+	const direct = isDirectUrl(filePath) ? filePath : null;
+	const key = cacheKey(filePath, mtimeMs);
 	/*
 	 * The same argument one step earlier for size: a file the probe measured as
 	 * over the read cap is refused by main without being read, so the viewer
 	 * states it without asking.
 	 */
-	const overCap = !isDataUri && (sizeBytes ?? 0) > MAX_FILE_READ_BYTES;
+	const overCap = direct === null && (sizeBytes ?? 0) > MAX_FILE_READ_BYTES;
 	// PEEK, never retain: a `useState` initializer is double-invoked under
 	// `StrictMode` (`main.tsx`), and a retain there adds a reference no unmount
 	// can pay back. The effect below owns every reference.
 	const [state, setState] = useState<FileBlobState>(() => {
-		if (isDataUri) return { status: "ready", url: path };
+		if (direct) return { status: "ready", url: direct };
 		if (overCap)
 			return {
 				status: "unavailable",
 				url: null,
 				code: "too-large",
-				message: `${path} is ${sizeBytes} bytes, over the ${MAX_FILE_READ_BYTES}-byte preview cap`,
+				message: `${filePath} is ${sizeBytes} bytes, over the ${MAX_FILE_READ_BYTES}-byte preview cap`,
 				sizeBytes: sizeBytes ?? undefined,
 			};
 		const cached = peek(key);
@@ -115,7 +142,7 @@ export function useFileBlobUrl(
 	});
 
 	useEffect(() => {
-		if (isDataUri || overCap) return;
+		if (direct || overCap) return;
 		let live = true;
 		const cached = retain(key);
 		if (cached) {
@@ -142,7 +169,7 @@ export function useFileBlobUrl(
 
 		void (async () => {
 			try {
-				const result = await window.api.readFileBytes(path);
+				const result = await window.api.readFileBytes(filePath);
 				if (!live) return;
 				if (!result.success) {
 					setState({
@@ -182,7 +209,7 @@ export function useFileBlobUrl(
 			live = false;
 			release(key);
 		};
-	}, [isDataUri, overCap, key, mimeType, path]);
+	}, [direct, overCap, key, mimeType, filePath]);
 
 	return state;
 }
