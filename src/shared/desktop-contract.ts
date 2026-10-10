@@ -2869,6 +2869,17 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 					estimate_unit: z.enum(["points", "days"]).optional(),
 				})
 				.strict(),
+			/*
+			 * `force_done` is a flag about THIS CALL, not a field of the row, so it
+			 * sits at the op's top level and never inside `fields` (the strict
+			 * `fields` object above rejects it there). It is the daemon's deliberate
+			 * escape from the done-gate: close the project with milestones still
+			 * open. Sent ONLY when true (see the mapper) because a daemon that
+			 * predates the `projects_force_done` capability 422s an unknown body key
+			 * - the renderer gates the offer on that key, and an absent flag keeps
+			 * every other PATCH byte-identical to what shipped before.
+			 */
+			force_done: z.boolean().optional(),
 		})
 		.strict(),
 	z
@@ -6221,7 +6232,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// Exactly the keys the caller included travel, so an omitted key
 				// leaves its field alone and `""` clears a date (the route
 				// forwards `model_fields_set` into the store's edit model).
-				body: { ...request.fields },
+				body: {
+					...request.fields,
+					// Only a TRUE flag travels: `false` and absent are the same request
+					// to the route, and omitting both keeps the body valid for a daemon
+					// that does not know the key at all.
+					...(request.force_done === true ? { force_done: true } : {}),
+				},
 			};
 		case "projects.delete":
 			return {
