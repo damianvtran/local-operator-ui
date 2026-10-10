@@ -138,7 +138,14 @@ const UUID_SHAPE =
 const SENT_SENTENCE = /Sent\. Check your inbox and spam folder/;
 const RATE_LIMITED_SENTENCE =
 	/Requested recently\. Try again in about 2 minutes\./;
-const NOTHING_TO_RESEND_BODY = /You're out of credits/;
+/*
+ * The verified/no-grant sentence VERBATIM, as `radient_recovery.recovery_line`
+ * builds it: the top-up URL is part of the sentence, and the first-top-up
+ * bonus is its own line (the `\n` exercises the line's `whitespace-pre-line`
+ * for this body, which the unverified frame alone used to report).
+ */
+const NOTHING_TO_RESEND_BODY =
+	/You're out of credits\. Top up in the Radient console: https:\/\/console\.radienthq\.com\/dashboard\/billing\nGet an extra \$5 free on your first top-up of \$10 or more\./;
 
 /* ------------------------------------------------------------------ */
 /* The transport, answered from this file                               */
@@ -210,15 +217,27 @@ const bundle = await build({
 			export {
 				QUOTA_NOTICE_DISMISSAL_KEY,
 				QUOTA_NOTICE_SHOWN_STATES,
+				QUOTA_REFRESH_CHECKING_SENTENCE,
+				QUOTA_REFRESH_FAILED_SENTENCE,
+				QUOTA_REFRESH_UNCHANGED_SENTENCE,
 				QUOTA_RESEND_COOLDOWN_MS,
+				QUOTA_RESEND_FAILED_SENTENCE,
 				QUOTA_RESEND_RATE_LIMITED_SENTENCE,
+				QUOTA_RESEND_SENDING_SENTENCE,
 				QUOTA_RESEND_SENT_SENTENCE,
+				__resetQuotaResendEpisodes,
+				advanceQuotaNoticeDismissals,
 				classifyResendFailure,
+				parseQuotaNoticeDismissals,
 				quotaNoticeActions,
 				quotaNoticeDismissed,
 				quotaNoticeShows,
-				quotaNoticeSignature,
+				quotaRefreshSentence,
+				quotaResendEpisodeFor,
 				quotaResendView,
+				readQuotaNoticeDismissals,
+				rememberQuotaResendEpisode,
+				writeQuotaNoticeDismissals,
 			} from "./src/renderer/src/features/chat/quota-notice/quota-notice.ts";
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api.ts";
 			export { defaultQueryOptions } from "./src/renderer/src/shared/api/query-client.ts";
@@ -258,20 +277,32 @@ const {
 	QUOTA_NOTICE_DISMISSAL_KEY,
 	QUOTA_NOTICE_SCHEMA,
 	QUOTA_NOTICE_SHOWN_STATES,
+	QUOTA_REFRESH_CHECKING_SENTENCE,
+	QUOTA_REFRESH_FAILED_SENTENCE,
+	QUOTA_REFRESH_UNCHANGED_SENTENCE,
+	QUOTA_RESEND_FAILED_SENTENCE,
 	QUOTA_RESEND_RATE_LIMITED_SENTENCE,
+	QUOTA_RESEND_SENDING_SENTENCE,
 	QUOTA_RESEND_SENT_SENTENCE,
 	QuotaNoticeLine,
 	DesktopControlError,
 	MessageInput,
 	QueryClient,
 	QueryClientProvider,
+	__resetQuotaResendEpisodes,
+	advanceQuotaNoticeDismissals,
 	classifyResendFailure,
 	defaultQueryOptions,
+	parseQuotaNoticeDismissals,
 	quotaNoticeActions,
 	quotaNoticeDismissed,
 	quotaNoticeShows,
-	quotaNoticeSignature,
+	quotaRefreshSentence,
+	quotaResendEpisodeFor,
 	quotaResendView,
+	readQuotaNoticeDismissals,
+	rememberQuotaResendEpisode,
+	writeQuotaNoticeDismissals,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -341,22 +372,24 @@ const world = ({
 	 */
 	calls.length = 0;
 	/*
-	 * The dismissal is CLEARED per case: localStorage outlives a mount, so the
-	 * dismiss case's write would otherwise hide the line in every later case
-	 * whose (provider, state) pair it names — a leak that shows up as a missing
-	 * line, nowhere near the case that caused it.
+	 * The dismissal map and the resend episodes are cleared per case: both
+	 * outlive a mount (localStorage, module state), so the dismiss case's write
+	 * would otherwise hide the line in every later case naming the same pair,
+	 * and a remembered cooldown would leak into the next remount case.
 	 */
 	try {
 		window.localStorage.removeItem(QUOTA_NOTICE_DISMISSAL_KEY);
 	} catch {
 		/* A blocked store has nothing to clear. */
 	}
+	__resetQuotaResendEpisodes();
 	const state = {
 		notice: answer,
 		providers: [],
 		hosting: "deepseek",
 		model: "deepseek-chat",
 		features,
+		failForced: false,
 	};
 	answerImpl = (request) => {
 		if (request.op === "capabilities")
@@ -372,7 +405,16 @@ const world = ({
 			});
 		if (request.op === "providers.list")
 			return ok({ providers: state.providers });
-		if (request.op === "quota.notice") return ok(state.notice);
+		if (request.op === "quota.notice") {
+			/* `failForced` fails only the user's forced re-read, so the line's
+			 * automatic answer still paints and the cue has something to sit on. */
+			if (state.failForced && request.refresh === true)
+				return {
+					status: 500,
+					body: { detail: "quota-notice test: forced read failed" },
+				};
+			return ok(state.notice);
+		}
 		if (request.op === "radient.request") return state.resend?.() ?? ok({});
 		return {
 			status: 404,
@@ -476,30 +518,45 @@ test("the shown states are the wire's warning states, by positive list", () => {
 	);
 });
 
-test("a dismissal is keyed per (provider, state), validated on read", () => {
-	const signature = quotaNoticeSignature("radient", "unverified");
-	assert.equal(signature, "radient\nunverified");
-	assert.equal(quotaNoticeDismissed(signature, signature), true);
-	// A different state re-arms: the pair is the key.
-	assert.equal(
-		quotaNoticeDismissed(
-			signature,
-			quotaNoticeSignature("radient", "depleted"),
-		),
-		false,
-	);
-	assert.equal(
-		quotaNoticeDismissed(
-			signature,
-			quotaNoticeSignature("deepseek", "unverified"),
-		),
-		false,
-	);
-	// Hand-edited or absent values never read as a dismissal, and neither does
-	// the empty signature (no notice to have dismissed).
-	assert.equal(quotaNoticeDismissed("", ""), false);
-	assert.equal(quotaNoticeDismissed(null, signature), false);
-	assert.equal(quotaNoticeDismissed(42, signature), false);
+test("a dismissal is a per-provider map, validated on read, re-armed by a state change", () => {
+	// The stored shape: provider -> the state the reader dismissed.
+	const stored = JSON.stringify({
+		radient: "unverified",
+		deepseek: "depleted",
+	});
+	const map = parseQuotaNoticeDismissals(stored);
+	assert.deepEqual(map, { radient: "unverified", deepseek: "depleted" });
+	assert.equal(quotaNoticeDismissed(map, "radient", "unverified"), true);
+	assert.equal(quotaNoticeDismissed(map, "deepseek", "depleted"), true);
+	// A different state for the same provider is not dismissed, and neither is
+	// a different provider carrying the same state.
+	assert.equal(quotaNoticeDismissed(map, "radient", "depleted"), false);
+	assert.equal(quotaNoticeDismissed(map, "anthropic", "depleted"), false);
+
+	// Hand-edited, truncated or legacy values never read as dismissals.
+	assert.deepEqual(parseQuotaNoticeDismissals(""), {});
+	assert.deepEqual(parseQuotaNoticeDismissals("radient\nunverified"), {});
+	assert.deepEqual(parseQuotaNoticeDismissals("{garbage"), {});
+	assert.deepEqual(parseQuotaNoticeDismissals("true"), {});
+	assert.deepEqual(parseQuotaNoticeDismissals("[]"), {});
+	assert.deepEqual(parseQuotaNoticeDismissals('{"radient": ""}'), {});
+
+	/*
+	 * The re-arm rule (R1-M2/U3): an observed answer for provider P clears P's
+	 * entry the moment it names a DIFFERENT state — including a non-shown one,
+	 * which is what lets `depleted -> ok -> depleted` show the line again.
+	 */
+	const afterOk = advanceQuotaNoticeDismissals(map, "radient", "ok");
+	assert.deepEqual(afterOk, { deepseek: "depleted" });
+	// Same state: the episode has not left, so the entry stays, by IDENTITY
+	// (a caller skips its write and its re-render on it).
+	assert.equal(advanceQuotaNoticeDismissals(map, "radient", "unverified"), map);
+	// A provider with no entry is left alone.
+	assert.equal(advanceQuotaNoticeDismissals(map, "anthropic", "depleted"), map);
+	// Two interleaved providers: advancing one never touches the other's entry.
+	const interleaved = advanceQuotaNoticeDismissals(map, "radient", "depleted");
+	assert.deepEqual(interleaved, { deepseek: "depleted" });
+	assert.equal(quotaNoticeDismissed(interleaved, "deepseek", "depleted"), true);
 });
 
 test("the resend phases show their own sentences, and expire on their own clock", () => {
@@ -509,9 +566,10 @@ test("the resend phases show their own sentences, and expire on their own clock"
 		sentence: null,
 		offered: true,
 	});
+	// In flight says so (U8/N2): the disabled control is not silent.
 	assert.deepEqual(quotaResendView({ kind: "sending" }, now), {
 		disabled: true,
-		sentence: null,
+		sentence: QUOTA_RESEND_SENDING_SENTENCE,
 		offered: true,
 	});
 	assert.deepEqual(quotaResendView({ kind: "sent", until: now + 1 }, now), {
@@ -527,6 +585,12 @@ test("the resend phases show their own sentences, and expire on their own clock"
 			offered: true,
 		},
 	);
+	// The retryable failure stays offered WITH its sentence (U1).
+	assert.deepEqual(quotaResendView({ kind: "failed" }, now), {
+		disabled: false,
+		sentence: QUOTA_RESEND_FAILED_SENTENCE,
+		offered: true,
+	});
 	// An expired deadline reads exactly as idle, without a second transition.
 	assert.deepEqual(quotaResendView({ kind: "sent", until: now }, now), {
 		disabled: false,
@@ -538,6 +602,41 @@ test("the resend phases show their own sentences, and expire on their own clock"
 		sentence: null,
 		offered: false,
 	});
+});
+
+test("the refresh cues are their own sentences, and idle says nothing (U2)", () => {
+	assert.equal(quotaRefreshSentence("idle"), null);
+	assert.equal(
+		quotaRefreshSentence("checking"),
+		QUOTA_REFRESH_CHECKING_SENTENCE,
+	);
+	assert.equal(
+		quotaRefreshSentence("unchanged"),
+		QUOTA_REFRESH_UNCHANGED_SENTENCE,
+	);
+	assert.equal(quotaRefreshSentence("failed"), QUOTA_REFRESH_FAILED_SENTENCE);
+});
+
+test("the resend episode survives the mount and expires on its own clock (U8)", () => {
+	__resetQuotaResendEpisodes();
+	const now = 5_000;
+	assert.equal(quotaResendEpisodeFor("radient", now), null);
+	rememberQuotaResendEpisode("radient", { kind: "sent", until: now + 1 });
+	assert.deepEqual(quotaResendEpisodeFor("radient", now), {
+		kind: "sent",
+		until: now + 1,
+	});
+	// A different provider has no episode; an expired one reads as gone.
+	assert.equal(quotaResendEpisodeFor("deepseek", now), null);
+	assert.equal(quotaResendEpisodeFor("radient", now + 1), null);
+	// ...and is DROPPED on that read, so the map tracks live episodes only.
+	assert.equal(quotaResendEpisodeFor("radient", now + 2), null);
+	// The retryable failure is remembered too, and never expires by itself.
+	rememberQuotaResendEpisode("deepseek", { kind: "failed" });
+	assert.deepEqual(quotaResendEpisodeFor("deepseek", now + 10_000_000), {
+		kind: "failed",
+	});
+	__resetQuotaResendEpisodes();
 });
 
 test("a resend refusal is classified by code, never by status", () => {
@@ -720,7 +819,10 @@ test("nothing to resend re-reads the notice and the verified copy replaces the l
 		provider: "radient",
 		kind: "radient",
 		title: "No credit left on Radient",
-		body: "You're out of credits. Top up in the Radient console.",
+		/* The core builder's words, URL and bonus line included (review R1-m3):
+		 * a paraphrase here would let the line pass on copy the backend never
+		 * sends. */
+		body: "You're out of credits. Top up in the Radient console: https://console.radienthq.com/dashboard/billing\nGet an extra $5 free on your first top-up of $10 or more.",
 		actions: [
 			{
 				id: "open_url",
@@ -845,7 +947,7 @@ test("focus re-asks while a notice is on screen, and stays put once it is gone",
 	assert.equal(quotaNoticeCalls().length, quiet, "no notice, no focus read");
 });
 
-test("dismiss hides the pair and a state change re-arms the line", async () => {
+test("dismiss hides one pair, re-arms on recovery, and leaves other providers alone", async () => {
 	const state = world({ notice: unverified() });
 	state.hosting = "radient";
 	state.model = "radient/auto";
@@ -855,11 +957,32 @@ test("dismiss hides the pair and a state change re-arms the line", async () => {
 	assert.equal(line(), null, "the dismissal hides the line");
 	assert.equal(
 		window.localStorage.getItem(QUOTA_NOTICE_DISMISSAL_KEY),
-		"radient\nunverified",
+		JSON.stringify({ radient: "unverified" }),
 	);
 
-	// The state changes: a different pair has no dismissal stored, so the line
-	// returns — the "returns when the state changes" rule.
+	/*
+	 * THE RECOVERY CYCLE (R1-M2 / U3): dismissed -> ok -> depleted again must
+	 * SHOW. The `ok` answer clears the entry (its state left the dismissed
+	 * one), so the second depletion has nothing hiding it.
+	 */
+	state.notice = notice({
+		state: "ok",
+		provider: "radient",
+		title: "",
+		body: "",
+		actions: [],
+	});
+	await act(async () => {
+		window.dispatchEvent(new window.Event("focus"));
+	});
+	await settle();
+	assert.equal(line(), null, "ok shows nothing");
+	assert.equal(
+		window.localStorage.getItem(QUOTA_NOTICE_DISMISSAL_KEY),
+		JSON.stringify({}),
+		"the ok answer cleared the spent dismissal",
+	);
+
 	state.notice = notice({
 		state: "depleted",
 		provider: "radient",
@@ -868,11 +991,244 @@ test("dismiss hides the pair and a state change re-arms the line", async () => {
 		body: "You're out of credits. Top up in the Radient console.",
 		actions: [{ id: "refresh", label: "I topped up", url: null }],
 	});
+	/*
+	 * The transition is driven by a query invalidation rather than a focus:
+	 * with the `ok` answer on screen nothing is visible, and the hook's focus
+	 * listener deliberately asks only while a notice shows. Invalidation is
+	 * the app's own re-read path (a session open refetches on the same terms).
+	 */
+	await act(async () => {
+		await client.invalidateQueries({ queryKey: ["desktop", "quota-notice"] });
+	});
+	await settle();
+	assert.ok(
+		line(),
+		"the second depletion shows — the dismissal did not survive recovery",
+	);
+
+	/*
+	 * TWO INTERLEAVED PAIRS: dismissing one provider leaves the other visible,
+	 * and each pair's own lifecycle stays its own.
+	 */
+	await press("[data-quota-notice-dismiss]");
+	state.hosting = "deepseek";
+	state.model = "deepseek-chat";
+	state.notice = notice();
 	await act(async () => {
 		window.dispatchEvent(new window.Event("focus"));
 	});
 	await settle();
-	assert.ok(line(), "the changed state re-arms the line");
+	assert.ok(
+		line(),
+		"the other provider's notice is not hidden by the first dismissal",
+	);
+	await press("[data-quota-notice-dismiss]");
+	assert.equal(
+		window.localStorage.getItem(QUOTA_NOTICE_DISMISSAL_KEY),
+		JSON.stringify({ radient: "depleted", deepseek: "depleted" }),
+		"both pairs stay dismissed at once",
+	);
+});
+
+test("the pane's own model is the one checked, and a pick change re-asks (Q3/R1-M1)", async () => {
+	const state = world();
+	mount(h(QuotaNoticeLine));
+	await settle();
+	// No pane selection: the config default answers (the documented fallback).
+	assert.deepEqual(
+		[quotaNoticeCalls()[0].provider, quotaNoticeCalls()[0].model],
+		["deepseek", "deepseek-chat"],
+	);
+
+	// The same mount's pane picks Anthropic: the key follows the pick, so one
+	// new read goes out for the account the send would actually use.
+	act(() => {
+		root.render(
+			h(
+				QueryClientProvider,
+				{ client },
+				h(QuotaNoticeLine, {
+					selection: { provider: "anthropic", model_id: "claude-sonnet-5-5" },
+				}),
+			),
+		);
+	});
+	await settle();
+	assert.equal(
+		quotaNoticeCalls().length,
+		2,
+		"the pick change re-asks exactly once",
+	);
+	assert.equal(quotaNoticeCalls()[1].provider, "anthropic");
+	assert.equal(quotaNoticeCalls()[1].model, "claude-sonnet-5-5");
+});
+
+test("three same-task presses spend one resend op (Q1)", async () => {
+	const state = world({ notice: unverified() });
+	state.hosting = "radient";
+	state.model = "radient/auto";
+	// The op never settles: the press stays in flight for the whole case.
+	state.resend = () => new Promise(() => {});
+	mount(h(QuotaNoticeLine));
+	await settle();
+
+	await act(async () => {
+		const button = bySelector("[data-quota-notice-resend-action]");
+		button.click();
+		button.click();
+		button.click();
+	});
+	assert.equal(
+		resendCalls().length,
+		1,
+		"the in-flight ref swallowed the repeats",
+	);
+});
+
+test("a failed press says so, stays offered, and a retry can still win (U1)", async () => {
+	const state = world({ notice: unverified() });
+	state.hosting = "radient";
+	state.model = "radient/auto";
+	state.resend = () => ({
+		status: 502,
+		body: {
+			detail: {
+				code: "radient_upstream_failed",
+				message: "Radient could not be reached",
+			},
+		},
+	});
+	mount(h(QuotaNoticeLine));
+	await settle();
+	await press("[data-quota-notice-resend-action]");
+	assert.equal(
+		bySelector("[data-quota-notice-line]")?.getAttribute(
+			"data-quota-notice-resend-phase",
+		),
+		"failed",
+	);
+	assert.match(text(), /Could not send\. Try again\./);
+	assert.equal(
+		bySelector("[data-quota-notice-resend-action]")?.hasAttribute("disabled"),
+		false,
+		"the button is offered again",
+	);
+
+	state.resend = () => ok({ data: { msg: "ok", result: { status: 200 } } });
+	await press("[data-quota-notice-resend-action]");
+	assert.match(text(), /Sent\. Check your inbox and spam folder\./);
+	assert.equal(resendCalls().length, 2);
+});
+
+test("the re-read's outcome is readable, changed or not (U2)", async () => {
+	const state = world();
+	mount(h(QuotaNoticeLine));
+	await settle();
+
+	// Unchanged: the same depleted answer comes back, and the cue says so.
+	await press("[data-quota-notice-refresh-action]");
+	assert.match(text(), /Checked just now — no change yet\./);
+
+	// Changed: the answer flips to ok, the line goes, and no stale cue remains.
+	state.notice = notice({ state: "ok", title: "", body: "", actions: [] });
+	await press("[data-quota-notice-refresh-action]");
+	assert.equal(line(), null, "the changed answer cleared the line");
+});
+
+test("a re-read that fails says so and keeps the last answer (U2)", async () => {
+	const state = world();
+	// The automatic read answers; the FORCED one fails at the transport level.
+	state.failForced = true;
+	mount(h(QuotaNoticeLine));
+	await settle();
+	assert.ok(line(), "the automatic read painted the line");
+	await press("[data-quota-notice-refresh-action]");
+	assert.match(text(), /Could not check\. Try again\./);
+	assert.ok(line(), "the last answer stands");
+});
+
+test("a sentence does not outlive the state it describes (U4)", async () => {
+	const state = world({ notice: unverified() });
+	state.hosting = "radient";
+	state.model = "radient/auto";
+	state.resend = () => ({
+		status: 429,
+		body: {
+			detail: {
+				code: "signup_resend_rate_limited",
+				message: "A verification email was requested recently",
+			},
+		},
+	});
+	mount(h(QuotaNoticeLine));
+	await settle();
+	await press("[data-quota-notice-resend-action]");
+	assert.match(text(), /Requested recently\. Try again in about 2 minutes\./);
+
+	// The account tops up while the sentence is on screen: the verdict flips,
+	// and the rate-limit sentence must not sit beside a top-up action.
+	state.notice = notice({
+		state: "depleted",
+		provider: "deepseek",
+		kind: "balance",
+		title: "No balance on DeepSeek",
+		body: "No balance on DeepSeek — top up at the DeepSeek platform.",
+		actions: [{ id: "refresh", label: "I topped up", url: null }],
+	});
+	await act(async () => {
+		window.dispatchEvent(new window.Event("focus"));
+	});
+	await settle();
+	assert.ok(line());
+	assert.doesNotMatch(text(), /Requested recently/);
+});
+
+test("a keyboard press keeps focus on the line (U5)", async () => {
+	const state = world({ notice: unverified() });
+	state.hosting = "radient";
+	state.model = "radient/auto";
+	state.resend = () => ok({ data: { msg: "ok", result: { status: 200 } } });
+	mount(h(QuotaNoticeLine));
+	await settle();
+	/* jsdom's `click()` carries `detail: 0`, the same field a keyboard press
+	 * sets, so this drives the keyboard path the browser's Space/Enter does. */
+	await press("[data-quota-notice-resend-action]");
+	assert.equal(
+		window.document.activeElement?.getAttribute("data-quota-notice-status"),
+		"",
+		"focus moved to the status sentence, not to <body>",
+	);
+});
+
+test("the cooldown survives a New-chat remount (U8)", async () => {
+	const state = world({ notice: unverified() });
+	state.hosting = "radient";
+	state.model = "radient/auto";
+	state.resend = () => ok({ data: { msg: "ok", result: { status: 200 } } });
+	mount(h(QuotaNoticeLine));
+	await settle();
+	await press("[data-quota-notice-resend-action]");
+	assert.equal(resendCalls().length, 1);
+
+	// New chat: a fresh mount, same provider. The episode is remembered.
+	mount(h(QuotaNoticeLine));
+	await settle();
+	assert.equal(
+		bySelector("[data-quota-notice-line]")?.getAttribute(
+			"data-quota-notice-resend-phase",
+		),
+		"sent",
+		"the remount reads the live episode",
+	);
+	assert.match(text(), /Sent\. Check your inbox and spam folder\./);
+	/* The remount reset the transport log; count from it, not from the pre-remount total. */
+	const afterRemount = resendCalls().length;
+	await press("[data-quota-notice-resend-action]");
+	assert.equal(
+		resendCalls().length,
+		afterRemount,
+		"the restored cooldown swallowed the press",
+	);
 });
 
 /*
@@ -915,4 +1271,38 @@ test("the composer shows the line on the empty band and hides it once a message 
 		null,
 		"a session with content shows no line",
 	);
+});
+
+test("the composer hands the pane's own model to the row (QA S1)", async () => {
+	world({ notice: unverified() });
+	mount(
+		h(MessageInput, {
+			isLoading: false,
+			messages: [],
+			onSendMessage: async () => {},
+			/*
+			 * The pane's pick, as the preview publishes it: a draft's selection
+			 * that deliberately does NOT write the machine default (the config
+			 * stub still says deepseek/deepseek-chat).
+			 */
+			sessionStatus: {
+				frontend: {
+					selected_model: {
+						provider: "anthropic",
+						model_id: "claude-sonnet-5-5",
+					},
+					effective_model: null,
+				},
+			},
+		}),
+	);
+	await settle();
+	const notices = quotaNoticeCalls();
+	assert.equal(notices.length, 1);
+	assert.equal(
+		notices[0].provider,
+		"anthropic",
+		"the pane's provider, not the default's",
+	);
+	assert.equal(notices[0].model, "claude-sonnet-5-5");
 });

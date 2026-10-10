@@ -120,7 +120,7 @@ const ANTHROPIC_LIMIT: QuotaNotice = {
 };
 
 /** What `gradient.request` does with `signup.resend` in this frame. */
-type ResendBehaviour = "accepted" | "hangs" | "rate-limited";
+type ResendBehaviour = "accepted" | "hangs" | "rate-limited" | "refused";
 
 let bridge: ((request: BridgeRequest) => Promise<DesktopResponse>) | null =
 	null;
@@ -172,6 +172,19 @@ const installBridge = (options: {
 								detail: {
 									code: "signup_resend_rate_limited",
 									message: "A verification email was requested recently",
+								},
+							},
+						};
+					}
+					if (options.resend === "refused") {
+						/* The retryable arm (U1): the upstream failed, the press can
+						 * be repeated — the frame is the sentence that says so. */
+						return {
+							status: 502,
+							body: {
+								detail: {
+									code: "radient_upstream_failed",
+									message: "Radient could not be reached",
 								},
 							},
 						};
@@ -351,5 +364,24 @@ export const NarrowWidth: Story = {
 			notice={RADIENT_UNVERIFIED}
 			maxWidth={420}
 		/>
+	),
+};
+
+/** The press failed retryably: the sentence and the offered button (U1). */
+export const ResendFailed: Story = {
+	render: () => (
+		<Band
+			provider="radient"
+			model="radient/auto"
+			notice={RADIENT_UNVERIFIED}
+			resend="refused"
+		/>
+	),
+};
+
+/** "I verified" pressed while the server still says `unverified` (U2). */
+export const RefreshUnchanged: Story = {
+	render: () => (
+		<Band provider="radient" model="radient/auto" notice={RADIENT_UNVERIFIED} />
 	),
 };
