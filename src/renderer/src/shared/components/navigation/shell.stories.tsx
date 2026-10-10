@@ -978,22 +978,24 @@ const EMPTY_ROUTE = {
 	runDetails: false,
 	session: false,
 	codeReview: false,
+	asksOffered: false,
 } as const;
 
 /*
- * A route every right-slot pane can draw on: the three facts the app's own
+ * A route every right-slot pane can draw on: the facts the app's own
  * `chat-content` publishes on a conversation route (`mounted`, `runDetails`,
- * `session` all true). These arms mount the dock directly rather than through
- * `chat-content`, the app's only publisher, so they STATE the route they
- * simulate - without it the slot's derivation would answer 0 for a pane the
- * story is showing, and the lane above the dock would photograph a stop the
- * app does not draw.
+ * `session` all true, and a host that offers the asks door). These arms mount
+ * the dock directly rather than through `chat-content`, the app's only
+ * publisher, so they STATE the route they simulate - without it the slot's
+ * derivation would answer 0 for a pane the story is showing, and the lane
+ * above the dock would photograph a stop the app does not draw.
  */
 const DRAWABLE_ROUTE = {
 	mounted: true,
 	runDetails: true,
 	session: true,
 	codeReview: true,
+	asksOffered: true,
 } as const;
 
 /**
@@ -2058,6 +2060,7 @@ export const ChatDockRunPanelOnDraft: Story = {
 					runDetails: false,
 					session: false,
 					codeReview: false,
+					asksOffered: false,
 				},
 			});
 			return () => {
@@ -2088,6 +2091,7 @@ export const ChatDockAsksOnDraft: Story = {
 					runDetails: false,
 					session: false,
 					codeReview: false,
+					asksOffered: false,
 				},
 			});
 			return () => {

@@ -1338,62 +1338,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const rightSlotOccupied = useUiPreferencesStore(resolveRightSlotOccupied);
 
 		/*
-		 * THE ROUTE'S HALF OF THE SLOT'S TRUTH (#868): every gate this component
-		 * mounts a right-slot pane behind, published once so the store's derivation
-		 * (the lane's stop, the column's width, the header's reservation) answers
-		 * from what THIS route can actually draw rather than from a flag that
-		 * outlived its route.
-		 *
-		 * `mounted` is this effect's own act of being here; `runDetails` and
-		 * `session` are read from the same values the panes' own mount conditions
-		 * read (the run panel's `runDetails` term, the session drawer's
-		 * `Boolean(sessionId)` term), so the facts and the mounts cannot drift.
-		 *
-		 * IT IS A LAYOUT EFFECT because the readers are in OTHER components (the
-		 * chrome lane belongs to the SHELL, above this one): a passive effect would
-		 * paint one frame of the previous route's answer - the stale band this issue
-		 * is about - before correcting it, and a layout effect's synchronous
-		 * re-render lands before the frame.
-		 */
-		const setRightSlotRoute = useUiPreferencesStore((s) => s.setRightSlotRoute);
-		/*
-		 * THE BOOLEANS, NOT THE OBJECT, ARE THE EFFECT'S KEYS (agent review round 1,
-		 * R1): `runDetails` is a `useMemo` over the canonical frame and takes a new
-		 * identity on every `frontend.update`, so keying on it re-published
-		 * identical facts on every frame of a live run. The facts are two booleans,
-		 * and a boolean only changes when the answer does.
-		 */
-		const hasRunDetails = Boolean(runDetails);
-		const hasSession = Boolean(sessionId);
-		useLayoutEffect(() => {
-			setRightSlotRoute({
-				mounted: true,
-				runDetails: hasRunDetails,
-				session: hasSession,
-				/*
-				 * THE CAPABILITY IS A ROUTE FACT (agent review F6): the code pane's mount
-				 * reads `codeReviewEnabled`, so the slot's drawability must read the same
-				 * answer - a remembered pane on a backend that lost the feature otherwise
-				 * reserves an empty column whose rail door is absent too.
-				 */
-				codeReview: codeReviewEnabled,
-			});
-		}, [setRightSlotRoute, hasRunDetails, hasSession, codeReviewEnabled]);
-		/*
-		 * The unmount reset: a route with no chat surface draws none of the five.
-		 *
-		 * IT RESETS UNCONDITIONALLY, which assumes ONE ChatContent per window
-		 * (`SessionPanel key={identity}` is the only mount, and React runs the old
-		 * tree's layout cleanup before the new tree's publish, so a swap ends
-		 * published). A second concurrent instance would have to compare the store's
-		 * facts with its own before resetting, or its unmount would release the slot
-		 * under the other one.
-		 */
-		useLayoutEffect(
-			() => () => setRightSlotRoute(EMPTY_RIGHT_SLOT_ROUTE),
-			[setRightSlotRoute],
-		);
-		/*
 		 * THE ASKS DOOR: the entry point the sidebar's `All asks` row used to be.
 		 * #820/#835 moved it into this conversation's header, and #896 moved it again,
 		 * onto the panel rail beside the four panel doors that open the same right
@@ -1460,6 +1404,82 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			: fleetAsks.outstanding;
 		const headerAsksOpen =
 			isAskDrawerOpen && askDrawerScope === headerAsksScope;
+		/*
+		 * THE ROUTE'S HALF OF THE SLOT'S TRUTH (#868): every gate this component
+		 * mounts a right-slot pane behind, published once so the store's derivation
+		 * (the lane's stop, the column's width, the header's reservation) answers
+		 * from what THIS route can actually draw rather than from a flag that
+		 * outlived its route.
+		 *
+		 * `mounted` is this effect's own act of being here; `runDetails` and
+		 * `session` are read from the same values the panes' own mount conditions
+		 * read (the run panel's `runDetails` term, the session drawer's
+		 * `Boolean(sessionId)` term), so the facts and the mounts cannot drift.
+		 * `asksOffered` joins them with the SAME value the rail item's `askOffered`
+		 * prop reads (issue #928): the chord's door and the item's presence are one
+		 * answer, so a press can never meet a door that does not exist or miss one
+		 * that does.
+		 *
+		 * IT IS A LAYOUT EFFECT because the readers are in OTHER components (the
+		 * chrome lane belongs to the SHELL, above this one): a passive effect would
+		 * paint one frame of the previous route's answer - the stale band this issue
+		 * is about - before correcting it, and a layout effect's synchronous
+		 * re-render lands before the frame.
+		 *
+		 * IT SITS BELOW THE ASKS DERIVATIONS rather than beside the flags it also
+		 * reads (issue #928): `asksOffered` is `headerAsksOffered`, and a second
+		 * spelling of that expression above this point is exactly the drift the
+		 * asks block exists to prevent. The layout effect's ordering relative to its
+		 * neighbours is not load-bearing - every reader is in another component, and
+		 * a child's layout effects run before the parent's either way.
+		 */
+		const setRightSlotRoute = useUiPreferencesStore((s) => s.setRightSlotRoute);
+		/*
+		 * THE BOOLEANS, NOT THE OBJECT, ARE THE EFFECT'S KEYS (agent review round 1,
+		 * R1): `runDetails` is a `useMemo` over the canonical frame and takes a new
+		 * identity on every `frontend.update`, so keying on it re-published
+		 * identical facts on every frame of a live run. The facts are two booleans,
+		 * and a boolean only changes when the answer does.
+		 */
+		const hasRunDetails = Boolean(runDetails);
+		const hasSession = Boolean(sessionId);
+		useLayoutEffect(() => {
+			setRightSlotRoute({
+				mounted: true,
+				runDetails: hasRunDetails,
+				session: hasSession,
+				/*
+				 * THE CAPABILITY IS A ROUTE FACT (agent review F6): the code pane's mount
+				 * reads `codeReviewEnabled`, so the slot's drawability must read the same
+				 * answer - a remembered pane on a backend that lost the feature otherwise
+				 * reserves an empty column whose rail door is absent too.
+				 */
+				codeReview: codeReviewEnabled,
+				/* THE ASKS DOOR'S OFFER, from the block above (issue #928): the door the
+				   ask chord gates on. */
+				asksOffered: headerAsksOffered,
+			});
+		}, [
+			setRightSlotRoute,
+			hasRunDetails,
+			hasSession,
+			codeReviewEnabled,
+			headerAsksOffered,
+		]);
+		/*
+		 * The unmount reset: a route with no chat surface draws none of the five.
+		 *
+		 * IT RESETS UNCONDITIONALLY, which assumes ONE ChatContent per window
+		 * (`SessionPanel key={identity}` is the only mount, and React runs the old
+		 * tree's layout cleanup before the new tree's publish, so a swap ends
+		 * published). A second concurrent instance would have to compare the store's
+		 * facts with its own before resetting, or its unmount would release the slot
+		 * under the other one.
+		 */
+		useLayoutEffect(
+			() => () => setRightSlotRoute(EMPTY_RIGHT_SLOT_ROUTE),
+			[setRightSlotRoute],
+		);
 		const setConsolePaneOpen = useUiPreferencesStore(
 			(s) => s.setConsolePaneOpen,
 		);

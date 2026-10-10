@@ -37,7 +37,6 @@ import {
 } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
 import type { AskScope } from "../ask-queue";
-import { isCanvasTogglePress } from "../canvas-shortcut";
 import { archiveControlLabel } from "../chat-archived";
 /*
  * THE ACT'S OWN WRITE (#893), the same module the sidebar row menu calls: one
@@ -389,33 +388,15 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
 
 	/*
-	 * THE CANVAS CHORD IS STILL BOUND HERE (UX round 2, U14), though the control
-	 * that prints it moved to the panel rail (#872).
-	 *
-	 * The canvas item's name advertises `⌘⇧C` and something has to answer it. The
-	 * listener stays where it was - bound wherever this header's `onOpenOptions` gate
-	 * is answered, the prop that decides whether this pane can offer the canvas at
-	 * all - rather than moving with the button, because moving it is a behaviour
-	 * change on a chord (it would bind on the rail's mount instead, which exists on
-	 * drafts the header's gate may not), and #872 adds no chord and changes none. It
-	 * TOGGLES, so the reader who opened the canvas with the chord can close it with
-	 * the chord. The printed cap and this predicate still share `canvas-shortcut.ts`,
-	 * which is what keeps the promise and the press from drifting.
-	 *
-	 * The state is read through `getState()` at press time, the shape the shell's own
-	 * chord uses: a listener that closes over `isCanvasOpen` would be re-registered
-	 * on every toggle and could still answer with the render it was born in.
+	 * THE CANVAS CHORD LEFT THIS FILE (issue #928). It used to be bound here, on
+	 * the document, wherever `onOpenOptions` was answered (UX round 2, U14 kept it
+	 * while the control that prints it moved to the rail) — and a user-assignable
+	 * chord cannot live in one component's effect: the registry's default for
+	 * `panel.canvas` is the same `⌘⇧C`, and the one router (`useKeymapShortcuts`,
+	 * mounted in `app.tsx`) answers it through the shared rail toggle. Keeping
+	 * both would give one chord two answers the moment anyone rebinds. The `...`
+	 * menu's Open canvas row below is a door, not a chord, and stays.
 	 */
-	useEffect(() => {
-		if (!onOpenOptions) return;
-		const onKeyDown = (event: KeyboardEvent) => {
-			if (!isCanvasTogglePress(event)) return;
-			event.preventDefault();
-			setCanvasOpen(!useUiPreferencesStore.getState().isCanvasOpen);
-		};
-		document.addEventListener("keydown", onKeyDown);
-		return () => document.removeEventListener("keydown", onKeyDown);
-	}, [onOpenOptions, setCanvasOpen]);
 
 	/*
 	 * THE INLINE RENAME (the operator's report, 2026-09-26): "the rename
