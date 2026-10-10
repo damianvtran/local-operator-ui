@@ -2178,16 +2178,9 @@ const PLATES_INSIDE_ROW_STATES = [
 		edge: true,
 	},
 	{
-		what: "the canvas file row's image thumbnail",
+		what: "the canvas file row's media thumbnail plate",
 		file: FILE_ROW,
-		element: "img",
-		edge: false,
-		fact: "object-cover",
-	},
-	{
-		what: "the canvas file row's video thumbnail",
-		file: FILE_ROW,
-		element: "video",
+		element: "RowThumbnail",
 		edge: false,
 		fact: "object-cover",
 	},

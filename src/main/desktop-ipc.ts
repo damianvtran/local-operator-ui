@@ -141,6 +141,39 @@ function relayedBytes(value: unknown): Uint8Array<ArrayBuffer> | null {
 	return new Uint8Array(buffer, byteOffset, byteLength);
 }
 
+/**
+ * Whether an IPC event came from the MAIN FRAME of one of the app's own windows,
+ * on that window's own trusted document.
+ *
+ * WHY THIS IS A FUNCTION OF ITS OWN. `registerDesktopIPC`'s gate and the local
+ * file handlers (`read-file-bytes`, `probe-files`) must agree about who "the
+ * app" is, and two spellings of that test is how one of them drifts. The file
+ * handlers need it because previews now route AGENT-SUPPLIED paths into them
+ * (message attachments), and what keeps a hostile document out of them is the
+ * sender, not the path: the handlers' only path rule is `~` expansion, a `stat`
+ * and the 64 MiB cap. A sandboxed preview frame has no `window.api` at all, so
+ * this is the second lock on a door that already has one — a frame that did
+ * acquire the bridge (a future `nodeIntegrationInSubFrames`, a navigation of the
+ * main frame to a foreign page that kept the preload) would be refused by
+ * sender and by URL.
+ *
+ * Each entry carries its OWN url, and neither window is admitted on the
+ * other's: see the `additionalWindows` note on `registerDesktopIPC`.
+ */
+export function isAdmittedSender(
+	event: Pick<IpcMainInvokeEvent, "sender" | "senderFrame">,
+	admitted: readonly { window: BrowserWindow | null; url: string }[],
+): boolean {
+	return admitted.some(
+		(candidate) =>
+			candidate.window !== null &&
+			!candidate.window.isDestroyed() &&
+			event.sender === candidate.window.webContents &&
+			event.senderFrame === candidate.window.webContents.mainFrame &&
+			trustedDesktopFrame(event.senderFrame.url, candidate.url),
+	);
+}
+
 export function registerDesktopIPC(
 	window: () => BrowserWindow | null,
 	expectedUrl: string,
@@ -194,15 +227,7 @@ export function registerDesktopIPC(
 			{ window: window(), url: expectedUrl },
 			...(additionalWindows?.() ?? []),
 		];
-		const owner = admitted.some(
-			(candidate) =>
-				candidate.window !== null &&
-				!candidate.window.isDestroyed() &&
-				event.sender === candidate.window.webContents &&
-				event.senderFrame === candidate.window.webContents.mainFrame &&
-				trustedDesktopFrame(event.senderFrame.url, candidate.url),
-		);
-		if (!owner) {
+		if (!isAdmittedSender(event, admitted)) {
 			throw new Error("This window cannot use desktop controls.");
 		}
 	}
