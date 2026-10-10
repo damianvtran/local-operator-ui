@@ -3854,6 +3854,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 */
 			runFacts: openFrame?.runs,
 			/*
+			 * THE PAGE THOSE FACTS CAME WITH (agent review round 3, B2): the identity the
+			 * plan needs to tell a row the wire's figure already counted from one that
+			 * arrived after the page was published. In the same options object as the
+			 * facts because the two are one reading of one page, and `undefined` for a
+			 * pane with no facts at all keeps the option exactly as absent as it was.
+			 */
+			factPage: openFrame?.page,
+			/*
 			 * WHETHER THIS READER HIDES CROSS-SESSION ROWS (agent review round 1, F2).
 			 * The plan's rows are already filtered by `visibleRecords(…, hide)` above;
 			 * this tells the model that the SERVER's totals count rows this reader does

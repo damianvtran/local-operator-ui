@@ -2948,6 +2948,102 @@ test("clarity 2: a page that begins at a STEER still states the run's whole figu
  *      read `runs[0]`, which the core publishes ONE RUN EARLY on purpose.
  * ===================================================================== */
 
+test("a fact is corrected by the rows that arrived after its page - and only those (B2)", () => {
+	/*
+	 * THE PAGE'S FIGURES ARE A SNAPSHOT (agent review round 3, B2). A run that keeps
+	 * working while the pane is open - a wake, a job result, a peer receipt - hands
+	 * the client rows the published figure never saw, and the client held them with
+	 * the fact still stating the old total as exact: measured on a real-core page as
+	 * `30 / 60 s` with `partial: false` and the walk retired, for a run whose own
+	 * figure had already moved to `33 / 63 s`.
+	 *
+	 * THE TEST IS IDENTITY, so the page's own rows are named: the page carried
+	 * `t1`, `t2` and `a0`, and the wake's `w1..w3` are neither on it nor before it.
+	 * The same fixture with the wake INSIDE the page is the control at the bottom:
+	 * round 2's B1 was exactly that case, and it must not come back.
+	 */
+	const page = {
+		ids: new Set(["t1", "t2", "a0"]),
+		newestId: "a0",
+	};
+	const head = [
+		tool("t1", { ts: TS, durationS: 20 }),
+		tool("t2", { ts: TS + 1, durationS: 20 }),
+		answer("a0", { ts: TS + 2 }),
+	];
+	const wake = [
+		tool("w1", { ts: TS + 3, durationS: 1 }),
+		tool("w2", { ts: TS + 4, durationS: 1 }),
+		tool("w3", { ts: TS + 5, durationS: 1 }),
+		answer("a1", { ts: TS + 6 }),
+	];
+	const withWake = collapsePlan([...head, ...wake], {
+		live: false,
+		runFacts: new Map([["a0", fact(30, 60, { closingAnswerId: "a1" })]]),
+		factPage: page,
+	}).runs[0];
+	assert.equal(withWake.factApplied, true, "the fact still applies");
+	assert.equal(
+		withWake.segments[0].facts.actions,
+		33,
+		"the wire's 30 plus the three calls that arrived after the page",
+	);
+	assert.equal(
+		withWake.segments[0].facts.durationS,
+		63,
+		"and their seconds: the run's own 60 plus the wake's 3",
+	);
+	assert.equal(
+		withWake.segments[0].facts.partial,
+		false,
+		"exact for the rows in hand, and the turn is not live",
+	);
+	/*
+	 * A ROW THE WIRE COULD NOT MEASURE makes the sum a guess, so the whole fact is
+	 * refused: the fold stands, the `+` stays, and the walk keeps its reason to run.
+	 */
+	const unmeasured = collapsePlan(
+		[
+			...head,
+			tool("w1", { ts: TS + 3, durationS: 1 }),
+			tool("w2", { ts: TS + 4 }),
+			tool("w3", { ts: TS + 5, durationS: 1 }),
+			answer("a1", { ts: TS + 6 }),
+		],
+		{
+			live: false,
+			runFacts: new Map([["a0", fact(30, 60, { closingAnswerId: "a1" })]]),
+			factPage: page,
+		},
+	).runs[0];
+	assert.equal(
+		unmeasured.factApplied,
+		false,
+		"an unmeasurable row refuses the fact",
+	);
+	assert.equal(unmeasured.segments[0].facts.actions, 5, "the rows in hand");
+	assert.equal(unmeasured.segments[0].facts.partial, true, "and their `+`");
+	/*
+	 * THE CONTROL: the same three wake rows, this time ON the page. They are inside
+	 * the wire's figure already, so nothing is added - `30`, not `33`. This is the
+	 * arm round 2's B1 removed, and it is what keeps the correction in the fix from
+	 * becoming the old double count.
+	 */
+	const onPage = collapsePlan([...head, ...wake], {
+		live: false,
+		runFacts: new Map([["a0", fact(30, 60, { closingAnswerId: "a1" })]]),
+		factPage: {
+			ids: new Set(["t1", "t2", "a0", "w1", "w2", "w3", "a1"]),
+			newestId: "a1",
+		},
+	}).runs[0];
+	assert.equal(
+		onPage.segments[0].facts.actions,
+		30,
+		"a wake the page carried is already in the wire's figure",
+	);
+});
+
 test("a fact is split by the hidden cross-session work, or refused (F2)", () => {
 	const rows = [
 		tool("t1", { ts: TS, durationS: 20 }),
@@ -3205,8 +3301,15 @@ test("a figure below the rows the bar itself hides keeps its `+` (M2)", () => {
 	assert.equal(short.factApplied, true, "the fact applies");
 	assert.equal(
 		short.segments[0].facts.actions,
-		2,
-		"the wire's count minus its split",
+		3,
+		/*
+		 * THE LARGER FIGURE (agent review round 3, m1): the wire's 5 minus its split of
+		 * 3 is 2, which is BELOW the three tool rows this bar hides - a figure the
+		 * bar's own rows already contradict, stated as `2+`, a floor nothing can
+		 * complete while the fact keeps the walk retired. The bar states the rows in
+		 * hand instead, and still says it is not the total.
+		 */
+		"the rows in hand, which the wire's figure cannot undercut",
 	);
 	assert.equal(
 		short.segments[0].facts.partial,

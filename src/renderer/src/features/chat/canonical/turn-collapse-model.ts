@@ -54,6 +54,7 @@ import {
 	type FoldableAction,
 	foldSummary,
 	workedSeconds,
+	workedSecondsOf,
 } from "./trace-fold-model";
 import {
 	type TranscriptImage,
@@ -287,6 +288,29 @@ export type RunFact = {
 
 /** The facts an open-frame page carries, by `run_key` (`TurnRun.key`). */
 export type RunFactLookup = ReadonlyMap<string, RunFact>;
+
+/**
+ * The page the facts came with, by IDENTITY: the row ids it carried and the row
+ * it ended on (agent review round 3, B2).
+ *
+ * WHY THE PLAN NEEDS IT. A fact is a SNAPSHOT of a run as the page saw it: the rows
+ * the page carried, and rows OLDER than its head, are inside its figure - but a row
+ * that arrived AFTER the page was published is not, and the client keeps such rows
+ * while the fact stays where it was (a live wake, a job result, a peer receipt on an
+ * open pane). Left alone, that states an old total as final: measured on a
+ * real-core page, a run whose own figure moved `30 / 60 s` → `33 / 63 s` still
+ * painted `30 / 60 s` with `partial: false` and the walk retired.
+ *
+ * IDENTITY, NOT A CLOCK: a wake that landed BEFORE the read is already inside the
+ * wire's figure, and a clock-based rule double-counted exactly that case (round 2's
+ * B1). See `factAppendedRows` for the test this feeds.
+ */
+export type FactPageIdentity = {
+	/** Every entry id the page carried (stripped rows never reach the plan). */
+	ids: ReadonlySet<string>;
+	/** The page's own newest entry, or null when the page names none. */
+	newestId: string | null;
+};
 
 /**
  * One SEGMENT of a run: a maximal contiguous span of hidden rows and the one bar
@@ -550,6 +574,14 @@ export function collapsePlan(
 		 * conversation, and changes nothing.
 		 */
 		runFacts?: RunFactLookup;
+		/**
+		 * The page the facts came with, by identity (`FactPageIdentity`). Consulted
+		 * beside them, and for the same reason: it is what tells a row the wire's
+		 * figure counted from one that arrived after it was published (B2). Omitted
+		 * keeps every existing behaviour; a page identity that cannot be compared
+		 * refuses the fact rather than stating a figure that may have moved.
+		 */
+		factPage?: FactPageIdentity | null;
 	},
 ): CollapsePlan {
 	dbgCollapsePlanCalls.count += 1;
@@ -576,6 +608,7 @@ export function collapsePlan(
 				options.mode,
 				options.runFacts,
 				options.hideCrossSession === true,
+				options.factPage,
 			),
 		),
 	};
@@ -814,6 +847,14 @@ export function collapsePlanOptionsKey(options: {
 	 * span states (agent review round 1, F2).
 	 */
 	hideCrossSession?: boolean;
+	/**
+	 * In the key because the B2 correction is arithmetic over it: two pages with the
+	 * same facts can state different figures. The fingerprint is the watermark plus
+	 * the row count - enough to move on every identity a caller can build (both come
+	 * from the page the facts came with), and a collision would only ever cost a
+	 * re-plan, never a wrong bar.
+	 */
+	factPage?: FactPageIdentity | null;
 }): string {
 	const parts: string[] = [
 		options.live ? "live" : "settled",
@@ -847,6 +888,11 @@ export function collapsePlanOptionsKey(options: {
 			);
 		}
 		parts.push(`facts:${facts.join(",")}`);
+	}
+	if (options.factPage) {
+		parts.push(
+			`page:${options.factPage.newestId ?? ""}:${options.factPage.ids.size}`,
+		);
 	}
 	return parts.join("\u0000");
 }
@@ -1677,6 +1723,50 @@ type FactTotals = {
  * states their seconds, and dropped otherwise, because a `Took` that includes
  * work the bar does not show is the same class of lie as a count that does.
  */
+/**
+ * The run's tool rows the fact cannot have counted, or `null` when that cannot be
+ * established (agent review round 3, B2).
+ *
+ * THREE ANSWERS, and the difference matters:
+ * - no page identity was SUPPLIED (an old rig, a model test, a pane with no facts)
+ *   -> `[]`: there is no page to compare against, and today's behaviour stands;
+ * - an identity was supplied but CANNOT be used (the page named no newest entry, or
+ *   none of its rows are among the ones in hand) -> `null`: the caller refuses the
+ *   fact rather than trusting a figure it cannot check;
+ * - an identity in hand -> the rows below.
+ *
+ * THE TEST IS IDENTITY. The page is a contiguous tail window, so its LAST carried
+ * row still in hand is the watermark: a tool row of this run that sits after it and
+ * is not one of the page's own ids arrived after the page was published, by
+ * construction - while every row the page DID carry is excluded by id, so a wake
+ * that landed before the read stays out of the sum (the round-2 double count).
+ */
+function factAppendedRows(
+	rows: Row[],
+	run: TurnRun,
+	factPage: FactPageIdentity | null | undefined,
+): Row[] | null {
+	if (factPage === undefined) return [];
+	if (factPage === null) return null;
+	let watermark = -1;
+	for (let i = 0; i < rows.length; i += 1) {
+		if (factPage.ids.has(rows[i].record.id)) watermark = i;
+	}
+	if (watermark < 0) return null;
+	const appended: Row[] = [];
+	for (
+		let i = Math.max(watermark + 1, run.openingIndex);
+		i <= run.endIndex && i < rows.length;
+		i += 1
+	) {
+		const row = rows[i];
+		if (row.record.kind !== "tool") continue;
+		if (factPage.ids.has(row.record.id)) continue;
+		appended.push(row);
+	}
+	return appended;
+}
+
 function factTotalsFor(
 	fact: RunFact | null,
 	hideCrossSession: boolean,
@@ -1730,6 +1820,14 @@ function planRun(
 	 * that predates the setting keeps its figures.
 	 */
 	hideCrossSession = false,
+	/**
+	 * The page the facts came with, by identity (agent review round 3, B2): tool
+	 * rows that arrived after it was published are added to the fact, or make it
+	 * refuse, so a wake on an open pane cannot leave a stale total stated as final.
+	 * Omitted is every caller with no page identity to give, and keeps the fact
+	 * exactly as it was.
+	 */
+	factPage: FactPageIdentity | null | undefined = undefined,
 ): RunCollapsePlan {
 	const runRows = rows.slice(run.openingIndex, run.endIndex + 1);
 	const records = runRows.map((row) => row.record);
@@ -1756,7 +1854,40 @@ function planRun(
 	 * gate both read. See `factTotalsFor` for the two corrections and why a
 	 * refusal is the honest answer rather than a guess.
 	 */
-	const factTotals = factTotalsFor(fact, hideCrossSession);
+	/*
+	 * ROWS THAT ARRIVED AFTER THE PAGE WAS PUBLISHED ARE NOT IN THE WIRE'S FIGURE
+	 * (agent review round 3, B2), and the client holds them the moment a wake, a job
+	 * result or a peer receipt lands on an open pane: `factAppendedRows` finds them
+	 * by identity, the block below adds exactly them - count and worked seconds
+	 * together, and only when every one of them reports a duration, so the sum
+	 * cannot silently understate - and REFUSES the fact when the question cannot be
+	 * answered at all. The alternative was measured: `30 / 60 s` stated as final for
+	 * a run whose own figure had already moved to `33 / 63 s`.
+	 */
+	const factAppended =
+		fact === null ? null : factAppendedRows(rows, run, factPage);
+	let factTotals =
+		factAppended === null ? null : factTotalsFor(fact, hideCrossSession);
+	if (factTotals !== null && factAppended !== null && factAppended.length > 0) {
+		const measurable = factAppended.every(
+			(row) => typeof workedSecondsOf(row) === "number",
+		);
+		const addWorked = measurable ? workedSeconds(factAppended) : null;
+		if (
+			!measurable ||
+			(factTotals.workedSeconds !== null && addWorked === null)
+		) {
+			factTotals = null;
+		} else {
+			const limit = factTotals.workedSeconds;
+			factTotals = {
+				...factTotals,
+				actions: factTotals.actions + factAppended.length,
+				workedSeconds:
+					limit === null || addWorked === null ? null : limit + addWorked,
+			};
+		}
+	}
 	/*
 	 * WHETHER THE PLAN'S OPENING ROW IS THE RUN'S OWN HEAD, which is the only
 	 * question a fragment's figures hang on.
@@ -1939,11 +2070,21 @@ function planRun(
 			(row) => row.record.kind === "tool",
 		).length;
 		cutIsFloor = hiddenTools > actions;
+		/*
+		 * A FLOOR IS STATED AS THE LARGER FIGURE (agent review round 3, m1). The wire's
+		 * figure cannot be the span's total when the bar's own rows already exceed it
+		 * (either cause above), and stating the smaller one beside a `+` understates the
+		 * work on screen: `1+` over three visible rows, with the walk retired by the very
+		 * fact that produced it, is a claim nothing can complete. `max` keeps the honest
+		 * half of both readings - the wire's figure when it is larger, the rows in hand
+		 * when it is not - and the `+` still says it is not the total.
+		 */
+		const stated = cutIsFloor ? Math.max(actions, hiddenTools) : actions;
 		segments[cutSpan] = {
 			...cutSegment,
 			facts: {
 				...cutSegment.facts,
-				actions,
+				actions: stated,
 				/*
 				 * The head-cut span's duration gate, lifted by the fact: the sum is no
 				 * longer a fragment of the turn's work but the turn's own, so the `1s`
@@ -1957,7 +2098,15 @@ function planRun(
 				 * floor check above is the client's own version of the same statement,
 				 * for the rows the server could not have counted.
 				 */
-				partial: !factTotals.complete || cutIsFloor,
+				/*
+				 * `partial` also when the fact was corrected by rows that arrived after the
+				 * page (B2) and the run is still live: the figure is exact for the rows in
+				 * hand, but a pane whose turn is streaming cannot know it has them all.
+				 */
+				partial:
+					!factTotals.complete ||
+					cutIsFloor ||
+					(live && factAppended !== null && factAppended.length > 0),
 			},
 		};
 	}

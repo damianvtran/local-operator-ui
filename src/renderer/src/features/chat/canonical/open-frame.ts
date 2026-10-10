@@ -45,7 +45,11 @@ import type {
 	DesktopHistoryPage,
 	DesktopOpenFrameRun,
 } from "../../../../../shared/desktop-session-contract";
-import type { RunFact, RunFactLookup } from "./turn-collapse-model";
+import type {
+	FactPageIdentity,
+	RunFact,
+	RunFactLookup,
+} from "./turn-collapse-model";
 
 /** What a page's open-frame fields give this client, or nothing. */
 export type OpenFrameFacts = {
@@ -69,6 +73,14 @@ export type OpenFrameFacts = {
 	 * accident (`Row` ids are unique).
 	 */
 	runs: RunFactLookup;
+	/**
+	 * The page these facts came with, by identity (agent review round 3, B2), read
+	 * straight off its entries: the row ids it carried and the row it ended on.
+	 * The plan needs it because a fact is a SNAPSHOT - a tool row that arrives on
+	 * an open pane after this page was published is not in the figures, and the
+	 * page is the only thing that can say so, by identity rather than by a clock.
+	 */
+	page: FactPageIdentity;
 };
 
 /** A count off the wire, or null when the field is not a whole number. */
@@ -150,7 +162,27 @@ export function openFrameFacts(
 		if (fact.closingAnswerId !== null) lookup.set(fact.closingAnswerId, fact);
 	}
 	if (lookup.size === 0) return null;
-	return { runs: lookup };
+	/*
+	 * THE PAGE'S OWN IDENTITY, carried beside the facts (agent review round 3, B2).
+	 * `newestId` is the watermark the plan compares rows against; the id set is what
+	 * keeps a row the page DID carry out of the "arrived later" sum, whatever order
+	 * a merge put it in.
+	 */
+	const ids = new Set<string>();
+	for (const entry of page.entries) {
+		if (typeof entry.id === "string" && entry.id.length > 0) ids.add(entry.id);
+	}
+	const newest = page.entries[page.entries.length - 1];
+	return {
+		runs: lookup,
+		page: {
+			ids,
+			newestId:
+				typeof newest?.id === "string" && newest.id.length > 0
+					? newest.id
+					: null,
+		},
+	};
 }
 
 /**
