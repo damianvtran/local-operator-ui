@@ -2996,6 +2996,7 @@ const CodeChipHost: FC<{ children: ReactNode }> = ({ children }) => {
 				runDetails: false,
 				session: true,
 				codeReview: true,
+				asksOffered: true,
 			},
 		});
 		return () =>
@@ -3005,6 +3006,7 @@ const CodeChipHost: FC<{ children: ReactNode }> = ({ children }) => {
 					runDetails: false,
 					session: false,
 					codeReview: false,
+					asksOffered: false,
 				},
 			});
 	}, []);
@@ -3069,6 +3071,7 @@ const CodeChipShowingHost: FC<{ children: ReactNode }> = ({ children }) => {
 				runDetails: false,
 				session: true,
 				codeReview: true,
+				asksOffered: true,
 			},
 			isCodeReviewPaneOpen: true,
 		});
@@ -3079,6 +3082,7 @@ const CodeChipShowingHost: FC<{ children: ReactNode }> = ({ children }) => {
 					runDetails: false,
 					session: false,
 					codeReview: false,
+					asksOffered: false,
 				},
 				isCodeReviewPaneOpen: false,
 			});

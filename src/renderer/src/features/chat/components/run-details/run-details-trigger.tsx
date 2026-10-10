@@ -51,14 +51,17 @@
  * — "is there something in the pane I should look at".
  */
 
+import { togglePanelRailItem } from "@shared/components/navigation/panel-rail-actions";
 import { PanelRailItem } from "@shared/components/navigation/panel-rail-item";
+import { displayChord } from "@shared/keymap/keymap-chord";
 import { cn } from "@shared/lib/utils";
 import {
 	resolveDrawnRightSlotPane,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { Info } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { rendererPlatform } from "../../../../mini-view/renderer-platform";
 import {
 	type McpServerRow,
 	type RunDetails,
@@ -124,9 +127,14 @@ export const RunDetailsTrigger = ({
 	const runPanelDrawn = useUiPreferencesStore(
 		(state) => resolveDrawnRightSlotPane(state) === "run",
 	);
-	const setRunPanelOpen = useUiPreferencesStore(
-		(state) => state.setRunPanelOpen,
-	);
+	/*
+	 * THE BOUND CHORD (issue #928): read from the same registry lookup the rail's
+	 * items print through, so the trigger's tooltip and name carry the promise
+	 * the router answers — and a rebind in Settings moves all three together.
+	 */
+	const bindings = useUiPreferencesStore((state) => state.shortcutBindings);
+	const platform = useMemo(rendererPlatform, []);
+	const runCap = displayChord("panel.run", bindings, platform);
 	const triggerRef = useRef<HTMLButtonElement>(null);
 	/*
 	 * CLOSING RETURNS FOCUS HERE (`§ 3.5`, `§ 9`; round 1, U1-2/Q5).
@@ -223,6 +231,7 @@ export const RunDetailsTrigger = ({
 	const label = runDetailTriggerLabel(details, seen, {
 		open: runPanelDrawn,
 		mcpProblems,
+		cap: runCap,
 	});
 	const attention =
 		(details ? hasUnseenFailure(details, seen) : false) ||
@@ -274,7 +283,7 @@ export const RunDetailsTrigger = ({
 			 * `bg-accent-wash` pair and its own shed class, and four triggers in one
 			 * column wearing four spellings of "open" is the drift the rail removes.
 			 */
-			onClick={() => setRunPanelOpen(!isRunPanelOpen)}
+			onClick={() => togglePanelRailItem("run")}
 			/*
 			 * Inert hook for the stories and for whatever drives this next. The
 			 * label is derived — it carries counts and flips with the pane — so it

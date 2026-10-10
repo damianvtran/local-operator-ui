@@ -1,5 +1,4 @@
 import type { AskScope } from "@features/chat/ask-queue";
-import { canvasToggleCap } from "@features/chat/canvas-shortcut";
 import { AsksScopeIcon } from "@features/chat/components/asks/asks-scope-icon";
 import type {
 	McpServerRow,
@@ -7,6 +6,8 @@ import type {
 } from "@features/chat/components/run-details/run-detail-model";
 import { RunDetailsTrigger } from "@features/chat/components/run-details/run-details-trigger";
 import { Badge, countLabel } from "@shared/components/ui";
+import { displayChord } from "@shared/keymap/keymap-chord";
+import type { ActionId } from "@shared/keymap/keymap-registry";
 import { cn } from "@shared/lib/utils";
 import {
 	resolveDrawnRightSlotPane,
@@ -22,6 +23,11 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { rendererPlatform } from "../../../mini-view/renderer-platform";
+import {
+	type PanelRailActionContext,
+	togglePanelRailItem,
+} from "./panel-rail-actions";
 import { PanelRailItem, PanelRailRovingContext } from "./panel-rail-item";
 import {
 	PANEL_RAIL_ORDER,
@@ -133,8 +139,13 @@ const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End"]);
  * an F6 region (`CHAT_REGIONS`): the header's `...` menu is the in-region door, and
  * adding a region is the UX round's call, not an accident of this component.
  *
- * NO NEW CHORD. The canvas item prints the existing `Cmd+Shift+C` and the header
- * keeps the listener that answers it, exactly as before.
+ * THE PRINTED CHORDS ARE THE REGISTRY'S (issue #928). Each item's tooltip and
+ * accessible name print its BOUND chord — the user's override when one exists,
+ * the registry default otherwise — through the same lookup the dispatcher reads,
+ * so what an item promises and what runs cannot drift. The canvas's shipped
+ * `Cmd+Shift+C` is now `panel.canvas`'s default rather than a hand-kept
+ * constant; the chord's listener moved out of the header into the one router
+ * (`useKeymapShortcuts`) the same change mounted.
  */
 export const PanelRail: FC<PanelRailProps> = ({
 	sessionId,
@@ -155,22 +166,28 @@ export const PanelRail: FC<PanelRailProps> = ({
 	codeAttention,
 }) => {
 	const drawn = useUiPreferencesStore(resolveDrawnRightSlotPane);
-	const isBrowserPaneOpen = useUiPreferencesStore((s) => s.isBrowserPaneOpen);
-	const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
-	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
-	const isCodeReviewPaneOpen = useUiPreferencesStore(
-		(s) => s.isCodeReviewPaneOpen,
-	);
+	/*
+	 * THE ASKS FLAGS ARE READ HERE because the item's lit state and tooltip verb
+	 * are the two readings of them (`askRailLabels` below); the other five items
+	 * read their panes' state through the toggle functions at press time, and the
+	 * lit state through `drawn` — one writer, two doors.
+	 */
 	const isAskDrawerOpen = useUiPreferencesStore((s) => s.isAskDrawerOpen);
 	const askDrawerScope = useUiPreferencesStore((s) => s.askDrawerScope);
-	const setBrowserPaneOpen = useUiPreferencesStore((s) => s.setBrowserPaneOpen);
-	const setConsolePaneOpen = useUiPreferencesStore((s) => s.setConsolePaneOpen);
-	const requestConsoleOpen = useUiPreferencesStore((s) => s.requestConsoleOpen);
-	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
-	const setCodeReviewPaneOpen = useUiPreferencesStore(
-		(s) => s.setCodeReviewPaneOpen,
-	);
-	const setAskDrawerOpen = useUiPreferencesStore((s) => s.setAskDrawerOpen);
+	/*
+	 * THE BOUND CHORDS (issue #928): every item's cap is derived from the
+	 * registry's EFFECTIVE chord — the user's override when one exists, the
+	 * action's default otherwise — so a rebind in Settings moves the tooltip and
+	 * the accessible name with it, and the printed chord is by construction the
+	 * one the router answers (one lookup, two consumers).
+	 */
+	const bindings = useUiPreferencesStore((s) => s.shortcutBindings);
+	const platform = useMemo(rendererPlatform, []);
+	const capFor = (actionId: ActionId) =>
+		displayChord(actionId, bindings, platform);
+	/* The context the shared toggles read: the conversation the console opens in,
+	   and the queue this route's ask door opens. */
+	const actionContext: PanelRailActionContext = { sessionId, askScope };
 
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	const [present, setPresent] = useState<ReadonlySet<string>>(
@@ -270,8 +287,11 @@ export const PanelRail: FC<PanelRailProps> = ({
 			?.focus();
 	}, [drawn]);
 
-	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-	const browser = browserRailLabels(drawn === "browser", browserAttentionCount);
+	const browser = browserRailLabels(
+		drawn === "browser",
+		browserAttentionCount,
+		capFor("panel.browser"),
+	);
 	/*
 	 * THE VERB IS THE ITEM'S OWN SCOPE, THE LIT STATE IS THE SLOT'S (#896,
 	 * round-1 N1). While the OTHER scope's drawer is carried onto this
@@ -287,17 +307,22 @@ export const PanelRail: FC<PanelRailProps> = ({
 		askScope,
 		askCount,
 	);
-	const terminal = consoleRailLabels(drawn === "console", consoleUnseenCount);
+	const terminal = consoleRailLabels(
+		drawn === "console",
+		consoleUnseenCount,
+		capFor("panel.console"),
+	);
 	const canvas = canvasRailLabels(
 		drawn === "canvas",
 		fileCount,
-		canvasToggleCap(isMac),
+		capFor("panel.canvas"),
 	);
 	const code = codeRailLabels(
 		drawn === "code",
 		codeOpened,
 		codeMentioned,
 		codeAttention,
+		capFor("panel.code"),
 	);
 
 	return (
@@ -382,15 +407,11 @@ export const PanelRail: FC<PanelRailProps> = ({
 						 * THE HEADER'S OLD DOOR, verbatim: toggle in THIS item's scope - a press
 						 * while this scope is open closes, a press while the OTHER scope is open
 						 * replaces the scope (open=true for this one), and the store's
-						 * `claimRightSlot` does the swap clearing. The state is read live (the
-						 * file's own idiom) rather than latched when the item rendered.
+						 * `claimRightSlot` does the swap clearing. The sequence lives in the
+						 * shared toggle since #928, because the chord performs the same press
+						 * and two spellings of it would drift.
 						 */
-						onClick={() =>
-							setAskDrawerOpen(
-								!(isAskDrawerOpen && askDrawerScope === askScope),
-								askScope,
-							)
-						}
+						onClick={() => togglePanelRailItem("ask", actionContext)}
 						/* The drawer's focus-return anchor and Escape door (#820/#835): the tag
 						   moved with the control, value unchanged - four harnesses, the tour and
 						   the driver attach to it. */
@@ -432,7 +453,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 					label={browser.tooltip}
 					ariaLabel={browser.aria}
 					pressed={drawn === "browser"}
-					onClick={() => setBrowserPaneOpen(!isBrowserPaneOpen)}
+					onClick={() => togglePanelRailItem("browser", actionContext)}
 					data-tour-tag="browser-pane-trigger"
 				>
 					<Globe aria-hidden={true} />
@@ -473,21 +494,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 						label={terminal.tooltip}
 						ariaLabel={terminal.aria}
 						pressed={drawn === "console"}
-						onClick={() => {
-							if (isConsolePaneOpen) {
-								setConsolePaneOpen(false);
-								return;
-							}
-							/*
-							 * THE ONE PLACE A USER'S OPEN IS DECLARED: claiming the slot shows the
-							 * pane, and the request tells it this open came from the user (run a
-							 * first surface if there is none, put the caret in the terminal). It
-							 * names THIS conversation because the pane remounts on a session
-							 * switch and a stale request would run a shell nobody asked for.
-							 */
-							setConsolePaneOpen(true);
-							requestConsoleOpen(sessionId);
-						}}
+						onClick={() => togglePanelRailItem("console", actionContext)}
 						data-tour-tag="console-pane-trigger"
 					>
 						<SquareTerminal aria-hidden={true} />
@@ -510,7 +517,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 					label={canvas.tooltip}
 					ariaLabel={canvas.aria}
 					pressed={drawn === "canvas"}
-					onClick={() => setCanvasOpen(!isCanvasOpen)}
+					onClick={() => togglePanelRailItem("canvas", actionContext)}
 					data-tour-tag="open-canvas-button"
 				>
 					<FileText aria-hidden={true} />
@@ -543,7 +550,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 						label={code.tooltip}
 						ariaLabel={code.aria}
 						pressed={drawn === "code"}
-						onClick={() => setCodeReviewPaneOpen(!isCodeReviewPaneOpen)}
+						onClick={() => togglePanelRailItem("code", actionContext)}
 						data-tour-tag="code-pane-trigger"
 					>
 						<GitPullRequest aria-hidden={true} />

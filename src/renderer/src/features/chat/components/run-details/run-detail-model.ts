@@ -3892,9 +3892,18 @@ export function runDetailTriggerLabel(
 		maxChars?: number;
 		/** Problem servers nobody has looked at, from the MCP ledger's own set. */
 		mcpProblems?: number;
+		/**
+		 * The action's BOUND chord, already in display spelling, or `null` when the
+		 * action is unbound (issue #928). It rides the verb clause —
+		 * `Open run details (⌘R)` — the family shape the panel rail's labels share,
+		 * so the item's tooltip and accessible name print the same promise the
+		 * dispatcher answers.
+		 */
+		cap?: string | null;
 	} = {},
 ): string {
-	const prefix = options.open ? LABEL_CLOSE : LABEL_OPEN;
+	const chord = options.cap ?? null;
+	const prefix = `${options.open ? LABEL_CLOSE : LABEL_OPEN}${chord === null ? "" : ` (${chord})`}`;
 	if (!details) return prefix;
 	const attention: string[] = [];
 	const counts: string[] = [];

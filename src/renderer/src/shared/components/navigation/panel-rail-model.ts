@@ -60,33 +60,49 @@ export type PanelRailItemId = (typeof PANEL_RAIL_ORDER)[number];
 const plural = (count: number, one: string, many: string): string =>
 	count === 1 ? one : many;
 
-/** The browser item's tooltip and accessible name. */
+/**
+ * The parenthesised chord a BOUND action prints, or nothing when unbound.
+ *
+ * The canvas item established the shape (`Open canvas (⌘⇧C)`) and the family
+ * follows it: the cap rides BOTH registers — the tooltip a pointer reads and
+ * the accessible name a screen reader hears — because a promise the control
+ * makes on the app's behalf is not a sighted-only fact (issue #928; unbound
+ * actions print no parens at all rather than an empty pair).
+ */
+const capClause = (cap: string | null): string =>
+	cap === null ? "" : ` (${cap})`;
+
+/** The browser item's tooltip and accessible name; `cap` is the bound chord. */
 export function browserRailLabels(
 	open: boolean,
 	attentionCount: number,
+	cap: string | null,
 ): { tooltip: string; aria: string } {
 	const verb = open ? "Close" : "Open";
+	const chord = capClause(cap);
 	if (attentionCount <= 0) {
-		return { tooltip: `${verb} browser`, aria: "Browser" };
+		return { tooltip: `${verb} browser${chord}`, aria: `Browser${chord}` };
 	}
 	return {
-		tooltip: `${verb} browser — ${attentionCount} ${plural(attentionCount, "approval", "approvals")} waiting`,
-		aria: `Browser, ${attentionCount} waiting`,
+		tooltip: `${verb} browser${chord} — ${attentionCount} ${plural(attentionCount, "approval", "approvals")} waiting`,
+		aria: `Browser${chord}, ${attentionCount} waiting`,
 	};
 }
 
-/** The console item's tooltip and accessible name. */
+/** The console item's tooltip and accessible name; `cap` is the bound chord. */
 export function consoleRailLabels(
 	open: boolean,
 	unseenCount: number,
+	cap: string | null,
 ): { tooltip: string; aria: string } {
 	const verb = open ? "Close" : "Open";
+	const chord = capClause(cap);
 	if (unseenCount <= 0) {
-		return { tooltip: `${verb} console`, aria: "Console" };
+		return { tooltip: `${verb} console${chord}`, aria: `Console${chord}` };
 	}
 	return {
-		tooltip: `${verb} console — ${unseenCount} finished since you looked`,
-		aria: `Console, ${unseenCount} finished since you looked`,
+		tooltip: `${verb} console${chord} — ${unseenCount} finished since you looked`,
+		aria: `Console${chord}, ${unseenCount} finished since you looked`,
 	};
 }
 
@@ -94,19 +110,20 @@ export function consoleRailLabels(
 export function canvasRailLabels(
 	open: boolean,
 	fileCount: number,
-	cap: string,
+	cap: string | null,
 ): { tooltip: string; aria: string } {
 	const verb = open ? "Close" : "Open";
+	const chord = capClause(cap);
 	if (fileCount <= 0) {
 		return {
-			tooltip: `${verb} canvas (${cap})`,
-			aria: `Canvas (${cap})`,
+			tooltip: `${verb} canvas${chord}`,
+			aria: `Canvas${chord}`,
 		};
 	}
 	const noun = plural(fileCount, "file", "files");
 	return {
-		tooltip: `${verb} canvas (${cap}) — ${fileCount} ${noun}`,
-		aria: `Canvas (${cap}), ${fileCount} ${noun}`,
+		tooltip: `${verb} canvas${chord} — ${fileCount} ${noun}`,
+		aria: `Canvas${chord}, ${fileCount} ${noun}`,
 	};
 }
 
@@ -148,16 +165,20 @@ export function askRailLabels(
  * for attention adds its own clause (`checks failing` / `findings open`), the
  * chip's own tail.
  *
- * The CAP is never applied here (the file's own rule): the name a screen reader
- * hears carries the exact numbers.
+ * The CAP is never applied to a count here (the file's own rule): the name a
+ * screen reader hears carries the exact numbers. The chord cap, when one is
+ * bound, rides both registers like its four siblings' (issue #928) — it is a
+ * promise about a press, not a count.
  */
 export function codeRailLabels(
 	open: boolean,
 	opened: number,
 	mentioned: number,
 	attention: string | null,
+	cap: string | null,
 ): { tooltip: string; aria: string } {
 	const verb = open ? "Close" : "Open";
+	const chord = capClause(cap);
 	const halves = [
 		opened > 0 ? `${opened} opened` : null,
 		mentioned > 0 ? `${mentioned} mentioned` : null,
@@ -173,12 +194,12 @@ export function codeRailLabels(
 	const mark = attention ? `, ${attention}` : "";
 	if (details === "") {
 		return {
-			tooltip: `${verb} code review${mark}`,
-			aria: `Code review${mark}`,
+			tooltip: `${verb} code review${chord}${mark}`,
+			aria: `Code review${chord}${mark}`,
 		};
 	}
 	return {
-		tooltip: `${verb} code review — ${details}${mark}`,
-		aria: `Code review, ${details}${mark}`,
+		tooltip: `${verb} code review${chord} — ${details}${mark}`,
+		aria: `Code review${chord}, ${details}${mark}`,
 	};
 }
