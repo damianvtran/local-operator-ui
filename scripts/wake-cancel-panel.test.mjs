@@ -983,6 +983,106 @@ test("a held landing survives the panel's REMOUNT, the pane's own return (Q7 / r
 	returned.remove();
 });
 
+test("the guard's own landing keeps a watch for the resync's next wave (U5)", async () => {
+	/*
+	 * UX round 2's intermittent MAJOR (1 of 10 churn samples, 70.5 ms on
+	 * `<body>`, timing-dependent — so the case encodes the ORDER rather than
+	 * re-running the plan):
+	 *
+	 *   landing resolved on the pane  ->  a remount arrives AFTER  ->  focus
+	 *   must not fall to `<body>`.
+	 *
+	 * The order that failed live: the GUARD'S OWN home resolution landed the
+	 * pane (not the fallback effect's `landWake` — their trace shows no new
+	 * observer following the landing), the fallback then read the pane as a
+	 * real owner and declined its own watch, and the guard had ended itself on
+	 * the first success — so the next wave removed the landed node unwatched.
+	 *
+	 * Staged as the guard-only order that produces it: the panel and its shell
+	 * leave in one beat (the guard holds), only the pane returns (the guard's
+	 * home branch lands it), the panel remounts into it, and then the resync's
+	 * next wave replaces that very pane. The case instruments `observer new`
+	 * after the landing (the re-arm) and asserts the keyboard never settles on
+	 * `<body>`.
+	 */
+	const RealMutationObserver = globalThis.MutationObserver;
+	let observers = 0;
+	globalThis.MutationObserver = class extends RealMutationObserver {
+		constructor(callback) {
+			super(callback);
+			observers += 1;
+		}
+	};
+	try {
+		const stubPane = () => {
+			const pane = document.createElement("section");
+			pane.setAttribute("data-run-panel-pane", "");
+			pane.tabIndex = -1;
+			return pane;
+		};
+		const props = {
+			wakes: [
+				wireWake("w1", "First"),
+				wireWake("w2", "Second"),
+				wireWake("w3", "Third"),
+				wireWake("w4", "Fourth"),
+			],
+			sessionId: "sess1",
+			aida: UNKNOWN_AIDA,
+			cancel: async () => ({ ok: true }),
+		};
+		const pane = stubPane();
+		document.body.append(pane);
+		const first = await mount(props);
+		pane.append(first.container);
+		await press(document.querySelector('[data-wake-cancel="w2"]'));
+		assert.ok(
+			await settle(
+				() =>
+					document.activeElement ===
+					document.querySelector('[data-wake-cancel="w3"]'),
+			),
+			"the successor takes the keyboard first",
+		);
+		/* THE GAP: shell and panel leave together — nothing on screen to land. */
+		pane.remove();
+		await first.unmount();
+		assert.equal(document.activeElement, document.body, "the gap");
+		/*
+		 * THE RETURN, resolved by the GUARD'S OWN home branch: at this instant
+		 * only the pane is back — the hook that could land through `landWake` is
+		 * unmounted, so the guard is the only actor (the failing interleaving's
+		 * first half).
+		 */
+		const second = stubPane();
+		const before = observers;
+		document.body.append(second);
+		assert.ok(
+			await settle(() => document.activeElement === second),
+			"the guard lands the returned pane",
+		);
+		assert.ok(
+			observers > before,
+			"a NEW observer follows the landing (the guard re-armed)",
+		);
+		/* THE PANEL REMOUNTS INTO IT — the same beat the gate delivers. */
+		const again = await mount(props);
+		second.append(again.container);
+		/* THE NEXT WAVE: the resync replaces the very pane that was landed. */
+		second.remove();
+		const third = stubPane();
+		document.body.append(third);
+		assert.ok(
+			await settle(() => document.activeElement === third),
+			"the keyboard holds across the next wave — never `<body>`",
+		);
+		await again.unmount();
+		third.remove();
+	} finally {
+		globalThis.MutationObserver = RealMutationObserver;
+	}
+});
+
 test("a refused press hands the keyboard back to its own retry control (U2)", async () => {
 	const gate = deferred();
 	const p = await mount({
