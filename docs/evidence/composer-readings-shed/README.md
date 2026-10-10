@@ -12,7 +12,11 @@ Two defects live on this one row and the set covers both:
    Send, 68px), while a running turn draws a THIRD 32px box
    (`[mic][Stop][Send]` = 104px). Above the band's upper edge the reading
    came back into a row with 36px less room and overran the controls —
-   `running-fullest-908/1024/1200` end 7.2 and 8.2px past them.
+   #788's original pair, shot at `77444ffb36f`, is where that overrun's
+   frames live: the readings ended 7.2px past the controls' left edge at a
+   908px column and 8.2px at 1024 and 1200. This set's before half is
+   post-#828, so those cells already sit at -2.0 here, the reading shed by
+   the state half.
 2. **#918, the narrow-row overrun** (fixed here): below the band's lower
    edge the cluster carried every reading into a row that could not hold
    them, in BOTH states — measured before the fix below, `+201.5px` of
@@ -126,11 +130,14 @@ identical to within 0.05px on every case in both trees.
    at the row's 2px cushion (`idle-fullest-700`, `running-fullest-798`),
    which is the same clearance the wide row has always rested at
    (`idle-fullest-908`: -2.0 both sides).
-2. **The wider cases are untouched, byte for byte.** Every cell at or above
-   the band's upper edge — `idle-fullest-798/860/908/1024`, `running-fullest-860/908/1024/1200`,
-   `running-issue-908/1024`, `running-plain-908/1024`, `idle-plain-860/908/1024`
-   — is **byte-identical between the two trees in both themes** (15 of the 27
-   cases; sha256 over the `.webp`s). The change is scoped to the narrow side.
+2. **The cases the fix does not move are untouched, byte for byte.**
+   `idle-fullest-798/860/908/1024`, `running-fullest-860/908/1024/1200`,
+   `running-issue-908/1024`, `running-plain-908/1024` and `idle-plain-860/908/1024`
+   are **byte-identical between the two trees in both themes** (15 of the 27
+   cases; sha256 over the `.webp`s). The 798 sits inside the band and the 860s
+   at its upper edge — the reading is shed in both trees there, so the width
+   rule's change has no outcome on those cells — and the rest sit above the
+   band. The change is scoped to the narrow side.
 3. **The band's lower edge was drawing active time into a row that could
    not hold it.** `idle-fullest-798` is the band's lower edge: `qcw` 750 is
    where `@min-[750px]` started matching, so the reading was SHED there and
@@ -143,9 +150,11 @@ identical to within 0.05px on every case in both trees.
    way when the row can no longer hold it *plus everything kept longer than
    it*. The fit points below are `numbers.json` arithmetic on the fullest
    fixture (the set must fit within the cluster's box plus its 2px cushion),
-   converted to container values; each rung sits at the nearest whole
-   container value above its fit, and one 36px step earlier while the third
-   control box is drawn (the #788 state half):
+   converted to container values; each derived rung is a multiple of 5 that
+   clears its fit point (by 0.5px at the tightest, 8px at the loosest), and
+   the third-box rung of a pair sits 30/35/35px above its two-box twin
+   because each fit moves by exactly 36px while both values round onto that
+   5px grid (the #788 state half):
 
    | rung (shed order) | the rung returns when the row holds | two-box fit (col) | two-box rung | third-box fit (col) | third-box rung |
    | --- | --- | --- | --- | --- | --- |
