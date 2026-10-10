@@ -13,11 +13,13 @@
  *     t("ui.x.plain", { count: 1 })      // params on a bare key -> error
  *
  * DO NOT rewrite the pair as one conditional-tuple signature
- * (`(...args: Params extends undefined ? [] : [p: Params])`): the same spike
- * measured that variant ACCEPTING a missing params object, which is why §2.4
- * says "do not invent a conditional-tuple variant". The four cases are pinned
- * by `scripts/i18n/typed-keys.test.mjs`, which compiles a fixture catalogue
- * through this very module.
+ * (`(...args: Params extends undefined ? [] : [p: Params])`): §2.4 says "do
+ * not invent a conditional-tuple variant" because its spike measured that
+ * variant ACCEPTING a missing params object. What
+ * `scripts/i18n/typed-keys.test.mjs` pins is the SHIPPED shape rejecting all
+ * four cases — a round-1 review (R1-4) measured the swap rejecting all four
+ * as re-tried here as well, so do not claim this suite fails the swap; the
+ * shape's authority is §2.4's spike alone.
  *
  * RESOLUTION (RFC §2.1, §2.5). The bundled en catalogue is the fallback for
  * every lookup. `registerCatalogue` layers a locale's messages on top of it —

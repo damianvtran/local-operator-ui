@@ -111,6 +111,18 @@ test("the generated module carries the RFC §2.4 shapes, from the fixture's own 
 	assert.match(generated, /export type WithoutParams = \{/);
 });
 
+test("the committed keys.gen.ts matches its catalogues (generate.mjs --check)", () => {
+	// The drift gate (round-1 review, R1-2): this case is what makes the
+	// "CI rejects drift" claim in the generated header true — it runs in the
+	// desktop suite CI executes, and `pnpm check-i18n` chains the same check.
+	const exit = generateMain(["--check"]);
+	assert.equal(
+		exit,
+		0,
+		"src/i18n/keys.gen.ts is stale: run `node scripts/i18n/generate.mjs` and commit the result",
+	);
+});
+
 test("every positive call site compiles under --strict", () => {
 	const result = compile([
 		join(workdir, "i18n", "messages.ts"),
