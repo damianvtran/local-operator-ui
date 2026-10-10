@@ -269,9 +269,9 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 *
 	 * The handoff bookkeeping is set before the call for the same reason the press
 	 * path always set it: if the row IS removed, the keyboard it may have been inside
-	 * is owed a home (the effect below reads it back off the listing), and a REFUSED
-	 * close — a racer that removed the surface first is the one this path really
-	 * meets — clears it again: nothing left, so nothing is owed.
+	 * is owed a home (the effect below reads it back off the listing). A REFUSED close
+	 * clears nothing — the catch below carries the why — so whether anything is owed is
+	 * decided by the effect, off the real listing, once the row has actually left.
 	 */
 	const dismissEndedSurface = (row: ConsoleSurface) => {
 		focusAfterRemoval.current = row.surface;
