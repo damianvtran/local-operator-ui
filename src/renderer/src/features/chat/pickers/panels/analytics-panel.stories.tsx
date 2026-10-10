@@ -1662,10 +1662,12 @@ const CHANNELS_UNTRACKED: CanonicalSpendChannels = {
  * The section is the panel's one surface for money the token ledger cannot
  * see, read off the conversation's published object: the total is the
  * BACKEND's (never re-summed, and `+` because the object's knowledge is
- * partial), the by-basis line keeps billed apart from a plan's API-equivalent
- * dollars and from catalogue estimates, and every row carries its own basis
- * word. The meta names the scope (`This conversation, all time`) on purpose:
- * unlike every section above it, this one is not windowed by the toolbar.
+ * partial), the plan gloss keeps plan-funded dollars from reading as cash, the
+ * composition line lists every bucket the total is made of (so the figure
+ * reconciles on screen), and every row carries its own basis word — or `—`
+ * where the record has none. The meta names the scope (`This conversation,
+ * all time`) on purpose: unlike every section above it, this one is not
+ * windowed by the toolbar.
  */
 export const Channels: Story = {
 	args: {
@@ -1706,5 +1708,83 @@ export const ChannelsGated: Story = {
 		error: null,
 		channels: SPEND_CHANNELS,
 		channelsEnabled: false,
+	},
+};
+
+/**
+ * A record with no stated amount, and a total that could not be sized: the
+ * section's two "no number here" states. The Spend cell reads `price unknown`
+ * — never `$0.0000`, never the session-level "not tracked" — and the total is
+ * this panel's `—`.
+ */
+const CHANNELS_UNKNOWN: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 0,
+	knowledge: "partial",
+	by_basis: {
+		billed: 0,
+		subscription_api_equivalent: 0,
+		estimated: 0,
+		not_tracked_calls: 1,
+	},
+	rows: [
+		{
+			channel: "tts",
+			provider: "radient",
+			model: "",
+			label: "",
+			units: 420,
+			unit: "chars",
+			amount_micro: null,
+			knowledge: "unknown",
+			basis: [],
+			price_versions: [],
+		},
+	],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+export const ChannelsUnknownAmounts: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+		channels: CHANNELS_UNKNOWN,
+		channelsEnabled: true,
+	},
+};
+
+/**
+ * A fresh tracked session with no channel records: the table's own empty
+ * state, below the fold like every By-channel frame (the section sits under
+ * the stat grid, and the panel body is capped at `min(76vh, 760px)`).
+ */
+const CHANNELS_NO_ROWS: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 0,
+	knowledge: "unknown",
+	by_basis: {
+		billed: 0,
+		subscription_api_equivalent: 0,
+		estimated: 0,
+		not_tracked_calls: 0,
+	},
+	rows: [],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+export const ChannelsNoRows: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+		channels: CHANNELS_NO_ROWS,
+		channelsEnabled: true,
 	},
 };

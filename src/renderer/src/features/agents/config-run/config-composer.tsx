@@ -1163,12 +1163,33 @@ export function ConfigComposer({
 				 * effort, context, spend and duration the run really is on, and no
 				 * `onCommand` means none of them opens a picker — because this run's
 				 * model and effort are resolved by the backend, not chosen here.
+				 *
+				 * `costChannels` rides the page's existing capability read, like every
+				 * other mount (the chat pane ×3, the mini view, quick-send): a mount
+				 * that left it off would print the inference-only figure for a run
+				 * whose session shows the published total in the pane beside it —
+				 * exactly the cross-surface disagreement the channel ledger exists to
+				 * remove (review round 1, MINOR-1). Off/absent stays the legacy
+				 * figure, so an old backend renders as today.
 				 */
 				sessionStatus={
 					run.frontend
-						? { frontend: run.frontend }
+						? {
+								frontend: run.frontend,
+								costChannels: desktopFeatureEnabled(
+									capabilities.data,
+									"cost_channels",
+								),
+							}
 						: preview.data
-							? { frontend: preview.data.snapshot, draft: true }
+							? {
+									frontend: preview.data.snapshot,
+									draft: true,
+									costChannels: desktopFeatureEnabled(
+										capabilities.data,
+										"cost_channels",
+									),
+								}
 							: undefined
 				}
 				recordingProbe={recordingProbe}

@@ -1426,16 +1426,20 @@ const FocusedSpend = ({
  * The by-channel breakdown, opened the way a keyboard user opens it.
  *
  * This is the frame the strip's whole cost-channels story exists for: the
- * published total (`≥$1.02` — the object's knowledge is `partial`), the
- * by-basis line that keeps BILLED money apart from a plan's API-equivalent
- * dollars and from a catalogue estimate, and one line per published row with
- * its own basis word. A `null` amount would read `not tracked` here — never
- * `$0.0000` — and the summary's count is the wire's own record count.
+ * published total (`≥$1.02` — the object's knowledge is `partial`), the plan
+ * gloss (`Includes $0.053 API-equivalent …` — money a plan funded, never
+ * charged), the composition line that reconciles the total on screen
+ * (buckets, the inference money the basis columns cannot yet place, and the
+ * record count with its noun), and one row per published record in a
+ * two-column grid — name left, money right-aligned — with the basis word on a
+ * dim second line. A `null` amount would read `price unknown` here — never
+ * `$0.0000` and never `not tracked` — and the caption sits BELOW the strip so
+ * the upward-opening panel cannot cover it (design round 1, D9).
  */
 export const ChannelsTooltip: Story = {
 	render: () => (
-		<div className="flex min-h-[520px] flex-col justify-end bg-canvas p-2">
-			<Frame label="Channels tooltip: the published total, the by-basis line and every channel row">
+		<div className="flex min-h-[560px] flex-col justify-end bg-canvas p-2">
+			<Frame>
 				<FocusedSpend
 					override={{
 						spend_channels: SPEND_CHANNELS,
@@ -1443,15 +1447,19 @@ export const ChannelsTooltip: Story = {
 					}}
 				/>
 			</Frame>
+			<p className="px-6 pt-2 text-ink-dim text-meta">
+				Channels tooltip: the published total, the plan gloss, the composition
+				line and every channel row in the money column.
+			</p>
 		</div>
 	),
 };
 
-/** An untracked session: the mandatory sentence, and the absence of a $0. */
+/** An untracked session: the mandatory sentence, the cue, and no $0. */
 export const ChannelsUntracked: Story = {
 	render: () => (
-		<div className="flex min-h-[340px] flex-col justify-end bg-canvas p-2">
-			<Frame label="Not tracked: a pre-feature conversation says so instead of implying $0 of channel spend">
+		<div className="flex min-h-[380px] flex-col justify-end bg-canvas p-2">
+			<Frame>
 				<FocusedSpend
 					override={{
 						spend_channels: CHANNELS_UNTRACKED,
@@ -1459,6 +1467,11 @@ export const ChannelsUntracked: Story = {
 					}}
 				/>
 			</Frame>
+			<p className="px-6 pt-2 text-ink-dim text-meta">
+				Not tracked: a pre-feature conversation says so instead of implying $0
+				of channel spend, and the chip carries the asterisk the sentence
+				explains.
+			</p>
 		</div>
 	),
 };
@@ -1502,6 +1515,102 @@ export const ChannelsGated: Story = {
 						context_window: 400_000,
 						cumulative_parent_cost: 0.9,
 						cost_knowledge: "exact",
+					})}
+					onCommand={() => undefined}
+					costChannels={true}
+				/>
+			</Frame>
+		</div>
+	),
+};
+
+/**
+ * A zero total is three different facts, and the object can only spell two of
+ * them (see `channelsSessionCost`).
+ *
+ * `exact` at zero is a STATED zero — a free or local model that billed
+ * nothing — and prints `$0.0000`, the panel's figure for the same object;
+ * `partial` at zero is money that exists and could not be sized, and prints
+ * `$—`. The third (`unknown` with billed tokens vs none) is decided by `usage`
+ * and is unit-tested rather than framed: the chip cannot show which input
+ * changed. Both frames carry no tooltip — the claim under test is the chip's
+ * own figure.
+ */
+const CHANNELS_ZERO_EXACT: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 0,
+	knowledge: "exact",
+	by_basis: {
+		billed: 0,
+		subscription_api_equivalent: 0,
+		estimated: 0,
+		not_tracked_calls: 1,
+	},
+	rows: [
+		{
+			channel: "inference",
+			provider: "ollama",
+			model: "llama3",
+			label: "ollama/llama3",
+			units: 12,
+			unit: "calls",
+			amount_micro: 0,
+			knowledge: "exact",
+			basis: ["not_tracked"],
+			price_versions: [],
+		},
+	],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+const CHANNELS_ZERO_UNPRICEABLE: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 0,
+	knowledge: "partial",
+	by_basis: {
+		billed: 0,
+		subscription_api_equivalent: 0,
+		estimated: 0,
+		not_tracked_calls: 1,
+	},
+	rows: [],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+export const ChannelsZeroStates: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame
+				width={900}
+				label="Stated zero: a free or local model that billed nothing prints $0.0000"
+			>
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: GPT_5,
+						context_tokens: 13_591,
+						context_window: 400_000,
+						cumulative_parent_cost: 0,
+						cost_knowledge: "exact",
+						spend_channels: CHANNELS_ZERO_EXACT,
+					})}
+					onCommand={() => undefined}
+					costChannels={true}
+				/>
+			</Frame>
+			<Frame
+				width={900}
+				label="Unpriceable zero: money exists that nobody could size prints $—"
+			>
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: GPT_5,
+						context_tokens: 13_591,
+						context_window: 400_000,
+						cumulative_parent_cost: 0,
+						cost_knowledge: "partial",
+						spend_channels: CHANNELS_ZERO_UNPRICEABLE,
 					})}
 					onCommand={() => undefined}
 					costChannels={true}

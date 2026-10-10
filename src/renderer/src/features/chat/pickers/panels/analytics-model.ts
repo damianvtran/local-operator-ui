@@ -3,13 +3,11 @@ import type {
 	DesktopUsageAggregate,
 	DesktopUsagePeriod,
 } from "../../../../../../shared/desktop-contract";
-import type { CanonicalSpendChannelRow } from "../../../../../../shared/desktop-session-contract";
 import {
-	channelBasisLabel,
-	channelBasisWords,
-	channelRowName,
-	rung,
-	spendChannelsUsable,
+	PRICE_UNKNOWN_TEXT,
+	channelPlanClause,
+	channelSummaryLine,
+	channelsReading,
 } from "../../session-status/session-cost";
 import {
 	UNKNOWN,
@@ -703,9 +701,18 @@ export type ChannelTableRow = {
 	key: string;
 	/** `Inference · anthropic/claude-sonnet-5-5`, or the bare channel word. */
 	name: string;
-	/** `$0.053` / `$0.053+` / `not tracked` — never a fabricated `$0.0000`. */
+	/**
+	 * `$0.053` / `$0.053+` / `price unknown` — never a fabricated `$0.0000`.
+	 * The words are `PRICE_UNKNOWN_TEXT`, the strip's own answer for the same
+	 * record, so one row cannot be described two ways across the surfaces.
+	 */
 	spend: string;
-	/** `API-equivalent` / `estimated` / `billed` … or `""` when none applies. */
+	/**
+	 * `API-equivalent` / `Estimated` / `Billed` — capitalised in the shared
+	 * vocabulary — or `—` when the record has no basis to state (this panel's
+	 * convention for "nothing", which the strip's grid states by omitting the
+	 * line).
+	 */
 	basis: string;
 };
 
@@ -715,95 +722,66 @@ export type ChannelsView = {
 	/** The grand total through this panel's ladder, or `—` when unstateable. */
 	total: string;
 	rows: ChannelTableRow[];
-	/** `Billed $0.053 · API-equivalent … · N not tracked`, or null. */
+	/**
+	 * The plan-funded gloss (`Includes $0.053 API-equivalent (covered by a
+	 * plan, not charged).`), or null — keeps plan dollars from reading as cash.
+	 */
+	planClause: string | null;
+	/** `Billed $0.053 · API-equivalent … · N records without a price`, or null. */
 	basisLine: string | null;
 };
-
-/**
- * An amount as this panel prints it, with the object's own honesty rules.
- *
- * A `null` amount is the WORD, never `—` and never `$0.0000`: `—` is this
- * panel's unknown for a measurement that could not be taken, while a record
- * with no basis is a fact with its own name (the strip's own rule, restated
- * because here the cell would otherwise blame the READ for what the RECORD
- * does not say). A `partial`/`floor` row is a lower bound and takes the `+`
- * this panel's ladder already means by it — the same mark `formatMicroUsd`
- * appends for `cost_known_calls < calls`.
- */
-function channelSpend(amountMicro: number | null, knowledge: string): string {
-	if (amountMicro === null || !Number.isFinite(amountMicro)) {
-		return "not tracked";
-	}
-	const bounded = knowledge === "partial" || knowledge === "floor";
-	return formatMicroUsd(amountMicro, 1, bounded ? 2 : 1);
-}
-
-/** One published row as a table row. */
-function channelRow(
-	row: CanonicalSpendChannelRow,
-	index: number,
-): ChannelTableRow {
-	const name = channelRowName(row);
-	return {
-		key: `${index}:${name}`,
-		name,
-		spend: channelSpend(
-			typeof row.amount_micro === "number" ? row.amount_micro : null,
-			rung(row.knowledge),
-		),
-		basis: channelBasisWords(Array.isArray(row.basis) ? row.basis : []).join(
-			" · ",
-		),
-	};
-}
 
 /**
  * The published `spend_channels` object as the section's view, or `null` when
  * it is not one this build may render (a future wire version included — the
  * caller then renders exactly today's panel).
  *
+ * Everything structural comes from `channelsReading` and the shared builders
+ * (`channelSummaryLine`, `channelPlanClause`), so the composition, the words
+ * and the row names cannot drift from the strip's; only the MONEY differs,
+ * through this panel's ladder — and a null ROW is refused there rather than
+ * crashing the table here (`rows: [null]` used to throw in this function while
+ * `session-cost` filtered it; review round 1, MINOR-2).
+ *
  * `total` is the object's published grand total, never a re-sum of the rows:
  * the backend's `combine()` is the one arithmetic site (the contract's own
  * load-bearing rule) and `children` is already inside it.
  */
 export function channelsView(value: unknown): ChannelsView | null {
-	if (!spendChannelsUsable(value)) return null;
-	const knowledge = rung(value.knowledge);
+	const reading = channelsReading(value);
+	if (!reading) return null;
 	/*
 	 * `unknown` is "nothing stateable" and a zero with partial/floor knowledge
 	 * is "money exists that could not be sized": both render this panel's
 	 * unknown mark rather than a figure. An EXACT zero is a stated zero and
 	 * keeps a number — the panel idiom for a real zero (the Cost stat card
-	 * prints `$0.00` for one), where the strip's own zero policy hides it.
+	 * prints `$0.00` for one), and since round 1's Q1 the strip prints
+	 * `$0.0000` for the same object rather than disagreeing with this.
 	 */
 	const unstated =
-		knowledge === "unknown" ||
-		(value.total_micro === 0 && knowledge !== "exact");
+		reading.knowledge === "unknown" ||
+		(reading.totalMicro === 0 && reading.knowledge !== "exact");
 	const total = unstated
 		? UNKNOWN
-		: formatMicroUsd(value.total_micro, 1, knowledge === "exact" ? 1 : 2);
-	const rows = value.rows.map((row, index) => channelRow(row, index));
-	const parts: string[] = [];
-	const byBasis = value.by_basis;
-	if (byBasis && typeof byBasis === "object") {
-		for (const [basis, bucket] of Object.entries(byBasis)) {
-			if (typeof bucket !== "number" || !Number.isFinite(bucket)) continue;
-			if (basis === "not_tracked_calls") continue;
-			if (bucket === 0) continue;
-			const word = channelBasisLabel(basis);
-			parts.push(
-				`${word.charAt(0).toUpperCase() + word.slice(1)} ${formatMicroUsd(bucket, 1, 1)}`,
+		: formatMicroUsd(
+				reading.totalMicro,
+				1,
+				reading.knowledge === "exact" ? 1 : 2,
 			);
-		}
-		const count = byBasis.not_tracked_calls;
-		if (typeof count === "number" && count > 0) {
-			parts.push(`${Math.trunc(count)} not tracked`);
-		}
-	}
+	const money = (micro: number) => formatMicroUsd(micro, 1, 1);
 	return {
-		tracked: value.tracked,
+		tracked: reading.tracked,
 		total,
-		rows,
-		basisLine: parts.length > 0 ? parts.join(" · ") : null,
+		rows: reading.rows.map((row, index) => ({
+			key: `${index}:${row.name}`,
+			name: row.name,
+			spend:
+				row.amountMicro === null
+					? PRICE_UNKNOWN_TEXT
+					: formatMicroUsd(row.amountMicro, 1, row.floor ? 2 : 1),
+			basis: row.basis || UNKNOWN,
+		})),
+		planClause: channelPlanClause(reading, money),
+		basisLine: channelSummaryLine(reading, money),
 	};
 }

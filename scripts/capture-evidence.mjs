@@ -4165,14 +4165,15 @@ export const STORIES = [
 	 * THE CHANNEL STORIES (the cost-channels project). The tooltip frames need
 	 * the vertical room of the whole breakdown: the trigger sits at the bottom
 	 * of the canvas and the panel opens ABOVE it, so the declared height is what
-	 * keeps every line inside the shutter — 620 for the eight-line
-	 * summary-plus-rows panel, 420 for the untracked sentence's three.
-	 * `channels-gated` stacks two strips and opens no tooltip, so it is the
-	 * height of two plain frames.
+	 * keeps every line inside the shutter — 680 for the composition-plus-plan-
+	 * gloss panel whose rows now sit in a grid, 440 for the untracked sentence's
+	 * shorter one. `channels-gated` stacks two strips and opens no tooltip, and
+	 * `channels-zero-states` is a two-frame stack of the two zero chips.
 	 */
-	["chat-session-status-strip--channels-tooltip", 860, 620],
-	["chat-session-status-strip--channels-untracked", 860, 420],
+	["chat-session-status-strip--channels-tooltip", 860, 680],
+	["chat-session-status-strip--channels-untracked", 860, 440],
 	["chat-session-status-strip--channels-gated", 860, 480],
+	["chat-session-status-strip--channels-zero-states", 860, 480],
 	/*
 	 * The sidebar's session-status mark, in the one place it can be photographed
 	 * as a specimen: the read/unread matrix, every code beside its own name (see
@@ -9336,6 +9337,37 @@ export const STORIES = [
 		{ dir: "channels-untracked-end", scrollToEnd: "[data-panel-body]" },
 	],
 	["panels-analytics--channels-gated", 1140, 980],
+	/*
+	 * The two states the first evidence round could not photograph (D8): a
+	 * record with no stated amount beside an unpriceable total, and the table's
+	 * own empty state. Same shape as `channels-untracked` — below the fold, so
+	 * the scrolled variant is the evidence and the at-rest one shows nothing
+	 * above moved.
+	 */
+	["panels-analytics--channels-unknown-amounts", 1140, 1140],
+	[
+		"panels-analytics--channels-unknown-amounts",
+		1140,
+		1140,
+		{ dir: "channels-unknown-amounts-end", scrollToEnd: "[data-panel-body]" },
+	],
+	["panels-analytics--channels-no-rows", 1140, 1140],
+	[
+		"panels-analytics--channels-no-rows",
+		1140,
+		1140,
+		{ dir: "channels-no-rows-end", scrollToEnd: "[data-panel-body]" },
+	],
+	/*
+	 * The narrow By-channel frame the design round asked for (D8): the 720
+	 * viewport the panel's own `narrow` story uses, scrolled to the section.
+	 */
+	[
+		"panels-analytics--channels",
+		720,
+		1240,
+		{ dir: "channels-narrow", scrollToEnd: "[data-panel-body]" },
+	],
 
 	/*
 	 * THE BY-SESSION TABLE'S OWN STATES: paging, sorting, search, the filter.
