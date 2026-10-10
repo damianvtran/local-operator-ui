@@ -310,10 +310,12 @@ function condenseSentence(segment: SegmentPlan): string {
 		 * A GROUP BAR'S SENTENCE IS THE GROUP'S OWN CLAUSES (design §5): the count
 		 * of receipts and the receipt span the line states - never the segment's
 		 * `took`/`N actions`, which a group bar does not print either (the count it
-		 * prints counts receipts). Same rule as below: the span clause only when
-		 * the bar carries one.
+		 * prints counts receipts). The count is BARE because the label is already
+		 * the family's noun (`Peer messages`): spelling "12 messages" after it read
+		 * the noun twice (design round 1 nit). Same rule as below: the span clause
+		 * only when the bar carries one.
 		 */
-		parts.push(`${segment.facts.group.count} messages`);
+		parts.push(`${segment.facts.group.count}`);
 		const spanS = quietGroupSpanS(segment.facts.group);
 		if (spanS !== null) parts.push(formatDuration(spanS));
 	} else {

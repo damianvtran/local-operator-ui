@@ -2418,6 +2418,85 @@ test("a receipt appended after a quiet close keeps the settled span a bar (the g
 	assert.equal(grown.segments[0].label, "Peer messages");
 });
 
+test("F3: the below-minimum span and the group it grows into carry the SAME key", () => {
+	/*
+	 * The operator's no-re-jitter requirement, at the transition the design round
+	 * flagged: `[peer][tool][quiet]` is a bar long before it is a group, and the
+	 * second receipt must not rename it - a key jump (`seg:` -> `qg:`) would drop
+	 * the reader's stored expansion (the bar re-collapses under them) and re-fire
+	 * the settle announcement for the same bar.
+	 */
+	const settled = [
+		user("u1"),
+		peerRow("p1"),
+		tool("t1", {}, "trace"),
+		quiet("q1"),
+	];
+	const single = planOf(settled).runs[0];
+	const group = planOf([...settled, peerRow("p2")], false).runs[0];
+	assert.equal(
+		single.segments[0].key,
+		"qg:p1",
+		"the pre-group span is already named for its first receipt",
+	);
+	assert.equal(group.segments[0].key, "qg:p1", "and the group keeps that name");
+	assert.equal(single.segments[0].collapsed, true);
+	assert.equal(group.segments[0].collapsed, true);
+	assert.equal(group.segments[0].facts.group?.count, 2);
+	// The scanner entry names the same key from the same row:
+	const scanned = quietGroupsOf(
+		[...settled, peerRow("p2")].map((r) => r.record),
+	);
+	assert.equal(scanned[0].key, group.segments[0].key);
+});
+
+test("F1: a pinned compaction statement splits on BOTH entry points, row for row", () => {
+	/*
+	 * The design-round disagreement: `quietGroupsOf` scanned across the pinned
+	 * memory statement while `planRun` could never render a span containing it
+	 * (the pin list keeps it on screen). The splitter now IS the pin list
+	 * (`staysVisibleWhileCollapsed`), so the two entry points state the same
+	 * groups by construction rather than by a second copy of the vocabulary.
+	 */
+	const rows = [
+		user("u1"),
+		peerRow("p1"),
+		peerRow("p2"),
+		row("c1", "compaction", { text: "Context compacted", before: 41_000 }),
+		peerRow("p3"),
+		peerRow("p4"),
+	];
+	const plan = planOf(rows).runs[0];
+	assert.deepEqual(
+		plan.segments.map((s) => s.key),
+		["seg:c1", "qg:p3"],
+		"two groups around the pinned statement: the tail span carries the group key, the mid-run one the visible anchor",
+	);
+	assert.deepEqual(
+		plan.segments.map((s) => s.collapsed),
+		[true, true],
+	);
+	const scanned = quietGroupsOf(rows.map((r) => r.record));
+	assert.deepEqual(
+		scanned.map((g) => g.key),
+		["qg:p1", "qg:p3"],
+		"the scanner states the groups' own keys",
+	);
+	assert.deepEqual(
+		scanned.map((g) => g.rowIds),
+		[
+			["p1", "p2"],
+			["p3", "p4"],
+		],
+		"membership agrees, row for row - the compaction splits on both entry points",
+	);
+	assert.equal(
+		plan.segments[1].key,
+		scanned[1].key,
+		"the tail group's segment key IS the group key (the appendable span rule)",
+	);
+});
+
 test("facts freeze when the group closes, and the open tail may grow (the latch, design §5)", () => {
 	const closedBefore = quietGroupsOf(
 		[peerRow("p1"), peerRow("p2"), user("u1")].map((r) => r.record),
@@ -2530,6 +2609,14 @@ const fixtureRecord = (row) => {
 				text: row.text ?? "notice",
 				level: row.level ?? "info",
 				complete: row.complete ?? false,
+			};
+		case "compaction":
+			return {
+				kind: "compaction",
+				id: row.id,
+				ts: row.ts,
+				text: row.text ?? "Context compacted",
+				before: row.before ?? 41_000,
 			};
 		default:
 			throw new Error(`unhandled fixture row kind: ${row.kind}`);

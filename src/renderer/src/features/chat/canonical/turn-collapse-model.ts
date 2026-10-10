@@ -195,17 +195,21 @@ export type QuietGroupSender = {
  *
  * WHAT IT IS. A maximal run of >= 2 TRIGGER rows (`peer`, `hub_message`,
  * `wake`, `monitor_prompt`, `job_result`) with nothing the reader can see
- * between them: a `user` row, a terminal marker (`boundaryKindOf`) or visible
- * assistant text splits it (`groupSplitterOf`). Tool rows - the quiet call
- * included - and rows that paint nothing sit inside it. ONE receipt is not a
- * group at all: its bar keeps the ordinary facts (design §5, sub-case i).
+ * between them: a `user` row, a row that stays on screen in a collapsed run
+ * (`staysVisibleWhileCollapsed` - the compaction statement, completion markers,
+ * incidents) or visible assistant text splits it (`groupSplitterOf`). Tool rows
+ * - the quiet call included - and rows that paint nothing sit inside it. ONE
+ * receipt is not a group at all: its bar keeps the ordinary facts (design §5,
+ * sub-case i).
  *
  * WHERE THE NAME LIVES: `labelOfSegment` is handed the group and states the
  * family's plural word; `TurnSummaryFacts.group` carries it to the bar. The
  * `key` is the group's stable identity (`qg:<first row id>`): rows append at
  * the tail and the key never moves, so a growing group's bar is never remounted
  * - the reader's expansion survives the append (the jitter `SegmentPlan.key`'s
- * rule exists to prevent).
+ * rule exists to prevent). The newest run's tail span carries the same key
+ * BEFORE it is a group (design round F3), so the transition to group moves
+ * nothing either.
  *
  * FACTS FREEZE WHEN THE GROUP CLOSES (the latch, design §5): a closed group's
  * boundary is fixed - later appends land outside it - so its count, span and
@@ -262,19 +266,23 @@ function quietFamilyOf(trigger: TriggerKind): QuietGroupFamily | null {
 }
 
 /**
- * Does this row SPLIT a quiet group? The design's boundary vocabulary (§5): a
- * `user` row splits, a terminal marker splits (completion / `closed` / `retired`
- * receipts - the same `boundaryKindOf` set that ends turns), and visible
- * assistant text splits. Everything else - tool rows, quiet calls, rows that
- * paint nothing - may sit inside.
+ * Does this row SPLIT a quiet group? The design's boundary vocabulary (§5), and
+ * it is the COLLAPSE's own visibility list: `staysVisibleWhileCollapsed` is
+ * literally the set of rows a collapsed run still paints, so a span the plan
+ * builds can never contain one - aligning the two entry points by construction
+ * rather than by a second copy of the list. That is what keeps a compaction
+ * statement (the memory receipt, pinned in v1) out of a group on both sides:
+ * `quietGroupsOf` used to scan across one while `planRun` could never render
+ * it, the disagreement the design round's F1 finding named.
  *
- * THE ASSISTANT ARM IS `paintsSomething`'s own rule, called rather than
- * respelled: a row that paints no text is invisible, and an invisible row
- * cannot split what the reader sees as one run of receipts.
+ * A `user` row splits even though it paints through its own clause (V3), and
+ * visible assistant text splits (the response closes and V4 rows - assistant
+ * rows that paint); the assistant arm states that rule directly rather than
+ * leaning on the pin list, which carries no assistant kinds.
  */
 function groupSplitterOf(record: TranscriptRecord): boolean {
 	if (record.kind === "user") return true;
-	if (boundaryKindOf(record) === "terminal") return true;
+	if (staysVisibleWhileCollapsed(record)) return true;
 	return record.kind === "assistant" && paintsSomething(record);
 }
 
@@ -303,10 +311,12 @@ function quietSenderOf(record: { sender?: PeerSender }): string {
  *
  * THE SPAN MUST BE THE WHOLE GROUP (design §5): its neighbours must be
  * splitters or the list's edges (`quietGroupsOf` builds spans that way), and no
- * splitter may sit inside. A span that merely OVERLAPS a group - a pinned row
- * that is not a splitter (a compaction receipt) cuts one in two - refuses here
- * instead of stating a count over part of something: the bars degrade to their
- * per-cycle labels, which is the safe direction.
+ * splitter may sit inside. A span that merely OVERLAPS a group - a caller that
+ * sliced inside one, e.g. a window starting mid-run - refuses here instead of
+ * stating a count over part of something: the bars degrade to their per-cycle
+ * labels, which is the safe direction. Pinned statement rows (the compaction
+ * receipt, completion markers, incidents) are SPLITTERS now, so a span holding
+ * one is refused on both entry points rather than by the scanner alone.
  *
  * `spanHeadLoaded` (default true) is the caller's own head-cut verdict for this
  * span (see `planRun`): false nulls the times and leaves the count a minimum.
@@ -385,7 +395,7 @@ export function quietGroupOfSegment(
 	const rowIds: string[] = [];
 	for (let i = span.from; i <= span.to; i += 1) rowIds.push(records[i].id);
 	return {
-		key: `qg:${first.id}`,
+		key: `qg:${records[span.from].id}`,
 		family: familyFinal,
 		count: triggers.length,
 		firstTs: headLoaded ? first.ts : null,
@@ -518,7 +528,21 @@ export type SegmentPlan = {
 	 *   still in flight - so not a bar - or idle) falls back to its own last row;
 	 * - a span AFTER the answer grows at the tail while the follow-up is being
 	 *   written and never upward, so its FIRST row is the stable one: `seg:<its
-	 *   first row>`.
+	 *   first row>`;
+	 * - the ONLY span that can receive APPENDED rows is the one ending at the
+	 *   newest run's end (live rows land at the bottom), and that span is named
+	 *   for its FIRST row (`qg:<that row>`: the quiet-group key, design round F3)
+	 *   whether or not it is a group yet. Rows append below it, so the first row
+	 *   never moves, and the same key serves the below-minimum span and the group
+	 *   it grows into - the reader's expansion survives the transition, its React
+	 *   element is not remounted, and the settle announcement does not fire a
+	 *   second time for the same bar. `quietGroupOfSegment` names its group's key
+	 *   from that same row, so the two spellings cannot drift apart. A span that
+	 *   can grow UPWARD (a page landing above the loaded head) keeps the
+	 *   visible-anchor rule, because its first row is exactly what moves - and a
+	 *   mid-run GROUP keeps `seg:<visible anchor>` as its SEGMENT key for the same
+	 *   reason, even though its group key (the cross-client identity in
+	 *   `QuietGroup.key`) names its first row.
 	 *
 	 * A row is in exactly one span, so two spans can never share a key. A key of an
 	 * older shape (the run key, or `<run key>#<row>`) never starts `seg:`, so it
@@ -1802,19 +1826,25 @@ function planRun(
 					span.to === records.length - 1 && run.endIndex === rows.length - 1,
 			});
 			/*
-			 * The key's rule (and the aliasing it prevents) is `SegmentPlan.key`'s;
-			 * a GROUP speaks with its own stable key (`qg:<first row>`) so a growing
-			 * tail's bar is never remounted - rows append, the key never moves.
+			 * The key's rule (and the aliasing it prevents) is `SegmentPlan.key`'s. ONE
+			 * span can receive APPENDED rows - the one ending at the newest run's end,
+			 * because live rows land at the bottom - and it is named for its FIRST row
+			 * (`qg:<that row>`), the same row `quietGroupOfSegment` names a group for
+			 * (design round F3): the below-minimum span and the group it grows into
+			 * then share the key, so the reader's expansion survives the transition
+			 * and the settle announcement does not fire a second time for one bar. A
+			 * span that can grow UPWARD (a page landing above the loaded head) keeps
+			 * the visible-anchor rule: its first row is exactly what moves.
 			 */
-			const key =
-				group !== null
-					? group.key
-					: `seg:${
-							afterAnswer
-								? segRows[0].record.id
-								: (runRows[span.to + 1] ?? segRows[segRows.length - 1]).record
-										.id
-						}`;
+			const appendable =
+				span.to === runRows.length - 1 && run.endIndex === rows.length - 1;
+			const key = appendable
+				? `qg:${segRows[0].record.id}`
+				: `seg:${
+						afterAnswer
+							? segRows[0].record.id
+							: (runRows[span.to + 1] ?? segRows[segRows.length - 1]).record.id
+					}`;
 
 			const label = labelOfSegment(records, partition.cycles, span, group);
 			/*
