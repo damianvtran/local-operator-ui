@@ -255,6 +255,39 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			{ request_id: requestId, cwd: "~", peer: "d_bbox1111" },
 		],
 		[{ op: "sessions.get", sessionId }, `/${sessionId}`, "GET", undefined],
+		/*
+		 * THE OPEN-FRAME FLAG, AT THE ONE HOP THAT BUILDS THE QUERY (agent review
+		 * round 1, F6). With `open_frame=1` the backend counts `limit` in PAINTABLE
+		 * rows and strips the bytes no surface paints, so a page in that shape
+		 * handed to a caller that did not negotiate it is a page that caller reads
+		 * wrong. The row WITHOUT the flag is the byte-for-byte claim an old
+		 * renderer keeps; the rows with it are the negotiation, and a literal
+		 * `false` is not a negotiation.
+		 */
+		[
+			{ op: "sessions.history", sessionId, limit: 100 },
+			`/${sessionId}/history?limit=100`,
+			"GET",
+			undefined,
+		],
+		[
+			{
+				op: "sessions.history",
+				sessionId,
+				limit: 100,
+				beforeId: "entry-1",
+				openFrame: true,
+			},
+			`/${sessionId}/history?limit=100&before_id=entry-1&open_frame=1`,
+			"GET",
+			undefined,
+		],
+		[
+			{ op: "sessions.history", sessionId, limit: 50, openFrame: false },
+			`/${sessionId}/history?limit=50`,
+			"GET",
+			undefined,
+		],
 		[
 			{
 				op: "sessions.search",

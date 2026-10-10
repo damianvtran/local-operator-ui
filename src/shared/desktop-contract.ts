@@ -1415,6 +1415,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			sessionId,
 			beforeId: id.optional(),
 			limit: z.number().int().min(1).max(500).optional(),
+			/*
+			 * THE OPEN-FRAME NEGOTIATION (`docs/DESKTOP_API.md`, "The open frame").
+			 * True means "this reader consumes `runs`, `runs_state` and `head_cut`, and
+			 * accepts `limit` being counted in PAINTABLE rows" - the two halves are one
+			 * statement, which is why the capability gates the flag rather than the
+			 * caller's judgement: a page whose unit changed under a reader that does not
+			 * read `runs` is the defect the capability exists to prevent. It is sent on
+			 * EVERY history read this renderer makes while it is negotiated, because a
+			 * page served one shape and paged in another is two page builders for one
+			 * transcript.
+			 *
+			 * Optional and absent-by-default, so the wire for an older backend - and for
+			 * every request this app made before the capability existed - is unchanged.
+			 */
+			openFrame: z.boolean().optional(),
 		})
 		.strict(),
 	/*
@@ -4903,7 +4918,20 @@ export type DesktopAPI = {
 	 * preload is live; browser development uses the server-side stream proxy. */
 	stream?: {
 		subscribe: (
-			args: { sessionId: string; epoch?: string; afterSeq?: number },
+			args: {
+				sessionId: string;
+				epoch?: string;
+				afterSeq?: number;
+				/**
+				 * The open-frame negotiation (`docs/DESKTOP_API.md`), on the subscription
+				 * that carries the snapshot page. Sent by the caller rather than fixed in
+				 * main because only the RENDERER knows whether it read the capability -
+				 * and a page whose `limit` changed unit for a reader that does not read
+				 * `runs` is exactly what the capability exists to prevent. Optional,
+				 * and absent means the backend answers today's page byte for byte.
+				 */
+				openFrame?: boolean;
+			},
 			onEvent: (event: DesktopStreamEvent) => void,
 		) => DesktopStreamSubscription;
 	};
@@ -5746,6 +5774,12 @@ export function desktopEndpoint(request: DesktopRequest): {
 				limit: String(request.limit ?? 100),
 			});
 			if (request.beforeId) query.set("before_id", request.beforeId);
+			/*
+			 * `open_frame=1` only when the caller negotiated it (see the request
+			 * schema): the unit of `limit` changes with the flag, so a page served a
+			 * shape the caller does not read is worse than today's page.
+			 */
+			if (request.openFrame) query.set("open_frame", "1");
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/history?${query}`,
 				method: "GET",

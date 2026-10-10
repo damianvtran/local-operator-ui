@@ -333,8 +333,26 @@ test("the warm is wired to the composer inside the subscribed panel, not above i
 	// there would leave a press's row addressed to a pane that cannot receive it.
 	assert.match(
 		panel,
-		/useCanonicalSessionStream\(\s*streamId,\s*Boolean\(streamId\),\s*Boolean\(sessionId\),[\s\S]*?\bidentity,\s*\)/,
+		/useCanonicalSessionStream\(\s*streamId,\s*Boolean\(streamId\),\s*Boolean\(sessionId\),[\s\S]*?\bidentity,\s*\{/,
 		"the panel must answer whether the stream is a session's, not a draft's, and hand the hook the identity it renders under",
+	);
+	/*
+	 * AND EVERYTHING ELSE THE PANE NEGOTIATES RIDES AN OPTIONS OBJECT (agent
+	 * review round 1, F1): a fifth POSITIONAL argument moved the identity out of
+	 * the slot this pin exists to hold - the one the echo registry and the
+	 * first-frame seed are keyed by - so the flag is named in an object instead.
+	 * The regex above ends `identity,` with `{`, so `identity` must still be the
+	 * LAST POSITIONAL argument (round 2's N1: an earlier widening let anything
+	 * follow it, which made the assertion weaker than its own comment).
+	 *
+	 * And this asserts the flag is still read off the backend's capability (an old
+	 * core advertises nothing, `desktopFeatureEnabled` answers false, and the
+	 * request is byte-for-byte today's).
+	 */
+	assert.match(
+		panel,
+		/openFrame:\s*desktopFeatureEnabled\(\s*panelCapabilities\.data,\s*"open_frame"\s*\)/,
+		"the open-frame negotiation must be the capability's own answer, not a constant",
 	);
 	// And the Run-details model stays null for a draft (design review round 1,
 	// D2): a draft has no run, so the header must not grow the ⓘ control while

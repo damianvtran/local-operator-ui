@@ -430,6 +430,25 @@ export type DesktopFeature =
 	 */
 	| "frontend_replace"
 	/**
+	 * The OPEN FRAME (`docs/DESKTOP_API.md`, "The open frame"): `open_frame=1` on
+	 * `GET .../{id}`, `GET .../{id}/history` and `GET .../{id}/events`, answered
+	 * with a page counted in PAINTABLE rows, cut back to the oldest included
+	 * run's opening user row under a hard cap, with non-painted bytes stripped
+	 * and `runs[]` / `runs_state` carrying the per-run facts a bar needs.
+	 *
+	 * ITS OWN KEY, and it gates the REQUEST rather than being assumed because
+	 * the flag changes the UNIT of `limit`: against a backend without it, a
+	 * reader that sent the flag anyway would receive today's page (every older
+	 * daemon ignores an unknown query parameter, silently) and there is no
+	 * answer on the wire that would say so. So the two halves are one statement -
+	 * "this reader consumes `runs`, `runs_state` and `head_cut`" - and this key
+	 * is how the reader can make it safely. Absent means no flag is sent
+	 * anywhere: the page is served exactly as it was before the capability
+	 * existed, and the renderer keeps its own condensation, complete with the
+	 * post-paint align walk that the facts retire.
+	 */
+	| "open_frame"
+	/**
 	 * Durable conversation pinning: the `pinned` flag on every catalogue row and
 	 * the `sessions.pin` write (`POST /v1/desktop/sessions/{id}/pin`).
 	 *

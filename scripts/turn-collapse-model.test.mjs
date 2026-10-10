@@ -25,6 +25,7 @@ const ROOT = process.cwd();
 const bundle = await build({
 	stdin: {
 		contents: [
+			'export * from "./src/renderer/src/features/chat/canonical/open-frame";',
 			'export * from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
 			'export { runsOf, closingAnswerIds, buildRows } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 			'export { applyEvent, applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
@@ -67,6 +68,9 @@ const {
 	applyEvent,
 	EMPTY_TRANSCRIPT,
 	visibleRecords,
+	openFrameFacts,
+	openFrameAttestedStart,
+	openFrameCoversHeld,
 } = await import(moduleUrl);
 
 /* ------------------------------- fixtures ------------------------------- */
@@ -2219,5 +2223,1436 @@ test("#665: a pinned row between two hidden spans does not sit after a bar that 
 		order.filter((o) => o.startsWith("bar")).length,
 		bars,
 		"one bar per contiguous hidden span: the model must emit as many segments as there are spans",
+	);
+});
+
+/* ------------- the open frame's facts (C1, lane U1) ------------- */
+
+/*
+ * WHAT THESE PIN. The operator's headline complaint is that a long turn's bar
+ * paints a fragment and then re-condenses as the align walk pulls the head in -
+ * `30 actions` at open, `Took 2h23m · 423 actions` thirteen pages later (PR
+ * #702's body). The server's per-run facts make the bar exact on the frame it
+ * is first seen. Three properties have to hold for that to be a fix rather than
+ * a second opinion about the same turn:
+ *
+ *  1. the facts reach the HEAD-CUT span, and only it - a run whose head is
+ *     loaded is already exact, and the server's total covers rows the turn's
+ *     own figures deliberately exclude (a follow-up after the answer);
+ *  2. the ladder still sums (design D1): bars over a run that a pinned row
+ *     splits must still add up to the turn's figure, which is why the cut span
+ *     takes the run's total MINUS its siblings' own work;
+ *  3. `complete: false` keeps the `+`, because a count the index could not
+ *     compute exactly must never read as exact.
+ *
+ * The adapter's own rules (`runs_state`, `settled`, the attested start) are
+ * pinned beside them, because they are what decides whether ANY of this
+ * happens: `building`, `unsupported` and an absent `runs` are one fact, and a
+ * peer's conversation must be indistinguishable from an old backend here.
+ */
+
+/** A fact as the model takes it, so a fixture states only what it is about. */
+const fact = (actions, workedSeconds, extra = {}) => ({
+	actions,
+	workedSeconds,
+	failed: 0,
+	complete: true,
+	/*
+	 * NULL BY DEFAULT, and that is the honest default for these fixtures: a run
+	 * whose opening user row the wire did not name is a fragment to the model the
+	 * moment its span opens at a user row (see `headLoadedIsTheRunsOwn`). A test
+	 * about a HEADED run therefore has to name the opener it means.
+	 */
+	openingUserId: null,
+	/*
+	 * The re-key identity and the cross-session split (agent review round 1, F2
+	 * and F3). NULL is "the wire said nothing": the model refuses a fact it cannot
+	 * split when the reader hides cross-session rows, and treats an un-named
+	 * closing answer as "no stable identity to find this run by".
+	 */
+	closingAnswerId: null,
+	crossSessionActions: null,
+	crossSessionWorkedSeconds: null,
+	...extra,
+});
+
+test("a head-cut run's bar states the RUN's figures, not the loaded fragment (the operator's `423 actions`)", () => {
+	const rows = [
+		tool("t1", { ts: TS, durationS: 20 }),
+		tool("t2", { ts: TS + 1, durationS: 30 }, "trace"),
+		answer("a1", { ts: TS + 5_000 }),
+	];
+	/*
+	 * The fallback first: identical rows, no facts. This is what the operator
+	 * sees today, and the test fails on its own if the facts path is ever
+	 * reached by accident.
+	 */
+	const loaded = planOf(rows).runs[0].segments[0].facts;
+	assert.equal(loaded.actions, 2, "the loaded span's count");
+	assert.equal(loaded.durationS, null, "no duration off a fragment");
+	assert.equal(loaded.partial, true, "and the `+` that says so");
+	/*
+	 * With the fact: the run's own numbers, on the same rows.
+	 */
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([["a1", fact(423, 8_639)]]),
+	});
+	const bar = plan.runs[0].segments[0].facts;
+	assert.equal(bar.actions, 423, "the run's count, not the two rows loaded");
+	assert.equal(bar.durationS, 8_639, "and the run's worked time");
+	assert.equal(bar.partial, false, "exact, so no `+`");
+});
+
+test("a fact that the index could not compute exactly keeps the bar's `+`", () => {
+	/*
+	 * `complete: false` is the index's own admission that a row body inside the
+	 * run was dropped, so its count is a floor. The bar has exactly one way to
+	 * say so, and a fact must not retire it.
+	 */
+	const rows = [
+		tool("t1", { ts: TS, durationS: 4 }),
+		answer("a1", { ts: TS + 5_000 }),
+	];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([["a1", fact(9, 40, { complete: false })]]),
+	});
+	assert.equal(plan.runs[0].segments[0].facts.actions, 9, "the floor, stated");
+	assert.equal(
+		plan.runs[0].segments[0].facts.partial,
+		true,
+		"and marked a floor",
+	);
+	assert.equal(plan.runs[0].facts.partial, true, "the turn's own figure too");
+});
+
+test("the bars still sum to the turn: a pinned row splitting a head-cut run, with facts (D1)", () => {
+	/*
+	 * THE ARITHMETIC THE SUBTRACTION EXISTS FOR. Three spans - two loaded tool
+	 * rows, a compaction, then the rest of the turn - and the server's total for
+	 * the whole run. The FIRST bar must be the run's total minus its siblings'
+	 * work, not the run's total: a bar stating `423` beside a sibling stating
+	 * its own `2` would not add up, and a reader who adds up the ladder is
+	 * exactly the reader D1 was written for.
+	 */
+	const rows = [
+		tool("t1", { ts: TS, durationS: 20 }),
+		row("c1", "compaction", { text: "Context compacted", ts: TS + 1 }, "item"),
+		tool("t2", { ts: TS + 2, durationS: 30 }),
+		tool("t3", { ts: TS + 3, durationS: 40 }, "trace"),
+		answer("a1", { ts: TS + 5_000 }),
+	];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([["a1", fact(100, 1_000)]]),
+	});
+	const run = plan.runs[0];
+	const bars = run.segments.filter((segment) => !segment.afterAnswer);
+	assert.equal(bars.length, 2, "the pinned row really splits the hidden work");
+	assert.equal(bars[1].facts.actions, 2, "the loaded span keeps its own two");
+	assert.equal(
+		bars[0].facts.actions,
+		98,
+		"the cut span is the run's total MINUS its sibling's",
+	);
+	assert.equal(
+		bars[0].facts.durationS,
+		930,
+		/*
+		 * The run's worked 1000 seconds minus the SIBLING span's own 70 (t2's 30
+		 * plus t3's 40). t1's own 20 seconds stay inside this bar's figure, because
+		 * they are part of the span it hides - which is what makes the two bars add
+		 * up to the turn rather than to the loaded rows.
+		 */
+		"and so is the worked time",
+	);
+	assert.equal(
+		bars.reduce((sum, segment) => sum + segment.facts.actions, 0),
+		run.facts.actions,
+		"the bars sum to the turn's figure, which is the run's own minus the follow-up",
+	);
+	assert.equal(
+		bars.reduce((sum, segment) => sum + (segment.facts.durationS ?? 0), 0),
+		run.facts.durationS,
+		"and so do the durations",
+	);
+	assert.equal(
+		run.facts.actions,
+		100,
+		"no post-answer rows here, so the run's total IS the turn's",
+	);
+	assert.equal(run.facts.partial, false);
+});
+
+test("facts never reach a run whose head is loaded: the rows in hand are already exact", () => {
+	/*
+	 * THE SCOPE OF THE WHOLE MECHANISM. A fact is the RUN's total, and the
+	 * client's run-level figures are the TURN's - through the answer, excluding
+	 * whatever followed it (#665 pinned that separation). So a headed run must
+	 * keep the figures its own rows give, or a bar would start counting the
+	 * follow-up's calls. The fact here is deliberately absurd: nothing about it
+	 * may move.
+	 */
+	const rows = [
+		user("u1", { ts: TS }),
+		tool("t1", { ts: TS + 1, durationS: 20 }),
+		answer("a1", { ts: TS + 5_000 }),
+	];
+	const plain = planOf(rows).runs[0];
+	const withFacts = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([["a1", fact(999, 9_999, { openingUserId: "u1" })]]),
+	}).runs[0];
+	assert.deepEqual(
+		withFacts.facts,
+		plain.facts,
+		"the turn's figures are untouched",
+	);
+	assert.deepEqual(
+		withFacts.segments.map((segment) => segment.facts),
+		plain.segments.map((segment) => segment.facts),
+		"and so is every bar",
+	);
+});
+
+test("alignWalkRunKeyConfirmed: a run whose bar TOOK the facts retires the walk", () => {
+	/*
+	 * The walk is the pane's post-paint fetch, up to `ALIGN_WALK_MAX_PAGES`
+	 * serial `/history` reads, and its whole purpose is to make the bar's figure
+	 * whole. A fact makes it whole with no read at all, so the walk must stand
+	 * down - for that run only, which is why the un-fact'd case below still
+	 * yields the key.
+	 */
+	const rows = [
+		tool("t1", { ts: TS, durationS: 20 }),
+		tool("t2", { ts: TS + 1, durationS: 30 }, "trace"),
+		answer("a1", { ts: TS + 5_000 }),
+	];
+	const plan = collapsePlan(rows, { live: false });
+	assert.equal(
+		alignWalkRunKeyConfirmed(plan, null),
+		"a1",
+		"without facts the walk is armed, exactly as before",
+	);
+	const withFacts = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([["a1", fact(423, 8_639)]]),
+	});
+	assert.equal(
+		alignWalkRunKeyConfirmed(withFacts, null),
+		null,
+		"with them, no read is owed",
+	);
+	/*
+	 * AND A FACT THE PLAN COULD NOT USE LEAVES IT ARMED (agent review round 1,
+	 * F5): the gate reads the plan's own `factApplied`, never the presence of a
+	 * map, so the two can never disagree about whether the bar is whole. The
+	 * reader below hides cross-session rows and the wire states no split, which
+	 * is the refusal the model makes rather than a count that includes rows the
+	 * bar does not show.
+	 */
+	assert.equal(
+		alignWalkRunKeyConfirmed(plan, null),
+		"a1",
+		"a plan that took no facts is not a reason to stand the walk down",
+	);
+	const refused = collapsePlan(rows, {
+		live: false,
+		hideCrossSession: true,
+		runFacts: new Map([["a1", fact(423, 8_639)]]),
+	});
+	assert.equal(
+		refused.runs[0].factApplied,
+		false,
+		"the fact is refused, so nothing was applied",
+	);
+	assert.equal(
+		refused.runs[0].segments[0].facts.partial,
+		true,
+		"so the bar keeps the `+` the walk exists to complete",
+	);
+	assert.equal(
+		alignWalkRunKeyConfirmed(refused, null),
+		"a1",
+		"and the walk stays armed to complete it",
+	);
+});
+
+test("openFrameFacts: only `ready` carries facts, and only a SETTLED run's are readable", () => {
+	const page = (extra) => ({
+		entries: [{ id: "u1", ts: 100, type: "message", payload: {} }],
+		has_more: true,
+		cursor_missing: false,
+		...extra,
+	});
+	const settled = {
+		run_key: "a1",
+		opening_user_id: "u1",
+		closing_answer_id: "a1",
+		settled: true,
+		outcome: "complete",
+		action_count: 12,
+		failed_count: 1,
+		worked_seconds: 90,
+		started_ts: 100,
+		ended_ts: 190,
+		complete: true,
+	};
+	/*
+	 * The ladder of "no facts": every one of these is the SAME behaviour for a
+	 * reader (today's page, today's condensation, the align walk included), and
+	 * `unsupported` - what a peer's conversation answers - must be treated
+	 * exactly like the field being absent.
+	 */
+	for (const runsState of [
+		"building",
+		"unavailable",
+		"unsupported",
+		undefined,
+	]) {
+		assert.equal(
+			openFrameFacts(page({ runs_state: runsState, runs: [settled] })),
+			null,
+			`${runsState} is not facts`,
+		);
+	}
+	assert.equal(
+		openFrameFacts(page({ runs_state: "ready" })),
+		null,
+		"no runs, no facts",
+	);
+	assert.equal(
+		openFrameFacts(page({ runs_state: "ready", runs: [] })),
+		null,
+		"an empty list is not facts either",
+	);
+	const ready = openFrameFacts(
+		page({ runs_state: "ready", runs: [settled], head_cut: true }),
+	);
+	assert.ok(ready, "a settled run on a ready page is readable");
+	assert.deepEqual(ready.runs.get("a1"), {
+		actions: 12,
+		workedSeconds: 90,
+		failed: 1,
+		complete: true,
+		/*
+		 * Carried through for the model's own use (clarity 2's rule), and the same
+		 * fact answers to all three ids the contract names - which is what the
+		 * assertion below the loop is about.
+		 */
+		openingUserId: "u1",
+		closingAnswerId: "a1",
+		crossSessionActions: null,
+		crossSessionWorkedSeconds: null,
+	});
+	assert.equal(
+		ready.runs.get("u1"),
+		ready.runs.get("a1"),
+		"and the same fact is reachable by the run's opening user row",
+	);
+	/*
+	 * A live tail carries `settled: false` and no counts: a number taken
+	 * mid-turn is one the client would have to correct after the paint, which is
+	 * the change this contract exists to remove.
+	 */
+	const live = {
+		run_key: "a2",
+		opening_user_id: "u2",
+		closing_answer_id: null,
+		settled: false,
+	};
+	assert.equal(
+		openFrameFacts(page({ runs_state: "ready", runs: [live] })),
+		null,
+		"an unsettled run is no facts at all",
+	);
+	/*
+	 * And a fact this build cannot read whole is not a zero: a settled run with
+	 * no `action_count` is dropped rather than read as `0 actions`.
+	 */
+	const noCount = { ...settled, run_key: "a3", action_count: null };
+	assert.deepEqual(
+		openFrameFacts(page({ runs_state: "ready", runs: [noCount] })),
+		null,
+		"a missing count is not an exact zero",
+	);
+	const mixed = openFrameFacts(
+		page({ runs_state: "ready", runs: [noCount, live, settled] }),
+	);
+	assert.deepEqual(
+		[...mixed.runs.keys()].sort(),
+		["a1", "u1"],
+		"the readable run still lands - under its key AND its opening user row (the aliases)",
+	);
+});
+
+test("openFrameAttestedStart: only a page that BEGINS at a run's opening user row attests a start", () => {
+	const entries = [
+		{ id: "u1", ts: 100, type: "message", payload: {} },
+		{ id: "t1", ts: 101, type: "message", payload: {} },
+	];
+	const run = (extra = {}) => ({
+		run_key: "a1",
+		opening_user_id: "u1",
+		closing_answer_id: "a1",
+		settled: true,
+		...extra,
+	});
+	const page = (extra) => ({
+		entries,
+		has_more: true,
+		cursor_missing: false,
+		runs_state: "ready",
+		runs: [run()],
+		...extra,
+	});
+	assert.deepEqual(
+		openFrameAttestedStart(page()),
+		{ id: "u1", tsMs: 100_000 },
+		"the page's first row IS the oldest run's opening user row",
+	);
+	/*
+	 * The three ways the attestation is refused, each one a page whose start
+	 * says nothing about where its own span begins - and the caller's
+	 * reconciliation arm must fall back to the walk on every one of them.
+	 */
+	assert.equal(
+		openFrameAttestedStart(page({ head_cut: true })),
+		null,
+		"a cap-refused extension: the page is the plain tail",
+	);
+	assert.equal(
+		openFrameAttestedStart(
+			page({ runs: [run({ opening_user_id: "somewhere-else" })] }),
+		),
+		null,
+		"a run opening off a row this page does not begin with",
+	);
+	assert.equal(
+		openFrameAttestedStart(page({ runs: [run({ opening_user_id: null })] })),
+		null,
+		"a run that opens off a non-user row attests nothing",
+	);
+	assert.equal(
+		openFrameAttestedStart(page({ runs_state: "building" })),
+		null,
+		"no facts, no attestation",
+	);
+	assert.equal(
+		openFrameAttestedStart(
+			page({ entries: [{ id: "u1", ts: 0, type: "message", payload: {} }] }),
+		),
+		null,
+		"a page with no instant cannot place anything older than itself",
+	);
+	assert.equal(
+		openFrameAttestedStart(page({ entries: [] })),
+		null,
+		"and neither can an empty page",
+	);
+});
+
+test("openFrameCoversHeld: a held row INSIDE an attested span is covered; anything outside it is not", () => {
+	/*
+	 * THE ARM'S WHOLE SAFETY IS ITS TWO STRICT BOUNDS, so each is asserted in
+	 * both directions. The page: rows at 100s..110s, the oldest run's opening
+	 * user row first, so the facts attest where the page begins.
+	 */
+	const entries = [
+		{ id: "u1", ts: 100, type: "message", payload: {} },
+		{ id: "t1", ts: 105, type: "message", payload: {} },
+		{ id: "a1", ts: 110, type: "message", payload: {} },
+	];
+	const page = (extra = {}) => ({
+		entries,
+		has_more: true,
+		cursor_missing: false,
+		runs_state: "ready",
+		runs: [
+			{
+				run_key: "a1",
+				opening_user_id: "u1",
+				closing_answer_id: "a1",
+				settled: true,
+			},
+		],
+		...extra,
+	});
+	const carried = new Set(["u1", "t1", "a1"]);
+	const held = (pairs) => new Map(pairs);
+	const ms = (seconds) => seconds * 1000;
+
+	assert.equal(
+		openFrameCoversHeld(page(), held([["t9", ms(106)]]), carried),
+		true,
+		"a row inside the page's span is covered even though the page does not carry its id",
+	);
+	assert.equal(
+		openFrameCoversHeld(page(), held([["t9", ms(100)]]), carried),
+		false,
+		"a row AT the attested start is the #876 seam - same second, unknowable order",
+	);
+	assert.equal(
+		openFrameCoversHeld(page(), held([["t9", ms(99)]]), carried),
+		false,
+		"a block behind the page walks: #883's guarantee",
+	);
+	assert.equal(
+		openFrameCoversHeld(page(), held([["t9", ms(110)]]), carried),
+		false,
+		"a row AT the page's newest entry is a cut-at-a-cursor page's blind spot (#876)",
+	);
+	assert.equal(
+		openFrameCoversHeld(page(), held([["t9", ms(140)]]), carried),
+		false,
+		"and a row above it is the live tail, where rows journaled in between can be missing",
+	);
+	assert.equal(
+		openFrameCoversHeld(page(), held([["u1", ms(100)]]), carried),
+		true,
+		"a row the page CARRIES needs no placement at all - the overlap proof",
+	);
+	assert.equal(
+		openFrameCoversHeld(page(), held([["t9", ms(106)]]), new Set()),
+		true,
+		"the carried set is the caller's mapping and an id it does not name is placed by the clock",
+	);
+	/*
+	 * Every way the page can attest nothing. Each must answer false, because the
+	 * caller's alternative is the walk and a page it cannot place must not stand
+	 * one down.
+	 */
+	assert.equal(
+		openFrameCoversHeld(
+			page({ head_cut: true }),
+			held([["t9", ms(106)]]),
+			carried,
+		),
+		false,
+	);
+	assert.equal(
+		openFrameCoversHeld(
+			page({ runs_state: "building" }),
+			held([["t9", ms(106)]]),
+			carried,
+		),
+		false,
+	);
+	assert.equal(
+		openFrameCoversHeld(page({ runs: [] }), held([["t9", ms(106)]]), carried),
+		false,
+	);
+	assert.equal(
+		openFrameCoversHeld(null, held([["t9", ms(106)]]), carried),
+		false,
+	);
+	assert.equal(
+		openFrameCoversHeld(
+			page({
+				runs: [
+					{
+						run_key: "a1",
+						opening_user_id: "u2",
+						closing_answer_id: "a1",
+						settled: true,
+					},
+				],
+			}),
+			held([["t9", ms(106)]]),
+			carried,
+		),
+		false,
+		"a start the facts do not attest is no start",
+	);
+});
+
+/* --------- the two contract clarifications the core lane added ---------- */
+
+/*
+ * `docs/DESKTOP_API.md` states two consequences of the cut that a client gets
+ * wrong if it reads `head_cut` as "this page is incomplete" and `!head_cut` as
+ * "this page is whole". Both are asserted through the shipped adapter, so the
+ * rule is exercised by the same reading of the wire the app performs.
+ */
+
+test("clarity 1: a `head_cut` page whose facts cover the run is the FINAL layout, and the fact answers to any of the three ids", () => {
+	/*
+	 * The S3 fixture's real shape, captured from the core at `105411ca3f`: the
+	 * page is EXACTLY `limit` paintable rows - the run's head is hundreds of rows
+	 * above and the cut's budget refused to pay for it, so `head_cut: true` - and
+	 * `runs` states the 600-row run the page starts inside, in full.
+	 *
+	 * The contract's rule is that this page plus these facts ARE the final layout:
+	 * draw the bar from `action_count` / `worked_seconds` and do NOT walk. The
+	 * client's own key for the span it holds is the answer row the LOADED span
+	 * elects, which is the wire's `closing_answer_id` only while that answer is on
+	 * the page - hence the aliases: the fact is reachable under `run_key`, under
+	 * `opening_user_id` (a row the page does not carry at all) and under
+	 * `closing_answer_id`.
+	 */
+	const page = {
+		entries: [
+			{
+				id: "t9",
+				ts: 100,
+				type: "message",
+				payload: { kind: "message", role: "tool", tool_call_id: "c9" },
+			},
+			{
+				id: "a9",
+				ts: 101,
+				type: "message",
+				payload: { kind: "message", role: "assistant", stop_reason: "stop" },
+			},
+		],
+		has_more: true,
+		cursor_missing: false,
+		runs_state: "ready",
+		head_cut: true,
+		runs: [
+			{
+				run_key: "a9",
+				opening_user_id: "the-runs-own-opening-user-row",
+				closing_answer_id: "a9",
+				settled: true,
+				action_count: 300,
+				failed_count: 4,
+				worked_seconds: 5793.695,
+				complete: true,
+			},
+		],
+	};
+	const facts = openFrameFacts(page);
+	assert.ok(facts, "a `ready` page carries facts whatever `head_cut` says");
+	/*
+	 * `head_cut` is NOT reported on the facts (agent review round 1, F8): the one
+	 * reader that needs it reads the PAGE (`openFrameAttestedStart`), because the
+	 * question it answers - did the turn-aligned extension run? - is about the
+	 * page's own window, not about any run on it. A second copy here would be a
+	 * claim nothing checks.
+	 */
+	assert.equal(
+		"headCut" in facts,
+		false,
+		"the page's `head_cut` is not re-stated on the facts",
+	);
+	for (const id of ["a9", "the-runs-own-opening-user-row"]) {
+		const matched = facts.runs.get(id);
+		assert.ok(matched, `the fact is reachable by \`${id}\``);
+		assert.equal(matched.actions, 300, "and it is the same fact");
+		assert.equal(matched.failed, 4);
+		assert.equal(matched.workedSeconds, 5793.695);
+	}
+	const rows = [
+		tool("t9", { ts: 100, durationS: 5 }, "trace"),
+		answer("a9", { ts: 101 }),
+	];
+	const plan = collapsePlan(rows, { live: false, runFacts: facts.runs });
+	const run = plan.runs[0];
+	assert.equal(
+		run.segments[0].facts.actions,
+		300,
+		"the bar states the run's own count, not the one row the page carries",
+	);
+	assert.equal(run.segments[0].facts.durationS, 5793.695);
+	assert.equal(run.facts.actions, 300, "the turn's own figure moves with it");
+	assert.equal(
+		alignWalkRunKeyConfirmed(plan, null),
+		null,
+		"the walk is retired: the page and the facts ARE the final layout",
+	);
+	const noFacts = collapsePlan(rows, { live: false });
+	assert.equal(
+		alignWalkRunKeyConfirmed(noFacts, null),
+		"a9",
+		"and without the facts it is armed, so this test discriminates",
+	);
+});
+
+test("clarity 2: a page that begins at a STEER still states the run's whole figures", () => {
+	/*
+	 * A steer is an ordinary user row on the wire, and the client's own partition
+	 * folds it into the run it interrupted (`walkTurns`). So a page whose oldest
+	 * kept row IS the steer looks to this model exactly like a run that opens with
+	 * its own user row - while the run's real head, and every row of work above
+	 * the steer, are off-page. `opening_user_id` is how the model is told that the
+	 * row it opens at is not the run's opener; `head_cut: false` on such a page is
+	 * the contract's own warning that this case exists.
+	 */
+	const rows = [
+		user("the-steer", { ts: TS }),
+		tool("t1", { ts: TS + 1, durationS: 20 }),
+		tool("t2", { ts: TS + 2, durationS: 30 }, "trace"),
+		answer("a2", { ts: TS + 5_000 }),
+	];
+	const plain = planOf(rows).runs[0];
+	assert.equal(
+		plain.run.opensWithUserRow,
+		true,
+		"fixture: the client's own partition says this span opens a run",
+	);
+	assert.equal(
+		plain.segments[0].facts.actions,
+		2,
+		"and without facts the fragment reads as the whole turn",
+	);
+	const withFacts = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			["a2", fact(423, 8_639, { openingUserId: "the-runs-real-head" })],
+		]),
+	}).runs[0];
+	assert.equal(
+		withFacts.segments[0].facts.actions,
+		423,
+		"with them the bar states the run's own count, the steer row included",
+	);
+	assert.equal(withFacts.segments[0].facts.durationS, 8_639);
+	assert.equal(
+		withFacts.facts.actions,
+		423,
+		"and the turn's own figure moves with it",
+	);
+	/*
+	 * The discriminating direction: when the fact names the row the span DOES
+	 * open at, the span IS the run and its own rows are already exact - the
+	 * subtraction must reproduce them rather than double-count.
+	 */
+	const whole = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			["a2", fact(423, 8_639, { openingUserId: "the-steer" })],
+		]),
+	}).runs[0];
+	assert.equal(
+		whole.segments[0].facts.actions,
+		2,
+		"a run whose head is on hand keeps its loaded fold",
+	);
+	assert.deepEqual(
+		whole.facts,
+		plain.facts,
+		"and the turn's figures are untouched",
+	);
+});
+
+/* ===================================================================== *
+ * AGENT REVIEW ROUND 1 (`#925`): the three findings the model owns.
+ *
+ * F2 - the facts count rows the reader HIDES (`send`, peer receipts) when
+ *      `hide_cross_session` is on, so a subtraction from the server's total put
+ *      them back into the bar. F3 - the fact was looked up by the run's LIVE
+ *      key, so a follow-up after the answer re-keyed the run and the bar fell
+ *      back to a fragment, arming the post-paint walk. F4 - the attested start
+ *      read `runs[0]`, which the core publishes ONE RUN EARLY on purpose.
+ * ===================================================================== */
+
+test("a fact is corrected by the rows that arrived after its page - and only those (B2)", () => {
+	/*
+	 * THE PAGE'S FIGURES ARE A SNAPSHOT (agent review round 3, B2). A run that keeps
+	 * working while the pane is open - a wake, a job result, a peer receipt - hands
+	 * the client rows the published figure never saw, and the client held them with
+	 * the fact still stating the old total as exact: measured on a real-core page as
+	 * `30 / 60 s` with `partial: false` and the walk retired, for a run whose own
+	 * figure had already moved to `33 / 63 s`.
+	 *
+	 * THE TEST IS IDENTITY, and the identity is ROW KEYS (agent review round 4, B3):
+	 * a tool row keys `tool:<tool_call_id>`, so the page's own rows are named that way
+	 * - the page carried `tool:t1`, `tool:t2` and `a0`, and the wake's `tool:w1..w3`
+	 * are neither on it nor before it. The same fixture with the wake INSIDE the
+	 * page's keys is the control at the bottom; before B3's mapping the tool rows
+	 * there matched nothing and the control passed for the wrong reason.
+	 */
+	const page = {
+		ids: new Set(["tool:t1", "tool:t2", "a0"]),
+		newestKey: "a0",
+	};
+	const head = [
+		tool("tool:t1", { ts: TS, durationS: 20 }),
+		tool("tool:t2", { ts: TS + 1, durationS: 20 }),
+		answer("a0", { ts: TS + 2 }),
+	];
+	const wake = [
+		tool("tool:w1", { ts: TS + 3, durationS: 1 }),
+		tool("tool:w2", { ts: TS + 4, durationS: 1 }),
+		tool("tool:w3", { ts: TS + 5, durationS: 1 }),
+		answer("a1", { ts: TS + 6 }),
+	];
+	const withWake = collapsePlan([...head, ...wake], {
+		live: false,
+		runFacts: new Map([["a0", fact(30, 60, { closingAnswerId: "a1" })]]),
+		factPage: page,
+	}).runs[0];
+	assert.equal(withWake.factApplied, true, "the fact still applies");
+	assert.equal(
+		withWake.segments[0].facts.actions,
+		33,
+		"the wire's 30 plus the three calls that arrived after the page",
+	);
+	assert.equal(
+		withWake.segments[0].facts.durationS,
+		63,
+		"and their seconds: the run's own 60 plus the wake's 3",
+	);
+	assert.equal(
+		withWake.segments[0].facts.partial,
+		false,
+		"exact for the rows in hand, and the turn is not live",
+	);
+	/*
+	 * A ROW THE WIRE COULD NOT MEASURE makes the sum a guess, so the whole fact is
+	 * refused: the fold stands, the `+` stays, and the walk keeps its reason to run.
+	 */
+	const unmeasured = collapsePlan(
+		[
+			...head,
+			tool("tool:w1", { ts: TS + 3, durationS: 1 }),
+			tool("tool:w2", { ts: TS + 4 }),
+			tool("tool:w3", { ts: TS + 5, durationS: 1 }),
+			answer("a1", { ts: TS + 6 }),
+		],
+		{
+			live: false,
+			runFacts: new Map([["a0", fact(30, 60, { closingAnswerId: "a1" })]]),
+			factPage: page,
+		},
+	).runs[0];
+	assert.equal(
+		unmeasured.factApplied,
+		false,
+		"an unmeasurable row refuses the fact",
+	);
+	assert.equal(unmeasured.segments[0].facts.actions, 5, "the rows in hand");
+	assert.equal(unmeasured.segments[0].facts.partial, true, "and their `+`");
+	/*
+	 * THE CONTROL: the same three wake rows, this time INSIDE the page's own keys.
+	 * They are already in the wire's figure, so nothing is added - `30`, not `33`.
+	 * It is a GUARD against a future identity-blind addition, NOT a discriminator for
+	 * round 2's B1: the reviewer ran it against the pre-B1 head and it passed there
+	 * too. The arm that discriminates is F3's ("a woken run states the wire's own
+	 * totals, and its re-key keeps the fact") - agent review round 4, n3.
+	 */
+	const onPage = collapsePlan([...head, ...wake], {
+		live: false,
+		runFacts: new Map([["a0", fact(30, 60, { closingAnswerId: "a1" })]]),
+		factPage: {
+			ids: new Set([
+				"tool:t1",
+				"tool:t2",
+				"a0",
+				"tool:w1",
+				"tool:w2",
+				"tool:w3",
+				"a1",
+			]),
+			newestKey: "a1",
+		},
+	}).runs[0];
+	assert.equal(
+		onPage.segments[0].facts.actions,
+		30,
+		"a wake the page carried is already in the wire's figure",
+	);
+});
+
+test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
+	/*
+	 * THE INVARIANT (agent review round 4, B3): a page applied with its OWN facts and
+	 * its OWN identity describes exactly the rows it carried, so the plan must add
+	 * NOTHING and state the wire's own figures. It failed on every shape whose page
+	 * carried tool rows after its newest MATCHED row: the identity held ENTRY ids
+	 * while the client's rows key `tool:<tool_call_id>`, so the exclusion arm matched
+	 * no tool row, the watermark fell back to an older row, and every tool row after
+	 * it was added - the reviewer measured `12 / 33 s` stated where the core published
+	 * `9 / 24 s`.
+	 *
+	 * WHAT THIS TEST DISCRIMINATES (agent review rounds 5-7, R5-m1, R6-1, R7-1): the
+	 * page's NEWEST carried row has to be one the old rule could not match, or the old
+	 * watermark lands on the last row anyway and nothing inflates. So the shape is:
+	 * six tool rounds, a `completion_attention` marker anchored to a mid-run row, the
+	 * closing statement, and then ONE MORE TOOL ROUND WHOSE CLOCK IS AFTER THE
+	 * STATEMENT - the page ends on a tool row, which is the runtime's woken shape. (The
+	 * `031-033.5` against `030` capture for the round-4 real page is the round-6
+	 * review's, quoted on this PR; it is not in the repository, so nothing here rests
+	 * on it.)
+	 *
+	 * THE CLOCK IS THE POINT (R6-1): a page's entry order is not the row order - the
+	 * reducer merges a page in TIME order - so a trailing round stamped EARLIER than
+	 * the statement is a back-fill that leaves the statement last, the old watermark on
+	 * it, and nothing to discriminate. Stamped after it, the row list ends on
+	 * `tool:call_7`.
+	 *
+	 * A RUN THAT ENDS ON A TOOL ROW HAS NO ELECTED ANSWER (R7-1), and that is what the
+	 * figures below state: a step row after the statement with no trigger between them
+	 * means the statement is not a close, `cycles` is empty and `electAnswer` refuses,
+	 * so every span is pre-answer - the ladder SUMS the spans and, by the cut span's own
+	 * construction (cut = the fact's totals minus the others), that sum IS the wire's
+	 * own `7 / 21 s`. Same rule as F3's arm and `turn-segments.test.mjs`'s "a run that
+	 * ends on a tool row elects nothing".
+	 *
+	 * AND THAT IS STILL A DISCRIMINATOR: at `806416cc73f` the watermark is the
+	 * statement's row in the raw-entry-id set, so the appended list is exactly
+	 * `[tool:call_7]`, the fact inflates to `8 / 24`, and - with no answer elected there
+	 * either, so nothing to subtract - the ladder states `8 / 24`. If the election
+	 * reading is wrong and an answer IS elected, the after-answer span's own row comes
+	 * back out and the pair reads `7 / 21` there against `6 / 18` here; either way the
+	 * arm fails at the old head and passes here.
+	 */
+	/*
+	 * `at` IS THE ENTRY'S CLOCK, and it is a parameter because the row order is the
+	 * TIME order (R6-1): a round appended to the page after the closing statement must
+	 * be stamped after it, or it merges in where its ts says and the page's newest row
+	 * stays the statement.
+	 */
+	const round = (n, at = 100 + n) => [
+		{
+			id: `a${n}`,
+			ts: at,
+			type: "message",
+			payload: {
+				kind: "message",
+				role: "assistant",
+				content: [{ text: "" }],
+				tool_calls: [
+					{
+						id: `call_${n}`,
+						name: "bash",
+						arguments: { command: `step ${n}` },
+					},
+				],
+				stop_reason: "toolUse",
+			},
+		},
+		{
+			id: `t${n}`,
+			ts: at + 0.5,
+			type: "message",
+			payload: {
+				kind: "message",
+				role: "tool",
+				content: [{ text: `ok ${n}` }],
+				tool_call_id: `call_${n}`,
+				tool_name: "bash",
+				provider_payload: { duration_s: 3 },
+			},
+		},
+	];
+	const entries = [
+		...round(1),
+		...round(2),
+		...round(3),
+		...round(4),
+		...round(5),
+		...round(6),
+		{
+			id: "m1",
+			ts: 120,
+			type: "custom",
+			payload: {
+				custom_type: "completion_attention",
+				details: {
+					token: "tok-b3",
+					kind: "interrupted",
+					eligible: true,
+					anchor: "a4",
+				},
+			},
+		},
+		{
+			id: "ans",
+			ts: 130,
+			type: "message",
+			payload: {
+				kind: "message",
+				role: "assistant",
+				content: [{ text: "done" }],
+				stop_reason: "endTurn",
+			},
+		},
+		/*
+		 * THE TRAILING ROUND is what makes this a discriminator (R5-m1), and its CLOCK is
+		 * what makes the trailing-ness real (R6-1): the statement is stamped 130 and this
+		 * round 140, so the row list ends on `tool:call_7` and the old entry-id rule's last
+		 * match is the statement, leaving exactly this round appended.
+		 */
+		...round(7, 140),
+	];
+	const page = {
+		entries,
+		has_more: true,
+		cursor_missing: false,
+		head_cut: true,
+		runs_state: "ready",
+		runs: [
+			{
+				run_key: "ans",
+				opening_user_id: "u-off-page",
+				closing_answer_id: "ans",
+				settled: true,
+				outcome: "interrupted",
+				action_count: 7,
+				failed_count: 0,
+				worked_seconds: 21,
+				complete: true,
+			},
+		],
+	};
+	const facts = openFrameFacts(page);
+	assert.ok(facts, "the page carries facts");
+	/*
+	 * The identity is what the page's rows KEY, not what its entries are called: the
+	 * seven tool rows by call id, the marker by its anchor. The assistant entries that
+	 * carry the calls fall back to their own ids - keys no row uses, since the reducer
+	 * merges a call pair into one tool row - so they are in the set and harmless.
+	 */
+	assert.deepEqual(
+		[...facts.page.ids].sort(),
+		[
+			"a1",
+			"a2",
+			"a3",
+			"a4",
+			"a5",
+			"a6",
+			"a7",
+			"ans",
+			"tool:call_1",
+			"tool:call_2",
+			"tool:call_3",
+			"tool:call_4",
+			"tool:call_5",
+			"tool:call_6",
+			"tool:call_7",
+		],
+		"the carried set is row keys: tool calls by call id, the marker by its anchor",
+	);
+	const rows = buildRows(applyHistoryPage(EMPTY_TRANSCRIPT, page).records, []);
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: facts.runs,
+		factPage: facts.page,
+	});
+	const run = plan.runs[0];
+	assert.equal(run.factApplied, true, "the page's own facts apply");
+	/*
+	 * NOTHING IS ADDED, AND WITH NO ANSWER ELECTED THE LADDER IS THE WIRE'S OWN
+	 * (R7-1): every span is pre-answer, so the figures here are the wire's `7 / 21 s`,
+	 * and the discrimination lives at `806416cc73f` - where the same shape reads
+	 * `8 / 24`, the appended `tool:call_7` held in the fact.
+	 */
+	assert.equal(
+		run.facts.actions,
+		7,
+		"the wire's own total: a run ending on a tool row elects no answer to subtract",
+	);
+	assert.equal(run.facts.durationS, 21, "and its seconds: seven rounds of 3 s");
+	assert.equal(
+		run.facts.partial,
+		false,
+		"a served page is exact, and the turn is not live",
+	);
+	/*
+	 * A LIVE PANE WITH APPENDED ROWS wears the `+` on BOTH figures (agent review round
+	 * 5, n2: the ladder's term had no arm). The carried set is the page's own minus two
+	 * trailing tool roounds, so those two are exactly what `factAppendedRows` finds; the
+	 * correction is exact for the rows in hand, but a streaming turn cannot know it has
+	 * them all, and the ladder a future reader inherits must not disagree with the bars.
+	 */
+	const trimmed = new Set(facts.page.ids);
+	trimmed.delete("tool:call_6");
+	trimmed.delete("tool:call_7");
+	const liveAppended = collapsePlan(rows, {
+		live: true,
+		runFacts: facts.runs,
+		factPage: { ids: trimmed, newestKey: "tool:call_5" },
+	}).runs[0];
+	assert.equal(
+		liveAppended.segments[0].facts.partial,
+		true,
+		"the bar says `+` while a live turn is corrected (B2's live term)",
+	);
+	assert.equal(liveAppended.facts.partial, true, "and the ladder agrees (m2)");
+});
+
+test("a fact is split by the hidden cross-session work, or refused (F2)", () => {
+	const rows = [
+		tool("t1", { ts: TS, durationS: 20 }),
+		/* The `send` row itself is already GONE: the caller filters the plan's rows
+		 * (`visibleRecords(records, hide)`), which is exactly why the client cannot
+		 * do this subtraction itself - only the server counted the row it never
+		 * sent. */
+		tool("t2", { ts: TS + 1, durationS: 30 }),
+		answer("a1", { ts: TS + 5_000 }),
+	];
+	/*
+	 * Shown, the server's totals ARE the reader's: three rows measured, nothing
+	 * hidden, nothing to subtract.
+	 */
+	const shown = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([["a1", fact(3, 55, { crossSessionActions: 1 })]]),
+	}).runs[0];
+	assert.equal(
+		shown.segments[0].facts.actions,
+		3,
+		"with the setting off, the fact's own count stands",
+	);
+	/*
+	 * Hidden, the same fact must lose the hidden row - and the bar states what is
+	 * on screen, which is the invariant `hidden cross-session rows never reach the
+	 * bar` pins for the loaded fold.
+	 */
+	const hidden = collapsePlan(rows, {
+		live: false,
+		hideCrossSession: true,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(3, 55, { crossSessionActions: 1, crossSessionWorkedSeconds: 5 }),
+			],
+		]),
+	}).runs[0];
+	assert.equal(
+		hidden.segments[0].facts.actions,
+		2,
+		"the visible span's count, not the server's three",
+	);
+	assert.equal(
+		hidden.segments[0].facts.durationS,
+		50,
+		"and the visible worked time",
+	);
+	assert.equal(hidden.factApplied, true, "the fact was applied, split");
+	/*
+	 * NO SPLIT FROM THE WIRE IS A REFUSAL, not a zero: the count may include rows
+	 * this reader never receives, so the loaded fold stands, the `+` stays, and
+	 * the walk keeps something to complete.
+	 */
+	const unsplit = collapsePlan(rows, {
+		live: false,
+		hideCrossSession: true,
+		runFacts: new Map([["a1", fact(3, 55)]]),
+	}).runs[0];
+	assert.equal(unsplit.factApplied, false, "no split, no fact");
+	assert.equal(
+		unsplit.segments[0].facts.actions,
+		2,
+		"the loaded rows' own count",
+	);
+	assert.equal(unsplit.segments[0].facts.partial, true, "with the `+` intact");
+	/*
+	 * AND A DURATION THAT CANNOT BE SPLIT IS DROPPED, count kept: the count's
+	 * subtrahend is known (one hidden row), the seconds' is not. `hidden === 0`
+	 * is the other half - nothing hidden means nothing to split, so the seconds
+	 * stand.
+	 */
+	const halfSplit = collapsePlan(rows, {
+		live: false,
+		hideCrossSession: true,
+		runFacts: new Map([["a1", fact(3, 55, { crossSessionActions: 1 })]]),
+	}).runs[0];
+	assert.equal(halfSplit.segments[0].facts.actions, 2, "the count splits");
+	assert.equal(
+		halfSplit.segments[0].facts.durationS,
+		null,
+		"and the duration refuses rather than including hidden work",
+	);
+	const noneHidden = collapsePlan(rows, {
+		live: false,
+		hideCrossSession: true,
+		runFacts: new Map([["a1", fact(2, 50, { crossSessionActions: 0 })]]),
+	}).runs[0];
+	assert.equal(
+		noneHidden.segments[0].facts.durationS,
+		50,
+		"nothing hidden means nothing to split, so the seconds stand",
+	);
+});
+
+test("a woken run states the wire's own totals, and its re-key keeps the fact (F3, B1)", () => {
+	/*
+	 * THE OPERATOR'S WOKEN-RUN SHAPE, which is what round 2's B1 measured. A run
+	 * that answered and was then woken keeps working, and THE CORE COUNTS THAT
+	 * WORK: a wake, a job result or a peer follow-up continues the run
+	 * (`transcript_index._track_run`'s non-user arm never consults
+	 * `_run_closed()`, which is the very reason a run re-keys at all), and
+	 * `_emit_runs` publishes `action_count` untrimmed. #2102's own F4 note
+	 * measures it: a woken run reports `settled: true, actions: 1` and later
+	 * `actions: 3` under the SAME key. So the wire's figures are the run's totals
+	 * as published, and `closing_answer_id` marks where the ANSWER was elected,
+	 * not where the counting stopped.
+	 */
+	const rows = [];
+	for (let i = 1; i <= 30; i += 1)
+		rows.push(tool(`x${i}`, { ts: TS + i, durationS: 2 }));
+	rows.push(answer("a0", { ts: TS + 100 }));
+	/* The wake's own three calls: no user row, so the run continues - and it now
+	 * ENDS on a tool row, which is the case `electAnswer` refuses to call an
+	 * answer (`transcript-rows.ts`), so the run's key moves off `a0`. */
+	for (let i = 1; i <= 3; i += 1)
+		rows.push(tool(`y${i}`, { ts: TS + 200 + i, durationS: 1 }));
+	const facts = new Map([
+		[
+			"a0",
+			fact(33, 63, {
+				closingAnswerId: "a0",
+				openingUserId: "the-run-head",
+				failed: 1,
+			}),
+		],
+	]);
+	const plan = collapsePlan(rows, { live: false, runFacts: facts });
+	const run = plan.runs[0];
+	assert.equal(
+		run.key,
+		"y3",
+		"the run re-keys to its newest row once it has no closing answer",
+	);
+	assert.equal(
+		run.factApplied,
+		true,
+		"and the fact is still found, by the run's own rows rather than its key",
+	);
+	/*
+	 * THE FIGURES, and this is B1: the wire's `action_count` (33) ALREADY includes
+	 * the three woken calls, so the head-cut bar must state its own share of that
+	 * figure - 30, the pre-answer calls; the other three sit in the follow-up bar
+	 * and are subtracted back out - and NOT 33 + 3 = 36. The earlier addition
+	 * painted 36 with `partial: false`, i.e. a wrong number presented as exact,
+	 * with the walk retired so nothing could ever correct it.
+	 */
+	assert.equal(
+		run.segments.length,
+		1,
+		"no pinned row separates the wake's calls, so the run is ONE span",
+	);
+	assert.equal(
+		run.segments[0].facts.actions,
+		33,
+		"the bar states the wire's own count - not 36: the tail is NOT added again",
+	);
+	assert.equal(
+		run.segments[0].facts.durationS,
+		63,
+		"and the wire's own seconds, not 66",
+	);
+	assert.equal(
+		run.segments[0].facts.partial,
+		false,
+		"exact, because the wire's figure covers the woken work",
+	);
+	assert.equal(
+		run.facts.actions,
+		33,
+		"the turn's figure is the same 33, and the bars still sum to it (D1)",
+	);
+	assert.equal(
+		run.facts.failed,
+		1,
+		"the wire's failures, not added a second time (round 2, B1)",
+	);
+	/*
+	 * THE SAME RUN WITH A PINNED ROW between the answer and the wake's calls: the
+	 * partition now splits the run, and the subtraction that has always run for
+	 * siblings takes the follow-up bar's own rows back out - so the head-cut bar
+	 * states 30, the follow-up bar 3, and the two still sum to the wire's 33.
+	 */
+	const split = [
+		tool("t1", { ts: TS, durationS: 10 }),
+		answer("a1", { ts: TS + 5_000 }),
+		row("w1", "wake", { text: "a wake delivery" }),
+		tool("t2", { ts: TS + 6_000, durationS: 5 }),
+		tool("t3", { ts: TS + 7_000, durationS: 5 }),
+	];
+	const splitPlan = collapsePlan(split, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(3, 20, { closingAnswerId: "a1", openingUserId: "the-run-head" }),
+			],
+		]),
+	}).runs[0];
+	assert.equal(
+		splitPlan.segments[0].facts.actions,
+		1,
+		"the head-cut bar states the run's count minus the follow-up bar's rows",
+	);
+	assert.equal(
+		splitPlan.segments[0].facts.actions + splitPlan.segments[1].facts.actions,
+		3,
+		"and the bars sum to the wire's own figure",
+	);
+	/*
+	 * AND THE WALK IS RETIRED FOR THAT RE-KEYED RUN: the whole point of keeping the
+	 * fact attached is that the bar is exact, so no read is owed - which is what
+	 * the base did by WALKING (the walk this lane retired).
+	 */
+	assert.equal(
+		alignWalkRunKeyConfirmed(plan, null),
+		null,
+		"the re-keyed run's bar is whole, so the walk stands down",
+	);
+});
+
+test("a figure below the rows the bar itself hides keeps its `+` (M2)", () => {
+	/*
+	 * THE FLOOR CHECK (agent review round 2, M2). The subtraction trusts the wire's
+	 * split, and the one known divergence is a `send` whose body the index dropped:
+	 * `transcript_index` counts it in `action_count` BEFORE the `body_dropped`
+	 * branch and increments `cross_actions` inside that branch's `else`, so it is
+	 * in the total, absent from the split, and still hidden by this reader's own
+	 * filter. The wire marks that row's run `complete: false` (a floor), which is
+	 * the primary marker; this check is the client's own net for a figure that
+	 * cannot be the span's total whatever the wire says - a count below the number
+	 * of tool rows the bar itself hides.
+	 */
+	const rows = [
+		tool("t1", { ts: TS, durationS: 10 }),
+		tool("t2", { ts: TS + 1, durationS: 10 }),
+		tool("t3", { ts: TS + 2, durationS: 10 }),
+		answer("a1", { ts: TS + 5_000 }),
+	];
+	const short = collapsePlan(rows, {
+		live: false,
+		hideCrossSession: true,
+		// The server counted five tool rows and split three of them away: the bar
+		// would state 2 while hiding the three it has in hand, which cannot be right.
+		runFacts: new Map([
+			[
+				"a1",
+				fact(5, 50, {
+					crossSessionActions: 3,
+					crossSessionWorkedSeconds: 30,
+				}),
+			],
+		]),
+	}).runs[0];
+	assert.equal(short.factApplied, true, "the fact applies");
+	assert.equal(
+		short.segments[0].facts.actions,
+		3,
+		/*
+		 * THE LARGER FIGURE (agent review round 3, m1): the wire's 5 minus its split of
+		 * 3 is 2, which is BELOW the three tool rows this bar hides - a figure the
+		 * bar's own rows already contradict, stated as `2+`, a floor nothing can
+		 * complete while the fact keeps the walk retired. The bar states the rows in
+		 * hand instead, and still says it is not the total.
+		 */
+		"the rows in hand, which the wire's figure cannot undercut",
+	);
+	assert.equal(
+		short.segments[0].facts.partial,
+		true,
+		"but the bar hides three rows, so the figure stays a floor",
+	);
+	assert.equal(
+		short.facts.partial,
+		true,
+		"and the run-level figure says the same",
+	);
+	/*
+	 * The discriminating direction: a figure that covers the rows the bar hides is
+	 * exact, and keeps the fact's own duration.
+	 */
+	const exact = collapsePlan(rows, {
+		live: false,
+		hideCrossSession: true,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(4, 40, {
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	}).runs[0];
+	assert.equal(
+		exact.segments[0].facts.actions,
+		3,
+		"4 - 1 hidden = the three in hand",
+	);
+	assert.equal(
+		exact.segments[0].facts.partial,
+		false,
+		"a figure that covers its own rows is exact",
+	);
+	assert.equal(
+		exact.segments[0].facts.durationS,
+		30,
+		"and keeps the split duration",
+	);
+});
+
+test("openFrameAttestedStart finds the run the page BEGINS in, one run early or not (F4)", () => {
+	/*
+	 * THE CORE'S OWN SHAPE. `publish_runs` starts one run early on purpose
+	 * (`test_publish_runs_starts_one_run_early_so_a_straddle_is_covered`,
+	 * `open_frame.py`): `runs[0]` is the run BEFORE the page, because the page's
+	 * window can begin inside it and a reader that knew only the runs starting on
+	 * the page would have nowhere to hang that straddle. Reading `runs[0]` here
+	 * made the reconciliation arm unreachable against the real backend - the
+	 * failure is safe, but the arm never fired.
+	 */
+	const entries = [
+		{ id: "u2", ts: 200, type: "message", payload: {} },
+		{ id: "t1", ts: 201, type: "tool", payload: {} },
+	];
+	const runs = [
+		{
+			run_key: "a0",
+			opening_user_id: "u1",
+			closing_answer_id: "a0",
+			settled: true,
+			action_count: 1,
+		},
+		{
+			run_key: "a2",
+			opening_user_id: "u2",
+			closing_answer_id: "a2",
+			settled: true,
+			action_count: 1,
+		},
+	];
+	const early = openFrameAttestedStart({
+		entries,
+		runs,
+		runs_state: "ready",
+		head_cut: false,
+		has_more: true,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		early,
+		{ id: "u2", tsMs: 200_000 },
+		"the run whose opening row is the page's first entry, not the one before it",
+	);
+	/*
+	 * The exact-window shape (what the bench's stub served) attests the same
+	 * start, so both readings of the wire agree - and a page whose first entry is
+	 * NO run's opening row still attests nothing.
+	 */
+	const exact = openFrameAttestedStart({
+		entries,
+		runs: [runs[1]],
+		runs_state: "ready",
+		head_cut: false,
+		has_more: true,
+		cursor_missing: false,
+	});
+	assert.deepEqual(exact, { id: "u2", tsMs: 200_000 });
+	assert.equal(
+		openFrameAttestedStart({
+			entries: [{ id: "t1", ts: 201, type: "tool", payload: {} }],
+			runs,
+			runs_state: "ready",
+			head_cut: false,
+			has_more: true,
+			cursor_missing: false,
+		}),
+		null,
+		"a page that begins inside a run attests no run boundary",
 	);
 });

@@ -72,6 +72,7 @@ export function desktopProxyPlugin(): Plugin {
 					const epoch = requestUrl.searchParams.get("epoch") ?? "";
 					const frontendReplace =
 						requestUrl.searchParams.get("frontend_replace") ?? "";
+					const openFrame = requestUrl.searchParams.get("open_frame") ?? "";
 					if (epoch && !/^[a-zA-Z0-9_-]{1,128}$/.test(epoch)) {
 						res.statusCode = 422;
 						res.setHeader("Content-Type", "application/json");
@@ -117,6 +118,13 @@ export function desktopProxyPlugin(): Plugin {
 					 * request shape it always did.
 					 */
 					if (frontendReplace === "1") query.set("frontend_replace", "1");
+					/*
+					 * The open-frame negotiation, forwarded on the same rule: it is the
+					 * RENDERER's statement that it reads the page the flag governs, so a
+					 * proxy that claimed it for a stale bundle would hand that bundle a
+					 * page shape it does not read.
+					 */
+					if (openFrame === "1") query.set("open_frame", "1");
 					const suffix = query.size > 0 ? `?${query}` : "";
 					/*
 					 * THE UPSTREAM DIES WITH THE BROWSER'S SOCKET. Without this the fetch

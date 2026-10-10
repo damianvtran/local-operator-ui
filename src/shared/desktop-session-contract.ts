@@ -1374,6 +1374,92 @@ export type DesktopHistoryPage = {
 	}>;
 	has_more: boolean;
 	cursor_missing: boolean;
+	/*
+	 * THE OPEN FRAME (docs/DESKTOP_API.md, "The open frame"), present on a page
+	 * read with `open_frame=1` from a backend that advertises the capability.
+	 * ALL THREE ARE OPTIONAL, and absent is the only shape an older backend can
+	 * answer: the renderer's rule is that `unsupported` and an absent `runs` are
+	 * the same fact (draw today's page, keep its own condensation), so every
+	 * reader of these fields starts from their absence. A page read WITHOUT the
+	 * flag cannot carry them at all, which is why the flag is gated on the
+	 * capability rather than sent always.
+	 */
+	runs_state?: DesktopOpenFrameRunsState;
+	runs?: DesktopOpenFrameRun[];
+	/*
+	 * Whether the turn-aligned extension was REFUSED by the hard cap, so the
+	 * page is the plain `limit`-row tail and the oldest run on it has no opening
+	 * user row. Read as what it is: `false` means "no cap refused the
+	 * extension", NOT "the page holds whole runs".
+	 */
+	head_cut?: boolean;
+};
+/**
+ * Where an open-frame page's per-run facts came from.
+ *
+ * `ready` is the only value that carries `runs`. `building` means no fresh
+ * index was resident, so a refresh was started and THIS answer carries none -
+ * the very next frame may. `unavailable` means no index could be built,
+ * `unsupported` means the page's source cannot carry facts (a peer's
+ * conversation; the owner serves that page). A renderer MUST treat
+ * `unsupported` and an absent `runs` alike, and never WAIT on any of them:
+ * facts refine a bar, they never gate a paint.
+ */
+export type DesktopOpenFrameRunsState =
+	| "ready"
+	| "building"
+	| "unavailable"
+	| "unsupported";
+/**
+ * One settled run's facts, as an open-frame page states them.
+ *
+ * `run_key` is THE JOIN: the backend states it in this renderer's own
+ * vocabulary - the run's closing answer id, or its last row's id while it has
+ * none - which is exactly `TurnRun.key` (`transcript-rows.ts`), so a fact is
+ * matched to a plan run by that field and by nothing positional.
+ *
+ * THE COUNTS ARE FILLED ONLY FOR A SETTLED RUN. A live tail gets
+ * `settled: false` and no counts, because a number taken mid-turn is a number
+ * the client would have to correct - the after-paint change this whole contract
+ * exists to remove. `complete: false` says the index dropped a row body inside
+ * the run, so a count is a LOWER BOUND (the bar's `N+`).
+ */
+export type DesktopOpenFrameRun = {
+	run_key: string;
+	opening_user_id: string | null;
+	closing_answer_id: string | null;
+	settled: boolean;
+	/** `complete` / `error` / `interrupted` / `open` / `null`: the rail's vocabulary. */
+	outcome?: string | null;
+	action_count?: number | null;
+	failed_count?: number | null;
+	worked_seconds?: number | null;
+	started_ts?: number | null;
+	ended_ts?: number | null;
+	/** False: a count below is a lower bound, not the run's figure. */
+	complete?: boolean;
+	/**
+	 * Tool rows in this run the renderer HIDES under `hide_cross_session` (a
+	 * `send` call, a peer receipt), or null while the backend does not state the
+	 * split.
+	 *
+	 * WHY THE SERVER OWES THIS SPLIT: `action_count` counts every tool row in the
+	 * run, and a renderer with the setting on plans over `visibleRecords(records,
+	 * true)`, which drops the cross-session rows before they reach it. Without the
+	 * split, a bar that takes the fact states a count including rows it hides
+	 * (measured on the reviewer's probe: `3 actions` where the visible span holds
+	 * `2`). The subtrahend is the server's to state because only it counts rows the
+	 * renderer never receives. A reader that has the setting on and no field here
+	 * must NOT use the count - the fallback is the honest answer.
+	 */
+	cross_session_action_count?: number | null;
+	/**
+	 * The hidden rows' worked seconds, when the backend states them. A client
+	 * keeps a fact's duration under `hide_cross_session` only when this is stated
+	 * or `cross_session_action_count` is zero; otherwise the duration would include
+	 * work the bar does not show.
+	 */
+	cross_session_worked_seconds?: number | null;
 };
 /**
  * One page of a SUBAGENT's transcript (`docs/run-sidebar.md` § 10.1).

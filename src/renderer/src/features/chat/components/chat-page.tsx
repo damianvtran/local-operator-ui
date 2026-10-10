@@ -238,6 +238,16 @@ function SessionPanel({
 	 */
 	const streamId = sessionId ?? draft?.warmId;
 	/*
+	 * Read BEFORE the stream, because the stream is the first thing that needs it:
+	 * the open-frame negotiation is a request flag, and the open is the request
+	 * that matters most (`docs/DESKTOP_API.md`, "The open frame"). Cached with a
+	 * 60 s staleTime and resolved by the shell long before a conversation can be
+	 * pressed, so this is a store read rather than a request - which is why the
+	 * value is correct on this pane's FIRST render and not one commit later, when
+	 * the subscription would already have gone out.
+	 */
+	const panelCapabilities = useDesktopCapabilities();
+	/*
 	 * The third answer is the one only this pane can give: whether `streamId`
 	 * names a session a page can be owed for, or a DRAFT's bridge subscription
 	 * (`useCanonicalSessionStream`'s own note carries why the hook cannot tell
@@ -255,11 +265,23 @@ function SessionPanel({
 		 * rule; the value is the one this panel already computed for its key.
 		 */
 		identity,
+		/*
+		 * THE REST OF THE PANE'S NEGOTIATION, as one object (agent review round 1,
+		 * F1): `identity` stays the LAST POSITIONAL argument, which is what
+		 * `warm-session.test.mjs` pins and what the echo registry's keying actually
+		 * depends on. Future inputs join this object rather than shifting a fifth
+		 * positional argument past the identity every call site repeats.
+		 */
+		{
+			/*
+			 * Fail-closed: an unanswered capability leaves today's page exactly as it
+			 * was, and the pane's later `/history` reads pick the flag up the moment the
+			 * answer is there.
+			 */
+			openFrame: desktopFeatureEnabled(panelCapabilities.data, "open_frame"),
+		},
 	);
 	useDesktopWatchLease(streamId, canonical.subscriptionId);
-	// Read here rather than threaded from the page: the query is cached with a
-	// 60 s staleTime, so this is a store read and not a second request.
-	const panelCapabilities = useDesktopCapabilities();
 	// Fired from the composer's first keystroke, never from this mount - see
 	// `useWarmSession` for why browsing must not spawn runtimes.
 	const warm = useWarmSession(sessionId, panelCapabilities.data);

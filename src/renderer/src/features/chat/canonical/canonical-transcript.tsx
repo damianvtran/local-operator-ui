@@ -145,6 +145,7 @@ import type { LoadOlderOutcome } from "./load-older";
 import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
+import type { OpenFrameFacts } from "./open-frame";
 import {
 	type ProviderErrorAction,
 	providerErrorGuidance,
@@ -474,6 +475,20 @@ export type CanonicalTranscriptProps = {
 	 * always has.
 	 */
 	olderTransportDown?: boolean;
+	/**
+	 * The open frame's facts for this pane's page (`open-frame.ts`), or nothing.
+	 *
+	 * WHAT IT REPLACES, and it is the whole point of this prop: condensation here
+	 * is a pure function of the LOADED rows, so a settled run whose head lies
+	 * above the page condenses from a fragment - a minimum count, no duration -
+	 * and this pane then spends the next several hundred milliseconds growing the
+	 * bar one `/history` page at a time (the align walk below). With the facts,
+	 * the bar states the turn's own figure on the frame it is first seen, and the
+	 * walk stands down for that run. Absent is every old backend, every
+	 * `building` answer, every peer's conversation and the child reader: today's
+	 * behaviour, exactly.
+	 */
+	openFrame?: OpenFrameFacts | null;
 	containerRef: RefObject<HTMLDivElement>;
 	isSmallView: boolean;
 
@@ -2592,6 +2607,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	olderFailed,
 	onRetryHydration,
 	olderTransportDown,
+	openFrame,
 	containerRef,
 	isSmallView,
 	status,
@@ -3848,8 +3864,40 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * pattern `parseSidebarView` sets one surface over).
 			 */
 			mode: parseTranscriptDisplayMode(transcriptDisplayMode),
+			/*
+			 * The server's facts (see the prop): in the SAME object the plan and its
+			 * input signature both read, so the bar's text and the memo key that
+			 * decides when it is recomputed cannot disagree about what the facts are.
+			 * `undefined` rather than an empty map for "no facts", so an absent
+			 * `openFrame` leaves the option exactly as absent as it was.
+			 */
+			runFacts: openFrame?.runs,
+			/*
+			 * THE PAGE THOSE FACTS CAME WITH (agent review round 3, B2): the identity the
+			 * plan needs to tell a row the wire's figure already counted from one that
+			 * arrived after the page was published. In the same options object as the
+			 * facts because the two are one reading of one page, and `undefined` for a
+			 * pane with no facts at all keeps the option exactly as absent as it was.
+			 */
+			factPage: openFrame?.page,
+			/*
+			 * WHETHER THIS READER HIDES CROSS-SESSION ROWS (agent review round 1, F2).
+			 * The plan's rows are already filtered by `visibleRecords(…, hide)` above;
+			 * this tells the model that the SERVER's totals count rows this reader does
+			 * not have on screen, so a fact's count cannot be taken as-is and, where it
+			 * cannot be split, must not be taken at all.
+			 */
+			hideCrossSession: hide,
 		}),
-		[focusedRecordId, gate, openRuns, transcriptDisplayMode, working],
+		[
+			focusedRecordId,
+			gate,
+			hide,
+			openFrame,
+			openRuns,
+			transcriptDisplayMode,
+			working,
+		],
 	);
 	/*
 	 * THE PLAN'S INPUT SIGNATURE (UI perf audit P1; PR-6). The rows half is the

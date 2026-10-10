@@ -76,6 +76,7 @@ import {
 } from "../ask-queue";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
+import { openFrameFacts } from "../canonical/open-frame";
 import {
 	canonicalTranscriptSpeaks,
 	canonicalTranscriptTerminal,
@@ -982,6 +983,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 */
 		const stoppingShown = stoppingTurn && canonical?.turnAlive === true;
 		const terminalPane = canonicalTerminal(canonical, gone);
+		/*
+		 * THE OPEN FRAME'S FACTS, read off the page this pane's stream holds (see
+		 * `open-frame.ts`). Memoised on the PAGE rather than derived at the JSX, so
+		 * the transcript's collapse inputs move when the facts move and not once per
+		 * render - the difference between one re-plan when the facts land and a
+		 * fresh inputs object on every keystroke in the composer beside it.
+		 *
+		 * `null` (an old backend, a `building` answer, a peer's conversation) is the
+		 * same value as "no facts" everywhere it is read, and the pane keeps today's
+		 * condensation, align walk included.
+		 */
+		const openFrameForPane = useMemo(
+			() => openFrameFacts(canonical?.view.history),
+			[canonical?.view.history],
+		);
 		const canonicalStop = useMemo(
 			() =>
 				canonical?.stopAvailable && !terminalPane
@@ -2205,6 +2221,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									<CanonicalTranscript
 										frontend={canonical.view.frontend}
 										transcript={canonical.view.transcript}
+										openFrame={openFrameForPane}
 										undelivered={undeliveredOnScreen}
 										/*
 										 * THE ONE DERIVATION, here too (agent review

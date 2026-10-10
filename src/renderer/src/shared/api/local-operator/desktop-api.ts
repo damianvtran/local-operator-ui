@@ -635,7 +635,19 @@ export async function openAuthorization(
  * unauthenticated fallback would be a silent security downgrade.
  */
 export function subscribeDesktopStream(
-	args: { sessionId: string; epoch?: string; afterSeq?: number },
+	args: {
+		sessionId: string;
+		epoch?: string;
+		afterSeq?: number;
+		/**
+		 * The open-frame negotiation (`docs/DESKTOP_API.md`, "The open frame").
+		 * This renderer sends it only once it has read the capability, and the
+		 * snapshot page it governs is the one this subscription carries: a caller
+		 * that sets it must read `runs`/`runs_state`/`head_cut` off `view.history`.
+		 * Absent keeps today's page, byte for byte.
+		 */
+		openFrame?: boolean;
+	},
 	onEvent: (event: {
 		kind: "data" | "error" | "end";
 		data?: string;
@@ -670,6 +682,12 @@ export function subscribeDesktopStream(
 	 * The proxy forwards it; an older backend ignores it.
 	 */
 	query.set("frontend_replace", "1");
+	/*
+	 * The same forwarded open-frame negotiation main's relay sends, and forwarded
+	 * for the same reason: this proxy must not claim on a renderer's behalf that
+	 * a page counted in paintable rows will be understood.
+	 */
+	if (args.openFrame === true) query.set("open_frame", "1");
 	const source = new EventSource(`/__desktop/stream?${query}`);
 	source.onmessage = (message) => {
 		onEvent({ kind: "data", data: message.data });

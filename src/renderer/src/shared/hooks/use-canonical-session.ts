@@ -32,6 +32,10 @@
  */
 
 import {
+	entryRecordKey,
+	openFrameCoversHeld,
+} from "@features/chat/canonical/open-frame";
+import {
 	EMPTY_TRANSCRIPT,
 	RECONCILE_TAIL_ENTRIES,
 	RECONCILE_TAIL_MAX_ENTRIES,
@@ -2051,22 +2055,12 @@ function pageIsJournalTail(snapshot: DesktopSnapshot): boolean {
 	);
 }
 
-/**
- * The id a durable page entry paints under in the transcript index (#876).
- *
- * A tool entry keys by its CALL id — the reducer mints `tool:<call_id>` so a
- * live start and end for the same call coalesce onto one row — while every
- * other entry keys by its own id. The reconcile gate and the walk compare
- * page entries against held rows to decide whether a read is owed; without
- * this key a held tool row reads as "not held", and the comparison could not
- * recognise the very row its whole purpose is to reach.
+/*
+ * `entryRecordKey` - the id a durable page entry paints under (#876) - lives in
+ * `open-frame.ts` now (agent review round 4, B3): the plan's identity for the page
+ * the facts came with needs the same mapping, and two spellings of "which rows did
+ * this page carry?" is exactly the defect that round found.
  */
-function entryRecordKey(entry: DesktopHistoryPage["entries"][number]): string {
-	const callId = entry.payload?.tool_call_id;
-	if (entry.payload?.role === "tool" && typeof callId === "string" && callId)
-		return `tool:${callId}`;
-	return entry.id;
-}
 
 /**
  * A journal page named these entries, so they are journal rows the pane holds
@@ -2079,6 +2073,26 @@ function forgetReplayBorn(
 ): void {
 	if (replayBorn.size === 0) return;
 	for (const entry of entries) replayBorn.delete(entryRecordKey(entry));
+}
+
+/**
+ * A journal page delivered these entries, so their `record.ts` is the JOURNAL's
+ * (`entry.ts * 1000`) rather than a receipt stamp - the property `pageBornIds`
+ * exists to gate (agent review round 1, F7).
+ *
+ * EVERY SITE THAT APPLIES A PAGE CALLS THIS, which is round 2's M1: the rule was
+ * registered on the FRAMES path alone, so a held row delivered by a `/history`
+ * read or by the events-stream snapshot carried no journal instant, the
+ * reconciliation arm declined, and the walk ran - conservative, but it left the
+ * arm F4 made reachable dead for exactly the panes whose rows came from a read.
+ * One spelling, called wherever `forgetReplayBorn` is called, because the two
+ * always answer the same event: a page named these entries.
+ */
+function markPageBorn(
+	pageBorn: Set<string>,
+	entries: DesktopHistoryPage["entries"],
+): void {
+	for (const entry of entries) pageBorn.add(entryRecordKey(entry));
 }
 
 export function useCanonicalSessionStream(
@@ -2108,7 +2122,51 @@ export function useCanonicalSessionStream(
 	 * caller's identity is.
 	 */
 	identity: string | undefined = sessionId,
+	/**
+	 * THE REST OF THIS PANE'S NEGOTIATION, as one object so that `identity` above
+	 * stays the LAST positional argument (agent review round 1, F1).
+	 *
+	 * WHY AN OBJECT. The identity is the key of the echo registry and of the
+	 * first-frame seed, and `scripts/warm-session.test.mjs` pins that the panel
+	 * hands it as the fourth argument. Adding a fifth positional input behind it
+	 * turned that pin red for a reason that has nothing to do with what the pin
+	 * protects, and every future input would repeat the mistake. The object is also
+	 * where a caller states what it does NOT know: an omitted field is the
+	 * fail-closed default, not an invitation.
+	 */
+	options: {
+		/**
+		 * THE OPEN-FRAME NEGOTIATION (`docs/DESKTOP_API.md`, "The open frame"), read
+		 * by the CALLER off the backend's capabilities and passed in rather than
+		 * looked up here.
+		 *
+		 * WHY A PARAMETER. This module is the one the renderer's load rigs bundle
+		 * with a React stand-in and no query client (`session-load-sequence`,
+		 * `reconnect-page-gap`), so it must not import the capability hook: the
+		 * capability is the PANE's question (its own `chat-page` already resolves it,
+		 * from cache, before this hook is called), and this hook's job is to act on
+		 * the answer.
+		 *
+		 * WHY IT IS COPIED INTO A REF. Gating the stream on it as a dependency would
+		 * RESUBSCRIBE this pane the moment it flipped false -> true - a second open
+		 * frame, a second snapshot, a second commit: exactly the extra painted state
+		 * the contract is being adopted to remove. The ref is written on every render
+		 * and read at the moment each request is built (the subscription's own open,
+		 * and every `/history` read the walk or the pager issues later), so a request
+		 * carries the answer that was known when it was made.
+		 *
+		 * FALSE IS THE FAIL-CLOSED DEFAULT and every caller that has no capability
+		 * read to hand keeps it: today's page, today's condensation, the align walk
+		 * included. An open that races the capability read is false for the same
+		 * reason - never a page whose unit changed under a reader that has not read
+		 * `runs`. Every read AFTER that picks the flag up, so nothing stays stuck.
+		 */
+		openFrame?: boolean;
+	} = {},
 ): CanonicalSessionHandle {
+	const openFrame = options.openFrame === true;
+	const openFrameRef = useRef(openFrame);
+	openFrameRef.current = openFrame;
 	const [view, setView] = useState<CanonicalSessionView>(() => {
 		const seed = enabled && sessionId ? paintSeed(sessionId) : null;
 		return {
@@ -2305,6 +2363,22 @@ export function useCanonicalSessionStream(
 	 * Not exercised by a test: the seed row path, which is argued from the code.
 	 */
 	const replayBornIds = useRef<Set<string>>(new Set());
+	/**
+	 * The rows a PAGE delivered (`/history` or a snapshot), by record key - the only
+	 * rows whose instant is the JOURNAL's (agent review round 1, F7).
+	 *
+	 * WHY THE DISTINCTION IS LOAD-BEARING. `record.ts` is `entry.ts * 1000` for a row
+	 * a page carried - the journal's own clock - but `Date.now()` at receipt for a
+	 * row that arrived live (`applyEvent`). The open-frame arm of the tail gate
+	 * compares a held row's instant against the attested start of a page whose
+	 * instants are the journal's, and that comparison is the arm's whole safety
+	 * argument: a live row receipted after the start but journaled before it would
+	 * read as "inside" and skip a walk the pane owes. So only page-born rows may
+	 * carry an instant into that arm. A row that arrived live and has NOT been
+	 * carried by a page since is simply left out, which makes the arm fall back to
+	 * the walk - the conservative direction, never a dropped range.
+	 */
+	const pageBornIds = useRef<Set<string>>(new Set());
 	/*
 	 * Call ids a mid-turn snapshot's seed could not label, how many times we have
 	 * read back for each, how deep that read had to go, and the seed order a
@@ -3050,6 +3124,7 @@ export function useCanonicalSessionStream(
 						// and asking for more than the bound leaves is a page the loop
 						// would refuse to continue from.
 						limit: Math.min(limit, RECONCILE_WALK_MAX_ROWS - rows),
+						openFrame: openFrameRef.current,
 					});
 				} catch {
 					// A cleared view has nothing left to read for: without this the
@@ -3175,6 +3250,7 @@ export function useCanonicalSessionStream(
 				// Merged even when it is the page we already have: durable rows win
 				// by id, so a repeat is free and a partial one is completed.
 				forgetReplayBorn(replayBornIds.current, page.entries);
+				markPageBorn(pageBornIds.current, page.entries);
 				commitView((state) => {
 					const transcript = applyHistoryPage(state.transcript, page);
 					/*
@@ -3488,6 +3564,17 @@ export function useCanonicalSessionStream(
 			 */
 			const heldIds = new Set<string>();
 			/*
+			 * The INSTANT of each held row, keyed the same way, for the open-frame arm
+			 * of the tail gate below: a held row is placed relative to the page by the
+			 * journal's clock, because the ids are opaque and a page that starts at a
+			 * run's opening user row is the only datum that lets "behind it" be asked
+			 * at all. POPULATED ONLY FROM ROWS A PAGE DELIVERED (`pageBornIds`) - the
+			 * one population whose `ts` IS that clock - so a live row's receipt stamp can
+			 * never stand in for a journal instant (agent review round 1, F7). A row the
+			 * page did not deliver simply has no instant here, and the arm declines.
+			 */
+			const heldInstants = new Map<string, number | null>();
+			/*
 			 * A row only a reconnect replay delivered is not a held JOURNAL row until a
 			 * page names it (`replayBornIds`). Pruned first, from the same live index
 			 * the loop reads, so a `/clear` or a dropped row cannot leave an id behind
@@ -3496,9 +3583,20 @@ export function useCanonicalSessionStream(
 			for (const id of replayBornIds.current)
 				if (!viewRef.current.transcript.index.has(id))
 					replayBornIds.current.delete(id);
+			for (const id of pageBornIds.current)
+				if (!viewRef.current.transcript.index.has(id))
+					pageBornIds.current.delete(id);
 			for (const record of viewRef.current.transcript.records)
-				if (isDurableOwnerRow(record) && !replayBornIds.current.has(record.id))
+				if (
+					isDurableOwnerRow(record) &&
+					!replayBornIds.current.has(record.id)
+				) {
 					heldIds.add(record.id);
+					heldInstants.set(
+						record.id,
+						pageBornIds.current.has(record.id) ? record.ts : null,
+					);
+				}
 			/*
 			 * READ FROM THE LIVE VIEW, NOT FROM `paintedIds` (QA round 3, Q3-1).
 			 * `paintedIds` is "the index the last flush left behind" and is refreshed
@@ -3579,9 +3677,30 @@ export function useCanonicalSessionStream(
 				if (pageIsJournalTail(frame.payload)) {
 					// The seam behind the page, not the page itself: see the two regimes
 					// above and the #876 note on the journal-tail arm.
-					return (
-						heldIds.size === 0 ||
-						entries.some((entry) => heldIds.has(entryRecordKey(entry)))
+					if (heldIds.size === 0) return true;
+					const carried = new Set<string>();
+					for (const entry of entries) carried.add(entryRecordKey(entry));
+					if (entries.some((entry) => heldIds.has(entryRecordKey(entry))))
+						return true;
+					/*
+					 * THE OPEN-FRAME ARM (C1). An overlap is ONE proof that the page
+					 * connects to the rows the pane holds; a page whose own START the
+					 * server's facts attest - the oldest run's opening user row - is the
+					 * other, and it is the proof the turn-aligned cut is built to give.
+					 * `openFrameCoversHeld` carries the reasoning in full, including why
+					 * its bounds are strict: a held row at or below the attested start is
+					 * the #876/#883 seam and a held row at or above the page's newest
+					 * entry is either the live tail or a row a cut-at-a-cursor page may
+					 * have omitted, and in both cases today's walk stands.
+					 *
+					 * IT COMPARES IDS AND ONE INSTANT, NOT PAGES: the reopen that used to
+					 * spend up to `RECONCILE_WALK_MAX_REQUESTS` serial reads proving there
+					 * was nothing to fetch spends none.
+					 */
+					return openFrameCoversHeld(
+						frame.payload.history,
+						heldInstants,
+						carried,
 					);
 				}
 				if (newest.id === frame.payload.frontend.snapshot.history_cursor)
@@ -3661,6 +3780,10 @@ export function useCanonicalSessionStream(
 			const paintedEntryIds = new Set<string>();
 			for (const frame of frames) {
 				if (frame.type !== "snapshot") continue;
+				// The page's own rows, for `pageBornIds`' journal-clock rule (round 2, M1):
+				// this batch path and the event handler below are the two ways a frame's
+				// page reaches the pane.
+				markPageBorn(pageBornIds.current, frame.payload.history.entries);
 				for (const entry of frame.payload.history.entries) {
 					paintedEntryIds.add(entryRecordKey(entry));
 					const calls = entry.payload?.tool_calls;
@@ -4033,6 +4156,8 @@ export function useCanonicalSessionStream(
 									replayBornIds.current,
 									snapshot.history.entries,
 								);
+								// And their instants are the journal's (round 2, M1).
+								markPageBorn(pageBornIds.current, snapshot.history.entries);
 							}
 							/*
 							 * AND A SNAPSHOT RESOLVES A HELD SEND (§F2's last bullet, UX round 1's
@@ -4548,6 +4673,7 @@ export function useCanonicalSessionStream(
 					sessionId,
 					epoch: reconnectRef.current.epoch,
 					afterSeq: reconnectRef.current.afterSeq,
+					openFrame: openFrameRef.current,
 				},
 				(event) => {
 					if (generationRef.current !== generation) return;
@@ -4913,6 +5039,14 @@ export function useCanonicalSessionStream(
 		for (const id of restoredReplayBorn)
 			if (!seededIndex.has(id)) restoredReplayBorn.delete(id);
 		replayBornIds.current = restoredReplayBorn;
+		/*
+		 * AND THE PAGE-BORN SET DOES NOT TRAVEL AT ALL (agent review round 1, F7):
+		 * the ids a session's page mints recur across sessions (`u1`, `a1`), so a set
+		 * carried over a switch would certify a LIVE row's receipt stamp as a journal
+		 * instant under an id its own page never delivered. A fresh session starts
+		 * empty, which only ever costs the arm a walk.
+		 */
+		if (!sameSession) pageBornIds.current = new Set();
 		commitView((current) => ({
 			...current,
 			frontend: null,
@@ -5323,6 +5457,7 @@ export function useCanonicalSessionStream(
 					sessionId: requested,
 					beforeId,
 					limit: 100,
+					openFrame: openFrameRef.current,
 				}),
 			isCurrent: () => stillHere() && notCleared(),
 			commit: (update) =>
@@ -5391,6 +5526,7 @@ export function useCanonicalSessionStream(
 					op: "sessions.history",
 					sessionId: requested,
 					limit: 100,
+					openFrame: openFrameRef.current,
 				});
 				if (sessionRef.current !== requested) return false;
 				/*
@@ -5413,6 +5549,7 @@ export function useCanonicalSessionStream(
 					}),
 				}));
 				forgetReplayBorn(replayBornIds.current, page.entries);
+				markPageBorn(pageBornIds.current, page.entries);
 				/*
 				 * Scoped to THIS pass: an outcome written at or after the receipt that
 				 * scheduled the read. An older pass's row — any session's whose last 100
