@@ -1771,6 +1771,29 @@ export type DesktopFeedFrame =
 			type: "authoring";
 			payload: { revision: number };
 	  }
+	/**
+	 * ONE SESSION's code request ledger moved: its index or fetch cache was
+	 * rewritten.
+	 *
+	 * A LEVEL, not a notification, like `catalogue` and `authoring`: it carries a
+	 * revision and no rows (a list the renderer does not hold is not dragged onto
+	 * the wire), it is idempotent, and a duplicate delivery of the same revision is
+	 * a no-op at the consumer. Unlike those two it NAMES its session, because the
+	 * ledger is per conversation - the reader is the code-review pane or chip for
+	 * exactly that session, and a frame without the id could not say whose list to
+	 * re-read.
+	 *
+	 * AN OLDER RENDERER FALLS THROUGH EVERY BRANCH of its frame loop and paints
+	 * nothing; the backend's own probe interval bounds how often one can arrive
+	 * (the catalogue probe's 1 s cadence, not the 100 ms tick).
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "code_requests";
+			session_id: CanonicalSessionId;
+			payload: { revision: number };
+	  }
 	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }
 	| {
 			epoch: string;

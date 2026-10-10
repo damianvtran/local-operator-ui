@@ -12,7 +12,7 @@ import {
 	resolveDrawnRightSlotPane,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
-import { FileText, Globe, SquareTerminal } from "lucide-react";
+import { FileText, GitPullRequest, Globe, SquareTerminal } from "lucide-react";
 import {
 	type FC,
 	type KeyboardEvent as ReactKeyboardEvent,
@@ -28,6 +28,7 @@ import {
 	askRailLabels,
 	browserRailLabels,
 	canvasRailLabels,
+	codeRailLabels,
 	consoleRailLabels,
 } from "./panel-rail-model";
 
@@ -70,12 +71,31 @@ export type PanelRailProps = {
 	consoleUnseenPulsing: boolean;
 	/** Files the conversation has been seen to mention (the canvas item's dot). */
 	fileCount: number;
+	/**
+	 * Whether the CODE REVIEW door is offered at all: `features.code_requests`
+	 * is set AND the route has a session (§M.1). The empty state is inside the
+	 * pane - the door is always present where the pane can exist, because a door
+	 * that vanishes cannot show the empty state, and the item appears once per
+	 * session rather than per row.
+	 */
+	codeOffered: boolean;
+	/** Rows in the ledger's Opened group (the name and tooltip clauses, §8). */
+	codeOpened: number;
+	/** Rows in the ledger's Mentioned group. */
+	codeMentioned: number;
+	/**
+	 * Any opened row with findings open or checks failing - the rail's attention
+	 * dot, §G.2 - as the CAUSE string (`checks failing` / `findings open` /
+	 * both) so the tooltip and the announced name say what is actually wrong
+	 * (design round 1, D5 / UX round 1, U6). Null when nothing needs attention.
+	 */
+	codeAttention: string | null;
 };
 
 const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End"]);
 
 /**
- * THE PANEL RAIL (#872, #896): the five doors to the window's right slot, as one
+ * THE PANEL RAIL (#872, #896, #927): the six doors to the window's right slot, as one
  * vertical column at the window's trailing edge.
  *
  * WHAT IT REPLACES. The Run details, Browser, Console and Canvas triggers lived in
@@ -129,17 +149,27 @@ export const PanelRail: FC<PanelRailProps> = ({
 	consoleUnseenCount,
 	consoleUnseenPulsing,
 	fileCount,
+	codeOffered,
+	codeOpened,
+	codeMentioned,
+	codeAttention,
 }) => {
 	const drawn = useUiPreferencesStore(resolveDrawnRightSlotPane);
 	const isBrowserPaneOpen = useUiPreferencesStore((s) => s.isBrowserPaneOpen);
 	const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+	const isCodeReviewPaneOpen = useUiPreferencesStore(
+		(s) => s.isCodeReviewPaneOpen,
+	);
 	const isAskDrawerOpen = useUiPreferencesStore((s) => s.isAskDrawerOpen);
 	const askDrawerScope = useUiPreferencesStore((s) => s.askDrawerScope);
 	const setBrowserPaneOpen = useUiPreferencesStore((s) => s.setBrowserPaneOpen);
 	const setConsolePaneOpen = useUiPreferencesStore((s) => s.setConsolePaneOpen);
 	const requestConsoleOpen = useUiPreferencesStore((s) => s.requestConsoleOpen);
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
+	const setCodeReviewPaneOpen = useUiPreferencesStore(
+		(s) => s.setCodeReviewPaneOpen,
+	);
 	const setAskDrawerOpen = useUiPreferencesStore((s) => s.setAskDrawerOpen);
 
 	const rootRef = useRef<HTMLDivElement | null>(null);
@@ -262,6 +292,12 @@ export const PanelRail: FC<PanelRailProps> = ({
 		drawn === "canvas",
 		fileCount,
 		canvasToggleCap(isMac),
+	);
+	const code = codeRailLabels(
+		drawn === "code",
+		codeOpened,
+		codeMentioned,
+		codeAttention,
 	);
 
 	return (
@@ -485,6 +521,41 @@ export const PanelRail: FC<PanelRailProps> = ({
 						/>
 					)}
 				</PanelRailItem>
+				{/*
+				 * THE CODE REVIEW DOOR, APPENDED LAST (§M.1). Last is the whole design of
+				 * its arrival: the items above keep their positions when this one appears,
+				 * which is the rail's one fixed-order promise, and the door is offered
+				 * wherever the pane can exist - `features.code_requests` set and a session
+				 * on the route - so the pane's EMPTY state has a door to be seen through.
+				 *
+				 * The dot is the attention mark (§G.2): a REAL open row (relation
+				 * `opened`) with findings open or CI failing. It borrows the console's
+				 * unseen-dot geometry exactly - a 1.5-size dot at the item's corner - and
+				 * stays `ink-muted` rather than a semantic ink, so it reads as "worth a
+				 * look" rather than "something failed"; the pane states which and why.
+				 * No count badge: counts live in the name (§G.2's own ruling - the
+				 * browser/ask badges count work WAITING on the user, and findings-open is
+				 * in flight, not blocking).
+				 */}
+				{codeOffered && (
+					<PanelRailItem
+						id="code"
+						label={code.tooltip}
+						ariaLabel={code.aria}
+						pressed={drawn === "code"}
+						onClick={() => setCodeReviewPaneOpen(!isCodeReviewPaneOpen)}
+						data-tour-tag="code-pane-trigger"
+					>
+						<GitPullRequest aria-hidden={true} />
+						{codeAttention !== null && (
+							<span
+								aria-hidden="true"
+								data-code-review-attention=""
+								className="absolute top-1 right-1 size-1.5 rounded-full bg-ink-muted"
+							/>
+						)}
+					</PanelRailItem>
+				)}
 			</div>
 		</PanelRailRovingContext.Provider>
 	);
