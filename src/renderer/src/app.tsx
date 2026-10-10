@@ -41,6 +41,7 @@ import {
 	noteConsentAttention,
 } from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
+import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
 
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
@@ -275,6 +276,16 @@ const App: FC = () => {
 	 * one is a chord that does nothing and says nothing.
 	 */
 	useCommandPaletteShortcut();
+
+	/*
+	 * The user-assignable shortcuts (issue #928): one bubble-phase router that
+	 * answers the registry's effective chords — the panel rail's six actions
+	 * today — mounted here for the palette hook's own reason, the listeners have
+	 * to exist for whatever surface the window is showing. Its precedence rules
+	 * (editors claim first, overlays own their keys, a door-less action does not
+	 * swallow the press) are `use-keymap-shortcuts.ts`'s.
+	 */
+	useKeymapShortcuts();
 
 	/*
 	 * The palette's Recents memory: every conversation that becomes the displayed
