@@ -9,6 +9,7 @@ import { ThemedToastContainer } from "./shared/components/common";
 import "@assets/fonts/fonts.css";
 import "@renderer/styles/index.css";
 import { config, telemetryEnabled } from "@shared/config";
+import { installExternalOpenRefusalToasts } from "@shared/lib/external-open-refusal";
 import { installScrollbarActivity } from "@shared/lib/scrollbar-activity";
 import type { PostHogConfig } from "posthog-js";
 import App from "./app";
@@ -63,6 +64,8 @@ declare global {
 	interface Window {
 		/** The outstanding install, so a hot-reloaded entry can take it back off. */
 		__loSbUninstall?: () => void;
+		/** The same handle for the refused-link listener below. */
+		__loExtRefusalUninstall?: () => void;
 	}
 }
 window.__loSbUninstall?.();
@@ -75,6 +78,17 @@ window.__loSbUninstall = installScrollbarActivity();
  * it must outlive every render, and it must exist even if React fails to mount.
  */
 installConversationInputSync();
+
+/*
+ * THE REFUSED-LINK TOAST'S PUSHED HALF (round-2 R-4): a click that left through
+ * the main process's window-open door has no caller to answer, so main pushes
+ * the refusal and this listener renders the sentence. Module scope, for the
+ * reason the sync above has it - the listener must outlive every render and
+ * exist even if React fails to mount - and the uninstall handle is the
+ * scrollbar's (a hot reload must not stack a second listener).
+ */
+window.__loExtRefusalUninstall?.();
+window.__loExtRefusalUninstall = installExternalOpenRefusalToasts();
 
 /*
  * THE RIGHT SLOT'S MEMORY IS PROJECTED BEFORE THE FIRST RENDER (issue #894).
