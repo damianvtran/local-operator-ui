@@ -31,7 +31,10 @@
  * measurable in the browser's own timeline rather than estimated.
  */
 
-import { openFrameCoversHeld } from "@features/chat/canonical/open-frame";
+import {
+	entryRecordKey,
+	openFrameCoversHeld,
+} from "@features/chat/canonical/open-frame";
 import {
 	EMPTY_TRANSCRIPT,
 	RECONCILE_TAIL_ENTRIES,
@@ -2052,22 +2055,12 @@ function pageIsJournalTail(snapshot: DesktopSnapshot): boolean {
 	);
 }
 
-/**
- * The id a durable page entry paints under in the transcript index (#876).
- *
- * A tool entry keys by its CALL id — the reducer mints `tool:<call_id>` so a
- * live start and end for the same call coalesce onto one row — while every
- * other entry keys by its own id. The reconcile gate and the walk compare
- * page entries against held rows to decide whether a read is owed; without
- * this key a held tool row reads as "not held", and the comparison could not
- * recognise the very row its whole purpose is to reach.
+/*
+ * `entryRecordKey` - the id a durable page entry paints under (#876) - lives in
+ * `open-frame.ts` now (agent review round 4, B3): the plan's identity for the page
+ * the facts came with needs the same mapping, and two spellings of "which rows did
+ * this page carry?" is exactly the defect that round found.
  */
-function entryRecordKey(entry: DesktopHistoryPage["entries"][number]): string {
-	const callId = entry.payload?.tool_call_id;
-	if (entry.payload?.role === "tool" && typeof callId === "string" && callId)
-		return `tool:${callId}`;
-	return entry.id;
-}
 
 /**
  * A journal page named these entries, so they are journal rows the pane holds

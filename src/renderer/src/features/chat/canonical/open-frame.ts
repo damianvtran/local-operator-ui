@@ -83,6 +83,41 @@ export type OpenFrameFacts = {
 	page: FactPageIdentity;
 };
 
+/**
+ * The ROW KEY a page entry becomes in the transcript (`Row.record.id`).
+ *
+ * WHY ONE SPELLING LIVES HERE. Two arms need it - the session's replay/page-born
+ * bookkeeping (`forgetReplayBorn`, `markPageBorn`) and the plan's identity for the
+ * facts' page (agent review rounds 3 and 4) - and a second spelling would let the
+ * "which rows did this page carry?" question answer two ways.
+ *
+ * THE TWO CLASSES THAT DO NOT ANSWER TO THEIR OWN ENTRY ID:
+ *  - a tool entry becomes `tool:<tool_call_id>` (`transcript-reducer.ts`'s tool arm,
+ *    one row per CALL, not per message pair);
+ *  - a `completion_attention` entry becomes a NOTICE row keyed by its ANCHOR
+ *    (`id: details.anchor`) - which is what the marker is ABOUT, and is neither the
+ *    entry's id nor always a row id (the runtime's `provisional_anchor` is
+ *    `completion-<token>`, and a label is legal). A marker without an anchor paints
+ *    nothing at all, so its key is only ever a lookup nobody can hit.
+ */
+export function entryRecordKey(
+	entry: DesktopHistoryPage["entries"][number],
+): string {
+	const payload = entry.payload;
+	const callId = payload?.tool_call_id;
+	if (payload?.role === "tool" && typeof callId === "string" && callId)
+		return `tool:${callId}`;
+	const details = (payload?.details ?? {}) as Record<string, unknown>;
+	const anchor = details.anchor;
+	if (
+		payload?.custom_type === "completion_attention" &&
+		typeof anchor === "string" &&
+		anchor
+	)
+		return anchor;
+	return entry.id;
+}
+
 /** A count off the wire, or null when the field is not a whole number. */
 function wireCount(value: number | null | undefined): number | null {
 	if (typeof value !== "number" || !Number.isFinite(value)) return null;
@@ -163,24 +198,24 @@ export function openFrameFacts(
 	}
 	if (lookup.size === 0) return null;
 	/*
-	 * THE PAGE'S OWN IDENTITY, carried beside the facts (agent review round 3, B2).
-	 * `newestId` is the watermark the plan compares rows against; the id set is what
-	 * keeps a row the page DID carry out of the "arrived later" sum, whatever order
-	 * a merge put it in.
+	 * THE PAGE'S OWN IDENTITY, carried beside the facts (agent review round 3, B2),
+	 * AS ROW KEYS AND NOT ENTRY IDS (agent review round 4, B3). The client's rows are
+	 * what the plan compares against, and two classes of page entry do not answer to
+	 * their own entry id: a tool entry becomes `tool:<tool_call_id>` and a completion
+	 * marker becomes its anchor. With the raw ids the set matched no tool row at all,
+	 * so a SERVED page's own tool rows read as rows that had arrived after it and the
+	 * figures were inflated by work the wire had already counted. `entryRecordKey` is
+	 * the one spelling of that mapping - the session's replay/page-born arms use it
+	 * for the same reason - and it is read here so the two cannot drift.
 	 */
 	const ids = new Set<string>();
-	for (const entry of page.entries) {
-		if (typeof entry.id === "string" && entry.id.length > 0) ids.add(entry.id);
-	}
+	for (const entry of page.entries) ids.add(entryRecordKey(entry));
 	const newest = page.entries[page.entries.length - 1];
 	return {
 		runs: lookup,
 		page: {
 			ids,
-			newestId:
-				typeof newest?.id === "string" && newest.id.length > 0
-					? newest.id
-					: null,
+			newestKey: newest ? entryRecordKey(newest) : null,
 		},
 	};
 }
@@ -285,8 +320,9 @@ export function openFrameCoversHeld(
 	held: ReadonlyMap<string, number | null>,
 	/**
 	 * The record keys of the page's own entries, as `entryRecordKey` spells them
-	 * (`use-canonical-session` owns that mapping — a tool entry keys by its CALL
-	 * id — and this function must not grow a second spelling of it).
+	 * (defined in this module: a tool entry keys by its CALL id, a completion marker
+	 * by its anchor). Passed in rather than derived here because the caller maps the
+	 * rows it is holding, and this function must not grow a second spelling of it.
 	 */
 	carried: ReadonlySet<string>,
 ): boolean {

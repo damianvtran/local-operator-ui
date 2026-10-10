@@ -306,10 +306,16 @@ export type RunFactLookup = ReadonlyMap<string, RunFact>;
  * B1). See `factAppendedRows` for the test this feeds.
  */
 export type FactPageIdentity = {
-	/** Every entry id the page carried (stripped rows never reach the plan). */
+	/**
+	 * Every ROW KEY the page carried, as `entryRecordKey` spells them - not the
+	 * page's raw entry ids (agent review round 4, B3): a tool entry becomes
+	 * `tool:<tool_call_id>` and a completion marker becomes its anchor, so a set of
+	 * entry ids matches no tool row at all and every page-carried tool row reads as
+	 * one that arrived later.
+	 */
 	ids: ReadonlySet<string>;
-	/** The page's own newest entry, or null when the page names none. */
-	newestId: string | null;
+	/** The newest carried row's key, or null when the page names none. */
+	newestKey: string | null;
 };
 
 /**
@@ -891,7 +897,7 @@ export function collapsePlanOptionsKey(options: {
 	}
 	if (options.factPage) {
 		parts.push(
-			`page:${options.factPage.newestId ?? ""}:${options.factPage.ids.size}`,
+			`page:${options.factPage.newestKey ?? ""}:${options.factPage.ids.size}`,
 		);
 	}
 	return parts.join("\u0000");
@@ -1735,11 +1741,19 @@ type FactTotals = {
  *   fact rather than trusting a figure it cannot check;
  * - an identity in hand -> the rows below.
  *
- * THE TEST IS IDENTITY. The page is a contiguous tail window, so its LAST carried
- * row still in hand is the watermark: a tool row of this run that sits after it and
- * is not one of the page's own ids arrived after the page was published, by
- * construction - while every row the page DID carry is excluded by id, so a wake
- * that landed before the read stays out of the sum (the round-2 double count).
+ * THE TEST IS IDENTITY, AND THE IDENTITY IS ROW KEYS, NOT ENTRY IDS (agent review
+ * round 4, B3). The page's carried set is mapped through `entryRecordKey` before it
+ * reaches this function, because the page's raw entry ids do not match the client's
+ * rows for the two classes that matter - a tool entry keys `tool:<tool_call_id>`,
+ * and a `completion_attention` entry keys its anchor - so an id-set matched no tool
+ * row at all and a SERVED page's own tool rows were added as if they had arrived
+ * after it (`12 / 33 s` stated where the wire published `9 / 24 s`).
+ *
+ * With that mapping the page is a contiguous tail window, so its LAST carried row
+ * still in hand is the watermark: a tool row of this run that sits after it and is
+ * not one of the page's own keys arrived after the page was published. The rows a
+ * wake added BEFORE the read stay out of the sum (the round-2 double count), and a
+ * row this build cannot attribute refuses the fact (see the loop).
  */
 function factAppendedRows(
 	rows: Row[],
@@ -1762,6 +1776,16 @@ function factAppendedRows(
 		const row = rows[i];
 		if (row.record.kind !== "tool") continue;
 		if (factPage.ids.has(row.record.id)) continue;
+		/*
+		 * A ROW THIS BUILD CANNOT ATTRIBUTE TO A CALL refuses the fact rather than
+		 * being corrected by it: a tool row with no call key, or one the renderer knows
+		 * was never sent (`neverSent`/`notRunReason`), is not a row the wire's
+		 * `action_count` counted either, so adding it would state a figure no read can
+		 * confirm.
+		 */
+		if (!row.record.id.startsWith("tool:")) return null;
+		if (row.record.neverSent === true || row.record.notRunReason !== null)
+			return null;
 		appended.push(row);
 	}
 	return appended;
@@ -2139,7 +2163,17 @@ function planRun(
 		return {
 			actions,
 			worked,
-			partial: !factTotals.complete || cutIsFloor,
+			/*
+			 * `partial` carries the bar's own live-correction term as well (agent review
+			 * round 4, m2): the bars beneath say `N+` while a live run is being corrected
+			 * by rows that arrived after the page, and a ladder summing them must not
+			 * state the same figure as final. Nothing reads this today, which is exactly
+			 * why the two must not drift before a reader arrives.
+			 */
+			partial:
+				!factTotals.complete ||
+				cutIsFloor ||
+				(live && factAppended !== null && factAppended.length > 0),
 			/*
 			 * The run-level `failed` is the WIRE's own count for the run as
 			 * published - the same population `action_count` covers - so it cannot

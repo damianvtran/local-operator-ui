@@ -2957,24 +2957,26 @@ test("a fact is corrected by the rows that arrived after its page - and only tho
 	 * `30 / 60 s` with `partial: false` and the walk retired, for a run whose own
 	 * figure had already moved to `33 / 63 s`.
 	 *
-	 * THE TEST IS IDENTITY, so the page's own rows are named: the page carried
-	 * `t1`, `t2` and `a0`, and the wake's `w1..w3` are neither on it nor before it.
-	 * The same fixture with the wake INSIDE the page is the control at the bottom:
-	 * round 2's B1 was exactly that case, and it must not come back.
+	 * THE TEST IS IDENTITY, and the identity is ROW KEYS (agent review round 4, B3):
+	 * a tool row keys `tool:<tool_call_id>`, so the page's own rows are named that way
+	 * - the page carried `tool:t1`, `tool:t2` and `a0`, and the wake's `tool:w1..w3`
+	 * are neither on it nor before it. The same fixture with the wake INSIDE the
+	 * page's keys is the control at the bottom; before B3's mapping the tool rows
+	 * there matched nothing and the control passed for the wrong reason.
 	 */
 	const page = {
-		ids: new Set(["t1", "t2", "a0"]),
-		newestId: "a0",
+		ids: new Set(["tool:t1", "tool:t2", "a0"]),
+		newestKey: "a0",
 	};
 	const head = [
-		tool("t1", { ts: TS, durationS: 20 }),
-		tool("t2", { ts: TS + 1, durationS: 20 }),
+		tool("tool:t1", { ts: TS, durationS: 20 }),
+		tool("tool:t2", { ts: TS + 1, durationS: 20 }),
 		answer("a0", { ts: TS + 2 }),
 	];
 	const wake = [
-		tool("w1", { ts: TS + 3, durationS: 1 }),
-		tool("w2", { ts: TS + 4, durationS: 1 }),
-		tool("w3", { ts: TS + 5, durationS: 1 }),
+		tool("tool:w1", { ts: TS + 3, durationS: 1 }),
+		tool("tool:w2", { ts: TS + 4, durationS: 1 }),
+		tool("tool:w3", { ts: TS + 5, durationS: 1 }),
 		answer("a1", { ts: TS + 6 }),
 	];
 	const withWake = collapsePlan([...head, ...wake], {
@@ -3005,9 +3007,9 @@ test("a fact is corrected by the rows that arrived after its page - and only tho
 	const unmeasured = collapsePlan(
 		[
 			...head,
-			tool("w1", { ts: TS + 3, durationS: 1 }),
-			tool("w2", { ts: TS + 4 }),
-			tool("w3", { ts: TS + 5, durationS: 1 }),
+			tool("tool:w1", { ts: TS + 3, durationS: 1 }),
+			tool("tool:w2", { ts: TS + 4 }),
+			tool("tool:w3", { ts: TS + 5, durationS: 1 }),
 			answer("a1", { ts: TS + 6 }),
 		],
 		{
@@ -3024,23 +3026,184 @@ test("a fact is corrected by the rows that arrived after its page - and only tho
 	assert.equal(unmeasured.segments[0].facts.actions, 5, "the rows in hand");
 	assert.equal(unmeasured.segments[0].facts.partial, true, "and their `+`");
 	/*
-	 * THE CONTROL: the same three wake rows, this time ON the page. They are inside
-	 * the wire's figure already, so nothing is added - `30`, not `33`. This is the
-	 * arm round 2's B1 removed, and it is what keeps the correction in the fix from
-	 * becoming the old double count.
+	 * THE CONTROL: the same three wake rows, this time INSIDE the page's own keys.
+	 * They are already in the wire's figure, so nothing is added - `30`, not `33`.
+	 * It is a GUARD against a future identity-blind addition, NOT a discriminator for
+	 * round 2's B1: the reviewer ran it against the pre-B1 head and it passed there
+	 * too. The arm that discriminates is F3's ("a woken run states the wire's own
+	 * totals, and its re-key keeps the fact") - agent review round 4, n3.
 	 */
 	const onPage = collapsePlan([...head, ...wake], {
 		live: false,
 		runFacts: new Map([["a0", fact(30, 60, { closingAnswerId: "a1" })]]),
 		factPage: {
-			ids: new Set(["t1", "t2", "a0", "w1", "w2", "w3", "a1"]),
-			newestId: "a1",
+			ids: new Set([
+				"tool:t1",
+				"tool:t2",
+				"a0",
+				"tool:w1",
+				"tool:w2",
+				"tool:w3",
+				"a1",
+			]),
+			newestKey: "a1",
 		},
 	}).runs[0];
 	assert.equal(
 		onPage.segments[0].facts.actions,
 		30,
 		"a wake the page carried is already in the wire's figure",
+	);
+});
+
+test("a SERVED page with its own facts and identity adds nothing (B3)", () => {
+	/*
+	 * THE INVARIANT (agent review round 4, B3): a page applied with its OWN facts and
+	 * its OWN identity describes exactly the rows it carried, so the plan must add
+	 * NOTHING and state the wire's own figures. It failed on every shape whose page
+	 * carried tool rows: the identity held ENTRY ids while the client's rows key
+	 * `tool:<tool_call_id>`, so the exclusion arm matched no tool row, the watermark
+	 * fell back to the newest non-tool row, and every tool row after it was added -
+	 * the reviewer measured `12 / 33 s` stated where the core published `9 / 24 s`.
+	 *
+	 * THE PAGE IS THE SHAPE THE RUNTIME WRITES, marker included: six tool rounds, then
+	 * a `completion_attention` marker whose ANCHOR is a mid-run row (its client row
+	 * merges at the anchor's position, so three tool rows sit after the newest row the
+	 * old rule could match), then the closing statement. The mapping has to answer for
+	 * both classes - a tool entry by its call id, the marker by its anchor - or the
+	 * rows after it read as new work.
+	 */
+	const round = (n) => [
+		{
+			id: `a${n}`,
+			ts: 100 + n,
+			type: "message",
+			payload: {
+				kind: "message",
+				role: "assistant",
+				content: [{ text: "" }],
+				tool_calls: [
+					{
+						id: `call_${n}`,
+						name: "bash",
+						arguments: { command: `step ${n}` },
+					},
+				],
+				stop_reason: "toolUse",
+			},
+		},
+		{
+			id: `t${n}`,
+			ts: 100 + n + 0.5,
+			type: "message",
+			payload: {
+				kind: "message",
+				role: "tool",
+				content: [{ text: `ok ${n}` }],
+				tool_call_id: `call_${n}`,
+				tool_name: "bash",
+				provider_payload: { duration_s: 3 },
+			},
+		},
+	];
+	const entries = [
+		...round(1),
+		...round(2),
+		...round(3),
+		...round(4),
+		...round(5),
+		...round(6),
+		{
+			id: "m1",
+			ts: 120,
+			type: "custom",
+			payload: {
+				custom_type: "completion_attention",
+				details: {
+					token: "tok-b3",
+					kind: "interrupted",
+					eligible: true,
+					anchor: "a4",
+				},
+			},
+		},
+		{
+			id: "ans",
+			ts: 130,
+			type: "message",
+			payload: {
+				kind: "message",
+				role: "assistant",
+				content: [{ text: "done" }],
+				stop_reason: "endTurn",
+			},
+		},
+	];
+	const page = {
+		entries,
+		has_more: true,
+		cursor_missing: false,
+		head_cut: true,
+		runs_state: "ready",
+		runs: [
+			{
+				run_key: "ans",
+				opening_user_id: "u-off-page",
+				closing_answer_id: "ans",
+				settled: true,
+				outcome: "interrupted",
+				action_count: 6,
+				failed_count: 0,
+				worked_seconds: 18,
+				complete: true,
+			},
+		],
+	};
+	const facts = openFrameFacts(page);
+	assert.ok(facts, "the page carries facts");
+	/*
+	 * The identity is what the page's rows KEY, not what its entries are called: the
+	 * six tool rows by call id, the marker by its anchor. The assistant entries that
+	 * carry the calls fall back to their own ids - keys no row uses, since the reducer
+	 * merges a call pair into one tool row - so they are in the set and harmless.
+	 */
+	assert.deepEqual(
+		[...facts.page.ids].sort(),
+		[
+			"a1",
+			"a2",
+			"a3",
+			"a4",
+			"a5",
+			"a6",
+			"ans",
+			"tool:call_1",
+			"tool:call_2",
+			"tool:call_3",
+			"tool:call_4",
+			"tool:call_5",
+			"tool:call_6",
+		],
+		"the carried set is row keys: tool calls by call id, the marker by its anchor",
+	);
+	const rows = buildRows(applyHistoryPage(EMPTY_TRANSCRIPT, page).records, []);
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: facts.runs,
+		factPage: facts.page,
+	});
+	const run = plan.runs[0];
+	assert.equal(run.factApplied, true, "the page's own facts apply");
+	assert.equal(
+		run.facts.actions,
+		6,
+		"nothing is added: the wire's count is the rows the page carried",
+	);
+	assert.equal(run.facts.durationS, 18, "and its seconds");
+	assert.equal(
+		run.facts.partial,
+		false,
+		"a served page is exact, and the turn is not live",
 	);
 });
 
