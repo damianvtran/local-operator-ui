@@ -760,3 +760,24 @@ export function modelAccessReading(
 			: provider;
 	return { provider, label };
 }
+
+/**
+ * Whether the model-access band yields to the Radient callout (agent review
+ * round 1, R1-6).
+ *
+ * The two standing blocks can name the SAME missing sign-in: a `radient/auto`
+ * session whose connector verdict says sign-in is required AND whose
+ * `model_access` says `signed_out` for `radient` would stack the callout and
+ * the band, each offering its own entrance to the same remedy
+ * (`radientIssue.start` vs `openConnect`). The callout is the more specific
+ * half — it names the connector, polls its state and starts that sign-in — so
+ * the band yields while it is visible and one fact reads as one block. Any
+ * other provider cannot collide with the Radient connector, so this is the
+ * whole of the rule.
+ */
+export function bandYieldsToRadientIssue(
+	access: { provider: string },
+	radientIssueVisible: boolean,
+): boolean {
+	return radientIssueVisible && access.provider === "radient";
+}

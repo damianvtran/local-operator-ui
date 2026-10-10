@@ -1473,11 +1473,13 @@ const WIRE_ALL = catalogue({
 	models: [...REGISTRY_ROWS, UNSIGNED_ROW],
 	scope: "all",
 });
+const WIRE_HIDDEN_ROWS = [...REGISTRY_ROWS, UNSIGNED_ROW].filter(
+	(single) => !single.connected,
+);
 const WIRE_USABLE = catalogue({
 	models: REGISTRY_ROWS.filter((single) => single.connected),
 	scope: "usable",
-	hidden: [...REGISTRY_ROWS, UNSIGNED_ROW].filter((single) => !single.connected)
-		.length,
+	hidden: WIRE_HIDDEN_ROWS.length,
 });
 
 /**
@@ -1587,11 +1589,86 @@ export const NoUsableModels: Story = {
 	),
 	play: async () => {
 		await waitFor(() =>
-			expect(screen.getByText("No models are available yet.")).toBeTruthy(),
+			expect(screen.getByText("No models are signed in yet.")).toBeTruthy(),
 		);
 		expect(
 			screen.getByRole("button", { name: "Connect a provider" }),
 		).toBeTruthy();
+		delete document.documentElement.dataset.capturePending;
+	},
+};
+
+/**
+ * THE WIRE-PATH DEAD END: a NEW backend answers the scoped read with ZERO rows
+ * and its own count of what it is holding back, so the count and the CTA stand
+ * in one composition — which no frame showed before (design round 1, D6a: the
+ * set's other dead end, `no-usable-models`, runs on the OLD-backend bridge and
+ * cannot print a count). The control stays reachable and still says how many
+ * rows are one click away.
+ */
+export const NoUsableWire: Story = {
+	render: () => (
+		<HeldForPlay>
+			<Frame
+				bridge={scopedCatalogueOnly(
+					catalogue({
+						models: [],
+						scope: "usable",
+						hidden: WIRE_HIDDEN_ROWS.length,
+					}),
+					WIRE_ALL,
+				)}
+			/>
+		</HeldForPlay>
+	),
+	play: async () => {
+		await waitFor(() =>
+			expect(screen.getByText("No models are signed in yet.")).toBeTruthy(),
+		);
+		expect(
+			screen.getByRole("button", { name: "Connect a provider" }),
+		).toBeTruthy();
+		await screen.findByRole(
+			"checkbox",
+			{
+				name: `Show all supported models (${WIRE_HIDDEN_ROWS.length} need sign-in)`,
+			},
+			SLOW,
+		);
+		delete document.documentElement.dataset.capturePending;
+	},
+};
+
+/**
+ * THE FOOTER ON A NEEDS-SIGN-IN ROW (design round 1, D2's companion frame):
+ * the reveal is pressed, the search narrows to the one hidden row, and the
+ * footer names the verb Enter will actually perform — `Enter connects zai`,
+ * not a switch the pick will not make. The row's own line says `needs sign-in`
+ * (the shared vocabulary, D5/U3) and the control keeps the wire count.
+ */
+export const ShowAllConnectFooter: Story = {
+	render: () => (
+		<HeldForPlay>
+			<Frame bridge={scopedCatalogueOnly(WIRE_USABLE, WIRE_ALL)} />
+		</HeldForPlay>
+	),
+	play: async () => {
+		await screen.findAllByRole("option", undefined, SLOW);
+		const control = await screen.findByRole(
+			"checkbox",
+			{ name: "Show all supported models (2 need sign-in)" },
+			SLOW,
+		);
+		await userEvent.click(control);
+		await waitFor(() => expect(screen.getByText(/GLM-5\.2/)).toBeTruthy());
+		/*
+		 * Narrow to the one hidden row so the keyboard's row — and therefore the
+		 * footer — is the needs-sign-in row this frame exists to show.
+		 */
+		await typeQuery("glm");
+		await waitFor(() =>
+			expect(screen.getByText(/Enter connects zai/)).toBeTruthy(),
+		);
 		delete document.documentElement.dataset.capturePending;
 	},
 };

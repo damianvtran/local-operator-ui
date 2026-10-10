@@ -143,13 +143,83 @@ export type CatalogueScope = "usable" | "all";
 type CatalogueRow = DesktopModelCatalogue["models"][number];
 
 /**
- * The row's selector, in the one spelling the wire and the rows share. The
- * local fallback matters because an older backend may omit the field
+ * The row's selector, in the one spelling the wire and the rows share.
+ *
+ * ONE SPELLING FOR BOTH READERS (agent review round 1, R1-5): this module's
+ * scope filter and `destination-pickers.tsx`'s row map used to keep separate
+ * copies, one tier apart — a row carrying `value` without `selector` was
+ * spelled two ways by two halves of the same feature. The full tier list lives
+ * here now and both callers import it.
+ *
+ * The local fallbacks matter because an older backend may omit `selector`
  * (`selector` is required by the contract but only since the same era as
- * `scope`), and a row without one still has a provider and an id.
+ * `scope`) and the pane path can carry a bare `value`; a row with none of the
+ * three still has a provider and an id.
  */
-function selectorOf(row: CatalogueRow): string {
-	return row.selector ?? `${row.provider}/${row.model_id}`;
+export function catalogueSelectorOf(row: {
+	selector?: string | null;
+	value?: string;
+	provider: string;
+	model_id: string;
+}): string {
+	return row.selector ?? row.value ?? `${row.provider}/${row.model_id}`;
+}
+
+const selectorOf = catalogueSelectorOf;
+
+/**
+ * The three answers a catalogue row's auth can have, in one place.
+ *
+ * `needs-sign-in` is the state the whole feature turns on: the row is listed
+ * (or was, before scope filtering) and cannot run until a credential exists.
+ * `unknown` is `credentials_known === false` — the store could not be read, so
+ * `connected` is the listing default rather than a statement about auth.
+ */
+export type RowAuth = "runnable" | "needs-sign-in" | "unknown";
+
+/**
+ * One row's auth state, from the document's own facts.
+ *
+ * THE ONE PREDICATE behind the row's group, its description, the scope union's
+ * reading of it and the pick itself (agent review round 1, R1-5's class: the
+ * spellings were drifting apart one caller at a time). The catalogue route
+ * always resolves `connected`, so a falsy value is a claim — the wire sends
+ * the boolean.
+ */
+export function rowAuthOf(
+	row: { connected?: boolean },
+	credentialsKnown: boolean,
+): RowAuth {
+	if (!credentialsKnown) return "unknown";
+	return row.connected ? "runnable" : "needs-sign-in";
+}
+
+/**
+ * The provider whose sign-in a pick must start, for a selector the composer's
+ * INLINE list has a row for — or null when there is nothing to intercept.
+ *
+ * THE COMPOSER'S HALF OF THE DIALOG'S RULE (UX round 1, U2). Picking a model
+ * row that needs a sign-in starts the Connect gesture on every surface, not
+ * only in the dialog; the inline `/model` popup used to switch the session
+ * onto the same row it labelled "no credential", which is the stranded state
+ * this feature exists to remove, with the safe behaviour only on the thicker
+ * surface.
+ *
+ * `=== false` is the inline route's own spelling, stated where its caveat is
+ * built (`slash-argument-rows.ts`): `commands.entities` publishes `connected`
+ * already resolved on the store's own thread, so only an explicit false is a
+ * claim about auth there. The catalogue route reads the same fact through
+ * `rowAuthOf`, whose contract carries the field. The row's provider comes from
+ * the selector's own first segment, the same split every picker makes.
+ */
+export function connectProviderForSelector(
+	rows: readonly { value: string; connected?: boolean }[],
+	selector: string,
+): string | null {
+	const row = rows.find((candidate) => candidate.value === selector);
+	if (!row || row.connected !== false) return null;
+	const provider = row.value.split("/")[0] ?? "";
+	return provider || null;
 }
 
 export type ScopedCatalogue = {

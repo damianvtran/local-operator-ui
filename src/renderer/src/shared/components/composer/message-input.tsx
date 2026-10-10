@@ -84,11 +84,15 @@ import type {
 import { useInterruptSlotHold } from "@features/chat/hooks/use-interrupt-slot-hold";
 import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
 import { MOVE_UNAVAILABLE_REASON } from "@features/chat/move-session";
+import { connectProviderForSelector } from "@features/chat/pickers/model-catalogue-listing";
 import {
 	destinationNeedsSession,
 	draftStageForSource,
 } from "@features/chat/pickers/picker-registry";
-import { modelAccessReading } from "@features/chat/session-status/session-model";
+import {
+	bandYieldsToRadientIssue,
+	modelAccessReading,
+} from "@features/chat/session-status/session-model";
 import { SessionModelAccessBand } from "@features/chat/session-status/session-model-access";
 import { SessionStatusStrip } from "@features/chat/session-status/session-status-strip";
 import type { Message } from "@features/chat/types/message";
@@ -4323,6 +4327,47 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					return;
 				}
 				if (!runSlashCommand) return;
+				/*
+				 * A `/model` SUBMISSION NAMING A ROW THAT NEEDS A SIGN-IN IS THE CONNECT
+				 * GESTURE, NOT A SWITCH (UX round 1, U2).
+				 *
+				 * The inline `/model` list used to switch the session onto the very row it
+				 * labelled `needs sign-in` — the stranded state this feature exists to
+				 * remove — while the same row picked from the dialog started the Connect
+				 * flow. The two surfaces now read ONE rule (`rowAuthOf`'s answer, in
+				 * `model-catalogue-listing.ts`) through the spelling each route can
+				 * actually see: here the inline rows' own `connected`, which
+				 * `commands.entities` publishes resolved, so only an explicit false is a
+				 * claim about auth (`connectProviderForSelector` states that half).
+				 *
+				 * The command is NOT consumed and nothing is sent: the box keeps the text
+				 * the user wrote, the dialog opens on the row's provider, and once the
+				 * sign-in lands the same submission switches for real — the same
+				 * recovery loop the dialog's own interception leaves.
+				 *
+				 * `whole` and `splice` are the two kinds that RUN a command; the branch
+				 * sits before the generic run below so no other path had to move.
+				 */
+				if (plan.kind === "whole" || plan.kind === "splice") {
+					const spec = slash.commands.find(
+						(command) =>
+							command.name === plan.command.name ||
+							command.aliases.includes(plan.command.name),
+					);
+					const selector = pyTrim(plan.command.args ?? "");
+					if (spec?.destination === "session.model" && selector) {
+						const provider = connectProviderForSelector(
+							slash.argumentList.rows,
+							selector,
+						);
+						if (provider) {
+							useConnectProviderStore
+								.getState()
+								.openConnect({ providerId: provider });
+							return;
+						}
+					}
+				}
 				if (plan.kind === "list-open") {
 					// The roster owns the next Enter — but only while it can give a row.
 					// While the list is up with rows in it, nothing is submitted and
@@ -4486,6 +4531,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				slash.commandNames,
 				slash.open,
 				slash.matches.length,
+				// The connect interception (UX round 1, U2) reads these two: the
+				// registry row that says the command IS the model command, and the
+				// inline list's rows, whose own `connected` it asks about.
+				slash.commands,
+				slash.argumentList.rows,
 				stage,
 				// The reassembly's note carries the pane's own clause too (review F3):
 				// the promise is conditioned on this pane being able to address a
@@ -7343,24 +7393,38 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			sessionStatus && sessionStatus.draft !== true
 				? modelAccessReading(sessionStatus.frontend)
 				: null;
-		const modelAccessBlock = modelAccess ? (
-			<output className={cn(CHAT_MEASURE, "block pb-2")}>
-				<SessionModelAccessBand
-					access={modelAccess}
-					isSmallView={isSmallView}
-					onSwitchModel={
-						sessionStatus?.onCommand
-							? () => sessionStatus.onCommand?.({ name: "model", args: "" })
-							: undefined
-					}
-					onConnect={() =>
-						useConnectProviderStore
-							.getState()
-							.openConnect({ providerId: modelAccess.provider })
-					}
-				/>
-			</output>
-		) : null;
+		/*
+		 * ONE MISSING SIGN-IN, ONE BLOCK (agent review round 1, R1-6). A
+		 * `radient/auto` session whose connector verdict says sign-in is required
+		 * while `model_access` also reports `signed_out` for radient would stack the
+		 * Radient callout and the band — two entrances to one remedy; the callout
+		 * is the more specific half, so the band yields while it is visible
+		 * (`bandYieldsToRadientIssue` states the rule; any other provider cannot
+		 * collide with the connector).
+		 */
+		const modelAccessBlock =
+			modelAccess &&
+			!bandYieldsToRadientIssue(
+				modelAccess,
+				radientIssue.issue.kind !== "hidden",
+			) ? (
+				<output className={cn(CHAT_MEASURE, "block pb-2")}>
+					<SessionModelAccessBand
+						access={modelAccess}
+						isSmallView={isSmallView}
+						onSwitchModel={
+							sessionStatus?.onCommand
+								? () => sessionStatus.onCommand?.({ name: "model", args: "" })
+								: undefined
+						}
+						onConnect={() =>
+							useConnectProviderStore
+								.getState()
+								.openConnect({ providerId: modelAccess.provider })
+						}
+					/>
+				</output>
+			) : null;
 
 		/*
 		 * THE ACKNOWLEDGMENT'S TWO HALVES, ON ONE PREDICATE, AND ONE OF THEM IS
