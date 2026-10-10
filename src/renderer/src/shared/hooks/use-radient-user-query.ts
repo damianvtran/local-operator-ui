@@ -347,6 +347,17 @@ export type RadientUserQueryOptions = {
 	 * is the difference between a section that settles and one that spins.
 	 */
 	retryOnMount?: boolean;
+	/**
+	 * How long a read stays fresh for THIS observer, in ms (default 30 s).
+	 *
+	 * An observer-level knob on a shared query: React Query evaluates staleness
+	 * per observer, so a surface that must not show a stale answer (the chat's
+	 * out-of-credits guidance, met right after a user verified or topped up in a
+	 * browser) can ask for a shorter window without changing what the settings
+	 * page, the rail or any other reader of the same key does. The shared fetch
+	 * dedupes, so many observers on one short window still cost one request.
+	 */
+	staleTime?: number;
 };
 
 /**
@@ -356,6 +367,7 @@ export type RadientUserQueryOptions = {
  */
 export const useRadientUserQuery = ({
 	retryOnMount = true,
+	staleTime = 30 * 1000,
 }: RadientUserQueryOptions = {}) => {
 	const queryClient = useQueryClient();
 	const { setIsSigningOut } = useUserStore();
@@ -404,7 +416,7 @@ export const useRadientUserQuery = ({
 			}
 		},
 		enabled,
-		staleTime: 30 * 1000,
+		staleTime,
 		refetchOnWindowFocus: true,
 		/*
 		 * THREE attempts, and this is the only thing that decides that number. What

@@ -535,6 +535,12 @@ const CHROME_LAUNCH_SITES = [
 		1,
 		"the asks open-by-default matrix - the old tree beside the new one over the same backend, photographed in the running renderer - one private headless Chrome per run, a browser context per case, through the same helper (the zone pin rides the same spawn)",
 	),
+	guarded(
+		"scripts/radient-credits-geometry.mjs",
+		"spawn",
+		1,
+		"measures the credits-guidance row's pre-settle insertion shift (the account read held so the un-inserted row is still) and the 420-wide wrap readings for the longest copy, from the live DOM - one private headless Chrome for both phases through the same helper (registered by its PR's review remediation: an unlisted launch site fails Desktop Tests)",
+	),
 ];
 
 const key = (row) => `${row.file}#${row.name}#${row.index}`;

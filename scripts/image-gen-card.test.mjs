@@ -24,8 +24,8 @@ import { renderToStaticMarkup } from "react-dom/server";
  *     states that can act on them;
  *   - the RENDER-level rules the model cannot see, against the real component
  *     server-rendered at the end of this file: the cancelling card's bar
- *     follows the tile's own predicate, and a queued card states its queue
- *     position only when one exists.
+ *     follows the tile's own predicate, and a queued card states how many
+ *     requests are ahead only when a count exists.
  *
  * The module is bundled rather than imported raw so the test runs against the
  * same TS the app compiles, the way `tool-row.test.mjs` bundles its model.
@@ -610,14 +610,28 @@ test("the bar draws only when a fraction is carried, and only determinate (D2)",
  * fallback, and NOTHING when neither exists — absence must not become a zero
  * or a placeholder.
  */
-test("a queued card states its queue position only when one exists (Q-1)", () => {
+test("a queued card states how many are ahead only when a count exists (Q-1)", () => {
 	const withPosition = markupOf({
 		state: "queued",
 		composing: false,
 		argumentBytes: 1900,
 		queuePosition: 2,
 	});
-	assert.equal(withPosition.includes("position 2"), true);
+	// The field counts requests AHEAD, so the copy says so: "2 ahead", never
+	// "position 2" (which would read one off — the TUI's D3 ruling).
+	// Anchored on the datum span's own edges (`>` ... `<`): a bare substring
+	// would also pass for "12 ahead".
+	assert.equal(withPosition.includes(">· 2 ahead<"), true);
+	assert.equal(withPosition.includes("position"), false);
+
+	// Zero is a real reading (nothing ahead), not an absent field.
+	const nothingAhead = markupOf({
+		state: "queued",
+		composing: false,
+		argumentBytes: 1900,
+		queuePosition: 0,
+	});
+	assert.equal(nothingAhead.includes(">· 0 ahead<"), true);
 
 	const without = markupOf({
 		state: "queued",
@@ -625,7 +639,7 @@ test("a queued card states its queue position only when one exists (Q-1)", () =>
 		argumentBytes: 1900,
 		queuePosition: null,
 	});
-	assert.equal(without.includes("position"), false);
+	assert.equal(without.includes("ahead"), false);
 	assert.equal(without.includes("Queued"), true);
 
 	// The dictation half still states its byte count.

@@ -87,8 +87,11 @@ import {
 } from "../project-filters";
 import {
 	type BoardWindow,
+	type DoneGateRefusal,
 	boardWindowEmptyHeading,
 	boardWindowProjects,
+	forcedCloseToastText,
+	projectDisplayName,
 	projectStatusMeta,
 	readBoardWindow,
 	refusalCopy,
@@ -116,10 +119,12 @@ import { todayUtcMs } from "../timeline-model";
  * and the skeleton is six identical rows whose only identity is their slot.
  */
 const LOADING_SKELETON_ROWS = ["r1", "r2", "r3", "r4", "r5", "r6"] as const;
+import { runStatusMove } from "../project-move";
 import { BoardWindowSelect } from "./board-window-select";
 import { ProjectBoard, useMoveFocusHandoff } from "./project-board";
 import { ProjectDeleteDialog } from "./project-delete-dialog";
 import { ProjectDetailScreen } from "./project-detail";
+import { ProjectDoneAnywayDialog } from "./project-done-anyway-dialog";
 import { ProjectFormDialog } from "./project-form-dialog";
 import { ProjectList } from "./project-list";
 import { ProjectTimeline } from "./project-timeline";
@@ -581,15 +586,84 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 		writeBoardWindow("all");
 		setHandBackToWindow(true);
 	};
+	/*
+	 * THE DONE-GATE'S QUESTION, held while the reader answers it: the card they
+	 * tried to move, where to, and what the daemon said was still open. Null is
+	 * "no question asked". Only ever set when the daemon coded the refusal AND
+	 * advertises `projects_force_done` (see `moveTo`), so the dialog's one
+	 * write is always one this daemon accepts.
+	 */
+	const [forceTarget, setForceTarget] = useState<{
+		project: DesktopProject;
+		status: string;
+		refusal: DoneGateRefusal;
+	} | null>(null);
+	/*
+	 * Whether a question is ALREADY on screen. The dialog is a single slot -
+	 * one modal at a time - so a second refusal that arrives while the first
+	 * question is up answers as a toast instead of overwriting the open
+	 * question (agent review F3; UX round 1, U1: two overlapping moves used to
+	 * end with one question and one silent refusal). The slot is CLAIMED inside
+	 * the move decision (`runStatusMove` calls `claimQuestion` synchronously),
+	 * not by this component's reaction to it: two refusals can settle in one
+	 * microtask checkpoint, and a reaction that lands a microtask later would
+	 * let both decisions read an unclaimed slot (agent review R2-1).
+	 */
+	const forceOpen = useRef(false);
+	const dismissForceQuestion = () => {
+		forceOpen.current = false;
+		setForceTarget(null);
+	};
+	/*
+	 * WHICH MOVES ARE IN FLIGHT, per card, as page state rather than the
+	 * mutation's own `variables`: with two moves overlapping, the shared
+	 * mutation remembers only the last one's variables, so the first card's
+	 * spinner vanished while its write was still in flight (UX round 1, U2).
+	 * Keyed by project id, cleared per call in the finally below.
+	 */
+	const [movingKeys, setMovingKeys] = useState<string[]>([]);
+	const forceDoneOffered = desktopFeatureEnabled(
+		capabilities.data,
+		"projects_force_done",
+	);
+	/*
+	 * A MOVE THAT DID NOT HAPPEN IS NEVER SILENT. This write used to pass no
+	 * `onError`, so the daemon's 422 (the done-gate's "N milestones still
+	 * incomplete") reached nobody: no toast, and a card that simply did not move
+	 * (QA's isolated-daemon repro). Every failure now ends in exactly one of two
+	 * places - the confirm dialog (the open-milestones refusal, when this daemon
+	 * can honour a forced close) or an error toast with the route's own sentence
+	 * through the app's copy.
+	 */
+	/*
+	 * A MOVE THAT DID NOT HAPPEN IS NEVER SILENT, PER CALL (agent review F3;
+	 * UX round 1, U1): the decision - moved, question, or a sentence for a
+	 * toast - lives in `runStatusMove`, a pure module driven per call with
+	 * `mutateAsync`, because the shared mutation's callbacks are displaced by
+	 * an overlapping second move. This wiring owns only the side effects: the
+	 * per-card busy signal (U2), the question slot (one dialog at a time), the
+	 * toasts, and the focus hand-off.
+	 */
 	const moveTo = (project: DesktopProject, status: string) => {
-		update.mutate(
-			{
-				key: project.id,
-				fields: { status: status as DesktopProjectStatus },
+		const key = project.id;
+		const label = projectStatusMeta(status).label;
+		setMovingKeys((keys) => (keys.includes(key) ? keys : [...keys, key]));
+		void runStatusMove({
+			move: () =>
+				update.mutateAsync({
+					key,
+					fields: { status: status as DesktopProjectStatus },
+				}),
+			forceDoneOffered,
+			claimQuestion: () => {
+				if (forceOpen.current) return false;
+				forceOpen.current = true;
+				return true;
 			},
-			{
-				onSuccess: () => {
-					showSuccessToast(`Moved to ${projectStatusMeta(status).label}`);
+		})
+			.then((outcome) => {
+				if (outcome.kind === "accepted") {
+					showSuccessToast(`Moved to ${label}`);
 					/*
 					 * THE CARET COMES BACK AFTER THE LIST SETTLES, from here rather than
 					 * from the card: the refetch re-parents the card into its new column,
@@ -599,10 +673,40 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					 * signal, and `useMoveFocusHandoff` focuses the trigger wherever the
 					 * card now lives.
 					 */
-					void list.refetch().then(() => handOffFocus(project.id));
-				},
-			},
-		);
+					void list.refetch().then(() => handOffFocus(key));
+					return;
+				}
+				if (outcome.kind === "question") {
+					/*
+					 * The slot was already CLAIMED inside the decision (R2-1) - the
+					 * dialog only opens here, so a second refusal settling in the same
+					 * microtask has already been spoken as a toast instead of
+					 * overwriting this question.
+					 */
+					setForceTarget({ project, status, refusal: outcome.refusal });
+					return;
+				}
+				showErrorToast(
+					outcome.copy,
+					outcome.refusal
+						? {
+								action: {
+									label: "View project",
+									onClick: () => void navigate(`/projects/${key}`),
+								},
+							}
+						: undefined,
+				);
+				/*
+				 * The card did not move, so nothing re-parents - but the menu that
+				 * held the press has closed, and the caret goes back to its trigger
+				 * rather than being left to the menu's own unmount.
+				 */
+				handOffFocus(key);
+			})
+			.finally(() => {
+				setMovingKeys((keys) => keys.filter((k) => k !== key));
+			});
 	};
 
 	/*
@@ -1009,11 +1113,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 							onDelete={setDeleting}
 							onMove={moveTo}
 							teamLabelFor={teamLabelFor}
-							movingKeys={
-								update.isPending && update.variables
-									? [update.variables.key]
-									: []
-							}
+							movingKeys={movingKeys}
 						/>
 					)}
 
@@ -1092,6 +1192,43 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					});
 					showSuccessToast("Project deleted");
 					setDeleting(null);
+				}}
+			/>
+
+			<ProjectDoneAnywayDialog
+				open={forceTarget !== null}
+				refusal={forceTarget?.refusal ?? null}
+				projectLabel={
+					forceTarget ? projectDisplayName(forceTarget.project) : ""
+				}
+				onClose={() => {
+					// Every exit (Cancel, Escape, scrim, X, success) hands the caret back
+					// to the card's trigger; none of them but the confirm wrote anything.
+					if (forceTarget) handOffFocus(forceTarget.project.id);
+					dismissForceQuestion();
+				}}
+				onConfirm={async () => {
+					if (!forceTarget) return;
+					const { project, status, refusal } = forceTarget;
+					const result = await update.mutateAsync({
+						key: project.id,
+						fields: { status: status as DesktopProjectStatus },
+						forceDone: true,
+					});
+					showSuccessToast(
+						forcedCloseToastText(
+							result,
+							refusal.count,
+							projectStatusMeta(status).label,
+						),
+					);
+					void list.refetch().then(() => handOffFocus(project.id));
+				}}
+				secondaryLabel="Open project"
+				onSecondary={() => {
+					const id = forceTarget?.project.id;
+					dismissForceQuestion();
+					if (id) void navigate(`/projects/${id}`);
 				}}
 			/>
 

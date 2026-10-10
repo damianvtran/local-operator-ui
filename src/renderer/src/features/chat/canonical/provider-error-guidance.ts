@@ -34,6 +34,17 @@
  * affordance is exactly as present or absent as the failure classes above
  * decide, whatever prose sits around them.
  *
+ * A RADIENT 402 IS NEVER A RATE LIMIT. Radient answers an account with no
+ * balance as HTTP 402 "insufficient credits", and the runtime's classifier files
+ * a relayed refusal under `rate-limit` when the relayed text also says "rate
+ * limit or quota exceeded" - so the structured category alone rendered the
+ * row as "rate-limit:" with a provider-settings button, which tells a reader
+ * with an empty balance to back off. For a Radient-named row the TEXT marker for
+ * the balance therefore outranks a `rate-limit` category (and only that one: an
+ * `auth` or `network` category still decides, and a non-Radient rate limit is
+ * untouched). `radientOutOfCredits` is the single predicate; the row's label,
+ * headline and account-aware guidance all key on it.
+ *
  * WHERE EACH CLASS LANDS. Sign-in failures point at the providers surface with
  * Radient preselected; Radient billing failures point at the ACCOUNT section,
  * where the balance, the verify-to-claim callout and the console's billing
@@ -82,7 +93,82 @@ const BILLING_TEXTS = [/insufficient credits/i, /credit balance is too low/i];
  */
 const QUOTA_TEXTS = [/rate limit or quota/i];
 
+/**
+ * The markers that say a RADIENT failure is the balance. "insufficient
+ * credits" is the 402 body; "HTTP 402" is the status the runtime prefixes onto
+ * a relayed refusal whose body was dropped. Both are tied to a Radient-named
+ * row by the caller - a bare "402" in some other provider's text is not ours to
+ * reinterpret.
+ */
+const RADIENT_BALANCE_TEXTS = [/insufficient credits/i, /\bHTTP 402\b/i];
+
 type FailureClass = "sign-in" | "billing" | "quota";
+
+/** Whether the row's head names Radient as the provider that failed. */
+function namesRadient(provider: string | null | undefined): boolean {
+	return (provider ?? "").split("/")[0]?.trim().toLowerCase() === "radient";
+}
+
+/**
+ * Whether a row is Radient refusing a request because the account has no
+ * balance - from the harness's own `billing` class, or from the text marker when
+ * the category says `rate-limit` (see the header) or says nothing.
+ *
+ * Deliberately NOT true for other categories: `auth`, `network`, `mcp` and the
+ * rest are the classifier saying this failure is a different kind, and a quoted
+ * "insufficient credits" inside their payload is some other error's words.
+ */
+export function radientOutOfCredits(row: {
+	text: string;
+	category?: string | null;
+	provider?: string | null;
+}): boolean {
+	if (!namesRadient(row.provider)) return false;
+	if (row.category === "billing") return true;
+	const open =
+		row.category == null ||
+		row.category === "unknown" ||
+		row.category === "rate-limit";
+	return open && RADIENT_BALANCE_TEXTS.some((marker) => marker.test(row.text));
+}
+
+/**
+ * What the row says it is, given what it is: the ledger label and the headline.
+ *
+ * Only a Radient out-of-credits row is rewritten (`null` otherwise, so every
+ * other row keeps the runtime's words untouched). The relayed label "rate limit
+ * or quota exceeded" is the symptom of the misclassification, not a fact about
+ * the account, so it is replaced by the cause; everything else the vendor said
+ * (the status, the body) stays, because the reader may quote it to support. A
+ * headline that never carried the rate-limit label (the `billing` class's own
+ * "HTTP 402: insufficient credits") already reads correctly and is left alone.
+ */
+export function radientOutOfCreditsWording(row: {
+	text: string;
+	headline: string;
+	category?: string | null;
+	provider?: string | null;
+}): { label: string; headline: string } | null {
+	if (!radientOutOfCredits(row)) return null;
+	const relayed = /rate limit or quota( exceeded)?\s*/i;
+	if (!relayed.test(row.headline))
+		return { label: "billing", headline: row.headline };
+	/*
+	 * The relayed shape is `<label> (HTTP 402): <body>` (`ProviderError.render`
+	 * in the runtime's `providers/failover.py`). The status and the body are the
+	 * vendor's facts and survive in the same order; only the label is replaced.
+	 */
+	const rest = row.headline.replace(relayed, "").trim();
+	const parts = /^\((HTTP \d{3})\):?\s*(.*)$/i.exec(rest);
+	const body = (parts ? parts[2] : rest.replace(/^:\s*/, "")).trim();
+	const status = parts ? ` (${parts[1]})` : "";
+	return {
+		label: "billing",
+		headline: body
+			? `Out of credits${status}: ${body}`
+			: `Out of credits${status}: Radient refused the request`,
+	};
+}
 
 /** The classes the harness's own classification already names. */
 function structuredClass(
@@ -112,9 +198,10 @@ export function providerErrorGuidance(row: {
 	provider?: string | null;
 }): ProviderErrorAction | null {
 	const radientNamed =
-		(row.provider ?? "").split("/")[0]?.trim().toLowerCase() === "radient" ||
-		RADIENT_SIGN_IN.test(row.text);
+		namesRadient(row.provider) || RADIENT_SIGN_IN.test(row.text);
 	let failure: FailureClass | null = structuredClass(row.category);
+	// The balance outranks a `rate-limit` category on a Radient row (header).
+	if (radientOutOfCredits(row)) failure = "billing";
 	if (
 		failure === null &&
 		(row.category == null || row.category === "unknown")

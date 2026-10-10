@@ -61,6 +61,18 @@ export type ArgumentRow = {
 	aliases?: readonly string[];
 	/** Paints `detail` in the danger tint. */
 	alert?: boolean;
+	/**
+	 * The row's own auth fact, for the model source — carried STRUCTURALLY because
+	 * a pick has to be able to READ it rather than parse its description (UX
+	 * round 1, U2: the inline list must apply the same needs-sign-in rule as the
+	 * dialog, and `"zai, needs sign-in"` is prose, not a fact to branch on).
+	 *
+	 * Only set when the route sent an explicit boolean: `commands.entities`
+	 * resolves `connected` on the store's own thread, so false is a claim about
+	 * auth there, while an absent field is the row saying nothing — the same
+	 * reading the caveat in `modelRowDescription` applies.
+	 */
+	connected?: boolean;
 	current?: boolean;
 	/**
 	 * The team's ADDRESS — its slug — when `name` displays a LABEL instead.
@@ -958,7 +970,14 @@ export function argumentRows(
 				const description = [
 					asText(row.provider),
 					row.aggregated ? "aggregated" : "",
-					row.connected === false ? "no credential" : "",
+					/*
+					 * THE SHARED VOCABULARY (design review round 1, D5; UX round 1, U3): the
+					 * dialog's row, its group heading and its count all say `sign-in`; this
+					 * list's rows carried a different word for the same fact, the one
+					 * register outside the family. The fact itself is unchanged — only the
+					 * word for it.
+					 */
+					row.connected === false ? "needs sign-in" : "",
 				]
 					.filter(Boolean)
 					.join(", ");
@@ -977,6 +996,8 @@ export function argumentRows(
 					name: asText(row.label) || asText(row.model_id),
 					description,
 					detail: detail || undefined,
+					connected:
+						typeof row.connected === "boolean" ? row.connected : undefined,
 					current: Boolean(selectedSelector) && selectedSelector === value,
 				};
 			});

@@ -64,6 +64,10 @@ export const githubLight: ThemeDefinition = {
 		// measures 2.41 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
 		messageSurface: "#fafbfc",
+		// The media slot's well: ΔE00 4.02 off the canvas, where `sunken` alone
+		// measures 2.01 - a step away from the canvas to clear the role's 4.0
+		// floor, which the tile carries because the fill IS its resting extent.
+		mediaSurface: "#d5dae2",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a

@@ -340,20 +340,22 @@ test("a refused write, as the sentence beside the field", () => {
 		"milestones paid, refunds are incomplete - complete or remove the incomplete milestones, then mark it done",
 	);
 	/*
-	 * The gate's OWN shape (design round 1, D4): the daemon's log-register head
-	 * is rewritten in the app's sentence, the count and the names kept verbatim
-	 * so the reader still learns exactly what blocks the close. Exact strings,
-	 * because this is copy a reviewer measured.
+	 * The gate's own shape (design round 1, D4; UX round 1, U4; design D8):
+	 * the daemon's log-register head is rewritten in the app's sentence, and
+	 * the count and names stay - but the names are now UNQUOTED (they were
+	 * Python reprs) and folded past three, so one rendering of one list serves
+	 * the toast, the detail line and the dialog. Exact strings, because this is
+	 * copy a reviewer measured.
 	 */
-	const gate = (count) =>
-		`cannot set status 'done': ${count} milestone${count === 1 ? "" : "s"} still incomplete ('rig milestone') — complete them, or pass force_done=true to close with them open`;
+	const gate = (names) =>
+		`cannot set status 'done': ${names.length} milestone${names.length === 1 ? "" : "s"} still incomplete (${names.map((name) => `'${name}'`).join(", ")}) — complete them, or pass force_done=true to close with them open`;
 	assert.equal(
-		projectRefusalCopy({ message: gate(1) }),
-		"This can't be marked done yet: 1 milestone is still incomplete ('rig milestone'). Complete or remove the incomplete milestones, then mark it done.",
+		projectRefusalCopy({ message: gate(["rig milestone"]) }),
+		"This can't be marked done yet: 1 milestone is still incomplete (rig milestone). Complete or remove the incomplete milestones, then mark it done.",
 	);
 	assert.equal(
-		projectRefusalCopy({ message: gate(2) }),
-		"This can't be marked done yet: 2 milestones are still incomplete ('rig milestone'). Complete or remove the incomplete milestones, then mark it done.",
+		projectRefusalCopy({ message: gate(["rig milestone", "other"]) }),
+		"This can't be marked done yet: 2 milestones are still incomplete (rig milestone and other). Complete or remove the incomplete milestones, then mark it done.",
 	);
 	/* Anything else passes through; nothing at all falls back honestly. */
 	assert.equal(

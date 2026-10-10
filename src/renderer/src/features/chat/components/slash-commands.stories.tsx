@@ -826,6 +826,79 @@ export const ArgumentPhaseNarrowComposer: Story = {
 };
 
 /**
+ * A PICK THAT CONNECTS (UX round 2, U4): a `/model` row the wire marked
+ * `connected: false` opens the Connect flow instead of submitting the switch —
+ * the interception in `message-input.tsx` reads `connectProviderForSelector` —
+ * so the footer must promise the connect rather than the run it will not
+ * perform. It is the inline counterpart of the DIALOG footer's D2 fix, and it
+ * reads the SAME resolver over the SAME table (`argumentList.rows`), so the
+ * line and the gesture cannot name two different rows.
+ *
+ * Case 1 is the unambiguous word (`/model gpt`): Enter connects, and the click
+ * line says the same. Case 2 is an ambiguous word at the popup's narrowest
+ * supported width (330px, `ArgumentPhaseNarrowComposer`'s width): two rows
+ * with the needs-sign-in one highlighted, so the LONGER completing sentence —
+ * `Enter completes; Enter again connects openai.` — is the one to look at
+ * where the strip has the least room.
+ */
+export const ArgumentPhaseNeedsSignIn: Story = {
+	render: () => (
+		<Board caption="A pick on a needs-sign-in row CONNECTS (U4): both footer lines promise the connect, not the run the pick would perform — the inline counterpart of the dialog's D2 fix. Case 2 is the same fact at the narrowest supported width.">
+			{/*
+			 * `rows` is the Case's HEIGHT budget, not a render count: the formula
+			 * (44 + rows*36 + 8) covers a one-line footer and the popup strip, and
+			 * this state's footer carries TWO lines (Enter and click) on top of the
+			 * composer box — measured: the one-row case totals ~150px and the
+			 * three-row one ~224px (popup label + rows + footer, popup borders,
+			 * composer). Each case therefore reserves two spare rows, or the lower
+			 * popup paints over the caption and the upper case's composer.
+			 */}
+			<Case width={908} draft="/model gpt" rows={3}>
+				<SlashSuggestionsPopup
+					state={state({
+						phase: "argument",
+						argumentCommand: "model",
+						inline: { source: "model", nameThenMessage: false, runs: true },
+						argumentQuery: "gpt",
+						argumentList: {
+							rows: argumentRows("model", MODELS, null) as ArgumentRow[],
+							loading: false,
+							error: null,
+							needsSession: false,
+						},
+						matches: argumentRowsFor("model", MODELS, null, "gpt"),
+					})}
+					onPick={noop}
+				/>
+			</Case>
+			<Case width={330} draft="/model p" rows={5}>
+				<SlashSuggestionsPopup
+					state={state({
+						phase: "argument",
+						argumentCommand: "model",
+						inline: { source: "model", nameThenMessage: false, runs: true },
+						argumentQuery: "p",
+						/* `p` leaves three rows in the fixture `MODELS` — both
+						   Claude Opus rows and `GPT, no quote` — and the needs-sign-in
+						   row is the third; verified against the fixture rather than
+						   counted by hand (see the capture note). */
+						active: 2,
+						argumentList: {
+							rows: argumentRows("model", MODELS, null) as ArgumentRow[],
+							loading: false,
+							error: null,
+							needsSession: false,
+						},
+						matches: argumentRowsFor("model", MODELS, null, "p"),
+					})}
+					onPick={noop}
+				/>
+			</Case>
+		</Board>
+	),
+};
+
+/**
  * The mid-draft state round-1 D1 judged, and the state this change put in its
  * place — the two cases of one board, which is the only shape that can show the
  * AFTER half.

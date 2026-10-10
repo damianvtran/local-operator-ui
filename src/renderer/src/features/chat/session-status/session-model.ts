@@ -36,7 +36,9 @@
 import type {
 	CanonicalFrontendState,
 	CanonicalModel,
+	CanonicalModelAccess,
 } from "../../../../../shared/desktop-session-contract";
+import type { RadientSessionIssue } from "../../../shared/hooks/use-radient-session-issue";
 
 export type ModelIdentity = {
 	/** What the chip prints: the human name if resolution found one, else the id. */
@@ -707,4 +709,102 @@ export function reconcileEffort(
 		adjustable: true,
 		detail: `Reasoning effort. This model offers ${rungs.join(", ")}.`,
 	};
+}
+
+/**
+ * The session band's "Not signed in to <provider>" reading, or `null`.
+ *
+ * ## What this reads, and the two silences
+ *
+ * The runtime publishes `model_access` beside `selected_model` (see
+ * `CanonicalModelAccess`): a session's model is pinned in its journal and can
+ * outlive the credential that once made it runnable, and this is the one
+ * field that states the consequence. The reading exists ONLY for
+ * `signed_out`:
+ *
+ *   - `ok` is the healthy case and renders nothing;
+ *   - an ABSENT field is a host that predates the contract, and silence there
+ *     must not be read as "signed out" - the same rule the Radient verdict
+ *     reads `unknown` under (`use-radient-session-issue`). A nag invented from
+ *     an older backend's silence would be a claim the frame does not make.
+ *
+ * ## The label fallback
+ *
+ * `label` is the provider's human name for the sentence ("Anthropic (Claude
+ * Pro/Max)" reads better than `anthropic`), but it is display metadata and
+ * may arrive empty; the sentence still has to name something, so it falls
+ * back to the provider id. The PROVIDER (id) is what the Connect action
+ * needs, so it is never the label that travels to `openConnect`.
+ *
+ * A frame is untrusted wire data, so a field that is not a string is treated
+ * as not published rather than stringified - `"[object Object]"` in the
+ * sentence would be worse than silence.
+ */
+export type ModelAccessReading = {
+	/** Provider id - what the Connect action opens. */
+	provider: string;
+	/** The provider's human name for the sentence; never empty. */
+	label: string;
+};
+
+export function modelAccessReading(
+	frontend: CanonicalFrontendState | null | undefined,
+): ModelAccessReading | null {
+	const access: CanonicalModelAccess | null | undefined =
+		frontend?.model_access;
+	if (!access || access.state !== "signed_out") return null;
+	const provider = typeof access.provider === "string" ? access.provider : "";
+	if (!provider) return null;
+	const label =
+		typeof access.label === "string" && access.label.trim() !== ""
+			? access.label
+			: provider;
+	return { provider, label };
+}
+
+/**
+ * The states where the Radient callout IS the sign-in: it offers it
+ * (`needs-sign-in`), is running it (`signing-in`), or offers its retry
+ * (`settled` with `canRetry`).
+ *
+ * WHY THE SET IS THIS NARROW (design round 2, D7). The band yields to the
+ * callout (R1-6) so one missing sign-in reads as one block — and yielding takes
+ * the band's `Switch model` with it, which the callout does not offer in any
+ * state. That is the right trade exactly while the callout carries the remedy
+ * itself: its `Sign in to Radient` button, its `Retry`, or a flow already in
+ * flight. In the states that offer no sign-in action — `settled` refusals
+ * (`sign-in-active`, `no-browser-flow`: a pointer and a dismissal, nothing to
+ * press toward a sign-in) and `input-required` — the band stays, because
+ * there its two exits are the only ones on screen.
+ */
+export function radientCalloutOwnsTheSignIn(
+	issue: RadientSessionIssue,
+): boolean {
+	return (
+		issue.kind === "needs-sign-in" ||
+		issue.kind === "signing-in" ||
+		(issue.kind === "settled" && issue.canRetry)
+	);
+}
+
+/**
+ * Whether the model-access band yields to the Radient callout (agent review
+ * round 1, R1-6; narrowed by design round 2, D7).
+ *
+ * The two standing blocks can name the SAME missing sign-in: a `radient/auto`
+ * session whose connector verdict says sign-in is required AND whose
+ * `model_access` says `signed_out` for `radient` would stack the callout and
+ * the band, each offering its own entrance to the same remedy
+ * (`radientIssue.start` vs `openConnect`). The callout is the more specific
+ * half — it names the connector, polls its state and starts that sign-in — so
+ * the band yields while the callout OWNS the sign-in
+ * (`radientCalloutOwnsTheSignIn` states which states those are, and why the
+ * refusals are not among them). Any other provider cannot collide with the
+ * Radient connector, so this is the whole of the rule.
+ */
+export function bandYieldsToRadientIssue(
+	access: { provider: string },
+	radientCalloutOwnsTheSignIn: boolean,
+): boolean {
+	return radientCalloutOwnsTheSignIn && access.provider === "radient";
 }

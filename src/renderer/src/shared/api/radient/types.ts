@@ -206,6 +206,35 @@ export type AccountVerification = {
 	grant_amount?: number;
 	/** Where the claim happens, when the backend names it. */
 	claim_url?: string;
+	/**
+	 * The registration bonus on a FIRST card top-up, when the backend reports it.
+	 *
+	 * ADDITIVE and optional for the same reason the block around it is: an older
+	 * backend does not send it, and its absence means "cannot say", never "no
+	 * bonus is on offer" - the out-of-credits guidance in the chat then shows the
+	 * top-up link without the bonus line rather than inventing either answer.
+	 */
+	first_topup?: FirstTopUp;
+};
+
+/**
+ * The first-top-up offer, as `GET /v1/me` reports it under `verification`.
+ *
+ * Every field is the backend's own: the amounts are the constants the account
+ * would actually be granted, so a screen quoting them cannot drift from what the
+ * billing flow does. `bonus_received` is the backend's answer to "is this still
+ * a first purchase" (the same predicate the Stripe flow uses to decide whether
+ * to grant the bonus), which is why the client never infers it from a balance.
+ */
+export type FirstTopUp = {
+	/** Credits granted on the first qualifying top-up. */
+	bonus_amount: number;
+	/** The smallest card top-up that earns the bonus. */
+	minimum_purchase: number;
+	/** True once the bonus was granted or a prior purchase exists. */
+	bonus_received: boolean;
+	/** The console's billing page, where the top-up happens. */
+	topup_url: string;
 };
 
 /**
@@ -448,6 +477,12 @@ export type PricesResponse = {
 	 * Default credits granted upon first registration/payment.
 	 */
 	default_registration_credits: number;
+	/**
+	 * The smallest card top-up that earns the first-top-up bonus (the same
+	 * constant as `FirstTopUp.minimum_purchase`). Optional: an older backend does
+	 * not send it, and nothing may fall back to a number it did not report.
+	 */
+	min_top_up?: number;
 };
 
 /* =========================

@@ -499,6 +499,42 @@ export function retryDesktopQuery(
 }
 
 /**
+ * Whether a failed desktop MUTATION is worth sending again.
+ *
+ * The app's default (`mutations.retry: 1`, `query-client.ts`) repeats every
+ * failed write once, which is right for a transport hiccup and wrong for a
+ * REFUSAL: a 4xx is the daemon's considered answer to this exact body, so an
+ * identical second request is refused identically - measured on the board's
+ * status move, where a 422 reached the daemon twice and the sentence surfaced
+ * only after the retry backoff (~1 s of nothing). A mutation that has a
+ * refusal worth reading therefore opts out of the repeat for 4xx and keeps the
+ * single retry for everything that is not an answer (no status, 5xx, 503).
+ */
+export function retryDesktopMutation(
+	failureCount: number,
+	error: Error,
+): boolean {
+	if (
+		error instanceof DesktopControlError &&
+		error.status !== null &&
+		error.status >= 400 &&
+		error.status < 500 &&
+		/*
+		 * 408 (request timeout), 425 (too early) and 429 (too many requests)
+		 * are transient by definition: the request was not refused on its
+		 * merits, so the single retry is still worth spending on them (agent
+		 * review F7). Everything else in the 4xx class is the daemon's
+		 * considered answer to this exact body and is not re-sent.
+		 */
+		error.status !== 408 &&
+		error.status !== 425 &&
+		error.status !== 429
+	)
+		return false;
+	return failureCount < 1;
+}
+
+/**
  * The SETTINGS CARD's own sentence, per cause.
  *
  * WHY THE CARD DOES NOT REUSE THE BANNER'S TABLE (design review rounds 1 and 5,

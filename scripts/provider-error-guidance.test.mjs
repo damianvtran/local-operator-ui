@@ -30,7 +30,11 @@ const bundle = await build({
 	write: false,
 	tsconfig: "tsconfig.web.json",
 });
-const { providerErrorGuidance } = await import(
+const {
+	providerErrorGuidance,
+	radientOutOfCredits,
+	radientOutOfCreditsWording,
+} = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -171,4 +175,91 @@ test("the boundary is the sentence, not the concept: the phrase earns the action
 		}),
 		{ label: "Sign in to Radient", to: RADIENT_SETTINGS },
 	);
+});
+
+/*
+ * A RADIENT 402 IS NEVER A RATE LIMIT.
+ *
+ * The runtime files a relayed Radient refusal under `rate-limit` when the
+ * relayed label says "rate limit or quota exceeded", so the structured category
+ * alone sent a user with an empty balance to "Open provider settings". The text
+ * marker for the balance outranks that one category on a Radient-named row, and
+ * nowhere else.
+ */
+const RELAYED_402 =
+	"rate limit or quota exceeded (HTTP 402): insufficient credits";
+
+test("a Radient 402 filed under rate-limit is out-of-credits, with the account action", () => {
+	const row = {
+		text: `[session incident (radient/auto)] rate-limit: ${RELAYED_402}`,
+		headline: RELAYED_402,
+		category: "rate-limit",
+		provider: "radient/auto",
+	};
+	assert.equal(radientOutOfCredits(row), true);
+	assert.deepEqual(providerErrorGuidance(row), {
+		label: "Open Radient account",
+		to: RADIENT_ACCOUNT,
+	});
+	assert.deepEqual(radientOutOfCreditsWording(row), {
+		label: "billing",
+		headline: "Out of credits (HTTP 402): insufficient credits",
+	});
+});
+
+test("the billing class keeps its own headline, and only the label is the row's", () => {
+	const row = {
+		text: "[session incident (radient/auto)] billing: HTTP 402: insufficient credits",
+		headline: "HTTP 402: insufficient credits",
+		category: "billing",
+		provider: "radient/auto",
+	};
+	assert.equal(radientOutOfCredits(row), true);
+	assert.deepEqual(radientOutOfCreditsWording(row), {
+		label: "billing",
+		headline: "HTTP 402: insufficient credits",
+	});
+});
+
+test("a non-Radient rate limit is untouched, even when it quotes a 402", () => {
+	for (const provider of ["anthropic/claude-opus-5", null]) {
+		const row = {
+			text: `rate-limit: ${RELAYED_402}`,
+			headline: RELAYED_402,
+			category: "rate-limit",
+			provider,
+		};
+		assert.equal(radientOutOfCredits(row), false, String(provider));
+		assert.equal(radientOutOfCreditsWording(row), null, String(provider));
+		assert.deepEqual(providerErrorGuidance(row), {
+			label: "Open provider settings",
+			to: PROVIDER_SETTINGS,
+		});
+	}
+});
+
+test("a Radient rate limit that is not about the balance stays a rate limit", () => {
+	const row = {
+		text: "rate-limit: rate limit or quota exceeded (HTTP 429): slow down",
+		headline: "rate limit or quota exceeded (HTTP 429): slow down",
+		category: "rate-limit",
+		provider: "radient/auto",
+	};
+	assert.equal(radientOutOfCredits(row), false);
+	assert.equal(radientOutOfCreditsWording(row), null);
+	assert.deepEqual(providerErrorGuidance(row), {
+		label: "Open provider settings",
+		to: RADIENT_SETTINGS,
+	});
+});
+
+test("another category quoting the balance is still the classifier's answer", () => {
+	const row = {
+		text: "connection reset while relaying: insufficient credits",
+		headline: "connection reset while relaying: insufficient credits",
+		category: "network",
+		provider: "radient/auto",
+	};
+	assert.equal(radientOutOfCredits(row), false);
+	assert.equal(providerErrorGuidance(row), null);
 });

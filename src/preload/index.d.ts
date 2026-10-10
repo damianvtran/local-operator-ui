@@ -9,6 +9,8 @@ import type { DaemonStatusSnapshot } from "../shared/backend-status";
 import type {
 	DesktopAPI,
 	DirectoryListing,
+	ExternalOpenOutcome,
+	ExternalOpenRefusedPayload,
 	FileActionOutcome,
 	ProbedFile,
 	ReadFileBytesResponse,
@@ -392,7 +394,15 @@ declare global {
 			 * `DIRECTORY_ENTRY_LIMIT` of them per call.
 			 */
 			listDirectory: (dir: string, cwd?: string) => Promise<DirectoryListing>;
-			openExternal: (url: string) => Promise<void>;
+			openExternal: (url: string) => Promise<ExternalOpenOutcome>;
+			/**
+			 * Subscribe to refusals of the anchor path - a click that left through the
+			 * main process's `window.open` door has no caller to answer, so main pushes
+			 * the refusal (round-2 R-4). Returns the unsubscribe.
+			 */
+			onExternalOpenRefused: (
+				callback: (payload: ExternalOpenRefusedPayload) => void,
+			) => () => void;
 			/**
 			 * Reveal a path in the OS file manager. The main process stats the path
 			 * first, because `showItemInFolder` returns nothing and will happily
