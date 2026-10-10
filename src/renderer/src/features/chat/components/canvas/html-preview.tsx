@@ -6,6 +6,43 @@ import { type FC, memo, useCallback, useMemo, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { CodeEditor } from "./code-editor";
 
+/**
+ * THE PREVIEW'S SANDBOX, AND WHY IT IS THIS ONE (security lane U-a; memo §4.1,
+ * §8 F6).
+ *
+ * `allow-scripts` alone. The document is agent-generated HTML served from the
+ * backend's loopback origin, and this frame used to carry `allow-scripts
+ * allow-same-origin allow-forms`:
+ *
+ * - `allow-scripts` + `allow-same-origin` is the pairing the HTML spec warns about
+ *   by name - a framed document that keeps its real origin and can run script
+ *   can reach into its own `<iframe>` element and delete the `sandbox` attribute,
+ *   lifting the sandbox entirely; and with the real backend origin it could read
+ *   every unauthenticated daemon route (`/v1/static/*` takes a filesystem path)
+ *   from the page itself, with the app's own CORS grant.
+ * - `allow-forms` let the document POST anywhere, to no preview's benefit.
+ *
+ * Without `allow-same-origin` the document gets an opaque origin: no cookies or storage
+ * of the daemon's origin, no readable cross-origin responses (its requests carry
+ * `Origin: null`), no reaching `parent`'s DOM. Deliberately NOT granted:
+ * `allow-popups` (no `window.open`, so a previewed page cannot start a native
+ * navigation), `allow-top-navigation*`, `allow-modals`, `allow-downloads`,
+ * `allow-pointer-lock`, `allow-presentation`, `allow-orientation-lock`.
+ *
+ * The sandbox is half of the contract. The other half is the response policy the
+ * main process puts on this route (`PREVIEW_CSP` in `src/main/window-guards.ts`):
+ * an opaque origin alone still lets the page `fetch()` the loopback daemon, since
+ * its CORS middleware echoes `Origin: null`. Both halves are asserted against a
+ * hostile document in a real Electron by
+ * `scripts/window-guards-electron.test.mjs`.
+ *
+ * What a previewed page loses: `localStorage`/cookies throw (it has no origin to
+ * keep them under), and a `<form>` submit does nothing. A page that merely
+ * renders - markup, CSS, inline or CDN scripts, canvas, SVG, https `fetch` -
+ * works as before.
+ */
+export const PREVIEW_SANDBOX = "allow-scripts";
+
 type HtmlPreviewProps = {
 	/**
 	 * The HTML document to preview
@@ -104,7 +141,7 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({
 						key={version}
 						src={htmlUrl}
 						title={`HTML Preview: ${document.title}`}
-						sandbox="allow-scripts allow-same-origin allow-forms"
+						sandbox={PREVIEW_SANDBOX}
 						className={cn("h-full w-full border-0 bg-surface")}
 					/>
 				)}

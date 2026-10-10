@@ -42,6 +42,8 @@ const EXEMPT = {
 		"the release-contracts step in ci.yml, its own node --test invocation: it is a contract over .github/workflows rather than over the app, and it reads them with electron-builder's js-yaml the way test-publish-workflow.mjs does.",
 	"scripts/appimage-update-info.test.mjs":
 		"the release-contracts step in ci.yml, its own node --test invocation: the ELF64 `.upd_info` patch/readback, the `.zsync` header checks and the `latest-linux.yml` entry check, over synthetic fixtures. The real download, `7z` and `zsyncmake` run in the linux build job itself, which no local suite can stand up.",
+	"scripts/window-guards-electron.test.mjs":
+		"`pnpm test:window-guards` - boots the REAL Electron (hidden window, own userData) against a hostile document; like the session-cookie suite it needs a display, so no CI step runs it.",
 	"scripts/session-cookie-electron.test.mjs":
 		"`pnpm test:session-cookies` — it boots the REAL Electron binary twice, which no CI step does today; a pre-existing gap, recorded rather than papered over.",
 };
