@@ -871,7 +871,20 @@ const ChannelsTable: FC<{ view: ChannelsView }> = ({ view }) => {
 				columns={columns}
 				rows={view.rows}
 				rowKey={(row) => row.key}
-				empty={<PanelEmpty text="No channel rows in this conversation." />}
+				empty={
+					<PanelEmpty
+						/*
+						 * A DROPPED row is not "no rows": a malformed entry leaves the
+						 * table saying "could not be read" rather than an empty state
+						 * under a nonzero total (QA round 2, Q6).
+						 */
+						text={
+							view.rowsDropped > 0
+								? "Channel rows in this conversation could not be read."
+								: "No channel rows in this conversation."
+						}
+					/>
+				}
 			/>
 			{/*
 			 * The plan-funded gloss first, then the composition: `Includes …

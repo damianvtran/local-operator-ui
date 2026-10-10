@@ -448,13 +448,13 @@ test("the fixture's breakdown is composed, row for row", () => {
 		breakdown.planClause,
 		"Includes $0.053 API-equivalent (covered by a plan, not charged).",
 	);
-	// The composition: buckets, then the inference money the buckets leave out
-	// (the PR-3 basis placeholder — summed from the published row, exactly),
-	// then the count with its noun. 0.053+0.053+0.010+0.900 == 1.016: the line
-	// reconciles with the published total (D1/D2).
+	// The composition: buckets, then the not-tracked money READ from the
+	// published `not_tracked_micro` (never a re-sum of rows — round 2's
+	// MAJOR), then the count with its noun. 0.053+0.053+0.010+0.900 == 1.016:
+	// the line reconciles with the published total (D1/D2).
 	assert.equal(
 		breakdown.summary,
-		"Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $0.900 inference (no basis recorded yet) · 2 records without a price",
+		"Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $0.900 without a tracked basis yet · 1 record without a price",
 	);
 	assert.deepEqual(
 		breakdown.rows.map((row) => [row.name, row.amount, row.basis]),
@@ -462,15 +462,15 @@ test("the fixture's breakdown is composed, row for row", () => {
 			["Inference · anthropic/claude-sonnet-5-5", "$0.900", ""],
 			["Image · openai-sub/gpt-image-2", "$0.053", "API-equivalent"],
 			["Image · radient/gpt-image-2", "≥$0.053", "Billed"],
-			["Read · deepseek:read", "$0.0020", "Estimated"],
 			["Search · tavily", "$0.0080", "Estimated"],
+			["Read · deepseek:read", "$0.0020", "Estimated"],
 		],
 	);
-	// The composition's inference clause is derived from the wire values, not
-	// from a guess about the words: the placeholder is `not_tracked`.
+	// The remainder's figure is the PUBLISHED key, and the fixture carries it
+	// beside the count (the wire's own pairing of amount and count).
 	assert.equal(breakdown.rows[0].channel, "inference");
 	assert.equal(breakdown.rows[0].amountMicro, 900000);
-	assert.deepEqual(breakdown.rows[0].basisKeys, ["not_tracked"]);
+	assert.equal(SPEND_CHANNELS.by_basis.not_tracked_micro, 900000);
 	// The sentence under the figure explains the mark the same way the legacy
 	// tooltip does, in this branch's own terms (the object cannot say WHICH part
 	// was unsized; it says that something was).
@@ -501,13 +501,10 @@ test("tracked=false says so, carries the cue, and never fabricates a zero", () =
 	assert.equal(cost.text, `${FLOOR_MARK}$1.02${UNTRACKED_CUE}`);
 	// No count beside the sentence: `N records without a price` under "channels
 	// are not tracked" read as a contradiction (D2). The composition still
-	// names the buckets, and the inference money stays itemised.
+	// names the buckets, and the not-tracked money stays itemised.
 	const breakdown = channelBreakdown(cost.channels);
 	assert.doesNotMatch(breakdown.summary, /without a price/);
-	assert.match(
-		breakdown.summary,
-		/\$0\.900 inference \(no basis recorded yet\)/,
-	);
+	assert.match(breakdown.summary, /\$0\.900 without a tracked basis yet/);
 });
 
 test("the three zeroes: stated, unpriceable, and billed-but-unstated", () => {
@@ -746,10 +743,139 @@ test("unknown channel and basis words pass through rather than vanish", () => {
 			basis: "Holographic",
 			channel: "hologram",
 			amountMicro: 1000,
-			basisKeys: ["holographic"],
 			floor: false,
 		},
 	]);
+});
+
+test("the remaining money is the published not_tracked_micro, never a re-sum", () => {
+	/*
+	 * Round 2's MAJOR, as a discriminator: TWO inference rows whose amounts
+	 * would sum to $1.00 beside a published `not_tracked_micro` of $0.950.
+	 * The old code printed the sum ($1.00 — a figure that appears nowhere on
+	 * the wire); the line must print the published $0.950.
+	 */
+	const twoRows = {
+		...SPEND_CHANNELS,
+		total_micro: 1_066_000,
+		knowledge: "partial",
+		by_basis: {
+			billed: 53_000,
+			subscription_api_equivalent: 53_000,
+			estimated: 10_000,
+			not_tracked_micro: 950_000,
+			not_tracked_calls: 1,
+		},
+		rows: [
+			{ ...SPEND_CHANNELS.rows[0], amount_micro: 900_000 },
+			{
+				...SPEND_CHANNELS.rows[0],
+				provider: "openai",
+				model: "gpt-6",
+				label: "openai/gpt-6",
+				amount_micro: 100_000,
+			},
+			...SPEND_CHANNELS.rows.slice(1),
+		],
+	};
+	const cost = sessionCost(
+		{ ...CHANNEL_STATE, spend_channels: twoRows },
+		null,
+		{ costChannels: true },
+	);
+	const summary = channelBreakdown(cost.channels).summary;
+	assert.match(summary, /\$0\.950 without a tracked basis yet/);
+	assert.doesNotMatch(summary, /\$1\.00/);
+});
+
+test("an absent not_tracked_micro prints the count with no money clause", () => {
+	/*
+	 * Older producers omit the key (ADDITIVE on v1): the line must say the
+	 * count without a money figure it could not know — the tolerant fallback
+	 * on the UI side.
+	 */
+	const { not_tracked_micro: _omitted, ...byBasis } = SPEND_CHANNELS.by_basis;
+	const cost = sessionCost(
+		{
+			...CHANNEL_STATE,
+			spend_channels: { ...SPEND_CHANNELS, by_basis: byBasis },
+		},
+		null,
+		{ costChannels: true },
+	);
+	const summary = channelBreakdown(cost.channels).summary;
+	assert.match(summary, /1 record without a price/);
+	assert.doesNotMatch(summary, /without a tracked basis yet/);
+});
+
+test("the remainder carries the lower-bound mark when its money is a floor", () => {
+	// A floored inference row (its own row reads ≥$0.900) must not leave the
+	// line saying a plain $0.900: the strip prefixes the band's ≥ (round 2,
+	// MINOR-2). The panel's `+` register is pinned in analytics-channels.
+	const flooredRow = { ...SPEND_CHANNELS.rows[0], knowledge: "partial" };
+	const floored = sessionCost(
+		{
+			...CHANNEL_STATE,
+			spend_channels: {
+				...SPEND_CHANNELS,
+				rows: [flooredRow, ...SPEND_CHANNELS.rows.slice(1)],
+			},
+		},
+		null,
+		{ costChannels: true },
+	);
+	assert.match(
+		channelBreakdown(floored.channels).summary,
+		/≥\$0\.900 without a tracked basis yet/,
+	);
+	// A floored CHILDREN block floors the remainder too — the children bundle
+	// is the other contributor `not_tracked_micro` sums.
+	const flooredChildren = sessionCost(
+		{
+			...CHANNEL_STATE,
+			spend_channels: {
+				...SPEND_CHANNELS,
+				total_micro: 1_516_000,
+				by_basis: { ...SPEND_CHANNELS.by_basis, not_tracked_micro: 1_400_000 },
+				children: { total_micro: 500_000, knowledge: "partial" },
+			},
+		},
+		null,
+		{ costChannels: true },
+	);
+	assert.match(
+		channelBreakdown(flooredChildren.channels).summary,
+		/≥\$1\.40 without a tracked basis yet \(\$0\.500 subagent sessions\)/,
+	);
+});
+
+test("the children share is named inside the remainder it belongs to", () => {
+	/*
+	 * `not_tracked_micro` already includes the children bundle, so the share
+	 * is a parenthetical of the remainder rather than a free-standing part: a
+	 * separate $0.50 clause would read as an extra summand and break the very
+	 * reconciliation the line exists for. 0.116 + 1.400 == 1.516, the
+	 * published total.
+	 */
+	const cost = sessionCost(
+		{
+			...CHANNEL_STATE,
+			spend_channels: {
+				...SPEND_CHANNELS,
+				total_micro: 1_516_000,
+				by_basis: { ...SPEND_CHANNELS.by_basis, not_tracked_micro: 1_400_000 },
+				children: { total_micro: 500_000, knowledge: "exact" },
+			},
+		},
+		null,
+		{ costChannels: true },
+	);
+	const summary = channelBreakdown(cost.channels).summary;
+	assert.match(
+		summary,
+		/\$1\.40 without a tracked basis yet \(\$0\.500 subagent sessions\)/,
+	);
+	assert.equal(cost.total, 1.516);
 });
 
 test("the v1 guard accepts only what this build can render", () => {
@@ -774,6 +900,15 @@ test("every session-status producer threads the channel gate", () => {
 	 * that writes `sessionStatus=` must also name the gate. Stories pass their
 	 * own fixtures and are exempt (a story without the gate IS the legacy
 	 * fixture), as are tests.
+	 *
+	 * File presence alone is NOT enough (round 2, MINOR-3): a dropped BRANCH in
+	 * `config-composer.tsx` still passed, because the file names the gate
+	 * somewhere. So each `sessionStatus=` expression is extracted (balanced
+	 * braces — these sites hold no brace-bearing strings or comments, and a
+	 * drift fails loudly rather than silently) and must carry at least one
+	 * `costChannels:` per `frontend:`/shorthand status literal it builds; the
+	 * two multi-site files additionally pin their counts (chat-page's builder
+	 * memo plus two sites, the config page's two branches).
 	 */
 	const root = join(ROOT, "src/renderer/src");
 	const files = readdirSync(root, { recursive: true })
@@ -783,7 +918,7 @@ test("every session-status producer threads the channel gate", () => {
 		/sessionStatus\s*=/.test(readFileSync(join(root, file), "utf8")),
 	);
 	/*
-	 * The five mounts: chat-page (3 sites collapsed into one file), chat-content
+	 * The five mounts: chat-page (builder memo + sites, one file), chat-content
 	 * (forwards the already-gated prop), mini-composer, project-quick-send and
 	 * the config run page. The count guards the scan itself from silently
 	 * matching nothing.
@@ -798,16 +933,54 @@ test("every session-status producer threads the channel gate", () => {
 			/costChannels/.test(text),
 			`${file} writes sessionStatus= but does not thread costChannels`,
 		);
+		let cursor = 0;
+		while ((cursor = text.indexOf("sessionStatus=", cursor)) !== -1) {
+			let depth = 0;
+			let end = cursor;
+			for (
+				let index = cursor + "sessionStatus=".length;
+				index < text.length;
+				index += 1
+			) {
+				const character = text[index];
+				if (character === "{") depth += 1;
+				else if (character === "}") {
+					depth -= 1;
+					if (depth === 0) {
+						end = index;
+						break;
+					}
+				}
+			}
+			const expression = text.slice(cursor, end + 1);
+			const gates = (expression.match(/costChannels\s*:/g) ?? []).length;
+			const literals = (expression.match(/(?<!\.)frontend\s*[:,]/g) ?? [])
+				.length;
+			assert.ok(
+				gates >= literals,
+				`${file} builds ${literals} status literal(s) at ${cursor} but threads ${gates} gate(s)`,
+			);
+			cursor += 1;
+		}
 	}
-	// chat-page's three branches (live, two draft) must not collapse to one.
-	const chatPage = readFileSync(
-		join(root, "features/chat/components/chat-page.tsx"),
-		"utf8",
-	);
-	assert.ok(
-		(chatPage.match(/costChannels:/g) ?? []).length >= 3,
-		"chat-page must thread the gate at all three sessionStatus sites",
-	);
+	/*
+	 * The counts for the two multi-site files: chat-page builds its live status
+	 * in a memo beside two inline sites (3 gates), and the config page threads
+	 * BOTH of its branches (2 gates — dropping either branch is the regression
+	 * round 2 reproduced).
+	 */
+	for (const [file, expected] of [
+		["features/chat/components/chat-page.tsx", 3],
+		["features/agents/config-run/config-composer.tsx", 2],
+	]) {
+		const count = (
+			readFileSync(join(root, file), "utf8").match(/costChannels:/g) ?? []
+		).length;
+		assert.ok(
+			count >= expected,
+			`${file} threads ${count} gate(s); expected at least ${expected}`,
+		);
+	}
 });
 
 /* ---- 3c. cost: the golden fixture and the field the UI types against ------ */

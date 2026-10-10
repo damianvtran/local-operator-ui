@@ -1131,6 +1131,11 @@ export type CanonicalSpendChildren = {
  * surface must SAY "channels not tracked" rather than imply $0 of channel
  * spend. `knowledge` uses the same four rungs as `cost_knowledge`; absence of
  * the whole object is NOT a zero — never paint $0 for it.
+ *
+ * `by_basis.not_tracked_micro` and `not_tracked_calls` are ADDITIVE on v1: an
+ * older producer omits them and a reader treats absence as 0 (UI round 2 —
+ * the strip used to SUM inference row amounts for the first of these, and the
+ * backend now publishes it so no UI ever re-sums; see the key's own note).
  */
 export type CanonicalSpendChannels = {
 	/** Wire version. An unknown version must render its legacy view, not this. */
@@ -1140,15 +1145,23 @@ export type CanonicalSpendChannels = {
 	total_micro: number;
 	knowledge: "unknown" | "exact" | "partial" | "floor";
 	/**
-	 * Money per billing basis: the three money keys are micro-USD sums and
-	 * `not_tracked_calls` is a COUNT (of records with no trackable money basis).
-	 * Subscription dollars stay in their own bucket and are never added into
-	 * `billed` — a plan-funded call is not cash.
+	 * Money per billing basis: the three money keys are micro-USD sums,
+	 * `not_tracked_micro` is the micro-USD amount whose billing BASIS is not
+	 * tracked yet (the session's own inference pre-PR-3 plus the children
+	 * bundle — the backend publishes it so a UI never re-sums inference rows to
+	 * find it), and `not_tracked_calls` is a COUNT of records with no trackable
+	 * money basis. The three money buckets plus `not_tracked_micro` equal
+	 * `total_micro`; subscription dollars stay in their own bucket and are
+	 * never added into `billed` — a plan-funded call is not cash.
+	 *
+	 * `not_tracked_micro` is ADDITIVE: an older producer omits it and absence
+	 * reads as 0 (the composition line then says the count without money).
 	 */
 	by_basis: {
 		billed?: number;
 		subscription_api_equivalent?: number;
 		estimated?: number;
+		not_tracked_micro?: number;
 		not_tracked_calls?: number;
 		[basis: string]: number | undefined;
 	};
@@ -1316,9 +1329,11 @@ export type CanonicalFrontendState = {
 	 * ADDITIVE and optional: absent on an old backend (a reader then renders the
 	 * legacy inference-only view) and `null`/absent whenever this host cannot
 	 * publish the object (a reduced facade, an embedded host) — never a claim of
-	 * zero. Gated at the render edge on `features.cost_channels >= 1`, because a
-	 * backend that does not advertise the capability does not promise the field's
-	 * semantics even if an object appears.
+	 * zero. ABSENT AND `null` ARE ONE CASE and the reader treats them so (the
+	 * attach frame omits rather than nulls; `spendChannelsUsable` refuses both
+	 * identically). Gated at the render edge on `features.cost_channels >= 1`,
+	 * because a backend that does not advertise the capability does not promise
+	 * the field's semantics even if an object appears.
 	 *
 	 * Read ONLY through `session-cost.ts` (`sessionCost`'s channel branch and the
 	 * breakdown helpers): that module owns the do-not-recompute rule, the

@@ -7,7 +7,8 @@
 		"billed": 53000,
 		"subscription_api_equivalent": 53000,
 		"estimated": 10000,
-		"not_tracked_calls": 2
+		"not_tracked_micro": 900000,
+		"not_tracked_calls": 1
 	},
 	"rows": [
 		{
@@ -49,18 +50,6 @@
 			"price_versions": ["Radient GET /tools/media/status cost_usd"]
 		},
 		{
-			"channel": "read",
-			"provider": "deepseek:read",
-			"model": "",
-			"label": "",
-			"units": 1.0,
-			"unit": "reads",
-			"amount_micro": 2000,
-			"knowledge": "exact",
-			"basis": ["estimated"],
-			"price_versions": ["client-search-table-2026-09"]
-		},
-		{
 			"channel": "search",
 			"provider": "tavily",
 			"model": "",
@@ -68,6 +57,18 @@
 			"units": 1.0,
 			"unit": "searches",
 			"amount_micro": 8000,
+			"knowledge": "exact",
+			"basis": ["estimated"],
+			"price_versions": ["client-search-table-2026-09"]
+		},
+		{
+			"channel": "read",
+			"provider": "deepseek:read",
+			"model": "",
+			"label": "",
+			"units": 1.0,
+			"unit": "reads",
+			"amount_micro": 2000,
 			"knowledge": "exact",
 			"basis": ["estimated"],
 			"price_versions": ["client-search-table-2026-09"]
