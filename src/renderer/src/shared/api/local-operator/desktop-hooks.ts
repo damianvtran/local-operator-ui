@@ -712,7 +712,21 @@ export type DesktopFeature =
 	 * The version-1 minimum is the feature's own first release; there is no older
 	 * shape of it to negotiate.
 	 */
-	| "code_requests";
+	| "code_requests"
+	/**
+	 * THE PUBLISHED CHANNEL SPEND (`features.cost_channels`): the
+	 * `spend_channels` object on the canonical session state — session money
+	 * beyond inference (images, speech, search) folded by the BACKEND into one
+	 * object every surface renders.
+	 *
+	 * ITS OWN KEY rather than a bump of the state stream's shape, on the rule
+	 * this union states for every member: the wire field is additive, so an old
+	 * reader ignores it and keeps its current numbers, and an old backend is
+	 * never asked to honour semantics it does not have. Absent ⇒ the composer
+	 * strip and `/analytics` render exactly today's inference-only figures and
+	 * say nothing about channels — never a zero for spend they cannot see.
+	 */
+	| "cost_channels";
 
 /**
  * WHY a negotiated feature surface may not be offered.
