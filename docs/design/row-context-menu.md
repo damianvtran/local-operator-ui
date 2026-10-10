@@ -3,8 +3,8 @@
 **Issue:** #694 (the menu); #739 (Fork - **row 3 of seven** since the round-1
 review's D2, § 1, § 5, § 7, and the rows marked #739 in § 4 and § 9); **#893
 (Copy session ID - row 4, § 1, § 7, and the superseded figures in § 2, § 4 and
-§ 9)**; **#920 (Rename conversation - row 5, § 1, § 7, § 8, and the pending
-re-capture named in § 9)**. **Design round:** 2026-09-30,
+§ 9)**; **#920 (Rename conversation - row 5, § 1, § 4, § 5, § 7, § 8, and the
+pending re-capture named in § 9 and § 10)**. **Design round:** 2026-09-30,
 `design/row-context-menu-694`.
 **Status:** design of record for the implementation, ported onto it with the
 design round's follow-ups (U-D1…U-D8) folded in and every frame reference
@@ -647,6 +647,18 @@ truncate it and push the chord off the row's trailing edge.
 | `Move conversation down` | `⌘⇧↓` | `Ctrl+Shift+↓` |
 | `Fork conversation` (#739) | - | - |
 | `Copy session ID` (#893) | - | - |
+| `Rename conversation` (#920) | - | - |
+
+**RENAME'S SPELLING, ON THE RECORD (#920, 2026-10-10).** The item reads
+`Rename conversation` - the spelling the header's rename control and the
+register's own dialog both carry (`chat-header.tsx`'s pencil label,
+`RenamePicker`'s title) - and deliberately WITHOUT the ellipsis the issue
+proposed ("Rename conversation…") and the header menu's `Delete conversation…`
+wears. The evidence cuts both ways: the header menu marks its dialog opener
+with an ellipsis, while this menu's own dialog opener (`Fork conversation`)
+does not, and the register above has never carried one. The design round rules
+on the final spelling on the captured frames; this row tracks the label as
+shipped, so a flip is one word wide.
 
 **AND THE MOVE ROWS PRINT THROUGH THE JOINED SIBLING (round-1 design review,
 D1).** `⌘⇧↑`/`⌘⇧↓` above are the HANDLER's spellings; the menu renders

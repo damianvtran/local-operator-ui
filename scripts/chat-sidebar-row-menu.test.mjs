@@ -419,11 +419,24 @@ test("Rename conversation is the menu's fifth row, and it acts on the row it was
 	 * pin state is unknown, a row behind the archived list, a remote row - so there
 	 * is no predicate it could honestly be gated on, and none is authored.
 	 */
-	const gap = MENU.slice(MENU.lastIndexOf("</ContextMenuItem>", itemAt), tagAt);
+	const gap = MENU.slice(
+		MENU.lastIndexOf("</ContextMenuItem>", itemAt) +
+			"</ContextMenuItem>".length,
+		tagAt,
+	);
+	/*
+	 * NOTHING BUT WHITESPACE AND EMPTY COMMENT BRACES (agent review round 1,
+	 * NIT). The earlier look-for-`&&` check let a ternary or an indirection
+	 * (`{renameItem}`) gate the item while passing. The slice starts AFTER the
+	 * previous item's close, and a braced block comment strips to `{}` under
+	 * this file's `code()` - braces that gate nothing - while any authored
+	 * expression, however it is spelled, puts TEXT between braces and fails
+	 * this.
+	 */
 	assert.equal(
-		/&&/.test(gap),
-		false,
-		"the Rename item gained a gate - it is drawn whenever the menu is, like Fork and Copy, because every row has a conversation to rename",
+		gap.replace(/\{\}/g, "").trim(),
+		"",
+		"the Rename item gained a gate - nothing but whitespace (and stripped-comment braces) may sit between the previous item's close and this tag",
 	);
 	assert.equal(
 		/disabled/.test(item),
