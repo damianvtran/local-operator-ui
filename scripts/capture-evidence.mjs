@@ -4877,6 +4877,26 @@ export const STORIES = [
 	["chat-composer-band--small-view", 830, 572],
 	["chat-composer-band--long-labels", 900, 572],
 	["chat-composer-band--draft-held", 1380, 872],
+	/*
+	 * THE RECORDING LANE, WITH A TAKE LIVE: the waveform is a function of a
+	 * running analyser, so the frame must be taken while the composer's own
+	 * take runs - the rig's press on the mic control starts it (nothing in the
+	 * story does), and the settle holds the shutter until the acquisition, the
+	 * indicator's own meter stream and the first bars have all landed.
+	 * `expectPresent` makes the lane a CLAIM at shutter time: a frame that
+	 * missed the take fails rather than shipping the resting band under the
+	 * state's name.
+	 */
+	[
+		"chat-composer-band--recording",
+		1380,
+		872,
+		{
+			press: "button[aria-label='Start recording']",
+			pressSettleMs: 8500,
+			expectPresent: "[data-recording-indicator]",
+		},
+	],
 	["chat-composer-band--reduced-motion", 1380, 872, { reducedMotion: true }],
 	/*
 	 * AND THE CAPTURE OPEN ON THE SAME BAND (UX round 4, U16). The band centres
