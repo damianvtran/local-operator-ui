@@ -249,8 +249,11 @@ const holdWakeLanding = (id: string, node: HTMLElement): void => {
 	});
 };
 
-/** A session switch closes the watch, as it closes everything else. */
-const clearWakeLanding = (): void => endWakeLandingWatch();
+/**
+ * A session switch closes the watch, as it closes everything else — and the
+ * test harness closes it per case for the same reason.
+ */
+export const clearWakeLanding = (): void => endWakeLandingWatch();
 
 /** The pressed control's viewport box, frozen at press time. */
 export type WakeAnchorRect = {
