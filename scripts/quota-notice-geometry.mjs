@@ -392,6 +392,18 @@ const main = async () => {
 		dismissal.withLine.foot?.top,
 		dismissal.withoutLine.foot?.top,
 	);
+	/*
+	 * THE CLEARANCE (design D6): the bottom margin between the line's action row
+	 * and the composer box, i.e. foot.top minus line.bottom in the with-line
+	 * readings. Zero was the finding; 8 is `mb-2`; the floor checked below is
+	 * the claim that a visible gap exists rather than a pixel budget.
+	 */
+	const arrivalClearance = arrival.post.line
+		? shift(arrival.post.line.bottom, arrival.post.foot?.top)
+		: null;
+	const dismissalClearance = dismissal.withLine.line
+		? shift(dismissal.withLine.line.bottom, dismissal.withLine.foot?.top)
+		: null;
 	const result = {
 		story: STORY,
 		viewport: `${WIDTH}x${HEIGHT}`,
@@ -401,14 +413,18 @@ const main = async () => {
 			postFoot: arrival.post.foot,
 			preSplash: arrival.pre.splash,
 			postSplash: arrival.post.splash,
+			postLine: arrival.post.line,
 			footTopShift: arrivalShift,
+			clearance: arrivalClearance,
 		},
 		dismissal: {
 			withLineFoot: dismissal.withLine.foot,
 			withoutLineFoot: dismissal.withoutLine.foot,
 			withLineSplash: dismissal.withLine.splash,
 			withoutLineSplash: dismissal.withoutLine.splash,
+			withLineLine: dismissal.withLine.line,
 			footTopShift: dismissalShift,
+			clearance: dismissalClearance,
 		},
 	};
 
@@ -424,12 +440,18 @@ const main = async () => {
 		);
 		console.log(`              FOOT TOP SHIFT ${arrivalShift}`);
 		console.log(
+			`              line bottom ${arrival.post.line?.bottom} -> foot top ${arrival.post.foot?.top}  CLEARANCE ${arrivalClearance}`,
+		);
+		console.log(
 			`  dismissal   foot ${fmtRect(dismissal.withLine.foot)}  ->  ${fmtRect(dismissal.withoutLine.foot)}`,
 		);
 		console.log(
 			`              splash h ${dismissal.withLine.splash?.height} -> ${dismissal.withoutLine.splash?.height}`,
 		);
 		console.log(`              FOOT TOP SHIFT ${dismissalShift}`);
+		console.log(
+			`              line bottom ${dismissal.withLine.line?.bottom} -> foot top ${dismissal.withLine.foot?.top}  CLEARANCE ${dismissalClearance}`,
+		);
 	}
 
 	const moved = [arrivalShift, dismissalShift].some(
@@ -438,6 +460,19 @@ const main = async () => {
 	if (moved) {
 		console.error(
 			"\nFAIL: the composer moved. The line must be a band child above the foot so the splash yields; a shift here means it is back inside the form, or the splash cannot shrink (give it min-h-0).",
+		);
+		process.exitCode = 1;
+	}
+	/*
+	 * A present line must have a visible gap above the composer (D6): clearance 0
+	 * is the flush-on-the-border defect and a negative one is an overlap.
+	 */
+	const cramped = [arrivalClearance, dismissalClearance].some(
+		(value) => value === null || value < 4,
+	);
+	if (cramped) {
+		console.error(
+			`\nFAIL: the line's action row has no clearance above the composer (arrival ${arrivalClearance} / dismissal ${dismissalClearance} px; need >= 4 from the wrapper's mb-2).`,
 		);
 		process.exitCode = 1;
 	}

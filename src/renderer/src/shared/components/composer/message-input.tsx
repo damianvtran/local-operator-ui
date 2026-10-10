@@ -9767,9 +9767,17 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * the account the next send would actually use; the hook falls back
 				 * to the config default only when the pane has none (its docstring
 				 * carries that reasoning).
+				 *
+				 * `mb-2` AS WELL AS `mt-2` (design D6): the line sits above the foot,
+				 * so without a bottom margin its action row is flush on the composer
+				 * box's top border (measured: line bottom == foot top == 567.4, gap 0;
+				 * the links' underlines touched the border in the frames). The
+				 * clearance comes out of the SPLASH, not the foot — the probe in
+				 * `scripts/quota-notice-geometry.mjs` re-derives both the foot's top
+				 * (still 567.4) and the new gap.
 				 */}
 				{showEmptyChatPrompt ? (
-					<div className={cn("mt-2", CHAT_MEASURE)}>
+					<div className={cn("mb-2 mt-2", CHAT_MEASURE)}>
 						<QuotaNoticeLine selection={quotaNoticeSelection} />
 					</div>
 				) : null}

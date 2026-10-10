@@ -183,7 +183,10 @@ globalThis.fetch = async (_url, init) => {
 		request = {};
 	}
 	calls.push(request);
-	const { status, body } = answerImpl(request);
+	/* Awaited rather than destructured synchronously: a case may hold its
+	 * answer (U9's `forcedDelayMs`), and `await` passes a plain object through. */
+	const answer = await answerImpl(request);
+	const { status, body } = answer;
 	/*
 	 * The OUTER response is always HTTP 200, because that is what the development
 	 * proxy is: a passthrough that carries the daemon's own status INSIDE the
@@ -390,8 +393,9 @@ const world = ({
 		model: "deepseek-chat",
 		features,
 		failForced: false,
+		forcedDelayMs: 0,
 	};
-	answerImpl = (request) => {
+	answerImpl = async (request) => {
 		if (request.op === "capabilities")
 			return ok({
 				desktop_contract: 1,
@@ -413,6 +417,12 @@ const world = ({
 					status: 500,
 					body: { detail: "quota-notice test: forced read failed" },
 				};
+			/* `forcedDelayMs` holds the forced read so the in-flight cue is
+			 * observable before the answer lands (U9's checking arm). */
+			if (state.forcedDelayMs > 0 && request.refresh === true)
+				await new Promise((resolve) =>
+					setTimeout(resolve, state.forcedDelayMs),
+				);
 			return ok(state.notice);
 		}
 		if (request.op === "radient.request") return state.resend?.() ?? ok({});
@@ -1305,4 +1315,137 @@ test("the composer hands the pane's own model to the row (QA S1)", async () => {
 		"the pane's provider, not the default's",
 	);
 	assert.equal(notices[0].model, "claude-sonnet-5-5");
+});
+
+test("a re-read takes the status slot while checking and holds it when settled (U9)", async () => {
+	const state = world({ notice: unverified() });
+	state.hosting = "radient";
+	state.model = "radient/auto";
+	state.resend = () => ok({ data: { msg: "ok", result: { status: 200 } } });
+	state.forcedDelayMs = 600;
+	mount(h(QuotaNoticeLine));
+	await settle();
+	await press("[data-quota-notice-resend-action]");
+	assert.match(text(), /Sent\. Check your inbox and spam folder\./);
+
+	// Press "I verified" while the Sent sentence holds the slot. The held read
+	// is in flight, so the cue must take the slot over the resend sentence.
+	await act(async () => {
+		bySelector("[data-quota-notice-refresh-action]")?.click();
+	});
+	await settle();
+	assert.match(text(), /Checking…/);
+	assert.doesNotMatch(text(), /Sent\. Check your inbox/);
+
+	// The held read settles unchanged: the cue holds; the older sentence stays out.
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 700));
+	});
+	await settle();
+	assert.match(text(), /Checked just now — no change yet\./);
+	assert.doesNotMatch(text(), /Sent\. Check your inbox/);
+
+	// A NEWER resend press takes the slot back once its cooldown has passed:
+	// the cue is cleared as that press starts, so an older sentence never wins.
+	const realNow = Date.now;
+	try {
+		Date.now = () => realNow() + 130_000;
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 1100));
+		});
+		await settle();
+		assert.equal(
+			bySelector("[data-quota-notice-resend-action]")?.hasAttribute("disabled"),
+			false,
+			"the cooldown expired",
+		);
+		state.resend = () => ({
+			status: 429,
+			body: {
+				detail: {
+					code: "signup_resend_rate_limited",
+					message: "A verification email was requested recently",
+				},
+			},
+		});
+		await press("[data-quota-notice-resend-action]");
+		assert.match(text(), /Requested recently\./);
+		assert.doesNotMatch(text(), /Checked just now/);
+	} finally {
+		Date.now = realNow;
+	}
+});
+
+test("a keyboard re-read keeps focus on the line while it says Checking… (U9)", async () => {
+	const state = world({ notice: unverified() });
+	state.hosting = "radient";
+	state.model = "radient/auto";
+	state.resend = () => ok({ data: { msg: "ok", result: { status: 200 } } });
+	state.forcedDelayMs = 600;
+	mount(h(QuotaNoticeLine));
+	await settle();
+	/* jsdom's `click()` carries `detail: 0`: the keyboard path throughout. */
+	await press("[data-quota-notice-resend-action]");
+	/* Drop the U5 focus deliberately, so the next transition has to bring it back. */
+	window.document.activeElement?.blur?.();
+	await settle();
+	await act(async () => {
+		bySelector("[data-quota-notice-refresh-action]")?.click();
+	});
+	await settle();
+	assert.equal(
+		window.document.activeElement?.getAttribute("data-quota-notice-status"),
+		"",
+		"focus rode the Checking… cue instead of falling to <body>",
+	);
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 700));
+	});
+	await settle();
+});
+
+test("a keyboard Dismiss returns focus to the composer (N5)", async () => {
+	world({ notice: unverified() });
+	mount(
+		h(MessageInput, {
+			isLoading: false,
+			messages: [],
+			onSendMessage: async () => {},
+		}),
+	);
+	await settle();
+	assert.ok(line(), "the line is on the empty band");
+	await press("[data-quota-notice-dismiss]");
+	assert.equal(line(), null, "the dismissal cleared the line");
+	assert.equal(
+		window.document.activeElement?.tagName,
+		"TEXTAREA",
+		"focus moved to the composer rather than <body>",
+	);
+});
+
+test("effective_model wins over selected_model through the composer (R2-m3)", async () => {
+	world({ notice: unverified() });
+	mount(
+		h(MessageInput, {
+			isLoading: false,
+			messages: [],
+			onSendMessage: async () => {},
+			sessionStatus: {
+				frontend: {
+					/* Both present: the pair the chip shows is the effective one. */
+					effective_model: { provider: "deepseek", model_id: "deepseek-chat" },
+					selected_model: {
+						provider: "anthropic",
+						model_id: "claude-sonnet-5-5",
+					},
+				},
+			},
+		}),
+	);
+	await settle();
+	const notices = quotaNoticeCalls();
+	assert.equal(notices.length, 1);
+	assert.equal(notices[0].provider, "deepseek", "effective, not selected");
+	assert.equal(notices[0].model, "deepseek-chat");
 });

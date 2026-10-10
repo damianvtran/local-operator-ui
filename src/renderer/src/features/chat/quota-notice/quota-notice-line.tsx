@@ -185,13 +185,46 @@ export const QuotaNoticeLine: FC<{ selection?: QuotaNoticeSelection }> = ({
 				<Button
 					variant="linkQuiet"
 					size="sm"
-					onClick={model.onDismiss}
+					onClick={(event) => {
+						/*
+						 * A keyboard dismiss returns focus to the composer (UX N5): the line
+						 * unmounts on dismissal, so a focused Dismiss would drop the caret to
+						 * `<body>` and the next Tab would start over the page. The composer is
+						 * where the reader was headed, and it is found through the BAND rather
+						 * than a document query so a mini-view host focuses its own composer.
+						 */
+						if ((event.detail ?? 0) === 0) {
+							event.currentTarget
+								.closest("[data-lo-composer-band]")
+								?.querySelector("textarea")
+								?.focus();
+						}
+						model.onDismiss();
+					}}
 					data-quota-notice-dismiss=""
 				>
 					Dismiss
 				</Button>
 				{model.statusSentence ? (
+					/*
+					 * THE SEPARATOR LIVES INSIDE THE OUTPUT (design D7; measured at the
+					 * 420px measure, N6). Dismiss is `linkQuiet` and the status is the same
+					 * ink, so without a separator the sentence reads as part of the label
+					 * ("Dismiss Sent. Check your inbox…"). A sibling `·` flex item looked
+					 * right at 1024 but ORPHANED at 420: the row wrapped between Dismiss
+					 * and the sentence, leaving the dot at the end of the first line —
+					 * measured dot 832.79,198.49 then output 430,219.89. Inside the
+					 * output the dot has no wrap opportunity before the sentence's first
+					 * word (no whitespace between the span and the text), so it always
+					 * introduces "Sent."/"Requested…" on whichever line the sentence
+					 * starts; the sentence itself still wraps naturally after later words.
+					 * Decorative, so `aria-hidden`; the sentence's own `mr-2` matches the
+					 * row's `gap-x-2`.
+					 */
 					<output ref={statusRef} tabIndex={-1} data-quota-notice-status="">
+						<span aria-hidden="true" className="mr-2">
+							·
+						</span>
 						{model.statusSentence}
 					</output>
 				) : null}
