@@ -1456,6 +1456,14 @@ test("the tile is borderless at rest and its edge returns on hover and on keyboa
 			classes.includes("overflow-hidden") && classes.includes("rounded-sm"),
 			"the frame clips: the inner zoom can never leave the tile's silhouette",
 		);
+		assert.ok(
+			classes.includes("bg-media-surface"),
+			"the tile's resting extent is the fill role - `mediaSurface`, authored to the ΔE00 4.0 off-canvas floor - so a page-toned picture's tile separates where the shared `sunken` well measured as low as 2.00",
+		);
+		assert.ok(
+			!classes.includes("bg-sunken"),
+			"and it is no longer the shared well: a regression to `bg-sunken` leaves every palette assertion green while the tile loses the extent the fill role exists for",
+		);
 	});
 });
 

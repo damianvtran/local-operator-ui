@@ -329,6 +329,34 @@ const MESSAGE_SURFACE_DELTA_E = 4.0;
 const MESSAGE_SURFACE_LIGHTNESS_STEP = 2.5;
 
 /**
+ * The media tile's fill. Its extent at rest IS the fill (the borderless tile
+ * draws no edge until hover or focus), so it needs a findability floor of its
+ * own, and the shared `sunken` well cannot carry one: as a ΔE00 step off the
+ * `canvas` it falls below 4.0 on 55 of the 59 palettes - bottoming at 2.00
+ * (`iceberg`, `neonNoir`); the 56th mover, `synth`, clears ΔE00 9.03 and moves
+ * for the lightness half alone - which is the extent a page-toned picture's
+ * tile had. 4.0 is this file's floor for the smallest mark the eye must find
+ * (`LINE_SEPARATION_FLOOR`) - and in the worst case the mark IS that small: a
+ * picture that fills the slot shows the well only as a ~1px ring at the
+ * picture's edge and corners. The lightness half is asserted with it - at
+ * least 2.5 `L*` in MAGNITUDE, the half the message block's fill carries -
+ * because this fill steps down where that one steps up, and ΔE00 is a budget a
+ * chroma-only step can spend while the fill vanishes in a greyscale render.
+ *
+ * THE WORST REALISED MARGIN IS ROUNDING-THIN: `oneDark` clears by 0.0012 ΔE00
+ * after 8-bit rounding, so a single-LSB edit to that palette would flip this
+ * assertion - which is why it is re-derived for every palette on every run
+ * rather than spot-checked. The returning hover/focus edge is deliberately NOT
+ * asserted against this fill: its >= 3:1 is the GROUND relationship
+ * (`borderControl` on the four grounds, >= 3.01 across the fleet), the side
+ * the tile's silhouette is read against, and against `mediaSurface` the edge
+ * falls below 3:1 on 10 light palettes (2.78 worst, `catppuccinLatte`) - an
+ * inner pair the cue is not read from (design round 1, D1).
+ */
+const MEDIA_SURFACE_DELTA_E = 4.0;
+const MEDIA_SURFACE_LIGHTNESS_STEP = 2.5;
+
+/**
  * The hover tint's own floor: half a selection's, because a hover is transient
  * and is paired with the pointer.
  */
@@ -3169,8 +3197,10 @@ const STRUCTURAL_CALL_SITES = [
 		 * measures `borderControl` on all four grounds - and what only this pin can
 		 * see is the edit that puts the returning edge on the decorative `hairline`
 		 * (1.25:1 against the light transcript, no floor) or drops the focus half: a
-		 * keyboard reader has NO other resting boundary on a borderless tile, so the
-		 * `focus-visible` arm is the one that must not be deleted unseen.
+		 * keyboard reader has NO other resting boundary on a borderless tile: the
+		 * tile's resting EXTENT is the fill role pinned below, but the edge is still
+		 * the only CONTROL boundary the focus state draws, so the `focus-visible` arm
+		 * is the one that must not be deleted unseen.
 		 */
 		what: "condensed group media tile edge (hover and keyboard focus)",
 		file: "src/renderer/src/features/chat/components/message-item/attachment-frame.tsx",
@@ -3179,9 +3209,29 @@ const STRUCTURAL_CALL_SITES = [
 	},
 	{
 		/*
+		 * THE TILE'S RESTING EXTENT IS THE FILL ROLE, and this pin is what keeps
+		 * the class wearing it. The `mediaSurface` palette rows prove the VALUE
+		 * clears the floor on every palette; nothing there can see which class the
+		 * component renders, so a `bg-media-surface` -> `bg-sunken` (or to a ground
+		 * role) edit would leave every ratio green while the borderless tile goes
+		 * back to an extent a page-toned picture does not have (2.00 ΔE00 at its
+		 * worst). The reserved `border-transparent` is pinned with it because the
+		 * two are one decision: the fill carries the resting extent BECAUSE the
+		 * edge's pixel is reserved, not drawn, at rest.
+		 */
+		what: "condensed group media tile fill",
+		file: "src/renderer/src/features/chat/components/message-item/attachment-frame.tsx",
+		must: '"bg-media-surface",\n\t\t\t\t\t\t"border border-transparent",',
+		why: "the borderless tile's only resting extent is its fill, floored by `mediaSurface` (ΔE00 >= 4.0 off `canvas` on every palette); swapping the fill back to the shared `sunken` well or onto a ground role leaves every palette assertion green while the tile loses the extent the fill role exists for, and un-reserving the border pixel takes the no-reflow property with it",
+	},
+	{
+		/*
 		 * The failed receipt keeps the edge AT REST: a card in a state keeps its edge
 		 * because the state is the information, and with no picture the receipt has no
-		 * other extent (branding section 2).
+		 * other extent (branding section 2). It also keeps the shared `sunken` well
+		 * while a working tile wears `mediaSurface`: its boundary is the edge, so the
+		 * fill role's trade does not apply, and the glyph's ink floors are asserted
+		 * on `sunken`.
 		 */
 		what: "condensed group failed-tile receipt edge",
 		file: "src/renderer/src/features/chat/components/message-item/attachment-frame.tsx",
@@ -3942,6 +3992,13 @@ const REQUIRED_ROLES = [
 	   omitted it would fall silently through to a utility that resolves to
 	   nothing at all. */
 	"messageSurface",
+	/* The media tile's own fill. Not a fifth ground either - one object's surface,
+	   split off `sunken` so the borderless tile's only resting extent can carry
+	   its own ΔE00 floor without deepening every well in the app (see its doc in
+	   the palette contract). Required for the same reason every role here is: a
+	   palette that omitted it would fall silently through to a utility that
+	   resolves to nothing at all. */
+	"mediaSurface",
 	"ink",
 	"inkMuted",
 	"inkDim",
@@ -5957,6 +6014,52 @@ for (const { id, palette: p } of palettes) {
 		if (step < MESSAGE_SURFACE_LIGHTNESS_STEP) {
 			fail(
 				`${id}: the user message block's fill sits ${r2(step)} L* from \`canvas\`, under the ${MESSAGE_SURFACE_LIGHTNESS_STEP} L* floor — ΔE00 is a budget a chroma-only step can spend while the mark vanishes in a greyscale render, so the lightness half is asserted too`,
+			);
+		}
+	}
+
+	/*
+	 * 6c. The media tile's fill: the tile's extent at rest IS the fill (it draws
+	 * no edge until hover/focus), so it has to be findable, and the shared
+	 * `sunken` well it used to wear cannot carry that - below ΔE00 4.0 on 55 of
+	 * the 59 palettes, bottoming at 2.00 (`iceberg`, `neonNoir`) - which is the
+	 * tile a page-toned picture had. The floor is `MEDIA_SURFACE_DELTA_E` (its own
+	 * comment carries why 4.0), measured off `canvas` - the ground the strip is
+	 * drawn on - with the lightness half asserted too so a chroma-only step
+	 * cannot pass while the fill vanishes in a greyscale render. No ink sits on
+	 * this fill (the failed-tile receipt is the one tile state with a glyph, and
+	 * it keeps `sunken`; see its pin below), so there is no ink row here, unlike
+	 * `messageSurface`'s. The fill is also deliberately not paired with the
+	 * returning edge: `borderControl`'s >= 3:1 is the ground relationship (see
+	 * `MEDIA_SURFACE_DELTA_E`'s comment), so no edge-vs-fill row exists here and
+	 * none should be added - on 10 light palettes that pairing measures below
+	 * 3:1 (2.78 worst, `catppuccinLatte`), and the frame the design round asked
+	 * for lives in `docs/evidence/chat-media-slot-fill/letterbox-hover/`.
+	 */
+	{
+		/* Absent values are the completeness check's business; a PRESENT but
+		   malformed one must fail loudly rather than switch the floor off - the
+		   same guard, for the same reason, as the block one over. */
+		if (p.mediaSurface === undefined) continue;
+		if (!isHex(p.mediaSurface)) {
+			fail(
+				`${id}: the media tile's fill \`mediaSurface\` ${JSON.stringify(p.mediaSurface)} is present but not a flat hex colour, so the role's floor would be silently unmeasured - a malformed value must not switch a floor off`,
+			);
+			continue;
+		}
+		if (!isHex(p.canvas)) continue;
+		const got = deltaE(p.mediaSurface, p.canvas);
+		assertions++;
+		if (got < MEDIA_SURFACE_DELTA_E) {
+			fail(
+				`${id}: the media tile's fill \`mediaSurface\` ${p.mediaSurface} is ΔE00 ${r2(got)} from \`canvas\` ${p.canvas} (need ${MEDIA_SURFACE_DELTA_E}) — the fill IS the borderless tile's extent, and below this band it stops being findable`,
+			);
+		}
+		assertions++;
+		const step = Math.abs(toLab(p.mediaSurface)[0] - toLab(p.canvas)[0]);
+		if (step < MEDIA_SURFACE_LIGHTNESS_STEP) {
+			fail(
+				`${id}: the media tile's fill sits ${r2(step)} L* from \`canvas\`, under the ${MEDIA_SURFACE_LIGHTNESS_STEP} L* floor — ΔE00 is a budget a chroma-only step can spend while the fill vanishes in a greyscale render, so the lightness half is asserted too`,
 			);
 		}
 	}

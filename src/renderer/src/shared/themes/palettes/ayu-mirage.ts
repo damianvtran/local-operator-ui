@@ -69,6 +69,9 @@ export const ayuMirage: ThemeDefinition = {
 		// measures 3.55 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
 		messageSurface: "#2e3644",
+		// The media slot's well: `sunken` itself, which already clears the
+		// role's floor off this canvas (measured ΔE00 4.01, 5.85 L*).
+		mediaSurface: "#191D27",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a

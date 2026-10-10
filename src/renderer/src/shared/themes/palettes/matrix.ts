@@ -107,6 +107,13 @@ export const matrix: ThemeDefinition = {
 		// measures 3.20 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
 		messageSurface: "#202a23",
+		// The media slot's well: ΔE00 5.10 off the canvas, where `sunken` alone
+		// measures 2.71 - a step away from the canvas to clear the role's 4.0
+		// floor, which the tile carries because the fill IS its resting extent.
+		// The LIGHTNESS half gates the stop here: a ΔE00-clearing candidate
+		// (`#1B1B1A`, 2.38 L*) comes earlier on the line, so the walk carries it
+		// one step further to this value, which clears both halves (2.85 L*).
+		mediaSurface: "#1a1a1a",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
