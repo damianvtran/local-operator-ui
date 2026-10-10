@@ -1490,7 +1490,13 @@ const FocusedSpend = ({
 export const ChannelsTooltip: Story = {
 	render: () => (
 		<div className="flex min-h-[560px] flex-col justify-end bg-canvas p-2">
-			<Frame>
+			{/*
+			 * `width={900}`, like `channels-gated`/`channels-zero-states`: the strip's
+			 * shed ladder (issue #918) keeps the cost chip above a 705px content box,
+			 * and the chip IS this story's subject — at the default 720 frame the
+			 * content box is 688 and the ladder hides it before it can be focused.
+			 */}
+			<Frame width={900}>
 				<FocusedSpend
 					override={{
 						spend_channels: SPEND_CHANNELS,
@@ -1510,7 +1516,7 @@ export const ChannelsTooltip: Story = {
 export const ChannelsUntracked: Story = {
 	render: () => (
 		<div className="flex min-h-[380px] flex-col justify-end bg-canvas p-2">
-			<Frame>
+			<Frame width={900}>
 				<FocusedSpend
 					override={{
 						spend_channels: CHANNELS_UNTRACKED,
@@ -1535,7 +1541,7 @@ export const ChannelsUntracked: Story = {
 export const ChannelsChildrenFloored: Story = {
 	render: () => (
 		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
-			<Frame>
+			<Frame width={900}>
 				<FocusedSpend
 					override={{
 						spend_channels: CHANNELS_CHILDREN_FLOORED,
@@ -1560,7 +1566,7 @@ export const ChannelsChildrenFloored: Story = {
 export const ChannelsDroppedRow: Story = {
 	render: () => (
 		<div className="flex min-h-[420px] flex-col justify-end bg-canvas p-2">
-			<Frame>
+			<Frame width={900}>
 				<FocusedSpend
 					override={{
 						spend_channels: CHANNELS_DROPPED_ROW,

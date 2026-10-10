@@ -4197,11 +4197,18 @@ export const STORIES = [
 	 * gloss panel whose rows now sit in a grid, 440 for the untracked sentence's
 	 * shorter one. `channels-gated` stacks two strips and opens no tooltip, and
 	 * `channels-zero-states` is a two-frame stack of the two zero chips.
+	 *
+	 * THE 980 WIDTH IS THE 900 FRAME PLUS ITS OWN PADDING (48 + the story's
+	 * 2×8): the stories render the strip at `width={900}` because the strip's
+	 * shed ladder (issue #918) hides the cost chip below a 705px content box,
+	 * and the chip is what these frames exist to show. At the 860 viewport the
+	 * set used through round 2 the frame's right edge was clipped; 980 shows
+	 * it whole.
 	 */
-	["chat-session-status-strip--channels-tooltip", 860, 680],
-	["chat-session-status-strip--channels-untracked", 860, 440],
-	["chat-session-status-strip--channels-gated", 860, 480],
-	["chat-session-status-strip--channels-zero-states", 860, 480],
+	["chat-session-status-strip--channels-tooltip", 980, 680],
+	["chat-session-status-strip--channels-untracked", 980, 440],
+	["chat-session-status-strip--channels-gated", 980, 480],
+	["chat-session-status-strip--channels-zero-states", 980, 480],
 	/*
 	 * The two round-3 states (design D3-1): the children parenthetical with a
 	 * floored inference row — the longest clause the composition produces, so
@@ -4209,8 +4216,8 @@ export const STORIES = [
 	 * dropped-row payload, whose empty row list sits beside the panel's
 	 * "could not be read" sentence (the panel half is
 	 * `channels-dropped-row-end`). Both are dark+light narrowed runs. */
-	["chat-session-status-strip--channels-children-floored", 860, 720],
-	["chat-session-status-strip--channels-dropped-row", 860, 520],
+	["chat-session-status-strip--channels-children-floored", 980, 720],
+	["chat-session-status-strip--channels-dropped-row", 980, 520],
 	/*
 	 * The sidebar's session-status mark, in the one place it can be photographed
 	 * as a specimen: the read/unread matrix, every code beside its own name (see
