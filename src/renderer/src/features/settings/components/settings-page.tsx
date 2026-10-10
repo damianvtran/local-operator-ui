@@ -54,6 +54,7 @@ import { useLocation } from "react-router-dom";
 import { AppUpdatesSection } from "./app-updates-section";
 import { BackendSettingsSection } from "./backend-settings-section";
 
+import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
 import { McpManagementSection } from "./mcp-management-section";
 import { RadientAccountSection } from "./radient-account-section";
 import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
@@ -396,6 +397,7 @@ export const SettingsPage: FC = () => {
 		integrations: useRef<HTMLDivElement>(null),
 		appearance: useRef<HTMLDivElement>(null),
 		speech: useRef<HTMLDivElement>(null),
+		keyboard: useRef<HTMLDivElement>(null),
 		providers: useRef<HTMLDivElement>(null),
 		backend: useRef<HTMLDivElement>(null),
 		updates: useRef<HTMLDivElement>(null),
@@ -1292,6 +1294,7 @@ export const SettingsPage: FC = () => {
 						 * why it carries no credential field.
 						 */}
 						<SpeechSection sectionRef={sectionRefs.speech} />
+						<KeyboardShortcutsSection sectionRef={sectionRefs.keyboard} />
 
 						{/*
 						 * The provider grid is the same component onboarding uses: one
