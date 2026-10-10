@@ -376,6 +376,13 @@ const APP_SPAWN_SITES = [
 		/env:\s*\{/,
 	),
 	exempt(
+		"scripts/window-guards-electron.test.mjs",
+		"spawnSync",
+		1,
+		"boots a bare Electron scenario bundle against its own loopback stub - no app main, so neither `posthog-node` nor the renderer's provider is ever loaded: the bundle it hands the scenario is the window-guard modules alone, and the window loads a parent page the scenario wrote itself; run on demand (`pnpm test:window-guards`) because it needs a display, and no CI step runs it (test-inventory records that)",
+		/env:\s*\{/,
+	),
+	exempt(
 		"scripts/notification-evidence.mjs",
 		"spawnSync",
 		1,
