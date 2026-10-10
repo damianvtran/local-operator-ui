@@ -70,9 +70,31 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
-	packages: "external",
 	jsx: "automatic",
-	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
+	/*
+	 * EVERYTHING IS BUNDLED EXCEPT THE REACT FAMILY. The drawer reads the shared
+	 * store since round-1 Q1 (`askOpenIntent`), and the store reaches `base-theme`,
+	 * which imports `@mui/material/styles` - a directory import that Node's ESM
+	 * loader refuses when it is left external; `ask-open-render.test.mjs` carries
+	 * this same list and its derivation. React stays external so the hooks inside
+	 * the bundle and the `react-dom/client` this file mounts with are ONE copy.
+	 */
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/client",
+		"react/jsx-runtime",
+		"react/jsx-dev-runtime",
+	],
+	/* A CJS module inside the bundle calls `require("react")`, which an ESM bundle
+	 * cannot satisfy on its own; the banner lets it reach the same React. */
+	banner: {
+		js: 'import { createRequire as __createRequire } from "node:module"; const require = __createRequire(import.meta.url);',
+	},
+	alias: {
+		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+		"@features": `${process.cwd()}/src/renderer/src/features`,
+	},
 	define: { "import.meta.env": "{}" },
 	write: false,
 	logLevel: "silent",

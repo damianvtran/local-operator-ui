@@ -448,7 +448,7 @@ function SessionPanel({
 	 * `answered_in_chat`), which is the agent's tool and not this client's call.
 	 *
 	 * What the flag still decides is the SURFACE: the status-row chip and the
-	 * header door toggle it, the drawer mounts on it, and it is owned by the STORE (as
+	 * rail's asks item toggle it, the drawer mounts on it, and it is owned by the STORE (as
 	 * `isAskDrawerOpen`, the right slot's fifth pane) rather than inside the drawer
 	 * or here because the drawer has to close the canvas when it opens (one right pane
 	 * at a time, `claimRightSlot`) - a rule that cannot be kept by a `useState` in this
@@ -458,7 +458,7 @@ function SessionPanel({
 	/*
 	 * AND WHICH QUEUE IT IS SHOWING (fleet scope, design note §4.4). The drawer is ONE
 	 * container in two scopes, and this component owns the session one: this
-	 * conversation's chip and header door open THIS conversation's queue, and the
+	 * conversation's chip and the rail's asks item open THIS conversation's queue, and the
 	 * fleet panel's rows belong to other conversations and are answered through its
 	 * own cards. Reading the scope here keeps the Escape claim below (and the chip's
 	 * pressed state) from firing for a pane that is not this conversation's.

@@ -470,6 +470,12 @@ const CHROME_LAUNCH_SITES = [
 		"the #894 right-slot per-conversation memory pair: one private headless Chrome per pass, shared by the case driver and the per-animation-frame hop probe, over the daemon's two conversations (registered with its own row, which is what this table asks of every rig that launches Chrome - the two harnesses above record what happens when one is not)",
 	),
 	guarded(
+		"docs/evidence/asks-on-rail/harness/rig-lib.mjs",
+		"spawn",
+		1,
+		"the #896 asks-door pair: one private headless Chrome per pass, shared by the seven cases over the daemon's two conversations, one browser context per case (registered with its own row, which is what this table asks of every rig that launches Chrome - the two harnesses above record what happens when one is not)",
+	),
+	guarded(
 		"docs/evidence/read-ack-skew/harness/readack-skew.mjs",
 		"spawn",
 		2,
@@ -528,6 +534,12 @@ const CHROME_LAUNCH_SITES = [
 		"spawn",
 		1,
 		"the asks open-by-default matrix - the old tree beside the new one over the same backend, photographed in the running renderer - one private headless Chrome per run, a browser context per case, through the same helper (the zone pin rides the same spawn)",
+	),
+	guarded(
+		"scripts/radient-credits-geometry.mjs",
+		"spawn",
+		1,
+		"measures the credits-guidance row's pre-settle insertion shift (the account read held so the un-inserted row is still) and the 420-wide wrap readings for the longest copy, from the live DOM - one private headless Chrome for both phases through the same helper (registered by its PR's review remediation: an unlisted launch site fails Desktop Tests)",
 	),
 ];
 

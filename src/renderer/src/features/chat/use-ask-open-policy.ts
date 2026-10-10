@@ -11,14 +11,15 @@ import {
 	shouldCloseCarriedDrawer,
 } from "./ask-open-policy";
 import {
-	ASK_HEADER_ITEM_SELECTOR,
 	ASK_ITEM_SELECTOR,
+	ASK_RAIL_ITEM_SELECTOR,
 	type AskQueueView,
 } from "./ask-queue";
 
 /**
  * Whether the keyboard is on one of the drawer's two DOORS right now: the composer
- * chip or the conversation header's asks trigger. The same two selectors the drawer's
+ * chip or the panel rail's asks item (the conversation header's trigger until #896
+ * moved it). The same two selectors the drawer's
  * entry move reads (`ask-drawer.tsx`), so "a door has focus" means one thing in both
  * places. `matches` is guarded because the active element can be a non-element.
  */
@@ -28,7 +29,7 @@ const keyboardIsOnDoor = (): boolean => {
 		active !== null &&
 		typeof active.matches === "function" &&
 		(active.matches(ASK_ITEM_SELECTOR) ||
-			active.matches(ASK_HEADER_ITEM_SELECTOR))
+			active.matches(ASK_RAIL_ITEM_SELECTOR))
 	);
 };
 
