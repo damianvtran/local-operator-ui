@@ -290,6 +290,12 @@ import {
 	CredentialOverlay,
 	composerTextBox,
 } from "@features/chat/components/credential-overlay";
+/*
+ * The pre-emptive quota notice (design §6): its own line beside the connect
+ * line above, on the empty band only. Imported like the connect card next
+ * door, and the module documents its own lift discipline.
+ */
+import { QuotaNoticeLine } from "@features/chat/quota-notice/quota-notice-line";
 import {
 	ConnectProviderCard,
 	NoProviderLine,
@@ -9446,6 +9452,30 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				{noProvider && !showEmptyChatPrompt ? (
 					<div className={cn("mt-2", CHAT_MEASURE)}>
 						<NoProviderLine />
+					</div>
+				) : null}
+
+				{/*
+				 * THE PRE-EMPTIVE QUOTA NOTICE (design §6). One quiet line on the same
+				 * band as the connect line above, shown BEFORE the first send rather
+				 * than after the refusal: an account with no credit left, or a spent
+				 * plan window, is a fact the backend can state, and the user can act on
+				 * it without typing first.
+				 *
+				 * EMPTY BAND ONLY, expressed by the same `showEmptyChatPrompt` the
+				 * connect line's gate reads: the notice advises a send that has not
+				 * happened, so it has nothing to say once the conversation has content —
+				 * and the read is disabled with the mount, which is what "enabled only
+				 * on an empty session" means here.
+				 *
+				 * WHY IT CAN LIVE INSIDE THE LIFTED COMPOSER: its reads go through
+				 * `useOptionalQueryClient`, so a host document with no provider (the
+				 * mini view) never fetches, and a transcriptless band never renders this
+				 * node anyway. See `use-quota-notice.ts`.
+				 */}
+				{showEmptyChatPrompt ? (
+					<div className={cn("mt-2", CHAT_MEASURE)}>
+						<QuotaNoticeLine />
 					</div>
 				) : null}
 
