@@ -107,9 +107,20 @@ The before halves live in `../chat-run-panel-result-before/`, which is a DECLARE
 | [`jobs-in-flight`](jobs-in-flight/) | The **Jobs** section (`docs/composer-activity-chips.md` § 4): two running tool rows (`bash: sleep 150 ; echo child-done` at `2m11s`, a background `eval` at `12s`) under a `Jobs` heading tallied `2 running`, with a child row above them in the roster — and a THIRD tool row, already settled, that is on the wire and deliberately NOT drawn, because the section's slice is `isOpenRow` and its count is the chip's number. The rows are quiet by construction: a tool row has no `session_id`, so there is nothing to press. |
 | [`wakes-only`](wakes-only/) | The **Wakes** section (`docs/composer-wakes.md` § 5) with one ARMED schedule: `Wakes` tallied `1 wake armed`, one row carrying the schedule's next fire in local time with its zone, its cadence (`once`) and its prompt. The state nothing in this app could show before the change — a session whose only pending thing is a FUTURE event — where the alternative surface was the wake-delivery receipt row, which exists only after the wake has already fired. |
 | [`wakes-recurring`](wakes-recurring/) | Three cadences on one list, and the wire's order deliberately REVERSED against the due order: the fixture publishes `w2`, `w1`, `w4`, `w3` (the backend's creation order, `w1`..`w16`) and the rows read soonest-first. What the frame states: `once` for the single shot, `every 1h30m` for the unbounded recurrence, `every 6h · 3 left` for the limit-bounded one, and the next-day row carrying a DATE and a ZONE (`Mar 15 7:26 AM EDT`) where today's instants carry only the clock. Read against `wakes-only`, whose one row fits one line. |
-| [`wakes-many`](wakes-many/) | Nine schedules, re-taken for round 1's remediation: **nine rows drawn, no marker**, and the tally `9 wakes armed` against the chip's same count (design round 2 measured the frame: 37.5px pitch both themes, the section 374px of an 820px frame). `WAKE_ROW_CAP` is now the wire's own `MAX_WAKE_SCHEDULES = 16` rather than six, so **no fixture can reach the overflow marker any more** — it is eligible only for a payload past the declared bound, and the marker's ink geometry (x918 against the rows' x897) is a measurement of the SUPERSEDED `3519aa7da` capture, which this set no longer carries. What the frame shows instead of the marker is the section's new closing line, `To stop a wake, ask the agent to cancel it.` (round 1's UX U3). |
+| [`wakes-many`](wakes-many/) | Nine schedules, re-taken for round 1's remediation: **nine rows drawn, no marker**, and the tally `9 wakes armed` against the chip's same count (design round 2 measured the frame: 37.5px pitch both themes, the section 374px of an 820px frame). `WAKE_ROW_CAP` is now the wire's own `MAX_WAKE_SCHEDULES = 16` rather than six, so **no fixture can reach the overflow marker any more** — it is eligible only for a payload past the declared bound, and the marker's ink geometry (x918 against the rows' x897) is a measurement of the SUPERSEDED `3519aa7da` capture, which this set no longer carries. Each row now carries its own `Cancel` at rest (the wakes control slice), and the stopgap closing line round 1 added (`To stop a wake, ask the agent to cancel it.`) is RETIRED with the control that replaces it. |
 | [`wake-long-message`](wake-long-message/) | One wake whose prompt is longer than its row. The message is the only unbounded, authored string on a wake row, so it clamps at two lines while the whole text stays on hover (`title`) and in the accessible name (`sr-only` twin) — the pane's own treatment for a variable-length authored value, the same one the plan's blocked reason wears. The pair is `wakes-only`, whose prompt fits. |
-| _All six wake rows_ | Every row in this set carries the section's closing line (`To stop a wake, ask the agent to cancel it.`) as of round 1's remediation — it is part of the section, not of one band, and it is what the last line of each frame's section now reads. |
+| _All six wake rows_ | Re-taken for the wakes control slice: no row carries a closing line any more (the stopgap sentence retired with the control that replaces it), and every ordinary row carries `Cancel` at rest — VISIBLE, not hover-revealed, at the monitors' 24px floor. The section's own tally is unchanged (`N wakes armed`). |
+| [`wake-cancel-hover`](wake-cancel-hover/) | The wake row's control under the rig's real pointer: the danger wash (`hover:bg-danger-wash hover:text-danger`, the page's own cancel ink), `:hover` asserted before the shutter. |
+| [`wake-cancel-focus`](wake-cancel-focus/) | The same control with the point's `:focus-visible` ring (`focus({ focusVisible: true })`), the keyboard half of the same state. |
+| [`wake-cancel-cancelled`](wake-cancel-cancelled/) | The `Cancelled` receipt on the ONE-PRESS path: a real press against a controls object that answers `ok`, the control disabled in place and the row waiting for the canonical re-read that drops it. |
+| [`wake-cancel-refused`](wake-cancel-refused/) | A refused one-press attempt: there is no card on this path, so the backend's whole sentence renders ON the row as its own full-width note line in the danger ink (`<output>`, a polite live region) — the ONE statement of the refusal (the short `Cancel refused` tag retired, design round 1's D5) — with the live control beside it as the next attempt. |
+| [`wake-managed`](wake-managed/) | The engine's row: `managed by Aida`, NO control (nothing to press, and pressing nothing), and the sentence naming the lever that works (`This wake is Aida's own schedule, so it can't be cancelled here. To stop these check-ins, use /aida pause.`) drawn VISIBLY as the row's note (D2) instead of hiding in a `title`. The ordinary row beneath keeps its one-press `Cancel`, so the frame carries both verdicts of one model. |
+| [`wake-chief-confirm`](wake-chief-confirm/) | Her conversation's confirmation, reached by pressing the real control: the card NAMES her (`Cancel Aida's check-in?`), says the wake will not fire again and nothing re-creates it, and its quoted prompt is clipped outside its bracket (`“4-hourly proactive check-in…”`, D7). `Keep` takes the focus; the dismiss is `Keep`, never a second `Cancel`. |
+| [`wake-chief-refused`](wake-chief-refused/) | The same card after the route refused: it stays open with the backend's own sentence in the danger ink and the keyboard handed back to `Keep`. The walk is the flow's two real presses. |
+| [`wakes-controls-floor-320`](wakes-controls-floor-320/) | The control column at the pane's 320px floor: the frame the width budget is read off, beside `wakes-floor-320` (the same fixture without the change's controls). |
+| [`wakes-controls-floor-320-refused`](wakes-controls-floor-320-refused/) | The 320px floor under the refusal: the sentence on its own full-width line, the facts line intact — the state design round 1's D1 was measured in (the old `shrink-0` column left the sentence ~9 lines and squeezed the due label; the column now yields and the note spans the row). |
+| [`wakes-controls-floor-320-managed`](wakes-controls-floor-320-managed/) | The floor under a managed row: the state word in the column and the lever sentence as the note, wrapping without clipping the cadence. |
+| [`wakes-controls-floor-320-chief`](wakes-controls-floor-320-chief/) | The floor with the chief of staff's card open over it, anchored under the pressed control. |
 | [`wakes-and-plan`](wakes-and-plan/) | A plan and two armed wakes: the two sections in one scroll region, which is what most real sessions look like, and the pane's own answer to "the row shows two counts, where do they point". The MCP servers are absent from the fixture so the frame's two sections are the whole list, which is what makes the ORDER legible: the plan, then the wakes. |
 | [`wakes-floor-320`](wakes-floor-320/) | The same section at the pane's 320px floor, which is where its first line is longest and narrowest: a due label carrying a date, a zone and a cadence (the YEAR case is NOT in this band and is not blocked on anything: `dueInMinutes` is unbounded, so `500_000` prints `Feb 24 2027 10:46 AM EST` through the shipped path — the band is simply not built yet, and round 2 quantifies the risk at ~55px of headroom on this frame's longest line against the ~40px a year adds). The label YIELDS (`min-w-0 truncate`, whole text in a `title`) and the cadence does not (`shrink-0`), so the bounded figure is never cut mid-word. Measured here: the longest row (`Mar 15 7:26 AM EDT · every 6h · 3 left`) still fits one line at 320px, so the truncation rule is the safety net rather than the ordinary reading. |
 | [`monitors-only`](monitors-only/) | The **Monitors** section (the monitor design doc § 12) with one ARMED watch: `Monitors` tallied `1 monitor armed`, one row carrying the watch's next check in local time with its zone, its interval (`every 1m`), its name and its description line. The state this change exists for - a standing READ-ONLY check that between deliveries is invisible in the transcript, so the alternative was seeing nothing at all until something already changed. The row's health slot reads the due label while the watch is healthy; that is the whole vocabulary `wakes-only` has no sibling for. |
@@ -384,3 +395,44 @@ node scripts/capture-evidence.mjs http://localhost:6211 \
 
 **What the pair shows.** At 320 the due slot now survives (`6:27 AM …` where the base frame lost it entirely), `last check` truncates before it, the health tail yields first, and with the record standing the row reads `6:27 A… · every 1m` — no text under the buttons in either floor state, both themes.
 
+
+## Re-taken for the wakes controls (the pane's cancel)
+
+**The Wakes section gained its row-level cancel, and the stopgap footer retired.**
+`docs/composer-wakes.md` § 5's "the rows are quiet" rule ("a schedule is read
+here and cancelled by the agent") shipped with a closing sentence standing in
+for the missing control. This change gives every ordinary wake row a `Cancel`
+VISIBLE at rest — the monitors' placement and 24px floor, one list over — with a
+deliberate difference: an ordinary wake cancels on ONE press (the operator's own
+words), so the only question left is the chief of staff's.
+
+- **Her conversation asks first.** A small card anchored to the pressed control
+  (`Cancel Aida's check-in?` / `Keep` / `Cancel check-in`) names her when the
+  identity is resolved, says the wake will not fire again and nothing re-creates
+  it, and its refusal renders inside it. Ordinary wakes never see the card.
+- **Her engine's rows offer nothing.** `aida-*` rows carry a `managed by {name}`
+  state and NO control (the desktop route refuses those ids with a 422 before any
+  handler — `^w\d{1,4}$` — so a control there could only ever fail), and the
+  sentence naming the lever that works (`/aida pause`) is drawn visibly as the
+  row's note rather than hiding in a `title`.
+- **A refusal is one statement.** On the one-press path the backend's whole
+  sentence is the row's own note line in the danger ink (`<output>`, announced);
+  the short `Cancel refused` tag beside it was retired (D5). The monitors' own
+  record is untouched.
+- **The layout yields.** The action column carries the monitors' `min-w-0
+  shrink-[3]` rule and the note spans the row, which is what keeps the 320px
+  floor healthy with a refusal or a managed sentence standing (D1).
+
+**Re-taken:** `wakes-only`, `wakes-recurring`, `wakes-many`,
+`wake-long-message`, `wakes-and-plan`, `wakes-floor-320` and
+`monitors-and-wakes` (the six wake cells still drew the retired sentence and no
+controls), plus the new cells `wake-cancel-hover`, `wake-cancel-focus`,
+`wake-cancel-cancelled`, `wake-cancel-refused`, `wake-managed`,
+`wake-chief-confirm`, `wake-chief-refused`, `wakes-controls-floor-320`,
+`wakes-controls-floor-320-refused`, `wakes-controls-floor-320-managed` and
+`wakes-controls-floor-320-chief`.
+
+The hover cell goes through the rig's real pointer (`hover: '[data-wake-cancel="w1"]'`,
+`hoverSettleMs`); the cancelled, refused and chief cells perform their own real
+presses and hold the shutter until the state lands. Two themes each, as the
+section's other cells.

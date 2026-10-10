@@ -35,6 +35,7 @@ const bundle = await build({
 			 * `defaultQueryOptions` is exported for its own policy (round 2, M1).
 			 */
 			'export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
+			'export { DESKTOP_REFUSAL_CODE } from "./src/shared/desktop-contract";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -52,6 +53,7 @@ const model = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 const {
+	DESKTOP_REFUSAL_CODE,
 	MAX_WAKE_SCHEDULES,
 	PARK_FOOTER_CLAUSE,
 	PARKED_CLAUSE,
@@ -674,24 +676,56 @@ test("the write retry is one retry, and only where nothing was sent (round 2, M1
 	/*
 	 * The policy that produced a user-visible defect on the live drive and had no
 	 * pin until round 2. The shipped transport answers a refused socket and its own
-	 * 20 s abort with a SYNTHESISED 503 (`answered: false`), so 503 is "nothing was
-	 * sent" for this app while a 409/422 is the backend answering - and a retry of
-	 * an ANSWERED refusal is what replaced "at most 16 wake schedules are allowed."
+	 * 20 s abort with a SYNTHESISED 503 (`answered: false`) CARRYING
+	 * `DESKTOP_REFUSAL_CODE.transportFailed`, so that code is "nothing was sent"
+	 * for this app while a 409/422 is the backend answering - and a retry of an
+	 * ANSWERED refusal is what replaced "at most 16 wake schedules are allowed."
 	 * with the journal's "indeterminate" sentence.
+	 *
+	 * NARROWED IN ROUND 1 (F6): the first revision read every 503 as "nothing was
+	 * sent" through `isServerUnreachable`, which re-sent the wake route's answered
+	 * 503s - `wake_owner_present` / `wake_owner_wedged` / `wake_owner_unavailable`
+	 * - the exact set the monitors' policy excludes. The retryable set is now:
+	 * status null, the coded transport failure, and the route's own contention
+	 * code `wake_write_busy` (nothing written; retrying is what its copy says).
 	 */
-	const transport = (status) => new DesktopControlError(status, "transport");
+	const transport = (status, code) =>
+		new DesktopControlError(status, "transport", undefined, code);
 	assert.equal(
-		retryWakeWrite(0, transport(503)),
+		retryWakeWrite(0, transport(503, DESKTOP_REFUSAL_CODE.transportFailed)),
 		true,
-		"a 503 is retried once",
+		"the coded no-answer 503 is retried once",
 	);
-	assert.equal(retryWakeWrite(1, transport(503)), false, "and only once");
+	assert.equal(
+		retryWakeWrite(1, transport(503, DESKTOP_REFUSAL_CODE.transportFailed)),
+		false,
+		"and only once",
+	);
+	assert.equal(retryWakeWrite(0, transport(503, "wake_write_busy")), true);
 	assert.equal(
 		retryWakeWrite(0, transport(null)),
 		true,
 		"a null status is retried once",
 	);
 	assert.equal(retryWakeWrite(1, transport(null)), false);
+	/* The ANSWERED 503s and every other answer: no re-send. */
+	for (const code of [
+		"wake_owner_present",
+		"wake_owner_wedged",
+		"wake_owner_unavailable",
+		DESKTOP_REFUSAL_CODE.noCredential,
+	]) {
+		assert.equal(
+			retryWakeWrite(0, transport(503, code)),
+			false,
+			`${code} is an answer, so no retry`,
+		);
+	}
+	assert.equal(
+		retryWakeWrite(0, transport(503)),
+		false,
+		"a bare 503 is an answer",
+	);
 	for (const status of [409, 422, 401, 404, 500]) {
 		assert.equal(
 			retryWakeWrite(0, transport(status)),
@@ -722,6 +756,26 @@ test("the dialog's two grammars: repeat durations, and a prompt head", () => {
 	assert.equal(
 		wakePromptHead("Clean up the invoices sheet."),
 		"Clean up the invoices sheet",
+	);
+	/*
+	 * A clip never leaves a bracket open MID-SENTENCE (D7): the wake control
+	 * slice's confirm card quoted `4-hourly proactive check-in (operator-set…`,
+	 * which reads as a rendering fault. The clip falls back to before the
+	 * unmatched bracket. A message that IS one long bracket keeps the plain clip
+	 * (dropping a leading bracket would leave nothing to quote) — pinned so the
+	 * fallback's shape is deliberate rather than surprising.
+	 */
+	assert.equal(
+		wakePromptHead(
+			"4-hourly proactive check-in (operator-set cadence) with a longer tail",
+		),
+		"4-hourly proactive check-in…",
+	);
+	assert.equal(
+		wakePromptHead(
+			"(an entire parenthetical that runs past the cap and keeps going)",
+		),
+		"(an entire parenthetical that runs past the cap…",
 	);
 });
 
