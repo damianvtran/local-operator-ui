@@ -3075,7 +3075,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					</>
 				)}
 				{/*
-				/*
 				 * THE CODE REVIEW PANE. Mounted only where it has a SUBJECT - a
 				 * conversation - and only where the backend serves its feature
 				 * (`codeReviewEnabled`): on a draft there is no ledger to draw, and against

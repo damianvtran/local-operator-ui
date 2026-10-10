@@ -311,7 +311,7 @@ export function useRefreshCodeRequests(sessionId: string | null) {
  * a parameter at all any more: with no timer it decided nothing, and the one
  * caller passed a transport reading that was always true.
  */
-export function useCodeRequestsChip(sessionId: string | null) {
+export function useCodeRequestsChip(sessionId: string | null, open = false) {
 	const hosted = useUiPreferencesStore((s) => s.rightSlotRoute.mounted);
 	const query = useCodeRequests(sessionId, {
 		visible: false,
@@ -324,7 +324,7 @@ export function useCodeRequestsChip(sessionId: string | null) {
 		 */
 		enabled: hosted,
 	});
-	return chipState(hosted, query.data?.rows ?? []);
+	return chipState(hosted, query.data?.rows ?? [], open);
 }
 
 /**
@@ -337,7 +337,11 @@ export function useCodeRequestsChip(sessionId: string | null) {
  * this list, so `rows.length` IS the count of visible rows - a `gh pr list`
  * dump does not raise the chip.
  */
-export function chipState(hosted: boolean, rows: DesktopCodeRequestRow[]) {
+export function chipState(
+	hosted: boolean,
+	rows: DesktopCodeRequestRow[],
+	open = false,
+) {
 	const groups = groupRows(rows);
 	/*
 	 * THE CAUSE, not a boolean (D5/U6): "findings open" was stated when the only
@@ -356,6 +360,7 @@ export function chipState(hosted: boolean, rows: DesktopCodeRequestRow[]) {
 			groups.opened.length,
 			groups.mentioned.length,
 			cause,
+			open,
 		),
 	};
 }

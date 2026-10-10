@@ -9,10 +9,9 @@ import {
 	ciClause,
 	commentClause,
 	forgeSigil,
-	linkOnlyRemedy,
-	refreshCaption,
 	relationTag,
 	rowAriaLabel,
+	rowNotice,
 	statePill,
 	updatedClause,
 } from "../code-review-model";
@@ -66,17 +65,15 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({ row, nowMs }) => {
 	const updated = row.summary
 		? updatedClause(row.summary.updated_at, nowMs)
 		: null;
-	const caption = refreshCaption(row);
 	const canShowMeta = !row.link_only && Boolean(row.summary);
 	/*
-	 * The link-only row's one visible line: the BACKEND'S OWN remedy sentence,
-	 * rendered verbatim (agent review F8 / design D8 / UX U5). The old
-	 * `forge === "gitlab" ? glab : gh` derivation named a CLI that does not
-	 * exist for a detect-and-link host; the sentence already leads with `Link
-	 * only`, so the caption and the remedy are one line, and the `title`
-	 * carries the whole of it where the line truncates.
+	 * The row's ONE quiet line: the backend's own sentence for a row whose
+	 * state could not be read, chosen by `rowNotice`'s precedence (a link-only
+	 * row's `reason` — e.g. a cooling host — before the per-forge remedy; a
+	 * tracked row's `refresh_error` before a bare reason). The `title` carries
+	 * the whole line where it truncates.
 	 */
-	const remedy = row.link_only ? linkOnlyRemedy(row) : null;
+	const notice = rowNotice(row);
 	return (
 		<li data-code-request-row={row.key} className={cn("list-none")}>
 			<button
@@ -94,8 +91,8 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({ row, nowMs }) => {
 					"transition-colors duration-fast hover:bg-surface",
 					/*
 					 * AN INSET RING: the app's default 2px outline sits outside the box and
-					 * the list's `overflow-y-auto` clips its left and right edges at the
-					 * pane's padding, which read as a divider rather than a focus ring (U4).
+					 * the list's own vertical scroller clips its left and right
+					 * edges at the pane's padding, which read as a divider rather than a focus ring (U4).
 					 * `outline-offset-[-2px]` is the house inset spelling
 					 * (`mesh-canvas.tsx`, `canvas-file-viewer.tsx`).
 					 */
@@ -121,6 +118,17 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({ row, nowMs }) => {
 					 * D6) is `shrink-0`; the relation tag yields before either.
 					 */}
 					<span className={cn("flex w-full min-w-0 items-center gap-2")}>
+						{/*
+						 * THE WRAPPER OWNS THE WHOLE SQUEEZE (design round 2, D9): the
+						 * relation tag sits INSIDE it, after the number, so one flex
+						 * container distributes the shrink - the project (shrink 1) and
+						 * the tag (shrink 2) truncate, the `shrink-0` number never yields.
+						 * The round-1 shape kept the tag outside the wrapper, whose basis
+						 * was 0 while the tag kept its full text width; at the 320px floor
+						 * nothing then shrank, the wrapper got only the remainder, and the
+						 * `shrink-0` number spilled out of it OVER the tag (measured: a
+						 * 29.2px wrapper under a 33.4px number on the Open variant).
+						 */}
 						<span className={cn("flex min-w-0 flex-1 items-baseline gap-1")}>
 							<span
 								className={cn(
@@ -136,19 +144,21 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({ row, nowMs }) => {
 								{forgeSigil(row)}
 								{row.number}
 							</span>
+							{relation && (
+								<span
+									className={cn(
+										"min-w-0 shrink-[2] truncate text-meta text-ink-dim",
+									)}
+									title={
+										row.relation === "unknown"
+											? "Possibly opened by this session; the evidence did not prove it was."
+											: undefined
+									}
+								>
+									{relation}
+								</span>
+							)}
 						</span>
-						{relation && (
-							<span
-								className={cn("min-w-0 truncate text-meta text-ink-dim")}
-								title={
-									row.relation === "unknown"
-										? "Possibly opened by this session; the evidence did not prove it was."
-										: undefined
-								}
-							>
-								{relation}
-							</span>
-						)}
 						{pill && (
 							<Badge
 								variant={pill.variant}
@@ -167,6 +177,7 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({ row, nowMs }) => {
 						 * in a row's compact register (`wake-conversation-row.tsx`).
 						 */}
 						<ArrowUpRight
+							data-row-arrow=""
 							aria-hidden={true}
 							className={cn(
 								"size-3.5 shrink-0 text-ink-dim opacity-0 transition-opacity duration-fast",
@@ -199,22 +210,14 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({ row, nowMs }) => {
 							{updated && <span>{updated}</span>}
 						</span>
 					)}
-					{/* LINE E - the captions, one line, conditional. */}
-					{remedy ? (
+					{/* LINE E - the notice, one line, conditional. */}
+					{notice && (
 						<span
 							className={cn("truncate text-meta text-ink-dim")}
-							title={
-								row.reason && row.reason !== remedy
-									? `${remedy} ${row.reason}`
-									: remedy
-							}
+							title={notice}
 						>
-							{remedy}
+							{notice}
 						</span>
-					) : (
-						caption && (
-							<span className={cn("text-meta text-ink-dim")}>{caption}</span>
-						)
 					)}
 				</span>
 			</button>

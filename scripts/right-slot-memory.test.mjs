@@ -843,3 +843,51 @@ test("(Q) the follower's key is the pane's identity, and only an admission carri
 	assert.equal(admittedFromFor("draft:z", "draft:w", undefined), undefined);
 	assert.equal(admittedFromFor(null, "s-9", undefined), undefined);
 });
+
+/*
+ * (L) A LATE CAPABILITY REACHES THE SLOT (agent review round 2, M1). The route
+ * facts arrive in one publish, but `codeReview` is `codeReviewEnabled` in
+ * `chat-content`, which starts FALSE while `capabilities.data` is pending; the
+ * later `true` publish must not be dropped as a duplicate by the setter's
+ * equality guard, or `resolveDrawnRightSlotPane` never learns the pane may draw
+ * - the rail item stays unlit on F6's cold-relaunch case even though the pane
+ * itself mounts (its gate reads the capability directly). The round-1
+ * pane-slot tests pinned the publisher by source regex and stayed green through
+ * exactly this defect, which is why this cell drives the real setter.
+ */
+test("(L) a codeReview fact arriving after the other route facts reaches the slot (M1)", () => {
+	reset();
+	useUiPreferencesStore.setState({
+		rightSlotRoute: { mounted: true, runDetails: true, session: true },
+	});
+	prefs().setCodeReviewPaneOpen(true);
+	assert.equal(
+		resolveDrawnRightSlotPane(prefs()),
+		null,
+		"the claim alone draws nothing while the capability is unknown",
+	);
+	prefs().setRightSlotRoute({
+		mounted: true,
+		runDetails: true,
+		session: true,
+		codeReview: false,
+	});
+	prefs().setRightSlotRoute({
+		mounted: true,
+		runDetails: true,
+		session: true,
+		codeReview: true,
+	});
+	assert.equal(
+		prefs().rightSlotRoute.codeReview,
+		true,
+		"the later true is not a duplicate of the earlier false",
+	);
+	assert.equal(resolveDrawnRightSlotPane(prefs()), "code");
+	prefs().setRightSlotWidth(DEFAULT_RIGHT_SLOT_WIDTH);
+	assert.equal(
+		resolveRightSlotWidth(1400, prefs()),
+		DEFAULT_RIGHT_SLOT_WIDTH,
+		"and the drawn pane reserves the slot's one width again",
+	);
+});

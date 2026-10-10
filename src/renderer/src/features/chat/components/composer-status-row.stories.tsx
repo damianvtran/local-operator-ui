@@ -3050,3 +3050,54 @@ export const CodeRequestsChip: Story = {
 		</QueryClientProvider>
 	),
 };
+
+/**
+ * The showing lip (UX round 2, U18): the pane this chip opens is the DRAWN
+ * occupant, so the chip wears the pressed pair (`bg-accent-wash text-ink` - the
+ * rail item's own meaning, "the surface this door opens is on screen") and its
+ * tooltip and announced name read `Code review is showing`. A frame cannot show
+ * a tooltip, so this band carries the PAINT; the flipped name is pinned in
+ * `code-review-model.test.mjs`. The host pins the drawn state through the
+ * store's own route facts - the same facts `chat-content` publishes - rather
+ * than the chip's claim flag alone, because the resolution reads the pair.
+ */
+const CodeChipShowingHost: FC<{ children: ReactNode }> = ({ children }) => {
+	useLayoutEffect(() => {
+		useUiPreferencesStore.setState({
+			rightSlotRoute: {
+				mounted: true,
+				runDetails: false,
+				session: true,
+				codeReview: true,
+			},
+			isCodeReviewPaneOpen: true,
+		});
+		return () =>
+			useUiPreferencesStore.setState({
+				rightSlotRoute: {
+					mounted: false,
+					runDetails: false,
+					session: false,
+					codeReview: false,
+				},
+				isCodeReviewPaneOpen: false,
+			});
+	}, []);
+	return <>{children}</>;
+};
+
+export const CodeRequestsChipShowing: Story = {
+	render: () => (
+		<QueryClientProvider client={codeChipClient()}>
+			<CodeChipShowingHost>
+				<div className={cn("flex flex-col gap-4")}>
+					<Band
+						label="While the pane is showing: the chip states it in the same register the rail item uses"
+						frontend={chipFrontend("")}
+						runDetails={null}
+					/>
+				</div>
+			</CodeChipShowingHost>
+		</QueryClientProvider>
+	),
+};

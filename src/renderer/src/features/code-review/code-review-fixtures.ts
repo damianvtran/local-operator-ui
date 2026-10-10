@@ -284,6 +284,66 @@ export const populatedRows = (): DesktopCodeRequestRow[] => [
 	}),
 ];
 
+/**
+ * THE WORST-CASE RELATION TAG (design round 2, D9): the depth-2 `via subagent
+ * coder > reviewer` row in both pill variants - Open and Merged - as the two
+ * LEADING rows of the narrow frame. `acted` makes the pair sort first inside
+ * the opened group (rank, then acts, then recency - `groupRows`), because the
+ * frame's whole point is that a wide tag and the `#N` coexist at the 320px
+ * floor: before the D9 fix the number spilled out of its wrapper and printed
+ * over the tag.
+ */
+export const viaRows = (): DesktopCodeRequestRow[] => [
+	row({
+		key: "gh:2007",
+		number: 2007,
+		relation: "opened",
+		acted: ["merge"],
+		via: { agent_role: "coder", path: ["coder", "reviewer"] },
+		summary: {
+			state: "open",
+			draft: false,
+			title: "refactor(scripts): one scope gate for the changed tree",
+			head_sha: "5b2f77e0c4",
+			ci: { status: "success", total: 23, passed: 23, failed: 0, pending: 0 },
+			updated_at: at(90),
+			comments: 7,
+		},
+		lanes: [
+			lane({
+				lane: "agent",
+				round: 1,
+				state: "unstated",
+				reviewed_head: "5b2f77e0c4",
+			}),
+		],
+	}),
+	row({
+		key: "gh:2009",
+		number: 2009,
+		relation: "opened",
+		acted: ["merge"],
+		via: { agent_role: "coder", path: ["coder", "reviewer"] },
+		summary: {
+			state: "merged",
+			draft: false,
+			title: "fix(rail): the sixth door keeps its order",
+			head_sha: "77c9ee10ab",
+			ci: { status: "success", total: 23, passed: 23, failed: 0, pending: 0 },
+			updated_at: at(50),
+			comments: 3,
+		},
+		lanes: [
+			lane({
+				lane: "agent",
+				round: 1,
+				state: "clean",
+				reviewed_head: "77c9ee10ab",
+			}),
+		],
+	}),
+];
+
 /** The store's own list envelope, minus the rows the caller overrides. */
 export const list = (
 	rows: DesktopCodeRequestRow[],

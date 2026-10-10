@@ -253,7 +253,6 @@ export const ConsoleOpenBlip: Story = {
 };
 
 /*
-/*
  * THE CODE REVIEW DOOR (built spec §8, manager decision §M.1): appended LAST so
  * its arrival moves nothing above it, offered wherever the pane can exist (the
  * capability is set and the route has a session), with the attention dot on a

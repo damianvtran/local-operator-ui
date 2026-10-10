@@ -95,7 +95,6 @@ export type PanelRailProps = {
 const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End"]);
 
 /**
-/**
  * THE PANEL RAIL (#872, #896, #927): the six doors to the window's right slot, as one
  * vertical column at the window's trailing edge.
  *
