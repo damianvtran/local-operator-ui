@@ -297,14 +297,31 @@ no count; both halves are framed here.
 | Directory | Tree | What it shows |
 |---|---|---|
 | `usable-only-wire` | this change, `scope=usable` answer | THE RESTING DEFAULT against a NEW backend: the list carries only rows this machine can run (plus the current row), and the control under `Also make it the default` reads `Show all supported models (2 need sign-in)` — the backend's own `hidden`. |
-| `show-all-wire` | this change, `scope=all` answer | THE PRESS: the play ticks the control against the wider fixture, the list is parked on the group the count was about — `Needs sign-in` with `GLM-5.2` and `Magistral Medium`, each `no credential` — and the label KEEPS its number while the wider list is shown, because the number is still true of the rows on screen. |
+| `show-all-wire` | this change, `scope=all` answer | THE PRESS: the play ticks the control against the wider fixture, the list is parked on the group the count was about — `Needs sign-in` with `GLM-5.2` and `Magistral Medium`, each `needs sign-in` — and the label KEEPS its number while the wider list is shown, because the number is still true of the rows on screen. |
 | `show-all-fallback` | this change, an OLD backend | THE SAME PRESS with neither `scope` nor `hidden` in the answer: the union filters here — `row.connected`, the current-model exemption — and the label carries no number, because this side of the wire never printed one. |
-| `no-usable-models` | this change | THE DEAD END, closed: every row needs a sign-in and the current model is not in the listing, so the scoped view is empty. `No models are available yet.` with `Connect a provider` opening the app's one connect dialog; the play asserts both before the shutter. |
+| `no-usable-models` | this change | THE DEAD END, closed: every row needs a sign-in and the current model is not in the listing, so the scoped view is empty. `No models are signed in yet.` with `Connect a provider` opening the app's one connect dialog; the play asserts both before the shutter. |
+| `no-usable-wire` | this change, `scope=usable` answer | THE DEAD END against a NEW backend, and the composition no frame showed before (design round 1, D6a): zero rows AND the wire's own count, so `No models are signed in yet.` + `Connect a provider` stand beside `Show all supported models (2 need sign-in)`. |
+| `show-all-connect-footer` | this change, `scope=all` answer | THE FOOTER ON A NEEDS-SIGN-IN ROW (design round 1, D2's companion): the reveal is pressed and the search narrowed to `glm`, so the keyboard's row is the hidden one and the footer reads `Enter connects zai` — the verb the key performs — over the row's own `needs sign-in` line. |
 | `empty` (re-taken) | this change, an OLD backend | The search-empty state a reader of the old frame knows — `zzz` typed, `Nothing matches.` — with the control beside it, because two of the fixture's rows are hidden: the fallback's `removed` half. |
 | `../model-picker-access-scope-before/populated`, `narrow`, `empty` | `origin/main` = `29e066efe94` (this change's base) | THE COUNTERFACTUALS, shot from a scratch worktree of the base with its own unmodified rig and story file: no control anywhere, the fixture's whole listing drawn, and the same `Nothing matches.` with no control beside it. Declared as a `supplementary` set for the reason the opus set states — a frame of ANOTHER tree cannot be re-captured by a sweep running over this one. |
 
 The band the same change adds is its own set:
 [`../chat-session-model-access-band/README.md`](../chat-session-model-access-band/README.md).
+
+### Round 1's remediation: the re-takes and the two new states
+
+Round 1's reviews found three user-visible strings this table still described
+from the pre-remediation tree, so the states whose pixels carry them were
+RE-SHOT rather than carried over: `show-all-wire` and `show-all-fallback` (the
+row's caveat now reads `needs sign-in` — the dialog's own vocabulary, design
+D5/U3) and `no-usable-models` (the dead end's sentence now names the cause:
+`No models are signed in yet.`, design D3). Two states are new: `no-usable-wire`
+(design D6a — the same dead end produced by a NEW backend, zero rows and the
+wire's own count in one composition) and `show-all-connect-footer` (design D2's
+companion — the footer reading `Enter connects zai` over the needs-sign-in row
+Enter will act on, which the source-only claim could not be checked against a
+frame). `usable-only-wire` and `empty` were NOT re-taken: neither frame's
+pixels contain either string, and the sweep's byte checks are what hold that.
 
 ### What produced these frames
 
@@ -317,6 +334,15 @@ node scripts/capture-evidence.mjs http://localhost:6137 --allow-backend \
   --themes=localOperatorDark,localOperatorLight --theme-settle-ms=120000
 node scripts/capture-evidence.mjs http://localhost:6137 --allow-backend \
   --dirs=usable-only-wire,show-all-wire,show-all-fallback,no-usable-models \
+  --themes=localOperatorDark,localOperatorLight --theme-settle-ms=120000
+
+# ROUND 1'S REMEDIATION: the three states whose copy or vocabulary moved
+# (design D5/U3's `needs sign-in`, D3's `No models are signed in yet.`) plus
+# the two states the round added (D6a's wire dead end above, D2's footer
+# frame). One narrowed run, one browser instance:
+node scripts/capture-evidence.mjs http://localhost:6137 --allow-backend \
+  --only=chat-model-picker-- \
+  --dirs=show-all-wire,show-all-fallback,no-usable-models,no-usable-wire,show-all-connect-footer \
   --themes=localOperatorDark,localOperatorLight --theme-settle-ms=120000
 
 # The cross-tree half, from a scratch worktree of the base carrying the same

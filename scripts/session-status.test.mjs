@@ -48,6 +48,7 @@ const bundle = await build({
 	write: false,
 });
 const {
+	bandYieldsToRadientIssue,
 	CONTEXT_COLOR_BANDS,
 	pyFixed,
 	reconcileEffort,
@@ -1456,5 +1457,29 @@ test("the model-access reading exists only for `signed_out`, and never from a si
 			model_access: { state: "logged-out", provider: "x", label: "" },
 		}),
 		null,
+	);
+});
+
+test("the band yields to the Radient callout when both name one missing sign-in (R1-6)", () => {
+	/*
+	 * A `radient/auto` session can carry both blocks at once: the connector
+	 * callout (its own state machine and its own sign-in) and this band. One
+	 * fact, one block — the callout is the more specific remedy — and any other
+	 * provider cannot collide with the Radient connector.
+	 */
+	const radient = { provider: "radient", label: "Radient" };
+	assert.equal(bandYieldsToRadientIssue(radient, true), true);
+	assert.equal(
+		bandYieldsToRadientIssue(radient, false),
+		false,
+		"with the callout hidden the band is the only word on the state",
+	);
+	assert.equal(
+		bandYieldsToRadientIssue(
+			{ provider: "anthropic", label: "Anthropic" },
+			true,
+		),
+		false,
+		"an anthropic model's sign-in has nothing to do with the Radient connector",
 	);
 });

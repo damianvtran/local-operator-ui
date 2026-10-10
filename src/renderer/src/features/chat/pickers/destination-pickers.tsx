@@ -113,8 +113,11 @@ import { forkBudgetRefusal } from "../utils/message-budget";
 import { fastPickerOptions } from "./fast-picker-options";
 import {
 	type CatalogueScope,
+	type RowAuth,
 	catalogueListing,
+	rowAuthOf,
 	scopeCatalogue,
+	catalogueSelectorOf as selectorOf,
 } from "./model-catalogue-listing";
 import {
 	effortCommandSucceeded,
@@ -252,11 +255,6 @@ type CatalogueRow = DesktopModelCatalogue["models"][number] & {
 	routed?: boolean;
 };
 
-/** The row's own selector, in the one spelling the wire and the rows share. */
-function selectorOf(row: CatalogueRow): string {
-	return row.selector ?? row.value ?? `${row.provider}/${row.model_id}`;
-}
-
 /** The row's price pair in the one spelling both surfaces print. */
 function pricePair(row: CatalogueRow): string {
 	return formatPricePair(
@@ -303,9 +301,18 @@ export function modelPickerOptions(
 		 * reaches for the thorough surface must not have to re-derive what the
 		 * fast one already told them. Same formatter, so `free` and
 		 * `usage-based` are words in both and an absent price is blank in both.
+		 *
+		 * THE CAVEAT IS THE SHARED VOCABULARY (design review round 1, D5; UX round
+		 * 1, U3): the row says `needs sign-in`, the group heading says `Needs
+		 * sign-in` and the control says `N need sign-in`, so one state reads as
+		 * one thing on this surface. The pre-fix two-word register was the one
+		 * outside that family, and the inline list's copy is aligned with it in
+		 * `slash-argument-rows.ts` (the phrase itself is kept out of this comment
+		 * on purpose: the suite pins that the old one cannot come back to this
+		 * file, and a comment quoting it exactly would re-arm that pin).
 		 */
 		description: `${row.provider}${row.aggregated ? ", aggregated" : ""}${
-			known && !row.connected ? ", no credential" : ""
+			rowAuthOf(row, known) === "needs-sign-in" ? ", needs sign-in" : ""
 		}${pricePair(row) ? ` · ${pricePair(row)}` : ""}`,
 		meta: row.context_window
 			? `${Math.round(row.context_window / 1000)}k`
@@ -316,6 +323,22 @@ export function modelPickerOptions(
 			: row.connected
 				? "Signed in"
 				: "Needs sign-in",
+		/*
+		 * WHAT A PICK ON THIS ROW DOES, when picking it is not the ordinary
+		 * switch (design review round 1, D2; QA round 1, Q-1). A needs-sign-in
+		 * row's pick opens the Connect flow for its provider instead of starting
+		 * the operation the host's picked-row mark and spinner describe, so the
+		 * host needs that fact BEFORE the pick runs: with it, the mark is never
+		 * set (no stuck "Switching the model" on a row no operation answers
+		 * about) and the footer can name the different verb ("Enter connects
+		 * zai" rather than a switch it will not make). Read off `rowAuthOf`'s
+		 * one answer, so the description, the group and the pick cannot
+		 * disagree.
+		 */
+		action:
+			rowAuthOf(row, known) === "needs-sign-in"
+				? { kind: "connect" as const, provider: row.provider }
+				: undefined,
 		keywords: [
 			/*
 			 * The provider's own HUMAN name (`Grok 4.7` for
@@ -824,11 +847,56 @@ export const ModelPicker: FC<PickerContext> = ({
 		staleTime: 60_000,
 	});
 	/*
-	 * What the picker DRAWS, which is the live answer when there is one and the
-	 * registry's document otherwise: a failed live read falls back to the rows the
-	 * dialog opened on rather than to nothing.
+	 * THE USABLE DOCUMENT, KEPT ACTIVE WHILE THE WIDER LIST IS SHOWN — one
+	 * observer serving the two readings that could otherwise go stale together
+	 * (agent review round 1, R1-2 and R1-3).
+	 *
+	 * R1-2, THE FALLBACK: a failed `Show all` read had nothing behind it. The
+	 * reveal is a KEY CHANGE ([…, "usable"] -> […, "all"]), `keepPreviousData`
+	 * carries nothing once a query settles as `error`, and the automatic
+	 * promotion makes the first `all` read a LIVE one — so no `[false, "all"]`
+	 * entry was ever written and `catalogueListing`'s `isError` branch put the
+	 * error text where the rows had been, over a dialog that had rows a moment
+	 * earlier (its own docstring's rule: a failed read is only a wall of text
+	 * when there is nothing to draw). The rows it had are THIS document's, so
+	 * holding it is what makes the reveal's failure degrade to the list the user
+	 * was looking at plus the existing listing-failed note.
+	 *
+	 * R1-3, THE COUNT: the control prints `hidden` from a `usable` answer, and
+	 * while the wider list is shown the ACTIVE catalogue query is the `all` one —
+	 * so a credential-change invalidation refetched everything except the
+	 * document the number comes from, and the kept label could outlive the state
+	 * it describes ("2 need sign-in" over a row that just connected). Active
+	 * here, the same invalidation refreshes it, and the effect below feeds the
+	 * refreshed number to the control.
+	 *
+	 * `enabled: showAll` and the registry observer's `staleTime`, so the three
+	 * readers of this entry cannot disagree about freshness. It never fetches
+	 * while the default view is shown — the catalogue query above owns the
+	 * registry fetch there, and this is merely its cache entry.
 	 */
-	const catalogueDocument = catalogue.data ?? registry.data;
+	const usableDocument = useQuery({
+		queryKey: [...desktopKeys.catalogue, false, "usable"],
+		queryFn: () =>
+			desktopResult<DesktopModelCatalogue>({
+				op: "models.catalogue",
+				live: false,
+				scope: "usable",
+			}),
+		enabled: showAll,
+		staleTime: 60_000,
+	});
+	/*
+	 * What the picker DRAWS, which is the live answer when there is one, the
+	 * registry's document otherwise, and the held usable document last: a failed
+	 * live read falls back to the rows the dialog opened on rather than to
+	 * nothing, and a failed REVEAL falls back to the rows it was drawing when the
+	 * user pressed the control (R1-2).
+	 */
+	const catalogueDocument =
+		catalogue.data ??
+		registry.data ??
+		(showAll ? usableDocument.data : undefined);
 	/*
 	 * Only a LIVE fetch says the listing is running: it is the one that re-lists the
 	 * providers, whichever started it - the automatic promotion above or the
@@ -939,12 +1007,9 @@ export const ModelPicker: FC<PickerContext> = ({
 	 */
 	const rowAuth = useMemo(() => {
 		const known = catalogueDocument?.credentials_known !== false;
-		const map = new Map<string, "runnable" | "needs-sign-in" | "unknown">();
+		const map = new Map<string, RowAuth>();
 		for (const row of (catalogueDocument?.models ?? []) as CatalogueRow[]) {
-			map.set(
-				selectorOf(row),
-				!known ? "unknown" : row.connected ? "runnable" : "needs-sign-in",
-			);
+			map.set(selectorOf(row), rowAuthOf(row, known));
 		}
 		return map;
 	}, [catalogueDocument]);
@@ -978,13 +1043,15 @@ export const ModelPicker: FC<PickerContext> = ({
 	 * the live answer when the live query has one - a failed SAME-KEY refetch keeps
 	 * `data`, which is how the note came to claim the rows below were the shipped
 	 * models while it was drawing a provider's own (round 2, code review R2-1) -
-	 * and the registry's document otherwise.
+	 * the registry's document when that is what stands in, and NOT the held usable
+	 * document: rows kept from the default view are "the last listing that
+	 * answered", not this scope's shipped registry (round 1, R1-2's fallback).
 	 */
 	const listing = catalogueListing(
 		catalogueDocument,
 		catalogue,
 		errorText,
-		catalogue.data === undefined,
+		catalogue.data === undefined && registry.data !== undefined,
 	);
 
 	/*
@@ -1016,12 +1083,27 @@ export const ModelPicker: FC<PickerContext> = ({
 	useEffect(() => {
 		if (hiddenOnWire !== null) setLastHidden(hiddenOnWire);
 	}, [hiddenOnWire]);
+	/*
+	 * R1-3's refresh half: the observer above is ACTIVE while the wider list is
+	 * shown, so a credential-change invalidation refetches the document the
+	 * count comes from, and the refreshed `hidden` lands here without the user
+	 * having to untick the control. A `usable` answer's number describes the
+	 * rows exactly when it is fetched — after a sign-in it drops, and the label
+	 * that says "2 need sign-in" stops being true of a list where one of them
+	 * just connected.
+	 */
+	useEffect(() => {
+		const hidden = usableDocument.data?.hidden;
+		if (typeof hidden === "number") setLastHidden(hidden);
+	}, [usableDocument.data]);
 	const scopeCount = hiddenOnWire ?? lastHidden;
 	const scopeControl =
 		showAll || scoped.removed > 0 || (scopeCount !== null && scopeCount > 0) ? (
 			<PickerCheck checked={showAll} onCheckedChange={setShowAll} tone="muted">
 				{scopeCount !== null && scopeCount > 0
-					? `Show all supported models (${scopeCount} need sign-in)`
+					? `Show all supported models (${scopeCount} ${
+							scopeCount === 1 ? "needs" : "need"
+						} sign-in)`
 					: "Show all supported models"}
 			</PickerCheck>
 		) : null;
@@ -1298,7 +1380,7 @@ export const ModelPicker: FC<PickerContext> = ({
 			notice={listing.notice}
 			noticeDetail={listing.noticeDetail}
 			emptyText={
-				emptyOffersConnect ? "No models are available yet." : undefined
+				emptyOffersConnect ? "No models are signed in yet." : undefined
 			}
 			emptyAction={
 				emptyOffersConnect ? (

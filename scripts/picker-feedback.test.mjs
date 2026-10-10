@@ -127,13 +127,16 @@ const { modelPickerMatchKey, matchModelPickerOptions } = await bundleInto(
 
 const {
 	catalogueListing,
+	catalogueSelectorOf,
+	connectProviderForSelector,
 	failedProviders,
 	providerListingNotice,
+	rowAuthOf,
 	scopeCatalogue,
 } = await bundleInto(
 	"catalogue-listing",
 	`
-	export { catalogueListing, failedProviders, providerListingNotice, scopeCatalogue } from "./src/renderer/src/features/chat/pickers/model-catalogue-listing";
+	export { catalogueListing, catalogueSelectorOf, connectProviderForSelector, failedProviders, providerListingNotice, rowAuthOf, scopeCatalogue } from "./src/renderer/src/features/chat/pickers/model-catalogue-listing";
 `,
 );
 
@@ -401,6 +404,23 @@ test("the footer never advertises controls that do nothing, and names the pick",
 			activeLabel: "GPT-5.6 Sol",
 		}),
 		"Arrows move · Enter picks GPT-5.6 Sol · Esc closes",
+	);
+
+	/*
+	 * D2: Enter on a needs-sign-in row OPENS CONNECT, so the footer must name
+	 * the verb the key actually performs — the sentence and the pick read the
+	 * same fact (the option's own `action`), or one of them is lying about the
+	 * other.
+	 */
+	assert.equal(
+		pickerFooterHint({
+			busy: false,
+			hasList: true,
+			rowCount: 12,
+			activeLabel: "GLM-5.2",
+			activeConnectProvider: "zai",
+		}),
+		"Arrows move · Enter connects zai · Esc closes",
 	);
 });
 
@@ -1013,6 +1033,74 @@ test("an unreadable store is never filtered, and a wire usable answer is taken a
 	assert.equal(requestedAll.rows.length, 2);
 });
 
+/* --------------------------------------------- the shared auth rule (round 1) */
+
+test("one auth predicate and one selector spelling, for every reader (R1-5)", () => {
+	/*
+	 * R1-5: the scope filter and the row map kept separate copies, one tier
+	 * apart, so a row carrying `value` without `selector` was spelled two ways
+	 * by two halves of the same feature. Both now come from this module, and
+	 * the predicate that decides the group, the caveat and the pick is one
+	 * function the callers share.
+	 */
+	assert.equal(rowAuthOf({ connected: true }, true), "runnable");
+	assert.equal(rowAuthOf({ connected: false }, true), "needs-sign-in");
+	assert.equal(
+		rowAuthOf({ connected: true }, false),
+		"unknown",
+		"an unreadable store is not a claim about auth",
+	);
+
+	assert.equal(
+		catalogueSelectorOf({
+			selector: "anthropic/claude-opus-5",
+			provider: "x",
+			model_id: "y",
+		}),
+		"anthropic/claude-opus-5",
+	);
+	assert.equal(
+		catalogueSelectorOf({ value: "zai/glm-5.2", provider: "x", model_id: "y" }),
+		"zai/glm-5.2",
+		"the tier the row map carried is part of the one spelling now",
+	);
+	assert.equal(
+		catalogueSelectorOf({ provider: "x", model_id: "y" }),
+		"x/y",
+		"an older backend may omit the field; the parts still name the row",
+	);
+});
+
+test("the inline list's connect rule reads the row's own connected (U2)", () => {
+	/*
+	 * U2: the composer's inline `/model` list switched onto a row it labelled
+	 * as needing a sign-in, while the same row picked from the dialog opened
+	 * Connect. The composer's half reads `connected` from the entities route,
+	 * where an explicit false is the claim and an absent field is silence.
+	 */
+	const rows = [
+		{ value: "zai/glm-5.2", connected: false },
+		{ value: "openai/gpt-5", connected: true },
+		{ value: "anthropic/claude-opus-5" },
+	];
+	assert.equal(
+		connectProviderForSelector(rows, "zai/glm-5.2"),
+		"zai",
+		"a needs-sign-in submission becomes the Connect gesture for its provider",
+	);
+	assert.equal(connectProviderForSelector(rows, "openai/gpt-5"), null);
+	assert.equal(
+		connectProviderForSelector(rows, "anthropic/claude-opus-5"),
+		null,
+		"an absent connected is not a claim about auth on this route",
+	);
+	assert.equal(
+		connectProviderForSelector(rows, "mistral/magistral-medium"),
+		null,
+		"a selector the list does not hold is not intercepted",
+	);
+});
+
 /* -------------------------------------------------- naming and wiring */
 
 test("a spec with an empty half names nothing", () => {
@@ -1124,6 +1212,66 @@ test("the adapter wires the decisions the tests above pin", () => {
 	assert.match(picker, /pickedCurrent/);
 });
 
+test("the round-1 remediation's decisions are pinned where they live", () => {
+	/*
+	 * One pin per decision a later edit could quietly revert, each read from
+	 * the file that owns it (this file's discipline for MUI-importing modules:
+	 * read, do not execute).
+	 */
+	const picker = source("features/chat/pickers/destination-pickers.tsx");
+	const host = source("features/chat/pickers/picker-host.tsx");
+	const composer = source("shared/components/composer/message-input.tsx");
+	const dialog = source("features/providers/connect-provider-dialog.tsx");
+
+	// D1: "(1 need sign-in)" reads wrong at one.
+	assert.match(picker, /scopeCount === 1 \? "needs" : "need"/);
+	// D3: the dead end names the cause, and the CTA below says the same thing.
+	assert.match(picker, /"No models are signed in yet\."/);
+	// D5/U3: one vocabulary for the withheld state on this surface — the row's
+	// caveat comes off the shared auth answer and says `needs sign-in`.
+	assert.match(
+		picker,
+		/rowAuthOf\(row, known\) === "needs-sign-in" \? ", needs sign-in"/,
+	);
+	assert.doesNotMatch(
+		picker,
+		/known && !row\.connected \? ", no credential"/,
+		"the old caveat expression cannot come back beside the shared one",
+	);
+	// R1-2: the reveal's failed read degrades to the rows the dialog had.
+	assert.match(
+		picker,
+		/catalogue\.data \?\?\s*\n\s*registry\.data \?\?\s*\n\s*\(showAll \? usableDocument\.data : undefined\);/,
+	);
+	// R1-3: the count's own document stays observable while the wider list is shown.
+	assert.match(
+		picker,
+		/queryKey: \[\.\.\.desktopKeys\.catalogue, false, "usable"\]/,
+	);
+	assert.match(picker, /enabled: showAll/);
+	// D2/Q-1: the option carries what a pick does, read off the one auth answer.
+	assert.match(
+		picker,
+		/rowAuthOf\(row, known\) === "needs-sign-in"[\s\S]{0,60}?\{ kind: "connect" as const, provider: row\.provider \}/,
+	);
+
+	// Q-1: a connect pick is never marked, so no spinner can hang on it.
+	assert.match(host, /if \(option\.action\?\.kind !== "connect"\)/);
+	// D2: the footer reads the same action the pick does.
+	assert.match(host, /activeOption\?\.action\?\.kind === "connect"/);
+	assert.match(host, /Enter connects \$\{state\.activeConnectProvider\}/);
+
+	// U2: the inline submission routes through the same rule, before the run.
+	assert.match(composer, /connectProviderForSelector/);
+	assert.match(composer, /destination === "session\.model"/);
+	// R1-6: the band yields to the connector's own callout.
+	assert.match(composer, /bandYieldsToRadientIssue/);
+
+	// U1: focus returns to where the Connect started.
+	assert.match(dialog, /onCloseAutoFocus/);
+	assert.match(dialog, /opener\.current/);
+});
+
 test("the picker lists the providers by itself, on the backend's cadence", () => {
 	/*
 	 * The operator's report: after signing in to Anthropic, a model their own
@@ -1200,11 +1348,10 @@ test("the picker lists the providers by itself, on the backend's cadence", () =>
 		picker.includes('className="min-w-[149px]"'),
 		"the refresh slot reserves the IDLE label's own box (149px, read off the DOM), so the narrower busy labels swap inside a slot whose edges do not move and the controls beside it do not slide (design D1: 38px, twice per open and again on every cadence tick)",
 	);
-	assert.ok(
-		picker.includes(
-			"const catalogueDocument = catalogue.data ?? registry.data;",
-		),
-		"the picker draws the live answer when it has one and the registry's own document otherwise, which is what keeps the painted rows through a failed live read (review round 1, R1-1)",
+	assert.match(
+		picker,
+		/const catalogueDocument =\s*\n\s*catalogue\.data \?\?\s*\n\s*registry\.data \?\?\s*\n\s*\(showAll \? usableDocument\.data : undefined\);/,
+		"the picker draws the live answer when it has one, the registry's own document otherwise, and the held usable document last, which is what keeps the painted rows through a failed live read (review round 1, R1-1; extended by round 1's R1-2 for the reveal's failed read)",
 	);
 });
 

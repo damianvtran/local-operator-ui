@@ -3430,27 +3430,58 @@ const TERMINAL_ANSI = [
  */
 const EXCEPTIONS = [
 	/*
-	 * EMPTY - and the emptiness is a MEASURED state, not a tidy-up.
+	 * FOUR ENTRIES, ALL ONE PAIRING (design review round 1, D4): the model-access
+	 * band's `text-accent` link actions on `warningWash` (the row that asserts it
+	 * is beside the deep-linked-row pair above; its sibling callout has shipped
+	 * the same ink on the same wash unasserted). These four palettes' warm washes
+	 * sit close to their dark grounds, so the accent clears neither 4.5 as text
+	 * on them. The alternative to pinning was a palette move or a different ink
+	 * for links two shipped bands share - a design-system decision, recorded here
+	 * instead of made here, at the floors the row asks.
 	 *
-	 * This table carried one entry for most of this pass: `catppuccinMacchiato`'s
-	 * `inkDim` on `rowSelected`, recorded at 4.98:1 against the 5.0 ink floor. The
-	 * row/hover commit re-authored that fill #3D2E51 -> #38323E, which lifts the
-	 * pair to 5.0260:1 - the floor is CLEARED - and nothing re-recorded or deleted
-	 * the row, so the run kept reporting an exemption the fleet no longer takes.
-	 *
-	 * The stale row could not be caught by measuring it, which is why it survived:
-	 * `assertPair` returns as soon as `raw >= floor`, so a pin that has stopped
-	 * being needed is never CONSULTED, and the summary line counted a static
-	 * `EXCEPTIONS.length`. A pin is only visible once the table counts its own
-	 * consultations, which is the guard the three sibling pin tables already had
-	 * and this one did not. It has it now: an entry that is never asked about
-	 * fails the run with "delete the pin, the palette clears it now".
-	 *
-	 * So the honest headline is the stronger one: **59 of 59 palettes hold every
-	 * ink floor with no exemption at all.** Add an entry only with its measured
-	 * ratio and its reason, and expect the run to fail the moment the palette
-	 * stops needing it.
+	 * THE TABLE WAS EMPTY BEFORE THIS PASS, and that emptiness had its own lesson,
+	 * kept here because the mechanism depends on it: it carried one entry for most
+	 * of an earlier pass - `catppuccinMacchiato`'s `inkDim` on `rowSelected`,
+	 * recorded at 4.98:1 against the 5.0 ink floor - and the row/hover commit
+	 * re-authored that fill #3D2E51 -> #38323E, which lifted the pair to
+	 * 5.0260:1. Nothing deleted the entry, so the run reported an exemption the
+	 * fleet no longer took. It survived because `assertPair` returns as soon as
+	 * `raw >= floor`, so a pin that has stopped being needed is never CONSULTED,
+	 * and the summary counted a static `EXCEPTIONS.length`. The guard the three
+	 * sibling pin tables already had is what closed it, and this table has it:
+	 * an entry that is never asked about fails the run with "delete the pin, the
+	 * palette clears it now". A pin is a DECISION, not a mute - every entry
+	 * records its measured ratio and its reason, and a palette edit that moves
+	 * one stops matching and fails the run until a human re-approves it.
 	 */
+	{
+		theme: "catppuccinMocha",
+		fg: "accent",
+		bg: "warningWash",
+		got: 4.01,
+		why: "the band's link ink on its own wash; the palette's warm wash is dark enough that lavender clears 4.01 - the design-system alternative (a different ink for two shipped bands' links) is not this change's to make",
+	},
+	{
+		theme: "nord",
+		fg: "accent",
+		bg: "warningWash",
+		got: 3.6,
+		why: "same pairing; the frost accent on this wash measures 3.6",
+	},
+	{
+		theme: "oneDark",
+		fg: "accent",
+		bg: "warningWash",
+		got: 3.46,
+		why: "same pairing; the lowest of the four at 3.46",
+	},
+	{
+		theme: "tokyoNightStorm",
+		fg: "accent",
+		bg: "warningWash",
+		got: 3.67,
+		why: "same pairing; 3.67 on this palette",
+	},
 ];
 
 /**
@@ -5141,6 +5172,33 @@ for (const { id, palette: p } of palettes) {
 		"rowSelected",
 		FLOOR.text,
 		"integration status text on a deep-linked row",
+	);
+
+	/*
+	 * THE MODEL-ACCESS BAND'S LINKS (design review round 1, D4). The band the
+	 * access-aware picker adds paints `text-accent` link actions (`Switch model`,
+	 * `Connect`) directly on `warningWash`, and no row asserted accent-as-TEXT on
+	 * that wash: the only `on: ["warningWash"]` ink row in `CONTROLS` asserts
+	 * `onAccent` over an accent FILL, a different pairing. The band's sibling
+	 * (`radient-session-issue.tsx`, same `variant="warning"` Alert, same `link`
+	 * actions) has shipped the same pairing unasserted, so this row asserts the
+	 * FAMILY's ink-on-wash rather than a new surface's.
+	 *
+	 * Measured before it was written: `localOperatorLight` is the tight sweep
+	 * palette at 4.77:1, and the 59-palette run finds palettes below the floor —
+	 * pinned in `EXCEPTIONS` with their ratios and the reason a palette move is
+	 * not this change's to make (a link ink shared by two shipped bands is a
+	 * decision for the design system, recorded here rather than changed here).
+	 * `danger`/`info` washes are the sibling's other two variants and are not
+	 * asserted: this row is scoped to the wash the model-access band paints.
+	 */
+	assertPair(
+		id,
+		p,
+		"accent",
+		"warningWash",
+		FLOOR.text,
+		"model-access band links on the warning wash",
 	);
 
 	/*

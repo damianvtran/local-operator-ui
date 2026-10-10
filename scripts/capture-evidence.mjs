@@ -5360,11 +5360,20 @@ export const STORIES = [
 	   (`Connect a provider`), not a dead list, and it is short (560) for the
 	   reason `empty` is - a spinner-sized state at 900 tall is mostly ground,
 	   which crosses the uniformity ceiling.
+	   `no-usable-wire` (round 1's D6a) is the same dead end against the NEW
+	   backend: zero rows AND the wire's own `(2 need sign-in)` count, the
+	   count-and-CTA composition no frame showed before.
+	   `show-all-connect-footer` (round 1's D2 companion) is the reveal pressed
+	   and the query narrowed to the one hidden row: the footer names the verb
+	   Enter will actually perform (`Enter connects zai`), which the source-only
+	   claim could not be checked against a frame.
 	*/
 	["chat-model-picker--usable-only-wire", 900, 760],
 	["chat-model-picker--show-all-wire", 900, 760],
 	["chat-model-picker--show-all-fallback", 900, 760],
 	["chat-model-picker--no-usable-models", 900, 560],
+	["chat-model-picker--no-usable-wire", 900, 560],
+	["chat-model-picker--show-all-connect-footer", 900, 760],
 	/*
 	   THE SESSION BAND'S MODEL-ACCESS STATEMENT (`model_access: signed_out`):
 	   the sentence naming the provider and the two ways out, at the composer
