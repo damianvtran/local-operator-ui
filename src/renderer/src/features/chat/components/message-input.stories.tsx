@@ -512,6 +512,65 @@ type ClusterSkillFixture =
 	| "slow";
 let clusterSkillFixture: ClusterSkillFixture = "default";
 
+/*
+ * The composer-cluster story's SCENARIO KNOBS... (unchanged above)
+ *
+ * THE QUOTA NOTICE'S OWN KNOB, and OFF by default like the skills fixture
+ * beside it: the notice's reads (`config.get`, `quota.notice`) are answered
+ * only for the stories that set this, so no other story's fixture gains a
+ * config or a verdict it was not written against. Each case reloads the page,
+ * so a fresh module carries a fresh slot.
+ */
+type QuotaNoticeFixture = "off" | "unverified" | "depleted";
+let quotaNoticeFixture: QuotaNoticeFixture = "off";
+
+/** The two verdicts the notice's stories photograph; the core's own words. */
+const QUOTA_UNVERIFIED_RESULT = {
+	state: "unverified",
+	provider: "radient",
+	kind: "radient",
+	model_free: false,
+	title: "Verify your email to claim your free credits",
+	body: "You haven't verified your email yet. Verify to claim $5 in free credits and start using Local Operator for free.\nCheck your inbox for the Radient verification email, or open https://console.radienthq.com/dashboard/verification",
+	actions: [
+		{
+			id: "open_url",
+			label: "Open verification page",
+			url: "https://console.radienthq.com/dashboard/verification",
+		},
+		{
+			id: "resend_verification",
+			label: "Resend verification email",
+			url: null,
+		},
+		{ id: "refresh", label: "I verified", url: null },
+	],
+	resets_at_ms: null,
+	checked_at_ms: 1791597803748,
+	age_ms: 0,
+	source: "live",
+};
+const QUOTA_DEPLETED_RESULT = {
+	state: "depleted",
+	provider: "deepseek",
+	kind: "balance",
+	model_free: false,
+	title: "No balance on DeepSeek",
+	body: "No balance on DeepSeek — top up at the DeepSeek platform.",
+	actions: [
+		{
+			id: "open_url",
+			label: "Top up at the DeepSeek platform",
+			url: "https://platform.deepseek.com/top_up",
+		},
+		{ id: "refresh", label: "I topped up", url: null },
+	],
+	resets_at_ms: null,
+	checked_at_ms: 1791597803748,
+	age_ms: 0,
+	source: "live",
+};
+
 /* biome-ignore lint/suspicious/noExplicitAny: Necessary for mocking the window object, the same cast the preview makes. */
 const storyWindow = window as any;
 storyWindow.api = {
@@ -536,6 +595,8 @@ storyWindow.api = {
 								catalogues: 1,
 								provider_catalogue: 1,
 								mcp_catalog: 2,
+								/* The notice's own gate, present only when a story asks for it. */
+								...(quotaNoticeFixture === "off" ? {} : { quota_notice: 1 }),
 								/*
 								 * The sessionless skills read: present by default, absent in the
 								 * `old-backend` scenario — which is the state the durable notice
@@ -626,6 +687,39 @@ storyWindow.api = {
 					},
 				};
 			}
+			/*
+			 * THE NOTICE'S TWO READS, only under the knob above. `config.get` is the
+			 * fallback the hook falls back TO when the pane has no selection (a
+			 * story passes none), and it is answered with the provider the fixture's
+			 * verdict is about — otherwise the line would be about whatever the
+			 * engine's own default happened to be.
+			 */
+			if (quotaNoticeFixture !== "off" && request.op === "config.get")
+				return {
+					status: 200,
+					body: {
+						result: {
+							values: {
+								hosting:
+									quotaNoticeFixture === "depleted" ? "deepseek" : "radient",
+								model_name:
+									quotaNoticeFixture === "depleted"
+										? "deepseek-chat"
+										: "radient/auto",
+							},
+						},
+					},
+				};
+			if (quotaNoticeFixture !== "off" && request.op === "quota.notice")
+				return {
+					status: 200,
+					body: {
+						result:
+							quotaNoticeFixture === "depleted"
+								? QUOTA_DEPLETED_RESULT
+								: QUOTA_UNVERIFIED_RESULT,
+					},
+				};
 			return {
 				status: 503,
 				body: {
@@ -715,6 +809,39 @@ export const Idle: Story = {
 			/>
 		</Frame>
 	),
+};
+
+/**
+ * THE PRE-EMPTIVE QUOTA NOTICE on the REAL composer: the empty band with the
+ * Radient verification verdict on screen.
+ *
+ * WHY THIS STORY EXISTS. Every other notice frame renders the line over a
+ * top-anchored stand-in band, which cannot show what the line does to the
+ * composer's geometry — and design round 1's D1 / the review's R1-M3 / UX's U6
+ * all landed there: mounted below the box, the line pushed the bottom-anchored
+ * composer up (37–54 px) when it arrived. This story mounts the shipped
+ * `MessageInput` on a fixed-height flex column, exactly as the chat pane does,
+ * so `scripts/quota-notice-geometry.mjs` can measure `[data-lo-composer-foot]`'s
+ * top with and without the line and the capture can photograph the pair. The
+ * 640px column is the frame's, not the app's: the band only needs SOME height
+ * to dock its foot against.
+ */
+export const QuotaNotice: Story = {
+	render: () => {
+		quotaNoticeFixture = "unverified";
+		return (
+			<Frame label="the quota notice, on the real empty band">
+				<div className="flex h-[640px] flex-col">
+					<MessageInput
+						isLoading={false}
+						messages={[]}
+						conversationId="story"
+						onSendMessage={async () => true}
+					/>
+				</div>
+			</Frame>
+		);
+	},
 };
 
 /** A send admitted, nothing painted: the composer's half of the wait line. */

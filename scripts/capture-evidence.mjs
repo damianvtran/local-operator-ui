@@ -11142,6 +11142,53 @@ export const STORIES = [
 	 * viewport — the story's internal maxWidth is what every theme then frames.
 	 */
 	["chat-quota-notice--narrow-width", 480, 320],
+	/*
+	 * ROUND 1'S TWO NEW COPY STATES: a retryable failure, and a re-read that
+	 * came back unchanged. Both are presses ('failed' waits on the phase marker,
+	 * the cue on the status slot), so a frame filed under one is one the state
+	 * was in.
+	 */
+	[
+		"chat-quota-notice--resend-failed",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-resend-action]",
+			expectPresent: "[data-quota-notice-resend-phase='failed']",
+		},
+	],
+	[
+		"chat-quota-notice--refresh-unchanged",
+		900,
+		260,
+		{
+			press: "[data-quota-notice-refresh-action]",
+			expectPresent: "[data-quota-notice-status]",
+		},
+	],
+	/*
+	 * THE REAL COMPOSER, the pair design round 1's D1 asked for: the shipped
+	 * `MessageInput` on its fixed-height column with the notice, and the same
+	 * story after a real Dismiss — the two frames the measured pair in
+	 * `scripts/quota-notice-geometry.mjs` sits beside (its numbers prove the
+	 * foot's top does not move; these show what the state looks like).
+	 */
+	[
+		"chat-message-input--quota-notice",
+		1024,
+		820,
+		{ expectPresent: "[data-quota-notice-line]" },
+	],
+	[
+		"chat-message-input--quota-notice",
+		1024,
+		820,
+		{
+			press: "[data-quota-notice-dismiss]",
+			expectGone: "[data-quota-notice-line]",
+			dir: "notice-dismissed",
+		},
+	],
 ];
 
 /**
