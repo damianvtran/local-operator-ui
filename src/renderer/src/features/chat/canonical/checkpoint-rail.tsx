@@ -460,11 +460,16 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 		 * keeps the dependency honest and the guard says what it means.
 		 */
 		if (checkpoints.length === 0 || frame === null) return;
-		if (activeId !== null) {
+		if (activeId !== null && markedFor.current === sessionId) {
 			/*
-			 * A known mark means the follow above owns the port, and it writes before
-			 * paint - so this conversation counts as seeded and a later moment with no
+			 * THIS session's mark is known, so the follow above owns the port and writes
+			 * before paint; the conversation counts as seeded, and a later moment with no
 			 * mark (a scroll, a reveal) must not pull the port back to the tail.
+			 *
+			 * A mark belonging to the OUTBOUND conversation does NOT count (it is the
+			 * stale state described at `markedFor`): the commit that paints the inbound
+			 * ticks has to seed, or those ticks are painted at the outbound port and the
+			 * follow later writes the uniform translate the design seat measured.
 			 */
 			seededFor.current = sessionId;
 			return;
@@ -485,11 +490,23 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 		 * being yanked back on every tick arrival.
 		 */
 	}, [activeId, checkpoints.length, sessionId]);
+	/*
+	 * WHICH SESSION'S PORT HAS BEEN POSITIONED, as opposed to which session is
+	 * mounted. `useActiveCheckpoint` keeps its id in STATE, so after a switch it
+	 * still reports the OUTBOUND conversation's mark for a commit (design round 4
+	 * measured the consequence: the inbound conversation's 224 cached marks painted
+	 * at the outbound port, and the inbound mark's arrival then wrote the whole
+	 * uniform translate - −1870 px at 1440, −1887/−1889 at 1280, in 4 of 6 warm
+	 * re-opens). A mark only means "the follow owns this port" when the follow has
+	 * actually seen it for the session being painted.
+	 */
+	const markedFor = useRef<string | null>(null);
 	useLayoutEffect(() => {
 		if (activeId === null) return;
 		const frame = frameRef.current;
 		const element = tickElements.current.get(activeId);
 		if (frame === null || element === undefined) return;
+		markedFor.current = sessionId;
 		const frameRect = frame.getBoundingClientRect();
 		const elementRect = element.getBoundingClientRect();
 		const top = elementRect.top - frameRect.top + frame.scrollTop;
@@ -500,7 +517,7 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 		} else if (bottom > frame.scrollTop + frame.clientHeight - pad) {
 			frame.scrollTop = bottom - frame.clientHeight + pad;
 		}
-	}, [activeId]);
+	}, [activeId, sessionId]);
 
 	// Timers outliving the component would setState into nothing. One cleanup.
 	useEffect(() => () => clearTimers(), [clearTimers]);
