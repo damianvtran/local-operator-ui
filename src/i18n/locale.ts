@@ -33,8 +33,17 @@ export type LocaleCapabilities = {
 	language?: string | null;
 };
 
-/** Where the current locale came from. Diagnostics and tests read it. */
-export type LocaleSource = "backend" | "device" | "default";
+/**
+ * Where the current locale came from. Diagnostics and tests read it.
+ *
+ * `manual` is an explicit `setLocale` pin — tests and fixtures today, the
+ * in-app language override this seam exists for tomorrow — so it stays a
+ * source of its own rather than borrowing `device`'s name (round-1 review,
+ * R1-5). Precedence between a manual pin and a later capabilities answer is
+ * the override slice's decision; today a capabilities answer re-resolves the
+ * store.
+ */
+export type LocaleSource = "backend" | "device" | "default" | "manual";
 
 export type LocaleState = {
 	/** A BCP-47 tag: the backend's resolved tag, or the device's own. */
@@ -152,5 +161,5 @@ export function applyCapabilities(
  * through; the mechanism itself never calls it.
  */
 export function setLocale(locale: string): void {
-	setState({ locale, source: "device" });
+	setState({ locale, source: "manual" });
 }

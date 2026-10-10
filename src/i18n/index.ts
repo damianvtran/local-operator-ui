@@ -4,7 +4,8 @@
  * Three pieces, each with its own module:
  *
  * - `./keys.gen` — GENERATED typed key map and the bundled en catalogue
- *   (regenerate with `node scripts/i18n/generate.mjs`; CI rejects drift);
+ *   (regenerate with `node scripts/i18n/generate.mjs`; drift fails the desktop
+ *   suite, whose `scripts/i18n/typed-keys.test.mjs` runs `--check`);
  * - `./messages` — `t()` (the RFC §2.4 two-overload declaration) over the
  *   catalogue runtime, with en-fallback and `registerCatalogue` for the served
  *   `wire.*` sets;

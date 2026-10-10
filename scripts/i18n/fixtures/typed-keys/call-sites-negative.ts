@@ -8,10 +8,11 @@
  * and requires that compile to fail, which is what proves the four errors are
  * real rather than the directives being merely tolerated.
  *
- * If a future edit replaces the overloads with the conditional-tuple variant
- * §2.4 rejects (`...args: Params extends undefined ? [] : [p: Params]`), case 3
- * (missing parameters) stops erroring: its directive becomes unused and this
- * file stops compiling — the regression the spike measured, pinned.
+ * ONE CLAIM THIS FILE DOES NOT CARRY (round-1 review, R1-4): that swapping the
+ * overloads for a conditional-tuple variant would fail this file. The swap was
+ * re-measured and rejected all four cases anyway, so this fixture pins only
+ * the SHIPPED shape's four rejections; the two-overload choice rests on §2.4's
+ * spike, not on a reproducer here.
  */
 
 import { t } from "./messages";
