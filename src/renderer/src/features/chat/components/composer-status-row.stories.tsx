@@ -1667,6 +1667,259 @@ export const LoopChipFacts: Story = {
 	),
 };
 
+/* -------------------------------------------------------------------- */
+/* The goal's and the loop's own rows (the operator's ask, this change)  */
+/* -------------------------------------------------------------------- */
+
+/**
+ * The operator's ask, verbatim: "now that there's a lot in the composer top row,
+ * we might want to consider putting goal and loop on their own lines, same
+ * style, but just on a new row for each since goal and loop would be too
+ * squished to be properly visible in most cases."
+ *
+ * These stories are the motivating case at the three widths the row is argued
+ * at, and each width is its OWN story rather than three bands on one page: the
+ * capture viewport is 576px of CSS height and a 172px band's label alone wraps
+ * to five lines, so a band below the fold is a claim its frame does not carry
+ * (the rule the `LoopBandFit` stories record).
+ *
+ * THE LABELS ARE DELIBERATELY NEUTRAL — "the goal, the loop and the four
+ * counts". These are the one pair the evidence set shoots on BOTH sides of the
+ * change (`docs/evidence/composer-status-rows/`), and a label that described
+ * the after arrangement would be a still asserting a state its own pixels
+ * contradict on the before half (the before frames are shot from these stories
+ * before the row moves).
+ *
+ * The fixture is `LoopChipFacts`' own: `SHORT_GOAL`, a running loop with a
+ * figure, and `ALL_FIVE` — six chips, which is the state the operator's ask is
+ * about.
+ */
+const goalsAndLoopRows = (width: number, label: string) => (
+	<RowFacts>
+		<Band
+			width={width}
+			label={label}
+			frontend={frontend(
+				SHORT_GOAL,
+				loopOf("running", { completed: 2, iterations: 5 }),
+			)}
+			runDetails={ALL_FIVE}
+		/>
+	</RowFacts>
+);
+
+/** The motivating case at the app's own column: six chips, one column. */
+export const GoalLoopRows: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			{goalsAndLoopRows(900, "900: the goal, the loop and the four counts")}
+		</div>
+	),
+};
+
+/**
+ * The copy rules' own boundary with a pixel above it: 240, where `@max-[240px]`
+ * has NOT fired yet (Tailwind v4's `@max-` is exclusive, so the step is strictly
+ * below this width). The dismiss's WORD is still painted here; the loop's FIGURE
+ * is not — and not because of this step: the measured fit (`itemFits`, § 12.5)
+ * drops it whenever the item's line cannot carry the full clause, and 224px of
+ * line cannot carry 269px of clause. Both halves' frames print `Loop: running`.
+ */
+export const GoalLoopRowsBand240: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			{goalsAndLoopRows(240, "240: the goal, the loop and the four counts")}
+		</div>
+	),
+};
+
+/**
+ * The app's real floor: 172px of column with the canvas holding the right slot.
+ * Neutral label like its siblings: this story is captured on both sides of the
+ * change (`docs/evidence/composer-status-rows/`; the floor's before half joined
+ * the set in the remediation pass, and the pair is pixel-scanned against its
+ * after).
+ */
+export const GoalLoopRowsFloor: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			{goalsAndLoopRows(
+				FLOOR_COLUMN_PX,
+				"172 (the app's real floor): the goal, the loop and the four counts",
+			)}
+		</div>
+	),
+};
+
+/**
+ * THE SHARED-LINE BAND, and why it is in this story set rather than only the three
+ * widths above: measured on both sides of the change, 900 and 240 do NOT carry the
+ * readability delta this change exists for. At 240 the old wrap had ALREADY
+ * separated the two chips (the goal item took the line either way; the frames print
+ * the same 71/188 characters on both sides), and at 900 the goal showed its whole
+ * text on both sides (the loop was pushed to the trailing edge instead). The width
+ * band where the two SHARED a line is the one the operator's ask is about: at 520
+ * the old layout gave the goal item `min-w-[140px]` less the loop's 269px, and the
+ * BEFORE frame reads the truncation that follows; the AFTER frame reads the goal's
+ * whole line. 520 rather than 460: 140 + 8 + 269 = 417 is what fits a shared line,
+ * and 460's own content box (412) is five pixels short of it — the wrap has already
+ * fired there, so 460 is a different claim (the `ActivityWidths` story's).
+ *
+ * Neutral label like its siblings: this story is captured on both sides of the
+ * change (`docs/evidence/composer-status-rows/`).
+ */
+export const GoalLoopRowsBand520: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			{goalsAndLoopRows(520, "520: the goal, the loop and the four counts")}
+		</div>
+	),
+};
+
+/**
+ * The three single-source states, one band each: the arrangement is made of
+ * rows that exist only when their source does, so each of the goal, the loop
+ * and the counts renders a row alone here and NOT an empty box beside the
+ * others' absences.
+ *
+ * The counts-only band is also the first-chip rule's control: with neither a
+ * goal nor a loop above it, the plan chip is the row's first chip again (the
+ * `-ml-1.5` cancellation lands on it, not on the goal).
+ */
+export const GoalLoopRowsAlone: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<RowFacts>
+				<Band
+					label="Goal alone: the goal's row, and nothing under it"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={null}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					label="Loop alone: the loop's row at the row's start, and no counts"
+					frontend={frontend(
+						"",
+						loopOf("running", { completed: 2, iterations: 5 }),
+					)}
+					runDetails={null}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					label="Counts alone: the strip with neither a goal nor a loop above it"
+					frontend={frontend("")}
+					runDetails={IN_FLIGHT}
+				/>
+			</RowFacts>
+		</div>
+	),
+};
+
+/**
+ * The two unbounded values on their own rows at once: a 300-character goal and
+ * the loop's widest recorded clause shape. Neither can squash the other any
+ * more — each yields against its own row's width and nothing else — and the
+ * frame's printed facts say which one yielded for real (the goal truncates; a
+ * clause that FITS must not be suppressed by a rule that guarded the shared
+ * line).
+ */
+export const GoalLoopRowsLong: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<RowFacts>
+				<Band
+					label="A 300-character goal and the long clause (`2 of 25 turns`): the goal truncates in its row's own width; the loop keeps its whole readout"
+					frontend={frontend(
+						LONG_GOAL,
+						loopOf("running", { completed: 2, iterations: 25 }),
+					)}
+					runDetails={ALL_FIVE}
+				/>
+			</RowFacts>
+		</div>
+	),
+};
+
+/**
+ * The expanded goal in the per-row arrangement, opened by a click on the real
+ * trigger (`useOpenLastGoal`). The body's measure is § 4.4's question and now
+ * takes the goal row's own width at EVERY column, not only at the stacked band
+ * — the frame prints the item's width and the body is directly under it.
+ */
+export const GoalLoopRowsExpanded: Story = {
+	render: () => {
+		useOpenLastGoal();
+		return (
+			<div className={cn("flex flex-col gap-4")}>
+				<RowFacts>
+					<Band
+						label="Expanded by a click on the real trigger: the body takes the goal row's width, and the loop and the counts keep their rows"
+						frontend={frontend(
+							SHORT_GOAL,
+							loopOf("running", { completed: 2, iterations: 5 }),
+						)}
+						runDetails={ALL_FIVE}
+					/>
+				</RowFacts>
+			</div>
+		);
+	},
+};
+
+/**
+ * The dismiss reveal in the goal's own row, produced by FOCUS and not by a
+ * press or a hover: the `browser` tool has no hover verb, and `:hover` and
+ * `:focus-within` are one class string's two activators (`DISMISS_REVEAL`), so
+ * the focus path is the half this host can paint (the cost is stated in the
+ * set's README, the `composer-status-clear` convention).
+ *
+ * What the frame is evidence of is the GEOMETRY the move could have broken:
+ * the control still sits at the chip's own trailing edge (the band's facts
+ * print `dismiss gap 0px`), inside the goal's own row, with the loop's row and
+ * the counts below it. The `X`'s word (`Clear goal`) is painted here because
+ * the width is 900: the `@max-[240px]` drop belongs to the floor band.
+ */
+export const GoalLoopRowsDismissFocus: Story = {
+	render: () => {
+		useFocusLastDismiss("[data-status-goal-dismiss]");
+		return (
+			<div className={cn("flex flex-col gap-4")}>
+				<RowFacts>
+					<Band
+						label="The goal's dismiss revealed by focus: at the chip's trailing edge in the goal's own row (the dismiss's own tooltip is open — the focus path paints it in this host), with the loop's row and the counts below"
+						frontend={frontend(
+							SHORT_GOAL,
+							loopOf("running", { completed: 2, iterations: 5 }),
+						)}
+						runDetails={ALL_FIVE}
+					/>
+				</RowFacts>
+			</div>
+		);
+	},
+};
+
+/**
+ * The all-absent state, and the one band here that is a `Band` WITHOUT
+ * `RowFacts`: there is no row to measure. It is the row's oldest gate (§ 3.1) —
+ * no goal, no loop, no counts renders NOTHING, not an empty box — and in the
+ * per-row arrangement the same gate is what keeps a session with any ONE of the
+ * three from growing rows for the others.
+ */
+export const GoalLoopRowsEmpty: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<Band
+				label="No goal, no loop, no counts: the row renders nothing at all — no empty rows for the missing sources"
+				frontend={frontend("")}
+				runDetails={EMPTY}
+			/>
+		</div>
+	),
+};
+
 /* ---------------------------------------------------------------- */
 /* The goal's lifecycle: done, stalled, working and the two controls */
 /* ---------------------------------------------------------------- */
