@@ -294,51 +294,6 @@ test("a row's mark key is the handle PLUS its creation instant", () => {
  * `isServerUnreachable` reading re-sent them. `failureCount < 1` is exactly one
  * retry (TanStack v5 calls the callback first with `failureCount === 0`).
  */
-test("the one refusal code the app re-words, and every other sentence echoed", () => {
-	/*
-	 * UX round 1's U4: the live one-press refusal read `No wake schedule with
-	 * id 'w4' (known: w2, w1, w3)` — raw handles and the other rows' ids, in a
-	 * sentence nothing can act on. The code is the machine fact (the desktop
-	 * envelope's own `detail.code`) and the sentence is the app's, so exactly
-	 * one code is re-worded and every other refusal still echoes the backend
-	 * verbatim — a prose match is not a rule, which the last case states.
-	 */
-	assert.equal(
-		wakeRefusalSentence(
-			new DesktopControlError(
-				404,
-				"No wake schedule with id 'w4' (known: w2, w1, w3)",
-				undefined,
-				"wake_not_found",
-			),
-		),
-		"This wake is already gone.",
-		"the walked sentence drops the handles and the known-list",
-	);
-	assert.equal(
-		wakeRefusalSentence({ code: "wake_not_found", message: "wire shape" }),
-		"This wake is already gone.",
-		"the code alone carries it, whatever shape carries the code",
-	);
-	assert.equal(
-		wakeRefusalSentence(
-			new DesktopControlError(
-				503,
-				"This conversation is open in a running session, which owns its wakes.",
-				undefined,
-				"wake_owner_present",
-			),
-		),
-		null,
-		"every other refusal echoes the backend verbatim (the monitors' rule)",
-	);
-	assert.equal(
-		wakeRefusalSentence(new Error("No wake schedule with id 'w4'")),
-		null,
-		"a prose match is not a rule: a sentence alone re-words nothing",
-	);
-});
-
 test("the write retries once, and only a request nothing answered", () => {
 	const refused = (status, code) =>
 		new DesktopControlError(status, "transport", undefined, code);
@@ -382,6 +337,51 @@ test("the write retries once, and only a request nothing answered", () => {
 		"and so is a shape refusal",
 	);
 	assert.equal(retryWakeWrite(0, new Error("boom")), false);
+});
+
+test("the one refusal code the app re-words, and every other sentence echoed", () => {
+	/*
+	 * UX round 1's U4: the live one-press refusal read `No wake schedule with
+	 * id 'w4' (known: w2, w1, w3)` — raw handles and the other rows' ids, in a
+	 * sentence nothing can act on. The code is the machine fact (the desktop
+	 * envelope's own `detail.code`) and the sentence is the app's, so exactly
+	 * one code is re-worded and every other refusal still echoes the backend
+	 * verbatim — a prose match is not a rule, which the last case states.
+	 */
+	assert.equal(
+		wakeRefusalSentence(
+			new DesktopControlError(
+				404,
+				"No wake schedule with id 'w4' (known: w2, w1, w3)",
+				undefined,
+				"wake_not_found",
+			),
+		),
+		"This wake is already gone.",
+		"the walked sentence drops the handles and the known-list",
+	);
+	assert.equal(
+		wakeRefusalSentence({ code: "wake_not_found", message: "wire shape" }),
+		"This wake is already gone.",
+		"the code alone carries it, whatever shape carries the code",
+	);
+	assert.equal(
+		wakeRefusalSentence(
+			new DesktopControlError(
+				503,
+				"This conversation is open in a running session, which owns its wakes.",
+				undefined,
+				"wake_owner_present",
+			),
+		),
+		null,
+		"every other refusal echoes the backend verbatim (the monitors' rule)",
+	);
+	assert.equal(
+		wakeRefusalSentence(new Error("No wake schedule with id 'w4'")),
+		null,
+		"a prose match is not a rule: a sentence alone re-words nothing",
+	);
 });
 
 /*

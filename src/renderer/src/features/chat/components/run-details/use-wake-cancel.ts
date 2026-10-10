@@ -69,7 +69,17 @@
  * the outside-press path (U3): the press's focus default lands AFTER this
  * commit, so at the instant the question closes the keyboard is still on the
  * card's Keep, and a check against `<body>` alone missed the one dismissal that
- * left nobody holding it.
+ * left nobody holding it. The dismissal's own default is cancelled at the
+ * press (`wake-cancel-popover.tsx`) so it cannot steal the same landing on a
+ * target that cannot hold focus (Q6).
+ *
+ * THE LANDING IS HELD ACROSS THE RE-READ'S CHURN, ONCE (F13). The canonical
+ * re-read this interaction fires re-renders the pane with an EMPTY wakes list
+ * for a moment; when that frame lands after a landing, the node the keyboard
+ * was just given can unmount under the reader (the successor branch's hazard —
+ * the pane branch survives by construction). `landWake` therefore watches the
+ * node it focused, and the first commit after its disappearance re-resolves:
+ * if the keyboard fell with it, the pane takes it — once, never in a loop.
  *
  * Everything resets when the SESSION changes: wake handles are per-session
  * (`w1`..), so a pending row or a mark from one conversation must not be read
@@ -130,6 +140,9 @@ const wakeCancelLanding = (id: string): HTMLElement | null => {
 	if (control !== null && !control.hasAttribute("disabled")) return control;
 	return successorWakeCancelControl(id) ?? wakePaneFocusTarget();
 };
+
+/** A landing the watcher below holds across the re-read's churn (F13). */
+type LandedWake = { id: string; node: HTMLElement };
 
 /**
  * Whether the keyboard fell through after a close or a write, for the effects
@@ -282,6 +295,46 @@ export const useWakeCancel = ({
 	const [onePress, setOnePress] = useState<{ id: string; seq: number } | null>(
 		null,
 	);
+	/*
+	 * The last landing's node, watched for the moment the re-read's churn takes
+	 * it (F13; see the header). A ref: nothing renders from it, and the watcher
+	 * is the commit effect below.
+	 */
+	const landedRef = useRef<LandedWake | null>(null);
+
+	/** Focus a resolved landing, and watch it — unless it is the pane itself. */
+	const landWake = useCallback((id: string) => {
+		const target = wakeCancelLanding(id);
+		if (target === null) return;
+		target.focus();
+		/*
+		 * The PANE contains the rows, so "is it the pane" is identity, not
+		 * containment — a `closest` test would skip every landing (measured:
+		 * the churn case landed on a successor, watched nothing, and stayed on
+		 * `<body>`). The pane is the surface the re-read re-renders INTO; it
+		 * needs no watch.
+		 */
+		landedRef.current = target.hasAttribute("data-run-panel-pane")
+			? null
+			: { id, node: target };
+	}, []);
+
+	/*
+	 * THE WATCHER, once per landing: it runs after EVERY commit, and the commit
+	 * that unmounts the watched node is the one it acts on. The re-read empties
+	 * the list for a moment — the frame the header documents — so a successor
+	 * the keyboard was just given can disappear under it; the pane then takes
+	 * the keyboard. Bounded by construction: the record is cleared whether or
+	 * not the re-resolution fires, and the pane is never watched.
+	 */
+	useEffect(() => {
+		const landed = landedRef.current;
+		if (landed === null) return;
+		if (landed.node.isConnected) return;
+		landedRef.current = null;
+		if (!wakeFocusFellThrough(document.activeElement, landed.id)) return;
+		wakePaneFocusTarget()?.focus();
+	});
 
 	/*
 	 * A switch to another conversation closes everything this interaction holds.
@@ -297,6 +350,7 @@ export const useWakeCancel = ({
 		setCancelledKeys(new Set());
 		setRefusedKeys(new Map());
 		setOnePress(null);
+		landedRef.current = null;
 		lastPressedIdRef.current = null;
 		lastPressedKeyRef.current = null;
 	}, [sessionId]);
@@ -314,8 +368,8 @@ export const useWakeCancel = ({
 		const id = lastPressedIdRef.current;
 		if (id === null) return;
 		if (!wakeFocusFellThrough(document.activeElement, id)) return;
-		wakeCancelLanding(id)?.focus();
-	}, [pending]);
+		landWake(id);
+	}, [pending, landWake]);
 
 	/** Drop a row's refusal record, if it has one. */
 	const clearRefused = useCallback((key: string) => {
@@ -437,8 +491,8 @@ export const useWakeCancel = ({
 	useEffect(() => {
 		if (onePress === null) return;
 		if (!wakeFocusFellThrough(document.activeElement, onePress.id)) return;
-		wakeCancelLanding(onePress.id)?.focus();
-	}, [onePress]);
+		landWake(onePress.id);
+	}, [onePress, landWake]);
 
 	const stateFor = useCallback(
 		(row: WakeRow): WakeRowCancelState | undefined => {

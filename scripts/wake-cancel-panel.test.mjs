@@ -816,6 +816,47 @@ test("a landed cancel with no row after it lands the keyboard on the pane (U1)",
 	await p.unmount();
 });
 
+test("a successor taken away by the re-read's churn lands on the pane (F13)", async () => {
+	/*
+	 * AGENT REVIEW ROUND 3's F13: the landing was resolved once, and the
+	 * re-read's own churn — the pane re-renders with an EMPTY wakes list for a
+	 * moment, the frame this interaction's header documents — unmounts the node
+	 * the keyboard was just given, dropping focus to `<body>` (jsdom clears a
+	 * removed active element the same way, measured; Blink's removal path
+	 * agrees). The watcher re-resolves once: the pane takes the keyboard.
+	 */
+	const pane = document.createElement("section");
+	pane.setAttribute("data-run-panel-pane", "");
+	pane.tabIndex = -1;
+	document.body.append(pane);
+	const p = await mount({
+		wakes: [
+			wireWake("w1", "First"),
+			wireWake("w2", "Second"),
+			wireWake("w3", "Third"),
+		],
+		sessionId: "sess1",
+		aida: UNKNOWN_AIDA,
+		cancel: async () => ({ ok: true }),
+	});
+	pane.append(p.container);
+	await press(document.querySelector('[data-wake-cancel="w2"]'));
+	assert.ok(
+		await settle(
+			() =>
+				document.activeElement ===
+				document.querySelector('[data-wake-cancel="w3"]'),
+		),
+		"the successor takes the keyboard first",
+	);
+	await p.rerender({ wakes: [] });
+	assert.ok(
+		await settle(() => document.activeElement === pane),
+		"the churn's removal does not leave the keyboard on the body",
+	);
+	await p.unmount();
+});
+
 test("a refused press hands the keyboard back to its own retry control (U2)", async () => {
 	const gate = deferred();
 	const p = await mount({
@@ -888,10 +929,17 @@ test("an outside press dismisses the question, and a busy write refuses it (F8)"
 			(button) => button.textContent === "Cancel check-in",
 		),
 	);
-	document.body.dispatchEvent(
-		new DOM.window.Event("pointerdown", { bubbles: true }),
-	);
+	const blocked = new DOM.window.Event("pointerdown", {
+		bubbles: true,
+		cancelable: true,
+	});
+	document.body.dispatchEvent(blocked);
 	await act(async () => {});
+	assert.equal(
+		blocked.defaultPrevented,
+		false,
+		"a busy write touches no default: only the dismissing press cancels one",
+	);
 	assert.ok(confirmCard() !== null, "the busy write keeps the card open");
 	await act(async () => gate.resolve({ ok: true }));
 	await settle(() => confirmCard() === null);
@@ -931,11 +979,18 @@ test("an outside press returns the keyboard while the card's Keep still holds it
 		configurable: true,
 		get: () => keep,
 	});
-	await act(async () => {
-		document.body.dispatchEvent(
-			new DOM.window.Event("pointerdown", { bubbles: true }),
-		);
+	const dismissal = new DOM.window.Event("pointerdown", {
+		bubbles: true,
+		cancelable: true,
 	});
+	await act(async () => {
+		document.body.dispatchEvent(dismissal);
+	});
+	assert.equal(
+		dismissal.defaultPrevented,
+		true,
+		"the dismissal press cancels its own focus default (Q6)",
+	);
 	Object.defineProperty(document, "activeElement", realActiveElement);
 	assert.ok(
 		await settle(() => document.activeElement === control),

@@ -122,6 +122,7 @@ import {
 } from "lucide-react";
 import {
 	type ReactNode,
+	useCallback,
 	useEffect,
 	useLayoutEffect,
 	useRef,
@@ -1741,30 +1742,50 @@ export const ComposerStatusRow = ({
 	 * give: the memory is dropped as the reader leaves, so only a node that was
 	 * still HOLDING focus when it vanished can owe the composer a landing.
 	 *
+	 * THE LISTENER RIDES THE REF, not a mount effect (agent review round 3,
+	 * F11; QA round 3, Q5 — both measured it live: the listener never attached).
+	 * This row returns `null` while no chip would draw, so on a session's first
+	 * visit its first commit has no node at all; a `useEffect` with `[]` deps
+	 * runs against that empty commit and never re-runs. The ref callback
+	 * attaches whenever a node appears — a replaced div included — and detaches
+	 * when it goes.
+	 *
 	 * A `focusout` with no `relatedTarget` is either a move to the body or the
 	 * focused node's own removal; the removal is the case the restore exists
 	 * for, so the two are told apart once the task that removed it has finished
 	 * (the removed node is gone by then, and a reader who merely moved to the
-	 * body left a node that is not).
+	 * body left a node that is not). A WINDOW BLUR also arrives with a null
+	 * `relatedTarget` while the node stays connected — and the restore must
+	 * survive it (a chip that vanishes while the window is backgrounded is
+	 * exactly the settle the restore exists for), which is what
+	 * `document.hasFocus()` decides: focus that left the DOCUMENT has not left
+	 * the row (F12).
 	 */
-	useEffect(() => {
-		const row = rowRef.current;
-		if (row === null) return;
+	const rowListenerRef = useRef<((event: FocusEvent) => void) | null>(null);
+	const attachRow = useCallback((node: HTMLDivElement | null) => {
+		const previous = rowRef.current;
+		const previousListener = rowListenerRef.current;
+		if (previous !== null && previousListener !== null)
+			previous.removeEventListener("focusout", previousListener);
+		rowRef.current = node;
+		rowListenerRef.current = null;
+		if (node === null) return;
 		const onFocusOut = (event: FocusEvent) => {
 			const target = event.target;
 			if (!(target instanceof HTMLElement)) return;
 			const next = event.relatedTarget;
-			if (next instanceof Node && row.contains(next)) return;
+			if (next instanceof Node && node.contains(next)) return;
 			if (next !== null) {
 				previouslyFocused.current = null;
 				return;
 			}
 			queueMicrotask(() => {
-				if (target.isConnected) previouslyFocused.current = null;
+				if (target.isConnected && document.hasFocus())
+					previouslyFocused.current = null;
 			});
 		};
-		row.addEventListener("focusout", onFocusOut);
-		return () => row.removeEventListener("focusout", onFocusOut);
+		rowListenerRef.current = onFocusOut;
+		node.addEventListener("focusout", onFocusOut);
 	}, []);
 	useEffect(() => {
 		const active = document.activeElement;
@@ -2155,7 +2176,7 @@ export const ComposerStatusRow = ({
 
 	return (
 		<div
-			ref={rowRef}
+			ref={attachRow}
 			data-composer-status-row=""
 			className={cn(
 				CHAT_MEASURE,
