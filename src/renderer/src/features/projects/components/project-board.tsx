@@ -48,6 +48,7 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { Spinner } from "@shared/components/common/spinner";
 import { Badge, Button } from "@shared/components/ui";
 import {
 	DropdownMenu,
@@ -1063,7 +1064,20 @@ const BoardCard: FC<BoardCardProps> = ({
 							"hover:bg-sunken hover:text-ink",
 						)}
 					>
-						<MoreHorizontal className="size-4" />
+						{/*
+						 * A MOVE IN FLIGHT SAYS SO ON THE CARD (UX round 1, U2): a
+						 * held PATCH used to leave the row looking untouched for its
+						 * whole duration - no signal at the control the reader just
+						 * used, which is also what invited the overlapping second
+						 * press U1 measured. The glyph swaps to the app's spinner
+						 * for exactly this card's move (the page's per-card set), so
+						 * the signal appears within a frame of the press.
+						 */}
+						{busy ? (
+							<Spinner size="xs" />
+						) : (
+							<MoreHorizontal className="size-4" />
+						)}
 					</DropdownMenuTrigger>
 					{/*
 					 * THE DOORS' CONTENT IS STILL THE CARD'S DESCENDANT IN THE REACT

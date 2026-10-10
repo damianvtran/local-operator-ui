@@ -677,6 +677,63 @@ export const STORIES = [
 	["settings-radient-account--verify-none", 1280, 480],
 	["settings-radient-account--claimed", 1280, 400],
 
+	/*
+	 * The chat row for a Radient run refused for want of credits, one frame per
+	 * account state the guidance can take (the story drives the real account read
+	 * through a stubbed desktop transport). `non-radient-rate-limit` is the control
+	 * that must look like it did before. The shutter holds until the guidance
+	 * box (or, for the control, the row's own action) is in the DOM, because the
+	 * box paints only after the account read settles.
+	 */
+	[
+		"chat-radient-out-of-credits--unverified-pending",
+		1280,
+		260,
+		{ expectPresent: "[data-radient-credits-state=unverified]" },
+	],
+	[
+		"chat-radient-out-of-credits--unverified-expired",
+		1280,
+		260,
+		{ expectPresent: "[data-radient-credits-state=unverified]" },
+	],
+	[
+		"chat-radient-out-of-credits--unverified-none",
+		1280,
+		260,
+		{ expectPresent: "[data-radient-credits-state=unverified]" },
+	],
+	[
+		"chat-radient-out-of-credits--verified-bonus-available",
+		1280,
+		260,
+		{ expectPresent: "[data-radient-credits-state=verified]" },
+	],
+	[
+		"chat-radient-out-of-credits--verified-bonus-received",
+		1280,
+		260,
+		{ expectPresent: "[data-radient-credits-state=verified]" },
+	],
+	[
+		"chat-radient-out-of-credits--verified-older-backend",
+		1280,
+		260,
+		{ expectPresent: "[data-radient-credits-state=verified]" },
+	],
+	[
+		"chat-radient-out-of-credits--account-unreadable",
+		1280,
+		300,
+		{ expectPresent: "[data-radient-credits-state=unknown]" },
+	],
+	[
+		"chat-radient-out-of-credits--non-radient-rate-limit",
+		1280,
+		160,
+		{ expectPresent: 'a[href*="section=providers"]' },
+	],
+
 	["chat-trace--conversation", 1280, 1308],
 	["chat-trace--conversation-with-reasoning", 1280, 1409],
 	["chat-trace--conversation-reasoning-open", 1280, 3327],
@@ -793,8 +850,10 @@ export const STORIES = [
 	 *   capture of this app, downscaled to the fixture size. A text-heavy
 	 *   screenshot at 96px wide is a smear, and the frame says so.
 	 * - `image-tones` is D2's defect case in both palettes at once - each tile
-	 *   holds a picture whose own canvas IS the page's ground, so the tile's edge
-	 *   is the only thing that gives it an extent.
+	 *   holds a picture whose own canvas IS the page's ground, so the tile's extent
+	 *   was the edge's alone, the case the `mediaSurface` fill role now answers
+	 *   (this cell's committed frames predate the role; the before/after pair is
+	 *   the `chat-media-slot-fill` set).
 	 * - `image-unavailable` is the compact receipt, the one tile state whose SHAPE
 	 *   is new (prose would blow the 78px strip - it was 66px before the tile
 	 *   grew).
@@ -1550,6 +1609,57 @@ export const STORIES = [
 	 * margin, and the widest step of all, which the change does NOT move.
 	 */
 	["chat-canonical-message-surface--user-turn", 1024, 560],
+	/*
+	 * THE MEDIA TILE'S OWN SURFACE (the borderless tile's fill role). The tile is
+	 * BORDERLESS AT REST, so its extent is its fill, and the shared `sunken` well
+	 * measured as low as 2.00 ΔE00 off the canvas (iceberg, `neonNoir`) - this row
+	 * is the AFTER half of the pair its fill is judged on; the BEFORE half is the
+	 * declared supplementary set `../chat-media-slot-fill-before/` - the same
+	 * story on the pre-change tree, its title suffixed `before` for the run so the
+	 * ids land in their own surface directory. Five themes only, chosen from the
+	 * audit's extremes rather than taste (the story's own docblock carries the
+	 * picks): the two worst steps in the fleet, the brand pair the loss was
+	 * measured on, and one palette that already clears the floor, so the pair
+	 * shows both that the fill moves what fails it and that it leaves what already
+	 * clears it alone.
+	 */
+	["chat-media-slot-fill--rest", 1280, 200],
+	/*
+	 * ROUND 1'S REMEDIATION STATES, both capture-only additions (design round 1
+	 * D1/D2, the reviewer's NIT-2). `letterbox-hover` is the RETURNING EDGE on
+	 * the letterboxed portrait - the rig moves the real pointer onto the third
+	 * tile of the resting story, and the palette is `catppuccinLatte` on purpose:
+	 * it is where `border-control` against the new fill is weakest (2.78:1), so
+	 * the frame is the stress case rather than a comfortable one (the edge's own
+	 * 3:1 is the ground's pairing - see the role's doc). `mixed-row` is the
+	 * failed tile's receipt (edge + `sunken`) BETWEEN two working tiles, in the
+	 * two palettes the design round named, so the fill step the receipt's edge
+	 * masks is on the record as a frame.
+	 *
+	 * The set's states now carry different palette lists (rest: five;
+	 * `letterbox-hover`: `catppuccinLatte`; `mixed-row`: `catppuccinLatte` +
+	 * `localOperatorDark`), which is why the set is NOT in `SET_BUDGETS` - the
+	 * table's one-list-per-set shape cannot express it (the class its header
+	 * names) - and the set README documents each state's own command.
+	 */
+	[
+		"chat-media-slot-fill--rest",
+		1280,
+		200,
+		{
+			hover: "[data-fold-media] li:nth-child(3) button",
+			dir: "letterbox-hover",
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"chat-media-slot-fill--mixed-row",
+		1280,
+		200,
+		{
+			expectPresent: '[role="img"][aria-label*="stored copy is not available"]',
+		},
+	],
 	/*
 	 * THE MARKDOWN TABLE'S COLUMN WIDTHS (operator report, 2026-09-30): a table
 	 * the agent wrote into an answer rendered with its short columns squeezed
@@ -5345,6 +5455,42 @@ export const STORIES = [
 	/* Accepted and refused effort picks with the opt-in new-session default. */
 	["chat-model-picker--effort-set-as-default", 900, 620],
 	["chat-model-picker--effort-refused-does-not-save-default", 900, 620],
+	/*
+	   THE ACCESS-SCOPE STATES, added with the scope union itself.
+
+	   `show-all-wire` is a NEW backend's answer driven end to end: the resting
+	   view lists only rows this machine can run (no GLM row anywhere in it), the
+	   control prints the backend's own count `(2 need sign-in)`, and the frame is
+	   the state AFTER the press - both needs-sign-in rows under their heading.
+	   `show-all-fallback` is the same press against an OLD backend (neither
+	   `scope` nor `hidden` on the wire): the filter is the client's and the
+	   control carries no count, which is the pair a reader needs to see the two
+	   paths agree on the rows while differing honestly in what they promise.
+	   `no-usable-models` is nothing-signed-in: the empty state is the way out
+	   (`Connect a provider`), not a dead list, and it is short (560) for the
+	   reason `empty` is - a spinner-sized state at 900 tall is mostly ground,
+	   which crosses the uniformity ceiling.
+	   `no-usable-wire` (round 1's D6a) is the same dead end against the NEW
+	   backend: zero rows AND the wire's own `(2 need sign-in)` count, the
+	   count-and-CTA composition no frame showed before.
+	   `show-all-connect-footer` (round 1's D2 companion) is the reveal pressed
+	   and the query narrowed to the one hidden row: the footer names the verb
+	   Enter will actually perform (`Enter connects zai`), which the source-only
+	   claim could not be checked against a frame.
+	*/
+	["chat-model-picker--usable-only-wire", 900, 760],
+	["chat-model-picker--show-all-wire", 900, 760],
+	["chat-model-picker--show-all-fallback", 900, 760],
+	["chat-model-picker--no-usable-models", 900, 560],
+	["chat-model-picker--no-usable-wire", 900, 560],
+	["chat-model-picker--show-all-connect-footer", 900, 760],
+	/*
+	   THE SESSION BAND'S MODEL-ACCESS STATEMENT (`model_access: signed_out`):
+	   the sentence naming the provider and the two ways out, at the composer
+	   column's width and at the narrow-view inset where the sentence wraps.
+	*/
+	["chat-session-model-access-band--signed-out", 900, 280],
+	["chat-session-model-access-band--signed-out-narrow", 460, 260],
 
 	/*
 	 * `/move`: NO SWEPT ENTRY, and the absence is the honest state of this
@@ -8960,6 +9106,11 @@ export const STORIES = [
 	["chat-slash-completion--argument-phase-empty", 768, 300],
 	/* The shed order under pressure: numbers dropped, name kept. */
 	["chat-slash-completion--argument-phase-narrow-composer", 378, 300],
+	/* A pick that CONNECTS: the `/model` list's needs-sign-in row and the connect
+	   footer on both lines (U4, the inline counterpart of the dialog's D2
+	   frame), with the longer completing sentence at the narrowest supported
+	   width as the second case. */
+	["chat-slash-completion--argument-phase-needs-sign-in", 980, 620],
 	/* A command typed into a sentence, the list above the prose. */
 	/* The mid-draft state round-1 D1 judged AND the state the fix puts in its
 	   place, as the two cases of one board — the after-picture is absence, and a

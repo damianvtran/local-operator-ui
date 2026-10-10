@@ -1039,6 +1039,30 @@ export type CanonicalEffectiveIdentity = {
 	role_of_speaker?: string;
 };
 
+/**
+ * Whether the credential the session's model needs is still usable, as the
+ * runtime states it beside `selected_model`.
+ *
+ * WHY THE SESSION HAS TO SAY IT rather than every surface deriving it: a
+ * session's model is pinned in its journal and can outlive the credential that
+ * once made it runnable — the operator's report is exactly that state, a
+ * session left on `radient/auto` with no Radient sign-in on the machine, where
+ * every frame still looks healthy. The runtime holds the one access predicate
+ * (`usable_providers`), so it is the one place that can answer this honestly.
+ *
+ * `label` is the provider's human name when the runtime has one, for the
+ * band's sentence; `provider` is the id, which is what a Connect action needs.
+ * A reader shows the state only when `state === "signed_out"` — `ok` is the
+ * happy path and its absence means an older host that does not publish the
+ * field at all, and neither may render as a nag (the same rule
+ * `radient_login`'s `unknown` carries in `use-radient-session-issue`).
+ */
+export type CanonicalModelAccess = {
+	state: "ok" | "signed_out";
+	provider: string;
+	label: string;
+};
+
 export type CanonicalFrontendState = {
 	attention?: CompletionAttention;
 	state_version: number;
@@ -1092,6 +1116,12 @@ export type CanonicalFrontendState = {
 	effective_identity?: CanonicalEffectiveIdentity;
 	selected_model: CanonicalModel | null;
 	effective_model: CanonicalModel | null;
+	/**
+	 * Whether the model this session runs can still authenticate (see
+	 * `CanonicalModelAccess`). Optional: an older host omits it, and absence
+	 * must not be read as "signed out".
+	 */
+	model_access?: CanonicalModelAccess | null;
 	streaming: boolean;
 	loop?: import("./desktop-control-contract").DesktopLoopState | null;
 	generation: number;

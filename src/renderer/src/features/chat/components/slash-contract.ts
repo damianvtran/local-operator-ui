@@ -1078,6 +1078,19 @@ export type EnterFooterInput = {
 	value: string;
 	matched: boolean;
 	/**
+	 * The provider whose Enter is a CONNECT: the inline `/model` list's rows the
+	 * wire says cannot run, where the pick opens the Connect flow instead of
+	 * submitting (UX round 2, U4 — the inline counterpart of design D2's dialog
+	 * footer). The caller resolves it through the SAME
+	 * `connectProviderForSelector` the pick's own interception uses, so this line
+	 * and the gesture cannot describe two different rows.
+	 *
+	 * Only a pick that RUNS can be intercepted (`message-input.tsx`'s `whole`/
+	 * `splice` branch), so a `runs: false` row can never carry one, and those
+	 * arms below keep their sentences unchanged.
+	 */
+	connect?: string | null;
+	/**
 	 * Whether the caret's argument ALREADY holds the row's value — the state a
 	 * first Enter leaves behind on a `runs: false` source. A press here writes
 	 * nothing (the completion is a no-op), so the key only CLOSES the list, and
@@ -1252,7 +1265,11 @@ export function enterFooter(input: EnterFooterInput): string | null {
 		return input.complete
 			? "Enter closes the list; Enter again runs."
 			: "Enter completes the value.";
-	if (!input.unambiguous) return "Enter completes; Enter again runs.";
+	if (!input.unambiguous)
+		return input.connect
+			? `Enter completes; Enter again connects ${input.connect}.`
+			: "Enter completes; Enter again runs.";
+	if (input.connect) return `Enter connects ${input.connect}.`;
 	const command = input.command ? `/${input.command} ` : "";
 	return `Enter runs ${command}${input.value}.`.trim();
 }
@@ -1276,6 +1293,10 @@ export type ClickFooterInput = {
 	/** The active row's value when the default command grammar describes it. */
 	value: string;
 	matched: boolean;
+	/** The provider whose click is a CONNECT rather than a run — see
+	 * `EnterFooterInput.connect`; resolved through the same
+	 * `connectProviderForSelector`, so the two lines cannot disagree. */
+	connect?: string | null;
 	/**
 	 * The same three inputs `enterFooter` reads for the STAGING question, for the
 	 * same reason: a pointer pick of an armed-only row arms it and of a row whose
@@ -1329,6 +1350,7 @@ export function clickFooter(input: ClickFooterInput): string | null {
 	if (input.nameThenMessage) return "Click chooses this name.";
 	if (input.actionClickText) return input.actionClickText;
 	if (!input.runs) return "Click completes this value.";
+	if (input.connect) return `Click connects ${input.connect}.`;
 	const command = input.command ? `/${input.command}` : "";
 	if (!command) return "Click runs the command.";
 	const value = input.value ? ` ${input.value}` : "";

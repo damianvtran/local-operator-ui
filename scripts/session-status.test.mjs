@@ -48,6 +48,8 @@ const bundle = await build({
 	write: false,
 });
 const {
+	bandYieldsToRadientIssue,
+	radientCalloutOwnsTheSignIn,
 	CONTEXT_COLOR_BANDS,
 	pyFixed,
 	reconcileEffort,
@@ -68,6 +70,7 @@ const {
 	formatCost,
 	formatWindow,
 	modelIdentity,
+	modelAccessReading,
 	sessionCost,
 	specUnresolved,
 } = await import(
@@ -1395,4 +1398,153 @@ test("both pickers describe a row in the backend's words, not the live_state tok
 	// The field the rule reads has to be declared on the row this file's own read
 	// produces, or the label would be `undefined` on every row in the app.
 	assert.match(picker, /status\?: SessionCatalogueStatus;/);
+});
+
+/* ---- 8. model access: the band's reading -------------------------------- */
+
+test("the model-access reading exists only for `signed_out`, and never from a silence", () => {
+	/*
+	 * The band's whole rule, executed rather than read: `ok` renders nothing,
+	 * and an ABSENT field (an older host) is not a state either — a nag
+	 * invented from silence is a claim the frame does not make. Both are
+	 * asserted as `null` in one test because they are one rule.
+	 */
+	assert.equal(
+		modelAccessReading({
+			model_access: { state: "ok", provider: "anthropic", label: "Anthropic" },
+		}),
+		null,
+	);
+	assert.equal(modelAccessReading({}), null, "absence is not `signed_out`");
+	assert.equal(modelAccessReading(null), null);
+	assert.equal(modelAccessReading(undefined), null);
+
+	const reading = modelAccessReading({
+		model_access: {
+			state: "signed_out",
+			provider: "anthropic",
+			label: "Anthropic (Claude Pro/Max)",
+		},
+	});
+	assert.deepEqual(reading, {
+		provider: "anthropic",
+		label: "Anthropic (Claude Pro/Max)",
+	});
+
+	/*
+	 * The label is display metadata and may arrive empty; the sentence still
+	 * has to name something, and the PROVIDER is what the Connect action needs
+	 * — so the fallback fills the label from the id and never the other way.
+	 */
+	assert.deepEqual(
+		modelAccessReading({
+			model_access: { state: "signed_out", provider: "openai", label: "" },
+		}),
+		{ provider: "openai", label: "openai" },
+	);
+
+	/*
+	 * A frame is untrusted wire data: a non-string provider is not published, a
+	 * malformed state is not `signed_out`, and neither throws.
+	 */
+	assert.equal(
+		modelAccessReading({
+			model_access: { state: "signed_out", provider: 7, label: "x" },
+		}),
+		null,
+	);
+	assert.equal(
+		modelAccessReading({
+			model_access: { state: "logged-out", provider: "x", label: "" },
+		}),
+		null,
+	);
+});
+
+test("the band yields to the Radient callout when both name one missing sign-in (R1-6)", () => {
+	/*
+	 * A `radient/auto` session can carry both blocks at once: the connector
+	 * callout (its own state machine and its own sign-in) and this band. One
+	 * fact, one block — the callout is the more specific remedy — and any other
+	 * provider cannot collide with the Radient connector.
+	 */
+	const radient = { provider: "radient", label: "Radient" };
+	assert.equal(bandYieldsToRadientIssue(radient, true), true);
+	assert.equal(
+		bandYieldsToRadientIssue(radient, false),
+		false,
+		"with the callout hidden the band is the only word on the state",
+	);
+	assert.equal(
+		bandYieldsToRadientIssue(
+			{ provider: "anthropic", label: "Anthropic" },
+			true,
+		),
+		false,
+		"an anthropic model's sign-in has nothing to do with the Radient connector",
+	);
+});
+
+test("the yielded-to callout must OWN the sign-in (design round 2, D7)", () => {
+	/*
+	 * Narrowed from "any visible callout kind" to "the callout carries the
+	 * remedy": yielding takes the band's `Switch model` with it, and the
+	 * callout does not offer one in ANY state — so the trade is only right
+	 * while the callout itself is the way to sign in. The refusal and
+	 * `input-required` arms keep the band, whose two exits are then the only
+	 * ones on screen. The side matrix is driven through
+	 * `bandYieldsToRadientIssue` too, so the composite rule is asserted rather
+	 * than only its half.
+	 */
+	const radient = { provider: "radient", label: "Radient" };
+	const owns = (issue) =>
+		radientCalloutOwnsTheSignIn(issue) &&
+		bandYieldsToRadientIssue(radient, true);
+	assert.equal(
+		owns({ kind: "needs-sign-in", remedy: {} }),
+		true,
+		"the callout's own Sign in is the remedy",
+	);
+	assert.equal(
+		owns({ kind: "signing-in" }),
+		true,
+		"a flow in flight is the remedy being carried out",
+	);
+	assert.equal(
+		owns({ kind: "settled", message: "", canRetry: true }),
+		true,
+		"settled with a retry offers the same entrance",
+	);
+	assert.equal(
+		owns({
+			kind: "settled",
+			message: "",
+			canRetry: false,
+			refusal: "sign-in-active",
+		}),
+		false,
+		"a refusal offers a pointer and a dismissal, not a sign-in — the band keeps Switch model",
+	);
+	assert.equal(
+		owns({
+			kind: "settled",
+			message: "",
+			canRetry: false,
+			refusal: "no-browser-flow",
+		}),
+		false,
+	);
+	assert.equal(
+		owns({
+			kind: "input-required",
+			message: "finish the sign-in in your browser",
+		}),
+		false,
+		"the callout asks for input; no sign-in action of its own to press",
+	);
+	assert.equal(
+		owns({ kind: "hidden" }),
+		false,
+		"nothing visible, nothing to yield to",
+	);
 });

@@ -35,7 +35,10 @@
  * pencil. Both are flagged for the design round.
  */
 
-import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import {
 	INLINE_EDIT_GROUP,
 	InlineEditControls,
@@ -47,6 +50,7 @@ import {
 } from "@shared/components/inline-edit";
 import {
 	Badge,
+	Button,
 	Input,
 	Select,
 	SelectContent,
@@ -56,6 +60,7 @@ import {
 	Textarea,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { showSuccessToast } from "@shared/utils/toast-manager";
 import type { FC, KeyboardEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -80,39 +85,37 @@ import {
 	projectDateOrderRule,
 	projectDescriptionRule,
 	projectEstimateNumberRule,
-	projectRefusalCopy,
 	projectTagsFieldRule,
 	projectTitleRule,
 	tagsDraftEquals,
 } from "../project-edit-model";
 import { ProjectMarkdown } from "../project-markdown";
 import {
+	type DoneGateRefusal,
 	PROJECT_STATUS_OPTIONS,
 	estimateLabel,
+	forcedCloseToastText,
 	formatProjectDay,
+	projectDisplayName,
+	projectStatusMeta,
 } from "../project-model";
+import { doneGateRefusalOf, projectWriteErrorCopy } from "../project-refusals";
 import { pasteMarkdownIntoDescription } from "../project-sheet-model";
+import { ProjectDoneAnywayDialog } from "./project-done-anyway-dialog";
 import { ProjectStatusBadge } from "./project-status-badge";
 
 /** The one write door every field here commits through. */
-export type CommitProjectFields = (fields: ProjectEditFields) => Promise<void>;
-
-/**
- * A refused write, as the sentence beside the field.
- *
- * `DesktopControlError` carries the machine code (`project_name_exists`, a 422
- * sentence, the done-gate tail); anything else is an ordinary error whose
- * message is the most honest thing available. The mapping itself is pure and
- * pinned by `scripts/projects-inline-edit.test.mjs`; this is only the narrowing.
- */
-export function projectWriteErrorCopy(error: unknown): string {
-	if (error instanceof DesktopControlError) {
-		return projectRefusalCopy({ code: error.code, message: error.message });
-	}
-	return projectRefusalCopy({
-		message: error instanceof Error ? error.message : "",
-	});
-}
+export type CommitProjectFields = (
+	fields: ProjectEditFields,
+	/**
+	 * `forceDone` is the status field's deliberate close over open milestones
+	 * (the confirm dialog's `Mark done anyway`). No other field passes options,
+	 * so every other commit is the one-argument call it always was. The result
+	 * is the daemon's PATCH answer; only the forced close reads it (for the
+	 * "closed with N open" sentence), everything else ignores it.
+	 */
+	options?: { forceDone?: boolean },
+) => Promise<unknown>;
 
 /** The per-field chrome words; `display` reads inside the acknowledgement. */
 function editLabels(field: string, display: string): InlineEditLabels {
@@ -160,6 +163,13 @@ type FieldShellProps = {
 	 * D1: the escaped select moved the whole header and everything below).
 	 */
 	hug?: boolean;
+	/**
+	 * A control that belongs to the feedback line but is not the machine's own
+	 * (today: the status field's `Mark done anyway`, offered beside a done-gate
+	 * refusal). Rendered under the feedback row so the sentence and its way out
+	 * read as one unit; absent for every other field.
+	 */
+	feedbackExtra?: ReactNode;
 	className?: string;
 	controlsClassName?: string;
 };
@@ -186,6 +196,7 @@ const FieldShell: FC<FieldShellProps> = ({
 	feedback,
 	controlsIdle = "affordance",
 	hug = false,
+	feedbackExtra,
 	className,
 	controlsClassName,
 }) => (
@@ -254,7 +265,17 @@ const FieldShell: FC<FieldShellProps> = ({
 			 * is exactly the caption's own line box (`text-meta`, 1.45).
 			 */}
 			<div className={cn("min-h-[1lh] text-meta", hug && "max-w-96")}>
-				<InlineEditFeedback api={feedback} />
+				{/*
+				 * THE FEEDBACK AND A CALLER'S OWN CONTROL SHARE ONE ROW (design
+				 * round 1, D5): the status field's "Mark done anyway…" door
+				 * belongs BESIDE Retry rather than stacked under it as a second
+				 * caption line. A field that passes no extra renders exactly what
+				 * it rendered before - a one-item row.
+				 */}
+				<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+					<InlineEditFeedback api={feedback} />
+					{feedbackExtra}
+				</div>
 			</div>
 		</div>
 	</div>
@@ -556,16 +577,142 @@ export const ProjectStatusField: FC<{
 	commit: CommitProjectFields;
 }> = ({ project, commit }) => {
 	const [menuOpen, setMenuOpen] = useState(false);
+	const capabilities = useDesktopCapabilities();
+	const forceDoneOffered = desktopFeatureEnabled(
+		capabilities.data,
+		"projects_force_done",
+	);
+	/*
+	 * THE DONE-GATE'S REFUSAL, kept beside the machine's own error sentence.
+	 * The machine only keeps the sentence (that is all it needs), so the
+	 * structured refusal - the names, and whether the daemon coded it - is
+	 * captured here as the commit rejects. It is cleared at the start of every
+	 * commit, so it can only describe the LATEST refusal.
+	 */
+	const [refusal, setRefusal] = useState<DoneGateRefusal | null>(null);
+	/*
+	 * The refusal the OPEN dialog is answering, snapshotted when it opens. The
+	 * live `refusal` above is replaced by every commit, and a forced retry that
+	 * itself fails (a different error, say a deleted row) clears it - the dialog
+	 * must keep showing the question it asked, with the new failure under it,
+	 * not collapse because its premise was overwritten.
+	 */
+	const [asked, setAsked] = useState<DoneGateRefusal | null>(null);
+	/* The next commit is the confirmed, forced one (read once, then reset). */
+	const forceNext = useRef(false);
+	/*
+	 * The secondary action's delivery flag: "Review milestones" has to move the
+	 * reader AFTER the field's own cancel hands focus back to the status pencil
+	 * (`use-inline-edit`'s refocus effect), or that hand-back scrolls the page
+	 * straight back to the field (design round 1, D2; agent review F2). The
+	 * effect below runs on the commit where the field settles, i.e. after it.
+	 */
+	const deliverToMilestones = useRef(false);
+	/*
+	 * The dialog's pending promise. The forced retry runs THROUGH the machine
+	 * (`api.accept`), not beside it, so the field gets its real saving/saved
+	 * states, announcement and stale-snapshot handling for free; the dialog just
+	 * needs to know how that attempt ended, and this is how the commit below
+	 * tells it.
+	 */
+	const outcome = useRef<{
+		resolve: () => void;
+		reject: (reason: unknown) => void;
+	} | null>(null);
 	const api = useInlineEdit<string>({
 		value: project.status,
 		commit: async (next) => {
-			await commit({ status: next as DesktopProjectStatus });
+			const forced = forceNext.current;
+			forceNext.current = false;
+			setRefusal(null);
+			try {
+				const result = (await commit(
+					{ status: next as DesktopProjectStatus },
+					forced ? { forceDone: true } : undefined,
+				)) as Parameters<typeof forcedCloseToastText>[0];
+				if (forced) {
+					/* A forced close says so: the caption alone ("Status saved")
+					 * would read as an ordinary finish. */
+					showSuccessToast(
+						forcedCloseToastText(
+							result,
+							refusal?.count ?? 0,
+							projectStatusMeta(next).label,
+						),
+					);
+				}
+				outcome.current?.resolve();
+			} catch (error) {
+				setRefusal(doneGateRefusalOf(error));
+				outcome.current?.reject(error);
+				throw error;
+			} finally {
+				outcome.current = null;
+			}
 		},
 		labels: editLabels("status", "Status"),
 		keyboardCommit: false,
 		errorCopy: projectWriteErrorCopy,
 		onBegin: () => setMenuOpen(true),
 	});
+	/*
+	 * THE FORCE DOOR exists only while the field is holding a CODED done-gate
+	 * refusal and this daemon advertises `projects_force_done`. A refusal
+	 * recognised from its sentence alone (an older daemon) gets no door: that
+	 * daemon would 422 the extra body key, turning a choice into a second error.
+	 */
+	const canForce =
+		forceDoneOffered &&
+		api.phase === "error" &&
+		refusal !== null &&
+		refusal.coded;
+	/*
+	 * The delivery runs on the commit that settles the field: the hook's own
+	 * refocus effect (declared inside `useInlineEdit`, so it flushes first) has
+	 * just put the caret back on the status pencil, and this one then scrolls
+	 * the milestones into view and focuses their heading - a `tabIndex={-1}`
+	 * target the reader can act from immediately.
+	 */
+	useEffect(() => {
+		if (!deliverToMilestones.current) return;
+		if (api.phase !== "idle" && api.phase !== "saved") return;
+		deliverToMilestones.current = false;
+		const section = document.querySelector<HTMLElement>(
+			"[data-project-milestones]",
+		);
+		if (!section) return;
+		section.scrollIntoView({ block: "start" });
+		section
+			.querySelector<HTMLElement>("[data-project-milestones-heading]")
+			?.focus({ preventScroll: true });
+	}, [api.phase]);
+
+	const confirmForce = () =>
+		new Promise<void>((resolve, reject) => {
+			if (api.phase !== "error" || api.conflict !== null) {
+				reject(new Error(""));
+				return;
+			}
+			/*
+			 * AGENT REVIEW F1, reproduced at hook level: `accept` sends a commit
+			 * only when the draft differs from the record it is compared
+			 * against. A refusal arrives together with a refetch, and if that
+			 * refetch has already moved the record to the same value (set
+			 * elsewhere while the dialog was open), `accept` closes the field
+			 * with NO write - and a promise that never settles holds the dialog
+			 * in its busy state with every exit refused, reload-only. The write
+			 * is moot (the record already reads what the press asked for), so
+			 * the promise settles here instead of waiting for a commit that
+			 * will not come.
+			 */
+			if (!api.dirty) {
+				resolve();
+				return;
+			}
+			forceNext.current = true;
+			outcome.current = { resolve, reject };
+			api.accept(api.draft, true);
+		});
 	return (
 		<FieldShell
 			field="status"
@@ -582,6 +729,46 @@ export const ProjectStatusField: FC<{
 			 * re-wrapping around them.
 			 */
 			hug
+			feedbackExtra={
+				<>
+					{canForce && (
+						/*
+						 * A REAL CONTROL (design round 1, D5; QA round 1, Q3): the
+						 * door used to be a bare text button (113x20, caption-like)
+						 * stacked under Retry. It is now the system's smallest
+						 * button - 28px, the control ramp's first rung - on one row
+						 * with Retry, and its label carries the ellipsis the app
+						 * already uses for "this opens a dialog" (`mesh-list.tsx`)
+						 * so a screen reader can tell it from the dialog's own
+						 * "Mark done anyway" primary (agent review F8).
+						 */
+						<Button
+							variant="ghost"
+							size="sm"
+							data-project-force-done-door=""
+							onClick={() => setAsked(refusal)}
+						>
+							Mark done anyway…
+						</Button>
+					)}
+					<ProjectDoneAnywayDialog
+						open={asked !== null}
+						refusal={asked}
+						projectLabel={projectDisplayName(project)}
+						onClose={() => setAsked(null)}
+						onConfirm={confirmForce}
+						secondaryLabel="Review milestones"
+						onSecondary={() => {
+							/* The milestones are on this page: drop the held edit and put
+							 * the reader on the list they would complete. The delivery
+							 * waits for the field's settle - see the effect above. */
+							setAsked(null);
+							deliverToMilestones.current = true;
+							api.cancel();
+						}}
+					/>
+				</>
+			}
 			editor={
 				<Select
 					open={menuOpen}

@@ -72,6 +72,7 @@ import {
 	type StoredAccount,
 	useEntities,
 } from "../pickers/destination-pickers";
+import { connectProviderForSelector } from "../pickers/model-catalogue-listing";
 import {
 	DESTINATIONS,
 	type InlineArgumentSource,
@@ -1448,6 +1449,22 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	const activeAction = activeRow?.kind === "action" ? activeRow.row : null;
 	const activeCommand = activeRow?.kind === "command" ? activeRow : null;
 	/*
+	 * THE PROVIDER A PICK ON THIS ROW CONNECTS (UX round 2, U4): the inline
+	 * `/model` list's rows the wire says cannot run, where the pick opens the
+	 * Connect flow instead of submitting — the interception in
+	 * `message-input.tsx`, which reads the SAME resolver over the SAME table
+	 * (`argumentList.rows`, the list a submit resolves against). Read here so
+	 * both footer lines promise the connect rather than a run it will not
+	 * perform, and read once so the two lines cannot describe two rows.
+	 *
+	 * Only a pick that RUNS is interceptable, so this can only be non-null on a
+	 * `pickRuns` row; other sources never publish `connected`, and here a row
+	 * without an explicit false resolves null exactly as it does at the submit.
+	 */
+	const activeConnectProvider = activeArgument
+		? connectProviderForSelector(state.argumentList.rows, activeArgument.value)
+		: null;
+	/*
 	 * The footer names what Enter does in the state the user is looking at. The
 	 * four meanings of Enter (complete, complete-and-wait, run, stage) are real
 	 * state, and a user who looked away for one keystroke had no way to tell
@@ -1521,6 +1538,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				),
 				value: activeArgument?.value ?? "",
 				matched: Boolean(activeRow),
+				connect: activeConnectProvider,
 				/*
 				 * The filled state on a `runs: false` source: the row's value is ALREADY
 				 * what the box holds, so this Enter writes nothing and only closes the
@@ -1626,6 +1644,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 		actionClickText: activeAction?.clickText,
 		value: activeArgument?.value ?? "",
 		matched: Boolean(activeRow),
+		connect: activeConnectProvider,
 	});
 
 	return (
