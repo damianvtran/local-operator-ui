@@ -802,6 +802,11 @@
 	   carries its own ΔE00 floor off `canvas`. See `messageSurface` in the
 	   palette contract and § 2 of docs/branding.md. */
 	--color-message-surface: var(--lo-message-surface);
+	/* The media tile's own surface: `sunken` stepped AWAY from `canvas` until
+	   the fill clears the role's ΔE00 4.0 floor - the borderless tile's fill IS
+	   its extent at rest, so it cannot share the app-wide well role. See
+	   `mediaSurface` in the palette contract and § 2 of docs/branding.md. */
+	--color-media-surface: var(--lo-media-surface);
 
 	--color-ink: var(--lo-ink);
 	--color-ink-muted: var(--lo-ink-muted);
