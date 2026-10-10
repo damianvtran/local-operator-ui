@@ -73,13 +73,15 @@
  * press (`wake-cancel-popover.tsx`) so it cannot steal the same landing on a
  * target that cannot hold focus (Q6).
  *
- * THE LANDING IS HELD ACROSS THE RE-READ'S CHURN, ONCE (F13). The canonical
- * re-read this interaction fires re-renders the pane with an EMPTY wakes list
- * for a moment; when that frame lands after a landing, the node the keyboard
- * was just given can unmount under the reader (the successor branch's hazard —
- * the pane branch survives by construction). `landWake` therefore watches the
- * node it focused, and the first commit after its disappearance re-resolves:
- * if the keyboard fell with it, the pane takes it — once, never in a loop.
+ * THE LANDING IS HELD ACROSS THE CHURN — AND ACROSS THE PANEL'S OWN UNMOUNT
+ * (F13, then Q7). The canonical re-read this interaction fires re-renders the
+ * pane with an EMPTY wakes list for a moment; and its reconnect can push an
+ * `open{gap}` whose commit nulls `frontend` for a beat, takes `runDetails` with
+ * it, and unmounts the WHOLE run panel — the hook, its effects and the node the
+ * keyboard was just on, all at once (QA round 4 measured it: 4/13 natural
+ * presses settled on `<body>`, the panel back 13–700 ms later, nothing
+ * re-resolving). The watch therefore lives at MODULE scope, outside React: see
+ * `holdWakeLanding` below for the ladder that never ends on `<body>`.
  *
  * Everything resets when the SESSION changes: wake handles are per-session
  * (`w1`..), so a pending row or a mark from one conversation must not be read
@@ -141,9 +143,6 @@ const wakeCancelLanding = (id: string): HTMLElement | null => {
 	return successorWakeCancelControl(id) ?? wakePaneFocusTarget();
 };
 
-/** A landing the watcher below holds across the re-read's churn (F13). */
-type LandedWake = { id: string; node: HTMLElement };
-
 /**
  * Whether the keyboard fell through after a close or a write, for the effects
  * below; the resolution itself decides where it lands.
@@ -169,6 +168,89 @@ const wakeFocusFellThrough = (active: Element | null, id: string): boolean =>
 	(active instanceof HTMLElement &&
 		"disabled" in active &&
 		(active as { disabled: boolean }).disabled);
+
+/*
+ * THE LANDING'S WATCH, AT MODULE SCOPE (Q7) — outside React on purpose. F13
+ * held a landing from inside the hook, and QA round 4 measured the limit of
+ * that placement: the resync's `open{gap}` commit unmounts the panel the hook
+ * lives in, taking the watch with it, and the keyboard settles on `<body>`
+ * with nothing left to re-resolve. This registry outlives every unmount: one
+ * watch at a time, armed when a landing moves the keyboard, and ended on the
+ * first resolution — a pane it can see, the pane's own opener (the close
+ * destination `run-details-trigger.tsx` uses), or a brief HOLD until the pane
+ * comes back (13–700 ms measured) rather than camping on a stale landing.
+ */
+let wakeLandingWatch: {
+	id: string;
+	node: HTMLElement;
+	/** Set once the watch is holding for a home target to reappear. */
+	holdUntil: number | null;
+} | null = null;
+let wakeLandingObserver: MutationObserver | null = null;
+let wakeLandingHoldTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** How long a home-less landing waits for the pane (or its opener) to return. */
+const WAKE_LANDING_HOLD_MS = 3000;
+
+/**
+ * The pane, else its own opener. NOT the composer: it never unmounted, so a
+ * landing there is the yank U1 exists to prevent, not a fallback.
+ */
+const wakeLandingHome = (): HTMLElement | null =>
+	document.querySelector<HTMLElement>("[data-run-panel-pane]") ??
+	document.querySelector<HTMLElement>("[data-run-panel-trigger]");
+
+const endWakeLandingWatch = (): void => {
+	wakeLandingWatch = null;
+	wakeLandingObserver?.disconnect();
+	wakeLandingObserver = null;
+	if (wakeLandingHoldTimer !== null) {
+		clearTimeout(wakeLandingHoldTimer);
+		wakeLandingHoldTimer = null;
+	}
+};
+
+const checkWakeLandingWatch = (): void => {
+	const watch = wakeLandingWatch;
+	if (watch === null) return;
+	if (watch.node.isConnected) return;
+	if (!wakeFocusFellThrough(document.activeElement, watch.id)) {
+		endWakeLandingWatch();
+		return;
+	}
+	const home = wakeLandingHome();
+	if (home !== null) {
+		endWakeLandingWatch();
+		home.focus();
+		return;
+	}
+	/*
+	 * NOWHERE TO LAND YET — the gate's gap, where the pane and its opener are
+	 * both off screen. HOLD, bounded: the pane's return is itself a mutation,
+	 * so this watcher sees it; past the bound it gives up rather than camping.
+	 */
+	if (watch.holdUntil === null) {
+		watch.holdUntil = Date.now() + WAKE_LANDING_HOLD_MS;
+		wakeLandingHoldTimer = setTimeout(
+			endWakeLandingWatch,
+			WAKE_LANDING_HOLD_MS,
+		);
+	}
+};
+
+/** Watch a landing's node from OUTSIDE the panel that just moved the keyboard. */
+const holdWakeLanding = (id: string, node: HTMLElement): void => {
+	endWakeLandingWatch();
+	wakeLandingWatch = { id, node, holdUntil: null };
+	wakeLandingObserver = new MutationObserver(checkWakeLandingWatch);
+	wakeLandingObserver.observe(document.documentElement, {
+		childList: true,
+		subtree: true,
+	});
+};
+
+/** A session switch closes the watch, as it closes everything else. */
+const clearWakeLanding = (): void => endWakeLandingWatch();
 
 /** The pressed control's viewport box, frozen at press time. */
 export type WakeAnchorRect = {
@@ -214,7 +296,12 @@ export type WakeCancelPopoverProps = {
 	refusalSeq: number;
 	busy: boolean;
 	onConfirm: () => void;
-	onCancel: () => void;
+	/**
+	 * `pressKeepsFocus` marks a dismissal whose press points at a focusable
+	 * target: the default is landing the keyboard THERE, so the landing stands
+	 * down (F15).
+	 */
+	onCancel: (options?: { pressKeepsFocus?: boolean }) => void;
 };
 
 export type WakeCancelInteraction = {
@@ -295,46 +382,22 @@ export const useWakeCancel = ({
 	const [onePress, setOnePress] = useState<{ id: string; seq: number } | null>(
 		null,
 	);
-	/*
-	 * The last landing's node, watched for the moment the re-read's churn takes
-	 * it (F13; see the header). A ref: nothing renders from it, and the watcher
-	 * is the commit effect below.
-	 */
-	const landedRef = useRef<LandedWake | null>(null);
-
-	/** Focus a resolved landing, and watch it — unless it is the pane itself. */
+	/** Focus a resolved landing, and hold it against every churn that can take it. */
 	const landWake = useCallback((id: string) => {
 		const target = wakeCancelLanding(id);
 		if (target === null) return;
 		target.focus();
-		/*
-		 * The PANE contains the rows, so "is it the pane" is identity, not
-		 * containment — a `closest` test would skip every landing (measured:
-		 * the churn case landed on a successor, watched nothing, and stayed on
-		 * `<body>`). The pane is the surface the re-read re-renders INTO; it
-		 * needs no watch.
-		 */
-		landedRef.current = target.hasAttribute("data-run-panel-pane")
-			? null
-			: { id, node: target };
+		holdWakeLanding(id, target);
 	}, []);
 
 	/*
-	 * THE WATCHER, once per landing: it runs after EVERY commit, and the commit
-	 * that unmounts the watched node is the one it acts on. The re-read empties
-	 * the list for a moment — the frame the header documents — so a successor
-	 * the keyboard was just given can disappear under it; the pane then takes
-	 * the keyboard. Bounded by construction: the record is cleared whether or
-	 * not the re-resolution fires, and the pane is never watched.
+	 * THE PRESS'S OWN KEYBOARD, when the dismissing press points at something
+	 * that can take focus (F15): the press default is landing there, so the
+	 * landing stands down rather than stealing the keyboard first. Consumed by
+	 * the fallback effect below — one dismissal, one read — and reset with the
+	 * rest of the interaction on a session switch.
 	 */
-	useEffect(() => {
-		const landed = landedRef.current;
-		if (landed === null) return;
-		if (landed.node.isConnected) return;
-		landedRef.current = null;
-		if (!wakeFocusFellThrough(document.activeElement, landed.id)) return;
-		wakePaneFocusTarget()?.focus();
-	});
+	const pressKeepsFocusRef = useRef(false);
 
 	/*
 	 * A switch to another conversation closes everything this interaction holds.
@@ -350,7 +413,8 @@ export const useWakeCancel = ({
 		setCancelledKeys(new Set());
 		setRefusedKeys(new Map());
 		setOnePress(null);
-		landedRef.current = null;
+		clearWakeLanding();
+		pressKeepsFocusRef.current = false;
 		lastPressedIdRef.current = null;
 		lastPressedKeyRef.current = null;
 	}, [sessionId]);
@@ -366,7 +430,16 @@ export const useWakeCancel = ({
 	useEffect(() => {
 		if (pending !== null) return;
 		const id = lastPressedIdRef.current;
+		const pressKeepsFocus = pressKeepsFocusRef.current;
+		pressKeepsFocusRef.current = false;
 		if (id === null) return;
+		/*
+		 * A PRESS THAT POINTS AT SOMETHING FOCUSABLE KEEPS ITS OWN KEYBOARD
+		 * (F15): its default is landing there, so the landing stands down rather
+		 * than stealing it first. Consumed above, before the guard, so a stale
+		 * flag can never suppress a later landing.
+		 */
+		if (pressKeepsFocus) return;
 		if (!wakeFocusFellThrough(document.activeElement, id)) return;
 		landWake(id);
 	}, [pending, landWake]);
@@ -436,17 +509,21 @@ export const useWakeCancel = ({
 		[busy, clearRefused, controls, settle],
 	);
 
-	const dismiss = useCallback(() => {
-		/*
-		 * Unreachable while a write is in flight — the confirmation disables both
-		 * buttons and refuses Escape, an outside click and the corner X — and kept
-		 * as the guard that makes that a rule rather than a coincidence.
-		 */
-		if (busy) return;
-		setPending(null);
-		setAnchor(null);
-		setRefusal(null);
-	}, [busy]);
+	const dismiss = useCallback(
+		(options?: { pressKeepsFocus?: boolean }) => {
+			/*
+			 * Unreachable while a write is in flight — the confirmation disables both
+			 * buttons and refuses Escape, an outside click and the corner X — and kept
+			 * as the guard that makes that a rule rather than a coincidence.
+			 */
+			if (busy) return;
+			pressKeepsFocusRef.current = options?.pressKeepsFocus === true;
+			setPending(null);
+			setAnchor(null);
+			setRefusal(null);
+		},
+		[busy],
+	);
 
 	const confirm = useCallback(() => {
 		if (!pending || busy) return;

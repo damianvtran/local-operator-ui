@@ -86,6 +86,18 @@ const CARD_MIN_ROOM = 168;
  * rows put their controls at the column's right edge) and clamped into the
  * viewport so a narrow window cannot push it off-screen.
  */
+/** The focusable taxonomy a press default can land on, by element. */
+const PRESS_FOCUS_SELECTOR =
+	"a[href], button, input, select, textarea, [contenteditable]:not([contenteditable='false']), [tabindex]";
+
+/**
+ * Whether a press on this target would land the keyboard somewhere itself —
+ * the standard taxonomy, walked up from the press point. It decides only who
+ * cancels what (F15 below); a target that cannot take focus keeps Q6's cancel.
+ */
+const pressTargetTakesFocus = (target: EventTarget | null): boolean =>
+	target instanceof Element && target.closest(PRESS_FOCUS_SELECTOR) !== null;
+
 const cardPlacement = (
 	anchor: { left: number; top: number; bottom: number; right: number },
 	viewport: { width: number; height: number },
@@ -158,15 +170,21 @@ export const WakeCancelPopover = ({
 			const target = event.target;
 			if (target instanceof Node && cardRef.current?.contains(target)) return;
 			/*
-			 * THE DISMISSING PRESS'S OWN FOCUS DEFAULT IS CANCELLED (QA round 3,
-			 * Q6 — measured live: the dismissal's landing focused the row's
-			 * control and the press's default dropped it to `<body>` the same
-			 * instant on a target that cannot hold focus). The default action of
-			 * `pointerdown` is where that focus move comes from; cancelling it
-			 * leaves the keyboard to the landing the dismissal fires. Only the
-			 * dismissing press is touched: a press inside the card returned
-			 * above, and a busy write returned before it.
+			 * THE PRESS'S OWN INTENT IS KEPT WHERE IT HAS ONE (F15, refining Q6).
+			 * Cancelling a `pointerdown` also swallows the press's compatibility
+			 * mouse events, so a press aimed at something that CAN take focus
+			 * (the composer, a menu item) neither focuses it nor places a caret,
+			 * and a `mousedown`-driven surface never starts. So the cancel is
+			 * reserved for the press Q6 measured — a target that cannot hold
+			 * focus (the chrome), where the default would only steal the
+			 * landing. On a focusable target the default is left to land there,
+			 * and the dismissal says so (`pressKeepsFocus`): the landing stands
+			 * down instead of stealing the keyboard first.
 			 */
+			if (pressTargetTakesFocus(target)) {
+				onCancel({ pressKeepsFocus: true });
+				return;
+			}
 			event.preventDefault();
 			onCancel();
 		};
@@ -239,7 +257,7 @@ export const WakeCancelPopover = ({
 					size="sm"
 					data-wake-confirm-keep=""
 					disabled={busy}
-					onClick={onCancel}
+					onClick={() => onCancel()}
 				>
 					Keep
 				</Button>
