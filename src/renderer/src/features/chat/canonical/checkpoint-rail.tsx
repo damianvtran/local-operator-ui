@@ -450,7 +450,7 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 	 * A pane that mounts with a mark already known (a resize, a reveal) skips it
 	 * and leaves the port to the follow, which is what the reader left it doing.
 	 */
-	const portSeeded = useRef(false);
+	const seededFor = useRef<string | null>(null);
 	useLayoutEffect(() => {
 		const frame = frameRef.current;
 		/*
@@ -459,24 +459,32 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 		 * answer, so the frame ref is null and there is nothing to place). Reading it
 		 * keeps the dependency honest and the guard says what it means.
 		 */
-		if (
-			checkpoints.length === 0 ||
-			frame === null ||
-			activeId !== null ||
-			portSeeded.current
-		) {
+		if (checkpoints.length === 0 || frame === null) return;
+		if (activeId !== null) {
+			/*
+			 * A known mark means the follow above owns the port, and it writes before
+			 * paint - so this conversation counts as seeded and a later moment with no
+			 * mark (a scroll, a reveal) must not pull the port back to the tail.
+			 */
+			seededFor.current = sessionId;
 			return;
 		}
-		portSeeded.current = true;
+		if (seededFor.current === sessionId) return;
+		seededFor.current = sessionId;
 		/* Clamped by the browser: a track shorter than the port lands at 0. */
 		frame.scrollTop = frame.scrollHeight;
 		/*
-		 * `checkpoints.length` IS IN THE DEPS because the commit with the first marks
-		 * need not be the mount's own, so an effect keyed on `activeId` alone could
-		 * miss the one that finally has a track to place. The latch keeps every later
-		 * arrival from re-yanking a reader who has scrolled the port by hand.
+		 * KEYED ON THE SESSION, NOT ONCE PER MOUNT (design round 3, D2's warm half):
+		 * a switch to a conversation that does not remount the rail kept the old
+		 * port offset, so a warm re-open still wrote the translation the cold open no
+		 * longer writes - measured at -1868 px (1440) and -1889 px (1280) on all 224
+		 * ticks, 17-244 ms after the first marks. `sessionId` in the deps is what
+		 * re-seeds the port for the conversation being opened; `checkpoints.length`
+		 * is there because the commit with the first marks need not be the mount's
+		 * own; and the ref keeps a reader who has scrolled the port by hand from
+		 * being yanked back on every tick arrival.
 		 */
-	}, [activeId, checkpoints.length]);
+	}, [activeId, checkpoints.length, sessionId]);
 	useLayoutEffect(() => {
 		if (activeId === null) return;
 		const frame = frameRef.current;

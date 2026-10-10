@@ -150,16 +150,38 @@ window.HTMLCanvasElement.prototype.getContext = function getContext() {
 	};
 };
 /*
- * THE REAL WINDOW TIMER, kept before the stub below replaces it. The budget arm
- * needs the product's own timer to fire, and it restores this one for its own
- * mount rather than restructuring the stub every other arm depends on.
+ * THE REAL WINDOW TIMER. The budget arm no longer needs it (it drives the
+ * captured callback instead), but the failure arm reads real time across the
+ * retry window, so it stays.
  */
 const REAL_WINDOW_SET_TIMEOUT = window.setTimeout.bind(window);
-window.setTimeout = () => {
-	timerSeq += 1;
-	return timerSeq;
+/**
+ * Every pending window timer, oldest first, WITH ITS CALLBACK.
+ *
+ * Firing nothing is what keeps this drive deterministic, and capturing the
+ * callbacks is what lets the one arm whose subject IS a timer - the hold's budget
+ * - drive the product's own callback rather than race a wall clock (agent review
+ * round 4, R8): assert while the budget is provably pending, then fire it and
+ * assert the release. Nothing else in the file fires these.
+ */
+const pendingTimers = [];
+/** The one spelling of the stub, so a re-stub cannot silently stop capturing. */
+const stubWindowTimers = () => {
+	window.setTimeout = (callback, delay) => {
+		timerSeq += 1;
+		pendingTimers.push({
+			id: timerSeq,
+			callback,
+			delay: typeof delay === "number" ? delay : 0,
+		});
+		return timerSeq;
+	};
+	window.clearTimeout = (id) => {
+		const index = pendingTimers.findIndex((timer) => timer.id === id);
+		if (index >= 0) pendingTimers.splice(index, 1);
+	};
 };
-window.clearTimeout = () => {};
+stubWindowTimers();
 const { createRoot } = await import("react-dom/client");
 const { act } = await import("react");
 after(() => {
@@ -1221,10 +1243,15 @@ const SEND_SEED = {
  * they discriminate), so it cannot import it. The number is a fact about the
  * product the arm is allowed to know, and `use-display-flag.ts` is its source.
  */
-const HOLD_BUDGET_MS = 150;
-
-/** Slack on that comparison: a sample must be clearly inside the budget. */
-const HOLD_BUDGET_MS_SLACK = 30;
+/*
+ * The product's hold budget is the flag path's own SHORT timer; the pane's other
+ * window timers are the stream deadline and the checkpoint poll, an order of
+ * magnitude longer. Identifying it by a short-delay bound rather than by the exact
+ * number keeps this arm working if the budget is retuned, and it still FAILS a
+ * product that arms no budget at all - including one probed with a zero budget,
+ * which is what round 4 measured passing under the guard this replaces.
+ */
+const SHORT_TIMER_MAX_MS = 250;
 
 /**
  * How long the scripted failing read stays in flight before it rejects.
@@ -1545,99 +1572,78 @@ test("the rail's last known ON rides the rows while the CAPABILITY answer is sti
 	);
 });
 
-test("the hold's budget: a registry read that never answers releases the pane, filtered", async (t) => {
+test("the hold's budget: pending, then fired — the release is the timer's own callback", async (t) => {
 	/*
-	 * R1's worst case, pinned. `heldSettings()` never settles the read, so before
-	 * this fix `owed` stayed true for the query's whole retry window - derived
-	 * from the shipped constants: transport deadline 20 s, renderer timeout 25 s,
-	 * one retry 1 s apart, 51 s of a BLANK transcript (no rows, no working line,
-	 * no placeholder, because the hold is not the pane's loading arm). The budget
-	 * (`DISPLAY_HOLD_BUDGET_MS`) is what ends it, and the safe way out is the
-	 * seed's own reading: with a last-known ON the filer can only ADD rows back
-	 * when the answer finally lands, so the F10 removal class stays closed.
+	 * R1's worst case, pinned DETERMINISTICALLY (agent review rounds 3 and 4, R8).
+	 * `heldSettings()` never settles the read, so before this fix `owed` stayed true
+	 * for the query's whole retry window - derived from the shipped constants:
+	 * transport deadline 20 s, renderer timeout 25 s, one retry 1 s apart, 51 s of a
+	 * BLANK transcript. The budget (`DISPLAY_HOLD_BUDGET_MS`) ends it, and the safe
+	 * way out is the seed's own reading: with a last-known ON the filter can only
+	 * ADD rows back when the answer lands, so the F10 removal class stays closed.
 	 *
-	 * THE BUDGET IS A WINDOW TIMER and this rig stubs window timers on purpose (so
-	 * every other arm's hold is deterministic) - this arm restores the real one
-	 * for its own mount, which is exactly the seam the product uses, and puts the
-	 * stub back whatever happens.
+	 * THIS ARM USES THE RIG'S STUB AND DRIVES THE PRODUCT'S OWN CALLBACK. Earlier
+	 * shapes restored the real window timer and asserted inside its 150 ms window,
+	 * which a loaded host walked out of (8 of 23 runs); the guard that followed
+	 * recorded a skip instead of asserting (9 of 17 runs), and a product probe with
+	 * `DISPLAY_HOLD_BUDGET_MS = 0` went green while showing exactly the failure the
+	 * assertion names. So: nothing here fires by itself, the pending callbacks are
+	 * captured with their delays, the hold is asserted while the budget is provably
+	 * still pending, and then the budget's own callback is fired - no wall clock is
+	 * consulted and the assertion cannot be skipped.
 	 */
 	__resetPaintCache();
 	seedDisplayFlags({ [HIDE_CROSS_SESSION_KEY]: true });
 	const settings = heldSettings();
-	window.setTimeout = REAL_WINDOW_SET_TIMEOUT;
-	try {
-		const { records, record, send } = await mountArm(
-			t,
-			"mount (read never answers)",
-			settings.network,
-		);
+	const { records, record, send } = await mountArm(
+		t,
+		"mount (read never answers)",
+		settings.network,
+	);
 
-		const mountedAt = Date.now();
-		await settings.requestSeen();
-		await send(openFrame);
-		await record("open");
-		await send(crossSnapshot());
-		await record("page (read never answers)");
-		/*
-		 * THE HOLD IS ASSERTED ONLY WHILE THE BUDGET CANNOT HAVE FIRED (agent review
-		 * round 3, R8). This arm restores the REAL window timer — it has to, or the
-		 * budget could never fire and the release below would be untestable — so the
-		 * time from the mount to this sample is the host's, and under load it went
-		 * past 150 ms: the budget released first and this equality saw the released
-		 * rows (5, expected 0; 8 of 23 runs on the reviewer's host). The arm keeps the
-		 * claim for a drive that beat the budget, records the slower case instead of
-		 * asserting it, and leaves the invariant below — which no host can race — on
-		 * every sample either way.
-		 */
-		const elapsedMs = Date.now() - mountedAt;
-		if (elapsedMs + HOLD_BUDGET_MS_SLACK <= HOLD_BUDGET_MS) {
-			assert.equal(
-				records.at(-1).rows,
-				0,
-				`rows painted ahead of the answer that governs them: ${JSON.stringify(records.at(-1).ids)}`,
-			);
-		} else {
-			console.log(
-				`  (budget arm: the drive reached the page sample in ${elapsedMs} ms, past the ${HOLD_BUDGET_MS} ms budget - the hold assertion is skipped for this run, the invariant below is not)`,
-			);
-		}
+	await settings.requestSeen();
+	await send(openFrame);
+	await record("open");
+	await send(crossSnapshot());
+	await record("page (read never answers)");
+	const armed = pendingTimers.filter(
+		(timer) => timer.delay > 0 && timer.delay <= SHORT_TIMER_MAX_MS,
+	);
+	assert.ok(
+		armed.length >= 1,
+		`the product's budget is pending with no answer in hand: ${JSON.stringify(pendingTimers.map((timer) => timer.delay))}`,
+	);
+	assert.equal(
+		records.at(-1).rows,
+		0,
+		`rows painted ahead of the answer that governs them: ${JSON.stringify(records.at(-1).ids)}`,
+	);
 
-		/*
-		 * Past the budget, with no answer anywhere in sight. THE WAIT IS THIS
-		 * RIG'S OWN NUMBER, generously above the product's: the fact under test is
-		 * that the pane RELEASES at all, and a rig that imported the product's own
-		 * constant could not be run against a tree that predates it - which is
-		 * exactly how an arm proves it discriminates.
-		 */
-		await act(async () => {
-			await new Promise((settle) => REAL_WINDOW_SET_TIMEOUT(settle, 400));
-		});
-		await record("after the budget");
-		printSequence(records, "the hold's budget, read never answers");
-		assert.ok(
-			records.at(-1).rows > 0,
-			`the pane releases once the budget is spent: ${records.at(-1).rows} rows`,
-		);
-		assert.equal(
-			records.at(-1).ids.filter((id) => CROSS_SESSION_IDS.includes(id)).length,
-			0,
-			`the release paints the seed's own reading, filtered: ${JSON.stringify(records.at(-1).ids)}`,
-		);
+	/* The budget fires. Nothing else in this rig ever does. */
+	await act(async () => {
+		for (const timer of armed) timer.callback();
+		await new Promise((settle) => setTimeout(settle, 0));
+	});
+	await record("after the budget");
+	printSequence(records, "the hold's budget, read never answers");
+	assert.ok(
+		records.at(-1).rows > 0,
+		`the pane releases once the budget is spent: ${records.at(-1).rows} rows`,
+	);
+	assert.equal(
+		records.at(-1).ids.filter((id) => CROSS_SESSION_IDS.includes(id)).length,
+		0,
+		`the release paints the seed's own reading, filtered: ${JSON.stringify(records.at(-1).ids)}`,
+	);
 
-		/*
-		 * And the invariant, off every sample: the release did not walk back
-		 * through the removal class - no commit in this sequence painted a hidden
-		 * row, before the budget or after it.
-		 */
-		for (const row of records) {
-			const painted = row.ids.filter((id) => CROSS_SESSION_IDS.includes(id));
-			assert.deepEqual(painted, [], `${row.step} painted a cross-session row`);
-		}
-	} finally {
-		window.setTimeout = () => {
-			timerSeq += 1;
-			return timerSeq;
-		};
+	/*
+	 * And the invariant, off every sample: the release did not walk back through
+	 * the removal class - no commit in this sequence painted a hidden row, before
+	 * the budget or after it.
+	 */
+	for (const row of records) {
+		const painted = row.ids.filter((id) => CROSS_SESSION_IDS.includes(id));
+		assert.deepEqual(painted, [], `${row.step} painted a cross-session row`);
 	}
 });
 
@@ -1725,9 +1731,6 @@ test("a registry read that fails releases the pane, and the retry never takes it
 			assert.deepEqual(hidden, [], `${row.step} painted a cross-session row`);
 		}
 	} finally {
-		window.setTimeout = () => {
-			timerSeq += 1;
-			return timerSeq;
-		};
+		stubWindowTimers();
 	}
 });
