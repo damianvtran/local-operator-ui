@@ -157,6 +157,17 @@ export const WakeCancelPopover = ({
 			if (busy) return;
 			const target = event.target;
 			if (target instanceof Node && cardRef.current?.contains(target)) return;
+			/*
+			 * THE DISMISSING PRESS'S OWN FOCUS DEFAULT IS CANCELLED (QA round 3,
+			 * Q6 — measured live: the dismissal's landing focused the row's
+			 * control and the press's default dropped it to `<body>` the same
+			 * instant on a target that cannot hold focus). The default action of
+			 * `pointerdown` is where that focus move comes from; cancelling it
+			 * leaves the keyboard to the landing the dismissal fires. Only the
+			 * dismissing press is touched: a press inside the card returned
+			 * above, and a busy write returned before it.
+			 */
+			event.preventDefault();
 			onCancel();
 		};
 		window.addEventListener("keydown", onKeyDown, true);

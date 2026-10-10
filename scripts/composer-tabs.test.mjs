@@ -2910,18 +2910,28 @@ test("the refocus answers for the focused NODE, not for a chip count", () => {
 	 * And the memory is refreshed by the READER'S OWN DEPARTURE, not by a commit
 	 * (UX round 1, U1's composer half): the `focusout` listener drops it the
 	 * moment focus leaves the row, and a node the browser removed mid-write is
-	 * kept for the commit effect (`isConnected` tells them apart). Both halves
-	 * are pinned here and driven below.
+	 * kept for the commit effect (`isConnected` tells them apart). A window blur
+	 * is NOT a departure — focus that left the document is not focus that left
+	 * the row (`hasFocus`; agent review round 3, F12). All of it rides the REF
+	 * CALLBACK, because the row's first commit can be empty and a `[]` effect
+	 * would never get a node to attach to (F11 / QA round 3, Q5). The halves are
+	 * pinned here and driven below.
 	 */
-	assert.match(row, /row\.addEventListener\("focusout", onFocusOut\)/);
+	assert.match(
+		row,
+		/const attachRow = useCallback\(\(node: HTMLDivElement \| null\) =>/,
+	);
+	assert.match(row, /ref=\{attachRow\}/);
+	assert.match(row, /node\.addEventListener\("focusout", onFocusOut\)/);
+	assert.match(
+		row,
+		/previous\.removeEventListener\("focusout", previousListener\)/,
+	);
 	assert.match(
 		row,
 		/if \(next !== null\) \{\s*previouslyFocused\.current = null;/,
 	);
-	assert.match(
-		row,
-		/if \(target\.isConnected\) previouslyFocused\.current = null;/,
-	);
+	assert.match(row, /if \(target\.isConnected && document\.hasFocus\(\)\)/);
 	// The prop is optional, so a story that renders the row alone need not
 	// invent a focus target.
 	assert.match(row, /onFocusComposer\?: \(\) => void;/);
@@ -3207,6 +3217,249 @@ test("a chip whose reader left cannot pull the keyboard back when it unmounts (U
 			"a chip unmounting after the reader left pulls nothing",
 		);
 		Object.defineProperty(dom.document, "activeElement", realActiveElement);
+	} finally {
+		console.error = realError;
+		cleanup();
+	}
+	assert.ok(
+		quiet.every((message) => message.includes("not wrapped in act")),
+		`React reported something the harness does not expect: ${quiet.join(" | ")}`,
+	);
+});
+
+test("the fence attaches on the production mount order, and the departure holds (F11 / Q5)", async () => {
+	/*
+	 * AGENT REVIEW ROUND 3's F11 and QA ROUND 3's Q5, both measured live: the
+	 * fence never attached, because the row returns `null` on its first commit
+	 * (no snapshot yet) and the mount effect had no node to attach to. The fix
+	 * rides the REF CALLBACK; this case drives the PRODUCTION order (empty
+	 * first commit, content next) and probes the attachment the way the live
+	 * rig did — by wrapping `addEventListener` — before driving the departure
+	 * the fence exists for.
+	 */
+	const { window: dom, root, cleanup } = await domHarness();
+	const quiet = [];
+	const realError = console.error;
+	console.error = (...args) => void quiet.push(String(args[0]));
+	const realAdd = dom.window.EventTarget.prototype.addEventListener;
+	const focusoutAttaches = [];
+	dom.window.EventTarget.prototype.addEventListener = function (type, ...rest) {
+		if (type === "focusout") focusoutAttaches.push(this);
+		return realAdd.call(this, type, ...rest);
+	};
+	try {
+		const h = createElement;
+		let refocuses = 0;
+		const composerField = () => dom.document.getElementById("composer");
+		const element = (state) =>
+			h(
+				"div",
+				null,
+				h(ComposerStatusRow, {
+					frontend: state.frontend,
+					runDetails: state.details,
+					onFocusComposer: () => {
+						refocuses += 1;
+						composerField().focus();
+					},
+				}),
+				h("textarea", { id: "composer", readOnly: true }),
+			);
+		const running = () => [wireJob("s1", "bash", "running", "bash: sleep 60")];
+		const delegate = () => [
+			wireJob("c1", "task", "running", "Draft the summary"),
+		];
+		const populated = () => ({
+			frontend: frontend(""),
+			details: detailsWith(running()),
+		});
+
+		const realActiveElement = Object.getOwnPropertyDescriptor(
+			dom.window.Document.prototype,
+			"activeElement",
+		);
+		let active = null;
+		Object.defineProperty(dom.document, "activeElement", {
+			configurable: true,
+			get: () => active,
+		});
+
+		/*
+		 * THE PRODUCTION ORDER: the row's first commit is empty — no snapshot
+		 * yet — and the content arrives on the next one.
+		 */
+		await act(
+			async () => void root.render(element({ frontend: null, details: null })),
+		);
+		assert.equal(
+			dom.document.querySelector("[data-composer-status-row]"),
+			null,
+			"the first commit draws no row (the production order)",
+		);
+		assert.equal(
+			focusoutAttaches.length,
+			0,
+			"and there was no node for the listener yet",
+		);
+		await act(async () => void root.render(element(populated())));
+		const row = dom.document.querySelector("[data-composer-status-row]");
+		const chip = dom.document.querySelector("[data-status-jobs]");
+		assert.ok(row && chip, "the row and its chip arrive on the next commit");
+		assert.equal(
+			focusoutAttaches.filter((node) => node === row).length,
+			1,
+			"the listener attached to the row the moment the node existed",
+		);
+		active = chip;
+		await act(async () => void root.render(element(populated())));
+		assert.equal(refocuses, 0, "nothing is owed while the focused chip lives");
+
+		/* The reader leaves; the chip then unmounts under the production order. */
+		await act(async () => {
+			chip.dispatchEvent(
+				new dom.window.FocusEvent("focusout", {
+					bubbles: true,
+					relatedTarget: dom.document.body,
+				}),
+			);
+		});
+		active = dom.document.body;
+		await act(
+			async () =>
+				void root.render(
+					element({ frontend: frontend(""), details: detailsWith(delegate()) }),
+				),
+		);
+		assert.ok(
+			!dom.document.body.contains(chip),
+			"the chip unmounted with the reader away",
+		);
+		assert.equal(
+			refocuses,
+			0,
+			"and the departure's memory drop holds on the production order",
+		);
+		Object.defineProperty(dom.document, "activeElement", realActiveElement);
+	} finally {
+		dom.window.EventTarget.prototype.addEventListener = realAdd;
+		console.error = realError;
+		cleanup();
+	}
+	assert.ok(
+		quiet.every((message) => message.includes("not wrapped in act")),
+		`React reported something the harness does not expect: ${quiet.join(" | ")}`,
+	);
+});
+
+test("a window blur is not a departure: the backgrounded restore survives (F12)", async () => {
+	/*
+	 * AGENT REVIEW ROUND 3's F12: a window blur arrives as a `focusout` with a
+	 * null `relatedTarget` while the node stays connected, so the microtask
+	 * classified it as a departure and dropped the memory — killing the m2
+	 * restore for a chip that vanishes while the window is backgrounded, which
+	 * is exactly the settle that restore exists for. `document.hasFocus()`
+	 * tells the two apart; this case drives the platform facts (the focusout
+	 * the blur dispatches, hasFocus false) and the contrast (an in-document
+	 * move with hasFocus true still drops the memory).
+	 */
+	const { window: dom, root, cleanup } = await domHarness();
+	const quiet = [];
+	const realError = console.error;
+	console.error = (...args) => void quiet.push(String(args[0]));
+	try {
+		const h = createElement;
+		let refocuses = 0;
+		const composerField = () => dom.document.getElementById("composer");
+		const element = (jobs) =>
+			h(
+				"div",
+				null,
+				h(ComposerStatusRow, {
+					frontend: frontend(""),
+					runDetails: detailsWith(jobs),
+					onFocusComposer: () => {
+						refocuses += 1;
+						composerField().focus();
+					},
+				}),
+				h("textarea", { id: "composer", readOnly: true }),
+			);
+		const running = () => [wireJob("s1", "bash", "running", "bash: sleep 60")];
+		const delegate = () => [
+			wireJob("c1", "task", "running", "Draft the summary"),
+		];
+
+		/*
+		 * `hasFocus` is stubbed because jsdom's window is never backgrounded
+		 * (its own default already reads false; the stub makes the two halves
+		 * explicit). `activeElement` is stubbed for the cost reason the case
+		 * above states.
+		 */
+		const realHasFocus = Object.getOwnPropertyDescriptor(
+			dom.window.Document.prototype,
+			"hasFocus",
+		);
+		const hasFocus = (value) =>
+			Object.defineProperty(dom.document, "hasFocus", {
+				configurable: true,
+				value: () => value,
+			});
+		const realActiveElement = Object.getOwnPropertyDescriptor(
+			dom.window.Document.prototype,
+			"activeElement",
+		);
+		let active = null;
+		Object.defineProperty(dom.document, "activeElement", {
+			configurable: true,
+			get: () => active,
+		});
+
+		/* THE BLUR, then the swap: the restore must survive. */
+		await act(async () => void root.render(element(running())));
+		const chip = dom.document.querySelector("[data-status-jobs]");
+		active = chip;
+		await act(async () => void root.render(element(running())));
+		hasFocus(false);
+		await act(async () => {
+			chip.dispatchEvent(
+				new dom.window.FocusEvent("focusout", { bubbles: true }),
+			);
+		});
+		await act(async () => {});
+		active = dom.document.body;
+		await act(async () => void root.render(element(delegate())));
+		assert.equal(
+			refocuses,
+			1,
+			"the backgrounded chip's unmount still hands focus back",
+		);
+
+		/* THE CONTRAST: the same shape, focus still in the document. */
+		await act(async () => void root.render(element(running())));
+		const second = dom.document.querySelector("[data-status-jobs]");
+		active = second;
+		await act(async () => void root.render(element(running())));
+		hasFocus(true);
+		await act(async () => {
+			second.dispatchEvent(
+				new dom.window.FocusEvent("focusout", { bubbles: true }),
+			);
+		});
+		await act(async () => {});
+		active = dom.document.body;
+		await act(async () => void root.render(element(delegate())));
+		assert.ok(
+			!dom.document.body.contains(second),
+			"the second chip really unmounted",
+		);
+		assert.equal(
+			refocuses,
+			1,
+			"an in-document move IS a departure: nothing owed",
+		);
+
+		Object.defineProperty(dom.document, "activeElement", realActiveElement);
+		Object.defineProperty(dom.document, "hasFocus", realHasFocus);
 	} finally {
 		console.error = realError;
 		cleanup();
