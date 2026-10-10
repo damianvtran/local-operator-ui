@@ -2122,6 +2122,26 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z
 		.object({
+			/*
+			 * THE PRE-EMPTIVE QUOTA READ (the sibling core PRs' route,
+			 * `GET /v1/desktop/quota-notice`).
+			 *
+			 * The provider and model are the SELECTION under review, sent so the
+			 * renderer's query key and the backend's verdict cannot disagree about
+			 * what is being checked. Both are optional because the route falls back
+			 * to the backend's own config values -- the same store the renderer's
+			 * selection was read from -- and `refresh` is the user's explicit "I
+			 * topped up" / "I verified": it bypasses the route's cache floor while
+			 * every automatic read stays cache-aware.
+			 */
+			op: z.literal("quota.notice"),
+			provider: id.optional(),
+			model: z.string().min(1).max(200).optional(),
+			refresh: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({
 			op: z.literal("analytics.get"),
 			sessionId: sessionId.optional(),
 			sinceMs: z.number().int().nonnegative().optional(),
@@ -2591,6 +2611,16 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 						"org_agents.list",
 						"org_team.get",
 						"org_teams.list",
+						/*
+						 * The verification-email resend (core PR2,
+						 * `feat/quota-notice-resend`): it maps to the upstream's JWT-only
+						 * `POST /auth/signup/resend` and needs a `request_id`, exactly like
+						 * every other mutation. Named here and in
+						 * `shared/api/radient/proxy.ts` for the reason above; an OLDER
+						 * backend answers it with a masked 422, which the quota notice
+						 * reads as "degrade to the verification-page link".
+						 */
+						"signup.resend",
 					]),
 					request_id: requestId.optional(),
 					tenant_id: id.optional(),
@@ -4469,6 +4499,10 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	// a failure is reported with a read's patience rather than a write's caution.
 	"projects.search",
 	"providers.list",
+	// The pre-emptive quota read: a cache-first verdict that changes nothing on
+	// the server. It may trigger the backend's own bounded usage fetch, but no
+	// state the user can see is written.
+	"quota.notice",
 	// A reader that changes nothing (the route's own docstring): the straggler
 	// census, and the app re-reads it rather than caching a stale count.
 	"runtimes.list",
@@ -4920,6 +4954,53 @@ export type DesktopCapabilities = {
 	desktop_auth: "bearer";
 	features: Record<string, number>;
 };
+
+/**
+ * `GET /v1/desktop/quota-notice`, as the route sends it.
+ *
+ * THE RENDERER'S TWIN of the backend's `QuotaNoticeResult` (core PR1/
+ * PR2). A schema rather than a bare type because it is the WIRE'S half of the
+ * contract, not a convenience: the tests that stub this route bind their
+ * fixtures to it, so a fixture cannot drift from the shape the real route
+ * sends (its producer builds it in `server/routes/desktop_quota.py` from
+ * `providers/quota_notice.py`'s verdict).
+ *
+ * `state` is the whole vocabulary, including the "show nothing" states,
+ * because it is also the diagnostics carrier; the notice's own shown set is
+ * `quota-notice.ts`'s list. No `identity` or email ever appears here -- the
+ * route is built to leave both out. `title` is the short form and `body` the
+ * full sentence; `actions` arrive in the order the builder composed.
+ */
+export const QUOTA_NOTICE_SCHEMA = z.object({
+	state: z.enum([
+		"ok",
+		"depleted",
+		"limit_reached",
+		"unverified",
+		"unknown",
+		"not_applicable",
+	]),
+	provider: z.string(),
+	kind: z.enum(["balance", "subscription", "radient", "none"]),
+	model_free: z.boolean(),
+	title: z.string(),
+	body: z.string(),
+	actions: z.array(
+		z.object({
+			id: z.enum(["open_url", "resend_verification", "refresh"]),
+			label: z.string(),
+			url: z.string().nullable().optional(),
+		}),
+	),
+	resets_at_ms: z.number().int().nullable().optional(),
+	checked_at_ms: z.number().int(),
+	age_ms: z.number().int().nullable().optional(),
+	source: z.enum(["cached", "live"]),
+});
+
+export type QuotaNotice = z.infer<typeof QUOTA_NOTICE_SCHEMA>;
+export type QuotaNoticeAction = QuotaNotice["actions"][number];
+export type QuotaNoticeState = QuotaNotice["state"];
 
 export type ProviderMethod = {
 	/** The provider a flow acts on; `auth.start` and `auth.key` take this. */
@@ -6189,6 +6270,14 @@ export function desktopEndpoint(request: DesktopRequest): {
 			});
 			if (request.provider) query.set("provider", request.provider);
 			return { path: `/v1/desktop/usage?${query}`, method: "GET" };
+		}
+		case "quota.notice": {
+			const query = new URLSearchParams({
+				refresh: String(request.refresh ?? false),
+			});
+			if (request.provider) query.set("provider", request.provider);
+			if (request.model) query.set("model", request.model);
+			return { path: `/v1/desktop/quota-notice?${query}`, method: "GET" };
 		}
 		case "analytics.get": {
 			const query = new URLSearchParams({ days: String(request.days ?? 30) });

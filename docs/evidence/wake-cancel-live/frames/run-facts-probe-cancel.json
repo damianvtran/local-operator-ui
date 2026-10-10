@@ -1,0 +1,1851 @@
+{
+  "scenario": "probe-cancel",
+  "tree": "/Users/damian/local-operator-ui-worktrees/wake-cancel-pane",
+  "api": "http://127.0.0.1:8080",
+  "scratch": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/wake-cancel-rig-G6d2wh",
+  "steps": [
+    {
+      "label": "hello",
+      "body": {
+        "apiBaseUrl": "http://127.0.0.1:8080",
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      }
+    },
+    {
+      "label": "press [data-rig-skip]",
+      "body": {
+        "target": "button \"Skip for now\"",
+        "hitTest": true,
+        "disabled": false
+      }
+    },
+    {
+      "label": "onboarding dismissed",
+      "body": {
+        "control": "[data-rig-skip]"
+      }
+    },
+    {
+      "label": "chip overlay probe",
+      "body": {
+        "at": {
+          "x": 462,
+          "y": 754
+        },
+        "stack": [
+          "button#.inline-flex h-6 min-w-0 shrink-0 items-c|pe=auto|pos=static|z=auto",
+          "div#.flex min-w-0 flex-wrap items-center gap-|pe=auto|pos=static|z=auto",
+          "div#.w-full @min-[750px]/chatcol:max-w-[var(-|pe=auto|pos=static|z=auto",
+          "form#.w-full|pe=auto|pos=static|z=auto",
+          "div#.w-full|pe=auto|pos=static|z=auto"
+        ]
+      }
+    },
+    {
+      "label": "capture debug-before-chip",
+      "body": {
+        "file": "/Users/damian/local-operator-ui-worktrees/wake-cancel-pane/docs/evidence/wake-cancel-live/frames/debug-before-chip.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      }
+    },
+    {
+      "label": "press [data-status-wakes]",
+      "body": {
+        "target": "button \"Open the wakes in run details — 4 wakes armed\"",
+        "hitTest": true,
+        "disabled": false
+      }
+    },
+    {
+      "label": "direct before",
+      "body": {
+        "ids": [
+          "w1",
+          "w3",
+          "w2",
+          "w4"
+        ],
+        "rows": 4
+      }
+    },
+    {
+      "label": "targets",
+      "body": [
+        {
+          "id": "E3A69B5F2204DF1A3D0DC73569AA4322",
+          "url": "file:///Users/damian/local-operator-ui-worktrees/wake-cancel-pane/out/renderer/index.html#/chat",
+          "title": "Local Operator"
+        },
+        {
+          "id": "47305A45135BCA7CC8202015BB2B3302",
+          "url": "about:blank",
+          "title": "about:blank"
+        },
+        {
+          "id": "36FFD75A5D1DCED25FB8BC7FB74024F0",
+          "url": "about:blank",
+          "title": "about:blank"
+        },
+        {
+          "id": "3846833AF141363D047F646BC4BCB9CB",
+          "url": "file:///Users/damian/local-operator-ui-worktrees/wake-cancel-pane/out/renderer/mini.html",
+          "title": "Local Operator Quick Send"
+        }
+      ]
+    },
+    {
+      "label": "doc marker (set)",
+      "body": "Local Operator:1"
+    },
+    {
+      "label": "doc marker (read back)",
+      "body": "Local Operator:1"
+    },
+    {
+      "label": "direct after",
+      "body": {
+        "ids": [
+          "w1",
+          "w3",
+          "w2",
+          "w4"
+        ],
+        "rows": 4
+      }
+    },
+    {
+      "label": "press [data-wake-cancel=\"w2\"]",
+      "body": {
+        "target": "button \"Cancel wake: Sweep the ingest queue for stuck rows\"",
+        "hitTest": true,
+        "disabled": false
+      }
+    },
+    {
+      "label": "direct after press",
+      "body": {
+        "ids": [
+          "w1",
+          "w3",
+          "w4"
+        ],
+        "rows": 3
+      }
+    },
+    {
+      "label": "sampler",
+      "body": [
+        {
+          "t": 1791583988831,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583988871,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583988911,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583988952,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583988991,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989032,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989072,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989111,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989152,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989191,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989231,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989272,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989311,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989351,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989392,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989432,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989471,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989512,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989551,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989591,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989632,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989672,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989711,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989751,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989791,
+          "ids": [
+            "w1",
+            "w3",
+            "w2",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 4
+        },
+        {
+          "t": 1791583989831,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583989871,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583989912,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583989952,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583989992,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990032,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990072,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990111,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990151,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990191,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990231,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990272,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990312,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990352,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990392,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990430,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990471,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990514,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990550,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990591,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990632,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990672,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990712,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990752,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990791,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990831,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990871,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990910,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990951,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583990991,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991030,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991072,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991111,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991151,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991191,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991231,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991271,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991311,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991351,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991392,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991432,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991472,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991512,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991551,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991592,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991632,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991672,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991712,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991752,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991792,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991832,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991871,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991912,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991952,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583991992,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992031,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992071,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992111,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992151,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992192,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992232,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992272,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992312,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992351,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992392,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992431,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992472,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992512,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992552,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992592,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992632,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992671,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992711,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992751,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992792,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992831,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992871,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992910,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992950,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583992992,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993031,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993071,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993111,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993151,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993191,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993232,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993271,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993310,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993351,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993391,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993431,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993471,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993511,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993551,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993591,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993631,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993671,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993711,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993750,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        },
+        {
+          "t": 1791583993791,
+          "ids": [
+            "w1",
+            "w3",
+            "w4"
+          ],
+          "doc": "Local Operator:1",
+          "name": "",
+          "frames": [],
+          "driver": "object",
+          "rows": 3
+        }
+      ]
+    },
+    {
+      "label": "isolation",
+      "body": {
+        "apiBaseUrl": "http://127.0.0.1:8080"
+      }
+    }
+  ],
+  "appLog": [
+    "18:13:04.747 › Periodic update checks scheduled (every 5 minutes)",
+    "18:13:04.748 › macOS auto-update requires app signing",
+    "18:13:04.748 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure",
+    "18:13:04.758 › [browser] denied a media permission request from (unknown origin)",
+    "18:13:04.759 › [browser] denied a media permission request from (unknown origin)",
+    "18:13:04.759 › [browser] denied a web-app-installation permission request from (unknown origin)",
+    "18:13:04.759 › [browser] denied a geolocation permission request from (unknown origin)",
+    "Error occurred in handler for 'mini-view:registration-get': Error: This window cannot read the hotkey registration.",
+    "    at /Users/damian/local-operator-ui-worktrees/wake-cancel-pane/out/main/index.js:43638:13",
+    "    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)",
+    "    at Session.emit (node:events:514:28)",
+    "18:13:05.385 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin:/Users/damian/.cargo/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin",
+    "18:13:05.387 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin:/Users/damian/.cargo/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin",
+    "18:13:05.486 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf",
+    "18:13:05.488 › Checking for UI updates...",
+    "18:13:05.490 › Skip checkForUpdates because application is not packed and dev update config is not forced",
+    "Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'",
+    "    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)",
+    "    at Session.emit (node:events:514:28)",
+    "Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'",
+    "    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)",
+    "    at Session.emit (node:events:514:28)",
+    "(node:77020) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit",
+    "(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)",
+    "Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'",
+    "    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)",
+    "    at Session.emit (node:events:514:28)",
+    "18:13:05.595 › [browser] denied a media permission request from (unknown origin)",
+    "18:13:05.596 › [browser] denied a media permission request from (unknown origin)",
+    "18:13:05.597 › [browser] denied a web-app-installation permission request from (unknown origin)",
+    "18:13:05.597 › [browser] denied a geolocation permission request from (unknown origin)",
+    "18:13:05.652 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)",
+    "18:13:05.655 › [browser] host on 127.0.0.1:55413 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/wake-cancel-rig-G6d2wh/profile/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))",
+    "18:13:05.933 › [browser] tab 1 navigated to about:blank",
+    "[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900",
+    "18:13:07.750 › Checking for updates... (silent mode: true)",
+    "18:13:07.750 › Skip checkForUpdates because application is not packed and dev update config is not forced",
+    "18:13:07.751 › Checking for backend updates... (silent mode: true)",
+    "18:13:07.751 › Skip backend update check in dev mode unless forced",
+    ""
+  ]
+}

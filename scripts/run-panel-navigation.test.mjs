@@ -579,6 +579,21 @@ const crowdedHarness = () => {
 				refusalFor: () => null,
 			},
 			sessionId: "a1b2c3d4e5f6",
+			/*
+			 * The wakes cancel pair is REQUIRED on the panel (the wakes control
+			 * slice), and the panel reads `wakeAida.name` on every render - a
+			 * harness that omits them throws inside the panel before any case can
+			 * run (agent review round 1, F1). Inert, exactly as the stories pass
+			 * them: this file's subject is the roster's navigation, and no case
+			 * here presses a wake control.
+			 */
+			wakeControls: { cancel: async () => ({ ok: true }) },
+			wakeAida: {
+				capability: false,
+				statusResolved: false,
+				sessionId: null,
+				name: "Aida",
+			},
 			pulses: {},
 			childrenOpenable: true,
 			paneWidth: 420,

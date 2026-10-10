@@ -15,16 +15,18 @@
  * the surface that draws a running child's elapsed time and the only one that
  * has to repaint when it moves.
  *
- * AND ONE INTERACTION LIVES HERE, not in the section that raises it: the
+ * AND TWO INTERACTIONS LIVE HERE, not in the sections that raise them: the
  * Monitors section's cancel confirmation and the per-row records it leaves
- * (`use-monitor-cancel.ts`). The section is gated on `details.monitors.length`,
- * and the canonical re-read every cancel fires churns that list - measured, a
+ * (`use-monitor-cancel.ts`), and the Wakes section's cancel — one press for an
+ * ordinary wake, a confirmation for the chief of staff's, and every record
+ * either attempt leaves (`use-wake-cancel.ts`). The Wakes section is gated on
+ * `details.wakes.length` exactly as the Monitors section is on
+ * `details.monitors.length`, and the canonical re-read every cancel fires
+ * churns both lists the same way - measured on the monitors, where a
  * section-owned dialog unmounted mid-refusal on ~8 of 34 presses and the
- * keyboard fell to `<body>` (UX review round 1, U2). This body is above the
- * gate, so the interaction's state is owned here and the section stays
- * presentational; the dialog renders OUTSIDE the sections gate below for the
- * same reason, because the churn can empty the section list while a sentence
- * is on screen.
+ * keyboard fell to `<body>` (UX review round 1, U2). This body is above both
+ * gates, so each interaction's state is owned here, the cards render OUTSIDE
+ * the sections gate below, and the sections stay presentational.
  */
 
 import { Separator } from "@shared/components/ui";
@@ -43,6 +45,10 @@ import { useRunDetailsClock } from "./run-details-clock";
 import type { McpRemedyControls } from "./use-mcp-remedy";
 import { useMonitorCancel } from "./use-monitor-cancel";
 import type { MonitorControls } from "./use-monitor-controls";
+import { useWakeCancel } from "./use-wake-cancel";
+import type { WakeControls } from "./use-wake-controls";
+import { WakeCancelPopover } from "./wake-cancel-popover";
+import type { AidaWakeIdentity } from "./wake-controls-model";
 
 export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	details: RunDetails;
@@ -115,6 +121,19 @@ export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	 */
 	monitorControls: MonitorControls;
 	/**
+	 * The pane's wake write controls (`use-wake-controls.ts`), threaded from the
+	 * page exactly as `monitorControls` is: the wakes' confirmation and every
+	 * record an attempt leaves live in this body, one section over.
+	 */
+	wakeControls: WakeControls;
+	/**
+	 * What the pane knows about the chief of staff (`useAidaTarget` at the page):
+	 * the guard that keeps her check-ins from being one stray click from gone.
+	 * Plain data rather than a hook call for the monitors' reason — the stories
+	 * inject identity instead of needing providers.
+	 */
+	wakeAida: AidaWakeIdentity;
+	/**
 	 * The conversation whose canonical session this pane reports, or `null` when
 	 * none exists yet.
 	 *
@@ -142,6 +161,8 @@ export const RunDetailsPanel = ({
 	wakesSectionRef,
 	monitorsSectionRef,
 	monitorControls,
+	wakeControls,
+	wakeAida,
 	sessionId,
 	className,
 	...props
@@ -170,6 +191,18 @@ export const RunDetailsPanel = ({
 	const monitorCancel = useMonitorCancel({
 		sessionId,
 		controls: monitorControls,
+	});
+	/*
+	 * The Wakes cancel interaction, owned HERE for the same reason and one
+	 * section over: the wakes list churns under the canonical re-read a cancel
+	 * fires, so the one-press write, the confirmation and every record live above
+	 * the section gate. It takes the write controls, the session identity and the
+	 * display name the confirmation may name.
+	 */
+	const wakeCancel = useWakeCancel({
+		sessionId,
+		controls: wakeControls,
+		name: wakeAida.name,
 	});
 	/*
 	 * Presence is judged on the DERIVED lists rather than on the visible slices:
@@ -271,7 +304,15 @@ export const RunDetailsPanel = ({
 	if (details.wakes.length > 0) {
 		sections.push({
 			key: "wakes",
-			body: <RunDetailWakes details={details} sectionRef={wakesSectionRef} />,
+			body: (
+				<RunDetailWakes
+					details={details}
+					sectionRef={wakesSectionRef}
+					sessionId={sessionId}
+					cancel={wakeCancel.section}
+					identity={wakeAida}
+				/>
+			),
 		});
 	}
 	/*
@@ -387,6 +428,15 @@ export const RunDetailsPanel = ({
 			 * `use-monitor-cancel.ts` for the state that backs it.
 			 */}
 			<MonitorCancelDialog {...monitorCancel.dialog} />
+			{/*
+			 * The wakes confirmation, rendered here for the monitors' own reason: the
+			 * wakes list is gated on `details.wakes.length` and empties for a frame
+			 * under the same canonical re-read, so a card owned by that section would
+			 * leave with its rows — measured for monitors as ~8 of 34 refusals losing
+			 * their sentence. It is anchored to the rect captured at the press, so it
+			 * keeps its place even while its row is off the screen.
+			 */}
+			<WakeCancelPopover {...wakeCancel.popover} />
 		</div>
 	);
 };

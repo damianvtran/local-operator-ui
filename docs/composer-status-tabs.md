@@ -28,6 +28,12 @@ those two sections, and `§ 14` is the list of what they do not settle. Nothing
 above them was re-argued: where an earlier decision is touched, the section says
 which one and why.
 
+**Status: the per-row change, added at the end.** `§ 15` is the goal's and the
+loop's own rows - the operator's ask that the two flexible chips stop sharing a
+line. `§ 2.3`, `§ 2.4`, `§ 5.4`, `§ 9.1`, `§ 12.5`, `§ 13.5`, `§ 13.6` and
+`§ 14` carry the amendments it owes them; the frames are
+`docs/evidence/composer-status-rows/`.
+
 ---
 
 ## 0. The ask, and the reference the operator named
@@ -213,6 +219,7 @@ cn(CHAT_MEASURE, "flex items-start gap-x-2 gap-y-0.5",
 | + its `pb-2` / `pb-1` | **8px** / 4px | — |
 | **Collapsed, one line** | **32px** (28px under `isSmallView`) | above 750px of column the band goes 111.7 → **143.7px**; in the 240-750px band 143.5 → **171.5px** (the box is already two lines there) |
 | **Collapsed, stacked** (at or below 240px of column, § 2.4) | 24 + 2 + 24 + 4 = **54px** | at the 220px floor 143.5 → **197.5px** |
+| **Collapsed, per-row** (§ 15: the goal's line, the loop's line, the counts' line) | 24 + 2 + 24 + 2 + 24 + 8 = **84px** for the six-chip state | measured: the six-chip band 58 → **84px** at 900px and 54 → 80px at 520px; **unchanged** at 240 and 172 (158px - the wrap had already stacked those bands); `docs/evidence/composer-status-rows/` |
 | Expanded, worst case | 24 + 4 (`mt-1`) + 120 (body cap) + 4 (`pb-1`) + 8 = **160px** | band 111.7 → 271.7px, only while the goal is expanded. The cap is 120px rather than 128px since design review round 1 (D2) - see § 4.4 |
 
 Why 24px and not less: it is the smallest box on this composer's own ramp that
@@ -229,6 +236,16 @@ line of `body-sm`), and it is why the row renders **nothing at all** when there
 is no goal and no plan: no 24px, no 8px gap, no band change from 111.7px
 (`§ 3.1`).
 
+The per-row arrangement's cost, on the same terms (§ 15): **+26px** (the loop's
+own 24px line and the 2px gap) on every band where the loop used to share the
+goal's line - measured 58 → 84px at 900px and 54 → 80px at 520px - and
+**nothing** at 240 and 172, where the old wrap had already given each chip its
+own line (158px on both sides). Arithmetic rather than a frame for the
+goal+counts pair (no loop): the pair's two lines are 24 + 2 + 24 + 8 = 58px
+against the 32px of the one-line form. That is the operator's accepted trade,
+re-taken knowingly: "same style, but just on a new row for each" is a
+vertical-cost decision as much as a legibility one.
+
 ### 2.4 The column floor, and a short window
 
 **The floor is 172px, not 220px.** The app's chat column measures **172px** with
@@ -241,24 +258,46 @@ at a width where the product renders small view, so the set certified 58px of
 collapsed height and a 168px body against the product's 54px and a 120px-capped
 body).
 
-At that column the composer band is narrow, so the row's arrangement changes:
+**AMENDED BY § 15 (the per-row change): the row is a column of lines at every
+width**, so the arrangement below 240 no longer differs from the arrangement above
+it. What remains keyed to 240 is COPY, not layout: `@max-[240px]` still drops the
+dismiss's word and the loop's progress (`§ 12.5`), and `@max-[241px]` still drops
+the done tag (`GOAL_TAG_NARROW`). The two kinds of rule must not be confused - the
+copy boundary was DERIVED as an arrangement fact and inherited the arrangement's
+number, and § 12.5's amendment records how that reads now. The frames at 240 and
+172 carry both sides of the change and print identical facts on each
+(`docs/evidence/composer-status-rows/`).
+
+The former arrangement, kept as the record of what those copy rules were sized
+against:
 
 - **Above 240px of column: one line.** `CHAT_CHIP_ICON_ONLY_PX`
   (`chat-measure.ts:80`) is 240, the composer's own "the chrome cannot share the
   row" number, measured for the working-directory chip at the same width. The
-  row reuses it rather than adding a second threshold for the same moment.
-- **At or below 240px of column: the row becomes a column** — the goal chip on
+  row reused it rather than adding a second threshold for the same moment.
+- **At or below 240px of column: the row became a column** - the goal chip on
   its own line, the count below it, the expanded body between them (the body
-  renders inside the goal's item, so in a column it takes the row's full width).
+  renders inside the goal's item, so in a column it took the row's full width).
 
-The reason for the switch is the *expanded* body, not the collapsed row: see
-§ 4.4. Its cost is 26px of collapsed height, and it is paid only in the width
-band where the readings cluster already folds onto two lines of its own —
-measured 50px at the narrow column (`numbers.json`, `populated-220`:
-`stripBox.h = 50`, `row.h = 90`), which is the same `24 + 2 + 24` the stacked row
-produces here. Measured at the app's own floor the stacked row is **54px** with
-the small-view `pb-1`, and 58px with the large-view `pb-2` this document's
-arithmetic used - the 4px the D3 correction removed. At that width the composer's chrome wraps; that is the app's
+The reason for that switch was the *expanded* body, not the collapsed row: see
+§ 4.4. That arrangement is now the base one at every width (§ 15), so the switch
+(`COLUMN_GOAL` and the container's `flex-col`/`flex-nowrap` step) was retired
+with the change that made it redundant - a measured re-derivation rather than a
+tidy-up: its two stated reasons (the goal's own width below the band and the
+expanded body's measure) are the base arrangement now, and its third, the column
+form's `flex-none` height-collapse guard, is moot because the item's parent is a
+row wrapper and never the column container. The frames pin the conversion at the
+two widths the switch was argued at (240 and the 172 floor, `overflowX 0px`, the
+same six-chip fixture on both sides).
+
+Its cost - 26px of collapsed height - is now paid at every width where the loop
+shares the goal's line (§ 2.3's new row), and not paid at all at 240/172 where
+the wrap had already stacked the bands: measured 50px at the narrow column
+(`numbers.json`, `populated-220`: `stripBox.h = 50`, `row.h = 90`), which is the
+same `24 + 2 + 24` the two-line row produces here. Measured at the app's own floor
+the stacked row is **54px** with the small-view `pb-1`, and 58px with the
+large-view `pb-2` this document's arithmetic used - the 4px the D3 correction
+removed. At that width the composer's chrome wraps; that is the app's
 existing behaviour, not a new one.
 
 **A short window.** The row bounds itself, which is this composer's own rule:
@@ -749,8 +788,10 @@ count is ~13 characters — about 122px at the readings' own measured advance
 four readings in `numbers.json`, `populated-900`) — plus its 12px of padding.
 With the goal's label `sr-only`ed, the chip needs only its 14px chevron plus 12px
 of padding, so `122 + 12 + 8 + 26 ≤ 204` holds with a snippet left over. **That
-arithmetic is why the row never wraps above the 240px switch, and it is
-arithmetic, not a frame** — the frames are what confirm it (§ 9).
+arithmetic was written for the one-line arrangement and is kept as its record; § 15
+gives the count its own line at every width, so the margin above is wider than this
+arithmetic asked for - and it is arithmetic, not a frame** - the frames are what
+confirm it (§ 9).
 
 ### 5.5 The two activity chips, and the one refusal this document owes them
 
@@ -1110,6 +1151,22 @@ at the 240px band where its progress and the dismiss's word both yield), the har
 at rest, the three performed presses with the wire each moved, and the refusal. Its
 `README.md` names what it is NOT: not a backend proof (the backend half is
 `local-operator`'s), and not a theme sweep.
+
+**The per-row change's frames are a THIRD set, and both earlier sets are stale
+under them** (`docs/evidence/composer-status-rows/`, whose README states every
+command, state and limit): the goal's and the loop's own rows, with before/after
+halves at the three widths the change is argued at - 900, the shared-line band
+(520) and the 240 band - plus the 172px floor with both halves (its before half
+joined the set in the remediation pass; the pair's only pixel deltas are the two
+animated spinner phases), the three single-source states, the
+long goal beside the long clause, the expanded body, the goal's dismiss revealed,
+and the all-absent state. The swept set's re-capture stays OWED as above, and
+`composer-status-clear`'s frames are now themselves pictures of the row before
+this change, left in place as that change's record (its README says so): a
+re-capture of either is the sweep's work on a machine where the sweep may run,
+and this machine's operator policy forbids it. What this set's `RowFacts`
+captions carry that no earlier frame can: the arrangement's own numbers at every
+captured width, on BOTH sides of the change.
 
 ### 9.2 Frames: the icon
 
@@ -1555,12 +1612,20 @@ the app sends nothing the oldest backend in the fleet cannot already read.
 const NARROW_HIDDEN = "@max-[240px]/chatcol:hidden";
 ```
 
-**Strictly BELOW 240px** the row is a COLUMN (`COLUMN_GOAL`), the goal item takes the
-row's whole 156px content box at the app's floor, and `Clear goal` beside the chip's
-own ~75px of fixed ink leaves the snippet nothing: measured, the dismiss is 89px at a
-900px column, 89px at the 240px band itself, and **26px** at 172px — the `X` alone,
-which is the affordance's irreducible part. The accessible name keeps the word at
-every width, so the control is never described by less than it says at width.
+**Strictly BELOW 240px the word is dropped** - the boundary `NARROW_HIDDEN` has
+carried since this section was written, and AMENDED BY § 15: the premise moved
+under it. The rule was derived as an ARRANGEMENT fact ("the row is a COLUMN
+(`COLUMN_GOAL`), the goal item takes the row's whole 156px content box at the
+app's floor"), and the per-row arrangement makes the item the row's whole content
+box at EVERY width - so what the boundary still identifies is the width at which
+the word beside the chip's own ~75px of fixed ink leaves the snippet nothing:
+measured, the dismiss is 89px at a 900px column, 89px at the 240px band itself,
+and **26px** at 172px - the `X` alone, which is the affordance's irreducible
+part. The accessible name keeps the word at every width, so the control is never
+described by less than it says at width. Because the item now owns the line at
+every width, the yield is conservative rather than tight; re-titrating the
+boundary (whether the word could now be kept below 240) is NOT done here and is
+listed in § 14.
 
 The boundary is `width < 240px` and not `<=`, which is Tailwind v4's own compiled
 form (`@container chatcol (width < 240px)`, read off the served stylesheet): a
@@ -1603,7 +1668,7 @@ answer it just gave; it is a LAYOUT effect, so the first paint already carries i
 the observer is on the ROW,
 because what moves this box is a container query (the same reason
 `directory-indicator.tsx` records for its own). The class rule keeps the word — and
-keeps the figure at the stacked band, where the row is a COLUMN and the yield must hold
+keeps the figure at the narrow band, where the yield must hold
 before any measurement lands — but the two are two rules with two conditions, and
 neither is a proxy for the other.
 
@@ -1803,6 +1868,13 @@ MODE rather than a count of rows, and it is paired with the goal for the reason 
 pair exists — a count loop consumes the standing goal, a goal loop carries one of
 its own — and because the two are the row's only controls that TAKE a value away.
 
+**AMENDED BY § 15 (the per-row change): the list above is the vertical order,
+read top to bottom.** The goal's line, the loop's line, then the count strip -
+and inside the strip the order is unchanged (`plan, wakes, subagents, jobs`, with
+the ask, code and monitor chips in their own recorded places). The two items the
+change moved onto their own lines are the same two the list leads with; nothing
+about the ORDER changed, only which boxes paint on which line.
+
 The two rejected placements, recorded rather than deleted:
 
 | | Placement | Verdict |
@@ -1816,6 +1888,11 @@ The rule is ordinal (§ the `FIRST_CHIP` note), and the loop chip is a second IT
 so the chain gained a term: `loopFirst = !showGoal`, `groupIsFirst = !showGoal &&
 !showLoop`, and the three count chips' own ordinals hang off that. Six chips, five
 items, and the group's leading chip is still decided inside the group.
+
+**AMENDED BY § 15: the loop item is now a second LINE as well**, and the ordinal
+logic is untouched - `loopFirst` still reads `!showGoal`, the goal line still
+precedes the loop line in the DOM, and the change's `alone` frames print the
+loop's first-chip cancellation (`-ml-1.5`) landing on it with no goal present.
 
 ---
 
@@ -1838,3 +1915,162 @@ items, and the group's leading chip is still decided inside the group.
    record; if the operator wants the reason above the composer, that is a copy change
    with a width question of its own.
 4. **Touch's second tap** (§ 12.2) is inherited from the pattern and not solved here.
+5. **The copy boundaries were not re-titrated for the per-row arrangement** (§ 12.5,
+   § 15). The word, the progress and the tag all yield strictly below their measured
+   steps, and those steps were derived against the one-line arrangement's content
+   boxes; the per-row arrangement only ever gives the item MORE room at a given
+   column, so each yield remains conservative - but whether `Clear goal` could now
+   be kept below 240px is a measurement this change does not take.
+6. **The twelve-theme sweep of this surface is still owed.** Both browser-tool sets
+   are two palettes (`branding.md` § 9.9's minimum); the swept set predates two
+   changes. The sweep cannot run under this machine's operator policy (a scripted
+   engine), so the debt is recorded in three READMEs rather than paid.
+7. **The hover half of the reveal remains unverified by pixels** (§ 12.2; the
+   browser tool has no hover verb). The class-string parity pin in
+   `scripts/composer-tabs.test.mjs` and the per-row change's focus-path frame stand
+   in for it.
+
+---
+
+## 15. The goal's and the loop's own rows (the per-row arrangement)
+
+### 15.1 The ask, verbatim
+
+> Btw now that there's a lot in the composer top row, we might want to consider
+> putting goal and loop on their own lines, same style, but just on a new row for
+> each since goal and loop would be too squished to be properly visible in most
+> cases.
+
+### 15.2 The arrangement
+
+**Three lines at every width, in DOM order**: the goal's own line, the loop's own
+line, then the count strip (plan, asks, wakes, code requests, monitors, subagents,
+jobs - each on the strip's wrapping line as before). A line renders only while its
+source does; no goal, no loop and no counts still renders NOTHING (§ 3.1's gate,
+unchanged). The `alone` states are in the frame set: goal alone paints one line,
+loop alone one line, counts alone the strip.
+
+**The line is a `w-full` wrapper, and the ITEMS keep their boxes.**
+`composer-status-row.tsx:927` is `CHIP_LINE = "flex w-full"`, applied at `:2326`
+(the goal's line) and `:2728` (the loop's). The goal item stays
+`flex min-w-[140px] flex-1 items-center` inside its line, so the expanded body -
+whose measure the disclosure root inside the item takes - is the row's content box
+at every column; the loop item stays `group flex shrink-0 items-center` and
+content-sized, because that box is the hover/focus reveal's scope (§ 12.2) and the
+box `itemFits` measures. The fit rule's comparison gets SIMPLER with the move: the
+item's line IS the row's content box now, so `lineWidth() >= requiredItemWidth` is
+literally "does the item fit the room it stands in" rather than a proxy on a
+shared line.
+
+**Why a wrapper, and not a basis on the item itself** - the two rejected mechanics,
+both load-bearing to know:
+
+- **`flex-1` does not do it.** The row is a `flex-wrap` container, and line
+  breaking resolves on each item's HYPOTHETICAL size; a `flex-1` item's base size
+  is 0% (clamped by its `min-width`), so it still SHARES a line whenever its
+  neighbour fits beside it. Measured in this change's before frames: at 900px the
+  goal and the loop sat on ONE line with the loop pushed to the trailing edge, and
+  at 520px the goal read `Goal: Reconcil…` (75 of 188 characters) beside the loop.
+- **`basis-full` beside `flex-1` is not a rule, it is a source-order race** - the
+  two set the same CSS property (`flex-basis`), and which wins is the compiled
+  stylesheet's order rather than anything this file states. A `w-full` wrapper is
+  100% of the line by construction.
+- **`w-full` on the ITEM widens the wrong box** (the loop's): the reveal's scope
+  would grow to the full line, and the item's `scrollWidth` - `itemFits`' input -
+  would become the line itself. The wrapper takes the line; the items keep theirs.
+
+### 15.3 What the change buys, measured
+
+| Width | Before | After |
+|---|---|---|
+| **520px** (the shared-line band) | goal `144px (text 75/188)` beside the loop; row 54px | goal `257px (text 188/188)` on its own line, loop `269px` on the next; row 80px |
+| **900px** | goal and loop share line 1 with the loop at the trailing edge; counts wrapped to line 2; row 58px | goal line, loop line, counts line; row **84px** |
+| **240px** | already one element per line (the wrap had stacked it); row 158px | **unchanged**: row 158px, goal `141px (text 71/188)`, loop figure dropped - both palettes |
+| **172px floor** | row 158px, `26px` dismisses | **unchanged** - identical facts on both sides (`before-172/` + `rows-172/`; the pair's only pixel deltas are the two animated spinner phases) |
+
+**520 is in the set because the other widths do not carry the delta**: at 240 and
+172 the old wrap had already separated the chips, and at 900 the goal showed its
+whole text either way - the operator's complaint is about the band where the two
+SHARED a line. Measured `140 + 8 + 269 = 417` is what fits a shared line, and
+460's content box (412) is five pixels short of it, so 520 is a width chosen for
+this band (the `LoopBandFit` family's widths were taken at the copy step).
+
+### 15.4 The vertical cost, re-measured
+
+§ 2.3's new row carries the numbers: **+26px** (the loop's own 24px line and the
+2px gap) on the bands where the loop shared the goal's line - 58 → 84px at 900,
+54 → 80px at 520 - and **nothing** at 240/172, where the wrap had already stacked.
+The six-chip collapsed height is `24 + 2 + 24 + 2 + 24 + 8 = 84px`. This is the
+operator's own trade taken with the numbers in front ("same style, but just on a
+new row for each"); the `alone` frames print 32px for each single-source line, so
+the minimal states keep the row's original height.
+
+### 15.5 The copy rules did not move; the arrangement step was retired
+
+The `@max-[240px]` boundary (`NARROW_HIDDEN`, `:718`) and the tag's own
+`@max-[241px]` (`GOAL_TAG_NARROW`, `:765`) are COPY rules and keep their widths
+(§ 12.5's amendment records what their derivation reads now). The `@max-[240px]`
+`flex-col`/`flex-nowrap` step and `COLUMN_GOAL` - the ARRANGEMENT step - are
+deleted; `composer-status-row.tsx:2249`'s class list is where it used to sit. The
+re-derivation is `CHIP_LINE`'s docblock (`:927`): its two stated reasons (the
+goal's own width below the band, the expanded body's measure) are the base
+arrangement now, and its third (the column form's `flex-none` height-collapse
+guard) is moot because the item's parent is a row wrapper and never the column
+container. The frames carry the conversion at 240 and the 172 floor with
+`overflowX 0px` on both sides, on the same six-chip fixture.
+
+### 15.6 Empty states and the first-chip rule
+
+Unchanged gates, one level down: goal absent → no goal line; loop absent → no loop
+line; all three absent → the row renders nothing at all (a `Band` without
+`RowFacts` in the set, because there is no row to measure). The counts-only state
+re-proves the first-chip rule: with neither a goal nor a loop above it, the plan
+chip takes the `-ml-1.5` cancellation (`FIRST_CHIP`) again (§ 13.6's amendment).
+
+### 15.7 Rejected alternatives, in one place
+
+| | Rejected | Why |
+|---|---|---|
+| A | `flex-1` + `basis-full` on the items | a source-order race on one CSS property (§ 15.2) |
+| B | `w-full` on the items themselves | widens the loop's reveal scope and `itemFits`' measured box (§ 15.2) |
+| C | Making the container `flex-col` | same pixels, but every item's `flex` shorthand would need re-derivation (in a column, `flex-basis` applies to the HEIGHT - the trap `COLUMN_GOAL`'s `flex-none` guarded), and the wrap arrangement keeps every item's axes the ones it was measured in |
+| D | Keeping the 240 switch as a belt | it changes no captured pixel (equivalent at 240/172 by measurement), and a dead branch that still says "the row has two arrangements" is a claim, not a belt |
+| E | A third arrangement only for the mid band (height/container query) | the operator asked for "a new row for each", not a slice of widths with its own layout; three arrangements are two more to keep true |
+
+### 15.8 Evidence and tests
+
+`docs/evidence/composer-status-rows/` carries 26 frames over 13 surfaces in both
+brand palettes: before/after halves at 900, 240, 520 and the 172px floor, and the
+after states: the three single-source lines, the long goal and long clause, the
+expanded body, the goal's dismiss revealed, and the all-absent state. Its README names every
+command, state and limit, including the before half's provenance (the base commit's
+component with only the story file added). `scripts/composer-tabs.test.mjs`
+extends its layout pins: the two `CHIP_LINE` wrappers and their DOM order, the
+retired switch (`doesNotMatch`), and the D2 floor's re-derivation - 101 tests pass
+on this head (`node scripts/run-desktop-tests.mjs scripts/composer-tabs.test.mjs`).
+`scripts/capture-evidence.mjs` declares the nine new stories as rig tuples, so the
+sweep - wherever it may run - renders them.
+
+### 15.9 The line-starts' stagger: kept, not made flush (design round 1's D1)
+
+The goal's line begins ~6px of BOX left of the loop's and the counts' lines: the
+goal chip carries the first-chip cancellation (`FIRST_CHIP`,
+`composer-status-row.tsx:892`), because the rule is ROW-scoped - "the row's first
+chip", and the goal renders first whenever it is present - while the two lines
+below start at the content edge with their chips' own padding intact. Measured
+live at 900 (design round 1's D1): icon boxes goal chevron x=85 vs loop icon x=91
+and plan icon x=91; the leftmost INK on the committed frames: goal 89.5, loop
+92.0, counts 91.5 CSS px - a ~2.0-2.5px optical stagger, most of the box
+difference eaten by the chevron's own bearing. The stagger PREDATES this change:
+`before-900/` prints the same 89.5-vs-91.5 relationship, and the per-row
+arrangement is only what makes three parallel starts comparable.
+
+**Kept deliberately; both alternatives cost more than the nit.** Extending the
+cancellation per line would move the loop's and the counts' hit boxes and hover
+grounds 6px left of the content edge (into the row's own padding, where the
+goal's box already sits) and re-shoot every affected frame for a 2px optical
+difference - against a reveal scope measured on the chip's own line (§ 12.2).
+Removing the goal's cancellation would move the ROW's first ink 6px right of the
+content edge the row's padding defines, changing a relationship older than this
+change for no asked-for benefit. The decision moves no pixels, so no frame was
+re-captured for it; recorded here as D1 asks.

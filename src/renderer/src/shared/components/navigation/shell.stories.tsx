@@ -26,6 +26,8 @@ import * as runFixtures from "@features/chat/components/run-details/run-details.
 import { RunPanel } from "@features/chat/components/run-details/run-panel";
 import type { McpRemedyControls } from "@features/chat/components/run-details/use-mcp-remedy";
 import type { MonitorControls } from "@features/chat/components/run-details/use-monitor-controls";
+import type { WakeControls } from "@features/chat/components/run-details/use-wake-controls";
+import type { AidaWakeIdentity } from "@features/chat/components/run-details/wake-controls-model";
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { ConsolePane } from "@features/console/components/console-pane";
 import { PROVIDER_ROWS } from "@features/settings/components/setting-combobox.fixtures";
@@ -813,6 +815,22 @@ const INERT_MONITOR_CONTROLS: MonitorControls = {
 };
 
 /**
+ * No-op wake controls and an identity that knows nothing, for the same reason as
+ * the monitor pair above: the Wakes section is not these frames' subject, and the
+ * fixtures carry no wakes on the ordinary sessions - so the shapes the panel
+ * requires are inert rather than a behaviour a story claims.
+ */
+const INERT_WAKE_CONTROLS: WakeControls = {
+	cancel: async () => ({ ok: true }),
+};
+const INERT_WAKE_AIDA: AidaWakeIdentity = {
+	capability: false,
+	statusResolved: false,
+	sessionId: null,
+	name: "Aida",
+};
+
+/**
  * The conversation column: the production `ChatHeader` over a transcript at the
  * app's own ground and inset.
  *
@@ -1392,6 +1410,8 @@ export const ChatDockRunPanel: Story = {
 									mcpGrantRunning={mcpGrantInFlight([])}
 									mcpRemedy={INERT_REMEDY}
 									monitorControls={INERT_MONITOR_CONTROLS}
+									wakeControls={INERT_WAKE_CONTROLS}
+									wakeAida={INERT_WAKE_AIDA}
 									sessionId="a1b2c3d4e5f6"
 									pulses={{}}
 									childrenOpenable
@@ -1606,6 +1626,8 @@ export const ChatMeasureEdgesRunPanel: Story = {
 								mcpGrantRunning={mcpGrantInFlight([])}
 								mcpRemedy={INERT_REMEDY}
 								monitorControls={INERT_MONITOR_CONTROLS}
+								wakeControls={INERT_WAKE_CONTROLS}
+								wakeAida={INERT_WAKE_AIDA}
 								sessionId="a1b2c3d4e5f6"
 								pulses={{}}
 								childrenOpenable

@@ -50,6 +50,8 @@ import * as runFixtures from "@features/chat/components/run-details/run-details.
 import { RunPanel } from "@features/chat/components/run-details/run-panel";
 import type { McpRemedyControls } from "@features/chat/components/run-details/use-mcp-remedy";
 import type { MonitorControls } from "@features/chat/components/run-details/use-monitor-controls";
+import type { WakeControls } from "@features/chat/components/run-details/use-wake-controls";
+import type { AidaWakeIdentity } from "@features/chat/components/run-details/wake-controls-model";
 import type { Message } from "@features/chat/types/message";
 import { MeshPage } from "@features/mesh/mesh-page";
 import { ProjectsPage } from "@features/projects/components/projects-page";
@@ -584,6 +586,22 @@ const INERT_MONITOR_CONTROLS: MonitorControls = {
 	cancel: async () => ({ ok: true }),
 };
 
+/**
+ * No-op wake controls and an identity that knows nothing, for the same reason as
+ * the monitor pair above: the Wakes section is not these frames' subject, and the
+ * fixtures carry no wakes on the ordinary sessions - so the shapes the panel
+ * requires are inert rather than a behaviour a story claims.
+ */
+const INERT_WAKE_CONTROLS: WakeControls = {
+	cancel: async () => ({ ok: true }),
+};
+const INERT_WAKE_AIDA: AidaWakeIdentity = {
+	capability: false,
+	statusResolved: false,
+	sessionId: null,
+	name: "Aida",
+};
+
 /** The chrome state Storybook has no main process for; see `docs-hero`. */
 const useMacChrome = () => {
 	useLayoutEffect(() => {
@@ -758,6 +776,8 @@ const AppShell: FC<{
 										mcpGrantRunning={mcpGrantInFlight([])}
 										mcpRemedy={INERT_REMEDY}
 										monitorControls={INERT_MONITOR_CONTROLS}
+										wakeControls={INERT_WAKE_CONTROLS}
+										wakeAida={INERT_WAKE_AIDA}
 										sessionId="3f9c1a2b4d5e"
 										pulses={{}}
 										childrenOpenable

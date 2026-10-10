@@ -198,6 +198,19 @@ const mount = async (initial) => {
 			onToggleRosterExpanded: () => undefined,
 			paneWidth: 420,
 			monitorControls: { cancel: props.cancel },
+			/*
+			 * The wakes cancel interaction (the wakes control slice) is inert here:
+			 * this file's subject is the MONITORS' dialog, and the panel requires the
+			 * pair the same way it requires the monitor controls. The wakes side is
+			 * driven by script/wake-cancel-panel.test.mjs.
+			 */
+			wakeControls: { cancel: async () => ({ ok: true }) },
+			wakeAida: {
+				capability: false,
+				statusResolved: false,
+				sessionId: null,
+				name: "Aida",
+			},
 			sessionId: props.sessionId,
 		});
 	const container = document.createElement("div");

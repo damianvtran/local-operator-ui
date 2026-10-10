@@ -206,8 +206,9 @@ const PROBE = `(() => {
 	/*
 	 * THE CONTAINER THE SHED QUERY ACTUALLY RESOLVES AGAINST.
 	 *
-	 * The strip's band classes are \`@min-[750px]/chatcol:@max-[860px]/chatcol:hidden\`,
-	 * which resolve against the nearest ancestor container NAMED \`chatcol\` - and
+	 * The strip's shed classes - the band's, and the narrow ladder's since issue
+	 * #918 (\`docs/evidence/composer-readings-shed/\`) - all resolve against the
+	 * nearest ancestor container NAMED \`chatcol\` - and
 	 * that is NOT the pane the harness sizes. The composer's own band element
 	 * (\`data-lo-composer-band\`) is itself \`@container/chatcol\` and carries
 	 * \`px-6\`, and container queries measure the CONTAINER'S CONTENT BOX, so the
