@@ -279,3 +279,126 @@ have not reproduced at this base since. Recorded rather than quietly re-taken,
 because "the other frames are untouched" is a claim a later reader will want to
 be able to check, and at this base the honest form of it is the A/B above rather
 than byte-equality with a stale commit.
+
+## The access frames: the usable-only default, the reveal, the fallback and the empty door
+
+Added by the change that made the picker ACCESS-AWARE (`feat(chat): make the
+model picker access-aware and band signed-out sessions`). The report behind it:
+a machine with nothing usable signed in kept a stale hosted default while the
+picker listed every model that default's provider catalogue carries — the list
+is where the wrongness was most visible, and these are its states.
+
+The scope contract these frames read is the sibling backend change's: a
+`GET /v1/desktop/models?scope=usable|all` whose answer carries `scope` and
+`hidden` (an int — how many rows were withheld). Against a backend that sends
+neither, the client filters on `row.connected && credentials_known` and prints
+no count; both halves are framed here.
+
+| Directory | Tree | What it shows |
+|---|---|---|
+| `usable-only-wire` | this change, `scope=usable` answer | THE RESTING DEFAULT against a NEW backend: the list carries only rows this machine can run (plus the current row), and the control under `Also make it the default` reads `Show all supported models (2 need sign-in)` — the backend's own `hidden`. |
+| `show-all-wire` | this change, `scope=all` answer | THE PRESS: the play ticks the control against the wider fixture, the list is parked on the group the count was about — `Needs sign-in` with `GLM-5.2` and `Magistral Medium`, each `needs sign-in` — and the label KEEPS its number while the wider list is shown, because the number is still true of the rows on screen. |
+| `show-all-fallback` | this change, an OLD backend | THE SAME PRESS with neither `scope` nor `hidden` in the answer: the union filters here — `row.connected`, the current-model exemption — and the label carries no number, because this side of the wire never printed one. |
+| `no-usable-models` | this change | THE DEAD END, closed: every row needs a sign-in and the current model is not in the listing, so the scoped view is empty. `No models are signed in yet.` with `Connect a provider` opening the app's one connect dialog; the play asserts both before the shutter. |
+| `no-usable-wire` | this change, `scope=usable` answer | THE DEAD END against a NEW backend, and the composition no frame showed before (design round 1, D6a): zero rows AND the wire's own count, so `No models are signed in yet.` + `Connect a provider` stand beside `Show all supported models (2 need sign-in)`. |
+| `show-all-connect-footer` | this change, `scope=all` answer | THE FOOTER ON A NEEDS-SIGN-IN ROW (design round 1, D2's companion): the reveal is pressed and the search narrowed to `glm`, so the keyboard's row is the hidden one and the footer reads `Enter connects zai` — the verb the key performs — over the row's own `needs sign-in` line. |
+| `empty` (re-taken) | this change, an OLD backend | The search-empty state a reader of the old frame knows — `zzz` typed, `Nothing matches.` — with the control beside it, because two of the fixture's rows are hidden: the fallback's `removed` half. |
+| `../model-picker-access-scope-before/populated`, `narrow`, `empty` | `origin/main` = `29e066efe94` (this change's base) | THE COUNTERFACTUALS, shot from a scratch worktree of the base with its own unmodified rig and story file: no control anywhere, the fixture's whole listing drawn, and the same `Nothing matches.` with no control beside it. Declared as a `supplementary` set for the reason the opus set states — a frame of ANOTHER tree cannot be re-captured by a sweep running over this one. |
+
+The band the same change adds is its own set:
+[`../chat-session-model-access-band/README.md`](../chat-session-model-access-band/README.md).
+
+### Round 1's remediation: the re-takes and the two new states
+
+Round 1's reviews found three user-visible strings this table still described
+from the pre-remediation tree, so the states whose pixels carry them were
+RE-SHOT rather than carried over: `show-all-wire` and `show-all-fallback` (the
+row's caveat now reads `needs sign-in` — the dialog's own vocabulary, design
+D5/U3) and `no-usable-models` (the dead end's sentence now names the cause:
+`No models are signed in yet.`, design D3). Two states are new: `no-usable-wire`
+(design D6a — the same dead end produced by a NEW backend, zero rows and the
+wire's own count in one composition) and `show-all-connect-footer` (design D2's
+companion — the footer reading `Enter connects zai` over the needs-sign-in row
+Enter will act on, which the source-only claim could not be checked against a
+frame). `usable-only-wire` and `empty` were NOT re-taken: neither frame's
+pixels contain either string, and the sweep's byte checks are what hold that.
+
+### What produced these frames
+
+```sh
+# The whole picker set at this head, then the new states' re-takes, from this
+# worktree against its own Storybook (`node_modules/.bin/storybook dev -p 6137
+# --ci --no-open` — the rig drives a server, it does not start one).
+node scripts/capture-evidence.mjs http://localhost:6137 --allow-backend \
+  --only=chat-model-picker \
+  --themes=localOperatorDark,localOperatorLight --theme-settle-ms=120000
+node scripts/capture-evidence.mjs http://localhost:6137 --allow-backend \
+  --dirs=usable-only-wire,show-all-wire,show-all-fallback,no-usable-models \
+  --themes=localOperatorDark,localOperatorLight --theme-settle-ms=120000
+
+# ROUND 1'S REMEDIATION: the three states whose copy or vocabulary moved
+# (design D5/U3's `needs sign-in`, D3's `No models are signed in yet.`) plus
+# the two states the round added (D6a's wire dead end above, D2's footer
+# frame). One narrowed run, one browser instance:
+node scripts/capture-evidence.mjs http://localhost:6137 --allow-backend \
+  --only=chat-model-picker-- \
+  --dirs=show-all-wire,show-all-fallback,no-usable-models,no-usable-wire,show-all-connect-footer \
+  --themes=localOperatorDark,localOperatorLight --theme-settle-ms=120000
+
+# The cross-tree half, from a scratch worktree of the base carrying the same
+# rig and the same story file (three runs, one per state — `--dirs` is matched
+# by leaf name and collides with unrelated sets' states of the same name, so
+# the exact story id is the selector that means what it says):
+#   git worktree add ../model-picker-before-<id> 29e066efe94
+node scripts/capture-evidence.mjs http://localhost:6138 --allow-backend \
+  --only=chat-model-picker--populated \
+  --themes=localOperatorDark,localOperatorLight --theme-settle-ms=120000
+#   ...same line with --only=chat-model-picker--narrow, then --empty.
+```
+
+`--allow-backend` and `--theme-settle-ms` carry the reasons the opus section
+gives for them, unchanged. The new states' plays drive the real control through
+`userEvent` and hold the shutter on `documentElement.dataset.capturePending`
+until the wider answer has painted and the list has been scrolled to the rows
+the count was about, so no frame can be taken of the resting view under a story
+that claims the press.
+
+### What the re-take moved, and what it proves did NOT move
+
+This change's sweep re-took the whole set at this head; every state whose
+fixture hides a row now draws the control, and the toolbar row and list below it
+shift by its block. Two independent readings bound that claim:
+
+- **The states the control does not enter come back byte-identical to the
+  base.** `loading` — no catalogue at all, so no control — was captured from
+  the base worktree and from this head in both palettes and compared with
+  `magick compare -metric AE`: **0** either way. (Two captures of the same
+  state at this head are also AE 0 to each other, so the reading is not run
+  noise.) The same A/B caught one real defect in this pass: an unconditional
+  `items-start` on the toolbar row moved the buttons to the row's top in every
+  state — 40,194 of the loading frame's 504,000 dark-palette pixels — including
+  ones the control never enters. The alignment is now conditional on the control
+  being present, and `loading`'s byte-equality is the measurement that the fix
+  is exact rather than approximate.
+
+- **The opus states' re-takes differ from the committed bytes by more than
+  their own change's record describes** — because this change's toolbar sits on
+  them too. Where the earlier section says a frame was byte-identical at its
+  own head, that reading stands for its own A/B; the bytes committed here are
+  this head's, and the difference is the control's block, not a re-litigation
+  of the earlier measurement.
+
+### What these frames do NOT prove
+
+- **Nothing about the backend.** Both fixtures are the story bridge's; the
+  `scope`/`hidden` fields are shaped to the frozen contract and the real
+  filtering is the sibling backend PR's to prove. What these frames show is the
+  renderer's half: the union that tolerates their absence, the two labels, and
+  what a press does to the list.
+- **Nothing about the switch-versus-Connect rule as behaviour.** That a
+  needs-sign-in row starts the Connect flow rather than switching the session
+  is pinned as source text in `scripts/picker-feedback.test.mjs` (the pick's
+  branch), and the frames show the rows such picks come from — not the click.
+- **Nothing about a real credential store.** `credentials_known` is a fixture
+  field on both sides of the wire, and the store's own semantics are the
+  backend's.

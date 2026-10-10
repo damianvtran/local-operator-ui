@@ -41,30 +41,45 @@ export type AttachmentFrameProps = {
 	 *
 	 * `hairline` is the decoration an illustration sits behind. `control` is for the
 	 * frame that IS a control - the condensed action group's tile - and it is
-	 * BORDERLESS AT REST: the operator asked for the ring to go, so the tile is the
-	 * sunken well and the picture with a 1px border that is `transparent` (reserved,
-	 * so the edge appearing does not move a neighbour), and `border-control` returns
-	 * on hover and on keyboard focus of the enclosing `group/tile` button - the
-	 * states in which it is a control being used. Both are named groups, so the
-	 * edge answers to the tile's own button and not to an outer `group` (the
-	 * picture's file-actions wrapper is one).
+	 * BORDERLESS AT REST: the operator asked for the ring to go, so the tile is a
+	 * well with a 1px border that is `transparent` (reserved, so the edge appearing
+	 * does not move a neighbour), and `border-control` returns on hover and on
+	 * keyboard focus of the enclosing `group/tile` button - the states in which it
+	 * is a control being used. Both are named groups, so the edge answers to the
+	 * tile's own button and not to an outer `group` (the picture's file-actions
+	 * wrapper is one).
 	 *
-	 * THE TRADE IS ON THE RECORD, not hidden: `border-control` is the role branding
-	 * section 2 names as the sole visual boundary of a control, measured at >=3:1 on
-	 * every ground (SC 1.4.11), and it was the tile's only carrier of its own extent -
-	 * the hairline it replaced measured 1.25:1 against the light transcript, and a
-	 * picture whose own canvas is the page's tone has ~1.0:1 against the page without
-	 * an edge (design review round 1, D2; this round's D1). At rest that extent is now
-	 * the picture's own contrast and the well's ~1.07:1. The remedy that would remove
-	 * the trade is a fill role authored to section 2's findability floor, a system
-	 * change tracked as a follow-up rather than invented here.
+	 * THE RESTING EXTENT IS THE FILL, AND IT CARRIES A FLOOR. With the ring gone
+	 * the tile's extent at rest is its own fill, and the shared `sunken` step could
+	 * not carry it: a picture whose own canvas is the page's tone has ~1.0:1
+	 * against the page (the `image-tones` fixtures), the well behind it measured
+	 * ~1.07:1, and as a ΔE00 step the shared well fell below 4.0 on 55 of the 59
+	 * palettes - as low as 2.00 (iceberg, `neonNoir`). The `control` boundary
+	 * therefore wears `mediaSurface`, the role authored for exactly this slot:
+	 * `sunken` stepped away from `canvas` until the fill clears a ΔE00 4.0 floor
+	 * off it (see the role's doc in the palette contract), so a page-toned
+	 * picture's tile separates at rest - by the ~1px ring the well shows at a
+	 * filling picture's edge and corners, and by the letterbox mats a contained
+	 * portrait sits between. `border-control` remains the stronger cue and still
+	 * returns where the tile is a control (hover, keyboard focus). THE RETURNING
+	 * EDGE'S 3:1 IS THE GROUND'S, NOT THE FILL'S (design round 1, D1):
+	 * `border-control` is asserted against the four grounds - >= 3.01 measured
+	 * across the fleet, and the outer side is the side the tile's silhouette is
+	 * read against - and deliberately NOT against `mediaSurface`, where it
+	 * measures below 3:1 on 10 light palettes (2.78 worst, `catppuccinLatte`);
+	 * no floor or claim is attached to that inner pair.
+	 * `docs/evidence/chat-media-slot-fill/letterbox-hover/` carries the hovered
+	 * state as a frame.
 	 */
 	boundary?: "hairline" | "control";
 } & Omit<ComponentPropsWithoutRef<"div">, "children" | "className">;
 
 /**
  * The reserved box every attachment picture sits in. `sunken` is the ground
- * that means "a well", which is exactly what a media slot is.
+ * that means "a well", which is exactly what a media slot is - and the
+ * `control` boundary's well is `mediaSurface`, the role authored for it: a
+ * step away from `canvas`, because there the fill IS the tile's extent (see
+ * the boundary doc above). The `hairline` frame keeps the shared `sunken`.
  */
 export const AttachmentFrame = ({
 	children,
@@ -75,14 +90,15 @@ export const AttachmentFrame = ({
 	<div
 		className={cn(
 			"flex max-w-full items-center justify-center overflow-hidden",
-			"min-h-16 min-w-16 rounded-sm bg-sunken",
+			"min-h-16 min-w-16 rounded-sm",
 			boundary === "control"
 				? [
+						"bg-media-surface",
 						"border border-transparent",
 						"transition-colors duration-fast ease-out-quart",
 						"group-hover/tile:border-control group-focus-visible/tile:border-control",
 					]
-				: "border border-hairline",
+				: ["border border-hairline", "bg-sunken"],
 			className,
 		)}
 		{...rest}
@@ -168,10 +184,15 @@ export const BrokenAttachment = ({
 				 * directions - and `box-content` measured as a class with no effect in
 				 * the render, so the numbers the tile actually has are the honest ones.
 				 *
-				 * IT KEEPS ITS EDGE while a working tile does not: a card in a STATE keeps
-				 * its edge because the state is the information (branding section 2), and
-				 * the receipt has no picture to give it an extent - its only content is a
-				 * `size-4` glyph. It is also not a tab stop (`role="img"`).
+				 * IT KEEPS ITS EDGE while a working tile does not, and it keeps the shared
+				 * `sunken` fill while a working tile wears `mediaSurface`: a card in a STATE
+				 * keeps its edge because the state is the information, the receipt has no
+				 * picture to give it an extent - its only content is a `size-4` glyph - and
+				 * the fill role's trade (the fill as the whole boundary) does not apply to
+				 * it. Adopting the fill anyway would put the glyph's `ink-dim` under its
+				 * 5.0:1 floor on several light palettes (4.63:1 worst, `catppuccinLatte`),
+				 * so the receipt stays on the shared well. It is also not a tab stop
+				 * (`role="img"`).
 				 */
 				"flex h-[78px] w-[117px] items-center justify-center rounded-sm border border-control bg-sunken",
 				className,

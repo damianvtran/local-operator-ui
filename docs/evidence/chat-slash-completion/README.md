@@ -35,3 +35,13 @@ per theme). Four had gone stale and are the reason the check exists:
 | `command-phase`, `command-phase-scrolled` | 12 of 12 each | the command list lost this branch's own `/compact` row — the row this PR exists to make reachable, missing from the frame that shows the command list. Main's re-take had rewritten these frames before the fixture gained that row. |
 | `argument-phase-empty`, `argument-phase-no-match` | 12 of 12 each | the empty-list sentence still read `Enter opens the full picker.` where this head says `Enter runs the command.` |
 | `compact-row`, `inline-mid-draft-pair` | 0 of 24 | already current; re-captured and byte-identical, which is what "verified" means here. |
+
+## What the close-out round added (UX round 2, U4)
+
+| directory | frames | what it shows |
+| --- | --- | --- |
+| `argument-phase-needs-sign-in` | 12 (the sweep's themes) | A `/model` row the wire marked `connected: false`, whose pick OPENS THE CONNECT FLOW instead of submitting — so both footer lines promise `connects <provider>` rather than the run the intercepted pick will not perform. It is the inline counterpart of the dialog footer's D2 fix. Case 1 is the unambiguous word (`/model gpt`, 908px): `Enter connects openai.` / `Click connects openai.` Case 2 is an ambiguous word at the popup's narrowest supported width (`/model p`, 330px — `argument-phase-narrow-composer`'s width), where the longer completing sentence reads `Enter completes; Enter again connects openai.` whole, on one line. |
+
+The ambiguous case is DERIVED, not counted: `matchChoices("p", argumentRows("model", MODELS, null))` leaves three rows and the needs-sign-in row is the third (`openai/gpt-noprice`), which is the `active: 2` the story hands the popup. The two cases each reserve two spare rows over what they draw, because the `Case` height formula covers a one-line footer and this state's footer carries two (Enter and click) above the composer.
+
+Capture: `node scripts/capture-evidence.mjs <storybook> --allow-backend --only=chat-slash-completion--argument-phase-needs-sign-in` (the 12 sweep themes, one browser, reaped by pid). The frames were read rather than only captured: the first take's `active` index was off by one (hand-counted against the fixture; fixed from the executed matcher) and the lower popup painted over the caption (fixed by the reservation above); the committed frames are the third take.

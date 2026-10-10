@@ -845,12 +845,13 @@ const TONE_ROWS: RowSpec[] = [
  * D2's defect case, in BOTH palettes at once: each tile holds a picture whose own
  * canvas is the page's own ground. In the light frame the first tile is the case
  * that failed (a light-canvas picture on a light page, with only the tile's edge
- * to give it an extent); in the dark frame the second one is. THIS IS THE FRAME THAT
- * SHOWS THE TRADE the borderless tile makes: at rest the tile has no edge, so a
- * picture whose canvas is the page's own tone has ~1.0:1 against the page and only
- * the well (~1.07:1) behind it. The edge (`border-control`, >=3:1 on every ground)
- * returns on hover and focus; the resting extent is a tracked follow-up (a fill
- * role authored to branding section 2's findability floor).
+ * to give it an extent); in the dark frame the second one is. THIS IS THE FRAME
+ * THAT SHOWED THE TRADE the borderless tile makes: at rest the tile has no edge, so
+ * a picture whose canvas is the page's own tone measures ~1.0:1 against the page and
+ * the shared well behind it ~1.07:1. The edge (`border-control`, >=3:1 on every
+ * ground) returns on hover and focus; the resting extent is now the FILL's - the
+ * tile wears `mediaSurface`, the fill role authored to branding section 2's
+ * findability floor, whose own before/after pair is the `chat-media-slot-fill` set.
  */
 export const ImageTones: Story = {
 	args: {

@@ -82,6 +82,30 @@ export type DesktopModelCatalogue = {
 	source: "initial" | "live";
 	errors: Record<string, string>;
 	/**
+	 * Which view of the catalogue this document answers: `usable` — the rows the
+	 * credential store says this machine can run, with the session's current
+	 * model kept whatever its state — or `all`, every row the providers list.
+	 *
+	 * OPTIONAL, and the absent case is load-bearing: a backend that predates the
+	 * `scope` request parameter answers without this field, and because such a
+	 * backend cannot have filtered anything, a reader must treat absence as
+	 * `all` and apply the `usable` filter itself — see `scopeCatalogue`, the one
+	 * place that rule lives.
+	 */
+	scope?: "usable" | "all";
+	/**
+	 * How many rows a `usable` answer left out (`all` minus `usable`), for the
+	 * picker's "Show all supported models (N need sign-in)" control.
+	 *
+	 * ABSENT on an `all` answer and on any older backend's. Deliberately a
+	 * number a reader SHOWS rather than one it derives: a count a client could
+	 * compute from an unfiltered listing is a mirror of the server's access
+	 * predicate, not the predicate itself, and a mirror that drifts would print
+	 * a number the rows below it contradict. With no number on the wire, the
+	 * control reads without one.
+	 */
+	hidden?: number;
+	/**
 	 * Whether the credential store could be read at all. When false, every
 	 * row's `connected` is the listing default ("show everything rather than
 	 * claim the user owns no models"), NOT a statement about auth -- so it must
