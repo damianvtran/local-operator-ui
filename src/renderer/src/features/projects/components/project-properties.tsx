@@ -26,6 +26,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Plus } from "lucide-react";
 import type { FC, ReactNode } from "react";
@@ -90,8 +91,9 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 	commit,
 	teamLabel = null,
 }) => {
-	const locale =
-		typeof navigator === "undefined" ? undefined : navigator.language;
+	/* The reader's locale for the metadata grid: device before a backend
+	 * answers, the backend's resolved language after (the i18n store). */
+	const locale = useI18nLocale();
 	const now = new Date(nowMs);
 	const [adding, setAdding] = useState<AddableField | null>(null);
 	/**

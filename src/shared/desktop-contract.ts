@@ -4953,6 +4953,14 @@ export type DesktopCapabilities = {
 	desktop_available: boolean;
 	desktop_auth: "bearer";
 	features: Record<string, number>;
+	/**
+	 * The backend's RESOLVED locale tag (RFC §2.5): config `language` ->
+	 * `LOP_LANG` -> OS -> `en`, normalised and filtered to SHIPPED locales.
+	 * Optional like every post-contract field, and that is the pre-connection
+	 * case as well as the older-backend one: absent means the renderer keeps
+	 * the device locale (the i18n locale store's documented fallback).
+	 */
+	language?: string;
 };
 
 /**

@@ -41,6 +41,7 @@ import {
 	noteConsentAttention,
 } from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
+import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
 
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
@@ -134,6 +135,13 @@ const App: FC = () => {
 	 * renders nothing.
 	 */
 	useWindowChrome();
+	/*
+	 * The i18n locale store's writer: mirrors the capabilities answer into it —
+	 * the device locale before any answer, the backend's resolved language
+	 * after (RFC §2.5). Mounted once, beside the window chrome, for the same
+	 * one-value reason; it renders nothing.
+	 */
+	useI18nLocaleSync();
 	const { pathname } = useLocation();
 	/*
 	 * The routes that already own a 40px row at the window's top: the chat surface

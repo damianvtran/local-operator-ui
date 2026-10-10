@@ -1,5 +1,7 @@
 import { format } from "date-fns";
 
+import { formatDate, formatDateTime, formatTime } from "@shared/i18n";
+
 /**
  * Formats a date/time string based on when it occurred
  * - Today: just time (h:mm a)
@@ -70,11 +72,12 @@ export const formatCalendarDate = (dateTimeString?: string | Date): string => {
 				? dateTimeString
 				: new Date(dateTimeString);
 		if (Number.isNaN(date.getTime())) return "";
-		/* The platform's formatter, not date-fns': `format(date, "d MMMM yyyy")`
+		/* The i18n formatter layer, not date-fns': `format(date, "d MMMM yyyy")`
 		   is hardcoded English and day-first, so a US user reading a date the
 		   app itself renders as "August 5" elsewhere saw "5 August 2026" here.
-		   Every other date in the product goes through `navigator.language`. */
-		return date.toLocaleDateString(navigator.language, {
+		   Every locale-sensitive date in the product goes through the layer,
+		   which reads the resolved language (device until a backend answers). */
+		return formatDate(date, {
 			year: "numeric",
 			month: "long",
 			day: "numeric",
@@ -102,7 +105,7 @@ export const formatCalendarDate = (dateTimeString?: string | Date): string => {
  *   earlier this year -> `Sep 12, 3:42 PM`
  *   an earlier year  -> `Sep 12, 2025, 3:42 PM`
  *
- * The DATE half goes through `navigator.language`, for the reason
+ * The DATE half goes through the i18n formatter layer, for the reason
  * `formatCalendarDate` above documents at length: a hardcoded `MMM d` is
  * English and month-first, and the platform's formatter is the app's only
  * answer for a user whose language orders the day first. The TIME half is
@@ -130,7 +133,7 @@ export const formatTurnTimestamp = (
 				: new Date(dateTimeString);
 		if (Number.isNaN(date.getTime())) return "";
 
-		const time = date.toLocaleTimeString(navigator.language, {
+		const time = formatTime(date, {
 			hour: "numeric",
 			minute: "2-digit",
 			hour12: true,
@@ -147,7 +150,7 @@ export const formatTurnTimestamp = (
 			return `Yesterday ${time}`;
 		}
 
-		const monthDay = date.toLocaleDateString(navigator.language, {
+		const monthDay = formatDate(date, {
 			month: "short",
 			day: "numeric",
 		});
@@ -199,7 +202,7 @@ export const formatCalendarDateTime = (
 				? dateTimeString
 				: new Date(dateTimeString);
 		if (Number.isNaN(date.getTime())) return "";
-		return date.toLocaleString(navigator.language, {
+		return formatDateTime(date, {
 			year: "numeric",
 			month: "long",
 			day: "numeric",
