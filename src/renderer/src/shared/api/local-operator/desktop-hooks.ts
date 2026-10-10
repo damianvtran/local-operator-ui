@@ -687,6 +687,15 @@ export type DesktopFeature =
 	 * all, which is the pre-voicing behaviour rather than a degraded one.
 	 */
 	| "tts"
+	/*
+	 * THE PRE-EMPTIVE QUOTA NOTICE (`features.quota_notice`; the sibling core
+	 * PRs' `GET /v1/desktop/quota-notice`). ITS OWN KEY, on the rule every
+	 * entry here states: a backend that does not advertise it must lose
+	 * nothing else, and it must not be CALLED -- the route answers 404 on an
+	 * older backend, and the notice's contract is "show nothing", not "retry"
+	 * or "update the backend".
+	 */
+	| "quota_notice"
 	/**
 	 * THE PER-SESSION CODE REQUEST LEDGER (`features.code_requests`): the
 	 * `code_requests.list` read and its refresh, i.e. the Code review pane, the
