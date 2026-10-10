@@ -4014,6 +4014,19 @@ const BRANCH_RECORDS = [
 	 * `STAMP_BINDING_NOTES`.
 	 */
 	"sidebarSubagentTrioPass",
+	/*
+	 * And THIS change's two - the access-aware picker's own records, the newer
+	 * one written by round 1's remediation. The first says what the initial
+	 * pass moved (`scope`/`hidden`, the six-frame before set kept as a
+	 * supplementary declaration); the second says what the remediation moved
+	 * (the supplementary set's `capturedAt`, the three re-takes and the two
+	 * new states). Registered for the list's own reason: a fold that started
+	 * from main's manifest would drop them, and with them the only statement
+	 * of which frames each pass wrote and why. Neither quotes the retired tree
+	 * pair, so they join this list and not `STAMP_BINDING_NOTES`.
+	 */
+	"modelPickerAccessScopeNote",
+	"modelPickerRoundOneRemediationNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(

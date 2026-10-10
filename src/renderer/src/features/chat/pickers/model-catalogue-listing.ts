@@ -136,3 +136,220 @@ export const providerListingNotice = (drawnFromRegistry: boolean): string =>
 	`The provider listing failed. The rows below are ${
 		drawnFromRegistry ? "the shipped models" : "the last listing that answered"
 	}; Refresh\u00a0from\u00a0providers tries again.`;
+
+/**
+ * The document the picker DRAWS, and whether it is a registry read.
+ *
+ * The draw order is the live answer when there is one — a failed SAME-KEY
+ * refetch keeps `data`, so a failure does not necessarily empty this slot —
+ * the current scope's registry read otherwise, then the held USABLE document:
+ * the answer the default view was drawing, kept so a failed reveal degrades to
+ * the rows the user pressed the control on rather than to a wall of text
+ * (agent review round 1, R1-2). Its registry twin is the last resort, for the
+ * state where the live answer never landed (a failed provider listing, where
+ * the registry rows stand alone).
+ *
+ * `drawnFromRegistry` says which sentence the failure note must print
+ * (`providerListingNotice`): true exactly when the drawn document IS a registry
+ * read — this scope's registry or the held usable one — and false when it is a
+ * live answer or the held copy of one. Selection and provenance live in one
+ * function so a refactor cannot keep the note's text while breaking its meaning
+ * (agent review round 2, M1 — the held registry document was being drawn under
+ * a sentence about the last listing; the same rule for the same-key case was
+ * round 2 code review R2-1).
+ */
+export function drawnCatalogue(input: {
+	catalogue?: DesktopModelCatalogue;
+	registry?: DesktopModelCatalogue;
+	usable?: DesktopModelCatalogue;
+	registryUsable?: DesktopModelCatalogue;
+	showAll: boolean;
+}): {
+	document: DesktopModelCatalogue | undefined;
+	drawnFromRegistry: boolean;
+} {
+	const heldUsable = input.showAll ? input.usable : undefined;
+	const heldRegistry =
+		input.showAll && input.usable === undefined
+			? input.registryUsable
+			: undefined;
+	const document =
+		input.catalogue ?? input.registry ?? heldUsable ?? heldRegistry;
+	/*
+	 * Identity comparisons rather than a second boolean threaded beside the
+	 * document: the two cannot drift out of step about the same value, and a
+	 * held copy of a LIVE answer is named for what it is.
+	 */
+	const drawnFromRegistry =
+		input.catalogue === undefined &&
+		document !== undefined &&
+		(document === input.registry || document === heldRegistry);
+	return { document, drawnFromRegistry };
+}
+
+/** The scope a catalogue can be asked for — the wire's own two values. */
+export type CatalogueScope = "usable" | "all";
+
+type CatalogueRow = DesktopModelCatalogue["models"][number];
+
+/**
+ * The row's selector, in the one spelling the wire and the rows share.
+ *
+ * ONE SPELLING FOR BOTH READERS (agent review round 1, R1-5): this module's
+ * scope filter and `destination-pickers.tsx`'s row map used to keep separate
+ * copies, one tier apart — a row carrying `value` without `selector` was
+ * spelled two ways by two halves of the same feature. The full tier list lives
+ * here now and both callers import it.
+ *
+ * The local fallbacks matter because an older backend may omit `selector`
+ * (`selector` is required by the contract but only since the same era as
+ * `scope`) and the pane path can carry a bare `value`; a row with none of the
+ * three still has a provider and an id.
+ */
+export function catalogueSelectorOf(row: {
+	selector?: string | null;
+	value?: string;
+	provider: string;
+	model_id: string;
+}): string {
+	return row.selector ?? row.value ?? `${row.provider}/${row.model_id}`;
+}
+
+const selectorOf = catalogueSelectorOf;
+
+/**
+ * The three answers a catalogue row's auth can have, in one place.
+ *
+ * `needs-sign-in` is the state the whole feature turns on: the row is listed
+ * (or was, before scope filtering) and cannot run until a credential exists.
+ * `unknown` is `credentials_known === false` — the store could not be read, so
+ * `connected` is the listing default rather than a statement about auth.
+ */
+export type RowAuth = "runnable" | "needs-sign-in" | "unknown";
+
+/**
+ * One row's auth state, from the document's own facts.
+ *
+ * THE ONE PREDICATE behind the row's group, its description, the scope union's
+ * reading of it and the pick itself (agent review round 1, R1-5's class: the
+ * spellings were drifting apart one caller at a time). The catalogue route
+ * always resolves `connected`, so a falsy value is a claim — the wire sends
+ * the boolean.
+ */
+export function rowAuthOf(
+	row: { connected?: boolean },
+	credentialsKnown: boolean,
+): RowAuth {
+	if (!credentialsKnown) return "unknown";
+	return row.connected ? "runnable" : "needs-sign-in";
+}
+
+/**
+ * The provider whose sign-in a pick must start, for a selector the composer's
+ * INLINE list has a row for — or null when there is nothing to intercept.
+ *
+ * THE COMPOSER'S HALF OF THE DIALOG'S RULE (UX round 1, U2). Picking a model
+ * row that needs a sign-in starts the Connect gesture on every surface, not
+ * only in the dialog; the inline `/model` popup used to switch the session
+ * onto the same row it labelled "no credential", which is the stranded state
+ * this feature exists to remove, with the safe behaviour only on the thicker
+ * surface.
+ *
+ * `=== false` is the inline route's own spelling, stated where its caveat is
+ * built (`slash-argument-rows.ts`): `commands.entities` publishes `connected`
+ * already resolved on the store's own thread, so only an explicit false is a
+ * claim about auth there. The catalogue route reads the same fact through
+ * `rowAuthOf`, whose contract carries the field. The row's provider comes from
+ * the selector's own first segment, the same split every picker makes.
+ */
+export function connectProviderForSelector(
+	rows: readonly { value: string; connected?: boolean }[],
+	selector: string,
+): string | null {
+	const row = rows.find((candidate) => candidate.value === selector);
+	if (!row || row.connected !== false) return null;
+	const provider = row.value.split("/")[0] ?? "";
+	return provider || null;
+}
+
+export type ScopedCatalogue = {
+	/** The rows this view may list. */
+	rows: CatalogueRow[];
+	/**
+	 * The count the "Show all supported models (N need sign-in)" control may
+	 * PRINT, or `null` when there is no honest number to print.
+	 *
+	 * Only a wire `usable` answer carries one (`hidden`). The client-side
+	 * fallback deliberately does NOT manufacture one from the rows it filtered:
+	 * its filter mirrors the backend's own access predicate (flavours, revoked
+	 * rows, keyless locals) without being it, and a printed number that drifts
+	 * from the predicate would be contradicted by the rows below it.
+	 */
+	hidden: number | null;
+	/**
+	 * Rows this client dropped itself (the fallback), so the control can offer
+	 * the full list WITHOUT claiming a count — `removed > 0` is the whole of
+	 * what it vouches for.
+	 */
+	removed: number;
+};
+
+/**
+ * The rows a scope may list, from the document in hand.
+ *
+ * THE RULE, one place, because two readers must agree about it and the second
+ * one is easy to forget: a NEW backend filters server-side and reports what it
+ * did (`scope`, `hidden`), while a backend that predates the `scope` parameter
+ * answers with everything and says nothing — so THIS client applies the same
+ * filter to that answer, on `row.connected`, and shows no count.
+ *
+ * `current` is the session's model selector. Both halves of the filter keep
+ * that row whatever its auth state — the backend's `picker_rows(usable,
+ * current)` exemption, mirrored — because the one row a user must always see
+ * is the one the session is running.
+ *
+ * `credentials_known === false` means the store could not be read, so
+ * `connected` is the listing default rather than a statement about auth: the
+ * filter is not applied at all there, which is the existing rule ("show
+ * everything rather than claim the user owns no models") carried into the
+ * scope rather than a new one beside it.
+ */
+export function scopeCatalogue(
+	data: DesktopModelCatalogue | undefined,
+	scope: CatalogueScope,
+	current: string | null,
+): ScopedCatalogue {
+	const rows = data?.models ?? [];
+	if (!data) return { rows, hidden: null, removed: 0 };
+	/*
+	 * Absence is `all`, the same reading every other consumer of this contract
+	 * makes (`desktop-control-contract.ts`): a backend that answers without
+	 * `scope` cannot have filtered, whatever this client asked for.
+	 */
+	const docScope = data.scope ?? "all";
+	if (docScope === "usable") {
+		/*
+		 * A server-filtered `usable` answer is taken as it stands — filtering it
+		 * again could only drop the current-model row the backend kept, because
+		 * the client's predicate is a mirror and not the predicate.
+		 *
+		 * `hidden` is read off the document even when the VIEW is `all` (the
+		 * toggle's in-flight moment, or the count after a toggle): it was true
+		 * when the usable document was fetched and nothing in this render has
+		 * contradicted it, so the control keeps its number while the fuller list
+		 * loads rather than flickering between labelled states.
+		 */
+		return {
+			rows,
+			hidden: typeof data.hidden === "number" ? data.hidden : null,
+			removed: 0,
+		};
+	}
+	if (scope === "all" || data.credentials_known === false) {
+		return { rows, hidden: null, removed: 0 };
+	}
+	const kept = rows.filter(
+		(row) => row.connected || selectorOf(row) === current,
+	);
+	return { rows: kept, hidden: null, removed: rows.length - kept.length };
+}

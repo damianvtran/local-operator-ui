@@ -759,6 +759,17 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 			"/v1/desktop/models?live=true",
 			"GET",
 		],
+		/*
+		 * THE SCOPED FORM OF THE SAME READ (agent review round 1, R1-4): the
+		 * no-scope row above pins the old shape, and this one pins the parameter
+		 * the access-aware picker asks for — appended only when asked, so an old
+		 * backend sees byte-identical requests (`desktop-contract.ts`).
+		 */
+		[
+			{ op: "models.catalogue", live: true, scope: "usable" },
+			"/v1/desktop/models?live=true&scope=usable",
+			"GET",
+		],
 		[
 			{ op: "usage.get", provider: "openai", live: true },
 			"/v1/desktop/usage?live=true&refresh=false&provider=openai",

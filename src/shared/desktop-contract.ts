@@ -2098,7 +2098,19 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z
-		.object({ op: z.literal("models.catalogue"), live: z.boolean().optional() })
+		.object({
+			op: z.literal("models.catalogue"),
+			live: z.boolean().optional(),
+			/*
+			 * Which view of the catalogue to answer with: `usable` (the rows this
+			 * machine can run, plus the session's current model) or `all`. Absent
+			 * means `all`, which is also what a backend that predates the
+			 * parameter does with it — the picker stays correct either way, because
+			 * a compile-time-correct request against an old backend is filtered
+			 * client-side by `scopeCatalogue`.
+			 */
+			scope: z.enum(["usable", "all"]).optional(),
+		})
 		.strict(),
 	z
 		.object({
@@ -5894,11 +5906,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/command-entities?command=${encodeURIComponent(request.command)}${request.name ? `&name=${encodeURIComponent(request.name)}` : ""}`,
 				method: "GET",
 			};
-		case "models.catalogue":
+		case "models.catalogue": {
+			/*
+			 * `scope` rides the query ONLY when asked for, so the path of a request
+			 * that does not name one is byte-identical to the pre-`scope` form
+			 * (`desktop-contract.test.mjs` pins that row) and an old backend keeps
+			 * answering exactly what it answered before.
+			 */
+			const scope = request.scope ? `&scope=${request.scope}` : "";
 			return {
-				path: `/v1/desktop/models?live=${request.live ?? false}`,
+				path: `/v1/desktop/models?live=${request.live ?? false}${scope}`,
 				method: "GET",
 			};
+		}
 		case "usage.get": {
 			const query = new URLSearchParams({
 				live: String(request.live ?? false),
