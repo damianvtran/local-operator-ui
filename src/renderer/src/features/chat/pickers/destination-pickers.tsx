@@ -13,6 +13,7 @@
  * duplicating an editor here. Everything else renders in the host.
  */
 
+import { useConnectProviderStore } from "@features/providers/connect-provider-store";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type { DesktopProvider } from "@shared/api/local-operator/desktop-api";
 import {
@@ -110,7 +111,15 @@ import {
 } from "../session-status/session-model";
 import { forkBudgetRefusal } from "../utils/message-budget";
 import { fastPickerOptions } from "./fast-picker-options";
-import { catalogueListing } from "./model-catalogue-listing";
+import {
+	type CatalogueScope,
+	type RowAuth,
+	catalogueListing,
+	drawnCatalogue,
+	rowAuthOf,
+	scopeCatalogue,
+	catalogueSelectorOf as selectorOf,
+} from "./model-catalogue-listing";
 import {
 	effortCommandSucceeded,
 	writeModelDefaultSettings,
@@ -247,11 +256,6 @@ type CatalogueRow = DesktopModelCatalogue["models"][number] & {
 	routed?: boolean;
 };
 
-/** The row's own selector, in the one spelling the wire and the rows share. */
-function selectorOf(row: CatalogueRow): string {
-	return row.selector ?? row.value ?? `${row.provider}/${row.model_id}`;
-}
-
 /** The row's price pair in the one spelling both surfaces print. */
 function pricePair(row: CatalogueRow): string {
 	return formatPricePair(
@@ -298,9 +302,18 @@ export function modelPickerOptions(
 		 * reaches for the thorough surface must not have to re-derive what the
 		 * fast one already told them. Same formatter, so `free` and
 		 * `usage-based` are words in both and an absent price is blank in both.
+		 *
+		 * THE CAVEAT IS THE SHARED VOCABULARY (design review round 1, D5; UX round
+		 * 1, U3): the row says `needs sign-in`, the group heading says `Needs
+		 * sign-in` and the control says `N need sign-in`, so one state reads as
+		 * one thing on this surface. The pre-fix two-word register was the one
+		 * outside that family, and the inline list's copy is aligned with it in
+		 * `slash-argument-rows.ts` (the phrase itself is kept out of this comment
+		 * on purpose: the suite pins that the old one cannot come back to this
+		 * file, and a comment quoting it exactly would re-arm that pin).
 		 */
 		description: `${row.provider}${row.aggregated ? ", aggregated" : ""}${
-			known && !row.connected ? ", no credential" : ""
+			rowAuthOf(row, known) === "needs-sign-in" ? ", needs sign-in" : ""
 		}${pricePair(row) ? ` · ${pricePair(row)}` : ""}`,
 		meta: row.context_window
 			? `${Math.round(row.context_window / 1000)}k`
@@ -311,6 +324,22 @@ export function modelPickerOptions(
 			: row.connected
 				? "Signed in"
 				: "Needs sign-in",
+		/*
+		 * WHAT A PICK ON THIS ROW DOES, when picking it is not the ordinary
+		 * switch (design review round 1, D2; QA round 1, Q-1). A needs-sign-in
+		 * row's pick opens the Connect flow for its provider instead of starting
+		 * the operation the host's picked-row mark and spinner describe, so the
+		 * host needs that fact BEFORE the pick runs: with it, the mark is never
+		 * set (no stuck "Switching the model" on a row no operation answers
+		 * about) and the footer can name the different verb ("Enter connects
+		 * zai" rather than a switch it will not make). Read off `rowAuthOf`'s
+		 * one answer, so the description, the group and the pick cannot
+		 * disagree.
+		 */
+		action:
+			rowAuthOf(row, known) === "needs-sign-in"
+				? { kind: "connect" as const, provider: row.provider }
+				: undefined,
 		keywords: [
 			/*
 			 * The provider's own HUMAN name (`Grok 4.7` for
@@ -367,16 +396,6 @@ function selectorOfResolution(
  * 4) — two spellings of one fact would drift, so there is one constant.
  */
 const DEFAULT_SAVE_FAILURE = "The default was not saved";
-
-/**
- * What a switch to a row with no credential means for the session (QA Q1).
- *
- * The switch itself succeeded — the owner accepted the spec — so this is not a
- * failure; it is the fact that the model cannot answer yet, stated in the
- * user's terms with the one action that changes it.
- */
-const SIGN_IN_CAVEAT =
-	"This model has no credential yet, so it cannot answer until you sign in. Connect it in Settings > Providers.";
 
 /**
  * Resolve a DRAFT pane's pick through the backend, THEN record it. One
@@ -651,26 +670,41 @@ export const ModelPicker: FC<PickerContext> = ({
 	const [live, setLive] = useState(false);
 	const [pickedCurrent, setPickedCurrent] = useState<string | null>(null);
 	/*
-	 * What the last successful switch did to the session's ability to RUN the
-	 * model it now names (QA Q1).
+	 * WHICH VIEW OF THE CATALOGUE THIS DIALOG SHOWS.
 	 *
-	 * `switched and runnable` and `switched but needs sign-in` produced an
-	 * identical success strip and an identical permanent band repaint, which is
-	 * the one distinction this picker exists to make: a row the dialog itself
-	 * labels `Needs sign-in … no credential` is a model the session cannot use
-	 * until a credential exists.
+	 * The default is `usable` — the rows this machine can run, plus the one the
+	 * session is on — because the operator's report is a picker listing every
+	 * Radient model for a user with no Radient sign-in. `showAll` is the user's
+	 * own widening of that view: it is not a preference, it resets every time
+	 * the dialog mounts, and it exists so the hidden rows are discoverable
+	 * rather than gone (see `scopeCatalogue` for the rule and the two backends
+	 * it spans).
 	 */
-	const [switchedNeedsSignIn, setSwitchedNeedsSignIn] = useState(false);
+	const [showAll, setShowAll] = useState(false);
+	const scope: CatalogueScope = showAll ? "all" : "usable";
 	const catalogue = useQuery({
 		/*
-		 * The key is the SHARED prefix plus the flag, so a credential change can drop
-		 * both documents with ONE invalidation against `desktopKeys.catalogue`
-		 * (`provider-detail.tsx` on a successful sign-in, `LogoutPicker` on a
-		 * removal) rather than the picker having to remember to ask again.
+		 * The key is the SHARED prefix plus the flag and the SCOPE, so a credential
+		 * change can drop every document with ONE invalidation against
+		 * `desktopKeys.catalogue` (`provider-detail.tsx` on a successful sign-in,
+		 * `LogoutPicker` on a removal) rather than the picker having to remember to
+		 * ask again.
+		 *
+		 * THE SCOPE IS PART OF THE KEY because the two documents are different
+		 * ANSWERS rather than a filter over one: a `usable` document holds fewer
+		 * rows and carries `hidden`, an `all` document holds everything the
+		 * providers list. Caching them under one key would let a reopen serve the
+		 * wider answer to a reader that asked for the narrower one. The settings
+		 * combobox's `[…, false]` key is deliberately NOT shared any more: it wants
+		 * the unfiltered registry and the picker's default does not.
 		 */
-		queryKey: [...desktopKeys.catalogue, live],
+		queryKey: [...desktopKeys.catalogue, live, scope],
 		queryFn: () =>
-			desktopResult<DesktopModelCatalogue>({ op: "models.catalogue", live }),
+			desktopResult<DesktopModelCatalogue>({
+				op: "models.catalogue",
+				live,
+				scope,
+			}),
 		staleTime: live ? 0 : 60_000,
 		/*
 		 * FOCUS IS NOT AN ASK, and on this key it is the sharpest form of that rule.
@@ -803,21 +837,96 @@ export const ModelPicker: FC<PickerContext> = ({
 	 * whether their shared entry is fresh.
 	 */
 	const registry = useQuery({
-		queryKey: [...desktopKeys.catalogue, false],
+		queryKey: [...desktopKeys.catalogue, false, scope],
 		queryFn: () =>
 			desktopResult<DesktopModelCatalogue>({
 				op: "models.catalogue",
 				live: false,
+				scope,
 			}),
 		enabled: false,
 		staleTime: 60_000,
 	});
 	/*
-	 * What the picker DRAWS, which is the live answer when there is one and the
-	 * registry's document otherwise: a failed live read falls back to the rows the
-	 * dialog opened on rather than to nothing.
+	 * THE USABLE DOCUMENT, KEPT ACTIVE WHILE THE WIDER LIST IS SHOWN — one
+	 * observer serving the two readings that could otherwise go stale together
+	 * (agent review round 1, R1-2 and R1-3), re-pointed at the LIVE entry by
+	 * agent review round 2 (M1/M4).
+	 *
+	 * R1-2, THE FALLBACK: a failed `Show all` read had nothing behind it. The
+	 * reveal is a KEY CHANGE ([…, "usable"] -> […, "all"]), `keepPreviousData`
+	 * carries nothing once a query settles as `error`, and the automatic
+	 * promotion makes the first `all` read a LIVE one — so no `[false, "all"]`
+	 * entry was ever written and `catalogueListing`'s `isError` branch put the
+	 * error text where the rows had been, over a dialog that had rows a moment
+	 * earlier (its own docstring's rule: a failed read is only a wall of text
+	 * when there is nothing to draw).
+	 *
+	 * M1, WHICH entry: the answer the user was LOOKING AT is the LIVE one once
+	 * the automatic promotion has run — the first version held the `[false,
+	 * "usable"]` registry entry, so after live promotion a failed reveal drew
+	 * the shipped models under a note calling them "the last listing that
+	 * answered". Keying this observer on `live` matches the entry to the
+	 * document the default view was drawing, including the pre-promotion
+	 * window, where `live` is still false and the two are the same document.
+	 *
+	 * M4, THE COUNT: the control prints `hidden` from a `usable` answer, and
+	 * while the wider list is shown the ACTIVE catalogue query is the `all` one —
+	 * so a credential-change invalidation refetched everything except the
+	 * document the number comes from, and the kept label could outlive the state
+	 * it describes ("2 need sign-in" over a row that just connected). This
+	 * observer IS the live entry the default view's number came from, so the
+	 * refreshed number below cannot flip sources; `enabled: showAll` and the
+	 * registry observer's `staleTime`, so the readers of this entry cannot
+	 * disagree about freshness. It never fetches while the default view is
+	 * shown — the catalogue query above owns that entry there.
 	 */
-	const catalogueDocument = catalogue.data ?? registry.data;
+	const usableDocument = useQuery({
+		queryKey: [...desktopKeys.catalogue, live, "usable"],
+		queryFn: () =>
+			desktopResult<DesktopModelCatalogue>({
+				op: "models.catalogue",
+				live,
+				scope: "usable",
+			}),
+		enabled: showAll,
+		staleTime: 60_000,
+	});
+	/*
+	 * THE REGISTRY READING OF THE SAME ENTRY, as the fallback's fallback: the
+	 * state where the live answer never landed (a failed provider listing — the
+	 * `live-listing-failed` frame, where the registry rows stand alone) leaves
+	 * `[true, "usable"]` empty, so a failed reveal there still needs SOMETHING
+	 * to draw. Enabled only while that hole exists and the wider list is shown,
+	 * so in the ordinary flow it never fetches and stays what the pre-promotion
+	 * paint already wrote; when enabled, react-query serves its cache entry or
+	 * refetches it on the usual freshness rules.
+	 */
+	const usableRegistryDocument = useQuery({
+		queryKey: [...desktopKeys.catalogue, false, "usable"],
+		queryFn: () =>
+			desktopResult<DesktopModelCatalogue>({
+				op: "models.catalogue",
+				live: false,
+				scope: "usable",
+			}),
+		enabled: showAll && usableDocument.data === undefined,
+		staleTime: 60_000,
+	});
+	/*
+	 * What the picker DRAWS, and whether that is a registry read — the selection
+	 * and the provenance from ONE place (`drawnCatalogue`), because the note's
+	 * sentence has to describe the document that actually stands in (round 2
+	 * code review R2-1 for the same-key case, M1 for the held registry one).
+	 */
+	const drawn = drawnCatalogue({
+		catalogue: catalogue.data,
+		registry: registry.data,
+		usable: usableDocument.data,
+		registryUsable: usableRegistryDocument.data,
+		showAll,
+	});
+	const catalogueDocument = drawn.document;
 	/*
 	 * Only a LIVE fetch says the listing is running: it is the one that re-lists the
 	 * providers, whichever started it - the automatic promotion above or the
@@ -917,54 +1026,162 @@ export const ModelPicker: FC<PickerContext> = ({
 	/*
 	 * The catalogue row's own auth state, by selector.
 	 *
-	 * One map, read by both the row builder below (`group`) and the pick itself,
-	 * so the label the user reads and the outcome the strip reports cannot
-	 * disagree.
+	 * One map, read by the row builder below (`group`), by the scope union and
+	 * by the pick itself, so the label the user reads, the rows the filter keeps
+	 * and the outcome a pick produces cannot disagree.
+	 *
+	 * BUILT FROM THE DOCUMENT, NOT THE SCOPED VIEW, and that is what makes a
+	 * needs-sign-in pick answerable at all: under the default `usable` scope
+	 * those rows are filtered out, and the moment the user reveals them the map
+	 * has to know what they are.
 	 */
 	const rowAuth = useMemo(() => {
 		const known = catalogueDocument?.credentials_known !== false;
-		const map = new Map<string, "runnable" | "needs-sign-in" | "unknown">();
+		const map = new Map<string, RowAuth>();
 		for (const row of (catalogueDocument?.models ?? []) as CatalogueRow[]) {
-			map.set(
-				selectorOf(row),
-				!known ? "unknown" : row.connected ? "runnable" : "needs-sign-in",
-			);
+			map.set(selectorOf(row), rowAuthOf(row, known));
 		}
 		return map;
 	}, [catalogueDocument]);
 
+	/*
+	 * The rows this dialog may list, and the signals the scope control reads
+	 * (see `scopeCatalogue`, the one place the rule lives: a new backend filters
+	 * server-side and reports what it did, an old one answers with everything
+	 * and THIS client filters instead, without a count).
+	 */
+	const scoped = useMemo(
+		() => scopeCatalogue(catalogueDocument, scope, shownSelector),
+		[catalogueDocument, scope, shownSelector],
+	);
+
 	const options = useMemo<PickerOption[]>(() => {
-		const rows = (catalogueDocument?.models ?? []) as CatalogueRow[];
 		// `connected` is also true when the credential store could not be read,
 		// which is why every model once sat under "Connected" on a fixture with
 		// no credentials at all (D5). With that unknown, the picker still lists
 		// everything -- an empty model list would be a worse lie -- but it stops
 		// claiming an auth state it does not have.
 		const known = catalogueDocument?.credentials_known !== false;
-		return modelPickerOptions(rows, {
+		return modelPickerOptions(scoped.rows as CatalogueRow[], {
 			credentialsKnown: known,
 			shownSelector,
 		});
-	}, [catalogueDocument, shownSelector]);
+	}, [catalogueDocument, scoped, shownSelector]);
 
 	/*
-	 * Which document was actually drawn, for the failure note's provenance clause:
-	 * the live answer when the live query has one - a failed SAME-KEY refetch keeps
-	 * `data`, which is how the note came to claim the rows below were the shipped
-	 * models while it was drawing a provider's own (round 2, code review R2-1) -
-	 * and the registry's document otherwise.
+	 * The listing call takes the provenance `drawnCatalogue` decided above — one
+	 * place pairs the document with its sentence, so the note cannot keep its
+	 * text while describing a different document (round 1 R1-2's fallback,
+	 * round 2 code review R2-1, agent review round 2 M1).
 	 */
 	const listing = catalogueListing(
 		catalogueDocument,
 		catalogue,
 		errorText,
-		catalogue.data === undefined,
+		drawn.drawnFromRegistry,
 	);
+
+	/*
+	 * The scope control's two signals, and the control itself.
+	 *
+	 * SHOWN only when there is something to reveal — `hidden > 0` from the wire,
+	 * or rows THIS client dropped — plus whenever it is already checked, so the
+	 * user can always put the list back. A checkbox that toggles between two
+	 * identical lists is the do-nothing-control class design D13 filed: a
+	 * control that looks enabled has to DO something.
+	 *
+	 * THE COUNT IS PRINTED ONLY OFF THE WIRE (see `scopeCatalogue` on why the
+	 * client's own filter does not manufacture one), and while the wider answer
+	 * is loading the previous document's number is still what the control says —
+	 * it was true when it was fetched, and the rows on screen still match it.
+	 */
+	const hiddenOnWire = scoped.hidden;
+	/*
+	 * THE NUMBER KEPT WHILE THE WIDER LIST IS SHOWN.
+	 *
+	 * The `all` document has no count of its own (the backend reports `hidden`
+	 * on a `usable` answer), so a label read off the current document alone
+	 * would drop the number the moment the user pressed the control — and the
+	 * number is still TRUE of the list below ("2 of these need sign-in"). The
+	 * last wire count is therefore kept for as long as the dialog lives, and
+	 * serves the label whenever the document in hand cannot.
+	 */
+	const [lastHidden, setLastHidden] = useState<number | null>(null);
+	useEffect(() => {
+		if (hiddenOnWire !== null) setLastHidden(hiddenOnWire);
+	}, [hiddenOnWire]);
+	/*
+	 * R1-3's refresh half (M4: from the SAME source the number came from): the
+	 * observer above is the live `usable` entry while the wider list is shown —
+	 * exactly what the default view's number was read off — so a
+	 * credential-change invalidation refetches the document the count comes from,
+	 * and the refreshed `hidden` lands here without the user having to untick the
+	 * control. A `usable` answer's number describes the rows exactly when it is
+	 * fetched — after a sign-in it drops, and the label that says "2 need
+	 * sign-in" stops being true of a list where one of them just connected.
+	 */
+	useEffect(() => {
+		const hidden = usableDocument.data?.hidden;
+		if (typeof hidden === "number") setLastHidden(hidden);
+	}, [usableDocument.data]);
+	const scopeCount = hiddenOnWire ?? lastHidden;
+	const scopeControl =
+		showAll || scoped.removed > 0 || (scopeCount !== null && scopeCount > 0) ? (
+			<PickerCheck checked={showAll} onCheckedChange={setShowAll} tone="muted">
+				{scopeCount !== null && scopeCount > 0
+					? `Show all supported models (${scopeCount} ${
+							scopeCount === 1 ? "needs" : "need"
+						} sign-in)`
+					: "Show all supported models"}
+			</PickerCheck>
+		) : null;
+
+	/*
+	 * What the dialog says, and offers, when the scoped list is EMPTY.
+	 *
+	 * The state the operator's report is about reads as a list here — nothing
+	 * that can run is signed in — and a list of nothing with no way out is the
+	 * dead end the empty-state requirement names. So the body states the fact
+	 * and offers `Connect a provider`: the SAME connect dialog every other
+	 * connect surface opens (`useConnectProviderStore`), never a second flow.
+	 *
+	 * A PARTIAL LISTING FAILURE IS NOT THIS STATE: when providers did not
+	 * answer, the note above the body says so, and a connect button would send
+	 * the user to fix a sign-in that is not the problem — `listing.notice` is
+	 * exactly that half, so its presence withholds the offer.
+	 */
+	const emptyOffersConnect = options.length === 0 && listing.notice === null;
 
 	const onPick = useCallback(
 		async (value: string, option: PickerOption) => {
 			const [provider, ...rest] = value.split("/");
 			const modelId = rest.join("/");
+			/*
+			 * A ROW THAT NEEDS SIGN-IN IS NOT SWITCHED TO — it starts the sign-in
+			 * that makes it runnable.
+			 *
+			 * The old behaviour switched the session onto the model and then warned
+			 * it could not answer (QA Q1's after-the-fact caveat), which left the
+			 * session pinned to a model that refuses every turn — exactly the
+			 * stranded state this change exists to remove. The rule mirrors the TUI,
+			 * where Enter on such a row already runs `/login`: the pick becomes the
+			 * Connect gesture, the model is untouched, and the dialog opened here is
+			 * the SAME connect flow every other connect surface opens
+			 * (`useConnectProviderStore`), pre-focused on this row's provider. The
+			 * credential landing invalidates the catalogue
+			 * (`provider-detail.tsx`), so the rows refresh under the dialog and the
+			 * row the user wanted becomes a switchable one.
+			 *
+			 * Only a KNOWN store can say `needs-sign-in`: with the store unreadable
+			 * the state is `unknown`, which keeps the switch-the-row behaviour rather
+			 * than inventing a sign-in the evidence cannot support.
+			 */
+			if (rowAuth.get(value) === "needs-sign-in") {
+				useConnectProviderStore
+					.getState()
+					.openConnect({ providerId: provider });
+				return;
+			}
 			if (draft) {
 				/*
 				 * A DRAFT pane's pick is not a command and has no owner to switch.
@@ -1047,17 +1264,8 @@ export const ModelPicker: FC<PickerContext> = ({
 				return;
 			}
 			// The switch landed: mark the picked row in force at once rather than
-			// waiting out the owner's next frame (QA Q2), and say whether the model
-			// it just switched to can actually run (QA Q1).
+			// waiting out the owner's next frame (QA Q2).
 			setPickedCurrent(value);
-			const needsSignIn = rowAuth.get(value) === "needs-sign-in";
-			setSwitchedNeedsSignIn(needsSignIn);
-			if (needsSignIn) {
-				// The strip below carries this while the dialog is open; the note is
-				// the same fact for the case where it is not (UX U2's rule, applied
-				// to the one "success" that still needs the user to do something).
-				note(`The model was changed. ${SIGN_IN_CAVEAT}`);
-			}
 			if (persistDefault) {
 				// Explicit default scope: the session change above is the owner's;
 				// the default is the typed settings key, written only on request.
@@ -1114,7 +1322,7 @@ export const ModelPicker: FC<PickerContext> = ({
 		],
 	);
 
-	const ownerOutcome: PickerResult | null = persist.result
+	const pickResult: PickerResult | null = persist.result
 		? {
 				...persist.result,
 				text: [command.result?.text, persist.result.text]
@@ -1122,19 +1330,6 @@ export const ModelPicker: FC<PickerContext> = ({
 					.join("\n"),
 			}
 		: command.result;
-	/*
-	 * "Switched and runnable" and "switched but cannot run yet" are different
-	 * outcomes, and this picker's whole subject is that difference (QA Q1).
-	 *
-	 * The caveat is APPENDED to the owner's own text rather than replacing it —
-	 * the strip quotes the receipt and this is the renderer's own sentence about
-	 * the row it just switched to — and the tone steps to `warning`, because the
-	 * switch did succeed and the model is not usable yet.
-	 */
-	const combined: PickerResult | null =
-		ownerOutcome && switchedNeedsSignIn && ownerOutcome.tone !== "error"
-			? { tone: "warning", text: `${ownerOutcome.text}\n${SIGN_IN_CAVEAT}` }
-			: ownerOutcome;
 
 	/*
 	 * Closing is not cancelling, and it is no longer the moment a failure is
@@ -1212,6 +1407,21 @@ export const ModelPicker: FC<PickerContext> = ({
 			loadError={listing.loadError}
 			notice={listing.notice}
 			noticeDetail={listing.noticeDetail}
+			emptyText={
+				emptyOffersConnect ? "No models are signed in yet." : undefined
+			}
+			emptyAction={
+				emptyOffersConnect ? (
+					<Button
+						variant="secondary"
+						size="sm"
+						type="button"
+						onClick={() => useConnectProviderStore.getState().openConnect()}
+					>
+						Connect a provider
+					</Button>
+				) : undefined
+			}
 			searchPlaceholder="Search models"
 			onPick={onPick}
 			busy={draft ? draftPick.busy : command.busy || persist.busy}
@@ -1236,7 +1446,7 @@ export const ModelPicker: FC<PickerContext> = ({
 									.filter(Boolean)
 									.join("\n"),
 							}
-						: combined
+						: pickResult
 			}
 			toolbar={
 				/*
@@ -1249,21 +1459,49 @@ export const ModelPicker: FC<PickerContext> = ({
 				 */
 				<div
 					className={cn(
-						"flex items-center gap-3",
-						draft ? "justify-end" : "justify-between",
+						"flex gap-3",
+						/*
+						 * `items-start` only once the scope control is there.
+						 *
+						 * The control puts a second line under the default checkbox, and a
+						 * row of buttons centred against a two-line block reads as float
+						 * rather than as alignment. WITHOUT the control the row is the one
+						 * line per side it has always been, and it renders exactly as it did
+						 * before this change — the frames, state by state, are the check: an
+						 * alignment nudge in a state this change does not enter is a delta
+						 * nobody asked for.
+						 */
+						/*
+						 * The control also always takes the left end, in every mode: a draft
+						 * pane has no persist checkbox, so the base layout right-aligned its
+						 * buttons there; with a control beside them the row is a two-sided
+						 * one again.
+						 */
+						draft && !scopeControl ? "justify-end" : "justify-between",
+						scopeControl ? "items-start" : "items-center",
 					)}
 				>
-					{!draft && (
-						<PickerCheck
-							checked={persistDefault}
-							onCheckedChange={setPersistDefault}
-							tone="muted"
-						>
-							{persistDefault
-								? "This pick also sets the default for new sessions"
-								: "Also make it the default for new sessions"}
-						</PickerCheck>
-					)}
+					{/*
+					 * The list controls on the LEFT: the default-scope checkbox (session
+					 * mode only) and the scope control, which every mode carries because
+					 * the LIST is what it changes. Wrapping keeps the narrow dialog's
+					 * toolbar readable rather than letting one long label push the
+					 * refresh control off the row.
+					 */}
+					<div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+						{!draft && (
+							<PickerCheck
+								checked={persistDefault}
+								onCheckedChange={setPersistDefault}
+								tone="muted"
+							>
+								{persistDefault
+									? "This pick also sets the default for new sessions"
+									: "Also make it the default for new sessions"}
+							</PickerCheck>
+						)}
+						{scopeControl}
+					</div>
 					<div className="flex items-center gap-2">
 						{!draft && (
 							<Button

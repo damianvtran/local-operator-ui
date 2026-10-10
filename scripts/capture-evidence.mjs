@@ -5455,6 +5455,42 @@ export const STORIES = [
 	/* Accepted and refused effort picks with the opt-in new-session default. */
 	["chat-model-picker--effort-set-as-default", 900, 620],
 	["chat-model-picker--effort-refused-does-not-save-default", 900, 620],
+	/*
+	   THE ACCESS-SCOPE STATES, added with the scope union itself.
+
+	   `show-all-wire` is a NEW backend's answer driven end to end: the resting
+	   view lists only rows this machine can run (no GLM row anywhere in it), the
+	   control prints the backend's own count `(2 need sign-in)`, and the frame is
+	   the state AFTER the press - both needs-sign-in rows under their heading.
+	   `show-all-fallback` is the same press against an OLD backend (neither
+	   `scope` nor `hidden` on the wire): the filter is the client's and the
+	   control carries no count, which is the pair a reader needs to see the two
+	   paths agree on the rows while differing honestly in what they promise.
+	   `no-usable-models` is nothing-signed-in: the empty state is the way out
+	   (`Connect a provider`), not a dead list, and it is short (560) for the
+	   reason `empty` is - a spinner-sized state at 900 tall is mostly ground,
+	   which crosses the uniformity ceiling.
+	   `no-usable-wire` (round 1's D6a) is the same dead end against the NEW
+	   backend: zero rows AND the wire's own `(2 need sign-in)` count, the
+	   count-and-CTA composition no frame showed before.
+	   `show-all-connect-footer` (round 1's D2 companion) is the reveal pressed
+	   and the query narrowed to the one hidden row: the footer names the verb
+	   Enter will actually perform (`Enter connects zai`), which the source-only
+	   claim could not be checked against a frame.
+	*/
+	["chat-model-picker--usable-only-wire", 900, 760],
+	["chat-model-picker--show-all-wire", 900, 760],
+	["chat-model-picker--show-all-fallback", 900, 760],
+	["chat-model-picker--no-usable-models", 900, 560],
+	["chat-model-picker--no-usable-wire", 900, 560],
+	["chat-model-picker--show-all-connect-footer", 900, 760],
+	/*
+	   THE SESSION BAND'S MODEL-ACCESS STATEMENT (`model_access: signed_out`):
+	   the sentence naming the provider and the two ways out, at the composer
+	   column's width and at the narrow-view inset where the sentence wraps.
+	*/
+	["chat-session-model-access-band--signed-out", 900, 280],
+	["chat-session-model-access-band--signed-out-narrow", 460, 260],
 
 	/*
 	 * `/move`: NO SWEPT ENTRY, and the absence is the honest state of this
@@ -9070,6 +9106,11 @@ export const STORIES = [
 	["chat-slash-completion--argument-phase-empty", 768, 300],
 	/* The shed order under pressure: numbers dropped, name kept. */
 	["chat-slash-completion--argument-phase-narrow-composer", 378, 300],
+	/* A pick that CONNECTS: the `/model` list's needs-sign-in row and the connect
+	   footer on both lines (U4, the inline counterpart of the dialog's D2
+	   frame), with the longer completing sentence at the narrowest supported
+	   width as the second case. */
+	["chat-slash-completion--argument-phase-needs-sign-in", 980, 620],
 	/* A command typed into a sentence, the list above the prose. */
 	/* The mid-draft state round-1 D1 judged AND the state the fix puts in its
 	   place, as the two cases of one board — the after-picture is absence, and a

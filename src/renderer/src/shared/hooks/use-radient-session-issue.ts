@@ -480,6 +480,26 @@ export function useRadientSessionIssue(): UseRadientSessionIssue {
 				setPhase({ kind: "settling" });
 				operationRef.current = null;
 				/*
+				 * AND THE MODEL CATALOGUES, because a completed sign-in changes what the
+				 * picker may list - dropped BESIDE the account read, in the same order the
+				 * providers panel drops them (`provider-detail.tsx`: catalogue first, the
+				 * account read second).
+				 *
+				 * THIS IS A THIRD CREDENTIAL-CHANGE POINT beside the two that already drop
+				 * the prefix (`provider-detail.tsx` on a successful sign-in, `LogoutPicker`
+				 * on a removal), and it exists because neither runs on THIS path: a
+				 * re-authentication finished from the composer callout writes the credential
+				 * through the backend directly and never mounts the providers panel, so
+				 * without this the picker kept drawing the rows the credential it just fixed
+				 * was fetched under - and with the picker now defaulting to `scope=usable`,
+				 * that stale document is exactly the one that withholds the models the
+				 * sign-in just unlocked. `desktopKeys.catalogue` is the shared prefix, so
+				 * this drops the registry and live documents of both scopes together.
+				 */
+				void queryClient.invalidateQueries({
+					queryKey: desktopKeys.catalogue,
+				});
+				/*
 				 * THE ACCOUNT READ IS COMMISSIONED HERE, with the verdict, because this
 				 * branch is the composer callout's only completion path: the credential
 				 * is in the store now, and without this the account surfaces kept
