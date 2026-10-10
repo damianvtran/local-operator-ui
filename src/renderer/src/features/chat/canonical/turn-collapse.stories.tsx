@@ -1601,3 +1601,262 @@ export const FreshConversation: Story = {
 		/>
 	),
 };
+
+/* ----------------------- the quiet turn's frames (S2) ----------------------- */
+
+/*
+ * THE QUIET CLOSE AND THE GROUP, as frames (design §5, rev 2). Core persists a
+ * quiet turn as two ordinary rows - a `no_reply` call and its result - and the
+ * UI hides the pair at paint while keeping the call as a STRUCTURAL close: the
+ * bar over the turn's work carries the summary, the completed mark included,
+ * and nothing carries a caption, a stamp or a foot. A run of >= 2 delivery
+ * receipts becomes a GROUP bar (`Peer messages · 12 · 2h 14m`), and it keeps
+ * its one line while it grows.
+ *
+ * BUILT THROUGH THE REAL REDUCER (this file's rule): every cell below folds the
+ * durable shapes through `applyHistoryPage`, and the open-tail cell adds the
+ * one live frame a page cannot state (the still-running call). The quiet rows
+ * carry the wire's own shape - `role: "tool"`, `tool_name: "no_reply"`, the
+ * `Quiet.` result - not a planted record.
+ */
+
+type QuietEntry = DesktopHistoryPage["entries"][number];
+
+const quietEntry = (
+	id: string,
+	ts: number,
+	payload: Record<string, unknown>,
+): QuietEntry => ({ id, ts, type: "message", payload });
+
+const peerPayload = (body: string, sender: string) => ({
+	kind: "custom",
+	custom_type: "peer_message",
+	details: {
+		body,
+		sender: {
+			pid: "",
+			conversationName: sender,
+			cwd: "",
+			sessionId: "",
+			modelLabel: "",
+		},
+	},
+});
+
+const toolPayload = (callId: string, text: string, durationS: number) => ({
+	kind: "message",
+	role: "tool",
+	tool_call_id: callId,
+	tool_name: "bash",
+	content: [{ type: "text", text }],
+	provider_payload: { duration_s: durationS, details: {} },
+});
+
+const quietPayload = (callId: string) => ({
+	kind: "message",
+	role: "tool",
+	tool_call_id: callId,
+	tool_name: "no_reply",
+	content: [{ type: "text", text: "Quiet." }],
+	provider_payload: { duration_s: 0.01, details: {} },
+});
+
+/** The R1 pin's literal shape: `[peer][tool][no_reply]`, head-cut. */
+const quietCloseTurn = (): TranscriptState => {
+	const S = TS / 1000;
+	return applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			quietEntry(
+				"p1",
+				S,
+				peerPayload(
+					"deploy-watch: staging is green; nothing needs you.",
+					"hermes",
+				),
+			),
+			quietEntry("t1", S + 2, toolPayload("c1", "check ok\n", 3)),
+			quietEntry("q1", S + 4, quietPayload("c2")),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+};
+
+/**
+ * Twelve receipts over 2h14m, each answered by one call and closed quietly -
+ * the copy's own numbers (`Peer messages · 12 · 2h 14m`). `tail` appends the
+ * next receipt's call still RUNNING (the open-tail frame's live half), and
+ * `headCut` drops the opening user row for the head-cut frame.
+ */
+const quietGroupTurn = ({
+	count = 12,
+	headCut = false,
+	tail = false,
+}: {
+	count?: number;
+	headCut?: boolean;
+	tail?: boolean;
+} = {}): TranscriptState => {
+	const S = Math.round(TS / 1000);
+	const spanS = 8_040;
+	const entries: QuietEntry[] = [];
+	if (!headCut) {
+		entries.push(
+			quietEntry("u1", S, {
+				kind: "message",
+				role: "user",
+				content: [{ text: "Report when the batch lands." }],
+			}),
+		);
+	}
+	const first = headCut ? 0 : 1;
+	for (let i = 0; i < count; i += 1) {
+		const at = S + Math.round((i * spanS) / (count - 1));
+		entries.push(
+			quietEntry(
+				`p${i + first}`,
+				at,
+				peerPayload(
+					`batch fragment ${i + 1} staged`,
+					i % 2 === 0 ? "ingest-rail" : "hermes",
+				),
+			),
+		);
+		entries.push(
+			quietEntry(
+				`t${i + first}`,
+				at + 1,
+				toolPayload(`c${i}`, "staged\n", 2.5),
+			),
+		);
+		entries.push(quietEntry(`q${i + first}`, at + 2, quietPayload(`q${i}`)));
+	}
+	if (tail) {
+		entries.push(
+			quietEntry(
+				`p${count + first}`,
+				S + spanS + 3,
+				peerPayload("batch fragment 13 staged", "hermes"),
+			),
+		);
+	}
+	let state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries,
+		has_more: false,
+		cursor_missing: false,
+	});
+	if (tail) {
+		/* The receipt's call, still out: the one frame a page cannot state. */
+		state = applyEvent(
+			state,
+			{
+				type: "tool_execution_start",
+				tool_call_id: `c${count}`,
+				tool_name: "bash",
+				args: { command: "records stage --window next" },
+			},
+			NOW - 4_000,
+		);
+	}
+	return state;
+};
+
+/** A mixed delivery run: peer and wake receipts, one group, `Messages`. */
+const quietGroupMixedTurn = (): TranscriptState => {
+	const S = TS / 1000;
+	return applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			quietEntry("u1", S, {
+				kind: "message",
+				role: "user",
+				content: [{ text: "Keep an eye on the queue." }],
+			}),
+			quietEntry(
+				"p1",
+				S + 2,
+				peerPayload("queue depth back to normal", "ingest-rail"),
+			),
+			quietEntry("q1", S + 4, quietPayload("q1")),
+			quietEntry("w1", S + 6, {
+				kind: "custom",
+				custom_type: "wake_prompt",
+				details: {
+					text: "(alarm) Scheduled wake w-9 (1, every 6h)\n\nNothing to do.",
+				},
+			}),
+			quietEntry("q2", S + 8, quietPayload("q2")),
+			quietEntry("p2", S + 10, peerPayload("second batch acked", "hermes")),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+};
+
+/** THE R1 PIN, as a frame. See the section header. */
+export const QuietClose: Story = {
+	render: () => (
+		<Frame
+			transcript={quietCloseTurn()}
+			caption="A quiet turn (the R1 pin's shape: peer receipt, one call, a settled no_reply) — one bar, completed, no caption and no foot; the no_reply row itself is never painted."
+		/>
+	),
+};
+
+/** The group bar: twelve receipts, one line. */
+export const QuietGroupCollapsed: Story = {
+	render: () => (
+		<Frame
+			transcript={quietGroupTurn()}
+			caption="Twelve peer receipts over 2h14m, each closed quietly — one group line: Peer messages · 12 · 2h14m."
+		/>
+	),
+};
+
+/**
+ * The no-jitter pair, after half: the next receipt has arrived and its call is
+ * still running, and the group is STILL one line - the count grew, the bar did
+ * not move. The `QuietGroupCollapsed` frame is the before half.
+ */
+export const QuietGroupOpenTail: Story = {
+	render: () => (
+		<Frame
+			transcript={quietGroupTurn({ tail: true })}
+			caption="The same group with a thirteenth receipt landing and its call still out — the bar stays one line while the count grows; the working line carries the live half."
+			waiting={true}
+		/>
+	),
+};
+
+/**
+ * The reader's press: the group bar is the disclosure, and the receipts (with
+ * their own calls) mount back in order. Pressed through the bar's own trigger
+ * by the capture table, like `Expanded`.
+ */
+export const QuietGroupExpanded: Story = {
+	render: () => (
+		<Frame
+			transcript={quietGroupTurn()}
+			caption="The same group, opened by the reader's press — each receipt with its call back in place; the quiet rows still paint nothing."
+		/>
+	),
+};
+
+/** The head-cut group: counts are a minimum and no duration is stated. */
+export const QuietGroupHeadCut: Story = {
+	render: () => (
+		<Frame
+			transcript={quietGroupTurn({ headCut: true })}
+			caption="A quiet group whose head is cut off (the loaded span starts mid-run) — the count is a minimum and no duration is fabricated."
+		/>
+	),
+};
+
+/** The mixed-family group: `Messages`, no sender summary. */
+export const QuietGroupMixed: Story = {
+	render: () => (
+		<Frame
+			transcript={quietGroupMixedTurn()}
+			caption="Peer and wake receipts in one run — the mixed family states Messages · 3."
+		/>
+	),
+};

@@ -30,6 +30,12 @@
  * - a CLOSE row is a settled, text-bearing assistant row that is NOT followed by a
  *   step row before the next trigger or the run's end. Text followed by a step is
  *   narration ("Checking the ledger first."), and narration is not a close;
+ * - A SETTLED QUIET CALL IS ALSO A CLOSE (design §5, rev 2): a `no_reply` row
+ *   whose call finished ends its cycle without handing the reader anything. It is
+ *   a close for every CLOSURE consumer (the cycle chain, `settledCloseOf`'s tail,
+ *   the walk's run boundary) and a CANDIDATE for none of the ones that hand
+ *   something over (`electAnswer` excludes it, so no caption, foot or stamp
+ *   claims an answer). See `isQuietTurnClose` for why the name is the signal;
  * - a CYCLE is one agent response: the rows since the previous close, ending at
  *   this close. A run is a chain of cycles.
  *
@@ -57,7 +63,10 @@ import {
 	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 	type TranscriptDisplayMode,
 } from "../transcript-display-mode";
-import type { TranscriptRecord } from "./transcript-reducer";
+import {
+	type TranscriptRecord,
+	isInterruptedFault,
+} from "./transcript-reducer";
 
 export type TriggerKind =
 	| "user"
@@ -97,6 +106,58 @@ const CONTINUATION_CUSTOMS: ReadonlySet<string> = new Set([
 	"hub_message",
 	"monitor_prompt",
 ]);
+
+/**
+ * The quiet-turn tool, and the two readings of its row (design §5, rev 2).
+ *
+ * A turn the agent ended with `no_reply` is a SILENT turn: core persists the
+ * call and its result as ordinary tool rows (no wire field, no capability
+ * flag), and this module is where the transcript turns the pair's structural
+ * fact - a settled quiet call CLOSES its cycle - into the closure every
+ * consumer reads. An old client that does not know the name simply renders a
+ * tool row, which is the accepted degradation.
+ *
+ * WHY THE NAME IS THE SIGNAL AND NOT THE RESULT TEXT: the UI explicitly avoids
+ * text heuristics (see this file's header), and the result's own string is not
+ * a contract. `toolName` is.
+ */
+export const QUIET_TURN_TOOL = "no_reply";
+
+/** The row IS the quiet call, whatever its phase. */
+export function isQuietTurnCall(
+	record: TranscriptRecord,
+): record is Extract<TranscriptRecord, { kind: "tool" }> {
+	return record.kind === "tool" && record.toolName === QUIET_TURN_TOOL;
+}
+
+/**
+ * The row CLOSES its cycle: the call is settled (`phase === "done"`) and it
+ * genuinely ran - a refused, never-sent or aborted call did not end the turn.
+ *
+ * THE REFUSAL IS THE LIVE CASE (design §5): when a person asked this turn, core
+ * answers `no_reply` with an `is_error` result and the model writes text
+ * instead - so an errored quiet call must NOT settle the tail, or the bar would
+ * announce a quiet end and swallow the answer that is about to arrive. The
+ * same exclusion set serves the other non-ends: a never-sent call (the turn
+ * died while it was being dictated) and an aborted one (the reader stopped the
+ * turn). It is `isFailedCall`'s own never-run/interrupt reading, inverted, so
+ * "closed" and "failed" can never both be true of one row.
+ *
+ * An in-flight call (`phase !== "done"`) is a call still running: reading it as
+ * a close would retire the tail before the turn has ended.
+ */
+export function isQuietTurnClose(record: TranscriptRecord): boolean {
+	if (!isQuietTurnCall(record)) return false;
+	if (record.phase !== "done") return false;
+	if (record.isError === true) return false;
+	if (record.stopped === true) return false;
+	if (record.neverSent === true) return false;
+	if (record.notRunReason !== null && record.notRunReason !== undefined) {
+		return false;
+	}
+	if (isInterruptedFault(record.notRunKind)) return false;
+	return true;
+}
 
 /** The trigger a record is, or null when it starts nothing. */
 export function triggerOf(record: TranscriptRecord): TriggerKind | null {
@@ -267,8 +328,18 @@ export function cyclesOf(
 	for (let i = n - 1; i >= 0; i -= 1) {
 		const record = records[i];
 		if (triggerOf(record) !== null) stepAhead = false;
-		else if (record.kind === "tool") stepAhead = true;
-		else if (
+		else if (record.kind === "tool") {
+			/*
+			 * A SETTLED quiet call is a structural close (design §5(a)): the turn
+			 * ended there on purpose, so the cycle ends there too - which is what
+			 * settles the tail (`settledCloseOf` in `turn-collapse-model.ts` reads
+			 * these cycles) without anything claiming an answer was handed over.
+			 * It is still a STEP for the row before it: narration written ahead of
+			 * a quiet call stays narration, exactly as ahead of any other call.
+			 */
+			if (isQuietTurnClose(record)) isClose[i] = true;
+			stepAhead = true;
+		} else if (
 			record.kind === "assistant" &&
 			!record.streaming &&
 			paints(record) &&
@@ -394,7 +465,24 @@ export function electAnswer(
 		return null;
 	}
 	for (let i = cycles.length - 1; i >= 0; i -= 1) {
-		if (cycles[i].class === "response") return cycles[i];
+		if (cycles[i].class !== "response") continue;
+		if (isQuietTurnClose(records[cycles[i].closeIndex])) {
+			/*
+			 * A quiet close is excluded AS A CANDIDATE ONLY (design §5(c)): the run
+			 * handed the reader nothing, so nothing may carry the caption, the foot
+			 * or the stamp. `cyclesOf` still records it as the cycle's close, and
+			 * that half is load-bearing - dropping it from the scan would leave the
+			 * tail with no close at all, the unsettled state this rule exists to
+			 * fix.
+			 *
+			 * AND NO FALLBACK PAST IT: an earlier cycle's close was already handed
+			 * over, and re-electing it would label the run's end with an earlier
+			 * answer. The run is in the same state a textless tail has always had -
+			 * nothing to elect - so this returns null rather than reaching back.
+			 */
+			return null;
+		}
+		return cycles[i];
 	}
 	return null;
 }
@@ -521,9 +609,26 @@ export function partitionRun(
 	 * a run can have several response closes and all of them stay.
 	 */
 	for (const cycle of cycles) {
-		if (cycle.class === "response") visible.add(cycle.closeIndex);
+		if (
+			cycle.class === "response" &&
+			!isQuietTurnClose(records[cycle.closeIndex])
+		)
+			visible.add(cycle.closeIndex);
 	}
-	if (cycles.length > 0) visible.add(cycles[cycles.length - 1].closeIndex);
+	if (cycles.length > 0) {
+		const last = cycles[cycles.length - 1];
+		/*
+		 * A QUIET CLOSE IS NOT FORCED VISIBLE (design §10.10: "the row is hidden at
+		 * paint"). It paints nothing, so forcing it on screen would only split
+		 * every quiet cycle into its own bar around an invisible row - exactly the
+		 * one-line-per-receipt shape the group bar exists to fold away. It stays a
+		 * close for every closure consumer (above and in `electAnswer`), and the
+		 * collapsible gate carries it via `quietCloseId` instead.
+		 */
+		if (!isQuietTurnClose(records[last.closeIndex])) {
+			visible.add(last.closeIndex);
+		}
+	}
 	records.forEach((record, index) => {
 		if (index < options.from) return;
 		if (record.kind === "user") visible.add(index);
@@ -605,14 +710,51 @@ export function partitionRun(
  * trade a one-word redundancy for the exact failure it was written to prevent.
  * `scripts/turn-segments.test.mjs` asserts both halves: no bar over a steer is
  * produced, and the word is what a span holding a user row would still be called.
+ *
+ * A QUIET GROUP OVERRIDES THE CYCLE OPENER (design §5): a span that IS a quiet
+ * group (>= 2 trigger rows with nothing between them the reader can see) states
+ * the family's plural word and its own count/span instead of one cycle's opener -
+ * `Peer messages`, never `Peer message`, over twelve receipts. The group is
+ * computed by the collapse model (which is where `isFailedCall` and the paint
+ * predicates live) and handed IN, so this function keeps no second opinion about
+ * what a group is; its only rule is the word.
  */
+export type QuietGroupFamily = "peer" | "wake" | "monitor" | "job" | "mixed";
+
+/** The family's word for a group bar: family plural, `Messages` for a mix. */
+export function quietGroupLabel(family: QuietGroupFamily): string {
+	switch (family) {
+		case "peer":
+			return "Peer messages";
+		case "wake":
+			return "Wake messages";
+		case "monitor":
+			return "Monitor messages";
+		case "job":
+			return "Job results";
+		default:
+			return "Messages";
+	}
+}
+
 export function labelOfSegment(
 	records: readonly TranscriptRecord[],
 	cycles: readonly TurnCycle[],
 	span: SegmentSpan,
+	/*
+	 * The quiet group this span IS, when it is one: the caller computes it (one
+	 * spelling of the definition, in `turn-collapse-model.ts`) and the word here
+	 * follows. Omitted for every caller with no group answer to hand - the arm
+	 * simply does not fire, and the cycle opener's own label is used.
+	 */
+	group?: { family: QuietGroupFamily } | null,
 ): string | null {
 	for (let i = span.from; i <= span.to; i += 1) {
 		if (records[i].kind === "user") return "Steered";
+	}
+	/* The group's word wins over any cycle opener: the span IS the group. */
+	if (group !== undefined && group !== null) {
+		return quietGroupLabel(group.family);
 	}
 	const cycle = cycles.find(
 		(candidate) =>
@@ -701,10 +843,24 @@ export function segmentIsCompleted(
 	span: SegmentSpan,
 	answerCloseIndex: number | null,
 	labelled: boolean,
+	/*
+	 * The run's last settled quiet close, when it has one (design §5(a)): a
+	 * closer that hands the reader nothing, so its bar is the only place the
+	 * turn's completion can be stated. See the mark's rule below.
+	 */
+	quietCloseIndex: number | null = null,
 ): boolean {
-	if (answerCloseIndex === null) return false;
-	const afterAnswer = span.from > answerCloseIndex;
-	if (!afterAnswer && !labelled) return false;
+	const closeAt = answerCloseIndex ?? quietCloseIndex;
+	if (closeAt === null) return false;
+	const afterClose = span.from > closeAt;
+	/*
+	 * THE PRE-ANSWER EXEMPTION IS THE ANSWER'S OWN: the ordinary bar directly
+	 * above a VISIBLE answer needs no mark because the answer is the statement
+	 * that the work finished. A QUIET close is the opposite case - its row is
+	 * never painted - so a bar governed by one always states the completion it
+	 * stands for, labelled or not.
+	 */
+	if (!afterClose && !labelled && answerCloseIndex !== null) return false;
 	if (
 		!cycles.some(
 			(cycle) => cycle.start <= span.to && span.to <= cycle.closeIndex,

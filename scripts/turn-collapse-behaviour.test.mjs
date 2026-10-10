@@ -2867,3 +2867,193 @@ test("case 2: a wake's reply re-closes the run, and the expanded bar stays the s
 		"the stored expansion still names the first bar",
 	);
 });
+
+/* ---------------------- the quiet turn on screen (S2) ---------------------- */
+
+/** The quiet turn's closing call: an ordinary tool row the UI never paints. */
+const quietRecord = (id, over = {}) =>
+	toolRecord(id, {
+		toolName: "no_reply",
+		output: "Quiet.",
+		durationS: 0.01,
+		...over,
+	});
+
+test("the quiet close: the bar stands in, the row never paints, and the copy is the facts without a caption or foot", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * THE R1 PIN'S SHAPE (`[peer][tool][no_reply]`, head-cut: no opening user
+	 * row). The bar must carry the turn - a completed mark, the count with only
+	 * the work tool in it - while the quiet row itself is never on screen, at
+	 * either state, and no caption or foot exists anywhere.
+	 */
+	const mounted = await mount(t, [
+		peerRecord("peer:1"),
+		toolRecord("tool:1", { durationS: 3 }),
+		quietRecord("quiet:1"),
+	]);
+	const summary = bar(mounted);
+	assert.ok(
+		summary,
+		"the bar is present (the quiet close is the gate's anchor)",
+	);
+	assert.equal(
+		summary.getAttribute("data-segment-complete"),
+		"true",
+		"the completed mark is on the bar",
+	);
+	assert.match(
+		summary.textContent,
+		/Peer message/,
+		"the opener's label survives below the group minimum",
+	);
+	assert.match(
+		summary.textContent,
+		/1\+ action/,
+		"actions=1: only the work tool; head-cut states the minimum",
+	);
+	assert.doesNotMatch(
+		summary.textContent,
+		/Took/,
+		"no fabricated duration for a head-cut span",
+	);
+	assert.equal(
+		rowBox(mounted, "quiet:1"),
+		null,
+		"the quiet row paints nothing (hidden at paint, not by the bar)",
+	);
+	assert.doesNotMatch(
+		mounted.container.textContent,
+		/Worked/,
+		"no foot: nothing carries closesTurn on a quiet turn",
+	);
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "peer:1"), "the press brings the receipt back");
+	assert.ok(rowBox(mounted, "tool:1"), "and the work tool");
+	assert.equal(
+		rowBox(mounted, "quiet:1"),
+		null,
+		"the quiet row is STILL not painted when the bar is open",
+	);
+});
+
+test("a run of receipts bars as ONE group line — family, count, receipt span — and the press lists the receipts", async (t) => {
+	__resetTurnCollapseOpen();
+	/* Twelve receipts over 2h14m, each with its quiet close: the design's copy. */
+	const rows = [userRecord("user:1")];
+	for (let i = 0; i < 12; i += 1) {
+		const at = TS + Math.round((i * 8_040_000) / 11);
+		rows.push(peerRecord(`peer:${i}`, { ts: at }));
+		rows.push(toolRecord(`tool:${i}`, { ts: at + 1_000 }));
+		rows.push(quietRecord(`quiet:${i}`, { ts: at + 2_000 }));
+	}
+	const mounted = await mount(t, rows);
+	const summary = bar(mounted);
+	assert.ok(summary, "one bar stands over the whole group");
+	assert.match(
+		summary.textContent,
+		/Peer messages/,
+		"the family word is plural",
+	);
+	assert.match(summary.textContent, /12/, "the count is the receipts");
+	assert.match(summary.textContent, /2h14m/, "the span is the receipt time");
+	assert.doesNotMatch(
+		summary.textContent,
+		/action|Took/,
+		"a group bar speaks in receipts, not in the action clauses",
+	);
+	assert.equal(
+		rowBox(mounted, "peer:0"),
+		null,
+		"collapsed: no receipt is mounted",
+	);
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "peer:0"), "the press mounts the first receipt");
+	assert.ok(rowBox(mounted, "peer:11"), "and the last");
+	assert.equal(
+		rowBox(mounted, "quiet:0"),
+		null,
+		"the quiet rows still paint nothing inside the open bar",
+	);
+});
+
+test("a receipt appended to the open group's tail updates the count without remounting the bar (no jitter)", async (t) => {
+	__resetTurnCollapseOpen();
+	const base = [
+		userRecord("user:1"),
+		peerRecord("peer:1"),
+		quietRecord("quiet:1"),
+		peerRecord("peer:2"),
+		quietRecord("quiet:2"),
+	];
+	const mounted = await mount(t, base);
+	const before = bar(mounted);
+	assert.ok(before, "the group bar draws");
+	assert.match(before.textContent, /2/, "two receipts");
+	const beforeText = before.textContent;
+	/*
+	 * The third receipt arrives. Its append must change the COUNT and nothing
+	 * structural: the same bar element (same React key - the group's own
+	 * `qg:<first row>`), no remount, no second bar, no re-expansion.
+	 */
+	await mounted.render([...base, peerRecord("peer:3"), quietRecord("quiet:3")]);
+	await flushFrames();
+	const after = bar(mounted);
+	assert.equal(after, before, "the very same element, updated in place");
+	assert.notEqual(after.textContent, beforeText, "the copy updated");
+	assert.match(after.textContent, /3/, "three receipts");
+	assert.equal(
+		mounted.container.querySelectorAll("[data-turn-summary]").length,
+		1,
+		"still one bar",
+	);
+});
+
+test("F3: the receipt that forms the group neither re-collapses the bar nor re-announces it", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * The design-round finding at the operator's requirement: the below-minimum
+	 * quiet bar and the group it grows into are ONE bar to the reader. The second
+	 * receipt must land inside the reader's open expansion (same key -> same
+	 * element) and the settle announcement must not fire again for it.
+	 */
+	const settled = [
+		userRecord("user:1"),
+		peerRecord("peer:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		quietRecord("quiet:1", { ts: TS + 2_000 }),
+	];
+	const mounted = await mount(t, settled);
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	const summary = bar(mounted);
+	assert.ok(summary, "the bar draws");
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "peer:1"), "the reader expanded it");
+	const announced = region();
+	await mounted.render([...settled, peerRecord("peer:2", { ts: TS + 4_000 })]);
+	await flushFrames();
+	assert.equal(
+		bar(mounted),
+		summary,
+		"the very same bar element, not a remount",
+	);
+	assert.ok(
+		rowBox(mounted, "peer:2"),
+		"the new receipt mounts inside the open expansion",
+	);
+	assert.equal(
+		region(),
+		announced,
+		"no second announcement: the bar is the same bar",
+	);
+	assert.equal(
+		bar(mounted).getAttribute("data-segment-ids"),
+		"peer:1 tool:1 quiet:1 peer:2",
+		"the bar now hides the grown span, row for row",
+	);
+});
