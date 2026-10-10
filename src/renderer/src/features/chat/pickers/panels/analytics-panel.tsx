@@ -1,3 +1,7 @@
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { Button, Input } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -12,7 +16,9 @@ import {
 } from "react";
 import { Bar, BarChart } from "recharts";
 import type { DesktopModelRate } from "../../../../../../shared/desktop-contract";
+import type { CanonicalSpendChannels } from "../../../../../../shared/desktop-session-contract";
 import { clearSearch } from "../../clear-search";
+import { CHANNELS_UNTRACKED_NOTE } from "../../session-status/session-cost";
 import { PickerCheck, PickerHost, PickerSegment } from "../picker-host";
 import type { MachinePanelContext } from "../picker-registry";
 import { errorText } from "../use-picker-backend";
@@ -23,12 +29,15 @@ import {
 	CACHE_HIT_LABEL,
 	CACHE_HIT_MEANING,
 	COVERAGE_LABEL,
+	type ChannelTableRow,
+	type ChannelsView,
 	METRIC_LABEL,
 	type ModelRow,
 	TOK_PER_SECOND_LABEL,
 	WALL_TOK_PER_SECOND_LABEL,
 	analyticsWindow,
 	cacheReadFraction,
+	channelsView,
 	chartSeries,
 	chartSummary,
 	costKnownFraction,
@@ -136,8 +145,23 @@ export type AnalyticsPanelProps = {
 	models: DesktopModelRate[] | null;
 	/** The By-model read is in flight. Its own flag: it does not gate the pane. */
 	modelsLoading: boolean;
-	/** The By-model read's failure. Its own sentence, or `null`. */
+	/**
+	 * The By-model read's failure. Its own sentence, or `null`.
+	 */
 	modelsError: string | null;
+	/**
+	 * The conversation in front of the user's published channel spend, when a
+	 * backend with the channel ledger has one (the cost-channels project).
+	 *
+	 * ADDITIVE and optional: absent/null on every backend and every session
+	 * that has none, and the By-channel section then does not render at all —
+	 * today's panel, unchanged. All-time for THIS conversation (the object is
+	 * not windowed like the aggregate), which the section's own meta states so
+	 * it cannot be read as part of the window beside it.
+	 */
+	channels?: CanonicalSpendChannels | null;
+	/** `features.cost_channels >= 1` — the section's gate. */
+	channelsEnabled?: boolean;
 	/** The clock the window is derived from. Fixed in stories, so a frame is reproducible. */
 	now: Date;
 	/**
@@ -797,6 +821,85 @@ const ModelTable: FC<{
 };
 
 /**
+ * The By-channel table over the conversation's published channel spend.
+ *
+ * Presentational: the reading (names, amounts, the by-basis line) is built by
+ * `channelsView` in the model, so this file keeps no arithmetic — the same
+ * split every other table here follows. The section renders only when the
+ * panel was handed the object AND the capability gate is on; an absent object
+ * leaves today's panel exactly as it was (the cost-channels project's UI rule).
+ */
+const ChannelsTable: FC<{ view: ChannelsView }> = ({ view }) => {
+	const columns: Column<ChannelTableRow>[] = [
+		{
+			key: "channel",
+			header: "Channel",
+			cell: (row) => row.name,
+		},
+		/*
+		 * Basis BEFORE Spend. The money column keeps the table's right edge —
+		 * this panel's convention for every money column — and the two no
+		 * longer run together: the `$0.053` right edge sat one cell padding
+		 * from `API-equivalent`'s left and read as one phrase (design round 1,
+		 * D5).
+		 */
+		{
+			key: "basis",
+			header: "Basis",
+			cell: (row) => row.basis,
+		},
+		{
+			key: "spend",
+			header: "Spend",
+			numeric: true,
+			cell: (row) => row.spend,
+		},
+	];
+	return (
+		<>
+			{/*
+			 * A ledger that was NOT tracking says so ABOVE its numbers: the contract's
+			 * own sentence, shared with the strip's tooltip so the two surfaces
+			 * cannot describe one session differently. Visible copy rather than a
+			 * tooltip, per this panel's legend rule — and ABOVE the table, which is
+			 * where the comment here claimed it sat while the frame showed the
+			 * opposite (design round 1, D4).
+			 */}
+			{!view.tracked && <Legend text={CHANNELS_UNTRACKED_NOTE} />}
+			<DataTable<ChannelTableRow>
+				label="Channel spend for this conversation, from the published channel ledger"
+				columns={columns}
+				rows={view.rows}
+				rowKey={(row) => row.key}
+				empty={
+					<PanelEmpty
+						/*
+						 * A DROPPED row is not "no rows": a malformed entry leaves the
+						 * table saying "could not be read" rather than an empty state
+						 * under a nonzero total (QA round 2, Q6).
+						 */
+						text={
+							view.rowsDropped > 0
+								? "Channel rows in this conversation could not be read."
+								: "No channel rows in this conversation."
+						}
+					/>
+				}
+			/>
+			{/*
+			 * The plan-funded gloss first, then the composition: `Includes …
+			 * API-equivalent` keeps plan dollars from reading as cash, and the
+			 * composition line lists every bucket the published total is made of,
+			 * so the figure above it can be reconciled on screen (design round 1,
+			 * D1).
+			 */}
+			{view.planClause && <Legend text={view.planClause} />}
+			{view.basisLine && <Legend text={view.basisLine} />}
+		</>
+	);
+};
+
+/**
  * The by-session table's state, owned by the panel and reset when the window
  * moves under it.
  *
@@ -844,6 +947,8 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 	models,
 	modelsLoading,
 	modelsError,
+	channels: channelsProp,
+	channelsEnabled = false,
 	now,
 	readAt,
 	onWindowChange,
@@ -853,6 +958,13 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 }) => {
 	const win: AnalyticsWindow = analyticsWindow(windowDays, now);
 	const aggregate = data?.aggregate;
+	/*
+	 * The published channel spend, refused by the same rules the strip uses: the
+	 * capability must be advertised AND the object must be one this build may
+	 * read (`channelsView` is null otherwise), so a malformed object or a future
+	 * wire version renders today's panel rather than half a section.
+	 */
+	const channels = channelsEnabled ? channelsView(channelsProp) : null;
 	const rows = data ? chartSeries(data.daily, win, metric) : [];
 	const scope = thisSessionOnly ? "this session" : "all sessions";
 	const chartTitle = metric === "spend" ? "Daily spend" : "Daily tokens";
@@ -1046,6 +1158,23 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 								dispatch={sessionDispatch}
 							/>
 						</PanelSection>
+						{/*
+						 * The By-channel section renders ONLY when a backend that advertises
+						 * the channel ledger hands this panel the conversation's published
+						 * spend object; every other backend and session keeps today's panel
+						 * byte-for-byte. Its meta names the scope explicitly ("this
+						 * conversation", "all time") because it is NOT windowed like the
+						 * sections above it, and a reader who assumed the toolbar's window
+						 * applied would be reading a different period than the one shown.
+						 */}
+						{channels && (
+							<PanelSection
+								title="By channel"
+								meta={`This conversation, all time · total ${channels.total}`}
+							>
+								<ChannelsTable view={channels} />
+							</PanelSection>
+						)}
 					</PanelStack>
 				)
 			}
@@ -1056,6 +1185,7 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 /** The adapter the registry mounts: owns the read and the presentation state. */
 export const AnalyticsView: FC<MachinePanelContext> = ({
 	sessionId,
+	frontend,
 	onClose,
 }) => {
 	const [windowDays, setWindowDays] = useState(7);
@@ -1102,6 +1232,15 @@ export const AnalyticsView: FC<MachinePanelContext> = ({
 			untilMs: win.untilMs,
 		}),
 	);
+	/*
+	 * The By-channel section's gate, read HERE rather than in the panel: this
+	 * adapter is the one part of the file that owns reads (the panel is
+	 * presentational and stories mount it directly), and the conversation's
+	 * published spend object rides the canonical frontend the registry already
+	 * maps down — no extra query. A backend that does not advertise the
+	 * capability passes `false`, and the panel renders exactly today's sections.
+	 */
+	const capabilities = useDesktopCapabilities();
 	return (
 		<AnalyticsPanel
 			windowDays={windowDays}
@@ -1115,6 +1254,11 @@ export const AnalyticsView: FC<MachinePanelContext> = ({
 			models={modelsQuery.data?.data.rows ?? null}
 			modelsLoading={modelsQuery.isLoading}
 			modelsError={modelsQuery.isError ? errorText(modelsQuery.error) : null}
+			channels={frontend?.spend_channels ?? null}
+			channelsEnabled={desktopFeatureEnabled(
+				capabilities.data,
+				"cost_channels",
+			)}
 			now={now}
 			readAt={query.dataUpdatedAt || null}
 			onWindowChange={setWindowDays}

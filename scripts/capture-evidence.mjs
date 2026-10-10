@@ -4190,6 +4190,35 @@ export const STORIES = [
 	["chat-session-status-strip--tooltip-honesty", 860, 400],
 	["chat-session-status-strip--cost-tooltip", 860, 400],
 	/*
+	 * THE CHANNEL STORIES (the cost-channels project). The tooltip frames need
+	 * the vertical room of the whole breakdown: the trigger sits at the bottom
+	 * of the canvas and the panel opens ABOVE it, so the declared height is what
+	 * keeps every line inside the shutter — 680 for the composition-plus-plan-
+	 * gloss panel whose rows now sit in a grid, 440 for the untracked sentence's
+	 * shorter one. `channels-gated` stacks two strips and opens no tooltip, and
+	 * `channels-zero-states` is a two-frame stack of the two zero chips.
+	 *
+	 * THE 980 WIDTH IS THE 900 FRAME PLUS ITS OWN PADDING (48 + the story's
+	 * 2×8): the stories render the strip at `width={900}` because the strip's
+	 * shed ladder (issue #918) hides the cost chip below a 705px content box,
+	 * and the chip is what these frames exist to show. At the 860 viewport the
+	 * set used through round 2 the frame's right edge was clipped; 980 shows
+	 * it whole.
+	 */
+	["chat-session-status-strip--channels-tooltip", 980, 680],
+	["chat-session-status-strip--channels-untracked", 980, 440],
+	["chat-session-status-strip--channels-gated", 980, 480],
+	["chat-session-status-strip--channels-zero-states", 980, 480],
+	/*
+	 * The two round-3 states (design D3-1): the children parenthetical with a
+	 * floored inference row — the longest clause the composition produces, so
+	 * the tooltip needs 720 where `channels-tooltip` needs 680 — and the
+	 * dropped-row payload, whose empty row list sits beside the panel's
+	 * "could not be read" sentence (the panel half is
+	 * `channels-dropped-row-end`). Both are dark+light narrowed runs. */
+	["chat-session-status-strip--channels-children-floored", 980, 720],
+	["chat-session-status-strip--channels-dropped-row", 980, 520],
+	/*
 	 * The sidebar's session-status mark, in the one place it can be photographed
 	 * as a specimen: the read/unread matrix, every code beside its own name (see
 	 * the note below for why the live sidebar frames are not a substitute). Added
@@ -9354,6 +9383,87 @@ export const STORIES = [
 	["panels-analytics--unavailable", 1140, 400],
 	["panels-analytics--dense", 1140, 1100],
 	["panels-analytics--narrow", 720, 980],
+	/*
+	 * THE BY-CHANNEL SECTION (the cost-channels project). `channels` is
+	 * `populated` plus the golden fixture's five-row table (~one table taller
+	 * than the 980 frames above); `channels-untracked` is the same with a
+	 * one-row table and the mandatory sentence; `channels-gated` is the same
+	 * object on a backend that does not advertise the capability, and its
+	 * height is `populated`'s because the section must not exist at all.
+	 */
+	["panels-analytics--channels", 1140, 1240],
+	/*
+	 * The section itself sits BELOW the fold, and the at-rest frame cannot
+	 * reach it: the panel body is capped at `min(76vh, 760px)`, so a taller
+	 * viewport only adds margin (the measurement is `unnamed-sessions`'). The
+	 * scrolled frame is the evidence for the section; the at-rest one is the
+	 * evidence that everything above it is unchanged.
+	 */
+	[
+		"panels-analytics--channels",
+		1140,
+		1240,
+		{ dir: "channels-end", scrollToEnd: "[data-panel-body]" },
+	],
+	["panels-analytics--channels-untracked", 1140, 1140],
+	[
+		"panels-analytics--channels-untracked",
+		1140,
+		1140,
+		{ dir: "channels-untracked-end", scrollToEnd: "[data-panel-body]" },
+	],
+	["panels-analytics--channels-gated", 1140, 980],
+	/*
+	 * The two states the first evidence round could not photograph (D8): a
+	 * record with no stated amount beside an unpriceable total, and the table's
+	 * own empty state. Same shape as `channels-untracked` — below the fold, so
+	 * the scrolled variant is the evidence and the at-rest one shows nothing
+	 * above moved.
+	 */
+	["panels-analytics--channels-unknown-amounts", 1140, 1140],
+	[
+		"panels-analytics--channels-unknown-amounts",
+		1140,
+		1140,
+		{ dir: "channels-unknown-amounts-end", scrollToEnd: "[data-panel-body]" },
+	],
+	["panels-analytics--channels-no-rows", 1140, 1140],
+	[
+		"panels-analytics--channels-no-rows",
+		1140,
+		1140,
+		{ dir: "channels-no-rows-end", scrollToEnd: "[data-panel-body]" },
+	],
+	/*
+	 * The narrow By-channel frame the design round asked for (D8): the 720
+	 * viewport the panel's own `narrow` story uses, scrolled to the section.
+	 */
+	[
+		"panels-analytics--channels",
+		720,
+		1240,
+		{ dir: "channels-narrow", scrollToEnd: "[data-panel-body]" },
+	],
+	/*
+	 * The round-3 evidence states (design D3-1), scrolled to the section like
+	 * every By-channel frame: the children parenthetical + floored `+`
+	 * remainder clause on one object, and the dropped-row empty state's own
+	 * sentence. A dark+light narrowed run (`--themes=localOperatorDark,
+	 * localOperatorLight`) rather than the sweep's twelve — these states
+	 * photograph one clause each, not a palette sweep.
+	 */
+	[
+		"panels-analytics--channels-children-floored",
+		1140,
+		1240,
+		{ dir: "channels-children-floored-end", scrollToEnd: "[data-panel-body]" },
+	],
+	[
+		"panels-analytics--channels-dropped-row",
+		1140,
+		1140,
+		{ dir: "channels-dropped-row-end", scrollToEnd: "[data-panel-body]" },
+	],
 
 	/*
 	 * THE BY-SESSION TABLE'S OWN STATES: paging, sorting, search, the filter.
