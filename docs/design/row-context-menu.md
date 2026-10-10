@@ -1,9 +1,10 @@
 # The chat row's context menu — composition, states and copy
 
-**Issue:** #694 (the menu); #739 (Fork - **row 3 of six** since the round-1
+**Issue:** #694 (the menu); #739 (Fork - **row 3 of seven** since the round-1
 review's D2, § 1, § 5, § 7, and the rows marked #739 in § 4 and § 9); **#893
 (Copy session ID - row 4, § 1, § 7, and the superseded figures in § 2, § 4 and
-§ 9)**. **Design round:** 2026-09-30,
+§ 9)**; **#920 (Rename conversation - row 5, § 1, § 7, § 8, and the pending
+re-capture named in § 9)**. **Design round:** 2026-09-30,
 `design/row-context-menu-694`.
 **Status:** design of record for the implementation, ported onto it with the
 design round's follow-ups (U-D1…U-D8) folded in and every frame reference
@@ -23,9 +24,9 @@ sequence, and it deliberately does not restate the reasons that live in
 ## 1. What the menu is
 
 A right-click (or `ContextMenu`/`Shift+F10`) on a chat row opens a Radix
-context menu holding the row's own acts, **six rows** - the two mirrored acts,
-then the UNCONDITIONAL run (#739's Fork and, since #893, Copy session ID), then
-#743's Move pair:
+context menu holding the row's own acts, **seven rows** - the two mirrored acts,
+then the UNCONDITIONAL run (#739's Fork, #893's Copy session ID and, since #920,
+Rename conversation), then #743's Move pair:
 
 | # | Row | Chord | Withheld when |
 |---|---|---|---|
@@ -33,14 +34,15 @@ then the UNCONDITIONAL run (#739's Fork and, since #893, Copy session ID), then
 | 2 | `Pin conversation` / `Unpin conversation` | `⌘⇧P` · `Ctrl+Shift+P` | `row.pinned === undefined` |
 | 3 | `Fork conversation` (#739) | none - fork has no chord | the row is a never-sent draft's conversation (`unstarted`): the backend has no transcript to copy |
 | 4 | `Copy session ID` (**#893** - the act that moved the cap from five to six) | none - nothing binds the gesture | never - drawn on every row the menu is drawn on, like Fork |
-| 5 | `Move conversation up` (was row 4) | `⌘⇧↑` · `Ctrl+Shift+↑` | the row is not offered a move at all (`offersPinnedMove`: it is pinned AND in the section the order belongs to) |
-| 6 | `Move conversation down` (was row 5) | `⌘⇧↓` · `Ctrl+Shift+↓` | the same |
+| 5 | `Rename conversation` (**#920** - the act that moved the cap from six to seven) | none - `/rename` is the command, not a chord | never - every row is a conversation, and the dialog addresses the row's own |
+| 6 | `Move conversation up` (was row 5) | `⌘⇧↑` · `Ctrl+Shift+↑` | the row is not offered a move at all (`offersPinnedMove`: it is pinned AND in the section the order belongs to) |
+| 7 | `Move conversation down` (was row 6) | `⌘⇧↓` · `Ctrl+Shift+↓` | the same |
 
 **THE ROW ORDER IS THREE RULES, IN ORDER (round-1 design review, D2; the second
-rule amended by #893).** Rows 1-2 are the mirrored pair in the strip's own
-measured order; rows 3-4 are the UNCONDITIONAL run, so each of those slots keeps
+rule amended by #893, the third's membership by #920).** Rows 1-2 are the mirrored pair in the strip's own
+measured order; rows 3-5 are the UNCONDITIONAL run, so each of those slots keeps
 one identity in every state - Fork on an ordinary row and Fork on a pinned one,
-Copy session ID everywhere - rather than changing which act a reader finds
+Copy session ID everywhere, Rename conversation everywhere - rather than changing which act a reader finds
 there; and the CONDITIONAL block (the Move pair, offered only where `offersMove`
 holds) trails as a unit, so its two rows stay adjacent to each other either way.
 That replaces the fold's arrangement, which appended Fork after the Move pair
@@ -48,7 +50,8 @@ and left the third slot's occupant state-dependent while never arguing the order
 it produced. The principle, not the position, is what the next act applies: a
 conditional act does not take a slot above an unconditional one. #893 did not
 bend the rule to get its slot - Copy is itself unconditional, so it joins the
-unconditional run rather than displacing a row.
+unconditional run rather than displacing a row - and #920's rename joins it the
+same way, appended at the run's end.
 
 **For the acts this menu carries, the order is the strip's order, left to
 right, and that is measured rather than argued.** In the row, the archive
@@ -62,10 +65,22 @@ menu that listed them the other way round would make the same pair of acts
 read backwards depending on how the user opened them.
 
 **Nothing else is in it, and each exclusion is a decision rather than a
-ranking** — rename (an editing surface on a 280px row; its write path is the
-open conversation's, `chat-header.tsx:500`), delete (`session-archive-delete.md`,
+ranking** — delete (`session-archive-delete.md`,
 "Delete asks, and never on the row"), and the four acts with no product ask
 anywhere in #694/#693 (duplicate, copy link, open in new window, mark unread).
+
+**RENAME MOVED IN (2026-10-10, #920), and it used to be in that exclusion
+list.** Its exclusion read "rename (an editing surface on a 280px row; its
+write path is the open conversation's, `chat-header.tsx:500`)" - and the write
+path's pane-boundness is exactly what the report turned into the gap: for a row
+the user has NOT opened, neither the header's inline editor nor `/rename`
+reaches it, so the row menu is the only door that can name that row's
+conversation, and the admission rule below admits it. The menu gains a row and
+no new surface: the item opens the register's existing `session.rename` dialog
+(the one bare `/rename` and the palette present), asked for the row the user
+right-clicked and carrying the name that row draws so the field opens on the
+name they pointed at. The frames here are re-taken in #920's evidence pass with
+the seventh row drawn (see § 9).
 
 **THE MOVE PAIR MOVED IN (2026-09-30), and it used to be in that exclusion list.**
 `#693` put the act on the row - two arrow buttons in the hovered cluster - and the
@@ -467,19 +482,20 @@ default deliberately and the frames say so (`pointer-open`: `focus: menu`,
 | state | what the menu does | what the row does | frame |
 |---|---|---|---|
 | closed (no pointer) | not mounted | unchanged; the pair is `display: none` at rest | `menu-closed` - **one image with `flyout-alone`** (§ 9): the two names are one capture, taken with the pointer on the row, and it carries the flyout because the flyout is a dwell behind the pointer |
-| open at the pointer, normal row | 4 rows - archive, pin, fork, copy session ID; chords on the first two, none on fork (#739) or on copy (#893) | reveal held, hover ground held | `pointer-open` |
-| the same, the pointer moved onto the first item | the same 4 rows; item 1 carries `data-highlighted`, and the same `:focus-visible` outline the keyboard state draws (measured; see § 2) | reveal held | `pointer-hover` |
-| open via keyboard (`ContextMenu` / `Shift+F10`) | the same 4 rows; anchored at the row's bottom-left | reveal held, no pointer needed | `keyboard-open` |
-| open at the pointer, pinned row in the moved-from section | **6 rows**: `Archive conversation`, `Unpin conversation`, `Fork conversation`, `Copy session ID` (#893), `Move conversation up`, `Move conversation down` (both Move rows `aria-disabled` and boundary-inked at this row's ends, with the boundary sentence as their `title`) | the pair is drawn at rest (the mark is the state), with nothing else revealed | `pinned-row` - **six rows in 296 × 215** (measured this pass, § 9); the `296 × 184` this cell carried was the five-row state at `15a7a4ed5` |
-| `row.pinned === undefined` | **3 rows** (archive, fork, copy); the pin row is withheld | row draws no pin control either | `pin-state-unknown` (273 × 77 **pre-#893**, two rows then) |
-| `archiveEnabled` false | **3 rows** (pin, fork, copy); the archive row is withheld | archive control absent | `archive-withheld` (246 × 77 **pre-#893** - the widest-label-withheld state) |
-| the row is a never-sent draft's conversation (#739) | **3 rows** (archive, pin, copy); Fork is **absent, not greyed** - the backend has no transcript to copy | the row reads `, not sent yet` | `fork-withheld` (273 × 81 **pre-#893**) |
+| open at the pointer, normal row | 5 rows - archive, pin, fork, copy session ID, rename conversation; chords on the first two, none on fork (#739), on copy (#893) or on rename (#920) | reveal held, hover ground held | `pointer-open` |
+| the same, the pointer moved onto the first item | the same 5 rows; item 1 carries `data-highlighted`, and the same `:focus-visible` outline the keyboard state draws (measured; see § 2) | reveal held | `pointer-hover` |
+| open via keyboard (`ContextMenu` / `Shift+F10`) | the same 5 rows; anchored at the row's bottom-left | reveal held, no pointer needed | `keyboard-open` |
+| open at the pointer, pinned row in the moved-from section | **7 rows**: `Archive conversation`, `Unpin conversation`, `Fork conversation`, `Copy session ID` (#893), `Rename conversation` (#920), `Move conversation up`, `Move conversation down` (both Move rows `aria-disabled` and boundary-inked at this row's ends, with the boundary sentence as their `title`) | the pair is drawn at rest (the mark is the state), with nothing else revealed | `pinned-row` - **the seven-row panel's readout belongs to #920's evidence pass (§ 9); the `296 × 215` this cell carried was the six-row state measured on #893's head, and the `296 × 184` before it the five-row state at `15a7a4ed5`** |
+| `row.pinned === undefined` | **4 rows** (archive, fork, copy, rename); the pin row is withheld | row draws no pin control either | `pin-state-unknown` (273 × 77 **pre-#893**, two rows then) |
+| `archiveEnabled` false | **4 rows** (pin, fork, copy, rename); the archive row is withheld | archive control absent | `archive-withheld` (246 × 77 **pre-#893** - the widest-label-withheld state) |
+| the row is a never-sent draft's conversation (#739) | **4 rows** (archive, pin, copy, rename); Fork is **absent, not greyed** - the backend has no transcript to copy | the row reads `, not sent yet` | `fork-withheld` (273 × 81 **pre-#893**) |
 | Fork pressed (#739) | closes; the request is in the store naming the row's conversation, and the route moves to `/chat` when no pane was mounted | unchanged; the picker (the pane's) opens for the row's conversation, not the pane's | `fork-pressed` |
 | `Copy session ID` pressed (#893) | closes - Radix's own rule for a select, the state `fork-pressed` also photographs | unchanged; the id is on the clipboard and the app's own toast (`Session ID copied`) is up | `copy-pressed` - the readout prints `copied: s2` (the ROW's conversation), and the frame carries the toast |
-| archived row (not pinned) | 4 rows; item 1 reads `Unarchive conversation` | row only reachable with `Include archived` | `archived-row` (288 × 113 **pre-#893** - the widest label the menu draws) |
+| `Rename conversation` pressed (#920) | closes; the request is in the store naming `session.rename` FOR the row's conversation and carrying the name that row draws, and the route moves to `/chat` when no pane was mounted | unchanged; the register's dialog (the pane's) opens seeded with the row's name for the row's conversation, not the pane's | `rename-pressed` belongs to #920's evidence pass, which re-takes the set |
+| archived row (not pinned) | 5 rows; item 1 reads `Unarchive conversation` | row only reachable with `Include archived` | `archived-row` (288 × 113 **pre-#893** - the widest label the menu draws) |
 | neither capability | **no menu** - no trigger element at all | panel byte-identical to the pre-feature one | - (assertion, not a frame) |
 | current row | unchanged | **selected** ground kept, no hover ground added | - |
-| the hold rule NOT applied (the design round's control) | the same 4 rows | **pair `none`, ground transparent** | `pointer-open-unheld`, on the design branch's proposal set - the shipped set does not reproduce a state the hold exists to remove |
+| the hold rule NOT applied (the design round's control) | the same 5 rows | **pair `none`, ground transparent** | `pointer-open-unheld`, on the design branch's proposal set - the shipped set does not reproduce a state the hold exists to remove |
 
 **The withheld states are the pre-#739 shapes with Fork added, and the never-sent
 row's own label is load-bearing (round-1 design review, point (e)).** On
@@ -789,8 +805,9 @@ node is gone).
 > controls were decided to live on the row. They later moved HERE: the menu now carries
 > `Move conversation up` / `Move conversation down` (WCAG 2.5.7's single-pointer path)
 > beside the two mirrored acts, which is exactly the "2 mirrored rows + 2 move rows = 4"
-> case worked out below; the cap has since moved to **five rows** (#739's Fork) and
-> then **six** (#893's Copy session ID, see this section's closing block), and
+> case worked out below; the cap has since moved to **five rows** (#739's Fork),
+> then **six** (#893's Copy session ID) and then **seven** (#920's Rename
+> conversation, see this section's closing block), and
 > is now a RULE rather than a number (§ 7's closing block). The
 > reasoning that follows is kept as the record of what was weighed; its present-tense
 > statements about a three-row budget and the arrow strip no longer describe the build.
@@ -829,38 +846,50 @@ the arithmetic is worth stating so #693 does not have to rediscover it:
 > can, as both act on the pane's. **Copy session ID (#893) qualifies as the sixth, and
 > it passes the same test**: an id is what a `sessions`/`send` call or a `lop` command
 > takes, and NOTHING in the product reveals the ROW's id today - the header's overflow
-> menu names the PANE's session, which is generally not the row's.
+> menu names the PANE's session, which is generally not the row's. **Rename conversation
+> (#920) qualifies as the seventh, and it passes the same test**: the doors that exist
+> write the PANE's conversation - the header's inline editor is threaded the page's own
+> `sessionId`, and `/rename` from the composer or the palette is the pane's too - so for
+> a row the user has NOT opened there is no door at all, and the row menu is the only
+> surface scoped to an arbitrary row. The act reuses the register's own `session.rename`
+> dialog (a seventh row; no second rename mechanism), and the request carries the name
+> the row draws so the dialog's field opens on the name the user pointed at.
 >
-> **The cap is six rows, pinned by test** (`scripts/chat-sidebar-row-menu.test.mjs`
-> counts the items; five until #893 moved it, and the move is a number raised rather
-> than a row replaced). A seventh act is admitted only by passing the same test;
-> otherwise it replaces a row or finds another surface.
+> **The cap is seven rows, pinned by test** (`scripts/chat-sidebar-row-menu.test.mjs`
+> counts the items; five until #893 moved it, six until #920, and each move is a number
+> raised rather than a row replaced). An eighth act is admitted only by passing the same
+> test; otherwise it replaces a row or finds another surface.
 >
 > **The cap's widest state is a pinned row in the moved-from section, and it now draws
-> six rows.** The 296 × 184 this block used to carry is the PRE-#893 five-row
-> measurement; the six-row panel **measures 296 × 215 at 142,297** on the #893 head
-> (`docs/evidence/chat-sidebar-row-context-menu/`, § 9's readouts) - one plain row
-> taller, the width unchanged. On a 280px sidebar,
+> seven rows.** The 296 × 184 this block used to carry is the PRE-#893 five-row
+> measurement, and the six-row panel **measures 296 × 215 at 142,297** on the #893 head;
+> the SEVEN-row panel's own readout belongs to #920's evidence pass, which re-takes the
+> set with the new row drawn (`docs/evidence/chat-sidebar-row-context-menu/`, § 9's
+> readouts) - one plain row taller than six, the width unchanged. On a 280px sidebar,
 > somewhere around **eight rows / ~280px tall** the answer changes
 > from "grow the menu" to "a submenu or another surface" - the point at which the
 > panel stops being a menu and starts being a list.
 
-**HOW IT GOT TO SIX, for the record.** It was declared at **three rows** (this section's
+**HOW IT GOT TO SEVEN, for the record.** It was declared at **three rows** (this section's
 arithmetic) with the third reserved; #693's Move pair landed on 2026-09-30 and the
 record raised the cap to **four**; #739 then spent the fifth on Fork, which the
-round-1 review placed at row 3 (D2) so that the conditional block trails; and #893
+round-1 review placed at row 3 (D2) so that the conditional block trails; #893
 spent the **sixth** on Copy session ID, placed at row 4 beside Fork so the
-unconditional run stays one run. The rule that survives is the one this paragraph always carried - **an
+unconditional run stays one run; and **#920 spent the seventh on `Rename
+conversation`** (2026-10-10), placed at slot 5 - it joins the unconditional run at
+its end by the reasoning #893's placement established (it is itself unconditional,
+so it appends rather than displacing a row), and it passed the rule above rather
+than replacing a row. The rule that survives is the one this paragraph always carried - **an
 act that lands here either replaces a row or finds another surface** - and it is
 worth stating plainly that the second raise was not argued from the first's
 arithmetic: the four-row case is the "2 mirrored + 2 move" case this section
 worked out as the one that BREAKS the budget, and it was taken anyway for
 WCAG 2.5.7's single-pointer path, with the three-row promise superseded on the
 record, and the round-1 review closed it with the rule above rather than another
-number: there is no open question about a seventh act, because there is a test it
+number: there is no open question about an eighth act, because there is a test it
 has to pass. What is decided is that the count and the ORDER are explicit and
 pinned - `scripts/chat-sidebar-row-menu.test.mjs` counts the items and asserts
-their sequence - so a seventh, or a re-ordering, is a failing assertion rather than
+their sequence - so an eighth, or a re-ordering, is a failing assertion rather than
 a quiet addition.
 
 ---
@@ -870,10 +899,15 @@ a quiet addition.
 **In:** Fork as the menu's third row (#739) - the item, its `unstarted` withholding, the
 conversation-naming request and the pane's precedence; **Copy session ID as the fourth
 (#893)**, which rides the same menu (the trigger's gate is untouched by it, for the
-same reason Fork left it untouched); the menu's trigger
+same reason Fork left it untouched); **Rename conversation as the fifth (#920)** - the
+item, its row-addressed `session.rename` request for the row's own conversation, and the
+name the request carries for the dialog's seed (the picker gains no behaviour beyond
+that seed, and the header's inline editor and `/rename` stay the pane's doors); the
+menu's trigger
 (`menuEnabled`) is **unchanged**: Fork rides an existing menu, so a panel with
 neither the archive nor the pin capability still has no menu and no Fork, and
-widening the trigger is out of scope here. The menu itself (six rows, withheld
+widening the trigger is out of scope here (rename rides it the same way). The menu
+itself (seven rows, withheld
 when there is nothing to draw); chord
 hints through the shared `KeyboardShortcut`, which finally spends
 `chatRowActCap`; the explicit keyboard opener with focus return; the state
@@ -887,8 +921,8 @@ both shipped in `scripts/chat-sidebar-row-menu.test.mjs`, beside the
 `chat-sidebar-archive.test.mjs` / `chat-sidebar-pins.test.mjs` /
 `chat-sidebar-selection.test.mjs` suites whose subjects they share.
 
-**Out:** move/reorder controls (#693, §7); rename (an editing surface and a
-row-scoped write path — the header's inline rename stays the home); delete
+**Out:** move/reorder controls (#693, §7); the report's optional double-click inline rename of a
+row title (a separate, larger ask - not addressed by #920, which reuses the register's dialog); delete
 (never on the row); a persistent per-row kebab, a tour or coach mark, a flyout
 line advertising right-click; any menu inside the titlebar lane; multi-select
 and bulk actions.
@@ -911,6 +945,12 @@ the frames THIS set measured, and the six-row panel's own readout belongs to the
 evidence pass on #893's head. Only the `items` counts are given post-#893 (a row of
 their own, below), and those are read off the shipped composition rather than off a
 frame.
+
+**AND #920 ADDS A SEVENTH ROW (2026-10-10).** `Rename conversation` joins at slot 5,
+so every menu-open state draws one more plain row than the post-#893 figures below;
+those figures stay labelled as what their passes measured, and the seven-row
+readouts belong to #920's own evidence pass, which re-takes the set
+(`docs/evidence/chat-sidebar-row-context-menu/README.md`).
 
 | | `pointer-open` | `pointer-hover` | `keyboard-open` | `archived-row` | `pinned-row` | `pin-state-unknown` | `archive-withheld` |
 |---|---|---|---|---|---|---|---|
@@ -994,13 +1034,17 @@ by `--dirs=pointer-hover,archived-row`, so no existing frame was re-taken.)
 | `fork-withheld` | #739: the row is a never-sent draft's conversation; **three** rows (archive, pin, copy), Fork absent rather than greyed (273 × 113) |
 | `fork-pressed` | #739: Fork pressed - the readout shows the request naming the row's conversation, the row's own button as the invoker, and the route; the picker itself is the pane's and is not in this story |
 | `copy-pressed` | #893: `Copy session ID` pressed on the row - the readout prints `copied: s2` (the ROW's own conversation id, verbatim) and the app's own `Session ID copied` toast is drawn in the frame; the menu is closed, as Radix closes it on select, exactly as `fork-pressed` shows |
+| `rename-pressed` | #920: `Rename conversation` pressed on the row - the readout shows the request naming `session.rename` FOR the row's conversation, the name that row draws riding with it, the row's own button as the invoker, and the route; the dialog itself is the pane's and is not in this story. **The frame is PENDING** - #920's evidence pass re-takes the menu-open states with the seventh row and captures this one |
 
 **THE SET WAS RE-SHOT WHOLE FOR #893 (2026-10-08),** and the row descriptions above
 now enumerate what the states draw: `Copy session ID` is in every menu-open image
 (four rows on an ordinary row, six on the pinned one), and the `pinned-row` frame is
 the six-row **296 × 215** panel. The six-row readout in § 9 is this pass's, read from
 the frame it draws in; the five-row figures in this section are kept as the record
-with the head they described. The set, its invocation and the byte accounting are
+with the head they described. **#920 adds `rename-pressed` and supersedes nothing
+here except the counts** - its evidence pass re-takes the menu-open states with the
+seventh row and captures the new state, and the paragraph above stays labelled as the
+#893 generation's. The set, its invocation and the byte accounting are
 `docs/evidence/chat-sidebar-row-context-menu/README.md`.
 
 The design round's **proposal set**
