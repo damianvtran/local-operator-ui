@@ -60,9 +60,40 @@
  * The Node suite `scripts/session-status.test.mjs` asserts every rule above
  * against payloads captured from a real backend, so a drift on either side
  * fails a gate rather than shipping a wrong number.
+ *
+ * ## The channel branch (`spend_channels`, wire v1)
+ *
+ * A second, ADDITIVE path sits beside the port above: when the caller says the
+ * backend advertises `features.cost_channels` and the snapshot carries the
+ * published `spend_channels` object, the strip shows THAT total instead of
+ * re-adding the ledgers. This is not a mirror of anything — it is the backend's
+ * one arithmetic site's result, passed through — and the rules live here rather
+ * than in the component so a second surface can follow them without
+ * re-deriving them:
+ *
+ *   - `total`/`knowledge` come from the object (`total_micro`, `knowledge`).
+ *     NEVER recomputed: `total_micro` already contains inference, the channel
+ *     records and the children, so adding anything to it double-counts.
+ *   - `text` runs the SAME ladder (`formatCost`) over `total_micro / 1e6`, with
+ *     the same zero policy: nothing is fabricated for an untracked session, and
+ *     money that exists but could not be sized is `$—`, never `≥$0.0000`.
+ *   - `channels` carries the breakdown the tooltip renders, spelled HERE so the
+ *     component renders strings rather than making arithmetic decisions.
+ *   - A malformed object, or one stamped with a wire version this build does
+ *     not know, falls back to the legacy port — the legacy fields keep their
+ *     inference-only meaning on every backend, so that answer is always true.
+ *
+ * The gate is the CALLER's `features.cost_channels >= 1`, passed in as
+ * `options.costChannels`: a backend that does not advertise the capability has
+ * not promised the object's semantics even if an object appears, so the
+ * failure direction is legacy, never the channel branch.
  */
 
-import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
+import type {
+	CanonicalFrontendState,
+	CanonicalSpendChannelRow,
+	CanonicalSpendChannels,
+} from "../../../../../shared/desktop-session-contract";
 import { pyFixed } from "./fixed-point";
 
 /**
@@ -94,7 +125,40 @@ export type SessionCostInput = Pick<
 	| "subagent_cost"
 	| "subagent_cost_knowledge"
 	| "cost_knowledge"
+	| "spend_channels"
 >;
+
+/** What a turn reported when it billed tokens; see `sessionCost`'s `usage`. */
+export type SessionCostUsage = {
+	input_tokens?: number | null;
+	output_tokens?: number | null;
+} | null;
+
+/**
+ * How the strip's caller gates the channel branch.
+ *
+ * `costChannels` is `(capabilities.features.cost_channels ?? 0) >= 1` from the
+ * desktop capability read — a boolean rather than the capability object because
+ * this module must stay pure (the Node suite bundles it with no window and no
+ * query client). Absent/false means the legacy path, which is also what an old
+ * server gets: the field would be missing there anyway, and this gate makes the
+ * direction of a HALF-upgraded pair (capability present, field not yet) legacy
+ * as well.
+ */
+export type SessionCostOptions = {
+	costChannels?: boolean;
+};
+
+/**
+ * The cue the spend figure carries when the ledger was not tracking.
+ *
+ * The tracked=false disclosure used to live only in the tooltip, which touch
+ * users and the mini view never open (design round 1, D7): the chip read
+ * `$0.900`, identical to a fully tracked session. The mark is one character at
+ * the end of the figure, and the tooltip's mandatory sentence is its
+ * explanation.
+ */
+export const UNTRACKED_CUE = "*";
 
 export type SessionCost = {
 	/** `cumulative_cost`: parent plus children, or null when neither is known. */
@@ -109,6 +173,87 @@ export type SessionCost = {
 	 * hides the segment on the same test rather than each inventing its own.
 	 */
 	text: string;
+	/**
+	 * The published channel object's reading, present exactly when the channel
+	 * branch produced the figure (capability on AND a usable v1 object).
+	 * `undefined` on the legacy path — the strip then renders no breakdown, and
+	 * nothing may be inferred from the absence: legacy backends simply have no
+	 * channel story to tell, and the tooltip already says what it can.
+	 */
+	channels?: SpendChannelsReading;
+};
+
+/**
+ * The published channels object as a reading the strip can render.
+ *
+ * Spelled here, beside the arithmetic, for the reason `formatCost` is exported
+ * rather than re-derived at each surface: the summary line and the row lines
+ * ARE the reading, and two spellings of one number is the drift this module
+ * exists to prevent.
+ */
+export type SpendChannelsReading = {
+	/** The object's own `tracked`: false = "channels not tracked" (say so). */
+	tracked: boolean;
+	/** The grand total, integer micro-USD, exactly as published. */
+	totalMicro: number;
+	knowledge: CostKnowledge;
+	/** Non-zero money buckets, in the contract's order (`by_basis`). */
+	byBasis: Array<{ basis: string; micro: number }>;
+	/**
+	 * `by_basis.not_tracked_micro` — the published micro-USD amount whose
+	 * billing basis is not tracked yet (the session's own inference pre-PR-3
+	 * plus the children bundle). ADDITIVE on v1: an absent key reads as 0, and
+	 * the composition line then says the count without a money clause. Never
+	 * derived here — the round-2 review's MAJOR: the summary used to SUM
+	 * inference row amounts for this figure, which no UI may do.
+	 */
+	notTrackedMicro: number;
+	/** The `not_tracked_calls` COUNT — records with no trackable basis. */
+	notTrackedCalls: number;
+	/**
+	 * `children.total_micro` (published), or null when the block is absent —
+	 * rendered as the share of the not-tracked money that is subagent sessions.
+	 */
+	childrenMicro: number | null;
+	/** The children block's own rung; decides the remainder's floor mark. */
+	childrenKnowledge: CostKnowledge;
+	/** One entry per published row, spelled (see `ChannelBreakdownRow`). */
+	rows: ChannelBreakdownRow[];
+	/**
+	 * Rows the wire sent that this build could not read (non-object entries),
+	 * dropped by the same filter every reader shares. The panel uses it to say
+	 * "could not be read" rather than "no rows" when a malformed row would
+	 * otherwise leave an empty table under a nonzero total (QA round 2, Q6).
+	 */
+	rowsDropped: number;
+};
+
+/**
+ * One published row as the surfaces render it.
+ *
+ * `name`/`amount`/`basis` are display strings (the money already through the
+ * caller's ladder in the strip's reading). `channel`/`amountMicro`/`floor`
+ * exist for the SUMMARY's floor test and the panel's row marks: a remainder
+ * built from floored inference money (or a floored children block) carries
+ * the surface's lower-bound mark, so the composition line and the row that
+ * feeds it cannot disagree about which is the lower bound.
+ */
+export type ChannelBreakdownRow = {
+	/** `Inference · anthropic/claude-sonnet-5-5`; see `channelRowName`. */
+	name: string;
+	/** `$0.900` / `≥$0.053` / `price unknown` — never a fabricated `$0.0000`. */
+	amount: string;
+	/**
+	 * The row's basis words, capitalised (`Billed`, `API-equivalent`,
+	 * `Estimated`), or `""` when the row has none to state.
+	 */
+	basis: string;
+	/** The wire channel word; `inference` marks the PR-3 placeholder rows. */
+	channel: string;
+	/** The published integer, or null (null is a count, never money). */
+	amountMicro: number | null;
+	/** `partial`/`floor` knowledge: the row's amount is a lower bound. */
+	floor: boolean;
 };
 
 /** Coerce a wire number, treating a non-finite or absent value as unknown. */
@@ -147,8 +292,15 @@ function isFloorKnowledge(knowledge: CostKnowledge): boolean {
 	return knowledge === "floor" || knowledge === "partial";
 }
 
-/** Normalise a wire value to a rung this app knows, or `unknown`. */
-function rung(value: unknown): CostKnowledge {
+/**
+ * Normalise a wire value to a rung this app knows, or `unknown`.
+ *
+ * Exported because every reader of a knowledge field must degrade a future
+ * rung the same way — the analytics panel's By-channel section reads rows of
+ * the same object and a second copy of this coercion is how two surfaces come
+ * to disagree about one figure's honesty.
+ */
+export function rung(value: unknown): CostKnowledge {
 	return value === "exact" || value === "partial" || value === "floor"
 		? value
 		: "unknown";
@@ -166,6 +318,396 @@ export function formatCost(cost: number): string {
 	if (cost < 0.01) return `$${pyFixed(cost, 4)}`;
 	if (cost < 1.0) return `$${pyFixed(cost, 3)}`;
 	return `$${pyFixed(cost, 2)}`;
+}
+
+/* ---- channels: the published object, as the strip renders it ------------ */
+
+/**
+ * Integer micro-USD through the module's ONE dollar ladder.
+ *
+ * Deliberately not a new formatter: the wire's `total_micro` and the legacy
+ * `cumulative_cost` must agree to the cent on the same session (the parity
+ * tests pin that), and a second ladder is how two surfaces start disagreeing.
+ * The division happens HERE, at the display edge, never in arithmetic.
+ */
+function microUsdText(micro: number): string {
+	return formatCost(micro / 1_000_000);
+}
+
+/**
+ * The wire's basis spellings as words, one map for the summary and the rows.
+ *
+ * `subscription_api_equivalent` is the one word that MUST NOT be shortened to
+ * "subscription": the number beside it is the published API price of what a
+ * plan funded, and "subscription" alone would read as money charged to the
+ * plan. An unknown word passes through as-is — the vocabulary belongs to the
+ * backend (see the contract's `CanonicalSpendChannelRow`).
+ */
+const BASIS_WORDS: Record<string, string> = {
+	billed: "billed",
+	subscription_api_equivalent: "API-equivalent",
+	estimated: "estimated",
+	not_tracked: "not tracked",
+};
+
+/**
+ * The wire basis spelling as its display word; an unknown word passes through.
+ *
+ * The mid-label spelling (`estimated`, `API-equivalent`), which the strip's row
+ * suffixes and the analytics panel's columns both build on; a sentence or a
+ * line that needs a capital prefixes it itself.
+ */
+export function channelBasisLabel(basis: string): string {
+	return BASIS_WORDS[basis] ?? basis;
+}
+
+/** Capitalise a wire word for the start of a label (`inference` -> `Inference`). */
+function capitalise(word: string): string {
+	return word ? word.charAt(0).toUpperCase() + word.slice(1) : word;
+}
+
+/**
+ * Channel words that are not a capitalised string: the two voice acronyms.
+ *
+ * `Tts` is not a word anyone writes; the backend's own channel names are
+ * `tts`/`stt` and every surface that prints them prints the acronym. Kept
+ * beside `capitalise` so a future channel word with the same problem has one
+ * place to land.
+ */
+const CHANNEL_WORDS: Record<string, string> = { tts: "TTS", stt: "STT" };
+
+/** The channel's display word, for the row label. */
+export function channelWord(channel: string): string {
+	return CHANNEL_WORDS[channel] ?? capitalise(channel);
+}
+
+/**
+ * Whether `value` is a `spend_channels` object this build may render.
+ *
+ * Strict on the load-bearing members (version 1, a boolean `tracked`, an
+ * INTEGER `total_micro`, an array of rows) and tolerant about nothing else —
+ * every other member is read defensively at its own site. A future wire
+ * version fails here on purpose: the design says an unknown version renders
+ * the legacy view, and the legacy fields stay true on every backend.
+ *
+ * Exported because the analytics panel's By-channel section reads the SAME
+ * object and must refuse it by the same rule — two version checks that could
+ * disagree is the drift this module's docblock is about.
+ */
+export function spendChannelsUsable(
+	value: unknown,
+): value is CanonicalSpendChannels {
+	if (typeof value !== "object" || value === null) return false;
+	const object = value as Partial<CanonicalSpendChannels>;
+	return (
+		object.version === 1 &&
+		typeof object.tracked === "boolean" &&
+		typeof object.total_micro === "number" &&
+		Number.isInteger(object.total_micro) &&
+		Array.isArray(object.rows)
+	);
+}
+
+/** The row's own name for its money: channel plus the serving identity. */
+export function channelRowName(row: CanonicalSpendChannelRow): string {
+	const channel =
+		typeof row.channel === "string" && row.channel ? row.channel : "other";
+	const label = typeof row.label === "string" ? row.label.trim() : "";
+	const provider = typeof row.provider === "string" ? row.provider : "";
+	const model = typeof row.model === "string" ? row.model : "";
+	/*
+	 * The inference bucket key when there is one (`label`), else the identity
+	 * pair. A `provider/model` join only when both halves exist: `deepseek:read`
+	 * and `tavily` are one half each, and `/` with an empty side would invent a
+	 * slash nobody sent.
+	 */
+	const identity =
+		label || (provider && model ? `${provider}/${model}` : provider || model);
+	return identity
+		? `${channelWord(channel)} · ${identity}`
+		: channelWord(channel);
+}
+
+/**
+ * The words a record with no stated amount is called, one site.
+ *
+ * Settled between the surfaces in round 1 (design D2): the wire calls it
+ * unknown, "not tracked" is the session-level state and nothing else, and the
+ * panel and the strip print the same two words rather than each inventing
+ * one.
+ */
+export const PRICE_UNKNOWN_TEXT = "price unknown";
+
+/**
+ * One row's amount, mark included: `$0.90`, `≥$0.053`, or the words `price
+ * unknown`.
+ *
+ * `null` never becomes a number and never becomes `$0.0000`: the wire's own
+ * rule (`None` means unknown, never zero) restated at the last place it could
+ * be violated. The words are NOT "not tracked" — that phrase belongs to the
+ * session-level state, and reusing it here put three meanings on one string
+ * (design round 1, D2). `knowledge`'s `partial`/`floor` on the row rides the
+ * same `≥` the headline uses, because a group with unsized members is a lower
+ * bound.
+ */
+function rowAmountText(row: CanonicalSpendChannelRow): {
+	text: string;
+	unknown: boolean;
+} {
+	const amount =
+		typeof row.amount_micro === "number" && Number.isFinite(row.amount_micro)
+			? row.amount_micro
+			: null;
+	if (amount === null) return { text: PRICE_UNKNOWN_TEXT, unknown: true };
+	const floor = isFloorKnowledge(rung(row.knowledge));
+	return {
+		text: `${floor ? FLOOR_MARK : ""}${microUsdText(amount)}`,
+		unknown: false,
+	};
+}
+
+/**
+ * One row's basis words: `estimated`, `API-equivalent`, `billed`.
+ *
+ * `not_tracked` is deliberately NOT a row word when the row has a stated
+ * amount: alongside a money basis it means "part of this group is unsized",
+ * and that fact is already carried by the `≥` mark and the summary line's
+ * count. Alone (the inference placeholder until the backend's basis columns
+ * land), it would sit next to a figure that IS sized and read as if the figure
+ * were not — so it is left to the summary count there too. An unreleased word
+ * passes through as the backend spelled it.
+ *
+ * Exported (with `channelWord` and `channelRowName`) because the analytics
+ * panel's By-channel table names the same rows; ONE site spells the
+ * vocabulary, and the two surfaces differ only in their money ladders, which
+ * the design deliberately does not unify.
+ */
+export function channelBasisWords(bases: readonly string[]): string[] {
+	return [
+		...new Set(
+			bases
+				.filter((basis): basis is string => typeof basis === "string")
+				.filter((basis) => basis !== "not_tracked")
+				.map((basis) => capitalise(channelBasisLabel(basis))),
+		),
+	];
+}
+
+/** One published row as a `ChannelBreakdownRow`. */
+function channelRow(row: CanonicalSpendChannelRow): ChannelBreakdownRow {
+	const amount = rowAmountText(row);
+	const bases = Array.isArray(row.basis)
+		? row.basis.filter((basis): basis is string => typeof basis === "string")
+		: [];
+	return {
+		name: channelRowName(row),
+		amount: amount.text,
+		basis: amount.unknown ? "" : channelBasisWords(bases).join(" · "),
+		channel:
+			typeof row.channel === "string" && row.channel ? row.channel : "other",
+		amountMicro:
+			typeof row.amount_micro === "number" && Number.isFinite(row.amount_micro)
+				? row.amount_micro
+				: null,
+		floor: isFloorKnowledge(rung(row.knowledge)),
+	};
+}
+
+/**
+ * The published object as a `SpendChannelsReading`, or `null` when it is not
+ * one this build can render (the caller then keeps the legacy path).
+ *
+ * Exported because the analytics panel's By-channel section reads the SAME
+ * object and must refuse it by the same rule — two version checks that could
+ * disagree is the drift this module's docblock is about — and because the
+ * section's composition line is built from this reading by the same builders
+ * the strip uses.
+ */
+export function channelsReading(value: unknown): SpendChannelsReading | null {
+	if (!spendChannelsUsable(value)) return null;
+	const rawBasis = value.by_basis;
+	const byBasis: SpendChannelsReading["byBasis"] = [];
+	let notTrackedCalls = 0;
+	let notTrackedMicro = 0;
+	if (rawBasis && typeof rawBasis === "object") {
+		for (const [basis, bucket] of Object.entries(rawBasis)) {
+			if (typeof bucket !== "number" || !Number.isFinite(bucket)) continue;
+			if (basis === "not_tracked_calls") {
+				notTrackedCalls = Math.max(0, Math.trunc(bucket));
+				continue;
+			}
+			if (basis === "not_tracked_micro") {
+				/* The published remainder — read, never derived. Absent (an older
+				 * producer) stays 0 and the summary says the count without money. */
+				notTrackedMicro = Math.max(0, Math.trunc(bucket));
+				continue;
+			}
+			/* Zero buckets are left out of the summary: "Billed $0.0000" is a
+			 * claim the line does not need to make, and the absent bucket is
+			 * stated by the count beside the ones that are there. */
+			if (bucket !== 0) byBasis.push({ basis, micro: bucket });
+		}
+	}
+	const rows = value.rows.filter(
+		(row): row is CanonicalSpendChannelRow =>
+			Boolean(row) && typeof row === "object",
+	);
+	const children = value.children;
+	return {
+		tracked: value.tracked,
+		totalMicro: value.total_micro,
+		knowledge: rung(value.knowledge),
+		byBasis,
+		notTrackedMicro,
+		notTrackedCalls,
+		childrenMicro:
+			children && typeof children === "object"
+				? finite(children.total_micro)
+				: null,
+		childrenKnowledge:
+			children && typeof children === "object"
+				? rung(children.knowledge)
+				: "unknown",
+		rows: rows.map(channelRow),
+		rowsDropped: value.rows.length - rows.length,
+	};
+}
+
+/**
+ * The composition line — the figure's parts in one place a reader can add up:
+ *
+ *   `Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $0.900
+ *    without a tracked basis yet · 1 record without a price`
+ *
+ * or `null` when nothing is stated. The rules:
+ *
+ * - The money buckets keep billed, plan-funded and estimated money apart (the
+ *   contract's `by_basis`).
+ * - The not-tracked money comes from the PUBLISHED `not_tracked_micro`, never
+ *   from summing rows: round 2's review reproduced a two-inference-row
+ *   payload whose client-side sum printed a figure that appears nowhere on
+ *   the wire, and the backend now publishes the amount so no UI re-sums it
+ *   (`channel_spend.py`: the backend's `combine()` is the one arithmetic
+ *   site). An absent key — an older producer — prints the count with NO money
+ *   clause.
+ * - The clause names the children share inside it — `(… subagent sessions)` —
+ *   because `not_tracked_micro` already INCLUDES the children bundle ("the
+ *   session's own inference plus the children bundle"): a free-standing part
+ *   would read as an extra summand and break the very reconciliation this
+ *   line exists for.
+ * - The remainder carries the surface's lower-bound mark when the money it is
+ *   built from is a lower bound — a floored inference row or a floored
+ *   children block — so the line cannot say `$X` where the row it aggregates
+ *   says `≥$X` (round 2, MINOR-2).
+ * - The count gets a noun, and it is withheld for a tracked=false session,
+ *   whose sentence already scopes the figure (round 1, D2).
+ *
+ * `money` is the caller's ladder (the strip's and the panel's differ by the
+ * design's own deferral), `markFloor` the caller's lower-bound register — the
+ * strip prefixes `≥` like the band, the panel suffixes `+` like the TUI's
+ * table cells (`analytics_panel.py` `_cost_cell`) — and the COMPOSITION is
+ * one site, which is what the panel's shared use of this function buys.
+ */
+export function channelSummaryLine(
+	reading: SpendChannelsReading,
+	money: (micro: number) => string,
+	markFloor: (text: string) => string,
+): string | null {
+	const parts = reading.byBasis.map(
+		(bucket) =>
+			`${capitalise(channelBasisLabel(bucket.basis))} ${money(bucket.micro)}`,
+	);
+	const remainder = reading.notTrackedMicro;
+	if (remainder > 0) {
+		const children =
+			reading.childrenMicro !== null && reading.childrenMicro > 0
+				? ` (${money(reading.childrenMicro)} subagent sessions)`
+				: "";
+		/*
+		 * The mark lands on the MONEY, not the sentence: the panel's register is
+		 * a trailing `+` (`$0.900+ ...`), the strip's a leading `≥`, and wrapping
+		 * the whole figure would push the panel's plus past "…basis yet".
+		 */
+		const moneyText = money(remainder);
+		const marked = remainderIsFloor(reading) ? markFloor(moneyText) : moneyText;
+		parts.push(`${marked} without a tracked basis yet${children}`);
+	}
+	if (reading.tracked && reading.notTrackedCalls > 0) {
+		const count = reading.notTrackedCalls;
+		parts.push(
+			`${count} ${count === 1 ? "record" : "records"} without a price`,
+		);
+	}
+	return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+/**
+ * Whether the published remainder is a lower bound.
+ *
+ * The remainder is the session's own inference (its rows are listed) plus the
+ * children bundle (which carries its own rung): it is a floor when either
+ * contributor is one. A predicate over published values — never a sum — which
+ * is why it survives the "no UI arithmetic" rule the figure's read answers
+ * to.
+ */
+function remainderIsFloor(reading: SpendChannelsReading): boolean {
+	const inferenceFloored = reading.rows.some(
+		(row) =>
+			row.channel === "inference" && row.floor && row.amountMicro !== null,
+	);
+	const childrenFloored =
+		(reading.childrenMicro ?? 0) > 0 &&
+		isFloorKnowledge(reading.childrenKnowledge);
+	return inferenceFloored || childrenFloored;
+}
+
+/**
+ * The plan-funded gloss: `Includes $0.053 API-equivalent (covered by a plan,
+ * not charged).`, or null.
+ *
+ * `API-equivalent` is jargon the total's reader cannot be assumed to know, and
+ * the number beside it is money that was never charged — the one thing the
+ * total must not let read as cash (design round 1, D1). Both surfaces render
+ * this clause from the same site, through their own ladders.
+ */
+export function channelPlanClause(
+	reading: SpendChannelsReading,
+	money: (micro: number) => string,
+): string | null {
+	const plan = reading.byBasis.find(
+		(bucket) => bucket.basis === "subscription_api_equivalent",
+	);
+	if (!plan) return null;
+	return `Includes ${money(plan.micro)} API-equivalent (covered by a plan, not charged).`;
+}
+
+/** The strip-ladder breakdown the tooltip renders. */
+export type ChannelBreakdown = {
+	planClause: string | null;
+	summary: string | null;
+	rows: ChannelBreakdownRow[];
+};
+
+/**
+ * The published reading through the strip's own ladder.
+ *
+ * The panel builds its view from the same three builders with `formatMicroUsd`
+ * (its ladder, by the design's deferral), so the composition, the plan gloss
+ * and the rows cannot be spelled two ways — only the money differs.
+ */
+export function channelBreakdown(
+	reading: SpendChannelsReading,
+): ChannelBreakdown {
+	return {
+		planClause: channelPlanClause(reading, microUsdText),
+		summary: channelSummaryLine(reading, microUsdText, floorMark),
+		rows: reading.rows,
+	};
+}
+
+/** The strip's lower-bound register: the band's `≥`, prefixed. */
+function floorMark(text: string): string {
+	return `${FLOOR_MARK}${text}`;
 }
 
 /**
@@ -201,14 +743,35 @@ export function cumulativeCostKnowledge(
  * bill tokens at a price that could not be resolved. When it did and the total
  * is null, the band writes `$—` rather than nothing, because "we spent
  * something we cannot price" is a different fact from "we have not spent".
+ *
+ * `options.costChannels` switches to the PUBLISHED total when the snapshot
+ * carries a usable `spend_channels` object — see the module docblock for why
+ * that branch exists and what it refuses to recompute. The legacy port below
+ * stays byte-for-byte the answer for every backend that has no such object,
+ * which is what keeps an old server's rendering unchanged.
  */
 export function sessionCost(
 	state: SessionCostInput,
-	usage?: {
-		input_tokens?: number | null;
-		output_tokens?: number | null;
-	} | null,
+	usage?: SessionCostUsage,
+	options?: SessionCostOptions,
 ): SessionCost {
+	/*
+	 * The channel branch FIRST: when it answers, it answers for the whole
+	 * figure, and the two paths must never be mixed (the published total
+	 * already contains everything the legacy port sums; adding them
+	 * double-counts). `channelsReading` returns null for a malformed object or
+	 * a future wire version, and the legacy path is the one true answer about
+	 * every backend, so that fallback is safe rather than merely convenient.
+	 *
+	 * `usage` is threaded INTO the branch, not read beside it: the object's
+	 * `unknown` at a zero total cannot say whether anything was billed at all
+	 * (see `channelsSessionCost`), and `usage` is the legacy port's own answer
+	 * to that question.
+	 */
+	if (options?.costChannels) {
+		const reading = channelsReading(state.spend_channels);
+		if (reading) return channelsSessionCost(reading, usage);
+	}
 	const parent = finite(state.cumulative_parent_cost);
 	const children = childTotal(state);
 	const knowledge = cumulativeCostKnowledge(state);
@@ -243,6 +806,65 @@ export function sessionCost(
 }
 
 /**
+ * The channel branch's whole answer, from the reading and nothing else.
+ *
+ * `total_micro` is taken as published — the ONE place this module is forbidden
+ * from recomputing — and the zero case splits into the three facts the object
+ * can and cannot carry:
+ *
+ * - `exact` is a STATED zero (a free or local model that billed nothing):
+ *   `$0.0000`, the figure the panel's ladder prints for the same object and
+ *   the TUI's own ladder prints for a genuine zero (`tui/costs.py` "zero
+ *   renders $0.0000"). The legacy path stays silent here, but legacy could not
+ *   tell "nothing happened" from "priced at zero" — the object can, and a
+ *   silent chip beside the panel's `$0.0000` is the surface disagreement this
+ *   branch exists to remove (QA round 1, Q1).
+ * - `partial`/`floor` is money that EXISTS and could not be sized: `$—`, the
+ *   app's one unknown spelling for an unpriceable total.
+ * - `unknown` is NOT decidable from the object: the contract's `knowledge()`
+ *   answers UNKNOWN both for "no activity at all" and for "unpriced calls
+ *   only". `usage` — the argument the legacy port already takes for exactly
+ *   this question — separates them: billed tokens mean `$—` (there IS spend
+ *   nobody could price), nothing billed means the fresh-session silence
+ *   (review round 1, MAJOR-1: the branch used to drop that signal entirely).
+ *
+ * A tracked=false reading appends `UNTRACKED_CUE` to whatever it prints, so
+ * the chip itself says the ledger was not tracking; the tooltip's mandatory
+ * sentence explains the mark (design round 1, D7).
+ */
+function channelsSessionCost(
+	reading: SpendChannelsReading,
+	usage: SessionCostUsage | undefined,
+): SessionCost {
+	const { totalMicro, knowledge } = reading;
+	const isFloor = isFloorKnowledge(knowledge);
+	const cue = reading.tracked ? "" : UNTRACKED_CUE;
+	if (totalMicro === 0) {
+		const billed = Boolean(
+			usage && ((usage.input_tokens ?? 0) || (usage.output_tokens ?? 0)),
+		);
+		let text: string;
+		if (knowledge === "exact") text = microUsdText(0);
+		else if (knowledge === "unknown") text = billed ? UNPRICEABLE_TEXT : "";
+		else text = UNPRICEABLE_TEXT;
+		return {
+			total: 0,
+			knowledge,
+			isFloor,
+			text: text ? `${text}${cue}` : "",
+			channels: reading,
+		};
+	}
+	return {
+		total: totalMicro / 1_000_000,
+		knowledge,
+		isFloor,
+		text: `${isFloor ? FLOOR_MARK : ""}${microUsdText(totalMicro)}${cue}`,
+		channels: reading,
+	};
+}
+
+/**
  * The sentence the cost readout's tooltip carries.
  *
  * The band has one cell and can only show the mark; a tooltip has room to say
@@ -252,6 +874,7 @@ export function sessionCost(
  * rounding.
  */
 export function costTooltip(cost: SessionCost): string {
+	if (cost.channels) return channelsCostTooltip(cost);
 	if (cost.total === null) {
 		return cost.text === UNPRICEABLE_TEXT
 			? "This session billed tokens on a model with no published price, so the spend cannot be calculated."
@@ -261,4 +884,53 @@ export function costTooltip(cost: SessionCost): string {
 	const exact = `Session spend so far: ${formatCost(cost.total)}.`;
 	if (!cost.isFloor) return exact;
 	return `Session spend is at least ${formatCost(cost.total)}. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.`;
+}
+
+/**
+ * The sentence every surface says when the ledger was not tracking a session.
+ *
+ * `tracked: false` means the conversation predates the channel ledger: the
+ * total is inference-only and the contract MANDATES saying so — a surface that
+ * stayed silent would imply $0 of channel spend (fabricated zeros are the one
+ * thing the wire's rules forbid twice). One constant, because the strip's
+ * tooltip and the analytics panel's legend must not describe one session
+ * differently.
+ */
+export const CHANNELS_UNTRACKED_NOTE =
+	"Channels are not tracked for this conversation, so this covers model spend only.";
+
+/**
+ * The tooltip under the CHANNEL branch's figure.
+ *
+ * The legacy sentence's reasons ("ran before the app was tracking it", "a
+ * subagent's spend is not fully known") are inference-era causes; on this path
+ * the object's own `knowledge` says only THAT something could not be sized, and
+ * the tracked=false sentence is the contract's mandate — every surface must SAY
+ * "channels not tracked" rather than imply $0 of channel spend — so both
+ * clauses are their own sentences beside the figure's.
+ */
+function channelsCostTooltip(cost: SessionCost): string {
+	const reading = cost.channels;
+	if (!reading) return "Nothing has been spent in this session yet.";
+	const sentences: string[] = [];
+	if (!cost.total) {
+		sentences.push(
+			cost.text.startsWith(UNPRICEABLE_TEXT)
+				? "Some spend in this conversation could not be priced, so the spend cannot be calculated."
+				: "Nothing has been spent in this session yet.",
+		);
+	} else {
+		sentences.push(
+			cost.isFloor
+				? `Session spend is at least ${formatCost(cost.total)}.`
+				: `Session spend so far: ${formatCost(cost.total)}.`,
+		);
+		if (cost.isFloor) {
+			sentences.push("Part of this conversation's spend could not be priced.");
+		}
+	}
+	if (!reading.tracked) {
+		sentences.push(CHANNELS_UNTRACKED_NOTE);
+	}
+	return sentences.join(" ");
 }
