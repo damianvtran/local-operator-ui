@@ -696,6 +696,23 @@ export type DesktopFeature =
 	 * or "update the backend".
 	 */
 	| "quota_notice";
+	/**
+	 * THE PER-SESSION CODE REQUEST LEDGER (`features.code_requests`): the
+	 * `code_requests.list` read and its refresh, i.e. the Code review pane, the
+	 * rail item and the composer chip (design record §D.6).
+	 *
+	 * ITS OWN KEY for the reason this union states everywhere: the ledger's routes
+	 * are additive, and a backend that predates them answers a 404 whose only
+	 * honest reading is "this build made a call nothing serves". Absent ⇒ the rail
+	 * item, the composer chip and the pane are NOT MOUNTED (never
+	 * mounted-and-disabled) and the surface is exactly the pre-feature one - which
+	 * is also why the pane's own read is gated on this key rather than attempted
+	 * and failed.
+	 *
+	 * The version-1 minimum is the feature's own first release; there is no older
+	 * shape of it to negotiate.
+	 */
+	| "code_requests";
 
 /**
  * WHY a negotiated feature surface may not be offered.

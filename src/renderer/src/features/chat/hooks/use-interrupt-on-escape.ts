@@ -34,6 +34,16 @@
  *    left the pane open, which contradicts this ladder. A press a layer INSIDE
  *    the pane has already claimed still defers, because the pane's own guard
  *    reads `defaultPrevented` too.
+ *
+ *    THE CODE REVIEW PANE claims the same way while IT is open (UX round 1's
+ *    U9), with two extra guards its own round-2 m1 finding added: an Escape a
+ *    field owns (`ownsEscapeOutsideComposer` above), or one composing in an
+ *    IME, is left unstamped; and while a turn is running, a press whose
+ *    TARGET is the composer is left to this listener (rung 8) instead of
+ *    closing the pane - the run panel defers only via `defaultPrevented`, so
+ *    the two panes differ exactly here, deliberately: the code pane's press
+ *    in the composer would otherwise both close the pane and swallow the
+ *    interrupt, and the manager ruled the interrupt must not be swallowed.
  * 4. VOICE RECORDING CANCEL. Esc during a recording cancels the recording and
  *    never the turn. This is the one that bites, and it is why the decision below
  *    is taken in a MICROTASK rather than at listener time - see the note there.
