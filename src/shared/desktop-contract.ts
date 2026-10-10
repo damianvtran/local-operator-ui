@@ -2988,6 +2988,38 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			action: z.enum(["open", "pause", "resume", "greet", "status"]),
 		})
 		.strict(),
+	/*
+	 * THE CODE REQUEST LEDGER (the per-session PR/MR list, and its refresh).
+	 *
+	 * BOTH ROUTES SIT UNDER THE SESSION because the LEDGER is the session's: the
+	 * rows are derived from THIS conversation's transcript, so a read that did not
+	 * name the session could only be some other session's list or a fleet scan
+	 * nobody asked for. The pair follows the monitors/projects routes' pattern
+	 * (`Depends(require_desktop)` behind the desktop bearer) and the refresh is a
+	 * POST because it mutates the cache's TTL state; a GET with a side effect is
+	 * the shape the monitors routes already refused.
+	 *
+	 * `keys` narrows the refresh to named rows and `force` bypasses the TTL but
+	 * NOT a host's rate-limit window (`cooling` in the list answer says which);
+	 * both are optional because "refresh what is dirty" and "per the TTL" are the
+	 * route's defaults, which is what the pane's untouched Refresh press wants.
+	 */
+	z
+		.object({ op: z.literal("code_requests.list"), sessionId })
+		.strict(),
+	z
+		.object({
+			op: z.literal("code_requests.refresh"),
+			sessionId,
+			/*
+			 * A key is one row's `key` from the list answer; the bound mirrors the
+			 * fetch routes' own ceilings rather than inventing one here, and the
+			 * cap keeps a mis-read list from being re-sent whole.
+			 */
+			keys: z.array(z.string().min(1).max(512)).max(256).optional(),
+			force: z.boolean().optional(),
+		})
+		.strict(),
 ]);
 
 /**
@@ -3559,6 +3591,237 @@ export type DesktopMonitorWriteReceipt = {
 	reactivated: boolean;
 	receipt: string;
 	index_written: boolean;
+};
+
+/*
+ * THE PER-SESSION CODE REQUEST LEDGER (`code_requests.list`), the PR/MR list a
+ * conversation carries: what it opened, what it acted on, what it mentions.
+ *
+ * WHAT IS LOCAL AND WHAT IS REMOTE. The rows' existence, relations, mentions
+ * and `tool_output_only_count` are DERIVED locally from the session's own
+ * transcript (`GET` never blocks on a forge), so a row renders as soon as the
+ * read answers. The remote half - `summary`, `lanes`, `fetched_at`, `stale`,
+ * `refresh_error` - is a cache of one host's last successful fetch, which is why
+ * every one of those fields is optional: a session that has never refreshed (or
+ * a host this machine holds no credential for, `link_only`) renders from the
+ * local half alone and must not read an absence as a failure.
+ */
+
+/**
+ * How this session relates to one code request, in the backend's own words.
+ *
+ * A UNION rather than a plain string, because every value here drives copy the
+ * user reads (`opened`, `via subagent coder`, `unknown — possibly opened`) and
+ * the group partition; a value this app has never heard of would have no honest
+ * rendering, unlike a project STATUS which can paint raw (`DesktopProjectStatus`
+ * makes that argument). `unknown` is the backend's explicit "possibly opened by
+ * this session, not proved" and the UI must never upgrade it: a script that
+ * merely PRINTED a PR URL is indistinguishable from one that created it without
+ * the forge's own record.
+ */
+export type DesktopCodeRequestRelation =
+	| "opened"
+	| "mentioned"
+	| "unknown"
+	| "inherited";
+
+/**
+ * One lane's parsed review state (the design record's §C.5 machine).
+ *
+ * The LANE's raw name and state travel as strings for the reason
+ * `DesktopProject.status` does: a newer backend may parse a state or serve a
+ * lane this build has not seen, and the row's clause then prints the raw value
+ * with neutral treatment rather than dropping a review that happened.
+ */
+export type DesktopCodeRequestLane = {
+	lane: string;
+	/**
+	 * The round the lane's LATEST comment carries, or absent/null when no
+	 * number could be parsed. The backend omits the key in that case
+	 * (`rounds.py`'s `to_payload` writes it only when not None) - a lane with
+	 * no placeable round still draws its state word and NO segments, because
+	 * a segment count is a claim about how many rounds ran.
+	 */
+	round?: number | null;
+	/** The header's parenthetical qualifier (`delta`, `fix verification`), if any. */
+	qualifier?: string | null;
+	state: string;
+	/** The backend's own derived sentence (`remediation posted, fresh`). */
+	state_copy?: string | null;
+	freshness: string;
+	/** `findings_open` | `clean` | `terminal` | `unstated`, the parser's class. */
+	verdict_class?: string | null;
+	/** The head the lane's latest comment reviewed, when its own Scope stated one. */
+	reviewed_head?: string | null;
+	reviewer?: string | null;
+	verdict?: string | null;
+};
+
+/**
+ * The CI figures for one row's head, as the adapter normalised them.
+ *
+ * `status` is the word every host can answer (`success` | `failure` |
+ * `pending` | `unknown` | `none`); the COUNT counters are nullable because
+ * GitLab pipeline state carries no job counts at all (`adapters/gitlab.py`
+ * returns null for all four) and GitHub leaves them null when the host did
+ * not carry them. The clause is built in one place (`code-review-model.ts`),
+ * and `total === 0` with `status: "none"` is "No checks yet" rather than
+ * "0/0 passed".
+ */
+export type DesktopCodeRequestCi = {
+	status: string;
+	passed: number | null;
+	failed: number | null;
+	pending: number | null;
+	total: number | null;
+	/** The host's own raw status word, when it sent one (GitLab pipelines do). */
+	raw_status?: string | null;
+	/**
+	 * The checks page, when the host reported one. OPTIONAL for the same reason
+	 * `comments` is: the design's row sketch (§D.6) does not list it, and a
+	 * backend that omits it must not fail a parse.
+	 */
+	url?: string | null;
+};
+
+/** The fetched summary of the forge's own record, absent until first fetched. */
+export type DesktopCodeRequestSummary = {
+	state: string;
+	draft: boolean;
+	title: string;
+	head_sha: string;
+	/**
+	 * The CI half, present-and-null when the fetched entry has no ci record
+	 * yet. Nullable rather than optional because the backend writes the key
+	 * with `entry.get("ci")` - a value that can be None - and a guard on
+	 * `row.summary?.ci?.status` is what keeps one such row from throwing
+	 * inside `ChatContent`'s render.
+	 */
+	ci?: DesktopCodeRequestCi | null;
+	updated_at: number;
+	/**
+	 * How many comments the record carries, when the host reported it (§1's
+	 * comment clause, `6 comments`). null means "not reported": the clause is
+	 * omitted, never rendered as 0, and the backend sends the key with null
+	 * rather than omitting it (`service.py`'s summary projection).
+	 */
+	comments?: number | null;
+};
+
+/**
+ * How a subagent's open reached this session (`via subagent coder › reviewer`).
+ *
+ * `path` is the propagation chain (a depth-2 child shows both names); the flat
+ * fields are the child's own record. Either may be absent on an older event, so
+ * the row's tag falls back through `path` → `agent_role` → `label`.
+ */
+export type DesktopCodeRequestVia = {
+	job_id?: string;
+	label?: string;
+	agent_role?: string;
+	child_session_id?: string;
+	path?: string[];
+};
+
+/** Where and how often this session's text mentions the row. */
+export type DesktopCodeRequestMention = {
+	sources: string[];
+	count: number;
+	last_at: number | null;
+};
+
+/** One row of the ledger: the identity half is always present, the rest gated. */
+export type DesktopCodeRequestRow = {
+	key: string;
+	url: string;
+	forge: string;
+	host?: string;
+	project: string;
+	number: number;
+	relation: DesktopCodeRequestRelation;
+	/** Every relation the ref accumulated, strongest first (the audit half). */
+	relations?: string[];
+	via?: DesktopCodeRequestVia | null;
+	/** The acts this session performed on the ref (`comment`, `merge`, ...). */
+	acted: string[];
+	mention: DesktopCodeRequestMention;
+	/** No credential for this host: the row opens, and shows its remedy line. */
+	link_only: boolean;
+	/**
+	 * The backend's own remedy sentence for a link-only row (`Link only -
+	 * sign in with the gh CLI to track this one.` / `... this host isn't
+	 * tracked yet.`), per FORGE - a gitea row is not "sign in with gh".
+	 * Rendered VERBATIM instead of the client deriving a CLI from `forge`
+	 * (agent review F8 / design D8 / UX U5).
+	 */
+	link_only_hint?: string | null;
+	/**
+	 * Why the row is only a link, when there is something to say (an
+	 * unconfirmed host, a failed refresh, the scanner's note). Shown
+	 * verbatim; never a guess.
+	 */
+	reason?: string | null;
+	/**
+	 * The epoch the row's host is cooling until, when the backend skipped this
+	 * row's fetch for a rate limit (server row payload `cooling_until`, PR1b
+	 * `039476dff3`). Present beside `reason`, whose cooling sentence names the
+	 * same instant; rendered through the notice line, not read directly.
+	 */
+	cooling_until?: number | null;
+	/** The scanner's note for an undecided relation (shown verbatim). */
+	unknown_reason?: string | null;
+	inherited_from?: string | null;
+	summary?: DesktopCodeRequestSummary | null;
+	lanes?: DesktopCodeRequestLane[] | null;
+	fetched_at?: number | null;
+	stale?: boolean;
+	/** A failed refresh left the last known data in place; this is why. */
+	refresh_error?: string | null;
+};
+
+/**
+ * `code_requests.list`'s answer.
+ *
+ * `tool_output_only_count` is the collapsed group's size: mentions seen ONLY in
+ * tool output are noise (a `gh pr list` dump can carry 158 URLs) and are counted
+ * rather than listed; they do not gate the composer chip either. `cooling` is
+ * per HOST (epoch seconds until the window opens), because the quota belongs to
+ * the host and row-level repetition of one host's window would be noise.
+ */
+export type DesktopCodeRequestsList = {
+	session_id?: string;
+	revision: number;
+	rows: DesktopCodeRequestRow[];
+	tool_output_only_count: number;
+	/**
+	 * True when the collapsed count is CAPPED - the scan stops listing tool-only
+	 * refs past a bound, and the model then renders the count with a `+` rather
+	 * than presenting a truncated list as exact.
+	 */
+	tool_output_truncated?: boolean;
+	/** Per-host cooling windows: host → epoch seconds the window lifts. */
+	cooling?: Record<string, number>;
+	/**
+	 * The transcript scan's own state: `ready` when the index is current for the
+	 * journal, `refreshing` while a scan is owed or running, `missing` when
+	 * there is no journal to scan. The pane keeps its LOADING state while
+	 * `refreshing` and the rows are empty - an empty answer mid-scan is not yet
+	 * a claim that the session has no code requests (UX round 1, U2).
+	 */
+	scan_state?: string;
+	updated_at?: number | null;
+};
+
+/**
+ * `code_requests.refresh`'s 202 receipt: the scan half ran, the fetch half is
+ * queued. `note` is the backend's own sentence about both halves.
+ */
+export type DesktopCodeRequestRefreshReceipt = {
+	session_id?: string;
+	accepted: boolean;
+	keys?: string[];
+	force?: boolean;
+	note?: string;
 };
 
 /**
@@ -6311,6 +6574,27 @@ export function desktopEndpoint(request: DesktopRequest): {
 				 * cannot be read as one.
 				 */
 				body: { op: request.action },
+			};
+		/*
+		 * THE CODE REQUEST LEDGER, the session-scoped pair (see the union members'
+		 * comment for why both routes name the session). The GET is the read the pane
+		 * and the chip share; the POST asks the host to re-fetch, and its body
+		 * carries only the fields the CALLER set, so an untouched Refresh press is
+		 * the route's own defaults rather than this client's opinion of them.
+		 */
+		case "code_requests.list":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/code-requests`,
+				method: "GET",
+			};
+		case "code_requests.refresh":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/code-requests/refresh`,
+				method: "POST",
+				body: {
+					...(request.keys !== undefined ? { keys: request.keys } : {}),
+					...(request.force !== undefined ? { force: request.force } : {}),
+				},
 			};
 	}
 }
