@@ -843,8 +843,12 @@ const ConversationStandIn = ({
 		browserAttentionCount?: number;
 		consoleUnseenCount?: number;
 		fileCount?: number;
+		/** Offer the asks item on the rail (#896); see `ShellStoryRail`. */
+		askOffered?: boolean;
+		askCount?: number;
 	};
-	/** The Asks trigger's count, for the Windows/Linux simulation's header. */
+	/** The asks this shell simulates: above 0 the header's `...` menu gains its
+	 * asks row (#896) and the rail draws the item with this count. */
 	asksCount?: number;
 	/**
 	 * What the column holds under the header, in place of the one-paragraph
@@ -860,13 +864,17 @@ const ConversationStandIn = ({
 	const occupied = useUiPreferencesStore(resolveRightSlotOccupied);
 	/*
 	 * PROPS THE RAIL TREE'S HEADER DOES NOT DECLARE, spread loosely on purpose (the
-	 * same device #868's before half used for `rightSlotRoute`). On this tree they
-	 * are inert - `ChatHeader` reads none of them, the four triggers having moved to
-	 * the rail - but the BEFORE half of this change's evidence swaps `origin/main`'s
-	 * `chat-header.tsx` under these arms (see
-	 * `docs/evidence/shell-app-shell/panel-rail-before/README.md`), and that header
-	 * reads exactly these to draw its four triggers and their marks. One scene under
-	 * two readers is what makes the pair a comparison.
+	 * same device #868's before half used for `rightSlotRoute`). On this tree the
+	 * SEVEN rail props - `mcpServers`, `listOnScreen`, `readerChildId`, `fileCount`,
+	 * `browserAttentionCount`, `consoleUnseenCount`, `consoleUnseenPulsing` - are
+	 * inert: `ChatHeader` reads none of them, the four triggers having moved to the
+	 * rail. `reserveTrailingChrome` below is NOT one of them and is NOT inert - it
+	 * is LIVE on both arms: the head's header reads it for its trailing spacer
+	 * (`chat-header.tsx`), and so does `origin/main`'s. The BEFORE half of this
+	 * change's evidence swaps `origin/main`'s `chat-header.tsx` under these arms
+	 * (see `docs/evidence/shell-app-shell/panel-rail-before/README.md`), and that
+	 * header reads the seven to draw its four triggers and their marks. One scene
+	 * under two readers is what makes the pair a comparison.
 	 */
 	const legacyHeaderProps: Record<string, unknown> = {
 		mcpServers: deriveMcpServers([], {}, []),
@@ -890,7 +898,6 @@ const ConversationStandIn = ({
 				onToggleBrowser={() => undefined}
 				onOpenConsole={details ? () => undefined : undefined}
 				onToggleAsks={asksCount > 0 ? () => undefined : undefined}
-				asksAttentionCount={asksCount}
 				runDetails={details}
 				{...legacyHeaderProps}
 			/>
@@ -1066,8 +1073,13 @@ const ChatShellFrame: FC<{
 		browserAttentionCount?: number;
 		consoleUnseenCount?: number;
 		fileCount?: number;
+		/** Offer the asks item on the rail (#896); see `ShellStoryRail`. */
+		askOffered?: boolean;
+		askCount?: number;
 	};
-	/** The Asks trigger's count; above 0 the header draws the trigger. */
+	/** The asks this shell simulates: above 0 the header's `...` menu gains its
+	 * asks row and, unless `railProps` says otherwise, the rail offers the item
+	 * with this count (#896). */
 	asksCount?: number;
 	/** Render the Windows caption-button layout instead of macOS's (simulated). */
 	windows?: boolean;
@@ -1133,7 +1145,17 @@ const ChatShellFrame: FC<{
 							/>
 							{pane?.(slotWidth, rowWidth)}
 						</div>
-						<ShellStoryRail details={details} railProps={railProps} />
+						<ShellStoryRail
+							details={details}
+							railProps={{
+								...railProps,
+								/* The simulated asks offered on the rail (#896): `asksCount` is the
+								   coarse knob, and an arm with a drawer holding the slot says so
+								   precisely through `railProps`. */
+								askOffered: railProps.askOffered ?? asksCount > 0,
+								askCount: railProps.askCount ?? asksCount,
+							}}
+						/>
 					</main>
 				}
 			/>
@@ -1216,10 +1238,12 @@ export const ChatDockFiles: Story = {
  * WINDOWS CAPTION CLEARANCE, SIMULATED (#872): the rail with NO pane open, so the
  * chat header is the row that reaches the rail's left edge. The two things the
  * change protects are both in this frame: the rail's first item starts BELOW the
- * 40px caption area, and the header's Asks trigger stops 94px (138 - 44) short of the
- * window's edge rather than 138, because the rail already covers 44 of the buttons'
- * width. A simulation: the buttons themselves are Electron's views and cannot be
- * photographed on this host.
+ * 40px caption area, and the header's action cluster stops 94px (138 - 44) short of
+ * the window's edge rather than 138, because the rail already covers 44 of the
+ * buttons' width. Since #896 the asks door is one of the rail's items (its second),
+ * so the simulation offers it - `asksCount` below - and the header's own row is the
+ * `...` menu alone. A simulation: the buttons themselves are Electron's views and
+ * cannot be photographed on this host.
  */
 export const WindowsCaptionNoPane: Story = {
 	render: () => {
@@ -1918,9 +1942,12 @@ export const ChatDockConsole: Story = {
 
 /**
  * The asks drawer HOLDING the slot it borrowed from the browser pane: the rail
- * lights NOTHING. The browser's flag is down and `askDrawerEvictedPane` records the
- * borrow, which is exactly the state in which lighting the covered pane would say
- * something false; pressing any item is a swap.
+ * lights the ASKS item, and nothing else (#896 - the lit item IS the answer; before
+ * the move this state lit nothing on the rail and the header carried the only sign
+ * of what was open). The browser's flag is down and `askDrawerEvictedPane` records
+ * the borrow, which is exactly the state in which lighting the covered pane would
+ * say something false; pressing any other item is a swap, and pressing the lit ask
+ * item closes its own drawer.
  */
 export const ChatDockAsksCoveringBrowser: Story = {
 	args: { rightSlotWidth: 0 },
@@ -1947,6 +1974,10 @@ export const ChatDockAsksCoveringBrowser: Story = {
 		return (
 			<ChatShellFrame
 				details={deriveRunDetails(runFixtures.settled())}
+				/* The door the drawer is holding the slot for (#896): offered with the
+				   count the fixture's `asks_open` states, so the lit item's badge agrees
+				   with the drawer's own tally. */
+				railProps={{ askOffered: true, askCount: 2 }}
 				pane={(slotWidth) => (
 					<PaneSlot width={slotWidth} tourTag="ask-drawer-slot">
 						<AskDrawer
