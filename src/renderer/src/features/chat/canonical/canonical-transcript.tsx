@@ -148,9 +148,12 @@ import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
 	type ProviderErrorAction,
 	providerErrorGuidance,
+	radientOutOfCredits,
+	radientOutOfCreditsWording,
 } from "./provider-error-guidance";
 import { isQuotable } from "./quote-model";
 import { QuoteToolkit } from "./quote-toolkit";
+import { RadientCreditsGuidance } from "./radient-credits-guidance";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
 import { SETTLE_MS } from "./scroll-paging";
 import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
@@ -1842,11 +1845,17 @@ const NoticeRow = memo(function NoticeRow({
 	// paints what it is given rather than re-deciding how long is too long.
 	if (record.kind === "custom") {
 		const Icon = record.level === "error" ? CircleAlert : MessageSquareText;
-		const providerAction = providerErrorGuidance({
+		const incident = {
 			text: record.text,
+			headline: record.headline,
 			category: record.category,
 			provider: record.provider,
-		});
+		};
+		const providerAction = providerErrorGuidance(incident);
+		// A Radient refusal for want of credits is not a rate limit whatever the
+		// relayed label says: the row states the cause, and the guidance below it
+		// reads the account (see `provider-error-guidance.ts`).
+		const wording = radientOutOfCreditsWording(incident);
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
 				<TraceLine
@@ -1858,13 +1867,17 @@ const NoticeRow = memo(function NoticeRow({
 					// Keep an explicit statement label even when the payload repeats
 					// "job": omitting it selects the tool fallback, which replaces the
 					// glyph and clips narration even when there is no detail to open.
-					verbOverride={record.category ?? record.customType.replace(/_/g, " ")}
+					verbOverride={
+						wording?.label ??
+						record.category ??
+						record.customType.replace(/_/g, " ")
+					}
 					// The provider/model the incident names rides the ledger's
 					// machine-voice object column: it is an identifier, not prose, and
 					// "which provider died" is the decision-relevant half for an
 					// operator running several of them.
 					object={record.provider ?? undefined}
-					narration={record.headline}
+					narration={wording?.headline ?? record.headline}
 					failed={record.level === "error"}
 					wrap
 					glyph={<Icon />}
@@ -1885,7 +1898,13 @@ const NoticeRow = memo(function NoticeRow({
 						) : undefined
 					}
 				/>
-				{providerAction ? <ProviderAction action={providerAction} /> : null}
+				{providerAction ? (
+					radientOutOfCredits(incident) ? (
+						<RadientCreditsGuidance action={providerAction} />
+					) : (
+						<ProviderAction action={providerAction} />
+					)
+				) : null}
 			</MessageContainer>
 		);
 	}
