@@ -839,7 +839,11 @@ export function installDevDriver(): string[] {
 		 * was handed rather than assuming it.
 		 */
 		openCanvasDocument: async (payload) => {
-			const request = payload as { path?: unknown; title?: unknown } | null;
+			const request = payload as {
+				path?: unknown;
+				title?: unknown;
+				mention?: unknown;
+			} | null;
 			const path = requireString(request?.path, "canvas document path");
 			const title =
 				typeof request?.title === "string" ? request.title : undefined;
@@ -879,6 +883,19 @@ export function installDevDriver(): string[] {
 				sessions.stageDraft();
 			useUiPreferencesStore.getState().setCanvasOpen(true);
 			useCanvasStore.getState().addFileAndSelect(conversationId, document);
+			/*
+			 * `mention` additionally writes the Files grid's OWN source
+			 * (`mentionedFiles`), which in a real run only the transcript scan fills
+			 * (`use-mentioned-files.ts` -> `addMentionedFilesBatch`). A scene that has to
+			 * photograph a grid ROW - the row's thumbnail, its receipt for a file that
+			 * moved - therefore writes where the scan writes: the scan's own action, the
+			 * same resolved path as its key. It is a substitution and it is named as one,
+			 * because the real way to get a row is to mention the path in a message,
+			 * which a run with no backend cannot stage.
+			 */
+			if (request?.mention === true) {
+				useCanvasStore.getState().addMentionedFile(conversationId, document);
+			}
 			await nextFrame();
 			return {
 				conversationId,
