@@ -3056,16 +3056,16 @@ export const ComposerStatusRow = ({
 								aria-label={codeChip.label}
 								/*
 								 * THE SHOWING LIP (UX round 2, U18): a press while the pane is
-								 * open moved focus somewhere invisible, so the chip now states its
-								 * fact - `aria-pressed` in the rail item's own meaning ("the pane
-								 * this door opens is the drawn one") and the rail item's own LIT
-								 * pair (`bg-row-selected text-accent`, `panel-rail-item.tsx`),
-								 * not the transient hover wash: the same fact wears the same
-								 * treatment on both doors, and the lit pair is the one the
-								 * contrast contract already holds. The press remains a reveal:
-								 * it never closes.
+								 * open moved focus somewhere invisible, so the chip now states
+								 * its fact - the rail item's own LIT pair (`bg-row-selected
+								 * text-accent`, `panel-rail-item.tsx`, the pair the contrast
+								 * contract already holds) and the label/name flip to `Code
+								 * review is showing - ...` above. NO `aria-pressed`: this
+								 * row's pinned rule (composer-tabs.test.mjs: "no `aria-pressed`
+								 * and no pressed ground" - the chip reveals and is not a
+								 * toggle) is exactly why the state rides the NAME and the
+								 * ground, not a toggle role, and the press still never closes.
 								 */
-								aria-pressed={codePaneShowing}
 								onClick={() => revealCodeReviewPane()}
 								className={cn(
 									CHIP_CONTROL,
