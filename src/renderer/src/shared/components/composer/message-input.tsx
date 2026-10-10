@@ -1047,6 +1047,13 @@ export type MessageInputProps = {
 		 * arrived" and "dropped", and this composer must not re-derive it.
 		 */
 		readingsDropped?: boolean;
+		/**
+		 * Whether the backend advertises `features.cost_channels`; see
+		 * `SessionStatusStripProps["costChannels"]`. Forwarded verbatim, for the
+		 * reason `held` is: the capability is the pane's read (`useDesktopCapabilities`)
+		 * and the strip calls no query hooks of its own.
+		 */
+		costChannels?: boolean;
 	};
 	/**
 	 * Run the command the composer's planner pulled out of the draft, and report
@@ -8784,6 +8791,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										held={sessionStatus.held}
 										readingsDropped={sessionStatus.readingsDropped}
 										pendingModel={sessionStatus.pendingModel}
+										costChannels={sessionStatus.costChannels}
 										/*
 										 * The row's own third-box predicate, handed down rather than
 										 * re-derived: the strip's shed is the one thing on this row that a

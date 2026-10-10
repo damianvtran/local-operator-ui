@@ -3,6 +3,17 @@ import type {
 	DesktopUsageAggregate,
 	DesktopUsagePeriod,
 } from "../../../../../../shared/desktop-contract";
+import type {
+	CanonicalSpendChannelRow,
+	CanonicalSpendChannels,
+} from "../../../../../../shared/desktop-session-contract";
+import {
+	channelBasisLabel,
+	channelBasisWords,
+	channelRowName,
+	rung,
+	spendChannelsUsable,
+} from "../../session-status/session-cost";
 import {
 	UNKNOWN,
 	formatClock,
@@ -676,3 +687,126 @@ export function sessionDepth(
 
 /** The percentage label beside a bar. */
 export const percentageOf = formatPercent;
+
+/* ---- the published channel spend (the cost-channels project) ------------- */
+
+/**
+ * One row of the By-channel table, spelled with THIS panel's formatters.
+ *
+ * The names and the basis words come from `session-cost.ts`'s ONE vocabulary
+ * (`channelRowName`, `channelBasisWords` — the same words the composer strip's
+ * tooltip uses, so the two surfaces cannot describe one row differently); the
+ * MONEY goes through this panel's ladder (`formatMicroUsd`), which is
+ * deliberately not unified with the strip's — the design defers the ladder
+ * merge, and a channel figure spelled here any other way would be a third
+ * spelling of one number.
+ */
+export type ChannelTableRow = {
+	/** Stable table key: the index disambiguates rows that share a name. */
+	key: string;
+	/** `Inference · anthropic/claude-sonnet-5-5`, or the bare channel word. */
+	name: string;
+	/** `$0.053` / `$0.053+` / `not tracked` — never a fabricated `$0.0000`. */
+	spend: string;
+	/** `API-equivalent` / `estimated` / `billed` … or `""` when none applies. */
+	basis: string;
+};
+
+export type ChannelsView = {
+	/** False = the session predates the channel ledger; the section says so. */
+	tracked: boolean;
+	/** The grand total through this panel's ladder, or `—` when unstateable. */
+	total: string;
+	rows: ChannelTableRow[];
+	/** `Billed $0.053 · API-equivalent … · N not tracked`, or null. */
+	basisLine: string | null;
+};
+
+/**
+ * An amount as this panel prints it, with the object's own honesty rules.
+ *
+ * A `null` amount is the WORD, never `—` and never `$0.0000`: `—` is this
+ * panel's unknown for a measurement that could not be taken, while a record
+ * with no basis is a fact with its own name (the strip's own rule, restated
+ * because here the cell would otherwise blame the READ for what the RECORD
+ * does not say). A `partial`/`floor` row is a lower bound and takes the `+`
+ * this panel's ladder already means by it — the same mark `formatMicroUsd`
+ * appends for `cost_known_calls < calls`.
+ */
+function channelSpend(amountMicro: number | null, knowledge: string): string {
+	if (amountMicro === null || !Number.isFinite(amountMicro)) {
+		return "not tracked";
+	}
+	const bounded = knowledge === "partial" || knowledge === "floor";
+	return formatMicroUsd(amountMicro, 1, bounded ? 2 : 1);
+}
+
+/** One published row as a table row. */
+function channelRow(
+	row: CanonicalSpendChannelRow,
+	index: number,
+): ChannelTableRow {
+	const name = channelRowName(row);
+	return {
+		key: `${index}:${name}`,
+		name,
+		spend: channelSpend(
+			typeof row.amount_micro === "number" ? row.amount_micro : null,
+			rung(row.knowledge),
+		),
+		basis: channelBasisWords(Array.isArray(row.basis) ? row.basis : []).join(
+			" · ",
+		),
+	};
+}
+
+/**
+ * The published `spend_channels` object as the section's view, or `null` when
+ * it is not one this build may render (a future wire version included — the
+ * caller then renders exactly today's panel).
+ *
+ * `total` is the object's published grand total, never a re-sum of the rows:
+ * the backend's `combine()` is the one arithmetic site (the contract's own
+ * load-bearing rule) and `children` is already inside it.
+ */
+export function channelsView(value: unknown): ChannelsView | null {
+	if (!spendChannelsUsable(value)) return null;
+	const knowledge = rung(value.knowledge);
+	/*
+	 * `unknown` is "nothing stateable" and a zero with partial/floor knowledge
+	 * is "money exists that could not be sized": both render this panel's
+	 * unknown mark rather than a figure. An EXACT zero is a stated zero and
+	 * keeps a number — the panel idiom for a real zero (the Cost stat card
+	 * prints `$0.00` for one), where the strip's own zero policy hides it.
+	 */
+	const unstated =
+		knowledge === "unknown" ||
+		(value.total_micro === 0 && knowledge !== "exact");
+	const total = unstated
+		? UNKNOWN
+		: formatMicroUsd(value.total_micro, 1, knowledge === "exact" ? 1 : 2);
+	const rows = value.rows.map((row, index) => channelRow(row, index));
+	const parts: string[] = [];
+	const byBasis = value.by_basis;
+	if (byBasis && typeof byBasis === "object") {
+		for (const [basis, bucket] of Object.entries(byBasis)) {
+			if (typeof bucket !== "number" || !Number.isFinite(bucket)) continue;
+			if (basis === "not_tracked_calls") continue;
+			if (bucket === 0) continue;
+			const word = channelBasisLabel(basis);
+			parts.push(
+				`${word.charAt(0).toUpperCase() + word.slice(1)} ${formatMicroUsd(bucket, 1, 1)}`,
+			);
+		}
+		const count = byBasis.not_tracked_calls;
+		if (typeof count === "number" && count > 0) {
+			parts.push(`${Math.trunc(count)} not tracked`);
+		}
+	}
+	return {
+		tracked: value.tracked,
+		total,
+		rows,
+		basisLine: parts.length > 0 ? parts.join(" · ") : null,
+	};
+}
