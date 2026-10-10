@@ -736,20 +736,21 @@ test("both chips, goal first in the DOM so paint order and tab order agree", () 
 	assert.ok(goal > -1 && count > -1, "both chips render");
 	assert.ok(
 		goal < count,
-		"the goal is the first chip in the DOM, which is also its order in the stacked arrangement",
+		"the goal is the first chip in the DOM, which is also its order above the loop and the counts",
 	);
 });
 
 test("the row's chips are ordered goal, loop, plan, wakes, subagents, jobs, in paint and tab order alike", () => {
 	/*
-	 * Six chips on one row and one DOM order, which the stacked arrangement at the
-	 * column floor inherits: the row is a `flex-col` there, so the vertical order IS
-	 * the DOM order. The two activity chips sit AFTER the plan chip, which is the
-	 * operator's placement ("in the same row as the todos") and the reason their
-	 * sections are `subagents` and `jobs` rather than a single activity control —
-	 * and the WAKE chip sits between them and the plan, because the goal, the plan
-	 * and the wakes are the session's standing facts while the subagents and jobs
-	 * are what is moving now (`composer-status-row.tsx`'s `wakesFirst`).
+	 * Six chips in one DOM order, which every width inherits now: the goal's line,
+	 * the loop's line and the count strip stack in DOM order at every captured width
+	 * (the per-row arrangement), so the vertical order IS the DOM order. The two
+	 * activity chips sit AFTER the plan chip, which is the operator's placement ("in
+	 * the same row as the todos") and the reason their sections are `subagents` and
+	 * `jobs` rather than a single activity control — and the WAKE chip sits between
+	 * them and the plan, because the goal, the plan and the wakes are the session's
+	 * standing facts while the subagents and jobs are what is moving now
+	 * (`composer-status-row.tsx`'s `wakesFirst`).
 	 *
 	 * The LOOP chip is the sixth and it sits second, between the goal and the plan:
 	 * it is the session's mode rather than a count of rows, it is paired with the goal
@@ -1965,14 +1966,14 @@ test("the composer's run model comes off the page's one derivation", () => {
 	);
 });
 
-test("the row's own layout: the floor stacks it, and the alignment device is the alert's", () => {
+test("the row's own layout: each flexible chip owns a line, and the alignment device is the alert's", () => {
 	const source = code(ROW);
 	/*
 	 * TOKEN-level rather than whole-class-string pins, except where the exact
 	 * string IS the finding (agent review round 1, M5): a pin on
-	 * `"min-w-0 flex-1", COLUMN_GOAL` fails the moment anyone reorders or adds a
-	 * class, which costs a review round for a cosmetic edit, while the property
-	 * those classes carry is what a regression would remove.
+	 * `"min-w-0 flex-1"` fails the moment anyone reorders or adds a class, which
+	 * costs a review round for a cosmetic edit, while the property those classes
+	 * carry is what a regression would remove.
 	 */
 	const tokens = (...names) =>
 		assert.ok(
@@ -1981,25 +1982,38 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 		);
 
 	/*
-	 * One line above 240px of column, a column at or below it — and WRAP above it,
-	 * which the row needed the moment it could hold four chips: § 5.4 budgets ~168px
-	 * of a 204px content box for one chip, so three of them cannot share a line, and
-	 * the chips are `shrink-0`. The stacked arrangement turns wrap OFF in its own
-	 * query, because in a COLUMN container `wrap` would wrap items into extra
-	 * COLUMNS — horizontal overflow, the defect the wrap exists to remove. Five chips
-	 * (the wake chip joined them) make the wrap do the same job one chip earlier; no
-	 * geometry here changed with it.
+	 * WRAP, which the per-row arrangement rests on: a `w-full` item is 100% of the
+	 * content box, so `flex-wrap` gives it a line to itself and the next item starts
+	 * below it. That is how the goal's line, the loop's line and the count strip are
+	 * ordered at every width — and the `@max-[240px]` `flex-col`/`flex-nowrap` switch
+	 * the row used to carry is RETIRED with the same change, deliberately and not as
+	 * a tidy-up: its two stated reasons were the goal's own width below the band and
+	 * the expanded body's measure, and both ARE the base arrangement now, so keeping
+	 * it would leave a dead branch that says the row still has two arrangements. The
+	 * frames carry the conversion at 240 and the 172 floor, both sides of this change
+	 * (`docs/evidence/composer-status-rows/`).
 	 */
-	tokens("@max-[240px]/chatcol:flex-col");
-	tokens("@max-[240px]/chatcol:flex-nowrap");
+	assert.doesNotMatch(
+		source,
+		/@max-\[240px\]\/chatcol:flex-col/,
+		"the column switch is retired: every width is the per-row arrangement now (CHIP_LINE's docblock is the re-derivation)",
+	);
 	tokens('"flex flex-wrap items-start gap-x-2 gap-y-0.5"');
 	// The goal item is the flexible one and can shrink to nothing (`min-w-0`).
-	tokens(
-		"min-w-0",
-		"flex-1",
-		"COLUMN_GOAL",
-		"@max-[240px]/chatcol:w-full",
-		"@max-[240px]/chatcol:flex-none",
+	tokens("min-w-0", "flex-1");
+	/*
+	 * Each flexible chip's own LINE, and why the line is a WRAPPER: line breaking
+	 * resolves on each item's HYPOTHETICAL size, and a `flex-1` item's base size is
+	 * 0% — so the ITEMS keep their boxes (the goal's is the body's measure, the
+	 * loop's is the reveal's scope and the fit rule's subject) and the `w-full`
+	 * wrapper takes the line. The source order below is the DOM order, which the
+	 * painted order and the tab order both follow.
+	 */
+	assert.match(source, /const CHIP_LINE = "flex w-full";/);
+	assert.match(
+		source,
+		/data-status-goal-line=""[\s\S]*?data-status-loop-line=""[\s\S]*?"flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0\.5"/,
+		"goal line, then loop line, then the counts: the DOM order is the painted order is the tab order",
 	);
 	/*
 	 * The label is VISIBLE in every arrangement (design review round 1, D4): the
@@ -2056,26 +2070,29 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 		/"flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0\.5 shrink-0"/,
 	);
 	/*
-	 * The goal's floor, which is what makes the row wrap the whole group rather than
-	 * let the two share a squeezed line: flex resolves line breaking on each item's
-	 * hypothetical size, so a floor here is a layout rule and not a nicety.
+	 * The goal's floor, kept and re-derived with this change: design review round 1's D2
+	 * added it so flex's line breaking (resolved on each item's hypothetical size)
+	 * would wrap the WHOLE count group under the goal rather than let the two share a
+	 * squeezed line — and the per-row arrangement subsumes that job, because a
+	 * `w-full` line cannot be shared. What the floor still bounds is the item, and so
+	 * the expanded body's measure, at a hypothetical column narrower than any the app
+	 * renders.
 	 */
 	assert.match(source, /min-w-\[140px\] flex-1/);
-	assert.doesNotMatch(source, /cn\("min-w-0 flex-1", COLUMN_GOAL\)/);
+	assert.doesNotMatch(source, /const COLUMN_GOAL/);
 	/*
-	 * The goal's item is the WRAPPER around the disclosure, and the DISMISS is no
+	 * The goal's item is the ITEM inside its own `CHIP_LINE` wrapper, and the DISMISS is no
 	 * longer its second child: the pair the reveal joins — the trigger and its control
 	 * — is inside the primitive's own root (`trailing`), because the body is rendered
 	 * there too and a wrapper outside the disclosure can hold one of the two and not
 	 * the other (design review round 1's D1; the measurement is in § 12.3). The floor
-	 * and the column switch stay on the item, and the item is NOT a `group` any more:
-	 * the reveal's scope is the trigger's own line, so a pointer on the item's empty
-	 * space no longer reveals the control (UX's U5).
+	 * stays on the item (the column switch is retired with the per-row arrangement,
+	 * above), and the item is NOT a `group` any more: the reveal's scope is the
+	 * trigger's own line, so a pointer on the item's empty space no longer reveals
+	 * the control (UX's U5) — and the wrapper does not widen that scope back, because
+	 * it holds the LINE and not the reveal's group.
 	 */
-	assert.match(
-		source,
-		/cn\("flex min-w-\[140px\] flex-1 items-center", COLUMN_GOAL\)/,
-	);
+	assert.match(source, /cn\("flex min-w-\[140px\] flex-1 items-center"\)/);
 	assert.doesNotMatch(
 		source,
 		/"group flex min-w-\[140px\]/,
@@ -3624,7 +3641,7 @@ test("the loop's clause is one text flow, so the readings' gap cannot land insid
 	 * word and its own comma — while `textContent` stayed clean, which is why no
 	 * assertion on the string could see it and why the clause's own unit test above
 	 * passed throughout. The progress is INSIDE the label's span now: one text flow,
-	 * still its own node (the stacked band has to be able to drop it) and no longer
+	 * still its own node (the row's narrow band has to be able to drop it) and no longer
 	 * its own flex item.
 	 */
 	const markup = renderRow({
@@ -3818,7 +3835,7 @@ test("both dismisses hold their box and are revealed by hover and by keyboard fo
 	}
 });
 
-test("the dismiss's word is dropped at the row's stacked band, and its name is not", () => {
+test("the dismiss's word is dropped at the row's narrow band, and its name is not", () => {
 	const markup = renderRow({
 		frontend: frontendWith({
 			goal: "Ship it",
@@ -3827,11 +3844,14 @@ test("the dismiss's word is dropped at the row's stacked band, and its name is n
 		runDetails: null,
 	});
 	/*
-	 * At and below 240px the row is a column and the goal item takes the row's whole
-	 * content box, so the word `Clear goal` beside the chip's own fixed ink would
-	 * leave the snippet nothing: the X is the affordance's irreducible part and the
-	 * word is what yields. The accessible name keeps it at every width, which is the
-	 * half that decides whether the control is still describable.
+	 * Strictly below 240px the word `Clear goal` beside the chip's own fixed ink
+	 * would leave the snippet nothing — at the 172 floor the goal item is the row's
+	 * whole 156px content box, and the band is where the copy still has to go (the
+	 * per-row arrangement gives the item the line's width at every width, so the rule
+	 * remains conservative rather than tightened). The X is the affordance's
+	 * irreducible part and the word is what yields. The accessible name keeps it at
+	 * every width, which is the half that decides whether the control is still
+	 * describable.
 	 */
 	assert.match(markup, /@max-\[240px\]\/chatcol:hidden/);
 	assert.match(markup, /aria-label="Clear loop — achieved"/);
@@ -5486,7 +5506,7 @@ test("the judge stalling is said ONCE, through the composer's note channel", asy
 test("the settled chip's control is marked apart from the erase", () => {
 	/*
 	 * Design review round 1's D6. `Dismiss` and `Clear goal` share the slot and share
-	 * `DISMISS_WORD`, so below the stacked band both were one unlabeled X with two
+	 * `DISMISS_WORD`, so below the narrow band both were one unlabeled X with two
 	 * different consequences: the erase removes the standing goal, the dismiss only puts
 	 * the settled chip away and leaves the history entry behind. The DISMISS yields its
 	 * mark (the shipped X stays on the erase, where muscle memory put it) and wears the
@@ -5549,9 +5569,10 @@ test("the chip's done tag carries its own size step", () => {
 	/*
 	 * Design review round 1's D1 AND ROUND 2's D11, measured by `GoalDoneFloor`: at the
 	 * 172px floor the tag left the value 20px of 1956px, so the tag is the piece that
-	 * yields at the stacked band — AND AT THAT BAND'S OWN EDGE, one pixel wider than the
-	 * shared step, because the row's own frame prints a 54px (stacked) row at exactly 240
-	 * while `@max-[240px]` (`NARROW_HIDDEN`, the dismiss's word and the loop's figure) has
+	 * yields at the row's narrow band — AND AT THAT BAND'S OWN EDGE, one pixel wider than the
+	 * shared step, because the row's own frame prints a 54px row at exactly 240 (on both
+	 * sides of the per-row change: the goal's line and the counts' line were already two
+	 * lines there) while `@max-[240px]` (`NARROW_HIDDEN`, the dismiss's word and the loop's figure) has
 	 * not fired there: reading 39/1956 at 240 against 67/1956 at the floor made the
 	 * value's readable width NON-MONOTONIC in the column's width, the wider band
 	 * identifying the goal by fewer characters than the narrower one. So the tag carries
@@ -5567,7 +5588,7 @@ test("the chip's done tag carries its own size step", () => {
 	assert.doesNotMatch(
 		markup,
 		/<span class="[^"]*@max-\[240px\]\/chatcol:hidden[^"]*"[^>]*>— done<\/span>/,
-		"the tag keeps the stacked band's own edge: at exactly 240 the shared step has not fired",
+		"the tag keeps the narrow band's own edge: at exactly 240 the shared step has not fired",
 	);
 });
 
