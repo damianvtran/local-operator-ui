@@ -13,6 +13,7 @@ import {
 	OpenInOsButton,
 	ViewerChrome,
 } from "./file-viewer-state";
+import { useSignedStaticUrl } from "./use-signed-static-url";
 
 /**
  * Video the agent produced, played in the panel.
@@ -113,10 +114,40 @@ const RouteVideo: FC<{
 		() => createLocalOperatorClient(apiConfig.baseUrl),
 		[],
 	);
-	const url = useMemo(
+	/*
+	 * The URL this viewer used while the route was the only attempt, kept byte
+	 * for byte as the signed-URL fallback. Its `v=` token is what defeats the
+	 * browser cache on a re-read; a signed URL keeps the same guarantee a
+	 * different way - its `exp` is minted fresh on every sign, so it is never
+	 * the URL the element already held.
+	 */
+	const plainUrl = useMemo(
 		() => `${client.static.getVideoUrl(document.path)}&v=${version}`,
 		[client, document.path, version],
 	);
+	/*
+	 * SIGNED URL (file-serving RFC § 4 Phase A): the static routes stay
+	 * credential-free in this phase, and this is what keeps the viewer working
+	 * when a later core phase gates them - a `<video src>` GET cannot carry a
+	 * token, so the URL itself must. Every failure (old core, refused
+	 * credential, dead transport) falls back to `plainUrl`, i.e. exactly what
+	 * this element used before the adoption.
+	 *
+	 * The TTL is the core's maximum (3600 s): the element keeps issuing Range
+	 * requests against ONE URL for as long as the viewer watches, and an
+	 * expiry mid-watch breaks the next Range request on a core that enforces
+	 * credentials - the element's own error path (the bytes fallback) is the
+	 * honest failure, and this phase offers no longer-lived protection. A
+	 * version change re-signs.
+	 */
+	const url = useSignedStaticUrl({
+		baseUrl: apiConfig.baseUrl,
+		route: "videos",
+		path: document.path,
+		version,
+		ttlS: 3600,
+		plainUrl,
+	});
 
 	/*
 	 * HELD BACK UNTIL IT HAS SOMETHING TO SAY (design round 1, D4). For a file the
@@ -145,19 +176,23 @@ const RouteVideo: FC<{
 					<FileViewerState quiet title="Opening…" />
 				</div>
 			)}
-			{/* biome-ignore lint/a11y/useMediaCaption: the operator's own video file has no caption track to offer. */}
-			<video
-				key={version}
-				src={url}
-				controls
-				preload="metadata"
-				onLoadedMetadata={() => setLoaded(true)}
-				onError={onUnavailable}
-				className={cn(
-					"max-h-full max-w-full object-contain",
-					loaded ? null : "invisible",
-				)}
-			/>
+			{url === null ? null : (
+				<>
+					{/* biome-ignore lint/a11y/useMediaCaption: the operator's own video file has no caption track to offer. */}
+					<video
+						key={version}
+						src={url}
+						controls
+						preload="metadata"
+						onLoadedMetadata={() => setLoaded(true)}
+						onError={onUnavailable}
+						className={cn(
+							"max-h-full max-w-full object-contain",
+							loaded ? null : "invisible",
+						)}
+					/>
+				</>
+			)}
 		</div>
 	);
 };
