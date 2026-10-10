@@ -75,6 +75,10 @@ export const dune: ThemeDefinition = {
 		// measures 3.35 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
 		messageSurface: "#2e2925",
+		// The media slot's well: ΔE00 4.31 off the canvas, where `sunken` alone
+		// measures 2.38 - a step away from the canvas to clear the role's 4.0
+		// floor, which the tile carries because the fill IS its resting extent.
+		mediaSurface: "#171618",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a

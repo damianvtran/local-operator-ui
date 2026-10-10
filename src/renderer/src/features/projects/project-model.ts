@@ -1244,7 +1244,50 @@ export function sessionTargetLabel(
 /* ------------------------------------------ refusals, re-spoken for here ---- */
 
 /**
- * The daemon's done-gate sentence, re-spoken for the desktop dialog.
+ * Python `repr()` of each name in the daemon's sentence: `'a', "it's b"`.
+ * Quote style flips when the name itself holds a single quote, so both are read.
+ */
+const REPR_STRING = /'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"/g;
+
+function namesFromGateSentence(list: string): string[] {
+	const names: string[] = [];
+	for (const match of list.matchAll(REPR_STRING)) {
+		names.push((match[1] ?? match[2] ?? "").replace(/\\(.)/g, "$1"));
+	}
+	return names;
+}
+
+/** How many names a sentence spells out before "and N more". */
+export const DONE_GATE_NAMES_SHOWN = 3;
+
+/**
+ * The names as one clause: `a, b, c and 4 more`, `a and b`, or `a`.
+ *
+ * Truncated because the real case is a long, all-overdue plan (seven
+ * milestones): a sentence that recites all of them buries the count and the
+ * remedy, and the dialog offers the full list one press away instead.
+ *
+ * ONE MORE IS LISTED, NOT SUMMARISED (design round 1, D6): the fold used to
+ * fire at four names too, reading `a, b, c and 1 more` - one character
+ * shorter than the four names it hid, while the dialog beside it offered to
+ * show those same four. Only a fold of two or more names is worth a press.
+ */
+export function doneGateNamesClause(names: string[]): string {
+	if (names.length <= DONE_GATE_NAMES_SHOWN + 1) {
+		if (names.length <= 1) return names.join("");
+		return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+	}
+	const hidden = names.length - DONE_GATE_NAMES_SHOWN;
+	return `${names.slice(0, DONE_GATE_NAMES_SHOWN).join(", ")} and ${hidden} more`;
+}
+
+/** `1 milestone is` / `7 milestones are`: the count agrees with its verb. */
+function milestonesAre(count: number): string {
+	return `${count} milestone${count === 1 ? " is" : "s are"}`;
+}
+
+/**
+ * The daemon's done-gate sentence, re-spoken for the desktop surfaces.
  *
  * WHY (UX round 2, U4; design round 1, D4): the backend's refusal reads
  * "cannot set status 'done': 1 milestone still incomplete ('x') - complete
@@ -1252,11 +1295,16 @@ export function sessionTargetLabel(
  * needed the app's voice once it reached a reader: `force_done` is a
  * tool-call field the desktop update body does not carry (the dialog cannot
  * send it, so the tail offered a door this surface has no key to), and the
- * head is the daemon's log register, not prose. The detail - how many
- * milestones and which, by name - is kept verbatim; the sentence around it
- * is the app's, sentence case, the same grammar the other refusals speak.
- * Any other refusal passes through untouched, so a message this function has
- * never seen is shown as written rather than silently reworded.
+ * head is the daemon's log register, not prose.
+ *
+ * THE NAMES ARE CAPPED AND UNQUOTED (UX round 1, U4; design round 1, D8):
+ * the daemon prints them as Python reprs in one 62-word line whose action
+ * clause is last, so a reader met seven quoted names before the sentence
+ * said what to do. The sentence now counts, names at most three and folds
+ * the rest, exactly as the dialog does - one rendering of one list on the
+ * toast, the detail line and the dialog. Any other refusal passes through
+ * untouched, so a message this function has never seen is shown as written
+ * rather than silently reworded.
  */
 const DONE_GATE_TAIL =
 	"complete them, or pass force_done=true to close with them open";
@@ -1270,8 +1318,153 @@ export function refusalCopy(message: string): string {
 	const gate = message.match(DONE_GATE_HEAD);
 	if (gate) {
 		const count = Number(gate[1]);
-		return `This can't be marked done yet: ${count} milestone${count === 1 ? " is" : "s are"} still incomplete (${gate[2]}). Complete or remove the incomplete milestones, then mark it done.`;
+		const names = namesFromGateSentence(gate[2]);
+		const clause = names.length > 0 ? doneGateNamesClause(names) : gate[2];
+		return `This can't be marked done yet: ${milestonesAre(count)} still incomplete (${clause}). Complete or remove the incomplete milestones, then mark it done.`;
 	}
 	if (!message.includes(DONE_GATE_TAIL)) return message;
 	return message.replace(DONE_GATE_TAIL, DONE_GATE_TAIL_COPY);
 }
+
+/* ------------------------- the done-gate refusal, as a choice to make ---- */
+
+/**
+ * The daemon's machine code for "done refused: milestones still open"
+ * (`detail.code` on the 422). It is its own code rather than the generic
+ * `project_invalid` because the remedy is a deliberate choice - resend with
+ * `force_done` - and a client can only offer that if it can tell this refusal
+ * from a malformed value without reading prose.
+ */
+export const PROJECT_DONE_INCOMPLETE_CODE = "project_done_incomplete";
+
+/**
+ * A refused `status: done`, narrowed to what the confirm dialog needs.
+ *
+ * `coded` is the load-bearing field: it is true ONLY when the daemon declared
+ * `project_done_incomplete`, i.e. it is new enough to accept `force_done`. A
+ * refusal recognised from the sentence alone (`coded: false`) comes from an
+ * older daemon that says `project_invalid`; that daemon would 422 a forced
+ * retry as an unknown body key, so the caller must NOT offer the force door
+ * for it - the refusal is spoken, nothing more.
+ */
+export type DoneGateRefusal = {
+	/** How many milestones are open (the names' count, or the sentence's own). */
+	count: number;
+	/** The open milestones' names, store order; may be empty if none were readable. */
+	names: string[];
+	coded: boolean;
+	/**
+	 * The route's own sentence, kept for the one case where NOTHING else was
+	 * readable: a coded refusal with no `incomplete` list and a message this
+	 * build does not recognise. The dialog falls back to what the daemon said
+	 * rather than asserting a count it does not know (agent review F4).
+	 */
+	message: string;
+};
+
+/**
+ * Classify a failed status write as the done-gate refusal, or `null`.
+ *
+ * Takes the error's parts structurally (`DesktopControlError` carries `code`,
+ * `message` and the body object as `detail`) so this stays a pure function the
+ * node tests can execute without the transport. The CODE is the classifier;
+ * the sentence is only a fallback that lets an older daemon's refusal still
+ * be recognised - and still be spoken - without ever being offered a force
+ * (see {@link DoneGateRefusal.coded}).
+ */
+export function doneGateRefusal(input: {
+	code?: string | null;
+	message: string;
+	detail?: unknown;
+}): DoneGateRefusal | null {
+	const sentence = input.message.match(DONE_GATE_HEAD);
+	const coded = input.code === PROJECT_DONE_INCOMPLETE_CODE;
+	if (!coded && !sentence) return null;
+	const declared =
+		typeof input.detail === "object" &&
+		input.detail !== null &&
+		Array.isArray((input.detail as { incomplete?: unknown }).incomplete)
+			? ((input.detail as { incomplete: unknown[] }).incomplete.filter(
+					(name) => typeof name === "string",
+				) as string[])
+			: null;
+	const names =
+		declared && declared.length > 0
+			? declared
+			: sentence
+				? namesFromGateSentence(sentence[2])
+				: [];
+	const count =
+		names.length > 0 ? names.length : sentence ? Number(sentence[1]) : 0;
+	return { count, names, coded, message: input.message };
+}
+
+/**
+ * The dialog's statement of what is open.
+ *
+ * THE QUESTION IS THE TITLE, so this is a statement and stops at a full stop:
+ * the body used to end with "Mark done anyway?" as well, asking the same thing
+ * three times - title, body and button (design round 1, D6).
+ *
+ * A coded refusal whose list could not be read must not claim a count it does
+ * not know: the daemon's own sentence stands in, and if even that is empty the
+ * sentence is generic rather than the false "0 milestones are still open"
+ * (agent review F4; design round 1, D6).
+ */
+export function doneGateSentence(refusal: DoneGateRefusal): string {
+	if (refusal.count > 0) {
+		const clause = doneGateNamesClause(refusal.names);
+		return `${milestonesAre(refusal.count)} still open${clause ? ` (${clause})` : ""}.`;
+	}
+	return refusalCopy(refusal.message) || "Some milestones are still open.";
+}
+
+/**
+ * The refusal as a TOAST sentence: the count-and-cap convention the dialog
+ * speaks, because the daemon's own line is one 62-word sentence whose action
+ * clause comes last (UX round 1, U4). Used wherever no dialog can be offered -
+ * an older daemon without `projects_force_done`, or a question already on
+ * screen - so the reader still gets the count, at most three names and the
+ * remedy.
+ */
+export function doneGateToastCopy(refusal: DoneGateRefusal): string {
+	if (refusal.count > 0 && refusal.names.length > 0)
+		return `This can't be marked done yet: ${milestonesAre(refusal.count)} still incomplete (${doneGateNamesClause(refusal.names)}). Complete or remove the incomplete milestones, then mark it done.`;
+	return (
+		refusalCopy(refusal.message) ||
+		"Milestones are still open on this project. Complete or remove them, then mark it done."
+	);
+}
+
+/**
+ * The success toast for a forced close - it SAYS the close left work open, so
+ * the board's quiet "Moved to Done" is never a claim the plan was finished.
+ *
+ * The count comes from the PATCH answer's own row (`total - completed`), the
+ * state the daemon actually wrote; `fallbackCount` (what the dialog showed) is
+ * used only if the row is unreadable. `forced_done` false means nothing was
+ * left open by the time the write landed (the milestones were completed
+ * elsewhere meanwhile), which is an ordinary move.
+ */
+export function forcedCloseToastText(
+	result: {
+		forced_done?: boolean;
+		milestones_total?: number;
+		milestones_completed?: number;
+	} | null,
+	fallbackCount: number,
+	statusLabel: string,
+): string {
+	if (!result || result.forced_done !== true) return `Moved to ${statusLabel}`;
+	const fromRow =
+		typeof result.milestones_total === "number" &&
+		typeof result.milestones_completed === "number"
+			? result.milestones_total - result.milestones_completed
+			: fallbackCount;
+	const open = fromRow > 0 ? fromRow : fallbackCount;
+	return `Moved to ${statusLabel} with ${open} milestone${open === 1 ? "" : "s"} still open`;
+}
+
+/** The sentence shown when a refused move arrives with no message at all. */
+export const PROJECT_NOT_MOVED_COPY =
+	"The project was not moved. Try again, or open it to change its status.";

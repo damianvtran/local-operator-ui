@@ -18,11 +18,14 @@ import {
 	BACKEND_STATUS_EVENT,
 	type DaemonStatusSnapshot,
 } from "../shared/backend-status";
-import type {
-	DesktopMediaRequest,
-	DesktopRequest,
-	DesktopStreamEvent,
-	FileActionOutcome,
+import {
+	type DesktopMediaRequest,
+	type DesktopRequest,
+	type DesktopStreamEvent,
+	EXTERNAL_OPEN_REFUSED_CHANNEL,
+	type ExternalOpenOutcome,
+	type ExternalOpenRefusedPayload,
+	type FileActionOutcome,
 } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
@@ -343,7 +346,34 @@ const api = {
 	listDirectory: (dir: string, cwd?: string) =>
 		ipcRenderer.invoke("list-directory", dir, cwd),
 
-	openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
+	/**
+	 * Hand a URL to the OS, through the main process's vetted door. The outcome
+	 * is the door's verdict (round-2 R-4): the toolbar's Open shows a refusal
+	 * rather than resolving quietly.
+	 */
+	openExternal: (url: string): Promise<ExternalOpenOutcome> =>
+		ipcRenderer.invoke("open-external", url),
+	/**
+	 * A refused external open, pushed to the window whose content asked. The
+	 * `openExternal` call answers its caller directly; this is the half a
+	 * markdown anchor's click has (round-2 R-4): it left through the main
+	 * process's `window.open` door, so main is where the refusal is known and
+	 * the renderer is where it must be shown.
+	 */
+	onExternalOpenRefused: (
+		callback: (payload: ExternalOpenRefusedPayload) => void,
+	): (() => void) => {
+		const handler = (
+			_event: IpcRendererEvent,
+			payload: ExternalOpenRefusedPayload,
+		) => {
+			if (payload && typeof payload.reason === "string") callback(payload);
+		};
+		ipcRenderer.on(EXTERNAL_OPEN_REFUSED_CHANNEL, handler);
+		return () => {
+			ipcRenderer.removeListener(EXTERNAL_OPEN_REFUSED_CHANNEL, handler);
+		};
+	},
 	showItemInFolder: (filePath: string): Promise<FileActionOutcome> =>
 		ipcRenderer.invoke("show-item-in-folder", filePath),
 

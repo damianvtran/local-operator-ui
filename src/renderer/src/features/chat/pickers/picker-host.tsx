@@ -75,6 +75,17 @@ export type PickerOption = {
 	keywords?: string[];
 	/** Rows group under this heading when set. */
 	group?: string;
+	/**
+	 * What a pick on this row DOES, when it is not the ordinary switch.
+	 *
+	 * `connect` marks a row whose pick opens the Connect flow for its provider
+	 * instead of starting the operation the picked-row mark and its spinner
+	 * describe (design review round 1, D2; QA round 1, Q-1). The host reads it
+	 * twice: it never marks such a row (`pick` skips the dispatch, so no spinner
+	 * can hang on a row no operation answers about) and the footer names the
+	 * different verb rather than advertising a switch that will not happen.
+	 */
+	action?: { kind: "connect"; provider: string };
 };
 
 export type PickerResult = {
@@ -127,6 +138,17 @@ export type PickerHostProps = {
 
 	/** Text shown when the (filtered) list is empty. */
 	emptyText?: string;
+	/**
+	 * An action under `emptyText`, for an empty state whose way out is a
+	 * gesture rather than a sentence.
+	 *
+	 * Rendered ONLY in the empty branch — a control that rode the footer would
+	 * advertise itself in every other state of the dialog — and optional, so
+	 * every picker that has nothing to offer here renders byte-identically to
+	 * before. The model picker is the first caller: its empty state is "nothing
+	 * is connected", whose way out is the connect dialog (`Connect a provider`).
+	 */
+	emptyAction?: ReactNode;
 	searchPlaceholder?: string;
 	/** Called with the picked option's value. */
 	onPick?: (value: string, option: PickerOption) => void | Promise<void>;
@@ -540,6 +562,13 @@ export function pickerFooterHint(state: {
 	rowCount: number;
 	/** The label of the row Enter picks, when the host can name one. */
 	activeLabel?: string | null;
+	/**
+	 * The provider whose sign-in Enter would start, when the keyboard's row is
+	 * one whose pick opens Connect rather than switching (design review round 1,
+	 * D2). Set from the option's own `action`, so the sentence and the pick
+	 * cannot disagree about what the key does.
+	 */
+	activeConnectProvider?: string | null;
 	/** What an in-flight operation is doing, in the user's terms. */
 	busyText?: string;
 	/**
@@ -558,6 +587,8 @@ export function pickerFooterHint(state: {
 	if (state.hasList && state.rowCount > 0) {
 		if (state.retargetedLabel)
 			return `The row you were on is gone · Enter picks ${state.retargetedLabel}`;
+		if (state.activeConnectProvider)
+			return `Arrows move · Enter connects ${state.activeConnectProvider} · Esc closes`;
 		return state.activeLabel
 			? `Arrows move · Enter picks ${state.activeLabel} · Esc closes`
 			: "Arrows move, Enter picks, Esc closes";
@@ -799,6 +830,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	notice = null,
 	noticeDetail = null,
 	emptyText = "Nothing matches.",
+	emptyAction,
 	searchPlaceholder = "Search",
 	onPick,
 	form,
@@ -1039,6 +1071,17 @@ export const PickerHost: FC<PickerHostProps> = ({
 	 * pointer or fighting their scroll.
 	 */
 	const activeLabel = ordered[active]?.label ?? null;
+	/*
+	 * The provider whose sign-in Enter would START, when the keyboard's row is
+	 * one whose pick opens Connect rather than switching (design review round 1,
+	 * D2): the footer names the verb the key will actually perform — "Enter
+	 * connects zai" — instead of promising a switch the pick will not make.
+	 */
+	const activeOption = ordered[active];
+	const activeConnectProvider =
+		activeOption?.action?.kind === "connect"
+			? activeOption.action.provider
+			: null;
 
 	// Reset per open so a re-opened picker never carries a stale filter.
 	useEffect(() => {
@@ -1125,7 +1168,20 @@ export const PickerHost: FC<PickerHostProps> = ({
 	const pick = useCallback(
 		async (option: PickerOption | undefined) => {
 			if (!option || option.disabled || busy) return;
-			dispatch({ type: "pick", value: option.value });
+			/*
+			 * A CONNECT PICK IS NOT MARKED (QA round 1, Q-1).
+			 *
+			 * The mark and its spinner say an operation is answering about this row,
+			 * and they clear off a `busy` transition — but a needs-sign-in pick
+			 * starts no session operation (it opens the Connect dialog), so `busy`
+			 * never moves, the settle effect never fires, and the row kept a
+			 * "Switching the model" spinner that never went away. The mark is not
+			 * set here at all: the dialog that opens is the pick's own feedback,
+			 * and a spinner may only describe an operation that actually runs.
+			 */
+			if (option.action?.kind !== "connect") {
+				dispatch({ type: "pick", value: option.value });
+			}
 			await onPick?.(option.value, option);
 		},
 		[onPick, busy],
@@ -1330,7 +1386,21 @@ export const PickerHost: FC<PickerHostProps> = ({
 						) : bodyKind === "error" ? (
 							<p className="px-2 py-3 text-body-sm text-danger">{loadError}</p>
 						) : bodyKind === "empty" ? (
-							<p className="px-2 py-3 text-body-sm text-ink-dim">{emptyText}</p>
+							emptyAction ? (
+								/*
+								 * A block rather than a bare sentence when the state carries an action:
+								 * the paragraph keeps its own inset, and the control sits under it on
+								 * the reading column, so the two read as one message.
+								 */
+								<div className="flex flex-col items-start gap-2 px-2 py-3">
+									<p className="text-body-sm text-ink-dim">{emptyText}</p>
+									{emptyAction}
+								</div>
+							) : (
+								<p className="px-2 py-3 text-body-sm text-ink-dim">
+									{emptyText}
+								</p>
+							)
 						) : (
 							<div
 								ref={listRef}
@@ -1551,6 +1621,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 									hasList,
 									rowCount: filtered.length,
 									activeLabel,
+									activeConnectProvider,
 									busyText,
 									retargetedLabel: retargeted?.label ?? null,
 								})}
@@ -1561,6 +1632,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 								hasList,
 								rowCount: filtered.length,
 								activeLabel,
+								activeConnectProvider,
 								busyText,
 								retargetedLabel: retargeted?.label ?? null,
 							})

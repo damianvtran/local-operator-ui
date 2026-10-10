@@ -19,6 +19,7 @@
  */
 
 import { ThemedToastContainer } from "@shared/components/common";
+import { installExternalOpenRefusalToasts } from "@shared/lib/external-open-refusal";
 import { installConversationInputSync } from "@shared/store/conversation-input-sync";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { applyThemeToDocument } from "@shared/themes";
@@ -46,6 +47,13 @@ applyThemeToDocument(useUiPreferencesStore.getState().themeName);
  * render — module scope, like the theme publication above.
  */
 installConversationInputSync();
+
+/*
+ * The refused-link toast's pushed half (round-2 R-4): this window is guarded by
+ * the same door, and it carries the app's toast container (risk R4 above), so a
+ * refusal of a link it holds gets the same sentence the main window shows.
+ */
+installExternalOpenRefusalToasts();
 
 document.addEventListener("DOMContentLoaded", () => {
 	const container = document.getElementById("mini-view");

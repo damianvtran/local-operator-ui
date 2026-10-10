@@ -83,19 +83,23 @@
  * and the picture is `object-contain` inside it, so a phone-shaped capture no longer
  * draws narrow beside landscapes and a mixed-orientation row stays a grid (design
  * review round 1, D4). AT REST THE TILE HAS NO EDGE: the operator asked for the ring
- * to go, and the tile is a sunken well (`bg-sunken`, 6px radius) carrying the
+ * to go, and the tile is a well (`bg-media-surface`, 6px radius) carrying the
  * picture. The edge is `border-control` and it returns on hover and on keyboard
  * focus - the state in which the tile is a control - through a border whose pixel
  * is reserved at rest (`border-transparent`), so the edge appearing never reflows
- * the row. THE COST IS KNOWN AND ACCEPTED, and it is not hidden: the ring was the
- * tile's only >=3:1 carrier of its own extent, and a picture whose canvas is the
- * page's own tone (the `image-tones` fixtures) now has ~1.0:1 against the page at
- * rest (design round, D1). No rung of the fill ladder can replace it - the best
- * ground step any palette has is 1.33:1 - so the honest fix is a new fill role
- * authored to branding section 2's findability floor, which is a system change and
- * not this file's to invent; it is tracked as a follow-up on the PR. A FAILED tile
- * keeps its edge (`BrokenAttachment compact`), because there the state is the
- * information and there is no picture to give the tile an extent.
+ * the row. THE FILL IS THE RESTING EXTENT, AND IT CARRIES A FLOOR: the ring was
+ * the tile's only >=3:1 carrier of its own extent, no rung of the fill ladder could
+ * replace it (the best ground step any palette has is 1.33:1), and a picture whose
+ * canvas is the page's own tone (the `image-tones` fixtures) measures ~1.0:1 against
+ * the page - so the tile's well is `mediaSurface`, the fill role authored to
+ * branding section 2's findability floor (ΔE00 >= 4.0 off the canvas, with a >= 2.5
+ * L* half), where the shared `sunken` step measured as low as 2.00. The floor is the
+ * 1px-mark one because that is the whole of what a filling picture shows of the
+ * well - a ring at the picture's edge and corners - while a letterboxed portrait
+ * shows it as the mats it sits between. A FAILED tile keeps its edge
+ * (`BrokenAttachment compact`), because there the state is the information and
+ * there is no picture to give the tile an extent - and it keeps the shared
+ * `sunken` well beside that edge.
  *
  * HOVER IS AN INNER ZOOM, AND IT IS A KNOWN EXCEPTION to branding section 4
  * ("Nothing lifts, scales, or translates on hover"): the operator asked for a

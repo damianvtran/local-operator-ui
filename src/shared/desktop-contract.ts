@@ -2098,7 +2098,19 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z
-		.object({ op: z.literal("models.catalogue"), live: z.boolean().optional() })
+		.object({
+			op: z.literal("models.catalogue"),
+			live: z.boolean().optional(),
+			/*
+			 * Which view of the catalogue to answer with: `usable` (the rows this
+			 * machine can run, plus the session's current model) or `all`. Absent
+			 * means `all`, which is also what a backend that predates the
+			 * parameter does with it — the picker stays correct either way, because
+			 * a compile-time-correct request against an old backend is filtered
+			 * client-side by `scopeCatalogue`.
+			 */
+			scope: z.enum(["usable", "all"]).optional(),
+		})
 		.strict(),
 	z
 		.object({
@@ -2857,6 +2869,17 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 					estimate_unit: z.enum(["points", "days"]).optional(),
 				})
 				.strict(),
+			/*
+			 * `force_done` is a flag about THIS CALL, not a field of the row, so it
+			 * sits at the op's top level and never inside `fields` (the strict
+			 * `fields` object above rejects it there). It is the daemon's deliberate
+			 * escape from the done-gate: close the project with milestones still
+			 * open. Sent ONLY when true (see the mapper) because a daemon that
+			 * predates the `projects_force_done` capability 422s an unknown body key
+			 * - the renderer gates the offer on that key, and an absent flag keeps
+			 * every other PATCH byte-identical to what shipped before.
+			 */
+			force_done: z.boolean().optional(),
 		})
 		.strict(),
 	z
@@ -5883,11 +5906,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/command-entities?command=${encodeURIComponent(request.command)}${request.name ? `&name=${encodeURIComponent(request.name)}` : ""}`,
 				method: "GET",
 			};
-		case "models.catalogue":
+		case "models.catalogue": {
+			/*
+			 * `scope` rides the query ONLY when asked for, so the path of a request
+			 * that does not name one is byte-identical to the pre-`scope` form
+			 * (`desktop-contract.test.mjs` pins that row) and an old backend keeps
+			 * answering exactly what it answered before.
+			 */
+			const scope = request.scope ? `&scope=${request.scope}` : "";
 			return {
-				path: `/v1/desktop/models?live=${request.live ?? false}`,
+				path: `/v1/desktop/models?live=${request.live ?? false}${scope}`,
 				method: "GET",
 			};
+		}
 		case "usage.get": {
 			const query = new URLSearchParams({
 				live: String(request.live ?? false),
@@ -6201,7 +6232,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// Exactly the keys the caller included travel, so an omitted key
 				// leaves its field alone and `""` clears a date (the route
 				// forwards `model_fields_set` into the store's edit model).
-				body: { ...request.fields },
+				body: {
+					...request.fields,
+					// Only a TRUE flag travels: `false` and absent are the same request
+					// to the route, and omitting both keeps the body valid for a daemon
+					// that does not know the key at all.
+					...(request.force_done === true ? { force_done: true } : {}),
+				},
 			};
 		case "projects.delete":
 			return {
@@ -6422,6 +6459,33 @@ export type FileActionOutcome = {
 	/** Why it failed, for the toast; absent when `ok`. */
 	error?: string;
 };
+
+/**
+ * What `open-external` answers with, and the channel a refusal is PUSHED on.
+ *
+ * The IPC half answers its caller directly: the link toolbar's Open awaits
+ * `window.api.openExternal`, so a refusal travels back as `ok: false` and the
+ * renderer shows it rather than a press that looks broken (round-2 R-4).
+ *
+ * A markdown ANCHOR's click has no such caller: it leaves through `window.open`
+ * and the main process's door, so the refusal is pushed to the window whose
+ * content asked - `EXTERNAL_OPEN_REFUSED_CHANNEL` with `ExternalOpenRefusedPayload`
+ * - and the renderer shows the same sentence. Before this, a refused link (a
+ * transcript link to `http://localhost:3000`, say) did nothing at all with only
+ * a main-process log line, which is not an answer a person can see.
+ */
+export type ExternalOpenOutcome = { ok: true } | { ok: false; reason: string };
+
+/** The push payload for a refused external open; mirrors the outcome's failure half. */
+export type ExternalOpenRefusedPayload = {
+	/** The URL whose open was refused, as the door saw it. */
+	url: string;
+	/** The door's own reason, for the toast's copy and for a log line. */
+	reason: string;
+};
+
+/** The channel a refused external open is pushed on (see `ExternalOpenOutcome`). */
+export const EXTERNAL_OPEN_REFUSED_CHANNEL = "external-open-refused";
 
 /**
  * Why a byte read was refused.

@@ -278,13 +278,15 @@ test("a model row carries the provider, the window and the price pair", () => {
 	assert.equal(rows[4].detail, "200k");
 });
 
-test("a model row only claims `no credential` when its own flag says so", () => {
+test("a model row only claims `needs sign-in` when its own flag says so", () => {
 	// `credentials_known` lives on `models.catalogue` and the entities route does
 	// not carry it, so the rule is applied as written: only an explicit `false`
-	// suppresses the caveat, and `connected` (which this route does send) is what
-	// raises it.
+	// raises the caveat, and `connected` (which this route does send) is what
+	// raises it. The words are the picker's shared ones (design round 1, D5/U3 -
+	// `needs sign-in` on the dialog row's caveat, this row and the group heading
+	// read as one state); the pre-fix pair here was `, no credential`.
 	const [row] = argumentRows("model", [modelRow({ connected: false })], null);
-	assert.equal(row.description, "anthropic, no credential");
+	assert.equal(row.description, "anthropic, needs sign-in");
 	const [connected] = argumentRows(
 		"model",
 		[modelRow({ connected: true })],
