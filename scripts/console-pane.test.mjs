@@ -689,6 +689,28 @@ test("the clean exit's beat is the shipped constant, in the brief band (#929)", 
 });
 
 /*
+ * THE STORY FIXTURE ANSWERS THE BEAT'S CLOSE (agent review round 1, F-1). The pane's
+ * stories stub `window.api.console`; #929's beat calls `closeSurface` about four
+ * seconds after an `Ended` story mounts, and a stub without that member throws out of
+ * a timer callback on every open — an uncaught TypeError, with the frame holding only
+ * because the dismissal crashed before any state change. A source pin rather than a
+ * mount: the story file is Storybook's own and cannot be imported by a node test, and
+ * the gap was found by reading. The two other console stubs — the shell's empty
+ * bridges and the open-evidence rig — cannot produce a qualifying ended row at all,
+ * so the beat cannot reach them; this is the surface it does reach.
+ */
+test("the console pane's story fixture answers the beat's close (#929, F-1)", () => {
+	const storySource = readFileSync(
+		"src/renderer/src/features/console/components/console-pane.stories.tsx",
+		"utf8",
+	);
+	assert.ok(
+		storySource.includes('closeSurface: record("closeSurface")'),
+		"the story bridge no longer answers closeSurface, so the beat's dismissal throws on every Ended story open (agent review round 1, F-1)",
+	);
+});
+
+/*
  * THE TWO FIELDS THE PANE'S OWN ROUND ADDED, both of which fail silently when the
  * projection drops them: a dropped `last_actor` is an agent marker that never
  * appears (§13.4's co-pilot cell), and a dropped `reason` is an unavailable pane

@@ -1290,6 +1290,109 @@ test("a row dismissed by hand during its beat is not dismissed a second time (#9
 	}
 });
 
+/*
+ * A PRESS INSIDE THE BEAT'S EXPIRY (agent review round 1, F-2), which the raced test
+ * above cannot cover: that one presses while the row is settled, so the beat's timer
+ * is already gone by the time the close lands. Here the press's close is STILL IN
+ * FLIGHT when the beat's expiry fires — the pane's own listing has not seen the
+ * removal yet, so the expiry re-checks, still finds a qualifying row, and issues a
+ * SECOND close, which the host refuses (`surface_unavailable`). The property at stake:
+ * that refusal must not cancel the focus handoff the WINNING dismissal owes. A refusal
+ * that left the row standing owes nothing and a racer that removed it must keep the
+ * handoff — and the catch cannot tell them apart by any listing it can see at its own
+ * moment (the winning close's removal may not have rendered yet), so the handoff effect
+ * — the one reader of the REAL listing — is the authority that decides. This cell is
+ * also the first exercised order for the second-close refusal at all.
+ */
+test("a press inside the beat's expiry keeps the winning dismissal's handoff (#929, F-2)", async () => {
+	resetIntent();
+	const clean = surfaceRow("con:1:raced2", {
+		running: false,
+		exit_code: 0,
+		last_activity: 2,
+	});
+	const neighbour = surfaceRow("con:2:neighbour");
+	let listing = [clean, neighbour];
+	let closeCalls = 0;
+	let releaseFirst = () => {};
+	const firstHeld = new Promise((resolve) => {
+		releaseFirst = resolve;
+	});
+	// Installs `window.api`; this test drives the interleave through the close
+	// callback above and counts the calls, so the handle itself is unused.
+	installBridge({
+		surfaces: listing,
+		close: async ({ setListing: set, surface }) => {
+			closeCalls += 1;
+			if (closeCalls === 1) {
+				/*
+				 * THE WINNING CLOSE (the press's). Main drops the surface as it processes
+				 * it and its reply carries the listing without it — but the reply is HELD
+				 * here, which is the interleave: the pane has not seen the removal yet.
+				 */
+				listing = listing.filter((row) => row.surface !== surface);
+				set(listing);
+				await firstHeld;
+				return;
+			}
+			/*
+			 * THE BEAT'S SECOND CLOSE, refused exactly as the host refuses a surface it
+			 * has already dropped — the hook re-reads before it rejects, as the real one
+			 * does.
+			 */
+			throw new Error(
+				"Error invoking remote method 'console-close-surface': Error: surface_unavailable: con:1:raced2 is no longer available",
+			);
+		},
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() =>
+			container.querySelector('[data-surface="con:1:raced2"]'),
+		);
+		/*
+		 * The keyboard sits IN the control the dismissal will remove — the stranded case
+		 * U1 exists for — and the beat is armed from the mount's own listing.
+		 */
+		const closeControl = container.querySelector(
+			'[data-surface="con:1:raced2"] [data-tour-tag="console-surface-close"]',
+		);
+		closeControl.focus();
+		await press(closeControl);
+		assert.equal(
+			closeCalls,
+			1,
+			"the press did not reach the bridge before the beat — the interleave was not staged",
+		);
+		assert.ok(
+			await waitFor(() => closeCalls === 2, { timeoutMs: BEAT_MS + 15_000 }),
+			"the beat never issued its second close, so the refusal order was not staged",
+		);
+		/*
+		 * AND THE HANDOFF SURVIVES THE REFUSAL: the row leaves (the winning close's
+		 * listing is what the refusal's re-read carries), and the keyboard lands on the
+		 * neighbour's tab rather than on `<body>`.
+		 */
+		assert.ok(
+			await waitFor(
+				() =>
+					document.activeElement ===
+					container.querySelector(
+						'[data-surface="con:2:neighbour"] [role="tab"]',
+					),
+				{ timeoutMs: 15_000 },
+			),
+			`the keyboard was left on ${
+				document.activeElement?.tagName ?? "nothing"
+			} — the refusal cancelled the winning dismissal's handoff`,
+		);
+	} finally {
+		releaseFirst();
+		root.unmount();
+		container.remove();
+	}
+});
+
 test("the terminal's box paints the terminal's ground across the gutter, and the mirror keeps its inset (#929)", async () => {
 	/*
 	 * THE GROUND HALF's DOM shape: the box the mirror is OUTSIDE of — the one with the

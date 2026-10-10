@@ -277,13 +277,19 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		focusAfterRemoval.current = row.surface;
 		void session.closeSurface(row.surface, { retain: false }).catch(() => {
 			/*
-			 * A dismissal that did NOT leave is a row that is still where it was: nothing
-			 * was removed, so nothing is owed a handoff — the reader's keyboard never left
-			 * the control they pressed. The one refusal this path can really produce, a
-			 * racer that removed the surface first, leaves through the branch above: the
-			 * row IS gone and the handoff stands.
+			 * A REFUSAL DOES NOT CANCEL A HANDOFF (agent review round 1, F-2), so this catch
+			 * deliberately clears nothing. The two refusals this path meets want opposite
+			 * outcomes: a racer that removed the surface first owes the handoff (the row IS
+			 * gone), while a refusal that left the row standing owes nothing — and nothing
+			 * readable HERE can tell them apart. The pane's own listing cannot: the winning
+			 * close's removal may not have rendered yet when this catch runs, which is exactly
+			 * the interleave of a press inside the beat's expiry (measured while fixing F-2:
+			 * the listing-guarded variant of this catch still cleared in that order and left
+			 * the keyboard on `<body>`; the render suite pins the order). So the handoff effect
+			 * below — the one reader of the REAL listing — decides, and it refuses to act while
+			 * the row is still listed: a refusal that left the row standing hands nothing off,
+			 * and a dismissal that did remove the row keeps the handoff it owed.
 			 */
-			focusAfterRemoval.current = null;
 		});
 	};
 

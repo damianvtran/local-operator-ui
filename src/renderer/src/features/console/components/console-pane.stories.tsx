@@ -210,6 +210,14 @@ const installFixture = (options: {
 	const stub = {
 		state: record("state"),
 		createSurface: record("createSurface"),
+		// THE BEAT'S CLOSE, ANSWERED (agent review round 1, F-1): #929's clean-exit
+		// default calls `closeSurface` ~4s after an `Ended` story mounts, and a stub
+		// without this member threw out of the timer on every open. `record` resolves
+		// `state()` without removing the row, which is what the `Ended` story needs:
+		// the banner stays frameable, and the row therefore still qualifies on the
+		// close's re-read, so the beat re-arms while the story is open — a still's
+		// fixture trait, not the app's (a successful dismissal drops the row there).
+		closeSurface: record("closeSurface"),
 		openPane: record("openPane"),
 		closePane: record("closePane"),
 		selectSurface: record("selectSurface"),
@@ -453,8 +461,10 @@ export const Unavailable: Story = {
  *
  * #929, 2026-10-10: in the LIVE app a clean exit's row clears itself one beat
  * (`EXIT_DISMISS_AFTER_MS`) after the pane shows it ended, so this frame is the
- * state the beat stands on — the fixture's bridge answers a close without removing
- * the row, so the frame holds and the clearing stays pinned by the render suite. */
+ * state the beat stands on. The fixture's bridge ANSWERS that close without
+ * removing the row (the stub's own note says why, and `closeSurface` is the
+ * member that makes this sentence true — agent review round 1, F-1), so the frame
+ * holds; the clearing itself is pinned by the render suite, not by a still. */
 export const Ended: Story = {
 	render: () => (
 		<Frame
