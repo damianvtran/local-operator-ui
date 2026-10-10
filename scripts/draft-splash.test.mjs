@@ -584,4 +584,23 @@ test("a HELD cross-session filter claims loading rather than nothing (design rou
 		true,
 		"and the pre-existing term is untouched: a page still owed with nothing to scroll still holds",
 	);
+
+	/*
+	 * AND THE HOLD NEEDS SOMETHING TO WITHHOLD (agent review round 2, R7): an empty
+	 * pane with no page owed used to collapse from its first paint, and a term that
+	 * held the placeholder for `filterHeld` alone would have it paint "Loading
+	 * conversation…" and then collapse when the hold released - a state change the
+	 * reader had no reason to see. Nothing withheld, no claim.
+	 */
+	const empty = { ...held, recordCount: 0, awaitingHydration: false };
+	assert.equal(
+		transcriptPaneHoldsPlaceholder(empty),
+		false,
+		"a held filter over an empty conversation, with no page owed, claims nothing",
+	);
+	assert.equal(
+		transcriptPaneCollapses(empty),
+		true,
+		"and the pane yields the column, exactly as it did before the hold existed",
+	);
 });

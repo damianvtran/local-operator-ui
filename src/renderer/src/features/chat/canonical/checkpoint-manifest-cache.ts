@@ -36,9 +36,10 @@
  * AND A SETTLED READ IS NOT RE-READ (QA round 1, Q-2). Before this, a prefetch
  * that answered *before* the mount left the mount's own ask to start a SECOND
  * request for a fact this window had read milliseconds earlier — measured at 2
- * reads on 29/36 opens against base's 1. `checkpointManifestAgeMs` is what lets
- * the hook tell "the open already answered this" from "this is an old memory
- * worth verifying", and it is the same clock the freshness gate reads.
+ * reads on 29/36 opens against base's 1. `consumeOpenedCheckpointRead` is what
+ * lets the hook tell "the open already answered this" from "this is an older
+ * memory worth verifying", and it answers with the identity of the read rather
+ * than its age (see the set's own note, and agent review round 2's R6).
  *
  * THE BOUND IS BY CONVERSATION, not by bytes: a manifest is a few hundred ticks
  * of small records (measured at ~116 KB on the operator's largest journal, which
@@ -63,23 +64,21 @@ export const CHECKPOINT_MANIFEST_CACHE_SESSIONS = 8;
 const manifests = new Map<string, CheckpointManifest>();
 /** Reads in flight, so a prefetch and the hook's own mount share ONE request. */
 const inFlight = new Map<string, Promise<CheckpointManifest>>();
-/** When each memory was read, for the freshness gate below. */
-const readAt = new Map<string, number>();
-
 /**
- * How long a memory counts as THIS OPEN's answer rather than an old one.
+ * Conversations whose manifest was read by THIS WINDOW'S OPEN PATH, awaiting the
+ * pane's first ask.
  *
- * What it gates: the hook's first ask of a conversation, which is the one ask a
- * read started at the open may already have answered (QA round 1, Q-2: two
- * `/checkpoints` reads on 29/36 opens, because the cache deduped only while the
- * first read was IN FLIGHT). The window is generous on purpose — the read it is
- * standing in for answered in tens of milliseconds on a healthy backend, and a
- * manifest's ticks are seq-proportional over the journal, so a manifest this
- * fresh is the same picture the fresh read would return. It is deliberately
- * SHORT in absolute terms, so a memory from a previous visit is still verified
- * rather than trusted.
+ * A CLOCK WAS THE FIRST SHAPE OF THIS AND IT WAS WRONG (agent review round 2,
+ * R6): "read within the last two seconds" is not "read by this open", so a
+ * switch that mounted inside that window served a memory that could predate a
+ * checkpoint this very journal had gained — and the fresh read the pane's
+ * prefetch then made was written to the cache but never applied to the hook, so
+ * the rail painted the older tick set for the whole visit. What the serve needs
+ * is the identity of the read, not its age: this set holds exactly the
+ * conversations a read started by `warmCheckpointManifest` (the open path) has
+ * answered for, and the pane's first ask consumes it.
  */
-export const CHECKPOINT_MANIFEST_FRESH_MS = 2_000;
+const openedReads = new Set<string>();
 
 /** The manifest this window holds for a conversation, or null. */
 export function readCachedCheckpointManifest(
@@ -89,12 +88,68 @@ export function readCachedCheckpointManifest(
 }
 
 /**
- * How long ago this window read that conversation's manifest, in ms, or null
- * when it holds none. See `CHECKPOINT_MANIFEST_FRESH_MS` for what reads it.
+ * The OPEN path's read: the pane calls this when a conversation opens, and the
+ * manifest it answers with is the one the pane's own first ask may serve from
+ * rather than re-reading (QA round 1's Q-2, without round 2's R6 hole).
+ *
+ * The marker is written when the READ SETTLES, so a pane that asks while it is
+ * still in flight joins it through `inFlight` (one request, unchanged) and a
+ * pane that asks before the prefetch has even started reads for itself — which
+ * is the honest answer, because in that order nothing has been read for it yet.
  */
-export function checkpointManifestAgeMs(sessionId: string): number | null {
-	const at = readAt.get(sessionId);
-	return at === undefined ? null : Date.now() - at;
+export function warmCheckpointManifest(
+	sessionId: string,
+): Promise<CheckpointManifest> {
+	return loadCheckpointManifest(sessionId).then((manifest) => {
+		openedReads.add(sessionId);
+		return manifest;
+	});
+}
+
+/**
+ * Conversations whose manifest a surface is currently PAINTING, so a later read's
+ * answer can be applied to it.
+ *
+ * WHY THIS EXISTS (agent review round 2, R6, its second half). A pane that served
+ * from a memory — this open's own, or a previous one's — used to keep that tick
+ * set for the whole visit: the read that followed (the pane's prefetch, a poll)
+ * was written to the cache and then dropped on the floor, so the rail could paint
+ * a manifest the journal had already outgrown. Serving is only honest while the
+ * served set is CORRECTABLE, and this is that correction: one notification per
+ * successful read, to whatever is painting that conversation.
+ */
+const listeners = new Map<
+	string,
+	Set<(manifest: CheckpointManifest) => void>
+>();
+
+/**
+ * Watch a conversation's manifest: `listener` is called with every manifest this
+ * window reads for it, after the read settles. Returns the unsubscribe.
+ */
+export function subscribeCheckpointManifest(
+	sessionId: string,
+	listener: (manifest: CheckpointManifest) => void,
+): () => void {
+	let set = listeners.get(sessionId);
+	if (set === undefined) {
+		set = new Set();
+		listeners.set(sessionId, set);
+	}
+	set.add(listener);
+	return () => {
+		set.delete(listener);
+		if (set.size === 0) listeners.delete(sessionId);
+	};
+}
+
+/**
+ * Claim this conversation's open-read marker for the pane's first ask.
+ * Consume-once: a marker is one open's answer, not a licence for every later
+ * load to skip the authority.
+ */
+export function consumeOpenedCheckpointRead(sessionId: string): boolean {
+	return openedReads.delete(sessionId);
 }
 
 /**
@@ -120,12 +175,13 @@ export function loadCheckpointManifest(
 		.then((manifest) => {
 			manifests.delete(sessionId);
 			manifests.set(sessionId, manifest);
-			readAt.set(sessionId, Date.now());
+			for (const listener of listeners.get(sessionId) ?? []) {
+				listener(manifest);
+			}
 			while (manifests.size > CHECKPOINT_MANIFEST_CACHE_SESSIONS) {
 				const oldest = manifests.keys().next();
 				if (oldest.done) break;
 				manifests.delete(oldest.value);
-				readAt.delete(oldest.value);
 			}
 			return manifest;
 		})
@@ -140,5 +196,5 @@ export function loadCheckpointManifest(
 export function __resetCheckpointManifestCache(): void {
 	manifests.clear();
 	inFlight.clear();
-	readAt.clear();
+	openedReads.clear();
 }

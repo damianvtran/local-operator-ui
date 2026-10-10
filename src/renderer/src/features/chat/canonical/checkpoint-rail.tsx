@@ -430,6 +430,53 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 	 * write is this frame's own `scrollTop` only - it never touches an ancestor,
 	 * which is what `scrollIntoView` would do.
 	 */
+	/*
+	 * THE PORT OPENS AT THE TAIL, BEFORE ANY MARK IS PAINTED, and that is what
+	 * design round 2's D2 needed: the column used to paint at the frame's own
+	 * `scrollTop` 0 and then slide to wherever the ACTIVE mark was once
+	 * `use-active-checkpoint` found it — measured on every shape and both builds:
+	 * 428 px (S5), 2428 px (S6), 1868 px (S3), 43-477 ms after the marks appeared,
+	 * with no active mark on screen at the first paint. The follow below could not
+	 * fix that by running earlier: at first paint there was nothing to follow yet.
+	 * A conversation opens pinned to its TAIL (the transcript scroller is
+	 * column-reverse, `scrollTop` 0 is the bottom), so the reading position the
+	 * active mark is derived from IS the tail — the port can therefore open where
+	 * the reader is, and the follow then finds its mark already inside the port
+	 * and writes nothing at all.
+	 *
+	 * ONCE PER MOUNT, and only while no mark is known: a latch, because the tick
+	 * set grows as the manifest's warm read lands and re-running this on every
+	 * arrival would yank a reader who had scrolled the rail's own port by hand.
+	 * A pane that mounts with a mark already known (a resize, a reveal) skips it
+	 * and leaves the port to the follow, which is what the reader left it doing.
+	 */
+	const portSeeded = useRef(false);
+	useLayoutEffect(() => {
+		const frame = frameRef.current;
+		/*
+		 * The tick count is READ here, not only depended on: the first commit can be
+		 * the one with NO ticks (the rail returns null until the manifest's first
+		 * answer, so the frame ref is null and there is nothing to place). Reading it
+		 * keeps the dependency honest and the guard says what it means.
+		 */
+		if (
+			checkpoints.length === 0 ||
+			frame === null ||
+			activeId !== null ||
+			portSeeded.current
+		) {
+			return;
+		}
+		portSeeded.current = true;
+		/* Clamped by the browser: a track shorter than the port lands at 0. */
+		frame.scrollTop = frame.scrollHeight;
+		/*
+		 * `checkpoints.length` IS IN THE DEPS because the commit with the first marks
+		 * need not be the mount's own, so an effect keyed on `activeId` alone could
+		 * miss the one that finally has a track to place. The latch keeps every later
+		 * arrival from re-yanking a reader who has scrolled the port by hand.
+		 */
+	}, [activeId, checkpoints.length]);
 	useLayoutEffect(() => {
 		if (activeId === null) return;
 		const frame = frameRef.current;

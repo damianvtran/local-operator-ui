@@ -1147,13 +1147,21 @@ const heldSettings = ({ capabilities = "answer", settings = "hold" } = {}) => {
 			await act(async () => {
 				for (const resolve of held.splice(0)) resolve(payload);
 				/*
-				 * A REAL TICK, not just a flushed microtask queue: react-query settles
+				 * REAL TICKS, not just a flushed microtask queue: react-query settles
 				 * through the notify manager's own scheduled task, so a release that is
 				 * only awaited inside `act` leaves the query `fetching` (measured in this
 				 * rig: `await act(async () => {})` after the release still read
 				 * `pending`/`fetching`; a macrotask later the observer had it).
+				 *
+				 * FOUR OF THEM, and that is QA round 2's Q-5: under a loaded host one tick
+				 * was a race the host could win, so an arm's sample after the release could
+				 * land before the pane had painted the answer's consequence ("the page
+				 * painted once the answer landed: 0" - 1 run in 6 at load 30-75). Four turns
+				 * is far past what the settle needs (one notify task plus React's commit).
 				 */
-				await new Promise((settle) => setTimeout(settle, 0));
+				for (let turn = 0; turn < 4; turn += 1) {
+					await new Promise((settle) => setTimeout(settle, 0));
+				}
 			});
 		},
 	};

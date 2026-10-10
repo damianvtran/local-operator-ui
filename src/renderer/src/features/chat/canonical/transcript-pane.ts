@@ -300,7 +300,15 @@ export function transcriptPaneHoldsPlaceholder(
 	view: TranscriptPaneView,
 ): boolean {
 	if (view.admittedSend || paneStatement(view)) return false;
-	if (view.filterHeld === true) return true;
+	/*
+	 * `recordCount > 0` IS PART OF THE TERM (agent review round 2, R7): the held
+	 * claim exists because rows are being WITHHELD, and a pane with nothing to
+	 * withhold — an empty conversation, no page owed — used to collapse from its
+	 * first paint. Without this it painted a placeholder and then collapsed when
+	 * the hold released, gaining a state change the reader had no reason to see.
+	 * D1's measured case has rows in hand, which is what the term is for.
+	 */
+	if (view.filterHeld === true && view.recordCount > 0) return true;
 	return (
 		view.awaitingHydration && (view.recordCount === 0 || view.stale === true)
 	);

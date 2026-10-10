@@ -8,10 +8,10 @@ import type {
 } from "../../../../../shared/desktop-contract";
 import { CHECKPOINT_WARM_MAX_IDS } from "../../../../../shared/desktop-contract";
 import {
-	CHECKPOINT_MANIFEST_FRESH_MS,
-	checkpointManifestAgeMs,
+	consumeOpenedCheckpointRead,
 	loadCheckpointManifest,
 	readCachedCheckpointManifest,
+	subscribeCheckpointManifest,
 } from "./checkpoint-manifest-cache";
 import { checkpointPendingIds } from "./checkpoint-model";
 
@@ -345,6 +345,36 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 		[logOnce],
 	);
 
+	/*
+	 * A LATER READ'S ANSWER IS APPLIED TO A PANE THAT IS PAINTING (agent review
+	 * round 2, R6's second half): a served memory is a head start, and the read
+	 * that follows it — the open's own prefetch on a switch, a poll, another
+	 * surface's refresh — used to be written to the cache and dropped, so the rail
+	 * could show a manifest the journal had outgrown for the whole visit. The
+	 * subscription is per conversation and lives for this hook's instance; the
+	 * hook's own read also writes, and re-applying the same object is a no-op React
+	 * discards.
+	 */
+	useEffect(() => {
+		if (!sessionId) return;
+		/*
+		 * The subscription IS the guard: it is created per conversation id and torn
+		 * down on a switch, so a listener cannot outlive the conversation it belongs
+		 * to and no epoch term is needed here. (It must also be registered BEFORE
+		 * the load effect below, which is why it sits above it: a read that settles
+		 * in the same effect flush has to find the listener already there.)
+		 */
+		return subscribeCheckpointManifest(sessionId, (manifest) => {
+			setManifest(manifest);
+			setState("ready");
+			if (pendingIds.current.size > 0) {
+				pendingIds.current = new Set(
+					checkpointPendingIds(manifest, pendingIds.current),
+				);
+			}
+		});
+	}, [sessionId]);
+
 	useEffect(() => {
 		sessionRef.current = sessionId;
 		epochRef.current += 1;
@@ -367,24 +397,28 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 		const seeded = sessionId ? readCachedCheckpointManifest(sessionId) : null;
 		/*
 		 * Q-2's gate, and it is asked only of the FIRST load of the epoch: a memory
-		 * this open already read is served rather than re-requested, while an older
-		 * one (a previous visit's, or one whose read failed) is refreshed as before.
-		 * Every later load — a poll, a `refresh()` from a gesture — is untouched.
+		 * this OPEN's own read answered (the pane's prefetch, marked by
+		 * `warmCheckpointManifest`) is served rather than re-requested, while every
+		 * other memory — a previous visit's, or the same conversation mounted before
+		 * its prefetch got there — is refreshed as before. Every later load (a poll,
+		 * a gesture's `refresh()`) is untouched.
+		 *
+		 * THE MARKER IS NOT A CLOCK (agent review round 2, R6): "read within the
+		 * last two seconds" served a memory that could predate a checkpoint the
+		 * journal had just gained, and the fresh read that followed was written to
+		 * the cache but never applied here, so the rail painted the older ticks for
+		 * the whole visit. Consumed once, per open.
 		 */
-		const ageMs = sessionId ? checkpointManifestAgeMs(sessionId) : null;
 		/*
-		 * A NEGATIVE AGE IS NOT FRESHNESS. `Date.now()` moving backwards (an NTP
-		 * correction, or a test's mocked clock) makes the memory look newer than
-		 * now, which is a clock this code cannot reason about - and the fail-closed
-		 * direction for an unusable clock is to verify rather than trust, so the
-		 * read goes out. Pinned by the arm above, which mounts under a mocked `Date`
-		 * and asserts its re-read.
+		 * CONSUMED WHATEVER THE ANSWER. A marker left behind by a PREVIOUS open's
+		 * read must not be able to serve this one (agent review round 2, R6: the
+		 * marker is per open, and the mount is the only moment this hook can tell
+		 * "this open" from "the last one" — so it is spent here, served or not).
 		 */
-		const served =
-			seeded !== null &&
-			ageMs !== null &&
-			ageMs >= 0 &&
-			ageMs <= CHECKPOINT_MANIFEST_FRESH_MS;
+		const openedRead = sessionId
+			? consumeOpenedCheckpointRead(sessionId)
+			: false;
+		const served = seeded !== null && openedRead;
 		setManifest(seeded);
 		if (!sessionId) {
 			setState("idle");

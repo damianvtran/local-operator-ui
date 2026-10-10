@@ -30,26 +30,49 @@
  * back to the last known value), and nothing here delays a paint.
  */
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { loadCheckpointManifest } from "./checkpoint-manifest-cache";
+import { useEffect, useRef } from "react";
+import { warmCheckpointManifest } from "./checkpoint-manifest-cache";
 import { backendSettingsQueryOptions } from "./use-display-flag";
 
 export function useOpenPrefetch(
 	sessionId: string | undefined,
-	/*
-	 * THE BOOLEAN, NOT THE CAPABILITIES OBJECT. This effect used to depend on
-	 * `capabilities.data`, so it ran once with `undefined` and again when the
-	 * answer landed — two `sessions.checkpoints` reads for one open, measured
-	 * `["capabilities","sessions.checkpoints","settings.list","sessions.checkpoints"]`
-	 * (agent review round 1, R3), in a module whose own doc says moving the reads
-	 * here "adds no request — only a start time". `use-checkpoints.test.mjs` pins
-	 * one read per ask, and it was right to.
-	 */
 	settingsAdvertised: boolean,
 ): void {
 	const client = useQueryClient();
+	/*
+	 * TWO EFFECTS, BECAUSE THE TWO READS HAVE DIFFERENT DEPENDENCY STORIES, and
+	 * sharing one effect is what agent review round 2's R3 measured: the
+	 * checkpoint read is a function of the CONVERSATION, the registry prefetch of
+	 * the PLANE's capability answer. With one effect keyed on both, a mount that
+	 * ran before the capability answer fired the checkpoint read, the answer
+	 * flipped the dep, and the second run fired `settings.list` **and a second
+	 * `sessions.checkpoints`** unless the first read happened to still be in
+	 * flight — `["sessions.checkpoints","settings.list","sessions.checkpoints"]`,
+	 * character for character the waterfall round 1 cited, on this head and the
+	 * one before it. The boolean dependency (round 1) closed the 30 s
+	 * capability-refetch churn; it could not close this, because this is a real
+	 * transition and not a churn.
+	 *
+	 * THE LATCH IS PER CONVERSATION-ID: this effect must spend one read per open
+	 * even if React re-runs it (a re-render, a strict-mode double invoke), and a
+	 * switch away and back is a new conversation and earns its own read. One slot
+	 * is enough because the ids are visited in order by one pane.
+	 */
+	const warmed = useRef<string | null>(null);
 	useEffect(() => {
-		if (!sessionId) return;
+		if (!sessionId || warmed.current === sessionId) return;
+		warmed.current = sessionId;
+		/*
+		 * `warmCheckpointManifest`, not `loadCheckpointManifest`: this call IS the
+		 * open's read, and the marker it leaves is what lets the pane's own first
+		 * ask serve from it instead of re-reading (QA round 1's Q-2, and round 2's
+		 * R6 for what the marker must mean). Caught and dropped: the hook that owns
+		 * this read reports its own failures once per conversation, and a prefetch
+		 * that logged would make the same failure say the same thing twice.
+		 */
+		void warmCheckpointManifest(sessionId).catch(() => {});
+	}, [sessionId]);
+	useEffect(() => {
 		/*
 		 * `prefetchQuery` does not honour `enabled` (that option is the
 		 * observer's), so the capability arm has to be this caller's: a plane
@@ -57,14 +80,7 @@ export function useOpenPrefetch(
 		 * which would leave an error in the cache the transcript then has to
 		 * clear before it can read the key it was actually asking about.
 		 */
-		if (settingsAdvertised) {
-			void client.prefetchQuery(backendSettingsQueryOptions());
-		}
-		/*
-		 * Caught and dropped: the hook that owns this read reports its own
-		 * failures once per conversation, and a prefetch that logged would make
-		 * the same failure say the same thing twice.
-		 */
-		void loadCheckpointManifest(sessionId).catch(() => {});
-	}, [sessionId, settingsAdvertised, client]);
+		if (!settingsAdvertised) return;
+		void client.prefetchQuery(backendSettingsQueryOptions());
+	}, [settingsAdvertised, client]);
 }
