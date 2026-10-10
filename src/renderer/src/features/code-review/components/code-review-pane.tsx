@@ -5,6 +5,8 @@ import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { PanelRightClose, RefreshCw } from "lucide-react";
 import { type FC, type Ref, useEffect, useRef, useState } from "react";
 import type { DesktopCodeRequestsList } from "../../../../../shared/desktop-contract";
+import { COMPOSER_TEXTAREA_SELECTOR } from "../../chat/composer-field";
+import { ownsEscapeOutsideComposer } from "../../chat/hooks/use-interrupt-on-escape";
 import {
 	coolingClauses,
 	groupRows,
@@ -83,6 +85,13 @@ export type CodeReviewPaneBodyProps = {
 	 * four states does not restate the press's feedback.
 	 */
 	checked?: boolean;
+	/**
+	 * The backend is still scanning this session (`scan_state: "refreshing"`):
+	 * the loading skeleton stays up, and its caption says so (design round 2,
+	 * N2 — the same frame for a 10 s scan and a 100 ms load left a long scan
+	 * reading as a stall).
+	 */
+	scanning?: boolean;
 	refreshFailed?: string | null;
 	onRefresh: () => void;
 	onClose: () => void;
@@ -117,6 +126,7 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 	data,
 	refreshing,
 	checked = false,
+	scanning = false,
 	refreshFailed = null,
 	onRefresh,
 	onClose,
@@ -150,11 +160,17 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 					<span className={cn("min-w-0 truncate text-meta text-ink-muted")}>
 						Code review
 					</span>
-					{checked && (
-						<span className={cn("shrink-0 text-meta text-ink-dim")}>
-							Checked just now
-						</span>
-					)}
+					{/*
+					 * ALWAYS RENDERED, EMPTY WHEN IDLE (UX round 2, U21): a live
+					 * region that only exists while it has something to say is
+					 * not reliably announced when it appears; the element stays
+					 * in the tree and its content flips instead. `<output>` is
+					 * the platform's own status region - the same one the
+					 * loading caption uses - rather than a `role` on a span.
+					 */}
+					<output className={cn("shrink-0 text-meta text-ink-dim")}>
+						{checked ? "Checked just now" : ""}
+					</output>
 				</span>
 				<span className={cn("flex shrink-0 items-center gap-1")}>
 					<Button
@@ -198,7 +214,7 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 			 * failure rides the same register: a quiet caption, not a panel-level
 			 * error over painted rows (§6).
 			 */}
-			<div className={cn("flex min-h-5 flex-col gap-0.5 px-3 pb-1")}>
+			<output className={cn("flex min-h-5 flex-col gap-0.5 px-3 pb-1")}>
 				{cooling.length > 0 &&
 					cooling.map((line) => (
 						<span key={line} className={cn("text-meta text-ink-dim")}>
@@ -208,7 +224,7 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 				{refreshFailed && (
 					<span className={cn("text-meta text-ink-dim")}>{refreshFailed}</span>
 				)}
-			</div>
+			</output>
 			<div className={cn("flex min-h-0 flex-1 flex-col overflow-y-auto")}>
 				{phase === "loading" && (
 					<div className={cn("flex flex-col gap-2 px-3 py-3")}>
@@ -224,7 +240,7 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 							</div>
 						))}
 						<output className={cn("text-meta text-ink-dim")}>
-							Loading code reviews…
+							{scanning ? "Scanning this session…" : "Loading code reviews…"}
 						</output>
 					</div>
 				)}
@@ -286,6 +302,23 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 	);
 };
 
+/**
+ * Whether an Escape target sits inside the composer's field.
+ *
+ * The mirror of `ownsEscapeOutsideComposer`'s own trick, for the one rung
+ * ABOVE this pane: while a turn runs, the composer's press belongs to the
+ * turn interrupt (agent review round 2, m1), so the pane leaves it unstamped.
+ * A target that is not an element (a synthetic event, a text node) owns
+ * nothing, and the pane keeps the press.
+ */
+function composerOwnsTarget(target: EventTarget | null): boolean {
+	const closest = (
+		target as { closest?: (selector: string) => unknown } | null | undefined
+	)?.closest;
+	if (typeof closest !== "function") return false;
+	return closest.call(target, COMPOSER_TEXTAREA_SELECTOR) != null;
+}
+
 export const CodeReviewPane: FC<CodeReviewPaneProps> = ({
 	sessionId,
 	sessionLive,
@@ -300,6 +333,12 @@ export const CodeReviewPane: FC<CodeReviewPaneProps> = ({
 		"idle",
 	);
 	const refetchSeen = useRef(false);
+	/** When the last press was taken; a failure older than the newest answer retires (U15). */
+	const postPressAt = useRef(0);
+	const [failure, setFailure] = useState<{
+		at: number;
+		message: string;
+	} | null>(null);
 
 	/*
 	 * THE SCAN GATE (UX round 1, U2): `scan_state: "refreshing"` is the
@@ -320,12 +359,21 @@ export const CodeReviewPane: FC<CodeReviewPaneProps> = ({
 				: "ready";
 
 	/*
-	 * The post-press answer (UX round 1, U3): the control spins through the
-	 * POST *and* the refetch it triggers, then says `Checked just now` once
-	 * that refetch has SETTLED - changed or not. `refetchSeen` is what tells a
-	 * real refetch from the fresh ten-second window starving one, and the
-	 * settle is read off `isFetching` falling - `dataUpdatedAt` is deliberately
-	 * not a dependency (it would re-run the effect on every data change).
+	 * The post-press answer (UX round 1, U3; reworked in round 2, U14): the
+	 * control spins through the POST *and* the refetch it triggers, then says
+	 * `Checked just now` ONLY once that refetch settled SUCCESSFULLY - a
+	 * failed read proves nothing and now leaves the failure cue instead
+	 * (U14.1). `refetchSeen` is what tells a real refetch from the fresh
+	 * ten-second window starving one, and the settle is read off `isFetching`
+	 * falling - `dataUpdatedAt` is deliberately not a dependency of THAT
+	 * effect (it would re-run it on every data change).
+	 *
+	 * The expiry lives in its OWN effect keyed on `feedback` (U14.2): in
+	 * round 2 the timer was armed inside the settle effect and cleaned up by
+	 * its own `setFeedback("checked")` state change, so it was cleared in the
+	 * same commit it was set and the caption stood until the next press -
+	 * measured still visible 113 s later. An effect that only reads `feedback`
+	 * cannot cancel itself this way.
 	 */
 	useEffect(() => {
 		if (feedback === "pressed" && query.isFetching) refetchSeen.current = true;
@@ -333,10 +381,34 @@ export const CodeReviewPane: FC<CodeReviewPaneProps> = ({
 	useEffect(() => {
 		if (feedback !== "pressed" || !refetchSeen.current) return;
 		if (query.isFetching) return;
+		if (query.isError) {
+			refetchSeen.current = false;
+			setFeedback("idle");
+			setFailure({
+				at: postPressAt.current,
+				message:
+					query.error instanceof Error ? query.error.message : "try again",
+			});
+			return;
+		}
 		setFeedback("checked");
+	}, [feedback, query.isFetching, query.isError, query.error]);
+	useEffect(() => {
+		if (feedback !== "checked") return;
 		const id = window.setTimeout(() => setFeedback("idle"), 8_000);
 		return () => window.clearTimeout(id);
-	}, [feedback, query.isFetching]);
+	}, [feedback]);
+	/*
+	 * The failure line retires on a LATER SUCCESSFUL READ (UX round 2, U15):
+	 * `refresh.isError` alone was sticky - only the next press replaced it -
+	 * so the line is now a record with a timestamp, and any answer newer than
+	 * it clears it. A read that keeps failing keeps the line, which is the
+	 * point.
+	 */
+	useEffect(() => {
+		if (!failure) return;
+		if (query.dataUpdatedAt > failure.at) setFailure(null);
+	}, [failure, query.dataUpdatedAt]);
 
 	const onRefresh = () => {
 		if (refresh.isPending || scanSettling) return;
@@ -345,9 +417,15 @@ export const CodeReviewPane: FC<CodeReviewPaneProps> = ({
 			return;
 		}
 		refetchSeen.current = false;
+		postPressAt.current = Date.now();
 		setFeedback("pressed");
+		setFailure(null);
 		refresh.mutate(undefined, {
-			onError: () => setFeedback("idle"),
+			onError: (error) =>
+				setFailure({
+					at: Date.now(),
+					message: error instanceof Error ? error.message : "try again",
+				}),
 		});
 	};
 
@@ -358,17 +436,32 @@ export const CodeReviewPane: FC<CodeReviewPaneProps> = ({
 	 * press (a document listener is on the way to the window). A layer that
 	 * claimed the press first (a tooltip's dismissable layer preventDefaults
 	 * from the capture phase) keeps it.
+	 *
+	 * THREE CARVE-OUTS (agent review round 2, m1): an IME candidate window owns
+	 * the key while it is composing; a field that consumes Escape WITHOUT
+	 * announcing it (the sidebar's search, the directory chip's inline edit -
+	 * the same `ownsEscapeOutsideComposer` rung the interrupt ladder reads)
+	 * keeps it; and while a turn is running, a press whose target is the
+	 * composer's field is LEFT to the turn interrupt rather than closing the
+	 * pane - because swallowing that press both closed the pane and silenced
+	 * the interrupt (the manager's rule for m1). The composer is not an
+	 * escape-owning field by the ladder's definition (the textarea is its
+	 * exception), which is exactly why this carve-out is stated here rather
+	 * than falling out of `ownsEscapeOutsideComposer`.
 	 */
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.key !== "Escape") return;
 			if (event.defaultPrevented) return;
+			if (event.isComposing) return;
+			if (ownsEscapeOutsideComposer(event.target)) return;
+			if (sessionLive && composerOwnsTarget(event.target)) return;
 			event.stopPropagation();
 			onClose();
 		};
 		document.addEventListener("keydown", onKeyDown);
 		return () => document.removeEventListener("keydown", onKeyDown);
-	}, [onClose]);
+	}, [onClose, sessionLive]);
 
 	/*
 	 * THE CHIP'S REVEAL (UX round 1, U11): pressing the chip while the pane is
@@ -391,15 +484,14 @@ export const CodeReviewPane: FC<CodeReviewPaneProps> = ({
 		scanSettling ||
 		(feedback === "pressed" && query.isFetching);
 	const refreshFailed =
-		refresh.isError && !refreshing
-			? `Couldn't refresh — ${refresh.error instanceof Error ? refresh.error.message : "try again"}`
-			: null;
+		failure && !refreshing ? `Couldn't refresh: ${failure.message}` : null;
 	return (
 		<CodeReviewPaneBody
 			phase={phase}
 			data={query.data}
 			refreshing={refreshing}
 			checked={feedback === "checked"}
+			scanning={scanSettling}
 			refreshFailed={refreshFailed}
 			onRefresh={onRefresh}
 			onClose={onClose}

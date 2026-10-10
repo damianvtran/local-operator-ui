@@ -528,15 +528,38 @@ export function needsAttention(rows: readonly CodeRequestRow[]): boolean {
 
 /** The row-level failure caption (§3), or null. See the module header. */
 /**
- * The per-row refresh-failure caption, in the row's own quiet register: the
- * backend's `refresh_error` text VERBATIM (UX round 1, U5: "use the backend's
- * `refresh_error` text when present" - a generic sentence left the user unable
- * to tell a credential refusal from a rate limit from a network drop, and the
- * backend's sentence already names the remedy). Null when the row last read
- * cleanly.
+ * The per-row refresh-failure caption: the backend's `refresh_error` text
+ * VERBATIM (UX round 1, U5: "use the backend's `refresh_error` text when
+ * present" - a generic sentence left the user unable to tell a credential
+ * refusal from a rate limit from a network drop, and the backend's sentence
+ * already names the remedy). The join is a COLON rather than the house em-dash
+ * because the backend's sentence carries an em-dash of its own in the
+ * credential case (`credential rejected — sign in again ...`), and two in one
+ * line read as a run-on (design round 2, N1 / UX round 2, U20). Null when the
+ * field is absent.
  */
 export function refreshCaption(row: CodeRequestRow): string | null {
-	return row.refresh_error ? `Couldn't refresh — ${row.refresh_error}` : null;
+	return row.refresh_error ? `Couldn't refresh: ${row.refresh_error}` : null;
+}
+
+/**
+ * The row's ONE quiet line under the meta figures — the backend's own words
+ * about a row whose state could not be read, in precedence order (QA round 2,
+ * Q-11):
+ *
+ * - a LINK-ONLY row shows its `reason` when the backend sent one (a cold row
+ *   on a cooling host reads `cooling — this host is rate-limited until ...;
+ *   nothing was fetched yet` instead of a sign-in remedy the reader cannot
+ *   act on), else the per-forge `link_only_hint`;
+ * - a tracked row shows its `refresh_error` (prefixed) when the last attempt
+ *   failed, else the bare `reason` when the backend attached one.
+ *
+ * Every string is the backend's; nothing here derives a CLI or a cause.
+ */
+export function rowNotice(row: CodeRequestRow): string | null {
+	if (row.link_only) return row.reason ?? linkOnlyRemedy(row);
+	if (row.refresh_error) return refreshCaption(row);
+	return row.reason ?? null;
 }
 
 /**
@@ -592,6 +615,7 @@ export function chipLabel(
 	opened: number,
 	mentioned: number,
 	cause: string | null,
+	open = false,
 ): string {
 	const halves = [
 		opened > 0 ? `${opened} opened` : null,
@@ -599,7 +623,15 @@ export function chipLabel(
 	].filter((half): half is string => half !== null);
 	const details = halves.length > 0 ? `, ${halves.join(" · ")}` : "";
 	const mark = cause ? `, ${cause}` : "";
-	return `Open code review — ${chipClause(count)}${details}${mark}`;
+	/*
+	 * THE LEAD FLIPS WITH THE PANE (UX round 2, U18): the chip's tooltip and
+	 * announced name read `Open code review — ...` while the pane was already
+	 * showing, which is the one fact a sighted reader can check against the
+	 * screen. The rail item relabels itself the same way; the press still
+	 * never closes, so this is a state statement, not a toggle's label.
+	 */
+	const lead = open ? "Code review is showing" : "Open code review";
+	return `${lead} — ${chipClause(count)}${details}${mark}`;
 }
 
 /**

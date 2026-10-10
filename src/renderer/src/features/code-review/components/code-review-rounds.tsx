@@ -24,7 +24,11 @@ import {
  * spec's table - so it survives a theme whose washes sit close to the ground.
  *
  * The strip never wraps (§9): it is a fixed count of 6px marks, and the clause
- * beside it is what yields when the pane narrows (`min-w-0 truncate`).
+ * beside it is what yields when the pane narrows. At the 320px floor it WRAPS
+ * to a second, clamped line rather than truncating: the one-line truncation cut
+ * `· awaiting re-review` first, and that tail is the only channel for "a
+ * re-review is owed" (design round 2, D10). `line-clamp-2` bounds the growth;
+ * the full sentence stays in the `title`.
  */
 
 const TONE_CLASS: Record<LaneSegmentTone, string> = {
@@ -54,7 +58,10 @@ const LaneRow: FC<{ line: LaneLine }> = ({ line }) => (
 				/>
 			))}
 		</span>
-		<span className={cn("min-w-0 truncate text-ink-muted")} title={line.title}>
+		<span
+			className={cn("min-w-0 line-clamp-2 text-ink-muted")}
+			title={line.title}
+		>
 			{line.clause}
 		</span>
 	</div>

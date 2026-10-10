@@ -111,7 +111,6 @@ export function canvasRailLabels(
 }
 
 /**
-/**
  * The asks item's tooltip and accessible name (#896).
  *
  * THE TOOLTIP IS THE DOOR'S OWN SENTENCE, not a recomposition: `askRailToggleLabel`

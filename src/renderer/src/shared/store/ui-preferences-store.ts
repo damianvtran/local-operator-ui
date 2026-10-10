@@ -2240,7 +2240,15 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				if (
 					current.mounted === route.mounted &&
 					current.runDetails === route.runDetails &&
-					current.session === route.session
+					current.session === route.session &&
+					/*
+					 * THE CAPABILITY IS A FACT OF THE ROUTE (agent review round 2, M1):
+					 * `codeReviewEnabled` starts false while `capabilities.data` is
+					 * pending, so without this term the later `true` was dropped as a
+					 * duplicate and the slot resolver never learned the pane may draw
+					 * (the rail item stayed unlit on exactly F6's cold-relaunch case).
+					 */
+					current.codeReview === route.codeReview
 				) {
 					return;
 				}

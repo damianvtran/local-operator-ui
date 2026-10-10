@@ -30,7 +30,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { ciClause, laneStateClause, roundSegments, laneLines, commentClause, linkOnlyRemedy, toolOutputNote, forgeSigil, identityLabel, rowAriaLabel, attentionCause, needsAttention, rowHasPendingCi, chipLabel, chipClause, coolingClauses, groupRows, laneSegmentTone, refreshCaption } from "./src/renderer/src/features/code-review/code-review-model";',
+			'export { ciClause, laneStateClause, roundSegments, laneLines, commentClause, linkOnlyRemedy, toolOutputNote, forgeSigil, identityLabel, rowAriaLabel, attentionCause, needsAttention, rowHasPendingCi, chipClause, coolingClauses, groupRows, laneSegmentTone, refreshCaption, rowNotice } from "./src/renderer/src/features/code-review/code-review-model";',
 			'export { intervalFor, SCAN_POLL_MS, codeRequestsEnabled, appliedAfterFrame, chipState } from "./src/renderer/src/features/code-review/hooks/use-code-requests";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -66,7 +66,7 @@ const {
 	attentionCause,
 	needsAttention,
 	rowHasPendingCi,
-	chipLabel,
+	rowNotice,
 	chipClause,
 	coolingClauses,
 	groupRows,
@@ -77,6 +77,15 @@ const {
 	appliedAfterFrame,
 	chipState,
 } = mod;
+
+/*
+ * Hoisted from the `assert.match` call sites: a regex literal inside a test
+ * callback reads as newly compiled per run and trips `useTopLevelRegex`
+ * (agent review round 2, m3). One name per assertion role.
+ */
+const ROW_ARIA_FULL =
+	/^damianvtran\/local-operator #1904: feat: a thing, open, Round 2 · remediation posted · awaiting re-review, opens in your browser$/;
+const COOLING_GITHUB_LINE = /^GitHub rate-limited until /;
 
 /* ------------------------------------------------------------------ shapes */
 
@@ -414,6 +423,11 @@ test("the chip shows only with a host and a visible row; count is rows.length", 
 		state.label,
 		"Open code review — 3 code requests, 1 opened · 2 mentioned",
 	);
+	assert.equal(
+		chipState(true, rows, true).label,
+		"Code review is showing — 3 code requests, 1 opened · 2 mentioned",
+		"a showing pane flips the lead (UX round 2, U18)",
+	);
 	assert.equal(chipState(false, rows).show, false, "no slot -> no door");
 	assert.equal(chipState(true, []).show, false, "zero rows -> no chip");
 	assert.equal(chipClause(1), "1 code request");
@@ -441,10 +455,7 @@ test("GitLab identities use !N and the aria name says where the press goes", () 
 			lanes: [lane({ round: 2, state: "remediation_posted" })],
 		}),
 	);
-	assert.match(
-		label,
-		/^damianvtran\/local-operator #1904: feat: a thing, open, Round 2 · remediation posted · awaiting re-review, opens in your browser$/,
-	);
+	assert.match(label, ROW_ARIA_FULL);
 });
 
 test("groupRows survives a null mention.last_at (the F2 NaN class)", () => {
@@ -610,7 +621,7 @@ test("cooling clauses name the host and the instant, minute-quiet", () => {
 		1791554400_000 - 60_000,
 	);
 	assert.equal(lines.length, 1);
-	assert.match(lines[0], /^GitHub rate-limited until /);
+	assert.match(lines[0], COOLING_GITHUB_LINE);
 });
 
 test("a row's refresh failure surfaces the backend's own sentence (U5)", () => {
@@ -626,6 +637,51 @@ test("a row's refresh failure surfaces the backend's own sentence (U5)", () => {
 					"credential rejected — sign in again with gh/glab, then refresh.",
 			}),
 		),
-		"Couldn't refresh — credential rejected — sign in again with gh/glab, then refresh.",
+		"Couldn't refresh: credential rejected — sign in again with gh/glab, then refresh.",
 	);
+});
+
+test("the row notice follows the backend's reason over the sign-in remedy (Q-11)", () => {
+	const cooling =
+		"cooling — this host is rate-limited until 2026-10-10T00:45:41Z; nothing was fetched yet";
+	assert.equal(
+		rowNotice(
+			row({
+				link_only: true,
+				reason: cooling,
+				link_only_hint:
+					"Link only — sign in with the gh CLI to track this one.",
+				cooling_until: 1791612341,
+			}),
+		),
+		cooling,
+		"a cold row on a cooling host states the cooling, not a sign-in it cannot take",
+	);
+	assert.equal(
+		rowNotice(
+			row({
+				link_only: true,
+				link_only_hint: "Link only — this host isn't tracked yet.",
+			}),
+		),
+		"Link only — this host isn't tracked yet.",
+		"with no reason, the per-forge remedy sentence stands",
+	);
+	assert.equal(
+		rowNotice(
+			row({
+				refresh_error:
+					"credential rejected — sign in again with gh/glab, then refresh.",
+				reason: cooling,
+			}),
+		),
+		"Couldn't refresh: credential rejected — sign in again with gh/glab, then refresh.",
+		"a tracked row's failed attempt outranks a bare reason",
+	);
+	assert.equal(
+		rowNotice(row({ reason: "backing off — this ref failed twice in a row" })),
+		"backing off — this ref failed twice in a row",
+		"a bare reason still speaks for a tracked row",
+	);
+	assert.equal(rowNotice(row()), null, "a cleanly-read row carries no notice");
 });

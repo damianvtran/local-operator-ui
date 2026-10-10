@@ -1,5 +1,6 @@
 import { DEFAULT_RIGHT_SLOT_WIDTH } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
+import { useEffect } from "react";
 import type { FC, ReactNode } from "react";
 import {
 	FIXTURE_NOW_MS,
@@ -10,6 +11,7 @@ import {
 	populatedRows,
 	rateLimitedList,
 	staleList,
+	viaRows,
 } from "./code-review-fixtures";
 import { CodeReviewPaneBody } from "./components/code-review-pane";
 
@@ -76,6 +78,7 @@ export const Scanning: Story = {
 				phase="loading"
 				data={list([], { scan_state: "refreshing" })}
 				refreshing={false}
+				scanning={true}
 				onRefresh={() => undefined}
 				onClose={() => undefined}
 				nowMs={FIXTURE_NOW_MS}
@@ -95,7 +98,7 @@ export const Narrow: Story = {
 		<Frame height={460} width={320}>
 			<CodeReviewPaneBody
 				phase="ready"
-				data={list(populatedRows())}
+				data={list([...viaRows(), ...populatedRows().slice(0, 2)])}
 				refreshing={false}
 				onRefresh={() => undefined}
 				onClose={() => undefined}
@@ -119,7 +122,7 @@ export const RefreshFailed: Story = {
 				refreshing={false}
 				checked={false}
 				refreshFailed={
-					"Couldn't refresh — credential rejected — sign in again with gh/glab, then refresh."
+					"Couldn't refresh: credential rejected — sign in again with gh/glab, then refresh."
 				}
 				onRefresh={() => undefined}
 				onClose={() => undefined}
@@ -269,6 +272,94 @@ export const Refreshing: Story = {
 				onClose={() => undefined}
 				nowMs={FIXTURE_NOW_MS}
 			/>
+		</Frame>
+	),
+};
+
+/**
+ * The refresh-failed caption at the 320px floor (design round 2, N1): the
+ * sentence wraps to more lines than the desktop frame shows, and this is the
+ * frame that says what the wrap is.
+ */
+export const NarrowRefreshFailed: Story = {
+	render: () => (
+		<Frame height={420} width={320}>
+			<CodeReviewPaneBody
+				phase="ready"
+				data={list(populatedRows().slice(0, 2))}
+				refreshing={false}
+				refreshFailed={
+					"Couldn't refresh: credential rejected — sign in again with gh/glab, then refresh."
+				}
+				onRefresh={() => undefined}
+				onClose={() => undefined}
+				nowMs={FIXTURE_NOW_MS}
+			/>
+		</Frame>
+	),
+};
+
+/**
+ * The row's hover paint, FORCED (design round 2, N3): the headless capture
+ * cannot synthesise a hover, so the story applies the SAME classes the hover
+ * state applies (`bg-surface`, the arrow's `opacity-100` reveal) to the first
+ * row after mount. The frame is the hover's paint, and this comment is the
+ * disclosure that no pointer was involved.
+ */
+const ForceRowHover: FC<{ rowKey: string }> = ({ rowKey }) => {
+	useEffect(() => {
+		const button = document.querySelector<HTMLElement>(
+			`[data-code-request-row="${rowKey}"] button`,
+		);
+		button?.classList.add("bg-surface");
+		button?.querySelector("[data-row-arrow]")?.classList.remove("opacity-0");
+	}, [rowKey]);
+	return null;
+};
+
+export const RowHover: Story = {
+	render: () => (
+		<Frame height={260}>
+			<CodeReviewPaneBody
+				phase="ready"
+				data={list(populatedRows().slice(0, 2))}
+				refreshing={false}
+				onRefresh={() => undefined}
+				onClose={() => undefined}
+				nowMs={FIXTURE_NOW_MS}
+			/>
+			<ForceRowHover rowKey="gh:1904" />
+		</Frame>
+	),
+};
+
+/**
+ * The row's keyboard focus ring (design round 2, N3): `focusVisible: true` is
+ * what makes `:focus-visible` match for a script-focused control (Chromium's
+ * heuristic treats an unheralded `.focus()` as pointer focus), the same
+ * spelling `panel-rail.stories.tsx` uses for its roving stop.
+ */
+const FocusRow: FC<{ rowKey: string }> = ({ rowKey }) => {
+	useEffect(() => {
+		document
+			.querySelector<HTMLElement>(`[data-code-request-row="${rowKey}"] button`)
+			?.focus({ focusVisible: true } as FocusOptions);
+	}, [rowKey]);
+	return null;
+};
+
+export const RowFocus: Story = {
+	render: () => (
+		<Frame height={260}>
+			<CodeReviewPaneBody
+				phase="ready"
+				data={list(populatedRows().slice(0, 2))}
+				refreshing={false}
+				onRefresh={() => undefined}
+				onClose={() => undefined}
+				nowMs={FIXTURE_NOW_MS}
+			/>
+			<FocusRow rowKey="gh:1904" />
 		</Frame>
 	),
 };

@@ -3738,6 +3738,15 @@ export type DesktopCodeRequestRow = {
 	 * verbatim; never a guess.
 	 */
 	reason?: string | null;
+	/**
+	 * The epoch the row's host is cooling until, when the backend skipped this
+	 * row's fetch for a rate limit (server row payload `cooling_until`, PR1b
+	 * `039476dff3`). Present beside `reason`, whose cooling sentence names the
+	 * same instant; rendered through the notice line, not read directly.
+	 */
+	cooling_until?: number | null;
+	/** The scanner's note for an undecided relation (shown verbatim). */
+	unknown_reason?: string | null;
 	inherited_from?: string | null;
 	summary?: DesktopCodeRequestSummary | null;
 	lanes?: DesktopCodeRequestLane[] | null;

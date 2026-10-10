@@ -104,7 +104,10 @@
 import { Tooltip } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import {
+	resolveDrawnRightSlotPane,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import {
 	dismissToast,
 	showErrorToast,
@@ -1511,7 +1514,20 @@ export const ComposerStatusRow = ({
 	 * closes it ("a chip reveals, it does not toggle", cst.md §5.2; a genuine
 	 * click still focuses the button by the browser's own rule).
 	 */
-	const codeChip = useCodeRequestsChip(frontend?.session_id ?? null);
+	/*
+	 * THE SHOWING STATE (UX round 2, U18): read from what is DRAWN, not the
+	 * flag - the rail item's own selector - because the chip's cue claims the
+	 * pane is on screen, and the flag can outlive the route that can draw it.
+	 * It feeds the chip's lip (label + pressed ground) and nothing else; the
+	 * press still never closes.
+	 */
+	const codePaneShowing = useUiPreferencesStore(
+		(state) => resolveDrawnRightSlotPane(state) === "code",
+	);
+	const codeChip = useCodeRequestsChip(
+		frontend?.session_id ?? null,
+		codePaneShowing,
+	);
 	const showCode = codeChip.show;
 	/*
 	 * The ask item's gate: a host that WIRES the lane, the lane is bounded by the WIRE,
@@ -3034,9 +3050,24 @@ export const ComposerStatusRow = ({
 							<button
 								type="button"
 								data-status-code-requests=""
+								{...(codePaneShowing
+									? { "data-code-requests-showing": "" }
+									: {})}
 								aria-label={codeChip.label}
+								/*
+								 * THE SHOWING LIP (UX round 2, U18): a press while the pane is
+								 * open moved focus somewhere invisible, so the chip now states its
+								 * fact - `aria-pressed` in the rail item's own meaning ("the pane
+								 * this door opens is the drawn one") plus the hover pair as a
+								 * persistent ground. The press remains a reveal: it never closes.
+								 */
+								aria-pressed={codePaneShowing}
 								onClick={() => revealCodeReviewPane()}
-								className={cn(CHIP_CONTROL, codeFirst ? FIRST_CHIP : undefined)}
+								className={cn(
+									CHIP_CONTROL,
+									codeFirst ? FIRST_CHIP : undefined,
+									codePaneShowing && "bg-accent-wash text-ink",
+								)}
 							>
 								<GitPullRequest
 									aria-hidden={true}

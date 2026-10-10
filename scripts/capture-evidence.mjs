@@ -10960,10 +10960,14 @@ export const STORIES = [
 	["code-review-pane--refresh-failed", 640, 420],
 	["code-review-pane--refreshing", 640, 340],
 	["code-review-pane--narrow", 320, 460],
+	["code-review-pane--narrow-refresh-failed", 320, 420],
+	["code-review-pane--row-hover", 640, 260],
+	["code-review-pane--row-focus", 640, 260],
 	["navigation-panel-rail--code-item", 132, 220],
 	["navigation-panel-rail--code-attention", 132, 220],
 	["navigation-panel-rail--code-open", 132, 220],
 	["chat-composer-status-row--code-requests-chip", 1000, 760],
+	["chat-composer-status-row--code-requests-chip-showing", 1000, 300],
 ];
 
 /**
