@@ -37,7 +37,10 @@ import type { Meta, StoryObj } from "@storybook/react";
 import type { FC } from "react";
 import { useEffect, useRef } from "react";
 import "../../../styles/index.css";
-import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
+import type {
+	CanonicalFrontendState,
+	CanonicalSpendChannels,
+} from "../../../../../../src/shared/desktop-session-contract";
 import { SessionStatusStrip } from "./session-status-strip";
 
 /**
@@ -650,10 +653,17 @@ export const CostTooltip: Story = {
 		const Focused = () => {
 			const host = useRef<HTMLDivElement>(null);
 			useEffect(() => {
-				const buttons = host.current?.querySelectorAll("button");
-				// Model, effort, context, cost: the spend is the last one.
-				const last = buttons?.[(buttons?.length ?? 1) - 1];
-				(last as HTMLButtonElement | undefined)?.focus();
+				/*
+				 * By ACCESSIBLE NAME, not by button index. The spend reading is a
+				 * focusable `span` (`readout`), so "the last button" is the CONTEXT
+				 * chip — and the frames this story committed under the cost-tooltip
+				 * name photographed the context panel because of it. The selector
+				 * names the reading it means, so a change to the cluster's order or
+				 * affordances cannot silently re-point it.
+				 */
+				host.current
+					?.querySelector<HTMLElement>('[aria-label^="Session spend"]')
+					?.focus();
 			}, []);
 			return (
 				<div ref={host}>
@@ -1245,6 +1255,472 @@ export const CommandsOff: Story = {
 						cumulative_parent_cost: 0.003018,
 						cost_knowledge: "exact",
 					})}
+				/>
+			</Frame>
+		</div>
+	),
+};
+
+/* ---- the published channel spend (the cost-channels project) ------------ */
+
+/**
+ * The backend's golden fixture for `spend_channels` v1
+ * (`scripts/fixtures/spend-channels-v1.json`), copied — the frames below must
+ * photograph the frozen wire, not a plausible-looking idea of it, and a story
+ * that imported the file across the scripts/src boundary would be the only
+ * one in this set to do so.
+ */
+const SPEND_CHANNELS: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 1_016_000,
+	knowledge: "partial",
+	by_basis: {
+		billed: 53_000,
+		subscription_api_equivalent: 53_000,
+		estimated: 10_000,
+		not_tracked_micro: 900_000,
+		not_tracked_calls: 1,
+	},
+	rows: [
+		{
+			channel: "inference",
+			provider: "anthropic",
+			model: "claude-sonnet-5-5",
+			label: "anthropic/claude-sonnet-5-5",
+			units: 12,
+			unit: "calls",
+			amount_micro: 900_000,
+			knowledge: "exact",
+			basis: ["not_tracked"],
+			price_versions: [],
+		},
+		{
+			channel: "image",
+			provider: "openai-sub",
+			model: "gpt-image-2",
+			label: "",
+			units: 1,
+			unit: "images",
+			amount_micro: 53_000,
+			knowledge: "exact",
+			basis: ["subscription_api_equivalent"],
+			price_versions: [
+				"OpenAI image-generation pricing (gpt-image-2, 1024x1024 medium, 2026-10-09)",
+			],
+		},
+		{
+			channel: "image",
+			provider: "radient",
+			model: "gpt-image-2",
+			label: "",
+			units: 3,
+			unit: "images",
+			amount_micro: 53_000,
+			knowledge: "partial",
+			basis: ["billed", "not_tracked"],
+			price_versions: ["Radient GET /tools/media/status cost_usd"],
+		},
+		{
+			channel: "search",
+			provider: "tavily",
+			model: "",
+			label: "",
+			units: 1,
+			unit: "searches",
+			amount_micro: 8_000,
+			knowledge: "exact",
+			basis: ["estimated"],
+			price_versions: ["client-search-table-2026-09"],
+		},
+		{
+			channel: "read",
+			provider: "deepseek:read",
+			model: "",
+			label: "",
+			units: 1,
+			unit: "reads",
+			amount_micro: 2_000,
+			knowledge: "exact",
+			basis: ["estimated"],
+			price_versions: ["client-search-table-2026-09"],
+		},
+	],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+/**
+ * A pre-feature conversation: no channel `start` marker, so the ledger was not
+ * tracking when it ran. Inference-only money, and every surface must SAY
+ * "channels not tracked" rather than let the figure read as the whole story.
+ */
+const CHANNELS_UNTRACKED: CanonicalSpendChannels = {
+	version: 1,
+	tracked: false,
+	total_micro: 900_000,
+	/*
+	 * `partial`, on the wire's own invariant: `tracked: false` implies the
+	 * knowledge is at most `partial` (the journal was not keeping channel
+	 * rows, so the total cannot be the whole story — see `combine()` in
+	 * `channel_spend.py`). An `exact` untracked session is not a state the
+	 * backend can publish.
+	 */
+	knowledge: "partial",
+	by_basis: {
+		billed: 0,
+		subscription_api_equivalent: 0,
+		estimated: 0,
+		not_tracked_micro: 900_000,
+		not_tracked_calls: 1,
+	},
+	rows: [
+		{
+			channel: "inference",
+			provider: "anthropic",
+			model: "claude-sonnet-5-5",
+			label: "anthropic/claude-sonnet-5-5",
+			units: 12,
+			unit: "calls",
+			amount_micro: 900_000,
+			knowledge: "exact",
+			basis: ["not_tracked"],
+			price_versions: [],
+		},
+	],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+/**
+ * The two round-3 evidence states, on one object each (design round 3, D3-1:
+ * both clauses were pinned by the node suite and had no frame — every
+ * `children:` in these stories was `total_micro: 0` and the one floored row
+ * fed the Billed bucket, so neither rendered).
+ *
+ * Children-floored: `not_tracked_micro` already covers the children bundle,
+ * so the remainder names its share as a parenthetical — and the inference row
+ * is `partial`, so both the remainder and the row it aggregates carry the
+ * strip's `≥`. This is the longest clause the composition line can produce.
+ */
+const CHANNELS_CHILDREN_FLOORED: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 1_516_000,
+	knowledge: "partial",
+	by_basis: {
+		billed: 53_000,
+		subscription_api_equivalent: 53_000,
+		estimated: 10_000,
+		not_tracked_micro: 1_400_000,
+		not_tracked_calls: 1,
+	},
+	rows: [
+		{ ...SPEND_CHANNELS.rows[0], knowledge: "partial" },
+		...SPEND_CHANNELS.rows.slice(1),
+	],
+	children: { total_micro: 500_000, knowledge: "exact" },
+};
+
+/**
+ * Dropped-row: one malformed row, as a hostile or older producer could send
+ * it. Every reader filters it (`Boolean(row)`), so the strip simply lists no
+ * rows — the PANEL is where the drop gets its sentence ("could not be
+ * read"), which is why both surfaces are shot. The cast is the point: the
+ * wire may break this shape, and the fixture must be able to say so.
+ */
+const CHANNELS_DROPPED_ROW: CanonicalSpendChannels = {
+	...SPEND_CHANNELS,
+	rows: [null] as unknown as CanonicalSpendChannels["rows"],
+};
+
+/**
+ * The spend reading focused by its own ACCESSIBLE NAME.
+ *
+ * `buttons[last]` is what the older tooltip stories use, and on this strip it
+ * focuses the CONTEXT chip: the spend reading is a focusable `span`
+ * (`readout`), not a button, so a button-index selector silently photographs
+ * the wrong tooltip — the committed `cost-tooltip` frame shows the context
+ * panel for exactly that reason. A selector that names the reading cannot
+ * drift when the cluster's order changes.
+ */
+const FocusedSpend = ({
+	override,
+	costChannels = true,
+}: {
+	override: Partial<CanonicalFrontendState>;
+	costChannels?: boolean;
+}) => {
+	const host = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		host.current
+			?.querySelector<HTMLElement>('[aria-label^="Session spend"]')
+			?.focus();
+	}, []);
+	return (
+		<div ref={host}>
+			<SessionStatusStrip
+				frontend={state({
+					effective_model: GPT_5,
+					context_tokens: 13_591,
+					context_window: 400_000,
+					cumulative_parent_cost: 0.9,
+					cost_knowledge: "exact",
+					...override,
+				})}
+				onCommand={() => undefined}
+				costChannels={costChannels}
+			/>
+		</div>
+	);
+};
+
+/**
+ * The by-channel breakdown, opened the way a keyboard user opens it.
+ *
+ * This is the frame the strip's whole cost-channels story exists for: the
+ * published total (`≥$1.02` — the object's knowledge is `partial`), the plan
+ * gloss (`Includes $0.053 API-equivalent …` — money a plan funded, never
+ * charged), the composition line that reconciles the total on screen
+ * (buckets, the inference money the basis columns cannot yet place, and the
+ * record count with its noun), and one row per published record in a
+ * two-column grid — name left, money right-aligned — with the basis word on a
+ * dim second line. A `null` amount would read `price unknown` here — never
+ * `$0.0000` and never `not tracked` — and the caption sits BELOW the strip so
+ * the upward-opening panel cannot cover it (design round 1, D9).
+ */
+export const ChannelsTooltip: Story = {
+	render: () => (
+		<div className="flex min-h-[560px] flex-col justify-end bg-canvas p-2">
+			{/*
+			 * `width={900}`, like `channels-gated`/`channels-zero-states`: the strip's
+			 * shed ladder (issue #918) keeps the cost chip above a 705px content box,
+			 * and the chip IS this story's subject — at the default 720 frame the
+			 * content box is 688 and the ladder hides it before it can be focused.
+			 */}
+			<Frame width={900}>
+				<FocusedSpend
+					override={{
+						spend_channels: SPEND_CHANNELS,
+						cumulative_parent_cost: 0.9,
+					}}
+				/>
+			</Frame>
+			<p className="px-6 pt-2 text-ink-dim text-meta">
+				Channels tooltip: the published total, the plan gloss, the composition
+				line and every channel row in the money column.
+			</p>
+		</div>
+	),
+};
+
+/** An untracked session: the mandatory sentence, the cue, and no $0. */
+export const ChannelsUntracked: Story = {
+	render: () => (
+		<div className="flex min-h-[380px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend
+					override={{
+						spend_channels: CHANNELS_UNTRACKED,
+						cumulative_parent_cost: 0.9,
+					}}
+				/>
+			</Frame>
+			<p className="px-6 pt-2 text-ink-dim text-meta">
+				Not tracked: a pre-feature conversation says so instead of implying $0
+				of channel spend, and the chip carries the asterisk the sentence
+				explains.
+			</p>
+		</div>
+	),
+};
+
+/**
+ * The remainder's two round-3 clauses, in the frame (design round 3, D3-1):
+ * the subagent share named inside the clause it belongs to, and the `≥`
+ * register on both the remainder and the floored inference row that feeds it.
+ */
+export const ChannelsChildrenFloored: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend
+					override={{
+						spend_channels: CHANNELS_CHILDREN_FLOORED,
+						cumulative_parent_cost: 0.9,
+					}}
+				/>
+			</Frame>
+			<p className="px-6 pt-2 text-ink-dim text-meta">
+				Children and floor: the composition names the subagent share inside the
+				remainder it belongs to, and a floored inference row puts the strip's
+				mark on both the clause and the row.
+			</p>
+		</div>
+	),
+};
+
+/**
+ * The malformed-wire state, in the frame: a row every reader drops, and a
+ * composition that still reconciles beside the empty row list. The panel
+ * carries the drop's own sentence; this is the strip half of the payload.
+ */
+export const ChannelsDroppedRow: Story = {
+	render: () => (
+		<div className="flex min-h-[420px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend
+					override={{
+						spend_channels: CHANNELS_DROPPED_ROW,
+						cumulative_parent_cost: 0.9,
+					}}
+				/>
+			</Frame>
+			<p className="px-6 pt-2 text-ink-dim text-meta">
+				Dropped row: one malformed row is filtered by every reader, so the
+				breakdown lists none; the panel says "could not be read" rather than "no
+				rows" under the nonzero total.
+			</p>
+		</div>
+	),
+};
+
+/**
+ * The gate itself: the SAME snapshot on a backend without
+ * `features.cost_channels`, and the same reading on a snapshot with no object.
+ *
+ * Both frames must show today's inference-only number and no channel story at
+ * all — the promise that makes this change safe on old servers in both
+ * directions.
+ */
+export const ChannelsGated: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame
+				width={900}
+				label="Capability off: the same snapshot keeps today's inference-only figure"
+			>
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: GPT_5,
+						context_tokens: 13_591,
+						context_window: 400_000,
+						cumulative_parent_cost: 0.9,
+						cost_knowledge: "exact",
+						spend_channels: SPEND_CHANNELS,
+					})}
+					onCommand={() => undefined}
+					costChannels={false}
+				/>
+			</Frame>
+			<Frame
+				width={900}
+				label="Object absent: an old server's snapshot, the same figure and no breakdown"
+			>
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: GPT_5,
+						context_tokens: 13_591,
+						context_window: 400_000,
+						cumulative_parent_cost: 0.9,
+						cost_knowledge: "exact",
+					})}
+					onCommand={() => undefined}
+					costChannels={true}
+				/>
+			</Frame>
+		</div>
+	),
+};
+
+/**
+ * A zero total is three different facts, and the object can only spell two of
+ * them (see `channelsSessionCost`).
+ *
+ * `exact` at zero is a STATED zero — a free or local model that billed
+ * nothing — and prints `$0.0000`, the panel's figure for the same object;
+ * `partial` at zero is money that exists and could not be sized, and prints
+ * `$—`. The third (`unknown` with billed tokens vs none) is decided by `usage`
+ * and is unit-tested rather than framed: the chip cannot show which input
+ * changed. Both frames carry no tooltip — the claim under test is the chip's
+ * own figure.
+ */
+const CHANNELS_ZERO_EXACT: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 0,
+	knowledge: "exact",
+	by_basis: {
+		billed: 0,
+		subscription_api_equivalent: 0,
+		estimated: 0,
+		not_tracked_calls: 1,
+	},
+	rows: [
+		{
+			channel: "inference",
+			provider: "ollama",
+			model: "llama3",
+			label: "ollama/llama3",
+			units: 12,
+			unit: "calls",
+			amount_micro: 0,
+			knowledge: "exact",
+			basis: ["not_tracked"],
+			price_versions: [],
+		},
+	],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+const CHANNELS_ZERO_UNPRICEABLE: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 0,
+	knowledge: "partial",
+	by_basis: {
+		billed: 0,
+		subscription_api_equivalent: 0,
+		estimated: 0,
+		not_tracked_calls: 1,
+	},
+	rows: [],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+export const ChannelsZeroStates: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame
+				width={900}
+				label="Stated zero: a free or local model that billed nothing prints $0.0000"
+			>
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: GPT_5,
+						context_tokens: 13_591,
+						context_window: 400_000,
+						cumulative_parent_cost: 0,
+						cost_knowledge: "exact",
+						spend_channels: CHANNELS_ZERO_EXACT,
+					})}
+					onCommand={() => undefined}
+					costChannels={true}
+				/>
+			</Frame>
+			<Frame
+				width={900}
+				label="Unpriceable zero: money exists that nobody could size prints $—"
+			>
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: GPT_5,
+						context_tokens: 13_591,
+						context_window: 400_000,
+						cumulative_parent_cost: 0,
+						cost_knowledge: "partial",
+						spend_channels: CHANNELS_ZERO_UNPRICEABLE,
+					})}
+					onCommand={() => undefined}
+					costChannels={true}
 				/>
 			</Frame>
 		</div>

@@ -303,6 +303,13 @@ type ChatContentProps = {
 		 * `SessionStatusStripProps["readingsDropped"]` (task-17, U4).
 		 */
 		readingsDropped?: boolean;
+		/**
+		 * Whether the backend advertises `features.cost_channels`; forwarded to
+		 * `SessionStatusStripProps["costChannels"]`, which owns the rules. Read by
+		 * the pane (`useDesktopCapabilities`) and told to the strip for the same
+		 * reason `held` is told: the strip calls no query hooks itself.
+		 */
+		costChannels?: boolean;
 	};
 	/**
 	 * The command dispatcher the composer splices an inline command into, with

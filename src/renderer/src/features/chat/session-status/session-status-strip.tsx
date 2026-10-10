@@ -16,7 +16,10 @@ import { ContextWheel } from "./context-wheel";
 import type { ContextReading } from "./session-context";
 import { contextReading, contextTooltipLines } from "./session-context";
 import {
+	type SessionCost,
 	type SessionCostInput,
+	type SpendChannelsReading,
+	channelBreakdown,
 	costTooltip,
 	sessionCost,
 } from "./session-cost";
@@ -243,6 +246,24 @@ export type SessionStatusStripProps = {
 	 * well as the width. See the reading's own comment for the measurements.
 	 */
 	controlsThirdBox?: boolean;
+	/**
+	 * Whether the backend advertises `features.cost_channels` — the gate for the
+	 * published per-channel spend (the cost-channels project's wire object).
+	 *
+	 * TOLD, never queried here, and told for the reason `held` and `draft` are:
+	 * this component calls no query hooks — it renders in stories AND in the
+	 * Node `renderToStaticMarkup` harness (`composer-readings.test.mjs`), which
+	 * has no query client — so the capability is the pane's fact, read once by
+	 * the pane from `useDesktopCapabilities` and passed down.
+	 *
+	 * False/absent keeps TODAY's rendering exactly: the legacy inference-only
+	 * port in `session-cost.ts`. When true AND the snapshot carries a usable
+	 * `spend_channels` object, the spend reading shows the backend's PUBLISHED
+	 * grand total (never a locally re-summed one) and its tooltip carries the
+	 * by-channel breakdown; `session-cost.ts` owns both rules, including the
+	 * fallback to legacy for a malformed or future-version object.
+	 */
+	costChannels?: boolean;
 	className?: string;
 };
 
@@ -430,6 +451,72 @@ export const READINGS_DROPPED_NOTE =
 export const FAST_MODE_ON_NOTE = "Fast mode on";
 
 /**
+ * How wide the channel variant's tooltip is allowed to be.
+ *
+ * The primitive's 256 px measure wrapped every breakdown row onto two lines
+ * with its amount orphaned behind a dangling dash (measured: 34.8 px per row;
+ * design round 1, D3). 22 rem leaves the longest fixture name
+ * (`Inference · anthropic/claude-sonnet-5-5`) and its amount on ONE line with
+ * room to spare, inside the 320-360 px the design asked for; every other
+ * tooltip in the app keeps the primitive's own measure.
+ */
+const CHANNEL_TOOLTIP_WIDTH = "max-w-[22rem]";
+
+/**
+ * The channel variant of the spend tooltip: a two-column grid, one row per
+ * published record.
+ *
+ * WHY ITS OWN BODY rather than `TooltipLines`: the flat-line form mushed four
+ * registers — machine figure, prose, the by-basis composition and the rows —
+ * into one run of muted 12 px lines, and every row wrapped. Here the figure
+ * stays the mono machine voice, the prose explains, and each row is a grid: the
+ * name left, its money right-aligned mono so a column of money can be scanned,
+ * the basis word dropping to a dim second line where it reads as a qualifier
+ * rather than as part of the name (design round 1, D3/D10).
+ */
+const ChannelTooltipBody: FC<{
+	cost: SessionCost;
+	reading: SpendChannelsReading;
+}> = ({ cost, reading }) => {
+	const breakdown = channelBreakdown(reading);
+	return (
+		<span className="flex flex-col gap-1">
+			<span className="font-mono text-mono-sm text-ink">{cost.text}</span>
+			<span className="text-ink-muted">{costTooltip(cost)}</span>
+			{breakdown.planClause && (
+				<span className="text-ink-muted">{breakdown.planClause}</span>
+			)}
+			{breakdown.summary && (
+				<span className="text-ink-muted">{breakdown.summary}</span>
+			)}
+			{/*
+			 * The rows are their own group, spaced off the prose above so the
+			 * three registers read as three (D3). The key carries the index
+			 * because two published rows may share a name (the same model on
+			 * two units, say) — the object has no client-side id.
+			 */}
+			{breakdown.rows.length > 0 && (
+				<span className="mt-1 flex flex-col gap-1.5">
+					{breakdown.rows.map((row, index) => (
+						<span key={`${index}:${row.name}`} className="flex flex-col">
+							<span className="flex items-baseline justify-between gap-3">
+								<span className="min-w-0">{row.name}</span>
+								<span className="shrink-0 font-mono text-mono-sm">
+									{row.amount}
+								</span>
+							</span>
+							{row.basis && (
+								<span className="text-ink-dim text-meta-sm">{row.basis}</span>
+							)}
+						</span>
+					))}
+				</span>
+			)}
+		</span>
+	);
+};
+
+/**
  * One reading, as a button when it can be opened and a label when it cannot.
  *
  * The two forms are one component so a reading that loses its picker (a model
@@ -467,6 +554,15 @@ const Reading: FC<{
 	held?: boolean;
 	children: ReactNode;
 	className?: string;
+	/**
+	 * Applied to the TOOLTIP PANEL rather than to the trigger.
+	 *
+	 * The primitive caps every panel at `max-w-64`; the channel breakdown needs
+	 * a wider measure so its rows do not wrap (see `CHANNEL_TOOLTIP_WIDTH`).
+	 * Passed through rather than forked because the primitive already owns the
+	 * panel's chrome and `cn` (tailwind-merge) resolves the width override.
+	 */
+	tooltipClassName?: string;
 }> = ({
 	tooltip,
 	label,
@@ -475,6 +571,7 @@ const Reading: FC<{
 	held = false,
 	children,
 	className,
+	tooltipClassName,
 }) => {
 	/*
 	 * The mark, in both registers this component speaks: the accessible name,
@@ -506,7 +603,7 @@ const Reading: FC<{
 		tooltip
 	);
 	return onOpen ? (
-		<Tooltip content={body}>
+		<Tooltip content={body} className={tooltipClassName}>
 			<button
 				type="button"
 				onClick={onOpen}
@@ -517,7 +614,7 @@ const Reading: FC<{
 			</button>
 		</Tooltip>
 	) : readout ? (
-		<Tooltip content={body}>
+		<Tooltip content={body} className={tooltipClassName}>
 			<span
 				/* The tab stop is deliberate: it keeps the tooltip reachable from the
 				   keyboard (see the prop's own note). The rule's remedy - dropping it -
@@ -532,7 +629,7 @@ const Reading: FC<{
 			</span>
 		</Tooltip>
 	) : (
-		<Tooltip content={body}>
+		<Tooltip content={body} className={tooltipClassName}>
 			{/*
 			 * A real `button` with `aria-disabled`, following the read-only
 			 * working-directory chip rather than inventing a second idiom for the
@@ -773,6 +870,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	draftResolution,
 	readingsDropped = false,
 	controlsThirdBox = false,
+	costChannels = false,
 	className,
 }) => {
 	/*
@@ -873,7 +971,9 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 		context_window: frontend?.context_window,
 		context_is_estimate: frontend?.context_is_estimate,
 	});
-	const cost = sessionCost(frontend ?? NO_SPEND, frontend?.last_usage);
+	const cost = sessionCost(frontend ?? NO_SPEND, frontend?.last_usage, {
+		costChannels,
+	});
 	/*
 	 * Active time: banked seconds plus the open turn, or `null` for a session
 	 * that has done nothing. A draft needs no branch here — its
@@ -1384,7 +1484,14 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			{cost.text && (
 				<Reading
 					label={costTooltip(cost)}
-					tooltip={<TooltipLines lines={[cost.text, costTooltip(cost)]} />}
+					tooltip={
+						cost.channels ? (
+							<ChannelTooltipBody cost={cost} reading={cost.channels} />
+						) : (
+							<TooltipLines lines={[cost.text, costTooltip(cost)]} />
+						)
+					}
+					tooltipClassName={cost.channels ? CHANNEL_TOOLTIP_WIDTH : undefined}
 					// Never a control, in any state: `/usage` is a different question
 					// (this account's billing), so there is no picker this reading could
 					// ever open and nothing for a disabled button to be disabled FOR.
