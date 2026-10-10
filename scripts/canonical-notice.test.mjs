@@ -281,3 +281,56 @@ test("a notice with no classification falls back to the text families", () => {
 	assert.ok(markup.includes("Open provider settings"));
 	assert.ok(markup.includes('href="/settings?section=providers"'));
 });
+
+/*
+ * A RADIENT 402 IS NEVER A RATE LIMIT, rendered through the shipped row.
+ *
+ * The runtime files the relayed refusal under `rate-limit`; the row used to say
+ * "rate-limit: rate limit or quota exceeded (HTTP 402)" and offer a provider
+ * settings button. The guidance beneath it is a client component reading the
+ * account (`scripts/radient-credits-guidance.test.mjs` drives that half); here
+ * the row's own words and which rows mount it are pinned.
+ */
+const RADIENT_402 = {
+	category: "rate-limit",
+	provider: "radient/auto",
+	headline: "rate limit or quota exceeded (HTTP 402): insufficient credits",
+	text: "[session incident (radient/auto)] rate-limit: rate limit or quota exceeded (HTTP 402): insufficient credits",
+};
+
+test("a Radient 402 filed as a rate limit reads as out of credits", () => {
+	const markup = renderRecord(incident(RADIENT_402));
+	const text = markup.replace(/<[^>]*>/g, "");
+	assert.ok(text.includes("billing"), text);
+	assert.ok(
+		text.includes("Out of credits (HTTP 402): insufficient credits"),
+		text,
+	);
+	assert.ok(!/rate-limit/i.test(text), text);
+	assert.ok(!/rate limit or quota/i.test(text), text);
+	assert.ok(
+		markup.includes('href="/settings?section=radient"'),
+		"the account section stays one press away beside the console actions",
+	);
+	assert.ok(
+		!markup.includes("Open provider settings"),
+		"a balance failure is not repaired in the providers grid",
+	);
+});
+
+test("a non-Radient rate limit renders exactly as before", () => {
+	const markup = renderRecord(
+		incident({
+			category: "rate-limit",
+			provider: "anthropic/claude-opus-5",
+			headline: "rate limit or quota exceeded (HTTP 429)",
+			text: "[session incident (anthropic/claude-opus-5)] rate-limit: rate limit or quota exceeded (HTTP 429)",
+		}),
+	);
+	const text = markup.replace(/<[^>]*>/g, "");
+	assert.ok(text.includes("rate-limit"), text);
+	assert.ok(text.includes("rate limit or quota exceeded (HTTP 429)"), text);
+	assert.ok(text.includes("Open provider settings"));
+	assert.ok(!text.includes("Out of credits"));
+	assert.ok(!text.includes("Top up"));
+});
