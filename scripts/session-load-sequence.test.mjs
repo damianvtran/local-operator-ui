@@ -1244,14 +1244,11 @@ const SEND_SEED = {
  * product the arm is allowed to know, and `use-display-flag.ts` is its source.
  */
 /*
- * The product's hold budget is the flag path's own SHORT timer; the pane's other
- * window timers are the stream deadline and the checkpoint poll, an order of
- * magnitude longer. Identifying it by a short-delay bound rather than by the exact
- * number keeps this arm working if the budget is retuned, and it still FAILS a
- * product that arms no budget at all - including one probed with a zero budget,
- * which is what round 4 measured passing under the guard this replaces.
+ * The product's hold budget is the flag path's own SHORTEST timer; the pane's other
+ * window timers (the stream deadline, the poll, the transcript's frame-flush
+ * fallback) are longer. The budget arm discovers it by that ordering rather than by
+ * a number, so it neither imports nor hard-codes the product's constant.
  */
-const SHORT_TIMER_MAX_MS = 250;
 
 /**
  * How long the scripted failing read stays in flight before it rejects.
@@ -1595,6 +1592,12 @@ test("the hold's budget: pending, then fired — the release is the timer's own 
 	__resetPaintCache();
 	seedDisplayFlags({ [HIDE_CROSS_SESSION_KEY]: true });
 	const settings = heldSettings();
+	/*
+	 * THIS ARM'S OWN TIMERS ONLY. The list is module state and every earlier arm
+	 * appended to it (agent review round 5, R11: 22 entries in a whole-file run), so
+	 * what follows reads the timers this mount armed and nothing else.
+	 */
+	pendingTimers.length = 0;
 	const { records, record, send } = await mountArm(
 		t,
 		"mount (read never answers)",
@@ -1606,29 +1609,38 @@ test("the hold's budget: pending, then fired — the release is the timer's own 
 	await record("open");
 	await send(crossSnapshot());
 	await record("page (read never answers)");
-	const armed = pendingTimers.filter(
-		(timer) => timer.delay > 0 && timer.delay <= SHORT_TIMER_MAX_MS,
-	);
+	/*
+	 * THE BUDGET IS THE SHORTEST PENDING TIMER ON THIS PATH. The other window timers
+	 * the hold's commit arms are the transcript's frame-flush fallback and the stream
+	 * deadline, both longer; the rig still does not import the product's number, so a
+	 * retune to anything shorter than the fallback keeps working. A budget retuned
+	 * ABOVE the fallback fails closed - the arm then fires the fallback, the pane does
+	 * not release, and the release assertion names it - rather than passing silently.
+	 */
+	const shortestFirst = pendingTimers
+		.filter((timer) => timer.delay > 0)
+		.sort((left, right) => left.delay - right.delay);
 	assert.ok(
-		armed.length >= 1,
-		`the product's budget is pending with no answer in hand: ${JSON.stringify(pendingTimers.map((timer) => timer.delay))}`,
+		shortestFirst.length >= 1,
+		`no timer could have bounded the hold: ${JSON.stringify(pendingTimers.map((timer) => timer.delay))}`,
 	);
+	const budget = shortestFirst[0];
 	assert.equal(
 		records.at(-1).rows,
 		0,
 		`rows painted ahead of the answer that governs them: ${JSON.stringify(records.at(-1).ids)}`,
 	);
 
-	/* The budget fires. Nothing else in this rig ever does. */
+	/* The budget fires - that callback and no other. Nothing else in this rig ever does. */
 	await act(async () => {
-		for (const timer of armed) timer.callback();
+		budget.callback();
 		await new Promise((settle) => setTimeout(settle, 0));
 	});
 	await record("after the budget");
 	printSequence(records, "the hold's budget, read never answers");
 	assert.ok(
 		records.at(-1).rows > 0,
-		`the pane releases once the budget is spent: ${records.at(-1).rows} rows`,
+		`the pane releases once that timer is spent (fired ${budget.delay} ms): ${records.at(-1).rows} rows`,
 	);
 	assert.equal(
 		records.at(-1).ids.filter((id) => CROSS_SESSION_IDS.includes(id)).length,

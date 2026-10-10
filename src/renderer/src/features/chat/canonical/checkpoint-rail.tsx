@@ -470,6 +470,15 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 			 * stale state described at `markedFor`): the commit that paints the inbound
 			 * ticks has to seed, or those ticks are painted at the outbound port and the
 			 * follow later writes the uniform translate the design seat measured.
+			 *
+			 * SCOPE (agent review round 5, R12): this latch is what the ordering above is
+			 * about, and the ordering is real in a rig that re-renders the rail with new
+			 * props. The app mounts the rail's panel with `key={identity}`
+			 * (`features/chat/components/chat-page.tsx`), so a conversation SWITCH remounts
+			 * the rail - fresh refs, and this guard cannot be what positions or fails to
+			 * position the port there. A warm re-open that still moves the marks is
+			 * therefore NOT evidence this guard is wrong, and this guard being right is not
+			 * evidence the app's warm write is gone.
 			 */
 			seededFor.current = sessionId;
 			return;
