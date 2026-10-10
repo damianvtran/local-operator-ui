@@ -3182,14 +3182,41 @@ export const FastPicker: FC<PickerContext> = ({
 	);
 };
 
+/**
+ * The requester's own name for the conversation a request addressed, when it
+ * sent one (#920).
+ *
+ * The defensive read the fork entry's pair established (`readForkEntryId`):
+ * `action.data` is `Record<string, unknown>` on a value the app received, and a
+ * non-string or blank value has to mean "no name" - the pane-fed seed every
+ * door but the row menu's has always had - rather than a field the dialog opens
+ * on.
+ */
+function readSubjectName(data: Record<string, unknown>): string | null {
+	const value = data.subjectName;
+	return typeof value === "string" && value.trim() ? value : null;
+}
+
 export const RenamePicker: FC<PickerContext> = ({
 	sessionId,
 	canonical,
 	onClose,
 	action,
 }) => {
+	/*
+	 * THE SEED, in precedence order. `action.args` is a rename that came with its
+	 * name in hand; `readSubjectName` is the ROW's own displayed name, carried by
+	 * a request raised outside the pane (#920) - the requester right-clicked a
+	 * row it never opened, so `canonical.frontend` (the PANE's reading) is
+	 * generally NOT that conversation's name, and seeding from it would offer
+	 * the wrong name to a user renaming a row they have not opened; and the
+	 * canonical title stays the pane path's own seed, unchanged.
+	 */
 	const [name, setName] = useState(
-		action.args || canonical.frontend?.conversation_title || "",
+		action.args ||
+			readSubjectName(action.data) ||
+			canonical.frontend?.conversation_title ||
+			"",
 	);
 	const command = useSessionCommand(sessionId);
 	return (
