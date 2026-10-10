@@ -80,6 +80,12 @@ const Rail: FC<{
 	 * of a layout the app does not have.
 	 */
 	height?: number;
+	/*
+	 * The frame's width, defaulting to the rail-only 132. The two chord-tooltip
+	 * states (#928) declare more: a tooltip opens LEFT of its item, and a 132px
+	 * frame would clip the very sentence those frames exist to show.
+	 */
+	frameWidth?: number;
 }> = ({
 	open,
 	focusItem,
@@ -97,6 +103,7 @@ const Rail: FC<{
 	codeMentioned = 0,
 	codeAttention = null,
 	height = 184,
+	frameWidth = 132,
 }) => {
 	useLayoutEffect(() => {
 		useUiPreferencesStore.setState({
@@ -135,8 +142,8 @@ const Rail: FC<{
 	return (
 		<div
 			data-testid="rail-frame"
-			className="flex w-[132px] bg-canvas"
-			style={{ height }}
+			className="flex bg-canvas"
+			style={{ height, width: frameWidth }}
 		>
 			<div className="flex-1 bg-elevated" />
 			<PanelRailFrame
@@ -334,4 +341,23 @@ export const AsksFleet: Story = {
  */
 export const AsksOpen: Story = {
 	render: () => <Rail open="isAskDrawerOpen" askOffered={true} askCount={3} />,
+};
+
+/**
+ * THE BOUND CHORD IN BOTH REGISTERS (issue #928): the console ships
+ * `primary+j`, so its tooltip AND its accessible name print the chord — `Ctrl+J`
+ * in this harness, `⌘J` where the chrome facts say mac. The capture rig hovers
+ * the item; the tooltip opens LEFT, which is why this state widens the frame.
+ */
+export const ConsoleChordTooltip: Story = {
+	render: () => <Rail frameWidth={360} />,
+};
+
+/**
+ * THE UNBOUND STATE (issue #928): an action with no chord prints NO parens at
+ * all. The browser ships unbound, and its tooltip is the sentence it always
+ * was — the pair to `ConsoleChordTooltip`, one frame each.
+ */
+export const BrowserNoChord: Story = {
+	render: () => <Rail frameWidth={360} />,
 };
