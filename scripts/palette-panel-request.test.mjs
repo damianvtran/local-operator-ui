@@ -231,6 +231,46 @@ test("a request can name the transcript entry it acts on, and how to label it", 
 	assert.equal("entryId" in store().request, false);
 });
 
+test("a request can name the addressed conversation, as its requester drew it (#920)", () => {
+	const row = { focus() {} };
+	store().requestPanel("session.rename", row, "0a1b2c3d4e5f", {
+		subjectName: "Quarterly revenue model",
+	});
+	assert.equal(store().request.subjectName, "Quarterly revenue model");
+	assert.equal(store().request.sessionId, "0a1b2c3d4e5f");
+	/*
+	 * IT FOLLOWS ITS TARGET, the rule `entryExcerpt` already follows: a name spread
+	 * without an addressed conversation would be a label for nothing, and an empty
+	 * name is not a name - exactly as an empty id is not a conversation.
+	 */
+	store().requestPanel("session.rename", row, undefined, {
+		subjectName: "Quarterly revenue model",
+	});
+	assert.equal("subjectName" in store().request, false);
+	store().requestPanel("session.rename", row, "0a1b2c3d4e5f", {
+		subjectName: "",
+	});
+	assert.equal("subjectName" in store().request, false);
+	/*
+	 * And the two fact groups coexist without displacing each other: an addressed
+	 * conversation can name an entry and its own displayed name in one request,
+	 * which is how the fork and rename facts would meet if a later destination
+	 * needed both.
+	 */
+	store().requestPanel("session.rename", row, "0a1b2c3d4e5f", {
+		id: "4f2c1a",
+		excerpt: "Morning - here is where the import stands.",
+		subjectName: "Q3 revenue",
+	});
+	assert.equal(store().request.entryId, "4f2c1a");
+	assert.equal(
+		store().request.entryExcerpt,
+		"Morning - here is where the import stands.",
+	);
+	assert.equal(store().request.subjectName, "Q3 revenue");
+	store().consumePanel(store().request.nonce);
+});
+
 test("naming a conversation does not change the one-shot semantics", () => {
 	store().requestPanel("session.fork", null, "0a1b2c3d4e5f");
 	const named = store().request;

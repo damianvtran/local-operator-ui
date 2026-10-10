@@ -43,6 +43,8 @@ const code = (path) =>
 
 const REGISTRY = "src/renderer/src/features/chat/pickers/picker-registry.tsx";
 const DISPATCH = "src/renderer/src/features/chat/components/slash-dispatch.ts";
+const PICKERS =
+	"src/renderer/src/features/chat/pickers/destination-pickers.tsx";
 const INPUT = "src/renderer/src/shared/components/composer/message-input.tsx";
 const PALETTE =
 	"src/renderer/src/features/command-palette/components/command-palette.tsx";
@@ -524,8 +526,8 @@ test("the pane presents the conversation a request names, before its own (#739)"
 	);
 	assert.match(
 		store,
-		/requestPanel: \(\s*destination: string,\s*invoker\?: HTMLElement \| null,\s*sessionId\?: string,\s*entry\?: \{ id: string; excerpt\?: string \},?\s*\) => void;/,
-		"requestPanel lost a parameter - the cut point travels as the fourth, as one object",
+		/requestPanel: \(\s*destination: string,\s*invoker\?: HTMLElement \| null,\s*sessionId\?: string,\s*facts\?: \{ id\?: string; excerpt\?: string; subjectName\?: string \},?\s*\) => void;/,
+		"requestPanel lost a parameter - the request's facts travel as the fourth, as one object",
 	);
 	/*
 	 * THIS IS A SIGNATURE PIN, and deliberately no more (agent review round 1,
@@ -544,6 +546,38 @@ test("the pane presents the conversation a request names, before its own (#739)"
 		code(PALETTE),
 		/requestPanel\(destination, returnFocusTo\.current\);/,
 		"the palette's request changed shape - it must keep naming no conversation",
+	);
+});
+
+test("the addressed conversation's own name rides the request into the picker (#920)", () => {
+	/*
+	 * The second fact a requester outside the pane can hold - the NAME of the
+	 * conversation it addressed - and why it must ride the request rather than be
+	 * re-derived: the presenter holds a pane, and for a conversation the user
+	 * never opened the pane has NO reading of its name at all, so a rename picker
+	 * that fell back to the pane's title would open on the WRONG conversation's
+	 * name (the asymmetry #920 exists for). Both halves are pinned, because either
+	 * one alone regresses silently: a dispatcher that stops threading
+	 * `subjectName` into the action leaves the picker seeding from the pane's
+	 * title, and a picker that ignores the fact seeds from the pane's even when it
+	 * arrived. The behaviour of the store's spread is asserted on the real store
+	 * in `scripts/palette-panel-request.test.mjs`, the split the signature pin
+	 * above states.
+	 */
+	assert.match(
+		code(DISPATCH),
+		/\.\.\.\(panelRequest\.subjectName\s*\?\s*\{ subjectName: panelRequest\.subjectName \}\s*:\s*\{\}\),/,
+		"the consume effect no longer threads the addressed conversation's name into the action",
+	);
+	assert.match(
+		code(PICKERS),
+		/function readSubjectName\(data: Record<string, unknown>\): string \| null \{/,
+		"the rename picker no longer reads the request's subject name defensively",
+	);
+	assert.match(
+		code(PICKERS),
+		/action\.args \|\|\s*readSubjectName\(action\.data\) \|\|\s*canonical\.frontend\?\.conversation_title \|\|/,
+		"the rename picker no longer prefers the request's subject name over the pane's title",
 	);
 });
 
