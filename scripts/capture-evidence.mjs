@@ -4872,6 +4872,38 @@ export const STORIES = [
 	 */
 	["chat-composer-status-row--goal-tooltip-floor", 300, 620],
 	["chat-composer-status-row--goal-capability-off", 1000, 520],
+	/* THE GOAL'S AND THE LOOP'S OWN ROWS (this change): the operator's own ask, the
+	   three widths it is argued at, and the states the per-row arrangement's empty
+	   cases and interactions live in.
+
+	   WHY THEY ARE HERE. The row's arrangement moved in this change - the goal and the
+	   loop each own a full-width line, the count strip keeps its own - and the states
+	   a reviewer has to judge are the ones no earlier frame can show: six chips with
+	   the goal and the loop apart (900, the 520px band where the two used to SHARE a
+	   line, and the 240 band), the app's floor, each source alone, the long goal and
+	   the long clause beside each other, the expanded body in the per-row form, the
+	   goal's dismiss revealed, and the all-absent state. A story nobody captures is a
+	   state the sweep never renders.
+
+	   THE WIDTHS ARE THE STORIES' OWN, sized like the floor above: `Composer`'s outer
+	   box is the band width plus the box's 48px of `p-6` (288 for the 240 band, 220
+	   for the floor), and the tuples below give the 240/172 stories 300 of viewport —
+	   the floor precedent's own safe width, above both outer boxes — the 520 band 700
+	   (>= its 568) and the 900-width stories 1000 (>= their 948).
+
+	   THE DISMISS-FOCUS STORY FOCUSES PROGRAMMATICALLY, like
+	   `--goal-done-dismiss-focus` above and for the same reason: this rig has no
+	   hover verb, and the story's own effect paints the same held box a pointer
+	   would, so a still of it carries the reveal. */
+	["chat-composer-status-row--goal-loop-rows", 1000, 500],
+	["chat-composer-status-row--goal-loop-rows-band-240", 300, 640],
+	["chat-composer-status-row--goal-loop-rows-band-520", 700, 520],
+	["chat-composer-status-row--goal-loop-rows-floor", 300, 640],
+	["chat-composer-status-row--goal-loop-rows-alone", 1000, 560],
+	["chat-composer-status-row--goal-loop-rows-long", 1000, 560],
+	["chat-composer-status-row--goal-loop-rows-expanded", 1000, 560],
+	["chat-composer-status-row--goal-loop-rows-dismiss-focus", 1000, 560],
+	["chat-composer-status-row--goal-loop-rows-empty", 1000, 300],
 	/* The activity mark with motion reduced, which is the OTHER half of the paint
 	   the mark's own animation cannot prove: `styles/index.css` CAPS durations at
 	   0.01ms rather than cancelling anything, so the frame has to show that the
