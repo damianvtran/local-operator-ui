@@ -1,0 +1,5 @@
+{
+	"schema": 1,
+	"note": "File-level exemptions from the i18n string scan (RFC §2.7). `path` is a repo-relative file path, or a directory prefix ending in `/` (no globs: a glob silently spans directories, a directory is written as one, visibly). `reason` is REQUIRED — it is the whole reason an entry is reviewable. Prefer an inline `// i18n: ignore <reason>` pragma for a single string; use this file for a whole file or directory. See scripts/i18n/check-strings.mjs.",
+	"entries": []
+}
