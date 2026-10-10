@@ -3050,6 +3050,28 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			force: z.boolean().optional(),
 		})
 		.strict(),
+	/*
+	 * THE PREVIEWS' SIGNED STATIC URLS (file-serving RFC § 4, Phase A adoption).
+	 * The renderer cannot read the core's serve record (no filesystem, no record
+	 * store), so the previews ask MAIN - which already holds the desktop bearer -
+	 * to mint a short-lived signed URL for one static route + path. The route is
+	 * public in Phase A; this op is what lets the previews keep working when a
+	 * later core phase gates it, and a core that predates the route answers 404,
+	 * which the previews read as their fallback signal, not an error.
+	 *
+	 * `route` is the backend's own signed-string vocabulary (the four static
+	 * family ids), held here so a route the signature cannot cover fails at this
+	 * boundary. `ttlS` stays within the backend's documented cap (600 default,
+	 * 3600 max) - a bound, not a preference.
+	 */
+	z
+		.object({
+			op: z.literal("static.sign"),
+			route: z.enum(["images", "videos", "audio", "html"]),
+			path: z.string().min(1),
+			ttlS: z.number().int().min(1).max(3600).optional(),
+		})
+		.strict(),
 ]);
 
 /**
@@ -6683,6 +6705,23 @@ export function desktopEndpoint(request: DesktopRequest): {
 				body: {
 					...(request.keys !== undefined ? { keys: request.keys } : {}),
 					...(request.force !== undefined ? { force: request.force } : {}),
+				},
+			};
+		/*
+		 * The previews' signed static URLs: NOT under `/v1/desktop/` - the core's
+		 * sign route accepts the desktop bearer OR its local access token - so an
+		 * answer here never counts as pairing evidence (`desktopAnswerProvesPairing`
+		 * reads the prefix, deliberately). `ttl_s` is omitted unless asked for, so
+		 * the core's own default (600 s) is the one number for "unspecified".
+		 */
+		case "static.sign":
+			return {
+				path: "/v1/static/sign",
+				method: "POST",
+				body: {
+					route: request.route,
+					path: request.path,
+					ttl_s: request.ttlS,
 				},
 			};
 	}
