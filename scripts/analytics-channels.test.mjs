@@ -12,18 +12,24 @@ import { build } from "esbuild";
  * `analytics-model.ts` owns this reading for the same reason it owns every
  * other panel decision — it is executable without a DOM — and the assertions
  * are off the backend's own golden fixture (`fixtures/spend-channels-v1.json`),
- * not a hand-written idea of the shape. Four rules a frame cannot distinguish
- * are pinned here:
+ * not a hand-written idea of the shape. Rules a frame cannot distinguish are
+ * pinned here:
  *
  * - the total is READ (`total_micro`) and printed through THIS panel's ladder
- *   (`formatMicroUsd`), with `+` for a lower bound — never re-summed, and
- *   never the strip's ladder, which is why this is a separate spelling and not
- *   an import of the strip's line builder;
- * - a `null` amount is the WORD `not tracked`, not `—`: `—` blames the read,
- *   and a record with no basis is a fact of its own;
+ *   (`formatMicroUsd`), with `+` for a lower bound — never re-summed;
+ * - a `null` amount is the words `price unknown`, shared with the strip
+ *   (`PRICE_UNKNOWN_TEXT`): `—` blames the read, "not tracked" is the
+ *   session-level state, and one record must not grow two descriptions;
+ * - a null ROW is refused rather than thrown on (the reading filters it, so
+ *   `rows: [null]` renders as no rows and the section stands);
  * - subscription dollars stay in their own bucket and their own word
  *   (`API-equivalent`) — the operator rule that plan-funded money is never
  *   mixed with cash;
+ * - the composition line and the plan gloss come from the SAME builders the
+ *   strip uses (`channelSummaryLine`/`channelPlanClause`), through this
+ *   panel's ladder, so the words cannot drift even though the money ladders
+ *   deliberately do;
+ * - the two surfaces round a tie the same way (QA round 1, Q2 — swept here);
  * - everything that is not a usable v1 object (a future version included)
  *   renders as `null`, and the section then does not exist at all — today's
  *   panel, which is what an old server keeps.
@@ -37,8 +43,10 @@ const ROOT = process.cwd();
 
 const bundle = await build({
 	stdin: {
-		contents:
+		contents: [
 			'export * from "./src/renderer/src/features/chat/pickers/panels/analytics-model";',
+			'export * from "./src/renderer/src/features/chat/session-status/session-cost";',
+		].join("\n"),
 		resolveDir: ROOT,
 	},
 	bundle: true,
@@ -46,7 +54,7 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { channelsView } = await import(
+const { channelsView, sessionCost, PRICE_UNKNOWN_TEXT } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -60,9 +68,16 @@ test("the fixture renders as the panel's table, in this panel's ladder", () => {
 	assert.equal(view.tracked, true);
 	// 1.016 USD is a lower bound (knowledge: partial), so the ladder's `+`.
 	assert.equal(view.total, "$1.02+");
+	// The plan gloss and the composition, from the shared builders: the total
+	// includes plan-funded money, and the line can be reconciled on screen
+	// (0.053 + 0.053 + 0.010 + 0.900 = 1.016; D1/D2).
+	assert.equal(
+		view.planClause,
+		"Includes $0.053 API-equivalent (covered by a plan, not charged).",
+	);
 	assert.equal(
 		view.basisLine,
-		"Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · 2 not tracked",
+		"Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $0.900 inference (no basis recorded yet) · 2 records without a price",
 	);
 	assert.deepEqual(view.rows, [
 		{
@@ -70,8 +85,9 @@ test("the fixture renders as the panel's table, in this panel's ladder", () => {
 			name: "Inference · anthropic/claude-sonnet-5-5",
 			spend: "$0.900",
 			// The inference placeholder basis (`not_tracked`) is not a row word
-			// beside a sized figure; the summary's count carries it.
-			basis: "",
+			// beside a sized figure — the composition's inference clause carries
+			// it — and this panel's convention for "nothing" is `—` (D5).
+			basis: "—",
 		},
 		{
 			key: "1:Image · openai-sub/gpt-image-2",
@@ -84,19 +100,19 @@ test("the fixture renders as the panel's table, in this panel's ladder", () => {
 			name: "Image · radient/gpt-image-2",
 			// `partial` row knowledge: a lower bound, marked the panel's way.
 			spend: "$0.053+",
-			basis: "billed",
+			basis: "Billed",
 		},
 		{
 			key: "3:Read · deepseek:read",
 			name: "Read · deepseek:read",
 			spend: "$0.0020",
-			basis: "estimated",
+			basis: "Estimated",
 		},
 		{
 			key: "4:Search · tavily",
 			name: "Search · tavily",
 			spend: "$0.0080",
-			basis: "estimated",
+			basis: "Estimated",
 		},
 	]);
 });
@@ -145,8 +161,12 @@ test("a null amount and an unstately zero are words, never fabricated zeros", ()
 	// partial + a zero total: money exists that could not be sized, so the
 	// figure is this panel's unknown mark, never `$0.0000+`.
 	assert.equal(view.total, "—");
-	assert.equal(view.rows[0].spend, "not tracked");
-	assert.equal(view.basisLine, "1 not tracked");
+	// The words are the strip's own for the same record — one constant, so the
+	// two surfaces cannot describe one record two ways (D2) — and the panel's
+	// own `—` stands in the Basis cell where a record has none (D5).
+	assert.equal(view.rows[0].spend, PRICE_UNKNOWN_TEXT);
+	assert.equal(view.rows[0].basis, "—");
+	assert.equal(view.basisLine, "1 record without a price");
 });
 
 test("subscription dollars stay their own bucket and their own word", () => {
@@ -195,7 +215,7 @@ test("subscription dollars stay their own bucket and their own word", () => {
 	assert.equal(view.basisLine, "Billed $1.00 · API-equivalent $0.500");
 	assert.deepEqual(
 		view.rows.map((row) => row.basis),
-		["billed", "API-equivalent"],
+		["Billed", "API-equivalent"],
 	);
 });
 
@@ -203,4 +223,71 @@ test("tracked=false is carried through for the section's own sentence", () => {
 	const view = channelsView({ ...SPEND_CHANNELS, tracked: false });
 	assert.ok(view);
 	assert.equal(view.tracked, false);
+	// The count is withheld for a tracked=false session: `N records without a
+	// price` under the section's "not tracked" sentence read as a
+	// contradiction (D2). The buckets and the inference clause stay.
+	assert.doesNotMatch(view.basisLine, /without a price/);
+	assert.match(view.basisLine, /\$0\.900 inference \(no basis recorded yet\)/);
+});
+
+test("a null row renders as no rows rather than taking the panel down", () => {
+	// MINOR-2: `rows: [null]` used to throw inside the model (reading
+	// `channel` off null) while the strip's own reading filtered it — one
+	// malformed row must fall back, not crash the panel.
+	const view = channelsView({ ...SPEND_CHANNELS, rows: [null] });
+	assert.ok(view);
+	assert.deepEqual(view.rows, []);
+});
+
+test("the strip and the panel round a tie the same way (QA round 1, Q2)", () => {
+	/*
+	 * QA swept the money range and found six tie values where the strip and
+	 * the panel printed one digit apart on the SAME micro amount, because the
+	 * panel's ladder rounded half away from zero (`toFixed`) while the strip's
+	 * followed Python's f-string rule. Both now round half to EVEN, and the
+	 * expected strings below are `python3`'s own output for these amounts
+	 * (format(0.0625, ".3f") -> "0.062", etc.) — the TUI's rule, pinned across
+	 * the two surfaces rather than restated in prose.
+	 */
+	const cases = new Map([
+		[62_500, "$0.062"],
+		[312_500, "$0.312"],
+		[562_500, "$0.562"],
+		[812_500, "$0.812"],
+		[1_125_000, "$1.12"],
+		[1_625_000, "$1.62"],
+		// Neighbours a micro either side of a tie: not ties themselves, but the
+		// pair must still agree — and 501 must round UP.
+		[62_499, "$0.062"],
+		[62_501, "$0.063"],
+	]);
+	for (const [micro, want] of cases) {
+		const object = {
+			version: 1,
+			tracked: true,
+			total_micro: micro,
+			knowledge: "exact",
+			by_basis: {
+				billed: micro,
+				subscription_api_equivalent: 0,
+				estimated: 0,
+				not_tracked_calls: 0,
+			},
+			rows: [],
+			children: { total_micro: micro, knowledge: "exact" },
+		};
+		const strip = sessionCost(
+			{
+				cumulative_parent_cost: null,
+				cost_knowledge: "exact",
+				spend_channels: object,
+			},
+			null,
+			{ costChannels: true },
+		).text;
+		const view = channelsView(object);
+		assert.ok(view);
+		assert.equal(strip, want, `strip at ${micro} µ`);
+		assert.equal(view.total, want, `panel at ${micro} µ`);
+	}
 });

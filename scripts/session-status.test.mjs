@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -35,9 +35,12 @@ import { build } from "esbuild";
  * READS its object — so the rules under test are the reader's: take
  * `total_micro` as published and never re-sum it, keep the legacy figures for
  * every backend that has no object (old servers and unknown wire versions),
- * say "channels not tracked" instead of fabricating a zero, and spell the
- * breakdown with the one dollar ladder the rest of this module uses.
- * `fixtures/spend-channels-v1.json` is the backend's own golden fixture,
+ * say "channels not tracked" instead of fabricating a zero, split the zero the
+ * object cannot split on its own (a stated zero, an unpriceable one, and the
+ * billed-but-unstated one `usage` discriminates), keep one dollar ladder, and
+ * compose the by-basis line so the published total can be reconciled on
+ * screen. `fixtures/spend-channels-v1.json` is the backend's own golden
+ * fixture,
  * copied from the backend repository's contract commit for `spend_channels`
  * v1 (whitespace re-indented by this repo's formatter, which tabs JSON; the
  * values are identical), and the rows below are asserted OFF it so a
@@ -71,8 +74,9 @@ const {
 	CONTEXT_COLOR_WINDOW_BANDS,
 	FLOOR_MARK,
 	UNPRICEABLE_TEXT,
+	UNTRACKED_CUE,
 	channelBasisWords,
-	channelBreakdownLines,
+	channelBreakdown,
 	channelRowName,
 	CHANNELS_UNTRACKED_NOTE,
 	contextReading,
@@ -90,6 +94,7 @@ const {
 	formatWindow,
 	modelIdentity,
 	modelAccessReading,
+	PRICE_UNKNOWN_TEXT,
 	sessionCost,
 	specUnresolved,
 	spendChannelsUsable,
@@ -434,16 +439,38 @@ test("a malformed object or a future version falls back to the legacy port", () 
 	assert.equal(absent.channels, undefined);
 });
 
-test("the fixture's breakdown is spelled row for row", () => {
+test("the fixture's breakdown is composed, row for row", () => {
 	const cost = sessionCost(CHANNEL_STATE, null, { costChannels: true });
-	assert.deepEqual(channelBreakdownLines(cost.channels), [
-		"Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · 2 not tracked",
-		"Inference · anthropic/claude-sonnet-5-5 — $0.900",
-		"Image · openai-sub/gpt-image-2 — $0.053 · API-equivalent",
-		"Image · radient/gpt-image-2 — ≥$0.053 · billed",
-		"Read · deepseek:read — $0.0020 · estimated",
-		"Search · tavily — $0.0080 · estimated",
-	]);
+	const breakdown = channelBreakdown(cost.channels);
+	// The plan-funded gloss: the total includes money a plan covered, and the
+	// clause is the one place a reader finds that out (D1).
+	assert.equal(
+		breakdown.planClause,
+		"Includes $0.053 API-equivalent (covered by a plan, not charged).",
+	);
+	// The composition: buckets, then the inference money the buckets leave out
+	// (the PR-3 basis placeholder — summed from the published row, exactly),
+	// then the count with its noun. 0.053+0.053+0.010+0.900 == 1.016: the line
+	// reconciles with the published total (D1/D2).
+	assert.equal(
+		breakdown.summary,
+		"Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $0.900 inference (no basis recorded yet) · 2 records without a price",
+	);
+	assert.deepEqual(
+		breakdown.rows.map((row) => [row.name, row.amount, row.basis]),
+		[
+			["Inference · anthropic/claude-sonnet-5-5", "$0.900", ""],
+			["Image · openai-sub/gpt-image-2", "$0.053", "API-equivalent"],
+			["Image · radient/gpt-image-2", "≥$0.053", "Billed"],
+			["Read · deepseek:read", "$0.0020", "Estimated"],
+			["Search · tavily", "$0.0080", "Estimated"],
+		],
+	);
+	// The composition's inference clause is derived from the wire values, not
+	// from a guess about the words: the placeholder is `not_tracked`.
+	assert.equal(breakdown.rows[0].channel, "inference");
+	assert.equal(breakdown.rows[0].amountMicro, 900000);
+	assert.deepEqual(breakdown.rows[0].basisKeys, ["not_tracked"]);
 	// The sentence under the figure explains the mark the same way the legacy
 	// tooltip does, in this branch's own terms (the object cannot say WHICH part
 	// was unsized; it says that something was).
@@ -453,7 +480,7 @@ test("the fixture's breakdown is spelled row for row", () => {
 	);
 });
 
-test("tracked=false says so, and never fabricates a zero", () => {
+test("tracked=false says so, carries the cue, and never fabricates a zero", () => {
 	const cost = sessionCost(
 		{ ...CHANNEL_STATE, spend_channels: { ...SPEND_CHANNELS, tracked: false } },
 		null,
@@ -468,11 +495,22 @@ test("tracked=false says so, and never fabricates a zero", () => {
 	);
 	assert.ok(costTooltip(cost).includes(CHANNELS_UNTRACKED_NOTE));
 	// The figure itself is still the published total: untracked means the
-	// JOURNAL was not keeping channel rows, not that the total is unknown.
-	assert.equal(cost.text, `${FLOOR_MARK}$1.02`);
+	// JOURNAL was not keeping channel rows, not that the total is unknown —
+	// and the chip now carries the cue that the tooltip's sentence explains
+	// (D7: the disclosure used to exist only in the hover).
+	assert.equal(cost.text, `${FLOOR_MARK}$1.02${UNTRACKED_CUE}`);
+	// No count beside the sentence: `N records without a price` under "channels
+	// are not tracked" read as a contradiction (D2). The composition still
+	// names the buckets, and the inference money stays itemised.
+	const breakdown = channelBreakdown(cost.channels);
+	assert.doesNotMatch(breakdown.summary, /without a price/);
+	assert.match(
+		breakdown.summary,
+		/\$0\.900 inference \(no basis recorded yet\)/,
+	);
 });
 
-test("an unstateable zero is $—, and a stateable zero is silence", () => {
+test("the three zeroes: stated, unpriceable, and billed-but-unstated", () => {
 	const zero = (over) => ({
 		...SPEND_CHANNELS,
 		total_micro: 0,
@@ -486,33 +524,66 @@ test("an unstateable zero is $—, and a stateable zero is silence", () => {
 		children: { total_micro: 0, knowledge: "exact" },
 		...over,
 	});
-	// `partial` at zero: money exists that nobody could size. `$—` — the app's
-	// one unknown spelling — and never a `≥$0.0000` nor a confident zero.
+	const billed = { input_tokens: 1200, output_tokens: 300 };
+
+	// `exact` at zero is a STATED zero — a free or local model that billed
+	// nothing. `$0.0000`, the same figure the panel prints for this object;
+	// `$—` here was a false "could not be priced" (QA Q1).
+	const exact = sessionCost(
+		{ ...CHANNEL_STATE, spend_channels: zero({ knowledge: "exact" }) },
+		billed,
+		{ costChannels: true },
+	);
+	assert.equal(exact.text, "$0.0000");
+	assert.doesNotMatch(costTooltip(exact), /could not be priced/);
+
+	// `partial`/`floor` at zero: money EXISTS that nobody could size. `$—` —
+	// the app's one unknown spelling — never a `≥$0.0000` nor a confident zero.
 	const partial = sessionCost(
 		{ ...CHANNEL_STATE, spend_channels: zero({ knowledge: "partial" }) },
-		null,
+		billed,
 		{ costChannels: true },
 	);
 	assert.equal(partial.text, UNPRICEABLE_TEXT);
 	assert.match(costTooltip(partial), /could not be priced/);
-	// `unknown` at zero: nothing stateable at all — the fresh-session silence
-	// the legacy path also renders (an empty segment, not a claim).
-	const unknown = sessionCost(
+
+	// `unknown` at zero is NOT decidable from the object — the contract's
+	// knowledge() answers UNKNOWN for "no activity" and "unpriced calls only"
+	// alike — so `usage` splits it, exactly the argument the legacy port takes
+	// for the same question (MAJOR-1: this used to render "" for both).
+	const billedUnknown = sessionCost(
+		{ ...CHANNEL_STATE, spend_channels: zero({ knowledge: "unknown" }) },
+		billed,
+		{ costChannels: true },
+	);
+	assert.equal(billedUnknown.text, UNPRICEABLE_TEXT);
+	assert.match(costTooltip(billedUnknown), /could not be priced/);
+
+	// Nothing billed: the fresh-session silence the legacy path also renders
+	// (an empty segment, not a claim).
+	const quiet = sessionCost(
 		{ ...CHANNEL_STATE, spend_channels: zero({ knowledge: "unknown" }) },
 		null,
 		{ costChannels: true },
 	);
-	assert.equal(unknown.text, "");
+	assert.equal(quiet.text, "");
 	assert.equal(
-		costTooltip(unknown),
+		costTooltip(quiet),
 		"Nothing has been spent in this session yet.",
 	);
+	// Zeroed usage counts as nothing billed; the legacy `billed` test is `or`.
+	const zeroUsage = sessionCost(
+		{ ...CHANNEL_STATE, spend_channels: zero({ knowledge: "unknown" }) },
+		{ input_tokens: 0, output_tokens: 0 },
+		{ costChannels: true },
+	);
+	assert.equal(zeroUsage.text, "");
 });
 
-test("a channel row with no sizeable amount says the word, and only the word", () => {
-	// Amount null is "not tracked" — never `$0.0000`, never a bare `$—`
-	// that blames the reader. The summary's count and the row's word are the
-	// same fact, stated where each belongs.
+test("a channel row with no sizeable amount is a fact with its own words", () => {
+	// Amount null is `price unknown` — never `$0.0000`, never a bare `$—`
+	// that blames the reader, and never "not tracked", which is the
+	// session-level state (D2: one phrase, one meaning, one site).
 	const channels = {
 		version: 1,
 		tracked: true,
@@ -557,11 +628,16 @@ test("a channel row with no sizeable amount says the word, and only the word", (
 		null,
 		{ costChannels: true },
 	);
-	assert.deepEqual(channelBreakdownLines(cost.channels), [
-		"Billed $0.053 · 1 not tracked",
-		"TTS · radient — not tracked",
-		"Image · openai-sub/gpt-image-2 — $0.053 · API-equivalent",
-	]);
+	const breakdown = channelBreakdown(cost.channels);
+	assert.deepEqual(
+		breakdown.rows.map((row) => [row.name, row.amount, row.basis]),
+		[
+			["TTS · radient", PRICE_UNKNOWN_TEXT, ""],
+			["Image · openai-sub/gpt-image-2", "$0.053", "API-equivalent"],
+		],
+	);
+	// The count carries the noun; the row carries the amount's own words.
+	assert.equal(breakdown.summary, "Billed $0.053 · 1 record without a price");
 });
 
 test("subscription money never joins billed, and the words keep them apart", () => {
@@ -614,11 +690,15 @@ test("subscription money never joins billed, and the words keep them apart", () 
 		{ costChannels: true },
 	);
 	assert.equal(cost.text, "$1.50");
-	assert.deepEqual(channelBreakdownLines(cost.channels), [
-		"Billed $1.00 · API-equivalent $0.500",
-		"Image · radient — $1.00 · billed",
-		"Image · openai-sub — $0.500 · API-equivalent",
-	]);
+	const breakdown = channelBreakdown(cost.channels);
+	assert.equal(breakdown.summary, "Billed $1.00 · API-equivalent $0.500");
+	assert.deepEqual(
+		breakdown.rows.map((row) => [row.name, row.amount, row.basis]),
+		[
+			["Image · radient", "$1.00", "Billed"],
+			["Image · openai-sub", "$0.500", "API-equivalent"],
+		],
+	);
 });
 
 test("unknown channel and basis words pass through rather than vanish", () => {
@@ -638,7 +718,7 @@ test("unknown channel and basis words pass through rather than vanish", () => {
 		price_versions: [],
 	};
 	assert.equal(channelRowName(row), "Hologram");
-	assert.deepEqual(channelBasisWords(["holographic"]), ["holographic"]);
+	assert.deepEqual(channelBasisWords(["holographic"]), ["Holographic"]);
 	const cost = sessionCost(
 		{
 			...CHANNEL_STATE,
@@ -659,8 +739,16 @@ test("unknown channel and basis words pass through rather than vanish", () => {
 		null,
 		{ costChannels: true },
 	);
-	assert.deepEqual(channelBreakdownLines(cost.channels), [
-		"Hologram — $0.0010 · holographic",
+	assert.deepEqual(channelBreakdown(cost.channels).rows, [
+		{
+			name: "Hologram",
+			amount: "$0.0010",
+			basis: "Holographic",
+			channel: "hologram",
+			amountMicro: 1000,
+			basisKeys: ["holographic"],
+			floor: false,
+		},
 	]);
 });
 
@@ -674,6 +762,52 @@ test("the v1 guard accepts only what this build can render", () => {
 		false,
 	);
 	assert.equal(spendChannelsUsable({ ...SPEND_CHANNELS, rows: null }), false);
+});
+
+test("every session-status producer threads the channel gate", () => {
+	/*
+	 * A SOURCE PIN, not a render. The defect class this closes is a mount that
+	 * builds a session status and forgets `costChannels`: the config run page
+	 * shipped exactly that (review round 1, MINOR-1/Q3), rendering the
+	 * inference-only figure beside a pane showing the published total. The scan
+	 * keeps the rule whole for any FUTURE producer: every non-story source file
+	 * that writes `sessionStatus=` must also name the gate. Stories pass their
+	 * own fixtures and are exempt (a story without the gate IS the legacy
+	 * fixture), as are tests.
+	 */
+	const root = join(ROOT, "src/renderer/src");
+	const files = readdirSync(root, { recursive: true })
+		.filter((file) => typeof file === "string" && file.endsWith(".tsx"))
+		.filter((file) => !file.includes(".stories.") && !file.includes(".test."));
+	const producers = files.filter((file) =>
+		/sessionStatus\s*=/.test(readFileSync(join(root, file), "utf8")),
+	);
+	/*
+	 * The five mounts: chat-page (3 sites collapsed into one file), chat-content
+	 * (forwards the already-gated prop), mini-composer, project-quick-send and
+	 * the config run page. The count guards the scan itself from silently
+	 * matching nothing.
+	 */
+	assert.ok(
+		producers.length >= 5,
+		`expected the known producers, found: ${producers.join(", ")}`,
+	);
+	for (const file of producers) {
+		const text = readFileSync(join(root, file), "utf8");
+		assert.ok(
+			/costChannels/.test(text),
+			`${file} writes sessionStatus= but does not thread costChannels`,
+		);
+	}
+	// chat-page's three branches (live, two draft) must not collapse to one.
+	const chatPage = readFileSync(
+		join(root, "features/chat/components/chat-page.tsx"),
+		"utf8",
+	);
+	assert.ok(
+		(chatPage.match(/costChannels:/g) ?? []).length >= 3,
+		"chat-page must thread the gate at all three sessionStatus sites",
+	);
 });
 
 /* ---- 3c. cost: the golden fixture and the field the UI types against ------ */
@@ -734,8 +868,13 @@ test("the contract declares the published field, and the strip reads it", () => 
 	);
 	assert.match(
 		strip,
-		/channelBreakdownLines\(cost\.channels\)/,
+		/ChannelTooltipBody cost=\{cost\} reading=\{cost\.channels\}/,
 		"the strip's tooltip must render the breakdown",
+	);
+	assert.match(
+		strip,
+		/channelBreakdown\(reading\)/,
+		"the tooltip body must compose the breakdown through the shared builder",
 	);
 	assert.match(
 		strip,

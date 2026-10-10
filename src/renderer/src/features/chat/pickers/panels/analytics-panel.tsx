@@ -836,20 +836,36 @@ const ChannelsTable: FC<{ view: ChannelsView }> = ({ view }) => {
 			header: "Channel",
 			cell: (row) => row.name,
 		},
+		/*
+		 * Basis BEFORE Spend. The money column keeps the table's right edge —
+		 * this panel's convention for every money column — and the two no
+		 * longer run together: the `$0.053` right edge sat one cell padding
+		 * from `API-equivalent`'s left and read as one phrase (design round 1,
+		 * D5).
+		 */
+		{
+			key: "basis",
+			header: "Basis",
+			cell: (row) => row.basis,
+		},
 		{
 			key: "spend",
 			header: "Spend",
 			numeric: true,
 			cell: (row) => row.spend,
 		},
-		{
-			key: "basis",
-			header: "Basis",
-			cell: (row) => row.basis,
-		},
 	];
 	return (
 		<>
+			{/*
+			 * A ledger that was NOT tracking says so ABOVE its numbers: the contract's
+			 * own sentence, shared with the strip's tooltip so the two surfaces
+			 * cannot describe one session differently. Visible copy rather than a
+			 * tooltip, per this panel's legend rule — and ABOVE the table, which is
+			 * where the comment here claimed it sat while the frame showed the
+			 * opposite (design round 1, D4).
+			 */}
+			{!view.tracked && <Legend text={CHANNELS_UNTRACKED_NOTE} />}
 			<DataTable<ChannelTableRow>
 				label="Channel spend for this conversation, from the published channel ledger"
 				columns={columns}
@@ -858,13 +874,13 @@ const ChannelsTable: FC<{ view: ChannelsView }> = ({ view }) => {
 				empty={<PanelEmpty text="No channel rows in this conversation." />}
 			/>
 			{/*
-			 * A ledger that was NOT tracking when the session ran says so above its
-			 * numbers: the contract's own sentence, shared with the strip's tooltip
-			 * so the two surfaces cannot describe one session differently. Visible
-			 * copy rather than a tooltip, per this panel's legend rule (review round
-			 * 1, D4).
+			 * The plan-funded gloss first, then the composition: `Includes …
+			 * API-equivalent` keeps plan dollars from reading as cash, and the
+			 * composition line lists every bucket the published total is made of,
+			 * so the figure above it can be reconciled on screen (design round 1,
+			 * D1).
 			 */}
-			{!view.tracked && <Legend text={CHANNELS_UNTRACKED_NOTE} />}
+			{view.planClause && <Legend text={view.planClause} />}
 			{view.basisLine && <Legend text={view.basisLine} />}
 		</>
 	);

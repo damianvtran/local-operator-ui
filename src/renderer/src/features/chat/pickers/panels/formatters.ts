@@ -22,6 +22,8 @@
  *   panels are given numbers and format them once.
  */
 
+import { pyFixed } from "../../session-status/fixed-point";
+
 /** The unknown sentinel. One character, the same one `info/model.py` uses. */
 export const UNKNOWN = "—";
 
@@ -45,6 +47,37 @@ export const UNKNOWN_WORD = "unknown";
  * routes produce, but the two tests are ordered defensively: the unknown case
  * is the one that must never grow a `+`.
  */
+/**
+ * Money, from integer micro-USD (`analytics_panel.py` `format_cost`).
+ *
+ * Three honest answers, because collapsing them lies:
+ *
+ * - nothing priceable (`costKnownCalls === 0`) renders {@link UNKNOWN}, never
+ *   `$0.00` — free and unknown are different facts, and a local-model-only run
+ *   is the common case that produces the second;
+ * - a partial figure takes a trailing `+`, marking it a LOWER BOUND, so it is
+ *   never read as the whole bill;
+ * - small sums keep more precision, because a fresh install's spend is
+ *   fractions of a cent and rounding it to `$0.00` would read as free.
+ *
+ * The digits round through {@link pyFixed}, not `toFixed`: QA round 1 (Q2)
+ * swept the whole money range against the strip and found six tie values where
+ * this panel and the composer chip printed one digit apart on the SAME micro
+ * amount (`$0.062` against `$0.063` at 62 500 µ, and five more below $2). The
+ * strip was already half-to-even because its ladder ports Python's f-string
+ * rounding (`tui/costs.py` `format_usd` — "an f-string rounds"); this file was
+ * the divergence. One rounding rule, at ties and away from them: the TUI's.
+ *
+ * The `+` mark and the strip's `≥` stay as they are, on purpose: the TUI's own
+ * two registers keep them apart, the band marking with `≥`
+ * (`costs.py` `LOWER_BOUND_MARK`) and the analytics panel with a trailing `+`
+ * (`analytics_panel.py` `_cost_cell`: "the lower-bound `+`"), and each UI
+ * surface follows its terminal counterpart.
+ *
+ * `costKnownCalls < calls` implies `costKnownCalls > 0` on any payload the
+ * routes produce, but the two tests are ordered defensively: the unknown case
+ * is the one that must never grow a `+`.
+ */
 export function formatMicroUsd(
 	costMicro: number,
 	costKnownCalls: number,
@@ -53,10 +86,10 @@ export function formatMicroUsd(
 	if (costKnownCalls === 0) return UNKNOWN;
 	const usd = costMicro / 1_000_000;
 	let body: string;
-	if (usd >= 1000) body = `$${(usd / 1000).toFixed(1)}k`.replace(".0k", "k");
-	else if (usd >= 1) body = `$${usd.toFixed(2)}`;
-	else if (usd >= 0.01) body = `$${usd.toFixed(3)}`;
-	else body = `$${usd.toFixed(4)}`;
+	if (usd >= 1000) body = `$${pyFixed(usd / 1000, 1)}k`.replace(".0k", "k");
+	else if (usd >= 1) body = `$${pyFixed(usd, 2)}`;
+	else if (usd >= 0.01) body = `$${pyFixed(usd, 3)}`;
+	else body = `$${pyFixed(usd, 4)}`;
 	return costKnownCalls < calls ? `${body}+` : body;
 }
 
