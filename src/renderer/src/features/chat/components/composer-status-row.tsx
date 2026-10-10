@@ -3058,15 +3058,19 @@ export const ComposerStatusRow = ({
 								 * THE SHOWING LIP (UX round 2, U18): a press while the pane is
 								 * open moved focus somewhere invisible, so the chip now states its
 								 * fact - `aria-pressed` in the rail item's own meaning ("the pane
-								 * this door opens is the drawn one") plus the hover pair as a
-								 * persistent ground. The press remains a reveal: it never closes.
+								 * this door opens is the drawn one") and the rail item's own LIT
+								 * pair (`bg-row-selected text-accent`, `panel-rail-item.tsx`),
+								 * not the transient hover wash: the same fact wears the same
+								 * treatment on both doors, and the lit pair is the one the
+								 * contrast contract already holds. The press remains a reveal:
+								 * it never closes.
 								 */
 								aria-pressed={codePaneShowing}
 								onClick={() => revealCodeReviewPane()}
 								className={cn(
 									CHIP_CONTROL,
 									codeFirst ? FIRST_CHIP : undefined,
-									codePaneShowing && "bg-accent-wash text-ink",
+									codePaneShowing && "bg-row-selected text-accent",
 								)}
 							>
 								<GitPullRequest
