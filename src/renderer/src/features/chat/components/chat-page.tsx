@@ -108,6 +108,7 @@ import {
 	effectiveGate,
 } from "../ask-queue";
 import { canonicalTranscriptTerminal } from "../canonical/transcript-pane";
+import { useOpenPrefetch } from "../canonical/use-open-prefetch";
 import {
 	ownerAnswered,
 	stoppedAfterAdmission,
@@ -269,6 +270,25 @@ function SessionPanel({
 	// Fired from the composer's first keystroke, never from this mount - see
 	// `useWarmSession` for why browsing must not spawn runtimes.
 	const warm = useWarmSession(sessionId, panelCapabilities.data);
+	/*
+	 * The two reads the transcript's own chrome depends on, started here rather
+	 * than from the transcript's mount: this pane is what OPENS the conversation,
+	 * and it mounts with the stream (~26 ms into the open, measured) where the
+	 * transcript mounts with the sidebar and the route (~115 ms) - by which time
+	 * the snapshot it paints has begun to arrive. See the hook for which read is
+	 * gated on what, and why neither waits for anything.
+	 */
+	/*
+	 * The BOOLEAN, not `panelCapabilities.data`: the object is a new reference on
+	 * every capability render, and the prefetch effect keys on what it is given —
+	 * so the object made the open fire its checkpoint read twice (agent review
+	 * round 1, R3). `desktopFeatureEnabled` is the same arm the hook applies.
+	 */
+	const settingsAdvertised = desktopFeatureEnabled(
+		panelCapabilities.data,
+		"settings",
+	);
+	useOpenPrefetch(sessionId, settingsAdvertised);
 	/*
 	 * Publish the draft-warm capability the way the sidebar publishes
 	 * `cataloguePageable`: the store refuses to mint on its own (it must not
