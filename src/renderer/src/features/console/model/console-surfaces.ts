@@ -295,6 +295,32 @@ export const surfaceTitle = (surface: ConsoleSurface): string => {
 };
 
 /**
+ * Whether a surface that has ENDED clears itself from the pane after a beat
+ * (#929).
+ *
+ * THREE CASES, told apart by facts the listing already carries:
+ *
+ *  - `live && !running && exitCode === 0` — the shell exited CLEANLY during this
+ *    app run. This is the case the operator's report is about ("an ended terminal
+ *    stays open until dismissed"): the pane lets the ended banner stand for a
+ *    beat and then clears the row, instead of waiting for the tab's X.
+ *  - `live && !running` with a non-zero code (or a code main never observed) —
+ *    an ERROR exit STAYS. Removing it would take the one piece of evidence the
+ *    failure has with it, and reading that evidence is not on a timer.
+ *  - `!live` — a surface reconstructed from persisted history after a relaunch.
+ *    Nothing ended in this process, and there the HISTORY is the point: it stays
+ *    until the user dismisses it, exactly as before #929.
+ *
+ * WHY A MODEL FUNCTION rather than the condition inline in the pane's effect:
+ * the truth table is the policy, and a policy read off one expression in an
+ * effect is how "non-zero keeps the row" turns into "anything not running
+ * clears" in a later edit without anyone noticing. The pane owns the TIMING
+ * (`EXIT_DISMISS_AFTER_MS`) and the dismissal itself; this owns the rule.
+ */
+export const clearsItselfAfterExit = (surface: ConsoleSurface): boolean =>
+	surface.live && !surface.running && surface.exitCode === 0;
+
+/**
  * The completion marks a surface is carrying, as a comparable value.
  *
  * Used to decide whether anything has happened on the surface since the pane last

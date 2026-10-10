@@ -2395,17 +2395,20 @@ async function main() {
 		// 5. an ended surface dismisses outright, and its history goes with it
 		const dismissedSurface = await createUserSurface(state);
 		/*
-		 * `exit 0` rather than a bare `exit`: THIS HOST's interactive zsh exits 1 on a
-		 * typed `exit` with no prior command (measured: `printf 'exit\r' | script -q
+		 * `exit 3`, NOT `exit 0` (#929, 2026-10-10): the pane now clears a CLEAN exit's
+		 * row by itself after a beat, so a cell that needs the row standing to press its
+		 * control must exit with the code that keeps it - a non-zero one. THE CODE IS
+		 * EXPLICIT either way, because THIS HOST's interactive zsh exits 1 on a typed
+		 * `exit` with no prior command (measured: `printf 'exit\r' | script -q
 		 * /dev/null /bin/zsh -i` answers 1 while /bin/sh answers 0), and the cell's claim
-		 * is about the DISMISSAL, not about a shell's exit status. The explicit code is
-		 * the one fact the cell needs to be about.
+		 * is about the DISMISSAL, not about a shell's exit status: a non-zero exit is
+		 * the case the X is still the only way to dismiss.
 		 */
 		await rpcOk(state, "console_input", {
 			surface: dismissedSurface,
-			text: "exit 0\r",
+			text: "exit 3\r",
 		});
-		const ended = await waitForExit(state, dismissedSurface, 0);
+		const ended = await waitForExit(state, dismissedSurface, 3);
 		const dismissedLog = join(
 			HISTORY_DIR,
 			fileStemOf(SESSION),
@@ -2515,6 +2518,11 @@ async function main() {
 		 * claimed to end something that had already ended. Nothing is confirmed - the
 		 * surface's own shell ends itself through the bridge while the question stands -
 		 * and the row must remain (withdrawn is not dismissed).
+		 *
+		 * `exit 3` RATHER THAN `exit 0` since #929: a clean exit now clears its row by
+		 * itself after a beat, and this cell needs a row that REMAINS - the withdrawal's
+		 * claim is about the exit, not the code, and a non-zero one is the state that
+		 * keeps its row.
 		 */
 		const exitUnderQuestion = await createUserSurface(state);
 		await pressDom(`[data-surface="${exitUnderQuestion}"] [role="tab"]`);
@@ -2524,9 +2532,9 @@ async function main() {
 		const standingQuestion = await waitForQuestion();
 		await rpcOk(state, "console_input", {
 			surface: exitUnderQuestion,
-			text: "exit 0\r",
+			text: "exit 3\r",
 		});
-		await waitForExit(state, exitUnderQuestion, 0);
+		await waitForExit(state, exitUnderQuestion, 3);
 		let withdrew = false;
 		const withdrawDeadline = Date.now() + 10_000;
 		while (Date.now() < withdrawDeadline) {

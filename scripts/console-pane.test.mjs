@@ -98,9 +98,11 @@ const {
 	persistedUiPreferences,
 	kebabRole,
 	readConsoleSnapshot,
+	readConsoleSurface,
 	surfacesForSession,
 	pickActiveSurface,
 	surfaceTitle,
+	clearsItselfAfterExit,
 	consoleCompletionHooks,
 } = module_;
 
@@ -559,6 +561,20 @@ test("the slot's one default is 80 console columns, and the sweep's console widt
 		/relative flex min-h-0 grow flex-col px-2/,
 		"the terminal's box still carries the px-2 gutter the 16px allowance counts",
 	);
+	/*
+	 * #929: and the same box paints the terminal's OWN ground behind that gutter. The
+	 * addition is APPENDED after `px-2` on purpose and the assertion above proves it: a
+	 * class spliced between `flex-col` and `px-2` would break the pin, and the pin is
+	 * what keeps the 16px allowance honest. The 8 px stays a gutter for the GRID; the
+	 * band a user saw was the pane's `elevated` showing through where the terminal
+	 * should be, so the ground moves onto this box rather than the mirror's (whose box
+	 * does not include the padding).
+	 */
+	assert.match(
+		paneSource,
+		/relative flex min-h-0 grow flex-col px-2 bg-sunken/,
+		"the terminal's box must paint the terminal's ground across the gutter (#929)",
+	);
 	const expected = Math.ceil(COLUMNS * measureCell().cellWidth) + CHROME_PX;
 	assert.equal(
 		Number(declaredDefault[1]),
@@ -601,6 +617,74 @@ test("the slot's one default is 80 console columns, and the sweep's console widt
 	assert.ok(
 		rows.every((row) => row.includes("CONSOLE_PANE_WIDTH")),
 		"and every one of them is captured at that width",
+	);
+});
+
+/*
+ * THE CLEAN EXIT'S CLEARING RULE (#929), as a truth table, because it is a POLICY
+ * and the pane's own dismissal now runs on it.
+ *
+ * The first case is the operator's report: a shell that exited CLEANLY during this
+ * run. The cases under it are the ones that must NOT clear themselves, and a
+ * condition written as "not running" would pass the first and fail every one of
+ * them in the field — a non-zero code (the error stays readable), a code main never
+ * observed, and a row restored from history (there the history is the point).
+ */
+test("a clean exit clears itself; a non-zero code and a restored row do not (#929)", () => {
+	const surface = (overrides) => readConsoleSurface(listing(overrides));
+	assert.equal(
+		clearsItselfAfterExit(surface({ running: false, exit_code: 0 })),
+		true,
+		"a shell that exited 0 during this run is the row the pane clears after the beat",
+	);
+	assert.equal(
+		clearsItselfAfterExit(surface({ running: false, exit_code: 3 })),
+		false,
+		"a non-zero exit keeps its row, so the error stays readable",
+	);
+	assert.equal(
+		clearsItselfAfterExit(surface({ running: false, exit_code: null })),
+		false,
+		"an exit whose code was never observed keeps its row (only a clean OBSERVED exit clears)",
+	);
+	assert.equal(
+		clearsItselfAfterExit(
+			surface({ running: false, exit_code: 0, live: false }),
+		),
+		false,
+		"a surface restored after a relaunch keeps its row — nothing ended in this run",
+	);
+	assert.equal(
+		clearsItselfAfterExit(surface({ running: true, exit_code: 0 })),
+		false,
+		"a running surface is not ended, whatever code it last reported",
+	);
+});
+
+/*
+ * THE BEAT'S SIZE AND ITS ARMING, pinned at the source level on purpose: the render
+ * suite deliberately does not assert the delay as a clock fact, because measured
+ * 2026-10-10 a 10 ms timer inside that suite's own polling loop stretched to 9.4 s
+ * on this host, and a "still present at half a beat" assertion there is a coin toss
+ * under load. What is pinned here is the policy's number and its use: the constant
+ * is declared, its value sits in the brief, user-perceptible band, and the timer is
+ * armed with THAT constant rather than a literal a later edit could shrink to zero.
+ */
+test("the clean exit's beat is the shipped constant, in the brief band (#929)", () => {
+	const paneSource = readFileSync(
+		"src/renderer/src/features/console/components/console-pane.tsx",
+		"utf8",
+	);
+	const declared = paneSource.match(/const EXIT_DISMISS_AFTER_MS = (\d+);/);
+	assert.ok(declared, "the pane no longer declares the clean exit's beat");
+	const beat = Number(declared[1]);
+	assert.ok(
+		beat >= 2000 && beat <= 10_000,
+		`the beat left the brief, user-perceptible band: ${beat}ms — under two seconds the notice cannot be read, and a beat this long is a lingering row with extra steps`,
+	);
+	assert.ok(
+		paneSource.includes("}, EXIT_DISMISS_AFTER_MS)"),
+		"the beat effect arms its timer with something other than the shipped constant",
 	);
 });
 
