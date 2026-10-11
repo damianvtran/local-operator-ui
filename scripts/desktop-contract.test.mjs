@@ -17,7 +17,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL} from "./src/shared/desktop-contract"; export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api"; export { refusalDetail, JOB_CANCEL_NOT_FOUND_COPY } from "./src/renderer/src/features/chat/components/run-details/job-controls-model";',
+			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL, desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract"; export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api"; export { refusalDetail, JOB_CANCEL_NOT_FOUND_COPY } from "./src/renderer/src/features/chat/components/run-details/job-controls-model";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -69,6 +69,11 @@ const {
 	desktopResult,
 	refusalDetail,
 	JOB_CANCEL_NOT_FOUND_COPY,
+	// Aliased: the session-variables bundle below binds the plain names, and a
+	// test registered before that top-level await resolves must not reach them
+	// (measured: TDZ under load when the runner starts tests early).
+	desktopEndpoint: jobsCancelEndpoint,
+	desktopRequestSchema: jobsCancelSchema,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -282,23 +287,23 @@ test("the jobs cancel op pins its route, and its refusals land on the frozen sen
 	 * is the client half of the chain; the server half is pinned by the
 	 * branch's real-path run, whose captured bodies the arms below serve.
 	 */
-	const parsed = desktopRequestSchema.parse({
+	const parsed = jobsCancelSchema.parse({
 		op: "jobs.cancel",
 		sessionId: "0123456789ab",
 		jobId: "a/b c",
 	});
-	assert.deepEqual(rendererDesktopEndpoint(parsed), {
+	assert.deepEqual(jobsCancelEndpoint(parsed), {
 		path: "/v1/desktop/sessions/0123456789ab/jobs/a%2Fb%20c/cancel",
 		method: "POST",
 	});
 	assert.throws(() =>
-		desktopRequestSchema.parse({
+		jobsCancelSchema.parse({
 			op: "jobs.cancel",
 			sessionId: "0123456789ab",
 		}),
 	);
 	assert.throws(() =>
-		desktopRequestSchema.parse({
+		jobsCancelSchema.parse({
 			op: "jobs.cancel",
 			sessionId: "0123456789ab",
 			jobId: "job-live",
