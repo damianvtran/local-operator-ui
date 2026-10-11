@@ -8572,6 +8572,8 @@ export const STORIES = [
 	["settings-language-door--dialog-open", 1280, 800],
 	["settings-language-door--dialog-saved", 1280, 800],
 	["settings-language-door--external-toast", 1280, 800],
+	["settings-language-door--dialog-loading", 1280, 800],
+	["settings-language-door--dialog-cold-failure", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],
 	/*
 	 * The roster rows (issues #844, #849): the `@` scope's agent and team rows, one

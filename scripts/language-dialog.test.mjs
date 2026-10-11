@@ -72,6 +72,16 @@ after(() => {
 });
 
 const apiCalls = [];
+/*
+ * The capabilities answer's behaviour per case (round 2, R2-1): `ok` is the
+ * shipped answer, `hang` is a backend that never speaks, `error` is one that
+ * fails cold. A case may also flip this DURING a run to model a failure
+ * arriving after an earlier answer (the prior-data rule).
+ */
+let capabilitiesBehavior = { type: "ok", features: { settings: 1, i18n: 1 } };
+const setCapabilitiesBehavior = (behavior) => {
+	capabilitiesBehavior = behavior;
+};
 /* Mutable, so a case can move the server's value the way a refetch would. */
 const settingsPayload = () =>
 	JSON.parse(
@@ -99,12 +109,21 @@ globalThis.window.api = {
 		request: async (request) => {
 			apiCalls.push({ ...request });
 			if (request?.op === "capabilities") {
+				if (capabilitiesBehavior.type === "hang") {
+					return new Promise(() => {});
+				}
+				if (capabilitiesBehavior.type === "error") {
+					return {
+						status: 503,
+						body: { status: 503, message: "The server is not answering." },
+					};
+				}
 				return {
 					status: 200,
 					body: {
 						result: {
 							desktop_available: true,
-							features: { settings: 1, i18n: 1 },
+							features: capabilitiesBehavior.features,
 							language: capabilitiesLanguage,
 						},
 					},
@@ -187,9 +206,14 @@ const settle = async (cond, note, ms = 5000) => {
 
 const TEST_TIMEOUT_MS = 60_000;
 
-const mount = async (t) => {
+const mount = async (
+	t,
+	capabilities = { type: "ok", features: { settings: 1, i18n: 1 } },
+) => {
 	applyCapabilities(null);
 	setCapabilitiesLanguage("en");
+	/* Set BEFORE the tree renders: the capabilities fetch is the first op. */
+	setCapabilitiesBehavior(capabilities);
 	apiCalls.length = 0;
 	const client = new QueryClient({
 		defaultOptions: {
@@ -309,6 +333,109 @@ test(
 		});
 		await settle(() => triggerText().includes("auto"), "follow while open");
 		assert.ok(saveButton().disabled, "still clean after the follow");
+	},
+);
+
+test(
+	"a backend that has not answered shows strictly loading, not a refusal",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		await mount(t, { type: "hang" });
+		await act(async () => {
+			useLanguageDialogStore.getState().openLanguage();
+		});
+		await settle(
+			() => document.body.textContent.includes("Loading the current setting"),
+			"an unanswered backend must read as loading",
+		);
+		/* The R2-1 defect: this sentence used to run for a backend mid-handshake. */
+		assert.ok(
+			!document.body.textContent.includes("does not serve the settings"),
+			"no refusal sentence before an answer exists",
+		);
+		assert.equal(
+			[...document.querySelectorAll("button")].filter(
+				(button) => button.textContent.trim() === "Retry",
+			).length,
+			0,
+			"no Retry for a query that is still asking",
+		);
+	},
+);
+
+test(
+	"a settled answer without the feature is the refusal, and stays one after a later failure",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		const { client } = await mount(t, { type: "ok", features: { i18n: 1 } });
+		await act(async () => {
+			useLanguageDialogStore.getState().openLanguage();
+		});
+		await settle(
+			() => document.body.textContent.includes("does not serve the settings"),
+			"an answered backend without the feature must refuse",
+		);
+		assert.ok(
+			!document.body.textContent.includes("Loading the current setting"),
+			"a refusal is not a loading state",
+		);
+		/*
+		 * The prior-data rule (R2-1): a refetch that FAILS after an answer
+		 * keeps the answer - the refusal must not turn into the pairing
+		 * sentence, and the dialog must not fall back to "Loading".
+		 */
+		setCapabilitiesBehavior({ type: "error" });
+		await act(async () => {
+			await client.invalidateQueries({ queryKey: ["desktop", "capabilities"] });
+		});
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 250));
+		});
+		assert.ok(
+			document.body.textContent.includes("does not serve the settings"),
+			"an earlier refusal survives a failed refetch",
+		);
+		assert.ok(
+			!document.body.textContent.includes("Your settings could not be loaded."),
+			"prior data means the failure is not the cold-failure sentence",
+		);
+	},
+);
+
+test(
+	"a cold failure renders the pairing sentence and a reachable Retry",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		await mount(t, { type: "error" });
+		await act(async () => {
+			useLanguageDialogStore.getState().openLanguage();
+		});
+		const retry = await (async () => {
+			const start = Date.now();
+			for (;;) {
+				const button = [...document.querySelectorAll("button")].find(
+					(candidate) => candidate.textContent.trim() === "Retry",
+				);
+				if (button) return button;
+				if (Date.now() - start > 5000) {
+					throw new Error("no Retry rendered for a cold failure");
+				}
+				await act(async () => {
+					await new Promise((resolve) => setTimeout(resolve, 25));
+				});
+			}
+		})();
+		const before = apiCalls.filter((call) => call.op === "capabilities").length;
+		await act(async () => {
+			retry.dispatchEvent(
+				new bootstrapDOM.window.MouseEvent("click", { bubbles: true }),
+			);
+		});
+		await settle(
+			() =>
+				apiCalls.filter((call) => call.op === "capabilities").length > before,
+			"the Retry arm must actually re-ask capabilities",
+		);
 	},
 );
 
