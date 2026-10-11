@@ -2,7 +2,6 @@ import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { FileUp } from "lucide-react";
 import type { FC, ReactNode } from "react";
-
 /**
  * What a file viewer shows when it has no picture to show.
  *
@@ -110,7 +109,17 @@ export const OpenInOsButton: FC<{ path: string; label?: string }> = ({
  * document — and for the PDF viewer that boundary is wider than it looks, see
  * `pdf-preview`'s note on the platform's own field.
  */
-export const ViewerChrome: FC<{ path?: string | null }> = ({ path }) => {
+export const ViewerChrome: FC<{
+	path?: string | null;
+	/**
+	 * Extra controls, before the open action: the image viewer mounts its
+	 * actions menu here (`image-preview.tsx`), so the menu sits beside the
+	 * existing control rather than replacing it — the bar stays ONE idiom across
+	 * the four media viewers, and a viewer with no children renders exactly what
+	 * it rendered before.
+	 */
+	children?: ReactNode;
+}> = ({ path, children }) => {
 	const openable =
 		typeof path === "string" && path.length > 0 && !path.startsWith("data:");
 	return (
@@ -120,6 +129,7 @@ export const ViewerChrome: FC<{ path?: string | null }> = ({ path }) => {
 				"border-hairline border-b bg-surface px-6 py-1.5",
 			)}
 		>
+			{children}
 			{openable && (
 				<Tooltip content="Open in default app">
 					<Button

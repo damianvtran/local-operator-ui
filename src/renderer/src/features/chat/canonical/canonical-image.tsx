@@ -129,13 +129,15 @@ export const CanonicalImage = ({
 		<div className={cn("inline-block max-w-full")}>
 			<ImageAttachment
 				// `file` is what the component names the attachment and what its
-				// file-actions menu would act on. Neither shape a canonical image can
-				// take is a path: `data:` and `blob:` both fail `isLocalFile`, so the
-				// menu never appears and there is nothing on disk to reveal. The
-				// `blob:` half of that guard exists because THIS caller needed it —
-				// every durable image is a blob, and the guard originally covered
-				// only `data:`, so the menu did appear and offered to show a blob
-				// handle in Finder.
+				// actions menu classifies. Neither shape a canonical image can take is
+				// a path — `data:` and `blob:` — so the menu offers the kinds' own
+				// actions (`Copy image`, and the canvas branch a `data:` URI can
+				// honour) and never the path-shaped ones there is nothing on disk to
+				// serve. The old guard here refused the menu for both kinds outright;
+				// the `blob:` half of it exists because THIS caller needed it — every
+				// durable image is a blob, and the guard originally covered only
+				// `data:`, so the menu did appear and offered to show a blob handle
+				// in Finder.
 				file={src}
 				src={src}
 				// A canonical image has no on-disk path, so there is nothing here for a
