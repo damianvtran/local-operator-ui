@@ -11398,6 +11398,38 @@ export const STORIES = [
 	["navigation-panel-rail--code-open", 132, 220],
 	["chat-composer-status-row--code-requests-chip", 1000, 760],
 	["chat-composer-status-row--code-requests-chip-showing", 1000, 300],
+	/*
+	 * THE TURN-SUPPLEMENT BLOCK ("Highlights", lane U-b) — the design's own
+	 * evidence list: loading, empty, error and populated states, light and dark,
+	 * and the narrow column. Every frame here mounts the PRODUCTION transcript
+	 * and the production frame: the documents are core's own assembled fixtures
+	 * served through a scripted media bridge (`supplement.stories.tsx`), so the
+	 * chart in a frame is drawn by the shipped prelude's script under the
+	 * sandboxed mount the app uses.
+	 *
+	 * `supplement-free` is the before/after pair's after half — the same story
+	 * exists on the base tree with no supplement record at all, and the pair is
+	 * what proves a supplement-free turn renders unchanged. The heights are
+	 * tight to each state's content.
+	 */
+	["chat-turn-supplements--preparing", 900, 220],
+	["chat-turn-supplements--preparing-files", 900, 320],
+	["chat-turn-supplements--files-summary", 900, 220],
+	["chat-turn-supplements--files-more", 900, 340],
+	["chat-turn-supplements--files-more-expanded", 900, 520],
+	["chat-turn-supplements--components-one", 900, 640],
+	["chat-turn-supplements--components-two", 900, 820],
+	["chat-turn-supplements--budget-disclosure", 900, 640],
+	["chat-turn-supplements--budget-disclosure-expanded", 900, 1240],
+	["chat-turn-supplements--cancelled", 900, 220],
+	["chat-turn-supplements--cancelled-cold", 900, 220],
+	["chat-turn-supplements--failed", 900, 220],
+	["chat-turn-supplements--done-empty", 900, 160],
+	["chat-turn-supplements--superseded", 900, 160],
+	["chat-turn-supplements--frame-error", 900, 420],
+	["chat-turn-supplements--frame-loading", 900, 420],
+	["chat-turn-supplements--narrow", 560, 420],
+	["chat-turn-supplements--supplement-free", 900, 200],
 ];
 
 /**
