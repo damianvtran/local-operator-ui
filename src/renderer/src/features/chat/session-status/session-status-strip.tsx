@@ -476,9 +476,11 @@ const CHANNEL_TOOLTIP_WIDTH = "max-w-[22rem]";
  *
  * The order is the design's (§7.1): figure, sentence, the COMPACT by-agent
  * block (parent vs subagents — the two-view crossing the old body could not
- * show), the by-source rows with each entry's own basis markers, the
- * explanatory note lines, the composition summary, and the per-record rows
- * last, unchanged. The two blocks are two views of ONE total, never added
+ * show), a hairline rule, the by-source rows with each entry's own basis
+ * markers, the explanatory note lines, the composition summary, and the
+ * per-record rows last, unchanged. The rule is the visible carrier of "two
+ * views, never added together" (design round 1, D1); see its own comment.
+ * The two blocks are two views of ONE total, never added
  * together, and the entries are listed in the backend's published order —
  * this body sorts nothing.
  *
@@ -526,6 +528,21 @@ const ChannelTooltipBody: FC<{
 				</span>
 			)}
 			{/*
+			 * The two partitions are two VIEWS of one total, never summands — and
+			 * both reconcile to the head figure on their own, so a reader who adds
+			 * every row gets twice the total. §4.7's "do not add them together"
+			 * needs an on-screen carrier (design round 1, D1): this hairline is
+			 * it, decorative rather than a control boundary (branding § hairline
+			 * vs border-control) and hidden from the accessibility tree, where the
+			 * two lists' own entries carry the meaning instead. The flex gap plus
+			 * the rule's own margin gives it air on both sides; the boundary reads
+			 * ~20 px against the 13 px entry rhythm. Rendered only when both lists
+			 * are present — a rule between a list and nothing is furniture.
+			 */}
+			{breakdown.byAgent.length > 0 && breakdown.bySource.length > 0 && (
+				<span aria-hidden="true" className="mt-1 border-t border-hairline" />
+			)}
+			{/*
 			 * The by-source entries: the published rows' own grid, each with its
 			 * entry-level basis markers on the dim second line — the per-entry
 			 * basis honesty this section exists for.
@@ -554,13 +571,19 @@ const ChannelTooltipBody: FC<{
 			 * only when) money under a noted basis is present. A paygo-only
 			 * session renders none — the pass an API-key user must get.
 			 */}
-			{breakdown.notes.map((note) => (
-				<span key={note} className="text-ink-muted">
+			{breakdown.notes.map((note, index) => (
+				<span key={`${index}:${note}`} className="text-ink-muted">
 					{note}
 				</span>
 			))}
+			{/*
+			 * The composition gets its own step (design round 1, D2): at the flex
+			 * gap alone the note above and this line read as one 5-line muted
+			 * paragraph, and the subscription caveat read as the composition's
+			 * opening clause rather than its own statement.
+			 */}
 			{breakdown.summary && (
-				<span className="text-ink-muted">{breakdown.summary}</span>
+				<span className="mt-1 text-ink-muted">{breakdown.summary}</span>
 			)}
 			{/*
 			 * The rows are their own group, spaced off the prose above so the

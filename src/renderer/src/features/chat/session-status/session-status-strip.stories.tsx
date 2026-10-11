@@ -1452,11 +1452,12 @@ const CHANNELS_UNTRACKED: CanonicalSpendChannels = {
 	tracked: false,
 	total_micro: 900_000,
 	/*
-	 * `partial`, on the wire's own invariant: `tracked: false` implies the
-	 * knowledge is at most `partial` (the journal was not keeping channel
-	 * rows, so the total cannot be the whole story — see `combine()` in
-	 * `channel_spend.py`). An `exact` untracked session is not a state the
-	 * backend can publish.
+	 * `partial` here; BOTH rungs are legal. `combine()` degrades a marker-less
+	 * session only when recovered channel rows (or a lost-money row) exist
+	 * (core review round 2, M-4), so `tracked: false` + `knowledge: "exact"`
+	 * is the documented no-evidence shape, and this fixture is the degraded
+	 * one. Do not "fix" the pair (QA round 1, Q2): it is one of several legal
+	 * shapes, not a contradiction.
 	 */
 	knowledge: "partial",
 	by_basis: {

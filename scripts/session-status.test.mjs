@@ -1292,6 +1292,21 @@ test("the contract declares the published field, and the strip reads it", () => 
 		/breakdown\.notes\.map\(/,
 		"the strip must render the explanatory note lines",
 	);
+	// The boundary between the two partitions (design round 1, D1): the rule
+	// renders only when BOTH lists are present, and it is the carrier of "two
+	// views, never added together". A removal would make the two lists read as
+	// one — the finding the round filed — so it is pinned like the blocks it
+	// separates.
+	assert.match(
+		strip,
+		/breakdown\.byAgent\.length > 0 && breakdown\.bySource\.length > 0/,
+		"the strip must separate the two partitions",
+	);
+	assert.match(
+		strip,
+		/border-t border-hairline/,
+		"the separation must be the decorative hairline",
+	);
 });
 
 /* ---- 3c. cost: the additive breakdown and vocabulary -------------------- */
