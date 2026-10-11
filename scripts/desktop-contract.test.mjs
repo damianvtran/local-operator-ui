@@ -915,7 +915,7 @@ test("every remaining gated legacy call travels the contract, not a bare fetch",
 test("control catalogues, lifecycle, MCP and Radient use closed main-owned transport", async () => {
 	const sessionId = "123456abcdef";
 	const requestId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-	for (const [operation, path, method] of [
+	for (const [operation, path, method, body] of [
 		[{ op: "legacy.models" }, "/v1/models", "GET"],
 		[
 			{ op: "legacy.agent.upload", agentId: "fixture-agent" },
@@ -1063,6 +1063,25 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 			"/v1/auth/accounts/1",
 			"DELETE",
 		],
+		/*
+		 * The previews' sign op (file-serving RFC § 4, Phase A adoption): NOT
+		 * under `/v1/desktop/` - the core's sign route accepts the desktop bearer
+		 * or its own access token - and the body is the contract the renderer and
+		 * the core share: the route word, the raw path, and the TTL under the
+		 * core's own `ttl_s` spelling. The row's body also pins the CASING hop
+		 * (`ttlS` -> `ttl_s`), which is the mapping a preview breaks on silently.
+		 */
+		[
+			{
+				op: "static.sign",
+				route: "html",
+				path: "/tmp/example/report.html",
+				ttlS: 600,
+			},
+			"/v1/static/sign",
+			"POST",
+			{ route: "html", path: "/tmp/example/report.html", ttl_s: 600 },
+		],
 	]) {
 		const response = await requestDesktop(operation, url, token);
 		assert.equal(response.status, 200);
@@ -1072,6 +1091,7 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 		assert.equal(actual.authorization, `Bearer ${token}`);
 		assert.ok(!actual.path.includes("fixture-secret"));
 		assert.ok(!JSON.stringify(response).includes("fixture-secret"));
+		if (body) assert.deepEqual(JSON.parse(actual.body), body);
 		if (operation.control)
 			assert.deepEqual(JSON.parse(actual.body), operation.control);
 	}
