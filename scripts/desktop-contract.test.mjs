@@ -17,13 +17,17 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL} from "./src/shared/desktop-contract";',
+			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL} from "./src/shared/desktop-contract"; export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api"; export { refusalDetail, JOB_CANCEL_NOT_FOUND_COPY } from "./src/renderer/src/features/chat/components/run-details/job-controls-model";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
 	format: "esm",
 	platform: "node",
 	write: false,
+	alias: {
+		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+		"@features": `${process.cwd()}/src/renderer/src/features`,
+	},
 	plugins: [
 		{
 			name: "electron-fixture",
@@ -62,6 +66,9 @@ const {
 	MAX_DESKTOP_ENVELOPE_BYTES,
 	MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES,
 	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
+	desktopResult,
+	refusalDetail,
+	JOB_CANCEL_NOT_FOUND_COPY,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -69,6 +76,9 @@ let server;
 let url;
 const seen = [];
 const token = "synthetic-main-process-token";
+/** The jobs cancel's path, hoisted for `useTopLevelRegex`'s reason (its siblings hold their own the same way). */
+const JOBS_CANCEL_PATH =
+	/^\/v1\/desktop\/sessions\/([a-f0-9]{12})\/jobs\/([^/]+)\/cancel$/;
 before(async () => {
 	server = createServer(async (req, res) => {
 		const chunks = [];
@@ -120,6 +130,64 @@ before(async () => {
 			const [status, code, message] = storeFailure;
 			res.writeHead(status, { "Content-Type": "application/json" });
 			res.end(JSON.stringify({ detail: { code, message } }));
+			return;
+		}
+		/*
+		 * THE JOBS CANCEL, at the same boundary. These bodies are BYTE-FOR-BYTE
+		 * what the landed core route (#2207, merged as 8f62ad4bacbf) sent this
+		 * branch's own real-path run (`cancel-driver.py` + `cancel-client.mjs`,
+		 * scratchpad; the client half used this repo's own `desktopEndpoint`
+		 * and `desktopRequestSchema`), so the refusal assertions below are
+		 * about the wire the app actually meets, not a shape invented here.
+		 * Keyed on the job id so no other case changes shape.
+		 */
+		const cancelPath = req.url?.match(JOBS_CANCEL_PATH);
+		if (cancelPath) {
+			const sessionId = cancelPath[1];
+			const jobId = cancelPath[2];
+			if (jobId === "aaaaaaaaaaaa") {
+				res.writeHead(404, { "Content-Type": "application/json" });
+				res.end(
+					JSON.stringify({
+						detail: {
+							code: "jobs_not_found",
+							message: "not cancelled — the provider no longer knows the job",
+							session_id: sessionId,
+						},
+					}),
+				);
+				return;
+			}
+			if (jobId === "job-settled") {
+				res.writeHead(409, { "Content-Type": "application/json" });
+				res.end(
+					JSON.stringify({
+						detail: {
+							code: "jobs_not_cancelled",
+							message: "job job-settled was not cancelled (status: completed)",
+							session_id: sessionId,
+						},
+					}),
+				);
+				return;
+			}
+			if (jobId === "job-bare") {
+				// A 404 whose JSON carries no `detail`: the placeholder class the
+				// frozen-sentence substitution exists for. (An UNPARSEABLE body
+				// would instead become main's own transport-failure sentence,
+				// which is a different, correct arm — not this one.)
+				res.writeHead(404, { "Content-Type": "application/json" });
+				res.end("{}");
+				return;
+			}
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(
+				JSON.stringify({
+					status: 200,
+					message: "Desktop session result.",
+					result: { job_id: jobId, cancelled: true },
+				}),
+			);
 			return;
 		}
 		res.setHeader("Content-Type", "application/json");
@@ -203,6 +271,106 @@ test("a store-failure envelope crosses this hop with its status, code and senten
 			false,
 			"a classified store failure must not arrive as the transport's generic sentence",
 		);
+	}
+});
+
+test("the jobs cancel op pins its route, and its refusals land on the frozen sentence", async () => {
+	/*
+	 * (a) THE MAPPING, pure: the schema admits the op and refuses a missing or
+	 * extra field, and the endpoint builder emits the POST the landed core
+	 * route (#2207, merge 8f62ad4bacbf) serves — both segments encoded. This
+	 * is the client half of the chain; the server half is pinned by the
+	 * branch's real-path run, whose captured bodies the arms below serve.
+	 */
+	const parsed = desktopRequestSchema.parse({
+		op: "jobs.cancel",
+		sessionId: "0123456789ab",
+		jobId: "a/b c",
+	});
+	assert.deepEqual(rendererDesktopEndpoint(parsed), {
+		path: "/v1/desktop/sessions/0123456789ab/jobs/a%2Fb%20c/cancel",
+		method: "POST",
+	});
+	assert.throws(() =>
+		desktopRequestSchema.parse({
+			op: "jobs.cancel",
+			sessionId: "0123456789ab",
+		}),
+	);
+	assert.throws(() =>
+		desktopRequestSchema.parse({
+			op: "jobs.cancel",
+			sessionId: "0123456789ab",
+			jobId: "job-live",
+			extra: 1,
+		}),
+	);
+
+	/*
+	 * (b)/(c) THE PRESS AND THE REFUSALS, through the renderer's OWN chain:
+	 * desktopResult -> desktopRequest -> window.api.desktop.request (main's
+	 * IPC) -> the real transport -> real loopback HTTP. The window stub is
+	 * the IPC seam, not a mock of the chain: it hands the request to the
+	 * SAME `requestDesktop` the app's main process ships.
+	 */
+	const priorWindow = globalThis.window;
+	globalThis.window = {
+		api: {
+			desktop: {
+				request: async (request) => requestDesktop(request, url, token),
+			},
+		},
+	};
+	try {
+		const receipt = await desktopResult({
+			op: "jobs.cancel",
+			sessionId: "0123456789ab",
+			jobId: "job-live",
+		});
+		assert.deepEqual(receipt, { job_id: "job-live", cancelled: true });
+		const press = seen.at(-1);
+		assert.equal(
+			press.path,
+			"/v1/desktop/sessions/0123456789ab/jobs/job-live/cancel",
+		);
+		assert.equal(press.method, "POST");
+		assert.equal(press.authorization, `Bearer ${token}`);
+		assert.equal(
+			press.body,
+			"",
+			"the press carries no body — main's own composition for this op",
+		);
+
+		const rejection = (jobId) =>
+			desktopResult({
+				op: "jobs.cancel",
+				sessionId: "0123456789ab",
+				jobId,
+			}).then(
+				() => assert.fail(`the ${jobId} refusal must reject`),
+				(error) => error,
+			);
+		/*
+		 * The unknown-job 404 carries the engine's own sentence — the same
+		 * string as the frozen fallback constant, which is exactly the
+		 * agreement the mapping exists to keep; the settled 409 renders the
+		 * tool's sentence verbatim; a 404 with nothing readable in it falls to
+		 * the frozen phrase rather than a generic error.
+		 */
+		const unknown = await rejection("aaaaaaaaaaaa");
+		assert.equal(unknown.code, "jobs_not_found", "the machine code survives");
+		assert.equal(refusalDetail(unknown), JOB_CANCEL_NOT_FOUND_COPY);
+
+		const settled = await rejection("job-settled");
+		assert.equal(
+			refusalDetail(settled),
+			"job job-settled was not cancelled (status: completed)",
+		);
+
+		const bare = await rejection("job-bare");
+		assert.equal(refusalDetail(bare), JOB_CANCEL_NOT_FOUND_COPY);
+	} finally {
+		globalThis.window = priorWindow;
 	}
 });
 

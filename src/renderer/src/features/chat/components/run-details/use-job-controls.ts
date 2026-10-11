@@ -26,42 +26,23 @@
  *
  * ## The refusal sentence
  *
- * `userFacingMessage` resolves the authored sentence (the engine's own words
- * through the refusal envelope) and never a stack-trace fragment. ONE case
- * needs a substitution first: a refused/unknown-job cancel that arrived
- * WITHOUT a sentence is the class the frozen wording map already names
- * (`tools/image_tool.py`'s `not_found`), so the map's phrase is rendered
- * instead of the transport's bare "did not answer" placeholder — the design
- * spec's "the frozen `not_found`-class phrase, never a generic error". An
- * authored sentence always wins over it: surfaces render the engine's words,
- * never a claim of their own.
+ * `refusalDetail` (in `job-controls-model.ts`, where the suite can reach it)
+ * resolves the authored sentence — the engine's own words through the refusal
+ * envelope — and never a stack-trace fragment. Its substitution rule (a
+ * refused/unknown-job cancel that arrived WITHOUT a sentence renders the
+ * frozen map's phrase instead of the transport placeholder) is stated there,
+ * beside the constant it reads.
  */
-import {
-	DESKTOP_REFUSAL_PLACEHOLDER,
-	DesktopControlError,
-	userFacingMessage,
-} from "@shared/api/local-operator/desktop-api";
 import { SessionJobsApi } from "@shared/api/local-operator/session-jobs-api";
 import { resyncCanonicalSession } from "@shared/hooks/use-canonical-session";
 import { useMutation } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
-	JOB_CANCEL_NOT_FOUND_COPY,
 	type JobCancelOutcome,
 	type JobControls,
+	refusalDetail,
 	retryJobWrite,
 } from "./job-controls-model";
-
-/** The sentence for a refused job cancel, per the header's rules. */
-const refusalDetail = (error: unknown): string => {
-	if (
-		error instanceof DesktopControlError &&
-		error.status === 404 &&
-		error.message === DESKTOP_REFUSAL_PLACEHOLDER
-	)
-		return JOB_CANCEL_NOT_FOUND_COPY;
-	return userFacingMessage(error, "Could not cancel the job.");
-};
 
 /**
  * Re-exported so a consumer of this module reads one import for one control:

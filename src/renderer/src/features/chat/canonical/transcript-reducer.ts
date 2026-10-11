@@ -76,11 +76,9 @@ export type TranscriptImage = {
 	 *  which are images by definition; "video"/"audio" ride the same fields
 	 *  and are the surfaces' follow-on (players) — the model already carries
 	 *  them so a player can be added without another wire change. */
-	kind?:
-		| "image"
-		| "video"
-		| "audio" /** Pixel dimensions where known (artifact metadata) — reserved-box sizing
-	 *  before any bytes decode. Null when the artifact did not know them. */;
+	kind?: "image" | "video" | "audio";
+	/** Pixel dimensions where known (artifact metadata) — reserved-box sizing
+	 *  before any bytes decode. Null when the artifact did not know them. */
 	width?: number | null;
 	height?: number | null;
 	/** Decoded byte count where known. */

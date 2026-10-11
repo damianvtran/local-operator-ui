@@ -9056,7 +9056,7 @@ export const STORIES = [
 	 * the blob-backed player has decoded a frame.
 	 */
 	["chat-image-generation--video-queued", 1280, 220],
-	["chat-image-generation--video-running", 1280, 380],
+	["chat-image-generation--video-running", 1280, 540],
 	["chat-image-generation--video-cancelling", 1280, 300],
 	["chat-image-generation--video-done", 1280, 480],
 	["chat-image-generation--video-player-resolving", 640, 300],

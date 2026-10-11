@@ -902,17 +902,54 @@ test("the video stories' embedded MP4 decodes to a real, whole file", async () =
 	const match = source.match(TINY_MP4_LITERAL);
 	assert.ok(match, "the literal is spelled as ONE line");
 	const bytes = Buffer.from(match[1], "base64");
-	// ISO BMFF: a size-prefixed `ftyp` box within the first 64 bytes.
-	const ftyp = bytes.subarray(4, 12).toString("latin1");
-	assert.equal(ftyp, "ftypmp42", "the bytes are an MP4 (ftyp box)");
-	assert.ok(
-		bytes.length > 1000,
-		`the file is whole (got ${bytes.length} bytes)`,
+	/*
+	 * WALK THE TOP-LEVEL BOX CHAIN TO THE EXACT END. The first spelling of
+	 * this pin (`ftyp` present, `>1000` bytes, first box fits) accepted a
+	 * literal truncated mid-file: a cut at, say, 1200 bytes still opens with
+	 * a whole `ftyp`, still clears 1000, and its first box still fits — while
+	 * the last box overruns or the chain stops short (agent review round 1,
+	 * F6). The walk below is the ISO BMFF contract itself: every box opens
+	 * with a 32-bit big-endian size and a four-character type; size 1 defers
+	 * to a 64-bit largesize, size 0 (a final box only) extends to EOF.
+	 */
+	let offset = 0;
+	const boxes = [];
+	while (offset < bytes.length) {
+		assert.ok(
+			offset + 8 <= bytes.length,
+			`box header at ${offset} fits the file`,
+		);
+		const size = bytes.readUInt32BE(offset);
+		const type = bytes.subarray(offset + 4, offset + 8).toString("latin1");
+		if (size === 0) {
+			boxes.push(`${type}:eof`);
+			offset = bytes.length;
+			break;
+		}
+		let end;
+		if (size === 1) {
+			assert.ok(
+				offset + 16 <= bytes.length,
+				`largesize header at ${offset} fits the file`,
+			);
+			end = offset + Number(bytes.readBigUInt64BE(offset + 8));
+		} else {
+			assert.ok(
+				size >= 8,
+				`box ${type} at ${offset} carries a size (got ${size})`,
+			);
+			end = offset + size;
+		}
+		assert.ok(end <= bytes.length, `box ${type} at ${offset} fits the file`);
+		boxes.push(type);
+		offset = end;
+	}
+	assert.equal(
+		offset,
+		bytes.length,
+		"the box chain ends exactly at the file's end",
 	);
-	// The box tree must span the file: a truncated literal fails here.
-	const declared = bytes.readUInt32BE(0);
-	assert.ok(
-		declared > 0 && declared < bytes.length,
-		"the first box fits inside the file",
-	);
+	assert.equal(boxes[0], "ftyp", "the bytes open with an ftyp box");
+	assert.ok(boxes.includes("moov"), "the movie box is present");
+	assert.ok(boxes.includes("mdat"), "the media payload is present");
 });
