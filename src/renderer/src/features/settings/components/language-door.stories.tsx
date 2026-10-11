@@ -226,7 +226,9 @@ export const DialogOpen: Story = { render: () => <Ground /> };
 /**
  * The same dialog after a REAL save: pick `en` in the portalled listbox with
  * the rig's pointer, press Save, and the frame carries the in-place
- * confirmation (`Saved`) with the note moved by the capabilities answer.
+ * confirmation (`Saved`). The note beside it is rendered from the store -
+ * the story's stub answers `en` throughout, so the note reading `en` is the
+ * store's value, not a change this story performs.
  */
 export const DialogSaved: Story = {
 	render: () => <DrivenSave />,

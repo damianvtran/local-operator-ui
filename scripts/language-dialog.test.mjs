@@ -72,6 +72,24 @@ after(() => {
 });
 
 const apiCalls = [];
+/* Mutable, so a case can move the server's value the way a refetch would. */
+const settingsPayload = () =>
+	JSON.parse(
+		readFileSync(
+			"scripts/fixtures/backend-settings-registry-configured.json",
+			"utf8",
+		),
+	);
+const setServerLanguageValue = (value) => {
+	const payload = settingsPayload();
+	const row = payload.settings.find((s) => s.key === "language");
+	row.value = value;
+	const client = lastClient;
+	if (client) {
+		client.setQueryData(["desktop", "settings"], payload);
+	}
+};
+let lastClient = null;
 let capabilitiesLanguage = "en";
 const setCapabilitiesLanguage = (language) => {
 	capabilitiesLanguage = language;
@@ -93,17 +111,7 @@ globalThis.window.api = {
 				};
 			}
 			if (request?.op === "settings.list") {
-				return {
-					status: 200,
-					body: {
-						result: JSON.parse(
-							readFileSync(
-								"scripts/fixtures/backend-settings-registry-configured.json",
-								"utf8",
-							),
-						),
-					},
-				};
+				return { status: 200, body: { result: settingsPayload() } };
 			}
 			return { status: 200, body: { result: {} } };
 		},
@@ -216,6 +224,7 @@ const mount = async (t) => {
 			),
 		);
 	});
+	lastClient = client;
 	return { client };
 };
 
@@ -245,6 +254,61 @@ test(
 		const saveButton = document.querySelector("[data-language-save]");
 		assert.ok(saveButton, "the save button must render");
 		assert.ok(saveButton.disabled, "Save must be disabled while clean");
+	},
+);
+
+test(
+	"a prior open plus an external change refuses to become a phantom draft",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		await mount(t);
+		await settle(() => currentLocale() === "en", "the store must be seeded");
+		const triggerText = () =>
+			document.querySelector('[role="combobox"]')?.textContent ?? "";
+		const saveButton = () => document.querySelector("[data-language-save]");
+
+		// First open: seeds the server's value and Save stays clean.
+		await act(async () => {
+			useLanguageDialogStore.getState().openLanguage();
+		});
+		await settle(() => triggerText().includes("auto"), "first seed");
+		assert.ok(saveButton().disabled, "clean after the first seed");
+
+		/*
+		 * Close, then the server moves (a refetch would land this value). The
+		 * values move WITHIN the shipped space - `auto` and `en` are the two
+		 * choices the wire serves today, and a value outside a select's items
+		 * renders blank, which is the value space's rule rather than this
+		 * case's.
+		 */
+		await act(async () => {
+			useLanguageDialogStore.getState().closeLanguage();
+		});
+		await act(async () => {
+			setServerLanguageValue("en");
+		});
+
+		/*
+		 * Re-open: the draft must reset to the NEW server value, with Save
+		 * clean - a stale `auto` kept from the prior open would be a phantom
+		 * dirty edit whose Save writes the old value back over the external
+		 * change (round 1, R1-2).
+		 */
+		await act(async () => {
+			useLanguageDialogStore.getState().openLanguage();
+		});
+		await settle(() => triggerText().includes("en"), "re-seed to en");
+		assert.ok(
+			saveButton().disabled,
+			"no phantom dirty draft after an external change",
+		);
+
+		// And while OPEN and clean, the draft follows the server again.
+		await act(async () => {
+			setServerLanguageValue("auto");
+		});
+		await settle(() => triggerText().includes("auto"), "follow while open");
+		assert.ok(saveButton().disabled, "still clean after the follow");
 	},
 );
 
