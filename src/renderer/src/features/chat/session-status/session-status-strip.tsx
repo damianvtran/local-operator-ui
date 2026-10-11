@@ -463,8 +463,8 @@ export const FAST_MODE_ON_NOTE = "Fast mode on";
 const CHANNEL_TOOLTIP_WIDTH = "max-w-[22rem]";
 
 /**
- * The channel variant of the spend tooltip: a two-column grid, one row per
- * published record.
+ * The channel variant of the spend tooltip: the published breakdown, then the
+ * per-record rows.
  *
  * WHY ITS OWN BODY rather than `TooltipLines`: the flat-line form mushed four
  * registers — machine figure, prose, the by-basis composition and the rows —
@@ -473,6 +473,28 @@ const CHANNEL_TOOLTIP_WIDTH = "max-w-[22rem]";
  * name left, its money right-aligned mono so a column of money can be scanned,
  * the basis word dropping to a dim second line where it reads as a qualifier
  * rather than as part of the name (design round 1, D3/D10).
+ *
+ * The order is the design's (§7.1): figure, sentence, the COMPACT by-agent
+ * block (parent vs subagents — the two-view crossing the old body could not
+ * show), a hairline rule, the by-source rows with each entry's own basis
+ * markers, the explanatory note lines, the composition summary, and the
+ * per-record rows last, unchanged. The rule is the visible carrier of "two
+ * views, never added together" (design round 1, D1); see its own comment.
+ * The two blocks are two views of ONE total, never added
+ * together, and the entries are listed in the backend's published order —
+ * this body sorts nothing.
+ *
+ * An object without a breakdown renders EXACTLY the body this component had
+ * before the section existed: every new block is empty for it, and its plan
+ * gloss (which the vocabulary's note replaces on the new path) still renders
+ * in its old place under the sentence. That byte-identical legacy path is the
+ * fallback matrix's first row — old producers keep their rendering until they
+ * are upgraded, in either direction.
+ *
+ * The by-agent block is deliberately the compact one: label and money, no
+ * marker line, because its two entries are a summary of the split (the same
+ * money carries its markers on the source rows, where the categories live).
+ * The design round may ask for markers here; the data already carries them.
  */
 const ChannelTooltipBody: FC<{
 	cost: SessionCost;
@@ -486,8 +508,82 @@ const ChannelTooltipBody: FC<{
 			{breakdown.planClause && (
 				<span className="text-ink-muted">{breakdown.planClause}</span>
 			)}
+			{/*
+			 * The agent split (parent vs subagents): one line per entry, no
+			 * marker line — see the compact-block note above.
+			 */}
+			{breakdown.byAgent.length > 0 && (
+				<span className="mt-1 flex flex-col gap-1">
+					{breakdown.byAgent.map((entry, index) => (
+						<span
+							key={`${index}:${entry.channel}`}
+							className="flex items-baseline justify-between gap-3"
+						>
+							<span className="min-w-0">{entry.name}</span>
+							<span className="shrink-0 font-mono text-mono-sm">
+								{entry.amount}
+							</span>
+						</span>
+					))}
+				</span>
+			)}
+			{/*
+			 * The two partitions are two VIEWS of one total, never summands — and
+			 * both reconcile to the head figure on their own, so a reader who adds
+			 * every row gets twice the total. §4.7's "do not add them together"
+			 * needs an on-screen carrier (design round 1, D1): this hairline is
+			 * it, decorative rather than a control boundary (branding § hairline
+			 * vs border-control) and hidden from the accessibility tree, where the
+			 * two lists' own entries carry the meaning instead. The flex gap plus
+			 * the rule's own margin gives it air on both sides; the boundary reads
+			 * ~20 px against the 13 px entry rhythm. Rendered only when both lists
+			 * are present — a rule between a list and nothing is furniture.
+			 */}
+			{breakdown.byAgent.length > 0 && breakdown.bySource.length > 0 && (
+				<span aria-hidden="true" className="mt-1 border-t border-hairline" />
+			)}
+			{/*
+			 * The by-source entries: the published rows' own grid, each with its
+			 * entry-level basis markers on the dim second line — the per-entry
+			 * basis honesty this section exists for.
+			 */}
+			{breakdown.bySource.length > 0 && (
+				<span className="mt-1 flex flex-col gap-1.5">
+					{breakdown.bySource.map((entry, index) => (
+						<span key={`${index}:${entry.channel}`} className="flex flex-col">
+							<span className="flex items-baseline justify-between gap-3">
+								<span className="min-w-0">{entry.name}</span>
+								<span className="shrink-0 font-mono text-mono-sm">
+									{entry.amount}
+								</span>
+							</span>
+							{entry.markers && (
+								<span className="text-ink-dim text-meta-sm">
+									{entry.markers}
+								</span>
+							)}
+						</span>
+					))}
+				</span>
+			)}
+			{/*
+			 * The explanatory notes: core's own sentence(s), rendered when (and
+			 * only when) money under a noted basis is present. A paygo-only
+			 * session renders none — the pass an API-key user must get.
+			 */}
+			{breakdown.notes.map((note, index) => (
+				<span key={`${index}:${note}`} className="text-ink-muted">
+					{note}
+				</span>
+			))}
+			{/*
+			 * The composition gets its own step (design round 1, D2): at the flex
+			 * gap alone the note above and this line read as one 5-line muted
+			 * paragraph, and the subscription caveat read as the composition's
+			 * opening clause rather than its own statement.
+			 */}
 			{breakdown.summary && (
-				<span className="text-ink-muted">{breakdown.summary}</span>
+				<span className="mt-1 text-ink-muted">{breakdown.summary}</span>
 			)}
 			{/*
 			 * The rows are their own group, spaced off the prose above so the
