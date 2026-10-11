@@ -1269,17 +1269,24 @@ export const CommandsOff: Story = {
  * photograph the frozen wire, not a plausible-looking idea of it, and a story
  * that imported the file across the scripts/src boundary would be the only
  * one in this set to do so.
+ *
+ * Re-cut for the breakdown round: the fixture is now a session WITH subagents
+ * (`children.total_micro` 520 000 — one relayed child record included), and it
+ * carries the ADDITIVE `breakdown` (both partitions reconciling to the 1.536
+ * total) and `vocabulary` sections. The tooltip frame here is therefore the
+ * design's state 1 + 4 at once: multi-category with subagents, and the one
+ * subscription basis whose marker and note must render.
  */
 const SPEND_CHANNELS: CanonicalSpendChannels = {
 	version: 1,
 	tracked: true,
-	total_micro: 1_016_000,
+	total_micro: 1_536_000,
 	knowledge: "partial",
 	by_basis: {
 		billed: 53_000,
 		subscription_api_equivalent: 53_000,
 		estimated: 10_000,
-		not_tracked_micro: 900_000,
+		not_tracked_micro: 1_420_000,
 		not_tracked_calls: 1,
 	},
 	rows: [
@@ -1346,7 +1353,93 @@ const SPEND_CHANNELS: CanonicalSpendChannels = {
 			price_versions: ["client-search-table-2026-09"],
 		},
 	],
-	children: { total_micro: 0, knowledge: "exact" },
+	children: { total_micro: 520_000, knowledge: "exact" },
+	breakdown: {
+		by_agent: [
+			{
+				id: "parent",
+				label: "Parent agent",
+				amount_micro: 1_016_000,
+				knowledge: "partial",
+				unstated_records: 1,
+				bases: [
+					"billed",
+					"estimated",
+					"not_tracked",
+					"subscription_api_equivalent",
+				],
+			},
+			{
+				id: "subagents",
+				label: "Subagents",
+				amount_micro: 520_000,
+				knowledge: "exact",
+				unstated_records: 0,
+				bases: ["billed", "not_tracked"],
+			},
+		],
+		by_source: [
+			{
+				id: "inference",
+				label: "Inference",
+				amount_micro: 1_400_000,
+				knowledge: "exact",
+				unstated_records: 0,
+				bases: ["not_tracked"],
+			},
+			{
+				id: "image",
+				label: "Image",
+				amount_micro: 126_000,
+				knowledge: "partial",
+				unstated_records: 1,
+				bases: ["billed", "subscription_api_equivalent"],
+			},
+			{
+				id: "search",
+				label: "Search",
+				amount_micro: 8_000,
+				knowledge: "exact",
+				unstated_records: 0,
+				bases: ["estimated"],
+			},
+			{
+				id: "read",
+				label: "Read",
+				amount_micro: 2_000,
+				knowledge: "exact",
+				unstated_records: 0,
+				bases: ["estimated"],
+			},
+		],
+	},
+	vocabulary: {
+		channels: {
+			inference: { label: "Inference" },
+			image: { label: "Image" },
+			search: { label: "Search" },
+			read: { label: "Read" },
+		},
+		bases: {
+			billed: { label: "billed", source_class: "paygo", marker: "billed" },
+			subscription_api_equivalent: {
+				label: "API-equivalent",
+				source_class: "subscription",
+				marker: "API-equivalent · subscription",
+				note: "You're on a subscription, so API-equivalent amounts are list-price equivalents — not what you are charged.",
+			},
+			estimated: {
+				label: "estimated",
+				source_class: "paygo",
+				marker: "estimated",
+			},
+			not_tracked: {
+				label: "not tracked",
+				source_class: "unknown",
+				marker: "not tracked",
+			},
+		},
+	},
 };
 
 /**
@@ -1388,6 +1481,44 @@ const CHANNELS_UNTRACKED: CanonicalSpendChannels = {
 		},
 	],
 	children: { total_micro: 0, knowledge: "exact" },
+	/*
+	 * The new sections on an untracked object: the inference entry only (the
+	 * placeholder), and the vocabulary core would publish for it — `not_tracked`
+	 * carries `source_class: "unknown"` and NO note, so nothing in this state
+	 * can render as a subscription claim (§6.4).
+	 */
+	breakdown: {
+		by_agent: [
+			{
+				id: "parent",
+				label: "Parent agent",
+				amount_micro: 900_000,
+				knowledge: "exact",
+				unstated_records: 0,
+				bases: ["not_tracked"],
+			},
+		],
+		by_source: [
+			{
+				id: "inference",
+				label: "Inference",
+				amount_micro: 900_000,
+				knowledge: "exact",
+				unstated_records: 0,
+				bases: ["not_tracked"],
+			},
+		],
+	},
+	vocabulary: {
+		channels: { inference: { label: "Inference" } },
+		bases: {
+			not_tracked: {
+				label: "not tracked",
+				source_class: "unknown",
+				marker: "not tracked",
+			},
+		},
+	},
 };
 
 /**
@@ -1505,8 +1636,9 @@ export const ChannelsTooltip: Story = {
 				/>
 			</Frame>
 			<p className="px-6 pt-2 text-ink-dim text-meta">
-				Channels tooltip: the published total, the plan gloss, the composition
-				line and every channel row in the money column.
+				Channels tooltip: the published total, the two agent entries, the
+				by-source entries with their own markers, the subscription note, the
+				composition line and every channel row in the money column.
 			</p>
 		</div>
 	),
@@ -1578,6 +1710,370 @@ export const ChannelsDroppedRow: Story = {
 				Dropped row: one malformed row is filtered by every reader, so the
 				breakdown lists none; the panel says "could not be read" rather than "no
 				rows" under the nonzero total.
+			</p>
+		</div>
+	),
+};
+
+/**
+ * One category besides inference: images only, both bases on one row set.
+ *
+ * The design's §10.3 state 2 — a session whose money sits in ONE channel —
+ * proves the by-source list stays a list (one entry, its own markers) and that
+ * nothing in the body invents a second category to balance the first. No
+ * inference entry: a local model billed nothing and made no calls, so no entry
+ * is emitted for it (the no-fabricated-zeros rule on the entry axis).
+ */
+const CHANNELS_SINGLE_CATEGORY: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 106_000,
+	knowledge: "exact",
+	by_basis: {
+		billed: 53_000,
+		subscription_api_equivalent: 53_000,
+		estimated: 0,
+	},
+	rows: [
+		{
+			channel: "image",
+			provider: "openai-sub",
+			model: "gpt-image-2",
+			label: "",
+			units: 1,
+			unit: "images",
+			amount_micro: 53_000,
+			knowledge: "exact",
+			basis: ["subscription_api_equivalent"],
+			price_versions: [
+				"OpenAI image-generation pricing (gpt-image-2, 1024x1024 medium, 2026-10-09)",
+			],
+		},
+		{
+			channel: "image",
+			provider: "radient",
+			model: "gpt-image-2",
+			label: "",
+			units: 3,
+			unit: "images",
+			amount_micro: 53_000,
+			knowledge: "exact",
+			basis: ["billed"],
+			price_versions: ["Radient GET /tools/media/status cost_usd"],
+		},
+	],
+	children: { total_micro: 0, knowledge: "exact" },
+	breakdown: {
+		by_agent: [
+			{
+				id: "parent",
+				label: "Parent agent",
+				amount_micro: 106_000,
+				knowledge: "exact",
+				unstated_records: 0,
+				bases: ["billed", "subscription_api_equivalent"],
+			},
+		],
+		by_source: [
+			{
+				id: "image",
+				label: "Image",
+				amount_micro: 106_000,
+				knowledge: "exact",
+				unstated_records: 0,
+				bases: ["billed", "subscription_api_equivalent"],
+			},
+		],
+	},
+	vocabulary: {
+		channels: { image: { label: "Image" } },
+		bases: {
+			billed: { label: "billed", source_class: "paygo", marker: "billed" },
+			subscription_api_equivalent: {
+				label: "API-equivalent",
+				source_class: "subscription",
+				marker: "API-equivalent · subscription",
+				note: "You're on a subscription, so API-equivalent amounts are list-price equivalents — not what you are charged.",
+			},
+		},
+	},
+};
+
+/** The design's §10.3 state 2: one category, one entry, no invented second. */
+export const ChannelsSingleCategory: Story = {
+	render: () => (
+		<div className="flex min-h-[560px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend
+					override={{
+						spend_channels: CHANNELS_SINGLE_CATEGORY,
+						cumulative_parent_cost: 0.106,
+					}}
+				/>
+			</Frame>
+			<p className="px-6 pt-2 text-ink-dim text-meta">
+				Single category: images only — one entry in the source list, its own two
+				markers, and no row fabricated for a category that spent nothing.
+			</p>
+		</div>
+	),
+};
+
+/**
+ * Paygo-only money: billed and estimated, NO note and no subscription word.
+ *
+ * The design's §10.3 state 5 — the pass an API-key user must get. The
+ * vocabulary still carries the subscription meta (it is the published
+ * vocabulary for the session), so the ABSENCE of its sentence is the money's
+ * doing, which is exactly the rule under test: a note renders only when
+ * its basis carries money.
+ */
+const CHANNELS_PAYGO_ONLY: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 63_000,
+	knowledge: "exact",
+	by_basis: {
+		billed: 53_000,
+		subscription_api_equivalent: 0,
+		estimated: 10_000,
+		not_tracked_calls: 1,
+	},
+	rows: [
+		{
+			channel: "image",
+			provider: "radient",
+			model: "gpt-image-2",
+			label: "",
+			units: 3,
+			unit: "images",
+			amount_micro: 53_000,
+			knowledge: "exact",
+			basis: ["billed", "not_tracked"],
+			price_versions: ["Radient GET /tools/media/status cost_usd"],
+		},
+		{
+			channel: "search",
+			provider: "tavily",
+			model: "",
+			label: "",
+			units: 1,
+			unit: "searches",
+			amount_micro: 8_000,
+			knowledge: "exact",
+			basis: ["estimated"],
+			price_versions: ["client-search-table-2026-09"],
+		},
+		{
+			channel: "read",
+			provider: "deepseek:read",
+			model: "",
+			label: "",
+			units: 1,
+			unit: "reads",
+			amount_micro: 2_000,
+			knowledge: "exact",
+			basis: ["estimated"],
+			price_versions: ["client-search-table-2026-09"],
+		},
+	],
+	children: { total_micro: 0, knowledge: "exact" },
+	breakdown: {
+		by_agent: [
+			{
+				id: "parent",
+				label: "Parent agent",
+				amount_micro: 63_000,
+				knowledge: "exact",
+				unstated_records: 0,
+				bases: ["billed", "estimated", "not_tracked"],
+			},
+		],
+		by_source: [
+			{
+				id: "image",
+				label: "Image",
+				amount_micro: 53_000,
+				knowledge: "exact",
+				unstated_records: 0,
+				bases: ["billed", "not_tracked"],
+			},
+			{
+				id: "search",
+				label: "Search",
+				amount_micro: 8_000,
+				knowledge: "exact",
+				unstated_records: 0,
+				bases: ["estimated"],
+			},
+			{
+				id: "read",
+				label: "Read",
+				amount_micro: 2_000,
+				knowledge: "exact",
+				unstated_records: 0,
+				bases: ["estimated"],
+			},
+		],
+	},
+	vocabulary: {
+		channels: {
+			image: { label: "Image" },
+			search: { label: "Search" },
+			read: { label: "Read" },
+		},
+		bases: {
+			billed: { label: "billed", source_class: "paygo", marker: "billed" },
+			subscription_api_equivalent: {
+				label: "API-equivalent",
+				source_class: "subscription",
+				marker: "API-equivalent · subscription",
+				note: "You're on a subscription, so API-equivalent amounts are list-price equivalents — not what you are charged.",
+			},
+			estimated: {
+				label: "estimated",
+				source_class: "paygo",
+				marker: "estimated",
+			},
+			not_tracked: {
+				label: "not tracked",
+				source_class: "unknown",
+				marker: "not tracked",
+			},
+		},
+	},
+};
+
+/** The design's §10.3 state 5: paygo money renders markers and no note. */
+export const ChannelsPaygoOnly: Story = {
+	render: () => (
+		<div className="flex min-h-[560px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend
+					override={{
+						spend_channels: CHANNELS_PAYGO_ONLY,
+						cumulative_parent_cost: 0.063,
+					}}
+				/>
+			</Frame>
+			<p className="px-6 pt-2 text-ink-dim text-meta">
+				Paygo only: billed and estimated markers, and nothing about a plan — no
+				note renders because no noted basis carries money.
+			</p>
+		</div>
+	),
+};
+
+/**
+ * The legacy object, in the frame: no `breakdown`, no `vocabulary`.
+ *
+ * The design's §10.3 state 7 — an old producer's object on the new build. This
+ * is the pre-round fixture (total 1.016, children 0) verbatim, because that is
+ * what an old server publishes; the frame must show TODAY's body: the plan
+ * gloss, the composition line and the rows, with no agent block, no source
+ * list and no note — the fallback matrix's first row, measured rather than
+ * asserted.
+ */
+const CHANNELS_LEGACY: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 1_016_000,
+	knowledge: "partial",
+	by_basis: {
+		billed: 53_000,
+		subscription_api_equivalent: 53_000,
+		estimated: 10_000,
+		not_tracked_micro: 900_000,
+		not_tracked_calls: 1,
+	},
+	rows: SPEND_CHANNELS.rows,
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+/** The design's §10.3 state 7: an old producer's object keeps today's body. */
+export const ChannelsLegacyBody: Story = {
+	render: () => (
+		<div className="flex min-h-[560px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend
+					override={{
+						spend_channels: CHANNELS_LEGACY,
+						cumulative_parent_cost: 0.9,
+					}}
+				/>
+			</Frame>
+			<p className="px-6 pt-2 text-ink-dim text-meta">
+				Legacy object: no breakdown and no vocabulary — the plan gloss, the
+				composition line and the rows, exactly the body an old server gets.
+			</p>
+		</div>
+	),
+};
+
+/**
+ * A malformed breakdown section: entries the reader drops, body standing.
+ *
+ * The design's §10.3 state 8 — a `null` entry, one missing its label, one
+ * missing both keys. Each is dropped from its list (an entry whose name
+ * cannot be printed must not render nameless), and everything else — the
+ * entries that ARE whole, the note, the composition and the rows — is
+ * untouched. The dropped entries carry money nowhere: the body must not
+ * disappear because one wire object was cut wrong.
+ */
+const CHANNELS_MALFORMED_BREAKDOWN: CanonicalSpendChannels = {
+	...SPEND_CHANNELS,
+	/*
+	 * The payload a wire break produces, cast the way `CHANNELS_DROPPED_ROW`
+	 * casts a null row: the type IS the contract's shape, and this frame exists
+	 * to photograph what a reader does with something that is not it.
+	 */
+	breakdown: {
+		by_agent: [
+			null,
+			{ id: "parent" },
+			{
+				id: "subagents",
+				label: "Subagents",
+				amount_micro: 520_000,
+				knowledge: "exact",
+				unstated_records: 0,
+				bases: ["billed", "not_tracked"],
+			},
+		] as unknown as NonNullable<
+			CanonicalSpendChannels["breakdown"]
+		>["by_agent"],
+		by_source: [
+			{
+				id: "image",
+				label: "Image",
+				amount_micro: 126_000,
+				knowledge: "partial",
+				unstated_records: 1,
+				bases: ["billed", "subscription_api_equivalent"],
+			},
+			{},
+		] as unknown as NonNullable<
+			CanonicalSpendChannels["breakdown"]
+		>["by_source"],
+	},
+};
+
+/** The design's §10.3 state 8: malformed entries drop, the body stands. */
+export const ChannelsMalformedBreakdown: Story = {
+	render: () => (
+		<div className="flex min-h-[640px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend
+					override={{
+						spend_channels: CHANNELS_MALFORMED_BREAKDOWN,
+						cumulative_parent_cost: 0.9,
+					}}
+				/>
+			</Frame>
+			<p className="px-6 pt-2 text-ink-dim text-meta">
+				Malformed breakdown: three entries every reader drops, and the whole
+				body standing beside them — the remaining entries, the note and the
+				rows.
 			</p>
 		</div>
 	),
