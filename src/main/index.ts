@@ -260,7 +260,7 @@ for (const problem of windowLaunch.problems) {
  * lands in that window can leave that work behind. The owned backend this repo
  * actually runs (the `serve` child) is registered long before a harness drives
  * the window, which is why 10 s is chosen deliberately over the app's own
- * `QUIT_CLEANUP_FAILSAFE_MS` (~34 s): a launcher-gone run is a run nobody is
+ * `QUIT_CLEANUP_FAILSAFE_MS` (115 s, the sum of the bounds above): a launcher-gone run is a run nobody is
  * watching, and the cost of waiting is another instance of exactly the kind this
  * module exists to remove. An escalated exit is still status 0 — it is a run
  * ending because its way of being watched went away, not a failure — so a

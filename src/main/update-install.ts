@@ -121,8 +121,11 @@ export const WATCHDOG_HARD_TIMEOUT_SECONDS = 1800;
  * day), so the notice cannot precede a normal quit's own log lines, and it is a
  * quarter of the installer's first grace (`INSTALLER_FIRST_GRACE_SECONDS`), so
  * the person still has the whole grace to act before the escalator signals the
- * app. The copy names the phase and the elapsed wait; the notice is one of the
- * message SET - the fallback hint follows at the bound below.
+ * app. The copy names the phase, the elapsed wait, and that no action is owed
+ * yet (round-1 UX U3: for a person who cannot see a window, "close" names no
+ * gesture they can perform, and the first actionable sentence otherwise arrives
+ * 145 s later - the escalator owns the stuck case from here); the notice is one
+ * of the message SET - the fallback hint follows at the bound below.
  */
 export const WATCHDOG_APP_WAIT_NOTICE_SECONDS = 15;
 
@@ -136,9 +139,13 @@ export const WATCHDOG_APP_WAIT_NOTICE_SECONDS = 15;
  * "escalation failed" case the message set has to cover, not a slow moment. A
  * change to either grace moves this bound with it. It is also far inside
  * `WATCHDOG_TIMEOUT_SECONDS`, so the hint arrives while the wait still has a
- * future rather than at its edge. The copy is the operator's own resolution of
- * the incident, verbatim: quitting the app completely is what let ShipIt exec
- * by hand at 00:19:56.
+ * future rather than at its edge. THE COPY DOES NOT SAY "AND REOPEN" (round-1
+ * UX U1): reopening is the gesture this product's own copy says cancels an
+ * install (`installInFlightPayload`, the stay-closed notice), and the incident
+ * was resolved by quitting alone - the operator `kill -TERM`'d the pid and
+ * ShipIt exec'd 0.4 s later. It names the strongest affordance for a windowless
+ * instance instead (round-1 UX U2): Force Quit works when the quit path itself
+ * is what is wedged; a Dock quit routes through that same path.
  */
 export const WATCHDOG_APP_WAIT_FALLBACK_SECONDS =
 	2 * (INSTALLER_FIRST_GRACE_SECONDS + INSTALLER_SECOND_GRACE_SECONDS);
@@ -2938,12 +2945,18 @@ app_running() { kill -0 "$APP_PID" 2>/dev/null; }
 # from the marker's startedAt, which is written before the quit and would need a
 # new seam through two collaborators for a difference of seconds.
 started=$(now)
-# "waiting 15 s" / "waiting 2 min 30 s": elapsed in the units a person reads.
+# "waiting 15 s" / "waiting 2 min 30 s": elapsed in the units a person reads,
+# with the seconds term dropped at an exact minute ("waiting 30 min") - "30 min
+# 0 s" reads like a clock fault rather than a wait (round-1 D2).
 elapsed_text() {
 	_seconds=$(( $(now) - started ))
 	if [ "$_seconds" -lt 0 ]; then _seconds=0; fi
 	if [ "$_seconds" -ge 60 ]; then
-		printf '%d min %d s' "$((_seconds / 60))" "$((_seconds % 60))"
+		if [ $((_seconds % 60)) -eq 0 ]; then
+			printf '%d min' "$((_seconds / 60))"
+		else
+			printf '%d min %d s' "$((_seconds / 60))" "$((_seconds % 60))"
+		fi
 	else
 		printf '%d s' "$_seconds"
 	fi
@@ -3192,11 +3205,11 @@ while app_running; do
 	_waited=$(( $(now) - started ))
 	if [ "$app_wait_notice" -eq 0 ] && [ "$_waited" -ge ${appWaitNoticeSeconds} ]; then
 		app_wait_notice=1
-		notify "Waiting for Local Operator to close so the update can install (waiting $(elapsed_text))."
+		notify "Waiting for Local Operator to close so the update can install (waiting $(elapsed_text)). No action is needed yet."
 	fi
 	if [ "$app_wait_fallback" -eq 0 ] && [ "$_waited" -ge ${appWaitFallbackSeconds} ]; then
 		app_wait_fallback=1
-		notify "The update is still waiting for Local Operator to close (waiting $(elapsed_text)). If nothing happens, quit Local Operator completely and reopen."
+		notify "The update is still waiting for Local Operator to close (waiting $(elapsed_text)). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself."
 	fi
 	sleep ${intervalSeconds}
 done
@@ -3272,7 +3285,16 @@ while :; do
 	if [ "$(now)" -ge "$deadline" ]; then
 		if [ "$signal_known" -eq 1 ] && install_live; then
 			holding=1
-			notify "The update is still installing. Keep Local Operator closed; it will open again when the install finishes."
+			# THE SOFT BOUND BRANCHES TOO (round-1 UX U4): it fires while the app
+			# may still be RUNNING, where "keep it closed" describes a state the
+			# person is not in. App running -> the wait/fallback copy with a fresh
+			# elapsed reading; app gone -> the stay-closed copy, which is true there
+			# (an install this app spawned is live and the swap still needs quiet).
+			if app_running; then
+				notify "The update is still waiting for Local Operator to close (waiting $(elapsed_text)). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself."
+			else
+				notify "The update is still installing. Keep Local Operator closed; it will open again when the install finishes."
+			fi
 		fi
 		break
 	fi
@@ -3310,7 +3332,7 @@ if [ "$holding" -eq 1 ]; then
 			# the wait's own notices use; the app-gone arm keeps the notice the
 			# panel's copy expects (UX U10).
 			if app_running; then
-				notify "The update is still waiting for Local Operator to close (waiting $(elapsed_text)). If nothing happens, quit Local Operator completely and reopen."
+				notify "The update is still waiting for Local Operator to close (waiting $(elapsed_text)). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself."
 			else
 				notify "The update is taking longer than expected. Local Operator is opening again so you are not left without it — if it says the update is still installing, quit it and leave it closed until the install finishes."
 			fi

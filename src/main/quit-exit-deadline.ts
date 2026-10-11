@@ -59,11 +59,13 @@ import { SESSION_COOKIE_QUIT_BUDGET_MS } from "./browser/session-cookie-quit-hol
  *
  * The deadline must not fire inside a step that is legitimately at its own
  * bound: the session-cookie hold gets `SESSION_COOKIE_QUIT_BUDGET_MS`, and the
- * owned cleanup gets `QUIT_CLEANUP_FAILSAFE_MS` twice over (once for
- * `before-quit`'s stop, once for `will-quit`'s). The sum below is the shape the
- * will-quit failsafe already uses: a term per bounded wait plus a margin so the
- * two cannot land in the same millisecond. 5 s matches `QUIT_FAILSAFE_MARGIN_MS`
- * for the same reason it exists there.
+ * owned cleanup gets ONE `QUIT_CLEANUP_FAILSAFE_MS` - the one cleanup
+ * application, reached from two sites (`before-quit`'s stop and `will-quit`'s;
+ * `backend-service.ts` memoises the generation's stop, so the second caller
+ * awaits the first application rather than starting another). The sum below is
+ * the shape the will-quit failsafe already uses: a term per bounded wait plus a
+ * margin so the two cannot land in the same millisecond. 5 s matches
+ * `QUIT_FAILSAFE_MARGIN_MS` for the same reason it exists there.
  */
 export const QUIT_EXIT_DEADLINE_MARGIN_MS = 5_000;
 
@@ -74,7 +76,8 @@ export const QUIT_EXIT_DEADLINE_MARGIN_MS = 5_000;
  * TERMS: the session-cookie hold (`SESSION_COOKIE_QUIT_BUDGET_MS`), and the
  * quit's own cleanup failsafe (`QUIT_CLEANUP_FAILSAFE_MS`, passed in because its
  * terms live in `index.ts` next to the handler that owns them), plus the margin
- * above. On the incident build those terms resolve to ~116.5 s:
+ * above. On the incident build those terms resolve to 121 500 ms (116 500 ms of
+ * waits plus the margin):
  *
  *   1_500 + (38_000 + 63_000 + 8_000 + 1_000 + 5_000) + 5_000 = 121_500 ms.
  *

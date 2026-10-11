@@ -1926,13 +1926,19 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	);
 	assert.match(plan.script, /^started=\$\(now\)$/m);
 	assert.match(plan.script, /elapsed_text\(\) \{\n\t_seconds=/);
+	// Round-1 D2: an exact-minute reading drops the seconds term, so a wait is
+	// never printed as "30 min 0 s" (which reads like a clock fault).
 	assert.match(
 		plan.script,
-		/\$app_wait_notice" -eq 0 \] && \[ "\$_waited" -ge 15 \]; then\n\t\tapp_wait_notice=1\n\t\tnotify "Waiting for Local Operator to close so the update can install \(waiting \$\(elapsed_text\)\)\."/,
+		/\t\tif \[ \$\(\(_seconds % 60\)\) -eq 0 \]; then\n\t\t\tprintf '%d min' "\$\(\(_seconds \/ 60\)\)"/,
 	);
 	assert.match(
 		plan.script,
-		/\$app_wait_fallback" -eq 0 \] && \[ "\$_waited" -ge 160 \]; then\n\t\tapp_wait_fallback=1\n\t\tnotify "The update is still waiting for Local Operator to close \(waiting \$\(elapsed_text\)\)\. If nothing happens, quit Local Operator completely and reopen\."/,
+		/\$app_wait_notice" -eq 0 \] && \[ "\$_waited" -ge 15 \]; then\n\t\tapp_wait_notice=1\n\t\tnotify "Waiting for Local Operator to close so the update can install \(waiting \$\(elapsed_text\)\)\. No action is needed yet\."/,
+	);
+	assert.match(
+		plan.script,
+		/\$app_wait_fallback" -eq 0 \] && \[ "\$_waited" -ge 160 \]; then\n\t\tapp_wait_fallback=1\n\t\tnotify "The update is still waiting for Local Operator to close \(waiting \$\(elapsed_text\)\)\. If nothing happens, quit Local Operator \(Force Quit if it does not respond\) and leave it closed until it opens again by itself\."/,
 	);
 	/*
 	 * The hard bound's notice tells the truth on BOTH arms (2026-10-11): the arm
@@ -1950,8 +1956,17 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	// The hold is keyed on `install_live`, which is the installer's own pid for an
 	// install this app started itself and `shipit_loaded` for one Squirrel
 	// submitted - and NOT on the job when there is a pid, because this machine
-	// keeps the job registered long after a successful install.
-	assert.match(plan.script, /&& install_live; then\n\t\t\tholding=1/);
+	// keeps the job registered long after a successful install. THE SOFT BOUND'S
+	// NOTICE BRANCHES ON THE APP'S STATE (round-1 UX U4): app running -> the
+	// wait/fallback copy, app gone -> the stay-closed copy.
+	assert.match(
+		plan.script,
+		/&& install_live; then\n\t\t\tholding=1\n(?:\t\t\t# [^\n]*\n)*\t\t\tif app_running; then\n\t\t\t\tnotify "The update is still waiting for Local Operator to close/,
+	);
+	assert.match(
+		plan.script,
+		/\t\t\telse\n\t\t\t\tnotify "The update is still installing\. Keep Local Operator closed; it will open again when the install finishes\."/,
+	);
 	/*
 	 * And the script's own reader of the installer's pid asks the same second
 	 * question the app does before it declares the installer gone (review R2-1):
@@ -3271,22 +3286,24 @@ test(
 			}
 			assert.ok(predicate(), `${why}: ${JSON.stringify(notices())}`);
 		};
-		// The phase and the elapsed wait, from the wait's own first stage.
+		// The phase, the elapsed wait and the no-action clause, from the wait's own
+		// first stage (round-1 UX U3).
 		await pollFor(
 			() =>
 				notices().some((line) =>
-					/Waiting for Local Operator to close so the update can install/.test(
+					/Waiting for Local Operator to close so the update can install \(waiting \d+ s\)\. No action is needed yet\./.test(
 						line,
 					),
 				),
-			"the wait never said what it was waiting for",
+			"the wait never said what it was waiting for, or that no action is owed",
 		);
 		// The fallback hint, once the escalation has provably failed (short here by
-		// the bounds above; 160 s shipped).
+		// the bounds above; 160 s shipped). It hands over a reachable affordance and
+		// NEVER says "and reopen" (round-1 UX U1/U2).
 		await pollFor(
 			() =>
 				notices().some((line) =>
-					/If nothing happens, quit Local Operator completely and reopen/.test(
+					/If nothing happens, quit Local Operator \(Force Quit if it does not respond\) and leave it closed until it opens again by itself/.test(
 						line,
 					),
 				),
@@ -3304,6 +3321,14 @@ test(
 			notices().some((line) => /opening again/.test(line)),
 			false,
 			`the hard bound claimed the app was coming back while it was still running: ${JSON.stringify(notices())}`,
+		);
+		// Nor may the soft bound tell a person who never closed anything to keep it
+		// closed (round-1 UX U4): with the app STILL RUNNING, the stay-closed
+		// sentence is not true of their state and must not appear.
+		assert.equal(
+			notices().some((line) => /The update is still installing\./.test(line)),
+			false,
+			`the soft bound used the stay-closed copy while the app was still running: ${JSON.stringify(notices())}`,
 		);
 		// And nothing was launched into the running app (the Code=-9 abort).
 		assert.equal(

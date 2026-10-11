@@ -23,3 +23,9 @@ base are THE SAME BYTES, retained side by side since the 2026-10-10 23:52
 download. Nothing clears either: electron-updater clears pending/ on a failed
 DOWNLOAD only, and update.zip is its differential base (nothing deletes it).
 That is ~345 MiB of double-retained artifact, before pending/update-info.json.
+
+NOTE (round-1 QA Q-3, 2026-10-11): the cache directory this file measured was no
+longer present when QA re-checked it later the same day (their verification; no
+cause is asserted here). This file records the measurement as taken, not a live
+claim about the cache today; the reap's logic reads only names and existence,
+which QA's same-shape fixtures reproduce exactly.

@@ -42,11 +42,16 @@ at all.
    quit's one cancellation. A SIGTERM during a quit is now a deterministic,
    logged exit too - the escalator's contract.
 
-Plus the honesty half: [post-fix-escalation.txt](post-fix-escalation.txt)
-shows the watchdog speaking while the app is still up ("Waiting for Local
-Operator to close... (waiting N s)", then the fallback hint), and the hard
-bound no longer claiming "Local Operator is opening again" on the arm where it
-exits without launching. And cache hygiene:
+Plus the honesty half: [post-fix-notices.txt](post-fix-notices.txt) is the
+watchdog's own message set, captured from the shipped script driven against a
+live process - the phase notice with its elapsed reading and no-action clause,
+the fallback hint ("quit Local Operator (Force Quit if it does not respond) and
+leave it closed until it opens again by itself" - no reopen), and the soft
+bound's app-running arm saying the wait copy instead of "keep it closed". The
+same copy is pinned by `scripts/update-robustness.test.mjs`'s "the wait for the
+app to close speaks, and the hard bound does not lie about a running app" case.
+The hard bound no longer claims "Local Operator is opening again" on the arm
+where it exits without launching. And cache hygiene:
 [cache-residue.txt](cache-residue.txt) measures the ~345 MiB double retention
 (`update.zip` and `pending/<artifact>.zip` are byte-identical, sha256
 `62e4557...`), which `reapUpdaterCache` now reduces to one artifact's worth
@@ -88,5 +93,9 @@ installer at 9.6 s. Both runs: every stage logged, both bounded.
 - One pre-existing failure is recorded rather than hidden:
   `update-robustness.test.mjs`'s "the operator's own install is classified..."
   fails on THIS machine because the `local-operator` shim now resolves into a
-  lop generation with no distribution markers. It fails identically with every
-  change in this branch stashed - see [test-outputs.txt](test-outputs.txt).
+  lop generation (`.local/share/lop/generations/...`) instead of a `/uv/tools/`
+  prefix: the distribution markers under it read `uv`, but the test's
+  hand-built identity carries no `uvReceipt` signal (production derives one
+  from `uv-receipt.toml`), so the classification falls through to
+  `global-unknown`. It fails identically with every change in this branch
+  stashed - see [test-outputs.txt](test-outputs.txt).
