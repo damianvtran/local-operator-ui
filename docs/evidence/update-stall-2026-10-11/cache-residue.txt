@@ -1,0 +1,25 @@
+# The updater cache residue after a successful install (measured 2026-10-11)
+
+$ ls -la ~/Library/Caches/local-operator-ui-updater/ ~/Library/Caches/local-operator-ui-updater/pending/
+/Users/damian/Library/Caches/local-operator-ui-updater/:
+drwxr-xr-x@   4 damian  staff        128 Oct 10 23:52 .
+drwx------@ 160 damian  staff       5120 Oct 11 01:07 ..
+drwxr-xr-x@   4 damian  staff        128 Oct 10 23:52 pending
+-rw-r--r--@   1 damian  staff  180735301 Oct 10 23:52 update.zip
+
+/Users/damian/Library/Caches/local-operator-ui-updater/pending/:
+drwxr-xr-x@ 4 damian  staff        128 Oct 10 23:52 .
+drwxr-xr-x@ 4 damian  staff        128 Oct 10 23:52 ..
+-rw-r--r--@ 1 damian  staff  180735301 Oct 10 23:52 local-operator-ui-0.34.9-arm64.zip
+-rw-r--r--@ 1 damian  staff        180 Oct 10 23:52 update-info.json
+
+$ shasum -a 256 update.zip pending/local-operator-ui-0.34.9-arm64.zip
+62e45573773a5a675a1656caa06aab762ce74ec320a68511953e60b528b446e5  update.zip
+62e45573773a5a675a1656caa06aab762ce74ec320a68511953e60b528b446e5  pending/local-operator-ui-0.34.9-arm64.zip
+
+Both hashes are 62e45573773a5a675a1656caa06aab762ce74ec320a68511953e60b528b446e5:
+the 180,735,301-byte pending artifact and the 180,735,301-byte differential
+base are THE SAME BYTES, retained side by side since the 2026-10-10 23:52
+download. Nothing clears either: electron-updater clears pending/ on a failed
+DOWNLOAD only, and update.zip is its differential base (nothing deletes it).
+That is ~345 MiB of double-retained artifact, before pending/update-info.json.
