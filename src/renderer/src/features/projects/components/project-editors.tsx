@@ -59,6 +59,7 @@ import {
 	SelectValue,
 	Textarea,
 } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import type { FC, KeyboardEvent, ReactNode, RefObject } from "react";
@@ -1083,8 +1084,10 @@ export const ProjectDateField: FC<{
 		which === "start"
 			? (project.start_date ?? "")
 			: (project.target_date ?? "");
-	const locale =
-		typeof navigator === "undefined" ? undefined : navigator.language;
+	/* The reader's locale for the planning-date row: device before a backend
+	   answers, the resolved tag after — the same source the sibling project
+	   components use (round-1 review, R1-3). */
+	const locale = useI18nLocale();
 	const display = formatProjectDay(raw, locale, new Date(nowMs));
 	const label = which === "start" ? "Start" : "Target";
 	return (
