@@ -73,18 +73,21 @@ test("the fixture renders as the panel's table, in this panel's ladder", () => {
 	const view = channelsView(SPEND_CHANNELS);
 	assert.ok(view);
 	assert.equal(view.tracked, true);
-	// 1.016 USD is a lower bound (knowledge: partial), so the ladder's `+`.
-	assert.equal(view.total, "$1.02+");
+	// 1.536 USD is a lower bound (knowledge: partial), so the ladder's `+`.
+	assert.equal(view.total, "$1.54+");
 	// The plan gloss and the composition, from the shared builders: the total
 	// includes plan-funded money, and the line can be reconciled on screen
-	// (0.053 + 0.053 + 0.010 + 0.900 = 1.016; D1/D2).
+	// (0.053 + 0.053 + 0.010 + 1.420 = 1.536, the published total; D1/D2).
+	// The panel KEEPS the clause on the new wire (its own file builds it): only
+	// the strip switches to the vocabulary's note — one session, two surfaces,
+	// one consistent description.
 	assert.equal(
 		view.planClause,
 		"Includes $0.053 API-equivalent (covered by a plan, not charged).",
 	);
 	assert.equal(
 		view.basisLine,
-		"Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $0.900 without a tracked basis yet · 1 record without a price",
+		"Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $1.42 without a tracked basis yet ($0.520 subagent sessions) · 1 record without a price",
 	);
 	assert.deepEqual(
 		view.rows.map((row) => [row.name, row.spend, row.basis]),
@@ -213,7 +216,7 @@ test("tracked=false is carried through for the section's own sentence", () => {
 	// price` under the section's "not tracked" sentence read as a
 	// contradiction (D2). The buckets and the not-tracked money stay itemised.
 	assert.doesNotMatch(view.basisLine, /without a price/);
-	assert.match(view.basisLine, /\$0\.900 without a tracked basis yet/);
+	assert.match(view.basisLine, /\$1\.42 without a tracked basis yet/);
 });
 
 test("a null row renders as no rows rather than taking the panel down", () => {
@@ -240,7 +243,7 @@ test("the panel's remainder register is a suffix `+`, the strip's a prefix `≥`
 		rows: [flooredRow, ...SPEND_CHANNELS.rows.slice(1)],
 	});
 	assert.ok(view);
-	assert.match(view.basisLine, /\$0\.900\+ without a tracked basis yet/);
+	assert.match(view.basisLine, /\$1\.42\+ without a tracked basis yet/);
 });
 
 test("the strip and the panel round a tie the same way (QA round 1, Q2)", () => {
