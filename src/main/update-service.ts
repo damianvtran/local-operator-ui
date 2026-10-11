@@ -15,6 +15,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	openSync,
+	readFileSync,
 	readdirSync,
 	rmSync,
 	statSync,
@@ -275,6 +276,23 @@ const UPDATE_RESTART_STOP_GRACE_MS = 5_000;
 
 /** A reverse-DNS bundle identifier, and nothing else. */
 const BUNDLE_ID_REGEX = /^[\w.-]+$/;
+
+/**
+ * Where electron-updater's cache directory name lives in `app-update.yml`, and
+ * what a directory name may look like (2026-10-11 cache hygiene).
+ *
+ * One key on one line - parsed rather than pulling in a YAML dependency for a
+ * package that is the updater's transitive dependency, not ours - and the name
+ * is deliberately narrow because it is joined onto a cache path this app's
+ * reaper DELETES inside: a value with a `..` or a separator in it is refused
+ * rather than trusted.
+ */
+const APP_UPDATE_CACHE_DIR_NAME_REGEX =
+	/^updaterCacheDirName:[ \t]*(\S+)[ \t]*$/m;
+const CACHE_DIR_NAME_OK_REGEX = /^[A-Za-z0-9._-]+$/;
+
+/** The pending artifacts the updater-cache reap may remove (never directories). */
+const UPDATER_CACHE_PENDING_FILE_REGEX = /\.zip$/i;
 
 /**
  * How often a live install is re-checked while the app is open, in ms.
@@ -2821,6 +2839,7 @@ export class UpdateService {
 				);
 				this.reapWatchdog(outcome.marker, true);
 				this.reapStagedUpdateTrees();
+				this.reapUpdaterCache();
 				clearPendingInstallMarker(this.markerDir());
 				// An install this machine reached is the end of the failure record too: it named
 				// the version that would not land, and this is the launch that proves it did.
@@ -2849,6 +2868,7 @@ export class UpdateService {
 				);
 				this.reapWatchdog(outcome.marker, true);
 				this.reapStagedUpdateTrees();
+				this.reapUpdaterCache();
 				clearPendingInstallMarker(this.markerDir());
 				// Superseded is the same fact about the record: whatever it named, the version
 				// running now is past it, so the sentence it drives is no longer true.
@@ -2923,6 +2943,7 @@ export class UpdateService {
 				// only this branch knows the installer is not still reading it (the
 				// `in-flight` branch above is the one that must not reap).
 				this.reapStagedUpdateTrees();
+				this.reapUpdaterCache();
 				/*
 				 * The same delivery path the start-up failure takes, for every failure.
 				 *
@@ -4326,6 +4347,16 @@ export class UpdateService {
 	private startInstaller(handoff: InstallerHandoff): number | null {
 		const plan = buildInstallerSpawn({
 			appPid: process.pid,
+			/*
+			 * The path the spawner's identity check matches before it signals
+			 * anything: this process's own executable. `process.execPath` is
+			 * `/Applications/Local Operator.app/Contents/MacOS/Local Operator`
+			 * in the packaged app, and the running main process's command line
+			 * starts with exactly that path - which is the question
+			 * `ps -o command= -p <pid>` answers. It travels in the environment,
+			 * never in the script text (see the callee's own note).
+			 */
+			appExecPath: process.execPath,
 			shipItPath: handoff.shipItPath,
 			label: handoff.label,
 			statePath: handoff.statePath,
@@ -4415,6 +4446,164 @@ export class UpdateService {
 			} catch (error) {
 				logger.warn(
 					`Could not reap the staged update tree ${tree}: ${String(error)}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+			}
+		}
+	}
+
+	/**
+	 * The updater's own cache directory for this app, or null when it cannot be
+	 * resolved.
+	 *
+	 * WHY THE APP NEEDS THIS PATH AT ALL (2026-10-11 cache hygiene): nothing ever
+	 * clears `~/Library/Caches/<updater cache dir>/` - measured residue after one
+	 * successful install: `update.zip` (~180 MB), `pending/<artifact>.zip` (~180
+	 * MB, the SAME bytes) and `pending/update-info.json`, all three left behind by
+	 * a download that has already been used or replaced. electron-updater clears
+	 * `pending/` on a failed DOWNLOAD and never clears `update.zip` - by design,
+	 * because `update.zip` is the differential base its next download patches
+	 * against (`MacUpdater`'s `canDifferentialDownload`), so deleting it buys disk
+	 * at the cost of a full ~180 MB re-download. `reapUpdaterCache` below is the
+	 * bounded-retention answer; this resolver is how it finds the directory.
+	 *
+	 * TWO SOURCES, in order. The download helper is authoritative for a download
+	 * THIS run performed (the same private surface `ensureStagedArtifactVerified`
+	 * already reads). It does not survive a restart, and the reap runs at
+	 * start-up, so the fallback reads the name electron-updater itself would
+	 * read: `updaterCacheDirName` from `app-update.yml` beside the packaged app,
+	 * under the base cache path its own adapter computes (`~/Library/Caches` on
+	 * macOS). ONE key on ONE line is parsed rather than adding a YAML dependency
+	 * on a package that is a transitive dependency of the updater rather than
+	 * ours.
+	 *
+	 * A DELETION ROOT IS NEVER TAKEN FROM THE MARKER or any other mutable record:
+	 * a corrupted record would then choose what gets deleted. Null means
+	 * "declined to reap", never a guess.
+	 */
+	private updaterCacheRoot(): string | null {
+		const helper = this.downloadHelper();
+		if (helper?.cacheDirForPendingUpdate) {
+			return dirname(helper.cacheDirForPendingUpdate);
+		}
+		try {
+			const config = readFileSync(
+				join(process.resourcesPath, "app-update.yml"),
+				"utf8",
+			);
+			const name = config.match(APP_UPDATE_CACHE_DIR_NAME_REGEX)?.[1];
+			if (!name || !CACHE_DIR_NAME_OK_REGEX.test(name)) return null;
+			return join(app.getPath("home"), "Library", "Caches", name);
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * Reduce the updater's cache to at most ONE artifact's worth, once an install
+	 * is settled (2026-10-11).
+	 *
+	 * THE RETENTION RULE, and its reasoning. After every settled verdict the cache
+	 * is DEDUPED, not emptied: `update.zip` and `pending/<artifact>.zip` are the
+	 * same bytes, and only one of them has future value - `update.zip`, the
+	 * differential base the next download patches against (`MacUpdater` copies
+	 * every download to it, and falls back to a FULL download without it). So:
+	 * when `update.zip` exists, the pending artifact and the `update-info.json`
+	 * that describes it go (the bytes survive in the base), and when it does not,
+	 * nothing is deleted - there is nothing to dedupe, and the pending artifact is
+	 * the only copy. The retention window is bounded by the next download, which
+	 * overwrites the base in place; there is deliberately NO day-count constant,
+	 * because a clock cannot tell a live delta base from a dead one and would
+	 * either delete the base the next update needs or count forever on an idle
+	 * machine. ROLLBACK STORY: nothing here is a rollback artifact - `update.zip`
+	 * cannot be installed by itself, and the app's reinstall and recovery paths
+	 * re-fetch from the feed; the retained copy exists for the next update's
+	 * DELTA (worth ~180 MB of transfer), not for restoring anything older.
+	 *
+	 * SAFETY RAILS, re-asked at the point of deletion rather than trusted from the
+	 * caller: the three branches that call this have already decided the install
+	 * is not in flight, but the machine is asked ONCE more - a live marker, a
+	 * running installer, or a relaunch watchdog that is still OURS all mean
+	 * something else may still be reading this cache, and the reap stands down
+	 * with a log line. A registered-but-idle ShipIt job is NOT one of those
+	 * signals (the 0.17.0 lessons: the job outlives finished installs by design),
+	 * and the in-flight branch above NEVER calls here.
+	 */
+	private reapUpdaterCache(): void {
+		const note = (message: string) =>
+			logger.info(message, LogFileType.UPDATE_SERVICE);
+		const marker = readPendingInstallMarker(this.markerDir());
+		const liveness = this.installLiveness(marker);
+		if (
+			liveness.installerRunning ||
+			(marker !== null &&
+				isInstallInFlight({
+					marker,
+					jobState: liveness.jobState,
+					installerRunning: liveness.installerRunning,
+				}))
+		) {
+			note(
+				"Not reaping the updater cache: the machine still reports an install in flight.",
+			);
+			return;
+		}
+		const watchdogPid = marker?.watchdogPid ?? null;
+		if (watchdogPid != null) {
+			const commandLine = readCommandOutput("/bin/ps", [
+				"-o",
+				"command=",
+				"-p",
+				String(watchdogPid),
+			]);
+			if (
+				watchdogIsOurs({
+					alive: commandLine != null,
+					commandLine,
+					installSucceeded: true,
+				})
+			) {
+				note(
+					`Not reaping the updater cache while relaunch watchdog ${watchdogPid} is still running.`,
+				);
+				return;
+			}
+		}
+		const root = this.updaterCacheRoot();
+		if (!root) {
+			note("Updater cache not reaped: its directory could not be resolved.");
+			return;
+		}
+		const base = join(root, "update.zip");
+		if (!existsSync(base)) {
+			note(
+				"Updater cache left alone: no differential base to dedupe the pending artifact against.",
+			);
+			return;
+		}
+		const pendingDir = join(root, "pending");
+		if (!existsSync(pendingDir)) return;
+		for (const entry of readdirSync(pendingDir)) {
+			/*
+			 * Only the artifact and the metadata that describes it: anything else in
+			 * this directory (a blockmap, a partial of some future download) is not
+			 * something this reaper knows the reader of, and a reaper that deletes
+			 * what it does not understand is how caches break installs.
+			 */
+			if (
+				!UPDATER_CACHE_PENDING_FILE_REGEX.test(entry) &&
+				entry !== "update-info.json"
+			)
+				continue;
+			const target = join(pendingDir, entry);
+			try {
+				rmSync(target, { force: true });
+				note(
+					`Reaped the updater cache's duplicate of the differential base: ${target}.`,
+				);
+			} catch (error) {
+				logger.warn(
+					`Could not reap ${target}: ${String(error)}`,
 					LogFileType.UPDATE_SERVICE,
 				);
 			}

@@ -274,8 +274,11 @@ test("every way a headless run can end is bounded by the same deadline", () => {
 	/*
 	 * The defect reappeared on each end path separately — window close, launcher
 	 * gone, signal — so pin all three to the one function that arms the bound,
-	 * and pin that a signal is only handled in `headless` (a signal handler on
-	 * the shipped app would change what Ctrl-C means for a person).
+	 * and pin that the HEADLESS signal handling stays where it is (a bare
+	 * `endHeadlessRun` handler on the shipped app would change what Ctrl-C means
+	 * for a person). The shipped app does handle SIGTERM since 2026-10-11 —
+	 * the escalator's contract — but only behind `quitState.isQuitting()`; that
+	 * handler has its own pin below, so neither gate can be dropped silently.
 	 */
 	const index = codeText(join(process.cwd(), "src", "main", "index.ts"));
 	const wired = (what, pattern) =>
@@ -319,10 +322,62 @@ test("every way a headless run can end is bounded by the same deadline", () => {
 		"the window-close path",
 		/\[window-mode\] all windows closed in a headless run; quitting/,
 	);
-	// And the signal path is not wired into the shipped app.
+	// And the signal path is not wired into the shipped app as a bare headless
+	// exit: outside the headless gate, SIGTERM is handled ONLY by the quit-gated
+	// handler pinned in the sibling test below.
 	assert.doesNotMatch(
 		index,
 		/process\.on\("SIGTERM", \(\) => endHeadlessRun/,
 		"a bare SIGTERM handler outside the headless gate would change Ctrl-C for a person",
+	);
+});
+
+/**
+ * SIGTERM during a quit is a logged, deterministic exit — and ONLY during a quit
+ * (2026-10-11).
+ *
+ * WHY THIS PIN EXISTS, AND WHY IT REPLACES A READING rather than being added
+ * beside one: the incident's installer spawner (`update-shipit.ts`) asks a
+ * wedged app to go with SIGTERM after its first grace — that is how the
+ * operator's 26 m 49 s stall ended, by hand — so the shipped app must answer
+ * that signal with a logged exit instead of whatever a windowless Electron does
+ * with it (measured elsewhere in this repo: Chromium closes the windows and
+ * leaves the process up). What may exist outside the headless gate is exactly
+ * ONE handler, gated on `quitState.isQuitting()`; a TERM with NO quit under way
+ * must keep its previous disposition, so the handler removes itself and
+ * re-raises. If a future edit drops either gate, this test fails rather than
+ * the difference being noticed by a person whose Ctrl-C changed meaning.
+ */
+test("SIGTERM during a quit is a logged exit, and only during a quit", () => {
+	const index = codeText(join(process.cwd(), "src", "main", "index.ts"));
+	// A non-headless gate, not a bare registration...
+	assert.match(
+		index,
+		/if \(windowLaunch\.mode !== "headless"\) \{/,
+		"the quit-gated TERM handler must sit behind the non-headless gate",
+	);
+	// ...whose handler is the quit-state shape, not a second headless exit:
+	assert.match(index, /const onSigtermDuringQuit = \(\) => \{/);
+	assert.match(index, /if \(!quitState\.isQuitting\(\)\) \{/);
+	// Not quitting: handed back, so a person's `kill` means what it always did.
+	assert.match(
+		index,
+		/process\.removeListener\("SIGTERM", onSigtermDuringQuit\); process\.kill\(process\.pid, "SIGTERM"\);/,
+	);
+	// Quitting: the reopen record is completed and the exit is deterministic.
+	assert.match(index, /scheduleReopenAtQuitTerminal\(\); app\.exit\(0\);/);
+	assert.match(index, /process\.on\("SIGTERM", onSigtermDuringQuit\);/);
+	// Exactly one literal SIGTERM registration, and SIGINT keeps its single
+	// owner — the headless loop above — because nothing else may take a person's
+	// Ctrl-C.
+	assert.equal(
+		index.split('process.on("SIGTERM"').length - 1,
+		1,
+		"expected exactly one literal SIGTERM registration (the quit-gated handler)",
+	);
+	assert.equal(
+		index.split('process.on("SIGINT"').length - 1,
+		0,
+		"SIGINT must stay inside the headless loop, registered by its own variable",
 	);
 });

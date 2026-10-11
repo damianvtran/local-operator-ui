@@ -1,0 +1,102 @@
+# Targeted test runs, verbatim results (2026-10-11)
+
+Every command was run from the worktree (`/Users/damian/local-operator-ui/
+.worktrees/update-stall-fix`) on this machine, ONE heavy file at a time. The
+suite is `node scripts/<file>.test.mjs` (the repo's own runner).
+
+## The extended files
+
+    $ node scripts/update-shipit.test.mjs
+    tests 24 / pass 24 / fail 0     (37.8 s)
+      - the spawner really waits, and really execs                     PASS
+      - a target alive past the first grace is asked to stop,
+        and the install proceeds    (escalation fires within bound)    PASS
+      - a TERM-ignoring target reaches the KILL stage,
+        and the install proceeds                                        PASS
+      - a live pid that is not the app is never signalled,
+        and the install proceeds    (identity guard)                    PASS
+      - the quit's exit deadline is derived from the bounds it must
+        contain                     (numeric tie to its exported terms) PASS
+
+    $ node scripts/window-mode.test.mjs
+    tests 65 / pass 65 / fail 0     (2.2 s)
+      - the quit deadline fires once, with its phase, and one release
+        cancels it                                                      PASS
+      - the quit deadline is armed before the hold, moved by the quit's
+        stages, and released only by the cancellation                   PASS
+
+    $ node scripts/launcher-watch.test.mjs
+    tests 11 / pass 11 / fail 0     (0.2 s)
+      - SIGTERM during a quit is a logged exit, and only during a quit  PASS
+
+    $ node scripts/update-robustness.test.mjs
+    tests 191 / pass 190 / fail 1   (185.0 s)
+      - the wait for the app to close speaks, and the hard bound does
+        not lie about a running app                                     PASS
+      - a settled install dedupes the updater cache, and an in-flight
+        one is left alone                                               PASS
+
+    $ node scripts/python-bytecode-cache.test.mjs
+    tests 42 / pass 42 / fail 0     (12.2 s)
+
+## The one failure, and the proof it is not this change
+
+    not ok  - the operator's own install is classified rather than told
+              to use pip
+      actual:   'global-unknown'
+      expected: 'uv-tool'
+
+That test reads THIS MACHINE's real `local-operator` shim: it resolves the uv
+tool prefix and asserts the distribution markers under it. The machine's
+`local-operator` now resolves into `/Users/damian/.local/share/lop/generations/
+20261011T044009Z-0.68.28/tools/local-operator`, a managed-runtime generation
+with `uv-receipt.toml` and no `*.dist-info/INSTALLER` beside the shim, so the
+markers read `unknown` and the classification follows. THE SAME FAILURE WAS
+REPRODUCED ON PRISTINE CODE: with every change in this branch stashed
+(`git stash push --include-untracked`), `--test-name-pattern="classified rather
+than told to use pip"` failed identically (`'global-unknown' !== 'uv-tool'`)
+before the stash was popped, so this is machine state, not a regression.
+
+## The rest of the affected surface, all green
+
+    $ node scripts/update-install-copy.test.mjs     tests 4 / pass 4
+    $ node scripts/update-affirmation.test.mjs      tests 49 / pass 49
+    $ node scripts/update-global-guard.test.mjs     tests 7 / pass 7
+    $ node scripts/update-global-install.test.mjs   tests 11 / pass 11
+    $ node scripts/update-indicator-segments.test.mjs  tests 38 / pass 38
+    $ node scripts/update-window-report.test.mjs    tests 9 / pass 9
+    $ node scripts/preload-updater-surface.test.mjs tests 6 / pass 6
+
+
+## The harness this change ALSO moved, deliberately
+
+    $ node scripts/owned-serve-lifecycle.test.mjs
+    tests 34 / pass 34 / fail 0
+
+`index quit preserves listeners, waits cleanup, bounds itself and exits nonzero
+on failure` slices the quit block out of `src/main/index.ts` and runs it in a
+`node:vm` context with every binding supplied. The new hard deadline made the
+slice reference `quitExitDeadlineMs`/`createQuitExitDeadline`; the harness now
+supplies the SHIPPED functions (bundled from `src/main/quit-exit-deadline.ts`)
+and pins that the deadline the slice constructs is the shipped derivation over
+the slice's own failsafe - one construction, tied numerically, so a literal
+drifting on either side fails the case.
+
+## The local full-suite run, triaged against the stashed tree
+
+`pnpm check-changed` runs the full desktop suite on this machine. It reports
+PRE-EXISTING failures here, and each one was reproduced identically with every
+change in this branch stashed:
+
+    session-load-recovery            mine 2 pass/16 fail   pristine 2/16  (identical names)
+    backend-settings-tiers           mine 12/1             pristine 12/1  ("the fixtures describe the registry...")
+    desktop-test-memory-guard        mine 32/1             pristine 32/1  ("with the table unreadable, a setsid'd grandchild...")
+    update-robustness                the "operator's own install" case, above
+    managed-python                   killed by the suite's own 25-minute lane bound
+                                     ("LANE BOUND EXCEEDED") while the host ran at
+                                     load >100; not re-run pristine (25 min cost).
+
+None of those files bundles the modules this change touches (checked by grep;
+`managed-python`'s kill is the suite's own bound, disclosed as measured). The
+one failure that WAS this change's - the owned-serve slice above - is fixed and
+green in the same section.
