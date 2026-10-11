@@ -73,8 +73,13 @@ const SENDER_FIELD_MAX_CHARS = 120;
  * The string controls (OSC/DCS/SOS/PM/APC) go WITH their payload up to the
  * terminator, because their content is device data and leaving `tmux;title`
  * behind afterwards converts a control sequence into wrong text.
+ *
+ * SHARED with the supplement block's display boundary
+ * (`canonical/supplement-model.ts::displayText`), which the TUI's own
+ * `display_text` also ports: one alphabet, one definition, so a name that is
+ * safe in a peer row is safe in a file callout by construction.
  */
-const CONTROL_SEQUENCES =
+export const CONTROL_SEQUENCES =
 	// biome-ignore lint/suspicious/noControlCharactersInRegex: the control characters ARE the subject — this is the terminal's control-sequence alphabet, ported from `local_operator/ansi.py`'s `_CONTROL_RE`, and a pattern that avoided writing them could not match them.
 	/(?:\u001b[\]PX^_]|[\u009d\u0090\u0098\u009e\u009f])(?:(?!\u0007|\u001b\\|\u009c)[\s\S])*(?:\u0007|\u001b\\|\u009c|$)|(?:\u001b\[|\u009b)[0-?]*[ -/]*[@-~]|(?:\u001b\[|\u009b)[0-?]*[ -/]*$|\u001b[ -/]+[0-~]|\u001b[@-Z\\-_]|\u001b$|[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g;
 

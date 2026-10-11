@@ -377,7 +377,17 @@ export function isStatementRow(record: TranscriptRecord): boolean {
 		record.kind === "compaction" ||
 		record.kind === "custom" ||
 		record.kind === "peer" ||
-		record.kind === "wake"
+		record.kind === "wake" ||
+		/*
+		 * The supplement block ("Highlights", turn-supplements memo §2.11): it is
+		 * placed AFTER the answer it belongs to and reports what the turn
+		 * PRODUCED, so it is a statement like the rows above — the answer before
+		 * it still closes the turn and keeps its caption, and the fold keeps the
+		 * block visible outside the condensed span (the memo's "outside the
+		 * fold" requirement; it must NOT become a `boundaryKindOf` pin, and is
+		 * not listed there).
+		 */
+		record.kind === "supplement"
 	);
 }
 

@@ -11047,6 +11047,42 @@ export const STORIES = [
 			},
 		},
 	],
+	/*
+	 * `rename-pressed` (#920): the menu's Rename conversation item is pressed on
+	 * s2, and the sidebar's half of the act is what can be photographed here -
+	 * there is no chat pane, so no picker opens (the pane's half is the consume
+	 * path in `slash-dispatch.ts` + `destination-pickers.tsx`, pinned in
+	 * `scripts/panel-presentation.test.mjs`). The readout prints the request the
+	 * press wrote to the panel-presentation store: `session.rename` FOR s2, the
+	 * ROW's conversation and not a pane's - and the fact only this item carries,
+	 * the name that row draws (`Migrate the deploy script`), sent because the
+	 * presenter holds a pane, not the row that was pointed at.
+	 *
+	 * `expectSentence` is what makes a frame filed under this name impossible to
+	 * be the state BEFORE the press: both lines exist only after the item is
+	 * clicked (before it the request reads `none`), so the shutter waits - the
+	 * claim is polled - rather than photographing the open menu under a name that
+	 * claims the press landed.
+	 */
+	[
+		"chat-sidebar-row-context-menu--rename-pressed",
+		780,
+		520,
+		{
+			hover: '[data-session-row="s2"]',
+			hoverSettleMs: 1200,
+			expectSentence: [
+				{
+					selector: "[data-readout-list]",
+					includes: "rename request: session.rename for s2",
+				},
+				{
+					selector: "[data-readout-list]",
+					includes: "name carried: Migrate the deploy script",
+				},
+			],
+		},
+	],
 	[
 		"chat-sidebar-row-context-menu--flyout-dwelled",
 		780,
@@ -11465,6 +11501,54 @@ export const STORIES = [
 	["navigation-panel-rail--code-open", 132, 220],
 	["chat-composer-status-row--code-requests-chip", 1000, 760],
 	["chat-composer-status-row--code-requests-chip-showing", 1000, 300],
+	/*
+	 * THE TURN-SUPPLEMENT BLOCK ("Highlights", lane U-b) — the design's own
+	 * evidence list: loading, empty, error and populated states, light and dark,
+	 * and the narrow column. Every frame here mounts the PRODUCTION transcript
+	 * and the production frame: the documents are core's own assembled fixtures
+	 * served through a scripted media bridge (`supplement.stories.tsx`), so the
+	 * chart in a frame is drawn by the shipped prelude's script under the
+	 * sandboxed mount the app uses.
+	 *
+	 * `supplement-free` is the before/after pair's after half — the same story
+	 * exists on the base tree with no supplement record at all, and the pair is
+	 * what proves a supplement-free turn renders unchanged. The heights are
+	 * tight to each state's content.
+	 */
+	["chat-turn-supplements--preparing", 900, 237],
+	["chat-turn-supplements--preparing-files", 900, 263],
+	["chat-turn-supplements--files-summary", 900, 237],
+	["chat-turn-supplements--files-more", 900, 323],
+	["chat-turn-supplements--files-more-expanded", 900, 366],
+	["chat-turn-supplements--components-one", 900, 642],
+	["chat-turn-supplements--components-two", 900, 1021],
+	["chat-turn-supplements--budget-disclosure", 900, 642],
+	["chat-turn-supplements--budget-disclosure-expanded", 900, 1366],
+	["chat-turn-supplements--cancelled", 900, 237],
+	["chat-turn-supplements--cancelled-cold", 900, 237],
+	["chat-turn-supplements--failed", 900, 237],
+	["chat-turn-supplements--done-empty", 900, 220],
+	["chat-turn-supplements--superseded", 900, 220],
+	["chat-turn-supplements--frame-error", 900, 237],
+	["chat-turn-supplements--frame-loading", 900, 437],
+	["chat-turn-supplements--narrow", 560, 514],
+	["chat-turn-supplements--supplement-free", 900, 314],
+	/*
+	 * THE CONDENSED FORM'S OWN STATES (design round 1, D1/U3/R2): the folded
+	 * block per content shape, plus the same block at the shell's narrow width.
+	 * Each frame's turn really carries a closed bar (the stories drive the same
+	 * plan the app does), so these are the one-line form on the production walk.
+	 */
+	["chat-turn-supplements--folded-condensed-files", 900, 400],
+	["chat-turn-supplements--folded-condensed-counts", 900, 400],
+	["chat-turn-supplements--folded-condensed-components", 900, 400],
+	["chat-turn-supplements--folded-condensed-mixed", 900, 400],
+	[
+		"chat-turn-supplements--folded-condensed-mixed",
+		560,
+		400,
+		{ dir: "folded-condensed-narrow" },
+	],
 ];
 
 /**

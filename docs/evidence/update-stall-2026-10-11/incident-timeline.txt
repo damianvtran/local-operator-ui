@@ -1,0 +1,70 @@
+# The 2026-10-11 stall, verbatim from the machine's logs
+
+Sources (read-only; line numbers as of capture 2026-10-11):
+- ~/Library/Application Support/Local Operator/logs/backend-service.log
+- ~/Library/Application Support/Local Operator/logs/update-service.log
+- ~/Library/Caches/com.local-operator.ShipIt/ShipIt_stderr.log
+
+## The quit that did not finish (backend-service.log:33482-33489)
+
+[2026-10-10 23:53:02.514] [error] Backend stderr: INFO:     Waiting for connections to close. (CTRL+C to force quit)
+
+[2026-10-10 23:53:07.373] [info]  Owned backend generation stopped
+[2026-10-10 23:53:07.410] [info]  [browser] 1 recorded tab(s) were opened by an agent and were not active at the quit; not restored
+[2026-10-10 23:53:08.374] [info]  [console] host stopped
+[2026-10-10 23:53:08.441] [info]  [browser] session cookies: saved 8 session cookies for the next start
+[2026-10-10 23:53:08.441] [info]  [browser] host stopped
+[2026-10-10 23:53:08.542] [info]  App is about to quit
+
+## The installer wait, and the last line before the gap (update-service.log:91729-91734)
+
+[2026-10-10 23:53:01.958] [info]  Extracted the update bundle into /Users/damian/Library/Application Support/Local Operator/update-staging/0.34.9-d6f2574060ad in 2329 ms.
+[2026-10-10 23:53:07.374] [info]  Started the installer (pid 47436) for version com.local-operator.ShipIt: it waits for this process (pid 81333) to go and then becomes /Applications/Local Operator.app/Contents/Frameworks/Squirrel.framework/Versions/Current/Resources/ShipIt, which installs /Users/damian/Library/Application Support/Local Operator/update-staging/0.34.9-d6f2574060ad/Local Operator.app and starts the app again.
+[2026-10-10 23:53:07.388] [info]  Started the update relaunch watchdog (pid 47446): it starts the app again as soon as the installer this app started is gone or version 0.34.9 is in place, and at the 600s bound if neither happens - or at the 1800s hard bound when the install is still live at the first, which is the case where starting the app would cancel the install.
+[2026-10-10 23:53:07.389] [info]  Pending install marker written for version 0.34.9 (watchdog pid 47446, installer pid 47436).
+[2026-10-10 23:53:08.546] [info]  Quitting so the in-flight update install can finish (app quit).
+[2026-10-10 23:53:08.549] [info]  Relaunch watchdog 47446 is still running; it will start the app when the install settles.
+
+## THE GAP. 23:53:08.549 -> 00:19:56 — 26 m 48 s with ZERO lines in either log
+## (the spawner's own wait, from its start line at 23:53:07.374, ran 26 m 49 s):
+## the app (pid 81333) alive, no window, no timer fired, nothing logged. The
+## next line in update-service.log is the successor instance, 27 minutes later.
+## The wait ended only because the operator ran: kill -TERM 81333
+
+## The install finishes the moment the pid is gone (ShipIt_stderr.log:2089-2115)
+
+2026-10-11 00:19:56.403 ShipIt[47436:94776396] Detected this as an install request
+ERROR: Unrecognized attribute string flag '?' in attribute string "T@"NSString",?,R,C" for property debugDescription
+ERROR: Unrecognized attribute string flag '?' in attribute string "T@"NSString",?,R,C" for property debugDescription
+2026-10-11 00:19:56.424 ShipIt[47436:94776396] Beginning installation
+2026-10-11 00:19:59.898 ShipIt[47436:94776401] Moving bundle from file:///Applications/Local%20Operator.app/ to file:///var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/com.local-operator.ShipIt.qGwzCEA8/Local%20Operator.app
+2026-10-11 00:19:59.901 ShipIt[47436:94776401] Moving bundles directly as SquirrelMacEnableDirectContentsWrite is disabled for app: com.local-operator.ShipIt
+2026-10-11 00:19:59.903 ShipIt[47436:94776401] Moved bundle contents from file:///Applications/Local%20Operator.app/ to file:///var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/com.local-operator.ShipIt.qGwzCEA8/Local%20Operator.app
+2026-10-11 00:19:59.903 ShipIt[47436:94776401] Moving bundle from file:///var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/com.local-operator.ShipIt.0uraB4Z9/Local%20Operator.app to file:///Applications/Local%20Operator.app/
+2026-10-11 00:19:59.904 ShipIt[47436:94776401] Moving bundles directly as SquirrelMacEnableDirectContentsWrite is disabled for app: com.local-operator.ShipIt
+2026-10-11 00:19:59.904 ShipIt[47436:94776401] Moved bundle contents from file:///var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/com.local-operator.ShipIt.0uraB4Z9/Local%20Operator.app to file:///Applications/Local%20Operator.app/
+2026-10-11 00:20:00.582 ShipIt[47436:94776401] Couldn't remove owned bundle at location file:///Users/damian/Library/Application%20Support/Local%20Operator/update-staging/0.34.9-d6f2574060ad/Local%20Operator.app/, error NSError { domain: NSPOSIXErrorDomain, code: 66, description: "Directory not empty", failureReason: "Couldn't remove temp dir "/Users/damian/Library/Application Support/Local Operator/update-staging/0.34.9-d6f2574060ad"", userInfo: {
+    NSURL = "file:///Users/damian/Library/Application%20Support/Local%20Operator/update-staging/0.34.9-d6f2574060ad/";
+} }
+2026-10-11 00:20:01.437 ShipIt[47436:94776735] On main thread and launching: file:///Applications/Local%20Operator.app/
+2026-10-11 00:20:01.437 ShipIt[47436:94776735] Bundle URL is valid
+2026-10-11 00:20:01.437 ShipIt[47436:94776735] Attempting to launch app on 11.0 or higher
+2026-10-11 00:20:01.437 ShipIt[47436:94776735] Launching new ShipIt at /Applications/Local Operator.app/Contents/Frameworks/Squirrel.framework/Versions/Current/Resources/ShipIt with instructions to launch file:///Applications/Local%20Operator.app/
+2026-10-11 00:20:01.439 ShipIt[47436:94776401] Installation completed successfully
+2026-10-11 00:20:01.448 ShipIt[47436:94776735] New ShipIt pid: 10908
+2026-10-11 00:20:02.475 ShipIt[10908:94777292] Detected this as a launch request
+2026-10-11 00:20:02.692 ShipIt[10908:94777292] Successfully launched application at file:///Applications/Local%20Operator.app/
+2026-10-11 00:20:02.692 ShipIt[10908:94777292] ShipIt quitting
+2026-10-11 00:20:02.693 ShipIt[47436:94776735] ShipIt status 0
+2026-10-11 00:20:02.693 ShipIt[47436:94776735] New ShipIt exited
+2026-10-11 00:20:02.694 ShipIt[47436:94776735] ShipIt quitting
+
+## The successor instance, and the success verdict (update-service.log:91735-91741)
+
+[2026-10-11 00:20:11.853] [info]  Update service initialized. Dev mode: false, NPX install: false
+[2026-10-11 00:20:12.012] [info]  Pending install marker for version 0.34.9 on disk; the installer this app started (pid 47436) has gone.
+[2026-10-11 00:20:12.012] [info]  Update marker: install of version 0.34.9 succeeded (running 0.34.9).
+[2026-10-11 00:20:12.020] [info]  Reaped the staged update tree /Users/damian/Library/Application Support/Local Operator/update-staging/0.34.9-d6f2574060ad left by an install that is not running.
+[2026-10-11 00:20:12.021] [info]  Periodic update checks scheduled (every 5 minutes)
+[2026-10-11 00:20:12.021] [info]  macOS auto-update requires app signing
+[2026-10-11 00:20:14.634] [info]  Reported a completed update install to the renderer
