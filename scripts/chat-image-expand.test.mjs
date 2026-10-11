@@ -37,8 +37,10 @@
  *   8. the image actions menu beside a conversation picture stays reachable without
  *      a pointer (round 1, review R1-1). Its wrapper used to be `invisible`, i.e.
  *      `visibility: hidden`, which takes the trigger out of the tab order — and the
- *      four actions in it are the ones the picture's own click used to perform
- *      before that click became the expansion;
+ *      file-shaped actions in it are the ones the picture's own click used to
+ *      perform before that click became the expansion (five of them now: the
+ *      canvas entry and the four file actions, plus `Copy image` added by
+ *      2026-10-11's image-actions pass);
  *   9. a canonical picture with no bytes is a failure row and NOT a button, which
  *      is the precondition the overlay's own failure state rests on.
  *
@@ -756,7 +758,7 @@ test("the image actions menu stays reachable without a pointer", async () => {
 		]) {
 			assert.ok(
 				wrapper.className.includes(token),
-				`the reveal must keep \`${token}\` — the four actions in it became pointer-only when the picture's click stopped opening the file (review round 1, R1-1)`,
+				`the reveal must keep \`${token}\` — the file-shaped actions in it became pointer-only when the picture's click stopped opening the file (review round 1, R1-1)`,
 			);
 		}
 		assert.ok(
@@ -827,13 +829,13 @@ test("the image actions menu stays reachable without a pointer", async () => {
 			'while the menu is open the Tooltip\'s `data-state` is still "closed" on that same node, which is why keying the reveal on it could never fire (U3-1, Q3-1)',
 		);
 		// and the menu it claims to have opened is really on the page, not just an
-		// attribute flip: four entries, in the portal, where Radix puts them.
+		// attribute flip: five entries, in the portal, where Radix puts them.
 		const menu = api.document.querySelector('div[role="menu"]');
 		assert.ok(menu, "the open menu is in the document (role=menu)");
 		assert.equal(
 			menu.querySelectorAll('[role="menuitem"]').length,
-			4,
-			"and it carries the four actions this menu offers",
+			5,
+			"and it carries the five actions this menu offers",
 		);
 		assert.equal(
 			trigger.disabled,
@@ -969,8 +971,13 @@ test("a condensed group's pictures are named, expandable thumbnails", async () =
 		];
 		assert.deepEqual(
 			controls.map((control) => control.getAttribute("aria-label")),
-			["Expand Image 1", "Expand Image 2"],
-			"each picture's name says WHICH one it is, in the same noun as the clause",
+			[
+				"Expand Image 1",
+				"Actions for Image 1",
+				"Expand Image 2",
+				"Actions for Image 2",
+			],
+			"each picture's name says WHICH one it is, in the same noun as the clause — and since the 2026-10-11 image-actions pass every tile also carries its picture's actions trigger (named with the tile's own label), so the exact list holds two controls per tile and a nameless extra one still fails here",
 		);
 		const pictures = [
 			...api.document.querySelectorAll("[data-fold-media] img"),
@@ -1001,8 +1008,15 @@ test("a condensed group's pictures are named, expandable thumbnails", async () =
 			"a landscape and a portrait picture get the same slot, so the row stays a grid",
 		);
 
-		/* The press that made the full picture readable is unchanged. */
-		await api.click(controls[1]);
+		/* The press that made the full picture readable is unchanged — by LABEL, not
+		   by index: since the 2026-10-11 image-actions pass the strip's controls are
+		   two per tile (expand + actions), so the second POSITION is no longer the
+		   second picture. */
+		const secondExpand = controls.find(
+			(control) => control.getAttribute("aria-label") === "Expand Image 2",
+		);
+		assert.ok(secondExpand, "the second tile's expand control is on the strip");
+		await api.click(secondExpand);
 		assert.ok(isOpen(api.document), "a thumbnail expands to the full picture");
 		assert.equal(
 			api.document.getElementById(
