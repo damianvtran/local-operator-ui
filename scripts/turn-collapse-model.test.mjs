@@ -2536,6 +2536,60 @@ test("a receipt appended after a quiet close keeps the settled span a bar (the g
 	assert.equal(grown.segments[0].label, "Peer messages");
 });
 
+test("a group still being written draws in place until something settles (the live-cycle rule)", () => {
+	/*
+	 * RE-GUARDED FOR THE LOAD-SEQUENCE ARM (agent review round 4, B1). The
+	 * operator's own load shape, `session-load-sequence.test.mjs`'s "the same page
+	 * with the setting off": a settled answer, then a wake and a peer receipt
+	 * arriving in the WAKE's own running cycle. The stretch is a group on paper
+	 * (two triggers, nothing visible between), but NOTHING IN IT HAS SETTLED - so
+	 * its rows draw in place, exactly as the live cycle always has. The group
+	 * exemption must not fold a message the reader just watched arrive, and it
+	 * never had: on the base tree this span draws too.
+	 *
+	 * THE LINE IS STRUCTURAL, NOT A CLOCK: the exemption fires only when the run's
+	 * settled point falls inside the span. A close - here a quiet one - moves it,
+	 * and the bar takes over and keeps its one line from there (the design's
+	 * growth promise is made to a bar whose rows have settled).
+	 */
+	const opening = [user("u1"), answer("a1")];
+	const live = [
+		row("w1", "wake", { text: "a wake delivery" }, "trace"),
+		peerRow("p1"),
+		tool("t1", {}, "trace"),
+		tool("t2", {}, "trace"),
+	];
+	const running = planOf([...opening, ...live], true).runs[0];
+	assert.equal(
+		running.segments.length,
+		1,
+		"one span over the receipts and their calls",
+	);
+	assert.equal(
+		running.segments[0].collapsed,
+		false,
+		"nothing settled inside: the rows draw in place",
+	);
+	assert.equal(
+		running.segments[0].facts.group?.count,
+		2,
+		"and it is already a group on paper",
+	);
+	const settled = planOf([...opening, ...live, quiet("q1")], true).runs[0];
+	assert.equal(
+		settled.segments[0].collapsed,
+		true,
+		"a close inside: the bar takes over",
+	);
+	const grown = planOf([...opening, ...live, quiet("q1"), peerRow("p2")], true)
+		.runs[0];
+	assert.equal(
+		grown.segments[0].collapsed,
+		true,
+		"and stays one line while it grows",
+	);
+});
+
 test("F3: the below-minimum span and the group it grows into carry the SAME key", () => {
 	/*
 	 * The operator's no-re-jitter requirement, at the transition the design round
