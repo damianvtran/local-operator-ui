@@ -5,16 +5,20 @@ import type { FC } from "react";
 import { openUrlTarget } from "../../chat/utils/link-open";
 import {
 	type CodeRequestRow as CodeRequestRowData,
+	PENDING_REVEAL_MS,
 	actedTag,
 	ciClause,
 	commentClause,
+	fetchStateOf,
 	forgeSigil,
 	relationTag,
 	rowAriaLabel,
+	rowIsLoading,
 	rowNotice,
 	statePill,
 	updatedClause,
 } from "../code-review-model";
+import { useDelayedFlag } from "../hooks/use-delayed-flag";
 import { CodeReviewRounds } from "./code-review-rounds";
 
 /**
@@ -40,6 +44,12 @@ export type CodeReviewRowProps = {
 	row: CodeRequestRowData;
 	/** The pane's clock, milliseconds; pinned by stories for reproducible text. */
 	nowMs: number;
+	/**
+	 * The loading line's reveal delay (design §4), a story/test control: the
+	 * pane never passes it; stories pin the revealed frame with `0`. Defaults
+	 * to `PENDING_REVEAL_MS`.
+	 */
+	pendingRevealMs?: number;
 };
 
 const CI_TONE_CLASS = {
@@ -55,7 +65,11 @@ const MetaSeam: FC = () => (
 	</span>
 );
 
-export const CodeReviewRow: FC<CodeReviewRowProps> = ({ row, nowMs }) => {
+export const CodeReviewRow: FC<CodeReviewRowProps> = ({
+	row,
+	nowMs,
+	pendingRevealMs,
+}) => {
 	const pill = statePill(row);
 	const relation = [relationTag(row), actedTag(row)]
 		.filter((tag): tag is string => tag !== null)
@@ -74,11 +88,26 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({ row, nowMs }) => {
 	 * the whole line where it truncates.
 	 */
 	const notice = rowNotice(row);
+	/*
+	 * THE LOADING LINE'S GATE (design §4): painted only once the row has been
+	 * continuously pending past the reveal delay, so a fetch that resolves
+	 * under it never flashes. ARIA is NOT delayed (the button's `aria-busy`
+	 * below reads the state directly) - only the visual line waits.
+	 */
+	const loading = useDelayedFlag(
+		rowIsLoading(row),
+		pendingRevealMs ?? PENDING_REVEAL_MS,
+	);
 	return (
-		<li data-code-request-row={row.key} className={cn("list-none")}>
+		<li
+			data-code-request-row={row.key}
+			data-fetch-state={fetchStateOf(row) ?? undefined}
+			className={cn("list-none")}
+		>
 			<button
 				type="button"
 				aria-label={rowAriaLabel(row)}
+				aria-busy={rowIsLoading(row) || undefined}
 				onClick={() => void openUrlTarget(row.url)}
 				className={cn(
 					"group/row flex w-full items-start gap-2 px-3 py-1 text-left cursor-pointer",
@@ -210,14 +239,30 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({ row, nowMs }) => {
 							{updated && <span>{updated}</span>}
 						</span>
 					)}
-					{/* LINE E - the notice, one line, conditional. */}
-					{notice && (
+					{/*
+					 * LINE E - the notice, one line, conditional. A pending row swaps
+					 * in the loading line (design §4): `rowNotice` returns null for
+					 * that state, and the line appears only once the reveal delay has
+					 * passed (`loading`), so a fetch resolving under it paints
+					 * nothing at all.
+					 */}
+					{loading ? (
 						<span
+							data-row-loading=""
 							className={cn("truncate text-meta text-ink-dim")}
-							title={notice}
+							title="Fetching current state…"
 						>
-							{notice}
+							Fetching current state…
 						</span>
+					) : (
+						notice && (
+							<span
+								className={cn("truncate text-meta text-ink-dim")}
+								title={notice}
+							>
+								{notice}
+							</span>
+						)
 					)}
 				</span>
 			</button>
