@@ -34,7 +34,11 @@
  * sentence is rendered instead — it comes from the same map, and the engine's
  * words always outrank this one.
  */
-import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
+import {
+	DESKTOP_REFUSAL_PLACEHOLDER,
+	DesktopControlError,
+	userFacingMessage,
+} from "@shared/api/local-operator/desktop-api";
 import type { CancelCardAnchor } from "./cancel-card-placement";
 import { type SubagentRow, isOpenRow } from "./run-detail-model";
 
@@ -105,3 +109,31 @@ const isRetryableJobWrite = (error: unknown): boolean =>
 /** The write's retry policy: exactly one retry, over the boundary above. */
 export const retryJobWrite = (failureCount: number, error: Error): boolean =>
 	isRetryableJobWrite(error) ? failureCount < 1 : false;
+
+/**
+ * The sentence for a refused job cancel, per the header's rules.
+ *
+ * ONE case needs a substitution first: a refused/unknown-job cancel that
+ * arrived WITHOUT a sentence is the class the frozen wording map already
+ * names (`tools/image_tool.py`'s `not_found`), so the map's phrase is
+ * rendered instead of the transport's bare placeholder — the design spec's
+ * "the frozen `not_found`-class phrase, never a generic error". An authored
+ * sentence always wins over it: surfaces render the engine's words, never a
+ * claim of their own — and the landed route's `jobs_not_found` refusal IS
+ * this map's phrase, arriving as the engine's copy, so both arms agree on
+ * the rendered sentence by construction, not by coincidence.
+ *
+ * Lives HERE rather than in the hook so the verification surface can drive
+ * the exact mapping the pane runs (agent review round 1, F3): the hook
+ * imports it below the React boundary, and the suite bundles this module
+ * without React, the way its siblings are driven.
+ */
+export const refusalDetail = (error: unknown): string => {
+	if (
+		error instanceof DesktopControlError &&
+		error.status === 404 &&
+		error.message === DESKTOP_REFUSAL_PLACEHOLDER
+	)
+		return JOB_CANCEL_NOT_FOUND_COPY;
+	return userFacingMessage(error, "Could not cancel the job.");
+};
