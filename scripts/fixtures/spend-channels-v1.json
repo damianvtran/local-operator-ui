@@ -161,8 +161,8 @@
 			"subscription_api_equivalent": {
 				"label": "API-equivalent",
 				"source_class": "subscription",
-				"marker": "API-equivalent · subscription",
-				"note": "You're on a subscription, so API-equivalent amounts are list-price equivalents — not what you are charged."
+				"marker": "API-equivalent \u00b7 subscription",
+				"note": "You're on a subscription, so API-equivalent amounts are list-price equivalents \u2014 not what you are charged."
 			},
 			"estimated": {
 				"label": "estimated",
