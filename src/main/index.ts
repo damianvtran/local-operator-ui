@@ -107,6 +107,7 @@ import {
 import { createQuitState } from "./quit-state";
 import { createRelaunchPending } from "./relaunch-pending";
 import { createUserShellPath } from "./shell-path";
+import { SupplementFrameMounts } from "./supplement-mounts";
 import {
 	describeTelemetryLaunch,
 	resolveTelemetryLaunch,
@@ -1061,8 +1062,11 @@ function createWindow(
 	 * other url is scheme-gated before `shell.openExternal` instead of passed
 	 * through as a raw string.
 	 */
-	guardNavigation(mainWindow.webContents, trustedRendererDocuments, (m) =>
-		logger.warn(m, LogFileType.BACKEND),
+	guardNavigation(
+		mainWindow.webContents,
+		trustedRendererDocuments,
+		(m) => logger.warn(m, LogFileType.BACKEND),
+		supplementMounts,
 	);
 	guardWindowOpen(
 		mainWindow.webContents,
@@ -1351,6 +1355,17 @@ const telemetryWebPreferences = {
 // Some APIs can only be used after this event occurs.
 // Define mainWindow at a higher scope to be accessible in event handlers
 let mainWindow: BrowserWindow | null = null;
+
+/**
+ * The one-shot mount permits for supplement frames (turn-supplements memo §4.1,
+ * lane U-b). Module scope because its two halves live in two places that must
+ * agree: `createWindow` hands it to the navigation guard, and
+ * `registerDesktopIPC` hands it to the arm channel the renderer calls before
+ * mounting a frame. One instance per app — the main window and the mini view
+ * are both the app's own documents, and a permit is URL-matched, not
+ * window-matched.
+ */
+const supplementMounts = new SupplementFrameMounts();
 
 /*
  * The quick-send mini view and its registration (design D6/§G.1). Module scope
@@ -2438,6 +2453,7 @@ app
 				quickSend.window.webContents,
 				trustedRendererDocuments,
 				(m) => logger.warn(m, LogFileType.BACKEND),
+				supplementMounts,
 			);
 			guardWindowOpen(
 				quickSend.window.webContents,
@@ -2593,6 +2609,12 @@ app
 				miniView === null
 					? []
 					: [{ window: miniView.window, url: miniViewUrlFor(rendererUrl) }],
+			/*
+			 * The supplement-frame mount permits (turn-supplements memo §4.1), the
+			 * same instance `createWindow` gave the navigation guard: the arm channel
+			 * and the guard are two halves of one decision and must share one list.
+			 */
+			supplementMounts,
 		);
 
 		/*
