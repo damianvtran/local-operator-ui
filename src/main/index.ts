@@ -104,6 +104,10 @@ import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
 } from "./picker-directory";
+import {
+	createQuitExitDeadline,
+	quitExitDeadlineMs,
+} from "./quit-exit-deadline";
 import { createQuitState } from "./quit-state";
 import { createRelaunchPending } from "./relaunch-pending";
 import { createUserShellPath } from "./shell-path";
@@ -256,7 +260,7 @@ for (const problem of windowLaunch.problems) {
  * lands in that window can leave that work behind. The owned backend this repo
  * actually runs (the `serve` child) is registered long before a harness drives
  * the window, which is why 10 s is chosen deliberately over the app's own
- * `QUIT_CLEANUP_FAILSAFE_MS` (~34 s): a launcher-gone run is a run nobody is
+ * `QUIT_CLEANUP_FAILSAFE_MS` (115 s, the sum of the bounds above): a launcher-gone run is a run nobody is
  * watching, and the cost of waiting is another instance of exactly the kind this
  * module exists to remove. An escalated exit is still status 0 — it is a run
  * ending because its way of being watched went away, not a failure — so a
@@ -1159,6 +1163,13 @@ const backendInstaller = new BackendInstaller({
 	// (`./relaunch-pending` owns why scheduling happens only at the terminal).
 	onQuitCancelled: () => {
 		quitState.cancel();
+		/*
+		 * AND THE QUIT'S HARD DEADLINE IS RELEASED WITH IT, because this is the
+		 * quit's ONE cancellation: the process goes on running, and a deadline
+		 * left armed from the cancelled quit would later kill a healthy one
+		 * (`./quit-exit-deadline` owns why this is the only release).
+		 */
+		quitExitDeadline.release();
 		relaunchPending.clear();
 	},
 });
@@ -2111,6 +2122,52 @@ app
 			for (const signal of ["SIGTERM", "SIGINT"] as const) {
 				process.on(signal, () => endHeadlessRun(`received ${signal}`));
 			}
+		}
+		if (windowLaunch.mode !== "headless") {
+			/*
+			 * SIGTERM DURING A QUIT IS A CONTRACT, NOT A SURPRISE (2026-10-11).
+			 *
+			 * The installer's spawner (`src/main/update-shipit.ts`) asks a wedged
+			 * app to go with SIGTERM after its first grace, and the incident's own
+			 * resolve was exactly that signal by hand: `kill -TERM 81333` and
+			 * ShipIt exec'd 0.4 s later. That signal deserves a deterministic,
+			 * logged exit rather than whatever the platform happens to do with a
+			 * windowless Electron: measured on this repo, Chromium's SIGTERM
+			 * shutdown CLOSES THE WINDOWS AND LEAVES THE PROCESS UP, which is once
+			 * more the silence this change exists to end. The exit is 0, because
+			 * the quit the user asked for is completing rather than failing - and
+			 * `scheduleReopenAtQuitTerminal` completes a recorded reopen, standing
+			 * down when the update lane's own watchdog owns the relaunch.
+			 *
+			 * GATED ON `quitState.isQuitting()`, deliberately. A TERM with NO quit
+			 * under way is not reinterpreted here: the handler removes itself and
+			 * re-raises, handing the signal back to the disposition it had before
+			 * the handler existed (Electron's own shutdown, or the process
+			 * default) - a person's `kill` keeps meaning exactly what it meant.
+			 * The headless modes keep the handlers above, which own SIGINT too;
+			 * this one is SIGTERM only because it is the escalator's signal.
+			 * `scripts/launcher-watch.test.mjs` pins the gate.
+			 */
+			const onSigtermDuringQuit = () => {
+				if (!quitState.isQuitting()) {
+					/*
+					 * Not ours: restore the previous disposition by removing this
+					 * listener and re-raising. libuv restores the saved sigaction
+					 * when the last listener for a signal goes, so the re-raise
+					 * reaches whatever handled TERM before this block did.
+					 */
+					process.removeListener("SIGTERM", onSigtermDuringQuit);
+					process.kill(process.pid, "SIGTERM");
+					return;
+				}
+				logger.info(
+					"Received SIGTERM during a quit; exiting so the quit reaches its terminal (an update installer may be waiting on this pid).",
+					LogFileType.BACKEND,
+				);
+				scheduleReopenAtQuitTerminal();
+				app.exit(0);
+			};
+			process.on("SIGTERM", onSigtermDuringQuit);
 		}
 
 		// Default open or close DevTools by F12 in development
@@ -4184,7 +4241,55 @@ const scheduleReopenAtQuitTerminal = (): void => {
 	});
 };
 
+/*
+ * THE QUIT'S HARD DEADLINE, AND WHY IT LIVES BESIDE THE TERMINAL IT COMPLETES.
+ *
+ * The 2026-10-11 incident left the process alive with no window for 26 m 49 s
+ * after every logged stage of the quit had finished - the session-cookie hold
+ * released, the owned backend's generation stopped, the browser and console
+ * hosts stopped, `App is about to quit` written - and nothing between that point
+ * and `will-quit` has a terminal, a bound or a log. `will-quit` itself has all
+ * three once reached; a quit that never reaches it had none. This deadline is
+ * armed in `before-quit`'s synchronous part, is UNREF'D (it must never be a
+ * reason for the process to stay), is released ONLY by the quit's one
+ * cancellation, and on firing names the phase it found the quit stuck in before
+ * completing the exit obligations and leaving with failure.
+ *
+ * The duration is DERIVED from the bounds in front of the phase it bounds - the
+ * session-cookie hold and the quit's own cleanup failsafe - rather than stated
+ * as a number, so a future bound change moves it; `./quit-exit-deadline` owns
+ * the terms and `scripts/update-shipit.test.mjs` ties them to it numerically.
+ *
+ * `app.exit(1)` because this is a FAILED quit: the process is being abandoned
+ * mid-teardown, the same verdict the will-quit failsafe records with its own
+ * exit. `scheduleReopenAtQuitTerminal` still runs first, so a recorded reopen is
+ * completed - and it stands down, unchanged, when the update lane's watchdog
+ * owns the relaunch (that is #755's install guard, not this deadline's to
+ * restate).
+ */
+const QUIT_EXIT_DEADLINE_MS = quitExitDeadlineMs({
+	quitCleanupFailsafeMs: QUIT_CLEANUP_FAILSAFE_MS,
+});
+const quitExitDeadline = createQuitExitDeadline({
+	timeoutMs: QUIT_EXIT_DEADLINE_MS,
+	onFire: (firedInStage) => {
+		logger.error(
+			`The quit did not finish within ${QUIT_EXIT_DEADLINE_MS} ms (stalled ${firedInStage}); exiting with failure so the process cannot sit alive with no window`,
+			LogFileType.BACKEND,
+		);
+		scheduleReopenAtQuitTerminal();
+		app.exit(1);
+	},
+});
+
 app.on("will-quit", (event) => {
+	/*
+	 * The deadline's phase marker, moved to the one stage that HAS a terminal
+	 * of its own: from here the owned-cleanup guard below is what bounds the
+	 * quit, and the marker is what tells a post-mortem whether this handler was
+	 * ever reached at all.
+	 */
+	quitExitDeadline.phase("will-quit");
 	/*
 	 * The viewer record and endpoint are this branch's, and they go BEFORE the
 	 * owned-cleanup guard: that guard returns early when there is nothing owned to
@@ -4333,6 +4438,17 @@ app.on("before-quit", async (event) => {
 	 * its own cancellation (`./quit-state` owns why it is the only one).
 	 */
 	quitState.begin();
+	/*
+	 * AND THE HARD DEADLINE IS ARMED HERE, IN THE SYNCHRONOUS PART - beside the
+	 * quit's record, BEFORE the session-cookie hold can wait (the hold can spend
+	 * its whole budget while the window is already doomed, and a deadline armed
+	 * after it would miss exactly the waits the quit's contract already bounds).
+	 * The phase marker it carries is moved by this handler's own stages, so the
+	 * line the deadline writes on firing names where the quit stopped. See
+	 * `./quit-exit-deadline` for the contract; `scripts/window-mode.test.mjs`
+	 * pins these sites.
+	 */
+	quitExitDeadline.arm("before the session-cookie hold");
 
 	/*
 	 * THE WINDOW-CLOSE INTERCEPTIONS ARE STOOD DOWN HERE, IN THE SYNCHRONOUS PART
@@ -4379,6 +4495,7 @@ app.on("before-quit", async (event) => {
 	 */
 	if (await holdQuitForSessionCookieSnapshot(event)) return;
 
+	quitExitDeadline.phase("after the session-cookie hold");
 	logger.info("App is about to quit", LogFileType.BACKEND);
 
 	/*
@@ -4457,6 +4574,14 @@ app.on("before-quit", async (event) => {
 	// a process that is already gone. Not awaited: `before-quit` is synchronous,
 	// and each of these steps is also safe to lose (see `stopBrowserHost`).
 	void stopBrowserHost();
+	/*
+	 * The synchronous tail is done. What remains is the window close Electron
+	 * runs as this listener's synchronous part ends, and the `will-quit` pass
+	 * behind it - the phase that had no terminal on 2026-10-11. Marking it is
+	 * what lets the deadline's line name this stage instead of leaving a
+	 * post-mortem to infer it (tonight's could not name any stage at all).
+	 */
+	quitExitDeadline.phase("awaiting the window close");
 });
 
 // The exit event is synchronous: only the current captured handle is eligible.
