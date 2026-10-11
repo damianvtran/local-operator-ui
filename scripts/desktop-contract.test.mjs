@@ -17,7 +17,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export * from "./src/main/supplement-mounts"; export * from "./src/shared/supplement-frame-url"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL, desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract"; export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api"; export { refusalDetail, JOB_CANCEL_NOT_FOUND_COPY } from "./src/renderer/src/features/chat/components/run-details/job-controls-model";',
+			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export * from "./src/main/supplement-mounts"; export * from "./src/shared/supplement-frame-url"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL, desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract"; export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api"; export { refusalDetail, JOB_CANCEL_NOT_FOUND_COPY } from "./src/renderer/src/features/chat/components/run-details/job-controls-model"; export { requestDesktopMediaOutcome } from "./src/main/desktop-media"; export { DESKTOP_REFUSAL_CODE } from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -60,6 +60,8 @@ const {
 	guardForegroundReceipts,
 	rememberPickedDirectory,
 	withRememberedDirectory,
+	requestDesktopMediaOutcome,
+	DESKTOP_REFUSAL_CODE,
 	desktopRequestByteBudget,
 	desktopRequestDeadlineMs,
 	desktopRequestDeadlineDetail,
@@ -3139,4 +3141,93 @@ test("only an answer the desktop plane admitted proves this app is still paired"
 		false,
 		"a request the schema refused was never sent, so it proves nothing",
 	);
+});
+
+// ---------------------------------------------------------------------------
+// The media relay's refusal ladder, main-process side. Every packaged app
+// reaches media through this module (`requestDesktopMediaOutcome`), and the
+// reading it does is what the renderer's `mediaError` sentence is built from -
+// so both the i18n envelope and the two older shapes are driven against a real
+// loopback here, not a restatement of the parsing.
+
+test("main reads a media refusal's {code,params,text} envelope: text forwarded, declared codes first", async () => {
+	const answers = [];
+	const server = createServer((_req, res) => {
+		const answer = answers.shift();
+		res.writeHead(answer.status, { "content-type": "application/json" });
+		res.end(JSON.stringify(answer.payload));
+	});
+	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+	const base = `http://127.0.0.1:${server.address().port}`;
+	try {
+		// The core's i18n envelope on a route outside the desktop plane.
+		answers.push({
+			status: 422,
+			payload: {
+				detail: {
+					code: "wire.errors.media_refused",
+					params: { provider: "openai" },
+					text: "The voice provider refused the request.",
+				},
+			},
+		});
+		const envelope = await requestDesktopMediaOutcome(
+			{ op: "speech.create", request: { text: "hello" } },
+			null,
+			base,
+			"token",
+		);
+		assert.equal(envelope.response.kind, "error");
+		if (envelope.response.kind !== "error") return;
+		assert.equal(
+			envelope.response.detail,
+			"The voice provider refused the request.",
+			"the envelope's text is what the relay forwards",
+		);
+
+		// A DECLARED code from the desktop vocabulary wins over the status.
+		answers.push({
+			status: 503,
+			payload: {
+				detail: {
+					code: "pairing.plane-closed",
+					params: {},
+					text: "Custom shut sentence.",
+				},
+			},
+		});
+		const declared = await requestDesktopMediaOutcome(
+			{
+				op: "sessions.attachment",
+				sessionId: "123456abcdef",
+				digest: "a".repeat(32),
+			},
+			null,
+			base,
+			"token",
+		);
+		assert.equal(declared.response.kind, "error");
+		if (declared.response.kind !== "error") return;
+		assert.equal(declared.response.detail, "Custom shut sentence.");
+		assert.equal(declared.response.code, DESKTOP_REFUSAL_CODE.planeClosed);
+
+		// The oldest shape: one prose string, code still status-derived.
+		answers.push({ status: 503, payload: { detail: "not your token" } });
+		const legacy = await requestDesktopMediaOutcome(
+			{
+				op: "sessions.attachment",
+				sessionId: "123456abcdef",
+				digest: "a".repeat(32),
+			},
+			null,
+			base,
+			"token",
+		);
+		assert.equal(legacy.response.kind, "error");
+		if (legacy.response.kind !== "error") return;
+		assert.equal(legacy.response.detail, "not your token");
+		assert.equal(legacy.response.code, DESKTOP_REFUSAL_CODE.planeClosed);
+	} finally {
+		server.close();
+	}
 });

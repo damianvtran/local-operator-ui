@@ -752,10 +752,38 @@ export async function desktopMedia(
 	const type = response.headers.get("content-type") ?? "";
 	if (!response.ok) {
 		let detail = "The media request failed.";
+		let declaredCode: string | undefined;
 		if (type.includes("application/json")) {
 			try {
 				const body = (await response.json()) as { detail?: unknown };
-				if (typeof body.detail === "string") detail = body.detail;
+				const raw = body?.detail;
+				if (typeof raw === "string") {
+					detail = raw;
+				} else if (typeof raw === "object" && raw !== null) {
+					/*
+					 * The core's i18n envelope `{code, params, text}` (RFC §2.6), the
+					 * sibling ladder of `desktopResult`'s: `text` is exactly the sentence
+					 * string-shaped readers display, and `code` is the answering process's
+					 * own category - a code the transport DECLARED always wins, the same
+					 * precedence `desktopErrorMessageCode` documents. A body carrying both
+					 * `text` and `message` is the newer contract, so `text` is read first;
+					 * `message` stays as the older object shape's fallback.
+					 */
+					const envelope = raw as {
+						code?: unknown;
+						text?: unknown;
+						message?: unknown;
+					};
+					if (typeof envelope.text === "string" && envelope.text.trim()) {
+						detail = envelope.text;
+					} else if (
+						typeof envelope.message === "string" &&
+						envelope.message.trim()
+					) {
+						detail = envelope.message;
+					}
+					if (typeof envelope.code === "string") declaredCode = envelope.code;
+				}
 			} catch {
 				// Keep the generic detail.
 			}
@@ -764,14 +792,17 @@ export async function desktopMedia(
 			status: response.status,
 			kind: "error",
 			detail,
-			// The development proxy forwards a refusal body without declaring a code, so
-			// only the app's OWN machine sentence can be recognised here - and telling
-			// "this app holds no credential" apart from "the plane is shut" is exactly
-			// the distinction the code exists for (see `desktopErrorMessageCode`).
+			// A code the refusal DECLARED wins; otherwise the development proxy forwards
+			// a refusal body without declaring one, so only the app's OWN machine
+			// sentence can be recognised here - and telling "this app holds no
+			// credential" apart from "the plane is shut" is exactly the distinction the
+			// code exists for (see `desktopErrorMessageCode`).
 			code:
-				detail === DESKTOP_MACHINE_DETAIL.noCredential
-					? DESKTOP_REFUSAL_CODE.noCredential
-					: undefined,
+				declaredCode !== undefined && isDesktopRefusalCode(declaredCode)
+					? declaredCode
+					: detail === DESKTOP_MACHINE_DETAIL.noCredential
+						? DESKTOP_REFUSAL_CODE.noCredential
+						: undefined,
 		};
 	}
 	if (type.includes("application/json")) {

@@ -190,6 +190,7 @@ export function isModerationCategory(
 function detailObject(body: unknown): {
 	code?: unknown;
 	message?: unknown;
+	text?: unknown;
 	details?: unknown;
 } | null {
 	if (typeof body !== "object" || body === null) return null;
@@ -204,6 +205,15 @@ export function publicationProse(body: unknown): string | null {
 	const detail = (body as { detail?: unknown }).detail;
 	if (typeof detail === "string" && detail.trim()) return detail;
 	const structured = detailObject(body);
+	/*
+	 * For an object, `text` is read before `message`: the core's i18n envelope
+	 * `{code, params, text}` (RFC §2.6) carries the sentence in `text`, and a body
+	 * carrying both is the newer contract. `message` stays as the older object
+	 * shape's fallback, and a bare string above stays the oldest shape's.
+	 */
+	if (typeof structured?.text === "string" && structured.text.trim()) {
+		return structured.text;
+	}
 	return typeof structured?.message === "string" && structured.message.trim()
 		? structured.message
 		: null;
@@ -231,9 +241,11 @@ export function publicationErrorFromBody(
 	if (!(PUBLICATION_ERROR_CODES as readonly string[]).includes(code))
 		return null;
 	const message =
-		typeof detail.message === "string" && detail.message.trim()
-			? detail.message
-			: "The agent could not be published.";
+		typeof detail.text === "string" && detail.text.trim()
+			? detail.text
+			: typeof detail.message === "string" && detail.message.trim()
+				? detail.message
+				: "The agent could not be published.";
 	const details =
 		typeof detail.details === "object" && detail.details !== null
 			? (detail.details as PublicationDetails)
