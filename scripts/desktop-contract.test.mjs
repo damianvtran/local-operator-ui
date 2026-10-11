@@ -3211,6 +3211,41 @@ test("main reads a media refusal's {code,params,text} envelope: text forwarded, 
 		assert.equal(declared.response.detail, "Custom shut sentence.");
 		assert.equal(declared.response.code, DESKTOP_REFUSAL_CODE.planeClosed);
 
+		/*
+		 * The fallback half of the declared-code precedence (review round 1,
+		 * NIT-2): a declared code that is NOT this app's vocabulary must not be
+		 * echoed and must not erase the status-derived one - the route+status
+		 * that would map still does.
+		 */
+		answers.push({
+			status: 503,
+			payload: {
+				detail: {
+					code: "wire.errors.media_refused",
+					params: {},
+					text: "A refused media sentence.",
+				},
+			},
+		});
+		const nonVocabulary = await requestDesktopMediaOutcome(
+			{
+				op: "sessions.attachment",
+				sessionId: "123456abcdef",
+				digest: "a".repeat(32),
+			},
+			null,
+			base,
+			"token",
+		);
+		assert.equal(nonVocabulary.response.kind, "error");
+		if (nonVocabulary.response.kind !== "error") return;
+		assert.equal(nonVocabulary.response.detail, "A refused media sentence.");
+		assert.equal(
+			nonVocabulary.response.code,
+			DESKTOP_REFUSAL_CODE.planeClosed,
+			"a non-vocabulary declared code falls back to the status-derived one",
+		);
+
 		// The oldest shape: one prose string, code still status-derived.
 		answers.push({ status: 503, payload: { detail: "not your token" } });
 		const legacy = await requestDesktopMediaOutcome(

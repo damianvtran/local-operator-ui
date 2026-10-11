@@ -196,7 +196,12 @@ function detailObject(body: unknown): {
 	if (typeof body !== "object" || body === null) return null;
 	const detail = (body as { detail?: unknown }).detail;
 	if (typeof detail !== "object" || detail === null) return null;
-	return detail as { code?: unknown; message?: unknown; details?: unknown };
+	return detail as {
+		code?: unknown;
+		message?: unknown;
+		text?: unknown;
+		details?: unknown;
+	};
 }
 
 /** The prose sentence in an envelope, whether the `detail` is a string or an object. */
