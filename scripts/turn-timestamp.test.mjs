@@ -124,6 +124,10 @@ const bundle = await build({
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { ToolRow } from "./src/renderer/src/features/chat/components/trace/tool-row";',
 			'export { useStampNow, msUntilNextLocalDay, localDayStart } from "./src/renderer/src/shared/hooks/use-calendar-day";',
+			/* The i18n locale store, for the 24-hour-locale case's fixture:
+			 * the formatters it exercises read THIS store, not the jsdom
+			 * navigator (the store resolves the device locale once). */
+			'export { currentLocale, setLocale } from "./src/renderer/src/shared/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -176,6 +180,8 @@ const {
 	ToolRow,
 	useStampNow,
 	msUntilNextLocalDay,
+	currentLocale,
+	setLocale,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -326,20 +332,16 @@ test("the stamp's own clock agrees with its title on a 24-hour locale", () => {
 	 * 24-hour one element stated the same instant two ways - `15 Sept, 3:42 pm`
 	 * under `15 September 2026 at 15:42` (review round 1, R3).
 	 *
-	 * The locale is the fixture rather than the machine: jsdom's navigator is en-US,
-	 * whose default cycle is ALREADY h12, which is why the forcing had no test at
-	 * all until now (R4) - deleting `hour12` left this file green. de-DE defaults to
-	 * h23, so the assertion below is red exactly when the option goes.
+	 * The locale is the fixture rather than the machine, and the fixture now goes
+	 * through the i18n locale store: this test used to redefine
+	 * `navigator.language`, which the formatters read at call time; they read the
+	 * store now (the device locale is resolved ONCE - a process's device locale
+	 * cannot change - with `setLocale` as the documented test seam). de-DE
+	 * defaults to h23, so the assertion below is red exactly when the option
+	 * goes.
 	 */
-	const descriptor = Object.getOwnPropertyDescriptor(
-		globalThis.navigator,
-		"language",
-	);
-	const original = globalThis.navigator.language;
-	Object.defineProperty(globalThis.navigator, "language", {
-		value: "de-DE",
-		configurable: true,
-	});
+	const original = currentLocale();
+	setLocale("de-DE");
 	try {
 		const instant = new Date(2026, 8, 15, 15, 42);
 		const text = formatTurnTimestamp(instant, NOW);
@@ -361,16 +363,7 @@ test("the stamp's own clock agrees with its title on a 24-hour locale", () => {
 		);
 		act(() => root.unmount());
 	} finally {
-		if (descriptor) {
-			Object.defineProperty(globalThis.navigator, "language", descriptor);
-		} else {
-			// jsdom's `language` is a getter on the prototype, so the stub above is
-			// an OWN property of the instance and removing it restores the getter.
-			Object.defineProperty(globalThis.navigator, "language", {
-				value: original,
-				configurable: true,
-			});
-		}
+		setLocale(original);
 	}
 });
 

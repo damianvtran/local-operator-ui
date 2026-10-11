@@ -26,19 +26,27 @@ const ROOT = process.cwd();
 
 const bundle = await build({
 	stdin: {
-		contents:
+		contents: [
 			'export * from "./src/renderer/src/features/chat/pickers/panels/formatters";',
+			'export * as i18n from "./src/i18n/locale";',
+		].join("\n"),
 		resolveDir: ROOT,
 	},
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	/* The panel formatters read the i18n locale layer (@shared/i18n), whose
+	 * shim reaches src/i18n by relative path — only the @shared alias is
+	 * needed here (the `turn-timestamp.test.mjs` recipe). */
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+	},
 	write: false,
 });
 const mod = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
-const { UNKNOWN, formatTokensPerSecond, tokensPerSecond } = mod;
+const { UNKNOWN, formatTokensPerSecond, tokensPerSecond, i18n } = mod;
 
 test("a rate with no samples is UNKNOWN, and a measured zero is not", () => {
 	// The count is what disambiguates: no contributing calls means no rate, while
@@ -105,5 +113,21 @@ test("every value in the domain prints a string, and none of them is numeric", (
 		const printed = formatTokensPerSecond(value);
 		assert.equal(typeof printed, "string");
 		assert.ok(printed.endsWith("tok/s") || printed === UNKNOWN, printed);
+	}
+});
+
+test("the panel numbers keep their pinned en-US whatever the store locale (round-1 R1-1)", () => {
+	// Base rendered these with `new Intl.NumberFormat("en-US")`; the pin must
+	// survive THROUGH the formatter layer, or a reader on any other locale
+	// would see `1.240`/`1.000 ms` where the pre-i18n app printed the en-US
+	// bytes. The store is moved (and witnessed) so the pin, not the default,
+	// is what the assertions measure.
+	try {
+		i18n.setLocale("de-DE");
+		assert.equal(i18n.currentLocale(), "de-DE");
+		assert.equal(mod.formatCount(1240.4), "1,240");
+		assert.equal(mod.formatMs(999.6), "1,000 ms");
+	} finally {
+		i18n.applyCapabilities(null);
 	}
 });

@@ -52,6 +52,13 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	/* The analytics model reaches the i18n locale layer (@shared/i18n)
+	 * through `./formatters`, whose shim reaches src/i18n by relative path —
+	 * only the @shared alias is needed (the `turn-timestamp.test.mjs` recipe;
+	 * round-3 review, the seventh build the U0 migration had to hand it to). */
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+	},
 	write: false,
 });
 const { channelsView, sessionCost, PRICE_UNKNOWN_TEXT } = await import(
