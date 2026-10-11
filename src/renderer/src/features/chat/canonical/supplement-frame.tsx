@@ -105,12 +105,27 @@ export function SupplementFrame({
 }: SupplementFrameProps) {
 	const reserved = clampedHeightHint(component);
 	const [height, setHeight] = useState(reserved);
-	const [src, setSrc] = useState<string | null>(null);
 	const [failed, setFailed] = useState(false);
 	const boxRef = useRef<HTMLDivElement | null>(null);
 	const frameRef = useRef<HTMLIFrameElement | null>(null);
 	const nonceRef = useRef("");
 	const failedRef = useRef(false);
+	/**
+	 * WHY a frame fell back, carried to the DOM as the fallback element's
+	 * attribute value. The line reads the same to a reader whichever arm fired,
+	 * but a bare `data-supplement-frame-fallback` cannot tell a QA run (or the
+	 * capture rig) which one it was: five distinct arms paint that line, and they
+	 * have completely different causes — `document` is a missing blob, `no-ready`
+	 * is a hung document, `second-load` is a navigation. Diagnosing a fallback
+	 * from a screenshot alone cost a bisect; one attribute ends that.
+	 */
+	const failedReasonRef = useRef<string>("");
+	/**
+	 * Starts the ping cadence; armed by the mount effect, called on the first
+	 * `load` immediately after the theme push (see that effect for why the
+	 * cadence may not start earlier).
+	 */
+	const startPingsRef = useRef<() => void>(() => {});
 	const loadCountRef = useRef(0);
 	const heightRef = useRef(reserved);
 	/**
@@ -123,53 +138,45 @@ export function SupplementFrame({
 	const onLoadRef = useRef<() => void>(() => {});
 	const themePushRef = useRef<(theme: SupplementTheme) => void>(() => {});
 
-	const fail = useCallback(() => {
+	const fail = useCallback((reason: string) => {
 		if (failedRef.current) return;
 		failedRef.current = true;
+		failedReasonRef.current = reason;
 		setFailed(true);
 	}, []);
 
 	/*
-	 * Arm, then mount. The arm call is AWAITED before `src` is set, because the
-	 * main-process guard must already hold the permit when the navigation is
-	 * issued — arming after the fact would be a race the guard is designed to
-	 * refuse. In browser development and Storybook there is no channel
-	 * (`armSupplementFrame` is optional on the preload), and the embedding
-	 * document's own CSP is the only control, exactly as for any other frame.
+	 * ARM, WIRE, THEN NAVIGATE — one effect, and the order inside it is the
+	 * point.
+	 *
+	 * The listeners and the watchdog are attached BEFORE the frame is given a
+	 * `src`. That ordering is not tidiness: a `data:` document begins executing
+	 * in a task the browser may interleave before React's passive effects run,
+	 * so a frame whose `src` is set during the commit can post its `ready`
+	 * broadcast into a page that is not listening yet — and since the prelude
+	 * sends `ready` exactly once, the mount then dies at the boot deadline while
+	 * the document is alive and painting (measured on Storybook captures,
+	 * 2026-10-11: the chart drew while the host counted the frame dead). Assigning
+	 * `src` from inside the armed effect closes that window by construction, which
+	 * is why the attribute is never set in JSX and lives only on this line.
+	 *
+	 * The arm call is awaited BEFORE `src` is assigned, because the main-process
+	 * guard must already hold the permit when the navigation is issued — arming
+	 * after the fact would be a race the guard is designed to refuse. In browser
+	 * development and Storybook there is no channel (`armSupplementFrame` is
+	 * optional on the preload), and the embedding document's own CSP is the only
+	 * control, exactly as for any other frame.
 	 */
 	useEffect(() => {
 		if (documentHtml === null) return;
-		let cancelled = false;
+		const frameEl = frameRef.current;
+		if (!frameEl) return;
 		nonceRef.current = mintNonce();
 		const url = supplementFrameUrl(documentHtml);
-		const arm = window.api?.desktop?.armSupplementFrame;
-		const mounted = async () => {
-			if (arm) {
-				try {
-					await arm(url);
-				} catch {
-					// A refused arm is answered by the guard itself: the navigation that
-					// follows is denied and the watchdog fails this frame into its
-					// fallback line. Nothing to invent here.
-				}
-			}
-			if (!cancelled) setSrc(url);
-		};
-		void mounted();
-		return () => {
-			cancelled = true;
-		};
-	}, [documentHtml]);
 
-	/*
-	 * The wire, the watchdog and the ping cadence — ONE effect, so the pieces
-	 * that must agree about "this mount" (the boot bound, the ready latch and
-	 * the outstanding pong) cannot disagree. `src` is the mount's identity: a new
-	 * URL is a new mount and every timer below is rebuilt for it.
-	 */
-	useEffect(() => {
-		if (src === null) return;
-		let ready = false;
+		/* ---- the wire: armed before the navigation, torn down with the effect ---- */
+		let live = false;
+		let pingsStarted = false;
 		let pingTimer: number | null = null;
 		let pongDeadline: number | null = null;
 		let raf: number | null = null;
@@ -179,11 +186,11 @@ export function SupplementFrame({
 		};
 		const bootDeadline = window.setTimeout(() => {
 			// A frame that never posted `ready` is not a live document (§4.2).
-			if (!ready) fail();
+			if (!live) fail("no-ready");
 		}, WATCHDOG_MS);
 
 		const post = (message: Record<string, unknown>) => {
-			frameRef.current?.contentWindow?.postMessage(message, "*");
+			frameEl.contentWindow?.postMessage(message, "*");
 		};
 		const sendPing = () => {
 			// ONE outstanding ping at a time, never coalesced away (§4.2).
@@ -191,8 +198,24 @@ export function SupplementFrame({
 			post({ lo: "supplement-host", t: "ping" });
 			pongDeadline = window.setTimeout(() => {
 				pongDeadline = null;
-				fail();
+				fail("no-pong");
 			}, WATCHDOG_MS);
+		};
+		/**
+		 * The ping cadence starts WITH THE THEME PUSH, not at `ready`.
+		 *
+		 * A `pong` is nonce-required, and the nonce only reaches the frame inside
+		 * the theme message — so a ping sent at `ready` (which precedes that
+		 * message) is answered by a pong this host must reject, and the pong
+		 * deadline would then fail a live frame five seconds later. `onLoad` calls
+		 * this immediately after the first theme push, which is the earliest moment
+		 * the frame can answer with the nonce.
+		 */
+		startPingsRef.current = () => {
+			if (pingsStarted || failedRef.current) return;
+			pingsStarted = true;
+			sendPing();
+			pingTimer = window.setInterval(sendPing, PING_INTERVAL_MS);
 		};
 
 		const applyHeight = (next: number) => {
@@ -221,7 +244,7 @@ export function SupplementFrame({
 				coalesced.resize = null;
 				coalesced.error = false;
 				if (error) {
-					fail();
+					fail("frame-error");
 					return;
 				}
 				if (resize !== null) applyHeight(resize);
@@ -229,23 +252,27 @@ export function SupplementFrame({
 		};
 
 		const onMessage = (event: MessageEvent) => {
-			const frame = frameRef.current;
-			if (!frame || failedRef.current) return;
+			if (failedRef.current) return;
 			// The browsing context first (`source`), then the opaque origin every
-			// sandboxed document presents, then the contract's shape+nonce rule. A
-			// frame whose load counter has moved is hostile; its messages are
-			// dropped outright.
-			if (event.source !== frame.contentWindow) return;
+			// sandboxed document presents, then the contract's shape+nonce rule.
+			if (event.source !== frameEl.contentWindow) return;
 			if (event.origin !== "null") return;
-			if (loadCountRef.current !== 1) return;
+			/*
+			 * THE LOAD COUNTER IS DELIBERATELY NOT A GATE HERE. The prelude posts
+			 * `ready` during parsing — before the first `load` event — so requiring
+			 * "the first load has fired" drops exactly the message the boot deadline
+			 * waits for, and a live frame dies at five seconds (measured 2026-10-11).
+			 * Navigation control lives where the design puts it: main's one-shot
+			 * permit refuses the navigation, and the SECOND load tears the frame down
+			 * (after which this component renders no iframe at all and no message can
+			 * be answered by it).
+			 */
 			const message = acceptFrameMessage(event.data, nonceRef.current);
 			if (!message) return;
 			if (message.t === "ready") {
-				if (!ready) {
-					ready = true;
+				if (!live) {
+					live = true;
 					window.clearTimeout(bootDeadline);
-					sendPing();
-					pingTimer = window.setInterval(sendPing, PING_INTERVAL_MS);
 				}
 				return;
 			}
@@ -274,15 +301,35 @@ export function SupplementFrame({
 		// Capture: the scroll that clears the hold happens on the transcript's own
 		// scroller, which does not bubble a scroll event to the window.
 		window.addEventListener("scroll", onScroll, true);
+
+		/* ---- the wire is live; now the document may start ---- */
+		let cancelled = false;
+		const start = async () => {
+			const arm = window.api?.desktop?.armSupplementFrame;
+			if (arm) {
+				try {
+					await arm(url);
+				} catch {
+					// A refused arm is answered by the guard itself: the navigation that
+					// follows is denied and the watchdog fails this frame into its
+					// fallback line. Nothing to invent here.
+				}
+			}
+			if (!cancelled) frameEl.src = url;
+		};
+		void start();
+
 		return () => {
+			cancelled = true;
 			window.clearTimeout(bootDeadline);
 			if (pingTimer !== null) window.clearInterval(pingTimer);
 			if (pongDeadline !== null) window.clearTimeout(pongDeadline);
 			if (raf !== null) window.cancelAnimationFrame(raf);
 			window.removeEventListener("message", onMessage);
 			window.removeEventListener("scroll", onScroll, true);
+			startPingsRef.current = () => {};
 		};
-	}, [src, fail]);
+	}, [documentHtml, fail]);
 
 	/*
 	 * The theme channel. The FIRST push rides the frame's first `load` (the
@@ -317,10 +364,14 @@ export function SupplementFrame({
 			// blocked navigation fires a second `load` too, measured on Chrome
 			// 155). Either way this frame is not the document the host mounted.
 			console.debug(HOSTILE_TEARDOWN_LOG);
-			fail();
+			fail("second-load");
 			return;
 		}
 		themePushRef.current(readSupplementTheme());
+		// The theme push is what delivers the nonce, so the ping cadence starts
+		// here — see `startPingsRef`'s comment in the mount effect for why any
+		// earlier ping would fail a live frame.
+		startPingsRef.current();
 	};
 
 	if (failed || documentFailed) {
@@ -332,7 +383,12 @@ export function SupplementFrame({
 		 * frame on a settled block.
 		 */
 		return (
-			<div className="text-ink-dim text-meta" data-supplement-frame-fallback="">
+			<div
+				className="text-ink-dim text-meta"
+				data-supplement-frame-fallback={
+					documentFailed ? "document" : failedReasonRef.current
+				}
+			>
 				Couldn't render this graphic
 			</div>
 		);
@@ -350,12 +406,13 @@ export function SupplementFrame({
 				data-supplement-frame=""
 				style={{ height, width: "100%" }}
 			>
-				{src !== null && (
+				{documentHtml !== null && (
 					<iframe
 						ref={frameRef}
 						title={component.title}
 						sandbox="allow-scripts"
-						src={src}
+						/* `src` is assigned by the mount effect, AFTER the message wire is
+						   armed — see that effect's header for the race it closes. */
 						onLoad={() => onLoadRef.current()}
 						className="block h-full w-full border-0"
 						// The document's own CSP is a `<meta>` inside the bytes (a response
