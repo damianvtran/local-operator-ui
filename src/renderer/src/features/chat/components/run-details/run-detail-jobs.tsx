@@ -33,10 +33,26 @@
  * the section draws exactly the rows its own count claims. `frontend.jobs` is
  * swept minutes after a row settles; a settled row here would be a row that the
  * label still calls `running`, under a tally that says otherwise.
+ *
+ * **The video row family, and its cancel.** The partition admits the video
+ * lane's detached jobs (`type: "video"`, contract §1.7 G1) beside the shell's
+ * — they are the same kind of thing: a runtime job with no child conversation
+ * to open — and the ONE interactive control this section has rides those rows:
+ * `Cancel` on any open video row, wired to the pane body's confirmation
+ * (`use-job-cancel.ts`) and from there to the runtime's own job-cancel rail.
+ * The other families deliberately get no control: a running shell job is left
+ * alone by design (backgrounding exists so a build survives,
+ * `desktop_sessions.py`'s own note), and a task row's stop is a different
+ * mechanism with its own instrument — drawing one here would be inventing a
+ * second stop. The control is VISIBLE AT REST at the 24px hit floor, the
+ * wake line's and monitors' own rule: the pane is a management surface, so
+ * the affordance is present rather than hidden until hover.
  */
 
+import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import type { Ref } from "react";
+import { type JobCancelSection, jobRowCanCancel } from "./job-controls-model";
 import {
 	type RunDetails,
 	type SubagentRow,
@@ -48,20 +64,60 @@ import {
 import { SubagentRowBody } from "./run-detail-row-parts";
 
 /**
- * One tool row.
+ * One tool row, and the video family's one control.
  *
  * `data-run-panel-row` is the roster's own hook, and it is the same hook here on
  * purpose: both sections are lists of rows from one ledger, and a capture rig or
  * a QA pass that can address one can address the other. The row itself comes from
  * `run-detail-row-parts.tsx` with no second line, so this list and the roster
- * cannot come to have two row heights.
+ * cannot come to have two row heights. The control is a SIBLING of the body
+ * rather than crowded into it: the body's grammar is every list's (§ the shared
+ * row contract), and a control one list has is that list's own.
  */
-const JobRow = ({ row }: { row: SubagentRow }) => (
+const JobRow = ({
+	row,
+	cancel,
+}: {
+	row: SubagentRow;
+	cancel: JobCancelSection;
+}) => (
 	<li
 		data-run-panel-row={row.id}
 		className={cn("flex items-start gap-2 px-3 py-1.5")}
 	>
 		<SubagentRowBody row={row} />
+		{jobRowCanCancel(row) && (
+			<Button
+				variant="ghost"
+				size="sm"
+				data-job-cancel={row.id}
+				/* The accessible name names the act and the row, the wakes' rule. */
+				aria-label={`Cancel ${row.label}`}
+				/* The danger wash on hover is the wake line's own cancel ink; nothing
+				   lifts, and the focus ring is the shared Button's own. `h-6` (24px)
+				   is the HIT floor rather than the row's own rhythm. */
+				className={cn(
+					"h-6 shrink-0 px-1.5 hover:bg-danger-wash hover:text-danger",
+				)}
+				onClick={(event) => {
+					/*
+					 * The rect rides the request, captured HERE at the press: the card
+					 * is anchored to a frozen box rather than to this button, because
+					 * the row can unmount under the canonical re-read
+					 * (`use-job-cancel.ts`).
+					 */
+					const rect = event.currentTarget.getBoundingClientRect();
+					cancel.request(row, {
+						left: rect.left,
+						top: rect.top,
+						bottom: rect.bottom,
+						right: rect.right,
+					});
+				}}
+			>
+				Cancel
+			</Button>
+		)}
 	</li>
 );
 
@@ -69,6 +125,7 @@ export const RunDetailJobs = ({
 	details,
 	paneWidth,
 	sectionRef,
+	cancel,
 }: {
 	details: RunDetails;
 	/** The pane's own width, which is what the tally's budget is measured against. */
@@ -82,6 +139,14 @@ export const RunDetailJobs = ({
 	 * it. Nothing here reads the ref; the section is simply where the node exists.
 	 */
 	sectionRef?: Ref<HTMLElement>;
+	/**
+	 * The pane body's cancel interaction (`use-job-cancel.ts`), threaded down as
+	 * the wakes' and monitors' own sections take theirs: the confirmation and
+	 * the write live ABOVE this section's mount gate (the list churns under the
+	 * canonical re-read a cancel fires), and the section stays presentational —
+	 * it renders rows from `details` and asks `request` on a press.
+	 */
+	cancel: JobCancelSection;
 }) => {
 	/*
 	 * The slice is taken with the MODEL's predicate rather than a local
@@ -122,7 +187,7 @@ export const RunDetailJobs = ({
 			</div>
 			<ul className={cn("flex flex-col")}>
 				{rows.map((row) => (
-					<JobRow key={row.id} row={row} />
+					<JobRow key={row.id} row={row} cancel={cancel} />
 				))}
 			</ul>
 		</section>

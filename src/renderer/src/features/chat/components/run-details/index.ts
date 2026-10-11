@@ -100,6 +100,8 @@ export type {
 	MonitorCancelOutcome,
 	MonitorControls,
 } from "./use-monitor-controls";
+export { useJobControls } from "./use-job-controls";
+export type { JobCancelOutcome, JobControls } from "./use-job-controls";
 export { useWakeControls } from "./use-wake-controls";
 export type {
 	WakeCancelOutcome,
