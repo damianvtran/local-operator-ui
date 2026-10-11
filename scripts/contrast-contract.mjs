@@ -466,14 +466,20 @@ const CONTROLS = [
 		 * ARBITRARY PICTURE PIXELS — which this file cannot measure (its own
 		 * header: text over an image is out of scope) — so the fix gave it a
 		 * ground of its own, `accentWash`, and the pair asserted here is the one
-		 * that can be: the glyph on that fill. The designer's measurements on the
-		 * fixed frames: 8.19:1 dark, 7.72:1 light, against the 3:1 icon floor the
-		 * old glyph-on-picture reading failed (1.63:1 light over a dark picture;
-		 * 1.81:1 inverse). The EDGE half is declared away: the chip's boundary is
-		 * not an edge a reader navigates by — it is only visible while a trigger
-		 * is revealed over a picture or sits on the viewer chrome beside ghost
-		 * siblings — and a 3:1 fill-against-ground floor would demand a token the
-		 * design did not ask for.
+		 * that can be: the glyph on that fill. THE NUMBERS COME IN TWO KINDS, and
+		 * they were conflated once (review round 2, R6). The TOKEN PAIR this row
+		 * recomputes — `inkMuted` on `accentWash`, across every palette — is
+		 * 8.19:1 dark and 7.72:1 light on the two brand palettes, which is the
+		 * pair the open state's pattern was argued from. The FIXED FRAMES measure
+		 * 7.35:1 light (dots `#474f46` on the chip `#e7f2e9`) and 8.15:1 dark
+		 * (`#b1c0b4` on `#17281e`) — design round 2's re-measurement of the
+		 * re-captured set, the number a reader of the evidence sees. Both clear
+		 * the 3:1 icon floor the old glyph-on-picture reading failed (1.63:1 light
+		 * over a dark picture; 1.81:1 inverse). The EDGE half is declared away: the
+		 * chip's boundary is not an edge a reader navigates by — it is only visible
+		 * while a trigger is revealed over a picture or sits on the viewer chrome
+		 * beside ghost siblings — and a 3:1 fill-against-ground floor would demand
+		 * a token the design did not ask for.
 		 */
 		name: "image actions trigger",
 		on: GROUNDS,
