@@ -108,6 +108,25 @@ const SVG_DOC = (
 })();
 ]]></script></svg>`;
 
+/**
+ * The supplement frame's document (round-1 R1's Electron case): it escapes
+ * ONLY when the parent signals it, so the theft ordering below is deterministic
+ * rather than a race between two timers. Every attempt aims at the daemon so
+ * "was the request issued" is read from the server's own log.
+ */
+const SUP_DOC = (
+	port,
+) => `<!doctype html><html><body><p id="sup-marker">served</p><script>
+onmessage = (e) => {
+  const t = e.data && e.data.t;
+  if (t === "go-self") location.href = "http://127.0.0.1:${port}/beacon?supplement-self";
+  if (t === "go-meta") { const m = document.createElement("meta"); m.httpEquiv = "refresh"; m.content = "0; url=http://127.0.0.1:${port}/beacon?supplement-meta"; document.head.appendChild(m); }
+  if (t === "steal") location.href = location.href;
+  if (t === "ping") parent.postMessage({ supPong: 1 }, "*");
+};
+parent.postMessage({ supReady: 1 }, "*");
+</script></body></html>`;
+
 (async () => {
 	const server = http.createServer((req, res) => {
 		const u = new URL(req.url, "http://x");
@@ -140,8 +159,15 @@ const SVG_DOC = (
 	});
 	await new Promise((r) => server.listen(0, "127.0.0.1", r));
 	const port = server.address().port;
-	await app.whenReady();
+	/*
+	 * The bundle import and the scheme registration come BEFORE `whenReady`:
+	 * Electron accepts `registerSchemesAsPrivileged` only until ready, and the
+	 * supplement phase below drives the SHIPPED scheme handler
+	 * (`installSupplementProtocol`) — the same code the app installs.
+	 */
 	const guards = await import(process.env.WG_BUNDLE);
+	guards.registerSupplementScheme();
+	await app.whenReady();
 
 	/*
 	 * Response-header capture for the static serve family (a different event
@@ -178,13 +204,17 @@ const SVG_DOC = (
 		webPreferences: { sandbox: true },
 	});
 	const popups = [];
+	// The mount permit table: the guard consumes from it and the supplement
+	// phase below arms into it, the two halves of one decision.
+	let mounts = null;
 	win.webContents.on("did-create-window", (window, details) => {
 		popups.push({ url: details.url, contents: window.webContents });
 	});
 	if (mode === "after") {
 		const trusted = () => [parentUrl];
 		const log = (m) => guardLog.push(m);
-		guards.guardNavigation(win.webContents, trusted, log);
+		mounts = new guards.SupplementFrameMounts();
+		guards.guardNavigation(win.webContents, trusted, log, mounts);
 		guards.guardWindowOpen(
 			win.webContents,
 			guards.popupVerdict,
@@ -365,6 +395,114 @@ const SVG_DOC = (
 	await new Promise((r) => setTimeout(r, 400));
 	if (beforePopup) popupAfterSteer = beforePopup.contents.getURL();
 
+	/*
+	 * THE SUPPLEMENT MOUNT PHASE (round-1 R1's Electron case): a frame mounted
+	 * with the SHIPPED permit machinery and the SHIPPED scheme handler, driven
+	 * through the app's own ordering — arm, then set `src` — and then made to
+	 * attempt escapes from inside the served document:
+	 *
+	 *  - a self `location=` and a `meta refresh` aimed at the daemon: both must
+	 *    be DENIED before any request is issued (the daemon's own log and the
+	 *    handler's fetch count are the ground truth);
+	 *  - the sibling theft the permit's header documents: after B's permit is
+	 *    armed, A (already loaded) self-navigates to the BYTE-IDENTICAL URL —
+	 *    the one theft the URL-keyed permit allows — and B's own mount is then
+	 *    denied, failing closed with no document served.
+	 *
+	 * The BEFORE half mounts the same document as a `data:` frame (no scheme, no
+	 * permits): its attempts reach the daemon, so a pass AFTER is a difference.
+	 */
+	const supLoadsMark = [];
+	let supReport = null;
+	if (mode === "after") {
+		let supFetches = 0;
+		guards.installSupplementProtocol(
+			async () => {
+				supFetches += 1;
+				return { html: SUP_DOC(port) };
+			},
+			(m) => guardLog.push(m),
+		);
+		const supUrl = guards.supplementMountUrl(
+			"5ea1face0001",
+			"0123456789abcdef0123456789abcdef",
+		);
+		await win.webContents.executeJavaScript(`
+			(() => {
+				window.__supLoads = { supa: 0, supb: 0 };
+				for (const id of ["supa", "supb"]) {
+					const f = document.createElement("iframe");
+					f.id = id;
+					f.setAttribute("sandbox", "allow-scripts");
+					f.addEventListener("load", () => { window.__supLoads[id] += 1; });
+					document.body.appendChild(f);
+				}
+				return true;
+			})(); 1
+		`);
+		// A mounts: arm, then navigate — the app's own order.
+		mounts.arm(supUrl);
+		await win.webContents.executeJavaScript(
+			`document.getElementById("supa").src = ${JSON.stringify(supUrl)}; 1`,
+		);
+		await new Promise((r) => setTimeout(r, 900));
+		// The escapes, signalled so ordering is deterministic.
+		for (const t of ["go-self", "go-meta"]) {
+			await win.webContents.executeJavaScript(
+				`document.getElementById("supa").contentWindow.postMessage({ t: ${JSON.stringify(t)} }, "*"); 1`,
+			);
+			await new Promise((r) => setTimeout(r, 450));
+		}
+		// B's permit stands; A steals it with the byte-identical self-navigation;
+		// B's own mount then has nothing to spend and is denied.
+		mounts.arm(supUrl);
+		await win.webContents.executeJavaScript(
+			`document.getElementById("supa").contentWindow.postMessage({ t: "steal" }, "*"); 1`,
+		);
+		await new Promise((r) => setTimeout(r, 700));
+		await win.webContents.executeJavaScript(
+			`document.getElementById("supb").src = ${JSON.stringify(supUrl)}; 1`,
+		);
+		await new Promise((r) => setTimeout(r, 900));
+		supLoadsMark.push(
+			await win.webContents.executeJavaScript("window.__supLoads"),
+		);
+		supReport = {
+			fetches: supFetches,
+			armed: mounts.armedCount,
+			loads: supLoadsMark[0],
+		};
+	} else {
+		const dataUrl = `data:text/html;base64,${Buffer.from(
+			SUP_DOC(port),
+		).toString("base64")}`;
+		await win.webContents.executeJavaScript(`
+			(() => {
+				window.__supLoads = { supa: 0 };
+				const f = document.createElement("iframe");
+				f.id = "supa";
+				f.setAttribute("sandbox", "allow-scripts");
+				f.addEventListener("load", () => { window.__supLoads.supa += 1; });
+				f.src = ${JSON.stringify(dataUrl)};
+				document.body.appendChild(f);
+				return true;
+			})(); 1
+		`);
+		await new Promise((r) => setTimeout(r, 900));
+		for (const t of ["go-self", "go-meta"]) {
+			await win.webContents.executeJavaScript(
+				`document.getElementById("supa").contentWindow.postMessage({ t: ${JSON.stringify(t)} }, "*"); 1`,
+			);
+			await new Promise((r) => setTimeout(r, 450));
+		}
+		supLoadsMark.push(
+			await win.webContents.executeJavaScript("window.__supLoads"),
+		);
+		supReport = {
+			loads: supLoadsMark[0],
+		};
+	}
+
 	fs.writeFileSync(
 		process.env.WG_OUT,
 		JSON.stringify(
@@ -388,6 +526,7 @@ const SVG_DOC = (
 				mainBefore: mainBefore === parentUrl,
 				mainStayedOnApp: mainAfterNav === parentUrl,
 				mainAfterNav,
+				supplement: supReport,
 			},
 			null,
 			1,

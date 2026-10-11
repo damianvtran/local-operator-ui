@@ -25,6 +25,15 @@ const secret = z.string().min(1).max(32768);
 export const sessionIdPattern = /^[a-f0-9]{12}$/;
 const sessionId = z.string().regex(sessionIdPattern);
 /*
+ * A supplement JOB id (`supplements.persistence.new_job_id` mints 12 lowercase
+ * hex) and the answer ANCHOR it attaches to (a final assistant message id).
+ * Shapes are the contract's (`supplement-model.ts` states them for the
+ * renderer; this is the transport's own copy, because the route constructs a
+ * path from the job and must not accept path text).
+ */
+const supplementJob = z.string().regex(/^[a-f0-9]{12}$/);
+const supplementAnchor = z.string().min(1).max(128);
+/*
  * The folder a SESSIONLESS skills read is discovered from.
  *
  * NOT `mcpCatalogCwd`'s absolute-only regex: a draft pane's staged default is
@@ -1775,6 +1784,60 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 */
 	z
 		.object({ op: z.literal("sessions.interrupt"), sessionId, requestId })
+		.strict(),
+	/*
+	 * The supplement block's OWN control pair (turn-supplements memo §2.7, lane
+	 * U-b): cancel the running job, steer it with an instruction, or retry a
+	 * settled one.
+	 *
+	 * THE COMPANION CORE ROUTES. These three ops address
+	 * ``POST /v1/desktop/sessions/{sid}/supplements/{job}/{cancel,steer,restart}``
+	 * and map in core to ``AttachedSession.supplement_cancel/steer/restart``
+	 * (``session/attached.py``), which already speak the runtime's own op
+	 * vocabulary over the control socket — the same rung ``sessions.interrupt``
+	 * reaches.
+	 *
+	 * THOSE ROUTES DO NOT EXIST YET, and that is verified rather than assumed:
+	 * the desktop plane on core ``origin/main`` (05e4c971b1) serves only the
+	 * document route and the events gate, the released runtime matches (UX round
+	 * 1 measured the 404s live), and no other door is reachable from this app —
+	 * the runtime control socket is a daemon↔runtime dial main has no path to,
+	 * and the relay's command route is cookie-gated for the phone surface. The
+	 * core half is a small paired PR (one route per op dispatching
+	 * ``bridge.remote.supplement_*``, the ``interrupt`` route's own shape); the
+	 * app half ships here so the pair is one core change from working. Until it
+	 * lands, a press answers 404 and the row composes THAT refusal through
+	 * ``backendLoadErrorMessage`` — the outdated-server sentence, never a raw
+	 * ``Not Found`` echoing out of the daemon (round-1 U2).
+	 *
+	 * ``job`` and ``anchor`` are the contract's own shapes (12 hex job id, the
+	 * answer's message id); ``text`` is the memo's ``supplement_steer`` bound
+	 * (≤ 500 chars, enforced again server-side).
+	 */
+	z
+		.object({
+			op: z.literal("supplements.cancel"),
+			sessionId,
+			job: supplementJob,
+			anchor: supplementAnchor,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("supplements.restart"),
+			sessionId,
+			job: supplementJob,
+			anchor: supplementAnchor,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("supplements.steer"),
+			sessionId,
+			job: supplementJob,
+			anchor: supplementAnchor,
+			text: z.string().min(1).max(500),
+		})
 		.strict(),
 	/*
 	 * A session's code memory: the names the session's own cells have left in its
@@ -4897,6 +4960,27 @@ export type DesktopMediaRequest =
 			sessionId: string;
 			childId: string;
 			digest: string;
+	  }
+	/*
+	 * One supplement component's assembled HTML document (turn-supplements memo
+	 * §2.7, lane U-b), as `{ html }` JSON from
+	 * `/v1/desktop/sessions/{id}/supplements/{digest}/document`.
+	 *
+	 * WHY ON THIS RELAY. The route sits under the `/v1/desktop/` bearer boundary
+	 * and the document must be fetched WITH the bearer and WITHOUT the renderer
+	 * ever seeing it; the JSON transport could carry it, but every byte this
+	 * feature serves stays on the one media path the file-serving lane already
+	 * owns. The renderer uses the answer as the frame's availability gate (a
+	 * failure paints the fallback line; success is what lets the mount effect
+	 * run), and the mount itself is the digest-addressed `lo-supplement:` URL
+	 * main serves through `supplement-protocol.ts` — a browser-only host with no
+	 * handler mounts the bytes as a `data:` URL instead. Nothing navigates a
+	 * browsing context to the route itself (§4.1).
+	 */
+	| {
+			op: "sessions.supplementDocument";
+			sessionId: string;
+			digest: string;
 	  };
 
 export type DesktopMediaResponse =
@@ -4926,6 +5010,22 @@ export type DesktopAPI = {
 		request: DesktopMediaRequest,
 		bytes: Uint8Array | null,
 	) => Promise<DesktopMediaResponse>;
+	/**
+	 * Arm ONE supplement-frame mount (turn-supplements memo §4.1, lane U-b).
+	 *
+	 * The renderer calls this with the exact mount URL it is about to set as a
+	 * supplement frame's `src`, immediately before mounting — a
+	 * `lo-supplement://s/<session>/<digest>` URL in the app, whose main-process
+	 * handler serves the stored document; a `data:` URL only in browser-only
+	 * hosts, which have no channel and no handler at all. Main records the permit
+	 * and its navigation guard allows exactly that one child-frame navigation,
+	 * byte-for-byte; every other navigation of a supplement frame — a
+	 * self-navigation, a `meta refresh`, a second load — is denied.
+	 * Electron only: absent means no permit channel, and the mount path must
+	 * keep working in browser development and Storybook, where the embedding
+	 * document's own CSP is the only control.
+	 */
+	armSupplementFrame?: (url: string) => Promise<{ ok: boolean }>;
 	/** Watch-lease heartbeat; main adds can_notify. Electron only. */
 	watchHeartbeat?: (args: {
 		sessionId: string;
@@ -6034,6 +6134,24 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// confirmation gate would make Escape useless. The route answers the
 				// runtime's abort receipt verbatim - see `DesktopInterruptReceipt`.
 				body: { request_id: request.requestId },
+			};
+		case "supplements.cancel":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/supplements/${request.job}/cancel`,
+				method: "POST",
+				body: { anchor: request.anchor },
+			};
+		case "supplements.restart":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/supplements/${request.job}/restart`,
+				method: "POST",
+				body: { anchor: request.anchor },
+			};
+		case "supplements.steer":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/supplements/${request.job}/steer`,
+				method: "POST",
+				body: { anchor: request.anchor, text: request.text },
 			};
 		case "sessions.variables.list":
 			return {
