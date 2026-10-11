@@ -34,11 +34,13 @@
  *   7. the picture's own accessible name states the ACTION, not only the thing
  *      (round 1, UX U1-1) — `aria-label`, because the action used to reach a
  *      reader only as the description off `title`;
- *   8. the file-actions menu beside a conversation picture stays reachable without
+ *   8. the image actions menu beside a conversation picture stays reachable without
  *      a pointer (round 1, review R1-1). Its wrapper used to be `invisible`, i.e.
  *      `visibility: hidden`, which takes the trigger out of the tab order — and the
- *      four actions in it are the ones the picture's own click used to perform
- *      before that click became the expansion;
+ *      file-shaped actions in it are the ones the picture's own click used to
+ *      perform before that click became the expansion (five of them now: the
+ *      canvas entry and the four file actions, plus `Copy image` added by
+ *      2026-10-11's image-actions pass);
  *   9. a canonical picture with no bytes is a failure row and NOT a button, which
  *      is the precondition the overlay's own failure state rests on.
  *
@@ -133,6 +135,7 @@ const bundle = await build({
 			export { ImageAttachment } from "./src/renderer/src/features/chat/components/message-item/image-attachment";
 			export { FileAttachment } from "./src/renderer/src/features/chat/components/message-item/file-attachment";
 			export { CanonicalImage } from "./src/renderer/src/features/chat/canonical/canonical-image";
+			export { MarkdownImage } from "./src/renderer/src/features/chat/components/markdown-image";
 			export { FoldMedia } from "./src/renderer/src/features/chat/canonical/fold-media";
 			export { TraceFold } from "./src/renderer/src/features/chat/components/trace/trace-fold";
 		`,
@@ -179,6 +182,7 @@ const {
 	ImageAttachment,
 	FileAttachment,
 	CanonicalImage,
+	MarkdownImage,
 	FoldMedia,
 	TraceFold,
 } = await import(pathToFileURL(bundlePath).href);
@@ -201,10 +205,12 @@ const PORTRAIT_BASE64 =
 	"iVBORw0KGgoAAAANSUhEUgAAAAIAAAAGCAIAAABmRdhlAAAAEElEQVR42mMIqDgBRAyEKQCEWRLBtZF+SAAAAABJRU5ErkJggg==";
 /**
  * The legacy shape, which is a PATH on disk and a URL to paint from two different
- * strings: `file` is what the picture is called and what its file-actions menu
- * acts on, `src` is what the browser loads. The two must differ here — the
- * filename of a `data:` URI is the base64 tail, and a picture with no path has no
- * file-actions menu, so a URI for both would test neither.
+ * strings: `file` is what the picture is called and what its actions menu
+ * classifies, `src` is what the browser loads. The two must differ here — the
+ * filename of a `data:` URI is the base64 tail — and the kinds are covered on
+ * both sides now: this path-backed shape carries the file-shaped actions, and
+ * the canonical cases below carry the menu a URI-only picture gets
+ * (`scripts/image-actions.test.mjs` pins the per-kind matrix those menus read).
  */
 const FILE_PATH = "/tmp/image-expand/invoices-march.png";
 
@@ -269,10 +275,12 @@ const pictureButton = (document) =>
 	document.querySelector(PICTURE_IMAGE)?.closest("button") ?? null;
 
 /**
- * The file-actions trigger beside a conversation picture, and the wrapper that
- * reveals it. Named by shipped attributes rather than a test hook, as above.
+ * The image actions trigger beside a conversation picture, and the wrapper that
+ * reveals it. Named by shipped attributes rather than a test hook, as above:
+ * the trigger's accessible name is the `supplement-row.tsx` vocabulary
+ * (`Actions for <name>`), and the name here is the file's own basename.
  */
-const FILE_ACTIONS = 'button[aria-label="File actions"]';
+const FILE_ACTIONS = 'button[aria-label="Actions for invoices-march.png"]';
 const FILE_ACTIONS_WRAPPER = ".file-actions-menu";
 /**
  * The two class TOKENS that made the reveal untabbable, hoisted here because
@@ -691,7 +699,7 @@ test("the picture's accessible name states the action, not only the thing", asyn
 	});
 });
 
-test("the file-actions menu stays reachable without a pointer", async () => {
+test("the image actions menu stays reachable without a pointer", async () => {
 	await mount(async (api) => {
 		await api.render(
 			React.createElement(ImageAttachment, {
@@ -703,7 +711,7 @@ test("the file-actions menu stays reachable without a pointer", async () => {
 		const wrapper = api.document.querySelector(FILE_ACTIONS_WRAPPER);
 		assert.ok(
 			wrapper,
-			`a picture on disk carries its file actions (${FILE_ACTIONS_WRAPPER})`,
+			`a picture on disk carries its image actions (${FILE_ACTIONS_WRAPPER})`,
 		);
 		/*
 		 * The contract, because this bundle loads no stylesheet and jsdom has no
@@ -737,7 +745,7 @@ test("the file-actions menu stays reachable without a pointer", async () => {
 			 * (U3-1, Q3-1), and this list is deliberately written so a wrong hook CANNOT
 			 * pass it: the round-2 tokens keyed on `data-state=open`, and on this
 			 * subtree that attribute belongs to the Tooltip —
-			 * `file-actions-menu.tsx` nests `<Tooltip><DropdownMenuTrigger asChild>`
+			 * `image-actions-menu.tsx` nests `<Tooltip><DropdownMenuTrigger asChild>`
 			 * and `ui/tooltip.tsx`'s `TooltipTrigger asChild` owns it — so it reads
 			 * "closed" while the menu is genuinely open and the rule could never fire.
 			 * The assertions below pin the attribute the dropdown DOES own, and the two
@@ -752,7 +760,7 @@ test("the file-actions menu stays reachable without a pointer", async () => {
 		]) {
 			assert.ok(
 				wrapper.className.includes(token),
-				`the reveal must keep \`${token}\` — the four actions in it became pointer-only when the picture's click stopped opening the file (review round 1, R1-1)`,
+				`the reveal must keep \`${token}\` — the file-shaped actions in it became pointer-only when the picture's click stopped opening the file (review round 1, R1-1)`,
 			);
 		}
 		assert.ok(
@@ -823,13 +831,13 @@ test("the file-actions menu stays reachable without a pointer", async () => {
 			'while the menu is open the Tooltip\'s `data-state` is still "closed" on that same node, which is why keying the reveal on it could never fire (U3-1, Q3-1)',
 		);
 		// and the menu it claims to have opened is really on the page, not just an
-		// attribute flip: four entries, in the portal, where Radix puts them.
+		// attribute flip: five entries, in the portal, where Radix puts them.
 		const menu = api.document.querySelector('div[role="menu"]');
 		assert.ok(menu, "the open menu is in the document (role=menu)");
 		assert.equal(
 			menu.querySelectorAll('[role="menuitem"]').length,
-			4,
-			"and it carries the four actions this menu offers",
+			5,
+			"and it carries the five actions this menu offers",
 		);
 		assert.equal(
 			trigger.disabled,
@@ -965,8 +973,13 @@ test("a condensed group's pictures are named, expandable thumbnails", async () =
 		];
 		assert.deepEqual(
 			controls.map((control) => control.getAttribute("aria-label")),
-			["Expand Image 1", "Expand Image 2"],
-			"each picture's name says WHICH one it is, in the same noun as the clause",
+			[
+				"Expand Image 1",
+				"Actions for Image 1",
+				"Expand Image 2",
+				"Actions for Image 2",
+			],
+			"each picture's name says WHICH one it is, in the same noun as the clause — and since the 2026-10-11 image-actions pass every tile also carries its picture's actions trigger (named with the tile's own label), so the exact list holds two controls per tile and a nameless extra one still fails here",
 		);
 		const pictures = [
 			...api.document.querySelectorAll("[data-fold-media] img"),
@@ -997,8 +1010,15 @@ test("a condensed group's pictures are named, expandable thumbnails", async () =
 			"a landscape and a portrait picture get the same slot, so the row stays a grid",
 		);
 
-		/* The press that made the full picture readable is unchanged. */
-		await api.click(controls[1]);
+		/* The press that made the full picture readable is unchanged — by LABEL, not
+		   by index: since the 2026-10-11 image-actions pass the strip's controls are
+		   two per tile (expand + actions), so the second POSITION is no longer the
+		   second picture. */
+		const secondExpand = controls.find(
+			(control) => control.getAttribute("aria-label") === "Expand Image 2",
+		);
+		assert.ok(secondExpand, "the second tile's expand control is on the strip");
+		await api.click(secondExpand);
 		assert.ok(isOpen(api.document), "a thumbnail expands to the full picture");
 		assert.equal(
 			api.document.getElementById(
@@ -1753,5 +1773,145 @@ test("the full-ceiling picture keeps the three classes the ledger rule is made o
 				`the transcript's own picture carries \`${fullClass}\``,
 			);
 		}
+	});
+});
+
+/* ---------------------------------------------- the image actions menu (moved)
+ *
+ * The MOUNTED half of the image-actions matrix, moved here from
+ * `image-actions.test.mjs` in the round-1 remediation (agent review R3): the
+ * suite already pays for THIS file's component bundle and its jsdom stack, and
+ * the extra copy of both was measured as the weight that tipped the desktop
+ * suite's memory bound. The pure half — classification, the per-kind table, the
+ * byte resolver — stays there, bundled from the two pure modules alone; the
+ * relay seam these cases need is the one the durable fixtures above already use
+ * (`api.window.api.desktop.media`).
+ */
+const IMAGE_ACTIONS_TRIGGER = 'button[aria-label^="Actions for"]';
+
+test("a blob-backed canonical picture NOW carries the menu — the gap this change closes", async () => {
+	const pngBytes = Uint8Array.from(atob(PNG_BASE64), (character) =>
+		character.charCodeAt(0),
+	);
+	/*
+	 * The durable route's bytes come over the media relay (`desktopMedia`
+	 * answers from `window.api.desktop.media` when the bridge exists — the same
+	 * seam the stories stub), so the stub is installed BEFORE the render and the
+	 * `blob:` URL the test asserts on is one `use-attachment-url.ts` really
+	 * created. This is the SHIPPED chain the operator's screenshots take:
+	 * digest -> relay -> blob -> `CanonicalImage` -> `ImageAttachment`, and the
+	 * menu at the end of it is the half that did not exist before this change.
+	 */
+	await mount(async (api) => {
+		api.window.api = {
+			desktop: {
+				media: async () => ({
+					status: 200,
+					kind: "bytes",
+					mimeType: "image/png",
+					data: pngBytes,
+				}),
+			},
+		};
+		await api.render(
+			React.createElement(CanonicalImage, {
+				image: {
+					id: "image-actions:blob",
+					data: null,
+					attachment: "0123456789abcdef0123456789abcdef",
+					mimeType: "image/png",
+				},
+				scope: { sessionId: "image-actions", childId: null },
+				label: "Generated image",
+			}),
+		);
+		// The resolver's chain is async (effect -> relay -> state); wait for the
+		// trigger to appear rather than assuming a number of ticks.
+		let trigger = null;
+		for (let tick = 0; tick < 50 && !trigger; tick += 1) {
+			await act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 0));
+			});
+			trigger = api.document.querySelector(IMAGE_ACTIONS_TRIGGER);
+		}
+		assert.ok(
+			api.document.querySelector(".file-actions-menu"),
+			"a durable screenshot could not be acted on at all before this change; it must now carry the actions wrapper",
+		);
+		assert.ok(trigger, "and a trigger a reader can reach");
+		assert.equal(
+			trigger.getAttribute("aria-label"),
+			"Actions for Generated image",
+			"the name says which picture, the supplement-row vocabulary",
+		);
+	});
+});
+
+test("a live (data:) canonical picture carries the menu too", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(CanonicalImage, {
+				image: {
+					id: "image-actions:live",
+					data: PNG_BASE64,
+					attachment: null,
+					mimeType: "image/png",
+				},
+				scope: { sessionId: "image-actions", childId: null },
+				label: "Attached image",
+			}),
+		);
+		const trigger = api.document.querySelector(IMAGE_ACTIONS_TRIGGER);
+		assert.ok(
+			trigger,
+			"a freshly pasted picture is a picture: it must carry the menu the path-backed one has",
+		);
+		assert.equal(
+			trigger.getAttribute("aria-label"),
+			"Actions for Attached image",
+		);
+	});
+});
+
+test("markdown images are ADMITTED by kind: a path gets the menu, a relative src does not", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(MarkdownImage, { src: "/tmp/shot.png", alt: "shot" }),
+		);
+		const wrapper = api.document.querySelector("[data-markdown-image]");
+		assert.ok(wrapper, "an absolute path is a file this app can act on");
+		const trigger = api.document.querySelector(IMAGE_ACTIONS_TRIGGER);
+		assert.equal(
+			trigger?.getAttribute("aria-label"),
+			"Actions for shot",
+			"the alt names the picture in the trigger",
+		);
+		// The reveal contract, same tokens as the attachment wrapper's measured
+		// set (the named-group spelling, because markdown renders inside rows
+		// that may carry an anonymous `group` of their own).
+		for (const token of [
+			"pointer-events-none",
+			"opacity-0",
+			"group-hover/mdimg:pointer-events-auto",
+			"group-hover/mdimg:opacity-100",
+			"group-focus-within/mdimg:pointer-events-auto",
+			"group-focus-within/mdimg:opacity-100",
+			"has-[[aria-expanded=true]]:pointer-events-auto",
+			"has-[[aria-expanded=true]]:opacity-100",
+		]) {
+			assert.ok(
+				wrapper.className.includes(token),
+				`the markdown reveal must carry \`${token}\` (got: ${wrapper.className})`,
+			);
+		}
+
+		await api.render(
+			React.createElement(MarkdownImage, { src: "shot.png", alt: "shot" }),
+		);
+		assert.equal(
+			api.document.querySelector("[data-markdown-image]"),
+			null,
+			"a relative src names no file this app can address — it renders as the bare <img> it always was",
+		);
 	});
 });

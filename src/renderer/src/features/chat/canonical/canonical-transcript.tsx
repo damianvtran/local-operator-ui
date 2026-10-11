@@ -962,14 +962,27 @@ const UserRow = memo(function UserRow({
 							{pictures.length > 0 && (
 								<div className={cn("mt-2 flex flex-col gap-2")}>
 									{pictures.map((image, index) => (
+										/*
+										 * The picture's own handle when the wire carried one (an artifact's
+										 * `name`), else the per-message scheme. THE SCHEME KEEPS ITS
+										 * PER-MESSAGE SCOPE (UX round 1, U1): a conversation-wide counter
+										 * is not available to this render — rows mount and unmount with
+										 * the windowed transcript, so a number spanning it would RENUMBER
+										 * as the reader scrolls, and an unstable name is worse for a
+										 * screen reader than a repeated one. Within a message the
+										 * pictures are numbered; across messages the row grouping is the
+										 * context, and the picture's own handle discriminates wherever
+										 * one travelled with it.
+										 */
 										<CanonicalImage
 											key={image.id}
 											image={image}
 											scope={scope}
 											label={
-												pictures.length === 1
+												image.name ??
+												(pictures.length === 1
 													? "Attached image"
-													: `Attached image ${index + 1}`
+													: `Attached image ${index + 1}`)
 											}
 										/>
 									))}
@@ -1818,7 +1831,10 @@ const ToolRow = memo(function ToolRow({
 						key={image.id}
 						image={image}
 						scope={scope}
-						label={pictures.length === 1 ? "Image" : `Image ${index + 1}`}
+						label={
+							image.name ??
+							(pictures.length === 1 ? "Image" : `Image ${index + 1}`)
+						}
 					/>
 				))}
 			</div>
