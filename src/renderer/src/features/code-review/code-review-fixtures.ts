@@ -498,10 +498,13 @@ export const couldNotRefreshList = (): DesktopCodeRequestsList =>
 				/*
 				 * The backend's own sentence, verbatim (UX round 1, U5): QA's real
 				 * bad-token run produced exactly this string, and the row renders it
-				 * behind the stale lead rather than paraphrasing the cause.
+				 * behind the stale lead rather than paraphrasing the cause. It is
+				 * BYTE-EXACT against core's `_REJECTED` (`service.py:1031`) - no
+				 * terminal period - so a captured frame differs from production by
+				 * nothing (design round 1, D1).
 				 */
 				refresh_error:
-					"credential rejected — sign in again with gh/glab, then refresh.",
+					"credential rejected — sign in again with gh/glab, then refresh",
 			})),
 	);
 
