@@ -1794,6 +1794,23 @@ export type DesktopFeedFrame =
 			session_id: CanonicalSessionId;
 			payload: { revision: number };
 	  }
+	| {
+			epoch: string;
+			seq: number;
+			type: "config";
+			/*
+			 * A `config.yml` change, projected for clients that mirror it (core PR
+			 * #2213; DESKTOP_API's "polling cadence"). No `session_id`: the change is
+			 * machine-wide, like `catalogue`.
+			 *
+			 * `changed_keys` names registry keys (sorted; they flatten to their dotted
+			 * spellings), and `language` is the RESOLVED tag - exactly what
+			 * `GET /v1/capabilities` answers, `auto` never - present on EVERY config
+			 * frame, not only language moves. A consumer watching the language filters
+			 * on `changed_keys.includes("language")`.
+			 */
+			payload: { changed_keys: string[]; language: string };
+	  }
 	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }
 	| {
 			epoch: string;
