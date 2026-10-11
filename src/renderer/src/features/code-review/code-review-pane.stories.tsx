@@ -325,6 +325,48 @@ export const NarrowRefreshFailed: Story = {
 };
 
 /**
+ * The pending set at the 320px floor (design round 1, D2): the loading line
+ * and the cooling/failed sentences at the slot's minimum width, beside the
+ * narrow variants above. `pendingRevealMs={0}` pins the revealed frame, same
+ * as the desktop `Pending` story.
+ */
+export const NarrowPending: Story = {
+	render: () => (
+		<Frame height={360} width={320}>
+			<CodeReviewPaneBody
+				phase="ready"
+				data={pendingList()}
+				refreshing={false}
+				onRefresh={() => undefined}
+				onClose={() => undefined}
+				nowMs={FIXTURE_NOW_MS}
+				pendingRevealMs={0}
+			/>
+		</Frame>
+	),
+};
+
+/**
+ * The stale copy at the 320px floor (design round 1, D2): the sentence that
+ * leads `could-not-refresh` at the slot's minimum width - the frame the floor
+ * claim was missing.
+ */
+export const NarrowCouldNotRefresh: Story = {
+	render: () => (
+		<Frame height={560} width={320}>
+			<CodeReviewPaneBody
+				phase="ready"
+				data={couldNotRefreshList()}
+				refreshing={false}
+				onRefresh={() => undefined}
+				onClose={() => undefined}
+				nowMs={FIXTURE_NOW_MS}
+			/>
+		</Frame>
+	),
+};
+
+/**
  * The row's hover paint, FORCED (design round 2, N3): the headless capture
  * cannot synthesise a hover, so the story applies the SAME classes the hover
  * state applies (`bg-surface`, the arrow's `opacity-100` reveal) to the first
