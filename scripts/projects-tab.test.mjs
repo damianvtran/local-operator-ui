@@ -14,8 +14,9 @@ import { build } from "esbuild";
  *
  * BUNDLED RATHER THAN IMPORTED (the `at-mentions.test.mjs` pattern): these are
  * TypeScript modules in the renderer tree, and the app's tsconfig does not run
- * here. The module imports its DTOs with `import type` only, so nothing of the
- * renderer or Electron crosses into the bundle.
+ * here. The modules import their DTOs with `import type` only; their one value
+ * import is the i18n locale layer (`@shared/i18n`, aliased below), so nothing
+ * of the renderer or Electron crosses into the bundle.
  */
 
 const bundle = await build({
@@ -29,6 +30,12 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	/* `project-model` reads the i18n locale layer (@shared/i18n), whose shim
+	 * reaches src/i18n by relative path — only the @shared alias is needed
+	 * (the `turn-timestamp.test.mjs` recipe). */
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+	},
 	write: false,
 });
 const { model, timeline } = await import(

@@ -66,6 +66,7 @@ import {
 	PopoverTrigger,
 	Tooltip,
 } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 /*
  * THE UNION OF TWO SIDES, both of which changed this import block: the card
@@ -828,10 +829,8 @@ const BoardCard: FC<BoardCardProps> = ({
 	onDelete,
 	onMove,
 }) => {
-	const meta = listRowMeta(
-		project,
-		typeof navigator === "undefined" ? undefined : navigator.language,
-	);
+	const locale = useI18nLocale();
+	const meta = listRowMeta(project, locale);
 	/*
 	 * THE CARD'S CHECK-IN DOOR (design note §1). The capability is read per card
 	 * through the shared react-query cache (one answer for every card), and the
