@@ -205,6 +205,7 @@ const Frame = ({
 	return (
 		<div
 			className="overflow-y-auto p-6"
+			data-supplement-story-frame=""
 			ref={containerRef}
 			style={{ width, height }}
 		>
@@ -253,6 +254,7 @@ export default meta;
 export const Preparing: StoryObj = {
 	render: () => (
 		<Frame
+			height={237}
 			records={[
 				answer("m1", "All four regions cleared the latency budget this week."),
 				supplement({ id: "s1", state: "queued", live: true }),
@@ -265,6 +267,7 @@ export const Preparing: StoryObj = {
 export const PreparingFiles: StoryObj = {
 	render: () => (
 		<Frame
+			height={263}
 			records={[
 				answer("m1", "All four regions cleared the latency budget this week."),
 				supplement({
@@ -282,6 +285,7 @@ export const PreparingFiles: StoryObj = {
 export const FilesSummary: StoryObj = {
 	render: () => (
 		<Frame
+			height={237}
 			records={[
 				answer("m1", "Two artifacts came out of this run."),
 				supplement({ id: "s1", files: FILES }),
@@ -294,6 +298,7 @@ export const FilesSummary: StoryObj = {
 export const FilesMore: StoryObj = {
 	render: () => (
 		<Frame
+			height={323}
 			records={[
 				answer("m1", "Four reports were refreshed."),
 				supplement({
@@ -311,6 +316,7 @@ export const FilesMore: StoryObj = {
 export const FilesMoreExpanded: StoryObj = {
 	render: () => (
 		<Frame
+			height={366}
 			click="[data-supplement-more]"
 			records={[
 				answer("m1", "Four reports were refreshed."),
@@ -329,7 +335,7 @@ export const FilesMoreExpanded: StoryObj = {
 export const ComponentsOne: StoryObj = {
 	render: () => (
 		<Frame
-			height={560}
+			height={642}
 			records={[
 				answer("m1", "Latency by region, as the bench measured it."),
 				supplement({
@@ -349,7 +355,7 @@ export const ComponentsOne: StoryObj = {
 export const ComponentsTwo: StoryObj = {
 	render: () => (
 		<Frame
-			height={620}
+			height={1021}
 			records={[
 				answer("m1", "Two cuts of the same bench: the chart and the table."),
 				supplement({
@@ -368,7 +374,7 @@ export const ComponentsTwo: StoryObj = {
 export const BudgetDisclosure: StoryObj = {
 	render: () => (
 		<Frame
-			height={640}
+			height={642}
 			records={[
 				answer("m1", "Three views of the run."),
 				supplement({
@@ -389,7 +395,7 @@ export const BudgetDisclosureExpanded: StoryObj = {
 	render: () => (
 		<Frame
 			click="[data-supplement-show-all]"
-			height={640}
+			height={1366}
 			records={[
 				answer("m1", "Three views of the run."),
 				supplement({
@@ -409,6 +415,7 @@ export const BudgetDisclosureExpanded: StoryObj = {
 export const Cancelled: StoryObj = {
 	render: () => (
 		<Frame
+			height={237}
 			records={[
 				answer("m1", "The charts were cancelled part-way."),
 				supplement({ id: "s1", state: "cancelled" }),
@@ -421,6 +428,7 @@ export const Cancelled: StoryObj = {
 export const CancelledCold: StoryObj = {
 	render: () => (
 		<Frame
+			height={237}
 			records={[
 				answer("m1", "The charts were cancelled part-way."),
 				supplement({ id: "s1", state: "queued" }),
@@ -433,6 +441,7 @@ export const CancelledCold: StoryObj = {
 export const Failed: StoryObj = {
 	render: () => (
 		<Frame
+			height={237}
 			records={[
 				answer("m1", "The graphics did not make it."),
 				supplement({
@@ -449,6 +458,7 @@ export const Failed: StoryObj = {
 export const DoneEmpty: StoryObj = {
 	render: () => (
 		<Frame
+			height={220}
 			records={[
 				answer("m1", "Nothing was worth calling out this turn."),
 				supplement({ id: "s1" }),
@@ -461,6 +471,7 @@ export const DoneEmpty: StoryObj = {
 export const Superseded: StoryObj = {
 	render: () => (
 		<Frame
+			height={220}
 			records={[
 				answer("m1", "The next turn cut this one's highlights."),
 				supplement({ id: "s1", state: "cancelled", error: "superseded" }),
@@ -477,7 +488,7 @@ export const Superseded: StoryObj = {
 export const FrameError: StoryObj = {
 	render: () => (
 		<Frame
-			height={420}
+			height={237}
 			records={[
 				answer("m1", "This chart could not load its data."),
 				supplement({
@@ -493,7 +504,7 @@ export const FrameError: StoryObj = {
 export const FrameLoading: StoryObj = {
 	render: () => (
 		<Frame
-			height={420}
+			height={437}
 			records={[
 				answer("m1", "The document is still arriving."),
 				supplement({
@@ -513,6 +524,7 @@ export const FrameLoading: StoryObj = {
 export const SupplementFree: StoryObj = {
 	render: () => (
 		<Frame
+			height={314}
 			records={[
 				{
 					kind: "user",
@@ -539,7 +551,7 @@ export const SupplementFree: StoryObj = {
 export const Narrow: StoryObj = {
 	render: () => (
 		<Frame
-			height={420}
+			height={514}
 			width="560px"
 			records={[
 				answer("m1", "The run finished clean; two files and one chart."),
