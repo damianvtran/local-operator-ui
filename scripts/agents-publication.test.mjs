@@ -1090,3 +1090,56 @@ test("the ops refuse what the hub would refuse, before a request is built", () =
 			`${JSON.stringify(ok)} is a name the hub accepts, so it must be sendable`,
 		);
 });
+
+test("the {code,params,text} envelope's text is the sentence, and text outranks message", () => {
+	// The core's i18n envelope (RFC §2.6): the code is what a client reacts to,
+	// `params` carries data, and `text` keeps the exact sentence.
+	assert.equal(
+		publicationProse({
+			detail: {
+				code: "name_taken",
+				params: { name: "Coder" },
+				text: 'The name "Coder" is already published on the hub.',
+			},
+		}),
+		'The name "Coder" is already published on the hub.',
+	);
+	// A body carrying both writes is the newer contract: `text` wins.
+	assert.equal(
+		publicationProse({
+			detail: {
+				code: "x",
+				text: "Newer sentence.",
+				message: "Older sentence.",
+			},
+		}),
+		"Newer sentence.",
+	);
+	// The typed refusal carries the envelope's text as its message.
+	const refused = publicationErrorFromBody(409, {
+		detail: { code: "name_taken", params: {}, text: "That name is taken." },
+	});
+	assert.ok(refused);
+	assert.equal(refused.message, "That name is taken.");
+	// And the message-only object (the older shape) still reads.
+	assert.equal(
+		publicationProse({ detail: { code: "x", message: "Older sentence." } }),
+		"Older sentence.",
+	);
+});
+
+test("the legacy upload arm reads refusals through the shared prose ladder, never interpolating the detail", () => {
+	const source = read(
+		"src/renderer/src/shared/api/local-operator/agents-api.ts",
+	);
+	assert.match(
+		source,
+		/publicationProse\(\{ detail: errorBody\?\.detail \}\)/,
+		"the upload arm must route through the one ladder",
+	);
+	assert.doesNotMatch(
+		source,
+		/errorBody\.detail\}/,
+		"an envelope object must never be interpolated into a sentence",
+	);
+});
