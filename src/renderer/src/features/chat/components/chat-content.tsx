@@ -123,6 +123,7 @@ import { DeleteConversationDialog } from "./delete-conversation-dialog";
 import type { DirectoryWritePath } from "./directory-indicator";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
+import type { JobControls } from "./run-details/use-job-controls";
 import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
 import type { MonitorControls } from "./run-details/use-monitor-controls";
 import type { WakeControls } from "./run-details/use-wake-controls";
@@ -578,6 +579,13 @@ type ChatContentProps = {
 	 */
 	wakeControls: WakeControls;
 	/**
+	 * The pane's JOB write controls (`use-job-controls.ts`), threaded exactly as
+	 * the other two are: the video row family's cancel — its confirmation and the
+	 * write's in-flight window — lives in the pane body, and the write belongs to
+	 * the level that owns the session identity.
+	 */
+	jobControls: JobControls;
+	/**
 	 * What the pane knows about the chief of staff for the wakes guard
 	 * (`wake-controls-model.ts`): her resolved session id, her display name,
 	 * whether the capability negotiated, and whether the status read answered.
@@ -810,6 +818,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		mcpRemedy,
 		monitorControls,
 		wakeControls,
+		jobControls,
 		wakeAida,
 		childrenOpenable = false,
 		/*
@@ -2978,6 +2987,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								mcpRemedy={mcpRemedy}
 								monitorControls={monitorControls}
 								wakeControls={wakeControls}
+								jobControls={jobControls}
 								wakeAida={wakeAida}
 								sessionId={canonical?.view.frontend?.session_id ?? null}
 								pulses={pulses ?? EMPTY_PULSES}

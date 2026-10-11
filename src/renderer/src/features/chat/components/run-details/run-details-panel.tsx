@@ -32,6 +32,8 @@
 import { Separator } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { Fragment, type HTMLAttributes, type ReactNode, type Ref } from "react";
+import { JobCancelPopover } from "./job-cancel-popover";
+import type { JobControls } from "./job-controls-model";
 import { MonitorCancelDialog } from "./monitor-cancel-dialog";
 import { RunDetailJobs } from "./run-detail-jobs";
 import { RunDetailMcp } from "./run-detail-mcp";
@@ -42,6 +44,7 @@ import { RunDetailSubagents } from "./run-detail-subagents";
 import { RunDetailTodos } from "./run-detail-todos";
 import { RunDetailWakes } from "./run-detail-wakes";
 import { useRunDetailsClock } from "./run-details-clock";
+import { useJobCancel } from "./use-job-cancel";
 import type { McpRemedyControls } from "./use-mcp-remedy";
 import { useMonitorCancel } from "./use-monitor-cancel";
 import type { MonitorControls } from "./use-monitor-controls";
@@ -127,6 +130,13 @@ export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	 */
 	wakeControls: WakeControls;
 	/**
+	 * The pane's JOB write controls (`use-job-controls.ts`), threaded from the
+	 * page exactly as the other two are: the video row family's cancel — its
+	 * confirmation and the write's in-flight window — is owned by this body, so
+	 * the Jobs section stays presentational.
+	 */
+	jobControls: JobControls;
+	/**
 	 * What the pane knows about the chief of staff (`useAidaTarget` at the page):
 	 * the guard that keeps her check-ins from being one stray click from gone.
 	 * Plain data rather than a hook call for the monitors' reason — the stories
@@ -163,6 +173,7 @@ export const RunDetailsPanel = ({
 	monitorControls,
 	wakeControls,
 	wakeAida,
+	jobControls,
 	sessionId,
 	className,
 	...props
@@ -203,6 +214,18 @@ export const RunDetailsPanel = ({
 		sessionId,
 		controls: wakeControls,
 		name: wakeAida.name,
+	});
+	/*
+	 * The Jobs cancel interaction, owned HERE for the monitors' and wakes' reason
+	 * one section over: the jobs list churns under the canonical re-read a cancel
+	 * fires (`use-job-controls.ts`'s `finally`), so the confirmation and the
+	 * write's in-flight window live above the section gate. It takes the write
+	 * controls and the session identity — there is no display-name copy on this
+	 * one; the card names the row's own label.
+	 */
+	const jobCancel = useJobCancel({
+		sessionId,
+		controls: jobControls,
 	});
 	/*
 	 * Presence is judged on the DERIVED lists rather than on the visible slices:
@@ -276,6 +299,7 @@ export const RunDetailsPanel = ({
 					details={measured}
 					paneWidth={paneWidth}
 					sectionRef={jobsSectionRef}
+					cancel={jobCancel.section}
 				/>
 			),
 		});
@@ -437,6 +461,14 @@ export const RunDetailsPanel = ({
 			 * keeps its place even while its row is off the screen.
 			 */}
 			<WakeCancelPopover {...wakeCancel.popover} />
+			{/*
+			 * The job cancel confirmation, rendered here for the same reason and one
+			 * section over: the jobs list empties for a frame under the same canonical
+			 * re-read, so a card owned by that section would leave with its rows. It is
+			 * anchored to the rect captured at the press, so it keeps its place even
+			 * while its row is off the screen.
+			 */}
+			<JobCancelPopover {...jobCancel.popover} />
 		</div>
 	);
 };
