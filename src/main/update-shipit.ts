@@ -96,6 +96,44 @@ export const UPDATE_STAGING_DIR = "update-staging";
 export const INSTALLER_POLL_SECONDS = "0.2";
 
 /**
+ * How long the spawner waits for the app to exit ON ITS OWN before it asks.
+ *
+ * DERIVATION, from measurements rather than taste: on the incident's machine
+ * every install that quit cleanly that day exited 1.3-4 s after the quit began
+ * (7 of 8 installs; the 8th is the 26 m 49 s wedge this bound exists for), and
+ * `stop()`-driven quits on this fleet have measured the same order. 60 s is
+ * more than an order of magnitude above the slowest GOOD quit - enough that the
+ * bound cannot fire on a quit working normally, even on a host at load 185 - and
+ * still short enough that a wedged quit costs about a minute rather than the
+ * half-hour it cost on 2026-10-10.
+ */
+export const INSTALLER_FIRST_GRACE_SECONDS = 60;
+
+/**
+ * How long the app gets to be gone after SIGTERM, before SIGKILL.
+ *
+ * DERIVATION: the incident measured a TERM'd app gone in under half a second
+ * (`kill -TERM 81333` at 00:19:56.0, the installer's `kill -0` answering gone by
+ * 00:19:56.4), and the headless rigs measure the same order for an Electron quit
+ * that is not wedged. 20 s is ~50x the measured TERM-to-gone time: long enough
+ * for a slow teardown to finish on its own, short enough that the ladder's whole
+ * worst case (60 + 20 + settle) stays under a minute and a half.
+ */
+export const INSTALLER_SECOND_GRACE_SECONDS = 20;
+
+/**
+ * The settle between SIGKILL and starting the installer regardless.
+ *
+ * A SIGKILL'd pid needs an instant to actually be gone (and an unreaped zombie
+ * answers `kill -0` until launchd reaps it), and ShipIt's last question before
+ * the swap is whether any instance of the app is running - so this is the small
+ * moment that keeps the installer from asking its question while the kernel is
+ * still tearing the old pid down. About two poll intervals, which is the scale
+ * every other wait in this script works at.
+ */
+export const INSTALLER_KILL_SETTLE_SECONDS = "0.5";
+
+/**
  * How long the extraction may take before it is killed.
  *
  * `ditto` over a 152 MB zip was measured at 5.7 s on this machine; this is two
@@ -361,6 +399,25 @@ export function shipItStatePlist(input: {
  * process's command line, and a script carrying `/Applications/Local
  * Operator.app` would show up in any process listing of it.
  *
+ * THE WAIT IS A BOUNDED, LOGGED LADDER, NOT `while kill -0; do sleep; done`
+ * (2026-10-11 incident). The unbounded shape waited 26 m 49 s on the operator's
+ * machine while the app sat alive with no window and every holder in the quit
+ * path already accounted for - and because the wait logged nothing, no one could
+ * tell it apart from an install in progress. The ladder: first grace (the app
+ * exits on its own) -> SIGTERM, but only after `ps` still names the app -> second
+ * grace -> SIGKILL -> settle -> start the installer REGARDLESS, because a pid
+ * that survives SIGKILL is a zombie or unkillable and nothing more exists to wait
+ * for. Every transition is one timestamped line in the installer's own log, so
+ * the next post-mortem can read the wait instead of inferring it.
+ *
+ * A RECYCLED PID IS NEVER SIGNALLED. `kill -0` answering is not the same
+ * question as "the app is still there": pids are reused. Before either signal
+ * the ladder proves the target with `ps -o command= -p <pid>` against the app's
+ * own executable path (`LO_UPDATE_INSTALLER_APP_EXEC`, environment only for the
+ * same reason the pid is a positional argument); a pid whose command line is
+ * something else is logged as not-the-app, and the installer starts without any
+ * signal having been sent.
+ *
  * Both of the installer's streams are appended to the log launchd would have
  * written (see `installerLogPath`), inside the script rather than as inherited
  * descriptors, so the spawned process holds no descriptor of ours open: a pipe
@@ -369,12 +426,28 @@ export function shipItStatePlist(input: {
 export function buildInstallerSpawn(input: {
 	/** The app's own pid, captured before the quit. */
 	appPid: number;
+	/**
+	 * The app's own executable, for the script's identity check before it
+	 * signals: `ps -o command= -p <pid>` must still name this path. Environment
+	 * only, for the same reason the pid is a positional argument.
+	 */
+	appExecPath: string;
 	shipItPath: string;
 	/** The label ShipIt names itself by: `<bundle id>.ShipIt`. */
 	label: string;
 	statePath: string;
 	logPath: string;
+	/**
+	 * Overrides the escalation ladder's two graces, in whole seconds. Production
+	 * passes nothing and gets the measured defaults above; a test drives SHORT
+	 * bounds because it cannot sit out 60 s + 20 s to watch the ladder, and the
+	 * ladder's own behaviour is what is under test.
+	 */
+	graceSeconds?: { first: number; second: number };
 }): { script: string; env: Record<string, string>; args: string[] } {
+	const firstGrace = input.graceSeconds?.first ?? INSTALLER_FIRST_GRACE_SECONDS;
+	const secondGrace =
+		input.graceSeconds?.second ?? INSTALLER_SECOND_GRACE_SECONDS;
 	const script = `#!/bin/sh
 # ${INSTALLER_TOKEN}
 #
@@ -385,10 +458,74 @@ export function buildInstallerSpawn(input: {
 # (SQRLInstallerErrorDomain Code=-9, the 2026-09-18 09:37 install). So this waits
 # for the app's pid to go, and then replaces itself with the installer: one
 # process, one pid for the app to record, and no shell left in the way.
-while kill -0 "$1" 2>/dev/null; do
+#
+# THE WAIT IS BOUNDED AND LOGGED (2026-10-11): the unbounded shape waited 26 m
+# 49 s while the app sat alive with no window, and logged nothing anywhere. Each
+# stage below is bounded and writes one timestamped line to the installer's log;
+# the last stage starts the installer regardless, because a pid that survives
+# SIGKILL is a zombie and nothing more exists to wait for.
+app_pid=$1
+started=$(date +%s)
+log_stage() {
+	printf '%s ${INSTALLER_TOKEN}: %s\\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$1" >>"$LO_UPDATE_INSTALLER_LOG"
+}
+elapsed() {
+	printf '%d' "$(( $(date +%s) - started ))"
+}
+# A recycled pid is never signalled: before any kill, the target's command line
+# must still name the app's own executable ($LO_UPDATE_INSTALLER_APP_EXEC,
+# environment only - see the args comment at the callers).
+target_is_app() {
+	[ -n "$LO_UPDATE_INSTALLER_APP_EXEC" ] || return 1
+	_line=$(ps -o command= -p "$app_pid" 2>/dev/null) || return 1
+	case "$_line" in
+		*"$LO_UPDATE_INSTALLER_APP_EXEC"*) return 0 ;;
+	esac
+	return 1
+}
+start_installer() {
+	log_stage "starting the installer ($(elapsed)s in)"
+	exec "$LO_UPDATE_INSTALLER_SHIPIT" "$LO_UPDATE_INSTALLER_LABEL" "$LO_UPDATE_INSTALLER_STATE" >>"$LO_UPDATE_INSTALLER_LOG" 2>&1
+}
+log_stage "waiting up to ${firstGrace}s for the app to exit on its own"
+_end=$((started + ${firstGrace}))
+while kill -0 "$app_pid" 2>/dev/null; do
+	if [ "$(date +%s)" -ge "$_end" ]; then break; fi
 	sleep ${INSTALLER_POLL_SECONDS}
 done
-exec "$LO_UPDATE_INSTALLER_SHIPIT" "$LO_UPDATE_INSTALLER_LABEL" "$LO_UPDATE_INSTALLER_STATE" >>"$LO_UPDATE_INSTALLER_LOG" 2>&1
+if ! kill -0 "$app_pid" 2>/dev/null; then
+	log_stage "the app exited on its own ($(elapsed)s in)"
+	start_installer
+fi
+log_stage "the first grace expired with the app still there"
+if target_is_app; then
+	log_stage "asking the app to stop (SIGTERM)"
+	kill -TERM "$app_pid" 2>/dev/null
+	_end=$(( $(date +%s) + ${secondGrace} ))
+	while kill -0 "$app_pid" 2>/dev/null; do
+		if [ "$(date +%s)" -ge "$_end" ]; then break; fi
+		sleep ${INSTALLER_POLL_SECONDS}
+	done
+	if ! kill -0 "$app_pid" 2>/dev/null; then
+		log_stage "the app exited after SIGTERM ($(elapsed)s in)"
+		start_installer
+	fi
+	if target_is_app; then
+		log_stage "the second grace expired; forcing the pid gone (SIGKILL)"
+		kill -KILL "$app_pid" 2>/dev/null
+		sleep ${INSTALLER_KILL_SETTLE_SECONDS}
+		if kill -0 "$app_pid" 2>/dev/null; then
+			log_stage "the pid survived SIGKILL (a zombie or unkillable); nothing left to wait for"
+		else
+			log_stage "the app is gone after SIGKILL ($(elapsed)s in)"
+		fi
+	else
+		log_stage "target is not the app after SIGTERM; starting the installer"
+	fi
+	start_installer
+fi
+log_stage "target is not the app; starting the installer without signalling"
+start_installer
 `;
 	return {
 		script,
@@ -397,6 +534,7 @@ exec "$LO_UPDATE_INSTALLER_SHIPIT" "$LO_UPDATE_INSTALLER_LABEL" "$LO_UPDATE_INST
 			LO_UPDATE_INSTALLER_LABEL: input.label,
 			LO_UPDATE_INSTALLER_STATE: input.statePath,
 			LO_UPDATE_INSTALLER_LOG: input.logPath,
+			LO_UPDATE_INSTALLER_APP_EXEC: input.appExecPath,
 		},
 		// `sh -c <script> <name> <pid>`: the name is $0 and the pid is $1, so the
 		// script text carries no path and no number that a process listing of it

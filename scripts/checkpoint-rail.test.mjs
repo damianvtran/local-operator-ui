@@ -392,6 +392,114 @@ test("ticks render from the manifest, in order, at the fixed pitch", async () =>
 	}
 });
 
+test("a switch seeds the inbound port while the outbound mark is still reported (design round 4)", async () => {
+	/*
+	 * The warm re-open's residual write, pinned where it is decidable. `useActiveCheckpoint`
+	 * keeps its id in state, so a switch can render the inbound conversation's ticks while the
+	 * OUTBOUND conversation's mark is still what the rail is told is active - and the port seed
+	 * used to be skipped for exactly that commit (treating a stale mark as "already seeded"),
+	 * which painted the inbound ticks at the outbound offset until the inbound mark's arrival
+	 * wrote the whole uniform translate. The design seat measured that at -1870 px in 4 of 6
+	 * warm re-opens; jsdom has no layout, so the pixel verdict stays theirs and this arm pins
+	 * WHICH WRITE HAPPENS, by defining the frame's own scrollTop and reading the write set.
+	 */
+	const outbound = [
+		checkpoint({ id: "u1", seq: 0 }),
+		completion({ id: "c1", turn: 1, seq: 50 }),
+	];
+	const inbound = [
+		checkpoint({ id: "v1", seq: 0 }),
+		completion({ id: "c2", turn: 1, seq: 50 }),
+	];
+	const rail = await mountRail({ sessionId: "s1", checkpoints: outbound });
+	try {
+		const frame = rail.document.querySelector("[data-rail-frame]");
+		assert.ok(frame, "the rail has a port to seed");
+		const writes = [];
+		let position = 0;
+		Object.defineProperty(frame, "scrollTop", {
+			configurable: true,
+			get: () => position,
+			set: (value) => {
+				writes.push(value);
+				/* What a browser does with the write the seed makes (it writes the track's height). */
+				position = Math.min(value, 2465 - 420);
+			},
+		});
+		Object.defineProperty(frame, "scrollHeight", {
+			configurable: true,
+			value: 2465,
+		});
+		Object.defineProperty(frame, "clientHeight", {
+			configurable: true,
+			value: 420,
+		});
+		/*
+		 * Rectangles by identity, on the DOM's own prototype: the frame is the port,
+		 * the inbound mark sits 1900px into a 2465px track (inside it - past, say,
+		 * the 24px pad the follow reserves), and everything else measures zero. The
+		 * prototype is per-JSDOM, so no other case sees these numbers.
+		 */
+		Object.defineProperty(
+			rail.window.Element.prototype,
+			"getBoundingClientRect",
+			{
+				configurable: true,
+				value() {
+					if (this.hasAttribute("data-rail-frame")) {
+						return { top: 0, height: 420 };
+					}
+					if (this.getAttribute("data-checkpoint-id") === "v1") {
+						/* Viewport-relative, for a port already at its tail: content-space 2300. */
+						return { top: 255, height: 2 };
+					}
+					return { top: 0, height: 0 };
+				},
+			},
+		);
+
+		/* The switch: inbound ticks, the outbound mark still reported as active. */
+		await rail.render({
+			activeId: "c1",
+			checkpoints: inbound,
+			sessionId: "s2",
+		});
+		assert.deepEqual(
+			writes,
+			[2465],
+			`the commit that paints the inbound ticks seeded the port to the tail: ${JSON.stringify(writes)}`,
+		);
+
+		/* The inbound mark arrives at content-space 2300 of a 2465px track: inside the port. */
+		writes.length = 0;
+		await rail.render({
+			activeId: "v1",
+			checkpoints: inbound,
+			sessionId: "s2",
+		});
+		assert.deepEqual(
+			writes,
+			[],
+			`a mark already inside the port does not move it: ${JSON.stringify(writes)}`,
+		);
+
+		/* And a later mark-less moment (a scroll, a reveal) must not pull it back to the tail. */
+		writes.length = 0;
+		await rail.render({
+			activeId: null,
+			checkpoints: inbound,
+			sessionId: "s2",
+		});
+		assert.deepEqual(
+			writes,
+			[],
+			`the port stays where the follow left it: ${JSON.stringify(writes)}`,
+		);
+	} finally {
+		await rail.close();
+	}
+});
+
 test("focus opens the completion card; Escape closes it; Enter's click is the jump", async () => {
 	const rail = await mountRail({
 		checkpoints: [

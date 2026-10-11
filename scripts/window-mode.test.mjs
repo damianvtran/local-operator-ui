@@ -114,6 +114,31 @@ const quitStateModule = await import(
 const { createQuitState } = quitStateModule;
 
 /*
+ * The quit's hard deadline (2026-10-11), bundled the same way — the object that
+ * gives the phase between `before-quit`'s synchronous return and `will-quit` a
+ * terminal. Its contract (armed once, moved by the quit's own stages, released
+ * ONLY by the quit's one cancellation) is what the tests below drive on the
+ * SHIPPED object; the wiring in `index.ts` is pinned at the source further down.
+ */
+const quitDeadlineModule = await import(
+	`data:text/javascript;base64,${Buffer.from(
+		(
+			await build({
+				stdin: {
+					contents: 'export * from "./src/main/quit-exit-deadline";',
+					resolveDir: process.cwd(),
+				},
+				bundle: true,
+				format: "esm",
+				platform: "node",
+				write: false,
+			})
+		).outputFiles[0].text,
+	).toString("base64")}`
+);
+const { createQuitExitDeadline, quitExitDeadlineMs } = quitDeadlineModule;
+
+/*
  * The refused-reopen record, bundled the same way (#755): the object the two
  * refusals write and the quit's terminal spends. Its transitions (record at a
  * refusal, clear at a cancelled quit, at-most-one schedule at the terminal) are
@@ -2181,6 +2206,162 @@ test("the quit state has one setter and one release, and the release is the inst
 	);
 });
 
+/**
+ * The quit's hard deadline, DRIVEN on the shipped object (2026-10-11).
+ *
+ * The object lives in `src/main/quit-exit-deadline.ts`; what a post-mortem needs
+ * from it is that it fires ONCE, with the phase the quit actually reached, and
+ * that its one release cancels it instead of letting a stale timer kill a
+ * healthy process. Real timers, driven with short bounds — the same shape the
+ * session-cookie hold's budget override uses.
+ */
+test("the quit deadline fires once, with its phase, and one release cancels it", async () => {
+	const fires = [];
+	const deadline = createQuitExitDeadline({
+		timeoutMs: 20,
+		onFire: (firedInStage) => fires.push(firedInStage),
+	});
+	deadline.arm("before the session-cookie hold");
+	deadline.phase("awaiting the window close");
+	// A re-entrant before-quit (the hold's re-quit, the window-close path) must
+	// not restart the clock or lose the stage...
+	deadline.arm("before the session-cookie hold");
+	await new Promise((resolve) => setTimeout(resolve, 250));
+	assert.deepEqual(fires, ["awaiting the window close"]);
+	// ...and the deadline is spent after firing: no second fire without a new arm
+	// (which only a new quit can reach in the app).
+	deadline.phase("will-quit");
+	await new Promise((resolve) => setTimeout(resolve, 150));
+	assert.deepEqual(fires, ["awaiting the window close"]);
+
+	// The ONE release: a cancelled quit's deadline is cancelled with it...
+	const later = [];
+	const second = createQuitExitDeadline({
+		timeoutMs: 20,
+		onFire: (stage) => later.push(stage),
+	});
+	second.arm("will-quit");
+	second.release();
+	await new Promise((resolve) => setTimeout(resolve, 250));
+	assert.deepEqual(later, [], "a released deadline must not fire");
+	// ...and the NEXT quit gets a fresh one (release is not a poisoned state).
+	second.arm("before the session-cookie hold");
+	await new Promise((resolve) => setTimeout(resolve, 250));
+	assert.deepEqual(later, ["before the session-cookie hold"]);
+});
+
+/**
+ * The deadline's WIRING in `index.ts`, pinned at the source — armed before the
+ * hold can wait, moved by the quit's own stages, released only by the quit's
+ * one cancellation, and never cleared by the ordinary teardown it exists to
+ * bound (2026-10-11).
+ *
+ * `index.ts` cannot be booted here, so the wiring is pinned the same way this
+ * file pins the quit-state sites above: asserted against the BODY each site
+ * must live in, so the wiring cannot drift into another handler and stay green.
+ * The NUMERIC half — that the duration is its exported terms and not a restated
+ * number — is tied in `scripts/update-shipit.test.mjs` beside the Electron-stub
+ * bundling that can read the backend terms as shipped values.
+ */
+test("the quit deadline is armed before the hold, moved by the quit's stages, and released only by the cancellation", () => {
+	const index = readFileSync(join("src", "main", "index.ts"), "utf8");
+
+	// The deadline is constructed from the derived sum, not a literal.
+	assert.match(
+		index,
+		/const QUIT_EXIT_DEADLINE_MS = quitExitDeadlineMs\(\{\n\tquitCleanupFailsafeMs: QUIT_CLEANUP_FAILSAFE_MS,\n\}\);/,
+		"the deadline's duration must be derived from QUIT_CLEANUP_FAILSAFE_MS",
+	);
+
+	// Armed ONCE, inside before-quit's own body, before the hold can wait.
+	const beforeQuitAt = index.indexOf('app.on("before-quit"');
+	assert.ok(beforeQuitAt > 0, "the before-quit handler is still there");
+	const beforeQuit = index.slice(
+		beforeQuitAt,
+		index.indexOf("\n// The exit event is synchronous", beforeQuitAt),
+	);
+	assert.equal(
+		index.split("quitExitDeadline.arm(").length - 1,
+		1,
+		"exactly one site arms the deadline in the file",
+	);
+	assert.equal(
+		beforeQuit.split("quitExitDeadline.arm(").length - 1,
+		1,
+		"and it is inside before-quit's own body",
+	);
+	assert.ok(
+		beforeQuit.indexOf("quitExitDeadline.arm(") <
+			beforeQuit.indexOf("holdQuitForSessionCookieSnapshot(event)"),
+		"the deadline must be armed before the session-cookie hold can wait",
+	);
+
+	// The phase marker is moved by the quit's own stages, so the fired line can
+	// name the stage the quit stopped in.
+	assert.ok(
+		index.includes('quitExitDeadline.phase("after the session-cookie hold")'),
+		"the hold's release is a stage",
+	);
+	assert.ok(
+		index.includes('quitExitDeadline.phase("awaiting the window close")'),
+		"the synchronous tail is a stage",
+	);
+	const willQuitAt = index.indexOf('app.on("will-quit"');
+	assert.ok(willQuitAt > 0, "the will-quit handler is still there");
+	const willQuit = index.slice(
+		willQuitAt,
+		index.indexOf('app.on("before-quit"', willQuitAt),
+	);
+	assert.ok(
+		willQuit.includes('quitExitDeadline.phase("will-quit")'),
+		"will-quit's entry is the last stage the marker can name",
+	);
+	/*
+	 * AND WILL-QUIT MUST NOT RELEASE IT. A continuation that reassures the
+	 * deadline is the 2026-10-11 shape read backwards — the completion it
+	 * reports is the one that never arrived — so the release lives only beside
+	 * the quit's true cancellation, the setup dialog's declined answer.
+	 */
+	assert.equal(
+		willQuit.includes("quitExitDeadline.release"),
+		false,
+		"the ordinary teardown must never clear the deadline",
+	);
+	assert.equal(
+		index.split("quitExitDeadline.release();").length - 1,
+		1,
+		"exactly one site releases the deadline in the file",
+	);
+	const cancellation = index.slice(
+		index.indexOf("onQuitCancelled:"),
+		index.indexOf("\t},", index.indexOf("onQuitCancelled:")),
+	);
+	assert.ok(
+		cancellation.includes("quitExitDeadline.release();"),
+		"the one release is the cancelled quit's — beside quitState.cancel()",
+	);
+
+	// The fire body: names the phase in the log, completes the exit obligations,
+	// and leaves with FAILURE rather than sitting alive with no window.
+	const onFireAt = index.indexOf("onFire: (firedInStage) => {");
+	assert.ok(onFireAt > 0, "the deadline's fire body is still there");
+	const onFire = index.slice(onFireAt, index.indexOf("\n\t},", onFireAt));
+	assert.match(onFire, /logger\.error\(/, "the fire is logged as an error");
+	assert.ok(onFire.includes("firedInStage"), "and the line names the phase");
+	assert.ok(
+		onFire.includes("scheduleReopenAtQuitTerminal();"),
+		"the fire completes a recorded reopen through the one terminal",
+	);
+	assert.ok(onFire.includes("app.exit(1);"), "and exits with failure");
+
+	// The duration's arithmetic is a module contract, not an inline number: a
+	// spot check with values that cannot coincide with the shipped ones.
+	assert.equal(
+		quitExitDeadlineMs({ quitCleanupFailsafeMs: 1000 }),
+		1000 + 5000 + 1500,
+	);
+});
+
 test("a refused reopen is recorded — and ONE successor at the quit terminal completes it (#755)", () => {
 	/*
 	 * THE #755 SHAPE, DRIVEN ON THE SHIPPED OBJECT. A reopen refused during
@@ -2533,8 +2714,8 @@ test("#755's wiring: one relaunch call at the terminal, a record per request kin
 
 	assert.equal(
 		code.split("scheduleReopenAtQuitTerminal();").length - 1,
-		6,
-		"every quit terminal calls the one helper: the four will-quit sites, the headless exit deadline and the crash exit",
+		8,
+		"every quit terminal calls the one helper: the four will-quit sites, the headless exit deadline, the crash exit, and - since 2026-10-11 - the quit's own hard deadline fire and the quit-gated SIGTERM exit",
 	);
 	const willQuitAt = code.indexOf('app.on("will-quit"');
 	const willQuit = code.slice(
@@ -2576,12 +2757,15 @@ test("#755's wiring: one relaunch call at the terminal, a record per request kin
 		"and the failsafe schedules before its own failed exit",
 	);
 
-	/*
-	 * REVIEW F2/F3. The two exits OUTSIDE the will-quit pass that can still strand
-	 * a record call the same idempotent helper before they go — the headless exit
-	 * deadline (whose forced exit used to drop a record the refusal line had
-	 * already called deferred) and the `uncaughtException` crash exit — and the
-	 * install guard's stand-down reports only a RECORDED reopen, once.
+	/**
+	 * REVIEW F2/F3, extended 2026-10-11. The four exits OUTSIDE the will-quit pass
+	 * that can still strand a record call the same idempotent helper before they
+	 * go — the headless exit deadline (whose forced exit used to drop a record the
+	 * refusal line had already called deferred), the `uncaughtException` crash
+	 * exit, and the two the updater-stall change added: the quit's hard deadline
+	 * firing (a quit that never reaches `will-quit`) and the quit-gated SIGTERM
+	 * exit (the installer's escalator asking a wedged app to go) — and the install
+	 * guard's stand-down reports only a RECORDED reopen, once.
 	 */
 	const deadlineAt = code.indexOf("function armHeadlessExitDeadline");
 	assert.ok(deadlineAt > 0, "the headless exit deadline is still there");
@@ -2610,6 +2794,21 @@ test("#755's wiring: one relaunch call at the terminal, a record per request kin
 		"the install stand-down reports only a RECORDED reopen, and once (review F3)",
 	);
 
+	assert.ok(
+		code.indexOf(
+			"scheduleReopenAtQuitTerminal();",
+			code.indexOf("onFire: (firedInStage) => {"),
+		) <
+			code.indexOf("app.exit(1);", code.indexOf("onFire: (firedInStage) => {")),
+		"the quit's hard deadline schedules the reopen before its failed exit",
+	);
+	assert.ok(
+		code.indexOf(
+			"scheduleReopenAtQuitTerminal();",
+			code.indexOf("const onSigtermDuringQuit"),
+		) < code.indexOf("app.exit(0);", code.indexOf("const onSigtermDuringQuit")),
+		"and the quit-gated SIGTERM exit does too, before its clean exit",
+	);
 	const raiseSource = readFileSync(
 		join("src", "main", "window-raise.ts"),
 		"utf8",

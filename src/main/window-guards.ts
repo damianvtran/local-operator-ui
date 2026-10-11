@@ -423,9 +423,11 @@ const STATIC_FRAME_PREFIX = "/v1/static/";
  * CHILD FRAMES: only the two framings the app really makes - a `blob:` the
  * renderer minted itself (the PDF viewer) and the backend's static route
  * (the HTML preview). Everything else is refused regardless of who initiated
- * it, with no `about:blank` / `data:` allowance: the supplement frame (U-b)
- * brings its own one-shot rule for its `data:` mount, and a blanket `data:`
- * allowance here would be the loophole that rule exists to close.
+ * it, with no `about:blank` / `data:` allowance: the supplement frame earns
+ * its `data:` mount through its OWN one-shot rule instead
+ * (`supplement-mounts.ts`, checked in `guardNavigation` before this verdict),
+ * and a blanket `data:` allowance here would be the loophole that rule exists
+ * to close.
  *
  * `isSameDocument` navigations (fragment and history changes - the HashRouter)
  * never reach this function: they replace nothing and are not a destination.

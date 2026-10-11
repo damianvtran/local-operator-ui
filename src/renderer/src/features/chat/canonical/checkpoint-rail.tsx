@@ -11,6 +11,7 @@ import {
 	useCallback,
 	useEffect,
 	useId,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -416,11 +417,105 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 	 * end-active dash read luma 77 against 238 for an interior active mark,
 	 * dimmer than its rest neighbours in 59/59 palettes).
 	 */
-	useEffect(() => {
+	/*
+	 * A LAYOUT EFFECT, NOT A PASSIVE ONE, and that is design round 1's D2: the
+	 * mark column painted at the frame's own scrollTop 0 and then slid to the
+	 * active mark's offset once this ran, so the rail's first paint was not its
+	 * settled geometry - measured as uniform whole-column slides of -428 px (S5),
+	 * -2428 px (S6) and -1868 px (S3) between the first painted frame and the
+	 * settled one, in the exact proportion of the ticks lying below the active
+	 * mark. Painting early at the wrong offset moves the flicker rather than
+	 * removing it; writing the offset in a layout effect lands it in the SAME
+	 * commit as the `activeId` that caused it, so nothing observable moves. The
+	 * write is this frame's own `scrollTop` only - it never touches an ancestor,
+	 * which is what `scrollIntoView` would do.
+	 */
+	/*
+	 * THE PORT OPENS AT THE TAIL, BEFORE ANY MARK IS PAINTED, and that is what
+	 * design round 2's D2 needed: the column used to paint at the frame's own
+	 * `scrollTop` 0 and then slide to wherever the ACTIVE mark was once
+	 * `use-active-checkpoint` found it — measured on every shape and both builds:
+	 * 428 px (S5), 2428 px (S6), 1868 px (S3), 43-477 ms after the marks appeared,
+	 * with no active mark on screen at the first paint. The follow below could not
+	 * fix that by running earlier: at first paint there was nothing to follow yet.
+	 * A conversation opens pinned to its TAIL (the transcript scroller is
+	 * column-reverse, `scrollTop` 0 is the bottom), so the reading position the
+	 * active mark is derived from IS the tail — the port can therefore open where
+	 * the reader is, and the follow then finds its mark already inside the port
+	 * and writes nothing at all.
+	 *
+	 * ONCE PER MOUNT, and only while no mark is known: a latch, because the tick
+	 * set grows as the manifest's warm read lands and re-running this on every
+	 * arrival would yank a reader who had scrolled the rail's own port by hand.
+	 * A pane that mounts with a mark already known (a resize, a reveal) skips it
+	 * and leaves the port to the follow, which is what the reader left it doing.
+	 */
+	const seededFor = useRef<string | null>(null);
+	useLayoutEffect(() => {
+		const frame = frameRef.current;
+		/*
+		 * The tick count is READ here, not only depended on: the first commit can be
+		 * the one with NO ticks (the rail returns null until the manifest's first
+		 * answer, so the frame ref is null and there is nothing to place). Reading it
+		 * keeps the dependency honest and the guard says what it means.
+		 */
+		if (checkpoints.length === 0 || frame === null) return;
+		if (activeId !== null && markedFor.current === sessionId) {
+			/*
+			 * THIS session's mark is known, so the follow above owns the port and writes
+			 * before paint; the conversation counts as seeded, and a later moment with no
+			 * mark (a scroll, a reveal) must not pull the port back to the tail.
+			 *
+			 * A mark belonging to the OUTBOUND conversation does NOT count (it is the
+			 * stale state described at `markedFor`): the commit that paints the inbound
+			 * ticks has to seed, or those ticks are painted at the outbound port and the
+			 * follow later writes the uniform translate the design seat measured.
+			 *
+			 * SCOPE (agent review round 5, R12): this latch is what the ordering above is
+			 * about, and the ordering is real in a rig that re-renders the rail with new
+			 * props. The app mounts the rail's panel with `key={identity}`
+			 * (`features/chat/components/chat-page.tsx`), so a conversation SWITCH remounts
+			 * the rail - fresh refs, and this guard cannot be what positions or fails to
+			 * position the port there. A warm re-open that still moves the marks is
+			 * therefore NOT evidence this guard is wrong, and this guard being right is not
+			 * evidence the app's warm write is gone.
+			 */
+			seededFor.current = sessionId;
+			return;
+		}
+		if (seededFor.current === sessionId) return;
+		seededFor.current = sessionId;
+		/* Clamped by the browser: a track shorter than the port lands at 0. */
+		frame.scrollTop = frame.scrollHeight;
+		/*
+		 * KEYED ON THE SESSION, NOT ONCE PER MOUNT (design round 3, D2's warm half):
+		 * a switch to a conversation that does not remount the rail kept the old
+		 * port offset, so a warm re-open still wrote the translation the cold open no
+		 * longer writes - measured at -1868 px (1440) and -1889 px (1280) on all 224
+		 * ticks, 17-244 ms after the first marks. `sessionId` in the deps is what
+		 * re-seeds the port for the conversation being opened; `checkpoints.length`
+		 * is there because the commit with the first marks need not be the mount's
+		 * own; and the ref keeps a reader who has scrolled the port by hand from
+		 * being yanked back on every tick arrival.
+		 */
+	}, [activeId, checkpoints.length, sessionId]);
+	/*
+	 * WHICH SESSION'S PORT HAS BEEN POSITIONED, as opposed to which session is
+	 * mounted. `useActiveCheckpoint` keeps its id in STATE, so after a switch it
+	 * still reports the OUTBOUND conversation's mark for a commit (design round 4
+	 * measured the consequence: the inbound conversation's 224 cached marks painted
+	 * at the outbound port, and the inbound mark's arrival then wrote the whole
+	 * uniform translate - −1870 px at 1440, −1887/−1889 at 1280, in 4 of 6 warm
+	 * re-opens). A mark only means "the follow owns this port" when the follow has
+	 * actually seen it for the session being painted.
+	 */
+	const markedFor = useRef<string | null>(null);
+	useLayoutEffect(() => {
 		if (activeId === null) return;
 		const frame = frameRef.current;
 		const element = tickElements.current.get(activeId);
 		if (frame === null || element === undefined) return;
+		markedFor.current = sessionId;
 		const frameRect = frame.getBoundingClientRect();
 		const elementRect = element.getBoundingClientRect();
 		const top = elementRect.top - frameRect.top + frame.scrollTop;
@@ -431,7 +526,7 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 		} else if (bottom > frame.scrollTop + frame.clientHeight - pad) {
 			frame.scrollTop = bottom - frame.clientHeight + pad;
 		}
-	}, [activeId]);
+	}, [activeId, sessionId]);
 
 	// Timers outliving the component would setState into nothing. One cleanup.
 	useEffect(() => () => clearTimers(), [clearTimers]);

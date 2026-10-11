@@ -28,6 +28,17 @@ const bundle = await build({
 			import { useCheckpoints } from "./src/renderer/src/features/chat/canonical/use-checkpoints";
 			export { CHECKPOINT_POLL_INTERVAL_MS, CHECKPOINT_POLL_CEILING_MS } from "./src/renderer/src/features/chat/canonical/use-checkpoints";
 			/*
+			 * The manifest MEMORY is window state, and it survives a mount -
+			 * which is exactly what most of the arms here must not inherit: each
+			 * scripts a window's own first read (of a working op, of a missing
+			 * one, of a blip). freshWindow is how an arm says so, and the arms
+			 * that are ABOUT the memory do not call it.
+			 */
+			export { __resetCheckpointManifestCache, loadCheckpointManifest, warmCheckpointManifest } from "./src/renderer/src/features/chat/canonical/checkpoint-manifest-cache";
+			import { useState } from "react";
+			import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+			import { useOpenPrefetch } from "./src/renderer/src/features/chat/canonical/use-open-prefetch";
+			/*
 			 * The probe: one client render per mount, and every render hands its
 			 * answer to the tracker so a test reads the LAST one after any
 			 * sequence of interactions.
@@ -35,6 +46,56 @@ const bundle = await build({
 			export function Harness({ sessionId, track }) {
 				track(useCheckpoints(sessionId));
 				return null;
+			}
+			/*
+			 * The PANE's composition, for the one arm whose subject is the two reads
+			 * sharing an owner (agent review round 2, R3): the transcript's hook and
+			 * the open's prefetch, mounted together, with the capability answer
+			 * arriving LATER when the advertised prop flips. Kept separate from
+			 * Harness above so no existing arm's request environment changes.
+			 */
+			/*
+			 * PARENT AND CHILD, because that is the app's order and the arms about the
+			 * marker depend on it (agent review round 3, R9): React runs the CHILD's
+			 * effects before the parent's, so here the hook's read starts first and the
+			 * parent's prefetch joins it in flight - the opposite of calling both in one
+			 * component, which is what the round pointed out the earlier harness did.
+			 * A withPrefetch of false is a hook-only mount: no warm at all.
+			 */
+			function Prefetched({ sessionId, track }) {
+				track(useCheckpoints(sessionId));
+				return null;
+			}
+			function PrefetchParent({ sessionId, track, advertised, withPrefetch }) {
+				if (withPrefetch) useOpenPrefetch(sessionId, advertised === true);
+				return createElement(Prefetched, { sessionId, track });
+			}
+			export function PrefetchHarness({
+				sessionId,
+				track,
+				advertised,
+				withPrefetch = true,
+			}) {
+				/*
+				 * The provider lives INSIDE the bundle, because react-query is bundled
+				 * here (only react and react-dom are external) - a QueryClient from the
+				 * test file would be a second copy of the context and would not satisfy
+				 * this hook. Per mount, so no arm inherits another's query cache, and
+				 * with retries off, because these arms count requests.
+				 */
+				const [client] = useState(
+					() => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+				);
+				return createElement(
+					QueryClientProvider,
+					{ client },
+					createElement(PrefetchParent, {
+						sessionId,
+						track,
+						advertised,
+						withPrefetch,
+					}),
+				);
 			}
 		`,
 		resolveDir: process.cwd(),
@@ -82,9 +143,26 @@ export const desktopResult = (request) => globalThis.__checkpointRequest(request
 // base path from which to resolve it.
 const bundlePath = new URL("./_use-checkpoints.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { Harness, CHECKPOINT_POLL_INTERVAL_MS } = await import(bundlePath.href);
+const {
+	Harness,
+	PrefetchHarness,
+	CHECKPOINT_POLL_INTERVAL_MS,
+	__resetCheckpointManifestCache,
+	loadCheckpointManifest,
+	warmCheckpointManifest,
+} = await import(bundlePath.href);
 await unlink(bundlePath);
 const { createRoot } = await import("react-dom/client");
+
+/**
+ * Start this arm's window with no manifest memory at all.
+ *
+ * Called by every arm that scripts its own first read (which is all of them but
+ * the memory arm): without it, one test's successful answer would seed the next
+ * test's first render, and the assertion it makes about a failing read would be
+ * about a window that had already read successfully.
+ */
+const freshWindow = () => __resetCheckpointManifestCache();
 
 /** A manifest around a checkpoint list, with a ready index unless asked. */
 const manifest = (checkpoints, index = { state: "ready" }) => ({
@@ -161,7 +239,10 @@ function captureWarnings() {
  * A DOM and a root for one case, rendering the probe harness; the tracker hands
  * every render's result to the test.
  */
-async function mountHook(sessionId) {
+async function mountHook(
+	sessionId,
+	{ prefetch = false, withPrefetch = true } = {},
+) {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		url: "http://localhost/",
 	});
@@ -185,9 +266,25 @@ async function mountHook(sessionId) {
 	const track = (result) => {
 		latest = result;
 	};
-	const render = async (id) => {
+	/*
+	 * `prefetch: true` mounts the PANE's composition instead — the transcript's hook
+	 * beside `useOpenPrefetch` — with the capability answer under the test's own
+	 * control (`setAdvertised`), which is the seam agent review round 2's R3 needs:
+	 * the answer arriving AFTER the mount is the shape that fired the second read.
+	 */
+	let advertisedNow = false;
+	const render = async (id, advertised) => {
 		await act(async () => {
-			root.render(React.createElement(Harness, { sessionId: id, track }));
+			root.render(
+				prefetch
+					? React.createElement(PrefetchHarness, {
+							sessionId: id,
+							track,
+							advertised: advertised ?? advertisedNow,
+							withPrefetch,
+						})
+					: React.createElement(Harness, { sessionId: id, track }),
+			);
 		});
 	};
 	await render(sessionId);
@@ -198,6 +295,11 @@ async function mountHook(sessionId) {
 		},
 		switchTo: async (id) => {
 			await render(id);
+		},
+		/** The capability answer landing late (`prefetch` mounts only). */
+		setAdvertised: async (value) => {
+			advertisedNow = value;
+			await render(sessionId, value);
 		},
 		close: async () => {
 			await act(async () => {
@@ -213,6 +315,7 @@ async function mountHook(sessionId) {
 }
 
 test("the manifest is read once per conversation and its checkpoints surface", async () => {
+	freshWindow();
 	const checkpoints = [user(), completion()];
 	const requests = backend([manifest(checkpoints)]);
 	const rail = await mountHook("s1");
@@ -230,6 +333,7 @@ test("the manifest is read once per conversation and its checkpoints surface", a
 
 test("a missing op degrades without spamming: one warn per failure per conversation", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	freshWindow();
 	const capture = captureWarnings();
 	const requests = backend(new Error("404: unknown route"));
 	const rail = await mountHook("s1");
@@ -279,6 +383,7 @@ test("a missing op degrades without spamming: one warn per failure per conversat
 
 test("a refresh failure keeps the last manifest in view", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	freshWindow();
 	const checkpoints = [user(), completion()];
 	const requests = backend([manifest(checkpoints), new Error("blip")]);
 	const capture = captureWarnings();
@@ -300,6 +405,7 @@ test("a refresh failure keeps the last manifest in view", async (t) => {
 
 test("warm is bounded, and the poll stops when the pending set empties", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	freshWindow();
 	const many = Array.from({ length: 20 }, (_, i) => `id-${i}`);
 	/*
 	 * A per-op backend rather than a script: the FIRST manifest read shows the
@@ -362,6 +468,7 @@ test("warm is bounded, and the poll stops when the pending set empties", async (
 
 test("the poll stops at its 45s ceiling, and a later gesture may ask again", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	freshWindow();
 	const pendingManifest = manifest([completion()]);
 	const requests = backend((request) =>
 		request.op === "sessions.checkpoints.warm"
@@ -406,6 +513,7 @@ test("the poll stops at its 45s ceiling, and a later gesture may ask again", asy
 
 test("switching conversations drops the previous poll with the session", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	freshWindow();
 	const requests = backend((request) =>
 		request.op === "sessions.checkpoints.warm"
 			? { accepted: ["c1"], pending: ["c1"] }
@@ -449,6 +557,7 @@ test("a read resolving after unmount neither applies nor re-arms a poll", async 
 	 * observable the defect has.
 	 */
 	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	freshWindow();
 	let releaseHeld = null;
 	let reads = 0;
 	const requests = backend((request) => {
@@ -489,5 +598,259 @@ test("a read resolving after unmount neither applies nor re-arms a poll", async 
 		);
 	} finally {
 		await rail.close().catch(() => {});
+	}
+});
+
+test("a manifest this window already holds: the rail paints from it, and a failed re-read cannot blank it", async (t) => {
+	/*
+	 * THE MEMORY, and the two claims it makes (first-paint audit, F10's sibling:
+	 * the rail used to be drawn one round trip after the rows, on every open).
+	 *
+	 * 1. A conversation this window has read paints its ticks from the first
+	 *    render — the mount below is measured with NO answer scripted yet, so a
+	 *    "ready" state and a non-empty tick list can only have come from the
+	 *    memory. That is what puts the rail in the same commit as the rows.
+	 * 2. The re-read still runs (the manifest stays the authority), and when it
+	 *    FAILS the rail keeps what it was painting. That is the same rule the
+	 *    "refresh failure" arm above pins, and it matters more here: blanking on
+	 *    a failed re-read would take the rail away from a reader who was already
+	 *    looking at it, one frame after it appeared.
+	 */
+	freshWindow();
+	const checkpoints = [user(), completion()];
+	const first = backend([manifest(checkpoints)]);
+	/* The window's first read of this conversation. */
+	const before = await mountHook("s1");
+	assert.equal(before.latest().state, "ready");
+	await before.close();
+	assert.equal(first.length, 1, "the first window read it once");
+
+	/* The second mount is the same window, so the memory is intact. */
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	const capture = captureWarnings();
+	const requests = backend(new Error("blip"));
+	const after = await mountHook("s1");
+	try {
+		assert.equal(
+			after.latest().state,
+			"ready",
+			"the ticks are there in the first render, before any answer",
+		);
+		assert.deepEqual(after.latest().checkpoints, checkpoints);
+		assert.equal(after.latest().building, false);
+		await after.flush();
+		assert.equal(requests.length, 1, "the read still went out");
+		assert.equal(
+			after.latest().state,
+			"ready",
+			"a failed re-read keeps the manifest this window holds",
+		);
+		assert.deepEqual(after.latest().checkpoints, checkpoints);
+	} finally {
+		capture.restore();
+		await after.close();
+	}
+});
+
+test("one request serves the open-time prefetch and the hook's own mount", async (t) => {
+	/*
+	 * WHY THIS IS PINNED. The open-time prefetch (`use-open-prefetch.ts`) and
+	 * the transcript's mount ask for the same manifest a few tens of
+	 * milliseconds apart, and the whole reason the prefetch is free is that they
+	 * share one request (`checkpoint-manifest-cache.ts`'s in-flight map). Two
+	 * requests would mean the rail's read is paid for twice on every open — the
+	 * opposite of what moving it earlier was for.
+	 *
+	 * The held promise is the instrument: while the first load is in flight, the
+	 * second caller must join it rather than open its own.
+	 */
+	freshWindow();
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	let release = null;
+	let reads = 0;
+	const requests = backend(() => {
+		reads += 1;
+		return new Promise((resolve) => {
+			release = () => resolve(manifest([completion()]));
+		});
+	});
+	/*
+	 * The loader is bundled with the hook (one module registry), so what the
+	 * prefetch under test calls is the shipped function rather than a
+	 * restatement of it.
+	 */
+	const prefetched = loadCheckpointManifest("s1");
+	const rail = await mountHook("s1");
+	try {
+		await rail.flush();
+		assert.equal(reads, 1, "the mount joined the prefetch's request");
+		assert.equal(rail.latest().state, "loading");
+		await act(async () => {
+			release();
+		});
+		await rail.flush();
+		await prefetched;
+		assert.equal(reads, 1, "one request for both asks");
+		assert.equal(rail.latest().state, "ready");
+	} finally {
+		await rail.close();
+	}
+});
+
+test("a manifest this open already read is SERVED, not re-read (QA round 1, Q-2)", async (t) => {
+	/*
+	 * The measured regression: the open spent TWO `/checkpoints` reads on 29/36
+	 * opens against base's one, because the cache deduped only while the first
+	 * read was still IN FLIGHT - once the open's own read settled, the mount's ask
+	 * started a second request for a fact this window had read milliseconds
+	 * earlier. The memory it seeds from is that answer, so the first load of the
+	 * epoch serves from it instead.
+	 */
+	let reads = 0;
+	const requests = backend(() => {
+		reads += 1;
+		return Promise.resolve(manifest([completion()]));
+	});
+	/* The open's own read, settled BEFORE the mount - the 29/36 shape. */
+	await warmCheckpointManifest("s1");
+	assert.equal(reads, 1, "the open read the manifest");
+
+	const rail = await mountHook("s1");
+	try {
+		await rail.flush();
+		assert.equal(
+			reads,
+			1,
+			"the mount did not re-read what this open had just read",
+		);
+		assert.equal(rail.latest().state, "ready", "it paints the memory");
+		assert.equal(
+			rail.latest().checkpoints.length,
+			1,
+			"and the memory's ticks are the rail's",
+		);
+	} finally {
+		await rail.close();
+	}
+});
+
+test("a served memory is CORRECTABLE: a later read's answer is what the rail paints (R6)", async (t) => {
+	/*
+	 * R6, exactly as the round measured it: `paintedTicks=["c1"]` while the journal
+	 * already held `c1,c2` — a memory that was not the journal's, a mount that asked
+	 * before the pane's own prefetch ran, and the fresh read paid for and DROPPED
+	 * because nothing applied it to the hook's state. Two things fix that: the
+	 * serve's marker is spent at every mount (a previous open's read cannot serve
+	 * this one), and the pane SUBSCRIBES, so the read that follows lands in what it
+	 * paints.
+	 */
+	freshWindow();
+	const first = backend([manifest([user()])]);
+	const opener = await mountHook("s1", { prefetch: true });
+	try {
+		await opener.flush();
+		assert.equal(
+			opener.latest().checkpoints.length,
+			1,
+			"the first open read the journal as it was",
+		);
+	} finally {
+		await opener.close();
+	}
+
+	const second = backend([manifest([user(), completion()])]);
+	const next = await mountHook("s1", { prefetch: true });
+	try {
+		await next.flush();
+		assert.equal(
+			second.length,
+			1,
+			"one read for this open - the pane's own prefetch",
+		);
+		await next.flush();
+		assert.equal(
+			next.latest().checkpoints.length,
+			2,
+			"and its answer is what the rail paints, not the served memory",
+		);
+	} finally {
+		await next.close();
+	}
+});
+
+test("a warm read that only JOINS the hook's own read leaves no marker behind (R9)", async (t) => {
+	/*
+	 * The app's effect order, which the earlier harness could not express: the
+	 * child's hook starts the read, the parent's prefetch joins it in flight. The
+	 * marker used to be added when the READ SETTLED, whoever started it - so a joined
+	 * read left a marker nobody consumed, and a later hook-only mount (same panel, no
+	 * new prefetch: the dev chat/raw tab) served a memory with no read left to
+	 * correct it: `reads=0`, `painted=["c1"]` while the journal held `c1,c2` (round 3,
+	 * R9). Only a request the warm itself started can leave that marker.
+	 */
+	freshWindow();
+	const first = backend([manifest([user()])]);
+	const opener = await mountHook("s1", { prefetch: true });
+	try {
+		await opener.flush();
+		assert.equal(first.length, 1, "one read, started by the hook and joined");
+	} finally {
+		await opener.close();
+	}
+
+	const second = backend([manifest([user(), completion()])]);
+	const again = await mountHook("s1", { prefetch: true, withPrefetch: false });
+	try {
+		await again.flush();
+		assert.equal(
+			second.length,
+			1,
+			"a hook-only remount reads rather than serving a leftover marker",
+		);
+		assert.equal(
+			again.latest().checkpoints.length,
+			2,
+			"and paints the journal's current manifest",
+		);
+	} finally {
+		await again.close();
+	}
+});
+
+test("the pane's two reads are separate: the capability answer cannot re-ask the manifest (R3)", async (t) => {
+	/*
+	 * R3's measured waterfall, as the round wrote it:
+	 * `["sessions.checkpoints","settings.list","sessions.checkpoints"]` - the open's
+	 * checkpoint read started while the capability answer was unknown, the answer
+	 * flipped the dependency, and the SAME effect fired the registry prefetch AND a
+	 * second checkpoint read (the cache dedupes in flight only, and this read had
+	 * already settled). The two reads have different dependency stories - the
+	 * conversation and the plane - so they are two effects now, and the checkpoint
+	 * one is latched per conversation id.
+	 */
+	freshWindow();
+	const requests = backend((request) =>
+		request.op === "settings.list"
+			? { settings: [] }
+			: manifest([user(), completion()]),
+	);
+	const rail = await mountHook("s1", { prefetch: true });
+	const ops = () => requests.map((request) => request.op);
+	try {
+		await rail.flush();
+		assert.deepEqual(
+			ops(),
+			["sessions.checkpoints"],
+			"the open's own read, with the capability answer still unknown",
+		);
+		await rail.setAdvertised(true);
+		await rail.flush();
+		assert.deepEqual(
+			ops(),
+			["sessions.checkpoints", "settings.list"],
+			"the capability answer starts the registry prefetch and does not re-ask the manifest",
+		);
+	} finally {
+		await rail.close();
 	}
 });
