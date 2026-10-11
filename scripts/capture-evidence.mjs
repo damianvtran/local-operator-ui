@@ -3831,6 +3831,26 @@ export const STORIES = [
 	   makes — one section and its rows, or a quiet line. */
 	["chat-run-panel--jobs-in-flight", 1280, 700],
 	["chat-run-panel--jobs-only", 1280, 700],
+	/*
+	 * The VIDEO job family and its cancel (the video phase's post-turn rail):
+	 * the family at rest — the control on the video row, none on the shell row
+	 * beside it — then the control under the pointer and the keyboard, the
+	 * placed confirmation, the engine's refusal sentence, and the write's
+	 * in-flight hold. The flow cells hold their own shutter until the state
+	 * lands (real presses against stub controls), and the hover goes through
+	 * the rig's real pointer.
+	 */
+	["chat-run-panel--video-job-row", 1280, 820],
+	[
+		"chat-run-panel--video-job-cancel-hover",
+		1280,
+		820,
+		{ hover: '[data-job-cancel="job-video"]', hoverSettleMs: 400 },
+	],
+	["chat-run-panel--video-job-cancel-focus", 1280, 820],
+	["chat-run-panel--video-job-cancel-confirm", 1280, 820],
+	["chat-run-panel--video-job-cancel-refused", 1280, 820],
+	["chat-run-panel--video-job-cancel-busy", 1280, 820],
 	/* The Wakes section (`docs/composer-wakes.md`) — the pane's fifth, and the one
 	   surface that answers "is this session armed, and what will it fire". One band
 	   is a schedule alone (the state nothing in the app could show before), one the
@@ -9038,6 +9058,25 @@ export const STORIES = [
 	 */
 	["chat-image-generation--mid-walk-failure", 640, 360],
 	["chat-image-generation--already-finished", 640, 260],
+	/*
+	 * THE VIDEO VARIANTS (the video phase's desktop card): the six states with
+	 * the material noun moved, the completion pair (one row with the artifact
+	 * through the player — real bytes over the story's stubbed relay — and one
+	 * receipt-only row that must render without it), the player's resolving and
+	 * missing states, and the running pair that IS the R4 affirmative: the
+	 * image call beside the video call draws Cancel this mount wired, the video
+	 * call draws nothing. The `ready` cell releases its own shutter only once
+	 * the blob-backed player has decoded a frame.
+	 */
+	["chat-image-generation--video-queued", 1280, 220],
+	["chat-image-generation--video-running", 1280, 540],
+	["chat-image-generation--video-cancelling", 1280, 300],
+	["chat-image-generation--video-done", 1280, 480],
+	["chat-image-generation--video-player-resolving", 640, 300],
+	["chat-image-generation--video-player-missing", 640, 300],
+	["chat-image-generation--video-failed", 640, 220],
+	["chat-image-generation--video-cancelled", 640, 220],
+	["chat-image-generation--video-conflict", 640, 220],
 	/* THE PRE-MARKER CONTINUATION ROWS. A goal-continuation row written before
 	   the `harness_injected` stamp existed carries no marker to read - and one
 	   still arrives from an owner on an older build - so hiding only stamped
