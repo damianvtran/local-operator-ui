@@ -1,10 +1,11 @@
 # The language row's before half
 
 Two frames of `settings-backend--all-expanded` taken on `origin/main` =
-`9124745a64e` — the base this branch merges into — with **no `Language` row in
+`9124745a64e` — the base this branch merges into — with **no language row in
 the Appearance section: the *before* half of the pair whose *after* half is
-`../settings-backend/all-expanded/` (where the row renders with its
-`In effect: en` note). `localOperatorDark` and `localOperatorLight`, same
+`../settings-backend/all-expanded/` (where the row renders as
+`Interface language`, after `Desktop notifications`, its picker on `auto` and
+`In effect: en-US` under it). `localOperatorDark` and `localOperatorLight`, same
 viewport, same story, same args as the after frames, so the two are a
 like-for-like comparison rather than two sets of measurements.
 
@@ -31,7 +32,8 @@ node scripts/capture-evidence.mjs http://127.0.0.1:6051 \
 git checkout HEAD -- src scripts/fixtures
 ```
 
-The after half was then re-shot the same way from the restored tree, so
+The after half was then re-shot the same way from the restored tree (twice: the
+round-1 remediation's copy change re-took it once more), so
 `../settings-backend/all-expanded/localOperatorDark.webp` and
 `...LocalOperatorLight.webp` are the current tree's own frames.
 
@@ -42,8 +44,10 @@ these need the base tree's own fixture.
 ## What the pair is for
 
 The change is ONE new row and its note, which a single frame cannot show as a
-delta: the after frame's Appearance section carries `Language` between
-`Wake time format` and the rest of the section, its picker on `Auto`, and
-`In effect: en` under the picker; the before frame is the same section without
-that row and with nothing else moved. The measurements and the design notes
-belong in the PR, not here.
+delta: the after frame's Appearance section carries `Interface language`
+immediately after `Desktop notifications` (in both palettes), its picker on
+`auto`, and `In effect: en-US` under the picker - en-US because the story
+renders without a backend answer, so the note reads the store's device
+fallback, which on the capture host is en-US. The before frame is the same
+section without that row, and with nothing else moved. The measurements and
+the design notes belong in the PR, not here.

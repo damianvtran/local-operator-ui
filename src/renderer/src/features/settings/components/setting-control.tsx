@@ -377,7 +377,19 @@ export type SettingControlProps = {
  * Shown in every state rather than only beside `auto`: next to an UNSAVED
  * draft it is what says the change has not taken effect yet.
  */
-const EffectiveLanguage = () => {
+/** The effective-note's DOM id, the picker's describedby target (U2). */
+export const settingEffectiveId = (key: string) => `setting-effective-${key}`;
+
+/**
+ * What `auto` resolves to RIGHT NOW, under the language row's picker.
+ *
+ * The note is LIVE (`aria-live="polite"`): a locale that lands while the row
+ * is on screen - this row's own save, or the TUI's, picked up by the
+ * capabilities watch - is announced rather than silently repainted, and the
+ * picker's `aria-describedby` names it so the relationship survives a screen
+ * reader's focus order (U2, round 1).
+ */
+const EffectiveLanguage = ({ id }: { id?: string }) => {
 	const locale = useI18nLocale();
 	/*
 	 * Through `t()` from the first line this string exists: the row is the
@@ -386,7 +398,7 @@ const EffectiveLanguage = () => {
 	 * and `ui.settings.language.effective` is the key that answered it.
 	 */
 	return (
-		<span className="text-meta text-ink-dim">
+		<span id={id} aria-live="polite" className="text-meta text-ink-dim">
 			{t("ui.settings.language.effective", { locale })}
 		</span>
 	);
@@ -416,6 +428,15 @@ export const SettingControl = ({
 	 * `text` slot width, its deep-link reveal seam — therefore stays as it is.
 	 */
 	const comboSource = settingComboSource(setting.key);
+	/*
+	 * The language row's effective note, and its `describedby` target. Only
+	 * this key gets one: the note is the one piece of control-adjacent text
+	 * that changes WITHOUT the reader acting on the control (U2, round 1).
+	 */
+	const effectiveNoteId =
+		setting.key === LANGUAGE_SETTING_KEY
+			? settingEffectiveId(setting.key)
+			: undefined;
 	if (comboSource) {
 		return (
 			<SettingCombobox
@@ -469,7 +490,13 @@ export const SettingControl = ({
 						disabled={disabled}
 						onValueChange={onValueChange}
 					>
-						<SelectTrigger aria-label={setting.label} className="w-full">
+						<SelectTrigger
+							aria-label={setting.label}
+							aria-describedby={
+								[helpId, effectiveNoteId].filter(Boolean).join(" ") || undefined
+							}
+							className="w-full"
+						>
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
@@ -495,7 +522,9 @@ export const SettingControl = ({
 							))}
 						</SelectContent>
 					</Select>
-					{setting.key === LANGUAGE_SETTING_KEY && <EffectiveLanguage />}
+					{setting.key === LANGUAGE_SETTING_KEY && (
+						<EffectiveLanguage id={effectiveNoteId} />
+					)}
 				</div>
 			);
 		case "int":
