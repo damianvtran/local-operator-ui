@@ -219,6 +219,7 @@ import {
 	collapseRowsKey,
 	initialAlignWalkState,
 	paintedRows,
+	runIsCondensed,
 	snapWindowToRunBoundary,
 	widenTarget,
 	windowTopRun,
@@ -2406,6 +2407,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	labelHoldLate = false,
 	labelMarked = false,
 	stopping = false,
+	supplementCondensed = false,
 	onInterruptTurn,
 }: {
 	row: Row;
@@ -2445,6 +2447,13 @@ const TranscriptRow = memo(function TranscriptRow({
 	 * that changes once per press is cheaper compared than threaded as state.
 	 */
 	stopping?: boolean;
+	/**
+	 * Whether the supplement block's own turn currently renders condensed (one
+	 * closed bar over its run; `runIsCondensed`). Delivered to the ROW only - the
+	 * memo stays bound for every other row kind - and read by `SupplementRow`
+	 * for the one-line form (memo §2.8/§2.11, design D1).
+	 */
+	supplementCondensed?: boolean;
 	/**
 	 * The pane's interrupt press (`CanonicalTranscriptProps.onInterruptTurn`),
 	 * for the card's Cancel. Undefined means no control, by rule.
@@ -2524,7 +2533,11 @@ const TranscriptRow = memo(function TranscriptRow({
 		 */
 		case "supplement":
 			body = (
-				<SupplementRow record={record} sessionId={scope?.sessionId ?? null} />
+				<SupplementRow
+					record={record}
+					sessionId={scope?.sessionId ?? null}
+					condensed={supplementCondensed}
+				/>
 			);
 			break;
 		default:
@@ -4199,6 +4212,18 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					 * placed.
 					 */
 					afterBar?: boolean;
+					/**
+					 * The run whose collapse plan the supplement block's condensed state
+					 * reads, carried ONLY by a supplement group.
+					 *
+					 * An object rather than a boolean, deliberately: `segment.collapsed`
+					 * is reader-independent (an OPEN bar still renders), so the answer must
+					 * be read at RENDER time against the live `openRuns` - baking a boolean
+					 * into this memo would freeze the reader's expansion one commit behind.
+					 * And it is set only where it is consumed: every other group carries
+					 * nothing, so a bar opening re-renders one block, not the run.
+					 */
+					supplementRun?: RunCollapsePlan;
 			  }
 			| {
 					kind: "bar";
@@ -4306,6 +4331,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					group,
 					suppressClosingLine: footWithheld && segment === null,
 					afterBar,
+					supplementRun:
+						group.kind === "row" && group.row.record.kind === "supplement"
+							? plan
+							: undefined,
 				});
 			}
 		}
@@ -4322,6 +4351,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		group: SectionGroup,
 		suppressClosingLine: boolean,
 		soleImageGroup = false,
+		/**
+		 * The supplement block's condensed reading (see `ChatEntry.supplementRun`):
+		 * computed at RENDER time against the live `openRuns` so a bar the reader
+		 * opens restores the block in the same commit. False for every other row.
+		 */
+		supplementCondensed = false,
 	) =>
 		group.kind === "run" ? (
 			<TraceFold
@@ -4441,6 +4476,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				undelivered={undelivered}
 				answerRail={answerRail}
 				stopping={stopping === true}
+				supplementCondensed={supplementCondensed}
 				onInterruptTurn={onInterruptTurn}
 			/>
 		);
@@ -5034,6 +5070,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 												? atItemTierGroup(entry.group)
 												: entry.group,
 											entry.suppressClosingLine,
+											false,
+											/*
+											 * The supplement block's condensed reading, computed at RENDER
+											 * time against the live `openRuns` - see `supplementRun` on
+											 * the entry. False for every row but the block's.
+											 */
+											entry.supplementRun !== undefined &&
+												runIsCondensed(entry.supplementRun, openRuns),
 										)
 									),
 								)}

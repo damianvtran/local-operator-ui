@@ -22,7 +22,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/canonical/supplement-model";',
+			'export * from "./src/renderer/src/features/chat/canonical/supplement-model"; export * from "./src/shared/supplement-frame-url";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -353,13 +353,23 @@ test("component mounts stay inside the aggregate budget", () => {
 	);
 	assert.equal(plan.visible.length, 1);
 	assert.equal(plan.hidden.length, 2);
-	// Everything under a tall budget mounts.
+	// Everything under a tall budget mounts — once the first has REPORTED its
+	// rendered height (the second waits behind the disclosure until then; D5's
+	// hold-until-measured rule).
 	const all = model.planComponentMounts(
 		[component(120, "a"), component(120, "b")],
 		480,
+		new Map([["a".padEnd(32, "0").slice(0, 32), 120]]),
 	);
 	assert.equal(all.visible.length, 2);
 	assert.equal(all.hidden.length, 0);
+	// Cold, the same pair shows the first only.
+	const cold = model.planComponentMounts(
+		[component(120, "a"), component(120, "b")],
+		480,
+	);
+	assert.equal(cold.visible.length, 1);
+	assert.equal(cold.hidden.length, 1);
 	// A first frame taller than the budget STILL mounts (the reader came for it);
 	// only the frames beyond the budget wait behind the disclosure.
 	const none = model.planComponentMounts([component(480, "a")], 360);
@@ -435,4 +445,147 @@ test("row parsing keeps only the contract's fields and bounds the more list", ()
 		model.supplementPatchFromDetails({ ...details, anchor: "" }),
 		null,
 	);
+});
+
+// --- the condensed copy table (design D1) and the budget's accrual (D5) ------
+
+const blockRecord = (over) => ({
+	kind: "supplement",
+	ts: 1_791_000_060,
+	anchor: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+	job: "3f9c1a7e5b20",
+	version: 1,
+	state: "done",
+	files: [],
+	filesMore: 0,
+	more: [],
+	components: [],
+	error: "",
+	dismissed: false,
+	live: false,
+	...over,
+});
+const fileRow = (path, name, sizeBytes) => ({
+	path,
+	name,
+	kind: "markdown",
+	sizeBytes,
+	mtime: 0,
+	why: "w",
+});
+const comp = (seed, hint) => ({
+	attachment: seed.padEnd(32, "0").slice(0, 32),
+	title: seed,
+	source: "s",
+	mime: "text/html",
+	heightHint: hint,
+});
+
+test("the condensed line follows the design's copy table for every arm", () => {
+	assert.equal(
+		model.condensedBlockLine(blockRecord({ components: [comp("a", 320)] })),
+		"1 graphic",
+	);
+	assert.equal(
+		model.condensedBlockLine(
+			blockRecord({ components: [comp("a", 320), comp("b", 320)] }),
+		),
+		"2 graphics",
+	);
+	assert.equal(
+		model.condensedBlockLine(
+			blockRecord({
+				files: [
+					fileRow("reports/latency.md", "latency.md", 4120),
+					fileRow("data/bench.csv", "bench.csv", 913),
+				],
+			}),
+		),
+		"2 files: latency.md, bench.csv",
+	);
+	assert.equal(
+		model.condensedBlockLine(
+			blockRecord({
+				files: [fileRow("a.md", "a.md", 1), fileRow("b.md", "b.md", 1)],
+				filesMore: 5,
+				more: ["c.md", "d.md", "e.md", "f.md", "g.md"],
+			}),
+		),
+		"7 files",
+	);
+	assert.equal(
+		model.condensedBlockLine(
+			blockRecord({
+				files: [fileRow("a.md", "a.md", 1), fileRow("b.md", "b.md", 1)],
+				components: [comp("a", 320)],
+			}),
+		),
+		"2 files · 1 graphic",
+	);
+	assert.equal(model.condensedBlockLine(blockRecord({})), null);
+	// The not-settled prefix: files in, files+more out, nothing when unknown.
+	assert.equal(
+		model.condensedCountPrefix(
+			blockRecord({
+				files: [fileRow("a.md", "a.md", 1)],
+				filesMore: 1,
+				more: ["b.md"],
+			}),
+		),
+		"2 files",
+	);
+	assert.equal(model.condensedCountPrefix(blockRecord({})), null);
+});
+
+test("the budget accrues RENDERED heights once measured, hints until then (D5)", () => {
+	const components = [comp("a", 120), comp("b", 120)];
+	// NOTHING has reported yet: the walk holds at the first unmeasured
+	// predecessor, so only the first frame is admitted (the second waits for the
+	// first's rendered height).
+	const cold = model.planComponentMounts(components, 408);
+	assert.equal(cold.visible.length, 1);
+	assert.equal(cold.hidden.length, 1);
+	// The first reported SMALL (its hint was honest): the second mounts.
+	const small = new Map([["a".padEnd(32, "0").slice(0, 32), 120]]);
+	assert.equal(
+		model.planComponentMounts(components, 408, small).visible.length,
+		2,
+	);
+	// The field case the design measured: the first rendered 379px, so the
+	// second is behind the disclosure — the 758px auto-mount against a ~408px
+	// budget was the hint-only accrual's work.
+	const measured = new Map([["a".padEnd(32, "0").slice(0, 32), 379]]);
+	const one = model.planComponentMounts(components, 408, measured);
+	assert.equal(one.visible.length, 1);
+	assert.equal(one.hidden.length, 1);
+	// A measured height is clamped to the contract before it accrues.
+	const huge = new Map([["a".padEnd(32, "0").slice(0, 32), 9999]]);
+	assert.equal(
+		model.planComponentMounts(components, 408, huge).visible.length,
+		1,
+	);
+	// The first frame always mounts, measured or not.
+	assert.equal(
+		model.planComponentMounts([comp("a", 480)], 100, huge).visible.length,
+		1,
+	);
+});
+
+test("the mount URL contract is the builder's output, byte for byte", () => {
+	const url = model.supplementMountUrl("5ea1face0001", "a".repeat(32));
+	assert.equal(url, `lo-supplement://s/5ea1face0001/${"a".repeat(32)}`);
+	assert.deepEqual(model.parseSupplementMountUrl(url), {
+		sessionId: "5ea1face0001",
+		digest: "a".repeat(32),
+	});
+	for (const bad of [
+		`${url}#f`,
+		`${url}?q=1`,
+		url.toUpperCase(),
+		"data:text/html;base64,AAAA",
+		"https://example.com/x",
+		"",
+	]) {
+		assert.equal(model.parseSupplementMountUrl(bad), null, String(bad));
+	}
 });

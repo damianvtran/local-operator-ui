@@ -2,13 +2,13 @@
  * One generated component in its sandboxed frame (turn-supplements memo §4.1/§4.2,
  * lane U-b).
  *
- * THE INVARIANT, and nothing beyond it: `<iframe sandbox="allow-scripts"
- * src="data:text/html;base64,…">` — an opaque origin, no bridge/preload, no
- * network (the document's own CSP closes `connect-src`), no file access, no
- * popups, and a navigation guard on both sides of the boundary:
+ * THE INVARIANT, and nothing beyond it: `<iframe sandbox="allow-scripts" …>` —
+ * an opaque origin, no bridge/preload, no network (the document's own CSP closes
+ * `connect-src`), no file access, no popups, and a navigation guard on both
+ * sides of the boundary:
  *
  *   - MAIN permits exactly ONE child-frame navigation per mount — the exact
- *     `data:` URL the renderer armed immediately before setting `src`
+ *     URL the renderer armed immediately before setting `src`
  *     (`supplement-mounts.ts`; `armSupplementFrame`) — and denies every later
  *     one, so a component that tries to navigate itself (or a `meta refresh`)
  *     is stopped before the request is issued;
@@ -16,6 +16,19 @@
  *     navigation or a blocked attempt (measured on Chrome 155: a blocked
  *     navigation fires a second `load` too), so the frame is torn down into the
  *     frame-level fallback line and every later message from it is dropped.
+ *
+ * WHICH URL THE FRAME MOUNTS, and why two forms exist. In the app the mount is
+ * the digest-addressed `lo-supplement://s/<session>/<digest>` URL, served by
+ * the main process (`supplement-protocol.ts`): the app's own renderer CSP is
+ * inherited by local-scheme child documents, so a `data:` document is blocked
+ * before it runs its prelude (measured, UX round 1 U1 — Storybook never showed
+ * it because Storybook carries no such policy). A browser-only host (Storybook,
+ * the dev server in a plain tab) has no `lo-supplement:` handler, and no
+ * embedder policy either; there the bytes still ride the `data:` URL as before,
+ * and the arm channel's ABSENCE is the one signal that picks the form. The
+ * app never takes the `data:` branch: if the channel exists and the component
+ * cannot address its stored digest, this frame fails closed into the fallback
+ * line rather than mounting a URL the app's guard would refuse.
  *
  * THE MESSAGE WIRE (host side) is exactly the contract's: the host sends
  * `{lo:"supplement-host", t:"theme", mode, vars, nonce}` (the nonce minted per
@@ -37,6 +50,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { supplementMountUrl } from "../../../../../shared/supplement-frame-url";
 import {
 	PING_INTERVAL_MS,
 	type SupplementComponent,
@@ -46,6 +60,7 @@ import {
 	clampFrameHeight,
 	clampedHeightHint,
 	displayText,
+	isDigest,
 	mintNonce,
 	readSupplementTheme,
 	subscribeSupplementTheme,
@@ -59,6 +74,12 @@ const HOSTILE_TEARDOWN_LOG =
 export type SupplementFrameProps = {
 	component: SupplementComponent;
 	/**
+	 * The conversation's session, for the digest-addressed mount URL. Null in
+	 * hosts without a session (stories) — those take the `data:` path, since
+	 * they also lack the arm channel that implies an app-owned handler.
+	 */
+	sessionId: string | null;
+	/**
 	 * The assembled document, `null` until the media relay answers. The reserved
 	 * box holds the component's clamped `height_hint` while it is null.
 	 */
@@ -69,6 +90,17 @@ export type SupplementFrameProps = {
 	 * its reserved box forever.
 	 */
 	documentFailed?: boolean;
+	/**
+	 * The row's `supplements.restart` arm, offered as `· Retry` beside the
+	 * fallback line when a session is addressable (memo §2.8 pins it; round-1
+	 * D2/U4). Absent handler, absent control.
+	 */
+	onRetry?: () => void;
+	/**
+	 * The frame's current rendered height, on every change — the figure the
+	 * row's aggregate budget accrues once a frame is on screen (design D5).
+	 */
+	onHeightChange?: (height: number) => void;
 	className?: string;
 };
 
@@ -99,13 +131,24 @@ function nearestScrollPort(element: HTMLElement): HTMLElement | null {
 
 export function SupplementFrame({
 	component,
+	sessionId,
 	documentHtml,
 	documentFailed = false,
+	onRetry,
+	onHeightChange,
 	className,
 }: SupplementFrameProps) {
 	const reserved = clampedHeightHint(component);
 	const [height, setHeight] = useState(reserved);
 	const [failed, setFailed] = useState(false);
+	/**
+	 * Whether the frame has yet to paint anything: true from mount until the
+	 * document's first `resize` beat. While true, the reserved box carries the
+	 * state line's own shimmer at low intensity (round-1 D4): the box used to
+	 * paint nothing between mount and first paint — up to the 5 s watchdog —
+	 * and on a busy transcript that read as a hole under the answer.
+	 */
+	const [awaitingPaint, setAwaitingPaint] = useState(true);
 	const boxRef = useRef<HTMLDivElement | null>(null);
 	const frameRef = useRef<HTMLIFrameElement | null>(null);
 	const nonceRef = useRef("");
@@ -114,9 +157,10 @@ export function SupplementFrame({
 	 * WHY a frame fell back, carried to the DOM as the fallback element's
 	 * attribute value. The line reads the same to a reader whichever arm fired,
 	 * but a bare `data-supplement-frame-fallback` cannot tell a QA run (or the
-	 * capture rig) which one it was: five distinct arms paint that line, and they
+	 * capture rig) which one it was: six distinct arms paint that line, and they
 	 * have completely different causes — `document` is a missing blob, `no-ready`
-	 * is a hung document, `second-load` is a navigation. Diagnosing a fallback
+	 * is a hung document, `second-load` is a navigation, `no-address` is an app
+	 * frame that cannot name its stored digest. Diagnosing a fallback
 	 * from a screenshot alone cost a bisect; one attribute ends that.
 	 */
 	const failedReasonRef = useRef<string>("");
@@ -136,6 +180,14 @@ export function SupplementFrame({
 	const pendingHeightRef = useRef<number | null>(null);
 	/** What the element handlers call, reassigned each render to fresh closures. */
 	const onLoadRef = useRef<() => void>(() => {});
+	/*
+	 * The row's height reporter, kept in a ref for the same reason: the mount
+	 * effect's `applyHeight` must call the CURRENT one without the effect
+	 * re-running on every row render.
+	 */
+	const onHeightChangeRef = useRef<((height: number) => void) | undefined>(
+		onHeightChange,
+	);
 	const themePushRef = useRef<(theme: SupplementTheme) => void>(() => {});
 
 	const fail = useCallback((reason: string) => {
@@ -172,7 +224,28 @@ export function SupplementFrame({
 		const frameEl = frameRef.current;
 		if (!frameEl) return;
 		nonceRef.current = mintNonce();
-		const url = supplementFrameUrl(documentHtml);
+		/*
+		 * WHICH URL mounts (see the header's edit): the scheme URL only where the
+		 * arm channel exists — that channel IS the app's own signal that a handler
+		 * serves it — and the `data:` bytes in a browser-only host (Storybook, the
+		 * dev server), which has neither. An app-side frame that cannot address
+		 * its stored digest fails CLOSED right here rather than mounting a URL
+		 * main's guard would refuse. The order matters: keying on `addressed`
+		 * ALONE mounted `lo-supplement:` URLs in Storybook, where no handler
+		 * exists — every frame there fell back blank (caught by reading the
+		 * re-captured frames, not by any unit test).
+		 */
+		const arm = window.api?.desktop?.armSupplementFrame;
+		const addressed = sessionId !== null && isDigest(component.attachment);
+		let url: string;
+		if (arm === undefined) {
+			url = supplementFrameUrl(documentHtml);
+		} else if (!addressed) {
+			fail("no-address");
+			return;
+		} else {
+			url = supplementMountUrl(sessionId, component.attachment);
+		}
 
 		/* ---- the wire: armed before the navigation, torn down with the effect ---- */
 		let live = false;
@@ -193,6 +266,13 @@ export function SupplementFrame({
 			frameEl.contentWindow?.postMessage(message, "*");
 		};
 		const sendPing = () => {
+			/*
+			 * A FAILED frame is not pinged: this cadence belongs to a live document,
+			 * and a torn-down frame has none to answer with — the interval used to
+			 * keep arming a 5 s timeout per cycle against a detached `contentWindow`
+			 * until the row unmounted (round-1 R6).
+			 */
+			if (failedRef.current) return;
 			// ONE outstanding ping at a time, never coalesced away (§4.2).
 			if (pongDeadline !== null) return;
 			post({ lo: "supplement-host", t: "ping" });
@@ -227,10 +307,12 @@ export function SupplementFrame({
 					box.getBoundingClientRect().top < port.getBoundingClientRect().top
 				) {
 					pendingHeightRef.current = next;
+					onHeightChangeRef.current?.(next);
 					return;
 				}
 			}
 			pendingHeightRef.current = null;
+			onHeightChangeRef.current?.(next);
 			if (next !== heightRef.current) {
 				heightRef.current = next;
 				setHeight(next);
@@ -285,6 +367,10 @@ export function SupplementFrame({
 			}
 			if (message.t === "resize") {
 				coalesced.resize = clampFrameHeight(message.h as number);
+				// The document painted: the reserved box owes its shimmer no longer
+				// (round-1 D4 — low intensity, and the shimmer's own reduced-motion
+				// handling is the animation's, not a second rule here).
+				setAwaitingPaint(false);
 				scheduleCoalesced();
 				return;
 			}
@@ -305,14 +391,16 @@ export function SupplementFrame({
 		/* ---- the wire is live; now the document may start ---- */
 		let cancelled = false;
 		const start = async () => {
-			const arm = window.api?.desktop?.armSupplementFrame;
 			if (arm) {
 				try {
 					await arm(url);
 				} catch {
 					// A refused arm is answered by the guard itself: the navigation that
 					// follows is denied and the watchdog fails this frame into its
-					// fallback line. Nothing to invent here.
+					// fallback line. The `{ok:false}` ANSWER is discarded for the same
+					// reason (round-1 R4): the guard, not this caller, is the refusing
+					// half, and "handling" the answer here would be a second rule about
+					// a decision main has already made.
 				}
 			}
 			if (!cancelled) frameEl.src = url;
@@ -329,7 +417,20 @@ export function SupplementFrame({
 			window.removeEventListener("scroll", onScroll, true);
 			startPingsRef.current = () => {};
 		};
-	}, [documentHtml, fail]);
+	}, [documentHtml, fail, sessionId, component.attachment]);
+
+	/*
+	 * The RENDERED height, reported the moment a resize beat is APPLIED (or
+	 * held for the scroll port — a held height is still the rendered one): the
+	 * row's aggregate budget accrues these heights instead of trusting the
+	 * write-time hints (design D5). Reporting is deliberately NOT tied to the
+	 * paint flag or to the `height` state: the first accepted resize flips
+	 * `awaitingPaint` while `height` can still hold the RESERVED value, and a
+	 * 120-hint frame vouching for itself as "measured 120" mounted the next
+	 * frame under a budget that had accrued nothing — both defects were read
+	 * off the re-captured frames before this spelling replaced them.
+	 */
+	onHeightChangeRef.current = onHeightChange;
 
 	/*
 	 * The theme channel. The FIRST push rides the frame's first `load` (the
@@ -390,6 +491,26 @@ export function SupplementFrame({
 				}
 			>
 				Couldn't render this graphic
+				{/*
+				 * `· Retry`, the row's own `supplements.restart` arm (memo §2.8 pins
+				 * it where the job is settled; round-1 D2/U4). Absent handler, absent
+				 * control — the row wires nothing when no session is addressable.
+				 */}
+				{onRetry && (
+					<>
+						<span aria-hidden="true" className="px-1 text-ink-dim">
+							·
+						</span>
+						<button
+							type="button"
+							className="text-ink-dim"
+							data-supplement-frame-retry=""
+							onClick={() => onRetry()}
+						>
+							Retry
+						</button>
+					</>
+				)}
 			</div>
 		);
 	}
@@ -400,10 +521,14 @@ export function SupplementFrame({
 			 * The reserved box holds its space while the document loads and draws no
 			 * title (§2.8): the height is the write-time clamped `height_hint` until
 			 * the first resize, which is already within the same [120, 480] range.
+			 * While nothing has painted yet the box carries the state line's own
+			 * shimmer at low intensity (round-1 D4): a bare transparent box read as a
+			 * hole under the answer while the `Source:` caption sat painted below it.
 			 */}
 			<div
 				ref={boxRef}
 				data-supplement-frame=""
+				className="relative overflow-hidden"
 				style={{ height, width: "100%" }}
 			>
 				{documentHtml !== null && (
@@ -419,6 +544,21 @@ export function SupplementFrame({
 						// header does not survive the tunnel, and the iframe `csp` attribute
 						// is unimplemented in Chromium — memo §2.7/§4.1); the sandbox above
 						// is the boundary.
+					/>
+				)}
+				{awaitingPaint && (
+					/*
+					 * The sweep over a STANDING faint fill, not the sweep alone: the
+					 * shimmer's parked frame is off-tile by design (`styles/index.css`'s
+					 * reduced-motion cap truncates to `to`, and the capture rig declines
+					 * animations outright), so a box whose only mark was the moving band
+					 * would photograph — and park, for a reduced-motion reader — as an
+					 * empty hole again. The fill is the low-intensity placeholder under
+					 * it; both leave with the first rendered resize (round-1 D4).
+					 */
+					<span
+						aria-hidden="true"
+						className="pointer-events-none absolute inset-0 animate-shimmer bg-elevated/40 bg-gradient-to-r from-transparent via-elevated/60 to-transparent bg-[length:200%_100%] bg-[position:-200%_50%] bg-no-repeat"
 					/>
 				)}
 			</div>

@@ -21,13 +21,18 @@
  *   bare word "Highlights";
  * - a done block with frames reads files first, then the components, each with
  *   exactly one `Source: …` line under it;
- * - the 40vh/480px aggregate budget: at a 900px viewport the third 320px frame
- *   is behind `Show all 2 graphics`, and the `-expanded` states show what the
- *   disclosure opens;
+ * - the 40vh/480px aggregate budget, accrued from each frame's RENDERED
+ *   height (D5): the first frame mounts and the walk holds at the next until
+ *   the first has reported, so a second frame of the real ~380px document
+ *   waits behind `Show all 1 graphic` — and the `-expanded` states show what
+ *   the disclosure opens, as a TOGGLE (`Show fewer`);
  * - `cancelled` and `failed` are the TUI's own copy bytes, each with `· Retry`;
  * - `live` rows paint the shimmer line with `Adjust… · Cancel` as a pair, and a
  *   cold reader of the same rows paints the cancelled arm with `Retry` instead
  *   (the stale-row rule);
+ * - the FOLDED states (`folded-condensed-*`): while the block's own turn
+ *   renders condensed its whole text is ONE line — the design's copy table per
+ *   content shape — and nothing else (no file rows, no slots, no frames);
  * - a supplement-free turn and the `superseded`/`empty` arms render NOTHING
  *   under the answer — the before/after pair for the fold lane.
  */
@@ -165,6 +170,48 @@ const answer = (id: string, text: string): TranscriptRecord => ({
 	settledAt: TS,
 	stopReason: null,
 	error: false,
+});
+
+/*
+ * The turn a CONDENSED block belongs to (design round 1, D1/U3): a completed
+ * run whose bar renders closed, so the transcript hands the block
+ * `condensed={true}` through its own collapse plan — the fixtures below are the
+ * same planted shapes the plan is driven by everywhere else, and the block's
+ * one-line form is read off the real component, never simulated here.
+ */
+const prompt = (id: string, text: string): TranscriptRecord => ({
+	kind: "user",
+	id,
+	ts: TS - 90_000,
+	text,
+	images: [],
+});
+
+/** One settled `bash` call the run's bar hides, in the reducer's own shape. */
+const turnCall = (id: string): TranscriptRecord => ({
+	kind: "tool",
+	id,
+	ts: TS - 60_000,
+	toolCallId: id,
+	toolName: "bash",
+	intent: null,
+	args: { command: "pnpm test:desktop" },
+	phase: "done",
+	argumentBytes: 0,
+	output: null,
+	isError: false,
+	notRunReason: null,
+	notRunKind: null,
+	neverSent: false,
+	durationS: 3,
+	startedAt: TS - 60_000,
+	endedAt: TS - 57_000,
+	images: [],
+	added: 0,
+	removed: 0,
+	diff: null,
+	stopped: false,
+	details: null,
 });
 
 function transcriptOf(records: TranscriptRecord[]): TranscriptState {
@@ -307,7 +354,7 @@ export const FilesMore: StoryObj = {
 		<Frame
 			height={323}
 			records={[
-				answer("m1", "Four reports were refreshed."),
+				answer("m1", "Seven reports were refreshed."),
 				supplement({
 					id: "s1",
 					files: MORE_FILES,
@@ -326,7 +373,7 @@ export const FilesMoreExpanded: StoryObj = {
 			height={366}
 			click="[data-supplement-more]"
 			records={[
-				answer("m1", "Four reports were refreshed."),
+				answer("m1", "Seven reports were refreshed."),
 				supplement({
 					id: "s1",
 					files: MORE_FILES,
@@ -356,15 +403,17 @@ export const ComponentsOne: StoryObj = {
 };
 
 /**
- * Two frames, both under the 40vh/480px aggregate budget (240 cumulative at a
- * 900px viewport): both mount, no disclosure is owed.
+ * Two frames of the REAL document against the measured budget. The accrual
+ * counts RENDERED heights (D5): the first frame renders ~380px and the walk
+ * holds at the second until the first has reported, so one mounts and the
+ * second sits behind the singular arm — `Show all 1 graphic`.
  */
 export const ComponentsTwo: StoryObj = {
 	render: () => (
 		<Frame
 			height={1021}
 			records={[
-				answer("m1", "Two cuts of the same bench: the chart and the table."),
+				answer("m1", "Two cuts of the same bench."),
 				supplement({
 					id: "s1",
 					components: [
@@ -377,7 +426,7 @@ export const ComponentsTwo: StoryObj = {
 	),
 };
 
-/** Three frames against a 360px budget: one mounts, the rest are behind ONE disclosure. */
+/** Three frames against the budget: one mounts, the rest are behind ONE disclosure. */
 export const BudgetDisclosure: StoryObj = {
 	render: () => (
 		<Frame
@@ -564,6 +613,91 @@ export const Narrow: StoryObj = {
 					id: "s1",
 					files: FILES,
 					components: [component("chart-a", "Latency by region (ms)", 200)],
+				}),
+			]}
+		/>
+	),
+};
+
+/*
+ * THE CONDENSED FORM (design round 1, D1/U3/R2): while the block's own turn
+ * renders condensed — one closed bar over its run — the block is ONE passive
+ * line and nothing else, per the design's copy table. Each state below mounts
+ * the SAME shipped component through the SAME transcript walk the app runs
+ * (`prompt` + `turnCall` + `answer` + the block, so the plan really collapses
+ * the call and really hands the block `condensed={true}`); no story-only prop
+ * is invented here.
+ */
+
+/** Files only, ≤ 2: the existing one-liner, unchanged. */
+export const FoldedCondensedFiles: StoryObj = {
+	render: () => (
+		<Frame
+			height={400}
+			records={[
+				prompt("u0", "Check the latency budget across regions."),
+				turnCall("c1"),
+				answer("m1", "All four regions cleared the latency budget this week."),
+				supplement({ id: "s1", files: FILES }),
+			]}
+		/>
+	),
+};
+
+/** Files only, > 2: counts, not names (`7 files`, the known total). */
+export const FoldedCondensedCounts: StoryObj = {
+	render: () => (
+		<Frame
+			height={400}
+			records={[
+				prompt("u0", "Refresh the weekly reports."),
+				turnCall("c1"),
+				answer("m1", "Seven reports were refreshed."),
+				supplement({
+					id: "s1",
+					files: MORE_FILES,
+					filesMore: 3,
+					more: ["reports/q1.md", "reports/q2.md", "data/raw.csv"],
+				}),
+			]}
+		/>
+	),
+};
+
+/** Components only: the count clause alone. */
+export const FoldedCondensedComponents: StoryObj = {
+	render: () => (
+		<Frame
+			height={400}
+			records={[
+				prompt("u0", "Chart the bench results."),
+				turnCall("c1"),
+				answer("m1", "Both views are drawn from the same bench."),
+				supplement({
+					id: "s1",
+					components: [
+						component("chart-a", "Latency by region (ms)", 320),
+						component("chart-b", "Throughput by region", 320),
+					],
+				}),
+			]}
+		/>
+	),
+};
+
+/** Mixed: both clauses, the design's separator (`2 files · 1 graphic`). */
+export const FoldedCondensedMixed: StoryObj = {
+	render: () => (
+		<Frame
+			height={400}
+			records={[
+				prompt("u0", "Summarise with the chart."),
+				turnCall("c1"),
+				answer("m1", "Two files and one chart came out of this run."),
+				supplement({
+					id: "s1",
+					files: FILES,
+					components: [component("chart-a", "Latency by region (ms)", 320)],
 				}),
 			]}
 		/>

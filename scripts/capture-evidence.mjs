@@ -11469,6 +11469,22 @@ export const STORIES = [
 	["chat-turn-supplements--frame-loading", 900, 437],
 	["chat-turn-supplements--narrow", 560, 514],
 	["chat-turn-supplements--supplement-free", 900, 314],
+	/*
+	 * THE CONDENSED FORM'S OWN STATES (design round 1, D1/U3/R2): the folded
+	 * block per content shape, plus the same block at the shell's narrow width.
+	 * Each frame's turn really carries a closed bar (the stories drive the same
+	 * plan the app does), so these are the one-line form on the production walk.
+	 */
+	["chat-turn-supplements--folded-condensed-files", 900, 400],
+	["chat-turn-supplements--folded-condensed-counts", 900, 400],
+	["chat-turn-supplements--folded-condensed-components", 900, 400],
+	["chat-turn-supplements--folded-condensed-mixed", 900, 400],
+	[
+		"chat-turn-supplements--folded-condensed-mixed",
+		560,
+		400,
+		{ dir: "folded-condensed-narrow" },
+	],
 ];
 
 /**

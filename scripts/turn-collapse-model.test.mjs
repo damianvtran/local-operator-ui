@@ -61,6 +61,7 @@ const {
 	widenTarget,
 	windowTopRun,
 	windowTopRunIsHeadCut,
+	runIsCondensed,
 	closingAnswerIds,
 	buildRows,
 	applyHistoryPage,
@@ -809,6 +810,55 @@ test("a supplement row sits outside the condensed span it follows", () => {
 		plan.runs[0].hidden.map((hidden) => hidden.record.id),
 		["t1"],
 		"the calls condense; the supplement block stays on screen",
+	);
+});
+
+test("the block's condensed read flips exactly with the bar (design D1.1)", () => {
+	/*
+	 * `runIsCondensed` is the ONE reading of the collapse plan the supplement
+	 * block's one-line form may come from: a bar that RENDERS closed condenses
+	 * it, the reader's own expansion (the same `openRuns` set the bar's `open`
+	 * prop reads) restores it in the same pass, and a plan with no bars never
+	 * condenses anything.
+	 */
+	const block = row("s1", "supplement", {
+		anchor: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+		job: "3f9c1a7e5b20",
+		version: 1,
+		state: "done",
+		files: [],
+		filesMore: 0,
+		more: [],
+		components: [],
+		error: "",
+		dismissed: false,
+		live: false,
+	});
+	const plan = planOf([
+		user("u1"),
+		tool("t1", {}, "trace"),
+		answer("a1"),
+		block,
+	]);
+	const run = plan.runs[0];
+	assert.ok(
+		run.segments.length > 0,
+		"the fixture must produce a bar for this case to mean anything",
+	);
+	assert.equal(
+		runIsCondensed(run, undefined),
+		true,
+		"a closed bar condenses the block",
+	);
+	assert.equal(
+		runIsCondensed(run, new Set(run.segments.map((segment) => segment.key))),
+		false,
+		"the reader's open bar restores it",
+	);
+	assert.equal(
+		runIsCondensed({ segments: [] }, undefined),
+		false,
+		"no bars, no condensation",
 	);
 });
 

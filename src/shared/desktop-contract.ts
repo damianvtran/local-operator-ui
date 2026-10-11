@@ -1790,14 +1790,25 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 * U-b): cancel the running job, steer it with an instruction, or retry a
 	 * settled one.
 	 *
-	 * THE COMPANION CORE ROUTE. These three ops address
+	 * THE COMPANION CORE ROUTES. These three ops address
 	 * ``POST /v1/desktop/sessions/{sid}/supplements/{job}/{cancel,steer,restart}``
 	 * and map in core to ``AttachedSession.supplement_cancel/steer/restart``
 	 * (``session/attached.py``), which already speak the runtime's own op
 	 * vocabulary over the control socket — the same rung ``sessions.interrupt``
-	 * reaches. The routes themselves are the desktop lane's remaining half: see
-	 * this op family's comment in the store; a backend without them answers 404
-	 * and the press surfaces that refusal.
+	 * reaches.
+	 *
+	 * THOSE ROUTES DO NOT EXIST YET, and that is verified rather than assumed:
+	 * the desktop plane on core ``origin/main`` (05e4c971b1) serves only the
+	 * document route and the events gate, the released runtime matches (UX round
+	 * 1 measured the 404s live), and no other door is reachable from this app —
+	 * the runtime control socket is a daemon↔runtime dial main has no path to,
+	 * and the relay's command route is cookie-gated for the phone surface. The
+	 * core half is a small paired PR (one route per op dispatching
+	 * ``bridge.remote.supplement_*``, the ``interrupt`` route's own shape); the
+	 * app half ships here so the pair is one core change from working. Until it
+	 * lands, a press answers 404 and the row composes THAT refusal through
+	 * ``backendLoadErrorMessage`` — the outdated-server sentence, never a raw
+	 * ``Not Found`` echoing out of the daemon (round-1 U2).
 	 *
 	 * ``job`` and ``anchor`` are the contract's own shapes (12 hex job id, the
 	 * answer's message id); ``text`` is the memo's ``supplement_steer`` bound
@@ -4937,8 +4948,11 @@ export type DesktopMediaRequest =
 	 * and the document must be fetched WITH the bearer and WITHOUT the renderer
 	 * ever seeing it; the JSON transport could carry it, but every byte this
 	 * feature serves stays on the one media path the file-serving lane already
-	 * owns. The renderer mounts the bytes it gets back inside a
-	 * `sandbox="allow-scripts"` frame as a `data:` URL — nothing navigates a
+	 * owns. The renderer uses the answer as the frame's availability gate (a
+	 * failure paints the fallback line; success is what lets the mount effect
+	 * run), and the mount itself is the digest-addressed `lo-supplement:` URL
+	 * main serves through `supplement-protocol.ts` — a browser-only host with no
+	 * handler mounts the bytes as a `data:` URL instead. Nothing navigates a
 	 * browsing context to the route itself (§4.1).
 	 */
 	| {
@@ -4977,11 +4991,14 @@ export type DesktopAPI = {
 	/**
 	 * Arm ONE supplement-frame mount (turn-supplements memo §4.1, lane U-b).
 	 *
-	 * The renderer calls this with the exact `data:` URL it is about to set as a
-	 * supplement frame's `src`, immediately before mounting. Main records the
-	 * permit and its navigation guard allows exactly that one child-frame
-	 * navigation, byte-for-byte; every other navigation of a supplement frame —
-	 * a self-navigation, a `meta refresh`, a second load — is denied.
+	 * The renderer calls this with the exact mount URL it is about to set as a
+	 * supplement frame's `src`, immediately before mounting — a
+	 * `lo-supplement://s/<session>/<digest>` URL in the app, whose main-process
+	 * handler serves the stored document; a `data:` URL only in browser-only
+	 * hosts, which have no channel and no handler at all. Main records the permit
+	 * and its navigation guard allows exactly that one child-frame navigation,
+	 * byte-for-byte; every other navigation of a supplement frame — a
+	 * self-navigation, a `meta refresh`, a second load — is denied.
 	 * Electron only: absent means no permit channel, and the mount path must
 	 * keep working in browser development and Storybook, where the embedding
 	 * document's own CSP is the only control.
