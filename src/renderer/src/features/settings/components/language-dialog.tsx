@@ -176,15 +176,27 @@ export const LanguageDialog: FC = () => {
 
 	/*
 	 * The load state, classified the way the settings section classifies it
-	 * (round-1 U1): a capabilities answer that never granted `settings` is a
-	 * REFUSAL with no remedy here; a failed query is the pairing table's own
-	 * sentence with its Retry; and "loading" is reserved for a query that is
-	 * genuinely in flight. A dialog that said "Loading" forever on a backend
-	 * that will never answer is the state this replaces.
+	 * (round 2, R2-1/U5/Q-2). THE REFUSAL IS AN ANSWER'S VERDICT, never an
+	 * absence of one: `capabilities.data && !enabled`. The no-answer states
+	 * are distinguished rather than collapsed into "this backend does not
+	 * serve the settings":
+	 *
+	 * - still asking (no data, no error): strictly loading - no sentence
+	 *   about a backend that has not spoken;
+	 * - failed COLD (error with no data at all): the pairing table's own
+	 *   sentence, and the Retry below now has a reachable arm for it
+	 *   (`capabilities.refetch`);
+	 * - failed WITH prior data: the data governs (the section's own rule - a
+	 *   refetch failure is not evidence that the earlier answer was unusable),
+	 *   so an earlier refusal stays a refusal and an earlier grant keeps
+	 *   working.
 	 */
-	const loadError =
-		(capabilities.data ? null : capabilities.error) ?? settingsQuery.error;
-	const refused = !enabled;
+	const answered = Boolean(capabilities.data);
+	const refused = answered && !enabled;
+	const capabilitiesFault =
+		capabilities.error && !capabilities.data ? capabilities.error : null;
+	const loadError = capabilitiesFault ?? settingsQuery.error;
+	const pendingCapabilities = !answered && !loadError;
 	const { sentence: pairingSentence, remedy } = pairingCardCopy(
 		pairingCause ?? null,
 		"Your settings could not be loaded.",
@@ -223,7 +235,12 @@ export const LanguageDialog: FC = () => {
 						{t("ui.settings.language.dialog.description")}
 					</DialogDescription>
 				</div>
-				{refused ? (
+				{pendingCapabilities ? (
+					<div className="flex items-center gap-2 text-body-sm text-ink-muted">
+						<Spinner />
+						{t("ui.settings.language.dialog.loading")}
+					</div>
+				) : refused ? (
 					<Alert variant="warning">
 						<span>{t("ui.settings.language.dialog.unavailable")}</span>
 					</Alert>
@@ -237,7 +254,8 @@ export const LanguageDialog: FC = () => {
 									size="sm"
 									className="shrink-0"
 									onClick={() => {
-										if (capabilities.isError) void capabilities.refetch();
+										/* Reachable cold: the arm retries the fault's own query. */
+										if (capabilitiesFault) void capabilities.refetch();
 										else void settingsQuery.refetch();
 									}}
 									disabled={retrying}
@@ -249,7 +267,7 @@ export const LanguageDialog: FC = () => {
 							)}
 						</div>
 					</Alert>
-				) : settingsQuery.isLoading || (!setting && !settingsQuery.isError) ? (
+				) : settingsQuery.isPending ? (
 					<div className="flex items-center gap-2 text-body-sm text-ink-muted">
 						<Spinner />
 						{t("ui.settings.language.dialog.loading")}
@@ -275,7 +293,13 @@ export const LanguageDialog: FC = () => {
 							/>
 						</div>
 						{error && <p className="text-meta text-danger">{error}</p>}
-						<div className="flex justify-end">
+						{/*
+						 * min-h-8 pins the footer to the `md` Button's own
+						 * height, so the Save -> `Saved` swap no longer
+						 * shrinks it and the dialog stops re-centring 6px
+						 * when the confirmation appears (round-2 D7).
+						 */}
+						<div className="flex min-h-8 items-center justify-end">
 							{saved && !dirty ? (
 								/*
 								 * In-place confirmation in NORMAL ink (round-1 D2):
@@ -304,6 +328,12 @@ export const LanguageDialog: FC = () => {
 						</div>
 					</>
 				) : (
+					/*
+					 * R2-2: kept, and now REACHABLE - a settled registry whose
+					 * answer does not carry the language row resolves here (the
+					 * sentence is true for it), instead of spinning in the old
+					 * `!setting && !isError` loading guard.
+					 */
 					<Alert variant="warning">
 						<span>{t("ui.settings.language.dialog.unavailable")}</span>
 					</Alert>

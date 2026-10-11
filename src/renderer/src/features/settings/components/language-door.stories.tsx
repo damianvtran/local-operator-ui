@@ -49,9 +49,28 @@ const ok = (result: unknown): DesktopResponse => ({
 	body: { status: 200, message: "ok", result },
 });
 
+/*
+ * How the capabilities answer behaves, per story: `ok` is the shipped answer;
+ * `loading` never settles (a backend mid-handshake) and `cold-failure` fails
+ * with no data at all. The two non-ok modes are the round-2 states - loading
+ * reads strictly as loading, and a cold failure reads as the pairing sentence
+ * with its Retry - and they exist here so those states are photographed, not
+ * just asserted.
+ */
+let bridgeMode: "ok" | "loading" | "cold-failure" = "ok";
+
 const bridge = async (request: BridgeRequest): Promise<DesktopResponse> => {
 	switch (request.op) {
 		case "capabilities":
+			if (bridgeMode === "loading") {
+				return new Promise<DesktopResponse>(() => {});
+			}
+			if (bridgeMode === "cold-failure") {
+				return {
+					status: 503,
+					body: { status: 503, message: "The server is not answering." },
+				};
+			}
 			return ok({
 				desktop_contract: 1,
 				desktop_available: true,
@@ -88,9 +107,13 @@ if (typeof window !== "undefined") {
 
 /* --------------------------------------------------------------- stories */
 
-const Ground: FC<{ dialog?: boolean }> = ({ dialog = true }) => {
+const Ground: FC<{
+	dialog?: boolean;
+	mode?: "ok" | "loading" | "cold-failure";
+}> = ({ dialog = true, mode = "ok" }) => {
 	/* The app mounts this once; the note reads the store it feeds. */
 	useI18nLocaleSync();
+	bridgeMode = mode;
 	useEffect(() => {
 		if (dialog) useLanguageDialogStore.getState().openLanguage();
 	}, [dialog]);
@@ -236,4 +259,20 @@ export const DialogSaved: Story = {
 
 export const ExternalToast: Story = {
 	render: () => <DrivenToast />,
+};
+
+/*
+ * The two round-2 states (R2-1/U5/Q-2), photographed so the classification is
+ * reviewable rather than asserted only: a backend that has not answered reads
+ * STRICTLY as loading - no sentence about a backend that has not spoken - and
+ * a COLD failure reads as the pairing sentence with a Retry whose arm is
+ * reachable (`language-dialog.test.mjs` proves the click re-asks
+ * capabilities).
+ */
+export const DialogLoading: Story = {
+	render: () => <Ground mode="loading" />,
+};
+
+export const DialogColdFailure: Story = {
+	render: () => <Ground mode="cold-failure" />,
 };
