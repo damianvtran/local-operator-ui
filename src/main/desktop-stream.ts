@@ -240,6 +240,17 @@ export class DesktopStreamRelay {
 		 * not do.
 		 */
 		query.set("frontend_replace", "1");
+		/*
+		 * The `supplements=1` negotiation (turn-supplements memo §2.7), the same
+		 * shape and the same reasoning as `frontend_replace` above: it says
+		 * something about THIS BUILD — this build's reducer renders
+		 * `supplement_progress` frames and the `supplement_v1` history rows those
+		 * beats settle into — so it is unconditional rather than a caller option.
+		 * Only a subscriber that sends it is handed the family, because an older
+		 * renderer would paint an unknown event kind; an older backend ignores an
+		 * unknown query parameter and never emits the events anyway.
+		 */
+		query.set("supplements", "1");
 		const suffix = query.size > 0 ? `?${query}` : "";
 		const url = new URL(
 			`/v1/desktop/sessions/${args.sessionId}/events${suffix}`,

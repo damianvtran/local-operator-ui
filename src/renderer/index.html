@@ -26,10 +26,20 @@
 
        `installer.html` deliberately keeps the narrower policy. It renders no
        transcript and fetches no attachments, so widening it there would buy
-       nothing and cost the tighter default. -->
+       nothing and cost the tighter default.
+
+       `frame-src` carries `lo-supplement:` (the supplement block's sandboxed
+       frames): the document scheme is served by MAIN (`supplement-protocol.ts`)
+       from the stored digest the row names, and the app's own renderer CSP is
+       the reason the frame cannot be a `data:` document instead — a local-scheme
+       child inherits this policy, and `script-src` here (correctly) has no
+       `unsafe-inline`, so the vendored prelude would be blocked before it ran
+       (measured, UX round 1 U1). The scheme's handler serves only
+       `<session id>/<digest>` paths; `bypassCSP: false` keeps THIS list the
+       check on which URLs may be framed at all. -->
 
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; connect-src 'self' http://localhost:1111 http://127.0.0.1:1111 http://localhost:8080 http://127.0.0.1:8080 https://api.radienthq.com https://us.i.posthog.com https://login.microsoftonline.com https://accounts.google.com; script-src 'self' https://us-assets.i.posthog.com https://accounts.google.com https://login.microsoftonline.com; style-src 'self' 'unsafe-inline' data:; img-src 'self' data: blob: http://localhost:1111 http://127.0.0.1:1111; media-src 'self' blob: http://localhost:1111 http://127.0.0.1:1111; font-src 'self' data:; frame-src 'self' data: blob: http://localhost:1111 http://127.0.0.1:1111 https://accounts.google.com https://login.microsoftonline.com" />
+    content="default-src 'self'; connect-src 'self' http://localhost:1111 http://127.0.0.1:1111 http://localhost:8080 http://127.0.0.1:8080 https://api.radienthq.com https://us.i.posthog.com https://login.microsoftonline.com https://accounts.google.com; script-src 'self' https://us-assets.i.posthog.com https://accounts.google.com https://login.microsoftonline.com; style-src 'self' 'unsafe-inline' data:; img-src 'self' data: blob: http://localhost:1111 http://127.0.0.1:1111; media-src 'self' blob: http://localhost:1111 http://127.0.0.1:1111; font-src 'self' data:; frame-src 'self' data: blob: lo-supplement: http://localhost:1111 http://127.0.0.1:1111 https://accounts.google.com https://login.microsoftonline.com" />
   <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups" />
 </head>
 

@@ -111,6 +111,11 @@ import {
 import { createQuitState } from "./quit-state";
 import { createRelaunchPending } from "./relaunch-pending";
 import { createUserShellPath } from "./shell-path";
+import { SupplementFrameMounts } from "./supplement-mounts";
+import {
+	installSupplementProtocol,
+	registerSupplementScheme,
+} from "./supplement-protocol";
 import {
 	describeTelemetryLaunch,
 	resolveTelemetryLaunch,
@@ -1065,8 +1070,11 @@ function createWindow(
 	 * other url is scheme-gated before `shell.openExternal` instead of passed
 	 * through as a raw string.
 	 */
-	guardNavigation(mainWindow.webContents, trustedRendererDocuments, (m) =>
-		logger.warn(m, LogFileType.BACKEND),
+	guardNavigation(
+		mainWindow.webContents,
+		trustedRendererDocuments,
+		(m) => logger.warn(m, LogFileType.BACKEND),
+		supplementMounts,
 	);
 	guardWindowOpen(
 		mainWindow.webContents,
@@ -1362,6 +1370,30 @@ const telemetryWebPreferences = {
 // Some APIs can only be used after this event occurs.
 // Define mainWindow at a higher scope to be accessible in event handlers
 let mainWindow: BrowserWindow | null = null;
+
+/**
+ * The one-shot mount permits for supplement frames (turn-supplements memo §4.1,
+ * lane U-b). Module scope because its two halves live in two places that must
+ * agree: `createWindow` hands it to the navigation guard, and
+ * `registerDesktopIPC` hands it to the arm channel the renderer calls before
+ * mounting a frame. One instance per app — the main window and the mini view
+ * are both the app's own documents, and a permit is URL-matched, not
+ * window-matched.
+ */
+const supplementMounts = new SupplementFrameMounts();
+
+/*
+ * THE SUPPLEMENT FRAME'S DOCUMENT SCHEME, registered at module scope because
+ * Electron accepts `registerSchemesAsPrivileged` only before the app is ready
+ * (it must run while the default session's protocol registry is still being
+ * built). `installSupplementProtocol` — the handler that actually serves the
+ * stored digests — runs in `whenReady` below, beside the other desktop-plane
+ * wiring. Together they are the app path's delivery for supplement frames
+ * (memo §4.1's fixed Option 2): the renderer's own CSP is inherited by local
+ * (data:/blob:) child documents and blocks the vendored prelude, which
+ * Storybook never showed because Storybook carries no such policy.
+ */
+registerSupplementScheme();
 
 /*
  * The quick-send mini view and its registration (design D6/§G.1). Module scope
@@ -2495,6 +2527,7 @@ app
 				quickSend.window.webContents,
 				trustedRendererDocuments,
 				(m) => logger.warn(m, LogFileType.BACKEND),
+				supplementMounts,
 			);
 			guardWindowOpen(
 				quickSend.window.webContents,
@@ -2611,6 +2644,28 @@ app
 			};
 		});
 
+		/*
+		 * The `lo-supplement:` protocol handler, installed BEFORE the first window
+		 * is created so no frame can ever beat it to a handler-less scheme. Its
+		 * fetch is the same media relay every other authenticated read uses — the
+		 * bearer is added in main and never crosses to the renderer — and its
+		 * response carries the §4.1 policy beside the document's own `<meta>` copy.
+		 */
+		installSupplementProtocol(
+			async (sessionId, digest) => {
+				const response = await backendService.requestDesktopMedia(
+					{ op: "sessions.supplementDocument", sessionId, digest },
+					null,
+				);
+				if (response.kind !== "json") return { html: null };
+				const body = response.body as { html?: unknown } | null;
+				return {
+					html: body && typeof body.html === "string" ? body.html : null,
+				};
+			},
+			(m) => logger.warn(m, LogFileType.BACKEND),
+		);
+
 		registerDesktopIPC(
 			() => mainWindow,
 			rendererUrl,
@@ -2650,6 +2705,12 @@ app
 				miniView === null
 					? []
 					: [{ window: miniView.window, url: miniViewUrlFor(rendererUrl) }],
+			/*
+			 * The supplement-frame mount permits (turn-supplements memo §4.1), the
+			 * same instance `createWindow` gave the navigation guard: the arm channel
+			 * and the guard are two halves of one decision and must share one list.
+			 */
+			supplementMounts,
 		);
 
 		/*
