@@ -4352,10 +4352,11 @@ export const STORIES = [
 	 * THE CHANNEL STORIES (the cost-channels project). The tooltip frames need
 	 * the vertical room of the whole breakdown: the trigger sits at the bottom
 	 * of the canvas and the panel opens ABOVE it, so the declared height is what
-	 * keeps every line inside the shutter — 680 for the composition-plus-plan-
-	 * gloss panel whose rows now sit in a grid, 440 for the untracked sentence's
-	 * shorter one. `channels-gated` stacks two strips and opens no tooltip, and
-	 * `channels-zero-states` is a two-frame stack of the two zero chips.
+	 * keeps every line inside the shutter. The two tooltip heights here were
+	 * raised again when the breakdown round added the agent block, the source
+	 * list and the note (see that block below). `channels-gated` stacks two
+	 * strips and opens no tooltip, and `channels-zero-states` is a two-frame
+	 * stack of the two zero chips.
 	 *
 	 * THE 980 WIDTH IS THE 900 FRAME PLUS ITS OWN PADDING (48 + the story's
 	 * 2×8): the stories render the strip at `width={900}` because the strip's
@@ -4364,19 +4365,33 @@ export const STORIES = [
 	 * set used through round 2 the frame's right edge was clipped; 980 shows
 	 * it whole.
 	 */
-	["chat-session-status-strip--channels-tooltip", 980, 680],
-	["chat-session-status-strip--channels-untracked", 980, 440],
+	["chat-session-status-strip--channels-tooltip", 980, 1080],
+	["chat-session-status-strip--channels-untracked", 980, 560],
 	["chat-session-status-strip--channels-gated", 980, 480],
 	["chat-session-status-strip--channels-zero-states", 980, 480],
 	/*
 	 * The two round-3 states (design D3-1): the children parenthetical with a
 	 * floored inference row — the longest clause the composition produces, so
-	 * the tooltip needs 720 where `channels-tooltip` needs 680 — and the
+	 * this tooltip needs its own 720 — and the
 	 * dropped-row payload, whose empty row list sits beside the panel's
 	 * "could not be read" sentence (the panel half is
 	 * `channels-dropped-row-end`). Both are dark+light narrowed runs. */
 	["chat-session-status-strip--channels-children-floored", 980, 720],
-	["chat-session-status-strip--channels-dropped-row", 980, 520],
+	["chat-session-status-strip--channels-dropped-row", 980, 980],
+	/*
+	 * THE BREAKDOWN STORIES (the spend-breakdown-hover round, design §10.3).
+	 * The tooltip grew a by-agent block, a by-source list and the note line, so
+	 * `channels-tooltip`'s old height no longer covered its own body (raised
+	 * above, as was `channels-untracked`'s). The four new states are one frame
+	 * each: a single-category session, the paygo-only pass (markers, no note),
+	 * the legacy object (no breakdown/vocabulary → today's body), and the
+	 * malformed breakdown (entries dropped, body standing). All are dark+light
+	 * narrowed runs like the round-3 pair.
+	 */
+	["chat-session-status-strip--channels-single-category", 980, 720],
+	["chat-session-status-strip--channels-paygo-only", 980, 900],
+	["chat-session-status-strip--channels-legacy-body", 980, 760],
+	["chat-session-status-strip--channels-malformed-breakdown", 980, 980],
 	/*
 	 * The sidebar's session-status mark, in the one place it can be photographed
 	 * as a specimen: the read/unread matrix, every code beside its own name (see
