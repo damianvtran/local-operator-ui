@@ -205,6 +205,8 @@ const mount = async (initial) => {
 			 * driven by script/wake-cancel-panel.test.mjs.
 			 */
 			wakeControls: { cancel: async () => ({ ok: true }) },
+			/* The jobs cancel interaction is inert here for the wakes' own reason. */
+			jobControls: { cancel: async () => ({ ok: true }) },
 			wakeAida: {
 				capability: false,
 				statusResolved: false,

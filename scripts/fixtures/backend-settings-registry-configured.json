@@ -1349,6 +1349,33 @@
 			"redacted": false
 		},
 		{
+			"key": "language",
+			"section": "appearance",
+			"label": "Language",
+			"kind": "enum",
+			"help": "Interface language. auto follows your operating system, falling back to English.",
+			"value": "auto",
+			"default": "auto",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "auto",
+					"label": "auto",
+					"description": ""
+				},
+				{
+					"value": "en",
+					"label": "en",
+					"description": ""
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
 			"key": "display.dock",
 			"section": "appearance",
 			"label": "Subagent dock",

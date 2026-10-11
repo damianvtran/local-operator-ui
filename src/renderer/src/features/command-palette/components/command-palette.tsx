@@ -6,6 +6,7 @@ import {
 import { openConversation } from "@features/chat/open-conversation";
 import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
 import { useConnectProviderStore } from "@features/providers/connect-provider-store";
+import { useLanguageDialogStore } from "@features/settings/components/language-dialog-store";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import {
@@ -281,6 +282,17 @@ export const CommandPalette: FC = () => {
 		useConnectProviderStore.getState().openConnect();
 	}, [closeCommandPalette]);
 
+	/*
+	 * The language door (i18n slice B2): close the palette, then ask the
+	 * dialog's store. Same shape as `connect-provider` above and for the same
+	 * reason - the dialog is mounted once in the app shell and answers whoever
+	 * asks.
+	 */
+	const handleChangeLanguage = useCallback(() => {
+		closeCommandPalette();
+		useLanguageDialogStore.getState().openLanguage();
+	}, [closeCommandPalette]);
+
 	const handleNewChat = useCallback(() => {
 		/*
 		 * The sidebar's own \"New chat\": stage a fresh draft and go to the chat
@@ -328,6 +340,9 @@ export const CommandPalette: FC = () => {
 				case "connect-provider":
 					handleConnectProvider();
 					return;
+				case "change-interface-language":
+					handleChangeLanguage();
+					return;
 				case "new-chat":
 					handleNewChat();
 					return;
@@ -344,6 +359,7 @@ export const CommandPalette: FC = () => {
 		[
 			handleCreateAgent,
 			handleConnectProvider,
+			handleChangeLanguage,
 			handleNewChat,
 			handleToggleCanvas,
 			handleClearConversation,
