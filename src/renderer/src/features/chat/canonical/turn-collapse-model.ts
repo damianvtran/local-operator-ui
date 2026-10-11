@@ -2326,8 +2326,12 @@ function planRun(
 	/*
 	 * Rows at or after this index belong to the cycle still being written; -1
 	 * means nothing is in flight (the pane is not live), so every span may condense.
+	 * `settledAt` is the same reading BEFORE the +1 (the run's last settled row,
+	 * -1 when there is none), kept beside it because the group exemption below
+	 * reads it directly.
 	 */
-	const liveFrom = live ? settledCloseOf(records, partition.cycles) + 1 : -1;
+	const settledAt = live ? settledCloseOf(records, partition.cycles) : -1;
+	const liveFrom = live ? settledAt + 1 : -1;
 
 	/*
 	 * THE ONE SPAN THE FACTS CAN COMPLETE. Only a span that OPENS at the loaded
@@ -2395,16 +2399,32 @@ function planRun(
 			/*
 			 * A GROUP BAR STAYS A BAR WHILE IT GROWS (design §5, rev 2): the open tail
 			 * group "may increase its count (single-line bar, no geometry change)" -
-			 * so a span that IS a group is exempt from the live split. Without the
-			 * exemption a receipt arriving after the group settled extends the span
-			 * past `liveFrom` and un-condenses ALL of it (every receipt the reader had
-			 * already seen settle unrolling again) - the jitter the group shape exists
-			 * to remove. The rows a group hides are receipts and their calls; the
-			 * working line still states what is being written.
+			 * so a span that IS a group whose receipts have SETTLED is exempt from the
+			 * live split. Without the exemption a receipt arriving after the group
+			 * settled extends the span past `liveFrom` and un-condenses ALL of it
+			 * (every receipt the reader had already seen settle unrolling again) -
+			 * the jitter the group shape exists to remove. The rows a group hides are
+			 * receipts and their calls; the working line still states what is being
+			 * written.
+			 *
+			 * SETTLED IS THE LINE, and it is structural rather than a clock: the run's
+			 * settled point (`settledAt`) must fall at or after this span's start, so
+			 * something in the span has finished. A GROUP WITH NOTHING SETTLED INSIDE
+			 * IS STILL BEING WRITTEN and draws in place, exactly as the live cycle
+			 * always has - the shape `session-load-sequence.test.mjs` pins: two
+			 * receipts arriving in a run's own running cycle paint as rows, because no
+			 * close has said the stretch is over. Folding them into a bar the moment a
+			 * second one lands would hide a message the reader just watched arrive, and
+			 * would overrule the liveness rule ("only the in-flight cycle draws in
+			 * place") for a bar that never existed: the design's growth promise is made
+			 * to a bar whose rows have settled. The moment any part of the span settles
+			 * - a quiet close, an answer the splitter cuts at, a marker - the bar takes
+			 * over and the promise applies from there.
 			 */
+			const groupKeepsItsBar = group !== null && settledAt >= span.from;
 			const collapsedHere =
 				collapsible &&
-				(liveFrom < 0 || span.to < liveFrom || group !== null) &&
+				(liveFrom < 0 || span.to < liveFrom || groupKeepsItsBar) &&
 				!(
 					focusHold !== null &&
 					!openRuns.has(key) &&
