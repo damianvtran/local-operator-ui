@@ -42,6 +42,24 @@ type RowCopy = {
 };
 
 export const ROW_COPY: Record<string, RowCopy> = {
+	/*
+	 * The language row. Two user-visible reasons it is overridden:
+	 *
+	 * SEARCH DISAMBIGUATION (round-1 UX U3). Searching `language` matches
+	 * this row and `speech.voice.language`, and two rows both labelled
+	 * `Language` made the wrong pick plausible - the voice setting is scoped
+	 * to speech, this one is the whole app. The label therefore names the
+	 * scope, and keeps the word itself, which is what the search finds.
+	 *
+	 * SCOPE, SPELLED OUT (round-1 UX U4). The wire help never says the TUI's
+	 * /settings writes the same key, because on the terminal that is its own
+	 * page; here the reader cannot see it, so the sentence says it once.
+	 */
+	language: {
+		label: "Interface language",
+		help: "Interface language, one setting shared with the terminal. auto follows your operating system, falling back to English.",
+	},
+
 	[DELEGATED_ENABLED_KEY]: {
 		label: "Remove delegated sessions automatically",
 		help: "Applies to subagent runs, agent shells and background runs only.",

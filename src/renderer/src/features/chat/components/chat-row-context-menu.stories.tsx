@@ -1,10 +1,10 @@
 /**
  * The row context menu, as shipped - the story `docs/evidence/chat-sidebar-row-context-menu/`
- * is captured from. It draws Archive, Pin, Fork and Copy session ID on an ordinary
- * row, and SIX items on a pinned one - the conditional Move pair trails the
- * unconditional run, and `chat-sidebar.tsx`'s items comment carries the order rule;
- * the readout lists whatever the product mounted, so no frame states a count the app
- * does not hold.
+ * is captured from. It draws Archive, Pin, Fork, Copy session ID and Rename
+ * conversation on an ordinary row, and SEVEN items on a pinned one - the conditional
+ * Move pair trails the unconditional run, and `chat-sidebar.tsx`'s items comment
+ * carries the order rule; the readout lists whatever the product mounted, so no
+ * frame states a count the app does not hold.
  *
  * THIS STORY DRIVES THE REAL THING, and the one simulation is named rather than
  * hidden. The menu is opened THROUGH THE REAL TRIGGER: a dispatched `contextmenu`
@@ -365,6 +365,20 @@ const Panel: FC<{
 	 * take) is `scripts/chat-session-copy-id.test.mjs`'s and QA's over CDP.
 	 */
 	pressCopy?: boolean;
+	/**
+	 * Press the menu's Rename conversation item once it is open (#920), and let
+	 * the readout print what the press asked for.
+	 *
+	 * The same substitution as `pressFork`, one row down: there is no chat pane in
+	 * this story, so no picker can open - and the sidebar's half is exactly what
+	 * the readout can show: the request written to the panel-presentation store
+	 * (the destination, the ROW it names, and the name it carries) plus the route
+	 * change. The pane's half - seeding the dialog's field from that name rather
+	 * than from its own title, and submitting `sessions.command` `rename` for the
+	 * addressed session - is `slash-dispatch.ts` + `destination-pickers.tsx`,
+	 * pinned in `scripts/panel-presentation.test.mjs`.
+	 */
+	pressRename?: boolean;
 }> = ({
 	sessionId,
 	spot,
@@ -373,6 +387,7 @@ const Panel: FC<{
 	search,
 	pressFork = false,
 	pressCopy = false,
+	pressRename = false,
 }) => {
 	useEffect(() => {
 		let cancelled = false;
@@ -494,6 +509,23 @@ const Panel: FC<{
 					 */
 					item.click();
 				}
+				if (pressRename) {
+					const item = await waitFor(
+						() =>
+							[
+								...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+							].find((node) =>
+								node.textContent?.includes("Rename conversation"),
+							) ?? null,
+					);
+					if (!item || cancelled) return;
+					await sleep(300);
+					/*
+					 * A real click, which is what Radix turns into the item's `onSelect` - the
+					 * same press `pressFork` makes, one row further down (Rename is slot 5).
+					 */
+					item.click();
+				}
 				return;
 			}
 			/*
@@ -525,10 +557,24 @@ const Panel: FC<{
 		return () => {
 			cancelled = true;
 		};
-	}, [sessionId, spot, delayMs, noMenu, search, pressFork, pressCopy]);
+	}, [
+		sessionId,
+		spot,
+		delayMs,
+		noMenu,
+		search,
+		pressFork,
+		pressCopy,
+		pressRename,
+	]);
 
 	return (
-		<Readout sessionId={sessionId} showFork={pressFork} showCopy={pressCopy} />
+		<Readout
+			sessionId={sessionId}
+			showFork={pressFork}
+			showCopy={pressCopy}
+			showRename={pressRename}
+		/>
 	);
 };
 
@@ -544,7 +590,8 @@ const Readout: FC<{
 	sessionId: string;
 	showFork: boolean;
 	showCopy: boolean;
-}> = ({ sessionId, showFork, showCopy }) => {
+	showRename: boolean;
+}> = ({ sessionId, showFork, showCopy, showRename }) => {
 	const [lines, setLines] = useState<string[]>([]);
 	// The sampler runs outside React's render, so the route is a dependency of the
 	// effect that owns it rather than something it can read each frame.
@@ -586,23 +633,19 @@ const Readout: FC<{
 			const firstItem = menu?.querySelector<HTMLElement>('[role="menuitem"]');
 			const active = document.activeElement;
 			/*
-			 * THE FORK PRESS'S TWO OBSERVABLE EFFECTS, only in the state that presses it:
-			 * the request the item wrote to the panel-presentation store (the
-			 * destination and the conversation it NAMES - the row's, which is not the
-			 * pane's) and the route (`/chat` is the palette's own rule, moved only when
-			 * no pane is mounted). The store holds a request until a presenter consumes
-			 * it, and this story has no pane, so it stays readable.
+			 * THE PRESS'S OBSERVABLE EFFECTS, in the states that press (#739's Fork,
+			 * #920's Rename): the request the item wrote to the panel-presentation
+			 * store - the destination and the conversation it NAMES (the row's, which is
+			 * not the pane's; rename additionally carries the name the row draws) - the
+			 * invoker (the row's own button) and the route (`/chat` is the palette's own
+			 * rule, moved only when no pane is mounted). The store holds a request until
+			 * a presenter consumes it, and this story has no pane, so it stays readable.
 			 */
 			const request = usePanelPresentationStore.getState().request;
-			const fork = showFork
+			const requestLines = request
 				? [
-						`fork request: ${
-							request
-								? `${request.destination} for ${request.sessionId ?? "(pane's own)"}`
-								: "none"
-						}`,
 						`invoker: ${
-							request?.invoker
+							request.invoker
 								? `${request.invoker.tagName.toLowerCase()}[${
 										request.invoker.hasAttribute("data-chat-row")
 											? "data-chat-row"
@@ -611,6 +654,19 @@ const Readout: FC<{
 								: "none"
 						}`,
 						`route: ${route}`,
+					]
+				: ["invoker: none", `route: ${route}`];
+			const addressed = request
+				? `${request.destination} for ${request.sessionId ?? "(pane's own)"}`
+				: "none";
+			const fork = showFork
+				? [`fork request: ${addressed}`, ...requestLines]
+				: [];
+			const rename = showRename
+				? [
+						`rename request: ${addressed}`,
+						`name carried: ${request?.subjectName ?? "none"}`,
+						...requestLines,
 					]
 				: [];
 			/*
@@ -700,6 +756,7 @@ const Readout: FC<{
 						: "none"
 				}`,
 				...fork,
+				...rename,
 				...copy,
 			];
 		};
@@ -724,7 +781,7 @@ const Readout: FC<{
 			window.cancelAnimationFrame(raf);
 			window.removeEventListener("row-menu-anchor", onAnchor);
 		};
-	}, [anchor, sessionId, showFork, showCopy, route]);
+	}, [anchor, sessionId, showFork, showCopy, showRename, route]);
 
 	return (
 		<div
@@ -750,7 +807,17 @@ const Page: FC<{
 	search?: string;
 	pressFork?: boolean;
 	pressCopy?: boolean;
-}> = ({ sessionId, spot, delayMs, noMenu, search, pressFork, pressCopy }) => (
+	pressRename?: boolean;
+}> = ({
+	sessionId,
+	spot,
+	delayMs,
+	noMenu,
+	search,
+	pressFork,
+	pressCopy,
+	pressRename,
+}) => (
 	<div className="flex h-screen overflow-hidden bg-canvas text-ink">
 		{/* The panel's own column: the app's 280px sidebar width, the width every
 		    row-space decision in this change was measured at. */}
@@ -777,6 +844,7 @@ const Page: FC<{
 				search={search}
 				pressFork={pressFork}
 				pressCopy={pressCopy}
+				pressRename={pressRename}
 			/>
 		</div>
 	</div>
@@ -807,6 +875,8 @@ const state = (
 		pressFork?: boolean;
 		/** Press Copy session ID once the menu is open and read the recorded value. */
 		pressCopy?: boolean;
+		/** Press Rename conversation once the menu is open and read the request it wrote (#920). */
+		pressRename?: boolean;
 		/**
 		 * Hold any toast this state raises, in ms (#893).
 		 *
@@ -835,6 +905,7 @@ const state = (
 				search={args.search}
 				pressFork={args.pressFork}
 				pressCopy={args.pressCopy}
+				pressRename={args.pressRename}
 			/>
 		);
 	},
@@ -917,6 +988,27 @@ export const CopyPressed = state("Copy pressed, value recorded", {
 	spot: "pointer",
 	pressCopy: true,
 	toastDuration: 24 * 60 * 60 * 1000,
+	features: BOTH,
+});
+
+/**
+ * Rename pressed on s2 (#920) - the seventh row's act, and the only one whose
+ * dialog shows a name: the readout is the sidebar's half of the contract, which
+ * is what can be photographed here (there is no pane, so no picker opens).
+ *
+ * The request in the panel-presentation store names `session.rename` FOR s2 -
+ * the row the user pointed at, not a pane's - and CARRIES the name that row
+ * draws (`Migrate the deploy script`); the invoker is s2's own row button, and
+ * the route has moved to `/chat` because nothing was mounted to present it.
+ * The pane's half - the dialog's field opening on that name rather than on the
+ * pane's title, and the `sessions.command` `rename` it submits for s2 - is the
+ * shipped `RenamePicker` + `slash-dispatch` consume path, pinned in
+ * `scripts/panel-presentation.test.mjs`.
+ */
+export const RenamePressed = state("Rename pressed, request names the row", {
+	sessionId: "s2",
+	spot: "pointer",
+	pressRename: true,
 	features: BOTH,
 });
 

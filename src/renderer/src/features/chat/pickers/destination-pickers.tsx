@@ -3182,15 +3182,76 @@ export const FastPicker: FC<PickerContext> = ({
 	);
 };
 
+/**
+ * The requester's own name for the conversation a request addressed, when it
+ * sent one (#920).
+ *
+ * The defensive read the fork entry's pair established (`readForkEntryId`):
+ * `action.data` is `Record<string, unknown>` on a value the app received, and a
+ * non-string or blank value has to mean "no name" - the pane-fed seed every
+ * door but the row menu's has always had - rather than a field the dialog opens
+ * on.
+ */
+function readSubjectName(data: Record<string, unknown>): string | null {
+	const value = data.subjectName;
+	return typeof value === "string" && value.trim() ? value : null;
+}
+
+/**
+ * What a rename submit should write, or `null` when it must write nothing.
+ *
+ * THE UNCHANGED SUBMIT IS A NO-OP, the guarantee the header's inline editor
+ * keeps (`next === agentName` closes without a command, `chat-header.tsx`): an
+ * unedited Enter changes nothing the user can SEE, while WRITING it can make a
+ * placeholder real - an untitled row seeds this dialog with the sidebar's
+ * display fallback (`Untitled chat`), and a write would store that string as
+ * the conversation's explicit, user-set name, retiring the naming errand
+ * (`chat-title.ts`'s constraint). Blank is the same no-op: the submit control
+ * is disabled for it, and an Enter that races the re-render is still not a
+ * rename to nothing.
+ *
+ * `openedWith` is the field's mount-time seed, passed rather than re-read from
+ * the props so the comparison is against what the user was shown (see the
+ * state beside it in `RenamePicker`).
+ */
+export function renameSubmission(input: {
+	name: string;
+	openedWith: string;
+}): string | null {
+	const next = input.name.trim();
+	if (!next || next === input.openedWith.trim()) return null;
+	return next;
+}
+
 export const RenamePicker: FC<PickerContext> = ({
 	sessionId,
 	canonical,
 	onClose,
 	action,
 }) => {
+	/*
+	 * THE SEED, in precedence order. `action.args` is a rename that came with its
+	 * name in hand; `readSubjectName` is the ROW's own displayed name, carried by
+	 * a request raised outside the pane (#920) - the requester right-clicked a
+	 * row it never opened, so `canonical.frontend` (the PANE's reading) is
+	 * generally NOT that conversation's name, and seeding from it would offer
+	 * the wrong name to a user renaming a row they have not opened; and the
+	 * canonical title stays the pane path's own seed, unchanged.
+	 */
 	const [name, setName] = useState(
-		action.args || canonical.frontend?.conversation_title || "",
+		action.args ||
+			readSubjectName(action.data) ||
+			canonical.frontend?.conversation_title ||
+			"",
 	);
+	/*
+	 * WHAT THE FIELD OPENED WITH, held beside `name` because the submit guard is
+	 * about the value the user was SHOWN: re-reading the props at submit time
+	 * could compare an edit against a reading the user never saw (the pane's
+	 * title moves on its own stream frames). `useState`'s initial value is the
+	 * first render's, which is exactly the mount-time seed.
+	 */
+	const [openedWith] = useState(name);
 	const command = useSessionCommand(sessionId);
 	return (
 		<PickerHost
@@ -3207,7 +3268,18 @@ export const RenamePicker: FC<PickerContext> = ({
 					/>
 				</PickerField>
 			}
-			onSubmit={() => void command.run("rename", name.trim())}
+			onSubmit={() => {
+				const next = renameSubmission({ name, openedWith });
+				/*
+				 * A no-op submit CLOSES without a command - the header editor's exit
+				 * for the same input (see `renameSubmission` above).
+				 */
+				if (next === null) {
+					onClose();
+					return;
+				}
+				void command.run("rename", next);
+			}}
 			submitLabel="Rename"
 			submitDisabled={!name.trim()}
 			busy={command.busy}

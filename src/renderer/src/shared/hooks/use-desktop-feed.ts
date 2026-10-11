@@ -124,6 +124,26 @@ export type DesktopFeedConnection = {
 	 * and the CONSUMER drops a frame for a session it is not showing.
 	 */
 	codeRequestsRevision: { sessionId: string; revision: number } | null;
+	/**
+	 * The last `config` frame, or null before the first one - which is also the
+	 * answer an older backend gives forever, so a consumer guards on null and a
+	 * frame that never arrives changes nothing.
+	 *
+	 * EXPOSED rather than acted on, exactly as `catalogueRevision` and its
+	 * siblings are: what a config change invalidates belongs to the modules that
+	 * own those query keys (the i18n store's writer is the language consumer).
+	 * The pair carries the frame's own identity - `epoch` and `seq` - so the
+	 * consumer can dedupe a re-delivered frame, and `changedKeys` so it can ask
+	 * its own question ("did language move?") of a frame that may name several
+	 * keys.
+	 */
+	configChange: {
+		changedKeys: string[];
+		/** The resolved tag, on every config frame (see the contract). */
+		language: string;
+		epoch: string;
+		seq: number;
+	} | null;
 };
 
 export function useDesktopFeed(): DesktopFeedConnection {
@@ -145,6 +165,12 @@ export function useDesktopFeed(): DesktopFeedConnection {
 	const [codeRequestsRevision, setCodeRequestsRevision] = useState<{
 		sessionId: string;
 		revision: number;
+	} | null>(null);
+	const [configChange, setConfigChange] = useState<{
+		changedKeys: string[];
+		language: string;
+		epoch: string;
+		seq: number;
 	} | null>(null);
 	// The feed's `open` snapshot is intentionally not enough to detect a missed
 	// authoring change: a no-subscriber baseline can retain the same revision.
@@ -272,6 +298,21 @@ export function useDesktopFeed(): DesktopFeedConnection {
 					sessionId: frame.session_id,
 					revision: frame.payload.revision,
 				});
+				return;
+			}
+			/*
+			 * A `config.yml` change, exposed the same way the revisions above are:
+			 * the transport says WHAT moved; the language's own writer (locale-sync)
+			 * decides what to invalidate and whether the change is worth announcing
+			 * (slice B1).
+			 */
+			if (frame.type === "config") {
+				setConfigChange({
+					changedKeys: frame.payload.changed_keys,
+					language: frame.payload.language,
+					epoch: frame.epoch,
+					seq: frame.seq,
+				});
 			}
 			// `open`, `heartbeat` and `gap` carry no renderable authoring data. The
 			// first `open` deliberately causes no invalidation because query mounts
@@ -295,5 +336,6 @@ export function useDesktopFeed(): DesktopFeedConnection {
 		authoringRevision,
 		authoringReconnectRevision,
 		codeRequestsRevision,
+		configChange,
 	};
 }

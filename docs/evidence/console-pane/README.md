@@ -6,14 +6,45 @@ completion and the blip, §13.2/§13.3 the capture view, §19.2 this set).
 
 **The Storybook frames** (`console-pane/<story>/<theme>.webp`) are captured through
 the repo's own `scripts/capture-evidence.mjs`, one frame per story per theme in the
-sweep's twelve-theme list. They are the pane at the width it shipped with when it
-was captured — **796 px**, the design's 100-column grid at the shipped face's
-advance (`measureCell`, 0.6 em at `TERMINAL_FONT_SIZE = 13`, i.e. 7.8 px per
-column) plus the pane's two 8 px gutters. (The default is 640 px — 80 columns —
-since the #872 follow-up; these frames predate it and that staleness is disclosed
-on that PR.) The number is not typed by hand: the story renders at
-`DEFAULT_RIGHT_SLOT_WIDTH` and the sweep's `CONSOLE_PANE_WIDTH` restatement is
-pinned to that constant by `scripts/console-pane.test.mjs`. (An earlier revision
+sweep's twelve-theme list. **They were re-taken at the 640 px default in the #929/#952 evidence pass
+(2026-10-11).** The two brand palettes were re-taken first; the ten community
+themes (`dracula`, `dune`, `iceberg`, `monokai`, `neon`, `obsidian`, `radient`,
+`sage`, `synth`, `tokyoNight`) followed in the round-1 remediation, so twelve of
+the thirteen states now carry **all twelve themes** at the shipped default — 80
+columns at the shipped face's advance (`measureCell`, 0.6 em at
+`TERMINAL_FONT_SIZE = 13`, i.e. 7.8 px per column) plus the pane's two 8 px
+gutters — and their frames show the #929 terminal ground (`bg-sunken`) reaching
+the pane's left, right and bottom edges (the band the #929 report is about). The
+one exception is `loading`, old-generation in every palette for the reason its
+own paragraph carries. The number is not typed by hand: the story
+renders at `DEFAULT_RIGHT_SLOT_WIDTH` and the sweep's `CONSOLE_PANE_WIDTH`
+restatement is pinned to that constant by `scripts/console-pane.test.mjs`.
+
+**THE GROUND BAND, READ FROM THE PIXELS (the after is light `populated` at this
+head; the dark frame reads its own ground).** The bottom 13 rows are **8,320 /
+8,320 px** of one colour — `#EBE7D8` (light) and `#1E1C1A` (dark), the terminal's
+`sunken` — where the pre-pass frame's same rows carried a 143 px elevated remnant
+(`#FEFCFB` 115 + `#FEFDF9` 28, light). The 8 px gutter samples one colour in both
+generations and changed owners: the terminal's ground at this head, the pane's
+`#FEFCFB` family before. (The frames' values sit ±1 off the palette tokens — the
+webp encode's own drift, measured in `chat-sidebar-row-context-menu/README.md`.)
+
+**ONE STATE IS NOT RE-TAKEN, and the reason is the paint gate rather than the
+disk: `loading`.** Its re-shoot is REFUSED by `assertFramePaints` — the captured
+frame reads **98.80%** one colour in `localOperatorLight` and **99.03%** in
+`localOperatorDark` against the 98.50% uniformity ceiling ("the story painted its
+ground and nothing else") — and it is reproducible, not a race: the loading state
+is a place without contents, so since the canvas chrome pass gave the header bar no
+ground of its own it renders the pane root's one ground plus the centred sentence,
+and little else draws. The state's frames — all twelve palettes — are therefore
+still the 796 px generation (`91.50%` / `91.41%` one colour, which is what the
+ceiling was
+calibrated against), disclosed rather than forced: a frame the sweep refuses
+cannot be committed, and re-framing the state (or re-reading the gate) is its own
+decision. **Re-attempted across the ten community themes in the round-1
+remediation and refused at the first of them (`dracula`, 98.68%)** — the refusal
+is the state's, not the palette's. The other twelve states are re-taken at this
+head, in every palette. (An earlier revision
 of this README and of the
 PR body said "843 px at `fontSize: 14`", which was neither the shipped default nor
 the design's grid — the design round measured those frames at ~108 columns. Both are
@@ -44,21 +75,29 @@ here has ever spawned a shell; that is the live set below.
 against the BUILT app headless, and it is the other half of the evidence:
 
 - `proof-transcript.md` — THE PAIRED RUN, and the one the displayed frame belongs to:
-  `Result: every check passed`, **46 cells, 0 FAIL, exit 0**. It is a real pty forked through the app's own main
+  the run at head `cb3e03c795e` (2026-10-11, the #929/#952 evidence-completion pass):
+  **80 of 81 checks pass, and the one failure is diagnosed in the transcript's own
+  note** — the relaunch cell's reopen presses the trigger's TOGGLE while #894 has
+  already restored the pane OPEN at launch, so the press closes it and the pane poll
+  times out; it predates this pass, and a rig fix is owed rather than folded into the
+  pass that produced the transcript.
+  It is a real pty forked through the app's own main
   process, the real `/rpc` driven with real requests, and every cell's actual output.
-  The two capture cells are in it verbatim (`capture geometry`, `offscreen capture`),
-  as is `the run never held the operator's frontmost application` — 0/N.
+  **The two cells the #929 thread edited — the dismissal and the withdrawal — are in
+  it verbatim and PASS** (the `exit 3` row standing, the control naming its dismissal,
+  the retained history on disk, no question asked, the removal, the selection and
+  keyboard handoffs, and the withdrawal returning the keyboard to its row), as are
+  the two cells the #754 thread once recorded as red on this host — green here — and
+  `the run never held the operator's frontmost application` — 0/N.
 - `displayed-capture.png` — `console_screenshot` with the pane DISPLAYING the
   surface, and the pane is mounted for it: the rig opens the conversation through the
   app's own launch intent, presses the console trigger, and never calls
   `setContentRect` itself, so the rect main crops to is the one the PANE reported.
-  `rendered: "displayed"`, `theme: "localOperatorDark"`, **48,159 B** at **1286×1582**
-  (the crop is 643×791 CSS at the window's device pixel ratio of 2, the panel's own
-  reported `contentRect`). The surface in this run is at the grid it was created with,
-  **120×40**, and the pixels show it rather than claim otherwise: the shell's own
-  `stty size` — `30 100` — is in the record, so the pty was resized after it ran, and the
-  pane's box fits fewer columns than the grid, which is §8.5's crop and not a bug in the
-  crop. What the frame shows is the pane's
+  `rendered: "displayed"`, **44,468 B** at **1160×1582** (the crop is 580×791 CSS at
+  the window's device pixel ratio of 2, the mirror's own reported box), the record at
+  the grid it carried when the capture ran — **74×46**, the resize cells' own
+  trajectory through the run — and the pixels show it rather than claim otherwise.
+  What the frame shows is the pane's
   terminal, not a window corner: an earlier revision of this cell photographed the
   window's top-left quadrant and certified it as the pane (design round 3's D17 / QA's Q-5).
 - `proof-transcript-unpaired.md` — THE SAME RIG ON A MACHINE THE APP IS NOT PAIRED WITH,
@@ -70,22 +109,31 @@ against the BUILT app headless, and it is the other half of the evidence:
   cannot be read as a pass. Nothing is hidden and nothing is guessed: the transcript carries
   the app's own sentence (`This conversation cannot be read here: the app is not paired with
   the running server`) and the four cells that did not run.
-- `offscreen-capture.png` — the same call with the pane closed, from that unpaired run: it
-  needs no pane and no backend, which is the point of the reconstruction.
-  `rendered: "offscreen"`, `renderer: "dom"`, **44,713 B** at **1560×936**, `attempts: 1`.
-  The size differs from the paired run's for a reason worth stating rather than rounding
-  over: with no pane mounted nothing reports a content rect, so the window is sized to the
-  SURFACE's own grid rather than to the pane's box. The paired run's own offscreen frame is
-  **48,035 B** at **1280×1560**, the same record at the same grid. It is a real terminal
-  frame — the rig's own
+- `offscreen-capture.png` — the same record reconstructed with the pane closed, from
+  the SAME paired run as the transcript and the displayed frame: `rendered:
+  "offscreen"`, `renderer: "dom"`, **43,339 B** at **1158×1380**, `attempts: 1`. It
+  is a real terminal frame — the rig's own
   `printf 'marker-424242\n'` and `stty size` → `30 100` — reconstructed from the
-  record by the capture view.
+  record by the capture view. The numbers this bullet carried before — **44,713 B**
+  at **1560×936** for the unpaired run's offscreen frame and **48,035 B** at
+  **1280×1560** for a paired one — described the September generation, and they
+  moved with each run's own resizes rather than with any change to the path: with no
+  pane mounted nothing reports a content rect, so the window is sized to the
+  SURFACE's own grid rather than to the pane's box.
 
   REFRESHED, NOT RE-CAPTURED IN KIND: these three files were re-run after a runtime
   swap replaced the `lop` install mid-turn and killed the processes of the earlier
   run. The refreshed run is **42 PASS / 0 FAIL**. Byte-identical frames across runs
   are not a property this path claims: the rig's shell echoes a variable number of
   lines before the `printf`, so the byte count moves with the pty's own output.
+
+  AT THE OCTOBER GENERATION (2026-10-11): the transcript and the two capture
+  frames in this directory were REPLACED by the paired run this section leads
+  with, in the #929/#952 evidence-completion pass; the September generation this
+  paragraph describes is one `git show` away, and its numbers above stay labelled
+  as that run's. `input-roundtrip.bin` was rewritten by the same run and came back
+  byte-identical to its September file (10 bytes, `md5 57365ca1…`), which is why
+  it is absent from the pass's diff by construction rather than by omission.
 
   ONE FURTHER DISCLOSURE, because it is a limit of the harness rather than of the
   pane: in this never-shown window the compositor's own press does NOT reach the

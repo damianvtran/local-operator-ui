@@ -2345,7 +2345,7 @@ const SPAWN_SITES = [
 		"spawn",
 		3,
 		/plan\.args/,
-		"the installer spawner: a shell that waits for this process's pid to go and then `exec`s Apple's ShipIt. It runs no interpreter - the process it becomes is Apple's installer - and its `env` is the inherited one plus the plan's four variables (`update-shipit.ts`'s `buildInstallerSpawn`)",
+		"the installer spawner: a shell that waits - bounded and logged since the 2026-10-11 stall - for this process's pid to go and then `exec`s Apple's ShipIt. It runs no interpreter - the process it becomes is Apple's installer - and its `env` is the inherited one plus the plan's five variables (`update-shipit.ts`'s `buildInstallerSpawn`; the fifth is the app's own executable for the pre-signal identity check)",
 	),
 	passThrough(
 		"src/main/webauthn.ts",

@@ -20,11 +20,13 @@
  * contract working, not a gap to fill in.
  *
  * LOCALE-INDEPENDENT BY PARAMETER: `formatProjectDay` takes the locale rather
- * than reading `navigator.language` at call time, so the Node test can pin one
- * output. In the app the caller passes `navigator.language`, matching the rule
- * the shared date utils state (the platform's own formatter, never hardcoded
- * English).
+ * than reading the store at call time, so the Node test can pin one output.
+ * In the app the caller passes the i18n locale (the `useI18nLocale()` hook —
+ * device before a backend answers, the backend's resolved language after),
+ * and the formatter itself is the shared layer, never hardcoded English.
  */
+
+import { formatDate, formatTime } from "@shared/i18n";
 
 import type {
 	DesktopLinkedSession,
@@ -182,10 +184,14 @@ export function formatProjectDay(
 		Number(match[3]),
 	);
 	if (Number.isNaN(date.getTime())) return day;
-	const monthDay = date.toLocaleDateString(locale, {
-		month: "short",
-		day: "numeric",
-	});
+	const monthDay = formatDate(
+		date,
+		{
+			month: "short",
+			day: "numeric",
+		},
+		locale,
+	);
 	return date.getFullYear() === now.getFullYear()
 		? monthDay
 		: `${monthDay}, ${date.getFullYear()}`;
@@ -1046,10 +1052,14 @@ export function updateDayLabel(
 export function updateTimeLabel(at: string, locale?: string): string {
 	const ms = Date.parse(at);
 	if (Number.isNaN(ms)) return "";
-	return new Date(ms).toLocaleTimeString(locale, {
-		hour: "numeric",
-		minute: "2-digit",
-	});
+	return formatTime(
+		new Date(ms),
+		{
+			hour: "numeric",
+			minute: "2-digit",
+		},
+		locale,
+	);
 }
 
 /**

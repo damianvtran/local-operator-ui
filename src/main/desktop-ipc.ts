@@ -13,6 +13,7 @@ import type { DesktopMediaResponse } from "./desktop-media";
 import type { DesktopNotifier } from "./desktop-notifier";
 import type { DesktopStreamRelay } from "./desktop-stream";
 import { trustedDesktopFrame } from "./desktop-transport";
+import type { SupplementFrameMounts } from "./supplement-mounts";
 
 const OPERATION_ID = /^[a-zA-Z0-9_-]{1,128}$/;
 
@@ -220,6 +221,15 @@ export function registerDesktopIPC(
 		window: BrowserWindow | null;
 		url: string;
 	}[],
+	/**
+	 * The supplement-frame mount permits (`supplement-mounts.ts`). Present only
+	 * where the supplement surfaces can mount: the renderer arms the exact
+	 * `data:` URL it is about to set as a frame's `src`, and the main window's
+	 * navigation guard consumes that permit for the ONE child-frame navigation
+	 * it authorises (memo §4.1). Absent disables the channel (the node contract
+	 * tests pass none).
+	 */
+	supplementMounts?: SupplementFrameMounts,
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
@@ -257,6 +267,25 @@ export function registerDesktopIPC(
 		}
 		return outcome;
 	});
+	/*
+	 * Arm one supplement-frame mount (turn-supplements memo §4.1, lane U-b).
+	 *
+	 * WHY A CHANNEL AND NOT A RENDERER-SIDE RULE: the main window's child-frame
+	 * navigation guard runs in MAIN, so the one permitted navigation per frame
+	 * has to be known there, and this is the renderer telling main "the next
+	 * child-frame navigation to exactly this URL is mine". The sender check is
+	 * the same `authorize` every other channel here uses - the app's own main
+	 * frame on its own document - and the URL must be a `data:text/html` mount
+	 * (`isArmableMountUrl`), so a compromised renderer still cannot arm a live
+	 * URL or an arbitrary scheme. The permit moves nothing by itself: a guard
+	 * refusal is answered by whether the URL was armed at all.
+	 */
+	if (supplementMounts) {
+		ipcMain.handle("desktop-supplement-frame-arm", (event, url: unknown) => {
+			authorize(event);
+			return { ok: supplementMounts.arm(url) };
+		});
+	}
 	// `/exit`: the window closes through the ordinary close path, so macOS
 	// keep-alive behaviour applies unchanged in the shipped app. Nothing here
 	// touches the backend: a closed window detaches its viewer and every
@@ -405,11 +434,13 @@ export function registerDesktopIPC(
 				sessionId?: unknown;
 				epoch?: unknown;
 				afterSeq?: unknown;
+				openFrame?: unknown;
 			};
 			if (
 				typeof input?.sessionId !== "string" ||
 				(input.epoch !== undefined && typeof input.epoch !== "string") ||
-				(input.afterSeq !== undefined && typeof input.afterSeq !== "number")
+				(input.afterSeq !== undefined && typeof input.afterSeq !== "number") ||
+				(input.openFrame !== undefined && typeof input.openFrame !== "boolean")
 			) {
 				throw new Error("Invalid stream subscription.");
 			}
@@ -420,6 +451,7 @@ export function registerDesktopIPC(
 					sessionId: input.sessionId,
 					epoch: input.epoch as string | undefined,
 					afterSeq: input.afterSeq as number | undefined,
+					openFrame: input.openFrame as boolean | undefined,
 				},
 				(frame) => {
 					if (sender.isDestroyed()) {

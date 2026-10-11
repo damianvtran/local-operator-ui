@@ -45,6 +45,12 @@ const modelBundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	/* `project-model` reads the i18n locale layer (@shared/i18n), whose shim
+	 * reaches src/i18n by relative path — only the @shared alias is needed
+	 * (the `turn-timestamp.test.mjs` recipe). */
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+	},
 	write: false,
 });
 const { model } = await import(
