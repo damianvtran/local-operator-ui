@@ -156,6 +156,7 @@ import { QuoteToolkit } from "./quote-toolkit";
 import { RadientCreditsGuidance } from "./radient-credits-guidance";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
 import { SETTLE_MS } from "./scroll-paging";
+import { SupplementRow } from "./supplement-row";
 import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
 import { ThreadSearchOverlay } from "./thread-search-overlay";
 import {
@@ -2486,6 +2487,16 @@ const TranscriptRow = memo(function TranscriptRow({
 			break;
 		case "wake":
 			body = <WakeRow record={record} isSmallView={isSmallView} />;
+			break;
+		/*
+		 * The supplement block ("Highlights"): files and sandboxed frames under the
+		 * answer it belongs to. A STATEMENT row (`isStatementRow`), so the fold keeps
+		 * it outside the condensed span and the answer above keeps its caption.
+		 */
+		case "supplement":
+			body = (
+				<SupplementRow record={record} sessionId={scope?.sessionId ?? null} />
+			);
 			break;
 		default:
 			body = <NoticeRow record={record} isSmallView={isSmallView} />;

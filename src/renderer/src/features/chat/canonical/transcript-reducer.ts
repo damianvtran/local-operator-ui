@@ -49,6 +49,17 @@ import {
 } from "../components/trace/tool-row-model";
 import { isHarnessChromeText } from "./harness-chrome";
 import { freezeRecordDeep } from "./record-immutability";
+import {
+	SUPPLEMENT_CUSTOM_TYPE,
+	type SupplementComponent,
+	type SupplementFile,
+	type SupplementRowState,
+	mergeSupplement,
+	supplementKeyForEntry,
+	supplementPatchFromEvent,
+	supplementRecordFromDetails,
+	supplementRecordKey,
+} from "./supplement-model";
 
 /**
  * One image on a transcript row.
@@ -632,6 +643,46 @@ export type TranscriptRecord =
 			 * fallback in `collapseSettledCompactions` is for.
 			 */
 			before?: number;
+	  }
+	| {
+			/**
+			 * One answer's supplement block (turn-supplements memo §2.8, lane U-b).
+			 *
+			 * KEYED BY ANCHOR (`supplement:<anchor>` — see
+			 * `supplement-model.ts::supplementRecordKey`), not by journal entry id:
+			 * one job writes a row per beat and version, and every one of them
+			 * resolves to THIS record, so the block can never paint twice under one
+			 * answer. The newest (version, rank) wins; older replays are refused.
+			 *
+			 * A STATEMENT row: it reports what the turn produced rather than doing
+			 * the turn's work, so the fold keeps it outside the condensed span
+			 * (`isStatementRow`) exactly as the design requires.
+			 */
+			kind: "supplement";
+			id: string;
+			ts: number;
+			/** The final assistant message id this block attaches to. */
+			anchor: string;
+			job: string;
+			version: number;
+			/** The journaled vocabulary plus the live-only `running`/`cancelling`. */
+			state: SupplementRowState;
+			files: readonly SupplementFile[];
+			/** How many qualified files the featured cap held back (the "N more"). */
+			filesMore: number;
+			/** Up to `MORE_MAX` of the held-back paths, same denylist as `files`. */
+			more: readonly string[];
+			components: readonly SupplementComponent[];
+			/** `superseded` renders nothing; a job-level failure renders its line. */
+			error: string;
+			dismissed: boolean;
+			/**
+			 * Whether a LIVE beat for a non-terminal state has been applied in this
+			 * view: the stale-row rule's `job_live` input. A cold reader — a reload, a
+			 * restarted runtime — holds rows with no beat, and a non-terminal row then
+			 * paints `cancelled · Retry` instead of spinning forever (§2.4/§2.8).
+			 */
+			live: boolean;
 	  };
 
 export type TranscriptState = {
@@ -2589,6 +2640,20 @@ function durableRecord(
 			}
 		}
 	}
+	/*
+	 * A supplement row (`type: "custom"`, `custom_type: "supplement_v1"`), the raw
+	 * journal shape the history page serves (memo §2.7(b)). Its `details` are the
+	 * contract's `SupplementDetails`; the record is keyed by ANCHOR and merged with
+	 * whatever this transcript already holds for that anchor, so a replayed page
+	 * and a live beat land on one block.
+	 */
+	if (
+		entry.type === "custom" &&
+		payload.custom_type === SUPPLEMENT_CUSTOM_TYPE
+	) {
+		const details = (payload.details ?? {}) as Record<string, unknown>;
+		return supplementRecordFromDetails(ts, details, previous);
+	}
 	if (entry.type !== "message") return null;
 	const kind = String(payload.kind ?? "message");
 	if (kind === "custom") {
@@ -2691,6 +2756,13 @@ function durableRecord(
 				waitedS: Number.isFinite(waited) && waited > 0 ? waited : 0,
 				urgent: details.urgent === true,
 			};
+		}
+		// The MESSAGE-row spelling of a supplement (a `history_delta` replay folds
+		// journal rows into this envelope: `kind: "custom"` carrying the raw
+		// `custom_type`/`details`). One arm for both doors, so a live replay and a
+		// durable page cannot produce two different records.
+		if (customType === SUPPLEMENT_CUSTOM_TYPE) {
+			return supplementRecordFromDetails(ts, details, previous);
 		}
 		const text = String(details.text ?? details.detail ?? "");
 		// A row with nothing to say paints nothing. `trim()` rather than a falsy
@@ -3037,6 +3109,24 @@ export function loadOlderStep(
 	return { cursor: null, failed: true };
 }
 
+/**
+ * The record a supplement row's anchor already paints, if any.
+ *
+ * WHY NOT `entry.id`: a supplement record is keyed by its ANCHOR
+ * (`supplement:<anchor>` — see `supplement-model.ts::supplementRecordKey`),
+ * because one block is one record however many journal versions exist, so the
+ * prior record must be found under that key for the version/rank merge and
+ * the array-identity gate to work the way they do for every other kind.
+ */
+function previousRecordForSupplement(
+	state: TranscriptState,
+	entry: DesktopHistoryPage["entries"][number],
+): TranscriptRecord | undefined {
+	const key = supplementKeyForEntry(entry);
+	if (!key) return undefined;
+	return state.records[state.index.get(key) ?? -1];
+}
+
 export function applyHistoryPage(
 	state: TranscriptState,
 	page: DesktopHistoryPage,
@@ -3099,14 +3189,19 @@ export function applyHistoryPage(
 	for (const entry of page.entries) {
 		if (clearedView && !isCompactionOutcome(entry, state.clearedAt)) continue;
 		// A tool row keys by call id, not entry id, so the prior record is looked
-		// up under both. Handing it to `durableRecord` is what lets an unchanged
-		// `images` array keep its reference through a replayed page.
+		// up under both. A supplement row keys by ANCHOR (`supplementRecordKey`),
+		// not by journal entry id, because one block is one record however many
+		// versions the journal holds — so the prior record is looked up under that
+		// key too. Handing it to `durableRecord` is what lets an unchanged
+		// `images` array keep its reference through a replayed page, and what lets
+		// a supplement row's version/rank merge see the version it supersedes.
 		const previous =
 			state.records[state.index.get(entry.id) ?? -1] ??
 			state.records[
 				state.index.get(`tool:${String(entry.payload?.tool_call_id ?? "")}`) ??
 					-1
-			];
+			] ??
+			previousRecordForSupplement(state, entry);
 		const record = durableRecord(entry, previous);
 		if (record) incoming.push(freezeRecordDeep(record));
 	}
@@ -4762,6 +4857,32 @@ export function applyEvent(
 				// a budget-stripped frame keeps what the row held.
 				details: preferProgressDetails(result.details, base.details),
 			});
+		}
+		case "supplement_progress": {
+			/*
+			 * One beat of a turn supplement's life, AFTER the turn's `agent_end`
+			 * (turn-supplements memo §2.7/§2.8, lane U-b). Additive on a tolerant
+			 * frame: an older daemon never sends it, and one that does sends it only
+			 * to a subscriber that declared `supplements=1` (the events route's
+			 * query param, sent from main's stream relay).
+			 *
+			 * The beat mutates the record under `supplement:<anchor>` — the same
+			 * record the durable row projects onto — through the contract's
+			 * (version, rank) merge, so a replayed beat cannot roll a settled block
+			 * backwards, and a late beat (the next turn already started) still lands
+			 * on the right answer.
+			 */
+			const patch = supplementPatchFromEvent(event);
+			if (!patch) return state;
+			const key = supplementRecordKey(patch.anchor);
+			const held = state.records[state.index.get(key) ?? -1];
+			const previous = held && held.kind === "supplement" ? held : null;
+			const record = mergeSupplement(previous, patch, now);
+			if (!record) return state;
+			// `upsert` is the identity gate: it returns the same state when the
+			// merged record is field-equal to what already stands, so a re-delivered
+			// beat costs a comparison rather than a re-render.
+			return upsert(state, record);
 		}
 		case "notice": {
 			const text = String(event.text ?? "");
