@@ -73,6 +73,18 @@ const api = {
 			ipcRenderer.invoke("desktop-open-authorization", operationId, reopen),
 		media: (request: DesktopMediaRequest, bytes: Uint8Array | null) =>
 			ipcRenderer.invoke("desktop-media", request, bytes),
+		/**
+		 * Arm one supplement-frame mount (turn-supplements memo §4.1): the EXACT
+		 * `data:` URL the renderer is about to set as `src`, sent immediately
+		 * before the frame mounts. Main's navigation guard consumes the permit for
+		 * that one child-frame navigation and denies every later one; the answer's
+		 * `ok` is false for a URL main refuses to hold (not a `data:text/html`
+		 * mount). Electron only - browser development and Storybook have no
+		 * channel, and the mount path must not require one (`armSupplementFrame` is
+		 * optional on `DesktopAPI`).
+		 */
+		armSupplementFrame: (url: string): Promise<{ ok: boolean }> =>
+			ipcRenderer.invoke("desktop-supplement-frame-arm", url),
 		watchHeartbeat: (args: {
 			sessionId: string;
 			subscriptionId: string;

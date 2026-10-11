@@ -1063,6 +1063,112 @@ export type CanonicalModelAccess = {
 	label: string;
 };
 
+/**
+ * One aggregated row of the backend's `spend_channels` object (wire v1).
+ *
+ * The backend groups before publishing, so the rows are NOT a client-side
+ * rollup: one row per inference identity (`label` = `provider/model`) plus one
+ * per `(channel, provider, model, unit)` group. A renderer lists them; it never
+ * re-sums them, because the one arithmetic site is the backend's `combine()`
+ * and every surface reading a locally-summed figure is how surfaces came to
+ * disagree in the first place.
+ *
+ * `amount_micro` is INTEGER micro-USD, and `null` means unknown — NEVER zero.
+ * A call that could not be sized and a call that was free are different facts,
+ * and only `row.knowledge` says which reading applies (`unknown` = nothing in
+ * the group was sized; `partial` = some was).
+ *
+ * `channel` and `basis` stay plain `string`s rather than closed unions, for the
+ * reason `SessionCatalogueStatus.code` gives above: the vocabulary belongs to
+ * the backend, which grows it without this file changing, and a renderer's job
+ * with a word it does not know is to show it rather than to fail to compile.
+ * The words this build knows are in `session-cost.ts`'s channel section; the
+ * wire's `basis` spelling is underscored (`subscription_api_equivalent`).
+ */
+export type CanonicalSpendChannelRow = {
+	channel: string;
+	provider: string;
+	model: string;
+	/** The inference identity bucket key, or "" on a channel row. */
+	label: string;
+	units: number;
+	unit: string;
+	/** Integer micro-USD. `null` = unknown, never a fabricated zero. */
+	amount_micro: number | null;
+	knowledge: "unknown" | "exact" | "partial" | "floor";
+	/** Billing bases present in the group, e.g. `["billed", "not_tracked"]`. */
+	basis: string[];
+	price_versions: string[];
+};
+
+/** The subagent/forked-children contribution already inside the grand total. */
+export type CanonicalSpendChildren = {
+	/** Integer micro-USD; always a stated number (0 = stated zero). */
+	total_micro: number;
+	knowledge: "unknown" | "exact" | "partial" | "floor";
+};
+
+/**
+ * The backend-published per-channel spend (`FrontendSessionState.spend_channels`).
+ *
+ * ONE object every surface renders (the frozen wire contract is
+ * `docs/design/spend-channels.md` in the backend repo; this build types it from
+ * the golden fixture `scripts/fixtures/spend-channels-v1.json`) so that the
+ * composer strip, `/analytics` and every future surface cannot disagree about
+ * what a session cost. Present only on a backend with the channel ledger
+ * (`features.cost_channels >= 1`); absent on an old server, where the UI keeps
+ * its legacy inference-only rendering unchanged.
+ *
+ * `total_micro` is the GRAND total — inference, channel records and children —
+ * as integer micro-USD, and it is the figure surfaces show. Do NOT recompute it
+ * from the parts: the backend's `combine()` is the one arithmetic site, and
+ * re-adding locally is exactly the class of defect this object exists to
+ * remove. `children.total_micro` is already a component of the total, not an
+ * extra summand.
+ *
+ * `tracked: false` means the session's journal carries no channel `start`
+ * marker (a pre-feature conversation): the total is inference-only and every
+ * surface must SAY "channels not tracked" rather than imply $0 of channel
+ * spend. `knowledge` uses the same four rungs as `cost_knowledge`; absence of
+ * the whole object is NOT a zero — never paint $0 for it.
+ *
+ * `by_basis.not_tracked_micro` and `not_tracked_calls` are ADDITIVE on v1: an
+ * older producer omits them and a reader treats absence as 0 (UI round 2 —
+ * the strip used to SUM inference row amounts for the first of these, and the
+ * backend now publishes it so no UI ever re-sums; see the key's own note).
+ */
+export type CanonicalSpendChannels = {
+	/** Wire version. An unknown version must render its legacy view, not this. */
+	version: number;
+	tracked: boolean;
+	/** Integer micro-USD, grand total (inference + channels + children). */
+	total_micro: number;
+	knowledge: "unknown" | "exact" | "partial" | "floor";
+	/**
+	 * Money per billing basis: the three money keys are micro-USD sums,
+	 * `not_tracked_micro` is the micro-USD amount whose billing BASIS is not
+	 * tracked yet (the session's own inference pre-PR-3 plus the children
+	 * bundle — the backend publishes it so a UI never re-sums inference rows to
+	 * find it), and `not_tracked_calls` is a COUNT of records with no trackable
+	 * money basis. The three money buckets plus `not_tracked_micro` equal
+	 * `total_micro`; subscription dollars stay in their own bucket and are
+	 * never added into `billed` — a plan-funded call is not cash.
+	 *
+	 * `not_tracked_micro` is ADDITIVE: an older producer omits it and absence
+	 * reads as 0 (the composition line then says the count without money).
+	 */
+	by_basis: {
+		billed?: number;
+		subscription_api_equivalent?: number;
+		estimated?: number;
+		not_tracked_micro?: number;
+		not_tracked_calls?: number;
+		[basis: string]: number | undefined;
+	};
+	rows: CanonicalSpendChannelRow[];
+	children: CanonicalSpendChildren;
+};
+
 export type CanonicalFrontendState = {
 	attention?: CompletionAttention;
 	state_version: number;
@@ -1217,6 +1323,23 @@ export type CanonicalFrontendState = {
 	 */
 	subagent_cost_knowledge?: "unknown" | "exact" | "partial" | "floor" | null;
 	cost_knowledge: "unknown" | "exact" | "partial" | "floor";
+	/**
+	 * The published per-channel spend, when the host has the channel ledger.
+	 *
+	 * ADDITIVE and optional: absent on an old backend (a reader then renders the
+	 * legacy inference-only view) and `null`/absent whenever this host cannot
+	 * publish the object (a reduced facade, an embedded host) — never a claim of
+	 * zero. ABSENT AND `null` ARE ONE CASE and the reader treats them so (the
+	 * attach frame omits rather than nulls; `spendChannelsUsable` refuses both
+	 * identically). Gated at the render edge on `features.cost_channels >= 1`,
+	 * because a backend that does not advertise the capability does not promise
+	 * the field's semantics even if an object appears.
+	 *
+	 * Read ONLY through `session-cost.ts` (`sessionCost`'s channel branch and the
+	 * breakdown helpers): that module owns the do-not-recompute rule, the
+	 * tracked=false sentence, and the one formatting ladder the strip uses.
+	 */
+	spend_channels?: CanonicalSpendChannels | null;
 	/**
 	 * The most recent turn's token usage, when the owner reported one.
 	 *
@@ -1374,6 +1497,92 @@ export type DesktopHistoryPage = {
 	}>;
 	has_more: boolean;
 	cursor_missing: boolean;
+	/*
+	 * THE OPEN FRAME (docs/DESKTOP_API.md, "The open frame"), present on a page
+	 * read with `open_frame=1` from a backend that advertises the capability.
+	 * ALL THREE ARE OPTIONAL, and absent is the only shape an older backend can
+	 * answer: the renderer's rule is that `unsupported` and an absent `runs` are
+	 * the same fact (draw today's page, keep its own condensation), so every
+	 * reader of these fields starts from their absence. A page read WITHOUT the
+	 * flag cannot carry them at all, which is why the flag is gated on the
+	 * capability rather than sent always.
+	 */
+	runs_state?: DesktopOpenFrameRunsState;
+	runs?: DesktopOpenFrameRun[];
+	/*
+	 * Whether the turn-aligned extension was REFUSED by the hard cap, so the
+	 * page is the plain `limit`-row tail and the oldest run on it has no opening
+	 * user row. Read as what it is: `false` means "no cap refused the
+	 * extension", NOT "the page holds whole runs".
+	 */
+	head_cut?: boolean;
+};
+/**
+ * Where an open-frame page's per-run facts came from.
+ *
+ * `ready` is the only value that carries `runs`. `building` means no fresh
+ * index was resident, so a refresh was started and THIS answer carries none -
+ * the very next frame may. `unavailable` means no index could be built,
+ * `unsupported` means the page's source cannot carry facts (a peer's
+ * conversation; the owner serves that page). A renderer MUST treat
+ * `unsupported` and an absent `runs` alike, and never WAIT on any of them:
+ * facts refine a bar, they never gate a paint.
+ */
+export type DesktopOpenFrameRunsState =
+	| "ready"
+	| "building"
+	| "unavailable"
+	| "unsupported";
+/**
+ * One settled run's facts, as an open-frame page states them.
+ *
+ * `run_key` is THE JOIN: the backend states it in this renderer's own
+ * vocabulary - the run's closing answer id, or its last row's id while it has
+ * none - which is exactly `TurnRun.key` (`transcript-rows.ts`), so a fact is
+ * matched to a plan run by that field and by nothing positional.
+ *
+ * THE COUNTS ARE FILLED ONLY FOR A SETTLED RUN. A live tail gets
+ * `settled: false` and no counts, because a number taken mid-turn is a number
+ * the client would have to correct - the after-paint change this whole contract
+ * exists to remove. `complete: false` says the index dropped a row body inside
+ * the run, so a count is a LOWER BOUND (the bar's `N+`).
+ */
+export type DesktopOpenFrameRun = {
+	run_key: string;
+	opening_user_id: string | null;
+	closing_answer_id: string | null;
+	settled: boolean;
+	/** `complete` / `error` / `interrupted` / `open` / `null`: the rail's vocabulary. */
+	outcome?: string | null;
+	action_count?: number | null;
+	failed_count?: number | null;
+	worked_seconds?: number | null;
+	started_ts?: number | null;
+	ended_ts?: number | null;
+	/** False: a count below is a lower bound, not the run's figure. */
+	complete?: boolean;
+	/**
+	 * Tool rows in this run the renderer HIDES under `hide_cross_session` (a
+	 * `send` call, a peer receipt), or null while the backend does not state the
+	 * split.
+	 *
+	 * WHY THE SERVER OWES THIS SPLIT: `action_count` counts every tool row in the
+	 * run, and a renderer with the setting on plans over `visibleRecords(records,
+	 * true)`, which drops the cross-session rows before they reach it. Without the
+	 * split, a bar that takes the fact states a count including rows it hides
+	 * (measured on the reviewer's probe: `3 actions` where the visible span holds
+	 * `2`). The subtrahend is the server's to state because only it counts rows the
+	 * renderer never receives. A reader that has the setting on and no field here
+	 * must NOT use the count - the fallback is the honest answer.
+	 */
+	cross_session_action_count?: number | null;
+	/**
+	 * The hidden rows' worked seconds, when the backend states them. A client
+	 * keeps a fact's duration under `hide_cross_session` only when this is stated
+	 * or `cross_session_action_count` is zero; otherwise the duration would include
+	 * work the bar does not show.
+	 */
+	cross_session_worked_seconds?: number | null;
 };
 /**
  * One page of a SUBAGENT's transcript (`docs/run-sidebar.md` § 10.1).
@@ -1670,6 +1879,23 @@ export type DesktopFeedFrame =
 			type: "code_requests";
 			session_id: CanonicalSessionId;
 			payload: { revision: number };
+	  }
+	| {
+			epoch: string;
+			seq: number;
+			type: "config";
+			/*
+			 * A `config.yml` change, projected for clients that mirror it (core PR
+			 * #2213; DESKTOP_API's "polling cadence"). No `session_id`: the change is
+			 * machine-wide, like `catalogue`.
+			 *
+			 * `changed_keys` names registry keys (sorted; they flatten to their dotted
+			 * spellings), and `language` is the RESOLVED tag - exactly what
+			 * `GET /v1/capabilities` answers, `auto` never - present on EVERY config
+			 * frame, not only language moves. A consumer watching the language filters
+			 * on `changed_keys.includes("language")`.
+			 */
+			payload: { changed_keys: string[]; language: string };
 	  }
 	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }
 	| {

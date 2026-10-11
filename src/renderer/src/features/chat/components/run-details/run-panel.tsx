@@ -63,8 +63,11 @@ import {
 	isOpenChildStatus,
 } from "./run-detail-model";
 import { RunDetailsPanel } from "./run-details-panel";
+import type { JobControls } from "./use-job-controls";
 import type { McpRemedyControls } from "./use-mcp-remedy";
 import type { MonitorControls } from "./use-monitor-controls";
+import type { WakeControls } from "./use-wake-controls";
+import type { AidaWakeIdentity } from "./wake-controls-model";
 
 /**
  * What the pane says when the updater refused and said nothing else.
@@ -91,6 +94,12 @@ export type RunPanelProps = {
 	mcpRemedy: McpRemedyControls;
 	/** The pane's monitor write controls, threaded to the Monitors section (`chat-page`). */
 	monitorControls: MonitorControls;
+	/** The pane's wake write controls, threaded to the Wakes section (`chat-page`). */
+	wakeControls: WakeControls;
+	/** The pane's job write controls, threaded to the Jobs section (`chat-page`). */
+	jobControls: JobControls;
+	/** What the pane knows about the chief of staff, for the wakes guard (`chat-page`). */
+	wakeAida: AidaWakeIdentity;
 	/** The canonical session id the reader's route is addressed with. */
 	sessionId: string | null;
 	/** Per-child pulse counters, from the canonical session stream (`§ 5.3`). */
@@ -164,6 +173,9 @@ export const RunPanel = ({
 	mcpGrantRunning,
 	mcpRemedy,
 	monitorControls,
+	wakeControls,
+	jobControls,
+	wakeAida,
 	sessionId,
 	pulses,
 	childrenOpenable,
@@ -1079,6 +1091,9 @@ export const RunPanel = ({
 						mcpGrantRunning={mcpGrantRunning}
 						mcpRemedy={mcpRemedy}
 						monitorControls={monitorControls}
+						wakeControls={wakeControls}
+						jobControls={jobControls}
+						wakeAida={wakeAida}
 						/*
 						 * The monitors cancel interaction resets on a session change - the
 						 * pane threads its own identity down for that one reader

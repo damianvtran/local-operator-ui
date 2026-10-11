@@ -49,7 +49,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/update-install"; export * from "./src/main/server-update-copy";',
+			'export * from "./src/main/update-install"; export * from "./src/main/server-update-copy"; export * from "./src/main/update-shipit";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -64,6 +64,9 @@ const install = await import(
 );
 const {
 	INSTALL_DISK_SLACK_BYTES,
+	INSTALLER_FIRST_GRACE_SECONDS,
+	INSTALLER_SECOND_GRACE_SECONDS,
+	INSTALLER_TOKEN,
 	LAUNCH_HOLD_END_MARGIN_SECONDS,
 	PLIST_READ_TIMEOUT_SECONDS,
 	PENDING_INSTALL_HANDOFF_SECONDS,
@@ -71,6 +74,8 @@ const {
 	PENDING_INSTALL_MARKER_FILE,
 	PENDING_INSTALL_RECENCY_MARGIN_SECONDS,
 	PENDING_INSTALL_RECENCY_SECONDS,
+	WATCHDOG_APP_WAIT_FALLBACK_SECONDS,
+	WATCHDOG_APP_WAIT_NOTICE_SECONDS,
 	WATCHDOG_HARD_TIMEOUT_SECONDS,
 	WATCHDOG_TOKEN,
 	appBundleFromExecutable,
@@ -1902,12 +1907,66 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	 * uses is osascript - the app is dead, so there is nothing else to use.
 	 */
 	assert.equal(plan.hardTimeoutSeconds, WATCHDOG_HARD_TIMEOUT_SECONDS);
+	/*
+	 * AND THE WAIT FOR THE APP TO CLOSE SPEAKS (2026-10-11 incident). Its first
+	 * step used to be silent until the soft bound; in the incident this script
+	 * was the only process left that could say anything while the app sat alive
+	 * with no window for 26 m 49 s, and it said nothing. The message set is the
+	 * operator's own requirement: the phase, the elapsed wait, and - once the
+	 * installer's escalation has provably failed - the fallback hint that was
+	 * the incident's own resolution. Both are bounded (the first well before the
+	 * escalator's first grace, the second two full ladders later), both fire at
+	 * most once, and both go through the same kill-switch-guarded `notify`.
+	 */
+	assert.equal(WATCHDOG_APP_WAIT_NOTICE_SECONDS, 15);
+	assert.equal(
+		WATCHDOG_APP_WAIT_FALLBACK_SECONDS,
+		2 * (INSTALLER_FIRST_GRACE_SECONDS + INSTALLER_SECOND_GRACE_SECONDS),
+		"the fallback bound must move with the escalator's graces",
+	);
+	assert.match(plan.script, /^started=\$\(now\)$/m);
+	assert.match(plan.script, /elapsed_text\(\) \{\n\t_seconds=/);
+	// Round-1 D2: an exact-minute reading drops the seconds term, so a wait is
+	// never printed as "30 min 0 s" (which reads like a clock fault).
+	assert.match(
+		plan.script,
+		/\t\tif \[ \$\(\(_seconds % 60\)\) -eq 0 \]; then\n\t\t\tprintf '%d min' "\$\(\(_seconds \/ 60\)\)"/,
+	);
+	assert.match(
+		plan.script,
+		/\$app_wait_notice" -eq 0 \] && \[ "\$_waited" -ge 15 \]; then\n\t\tapp_wait_notice=1\n\t\tnotify "Waiting for Local Operator to close so the update can install \(waiting \$\(elapsed_text\)\)\. No action is needed yet\."/,
+	);
+	assert.match(
+		plan.script,
+		/\$app_wait_fallback" -eq 0 \] && \[ "\$_waited" -ge 160 \]; then\n\t\tapp_wait_fallback=1\n\t\tnotify "The update is still waiting for Local Operator to close \(waiting \$\(elapsed_text\)\)\. If nothing happens, quit Local Operator \(Force Quit if it does not respond\) and leave it closed until it opens again by itself\."/,
+	);
+	/*
+	 * The hard bound's notice tells the truth on BOTH arms (2026-10-11): the arm
+	 * where the app is STILL RUNNING is the arm that exits without launching
+	 * ('if app_running; then exit 0' below), so "Local Operator is opening again"
+	 * was false exactly there. The app-still-running arm now says the true thing
+	 * and hands over the fallback action; the app-gone arm keeps the sentence
+	 * the panel's copy expects (UX U10).
+	 */
+	assert.match(
+		plan.script,
+		/if app_running; then\n\t\t\t\tnotify "The update is still waiting for Local Operator to close/,
+	);
 	assert.match(plan.script, /hard_deadline=\$\(\( \$\(now\) \+ 1800 \)\)/);
 	// The hold is keyed on `install_live`, which is the installer's own pid for an
 	// install this app started itself and `shipit_loaded` for one Squirrel
 	// submitted - and NOT on the job when there is a pid, because this machine
-	// keeps the job registered long after a successful install.
-	assert.match(plan.script, /&& install_live; then\n\t\t\tholding=1/);
+	// keeps the job registered long after a successful install. THE SOFT BOUND'S
+	// NOTICE BRANCHES ON THE APP'S STATE (round-1 UX U4): app running -> the
+	// wait/fallback copy, app gone -> the stay-closed copy.
+	assert.match(
+		plan.script,
+		/&& install_live; then\n\t\t\tholding=1\n(?:\t\t\t# [^\n]*\n)*\t\t\tif app_running; then\n\t\t\t\tnotify "The update is still waiting for Local Operator to close/,
+	);
+	assert.match(
+		plan.script,
+		/\t\t\telse\n\t\t\t\tnotify "The update is still installing\. Keep Local Operator closed; it will open again when the install finishes\."/,
+	);
 	/*
 	 * And the script's own reader of the installer's pid asks the same second
 	 * question the app does before it declares the installer gone (review R2-1):
@@ -3160,6 +3219,127 @@ test("the stay-closed notice follows a job that launchd submits late", async () 
 	assert.equal(result.code, 0);
 	assert.equal(await waitForLaunches(fixture, before + 1), true);
 });
+
+/**
+ * The wait for the app to close SPEAKS - phase, elapsed, fallback hint - and the
+ * hard bound never claims the app is coming back while it is still there
+ * (2026-10-11 incident).
+ *
+ * The failure this removes: the app sat alive with no window for 26 m 49 s, this
+ * watchdog was the only process left that could say anything, and its first step
+ * was silent - the operator resolved the stall by hand ('kill -TERM', which is
+ * what let ShipIt exec). The messages below are the operator's own requirement
+ * ("the 'still updating' state should surface the phase and the wait ... no
+ * indefinite silence"), driven for real: the app and the recorded installer are
+ * both alive for the whole run, so both notices are owed, and the last assertion
+ * is the truthfulness repair - at the hard bound with the app STILL RUNNING the
+ * script exits WITHOUT launching, so its notice must not say "opening again".
+ */
+test(
+	"the wait for the app to close speaks, and the hard bound does not lie about a running app",
+	{ skip: process.platform !== "darwin" },
+	async () => {
+		const dir = tempDir("lo-watchdog-wait-speaks-");
+		const fixture = makeWatchdogFixture(dir);
+		const before = fixture.launches().length;
+		/*
+		 * Neither process exits on its own inside the test's life, and the
+		 * installer pid keeps `install_live` true - the shape the incident had:
+		 * the app is there, an install is (nominally) at work, and the wait is
+		 * what speaks.
+		 */
+		const app = startProcess("/bin/sleep", ["60"]);
+		const installer = startProcess("/bin/sleep", ["60"]);
+		const plan = buildWatchdogPlan({
+			appBundlePath: fixture.bundle,
+			executableName: "Fixture",
+			appPid: app.pid,
+			installerPid: installer.pid,
+			shipItJob: "com.local-operator.ShipIt",
+			platform: "darwin",
+			signals: fixture.probes,
+			// The message set is the subject, so the bounds are driven short:
+			// the shipped moments are 15 s and 160 s, and a test cannot sit
+			// out the latter.
+			timeoutSeconds: 3,
+			hardTimeoutSeconds: 6,
+			intervalSeconds: 1,
+			settleSeconds: 1,
+			appearSeconds: 1,
+			announceSeconds: 1,
+			appWaitNoticeSeconds: 1,
+			appWaitFallbackSeconds: 2,
+		});
+		// The notices are this case's subject: no kill switch for the launch
+		// under test (the runner sets one for every child by design).
+		const watchdog = runWatchdog({
+			plan,
+			binDir: fixture.binDir,
+			env: { LOCAL_OPERATOR_NO_NOTIFICATIONS: undefined },
+		});
+		const notices = () => fixture.notifications();
+		const pollFor = async (predicate, why, budgetMs = 15_000) => {
+			const deadline = Date.now() + budgetMs;
+			while (Date.now() < deadline) {
+				if (predicate()) return;
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			}
+			assert.ok(predicate(), `${why}: ${JSON.stringify(notices())}`);
+		};
+		// The phase, the elapsed wait and the no-action clause, from the wait's own
+		// first stage (round-1 UX U3).
+		await pollFor(
+			() =>
+				notices().some((line) =>
+					/Waiting for Local Operator to close so the update can install \(waiting \d+ s\)\. No action is needed yet\./.test(
+						line,
+					),
+				),
+			"the wait never said what it was waiting for, or that no action is owed",
+		);
+		// The fallback hint, once the escalation has provably failed (short here by
+		// the bounds above; 160 s shipped). It hands over a reachable affordance and
+		// NEVER says "and reopen" (round-1 UX U1/U2).
+		await pollFor(
+			() =>
+				notices().some((line) =>
+					/If nothing happens, quit Local Operator \(Force Quit if it does not respond\) and leave it closed until it opens again by itself/.test(
+						line,
+					),
+				),
+			"the fallback hint never arrived",
+		);
+		const result = await watchdog.exit;
+		assert.equal(result.code, 0);
+		// Elapsed is IN the copy, not only a claim in a comment.
+		assert.ok(
+			notices().some((line) => /\(waiting \d+ s\)/.test(line)),
+			`the notices never carried the elapsed wait: ${JSON.stringify(notices())}`,
+		);
+		// The hard bound must not promise a launch this arm does not perform.
+		assert.equal(
+			notices().some((line) => /opening again/.test(line)),
+			false,
+			`the hard bound claimed the app was coming back while it was still running: ${JSON.stringify(notices())}`,
+		);
+		// Nor may the soft bound tell a person who never closed anything to keep it
+		// closed (round-1 UX U4): with the app STILL RUNNING, the stay-closed
+		// sentence is not true of their state and must not appear.
+		assert.equal(
+			notices().some((line) => /The update is still installing\./.test(line)),
+			false,
+			`the soft bound used the stay-closed copy while the app was still running: ${JSON.stringify(notices())}`,
+		);
+		// And nothing was launched into the running app (the Code=-9 abort).
+		assert.equal(
+			fixture.launches().length,
+			before,
+			"the watchdog started the app into an install while the app was still running",
+		);
+		app.kill();
+		installer.kill();
+	},
+);
 
 /**
  * The watchdog's own reader of "is the installer gone" is the app's reader.
@@ -13248,6 +13428,163 @@ test("a re-check failure goes out through the delivery scheduler, not a bare pus
 		rmSync(serviceDir, { recursive: true, force: true });
 		rmSync(home, { recursive: true, force: true });
 		rmSync(userData, { recursive: true, force: true });
+	}
+});
+
+/**
+ * The updater cache is deduped after a SETTLED install, and never while an
+ * install may still be reading it (2026-10-11 cache hygiene).
+ *
+ * THE RESIDUE THIS REMOVES, measured after one successful install: `update.zip`
+ * (~180 MB), `pending/<artifact>.zip` (~180 MB, the SAME bytes) and
+ * `pending/update-info.json` - nothing cleared any of them. The rule under test:
+ * after a settled verdict the cache is reduced to ONE artifact's worth -
+ * `update.zip`, the differential base the next download patches against - and
+ * the byte-identical pending copy plus its metadata go. The IN-FLIGHT case is
+ * the safety half: a marker whose installer is still alive must leave every file
+ * where it is, whatever the restart this runs at would otherwise tidy.
+ *
+ * The root is injected through the RESOLVER (`updaterCacheRoot`), not through a
+ * marker: a deletion root is never taken from a mutable record, and the case
+ * pins that by pointing the resolver at a fixture whose every file it can
+ * account for.
+ */
+test("a settled install dedupes the updater cache, and an in-flight one is left alone", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-cache-home-"));
+	const userData = mkdtempSync(join(tmpdir(), "lo-cache-userdata-"));
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
+	const { service, serviceDir } = await loadUpdateServiceModule();
+	const cacheRoot = mkdtempSync(join(tmpdir(), "lo-updater-cache-"));
+	const pendingDir = join(cacheRoot, "pending");
+	mkdirSync(pendingDir, { recursive: true });
+	const artifact = join(pendingDir, "local-operator-ui-0.0.0-test-arm64.zip");
+	const info = join(pendingDir, "update-info.json");
+	const base = join(cacheRoot, "update.zip");
+	const refill = () => {
+		writeFileSync(base, "artifact bytes", "utf8");
+		writeFileSync(artifact, "artifact bytes", "utf8");
+		writeFileSync(info, "{}", "utf8");
+	};
+	let interval = null;
+	let installer = null;
+	try {
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: {
+					send: () => {},
+					isDestroyed: () => false,
+					once: () => {},
+				},
+			},
+			backendManagerStub(
+				service.LocalOperatorStartupMode.GLOBAL_INSTALL,
+				() => updateService,
+			),
+		);
+		interval = updateService.updateCheckInterval;
+		updateService.updaterCacheRoot = () => cacheRoot;
+
+		// IN FLIGHT: a marker whose installer pid answers with the installer's own
+		// sentinel on its command line - the identity the app's own
+		// `installerIsAlive` asks for, not a bare live pid. Every file stays.
+		refill();
+		installer = spawn(
+			"/bin/sh",
+			["-c", `while :; do sleep 1; done # ${INSTALLER_TOKEN}`],
+			{ stdio: "ignore" },
+		);
+		writePendingInstallMarker(userData, {
+			targetVersion: "0.0.0-test",
+			artifactPath: artifact,
+			startedAt: new Date().toISOString(),
+			installerPid: installer.pid,
+			watchdogPid: null,
+		});
+		updateService.recoverPendingInstall();
+		assert.equal(
+			existsSync(artifact),
+			true,
+			"an in-flight install lost its pending artifact to the cache reap",
+		);
+		assert.equal(existsSync(info), true);
+		assert.equal(existsSync(base), true);
+		installer.kill();
+		installer = null;
+
+		// SETTLED as SUCCEEDED (target equal to the running version, installer
+		// gone): the duplicate and its metadata go, the base stays.
+		refill();
+		writePendingInstallMarker(userData, {
+			targetVersion: "0.0.0-test",
+			artifactPath: artifact,
+			startedAt: new Date(Date.now() - 60_000).toISOString(),
+			installerPid: null,
+			watchdogPid: null,
+		});
+		updateService.recoverPendingInstall();
+		assert.equal(
+			existsSync(artifact),
+			false,
+			"the succeeded install left the byte-identical pending copy behind",
+		);
+		assert.equal(existsSync(info), false, "and its metadata with it");
+		assert.equal(
+			existsSync(base),
+			true,
+			"the differential base must survive the dedupe",
+		);
+
+		// STALE (a marker the running version has moved past) behaves the same:
+		// settled is settled.
+		refill();
+		writePendingInstallMarker(userData, {
+			targetVersion: "0.0.0",
+			artifactPath: artifact,
+			startedAt: new Date(Date.now() - 120_000).toISOString(),
+			installerPid: null,
+			watchdogPid: null,
+		});
+		updateService.recoverPendingInstall();
+		assert.equal(
+			existsSync(artifact),
+			false,
+			"the stale pass left the pending copy",
+		);
+		assert.equal(existsSync(base), true);
+
+		// FAILED (a target the running version never reached). The failure
+		// delivery is out of scope here - the cache rule is not: settled is
+		// settled, and the artifact's bytes survive as the base.
+		refill();
+		writePendingInstallMarker(userData, {
+			targetVersion: "9.9.9",
+			artifactPath: artifact,
+			startedAt: new Date(Date.now() - 120_000).toISOString(),
+			installerPid: null,
+			watchdogPid: null,
+		});
+		updateService.recoverPendingInstall();
+		assert.equal(
+			existsSync(artifact),
+			false,
+			"the failed pass left the pending copy",
+		);
+		assert.equal(existsSync(base), true);
+	} finally {
+		if (installer) installer.kill();
+		if (interval) clearInterval(interval);
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+		rmSync(userData, { recursive: true, force: true });
+		rmSync(cacheRoot, { recursive: true, force: true });
 	}
 });
 

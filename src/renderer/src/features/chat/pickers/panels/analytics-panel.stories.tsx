@@ -44,6 +44,7 @@ import type {
 	DesktopModelRate,
 	DesktopUsageAggregate,
 } from "../../../../../../shared/desktop-contract";
+import type { CanonicalSpendChannels } from "../../../../../../shared/desktop-session-contract";
 import "../../../../styles/index.css";
 import {
 	desktopRequestDeadlineDetail,
@@ -1535,5 +1536,329 @@ export const SessionNarrow720: Story = {
 		).toBeTruthy();
 		await expect(screen.getByRole("button", { name: "Last" })).toBeTruthy();
 		await expect(rowCount()).toBe(20);
+	},
+};
+
+/* ---- the By-channel section (the cost-channels project) ------------------ */
+
+/**
+ * The conversation's published channel spend, off the backend's golden fixture
+ * (`scripts/fixtures/spend-channels-v1.json`), copied for the reason the strip
+ * stories copy it: the frames photograph the frozen wire, not an idea of it.
+ */
+const SPEND_CHANNELS: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 1_016_000,
+	knowledge: "partial",
+	by_basis: {
+		billed: 53_000,
+		subscription_api_equivalent: 53_000,
+		estimated: 10_000,
+		not_tracked_micro: 900_000,
+		not_tracked_calls: 1,
+	},
+	rows: [
+		{
+			channel: "inference",
+			provider: "anthropic",
+			model: "claude-sonnet-5-5",
+			label: "anthropic/claude-sonnet-5-5",
+			units: 12,
+			unit: "calls",
+			amount_micro: 900_000,
+			knowledge: "exact",
+			basis: ["not_tracked"],
+			price_versions: [],
+		},
+		{
+			channel: "image",
+			provider: "openai-sub",
+			model: "gpt-image-2",
+			label: "",
+			units: 1,
+			unit: "images",
+			amount_micro: 53_000,
+			knowledge: "exact",
+			basis: ["subscription_api_equivalent"],
+			price_versions: [
+				"OpenAI image-generation pricing (gpt-image-2, 1024x1024 medium, 2026-10-09)",
+			],
+		},
+		{
+			channel: "image",
+			provider: "radient",
+			model: "gpt-image-2",
+			label: "",
+			units: 3,
+			unit: "images",
+			amount_micro: 53_000,
+			knowledge: "partial",
+			basis: ["billed", "not_tracked"],
+			price_versions: ["Radient GET /tools/media/status cost_usd"],
+		},
+		{
+			channel: "search",
+			provider: "tavily",
+			model: "",
+			label: "",
+			units: 1,
+			unit: "searches",
+			amount_micro: 8_000,
+			knowledge: "exact",
+			basis: ["estimated"],
+			price_versions: ["client-search-table-2026-09"],
+		},
+		{
+			channel: "read",
+			provider: "deepseek:read",
+			model: "",
+			label: "",
+			units: 1,
+			unit: "reads",
+			amount_micro: 2_000,
+			knowledge: "exact",
+			basis: ["estimated"],
+			price_versions: ["client-search-table-2026-09"],
+		},
+	],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+/**
+ * A pre-feature conversation: the section must render the sentence, not an
+ * empty channel grid that would read as $0 of channel spend.
+ *
+ * `partial` (not `exact`) on the wire's own invariant: `tracked: false`
+ * implies the knowledge is at most `partial` — the journal was not keeping
+ * channel rows, so the total cannot be the whole story (see `combine()` in
+ * the backend's `channel_spend.py`).
+ */
+const CHANNELS_UNTRACKED: CanonicalSpendChannels = {
+	version: 1,
+	tracked: false,
+	total_micro: 900_000,
+	knowledge: "partial",
+	by_basis: {
+		billed: 0,
+		subscription_api_equivalent: 0,
+		estimated: 0,
+		not_tracked_micro: 900_000,
+		not_tracked_calls: 1,
+	},
+	rows: [
+		{
+			channel: "inference",
+			provider: "anthropic",
+			model: "claude-sonnet-5-5",
+			label: "anthropic/claude-sonnet-5-5",
+			units: 12,
+			unit: "calls",
+			amount_micro: 900_000,
+			knowledge: "exact",
+			basis: ["not_tracked"],
+			price_versions: [],
+		},
+	],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+/**
+ * The By-channel section over the golden fixture.
+ *
+ * The section is the panel's one surface for money the token ledger cannot
+ * see, read off the conversation's published object: the total is the
+ * BACKEND's (never re-summed, and `+` because the object's knowledge is
+ * partial), the plan gloss keeps plan-funded dollars from reading as cash, the
+ * composition line lists every bucket the total is made of (so the figure
+ * reconciles on screen), and every row carries its own basis word — or `—`
+ * where the record has none. The meta names the scope (`This conversation,
+ * all time`) on purpose: unlike every section above it, this one is not
+ * windowed by the toolbar.
+ */
+export const Channels: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+		channels: SPEND_CHANNELS,
+		channelsEnabled: true,
+	},
+};
+
+/** Untracked: the mandatory sentence above the numbers it qualifies. */
+export const ChannelsUntracked: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+		channels: CHANNELS_UNTRACKED,
+		channelsEnabled: true,
+	},
+};
+
+/**
+ * The gate: the same object on a backend that does not advertise
+ * `features.cost_channels` — the section must not exist, and this frame is the
+ * evidence that an old server sees exactly today's panel.
+ */
+export const ChannelsGated: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+		channels: SPEND_CHANNELS,
+		channelsEnabled: false,
+	},
+};
+
+/**
+ * A record with no stated amount, and a total that could not be sized: the
+ * section's two "no number here" states. The Spend cell reads `price unknown`
+ * — never `$0.0000`, never the session-level "not tracked" — and the total is
+ * this panel's `—`.
+ */
+const CHANNELS_UNKNOWN: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 0,
+	knowledge: "partial",
+	by_basis: {
+		billed: 0,
+		subscription_api_equivalent: 0,
+		estimated: 0,
+		not_tracked_calls: 1,
+	},
+	rows: [
+		{
+			channel: "tts",
+			provider: "radient",
+			model: "",
+			label: "",
+			units: 420,
+			unit: "chars",
+			amount_micro: null,
+			knowledge: "unknown",
+			basis: [],
+			price_versions: [],
+		},
+	],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+export const ChannelsUnknownAmounts: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+		channels: CHANNELS_UNKNOWN,
+		channelsEnabled: true,
+	},
+};
+
+/**
+ * A fresh tracked session with no channel records: the table's own empty
+ * state, below the fold like every By-channel frame (the section sits under
+ * the stat grid, and the panel body is capped at `min(76vh, 760px)`).
+ */
+const CHANNELS_NO_ROWS: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 0,
+	knowledge: "unknown",
+	by_basis: {
+		billed: 0,
+		subscription_api_equivalent: 0,
+		estimated: 0,
+		not_tracked_calls: 0,
+	},
+	rows: [],
+	children: { total_micro: 0, knowledge: "exact" },
+};
+
+export const ChannelsNoRows: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+		channels: CHANNELS_NO_ROWS,
+		channelsEnabled: true,
+	},
+};
+
+/**
+ * The two round-3 evidence states, the panel half (design round 3, D3-1:
+ * every `children:` in this file was `total_micro: 0`, the one floored row
+ * fed the Billed bucket, and no story had a dropped row — so the child
+ * parenthetical, the floored `+` remainder, and the drop's own sentence were
+ * pinned by tests and in no frame).
+ *
+ * Children-floored: `not_tracked_micro` covers the children bundle, so the
+ * remainder names its share as a parenthetical; the inference row is
+ * `partial`, so the remainder and the row both carry the panel's trailing
+ * `+`. This is the longest clause the composition line can produce.
+ */
+const CHANNELS_CHILDREN_FLOORED: CanonicalSpendChannels = {
+	version: 1,
+	tracked: true,
+	total_micro: 1_516_000,
+	knowledge: "partial",
+	by_basis: {
+		billed: 53_000,
+		subscription_api_equivalent: 53_000,
+		estimated: 10_000,
+		not_tracked_micro: 1_400_000,
+		not_tracked_calls: 1,
+	},
+	rows: [
+		{ ...SPEND_CHANNELS.rows[0], knowledge: "partial" },
+		...SPEND_CHANNELS.rows.slice(1),
+	],
+	children: { total_micro: 500_000, knowledge: "exact" },
+};
+
+/**
+ * Dropped-row: one malformed row, as a hostile or older producer could send
+ * it. The reading filters it, and because the table is then EMPTY under the
+ * object's nonzero total, the panel says "could not be read" rather than the
+ * neutral "no channel rows" (round 2, Q6). The cast is the point: the wire
+ * may break this shape, and the fixture must be able to say so.
+ */
+const CHANNELS_DROPPED_ROW: CanonicalSpendChannels = {
+	...SPEND_CHANNELS,
+	rows: [null] as unknown as CanonicalSpendChannels["rows"],
+};
+
+export const ChannelsChildrenFloored: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+		channels: CHANNELS_CHILDREN_FLOORED,
+		channelsEnabled: true,
+	},
+};
+
+export const ChannelsDroppedRow: Story = {
+	args: {
+		...base,
+		data: populated,
+		loading: false,
+		refreshing: false,
+		error: null,
+		channels: CHANNELS_DROPPED_ROW,
+		channelsEnabled: true,
 	},
 };

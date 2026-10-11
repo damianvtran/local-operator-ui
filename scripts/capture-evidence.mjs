@@ -3854,6 +3854,26 @@ export const STORIES = [
 	   makes — one section and its rows, or a quiet line. */
 	["chat-run-panel--jobs-in-flight", 1280, 700],
 	["chat-run-panel--jobs-only", 1280, 700],
+	/*
+	 * The VIDEO job family and its cancel (the video phase's post-turn rail):
+	 * the family at rest — the control on the video row, none on the shell row
+	 * beside it — then the control under the pointer and the keyboard, the
+	 * placed confirmation, the engine's refusal sentence, and the write's
+	 * in-flight hold. The flow cells hold their own shutter until the state
+	 * lands (real presses against stub controls), and the hover goes through
+	 * the rig's real pointer.
+	 */
+	["chat-run-panel--video-job-row", 1280, 820],
+	[
+		"chat-run-panel--video-job-cancel-hover",
+		1280,
+		820,
+		{ hover: '[data-job-cancel="job-video"]', hoverSettleMs: 400 },
+	],
+	["chat-run-panel--video-job-cancel-focus", 1280, 820],
+	["chat-run-panel--video-job-cancel-confirm", 1280, 820],
+	["chat-run-panel--video-job-cancel-refused", 1280, 820],
+	["chat-run-panel--video-job-cancel-busy", 1280, 820],
 	/* The Wakes section (`docs/composer-wakes.md`) — the pane's fifth, and the one
 	   surface that answers "is this session armed, and what will it fire". One band
 	   is a schedule alone (the state nothing in the app could show before), one the
@@ -3911,6 +3931,34 @@ export const STORIES = [
 	["chat-run-panel--monitor-cancel-refused", 1280, 820],
 	["chat-run-panel--monitor-cancel-cancelled", 1280, 820],
 	["chat-run-panel--monitor-cancel-refusal-record", 1280, 820],
+	/*
+	 * The WAKES section's cancel affordance (the wakes control slice), the
+	 * monitors' block one list over and deliberately the same shape: the control
+	 * under the pointer, the point's `:focus-visible` ring, the `Cancelled`
+	 * receipt a one-press write leaves, the refusal's sentence as the row's own
+	 * note (there is no card on the one-press path), the managed row with the
+	 * visible lever (`/aida pause`), the chief of staff's confirmation and its
+	 * refused state, and four 320px-floor frames the width budget is read off —
+	 * the refused floor is the state design round 1's D1 was measured in. The
+	 * one-press cells hold their own shutter until the state lands; the hover
+	 * goes through the rig's real pointer.
+	 */
+	[
+		"chat-run-panel--wake-cancel-hover",
+		1280,
+		820,
+		{ hover: '[data-wake-cancel="w1"]', hoverSettleMs: 400 },
+	],
+	["chat-run-panel--wake-cancel-focus", 1280, 820],
+	["chat-run-panel--wake-cancel-cancelled", 1280, 820],
+	["chat-run-panel--wake-cancel-refused", 1280, 820],
+	["chat-run-panel--wake-managed", 1280, 820],
+	["chat-run-panel--wake-chief-confirm", 1280, 820],
+	["chat-run-panel--wake-chief-refused", 1280, 820],
+	["chat-run-panel--wakes-controls-floor-320", 1280, 700],
+	["chat-run-panel--wakes-controls-floor-320-refused", 1280, 700],
+	["chat-run-panel--wakes-controls-floor-320-managed", 1280, 700],
+	["chat-run-panel--wakes-controls-floor-320-chief", 1280, 700],
 	/* The trigger's activity blip: the pane is CLOSED and a child is running, so
 	   the dot is drawn in `info`. Read against `trigger-idle` (nothing to say) and
 	   `panel-empty` (pane open, no activity ink) — the ink switch is the whole claim
@@ -4184,6 +4232,35 @@ export const STORIES = [
 	["chat-session-status-strip--context-tooltip", 860, 400],
 	["chat-session-status-strip--tooltip-honesty", 860, 400],
 	["chat-session-status-strip--cost-tooltip", 860, 400],
+	/*
+	 * THE CHANNEL STORIES (the cost-channels project). The tooltip frames need
+	 * the vertical room of the whole breakdown: the trigger sits at the bottom
+	 * of the canvas and the panel opens ABOVE it, so the declared height is what
+	 * keeps every line inside the shutter — 680 for the composition-plus-plan-
+	 * gloss panel whose rows now sit in a grid, 440 for the untracked sentence's
+	 * shorter one. `channels-gated` stacks two strips and opens no tooltip, and
+	 * `channels-zero-states` is a two-frame stack of the two zero chips.
+	 *
+	 * THE 980 WIDTH IS THE 900 FRAME PLUS ITS OWN PADDING (48 + the story's
+	 * 2×8): the stories render the strip at `width={900}` because the strip's
+	 * shed ladder (issue #918) hides the cost chip below a 705px content box,
+	 * and the chip is what these frames exist to show. At the 860 viewport the
+	 * set used through round 2 the frame's right edge was clipped; 980 shows
+	 * it whole.
+	 */
+	["chat-session-status-strip--channels-tooltip", 980, 680],
+	["chat-session-status-strip--channels-untracked", 980, 440],
+	["chat-session-status-strip--channels-gated", 980, 480],
+	["chat-session-status-strip--channels-zero-states", 980, 480],
+	/*
+	 * The two round-3 states (design D3-1): the children parenthetical with a
+	 * floored inference row — the longest clause the composition produces, so
+	 * the tooltip needs 720 where `channels-tooltip` needs 680 — and the
+	 * dropped-row payload, whose empty row list sits beside the panel's
+	 * "could not be read" sentence (the panel half is
+	 * `channels-dropped-row-end`). Both are dark+light narrowed runs. */
+	["chat-session-status-strip--channels-children-floored", 980, 720],
+	["chat-session-status-strip--channels-dropped-row", 980, 520],
 	/*
 	 * The sidebar's session-status mark, in the one place it can be photographed
 	 * as a specimen: the read/unread matrix, every code beside its own name (see
@@ -4769,6 +4846,38 @@ export const STORIES = [
 	 */
 	["chat-composer-status-row--goal-tooltip-floor", 300, 620],
 	["chat-composer-status-row--goal-capability-off", 1000, 520],
+	/* THE GOAL'S AND THE LOOP'S OWN ROWS (this change): the operator's own ask, the
+	   three widths it is argued at, and the states the per-row arrangement's empty
+	   cases and interactions live in.
+
+	   WHY THEY ARE HERE. The row's arrangement moved in this change - the goal and the
+	   loop each own a full-width line, the count strip keeps its own - and the states
+	   a reviewer has to judge are the ones no earlier frame can show: six chips with
+	   the goal and the loop apart (900, the 520px band where the two used to SHARE a
+	   line, and the 240 band), the app's floor, each source alone, the long goal and
+	   the long clause beside each other, the expanded body in the per-row form, the
+	   goal's dismiss revealed, and the all-absent state. A story nobody captures is a
+	   state the sweep never renders.
+
+	   THE WIDTHS ARE THE STORIES' OWN, sized like the floor above: `Composer`'s outer
+	   box is the band width plus the box's 48px of `p-6` (288 for the 240 band, 220
+	   for the floor), and the tuples below give the 240/172 stories 300 of viewport —
+	   the floor precedent's own safe width, above both outer boxes — the 520 band 700
+	   (>= its 568) and the 900-width stories 1000 (>= their 948).
+
+	   THE DISMISS-FOCUS STORY FOCUSES PROGRAMMATICALLY, like
+	   `--goal-done-dismiss-focus` above and for the same reason: this rig has no
+	   hover verb, and the story's own effect paints the same held box a pointer
+	   would, so a still of it carries the reveal. */
+	["chat-composer-status-row--goal-loop-rows", 1000, 500],
+	["chat-composer-status-row--goal-loop-rows-band-240", 300, 640],
+	["chat-composer-status-row--goal-loop-rows-band-520", 700, 520],
+	["chat-composer-status-row--goal-loop-rows-floor", 300, 640],
+	["chat-composer-status-row--goal-loop-rows-alone", 1000, 560],
+	["chat-composer-status-row--goal-loop-rows-long", 1000, 560],
+	["chat-composer-status-row--goal-loop-rows-expanded", 1000, 560],
+	["chat-composer-status-row--goal-loop-rows-dismiss-focus", 1000, 560],
+	["chat-composer-status-row--goal-loop-rows-empty", 1000, 300],
 	/* The activity mark with motion reduced, which is the OTHER half of the paint
 	   the mark's own animation cannot prove: `styles/index.css` CAPS durations at
 	   0.01ms rather than cancelling anything, so the frame has to show that the
@@ -8495,6 +8604,19 @@ export const STORIES = [
 	["command-palette-commandpalette--filtered", 1280, 800],
 	["command-palette-commandpalette--settings-scope", 1280, 800],
 	["command-palette-commandpalette--commands-scope", 1280, 800],
+	/*
+	 * The language door (i18n slice B2): the palette's answer to "language"
+	 * (the action beside the settings row), then the dialog the action opens,
+	 * its saved state, and the external-change announcement. The dialog and
+	 * toast states live at `settings-language-door--*`; their play functions
+	 * (dialog-saved) run in this rig's real Chromium.
+	 */
+	["command-palette-commandpalette--language-action", 1280, 800],
+	["settings-language-door--dialog-open", 1280, 800],
+	["settings-language-door--dialog-saved", 1280, 800],
+	["settings-language-door--external-toast", 1280, 800],
+	["settings-language-door--dialog-loading", 1280, 800],
+	["settings-language-door--dialog-cold-failure", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],
 	/*
 	 * The roster rows (issues #844, #849): the `@` scope's agent and team rows, one
@@ -8959,6 +9081,25 @@ export const STORIES = [
 	 */
 	["chat-image-generation--mid-walk-failure", 640, 360],
 	["chat-image-generation--already-finished", 640, 260],
+	/*
+	 * THE VIDEO VARIANTS (the video phase's desktop card): the six states with
+	 * the material noun moved, the completion pair (one row with the artifact
+	 * through the player — real bytes over the story's stubbed relay — and one
+	 * receipt-only row that must render without it), the player's resolving and
+	 * missing states, and the running pair that IS the R4 affirmative: the
+	 * image call beside the video call draws Cancel this mount wired, the video
+	 * call draws nothing. The `ready` cell releases its own shutter only once
+	 * the blob-backed player has decoded a frame.
+	 */
+	["chat-image-generation--video-queued", 1280, 220],
+	["chat-image-generation--video-running", 1280, 540],
+	["chat-image-generation--video-cancelling", 1280, 300],
+	["chat-image-generation--video-done", 1280, 480],
+	["chat-image-generation--video-player-resolving", 640, 300],
+	["chat-image-generation--video-player-missing", 640, 300],
+	["chat-image-generation--video-failed", 640, 220],
+	["chat-image-generation--video-cancelled", 640, 220],
+	["chat-image-generation--video-conflict", 640, 220],
 	/* THE PRE-MARKER CONTINUATION ROWS. A goal-continuation row written before
 	   the `harness_injected` stamp existed carries no marker to read - and one
 	   still arrives from an owner on an older build - so hiding only stamped
@@ -9317,6 +9458,87 @@ export const STORIES = [
 	["panels-analytics--unavailable", 1140, 400],
 	["panels-analytics--dense", 1140, 1100],
 	["panels-analytics--narrow", 720, 980],
+	/*
+	 * THE BY-CHANNEL SECTION (the cost-channels project). `channels` is
+	 * `populated` plus the golden fixture's five-row table (~one table taller
+	 * than the 980 frames above); `channels-untracked` is the same with a
+	 * one-row table and the mandatory sentence; `channels-gated` is the same
+	 * object on a backend that does not advertise the capability, and its
+	 * height is `populated`'s because the section must not exist at all.
+	 */
+	["panels-analytics--channels", 1140, 1240],
+	/*
+	 * The section itself sits BELOW the fold, and the at-rest frame cannot
+	 * reach it: the panel body is capped at `min(76vh, 760px)`, so a taller
+	 * viewport only adds margin (the measurement is `unnamed-sessions`'). The
+	 * scrolled frame is the evidence for the section; the at-rest one is the
+	 * evidence that everything above it is unchanged.
+	 */
+	[
+		"panels-analytics--channels",
+		1140,
+		1240,
+		{ dir: "channels-end", scrollToEnd: "[data-panel-body]" },
+	],
+	["panels-analytics--channels-untracked", 1140, 1140],
+	[
+		"panels-analytics--channels-untracked",
+		1140,
+		1140,
+		{ dir: "channels-untracked-end", scrollToEnd: "[data-panel-body]" },
+	],
+	["panels-analytics--channels-gated", 1140, 980],
+	/*
+	 * The two states the first evidence round could not photograph (D8): a
+	 * record with no stated amount beside an unpriceable total, and the table's
+	 * own empty state. Same shape as `channels-untracked` — below the fold, so
+	 * the scrolled variant is the evidence and the at-rest one shows nothing
+	 * above moved.
+	 */
+	["panels-analytics--channels-unknown-amounts", 1140, 1140],
+	[
+		"panels-analytics--channels-unknown-amounts",
+		1140,
+		1140,
+		{ dir: "channels-unknown-amounts-end", scrollToEnd: "[data-panel-body]" },
+	],
+	["panels-analytics--channels-no-rows", 1140, 1140],
+	[
+		"panels-analytics--channels-no-rows",
+		1140,
+		1140,
+		{ dir: "channels-no-rows-end", scrollToEnd: "[data-panel-body]" },
+	],
+	/*
+	 * The narrow By-channel frame the design round asked for (D8): the 720
+	 * viewport the panel's own `narrow` story uses, scrolled to the section.
+	 */
+	[
+		"panels-analytics--channels",
+		720,
+		1240,
+		{ dir: "channels-narrow", scrollToEnd: "[data-panel-body]" },
+	],
+	/*
+	 * The round-3 evidence states (design D3-1), scrolled to the section like
+	 * every By-channel frame: the children parenthetical + floored `+`
+	 * remainder clause on one object, and the dropped-row empty state's own
+	 * sentence. A dark+light narrowed run (`--themes=localOperatorDark,
+	 * localOperatorLight`) rather than the sweep's twelve — these states
+	 * photograph one clause each, not a palette sweep.
+	 */
+	[
+		"panels-analytics--channels-children-floored",
+		1140,
+		1240,
+		{ dir: "channels-children-floored-end", scrollToEnd: "[data-panel-body]" },
+	],
+	[
+		"panels-analytics--channels-dropped-row",
+		1140,
+		1140,
+		{ dir: "channels-dropped-row-end", scrollToEnd: "[data-panel-body]" },
+	],
 
 	/*
 	 * THE BY-SESSION TABLE'S OWN STATES: paging, sorting, search, the filter.
@@ -10833,6 +11055,42 @@ export const STORIES = [
 			},
 		},
 	],
+	/*
+	 * `rename-pressed` (#920): the menu's Rename conversation item is pressed on
+	 * s2, and the sidebar's half of the act is what can be photographed here -
+	 * there is no chat pane, so no picker opens (the pane's half is the consume
+	 * path in `slash-dispatch.ts` + `destination-pickers.tsx`, pinned in
+	 * `scripts/panel-presentation.test.mjs`). The readout prints the request the
+	 * press wrote to the panel-presentation store: `session.rename` FOR s2, the
+	 * ROW's conversation and not a pane's - and the fact only this item carries,
+	 * the name that row draws (`Migrate the deploy script`), sent because the
+	 * presenter holds a pane, not the row that was pointed at.
+	 *
+	 * `expectSentence` is what makes a frame filed under this name impossible to
+	 * be the state BEFORE the press: both lines exist only after the item is
+	 * clicked (before it the request reads `none`), so the shutter waits - the
+	 * claim is polled - rather than photographing the open menu under a name that
+	 * claims the press landed.
+	 */
+	[
+		"chat-sidebar-row-context-menu--rename-pressed",
+		780,
+		520,
+		{
+			hover: '[data-session-row="s2"]',
+			hoverSettleMs: 1200,
+			expectSentence: [
+				{
+					selector: "[data-readout-list]",
+					includes: "rename request: session.rename for s2",
+				},
+				{
+					selector: "[data-readout-list]",
+					includes: "name carried: Migrate the deploy script",
+				},
+			],
+		},
+	],
 	[
 		"chat-sidebar-row-context-menu--flyout-dwelled",
 		780,
@@ -11251,6 +11509,54 @@ export const STORIES = [
 	["navigation-panel-rail--code-open", 132, 220],
 	["chat-composer-status-row--code-requests-chip", 1000, 760],
 	["chat-composer-status-row--code-requests-chip-showing", 1000, 300],
+	/*
+	 * THE TURN-SUPPLEMENT BLOCK ("Highlights", lane U-b) — the design's own
+	 * evidence list: loading, empty, error and populated states, light and dark,
+	 * and the narrow column. Every frame here mounts the PRODUCTION transcript
+	 * and the production frame: the documents are core's own assembled fixtures
+	 * served through a scripted media bridge (`supplement.stories.tsx`), so the
+	 * chart in a frame is drawn by the shipped prelude's script under the
+	 * sandboxed mount the app uses.
+	 *
+	 * `supplement-free` is the before/after pair's after half — the same story
+	 * exists on the base tree with no supplement record at all, and the pair is
+	 * what proves a supplement-free turn renders unchanged. The heights are
+	 * tight to each state's content.
+	 */
+	["chat-turn-supplements--preparing", 900, 237],
+	["chat-turn-supplements--preparing-files", 900, 263],
+	["chat-turn-supplements--files-summary", 900, 237],
+	["chat-turn-supplements--files-more", 900, 323],
+	["chat-turn-supplements--files-more-expanded", 900, 366],
+	["chat-turn-supplements--components-one", 900, 642],
+	["chat-turn-supplements--components-two", 900, 1021],
+	["chat-turn-supplements--budget-disclosure", 900, 642],
+	["chat-turn-supplements--budget-disclosure-expanded", 900, 1366],
+	["chat-turn-supplements--cancelled", 900, 237],
+	["chat-turn-supplements--cancelled-cold", 900, 237],
+	["chat-turn-supplements--failed", 900, 237],
+	["chat-turn-supplements--done-empty", 900, 220],
+	["chat-turn-supplements--superseded", 900, 220],
+	["chat-turn-supplements--frame-error", 900, 237],
+	["chat-turn-supplements--frame-loading", 900, 437],
+	["chat-turn-supplements--narrow", 560, 514],
+	["chat-turn-supplements--supplement-free", 900, 314],
+	/*
+	 * THE CONDENSED FORM'S OWN STATES (design round 1, D1/U3/R2): the folded
+	 * block per content shape, plus the same block at the shell's narrow width.
+	 * Each frame's turn really carries a closed bar (the stories drive the same
+	 * plan the app does), so these are the one-line form on the production walk.
+	 */
+	["chat-turn-supplements--folded-condensed-files", 900, 400],
+	["chat-turn-supplements--folded-condensed-counts", 900, 400],
+	["chat-turn-supplements--folded-condensed-components", 900, 400],
+	["chat-turn-supplements--folded-condensed-mixed", 900, 400],
+	[
+		"chat-turn-supplements--folded-condensed-mixed",
+		560,
+		400,
+		{ dir: "folded-condensed-narrow" },
+	],
 ];
 
 /**

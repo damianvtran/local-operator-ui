@@ -7,6 +7,12 @@ import type {
 	DesktopRequest,
 } from "../../../../../shared/desktop-contract";
 import { CHECKPOINT_WARM_MAX_IDS } from "../../../../../shared/desktop-contract";
+import {
+	consumeOpenedCheckpointRead,
+	loadCheckpointManifest,
+	readCachedCheckpointManifest,
+	subscribeCheckpointManifest,
+} from "./checkpoint-manifest-cache";
 import { checkpointPendingIds } from "./checkpoint-model";
 
 /**
@@ -18,7 +24,10 @@ import { checkpointPendingIds } from "./checkpoint-model";
  * - The manifest is read once per conversation and re-read on demand; a cold
  *   or stale index answers `building` in well under a second (the scan runs in
  *   the backend's background), so the hook never waits on a scan and the rail
- *   paints ticks from whatever the last answer held.
+ *   paints ticks from whatever the last answer held. The read itself is
+ *   `checkpoint-manifest-cache.ts`'s — one request per ask, shared with the
+ *   conversation's own open-time prefetch, and the memory that seeds the first
+ *   render so the ticks ride the first contentful commit.
  * - `warm` is the user gesture's spend - hover names the ONE tick the reader
  *   looked at (`onHover` fires on the card's intent-delayed open, so a
  *   fly-over costs nothing). The rail deliberately does NOT spend on
@@ -81,12 +90,58 @@ export type UseCheckpointsResult = {
 /** A stable empty answer, so consumers memoising on `checkpoints` are calm. */
 const NO_CHECKPOINTS: Checkpoint[] = [];
 
-/** What one load may be: the first answer for a conversation, or a refresh. */
-type LoadMode = "initial" | "refresh";
+/**
+ * What one load may be: the first answer for a conversation, a refresh, or
+ * SERVED — the memory this open's own read already filled, which is not read
+ * again (QA round 1, Q-2; see `CHECKPOINT_MANIFEST_FRESH_MS`).
+ */
+type LoadMode = "initial" | "refresh" | "served";
 
 export function useCheckpoints(sessionId: string): UseCheckpointsResult {
-	const [state, setState] = useState<CheckpointsState>("idle");
-	const [manifest, setManifest] = useState<CheckpointManifest | null>(null);
+	/*
+	 * SEEDED DURING THE FIRST RENDER, not from an effect - and that is the whole
+	 * point of the memory (first-paint audit, F10's sibling). An effect runs after
+	 * the commit that would have painted the rail, so a rail seeded there lands
+	 * one frame after the rows it indexes: the metric the audit is about is "the
+	 * first contentful frame IS the settled frame", and the rail's ticks are part
+	 * of the frame. The initialiser reads the window's own memory of this
+	 * conversation (`checkpoint-manifest-cache.ts`), which the conversation's own
+	 * open already warms, so the very first render of the transcript holds the
+	 * ticks it will end up with.
+	 *
+	 * The read still runs below, as a refresh, because the memory is a head start
+	 * and the manifest stays the authority — and a SECOND conversation on the same
+	 * mounted pane (the session prop changing under it, which is what a switch
+	 * does wherever the panel is not re-keyed) re-seeds the same way, below.
+	 */
+	const seeded = sessionId ? readCachedCheckpointManifest(sessionId) : null;
+	const [state, setState] = useState<CheckpointsState>(() =>
+		seeded ? "ready" : "idle",
+	);
+	const [manifest, setManifest] = useState<CheckpointManifest | null>(
+		() => seeded,
+	);
+	/*
+	 * A SWITCH RE-SEEDS WHILE RENDERING, and it has to be here rather than in the
+	 * mount effect one screen down: an effect's `setState` is a SECOND commit, so
+	 * the rail would land one frame after the rows on every switch — which is the
+	 * same defect this file exists to remove, one conversation further on
+	 * (measured on the built app: rows painted, rail element absent from the DOM,
+	 * rail present one frame later with its ticks). Adjusting state during a
+	 * render for a changed prop is React's own pattern for exactly this, and it
+	 * costs no extra commit: the re-render happens before anything is painted.
+	 *
+	 * The effect below keeps everything that is NOT state - the epoch bump that
+	 * releases the previous conversation's episode, the poll reset and the read
+	 * itself.
+	 */
+	const [seededFor, setSeededFor] = useState(sessionId);
+	if (seededFor !== sessionId) {
+		setSeededFor(sessionId);
+		const next = sessionId ? readCachedCheckpointManifest(sessionId) : null;
+		setManifest(next);
+		setState(next ? "ready" : "idle");
+	}
 
 	/*
 	 * One counter is the whole session guard: every conversation takes the next
@@ -149,10 +204,38 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 			if (inFlightEpoch.current === epoch) return;
 			inFlightEpoch.current = epoch;
 			try {
-				const next = await desktopResult<CheckpointManifest>({
-					op: "sessions.checkpoints",
-					sessionId: sessionRef.current,
-				});
+				if (mode === "served") {
+					/*
+					 * THE MEMORY IS THIS OPEN'S ANSWER. The read that filled it started when
+					 * the conversation opened and answered inside the freshness window, so
+					 * asking again is the same fact twice — which is exactly what QA round 1
+					 * measured (2 `/checkpoints` reads on 29/36 opens, because the cache
+					 * deduped only while the first read was still in flight). Everything the
+					 * answered path does to state happens here too; only the request is
+					 * skipped, and a memory that vanished between the decision and this call
+					 * falls through to the ordinary read rather than to nothing.
+					 */
+					const served = readCachedCheckpointManifest(sessionRef.current);
+					if (served !== null) {
+						if (epoch !== epochRef.current) return;
+						setManifest(served);
+						setState("ready");
+						if (pendingIds.current.size > 0) {
+							pendingIds.current = new Set(
+								checkpointPendingIds(served, pendingIds.current),
+							);
+						}
+						if (pendingIds.current.size > 0) schedulePollRef.current(epoch);
+						return;
+					}
+				}
+				/*
+				 * The read itself is `checkpoint-manifest-cache`'s, which is what makes
+				 * the open-time prefetch and this mount ONE request rather than two: the
+				 * prefetch is started by the pane that opens the conversation, and this
+				 * hook asks for the same thing a few tens of milliseconds later.
+				 */
+				const next = await loadCheckpointManifest(sessionRef.current);
 				if (epoch !== epochRef.current) return;
 				setManifest(next);
 				setState("ready");
@@ -262,6 +345,36 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 		[logOnce],
 	);
 
+	/*
+	 * A LATER READ'S ANSWER IS APPLIED TO A PANE THAT IS PAINTING (agent review
+	 * round 2, R6's second half): a served memory is a head start, and the read
+	 * that follows it — the open's own prefetch on a switch, a poll, another
+	 * surface's refresh — used to be written to the cache and dropped, so the rail
+	 * could show a manifest the journal had outgrown for the whole visit. The
+	 * subscription is per conversation and lives for this hook's instance; the
+	 * hook's own read also writes, and re-applying the same object is a no-op React
+	 * discards.
+	 */
+	useEffect(() => {
+		if (!sessionId) return;
+		/*
+		 * The subscription IS the guard: it is created per conversation id and torn
+		 * down on a switch, so a listener cannot outlive the conversation it belongs
+		 * to and no epoch term is needed here. (It must also be registered BEFORE
+		 * the load effect below, which is why it sits above it: a read that settles
+		 * in the same effect flush has to find the listener already there.)
+		 */
+		return subscribeCheckpointManifest(sessionId, (manifest) => {
+			setManifest(manifest);
+			setState("ready");
+			if (pendingIds.current.size > 0) {
+				pendingIds.current = new Set(
+					checkpointPendingIds(manifest, pendingIds.current),
+				);
+			}
+		});
+	}, [sessionId]);
+
 	useEffect(() => {
 		sessionRef.current = sessionId;
 		epochRef.current += 1;
@@ -270,13 +383,49 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 		pendingIds.current = new Set();
 		stopPoll();
 		loggedMessages.current = new Set();
-		setManifest(null);
+		/*
+		 * THE SAME MEMORY, FOR THE PATHS THAT RENDERED BEFORE IT WAS WARM: a pane
+		 * whose first render saw no cache entry (the answer had not landed yet) and
+		 * which re-renders before this effect runs gets the memory here, and a
+		 * switch that the render-time adjustment above already seeded re-states the
+		 * same value, which React discards. The read below still runs - it is the
+		 * authority - and it runs as a REFRESH, because a manifest we have is not
+		 * blanked by a re-read that fails: that is the same rule this hook already
+		 * applies to a failure after a manifest exists, and a memory this window
+		 * holds deserves it for the same reason.
+		 */
+		const seeded = sessionId ? readCachedCheckpointManifest(sessionId) : null;
+		/*
+		 * Q-2's gate, and it is asked only of the FIRST load of the epoch: a memory
+		 * this OPEN's own read answered (the pane's prefetch, marked by
+		 * `warmCheckpointManifest`) is served rather than re-requested, while every
+		 * other memory — a previous visit's, or the same conversation mounted before
+		 * its prefetch got there — is refreshed as before. Every later load (a poll,
+		 * a gesture's `refresh()`) is untouched.
+		 *
+		 * THE MARKER IS NOT A CLOCK (agent review round 2, R6): "read within the
+		 * last two seconds" served a memory that could predate a checkpoint the
+		 * journal had just gained, and the fresh read that followed was written to
+		 * the cache but never applied here, so the rail painted the older ticks for
+		 * the whole visit. Consumed once, per open.
+		 */
+		/*
+		 * CONSUMED WHATEVER THE ANSWER. A marker left behind by a PREVIOUS open's
+		 * read must not be able to serve this one (agent review round 2, R6: the
+		 * marker is per open, and the mount is the only moment this hook can tell
+		 * "this open" from "the last one" — so it is spent here, served or not).
+		 */
+		const openedRead = sessionId
+			? consumeOpenedCheckpointRead(sessionId)
+			: false;
+		const served = seeded !== null && openedRead;
+		setManifest(seeded);
 		if (!sessionId) {
 			setState("idle");
 			return;
 		}
-		setState("loading");
-		void load(epoch, "initial");
+		setState(seeded ? "ready" : "loading");
+		void load(epoch, seeded ? (served ? "served" : "refresh") : "initial");
 		return () => {
 			/*
 			 * A read in flight at unmount must not apply its answer or re-arm a

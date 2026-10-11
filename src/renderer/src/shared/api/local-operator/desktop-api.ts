@@ -365,15 +365,34 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 		result?: T;
 		detail?:
 			| string
-			| { code?: string; message?: string; retry_after_ms?: number };
+			| {
+					code?: string;
+					message?: string;
+					text?: string;
+					params?: unknown;
+					retry_after_ms?: number;
+			  };
 	} | null;
 	if (response.status < 200 || response.status >= 300) {
+		/*
+		 * The sentence a user reads, from whichever shape the answering server wrote
+		 * it in. Three have crossed this wire: a bare string (the oldest), an object
+		 * with `message` (the refusal bodies that followed), and the core's i18n
+		 * envelope `{code, params, text}` (RFC §2.6) - whose `text` is exactly the
+		 * sentence string-only readers display, so a settings load, save or reset
+		 * refused by a newer server would otherwise fall to the placeholder below
+		 * instead of the server's own words. For an object, `text` is read before
+		 * `message`: a body carrying both is the newer contract, and the envelope's
+		 * `code` already reaches the error through `desktopErrorMessageCode`.
+		 */
 		const detail =
 			typeof envelope?.detail === "string"
 				? envelope.detail
-				: typeof envelope?.detail?.message === "string"
-					? envelope.detail.message
-					: null;
+				: typeof envelope?.detail?.text === "string"
+					? envelope.detail.text
+					: typeof envelope?.detail?.message === "string"
+						? envelope.detail.message
+						: null;
 		throw new DesktopControlError(
 			response.status,
 			/*
@@ -635,7 +654,19 @@ export async function openAuthorization(
  * unauthenticated fallback would be a silent security downgrade.
  */
 export function subscribeDesktopStream(
-	args: { sessionId: string; epoch?: string; afterSeq?: number },
+	args: {
+		sessionId: string;
+		epoch?: string;
+		afterSeq?: number;
+		/**
+		 * The open-frame negotiation (`docs/DESKTOP_API.md`, "The open frame").
+		 * This renderer sends it only once it has read the capability, and the
+		 * snapshot page it governs is the one this subscription carries: a caller
+		 * that sets it must read `runs`/`runs_state`/`head_cut` off `view.history`.
+		 * Absent keeps today's page, byte for byte.
+		 */
+		openFrame?: boolean;
+	},
 	onEvent: (event: {
 		kind: "data" | "error" | "end";
 		data?: string;
@@ -670,6 +701,12 @@ export function subscribeDesktopStream(
 	 * The proxy forwards it; an older backend ignores it.
 	 */
 	query.set("frontend_replace", "1");
+	/*
+	 * The same forwarded open-frame negotiation main's relay sends, and forwarded
+	 * for the same reason: this proxy must not claim on a renderer's behalf that
+	 * a page counted in paintable rows will be understood.
+	 */
+	if (args.openFrame === true) query.set("open_frame", "1");
 	const source = new EventSource(`/__desktop/stream?${query}`);
 	source.onmessage = (message) => {
 		onEvent({ kind: "data", data: message.data });

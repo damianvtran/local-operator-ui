@@ -13,7 +13,7 @@ re-taken with it drawn (the `menu-closed`/`flyout-alone` pair, which draws no
 menu, differs from the #694 set only in the capture clock and the base's own
 toolbar - see the Notes), and two states were
 added: `fork-withheld` and `fork-pressed`. The set was then 24 frames (twelve
-states x two themes; 26 since #893, below). The before is the #694 set at `26a814c2c2` (`git show
+states x two themes; 28 since #920, below). The before is the #694 set at `26a814c2c2` (`git show
 26a814c2c2:docs/evidence/chat-sidebar-row-context-menu/<state>/<theme>.webp`);
 the after is this directory.
 
@@ -30,6 +30,18 @@ other panels - are SUPERSEDED**: they described the set at `15a7a4ed5`, and
 § "The numbers" below carries the replacements read from this head's frames.
 They are kept here as the record, labelled, because a reviewer comparing heights
 needs to know which generation each number belongs to.
+
+**#920 added `Rename conversation` as the menu's SEVENTH row (slot 5, after
+`Copy session ID`), so the set was re-taken whole again and the new state
+captured.** Every menu-open state now also draws `Rename conversation` - another
+chord-free row - so the pinned state draws seven rows, an ordinary row five (four
+before), and a capability-withheld row four (three before). The set is **28 frames
+(fourteen states x two themes)**: the thirteen above plus `rename-pressed`. The
+capture head is **`cb3e03c795e`** (the pass's registration commit; the state's
+story shipped in #951). **The six-row figures this README carried after #893 - and
+the five-row ones before them - are SUPERSEDED the same way**: § "The numbers"
+below carries the replacements read from this head's frames, and every superseded
+set is kept labelled as the record.
 
 ## What produced these frames
 
@@ -51,6 +63,15 @@ so no existing frame was re-taken.
 the new row draws in every menu-open state. Both runs are APPEND mode (`--only` is
 present), so nothing was cleared: the earlier generations' *files* are what this
 directory replaced, not what the run rewrote from empty.
+
+**The #920 re-shoot ran the same command from this pass's worktree**, on a loaded
+host (load averages ~100), with the theme guard's own knob raised for it
+(`--theme-settle-ms=180000`): the first take died on the guard's 10 s window with
+the storybook still cold, and the knob's own note is explicit that a run which
+quietly reverted to 10 s on a machine where it does not fit reproduces exactly the
+failure the knob exists to avoid. No other flag changed; `--allow-backend` stays
+for the reason the console set's README gives (`lop`'s own daemon answers on
+`127.0.0.1:1111` on this machine).
 
 **The frames ship from the SECOND folded tip** (`009100e05`, the fold onto
 `origin/main` = `054ea59fe5` - #743, the archive-confirm lane, which landed a
@@ -126,16 +147,17 @@ numbers below are what the final frames read.
 | `pointer-open` | the menu at the pointer on s2, reveal and hover ground held |
 | `pointer-hover` | the same scene with the pointer moved onto the first item: `data-highlighted`, and the focus ring the primitive's own focus draws |
 | `keyboard-open` | the keyboard opener: anchor at the row's box edge, focus in the first item |
-| `pinned-row` | the six-row state on s1, in the shipped order: `Archive conversation`, `Unpin conversation`, `Fork conversation`, `Copy session ID` (#893, row 4), then `Move conversation up` and `Move conversation down` (both boundary-inked and `aria-disabled`, because the one pinned row is at both ends) — **296 × 215 at 142,297**, read from this head's frame. The five-row `296 × 184` above was the state at `15a7a4ed5`, before `Copy session ID`; #743 had moved the move pair out of the strip and into this menu, so the row's own children are two (`pin`, `archive`) |
-| `pin-state-unknown` | s3, `pinned === undefined`: three rows (Archive, Fork, `Copy session ID`) in 273 × 109, and the row draws no pin control |
-| `archive-withheld` | `session_archive` absent: three rows (`Pin conversation`, Fork, `Copy session ID`) in 246 × 109, not a disabled one |
-| `archived-row` | the row behind `Include archived`: item 1 reads `Unarchive conversation`, four rows (`Unarchive conversation`, Pin, Fork, `Copy session ID`) in 288 × 144 (the widest LABEL the menu draws) |
+| `pinned-row` | the seven-row state on s1, in the shipped order: `Archive conversation`, `Unpin conversation`, `Fork conversation`, `Copy session ID` (#893, row 4), `Rename conversation` (#920, row 5), then `Move conversation up` and `Move conversation down` (both boundary-inked and `aria-disabled`, because the one pinned row is at both ends) — **296 × 247 at 142,274**, read from this head's frame. The six-row `296 × 215` was the state at #893, and the five-row `296 × 184` at `15a7a4ed5`, before `Copy session ID`; #743 had moved the move pair out of the strip and into this menu, so the row's own children are two (`pin`, `archive`) |
+| `pin-state-unknown` | s3, `pinned === undefined`: four rows (Archive, Fork, `Copy session ID`, `Rename conversation`) in 273 × 140, and the row draws no pin control |
+| `archive-withheld` | `session_archive` absent: four rows (`Pin conversation`, Fork, `Copy session ID`, `Rename conversation`) in 246 × 140, not a disabled one |
+| `archived-row` | the row behind `Include archived`: item 1 reads `Unarchive conversation`, five rows (`Unarchive conversation`, Pin, Fork, `Copy session ID`, `Rename conversation`) in 288 × 176 (the widest LABEL the menu draws) |
 | `flyout-dwelled` | the flyout given 1800ms to dwell, then the menu: flyout `absent` |
 | `flyout-alone` | the control: the same row (s2), same hover, same dwell, no menu |
 | `menu-closed` | `pointer-open`'s before/after partner: same scene, same settle, no open — and the open state drops the flyout band itself (see `flyout-dwelled`) |
-| `fork-withheld` | #739: s2 is a never-sent draft's conversation (`drafts` holds its id), so the row reads `Not sent yet` and the menu draws Archive, Pin and `Copy session ID` (three rows, 273 × 113) — Fork absent, not greyed |
+| `fork-withheld` | #739: s2 is a never-sent draft's conversation (`drafts` holds its id), so the row reads `Not sent yet` and the menu draws Archive, Pin, `Copy session ID` and `Rename conversation` (four rows, 273 × 144) — Fork absent, not greyed |
 | `fork-pressed` | #739: the menu opened on s2 and Fork pressed. There is no chat pane in the story, so no picker can open and this frame does not show one; it shows the sidebar's half — the readout prints the request in the panel-presentation store (`session.fork for s2`, the ROW's conversation), its invoker (`button[data-chat-row] in s2`) and `route: /chat`. The pane's half (presenting the NAMED conversation rather than its own, and `rebind` navigating to the fork) is `slash-dispatch.ts`'s consume effect, asserted in `scripts/panel-presentation.test.mjs` |
 | `copy-pressed` | #893: the menu opened on s2 and `Copy session ID` pressed. Radix closes the menu on select, so the frame shows the sidebar's half, as `fork-pressed` does: the readout prints `copied: s2` — the string the item handed the clipboard, the ROW's own conversation id, copied verbatim — and the app's own success toast, `Session ID copied`, is held in the frame by the story's `toastDuration` (the same parameter `credential-notice` uses). The write is a RECORDING stub installed for this state (`navigator.clipboard.writeText` returns nothing in a headless capture, so the real call would photograph the REFUSAL toast); the real write path and its refusal are `scripts/chat-session-copy-id.test.mjs`'s and QA's over CDP |
+| `rename-pressed` | #920: the menu opened on s2 and `Rename conversation` pressed. As with `fork-pressed`, there is no pane, so the frame is the sidebar's half: the readout prints `rename request: session.rename for s2` (the ROW's conversation — the item is gated on nothing), `name carried: Migrate the deploy script` (the name that row draws, sent by the requester because the presenter holds a pane, not the row that was pointed at), the invoker `button[data-chat-row] in s2` and `route: /chat`. The pane's half — seeding the dialog's field from that name and submitting `sessions.command` `rename` for s2 — is `slash-dispatch.ts` + `destination-pickers.tsx`'s consume path, pinned in `scripts/panel-presentation.test.mjs` |
 
 ## The numbers, and what they settle
 
@@ -210,6 +232,33 @@ with the state at `15a7a4ed5` beside it:
   Nothing here is an estimate: every number is the readout the frame itself draws,
   and they were read out of the DOM of the same story URL the rig loads (see the
   Notes).
+- **THE SEVEN-ROW PANEL, READ FROM THIS HEAD'S `pinned-row` FRAME (#920).** The
+frame reads `panel: 296x247 at 142,274`, `items: 7 — Archive conversation⌘⇧A |
+Unpin conversation⌘⇧P | Fork conversation | Copy session ID | Rename conversation |
+Move conversation up⌘⇧↑ | Move conversation down⌘⇧↓`, the row at `255x32 at 12,268`
+and the same two pair children. The WIDTH did not move again (296), and the HEIGHT
+grew by one plain row, as it did at #893. **Every panel in the set, read from its
+own frame at this head** (`localOperatorDark`; the light frames read the same
+sizes), with its #893 predecessor beside it:
+  - `pinned-row` — **296 × 247 at 142,274**, **7 items** (was 296 × 215, 6)
+  - `pointer-open` (`pointer-hover`, `flyout-dwelled` likewise) — **273 × 176 at
+    142,345**, **5 items** (was 273 × 144, 4)
+  - `keyboard-open` — **273 × 176 at 14,345**, **5 items** (was 273 × 144 at 14,370, 4)
+  - `archived-row` — **288 × 176 at 142,345**, **5 items** (was 288 × 144, 4)
+  - `fork-withheld` — **273 × 144 at 142,369**, **4 items** (was 273 × 113, 3)
+  - `pin-state-unknown` — **273 × 140 at 142,380**, **4 items** (was 273 × 109, 3)
+  - `archive-withheld` — **246 × 140 at 142,369**, **4 items** (was 246 × 109, 3)
+
+  The heights reproduce from the same row kinds (chord 36, plain 32, padding 8):
+  `36+36+32+32+32+8 = 176` exact, `36+36+32+32+32+36+36+8 = 248` against the
+  measured 247 (the same one pixel under the six-row case's arithmetic),
+  `36+32+32+32+8 = 140` twice and `36+36+32+32+8 = 144` once. The panel's `at`
+  clamps up wherever the taller panel would overrun the 520-tall frame: 345 for
+  the 176-tall panels, 274 for the pinned one, 380 for `pin-state-unknown`; the
+  two withheld states in this list still fit under their anchors and sit at
+  `142,369`. `Rename conversation` draws under `Copy session ID` in every state;
+  the item order above it did not move. Nothing here is an estimate: every number
+  is the readout the frame itself draws (see the Notes).
 - **The row kinds, measured — and the 6px that used to be called a step.** A chord
 row is **36** and a plain (chord-less) row is **32**, with 8px of panel padding, and
 every panel in the set reproduces from those within 1px of sub-pixel rounding
@@ -220,8 +269,8 @@ single-cap row; with their chords joined they are 36 like every other chord row.
 
 **The pointer's own highlight.** `pointer-hover` reads
   `focus: menuitem “Archive conversation⌘⇧A”` and
-  `first item: data-highlighted`, in a panel measured 273 × 144 at `142,369`
-  (273 × 113 at #739, 273 × 81 when #694 shipped, before Fork) —
+  `first item: data-highlighted`, in a panel measured **273 × 176 at `142,345`**
+  (273 × 144 at #893, 273 × 113 at #739, 273 × 81 when #694 shipped, before Fork) —
   the state a pointer user meets the moment they move into the menu. The item
   carries the same `:focus-visible` ring `keyboard-open` draws, and that is
   measured rather than assumed: the primitive focuses the hovered item, and
@@ -230,17 +279,19 @@ single-cap row; with their chords joined they are 36 like every other chord row.
   re-entry), so the two paths share the ring and differ in what is focused.
 - **The archived row, and the widest ordinary-row panel** (`pinned-row`'s 296 is
   wider, since #743). `archived-row` reads
-  `panel: 288x144 at 142,362` — 15px wider than the 273 every other state
+  `panel: 288x176 at 142,345` — 15px wider than the 273 every other state
   measures, because `Unarchive conversation` is two characters longer —
-  with `items: 4 — Unarchive conversation⌘⇧A | Pin conversation⌘⇧P | Fork
-  conversation | Copy session ID` (three items, 288 × 113, before #893) and the row
+  with `items: 5 — Unarchive conversation⌘⇧A | Pin conversation⌘⇧P | Fork
+  conversation | Copy session ID | Rename conversation` (four items, 288 × 144, at
+  #893; three, 288 × 113, before it) and the row
   drawn at `255x32 at 12,333` with its archived mark. A widened search (`the
   field, then Include archived`) is what puts it on screen at all.
-- **The withheld rows** measure `273 × 109` (`pin-state-unknown`: Archive, Fork
-  and `Copy session ID`) and `246 × 109` (`archive-withheld`: Pin, Fork and `Copy
-  session ID`) — three rows each, no item disabled (`273 × 77` / `246 × 77`, two
-  rows each, before #893; #694 shipped them as `273 × 46` / `246 × 46`, one row
-  each, before Fork was the second row of both); on the archive-withheld row the pair
+- **The withheld rows** measure **`273 × 140`** (`pin-state-unknown`: Archive, Fork,
+  `Copy session ID` and `Rename conversation`) and **`246 × 140`** (`archive-withheld`:
+  Pin, Fork, `Copy session ID` and `Rename conversation`) — four rows each, no item
+  disabled (`273 × 109` / `246 × 109`, three rows each, at #893; `273 × 77` /
+  `246 × 77`, two rows each, before it; #694 shipped them as `273 × 46` / `246 × 46`,
+  one row each, before Fork was the second row of both); on the archive-withheld row the pair
   wrapper is not rendered at all (single capability), which is why its `pair`
   lines read `not mounted` while the pin control stands alone in the frame.
 - **Fork's three rows, and the one state without it (#739).** Every menu-open
@@ -252,10 +303,13 @@ single-cap row; with their chords joined they are 36 like every other chord row.
   the third row was withheld (#893 later added a plain row to every panel; the
   current figures are in the list above). Fork carries no chord, so its row has no cap and
   the panel gains 32px, not a chord row's 36.
-- **The anchor and the row are unchanged by the third row.** `pointer-open`'s
-  anchor (`140,369`), panel origin (`142,369`) and row box (`255x32 at 12,340`)
-  read the same as before; only the panel's height moved, and the keyboard
-  state's origin (`14,370`) is likewise unchanged.
+- **The anchor and the row are unchanged again by the seventh row; the panel's
+  ORIGIN moved only where the clamp binds.** `pointer-open`'s anchor (`140,369`)
+  and row box (`255x32 at 12,340`) read the same as before, and its panel now sits
+  at `142,345` — up 24px, because the 176-tall panel would overrun the 520-tall
+  frame at its old origin — and the keyboard state's origin moved the same way
+  (`14,370` → `14,345`). Where the panel still fits, the origin did not move
+  (`archive-withheld` and `fork-withheld` at `142,369`).
 
 ## What these frames do NOT prove
 
@@ -283,15 +337,19 @@ single-cap row; with their chords joined they are 36 like every other chord row.
 ## Notes
 
 - **Two pairs are byte-identical files, by construction — re-checked at this head
-  (#893).** `pointer-open` and `flyout-dwelled` are the same file in both themes
-  (dark `md5 4cfeaeb6…`, 24,630 bytes; light `a3037d74…`, 25,720 bytes) — a complete
+  (#920).** `pointer-open` and `flyout-dwelled` are the same file in both themes
+  (dark `md5 b436a79e…`, 25,772 bytes; light `00769b90…`, 27,142 bytes) — a complete
   suppression. `menu-closed` and `flyout-alone` are the same file (dark
   `md5 be6d69be…`, 18,174 bytes; light `1135b58a…`, 18,824 bytes) — both are “hover
-  settled, no menu, flyout drawn”. The coincidences are the measurement rather than
-  two takes of one shot, and they held through the #739 re-take and again through
-  this one (the #739 figures were dark `5e6da1cb…` 23,696 / `069a1133…` 18,324 and
-  light `a9173ec9…` 24,714 / `025cf64a…` 18,972). (**Twenty-two** distinct pictures
-  under twenty-six names.)
+  settled, no menu, flyout drawn”, and THAT file did not move between #893 and
+  this head (both notes carry the same md5s; the #739 note carried dark `069a1133…`
+  18,324 / light `025cf64a…` 18,972, so the file settled one re-take earlier). The
+  coincidences are the measurement
+  rather than two takes of one shot, and they held through the #739 re-take, the
+  #893 re-take and this one (the #739 figures were dark `5e6da1cb…` 23,696 /
+  `069a1133…` 18,324 and light `a9173ec9…` 24,714 / `025cf64a…` 18,972; the #893
+  figures dark `4cfeaeb6…` 24,630 / light `a3037d74…` 25,720). (**Twenty-six**
+  distinct pictures under twenty-eight names.)
 - **Byte accounting for the #893 re-shoot, measured with `md5` against
   `git show HEAD:<path>`.** All **24** frames this evidence commit re-took in THIS set
   (the whole prior set, twelve states x two themes; `git diff --numstat
@@ -310,6 +368,17 @@ single-cap row; with their chords joined they are 36 like every other chord row.
   and both changed. The two NEW files are
   `copy-pressed/{localOperatorDark,localOperatorLight}.webp` (18,554 and 19,478
   bytes).
+- **Byte accounting for the #920 re-shoot, measured with `md5` against this
+  directory's pre-pass files.** Of the set's 26 pre-existing files, **eight came
+  back byte-identical** — the four states that draw no open menu (`copy-pressed`,
+  `flyout-alone`, `fork-pressed`, `menu-closed`, both themes) — and **eighteen
+  differ**: every frame that draws the menu, whose `items:` and `panel:` readout
+  lines are drawn into it. Fifteen of the eighteen grew (+558 to +1,734 bytes);
+  three came back smaller (`archived-row`'s dark frame, −34 bytes; `keyboard-open`'s
+  pair, −22 and −412). The two new files are
+  `rename-pressed/{localOperatorDark,localOperatorLight}.webp` (21,082 and 21,874
+  bytes). Eight identical + eighteen changed + two new = the 28 files this
+  directory now carries.
 - **Where the numbers in this README come from (#893).** The rig renders the
   readout into each frame but prints only a summary line, so the figures above were
   read out of the DOM of the same story URL the rig loads

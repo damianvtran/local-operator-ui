@@ -122,7 +122,7 @@ def main():
 /** The entry every fixture bundle builds: the manager and the launch plan under
  * test, with `electron`, `logger` and `config` replaced by stubs. */
 const FIXTURE_ENTRY =
-	'export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/owned-serve-launch";';
+	'export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/owned-serve-launch"; export * from "./src/main/quit-exit-deadline";';
 
 /**
  * The one substitution set the whole file shares.
@@ -187,6 +187,8 @@ const {
 	READINESS_POLL_INTERVAL_MS,
 	LAUNCHER_PROBE_WORST_MS,
 	READINESS_BUDGET_MS,
+	createQuitExitDeadline,
+	quitExitDeadlineMs,
 	readinessPollDelayMs,
 } = bundle;
 BackendServiceManager.prototype.loadShellEnvironment = async () => {};
@@ -757,11 +759,18 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 	const source = readFileSync("src/main/index.ts", "utf8");
 	// Sliced from the first term of the derivation, so both the arithmetic and the
 	// bound the handler arms are inside the code under test rather than assumed
-	// from the file above them.
+	// from the file above them. The one line APPENDED below is a test probe, never
+	// an index.ts line: it exposes the slice's own constants so the assertions can
+	// tie the hard deadline (2026-10-11) to the shipped derivation over those same
+	// values rather than to a literal that could drift from them.
 	const start = source.indexOf("const QUIT_FAILSAFE_MARGIN_MS");
 	const end = source.indexOf("// Handle before-quit", start);
-	const code = (await transform(source.slice(start, end), { loader: "ts" }))
-		.code;
+	const code = (
+		await transform(
+			`${source.slice(start, end)}\nglobalThis.__quitSlice = { QUIT_CLEANUP_FAILSAFE_MS, QUIT_EXIT_DEADLINE_MS };`,
+			{ loader: "ts" },
+		)
+	).code;
 	for (const outcome of ["ok", "failed", "stuck"]) {
 		const app = new EventEmitter();
 		let quit = 0;
@@ -830,7 +839,16 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 		const timers = [];
 		const cleared = [];
 		const errors = [];
-		vm.runInNewContext(code, {
+		/*
+		 * The quit's hard deadline (2026-10-11) is CONSTRUCTED inside this slice,
+		 * so its two collaborators are supplied like every other binding above -
+		 * the SHIPPED functions, bundled from the module `index.ts` imports, so the
+		 * deadline the slice computes is the production one and not a paraphrase.
+		 * The factory is wrapped to record its input: that is how the tie below
+		 * reaches the value the slice actually passed.
+		 */
+		const deadlineConstructions = [];
+		const sandbox = {
 			app,
 			backendService,
 			viewerEndpoint: viewerEndpointStub,
@@ -844,13 +862,19 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 			OWNED_STOP_WORST_MS,
 			READINESS_POLL_INTERVAL_MS,
 			LAUNCHER_PROBE_WORST_MS,
+			createQuitExitDeadline: (input) => {
+				deadlineConstructions.push(input);
+				return createQuitExitDeadline(input);
+			},
+			quitExitDeadlineMs,
 			setTimeout: (fn, ms) => {
 				const timer = { fn, ms, unref: () => {} };
 				timers.push(timer);
 				return timer;
 			},
 			clearTimeout: (timer) => cleared.push(timer),
-		});
+		};
+		vm.runInNewContext(code, sandbox);
 		let prevented = 0;
 		app.emit("will-quit", {
 			preventDefault() {
@@ -868,6 +892,32 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 		assert.ok(app.listeners("before-quit").includes(hooks));
 		assert.ok(app.listeners("will-quit").includes(hooks));
 		assert.equal(timers.length, 1, "the quit armed exactly one bound");
+		/*
+		 * ...AND THE HARD DEADLINE THE SLICE CONSTRUCTED IS THE SHIPPED DERIVATION
+		 * (2026-10-11 incident). The object is exercised for real by
+		 * `scripts/window-mode.test.mjs`; what belongs HERE is that `index.ts`
+		 * builds it from the terms above - one construction, and the number it
+		 * carries equals the shipped function applied to the failsafe the slice
+		 * itself derived, so a literal drifting in either place fails this case.
+		 */
+		const quitSlice = sandbox.__quitSlice;
+		assert.equal(
+			deadlineConstructions.length,
+			1,
+			"the slice constructs the quit's hard deadline exactly once",
+		);
+		assert.equal(
+			deadlineConstructions[0].timeoutMs,
+			quitSlice.QUIT_EXIT_DEADLINE_MS,
+			"the constructed deadline carries the slice's own derived value",
+		);
+		assert.equal(
+			quitSlice.QUIT_EXIT_DEADLINE_MS,
+			quitExitDeadlineMs({
+				quitCleanupFailsafeMs: quitSlice.QUIT_CLEANUP_FAILSAFE_MS,
+			}),
+			"the deadline must be DERIVED from the bounds in front of it, not a literal",
+		);
 		// The branch's teardown sits ABOVE the owned-cleanup guard, so it runs on the
 		// early-return path too — the case where there is no owned backend to stop and
 		// the record would otherwise be left advertising a port nothing listens on.
