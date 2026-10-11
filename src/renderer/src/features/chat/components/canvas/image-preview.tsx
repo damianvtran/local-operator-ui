@@ -3,6 +3,7 @@ import { mimeTypeForPath } from "@features/chat/utils/file-kind";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo, useState } from "react";
+import { ImageActionsMenu } from "../image-actions-menu";
 import {
 	FileViewerState,
 	OpenInOsButton,
@@ -90,7 +91,22 @@ const ImagePreviewComponent: FC<{ document: CanvasDocument }> = ({
 		   conversation's `canvas`, which would leave the pane's tone under a changed
 		   bar. */
 		<div className={cn("flex h-full w-full flex-col bg-elevated")}>
-			<ViewerChrome path={document.path} />
+			<ViewerChrome path={document.path}>
+				{/*
+				 * The image viewer's own actions, beside the chrome's open button.
+				 * The menu's `file` is the document's path — the viewer is
+				 * path-backed by construction — and `src` is whatever the picture is
+				 * painted from, so `Copy image` resolves the bytes this reader is
+				 * actually looking at. The canvas entry is absent by design: this IS
+				 * the canvas, and `Show in canvas` on a document already in it is a
+				 * second way to say one thing.
+				 */}
+				<ImageActionsMenu
+					file={document.path}
+					src={url ?? document.path}
+					label={document.title}
+				/>
+			</ViewerChrome>
 			{url !== null ? (
 				<div className={cn("flex min-h-0 flex-1 items-center justify-center")}>
 					<img
