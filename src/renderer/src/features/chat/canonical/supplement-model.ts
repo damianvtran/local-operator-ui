@@ -703,10 +703,18 @@ export function clampFrameHeight(height: number): number {
  * Which components mount automatically, and whether a disclosure is owed.
  *
  * The walk takes components in order while the cumulative clamped height stays
- * within the budget; whatever remains is behind `Show all N graphics`. A zero
- * budget (a not-yet-measured viewport) mounts none and discloses all — the
- * conservative direction: nothing reserves space before the reader's window is
- * known to afford it.
+ * within the budget; whatever remains is behind `Show all N graphics`. The
+ * FIRST frame is admitted regardless of the budget, deliberately: a block
+ * whose single graphic sat behind `Show all 1 graphics` would open on an
+ * empty-looking row, and the design's "anything beyond [the budget] sits
+ * behind one disclosure" reads as the frames beyond the first that fits — a
+ * taller-than-budget first frame (a short window, a 480 px component) is
+ * exactly what the reader came for. The rest still respect the budget, so a
+ * short window shows one frame and discloses the others.
+ *
+ * A zero budget (a not-yet-measured viewport) still admits the first: the
+ * frame's own reserved box is within the contract's [120, 480] clamp, and
+ * "mount nothing" would make a measurement lag read as "no graphics".
  */
 export function planComponentMounts(
 	components: readonly SupplementComponent[],
@@ -717,7 +725,6 @@ export function planComponentMounts(
 	for (const component of components) {
 		const height = clampedHeightHint(component);
 		if (visible.length > 0 && used + height > budgetPx) break;
-		if (visible.length === 0 && height > budgetPx) break;
 
 		used += height;
 		visible.push(component);
