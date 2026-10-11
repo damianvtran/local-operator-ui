@@ -37,7 +37,6 @@ import { build } from "esbuild";
 import { withMockKeychain } from "./chrome-keychain.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(here, "..");
 
 // --- the documents ----------------------------------------------------------
 
@@ -105,6 +104,10 @@ attempt("form-submit", () => { document.getElementById("f").submit(); return "su
 attempt("download-click", () => { document.getElementById("dl").click(); return "clicked"; });
 attempt("self-navigate", () => { setTimeout(() => { location.href = TARGET + "/self-nav"; }, 150); return "scheduled"; });
 attempt("meta-refresh", () => { const m = document.createElement("meta"); m.httpEquiv = "refresh"; m.content = "0.3; url=" + TARGET + "/meta"; document.head.appendChild(m); return "inserted"; });
+attempt("blob-self-nav", () => { const u = URL.createObjectURL(new Blob(["<!doctype html><p>blob</p>"], { type: "text/html" })); setTimeout(() => { location.href = u; }, 200); return "scheduled"; });
+attempt("clipboard-write", () => { navigator.clipboard.writeText("probe").then(() => say("clipboard-write", "WROTE"), (e) => say("clipboard-write", "refused: " + (e && e.name))); return "attempted"; });
+attempt("clipboard-read", () => { navigator.clipboard.readText().then(() => say("clipboard-read", "READ"), (e) => say("clipboard-read", "refused: " + (e && e.name))); return "attempted"; });
+attempt("fullscreen", () => { document.documentElement.requestFullscreen().then(() => say("fullscreen", "entered"), (e) => say("fullscreen", "refused: " + (e && e.name))); return "attempted"; });
 say("resize", "posted");
 parent.postMessage({ lo: "supplement", v: 1, t: "resize", h: 222 }, "*");
 parent.postMessage({ lo: "supplement", v: 1, t: "ready" }, "*");
@@ -393,8 +396,8 @@ try {
 	);
 	record(
 		"form-submit",
-		byName.get("form-submit"),
-		"refused-or-no-request",
+		`${byName.get("form-submit")}; target=${targetSeen.includes("/form")}`,
+		"no request",
 		!targetSeen.includes("/form"),
 	);
 	const downloadClicked = byName.get("download-click") === "returned: clicked";
@@ -403,6 +406,41 @@ try {
 		`clicked=${downloadClicked}, target-saw=${targetSeen.includes("/download")}`,
 		"no request",
 		!targetSeen.includes("/download"),
+	);
+
+	/*
+	 * ROUND-1 R1'S THREE FURTHER ATTEMPTS (the ones the probe's 28 did not
+	 * cover): a `blob:` self-navigation (the scheme the main-process verdict
+	 * refuses outright), and the two permissions a graphic has no use for
+	 * (clipboard, fullscreen) — an opaque origin must be GRANTED NEITHER.
+	 * The blob attempt is read at the frame (the navigation either commits or
+	 * refuses) and cross-checked against the target and the host's load
+	 * counter; the permissions are read from their own promises.
+	 */
+	const blobUrl = String(byName.get("blob-self-nav") ?? "");
+	record(
+		"blob-self-nav",
+		`${blobUrl}; loads=${probe.loads.hostile + probe.loads.themed}`,
+		"no navigation",
+		probe.loads.hostile + probe.loads.themed === 2,
+	);
+	record(
+		"clipboard-write",
+		byName.get("clipboard-write"),
+		"refused",
+		/refused/.test(byName.get("clipboard-write") ?? ""),
+	);
+	record(
+		"clipboard-read",
+		byName.get("clipboard-read"),
+		"refused",
+		/refused/.test(byName.get("clipboard-read") ?? ""),
+	);
+	record(
+		"fullscreen",
+		byName.get("fullscreen"),
+		"refused",
+		/refused/.test(byName.get("fullscreen") ?? ""),
 	);
 
 	// The network: the document's own CSP closes it, and the target saw nothing.

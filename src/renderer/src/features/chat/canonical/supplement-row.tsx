@@ -8,7 +8,7 @@
  * (memo §0), and a files-only finish with ≤ 2 files is ONE line — the contents
  * themselves, never the bare word "Highlights".
  *
- * The state line is the image-gen card's state machine in miniature: the same
+ * THE STATE LINE is the image-gen card's state machine in miniature: the same
  * frozen vocabulary, the same copy bytes as the TUI (`Preparing highlights…`,
  * `Highlights cancelled`, `Couldn't prepare highlights`), and the same
  * "absent handler = absent control" rule the card states — the action pair is
@@ -19,9 +19,30 @@
  * not at all — never one hover-only while the other persists — and both are
  * wired to the desktop supplement ops. A press that cannot reach a backend
  * route surfaces the app's ordinary refusal rather than pretending the job
- * changed.
+ * changed; the refusal is composed by `backendLoadErrorMessage`, never a raw
+ * HTTP string (the round-1 U2 finding: a bare `Not Found` is not a sentence a
+ * user may be shown).
+ *
+ * THE CONDENSED FORM (round-1 D1/U3/R2, implemented here): while the block's
+ * own turn renders condensed — one closed bar over its run; the flag arrives
+ * from the transcript's collapse plan, never re-derived here — the block is ONE
+ * line and nothing else. No file rows and no `[data-supplement-slot]`/iframe:
+ * absent, not hidden, so no document fetch either. The line is passive (the
+ * turn's own bar is the expansion); the settled arms carry counts per the
+ * design's copy table and the not-settled arms keep the state line and their
+ * actions exactly as the expanded form wires them.
+ *
+ * THE DISCLOSURES (round-1 D3/U5/U7): both are the app's one disclosure idiom
+ * (`Disclosure` — chevron, `ink-dim` mark, one ink for both siblings), both are
+ * toggles (`N more files` ⇄ `Show fewer`), and the expanded files tail renders
+ * as the compact row grammar (glyph + name + menu), never bare paths.
+ *
+ * THE WARNINGS ABOUT VARYING FORMS: the ≤2-file summary, the counts prefix and
+ * the condensed line's clauses all come from `supplement-model`'s own copy
+ * functions, so the row and the model cannot summarize one set two ways.
  */
 
+import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	DropdownMenu,
@@ -30,6 +51,7 @@ import {
 	DropdownMenuTrigger,
 	Tooltip,
 } from "@shared/components/ui";
+import { Disclosure } from "@shared/components/ui/disclosure";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import {
 	ClipboardCopy,
@@ -41,7 +63,7 @@ import {
 	FolderOpen,
 	LayoutGrid,
 } from "lucide-react";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { CanvasPane } from "../utils/canvas-pane";
 import { useCanvasPane } from "../utils/canvas-pane";
 import { fileKind } from "../utils/file-kind";
@@ -57,19 +79,21 @@ import {
 	COPY_RETRY,
 	STEER_TEXT_MAX_CHARS,
 	type SupplementComponent,
-	type SupplementFile,
 	type SupplementRecord,
+	condensedBlockLine,
+	condensedCountPrefix,
 	displayText,
 	fileRowParts,
-	filesSummaryLine,
+	filesSummaryOf,
 	frameBudgetPx,
 	moreText,
 	planComponentMounts,
+	showAllText,
 	supplementDisposition,
 } from "./supplement-model";
 import { useSupplementDocument } from "./use-supplement-document";
 
-/** The type glyph for a callout row, from the same classifier the file rows use. */
+/** The type glyph for one callout row, from the shared file classifier. */
 function FileGlyph({ path }: { path: string }) {
 	const kind = fileKind(path);
 	switch (kind) {
@@ -93,37 +117,49 @@ function FileGlyph({ path }: { path: string }) {
  * one right-hand slot or behind the row's own menu — the canvas/reveal/OS-open
  * trio the design asks for, riding the app's existing file plumbing (the pane
  * handle and the IPC open/reveal doors) rather than a second implementation.
+ *
+ * `actionPath` is the REAL path every action uses, carried separately from the
+ * displayed `label`/`suffix`: the display is `displayText`-stripped and may
+ * collapse path===name to no suffix at all, and an action must never be handed
+ * the display spelling (the pre-refactor component handed its action legs the
+ * same string it displayed, so a root-level file whose name equals its path
+ * acted on the empty suffix).
  */
 const SupplementFileLine = memo(function SupplementFileLine({
-	file,
+	actionPath,
+	label,
+	suffix,
+	size,
 	pane,
 }: {
-	file: SupplementFile;
+	actionPath: string;
+	label: string;
+	suffix: string;
+	size: string;
 	pane: CanvasPane | null;
 }) {
-	const { name, path, size } = fileRowParts(file);
-	const label = name || path;
-	const canOpenInCanvas = opened(pane, path);
+	const canOpenInCanvas = opened(pane, actionPath);
 	const [copied, setCopied] = useState(false);
 	const press = async () => {
-		if (canOpenInCanvas && pane && (await pane.openInCanvas(path))) return;
-		await openLocalTarget(path);
+		if (canOpenInCanvas && pane && (await pane.openInCanvas(actionPath)))
+			return;
+		await openLocalTarget(actionPath);
 	};
 	return (
 		<div className="group flex w-full items-center gap-2 text-meta">
-			<FileGlyph path={path} />
+			<FileGlyph path={actionPath} />
 			<button
 				type="button"
 				className="min-w-0 flex-1 truncate text-left text-ink hover:text-ink-dim"
 				data-supplement-file=""
-				title={path}
+				title={actionPath}
 				onClick={() => {
 					void press();
 				}}
 			>
 				{displayText(label)}
-				{path && path !== label && (
-					<span className="ml-2 text-ink-muted">{displayText(path)}</span>
+				{suffix && suffix !== label && (
+					<span className="ml-2 text-ink-muted">{displayText(suffix)}</span>
 				)}
 			</button>
 			{size && <span className="shrink-0 text-ink-dim">{size}</span>}
@@ -143,7 +179,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 					{canOpenInCanvas && (
 						<DropdownMenuItem
 							onSelect={() => {
-								void pane?.openInCanvas(path);
+								void pane?.openInCanvas(actionPath);
 							}}
 						>
 							<LayoutGrid aria-hidden="true" />
@@ -152,7 +188,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 					)}
 					<DropdownMenuItem
 						onSelect={() => {
-							void openLocalTarget(path);
+							void openLocalTarget(actionPath);
 						}}
 					>
 						<FileIcon aria-hidden="true" />
@@ -160,7 +196,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						onSelect={() => {
-							void revealLocalTarget(path);
+							void revealLocalTarget(actionPath);
 						}}
 					>
 						<FolderOpen aria-hidden="true" />
@@ -169,7 +205,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 					<DropdownMenuItem
 						onSelect={() => {
 							void navigator.clipboard
-								.writeText(path)
+								.writeText(actionPath)
 								.then(() => setCopied(true))
 								.catch(() => showErrorToast("Failed to copy file path"));
 						}}
@@ -197,13 +233,21 @@ function opened(pane: CanvasPane | null, path: string): boolean {
  * its answer row is in the viewport), the document fetch, and then the frame
  * itself. The reserved box renders immediately so the block's height is stable
  * before the document resolves.
+ *
+ * The frame reports its rendered height back on every change, by digest
+ * (`onHeight`): that is the figure the aggregate budget accrues once a frame is
+ * on screen (design D5 — hints are estimates and a document may overrun them).
  */
 const SupplementFrameSlot = memo(function SupplementFrameSlot({
 	component,
 	sessionId,
+	onRetry,
+	onHeight,
 }: {
 	component: SupplementComponent;
 	sessionId: string | null;
+	onRetry?: () => void;
+	onHeight?: (digest: string, height: number) => void;
 }) {
 	const anchorRef = useRef<HTMLDivElement | null>(null);
 	const [near, setNear] = useState(false);
@@ -226,12 +270,26 @@ const SupplementFrameSlot = memo(function SupplementFrameSlot({
 		return () => observer.disconnect();
 	}, []);
 	const document = useSupplementDocument(sessionId, component.attachment, near);
+	/*
+	 * A STABLE reporter, so the frame's height effect fires on height changes
+	 * rather than on every slot render: an inline closure here would hand the
+	 * frame a new callback identity each time this row paints.
+	 */
+	const reportHeight = useCallback(
+		(height: number) => {
+			onHeight?.(component.attachment, height);
+		},
+		[onHeight, component.attachment],
+	);
 	return (
 		<div ref={anchorRef} data-supplement-slot="">
 			<SupplementFrame
 				component={component}
+				sessionId={sessionId}
 				documentHtml={document.html}
 				documentFailed={document.failed}
+				onRetry={onRetry}
+				onHeightChange={onHeight ? reportHeight : undefined}
 			/>
 		</div>
 	);
@@ -241,11 +299,18 @@ export type SupplementRowProps = {
 	record: SupplementRecord;
 	/** The conversation's session, for the ops and the document route. */
 	sessionId: string | null;
+	/**
+	 * Whether the row's own turn currently renders condensed (one closed bar
+	 * over its run; `runIsCondensed`, computed by the transcript from its
+	 * collapse plan — never re-derived here; design D1.1).
+	 */
+	condensed?: boolean;
 };
 
 export const SupplementRow = memo(function SupplementRow({
 	record,
 	sessionId,
+	condensed = false,
 }: SupplementRowProps) {
 	const pane = useCanvasPane();
 	const [expandedMore, setExpandedMore] = useState(false);
@@ -253,9 +318,30 @@ export const SupplementRow = memo(function SupplementRow({
 	const [adjusting, setAdjusting] = useState(false);
 	const [draft, setDraft] = useState("");
 	const [busy, setBusy] = useState(false);
+	/*
+	 * The rendered heights of frames already on screen, by digest (design D5):
+	 * written by the frames' own resize beats, read by the budget's accrual.
+	 */
+	const [measured, setMeasured] = useState<ReadonlyMap<string, number>>(
+		() => new Map(),
+	);
+	/*
+	 * ONLY rendered heights arrive here (the frame reports after its first
+	 * resize beat, never its reserved estimate): `planComponentMounts` holds the
+	 * walk at any frame that has not reported, so a reserved value standing in
+	 * for a measurement would defeat the accrual it exists for.
+	 */
+	/*
+	 * The sticky auto-mount count: a frame that ever mounted stays mounted, so a
+	 * later measurement that makes the accrual STOP fitting (a document that
+	 * overran its hint) never unmounts it under the reader. The state only grows,
+	 * and `Math.max` against the live suggestion means the suggestion's own
+	 * growth (a smaller-than-hinted first frame freeing budget) mounts the next
+	 * frame in the same commit.
+	 */
+	const [sticky, setSticky] = useState(0);
 
 	const disposition = supplementDisposition(record, record.live);
-	if (disposition === "nothing") return null;
 
 	const files = record.files;
 	const moreCount = record.filesMore;
@@ -278,10 +364,15 @@ export const SupplementRow = memo(function SupplementRow({
 				anchor: record.anchor,
 			});
 		} catch (error) {
+			/*
+			 * The refusal is composed, not echoed: a desktop 404 means the server
+			 * predates the route (the supplement ops' companion core routes), and
+			 * `backendLoadErrorMessage` turns that into the app's own sentence —
+			 * the same vocabulary every other surface uses for it (round-1 U2:
+			 * "Not Found" must never reach a toast).
+			 */
 			showErrorToast(
-				error instanceof Error && error.message
-					? error.message
-					: "Highlights could not be updated.",
+				backendLoadErrorMessage("Highlights could not be updated.", error),
 			);
 		} finally {
 			setBusy(false);
@@ -302,83 +393,55 @@ export const SupplementRow = memo(function SupplementRow({
 		void sendOp({ op: "supplements.steer", text });
 	};
 
+	const noteHeight = useCallback((digest: string, height: number) => {
+		setMeasured((prev) => {
+			if (prev.get(digest) === height) return prev;
+			const next = new Map(prev);
+			next.set(digest, height);
+			return next;
+		});
+	}, []);
+
 	/*
-	 * The files half first (memo §0). The ≤ 2 files one-liner applies when no
-	 * COMPONENT rides the row and the whole known set is two files or fewer
-	 * (the TUI's own rule, `total_files <= 2 and not components_present`), and
-	 * it serves the preparing arm's callouts too — they are the same callouts
-	 * a moment earlier.
+	 * The aggregate frame budget (§2.8): frames mount automatically only within
+	 * a cumulative min(480px, 40vh) of block height, accrued from each frame's
+	 * RENDERED height — and a later frame waits until every earlier one has
+	 * reported (design D5: the hint is an estimate a document may overrun, so
+	 * hint-only accrual let two frames auto-mount at roughly twice the budget);
+	 * the rest sit behind ONE disclosure that expands in place on an explicit
+	 * action. The stickiness below is the other half — an already-mounted frame
+	 * stays even when a late measurement says the accrual no longer fits.
 	 */
-	let filesSection: JSX.Element | null = null;
-	if (files.length > 0 || moreCount > 0) {
-		if (totalFiles <= 2 && components.length === 0) {
-			const names: string[] = [];
-			for (const file of files) {
-				const { name, path } = fileRowParts(file);
-				if (name || path) names.push(name || path);
-			}
-			if (moreCount > 0) {
-				for (const item of record.more.slice(0, moreCount)) {
-					const base = displayText(item).split("/").pop() ?? "";
-					if (base) names.push(base);
-				}
-			}
-			filesSection = (
-				<div
-					className="text-ink-muted text-meta"
-					data-supplement-files-summary=""
-				>
-					{filesSummaryLine(names.filter(Boolean).slice(0, 2))}
-				</div>
-			);
-		} else {
-			filesSection = (
-				<div className="flex flex-col gap-1" data-supplement-files="">
-					{files.map((file) => (
-						<SupplementFileLine
-							key={`${file.path}:${file.name}`}
-							file={file}
-							pane={pane}
-						/>
-					))}
-					{moreCount > 0 &&
-						(expandedMore ? (
-							record.more.slice(0, 20).map((item) => (
-								<button
-									key={item}
-									type="button"
-									className="truncate text-left text-ink-muted text-meta"
-									data-supplement-more-path=""
-									title={item}
-									onClick={() => {
-										void openLocalTarget(item);
-									}}
-								>
-									{displayText(item)}
-								</button>
-							))
-						) : (
-							<button
-								type="button"
-								className="w-fit text-ink-dim text-meta"
-								data-supplement-more=""
-								onClick={() => setExpandedMore(true)}
-							>
-								{moreText(moreCount)}
-							</button>
-						))}
-				</div>
-			);
-		}
-	}
+	const budgetPx = frameBudgetPx(
+		typeof window === "undefined" ? 900 : window.innerHeight,
+	);
+	const { visible } = planComponentMounts(components, budgetPx, measured);
+	useEffect(() => {
+		setSticky((count) => Math.max(count, visible.length));
+	}, [visible.length]);
+	const autoCount = Math.min(
+		components.length,
+		Math.max(sticky, visible.length),
+	);
+	/*
+	 * The head mounts automatically; the tail is the disclosure's. Splitting
+	 * ONCE here (rather than a `shown`/`hidden` pair) is deliberate: an earlier
+	 * draft computed `shown = showAll ? components : …` beside a `hidden = the
+	 * tail`, and the open state then rendered the tail twice — once through the
+	 * head it had swallowed and once through the disclosure's children.
+	 */
+	const head = components.slice(0, autoCount);
+	const tail = components.slice(autoCount);
 
 	/*
 	 * The one quiet line for the arms that carry one (§2.8's copy table). The
 	 * shimmer is the image-gen card's own `animate-shimmer` treatment at the
 	 * inline scale — the same motion vocabulary, the same reduced-motion
-	 * behaviour, no new animation.
+	 * behaviour, no new animation. `countsPrefix` is the condensed not-settled
+	 * form's leading clause (`2 files · Preparing highlights…`), null everywhere
+	 * else.
 	 */
-	const stateLine =
+	const stateLine = (countsPrefix: string | null) =>
 		disposition === "preparing" ||
 		disposition === "files_preparing" ||
 		disposition === "cancelled_retry" ||
@@ -389,6 +452,14 @@ export const SupplementRow = memo(function SupplementRow({
 				className="flex flex-wrap items-center gap-2 text-meta"
 				data-supplement-line=""
 			>
+				{countsPrefix !== null && (
+					<>
+						<span className="text-ink-muted">{countsPrefix}</span>
+						<span aria-hidden="true" className="text-ink-dim">
+							·
+						</span>
+					</>
+				)}
 				{(disposition === "preparing" || disposition === "files_preparing") && (
 					<>
 						<span
@@ -500,40 +571,165 @@ export const SupplementRow = memo(function SupplementRow({
 		</div>
 	) : null;
 
+	if (disposition === "nothing") return null;
+
 	/*
-	 * The aggregate frame budget (§2.8): frames mount automatically only within
-	 * a cumulative min(480px, 40vh) of block height; the rest sit behind ONE
-	 * disclosure that expands in place on an explicit action.
+	 * THE CONDENSED FORM (design D1, exactly). One line and nothing else: no
+	 * file rows, no `[data-supplement-slot]`/iframe — absent, not hidden, so no
+	 * document fetch either. The line is passive: no chevron, no handler,
+	 * `data-supplement-condensed` as its pin; the turn's own bar is the
+	 * expansion and restores the full block.
 	 */
-	const budgetPx = frameBudgetPx(
-		typeof window === "undefined" ? 900 : window.innerHeight,
-	);
-	const { visible, hidden } = planComponentMounts(components, budgetPx);
-	const mounted = showAll ? components : visible;
+	if (condensed) {
+		if (disposition === "block") {
+			const line = condensedBlockLine(record);
+			if (line === null) return null;
+			return (
+				<div
+					className="flex flex-col gap-2"
+					data-supplement-record={record.anchor}
+				>
+					<div
+						className="text-ink-muted text-meta"
+						data-supplement-condensed=""
+					>
+						{line}
+					</div>
+				</div>
+			);
+		}
+		return (
+			<div
+				className="flex flex-col gap-2"
+				data-supplement-record={record.anchor}
+			>
+				{stateLine(condensedCountPrefix(record))}
+				{adjustLine}
+			</div>
+		);
+	}
+
+	/*
+	 * The files half first (memo §0). The ≤ 2 files one-liner applies when no
+	 * COMPONENT rides the row and the whole known set is two files or fewer
+	 * (the TUI's own rule, `total_files <= 2 and not components_present`), and
+	 * it serves the preparing arm's callouts too — they are the same callouts
+	 * a moment earlier. The names come from the model's own builder so the
+	 * condensed line and this summary can never disagree.
+	 */
+	let filesSection: JSX.Element | null = null;
+	if (files.length > 0 || moreCount > 0) {
+		if (totalFiles <= 2 && components.length === 0) {
+			const summary = filesSummaryOf(record);
+			filesSection =
+				summary === null ? null : (
+					<div
+						className="text-ink-muted text-meta"
+						data-supplement-files-summary=""
+					>
+						{summary}
+					</div>
+				);
+		} else {
+			filesSection = (
+				<div className="flex flex-col gap-1" data-supplement-files="">
+					{files.map((file) => {
+						const { name, path, size } = fileRowParts(file);
+						return (
+							<SupplementFileLine
+								key={`${file.path}:${file.name}`}
+								actionPath={file.path}
+								label={name || path}
+								suffix={path}
+								size={size}
+								pane={pane}
+							/>
+						);
+					})}
+					{moreCount > 0 && (
+						/*
+						 * ONE disclosure grammar for both siblings (D3): the app's
+						 * Disclosure idiom — chevron in the rows' own meta ink, a
+						 * colour step on hover — as a TOGGLE (`N more files` ⇄
+						 * `Show fewer`; U5), its tail rendered as the compact row
+						 * (glyph + name + menu; D3b) rather than bare paths. The
+						 * `rowClassName` override is the dense-list case the
+						 * primitive's own docs carve out: this block's pitch is
+						 * tighter than the default 24px disclosure row.
+						 */
+						<Disclosure
+							chevronClassName="text-ink-dim"
+							open={expandedMore}
+							onOpenChange={setExpandedMore}
+							rowClassName="min-h-0 py-0"
+							summary={
+								<span data-supplement-more="">
+									{expandedMore ? "Show fewer" : moreText(moreCount)}
+								</span>
+							}
+						>
+							{record.more.slice(0, 20).map((item) => (
+								<SupplementFileLine
+									key={item}
+									actionPath={item}
+									label={item}
+									suffix=""
+									size=""
+									pane={pane}
+								/>
+							))}
+						</Disclosure>
+					)}
+				</div>
+			);
+		}
+	}
 
 	return (
 		<div className="flex flex-col gap-2" data-supplement-record={record.anchor}>
 			{filesSection}
-			{stateLine}
+			{stateLine(null)}
 			{adjustLine}
 			{disposition === "block" && components.length > 0 && (
 				<div className="flex flex-col gap-2" data-supplement-components="">
-					{mounted.map((component) => (
+					{head.map((component) => (
 						<SupplementFrameSlot
 							key={component.attachment}
 							component={component}
 							sessionId={sessionId}
+							onRetry={sessionId ? retry : undefined}
+							onHeight={noteHeight}
 						/>
 					))}
-					{!showAll && hidden.length > 0 && (
-						<button
-							type="button"
-							className="w-fit text-ink-muted text-meta"
-							data-supplement-show-all=""
-							onClick={() => setShowAll(true)}
+					{tail.length > 0 && (
+						/*
+						 * The graphics sibling of the same disclosure grammar: a
+						 * toggle (`Show all N graphics` ⇄ `Show fewer`), the hidden
+						 * frames mounted only while it is open — an explicit
+						 * action, which is the memo's own condition for mounting
+						 * beyond the budget (§2.8).
+						 */
+						<Disclosure
+							chevronClassName="text-ink-dim"
+							open={showAll}
+							onOpenChange={setShowAll}
+							rowClassName="min-h-0 py-0"
+							summary={
+								<span data-supplement-show-all="">
+									{showAll ? "Show fewer" : showAllText(tail.length)}
+								</span>
+							}
 						>
-							{`Show all ${hidden.length} graphics`}
-						</button>
+							{tail.map((component) => (
+								<SupplementFrameSlot
+									key={component.attachment}
+									component={component}
+									sessionId={sessionId}
+									onRetry={sessionId ? retry : undefined}
+									onHeight={noteHeight}
+								/>
+							))}
+						</Disclosure>
 					)}
 				</div>
 			)}

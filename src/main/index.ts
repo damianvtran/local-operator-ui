@@ -109,6 +109,10 @@ import { createRelaunchPending } from "./relaunch-pending";
 import { createUserShellPath } from "./shell-path";
 import { SupplementFrameMounts } from "./supplement-mounts";
 import {
+	installSupplementProtocol,
+	registerSupplementScheme,
+} from "./supplement-protocol";
+import {
 	describeTelemetryLaunch,
 	resolveTelemetryLaunch,
 	telemetryArgument,
@@ -1368,6 +1372,19 @@ let mainWindow: BrowserWindow | null = null;
 const supplementMounts = new SupplementFrameMounts();
 
 /*
+ * THE SUPPLEMENT FRAME'S DOCUMENT SCHEME, registered at module scope because
+ * Electron accepts `registerSchemesAsPrivileged` only before the app is ready
+ * (it must run while the default session's protocol registry is still being
+ * built). `installSupplementProtocol` — the handler that actually serves the
+ * stored digests — runs in `whenReady` below, beside the other desktop-plane
+ * wiring. Together they are the app path's delivery for supplement frames
+ * (memo §4.1's fixed Option 2): the renderer's own CSP is inherited by local
+ * (data:/blob:) child documents and blocks the vendored prelude, which
+ * Storybook never showed because Storybook carries no such policy.
+ */
+registerSupplementScheme();
+
+/*
  * The quick-send mini view and its registration (design D6/§G.1). Module scope
  * so `before-quit` can dispose them and `window-all-closed`'s platform contract
  * can still reach the window; all three are non-null only in a `normal`
@@ -2569,6 +2586,28 @@ app
 				reason: `window mode ${windowLaunch.mode} registers no global shortcuts`,
 			};
 		});
+
+		/*
+		 * The `lo-supplement:` protocol handler, installed BEFORE the first window
+		 * is created so no frame can ever beat it to a handler-less scheme. Its
+		 * fetch is the same media relay every other authenticated read uses — the
+		 * bearer is added in main and never crosses to the renderer — and its
+		 * response carries the §4.1 policy beside the document's own `<meta>` copy.
+		 */
+		installSupplementProtocol(
+			async (sessionId, digest) => {
+				const response = await backendService.requestDesktopMedia(
+					{ op: "sessions.supplementDocument", sessionId, digest },
+					null,
+				);
+				if (response.kind !== "json") return { html: null };
+				const body = response.body as { html?: unknown } | null;
+				return {
+					html: body && typeof body.html === "string" ? body.html : null,
+				};
+			},
+			(m) => logger.warn(m, LogFileType.BACKEND),
+		);
 
 		registerDesktopIPC(
 			() => mainWindow,

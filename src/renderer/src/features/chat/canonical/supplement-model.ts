@@ -392,6 +392,83 @@ export function fileRowParts(file: SupplementFile): {
 	};
 }
 
+/**
+ * One count clause, singular/plural: `1 file` / `2 files`, `1 graphic` /
+ * `2 graphics` (design D1's copy table, the condensed line's vocabulary).
+ */
+export function countClause(count: number, noun: "file" | "graphic"): string {
+	const bounded = Math.max(0, Math.floor(count));
+	return bounded === 1 ? `1 ${noun}` : `${bounded} ${noun}s`;
+}
+
+/**
+ * The graphics disclosure's words: `Show all 2 graphics` — SINGULARIZED for one
+ * (`Show all 1 graphic`), matching `moreText`'s own singular arm; the memo's
+ * plural-only spelling was a defect against its sibling (UX round 1, U7).
+ */
+export function showAllText(count: number): string {
+	const bounded = Math.max(0, Math.floor(count));
+	return bounded === 1 ? "Show all 1 graphic" : `Show all ${bounded} graphics`;
+}
+
+/**
+ * The files-only one-liner's names, built from the row's own inputs exactly as
+ * the row's ≤2-file summary always built them: featured files first, then the
+ * stored tail up to the known count. Shared so the condensed line and the
+ * expanded block can never summarize one set two ways.
+ */
+export function filesSummaryOf(record: SupplementRecord): string | null {
+	const names: string[] = [];
+	for (const file of record.files) {
+		const { name, path } = fileRowParts(file);
+		if (name || path) names.push(name || path);
+	}
+	if (record.filesMore > 0) {
+		for (const item of record.more.slice(0, record.filesMore)) {
+			const base = displayText(item).split("/").pop() ?? "";
+			if (base) names.push(base);
+		}
+	}
+	const shown = names.filter(Boolean).slice(0, 2);
+	return shown.length > 0 ? filesSummaryLine(shown) : null;
+}
+
+/**
+ * The condensed block's one line for a settled (`block`) row — design D1's copy
+ * table, verbatim:
+ *
+ * - components only: `1 graphic` / `N graphics`;
+ * - files only, ≤ 2: the existing one-liner, unchanged;
+ * - files only, > 2: `N files` (`N = files.length + filesMore`, the known
+ *   total) — counts, not names, so one line survives a 20-item list;
+ * - mixed: `<files clause> · <graphics clause>` (`2 files · 1 graphic`).
+ *
+ * `null` when there is nothing to say — a `block` disposition cannot actually
+ * reach that arm (itself gated on files-or-components), but the function is
+ * total rather than assuming its caller.
+ */
+export function condensedBlockLine(record: SupplementRecord): string | null {
+	const files = record.files.length + record.filesMore;
+	const graphics = record.components.length;
+	if (graphics > 0 && files > 0)
+		return `${countClause(files, "file")} · ${countClause(graphics, "graphic")}`;
+	if (graphics > 0) return countClause(graphics, "graphic");
+	if (files === 0) return null;
+	if (files <= 2) return filesSummaryOf(record) ?? countClause(files, "file");
+	return countClause(files, "file");
+}
+
+/**
+ * The counts that PREFIX a not-settled state line while condensed (`2 files ·
+ * Preparing highlights… · Adjust… · Cancel`), or null when no files are known
+ * yet. Only the files clause: components exist only once a job settles (memo
+ * §2.7's event shapes).
+ */
+export function condensedCountPrefix(record: SupplementRecord): string | null {
+	const files = record.files.length + record.filesMore;
+	return files > 0 ? countClause(files, "file") : null;
+}
+
 /** `Source: …` — the block's one caption line (§2.10). */
 export function sourceLine(source: string): string {
 	return `Source: ${displayText(source)}`;
@@ -610,17 +687,17 @@ export function subscribeSupplementTheme(
 // ---------------------------------------------------------------------------
 
 /**
- * The `data:` URL a document mounts under. The renderer arms main with this
- * EXACT string immediately before the frame loads (the one-shot mount permit,
- * `src/main/supplement-mounts.ts`), because a sandboxed frame may navigate
- * itself and main allows only the one navigation the host set — byte-for-byte
- * this URL.
+ * The `data:` URL, kept for the hosts that have NO `lo-supplement:` handler:
+ * Storybook and a plain development browser (the arm channel's absence is the
+ * same signal the frame component reads). In the built app this form is never
+ * mounted — the app's own CSP is inherited by local-scheme child documents, so
+ * the vendored prelude would be blocked (measured, UX round 1 U1) — and the
+ * app mounts the digest-addressed `lo-supplement:` URL
+ * (`shared/supplement-frame-url.ts`) instead, served by the main process.
  *
- * Base64, not percent-encoding: the memo's settled delivery is
- * `data:text/html;base64,…` on every web surface, one code path, and 64 KB
- * documents are fine in it (§4.1). The encoding is UTF-8-safe (`btoa` alone
- * throws on non-Latin-1), which matters because component prose is arbitrary
- * text.
+ * Base64, not percent-encoding: one code path, and 64 KB documents are fine in
+ * it (§4.1). The encoding is UTF-8-safe (`btoa` alone throws on non-Latin-1),
+ * which matters because component prose is arbitrary text.
  */
 export function supplementFrameUrl(html: string): string {
 	return `data:text/html;base64,${base64Utf8(html)}`;
@@ -672,7 +749,7 @@ function utf8Bytes(text: string): number[] {
 
 /**
  * The block's automatic-mount budget: `min(480 px, 40 vh)` (round-1 D1).
- * Frames mount automatically only while their cumulative clamped heights stay
+ * Frames mount automatically only while their cumulative RENDERED heights stay
  * inside this; anything beyond sits behind one disclosure.
  */
 export function frameBudgetPx(viewportHeight: number): number {
@@ -702,15 +779,35 @@ export function clampFrameHeight(height: number): number {
 /**
  * Which components mount automatically, and whether a disclosure is owed.
  *
- * The walk takes components in order while the cumulative clamped height stays
+ * The walk takes components in order while the cumulative RENDERED height stays
  * within the budget; whatever remains is behind `Show all N graphics`. The
  * FIRST frame is admitted regardless of the budget, deliberately: a block
- * whose single graphic sat behind `Show all 1 graphics` would open on an
+ * whose single graphic sat behind `Show all 1 graphic` would open on an
  * empty-looking row, and the design's "anything beyond [the budget] sits
  * behind one disclosure" reads as the frames beyond the first that fits — a
  * taller-than-budget first frame (a short window, a 480 px component) is
  * exactly what the reader came for. The rest still respect the budget, so a
  * short window shows one frame and discloses the others.
+ *
+ * THE ACCRUAL IS MADE OF RENDERED HEIGHTS (design D5), which is why the walk
+ * HOLDS at the first unmeasured predecessor: `measured` carries each mounted
+ * frame's ACTUAL box height, by digest, once its resize has landed — and a
+ * frame whose height is still unknown is the reserved box, NOT a rendered
+ * height. A later frame therefore mounts only when every earlier one has
+ * reported AND the sum fits; the reserved box of a just-mounted frame is never
+ * counted as if it were the document. This is the fix for the measured
+ * 758 px auto-mount against a ~408 px budget: hint-only accrual admitted two
+ * frames whose documents rendered nearly twice their hints.
+ *
+ * `measured` absent (a pure caller, a test) means NOTHING has rendered yet, so
+ * only the first frame is admitted — the honest reading of "no frame has
+ * reported a height", not a second rule.
+ *
+ * The stickiness — "an already-mounted frame stays" — lives at the CALLER (the
+ * row keeps the count it has reached): this function answers only "what would
+ * mount given what is known now", and unmounting a frame the reader is looking
+ * at because a document overran its hint is exactly the behaviour the design's
+ * "leave the already-mounted ones alone" forbids.
  *
  * A zero budget (a not-yet-measured viewport) still admits the first: the
  * frame's own reserved box is within the contract's [120, 480] clamp, and
@@ -719,13 +816,28 @@ export function clampFrameHeight(height: number): number {
 export function planComponentMounts(
 	components: readonly SupplementComponent[],
 	budgetPx: number,
+	measured?: ReadonlyMap<string, number>,
 ): { visible: SupplementComponent[]; hidden: SupplementComponent[] } {
 	let used = 0;
 	const visible: SupplementComponent[] = [];
-	for (const component of components) {
-		const height = clampedHeightHint(component);
-		if (visible.length > 0 && used + height > budgetPx) break;
-
+	for (let index = 0; index < components.length; index += 1) {
+		const component = components[index];
+		const rendered = measured?.get(component.attachment);
+		const height =
+			rendered !== undefined
+				? clampFrameHeight(rendered)
+				: clampedHeightHint(component);
+		if (index > 0) {
+			// The accrual must be rendered heights: a predecessor that has not
+			// reported yet holds the walk (see the header).
+			const settled = visible.every(
+				(earlier) => measured?.get(earlier.attachment) !== undefined,
+			);
+			if (!settled) break;
+			if (used + height > budgetPx) break;
+		}
+		// The first frame is admitted regardless of the budget, on its own
+		// estimate alone.
 		used += height;
 		visible.push(component);
 	}

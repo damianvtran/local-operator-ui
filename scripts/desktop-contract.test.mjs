@@ -17,7 +17,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL, desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract"; export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api"; export { refusalDetail, JOB_CANCEL_NOT_FOUND_COPY } from "./src/renderer/src/features/chat/components/run-details/job-controls-model";',
+			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export * from "./src/main/supplement-mounts"; export * from "./src/shared/supplement-frame-url"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL, desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract"; export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api"; export { refusalDetail, JOB_CANCEL_NOT_FOUND_COPY } from "./src/renderer/src/features/chat/components/run-details/job-controls-model";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -55,6 +55,8 @@ const {
 	trustedDesktopFrame,
 	registerDesktopIPC,
 	isAdmittedSender,
+	SupplementFrameMounts,
+	supplementMountUrl,
 	guardForegroundReceipts,
 	rememberPickedDirectory,
 	withRememberedDirectory,
@@ -1589,6 +1591,79 @@ test("the media relay hands on ArrayBuffer-backed bytes and refuses anything els
 		await invoke(event, input, notBytes);
 		assert.equal(seen.at(-1), null, JSON.stringify(notBytes));
 	}
+});
+
+test("the supplement arm channel is sender-gated, URL-gated, and absent when unconfigured", async () => {
+	/*
+	 * The mount permit's renderer half (turn-supplements memo §4.1; round-1 R1
+	 * asked for this exact contract case): the arm channel obeys the same
+	 * sender gate as every other channel here, it answers `{ ok: false }` for
+	 * a URL that is not armarble WITHOUT arming anything, and a host with no
+	 * permit table mounts no channel at all — the shape every node suite and
+	 * any older host passes.
+	 */
+	globalThis.__desktopHandlers = new Map();
+	const frame = { url: "file:///app/index.html" };
+	const contents = { mainFrame: frame };
+	const owner = { webContents: contents, isDestroyed: () => false };
+	const mounts = new SupplementFrameMounts();
+	registerDesktopIPC(
+		() => owner,
+		"file:///app/index.html",
+		async () => ({ status: 200, body: { result: {} } }),
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		mounts,
+	);
+	const invoke = globalThis.__desktopHandlers.get(
+		"desktop-supplement-frame-arm",
+	);
+	assert.ok(invoke, "a configured host must register the arm channel");
+	const url = supplementMountUrl("5ea1face0001", "a".repeat(32));
+	assert.deepEqual(
+		await invoke({ sender: contents, senderFrame: frame }, url),
+		{ ok: true },
+	);
+	assert.equal(mounts.armedCount, 1);
+	// A live URL never arms: the permit table's own validation answers false.
+	assert.deepEqual(
+		await invoke(
+			{ sender: contents, senderFrame: frame },
+			"https://example.com/x",
+		),
+		{ ok: false },
+	);
+	assert.equal(
+		mounts.armedCount,
+		1,
+		"a refused URL must not stand as a permit",
+	);
+	// The sender gate: another frame of the same window is not the app. The
+	// handler's gate throws SYNCHRONOUSLY (the shape every other channel here
+	// has), so the assertion is `throws` over a thunk, not `rejects`.
+	assert.throws(
+		() =>
+			invoke(
+				{ sender: contents, senderFrame: { url: "file:///app/other.html" } },
+				url,
+			),
+		/desktop controls/,
+	);
+	// A host WITHOUT the permit table registers no channel at all.
+	globalThis.__desktopHandlers = new Map();
+	registerDesktopIPC(
+		() => owner,
+		"file:///app/index.html",
+		async () => ({ status: 200, body: { result: {} } }),
+	);
+	assert.equal(
+		globalThis.__desktopHandlers.has("desktop-supplement-frame-arm"),
+		false,
+	);
 });
 
 test("a picker reopens where the last one of its kind landed", () => {
