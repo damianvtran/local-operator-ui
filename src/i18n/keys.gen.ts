@@ -52,7 +52,17 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
+	"ui.settings.language.dialog.description": undefined;
+	"ui.settings.language.dialog.loading": undefined;
+	"ui.settings.language.dialog.retry": undefined;
+	"ui.settings.language.dialog.retrying": undefined;
+	"ui.settings.language.dialog.save": undefined;
+	"ui.settings.language.dialog.saved": undefined;
+	"ui.settings.language.dialog.title": undefined;
+	"ui.settings.language.dialog.unavailable": undefined;
 	"ui.settings.language.effective": { locale: string };
+	"ui.settings.language.external_notice": { language: string };
+	"ui.settings.language.palette_action": undefined;
 };
 
 export type MessageKey = keyof MessageParams;

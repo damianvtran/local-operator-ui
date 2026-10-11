@@ -94,6 +94,7 @@ export type PaletteIconName =
 	| "canvas-close"
 	| "slider"
 	| "conversation"
+	| "language"
 	| "info"
 	| "usage"
 	| "session"
@@ -130,6 +131,7 @@ export type PaletteTarget =
 				| "connect-provider"
 				| "new-chat"
 				| "clear-conversation"
+				| "change-interface-language"
 				| "toggle-canvas";
 	  }
 	/**

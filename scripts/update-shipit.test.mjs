@@ -348,8 +348,12 @@ test("the installer's liveness is a pid and a command line, never a process name
 		stagingRoot,
 	};
 
-	// The waiting spawner, whose command line is the script text.
-	const spawnCommandLine = `sh -c #!/bin/sh\n# ${INSTALLER_TOKEN}\nwhile kill -0 "$1" 2>/dev/null; do\n\tsleep 0.2\ndone\nexec "$LO_UPDATE_INSTALLER_SHIPIT" "com.local-operator.ShipIt" "$LO_UPDATE_INSTALLER_STATE" >>"$LO_UPDATE_INSTALLER_LOG" 2>&1\nlo-update-installer 4242`;
+	// The waiting spawner, whose command line is the script text. The head of the
+	// shipped ladder is reproduced here as a live process's line would carry it
+	// (`sh -c` shows the script text), including the stage-logging helper the
+	// 2026-10-11 change added - the half this fixture exists for is the token,
+	// which the reader must keep recognising through the rewritten script.
+	const spawnCommandLine = `sh -c #!/bin/sh\n# ${INSTALLER_TOKEN}\napp_pid=$1\nlog_stage() {\n\tprintf '%s ${INSTALLER_TOKEN}: %s\\n' \"$(date '+%Y-%m-%dT%H:%M:%S')\" \"$1\" >>\"$LO_UPDATE_INSTALLER_LOG\"\n}\nwhile kill -0 \"$app_pid\" 2>/dev/null; do\n\tsleep 0.2\ndone\nexec \"$LO_UPDATE_INSTALLER_SHIPIT\" \"com.local-operator.ShipIt\" \"$LO_UPDATE_INSTALLER_STATE\" >>\"$LO_UPDATE_INSTALLER_LOG\" 2>&1\nlo-update-installer 4242`;
 	assert.equal(
 		installerIsAlive({ ...ours, commandLine: spawnCommandLine }),
 		true,
@@ -672,6 +676,8 @@ test("the disk guard counts the extracted tree", () => {
 test("the spawner waits for the app's pid and then becomes the installer", () => {
 	const plan = buildInstallerSpawn({
 		appPid: 4242,
+		appExecPath:
+			"/Applications/Local Operator.app/Contents/MacOS/Local Operator",
 		shipItPath:
 			"/Applications/Local Operator.app/Contents/Frameworks/Squirrel.framework/Versions/Current/Resources/ShipIt",
 		label: "com.local-operator.ShipIt",
@@ -679,12 +685,41 @@ test("the spawner waits for the app's pid and then becomes the installer", () =>
 		logPath: "/caches/com.local-operator.ShipIt/ShipIt_stderr.log",
 	});
 
-	assert.match(plan.script, /kill -0 "\$1" 2>\/dev\/null/);
+	assert.match(plan.script, /kill -0 "\$app_pid" 2>\/dev\/null/);
 	assert.match(plan.script, new RegExp(`sleep ${INSTALLER_POLL_SECONDS}`));
-	assert.match(plan.script, /\nexec "\$LO_UPDATE_INSTALLER_SHIPIT"/);
+	// The exec itself lives in `start_installer`, one line the ladder reaches
+	// from every stage: the process BECOMES ShipIt rather than parenting it.
+	assert.match(
+		plan.script,
+		/\n\texec "\$LO_UPDATE_INSTALLER_SHIPIT" "\$LO_UPDATE_INSTALLER_LABEL" "\$LO_UPDATE_INSTALLER_STATE" >>"\$LO_UPDATE_INSTALLER_LOG" 2>&1/,
+	);
 	assert.match(plan.script, new RegExp(INSTALLER_TOKEN));
 	// Both of the installer's streams go to Squirrel's own log, appended.
 	assert.match(plan.script, />>"\$LO_UPDATE_INSTALLER_LOG" 2>&1/);
+	/*
+	 * The escalation ladder, as a decision rather than as prose (2026-10-11):
+	 * the wait is bounded by interpolated graces, the first expires into a
+	 * logged SIGTERM, the second into a logged SIGKILL, and the installer
+	 * starts REGARDLESS of what the pid did - the unbounded `while kill -0`
+	 * that sat through 26 m 49 s is exactly what may not come back. The
+	 * identity check guards both signals, through `ps`, against the app's own
+	 * executable path (which travels in the environment below, never here).
+	 */
+	assert.match(plan.script, /waiting up to 60s for the app to exit on its own/);
+	assert.match(plan.script, /kill -TERM "\$app_pid" 2>\/dev\/null/);
+	assert.match(plan.script, /asking the app to stop \(SIGTERM\)/);
+	assert.match(plan.script, /kill -KILL "\$app_pid" 2>\/dev\/null/);
+	assert.match(plan.script, /survived SIGKILL/);
+	assert.match(plan.script, /\ntarget_is_app\(\) \{/);
+	assert.match(plan.script, /ps -o command= -p "\$app_pid"/);
+	assert.match(plan.script, /\$LO_UPDATE_INSTALLER_APP_EXEC/);
+	// A pid that is not the app is never signalled: no signal may sit outside a
+	// guard - every kill in the script is inside `target_is_app`'s answer.
+	const killAt = plan.script.indexOf("kill -TERM");
+	assert.ok(
+		killAt > plan.script.indexOf("if target_is_app; then"),
+		"SIGTERM is no longer behind the identity check",
+	);
 	// A pid that is a positional argument, and paths that travel in the
 	// environment: `sh -c` exposes the script text as the process's command line,
 	// and a script carrying the app's path would show up in a listing of it.
@@ -700,6 +735,10 @@ test("the spawner waits for the app's pid and then becomes the installer", () =>
 		LO_UPDATE_INSTALLER_STATE: "/staging/0.28.5-abc/state.plist",
 		LO_UPDATE_INSTALLER_LOG:
 			"/caches/com.local-operator.ShipIt/ShipIt_stderr.log",
+		// The identity check's operand: the app's own executable, environment
+		// only, for the same reason as the pid - never in the script text.
+		LO_UPDATE_INSTALLER_APP_EXEC:
+			"/Applications/Local Operator.app/Contents/MacOS/Local Operator",
 	});
 	// The log is Squirrel's own file, resolved the way the app resolves it.
 	assert.equal(
@@ -711,6 +750,74 @@ test("the spawner waits for the app's pid and then becomes the installer", () =>
 	assert.equal(
 		shipItJobLabel("com.local-operator"),
 		"com.local-operator.ShipIt",
+	);
+});
+
+/**
+ * The quit's exit deadline is TIED to its terms, not restated (2026-10-11).
+ *
+ * The defect the deadline exists for: the operator's quit sat between
+ * `before-quit`'s synchronous return and `will-quit` for 26 m 49 s with no
+ * terminal, no bound and no log. The deadline gives that phase a terminal, and
+ * the number it fires at must MOVE with the bounds it contains - the cookie
+ * hold's budget and the quit's own cleanup failsafe - rather than being a
+ * literal a future bound change leaves behind. So the terms are read back as
+ * SHIPPED values (bundle above), the index.ts arithmetic is pinned by name and
+ * order, and the sum is asserted numerically in one place.
+ */
+test("the quit's exit deadline is derived from the bounds it must contain", async () => {
+	const {
+		quitExitDeadlineMs,
+		QUIT_EXIT_DEADLINE_MARGIN_MS,
+		SESSION_COOKIE_QUIT_BUDGET_MS,
+		LAUNCHER_PROBE_WORST_MS,
+		INTERPRETER_RESOLUTION_WORST_MS,
+		OWNED_STOP_WORST_MS,
+		READINESS_POLL_INTERVAL_MS,
+	} = await loadQuitDeadlineTerms();
+	const index = readFileSync(
+		join(process.cwd(), "src", "main", "index.ts"),
+		"utf8",
+	);
+	// index.ts's own arithmetic, pinned by NAME and ORDER: a rename, a dropped
+	// term or a reordered sum fails here as loudly as a changed number.
+	assert.match(
+		index,
+		/QUIT_CLEANUP_FAILSAFE_MS =\n\tLAUNCHER_PROBE_WORST_MS \+\n\tINTERPRETER_RESOLUTION_WORST_MS \+\n\tOWNED_STOP_WORST_MS \+\n\tREADINESS_POLL_INTERVAL_MS \+\n\tQUIT_FAILSAFE_MARGIN_MS;/,
+		"the cleanup failsafe must stay the sum of its exported terms",
+	);
+	assert.match(index, /QUIT_FAILSAFE_MARGIN_MS = 5_000;/);
+	assert.match(
+		index,
+		/const QUIT_EXIT_DEADLINE_MS = quitExitDeadlineMs\(\{\n\tquitCleanupFailsafeMs: QUIT_CLEANUP_FAILSAFE_MS,\n\}\);/,
+		"the deadline must be derived from the failsafe, not restated",
+	);
+	const quitCleanupFailsafeMs =
+		LAUNCHER_PROBE_WORST_MS +
+		INTERPRETER_RESOLUTION_WORST_MS +
+		OWNED_STOP_WORST_MS +
+		READINESS_POLL_INTERVAL_MS +
+		// index.ts's QUIT_FAILSAFE_MARGIN_MS, source-pinned just above.
+		5_000;
+	const deadline = quitExitDeadlineMs({ quitCleanupFailsafeMs });
+	assert.equal(
+		deadline,
+		SESSION_COOKIE_QUIT_BUDGET_MS +
+			quitCleanupFailsafeMs +
+			QUIT_EXIT_DEADLINE_MARGIN_MS,
+	);
+	// It strictly CONTAINS the waits in front of the phase it bounds - the
+	// session-cookie hold plus one full application of the quit's cleanup
+	// failsafe - so it cannot fire inside a step that is legitimately at its own
+	// bound...
+	assert.ok(
+		deadline > SESSION_COOKIE_QUIT_BUDGET_MS + quitCleanupFailsafeMs,
+		"the deadline must not fire inside the waits that precede it",
+	);
+	// ...while staying minutes-free against the 26 m 49 s of silence it replaces.
+	assert.ok(
+		deadline < 5 * 60_000,
+		`a ${deadline} ms deadline is not a bound worth having`,
 	);
 });
 
@@ -751,6 +858,7 @@ test(
 		const app = spawn("/bin/sleep", ["30"], { stdio: "ignore" });
 		const plan = buildInstallerSpawn({
 			appPid: app.pid,
+			appExecPath: "/bin/sleep",
 			shipItPath: installer,
 			label: "com.local-operator.shipit-test",
 			statePath: join(dir, "state.plist"),
@@ -799,13 +907,268 @@ test(
 			]);
 			// Both streams went to Squirrel's own log, which is where the app's
 			// failure detail and update-window-report.mjs look for them.
+			const logText = readFileSync(log, "utf8");
+			assert.match(logText, /installer stdout[\s\S]*installer stderr/);
+			/*
+			 * And the wait is READABLE (2026-10-11): the stage that saw the app
+			 * leave on its own is one timestamped line in that same log, which is
+			 * the difference between tonight's infer-no-more and the 26 m 49 s
+			 * wedge that wrote nothing anywhere.
+			 */
 			assert.match(
-				readFileSync(log, "utf8"),
-				/installer stdout[\s\S]*installer stderr/,
+				logText,
+				/local-operator-update-installer: the app exited on its own \(\d+s in\)/,
 			);
 		} finally {
 			await reap(child.pid);
 			await reap(app.pid);
+		}
+	},
+);
+
+/**
+ * A target that stays alive past the first grace is asked to stop - and the
+ * install proceeds (2026-10-11).
+ *
+ * THE WEDGE AS A TEST. The operator's 23:52 install waited 26 m 49 s on a pid
+ * that stayed alive with no window: every holder and refuser in the quit path
+ * was accounted for, nothing logged, nothing bounded. The stand-in here is that
+ * shape - alive, and it will not leave on its own - and the ladder must escalate
+ * at the first grace, remove it with SIGTERM (the same signal that resolved the
+ * incident by hand), and reach the installer within the bound instead of talking
+ * to a pid forever.
+ */
+test(
+	"a target alive past the first grace is asked to stop, and the install proceeds",
+	{ skip: process.platform !== "darwin" },
+	async () => {
+		const dir = scratchDir("escalate");
+		const log = join(dir, "ShipIt_stderr.log");
+		const record = join(dir, "installer.json");
+		const installer = join(dir, "ShipIt");
+		writeFileSync(
+			installer,
+			`#!/bin/sh\nprintf '%s\\n' "$$" "$@" >> "${record}"\n`,
+			"utf8",
+		);
+		execFileSync("/bin/chmod", ["+x", installer]);
+
+		// The windowless-Electron analogue: a live process that does not exit on
+		// its own, whose command line still names the stand-in "app" below.
+		const app = spawn("/bin/sleep", ["60"], { stdio: "ignore" });
+		const plan = buildInstallerSpawn({
+			appPid: app.pid,
+			appExecPath: "/bin/sleep",
+			shipItPath: installer,
+			label: "com.local-operator.shipit-test",
+			statePath: join(dir, "state.plist"),
+			logPath: log,
+			// Short bounds: the ladder's own behaviour is under test, and its
+			// production graces are 60 s + 20 s.
+			graceSeconds: { first: 1, second: 2 },
+		});
+		const startedAt = Date.now();
+		const child = spawn("/bin/sh", plan.args, {
+			detached: true,
+			stdio: "ignore",
+			env: { ...process.env, ...plan.env },
+		});
+		child.unref();
+		try {
+			const deadline = Date.now() + 15_000;
+			while (!existsSync(record) && Date.now() < deadline) {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			}
+			assert.equal(
+				existsSync(record),
+				true,
+				"the escalation never reached the installer",
+			);
+			/*
+			 * Within the bound, stated as time rather than as the poll loop having
+			 * exited: first grace 1 s, then the poll that observes the exit. The
+			 * margin is an order of magnitude above that so a loaded host cannot
+			 * fail the case for being slow.
+			 */
+			assert.ok(
+				Date.now() - startedAt < 10_000,
+				"the installer started long after the ladder's own bound",
+			);
+			const written = readFileSync(log, "utf8");
+			assert.match(
+				written,
+				/local-operator-update-installer: the first grace expired with the app still there/,
+			);
+			assert.match(
+				written,
+				/local-operator-update-installer: asking the app to stop \(SIGTERM\)/,
+			);
+			assert.match(
+				written,
+				/local-operator-update-installer: the app exited after SIGTERM/,
+			);
+			assert.match(
+				written,
+				/local-operator-update-installer: starting the installer/,
+			);
+			// The escalation is what removed the target - a KILL stage would mean
+			// the stand-in ignored SIGTERM, which this one does not.
+			assert.doesNotMatch(written, /SIGKILL/);
+			assert.equal(
+				alive(app.pid),
+				false,
+				"the app is still there after SIGTERM",
+			);
+		} finally {
+			await reap(child.pid);
+			await reap(app.pid);
+		}
+	},
+);
+
+/**
+ * A target that ignores SIGTERM reaches the KILL stage, and the install still
+ * proceeds (2026-10-11).
+ *
+ * The third rung exists for exactly this shape: a pid that cannot be asked to
+ * leave. What the ladder may not do is wait forever on it - the brief's rule is
+ * "SIGKILL, small settle, then exec regardless", because a pid that survives
+ * SIGKILL is a zombie or unkillable and nothing more exists to wait for.
+ */
+test(
+	"a TERM-ignoring target reaches the KILL stage, and the install proceeds",
+	{ skip: process.platform !== "darwin" },
+	async () => {
+		const dir = scratchDir("kill-stage");
+		const log = join(dir, "ShipIt_stderr.log");
+		const record = join(dir, "installer.json");
+		const installer = join(dir, "ShipIt");
+		writeFileSync(
+			installer,
+			`#!/bin/sh\nprintf '%s\\n' "$$" "$@" >> "${record}"\n`,
+			"utf8",
+		);
+		execFileSync("/bin/chmod", ["+x", installer]);
+
+		// A shell that ignores SIGTERM and keeps itself alive; its command line
+		// names /bin/sh, which is what the identity check asks for.
+		const app = spawn(
+			"/bin/sh",
+			["-c", 'trap "" TERM; while :; do sleep 0.2; done'],
+			{ stdio: "ignore" },
+		);
+		const plan = buildInstallerSpawn({
+			appPid: app.pid,
+			appExecPath: "/bin/sh",
+			shipItPath: installer,
+			label: "com.local-operator.shipit-test",
+			statePath: join(dir, "state.plist"),
+			logPath: log,
+			graceSeconds: { first: 1, second: 1 },
+		});
+		const child = spawn("/bin/sh", plan.args, {
+			detached: true,
+			stdio: "ignore",
+			env: { ...process.env, ...plan.env },
+		});
+		child.unref();
+		try {
+			const deadline = Date.now() + 15_000;
+			while (!existsSync(record) && Date.now() < deadline) {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			}
+			assert.equal(
+				existsSync(record),
+				true,
+				"the ladder never reached the installer for a TERM-ignoring target",
+			);
+			const written = readFileSync(log, "utf8");
+			assert.match(
+				written,
+				/local-operator-update-installer: the second grace expired; forcing the pid gone \(SIGKILL\)/,
+			);
+			// Whether the post-SIGKILL re-check reports "gone" or "survived" is the
+			// kernel's and this test process's reaping to decide; what the ladder
+			// owes either way is recorded, and the installer runs regardless.
+			assert.match(
+				written,
+				/local-operator-update-installer: (the app is gone after SIGKILL|the pid survived SIGKILL)/,
+			);
+		} finally {
+			await reap(child.pid);
+			await reap(app.pid);
+		}
+	},
+);
+
+/**
+ * A live pid whose command line is NOT the app is never signalled (2026-10-11).
+ *
+ * WHY THE GUARD EXISTS: `kill -0` answering is not an identity. A pid is reused,
+ * and the stack here has already been bitten by that class once (the app's own
+ * watchdog reap refuses a pid whose command line no longer carries its sentinel).
+ * The stand-in is a live process the ladder must NOT touch - if the guard is
+ * missing or wrong, the SIGTERM lands and the test sees it - and the installer
+ * still has to start, because "the recorded pid is not the app" means the app it
+ * was waiting for is already gone.
+ */
+test(
+	"a live pid that is not the app is never signalled, and the install proceeds",
+	{ skip: process.platform !== "darwin" },
+	async () => {
+		const dir = scratchDir("recycled");
+		const log = join(dir, "ShipIt_stderr.log");
+		const record = join(dir, "installer.json");
+		const installer = join(dir, "ShipIt");
+		writeFileSync(
+			installer,
+			`#!/bin/sh\nprintf '%s\\n' "$$" "$@" >> "${record}"\n`,
+			"utf8",
+		);
+		execFileSync("/bin/chmod", ["+x", installer]);
+
+		// A recycled pid, in effect: alive, and its command line is NOT the app.
+		const recycled = spawn("/bin/sleep", ["60"], { stdio: "ignore" });
+		const plan = buildInstallerSpawn({
+			appPid: recycled.pid,
+			appExecPath:
+				"/Applications/Local Operator.app/Contents/MacOS/Local Operator",
+			shipItPath: installer,
+			label: "com.local-operator.shipit-test",
+			statePath: join(dir, "state.plist"),
+			logPath: log,
+			graceSeconds: { first: 1, second: 2 },
+		});
+		const child = spawn("/bin/sh", plan.args, {
+			detached: true,
+			stdio: "ignore",
+			env: { ...process.env, ...plan.env },
+		});
+		child.unref();
+		try {
+			const deadline = Date.now() + 15_000;
+			while (!existsSync(record) && Date.now() < deadline) {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			}
+			assert.equal(
+				existsSync(record),
+				true,
+				"the installer never started for a pid that was not the app",
+			);
+			const written = readFileSync(log, "utf8");
+			assert.match(
+				written,
+				/local-operator-update-installer: target is not the app; starting the installer without signalling/,
+			);
+			assert.doesNotMatch(written, /SIGTERM|SIGKILL/);
+			assert.equal(
+				alive(recycled.pid),
+				true,
+				"a pid that was not the app was signalled",
+			);
+		} finally {
+			await reap(child.pid);
+			await reap(recycled.pid);
 		}
 	},
 );
@@ -1181,6 +1544,91 @@ async function loadUpdateServiceModule() {
 	const serviceFile = join(serviceDir, "update-service.mjs");
 	writeFileSync(serviceFile, bundle.outputFiles[0].text);
 	return { service: await import(serviceFile) };
+}
+
+/**
+ * The quit deadline's SHIPPED terms, bundled so the suite's numeric tie compares
+ * values the app actually computes with (2026-10-11).
+ *
+ * WHY THIS BUNDLE EXISTS: `index.ts`'s deadline is
+ * `SESSION_COOKIE_QUIT_BUDGET_MS + QUIT_CLEANUP_FAILSAFE_MS + margin`, and
+ * `QUIT_CLEANUP_FAILSAFE_MS` is itself a sum of four exported bounds - two of
+ * them behind a module graph that imports Electron. Reading those back as
+ * shipped values rather than restating 1_500 + 38_000 + 63_000 + ... is what
+ * makes a future bound change MOVE the expected number instead of leaving the
+ * two sides to drift apart. The stub is minimal on purpose: these modules read
+ * a few `app` members and the logger at import time, nothing more.
+ */
+async function loadQuitDeadlineTerms() {
+	const fixture = (contents) => ({
+		contents,
+		loader: "js",
+		resolveDir: process.cwd(),
+	});
+	const bundle = await build({
+		stdin: {
+			contents: `export { quitExitDeadlineMs, QUIT_EXIT_DEADLINE_MARGIN_MS } from "./src/main/quit-exit-deadline";
+export { SESSION_COOKIE_QUIT_BUDGET_MS } from "./src/main/browser/session-cookie-quit-hold";
+export { LAUNCHER_PROBE_WORST_MS, INTERPRETER_RESOLUTION_WORST_MS } from "./src/main/backend/owned-serve-launch";
+export { OWNED_STOP_WORST_MS, READINESS_POLL_INTERVAL_MS } from "./src/main/backend/backend-service";`,
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+		banner: {
+			js: 'import { createRequire as __loCreateRequire } from "node:module"; const require = __loCreateRequire(import.meta.url);',
+		},
+		plugins: [
+			{
+				name: "quit-deadline-fixture",
+				setup(builder) {
+					builder.onResolve(
+						{ filter: /^(electron|electron-log)$/ },
+						(args) => ({ path: args.path, namespace: "fixture" }),
+					);
+					builder.onLoad({ filter: /.*/, namespace: "fixture" }, (args) => {
+						if (args.path === "electron") {
+							return fixture(`
+									export const app = {
+										getPath: () => process.cwd(),
+										getVersion: () => "0.0.0-test",
+										getName: () => "Local Operator",
+										getAppPath: () => process.cwd(),
+										whenReady: async () => {},
+										on: () => {},
+										quit: () => {},
+										relaunch: () => {},
+										exit: () => {},
+										isReady: () => true,
+									};
+									export const dialog = { showMessageBox: async () => ({ response: 0 }) };
+								`);
+						}
+						return fixture(`
+								const log = {
+									create: () => log,
+									initialize: () => {},
+									info: () => {},
+									warn: () => {},
+									error: () => {},
+									debug: () => {},
+									verbose: () => {},
+									silly: () => {},
+									transports: { file: { level: "info" }, console: { level: "info" } },
+								};
+								export default log;
+							`);
+					});
+				},
+			},
+		],
+	});
+	const dir = tempDir("lo-quit-deadline-");
+	const file = join(dir, "terms.mjs");
+	writeFileSync(file, bundle.outputFiles[0].text);
+	return await import(file);
 }
 
 const FIXTURE_BUNDLE_ID = "com.local-operator.shipit-fixture";
