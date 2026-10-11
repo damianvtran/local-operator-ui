@@ -24,10 +24,15 @@
  *              and the log tail when lines are present.
  *   cancelling the running body with its line swapped, after Cancel and until
  *              the interrupt settles; the tile stays while the work does.
- *   done       the image through the EXISTING path (`CanonicalImage` ->
- *              `ImageAttachment`, so the reserved box, the lightbox expansion
- *              and the canvas affordance all come with it) under a quiet
- *              one-line receipt.
+ *   done       the artifact under a quiet one-line receipt: a picture through the
+ *              EXISTING path (`CanonicalImage` -> `ImageAttachment`, so the
+ *              reserved box, the lightbox expansion and the canvas affordance
+ *              all come with it), a video through the digest-fed player
+ *              (`CanonicalVideo`) — the card mounts each entry by its KIND, one
+ *              component per kind, never a picture component over video bytes.
+ *              The line's noun follows the card's `material` fact, so a video
+ *              call reads `Generated video` and settles its duration the same
+ *              way.
  *   failed     the error sentence VERBATIM as the line itself — the frozen
  *              platform `error` is authored to be read as-is and is never
  *              wrapped in a sentence this card substituted for it — and Retry
@@ -38,7 +43,11 @@
  * provide (`imageGenCardControls`): integration wires Cancel — the existing
  * turn-interrupt path, capability-gated like the composer's Stop — and leaves
  * the restart/steer slots for the round that names them; stories stand those
- * up with stub handlers so the design round can review them.
+ * up with stub handlers so the design round can review them. A VIDEO call gets
+ * no Cancel from its mount at all (contract §4.2: an in-turn press cannot
+ * cancel a detached video job; the post-turn rail is the run-details Jobs row),
+ * so the absence is the mount's decision and this card only ever draws what it
+ * is handed.
  *
  * THE MOTION BUDGET, stated because this file spends it. The shimmer sweep is
  * the surface's ONE indefinite element (a fraction-less card draws no bar —
@@ -71,6 +80,7 @@ import {
 	formatSettledDuration,
 } from "../components/trace/tool-row-model";
 import { CanonicalImage } from "./canonical-image";
+import { CanonicalVideo } from "./canonical-video";
 import {
 	type ImageGenActionKind,
 	type ImageGenCardActions,
@@ -213,7 +223,12 @@ function StateLine({
 						: null;
 			break;
 		case "running":
-			text = "Generating image…";
+			/*
+			 * THE NOUN IS THE MATERIAL FACT (design spec §4, V2): a video call's
+			 * line says `Generating video…` and nothing else about the line moves.
+			 */
+			text =
+				view.material === "video" ? "Generating video…" : "Generating image…";
 			detail = elapsed === null ? null : formatDuration(elapsed);
 			break;
 		case "cancelling":
@@ -230,7 +245,9 @@ function StateLine({
 			text =
 				view.receipt === "already-finished"
 					? "Already finished."
-					: "Generated image";
+					: view.material === "video"
+						? "Generated video"
+						: "Generated image";
 			detail =
 				view.receipt === "already-finished" || view.durationS === null
 					? null
@@ -246,7 +263,11 @@ function StateLine({
 			 * copy too, and the seat its remedy clause lands on when Retry wires
 			 * (branding section 8).
 			 */
-			text = view.message ?? "The image could not be generated.";
+			text =
+				view.message ??
+				(view.material === "video"
+					? "The video could not be generated."
+					: "The image could not be generated.");
 			emphasis = true;
 			break;
 		case "cancelled":
@@ -380,18 +401,36 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			{logTail === null ? null : <LogTail line={logTail} />}
 			{view.state === "done" && view.images.length > 0 ? (
 				<div className={cn("flex flex-col gap-2")}>
-					{view.images.map((image, index) => (
-						<CanonicalImage
-							key={image.id}
-							image={image}
-							scope={scope}
-							label={
-								view.images.length === 1
-									? "Generated image"
-									: `Generated image ${index + 1}`
-							}
-						/>
-					))}
+					{/*
+					 * THE ONE PLAYER SEAT (design spec §3.3). Each entry mounts by its
+					 * KIND: a picture through the existing image path, a video through
+					 * the digest-fed player — the reducer admits both kinds into
+					 * `record.images`, and "extend the filter AND the render together"
+					 * is exactly this branch. The label follows the entry's kind for
+					 * the same reason. A video entry is fetched here and nowhere the
+					 * picture path could decode it as an image.
+					 */}
+					{view.images.map((image, index) => {
+						const noun =
+							image.kind === "video" ? "Generated video" : "Generated image";
+						const label =
+							view.images.length === 1 ? noun : `${noun} ${index + 1}`;
+						return image.kind === "video" ? (
+							<CanonicalVideo
+								key={image.id}
+								video={image}
+								scope={scope}
+								label={label}
+							/>
+						) : (
+							<CanonicalImage
+								key={image.id}
+								image={image}
+								scope={scope}
+								label={label}
+							/>
+						);
+					})}
 				</div>
 			) : null}
 			{controls.length > 0 ? (
