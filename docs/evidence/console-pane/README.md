@@ -6,15 +6,28 @@ completion and the blip, §13.2/§13.3 the capture view, §19.2 this set).
 
 **The Storybook frames** (`console-pane/<story>/<theme>.webp`) are captured through
 the repo's own `scripts/capture-evidence.mjs`, one frame per story per theme in the
-sweep's twelve-theme list. **They were re-taken whole at the 640 px default in the
-#929/#952 evidence pass (2026-10-11), and that supersedes the 796 px staleness this
-paragraph used to disclose**: the set now draws the shipped default — 80 columns
-at the shipped face's advance (`measureCell`, 0.6 em at `TERMINAL_FONT_SIZE = 13`,
-i.e. 7.8 px per column) plus the pane's two 8 px gutters — and the frames show the
-#929 terminal ground (`bg-sunken`) reaching the pane's left, right and bottom edges
-(the band the #929 report is about). The number is not typed by hand: the story
+sweep's twelve-theme list. **They were re-taken at the 640 px default in the #929/#952 evidence pass
+(2026-10-11).** The two brand palettes were re-taken first; the ten community
+themes (`dracula`, `dune`, `iceberg`, `monokai`, `neon`, `obsidian`, `radient`,
+`sage`, `synth`, `tokyoNight`) followed in the round-1 remediation, so twelve of
+the thirteen states now carry **all twelve themes** at the shipped default — 80
+columns at the shipped face's advance (`measureCell`, 0.6 em at
+`TERMINAL_FONT_SIZE = 13`, i.e. 7.8 px per column) plus the pane's two 8 px
+gutters — and their frames show the #929 terminal ground (`bg-sunken`) reaching
+the pane's left, right and bottom edges (the band the #929 report is about). The
+one exception is `loading`, old-generation in every palette for the reason its
+own paragraph carries. The number is not typed by hand: the story
 renders at `DEFAULT_RIGHT_SLOT_WIDTH` and the sweep's `CONSOLE_PANE_WIDTH`
 restatement is pinned to that constant by `scripts/console-pane.test.mjs`.
+
+**THE GROUND BAND, READ FROM THE PIXELS (the after is light `populated` at this
+head; the dark frame reads its own ground).** The bottom 13 rows are **8,320 /
+8,320 px** of one colour — `#EBE7D8` (light) and `#1E1C1A` (dark), the terminal's
+`sunken` — where the pre-pass frame's same rows carried a 143 px elevated remnant
+(`#FEFCFB` 115 + `#FEFDF9` 28, light). The 8 px gutter samples one colour in both
+generations and changed owners: the terminal's ground at this head, the pane's
+`#FEFCFB` family before. (The frames' values sit ±1 off the palette tokens — the
+webp encode's own drift, measured in `chat-sidebar-row-context-menu/README.md`.)
 
 **ONE STATE IS NOT RE-TAKEN, and the reason is the paint gate rather than the
 disk: `loading`.** Its re-shoot is REFUSED by `assertFramePaints` — the captured
@@ -23,11 +36,15 @@ frame reads **98.80%** one colour in `localOperatorLight` and **99.03%** in
 ground and nothing else") — and it is reproducible, not a race: the loading state
 is a place without contents, so since the canvas chrome pass gave the header bar no
 ground of its own it renders the pane root's one ground plus the centred sentence,
-and little else draws. The state's two frames above are therefore still the 796 px
-generation (`91.50%` / `91.41%` one colour, which is what the ceiling was
+and little else draws. The state's frames — all twelve palettes — are therefore
+still the 796 px generation (`91.50%` / `91.41%` one colour, which is what the
+ceiling was
 calibrated against), disclosed rather than forced: a frame the sweep refuses
 cannot be committed, and re-framing the state (or re-reading the gate) is its own
-decision. The other twelve states are re-taken at this head. (An earlier revision
+decision. **Re-attempted across the ten community themes in the round-1
+remediation and refused at the first of them (`dracula`, 98.68%)** — the refusal
+is the state's, not the palette's. The other twelve states are re-taken at this
+head, in every palette. (An earlier revision
 of this README and of the
 PR body said "843 px at `fontSize: 14`", which was neither the shipped default nor
 the design's grid — the design round measured those frames at ~108 columns. Both are
@@ -110,11 +127,13 @@ against the BUILT app headless, and it is the other half of the evidence:
   are not a property this path claims: the rig's shell echoes a variable number of
   lines before the `printf`, so the byte count moves with the pty's own output.
 
-  AT THE OCTOBER GENERATION (2026-10-11): the transcript, the two capture frames and
-  `input-roundtrip.bin` in this directory were REPLACED by the paired run this
-  section leads with, in the #929/#952 evidence-completion pass; the September
-  generation this paragraph describes is one `git show` away, and its numbers above
-  stay labelled as that run's.
+  AT THE OCTOBER GENERATION (2026-10-11): the transcript and the two capture
+  frames in this directory were REPLACED by the paired run this section leads
+  with, in the #929/#952 evidence-completion pass; the September generation this
+  paragraph describes is one `git show` away, and its numbers above stay labelled
+  as that run's. `input-roundtrip.bin` was rewritten by the same run and came back
+  byte-identical to its September file (10 bytes, `md5 57365ca1…`), which is why
+  it is absent from the pass's diff by construction rather than by omission.
 
   ONE FURTHER DISCLOSURE, because it is a limit of the harness rather than of the
   pane: in this never-shown window the compositor's own press does NOT reach the
