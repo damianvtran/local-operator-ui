@@ -58,6 +58,18 @@ export const I18N_FEATURE = "i18n";
 export const DEFAULT_LOCALE = "en";
 
 /**
+ * The backend registry key the language control edits (U1).
+ *
+ * The SAME setting every surface writes — `config.yml`, the TUI's `/settings`
+ * and the desktop's row — and the one the capabilities chain above reads back
+ * as `language`: one value, one owner, no per-surface override (the slice's
+ * contract). The string mirrors the backend's own names for it —
+ * `settings_io`'s `Setting(key="language")` and `i18n/resolve.py`'s
+ * `CONFIG_KEY` — and exists here so the renderer never spells the key itself.
+ */
+export const LANGUAGE_SETTING_KEY = "language";
+
+/**
  * The device's language tag, or `undefined` where there is no navigator.
  *
  * The cast keeps DOM types out of this module (see the docstring above): under

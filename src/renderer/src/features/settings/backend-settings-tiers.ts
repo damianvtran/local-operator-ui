@@ -117,6 +117,10 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	"display.notifications": "core",
 	"display.notification_session_name": "advanced",
 	"display.time_format": "advanced",
+	/* Core: a control over the surface the user is looking at, and its label
+	 * alone states the choice — the authoring rule's third clause. The value
+	 * is the ONE backend setting every surface reads (RFC §2.5). */
+	language: "core",
 	"display.dock": "advanced",
 	"display.hide_cross_session": "advanced",
 	"display.turn_answer_rail": "advanced",
