@@ -387,6 +387,25 @@ test(
 			() => noteOf(LANGUAGE_ROW) === "In effect: en",
 			"the language row must show the store's locale (en, from the seeded capabilities answer)",
 		);
+		/*
+		 * The note's semantics (round-1 U2): the live region carries an id, and
+		 * the picker's describedby names it - the relationship a screen reader
+		 * needs, and the one a later refactor could silently drop.
+		 */
+		{
+			const row = rowFor(LANGUAGE_ROW);
+			const note = row.querySelector("#setting-effective-language");
+			assert.ok(note, "the note must carry its own id");
+			assert.equal(note.getAttribute("aria-live"), "polite");
+			const trigger = row.querySelector('[role="combobox"]');
+			assert.ok(trigger, "the picker must be a combobox");
+			assert.ok(
+				(trigger.getAttribute("aria-describedby") ?? "").includes(
+					"setting-effective-language",
+				),
+				"the picker must point at the note",
+			);
+		}
 		// A second locale proves the line FOLLOWS the store rather than being
 		// the picker's default restated.
 		await act(async () => {
