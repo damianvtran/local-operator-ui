@@ -1,7 +1,12 @@
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import { useCanvasPane } from "../utils/canvas-pane";
-import { classifyImageSource, hasImageActions } from "../utils/image-actions";
+import {
+	barePath,
+	classifyImageSource,
+	hasImageActions,
+} from "../utils/image-actions";
+import { openLocalTarget } from "../utils/link-open";
 import { ImageActionsMenu } from "./image-actions-menu";
 
 /**
@@ -86,7 +91,16 @@ export const MarkdownImage: FC<{
 						onShowInCanvas={
 							canShowInCanvas && pane
 								? () => {
-										void pane.openInCanvas(source);
+										/*
+										 * A refusal (no viewer for the type, probing says the file is gone,
+										 * a read that failed) falls through to the OS door, the fallback
+										 * `link-toolkit.tsx:339` established for the same press: answering
+										 * that refusal with nothing would be the silent no-op the
+										 * fallthrough exists to remove (agent review round 1, R1).
+										 */
+										void pane.openInCanvas(source).then((opened) => {
+											if (!opened) void openLocalTarget(barePath(source));
+										});
 									}
 								: undefined
 						}

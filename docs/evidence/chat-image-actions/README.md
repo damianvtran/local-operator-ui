@@ -97,6 +97,31 @@ with the table even before any frame existed (the manifest gate compares it to
 the committed STORIES literal), which is why the story file and the capture
 entries landed in one commit.
 
+## The round-1 remediation re-capture (design D1)
+
+Round 1's design pass measured the REVEALED trigger at 1.63:1 over a dark
+picture in the light palette (strongest dot `#47484c` on the picture strip
+`#26272e` in `durable-hover/localOperatorLight.webp`) — a ghost button has no
+fill at rest, so its glyph sat on whatever the picture painted. The fix gives
+the revealed trigger its own ground, `accentWash` (a chip), so the glyph reads
+against a token on every surface and both palettes. The whole set was re-taken
+at the fixed tree with the same command as above; the at-rest states carry no
+trigger either side of the fix, so their claim is unchanged.
+
+Re-measured the same way (ImageMagick 1-px row dumps through the glyph, the
+trigger box at x362-389, y64-91):
+
+| frame | glyph (strongest dot) | behind the glyph | ratio |
+| --- | --- | --- | --- |
+| `durable-hover/localOperatorLight` — BEFORE (this set's first capture) | `#47484c` | the picture strip `#26272e` | **1.63:1** |
+| `durable-hover/localOperatorLight` — AFTER | `#474f46` | the chip `#e7f2e9` | **7.35:1** |
+| `durable-hover/localOperatorDark` — AFTER | `#b1c0b4` | the chip `#17281e` | **8.15:1** |
+
+The chip's pair is asserted on every palette by
+`scripts/contrast-contract.mjs`'s `image actions trigger` row; the before
+numbers above are this README's, read off the previous commit's frame
+(`git show <pre-fix head>:docs/evidence/chat-image-actions/durable-hover/localOperatorLight.webp`).
+
 ## What is not here
 
 The live per-action pass — clipboard verified by an actual paste,

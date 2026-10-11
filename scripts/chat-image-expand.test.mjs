@@ -135,6 +135,7 @@ const bundle = await build({
 			export { ImageAttachment } from "./src/renderer/src/features/chat/components/message-item/image-attachment";
 			export { FileAttachment } from "./src/renderer/src/features/chat/components/message-item/file-attachment";
 			export { CanonicalImage } from "./src/renderer/src/features/chat/canonical/canonical-image";
+			export { MarkdownImage } from "./src/renderer/src/features/chat/components/markdown-image";
 			export { FoldMedia } from "./src/renderer/src/features/chat/canonical/fold-media";
 			export { TraceFold } from "./src/renderer/src/features/chat/components/trace/trace-fold";
 		`,
@@ -181,6 +182,7 @@ const {
 	ImageAttachment,
 	FileAttachment,
 	CanonicalImage,
+	MarkdownImage,
 	FoldMedia,
 	TraceFold,
 } = await import(pathToFileURL(bundlePath).href);
@@ -1771,5 +1773,145 @@ test("the full-ceiling picture keeps the three classes the ledger rule is made o
 				`the transcript's own picture carries \`${fullClass}\``,
 			);
 		}
+	});
+});
+
+/* ---------------------------------------------- the image actions menu (moved)
+ *
+ * The MOUNTED half of the image-actions matrix, moved here from
+ * `image-actions.test.mjs` in the round-1 remediation (agent review R3): the
+ * suite already pays for THIS file's component bundle and its jsdom stack, and
+ * the extra copy of both was measured as the weight that tipped the desktop
+ * suite's memory bound. The pure half — classification, the per-kind table, the
+ * byte resolver — stays there, bundled from the two pure modules alone; the
+ * relay seam these cases need is the one the durable fixtures above already use
+ * (`api.window.api.desktop.media`).
+ */
+const IMAGE_ACTIONS_TRIGGER = 'button[aria-label^="Actions for"]';
+
+test("a blob-backed canonical picture NOW carries the menu — the gap this change closes", async () => {
+	const pngBytes = Uint8Array.from(atob(PNG_BASE64), (character) =>
+		character.charCodeAt(0),
+	);
+	/*
+	 * The durable route's bytes come over the media relay (`desktopMedia`
+	 * answers from `window.api.desktop.media` when the bridge exists — the same
+	 * seam the stories stub), so the stub is installed BEFORE the render and the
+	 * `blob:` URL the test asserts on is one `use-attachment-url.ts` really
+	 * created. This is the SHIPPED chain the operator's screenshots take:
+	 * digest -> relay -> blob -> `CanonicalImage` -> `ImageAttachment`, and the
+	 * menu at the end of it is the half that did not exist before this change.
+	 */
+	await mount(async (api) => {
+		api.window.api = {
+			desktop: {
+				media: async () => ({
+					status: 200,
+					kind: "bytes",
+					mimeType: "image/png",
+					data: pngBytes,
+				}),
+			},
+		};
+		await api.render(
+			React.createElement(CanonicalImage, {
+				image: {
+					id: "image-actions:blob",
+					data: null,
+					attachment: "0123456789abcdef0123456789abcdef",
+					mimeType: "image/png",
+				},
+				scope: { sessionId: "image-actions", childId: null },
+				label: "Generated image",
+			}),
+		);
+		// The resolver's chain is async (effect -> relay -> state); wait for the
+		// trigger to appear rather than assuming a number of ticks.
+		let trigger = null;
+		for (let tick = 0; tick < 50 && !trigger; tick += 1) {
+			await act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 0));
+			});
+			trigger = api.document.querySelector(IMAGE_ACTIONS_TRIGGER);
+		}
+		assert.ok(
+			api.document.querySelector(".file-actions-menu"),
+			"a durable screenshot could not be acted on at all before this change; it must now carry the actions wrapper",
+		);
+		assert.ok(trigger, "and a trigger a reader can reach");
+		assert.equal(
+			trigger.getAttribute("aria-label"),
+			"Actions for Generated image",
+			"the name says which picture, the supplement-row vocabulary",
+		);
+	});
+});
+
+test("a live (data:) canonical picture carries the menu too", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(CanonicalImage, {
+				image: {
+					id: "image-actions:live",
+					data: PNG_BASE64,
+					attachment: null,
+					mimeType: "image/png",
+				},
+				scope: { sessionId: "image-actions", childId: null },
+				label: "Attached image",
+			}),
+		);
+		const trigger = api.document.querySelector(IMAGE_ACTIONS_TRIGGER);
+		assert.ok(
+			trigger,
+			"a freshly pasted picture is a picture: it must carry the menu the path-backed one has",
+		);
+		assert.equal(
+			trigger.getAttribute("aria-label"),
+			"Actions for Attached image",
+		);
+	});
+});
+
+test("markdown images are ADMITTED by kind: a path gets the menu, a relative src does not", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(MarkdownImage, { src: "/tmp/shot.png", alt: "shot" }),
+		);
+		const wrapper = api.document.querySelector("[data-markdown-image]");
+		assert.ok(wrapper, "an absolute path is a file this app can act on");
+		const trigger = api.document.querySelector(IMAGE_ACTIONS_TRIGGER);
+		assert.equal(
+			trigger?.getAttribute("aria-label"),
+			"Actions for shot",
+			"the alt names the picture in the trigger",
+		);
+		// The reveal contract, same tokens as the attachment wrapper's measured
+		// set (the named-group spelling, because markdown renders inside rows
+		// that may carry an anonymous `group` of their own).
+		for (const token of [
+			"pointer-events-none",
+			"opacity-0",
+			"group-hover/mdimg:pointer-events-auto",
+			"group-hover/mdimg:opacity-100",
+			"group-focus-within/mdimg:pointer-events-auto",
+			"group-focus-within/mdimg:opacity-100",
+			"has-[[aria-expanded=true]]:pointer-events-auto",
+			"has-[[aria-expanded=true]]:opacity-100",
+		]) {
+			assert.ok(
+				wrapper.className.includes(token),
+				`the markdown reveal must carry \`${token}\` (got: ${wrapper.className})`,
+			);
+		}
+
+		await api.render(
+			React.createElement(MarkdownImage, { src: "shot.png", alt: "shot" }),
+		);
+		assert.equal(
+			api.document.querySelector("[data-markdown-image]"),
+			null,
+			"a relative src names no file this app can address — it renders as the bare <img> it always was",
+		);
 	});
 });

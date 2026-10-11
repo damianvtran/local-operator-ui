@@ -461,6 +461,28 @@ const CONTROLS = [
 		edge: false,
 	},
 	{
+		/*
+		 * THE IMAGE ACTIONS TRIGGER (design round 1, D1). It floats over
+		 * ARBITRARY PICTURE PIXELS — which this file cannot measure (its own
+		 * header: text over an image is out of scope) — so the fix gave it a
+		 * ground of its own, `accentWash`, and the pair asserted here is the one
+		 * that can be: the glyph on that fill. The designer's measurements on the
+		 * fixed frames: 8.19:1 dark, 7.72:1 light, against the 3:1 icon floor the
+		 * old glyph-on-picture reading failed (1.63:1 light over a dark picture;
+		 * 1.81:1 inverse). The EDGE half is declared away: the chip's boundary is
+		 * not an edge a reader navigates by — it is only visible while a trigger
+		 * is revealed over a picture or sits on the viewer chrome beside ghost
+		 * siblings — and a 3:1 fill-against-ground floor would demand a token the
+		 * design did not ask for.
+		 */
+		name: "image actions trigger",
+		on: GROUNDS,
+		fill: "accentWash",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
 		name: "input field",
 		on: GROUNDS,
 		fill: "surface",

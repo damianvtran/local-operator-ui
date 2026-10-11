@@ -42,9 +42,52 @@ const cache = new Map<
 	{ url: string; refs: number; revoking: boolean }
 >();
 
+/**
+ * url -> the Blob it was built from, so `Copy image` can resolve a picture's
+ * bytes WITHOUT a fetch.
+ *
+ * WHY THE BYTES ARE KEPT HERE. The renderer's CSP (`src/renderer/index.html`)
+ * admits `blob:` for `img-src` - that is how a durable picture is painted at
+ * all - and NOT for `connect-src`, so `fetch(blobUrl)` is refused by the page's
+ * own policy before a request leaves: measured in the built app (QA round 1,
+ * Q-1): `TypeError: Failed to fetch` plus a `connect-src` violation. The copy
+ * path never needed the fetch - the bytes are already in this document - so
+ * this map is where they are kept for it.
+ *
+ * IT IS NOT A SECOND RETENTION. A blob URL already keeps its Blob alive until
+ * it is revoked, so holding the handle here adds no memory a live URL does not
+ * already hold; the entries are dropped by the same revokes that end the URLs
+ * (`revokeBlobUrl`, called by `release` and by the abandoned-read paths).
+ */
+const bytesByUrl = new Map<string, Blob>();
+
 /** Build a blob URL for bytes. The caller decides the key it is filed under. */
 export function createBlobUrl(bytes: BlobPart, mimeType: string): string {
-	return URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+	const blob = new Blob([bytes], { type: mimeType });
+	const url = URL.createObjectURL(blob);
+	bytesByUrl.set(url, blob);
+	return url;
+}
+
+/**
+ * The bytes behind a blob URL this module built, or `null` for any other URL.
+ *
+ * `null` is an honest failure for the copy path (a URL this document did not
+ * build has no bytes to hand over without the fetch the CSP refuses), never a
+ * reason to widen the policy.
+ */
+export function blobAt(url: string): Blob | null {
+	return bytesByUrl.get(url) ?? null;
+}
+
+/**
+ * Revoke a URL this module built, forgetting its bytes in the same step - the
+ * one spelling for both direct revokes and `release`'s deferred one, so a
+ * revoked URL can never leave a reachable Blob behind it.
+ */
+export function revokeBlobUrl(url: string): void {
+	URL.revokeObjectURL(url);
+	bytesByUrl.delete(url);
 }
 
 /** The cached URL without taking a reference. Safe in a render. */
@@ -84,7 +127,7 @@ export function retain(key: string): string | null {
 export function publish(key: string, url: string): void {
 	const entry = cache.get(key);
 	if (entry) {
-		URL.revokeObjectURL(url);
+		revokeBlobUrl(url);
 		return;
 	}
 	cache.set(key, { url, refs: 0, revoking: false });
@@ -121,7 +164,7 @@ export function release(key: string): void {
 		// A retain between the release and this callback means the entry has
 		// changed hands - the swap this exists for. Leave it to its new holder.
 		if (!entry.revoking || entry.refs > 0) return;
-		URL.revokeObjectURL(entry.url);
+		revokeBlobUrl(entry.url);
 		// The key may have been re-published since this revoke was queued
 		// (a fresh fetch landing for a digest that had gone cold): only this
 		// ENTRY's URL is revoked, and the map is only cleared while it still

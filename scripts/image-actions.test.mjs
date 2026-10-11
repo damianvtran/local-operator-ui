@@ -1,6 +1,6 @@
 /**
- * What a picture's action menu offers, per source kind — and where the menu
- * appears at all.
+ * What a picture's action menu offers, per source kind — the per-kind matrix
+ * and the byte-resolution behind `Copy image`, as PURE logic.
  *
  *     node --test scripts/image-actions.test.mjs
  *
@@ -13,62 +13,41 @@
  * and their action sets are declared once, as data, in
  * `src/renderer/src/features/chat/utils/image-actions.ts`; this file pins that
  * table, the two admission rules around it (a relative token is a path for an
- * attachment and NOT one for a markdown image), the byte-resolution the
- * `Copy image` entry performs, and — in jsdom, against the SHIPPED components —
- * that the menu appears where it was missing.
+ * attachment and NOT one for a markdown image) and the byte-resolution the
+ * `Copy image` entry performs.
  *
- * WHAT IT DELIBERATELY DOES NOT DO. Opening the Radix dropdown in jsdom costs
- * ~26s of layout churn and leaks work past the test (measured in
- * `chat-image-expand.test.mjs`), so the menu's ITEMS are not read back from an
- * opened portal here: the matrix is asserted against the data table the
- * component renders from, and the TRIGGER's presence and accessible name are
- * asserted against the mounted component. The real-browser half — a real hover
- * revealing the trigger and a real press opening the menu with these entries —
- * is the evidence set `docs/evidence/chat-image-actions/`'s business.
+ * WHY THERE IS NO JSDOM OR REACT HERE (agent review round 1, R3). The MOUNTED
+ * half — that the menu appears on the surfaces where it was missing — needs the
+ * component bundle and a jsdom document, and the suite already pays for BOTH
+ * `chat-image-expand.test.mjs`'s bundle and its document stack. This file's own
+ * copy of that stack was measured as the extra weight that tipped the desktop
+ * suite's memory bound (R3; the CI evidence is on the pull request), so the
+ * renderer-side cases MOVED to `chat-image-expand.test.mjs`'s harness — one
+ * component bundle from this delta in the whole suite — and what remains here
+ * is the logic, bundled from the two PURE modules it pins (no jsdom, no react,
+ * no components).
  *
- * ISOLATION. jsdom in this process, like `chat-image-expand.test.mjs`: no app,
- * no fork, no Electron, no window mode to name, synthetic ids only. The bridge
- * stubs are installed on a scratch `globalThis.window` and removed in `finally`.
+ * ISOLATION. No app, no fork, no Electron, no window mode to name, synthetic
+ * ids only; the one bridge stub is installed on a scratch `globalThis.window`
+ * and removed in `finally`.
  */
 
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { after, test } from "node:test";
+import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
-import { JSDOM } from "jsdom";
-import React, { act } from "react";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
 /*
- * React DOM feature-detects input events at import time, so a document has to
- * exist before it is loaded — the bootstrap `chat-image-expand.test.mjs` uses,
- * and the same `Reflect.deleteProperty` cleanup, because `pnpm lint:scripts`
- * reads this file and its `noDelete` rule's suggested fix is not equivalent.
+ * The SHIPPED modules, bundled: they reach each other through the path aliases
+ * node's ESM resolver will not take (`@shared/…`). The entry is the PURE half
+ * only — `image-actions.ts`, the cache it reads bytes from, and the type-only
+ * import beside them — never a component, which is the whole point of the split
+ * above.
  */
-const bootstrap = new JSDOM("<!doctype html>", { url: "http://localhost/" });
-globalThis.window = bootstrap.window;
-globalThis.document = bootstrap.window.document;
-globalThis.localStorage = bootstrap.window.localStorage;
-globalThis.sessionStorage = bootstrap.window.sessionStorage;
-const { createRoot } = await import("react-dom/client");
-after(() => {
-	bootstrap.window.close();
-	for (const name of ["window", "document", "localStorage", "sessionStorage"]) {
-		Reflect.deleteProperty(globalThis, name);
-	}
-});
-
-/*
- * The SHIPPED modules, bundled for the same reason `chat-image-expand`'s file
- * bundles its components: they reach MUI and zustand through deep specifiers
- * node's ESM resolver will not take, and `react`/`react-dom` stay OUT of the
- * bundle so element symbols and `act` are per-instance.
- */
-const EXTERNAL = /^(react|react-dom)(\/.*)?$/;
-const BARE_SPECIFIER = /^[^./]/;
 const CACHE = join(ROOT, "node_modules", ".cache", "image-actions");
 const bundle = await build({
 	stdin: {
@@ -83,38 +62,20 @@ const bundle = await build({
 				imageActions,
 				resolveCopyableImage,
 			} from "./src/renderer/src/features/chat/utils/image-actions";
-			export { ImageActionsMenu } from "./src/renderer/src/features/chat/components/image-actions-menu";
-			export { MarkdownImage } from "./src/renderer/src/features/chat/components/markdown-image";
-			export { CanonicalImage } from "./src/renderer/src/features/chat/canonical/canonical-image";
+			export {
+				blobAt,
+				createBlobUrl,
+				revokeBlobUrl,
+			} from "./src/renderer/src/shared/lib/blob-url-cache";
 		`,
 		resolveDir: ROOT,
 	},
 	bundle: true,
 	format: "esm",
 	platform: "node",
-	jsx: "automatic",
 	mainFields: ["module", "main"],
 	conditions: ["import", "module", "default"],
-	/*
-	 * `import.meta.env` is Vite's and stories/config modules read it at import
-	 * time. The port is dead on purpose: nothing here should reach a service, and
-	 * a refused connection is the isolation rather than a failure.
-	 */
-	define: { "import.meta.env": "__viteEnv" },
-	banner: {
-		js: 'const __viteEnv = { VITE_LOCAL_OPERATOR_API_URL: "http://127.0.0.1:45999" };',
-	},
-	plugins: [
-		{
-			name: "react-stays-out",
-			setup(builder) {
-				builder.onResolve({ filter: BARE_SPECIFIER }, (args) =>
-					EXTERNAL.test(args.path) ? { path: args.path, external: true } : null,
-				);
-			},
-		},
-	],
-	loader: { ".css": "empty" },
+	/* The aliases the two modules reach each other through. */
 	alias: {
 		"@assets": resolve(ROOT, "src/renderer/src/assets"),
 		"@features": resolve(ROOT, "src/renderer/src/features"),
@@ -128,22 +89,23 @@ const bundlePath = join(CACHE, "image-actions.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
 const {
 	barePath,
+	blobAt,
 	blobFromDataUrl,
 	classifyAttachmentSource,
 	classifyImageSource,
+	createBlobUrl,
 	hasImageActions,
 	httpImageFetchable,
 	imageActions,
 	resolveCopyableImage,
-	ImageActionsMenu,
-	MarkdownImage,
-	CanonicalImage,
+	revokeBlobUrl,
 } = await import(pathToFileURL(bundlePath).href);
 
 /* The assertion subjects the matcher lint wants hoisted (they are regexes
    ABOUT a claim, not per-run computation — the `UNTABBABLE_REVEAL` precedent). */
 const MALFORMED_DATA_URL = /Malformed/;
 const NO_FILE_AT_GONE = /No file at \/tmp\/gone\.png/;
+const NOT_IN_THIS_WINDOW = /not available in this window/;
 const MARKDOWN_IMG_ENTRY = /\bimg: MarkdownImage,/;
 const MARKDOWN_IMG_IMPORT =
 	/import \{ MarkdownImage \} from "\.\/markdown-image";/;
@@ -257,6 +219,14 @@ test("the fetchability predicate is the CSP's own list", () => {
 	assert.equal(httpImageFetchable("http://127.0.0.1:8080/x.png"), true);
 	assert.equal(httpImageFetchable("http://localhost:3000/x.png"), false);
 	assert.equal(httpImageFetchable("https://example.com/a.png"), false);
+	/*
+	 * The scheme is part of the list: the CSP spells its loopback sources as
+	 * `http://` with an explicit port, so the `https:` spelling of the same host
+	 * is NOT admitted — a predicate one scheme wider than the policy offers a
+	 * copy that always fails (agent review round 1, R2).
+	 */
+	assert.equal(httpImageFetchable("https://localhost:1111/x.png"), false);
+	assert.equal(httpImageFetchable("https://127.0.0.1:8080/x.png"), false);
 	assert.equal(httpImageFetchable("not a url"), false);
 });
 
@@ -329,252 +299,51 @@ test("a bridge refusal rejects with the bridge's own sentence", async () => {
 	}
 });
 
-test("a blob: source resolves through the URL the picture is painted from", async () => {
+test("a blob: source resolves from the bytes this document built the URL from — no fetch (QA round 1, Q-1)", async () => {
+	const bytes = Uint8Array.from([7, 8, 9]);
+	const url = createBlobUrl(bytes, "image/png");
 	const originalFetch = globalThis.fetch;
-	globalThis.fetch = async (url) => {
-		assert.equal(url, "blob:http://localhost/deadbeef");
-		return {
-			ok: true,
-			blob: async () =>
-				new Blob([Uint8Array.from([9])], { type: "image/webp" }),
-		};
+	/*
+	 * The no-fetch claim, pinned where it is falsifiable: the renderer's CSP
+	 * admits `blob:` for `img-src` and NOT for `connect-src`, so a fetch of the
+	 * URL is refused by the page's own policy in the built app (measured, QA
+	 * round 1 Q-1) — and the resolution must not attempt one at all. A fetch
+	 * here fails the test by throwing.
+	 */
+	globalThis.fetch = () => {
+		throw new Error("resolveCopyableImage must not fetch a blob: URL");
 	};
 	try {
-		const blob = await resolveCopyableImage(
-			"blob",
-			"blob:x",
-			"blob:http://localhost/deadbeef",
-		);
-		assert.equal(blob.type, "image/webp");
+		const blob = await resolveCopyableImage("blob", "blob:x", url);
+		assert.equal(blob.type, "image/png");
+		assert.deepEqual([...new Uint8Array(await blob.arrayBuffer())], [7, 8, 9]);
 	} finally {
 		globalThis.fetch = originalFetch;
 	}
-});
-
-/* ------------------------------------------------------------- the surfaces */
-
-async function mount(render) {
-	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
-		url: "http://localhost/",
-		pretendToBeVisual: true,
-	});
-	const { window } = dom;
-	const originals = new Map();
-	const shims = {
-		window,
-		document: window.document,
-		HTMLElement: window.HTMLElement,
-		Element: window.Element,
-		Node: window.Node,
-		Event: window.Event,
-		CustomEvent: window.CustomEvent,
-		MouseEvent: window.MouseEvent,
-		KeyboardEvent: window.KeyboardEvent,
-		requestAnimationFrame: window.requestAnimationFrame.bind(window),
-		cancelAnimationFrame: window.cancelAnimationFrame.bind(window),
-		MutationObserver: window.MutationObserver,
-		NodeFilter: window.NodeFilter,
-		HTMLInputElement: window.HTMLInputElement,
-		getComputedStyle: window.getComputedStyle.bind(window),
-		ResizeObserver: class {
-			observe() {}
-			unobserve() {}
-			disconnect() {}
-		},
-		localStorage: window.localStorage,
-		sessionStorage: window.sessionStorage,
-		IS_REACT_ACT_ENVIRONMENT: true,
-		matchMedia: (query) => ({
-			matches: false,
-			media: query,
-			onchange: null,
-			addListener() {},
-			removeListener() {},
-			addEventListener() {},
-			removeEventListener() {},
-			dispatchEvent: () => false,
-		}),
-	};
-	for (const [key, value] of Object.entries(shims)) {
-		originals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
-		Object.defineProperty(globalThis, key, {
-			configurable: true,
-			writable: true,
-			value,
-		});
-	}
-	Object.defineProperty(window, "matchMedia", {
-		configurable: true,
-		value: shims.matchMedia,
-	});
-	const root = createRoot(window.document.getElementById("root"));
-	const api = {
-		window,
-		document: window.document,
-		render: async (element) => {
-			act(() => {
-				root.render(element);
-			});
-			await act(async () => {});
-		},
-	};
-	try {
-		await render(api);
-	} finally {
-		act(() => root.unmount());
-		await act(async () => {});
-		window.close();
-		for (const [key, descriptor] of originals) {
-			if (descriptor) Object.defineProperty(globalThis, key, descriptor);
-			else Reflect.deleteProperty(globalThis, key);
-		}
-	}
-}
-
-/** A real 1x1 PNG, so the data: route is the one under test. */
-const PNG =
-	"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
-const PNG_BASE64 = PNG.split(",")[1];
-
-const TRIGGER = 'button[aria-label^="Actions for"]';
-
-test("a blob-backed canonical picture NOW carries the menu — the gap this change closes", async () => {
-	const pngBytes = Uint8Array.from(atob(PNG.split(",")[1]), (character) =>
-		character.charCodeAt(0),
+	revokeBlobUrl(url);
+	assert.equal(
+		blobAt(url),
+		null,
+		"the shared revoke forgets the bytes in the same step as the URL",
 	);
-	/*
-	 * The durable route's bytes come over the media relay (`desktopMedia`
-	 * answers from `window.api.desktop.media` when the bridge exists — the same
-	 * seam the stories stub), so the stub is installed BEFORE the render and the
-	 * `blob:` URL the test asserts on is one `use-attachment-url.ts` really
-	 * created. This is the SHIPPED chain the operator's screenshots take:
-	 * digest -> relay -> blob -> `CanonicalImage` -> `ImageAttachment`, and the
-	 * menu at the end of it is the half that did not exist before this change.
-	 */
-	await mount(async (api) => {
-		api.window.api = {
-			desktop: {
-				media: async () => ({
-					status: 200,
-					kind: "bytes",
-					mimeType: "image/png",
-					data: pngBytes,
-				}),
-			},
-		};
-		await api.render(
-			React.createElement(CanonicalImage, {
-				image: {
-					id: "image-actions:blob",
-					data: null,
-					attachment: "0123456789abcdef0123456789abcdef",
-					mimeType: "image/png",
-				},
-				scope: { sessionId: "image-actions", childId: null },
-				label: "Generated image",
-			}),
-		);
-		// The resolver's chain is async (effect -> relay -> state); wait for the
-		// trigger to appear rather than assuming a number of ticks.
-		let trigger = null;
-		for (let tick = 0; tick < 50 && !trigger; tick += 1) {
-			await act(async () => {
-				await new Promise((resolve) => setTimeout(resolve, 0));
-			});
-			trigger = api.document.querySelector(TRIGGER);
-		}
-		assert.ok(
-			api.document.querySelector(".file-actions-menu"),
-			"a durable screenshot could not be acted on at all before this change; it must now carry the actions wrapper",
-		);
-		assert.ok(trigger, "and a trigger a reader can reach");
-		assert.equal(
-			trigger.getAttribute("aria-label"),
-			"Actions for Generated image",
-			"the name says which picture, the supplement-row vocabulary",
-		);
-	});
+	await assert.rejects(
+		() => resolveCopyableImage("blob", "blob:x", url),
+		NOT_IN_THIS_WINDOW,
+		"a URL this document did not build has no bytes to hand over, and says so",
+	);
 });
 
-test("a live (data:) canonical picture carries the menu too", async () => {
-	await mount(async (api) => {
-		await api.render(
-			React.createElement(CanonicalImage, {
-				image: {
-					id: "image-actions:live",
-					data: PNG_BASE64,
-					attachment: null,
-					mimeType: "image/png",
-				},
-				scope: { sessionId: "image-actions", childId: null },
-				label: "Attached image",
-			}),
-		);
-		const trigger = api.document.querySelector(TRIGGER);
-		assert.ok(
-			trigger,
-			"a freshly pasted picture is a picture: it must carry the menu the path-backed one has",
-		);
-		assert.equal(
-			trigger.getAttribute("aria-label"),
-			"Actions for Attached image",
-		);
-	});
-});
-
-test("markdown images are ADMITTED by kind: a path gets the menu, a relative src does not", async () => {
-	await mount(async (api) => {
-		await api.render(
-			React.createElement(MarkdownImage, { src: "/tmp/shot.png", alt: "shot" }),
-		);
-		const wrapper = api.document.querySelector("[data-markdown-image]");
-		assert.ok(wrapper, "an absolute path is a file this app can act on");
-		const trigger = api.document.querySelector(TRIGGER);
-		assert.equal(
-			trigger?.getAttribute("aria-label"),
-			"Actions for shot",
-			"the alt names the picture in the trigger",
-		);
-		// The reveal contract, same tokens as the attachment wrapper's measured
-		// set (the named-group spelling, because markdown renders inside rows
-		// that may carry an anonymous `group` of their own).
-		for (const token of [
-			"pointer-events-none",
-			"opacity-0",
-			"group-hover/mdimg:pointer-events-auto",
-			"group-hover/mdimg:opacity-100",
-			"group-focus-within/mdimg:pointer-events-auto",
-			"group-focus-within/mdimg:opacity-100",
-			"has-[[aria-expanded=true]]:pointer-events-auto",
-			"has-[[aria-expanded=true]]:opacity-100",
-		]) {
-			assert.ok(
-				wrapper.className.includes(token),
-				`the markdown reveal must carry \`${token}\` (got: ${wrapper.className})`,
-			);
-		}
-
-		await api.render(
-			React.createElement(MarkdownImage, { src: "shot.png", alt: "shot" }),
-		);
-		assert.equal(
-			api.document.querySelector("[data-markdown-image]"),
-			null,
-			"a relative src names no file this app can address — it renders as the bare <img> it always was",
-		);
-	});
-});
-
-test("the shipped markdown renderer wires the image component in", async () => {
+test("the shipped markdown renderer wires the image component in", () => {
 	/*
 	 * A SOURCE pin rather than a mount, and the reason is cost: importing
 	 * `markdown-renderer.tsx` pulls mermaid, katex and the full remark/rehype
-	 * stack into this test's bundle — the weight `chat-link-affordances.test.mjs`
+	 * stack into a test bundle — the weight `chat-link-affordances.test.mjs`
 	 * already pays in the suite — for a claim that is one map entry. What the
 	 * pin reads is the entry and its import, which is exactly what a dropped
-	 * `img:` line would remove; the RENDERED half (a markdown image's menu on a
-	 * real page) is the evidence set's `markdown` state, whose capture refuses
-	 * a frame without it.
+	 * `img:` line would remove; the MOUNTED half of a markdown image's menu is
+	 * `chat-image-expand.test.mjs`'s, and the rendered half on a real page is
+	 * the evidence set's `markdown` state, whose capture refuses a frame
+	 * without it.
 	 */
 	const source = readFileSync(
 		join(
@@ -593,24 +362,4 @@ test("the shipped markdown renderer wires the image component in", async () => {
 		MARKDOWN_IMG_IMPORT,
 		"and the map's entry must be imported",
 	);
-});
-
-test("the menu itself refuses to render without actions", async () => {
-	await mount(async (api) => {
-		await api.render(
-			React.createElement(ImageActionsMenu, {
-				file: "shot.png",
-			}),
-		);
-		assert.equal(
-			api.document.querySelector("button"),
-			null,
-			"a relative-only source gets no trigger at all",
-		);
-		await api.render(React.createElement(ImageActionsMenu, { file: "blob:x" }));
-		assert.ok(
-			api.document.querySelector(TRIGGER),
-			"a blob picture gets its trigger",
-		);
-	});
 });
