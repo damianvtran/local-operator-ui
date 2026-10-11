@@ -22,6 +22,8 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/main/window-guards";',
 			'export * from "./src/main/window-guards-electron";',
+			'export * from "./src/main/supplement-mounts";',
+			'export * from "./src/shared/supplement-frame-url";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -397,6 +399,10 @@ test("a child frame may be the PDF blob or the backend's static route, nothing e
 		"about:blank",
 		"about:srcdoc",
 		"data:text/html;base64,PHNjcmlwdD4=",
+		// The supplement mount scheme is not a child-frame allowance either: it
+		// is admitted ONLY through its own one-shot permit (`guardNavigation`'s
+		// pre-verdict rule), so a bare spelling without a permit is refused here.
+		"lo-supplement://s/5ea1face0001/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"https://attacker.test/",
 		"http://127.0.0.1:1111/v1/auth/token",
 		"http://127.0.0.1:1111/v1/staticevil",
@@ -480,6 +486,148 @@ test("the trusted list is read at event time, not captured at install time", () 
 	assert.equal(
 		contents.emit("will-frame-navigate", mini).defaultPrevented,
 		false,
+	);
+});
+
+// --- the supplement frame's mount permit (memo §4.1) --------------------------
+
+/*
+ * The permit's OWN table, beside the guard wiring that consumes it: the arm/consume
+ * semantics (byte-exact, one-shot, idempotent for a standing URL, eviction fails
+ * closed) and every spelling the armable check must refuse. Round-1 R1 found the
+ * permit had no test at all while its header cited this suite; this is the table
+ * the header promises.
+ */
+test("the permit table refuses everything that is not the builder's own URL", () => {
+	const mounts = new guards.SupplementFrameMounts();
+	const url = guards.supplementMountUrl("5ea1face0001", "a".repeat(32));
+	assert.equal(guards.isArmableMountUrl(url), true);
+	for (const bad of [
+		undefined,
+		null,
+		42,
+		"",
+		"not a url",
+		"https://example.com/x",
+		"data:text/html;base64,PHNjcmlwdD4=",
+		"about:blank",
+		"blob:null/x",
+		// Uppercase ids: the shape is lowercase hex, and the round-trip check is
+		// what makes that "exactly".
+		`lo-supplement://s/5EA1FACE0001/${"a".repeat(32)}`,
+		`lo-supplement://s/5ea1face0001/${"A".repeat(32)}`,
+		// The host is the one constant segment.
+		`lo-supplement://S/5ea1face0001/${"a".repeat(32)}`,
+		`lo-supplement://s2/5ea1face0001/${"a".repeat(32)}`,
+		// Wrong lengths, an extra (or missing) segment.
+		`lo-supplement://s/5ea1face000/${"a".repeat(32)}`,
+		`lo-supplement://s/5ea1face0001/${"a".repeat(31)}`,
+		`lo-supplement://s/5ea1face0001/${"a".repeat(32)}/`,
+		`lo-supplement://s/5ea1face0001/${"a".repeat(32)}//`,
+		// Query, fragment, userinfo, port, percent-encoding.
+		`lo-supplement://s/5ea1face0001/${"a".repeat(32)}?q=1`,
+		`lo-supplement://s/5ea1face0001/${"a".repeat(32)}#f`,
+		`lo-supplement://user@s/5ea1face0001/${"a".repeat(32)}`,
+		`lo-supplement://s:8080/5ea1face0001/${"a".repeat(32)}`,
+		`lo-supplement://s/5ea1face0001%2Fa/${"a".repeat(32)}`,
+	]) {
+		assert.equal(guards.isArmableMountUrl(bad), false, String(bad));
+		assert.equal(mounts.arm(bad), false);
+	}
+	assert.equal(mounts.armedCount, 0);
+
+	// The cap refuses before any parsing work.
+	assert.equal(
+		guards.isArmableMountUrl(`lo-supplement://s/${"a".repeat(600_000)}`),
+		false,
+	);
+
+	// THE ONE-SHOT: byte-exact consumption, single use.
+	assert.equal(mounts.arm(url), true);
+	assert.equal(mounts.armedCount, 1);
+	assert.equal(mounts.consume(`${url}#x`), false, "no prefix/fragment match");
+	assert.equal(mounts.consume(`${url}/`), false);
+	assert.equal(mounts.consume(url), true);
+	assert.equal(
+		mounts.consume(url),
+		false,
+		"one-shot: a second match is nothing",
+	);
+	assert.equal(mounts.armedCount, 0);
+
+	// IDEMPOTENCE (round-1 R4): a second arm of a standing byte-identical URL
+	// collapses onto one permit, so the StrictMode double-effect cannot leak
+	// one; the single real navigation still consumes it.
+	assert.equal(mounts.arm(url), true);
+	assert.equal(mounts.arm(url), true);
+	assert.equal(mounts.armedCount, 1);
+	assert.equal(mounts.consume(url), true);
+	assert.equal(mounts.armedCount, 0);
+
+	// EVICTION fails CLOSED: past the cap the OLDEST permit is dropped, so the
+	// navigation that needed it is denied — never an unbounded list.
+	const digest = (i) => i.toString(16).padStart(32, "0");
+	const urls = Array.from({ length: 65 }, (_, i) =>
+		guards.supplementMountUrl("5ea1face0001", digest(i)),
+	);
+	for (const u of urls) assert.equal(mounts.arm(u), true);
+	assert.equal(mounts.armedCount, 64);
+	assert.equal(mounts.consume(urls[0]), false, "the oldest permit was evicted");
+	assert.equal(mounts.consume(urls[64]), true, "the newest stands");
+});
+
+test("guardNavigation admits an armed mount exactly once, byte-for-byte", () => {
+	const url = guards.supplementMountUrl(
+		"5ea1face0001",
+		"0123456789abcdef0123456789abcdef",
+	);
+	// Without a permit the scheme is refused like every other unknown child
+	// destination — the permit is the ONLY door, not a scheme allowance.
+	assert.equal(nav(url, false, [APP_FILE]).allowed, false);
+
+	const contents = fakeContents();
+	const mounts = new guards.SupplementFrameMounts();
+	guards.guardNavigation(
+		contents,
+		() => TRUSTED,
+		() => {},
+		mounts,
+	);
+	const emit = (u) =>
+		contents.emit("will-frame-navigate", {
+			url: u,
+			isMainFrame: false,
+			isSameDocument: false,
+		}).defaultPrevented;
+
+	// Not armed: denied.
+	assert.equal(emit(url), true);
+	// Armed: the mount passes once, and the permit is consumed by it.
+	assert.equal(mounts.arm(url), true);
+	assert.equal(emit(url), false);
+	assert.equal(
+		mounts.armedCount,
+		0,
+		"the permit is consumed by the one navigation",
+	);
+	// ...and never again.
+	assert.equal(emit(url), true);
+
+	// A byte-different sibling spelling does not ride the permit.
+	assert.equal(mounts.arm(url), true);
+	for (const sibling of [
+		`${url}#x`,
+		`${url}?x=1`,
+		url.replace("//s/", "//s2/"),
+		`${url}/`,
+		url.replace("lo-supplement:", "LO-SUPPLEMENT:"),
+	]) {
+		assert.equal(emit(sibling), true, sibling);
+	}
+	assert.equal(
+		mounts.armedCount,
+		1,
+		"no sibling spelling may spend the permit",
 	);
 });
 
@@ -826,15 +974,28 @@ test("html-preview frames its document with allow-scripts ALONE", () => {
 
 test("the main process installs every guard, before the first load", () => {
 	const src = code("src/main/index.ts");
+	/*
+	 * The main-window pin is a PATTERN, matching its mini-view siblings two
+	 * lines below: this feature added `supplementMounts` as the guard's fourth
+	 * argument and the formatter broke the call across lines, which the old
+	 * exact-string pin read as the guard gone missing. The intent the pin exists
+	 * for — the guard is called on the main window, before the first load —
+	 * does not change with the call's line count.
+	 */
+	const MAIN_GUARD = /guardNavigation\(\s*mainWindow\.webContents/;
 	for (const call of [
-		"guardNavigation(mainWindow.webContents",
 		"guardWindowOpen(",
 		"guardPermissions(session.defaultSession",
 		"guardPreviewResponses(session.defaultSession",
 		"guardDownloads(session.defaultSession",
 	])
 		assert.ok(src.includes(call), `index.ts must call ${call}`);
-	const guardAt = src.indexOf("guardNavigation(mainWindow.webContents");
+	assert.match(
+		src,
+		MAIN_GUARD,
+		"index.ts must call guardNavigation(mainWindow.webContents…",
+	);
+	const guardAt = src.search(MAIN_GUARD);
 	const loadAt = src.indexOf(
 		"mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)",
 	);

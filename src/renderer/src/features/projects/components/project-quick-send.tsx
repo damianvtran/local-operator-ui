@@ -37,6 +37,10 @@
  */
 
 import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
+import {
 	MessageInput,
 	type MessageInputHandle,
 	type MessageInputProps,
@@ -127,6 +131,13 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 	 * flash; the strip's own line is this one.
 	 */
 	const [sending, setSending] = useState(false);
+	/*
+	 * The published channel spend's gate, read here for the strip the composer
+	 * renders: this card shows the TARGET session's readings, and leaving the
+	 * flag unset on a backend with the channel ledger would print the
+	 * inference-only figure beside panes showing the published total.
+	 */
+	const capabilities = useDesktopCapabilities();
 
 	/*
 	 * THE DRAFT KEY IS THE TARGET'S OWN SESSION ID once one is chosen, so the
@@ -280,7 +291,17 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 				 * the snapshot is keyed by the session the strip ASKED about, and a target
 				 * that stopped being sendable is exactly the case that has to drop it.
 				 */
-				sessionStatus={frontend && target ? { frontend } : undefined}
+				sessionStatus={
+					frontend && target
+						? {
+								frontend,
+								costChannels: desktopFeatureEnabled(
+									capabilities.data,
+									"cost_channels",
+								),
+							}
+						: undefined
+				}
 				recordingProbe={recordingProbe}
 				/*
 				 * A STRIP WITH NOTHING TO SEND TO REFUSES ITS BOX AND SAYS WHY (review round
