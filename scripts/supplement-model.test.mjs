@@ -360,11 +360,17 @@ test("component mounts stay inside the aggregate budget", () => {
 	);
 	assert.equal(all.visible.length, 2);
 	assert.equal(all.hidden.length, 0);
-	// A first frame taller than the budget mounts nothing — the disclosure is the
-	// whole block, which is the only honest reading of "cumulative ≤ budget".
+	// A first frame taller than the budget STILL mounts (the reader came for it);
+	// only the frames beyond the budget wait behind the disclosure.
 	const none = model.planComponentMounts([component(480, "a")], 360);
-	assert.equal(none.visible.length, 0);
-	assert.equal(none.hidden.length, 1);
+	assert.equal(none.visible.length, 1);
+	assert.equal(none.hidden.length, 0);
+	const tallPair = model.planComponentMounts(
+		[component(480, "a"), component(480, "b")],
+		360,
+	);
+	assert.equal(tallPair.visible.length, 1);
+	assert.equal(tallPair.hidden.length, 1);
 	// The hint is clamped at the contract's bounds before it is planned.
 	assert.equal(
 		model.clampedHeightHint(component(999, "a")),
