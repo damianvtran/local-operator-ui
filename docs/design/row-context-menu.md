@@ -660,6 +660,15 @@ does not, and the register above has never carried one. The design round rules
 on the final spelling on the captured frames; this row tracks the label as
 shipped, so a flip is one word wide.
 
+**SETTLED: NO ELLIPSIS (design round 1 on #974, 2026-10-11).** The mark stays
+off — `Rename conversation` as shipped. This menu's three dialog openers are one
+register (`Archive conversation`'s confirmation, `Fork conversation`'s picker,
+`Rename conversation`'s picker), and a mark on one of three would mis-signal the
+other two as instant actions; the header's lone mark sits on the destructive
+confirm, where advance notice is worth most. A menu-wide convention would restyle
+all three openers and re-shoot every menu-open frame — not a rename-only flip.
+Recorded so the ruling is not re-litigated.
+
 **AND THE MOVE ROWS PRINT THROUGH THE JOINED SIBLING (round-1 design review,
 D1).** `⌘⇧↑`/`⌘⇧↓` above are the HANDLER's spellings; the menu renders
 `chatPinMoveCapJoined` (`⌘+⇧+↑`, `⌘+⇧+↓`), which `KeyboardShortcut` splits into
@@ -965,8 +974,10 @@ pass did not re-read stays labelled as what its pass measured, and the #920
 generation is the table's last two rows, read from its own frames. The seven-row
 pinned panel is **296 × 247 at 142,274**; the ordinary rows are **273 × 176**; the
 same 176 tall on `archived-row`'s 288-wide label; the withheld states are 140 tall
-twice and 144 once. Every panel is exactly one 32px plain row taller than its
-post-#893 predecessor, and the heights reproduce from the row-kind arithmetic:
+twice and 144 once. Every panel is one plain row taller than its post-#893
+predecessor — 32px on the four that read 144→176 and the pinned 215→247, 31px on
+the three that read 109/113→140/144 (the same sub-pixel rounding the 248-vs-247
+line below carries) — and the heights reproduce from the row-kind arithmetic:
 36+36+32+32+32+8 = 176 exact, 36+36+32+32+32+36+36+8 = 248 against the measured
 247, 36+32+32+32+8 = 140 twice, 36+36+32+32+8 = 144 once. The panel's `at` clamps
 up wherever the taller panel would overrun the 520-tall frame — 345 for the 176-tall
