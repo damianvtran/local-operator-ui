@@ -96,6 +96,12 @@ export type CodeReviewPaneBodyProps = {
 	onRefresh: () => void;
 	onClose: () => void;
 	nowMs: number;
+	/**
+	 * The loading line's reveal delay (design §4), a story/test control only:
+	 * the real pane never passes it (rows default to `PENDING_REVEAL_MS`);
+	 * stories pin the revealed frame with `0`.
+	 */
+	pendingRevealMs?: number;
 	/** The pane's own root, for a reveal request to focus (UX round 1, U11). */
 	rootRef?: Ref<HTMLDivElement>;
 };
@@ -105,7 +111,8 @@ const RowGroup: FC<{
 	label: string;
 	rows: DesktopCodeRequestsList["rows"];
 	nowMs: number;
-}> = ({ label, rows, nowMs }) => (
+	pendingRevealMs?: number;
+}> = ({ label, rows, nowMs, pendingRevealMs }) => (
 	<section data-code-review-group={label.toLowerCase()}>
 		<div
 			className={cn("flex items-baseline justify-between gap-2 px-3 pt-2 pb-1")}
@@ -115,7 +122,12 @@ const RowGroup: FC<{
 		</div>
 		<ul className={cn("flex flex-col")}>
 			{rows.map((row) => (
-				<CodeReviewRow key={row.key} row={row} nowMs={nowMs} />
+				<CodeReviewRow
+					key={row.key}
+					row={row}
+					nowMs={nowMs}
+					pendingRevealMs={pendingRevealMs}
+				/>
 			))}
 		</ul>
 	</section>
@@ -131,6 +143,7 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 	onRefresh,
 	onClose,
 	nowMs,
+	pendingRevealMs,
 	rootRef,
 }) => {
 	const cooling = coolingClauses(data?.cooling, nowMs);
@@ -273,7 +286,12 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 					) : (
 						<>
 							{groups.opened.length > 0 && (
-								<RowGroup label="Opened" rows={groups.opened} nowMs={nowMs} />
+								<RowGroup
+									label="Opened"
+									rows={groups.opened}
+									nowMs={nowMs}
+									pendingRevealMs={pendingRevealMs}
+								/>
 							)}
 							{groups.opened.length > 0 && groups.mentioned.length > 0 && (
 								<div className={cn("px-3 py-2")}>
@@ -285,6 +303,7 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 									label="Mentioned"
 									rows={groups.mentioned}
 									nowMs={nowMs}
+									pendingRevealMs={pendingRevealMs}
 								/>
 							)}
 							{(data?.tool_output_only_count ?? 0) > 0 && (

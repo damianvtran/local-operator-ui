@@ -11499,10 +11499,10 @@ export const STORIES = [
 	 * THE FOUR STATES THE PR BODY CARRIES are populated, empty, loading and error;
 	 * the other frames are the remaining rungs of §6 (link-only, the pane-level
 	 * cooling line, staleness, and the mixed partial failure where rows stay and
-	 * each carries its own caption) plus the bar's refreshing posture. The rail's
-	 * three frames are 220 tall against the others' 184: five items do not fit in
-	 * 184, and a clipped fifth door would be a frame of a layout the app does not
-	 * have.
+	 * each carries its own caption, and the pending first read's loading line)
+	 * plus the bar's refreshing posture. The rail's three frames are 220 tall
+	 * against the others' 184: five items do not fit in 184, and a clipped fifth
+	 * door would be a frame of a layout the app does not have.
 	 */
 	["code-review-pane--populated", 640, 960],
 	["code-review-pane--empty", 640, 300],
@@ -11513,10 +11513,23 @@ export const STORIES = [
 	["code-review-pane--rate-limited", 640, 340],
 	["code-review-pane--stale", 640, 340],
 	["code-review-pane--could-not-refresh", 640, 520],
+	/*
+	 * The pending first read (design §4's no-flicker pass): `pendingRevealMs={0}`
+	 * pins the REVEALED frame, so this still is the loading line the fix adds -
+	 * the reveal delay itself is a mechanism no still can show.
+	 */
+	["code-review-pane--pending", 640, 340],
 	["code-review-pane--refresh-failed", 640, 420],
 	["code-review-pane--refreshing", 640, 340],
 	["code-review-pane--narrow", 320, 460],
 	["code-review-pane--narrow-refresh-failed", 320, 420],
+	/*
+	 * The two states round 1's remediation changed, at the same 320px floor
+	 * (design round 1, D2): the pending loading line and the re-shot stale
+	 * copy, so the §10 floor claim has frames for exactly those states.
+	 */
+	["code-review-pane--narrow-pending", 320, 360],
+	["code-review-pane--narrow-could-not-refresh", 320, 560],
 	["code-review-pane--row-hover", 640, 260],
 	["code-review-pane--row-focus", 640, 260],
 	["navigation-panel-rail--code-item", 132, 220],
