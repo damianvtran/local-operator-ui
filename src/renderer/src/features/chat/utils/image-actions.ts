@@ -1,3 +1,4 @@
+import { blobAt } from "@shared/lib/blob-url-cache";
 import { mimeTypeForPath } from "./file-kind";
 
 /**
@@ -211,9 +212,20 @@ export const hasImageActions = (
 export function httpImageFetchable(source: string): boolean {
 	try {
 		const url = new URL(source);
+		/*
+		 * THE SCHEME IS PART OF THE PREDICATE, and it is `http:` only. The CSP
+		 * spells its loopback sources as `http://` with an explicit port; the
+		 * `https://localhost:1111` spelling is a different origin that the policy
+		 * does not admit, and a predicate one scheme wider than the policy offers
+		 * a copy that always fails (agent review round 1, R2).
+		 */
 		const loopback =
 			url.hostname === "localhost" || url.hostname === "127.0.0.1";
-		return loopback && (url.port === "1111" || url.port === "8080");
+		return (
+			url.protocol === "http:" &&
+			loopback &&
+			(url.port === "1111" || url.port === "8080")
+		);
 	} catch {
 		return false;
 	}
@@ -264,11 +276,15 @@ export function blobFromDataUrl(source: string): Blob {
  *   the viewers use), with the kind's MIME from the extension — the exact bytes
  *   on disk, capped at the bridge's 64 MiB ceiling;
  * - `data` decodes in memory (`blobFromDataUrl`) — no fetch, no CSP question;
- * - `blob` and `http` fetch the URL the picture is painted from. For `http` the
- *   call is only reachable where `httpImageFetchable` said the policy allows
- *   it; for `blob` the URL belongs to this document, which is the case the live
- *   evidence exercises end to end (the clipboard assertion in
- *   `docs/evidence/chat-image-actions/README.md`).
+ * - `blob` reads the bytes the page itself built the URL from
+ *   (`blob-url-cache.blobAt`) — the renderer's CSP admits `blob:` for `img-src`
+ *   and NOT for `connect-src`, so `fetch(blobUrl)` is refused by the page's own
+ *   policy before a request leaves (measured in the built app, QA round 1
+ *   Q-1), and the fetch was never needed: the bytes are already in this
+ *   document. A URL this document did not build has no bytes to hand over and
+ *   says so rather than reaching for a fetch the policy refuses;
+ * - `http` fetches the URL only where `httpImageFetchable` said the policy
+ *   admits the origin, and answers a non-2xx with its status.
  *
  * Throws with a sentence a toast can carry; the caller decides how loud.
  */
@@ -278,9 +294,16 @@ export async function resolveCopyableImage(
 	src?: string,
 ): Promise<Blob> {
 	if (kind === "data") return blobFromDataUrl(file);
-	if (kind === "blob" || kind === "http") {
+	if (kind === "blob") {
+		const blob = blobAt(src ?? file);
+		if (blob === null) {
+			throw new Error("These image bytes are not available in this window");
+		}
+		return blob;
+	}
+	if (kind === "http") {
 		const response = await fetch(src ?? file);
-		if (kind === "http" && !response.ok) {
+		if (!response.ok) {
 			throw new Error(`The image server answered ${response.status}`);
 		}
 		return response.blob();

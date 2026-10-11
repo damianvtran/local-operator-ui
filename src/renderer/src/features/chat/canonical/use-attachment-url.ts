@@ -44,6 +44,7 @@ import {
 	publish,
 	release,
 	retain,
+	revokeBlobUrl,
 } from "@shared/lib/blob-url-cache";
 import { useEffect, useState } from "react";
 import type { TranscriptImage } from "./transcript-reducer";
@@ -136,8 +137,10 @@ function fetchAttachment(
 			const url = createBlobUrl(result.data as BlobPart, result.mimeType);
 			if (record.holders <= 0) {
 				// Everyone who asked for this is gone. Publishing it would strand an
-				// entry no unmount can ever release, so it is revoked here instead.
-				URL.revokeObjectURL(url);
+				// entry no unmount can ever release, so it is revoked here instead
+				// (the cache's own revoke, so the bytes it keeps for `Copy image`
+				// go with the URL).
+				revokeBlobUrl(url);
 				return null;
 			}
 			publish(digest, url);

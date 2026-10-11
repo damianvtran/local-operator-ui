@@ -185,6 +185,21 @@ export const ImageActionsMenu = ({
 					<Button
 						variant="ghost"
 						size="icon-sm"
+						/*
+						 * THE REVEALED TRIGGER'S OWN GROUND (design round 1, D1). A ghost
+						 * button has no fill at rest, so with the pointer merely OVER THE
+						 * PICTURE (the reveal state this menu lives in) its glyph sat on
+						 * whatever pixels the picture painted: measured 1.63:1 light
+						 * palette over a dark picture, 1.81:1 inverse, against the 3:1 icon
+						 * floor. The chip makes the glyph read against a TOKEN on every
+						 * surface and both palettes (inkMuted on accentWash: 8.19 dark /
+						 * 7.72 light, the pair the open state already proved), and it is
+						 * invisible at rest anyway - the wrapper hides the control until
+						 * hover or focus, so the reveal stays one step and the UI stays
+						 * uncluttered. The contract row lives in
+						 * `scripts/contrast-contract.mjs` ("image actions trigger").
+						 */
+						className="bg-accent-wash"
 						aria-label={resolvedAriaLabel}
 						// The trigger sits inside a clickable picture; without this the
 						// picture's own press (expansion) fires behind the menu.
