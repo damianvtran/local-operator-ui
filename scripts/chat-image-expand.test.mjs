@@ -34,7 +34,7 @@
  *   7. the picture's own accessible name states the ACTION, not only the thing
  *      (round 1, UX U1-1) — `aria-label`, because the action used to reach a
  *      reader only as the description off `title`;
- *   8. the file-actions menu beside a conversation picture stays reachable without
+ *   8. the image actions menu beside a conversation picture stays reachable without
  *      a pointer (round 1, review R1-1). Its wrapper used to be `invisible`, i.e.
  *      `visibility: hidden`, which takes the trigger out of the tab order — and the
  *      four actions in it are the ones the picture's own click used to perform
@@ -201,10 +201,12 @@ const PORTRAIT_BASE64 =
 	"iVBORw0KGgoAAAANSUhEUgAAAAIAAAAGCAIAAABmRdhlAAAAEElEQVR42mMIqDgBRAyEKQCEWRLBtZF+SAAAAABJRU5ErkJggg==";
 /**
  * The legacy shape, which is a PATH on disk and a URL to paint from two different
- * strings: `file` is what the picture is called and what its file-actions menu
- * acts on, `src` is what the browser loads. The two must differ here — the
- * filename of a `data:` URI is the base64 tail, and a picture with no path has no
- * file-actions menu, so a URI for both would test neither.
+ * strings: `file` is what the picture is called and what its actions menu
+ * classifies, `src` is what the browser loads. The two must differ here — the
+ * filename of a `data:` URI is the base64 tail — and the kinds are covered on
+ * both sides now: this path-backed shape carries the file-shaped actions, and
+ * the canonical cases below carry the menu a URI-only picture gets
+ * (`scripts/image-actions.test.mjs` pins the per-kind matrix those menus read).
  */
 const FILE_PATH = "/tmp/image-expand/invoices-march.png";
 
@@ -269,10 +271,12 @@ const pictureButton = (document) =>
 	document.querySelector(PICTURE_IMAGE)?.closest("button") ?? null;
 
 /**
- * The file-actions trigger beside a conversation picture, and the wrapper that
- * reveals it. Named by shipped attributes rather than a test hook, as above.
+ * The image actions trigger beside a conversation picture, and the wrapper that
+ * reveals it. Named by shipped attributes rather than a test hook, as above:
+ * the trigger's accessible name is the `supplement-row.tsx` vocabulary
+ * (`Actions for <name>`), and the name here is the file's own basename.
  */
-const FILE_ACTIONS = 'button[aria-label="File actions"]';
+const FILE_ACTIONS = 'button[aria-label="Actions for invoices-march.png"]';
 const FILE_ACTIONS_WRAPPER = ".file-actions-menu";
 /**
  * The two class TOKENS that made the reveal untabbable, hoisted here because
@@ -691,7 +695,7 @@ test("the picture's accessible name states the action, not only the thing", asyn
 	});
 });
 
-test("the file-actions menu stays reachable without a pointer", async () => {
+test("the image actions menu stays reachable without a pointer", async () => {
 	await mount(async (api) => {
 		await api.render(
 			React.createElement(ImageAttachment, {
@@ -703,7 +707,7 @@ test("the file-actions menu stays reachable without a pointer", async () => {
 		const wrapper = api.document.querySelector(FILE_ACTIONS_WRAPPER);
 		assert.ok(
 			wrapper,
-			`a picture on disk carries its file actions (${FILE_ACTIONS_WRAPPER})`,
+			`a picture on disk carries its image actions (${FILE_ACTIONS_WRAPPER})`,
 		);
 		/*
 		 * The contract, because this bundle loads no stylesheet and jsdom has no
@@ -737,7 +741,7 @@ test("the file-actions menu stays reachable without a pointer", async () => {
 			 * (U3-1, Q3-1), and this list is deliberately written so a wrong hook CANNOT
 			 * pass it: the round-2 tokens keyed on `data-state=open`, and on this
 			 * subtree that attribute belongs to the Tooltip —
-			 * `file-actions-menu.tsx` nests `<Tooltip><DropdownMenuTrigger asChild>`
+			 * `image-actions-menu.tsx` nests `<Tooltip><DropdownMenuTrigger asChild>`
 			 * and `ui/tooltip.tsx`'s `TooltipTrigger asChild` owns it — so it reads
 			 * "closed" while the menu is genuinely open and the rule could never fire.
 			 * The assertions below pin the attribute the dropdown DOES own, and the two
