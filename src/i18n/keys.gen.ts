@@ -51,7 +51,9 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 };
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
-export type MessageParams = Record<never, never>;
+export type MessageParams = {
+	"ui.settings.language.effective": { locale: string };
+};
 
 export type MessageKey = keyof MessageParams;
 
