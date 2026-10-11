@@ -1,3 +1,13 @@
 {
-	"ui.settings.language.effective": "In effect: {locale}"
+	"ui.settings.language.effective": "In effect: {locale}",
+	"ui.settings.language.external_notice": "Interface language changed elsewhere — now {language}.",
+	"ui.settings.language.dialog.title": "Interface language",
+	"ui.settings.language.dialog.description": "Applies across the app and the terminal — the same setting the settings page edits.",
+	"ui.settings.language.dialog.save": "Save",
+	"ui.settings.language.dialog.saved": "Saved",
+	"ui.settings.language.dialog.loading": "Loading the current setting...",
+	"ui.settings.language.palette_action": "Change interface language",
+	"ui.settings.language.dialog.unavailable": "This backend does not serve the settings this dialog edits.",
+	"ui.settings.language.dialog.retry": "Retry",
+	"ui.settings.language.dialog.retrying": "Retrying"
 }

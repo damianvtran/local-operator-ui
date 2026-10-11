@@ -34,7 +34,6 @@ import type {
 	BackendSettings,
 } from "@shared/api/local-operator/desktop-api";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
-import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -43,6 +42,7 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button } from "@shared/components/ui";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
+import { renegotiateLanguage } from "@shared/i18n/language-writes";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -208,11 +208,8 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	 */
 	const renegotiateIfLanguage = useCallback(
 		(key: string) => {
-			if (key === LANGUAGE_SETTING_KEY) {
-				void queryClient.invalidateQueries({
-					queryKey: desktopKeys.capabilities,
-				});
-			}
+			/* The mark + invalidation live in one seam shared with the dialog. */
+			if (key === LANGUAGE_SETTING_KEY) renegotiateLanguage(queryClient);
 		},
 		[queryClient],
 	);
