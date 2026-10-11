@@ -1,0 +1,49 @@
+# The watchdog's message set, captured from the shipped script (2026-10-11)
+
+The DESIGN round (round 1, D1) found that this directory's README pointed at
+`post-fix-escalation.txt` for the watchdog's wait notices - and that file is the
+installer SPAWNER's ladder and contains none of them. This file is the capture
+that sentence should have named.
+
+## How it was taken
+
+The script was emitted by the shipped `buildWatchdogPlan` (`src/main/update-
+install.ts`), driven against a LIVE app process and a LIVE recorded installer
+pid (both stay up for the whole run), with the notifier substituted: the
+`osascript` shim timestamps its argv into a log, so no real notification fired.
+The plan's bounds are COMPRESSED for the capture - notice 60 s, fallback 62 s,
+soft 70 s, hard 75 s, 1 s poll - and the 60 s notice doubles as the exact-minute
+reading ("waiting 1 min", round-1 D2), with the following notices showing the
+seconds-bearing form ("1 min 2 s"). PRODUCTION bounds are notice 15 s, fallback
+160 s (= 2 x (60 + 20)), soft 600 s, hard 1800 s; the elapsed readings scale,
+the sentences do not.
+
+Raw log (timestamp | notification), verbatim:
+
+```
+2026-10-11T06:57:56Z -e on run argv -e display notification (item 1 of argv) with title (item 2 of argv) -e end run Waiting for Local Operator to close so the update can install (waiting 1 min). No action is needed yet. Local Operator
+2026-10-11T06:57:58Z -e on run argv -e display notification (item 1 of argv) with title (item 2 of argv) -e end run The update is still waiting for Local Operator to close (waiting 1 min 2 s). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself. Local Operator
+2026-10-11T06:58:06Z -e on run argv -e display notification (item 1 of argv) with title (item 2 of argv) -e end run The update is still waiting for Local Operator to close (waiting 1 min 10 s). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself. Local Operator
+2026-10-11T06:58:11Z -e on run argv -e display notification (item 1 of argv) with title (item 2 of argv) -e end run The update is still waiting for Local Operator to close (waiting 1 min 15 s). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself. Local Operator
+```
+
+Interpretation against the four sites in `src/main/update-install.ts`:
+
+- 06:57:56 (+60 s) - the wait's first notice: phase, elapsed, and the no-action
+  clause (round-1 UX U3). The exact-minute form is round-1 D2's fix.
+- 06:57:58 (+62 s) - the fallback: the action is named and it says "quit Local
+  Operator (Force Quit if it does not respond) and leave it closed until it
+  opens again by itself" (round-1 UX U1/U2) - NO "and reopen".
+- 06:58:06 (+70 s) - the SOFT bound with the app STILL RUNNING: the wait copy,
+  not "Keep Local Operator closed" (round-1 UX U4's branch).
+- 06:58:11 (+75 s) - the hard bound, app-still-running arm: the fallback copy
+  again; the app-gone arm (which keeps "Local Operator is opening again") does
+  not fire here, and the watched process was never launched into.
+
+`launches.log` is absent: with the app still running the watchdog exits without
+launching (the Code=-9-abort avoidance), which is what the capture shows.
+
+The copy is pinned in `scripts/update-robustness.test.mjs` - both the plan-text
+assertions and the executed case "the wait for the app to close speaks, and the
+hard bound does not lie about a running app" - so these strings cannot drift
+silently between this capture and the script.

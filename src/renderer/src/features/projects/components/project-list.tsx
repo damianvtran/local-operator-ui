@@ -57,6 +57,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 import type { FC, KeyboardEvent as ReactKeyboardEvent } from "react";
@@ -248,6 +249,9 @@ export const ProjectList: FC<ProjectListProps> = ({
 	onClearFilters,
 	teamLabelFor = (name) => name,
 }) => {
+	/* The reader's locale for the row meta: device before a backend answers,
+	 * the backend's resolved language after (the i18n store). */
+	const locale = useI18nLocale();
 	/*
 	 * ORDER FIRST, THEN GROUP: an explicit sort orders the rows and
 	 * `groupByTeam` buckets them without touching the order inside a bucket, so
@@ -422,12 +426,10 @@ export const ProjectList: FC<ProjectListProps> = ({
 						>
 							{group.items.map((project) => {
 								const meta = new Map(
-									listRowMeta(
-										project,
-										typeof navigator === "undefined"
-											? undefined
-											: navigator.language,
-									).map((entry) => [entry.key, entry.text]),
+									listRowMeta(project, locale).map((entry) => [
+										entry.key,
+										entry.text,
+									]),
 								);
 								const milestones = milestoneCountLabel(
 									project.milestones_completed,

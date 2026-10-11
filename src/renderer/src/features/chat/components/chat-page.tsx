@@ -1,4 +1,8 @@
 import {
+	useAidaDisplayName,
+	useAidaTarget,
+} from "@features/aida/use-aida-target";
+import {
 	backendPaneSentence,
 	compatibilityBannerShown,
 } from "@shared/api/local-operator/backend-error";
@@ -104,6 +108,7 @@ import {
 	effectiveGate,
 } from "../ask-queue";
 import { canonicalTranscriptTerminal } from "../canonical/transcript-pane";
+import { useOpenPrefetch } from "../canonical/use-open-prefetch";
 import {
 	ownerAnswered,
 	stoppedAfterAdmission,
@@ -157,11 +162,14 @@ import {
 } from "./chat-header-identity-model";
 import type { DirectoryWritePath } from "./directory-indicator";
 import {
+	type AidaWakeIdentity,
 	deriveRunDetails,
 	mcpErrorTexts,
+	useJobControls,
 	useMcpRemedy,
 	useMonitorControls,
 	useRunPanelMcpServers,
+	useWakeControls,
 } from "./run-details";
 import { useSlashDispatch } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
@@ -238,6 +246,16 @@ function SessionPanel({
 	 */
 	const streamId = sessionId ?? draft?.warmId;
 	/*
+	 * Read BEFORE the stream, because the stream is the first thing that needs it:
+	 * the open-frame negotiation is a request flag, and the open is the request
+	 * that matters most (`docs/DESKTOP_API.md`, "The open frame"). Cached with a
+	 * 60 s staleTime and resolved by the shell long before a conversation can be
+	 * pressed, so this is a store read rather than a request - which is why the
+	 * value is correct on this pane's FIRST render and not one commit later, when
+	 * the subscription would already have gone out.
+	 */
+	const panelCapabilities = useDesktopCapabilities();
+	/*
 	 * The third answer is the one only this pane can give: whether `streamId`
 	 * names a session a page can be owed for, or a DRAFT's bridge subscription
 	 * (`useCanonicalSessionStream`'s own note carries why the hook cannot tell
@@ -255,14 +273,45 @@ function SessionPanel({
 		 * rule; the value is the one this panel already computed for its key.
 		 */
 		identity,
+		/*
+		 * THE REST OF THE PANE'S NEGOTIATION, as one object (agent review round 1,
+		 * F1): `identity` stays the LAST POSITIONAL argument, which is what
+		 * `warm-session.test.mjs` pins and what the echo registry's keying actually
+		 * depends on. Future inputs join this object rather than shifting a fifth
+		 * positional argument past the identity every call site repeats.
+		 */
+		{
+			/*
+			 * Fail-closed: an unanswered capability leaves today's page exactly as it
+			 * was, and the pane's later `/history` reads pick the flag up the moment the
+			 * answer is there.
+			 */
+			openFrame: desktopFeatureEnabled(panelCapabilities.data, "open_frame"),
+		},
 	);
 	useDesktopWatchLease(streamId, canonical.subscriptionId);
-	// Read here rather than threaded from the page: the query is cached with a
-	// 60 s staleTime, so this is a store read and not a second request.
-	const panelCapabilities = useDesktopCapabilities();
 	// Fired from the composer's first keystroke, never from this mount - see
 	// `useWarmSession` for why browsing must not spawn runtimes.
 	const warm = useWarmSession(sessionId, panelCapabilities.data);
+	/*
+	 * The two reads the transcript's own chrome depends on, started here rather
+	 * than from the transcript's mount: this pane is what OPENS the conversation,
+	 * and it mounts with the stream (~26 ms into the open, measured) where the
+	 * transcript mounts with the sidebar and the route (~115 ms) - by which time
+	 * the snapshot it paints has begun to arrive. See the hook for which read is
+	 * gated on what, and why neither waits for anything.
+	 */
+	/*
+	 * The BOOLEAN, not `panelCapabilities.data`: the object is a new reference on
+	 * every capability render, and the prefetch effect keys on what it is given —
+	 * so the object made the open fire its checkpoint read twice (agent review
+	 * round 1, R3). `desktopFeatureEnabled` is the same arm the hook applies.
+	 */
+	const settingsAdvertised = desktopFeatureEnabled(
+		panelCapabilities.data,
+		"settings",
+	);
+	useOpenPrefetch(sessionId, settingsAdvertised);
 	/*
 	 * Publish the draft-warm capability the way the sidebar publishes
 	 * `cataloguePageable`: the store refuses to mint on its own (it must not
@@ -953,6 +1002,31 @@ function SessionPanel({
 	 */
 	const monitorControls = useMonitorControls({ sessionId });
 	const capabilities = useDesktopCapabilities();
+	/*
+	 * The pane's wake cancel, taken HERE beside the monitor controls for their
+	 * reason: this component owns the session identity. The guard's facts are read
+	 * at the same level, off the SAME shared `aida.status` cache entry the
+	 * sidebar reads (`use-aida-target.ts`), so the pane and the page cannot come
+	 * to disagree about whose conversation this is; the status read is what makes
+	 * the arm fail closed while her identity is unknown.
+	 */
+	const wakeControls = useWakeControls({ sessionId });
+	/*
+	 * The pane's job cancel, taken HERE beside the monitor and wake controls for
+	 * their reason: this component owns the session identity, and the Jobs
+	 * section's confirmation and refusal stay presentational props. The hook
+	 * owns the retry policy and the canonical re-read (`use-job-controls.ts`).
+	 */
+	const jobControls = useJobControls({ sessionId });
+	const wakeAidaEnabled = desktopFeatureEnabled(capabilities.data, "aida", 1);
+	const wakeAidaTarget = useAidaTarget(wakeAidaEnabled);
+	const wakeAidaName = useAidaDisplayName();
+	const wakeAida: AidaWakeIdentity = {
+		capability: wakeAidaEnabled,
+		statusResolved: wakeAidaTarget.isSuccess,
+		sessionId: wakeAidaTarget.data?.session_id ?? null,
+		name: wakeAidaName,
+	};
 	/*
 	 * The child reader is the one part of the panel that needs a route an older
 	 * backend does not have (`docs/run-sidebar.md` § 10.2), so it is the part that
@@ -4043,6 +4117,18 @@ function SessionPanel({
 						 * would then refuse (round 1, U3).
 						 */
 						effortEntities: effortEntities.data?.entities,
+						/*
+						 * The published per-channel spend's gate (the cost-channels project):
+						 * `features.cost_channels` is what promises the snapshot's
+						 * `spend_channels` object, and the strip reads it under this flag
+						 * only. In the deps beside `effortEntities`, for its reason: the
+						 * capability answer can land after the first paint and the memo
+						 * must re-evaluate when it does.
+						 */
+						costChannels: desktopFeatureEnabled(
+							capabilities.data,
+							"cost_channels",
+						),
 					}
 				: undefined,
 		[
@@ -4053,6 +4139,7 @@ function SessionPanel({
 			canonical.pendingModel,
 			stableDispatchFromControl,
 			effortEntities.data,
+			capabilities.data,
 		],
 	);
 
@@ -4380,6 +4467,16 @@ function SessionPanel({
 										onOpenDraftPicker: draftPickable
 											? openDraftPicker
 											: undefined,
+										/*
+										 * Inert for a draft today — no session, so no channel
+										 * ledger — but passed under the SAME gate as the live
+										 * branch, so a preview that some day carries the object
+										 * is read by one rule rather than a draft-only copy.
+										 */
+										costChannels: desktopFeatureEnabled(
+											capabilities.data,
+											"cost_channels",
+										),
 									}
 								: draftResolution
 									? {
@@ -4395,6 +4492,11 @@ function SessionPanel({
 											/* No snapshot and no reading: the draft's model is NOT resolved. */
 											draftResolved: false,
 											draftResolution,
+											/* Inert here too; see the branch above. */
+											costChannels: desktopFeatureEnabled(
+												capabilities.data,
+												"cost_channels",
+											),
 										}
 									: undefined
 					}
@@ -4413,6 +4515,9 @@ function SessionPanel({
 					mcpGrantRunning={mcpGrantRunning}
 					mcpRemedy={mcpRemedy}
 					monitorControls={monitorControls}
+					wakeControls={wakeControls}
+					jobControls={jobControls}
+					wakeAida={wakeAida}
 					childrenOpenable={childrenOpenable}
 					mentionsEnabled={mentionsEnabled}
 					mentionsUnsupported={mentionsUnsupported}

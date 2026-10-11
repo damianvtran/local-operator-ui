@@ -158,6 +158,20 @@ export const ATTACHMENT_UNAVAILABLE_COPY =
 	"could not be displayed. Its stored copy is not available to this reader.";
 
 /**
+ * What a digest-backed VIDEO row can honestly say when its bytes do not arrive
+ * or do not decode.
+ *
+ * The same fact as `ATTACHMENT_UNAVAILABLE_COPY`, in the player's own material
+ * verb — "played" for "displayed" (design spec §4, V7: the only copy delta the
+ * video seam adds). Everything the sibling's comment argues applies unchanged:
+ * the two causes a 404 can mean (an entry never written, one the store pruned)
+ * are indistinguishable from it, and no "may have" clause makes a cause this
+ * code cannot observe honest.
+ */
+export const VIDEO_UNAVAILABLE_COPY =
+	"could not be played. Its stored copy is not available to this reader.";
+
+/**
  * What the reader sees instead of a torn-page glyph.
  *
  * Voice rule: what happened, what it means, what to do. The name says which

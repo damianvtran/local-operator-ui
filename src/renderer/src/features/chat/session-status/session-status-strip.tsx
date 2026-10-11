@@ -16,7 +16,10 @@ import { ContextWheel } from "./context-wheel";
 import type { ContextReading } from "./session-context";
 import { contextReading, contextTooltipLines } from "./session-context";
 import {
+	type SessionCost,
 	type SessionCostInput,
+	type SpendChannelsReading,
+	channelBreakdown,
 	costTooltip,
 	sessionCost,
 } from "./session-cost";
@@ -85,25 +88,28 @@ import {
  * so they read as facts one step below the controls rather than as four more
  * buttons.
  *
- * WHICH LINE they occupy is a container query on `@container/chatcol`, not a
- * viewport breakpoint: above 750px of column (`CHAT_ROW_INLINE_PX`, the
- * composer row's own threshold - which the 2026-09-26 restore put back in
- * step with `CHAT_MEASURE`'s own 750, after the redesign had narrowed that to
- * 688) the cluster is inline and pushed right by
- * its `ml-auto`; below it the cluster
- * takes the row's first line in full and the controls keep the second, which is
- * the shape these readings had when they had a row of their own. So the narrow
- * case continues rather than being replaced, and no reading needs a compact
- * spelling to survive it.
+ * The cluster is INLINE at every width, inside the composer's ONE control row
+ * (design round 2, D21: "one control row, 32px, always one line, at every
+ * width"). It never wraps and never paints under the controls: the model name
+ * truncates to its floor, and the VALUE readings step out of the row on a
+ * measured ladder when the column cannot hold them - duration first, then
+ * effort, then cost, context last, which is the terminal band's own
+ * `_DROP_LADDER` order. Issue #918 is the narrow half of that ladder; the
+ * thresholds and the frames that derive them are in
+ * `docs/evidence/composer-readings-shed/`.
  *
- * The cluster wraps internally as well as the row: at a column at its floor
- * (measured at 220, the floor of that era) it folds onto two lines while the
- * button line stays intact and no
- * reading leaves the composer box. Only the model name truncates, because it is
- * the one item with unbounded length and the one whose full value the tooltip
- * already carries — and it is floored, so a truncated name still names
- * something. Truncating a value reading (`≥$0.0…`, `52.5%/40…`) would be a false
- * or unverifiable claim, which § 8 forbids.
+ * The ladder is a container query on `@container/chatcol`, not a viewport
+ * breakpoint, because what narrows is the column; and it is stated on the
+ * STATE as well as the width, because a third control box costs the row 36px
+ * and no container query can see a sibling appear (issue #788; see the
+ * duration reading's comment).
+ *
+ * Nothing else yields, and nothing is compacted: a truncated value reading
+ * (`≥$0.0…`, `52.5%/40…`) would be a false or unverifiable claim (§ 8), so a
+ * value reading is either whole or absent. Only the model name truncates,
+ * because it is the one item with unbounded length and the one whose full
+ * value the tooltip already carries — and it is floored, so a truncated name
+ * still names something.
  */
 
 export type SessionStatusStripProps = {
@@ -240,6 +246,24 @@ export type SessionStatusStripProps = {
 	 * well as the width. See the reading's own comment for the measurements.
 	 */
 	controlsThirdBox?: boolean;
+	/**
+	 * Whether the backend advertises `features.cost_channels` — the gate for the
+	 * published per-channel spend (the cost-channels project's wire object).
+	 *
+	 * TOLD, never queried here, and told for the reason `held` and `draft` are:
+	 * this component calls no query hooks — it renders in stories AND in the
+	 * Node `renderToStaticMarkup` harness (`composer-readings.test.mjs`), which
+	 * has no query client — so the capability is the pane's fact, read once by
+	 * the pane from `useDesktopCapabilities` and passed down.
+	 *
+	 * False/absent keeps TODAY's rendering exactly: the legacy inference-only
+	 * port in `session-cost.ts`. When true AND the snapshot carries a usable
+	 * `spend_channels` object, the spend reading shows the backend's PUBLISHED
+	 * grand total (never a locally re-summed one) and its tooltip carries the
+	 * by-channel breakdown; `session-cost.ts` owns both rules, including the
+	 * fallback to legacy for a malformed or future-version object.
+	 */
+	costChannels?: boolean;
 	className?: string;
 };
 
@@ -427,6 +451,72 @@ export const READINGS_DROPPED_NOTE =
 export const FAST_MODE_ON_NOTE = "Fast mode on";
 
 /**
+ * How wide the channel variant's tooltip is allowed to be.
+ *
+ * The primitive's 256 px measure wrapped every breakdown row onto two lines
+ * with its amount orphaned behind a dangling dash (measured: 34.8 px per row;
+ * design round 1, D3). 22 rem leaves the longest fixture name
+ * (`Inference · anthropic/claude-sonnet-5-5`) and its amount on ONE line with
+ * room to spare, inside the 320-360 px the design asked for; every other
+ * tooltip in the app keeps the primitive's own measure.
+ */
+const CHANNEL_TOOLTIP_WIDTH = "max-w-[22rem]";
+
+/**
+ * The channel variant of the spend tooltip: a two-column grid, one row per
+ * published record.
+ *
+ * WHY ITS OWN BODY rather than `TooltipLines`: the flat-line form mushed four
+ * registers — machine figure, prose, the by-basis composition and the rows —
+ * into one run of muted 12 px lines, and every row wrapped. Here the figure
+ * stays the mono machine voice, the prose explains, and each row is a grid: the
+ * name left, its money right-aligned mono so a column of money can be scanned,
+ * the basis word dropping to a dim second line where it reads as a qualifier
+ * rather than as part of the name (design round 1, D3/D10).
+ */
+const ChannelTooltipBody: FC<{
+	cost: SessionCost;
+	reading: SpendChannelsReading;
+}> = ({ cost, reading }) => {
+	const breakdown = channelBreakdown(reading);
+	return (
+		<span className="flex flex-col gap-1">
+			<span className="font-mono text-mono-sm text-ink">{cost.text}</span>
+			<span className="text-ink-muted">{costTooltip(cost)}</span>
+			{breakdown.planClause && (
+				<span className="text-ink-muted">{breakdown.planClause}</span>
+			)}
+			{breakdown.summary && (
+				<span className="text-ink-muted">{breakdown.summary}</span>
+			)}
+			{/*
+			 * The rows are their own group, spaced off the prose above so the
+			 * three registers read as three (D3). The key carries the index
+			 * because two published rows may share a name (the same model on
+			 * two units, say) — the object has no client-side id.
+			 */}
+			{breakdown.rows.length > 0 && (
+				<span className="mt-1 flex flex-col gap-1.5">
+					{breakdown.rows.map((row, index) => (
+						<span key={`${index}:${row.name}`} className="flex flex-col">
+							<span className="flex items-baseline justify-between gap-3">
+								<span className="min-w-0">{row.name}</span>
+								<span className="shrink-0 font-mono text-mono-sm">
+									{row.amount}
+								</span>
+							</span>
+							{row.basis && (
+								<span className="text-ink-dim text-meta-sm">{row.basis}</span>
+							)}
+						</span>
+					))}
+				</span>
+			)}
+		</span>
+	);
+};
+
+/**
  * One reading, as a button when it can be opened and a label when it cannot.
  *
  * The two forms are one component so a reading that loses its picker (a model
@@ -464,6 +554,15 @@ const Reading: FC<{
 	held?: boolean;
 	children: ReactNode;
 	className?: string;
+	/**
+	 * Applied to the TOOLTIP PANEL rather than to the trigger.
+	 *
+	 * The primitive caps every panel at `max-w-64`; the channel breakdown needs
+	 * a wider measure so its rows do not wrap (see `CHANNEL_TOOLTIP_WIDTH`).
+	 * Passed through rather than forked because the primitive already owns the
+	 * panel's chrome and `cn` (tailwind-merge) resolves the width override.
+	 */
+	tooltipClassName?: string;
 }> = ({
 	tooltip,
 	label,
@@ -472,6 +571,7 @@ const Reading: FC<{
 	held = false,
 	children,
 	className,
+	tooltipClassName,
 }) => {
 	/*
 	 * The mark, in both registers this component speaks: the accessible name,
@@ -503,7 +603,7 @@ const Reading: FC<{
 		tooltip
 	);
 	return onOpen ? (
-		<Tooltip content={body}>
+		<Tooltip content={body} className={tooltipClassName}>
 			<button
 				type="button"
 				onClick={onOpen}
@@ -514,7 +614,7 @@ const Reading: FC<{
 			</button>
 		</Tooltip>
 	) : readout ? (
-		<Tooltip content={body}>
+		<Tooltip content={body} className={tooltipClassName}>
 			<span
 				/* The tab stop is deliberate: it keeps the tooltip reachable from the
 				   keyboard (see the prop's own note). The rule's remedy - dropping it -
@@ -529,7 +629,7 @@ const Reading: FC<{
 			</span>
 		</Tooltip>
 	) : (
-		<Tooltip content={body}>
+		<Tooltip content={body} className={tooltipClassName}>
 			{/*
 			 * A real `button` with `aria-disabled`, following the read-only
 			 * working-directory chip rather than inventing a second idiom for the
@@ -770,6 +870,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	draftResolution,
 	readingsDropped = false,
 	controlsThirdBox = false,
+	costChannels = false,
 	className,
 }) => {
 	/*
@@ -870,7 +971,9 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 		context_window: frontend?.context_window,
 		context_is_estimate: frontend?.context_is_estimate,
 	});
-	const cost = sessionCost(frontend ?? NO_SPEND, frontend?.last_usage);
+	const cost = sessionCost(frontend ?? NO_SPEND, frontend?.last_usage, {
+		costChannels,
+	});
 	/*
 	 * Active time: banked seconds plus the open turn, or `null` for a session
 	 * that has done nothing. A draft needs no branch here — its
@@ -947,20 +1050,19 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				/*
 				 * Where the cluster sits in the composer's button row.
 				 *
-				 * The row is `flex-wrap`, so below 750px of COLUMN the cluster takes
-				 * the row's first line in full (`order-first basis-full`) and the
-				 * controls keep the second — the shape these readings had as a row of
-				 * their own, which is what keeps the narrow case carrying every reading
-				 * rather than a compacted spelling. A draft, a live session and a
+				 * The narrow case SHEDS rather than re-arranging. The two classes
+				 * that used to give the cluster a line of its own below 750px of
+				 * column are gone with the two-line control row (design round 2,
+				 * D21 - the note below); what the narrow row does instead is give up
+				 * readings, one measured step at a time, on the ladder stated with
+				 * the duration reading (issue #918). A draft, a live session and a
 				 * restored one all take this rule; only the contents vary (R15).
 				 *
-				 * 750 is `CHAT_ROW_INLINE_PX` - the composer ROW's own measurement, as the
-				 * number in `chat-measure.ts` states - so the app has one "wide column"
-				 * threshold for the composer band rather than two that agree by accident,
-				 * and it is keyed on
-				 * `@container/chatcol` rather than the viewport: with the canvas open at
-				 * a 1380px window the column is at its FLOOR - 480px since §I, 220 before it -
-				 * while `md:` is still comfortably active (see `chat-measure.ts`).
+				 * The ladder's steps are container queries on `@container/chatcol`
+				 * and not viewport breakpoints, because what narrows is the column:
+				 * with the canvas open at a 1380px window the column is at its
+				 * FLOOR - 480px since §I, 220 before it - while `md:` is still
+				 * comfortably active (see `chat-measure.ts`).
 				 *
 				 * `ml-auto` is NOT here, and that is the round-1 blocker fixed by construction.
 				 * It used to be the row's ONE live auto margin at this width; but this
@@ -1034,10 +1136,10 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 * metadata about the readings, not a reading.
 			 *
 			 * BELOW 750px OF COLUMN IT IS HIDDEN, AND THAT IS STATED RATHER THAN
-			 * DISCOVERED: measured, the narrow row has ~23px free and the cluster
-			 * already wraps to its own line there, so a word would push the
-			 * controls onto a third line -- the exact defect design round 1.5's D9
-			 * fixed. The statement is not lost at that width: the group name above
+			 * DISCOVERED: the row's narrow states are already giving readings up
+			 * (the ladder beside the duration reading), and this mark is not one
+			 * of the readings - a word would spend width the values need. The
+			 * statement is not lost at that width: the group name above
 			 * carries it to assistive technology and the tooltips carry it to a
 			 * pointer. It is NOT carried by the pane's own "Reconnecting" line --
 			 * that line is above the composer for a short transcript and scrolled
@@ -1278,6 +1380,17 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					// to learn it than never offering the control.
 					onOpen={openEffort}
 					held={held}
+					/*
+					 * The ladder's second rung (issue #918; the order and the fit
+					 * points are in the duration reading's comment). A static setting
+					 * the user chose goes before the live numbers, so effort is the
+					 * first reading given up after the duration.
+					 */
+					className={
+						controlsThirdBox
+							? "@max-[780px]/chatcol:hidden"
+							: "@max-[750px]/chatcol:hidden"
+					}
 				>
 					{/*
 					 * The level is a machine-reported value, not prose, so it is
@@ -1331,6 +1444,18 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						: undefined
 				}
 				held={held}
+				/*
+				 * The ladder's last rung (issue #918; the order and the fit points
+				 * are in the duration reading's comment). The terminal band keeps the
+				 * context number the longest - it predicts the operator's next
+				 * action - so it is the last reading to step out of the row: when it
+				 * goes, the row is down to the model alone.
+				 */
+				className={
+					controlsThirdBox
+						? "@max-[675px]/chatcol:hidden"
+						: "@max-[640px]/chatcol:hidden"
+				}
 			>
 				<ContextWheel reading={reading} />
 				{/*
@@ -1359,7 +1484,14 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			{cost.text && (
 				<Reading
 					label={costTooltip(cost)}
-					tooltip={<TooltipLines lines={[cost.text, costTooltip(cost)]} />}
+					tooltip={
+						cost.channels ? (
+							<ChannelTooltipBody cost={cost} reading={cost.channels} />
+						) : (
+							<TooltipLines lines={[cost.text, costTooltip(cost)]} />
+						)
+					}
+					tooltipClassName={cost.channels ? CHANNEL_TOOLTIP_WIDTH : undefined}
 					// Never a control, in any state: `/usage` is a different question
 					// (this account's billing), so there is no picker this reading could
 					// ever open and nothing for a disabled button to be disabled FOR.
@@ -1367,6 +1499,17 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					// figure was an unavailable action (UX round 1, U5).
 					readout
 					held={held}
+					/*
+					 * The ladder's third rung (issue #918; the order and the fit
+					 * points are in the duration reading's comment). Cost outlasts
+					 * effort - a static setting - and yields before context, which the
+					 * terminal band keeps longest.
+					 */
+					className={
+						controlsThirdBox
+							? "@max-[740px]/chatcol:hidden"
+							: "@max-[705px]/chatcol:hidden"
+					}
 				>
 					{/* A cost has no picker of its own: `/usage` is a different
 					    question (this account's billing) and opening it from a session
@@ -1381,9 +1524,14 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 * them apart: its right group ends `… context · cost · duration`, and
 			 * its own drop ladder sheds duration first, because it is the one
 			 * reading re-derivable from the transcript (`status_line.py`,
-			 * `_DROP_LADDER[0]`). The strip copies both. Sitting outboard also
-			 * means the one value that moves while the user watches grows into the
-			 * row's free space rather than into another reading.
+			 * `_DROP_LADDER[0]`), then - across the rungs this row has - effort (a
+			 * static setting), then cost, and context last, which that ladder
+			 * ranks as the reading that predicts the operator's next action. The
+			 * strip copies both orderings, and the narrow ladder below is that shed
+			 * order spread across the column's widths, one measured step per
+			 * reading. Sitting outboard also means the one value that moves while
+			 * the user watches grows into the row's free space rather than into
+			 * another reading.
 			 *
 			 * The drop is a container-range query rather than a wrap, because a
 			 * wrap above the threshold is what put the microphone and send on a
@@ -1399,9 +1547,10 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 * question no container query can ask, because what changed is a SIBLING
 			 * appearing rather than the container shrinking.
 			 *
-			 * MEASURED, not guessed, and re-derived for #788: every number below is read
-			 * off `getBoundingClientRect` by `scripts/composer-readings-geometry.mjs`,
-			 * the same rig in both themes on both trees, at the fixtures that file names.
+			 * MEASURED, not guessed, and re-derived for #788 and again for #918: every
+			 * number below is read off `getBoundingClientRect` by
+			 * `scripts/composer-readings-geometry.mjs`, the same rig in both themes on
+			 * both trees, at the fixtures that file names.
 			 * THREE CORRECTIONS to the arithmetic this comment used to carry, which was
 			 * not wrong about the cluster but was wrong about the row it sits in:
 			 *
@@ -1437,7 +1586,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 * costs is 36px the row does not have, and at column 1200 the overrun is
 			 * still 8.2px because the row is still 778. So the reading sheds whenever
 			 * the third box is drawn, at EVERY width — including below the band's lower
-			 * edge, where the two-box row draws it today.
+			 * edge, where the two-box row sheds it too since #918 (the ladder below).
 			 *
 			 * IT SHEDS ON THE STATE ALONE, and that is a cost rather than a nicety: the
 			 * predicate is unconditional on the cluster's own width, so a running row
@@ -1476,16 +1625,39 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 * has no transition either, so this row's precedent argues for leaving it.
 			 * Recorded because it is motion a reader sees at every send and every stop.
 			 *
-			 * THE NARROW ROW IS STILL NOT FIXED, and deliberately not here: below the
-			 * band's lower edge the cluster overflows its own line in BOTH states
-			 * (measured: +49px of reading-over-control at a 620px column in the IDLE
-			 * state, with this reading drawn; at a 700px column the running row is still
-			 * +127.5 after this change against +165.2 before, and its idle twin is +129.2
-			 * either way), because the chip group plus three `shrink-0` readings exceed
-			 * the width and the yield order has run out. That is a defect of this row in
-			 * its idle state as much as its running one, it is not #788's subject, and
-			 * shedding this reading takes roughly 35px off it without being its cause.
-			 * Recorded rather than fixed.
+			 * THE NARROW ROW SHEDS TOO, which is issue #918 - the residual #788 left
+			 * open. Before it, this reading was shed only inside the band (and on the
+			 * third box at every width), so at every column below the band the cluster
+			 * carried every reading into a row that could not hold them; measured at
+			 * the fullest fixture, reading-over-control ran +201.5px at a 480 column
+			 * (idle; +195.8 running), +149.5/+147.8 at 560, +69.5/+67.8 at 640,
+			 * +129.2/+127.5 at 700, +29.5 running at 798 - frames and `numbers.json`
+			 * in `docs/evidence/composer-readings-shed/`.
+			 *
+			 * The fix is the ladder, not a wider band (there is no wider band - the row
+			 * is 778px at every column from 858 up, so no width exists at which the
+			 * fullest cluster fits beside the controls; that is #788's own finding), and
+			 * the band's `@min-[750px]` half is retired with it: 750 was the TWO-LINE
+			 * layout's threshold, and giving the cluster its own line was what let the
+			 * narrow case carry every reading - a premise D21's one 32px row at every
+			 * width had already retired. So the width half is now one range - shed
+			 * below container 860, the whole narrow side included - and the other three
+			 * readings step out after it as the column narrows: effort, then cost,
+			 * context last, each on its own measured fit point (their classes carry the
+			 * container values; the fit-point table is in the set's README). Nothing
+			 * paints under the controls at any column now, idle or running.
+			 *
+			 * THE LADDER IS COARSER THAN THE DEFECT NEEDS, stated as what is measured
+			 * rather than as reassurance: each rung has no measurement of the cluster's
+			 * own width to answer, so it sits at the widest fit point its step must
+			 * serve and hides the reading for the whole span below it - measured, the
+			 * last rung returns context at a 723px column running (688 idle) where it
+			 * would fit from ~596 (560). A finer rule would have to read the cluster's
+			 * own width, which CSS cannot do, and this row's precedent is the same
+			 * trade (see the state half below); the alternative - a compacted spelling
+			 * for the narrow case - is rejected because the ladder already reaches a
+			 * clean row, and a compact value is a second voice for a number the
+			 * tooltip states in full.
 			 *
 			 * AND A FOURTH ROW-BUDGET STATE THIS SHED DOES NOT COVER, recorded here
 			 * because it is the same class of note and is PRE-EXISTING: while the
@@ -1516,17 +1688,22 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					readout
 					held={held}
 					/*
-					 * THE STATE'S SHED IS UNCONDITIONAL; the width's is the band. `hidden`
-					 * with no range query is deliberate and is the whole of the #788 fix: a
-					 * container query can only ask how wide the COLUMN is, and the fact that
-					 * shrank this row's budget is that the controls group grew a third box,
-					 * which is a fact about state rather than about width. No `cn` merging is
-					 * needed — the two are mutually exclusive strings.
+					 * TWO WAYS TO BE SHED, and each is unconditional within its half.
+					 * `hidden` with no range query is the state's, and it is the whole
+					 * of the #788 fix: a container query can only ask how wide the
+					 * COLUMN is, and the fact that shrank this row's budget - a third
+					 * control box - is a fact about state rather than width. The
+					 * width's is one range now: shed below container 860, at every
+					 * narrower column - it spans the old band's range, where five
+					 * readings do not fit the two-box row below container ~781, and
+					 * above that fit it keeps the band's 860 edge rather than
+					 * re-deriving an idle-only value (one value serves both states),
+					 * and it continues below 750 because the two-line layout that
+					 * made room for this reading is gone (issue #918). No `cn`
+					 * merging is needed — the two are mutually exclusive strings.
 					 */
 					className={
-						controlsThirdBox
-							? "hidden"
-							: "@min-[750px]/chatcol:@max-[860px]/chatcol:hidden"
+						controlsThirdBox ? "hidden" : "@max-[860px]/chatcol:hidden"
 					}
 				>
 					{/*

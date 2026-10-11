@@ -5,8 +5,9 @@ import {
 	formatWakeDue,
 } from "@features/chat/components/run-details/run-detail-model";
 import type { ScheduleResponse } from "@shared/api/local-operator";
-import { isServerUnreachable } from "@shared/api/local-operator/desktop-api";
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import {
+	DESKTOP_REFUSAL_CODE,
 	type DesktopWakeSupervisor,
 	WAKE_MESSAGE_MAX_CHARS,
 } from "../../../../shared/desktop-contract";
@@ -459,10 +460,27 @@ export const validateScheduledTask = (
  */
 export const wakePromptHead = (message: string, max = 48): string => {
 	const flat = message.replace(/\s+/g, " ").trim();
+	const clip = (text: string): string => {
+		const lastSpace = text.lastIndexOf(" ");
+		return text.slice(0, lastSpace > 24 ? lastSpace : text.length).trimEnd();
+	};
 	if (flat.length <= max) return flat.replace(/[.!?…]+$/g, "").trimEnd();
-	const cut = flat.slice(0, max);
-	const lastSpace = cut.lastIndexOf(" ");
-	return `${cut.slice(0, lastSpace > 24 ? lastSpace : max).trimEnd()}…`;
+	let cut = flat.slice(0, max);
+	/*
+	 * A CLIP NEVER LEAVES A BRACKET OPEN (design round 1, D7). `4-hourly
+	 * proactive check-in (operator-set cadence)` clipped at 48 characters ended
+	 * `(operator-set…` — an unclosed bracket reads as a rendering fault, and
+	 * closing it would be a false claim (the bracket's own words were cut), so
+	 * the clip drops back to before the unmatched `(` instead. Only when that
+	 * leaves something readable: a message that IS one long bracket keeps the
+	 * plain clip rather than becoming an empty label.
+	 */
+	const open = cut.lastIndexOf("(");
+	if (open > 0 && !cut.slice(open).includes(")")) {
+		const outside = clip(cut.slice(0, open));
+		if (outside.length > 0) cut = outside;
+	}
+	return `${clip(cut)}…`;
 };
 
 /**
@@ -761,17 +779,36 @@ export const isRepeatCountArmable = (count: number | null): boolean =>
  * predicate fired where nothing had been sent and was withheld from the case the
  * receipt exists for.
  *
- * `isServerUnreachable` is this repo's one reading of that pair (`null` is a
- * transport that never produced a response, 503 is the relay saying it could
- * not), already used by the compatibility banner and the stop path. A second,
- * narrower reading of one status in a sibling file is the shape this repo's notes
- * keep flagging, so this uses that judgement instead of restating it.
+ * The first two shapes are `isServerUnreachable`'s reading (`null` is a transport
+ * that never produced a response, and main's SYNTHESISED 503 - the bound it
+ * writes when its own fetch throws or times out - carries
+ * `DESKTOP_REFUSAL_CODE.transportFailed`). Anything else is the backend ANSWERING,
+ * and THAT half was narrowed in the wakes control slice's round 1 (F6): the
+ * blanket-503 reading re-sent every answered refusal the wake route writes with a
+ * 503 - `wake_owner_present`, `wake_owner_wedged`, `wake_owner_unavailable` - the
+ * exact set the monitors' policy deliberately excludes, and for the same measured
+ * reason (a re-send cannot repair an owner that stands, and the second attempt
+ * holds the sentence back; `monitor-controls-model.ts` U3). The ONE answered 503
+ * left retryable is the route's own contention code, `wake_write_busy`: nothing
+ * was written and a second attempt is what the lock's copy itself says to do.
  *
  * `failureCount < 1` is exactly one retry, which is what TanStack v5 means by it:
  * the callback is first called with `failureCount === 0`.
  */
+const WAKE_WRITE_BUSY_CODE = "wake_write_busy";
+
+const isRetryableWakeWrite = (error: Error): boolean => {
+	if (!(error instanceof DesktopControlError)) return false;
+	if (error.status === null) return true;
+	return (
+		error.status === 503 &&
+		(error.code === WAKE_WRITE_BUSY_CODE ||
+			error.code === DESKTOP_REFUSAL_CODE.transportFailed)
+	);
+};
+
 export const retryWakeWrite = (failureCount: number, error: Error): boolean =>
-	isServerUnreachable(error) ? failureCount < 1 : false;
+	isRetryableWakeWrite(error) ? failureCount < 1 : false;
 
 /**
  * How the dialog reads the conversations it offers, named here so the one option

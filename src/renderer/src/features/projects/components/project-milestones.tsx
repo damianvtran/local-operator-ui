@@ -20,6 +20,7 @@
  */
 
 import { Badge, Button, Checkbox, Input, Label } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Plus, X } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
@@ -51,6 +52,9 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 }) => {
 	const [draftName, setDraftName] = useState("");
 	const [draftDate, setDraftDate] = useState("");
+	/* The reader's locale for each target date: device before a backend
+	 * answers, the backend's resolved language after (the i18n store). */
+	const locale = useI18nLocale();
 
 	/*
 	 * THE DATE IS VALIDATED HERE, in the same words the form dialog uses
@@ -132,12 +136,7 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 								</span>
 								{milestone.target_date && (
 									<span className="shrink-0 text-meta text-ink-muted">
-										{formatProjectDay(
-											milestone.target_date,
-											typeof navigator === "undefined"
-												? undefined
-												: navigator.language,
-										)}
+										{formatProjectDay(milestone.target_date, locale)}
 									</span>
 								)}
 								<Badge variant={meta.variant}>{meta.label}</Badge>

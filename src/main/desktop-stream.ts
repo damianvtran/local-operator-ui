@@ -126,6 +126,16 @@ export type RelaySubscribeArgs = {
 	sessionId: string;
 	epoch?: string;
 	afterSeq?: number;
+	/**
+	 * The renderer's open-frame negotiation (`docs/DESKTOP_API.md`, "The open
+	 * frame"). FORWARDED, never invented: this relay is one build relaying to
+	 * possibly-older backends, and what the flag claims is a fact about the
+	 * RENDERER (that it reads `runs`, `runs_state`, `head_cut` and a page whose
+	 * `limit` counts paintable rows), so only the renderer may say it. Absent -
+	 * an older renderer, or one that has not read the capability - leaves the
+	 * request exactly as it was.
+	 */
+	openFrame?: boolean;
 };
 
 export type RelayEvent =
@@ -240,6 +250,26 @@ export class DesktopStreamRelay {
 		 * not do.
 		 */
 		query.set("frontend_replace", "1");
+		/*
+		 * The open-frame negotiation, FORWARDED rather than fixed here for the same
+		 * reason the flag above is fixed here and this one is not: this relay cannot
+		 * read the renderer's bundle, so it must not claim on the renderer's behalf
+		 * that a page counted in paintable rows will be understood. Only the literal
+		 * `true` sets it; anything else leaves an older backend's request shape
+		 * untouched.
+		 */
+		if (args.openFrame === true) query.set("open_frame", "1");
+		/*
+		 * The `supplements=1` negotiation (turn-supplements memo §2.7), the same
+		 * shape and the same reasoning as `frontend_replace` above: it says
+		 * something about THIS BUILD — this build's reducer renders
+		 * `supplement_progress` frames and the `supplement_v1` history rows those
+		 * beats settle into — so it is unconditional rather than a caller option.
+		 * Only a subscriber that sends it is handed the family, because an older
+		 * renderer would paint an unknown event kind; an older backend ignores an
+		 * unknown query parameter and never emits the events anyway.
+		 */
+		query.set("supplements", "1");
 		const suffix = query.size > 0 ? `?${query}` : "";
 		const url = new URL(
 			`/v1/desktop/sessions/${args.sessionId}/events${suffix}`,

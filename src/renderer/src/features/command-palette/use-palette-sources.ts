@@ -52,6 +52,7 @@ import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { useAgents } from "@shared/hooks/use-agents";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
+import { t } from "@shared/i18n";
 import {
 	LEGACY_CATALOGUE_PAGE,
 	panelSessionIdOfView,
@@ -1052,6 +1053,28 @@ function buildPaletteActions({
 			verb: "Connect",
 			command: "connect-provider" as const,
 			featured: true,
+		},
+		/*
+		 * The language door (i18n slice B2). NON-FEATURED on purpose: the
+		 * settings row is the canonical editor, and a browse list that
+		 * advertised a second one would read as two owners (the accepted
+		 * proposal's "doors change discovery, not ownership"). The commands
+		 * scope and a search reach it - the name keeps the word "language",
+		 * which is what a reader types.
+		 */
+		{
+			id: "change-interface-language",
+			name: t("ui.settings.language.palette_action"),
+			icon: "language" as const,
+			keywords: [
+				"language",
+				"locale",
+				"interface language",
+				"translation",
+				"i18n",
+			],
+			verb: "Change",
+			command: "change-interface-language" as const,
 		},
 		{
 			id: "create-agent",
