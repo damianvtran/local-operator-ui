@@ -21,12 +21,15 @@
  * What this is NOT: evidence about pixels. jsdom has no layout engine; the frame
  * for this state is `docs/evidence/update-reload-ux/`.
  *
- * AND ONE CASE THAT IS NOT RELOAD'S, kept here rather than paying for a second
+ * AND CASES THAT ARE NOT RELOAD'S, kept here rather than paying for a second
  * bundle of the same module: the FORK picker's refusal contract (agent review
  * round 2, MAJOR-1) is the same subject one panel over - what a picker tells the
  * reader when the backend says no - and it is asserted on the same exported
- * functions this file already imports from `destination-pickers`. Said here so a
- * reader does not have to wonder why a fork case sits in the reload file.
+ * functions this file already imports from `destination-pickers`; and the
+ * RENAME picker's unchanged-submit guard (`renameSubmission`, #920, agent
+ * review round 1, MINOR-2) is a pure decision with no dialog to mount at all,
+ * so it rides the same bundle too. Said here so a reader does not have to
+ * wonder why a fork and a rename case sit in the reload file.
  */
 
 import assert from "node:assert/strict";
@@ -208,7 +211,7 @@ const stubs = {
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { ReloadPicker, reloadReceipt } from "./src/renderer/src/features/chat/pickers/destination-pickers";
+			export { ReloadPicker, reloadReceipt, renameSubmission } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			export { FORK_CUT_NOTE } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			export { operationFailureText } from "./src/renderer/src/features/chat/pickers/use-picker-backend";
 		`,
@@ -268,8 +271,13 @@ globalThis.__errorToast = (message) => {
 	return "toast-id";
 };
 
-const { ReloadPicker, reloadReceipt, FORK_CUT_NOTE, operationFailureText } =
-	await import(`file://${bundlePath}`);
+const {
+	ReloadPicker,
+	reloadReceipt,
+	renameSubmission,
+	FORK_CUT_NOTE,
+	operationFailureText,
+} = await import(`file://${bundlePath}`);
 const React = await import("react");
 const { act } = await import("react");
 const { createRoot } = await import("react-dom/client");
@@ -596,4 +604,54 @@ test("an in-flight failure after the dialog is gone is raised as a toast", async
 		"the same sentence the dialog would have printed, said where the reader still is",
 	);
 	assert.deepEqual(toasts, [], "and no success is claimed");
+});
+
+/*
+ * And the rename picker's own guard, executed rather than read (#920, agent
+ * review round 1, MINOR-2): an unedited Enter must not turn the sidebar's
+ * display fallback into a conversation's real name.
+ *
+ * The defect this pins is a write, not a wording: `row.title` is optional, the
+ * row menu sends `row.title || "Untitled chat"`, and the dialog opens with the
+ * submit enabled - so before the guard, pressing Rename on an untitled row
+ * stored `Untitled chat` as the conversation's explicit, user-set name and
+ * retired the naming errand (`chat-title.ts`'s constraint). Pure comparisons,
+ * so they run without a DOM at all.
+ */
+test("an unchanged rename submit writes nothing, so the placeholder cannot become a title", () => {
+	assert.equal(
+		renameSubmission({ name: "Untitled chat", openedWith: "Untitled chat" }),
+		null,
+	);
+	// Whitespace around the same value is still the same value.
+	assert.equal(
+		renameSubmission({
+			name: "  Untitled chat  ",
+			openedWith: "Untitled chat",
+		}),
+		null,
+	);
+	// The pane path keeps the same guarantee: submitting the opening value is a
+	// no-command exit, exactly as the header's inline editor treats it.
+	assert.equal(
+		renameSubmission({
+			name: "March reconciliation",
+			openedWith: "March reconciliation",
+		}),
+		null,
+	);
+	// An EDIT writes - the compare is against the opening value, not a shape.
+	assert.equal(
+		renameSubmission({
+			name: "March reconciliation (Q3)",
+			openedWith: "March reconciliation",
+		}),
+		"March reconciliation (Q3)",
+	);
+	// Blank is a no-op too: the submit control is disabled for it, and an Enter
+	// that races the re-render must not rename a conversation to nothing.
+	assert.equal(
+		renameSubmission({ name: "   ", openedWith: "March reconciliation" }),
+		null,
+	);
 });
