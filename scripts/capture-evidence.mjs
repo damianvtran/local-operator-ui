@@ -8581,6 +8581,19 @@ export const STORIES = [
 	["command-palette-commandpalette--filtered", 1280, 800],
 	["command-palette-commandpalette--settings-scope", 1280, 800],
 	["command-palette-commandpalette--commands-scope", 1280, 800],
+	/*
+	 * The language door (i18n slice B2): the palette's answer to "language"
+	 * (the action beside the settings row), then the dialog the action opens,
+	 * its saved state, and the external-change announcement. The dialog and
+	 * toast states live at `settings-language-door--*`; their play functions
+	 * (dialog-saved) run in this rig's real Chromium.
+	 */
+	["command-palette-commandpalette--language-action", 1280, 800],
+	["settings-language-door--dialog-open", 1280, 800],
+	["settings-language-door--dialog-saved", 1280, 800],
+	["settings-language-door--external-toast", 1280, 800],
+	["settings-language-door--dialog-loading", 1280, 800],
+	["settings-language-door--dialog-cold-failure", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],
 	/*
 	 * The roster rows (issues #844, #849): the `@` scope's agent and team rows, one
