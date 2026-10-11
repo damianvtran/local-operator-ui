@@ -152,7 +152,14 @@ const KEY_CODES = {
  * are the same button seen from a pointer and from the keyboard.
  */
 const IMAGE_EXPAND_PICTURE = 'button[title^="Click to expand"]';
-const IMAGE_EXPAND_FILE_ACTIONS = 'button[aria-label="File actions"]';
+/*
+ * The picture's actions trigger. Its accessible name moved with the image
+ * action menu (`Actions for <name>`, the supplement-row vocabulary) and is
+ * matched by PREFIX because the name carries the picture's own label; each
+ * story below mounts one picture, so the prefix names exactly one control.
+ */
+const IMAGE_EXPAND_FILE_ACTIONS = 'button[aria-label^="Actions for"]';
+const IMAGE_ACTIONS_TRIGGER = 'button[aria-label^="Actions for"]';
 const THEME_FILTER = flag("themes")?.split(",").filter(Boolean) ?? null;
 const PARTIAL = Boolean(ONLY || THEME_FILTER || DIR_FILTER);
 
@@ -3748,6 +3755,138 @@ export const STORIES = [
 			dir: "legacy-tabbed-open",
 			tabTo: IMAGE_EXPAND_FILE_ACTIONS,
 			pressKey: { key: "Enter", reveals: '[role="menu"]' },
+		},
+	],
+	/*
+	 * THE IMAGE ACTION MENUS (`image-actions.stories.tsx`), the operator's ask of
+	 * 2026-10-11: hovering a picture offers its actions — open file location,
+	 * open in OS, open in canvas, copy to clipboard and the siblings. The kinds
+	 * are the point of the set: a durable digest (the shape that had NO menu at
+	 * all before this change), an inline `data:` payload, a path-backed legacy
+	 * attachment, a condensed-strip thumbnail and a markdown image. Each state
+	 * is taken twice over — at rest and with the menu REVEALED under a real
+	 * pointer (CDP `Input.dispatchMouseEvent`, the instrument the
+	 * chat-canonical-links set established) — and the open-menu tuples press
+	 * the trigger and assert the items are IN the DOM (`expectPresent`), so a
+	 * frame cannot ship of a menu that never opened. The canvas-viewer states
+	 * need no hover: its chrome controls are always visible, so its open tuple
+	 * presses directly. The trigger is reached through the picture because it
+	 * does not exist to a pointer until the picture is hovered — the measured
+	 * reveal `image-attachment.tsx`'s wrapper carries.
+	 */
+	["chat-image-actions--canonical-durable", 900, 480, { dir: "durable" }],
+	[
+		"chat-image-actions--canonical-durable",
+		900,
+		480,
+		{
+			dir: "durable-hover",
+			hover: '[data-shot="durable"] img',
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"chat-image-actions--canonical-durable",
+		900,
+		480,
+		{
+			dir: "durable-menu-open",
+			hoverChain: ['[data-shot="durable"] img', IMAGE_ACTIONS_TRIGGER],
+			hoverChainSettleMs: 500,
+			press: IMAGE_ACTIONS_TRIGGER,
+			pressSettleMs: 400,
+			expectPresent: '[role="menuitem"]',
+		},
+	],
+	[
+		"chat-image-actions--canonical-live",
+		900,
+		480,
+		{ dir: "live-hover", hover: '[data-shot="live"] img', hoverSettleMs: 400 },
+	],
+	[
+		"chat-image-actions--legacy",
+		900,
+		480,
+		{
+			dir: "legacy-hover",
+			hover: '[data-shot="legacy"] img',
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"chat-image-actions--legacy",
+		900,
+		480,
+		{
+			dir: "legacy-menu-open",
+			hoverChain: ['[data-shot="legacy"] img', IMAGE_ACTIONS_TRIGGER],
+			hoverChainSettleMs: 500,
+			press: IMAGE_ACTIONS_TRIGGER,
+			pressSettleMs: 400,
+			expectPresent: '[role="menuitem"]',
+		},
+	],
+	[
+		"chat-image-actions--thumbnail",
+		900,
+		300,
+		{
+			dir: "thumbnail-hover",
+			hover: '[data-shot="thumbnail"] li:nth-child(2) img',
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"chat-image-actions--thumbnail",
+		900,
+		300,
+		{
+			dir: "thumbnail-menu-open",
+			hoverChain: [
+				'[data-shot="thumbnail"] li:nth-child(2) img',
+				'[data-shot="thumbnail"] li:nth-child(2) button[aria-label^="Actions for"]',
+			],
+			hoverChainSettleMs: 500,
+			press:
+				'[data-shot="thumbnail"] li:nth-child(2) button[aria-label^="Actions for"]',
+			pressSettleMs: 400,
+			expectPresent: '[role="menuitem"]',
+		},
+	],
+	[
+		"chat-image-actions--markdown",
+		900,
+		480,
+		{
+			dir: "markdown-hover",
+			hover: '[data-shot="markdown"] img',
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"chat-image-actions--markdown",
+		900,
+		480,
+		{
+			dir: "markdown-menu-open",
+			hoverChain: ['[data-shot="markdown"] img', IMAGE_ACTIONS_TRIGGER],
+			hoverChainSettleMs: 500,
+			press: IMAGE_ACTIONS_TRIGGER,
+			pressSettleMs: 400,
+			expectPresent: '[role="menuitem"]',
+		},
+	],
+	["chat-image-actions--canvas-viewer", 900, 520, { dir: "canvas-viewer" }],
+	[
+		"chat-image-actions--canvas-viewer",
+		900,
+		520,
+		{
+			dir: "canvas-menu-open",
+			press: IMAGE_ACTIONS_TRIGGER,
+			pressSettleMs: 400,
+			expectPresent: '[role="menuitem"]',
 		},
 	],
 	/* The MCP section, whose states a live session cannot produce on demand: an
