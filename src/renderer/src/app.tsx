@@ -31,6 +31,7 @@ import { PeersCatalogueSync } from "@features/mesh/peers-catalogue";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
+import { LanguageDialog } from "@features/settings/components/language-dialog";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
@@ -41,6 +42,7 @@ import {
 	noteConsentAttention,
 } from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
+import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
 
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
@@ -134,6 +136,13 @@ const App: FC = () => {
 	 * renders nothing.
 	 */
 	useWindowChrome();
+	/*
+	 * The i18n locale store's writer: mirrors the capabilities answer into it —
+	 * the device locale before any answer, the backend's resolved language
+	 * after (RFC §2.5). Mounted once, beside the window chrome, for the same
+	 * one-value reason; it renders nothing.
+	 */
+	useI18nLocaleSync();
 	const { pathname } = useLocation();
 	/*
 	 * The routes that already own a 40px row at the window's top: the chat surface
@@ -698,6 +707,12 @@ const App: FC = () => {
 					    through `useConnectProviderStore` (empty chat, composer line,
 					    the no-provider notice, the palette). Mounted once, here. */}
 					<ConnectProviderDialog />
+
+					{/* The one "change the interface language" dialog (i18n slice
+					    B2): the palette asks `useLanguageDialogStore`, and the
+					    settings row stays the canonical editor. Mounted once, here,
+					    like the connect dialog above and for the same reason. */}
+					<LanguageDialog />
 
 					{/*
 					 * THE ARCHIVE CONFIRMATION, mounted here and not in the chat pane (UX round

@@ -126,6 +126,7 @@ const bundle = await build({
 			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { EMPTY_TRANSCRIPT, appendPendingUser, applyEvent, applyHistoryPage, sealDisjointBlock } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { openFrameFacts } from "./src/renderer/src/features/chat/canonical/open-frame";
 			export { paintPendingSend } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
 			export { __resetPendingSends, __resetLabelGapBookkeeping } from "./src/renderer/src/shared/hooks/use-canonical-session";
@@ -186,6 +187,7 @@ const {
 	applyHistoryPage,
 	sealDisjointBlock,
 	paintPendingSend,
+	openFrameFacts,
 } = hook;
 
 const SESSION_A = "aaaaaaaaaaaa";
@@ -344,6 +346,13 @@ const snapshotFrame = (
 		coldReason,
 		hasMore = true,
 		cursorMissing = false,
+		/**
+		 * The open-frame fields an `open_frame=1` page carries
+		 * (`docs/DESKTOP_API.md`, "The open frame"), spread onto the page verbatim.
+		 * Named as the wire names them, so a case reads like the answer it stands
+		 * in for rather than like a test fixture.
+		 */
+		openFrame,
 	},
 ) => ({
 	session_id: SESSION_A,
@@ -390,7 +399,12 @@ const snapshotFrame = (
 				attention: null,
 			},
 		},
-		history: { entries, has_more: hasMore, cursor_missing: cursorMissing },
+		history: {
+			entries,
+			has_more: hasMore,
+			cursor_missing: cursorMissing,
+			...openFrame,
+		},
 		cold: false,
 		/*
 		 * Absent unless a case names it: an older backend sends no token, and the
@@ -3912,4 +3926,216 @@ test("a page still out for A when the reader goes A -> B -> A is dropped, and ca
 		plan.rows[plan.rows.length - SNAPSHOT_PAGE].id,
 		`the cursor comes from the snapshot, not the stale page (was ${before}, now ${oldest})`,
 	);
+});
+
+/*
+ * THE OPEN-FRAME ARM'S OWN GUARANTEE (C1, lane U1). `pageIsPaintedTail` grew a
+ * third proof: a page whose facts ATTEST where it begins - the oldest run's
+ * opening user row, on a page the turn-aligned cut was allowed to extend -
+ * covers a held row strictly inside its own span, so a pane whose rows lie
+ * inside the page owes no read even when the id-overlap test cannot say so.
+ *
+ * The widening is only safe if it does NOT reach the case it was built beside:
+ * a cached block sitting BEHIND such a page is #876's seam, and #883's whole
+ * point is that a reopen must still walk back to it. This case is that pair:
+ * the same reopen, the same 300 rows written while away, an open-frame page
+ * whose start IS attested - and the read count is unchanged from the base
+ * walk, because every held row is at or below the attested start.
+ */
+test("an open-frame page that attests its start still walks to the cached block behind it (#883)", async () => {
+	const { transcript, painted, reads } = await driveCachedReopen({
+		away: 300,
+		returnPage: (t) => {
+			const entries = t.tail(REOPEN_PAGE).entries;
+			const newest = entries[entries.length - 1];
+			return {
+				cursor: t.rows[t.rows.length - REOPEN_PAGE - 1].id,
+				entries,
+				coldReason: null,
+				openFrame: {
+					runs_state: "ready",
+					head_cut: false,
+					runs: [
+						{
+							run_key: recordIdOf(newest),
+							opening_user_id: entries[0].id,
+							closing_answer_id: recordIdOf(newest),
+							settled: true,
+							action_count: 3,
+							worked_seconds: 12,
+							complete: true,
+						},
+					],
+				},
+			};
+		},
+	});
+	assert.deepEqual(
+		painted,
+		transcript.rows.map(recordIdOf).slice(REOPEN_TOTAL - REOPEN_PAGE),
+		"no range is dropped: every held row and every row written while away",
+	);
+	assert.equal(
+		reads,
+		4,
+		"the facts attest the page's start, not the pane's block - the walk runs as it does without them",
+	);
+});
+
+/*
+ * THE COLD-INDEX PAIR (`docs/DESKTOP_API.md`, "Why `building` rather than a scan
+ * on the hot path"): a journal with no resident index answers `runs_state:
+ * "building"` on the snapshot - today's page, no facts - and `ready` with facts
+ * on the `/history` that follows within the same open. That transition is the
+ * one a client could turn into an extra painted state, and the reason it cannot
+ * here is the wiring this case pins: the pane's facts come from the page
+ * EMBEDDED IN THE FRAME it applied and from nothing else. `view.history` is
+ * written on the snapshot arm alone, while every `/history` read merges its rows
+ * into the transcript through `applyHistoryPage` - so a bar drawn from the
+ * fallback stays drawn from the fallback and the later answer's facts cannot
+ * move it after the paint.
+ */
+test("a `/history` answer that carries facts cannot re-condense the page the frame painted (`building` -> `ready`)", async () => {
+	const plan = conversation({ withSteer: false, awayRows: 0 });
+	const transcript = makeTranscript(plan.rows);
+	reset({ transcript });
+	const pane = await mount();
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: plan.cursor,
+			entries: transcript.tail(SNAPSHOT_PAGE).entries,
+			coldReason: null,
+			openFrame: { runs_state: "building", head_cut: false },
+		}),
+	);
+	await pump();
+	assert.ok(pane.ids().length > 0, "the frame painted its page");
+	assert.equal(
+		pane.handle().history?.runs_state,
+		"building",
+		"the pane's page is the frame's, and it says the facts are not ready",
+	);
+	assert.equal(
+		pane.handle().history?.runs,
+		undefined,
+		"and it carries no facts to read",
+	);
+	/*
+	 * The follow-up read, from the same reader one moment later: facts, and for a
+	 * run the page the pane painted does not describe.
+	 */
+	globalThis.__gapTail = (request) => ({
+		...transcript.tail(request.limit),
+		runs_state: "ready",
+		head_cut: false,
+		runs: [
+			{
+				run_key: "a-runs-own-answer",
+				opening_user_id: "a-runs-own-opening-row",
+				closing_answer_id: "a-runs-own-answer",
+				settled: true,
+				action_count: 300,
+				failed_count: 4,
+				worked_seconds: 5793.695,
+				complete: true,
+			},
+		],
+	});
+	const readsBefore = historyReads();
+	await pane.handle().loadOlder();
+	await pump();
+	assert.equal(
+		historyReads(),
+		readsBefore + 1,
+		"the follow-up read really happened, facts and all",
+	);
+	assert.equal(
+		pane.handle().history?.runs_state,
+		"building",
+		"and the page the pane reads its facts from is STILL the frame's",
+	);
+	assert.equal(
+		pane.handle().history?.runs,
+		undefined,
+		"so no fact reached the view",
+	);
+	/*
+	 * And the SHIPPED adapter, asked the way the transcript asks it
+	 * (`open-frame.ts`), reads nothing from that page - which is the plan-level
+	 * form of the claim: the bar the frame painted cannot be re-drawn from facts
+	 * that arrived later.
+	 */
+	assert.equal(
+		openFrameFacts(pane.handle().history),
+		null,
+		"nothing can re-condense after the paint",
+	);
+});
+
+/*
+ * THE OPEN-FRAME NEGOTIATION ON THE WIRE (agent review round 1, F6). Both halves
+ * of the contract's "an old core keeps today's page" claim are asserted here
+ * rather than left to inspection: the pane asks for the open frame on its
+ * subscription AND on every `/history` read when the capability says the backend
+ * serves one, and asks for nothing when it does not.
+ *
+ * WHY THE HOOK'S OPTION IS THE CAPABILITY'S ANSWER. `chat-page.tsx` passes
+ * `desktopFeatureEnabled(panelCapabilities.data, "open_frame")`, which is
+ * `=== "enabled"` - so an old backend, which advertises no such capability,
+ * answers false and every request below carries the flag off. That projection is
+ * pinned in `warm-session.test.mjs` (the panel's own text); this case pins what
+ * the hook then does with it.
+ */
+test("the pane asks for the open frame exactly when the capability says so (F6)", async () => {
+	const plan = conversation({ withSteer: false, awayRows: 6 });
+	for (const negotiated of [true, false]) {
+		const transcript = makeTranscript(plan.rows);
+		reset({ transcript });
+		const runtime = makeRuntime();
+		let handle;
+		runtime.render = () => {
+			handle = useCanonicalSessionStream(
+				SESSION_A,
+				true,
+				true,
+				"pane-identity",
+				{ openFrame: negotiated },
+			);
+			return handle;
+		};
+		runtime.rerender();
+		const subscribed = subscriptions.at(-1).args;
+		assert.equal(
+			subscribed.openFrame,
+			negotiated,
+			`the subscribe carries the negotiation (${negotiated})`,
+		);
+		deliver(openFrame(1, true));
+		deliver(
+			snapshotFrame(2, {
+				cursor: plan.cursor,
+				entries: transcript.tail(SNAPSHOT_PAGE).entries,
+				openFrame: { runs_state: "unsupported" },
+			}),
+		);
+		await pump();
+		/*
+		 * One read, which is the only way this case can speak for the reads the
+		 * walk and the pager issue later: the flag is read from a ref at the moment
+		 * each request is built, so what it carries is the capability's answer for
+		 * THIS request, never a snapshot taken at mount.
+		 */
+		await handle.loadOlder();
+		await pump();
+		const reads = requests.filter(
+			(request) => request.op === "sessions.history",
+		);
+		assert.ok(reads.length > 0, "a read really was issued");
+		assert.deepEqual(
+			reads.map((request) => request.openFrame),
+			reads.map(() => negotiated),
+			`every read carries the negotiation (${negotiated})`,
+		);
+	}
 });

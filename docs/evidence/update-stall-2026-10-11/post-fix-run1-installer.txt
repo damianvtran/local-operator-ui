@@ -1,0 +1,5 @@
+2026-10-11T01:20:16 local-operator-update-installer: waiting up to 60s for the app to exit on its own
+2026-10-11T01:21:16 local-operator-update-installer: the first grace expired with the app still there
+2026-10-11T01:21:16 local-operator-update-installer: asking the app to stop (SIGTERM)
+2026-10-11T01:21:16 local-operator-update-installer: the app exited after SIGTERM (60s in)
+2026-10-11T01:21:16 local-operator-update-installer: starting the installer (60s in)

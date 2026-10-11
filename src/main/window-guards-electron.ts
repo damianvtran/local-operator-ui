@@ -13,6 +13,7 @@ import type {
  * real Electron against a hostile document.
  */
 import type { ExternalOpenOutcome } from "../shared/desktop-contract";
+import type { SupplementFrameMounts } from "./supplement-mounts";
 import {
 	type PopupVerdict,
 	type Verdict,
@@ -76,11 +77,25 @@ export function guardNavigation(
 	contents: WebContents,
 	trustedUrls: () => readonly string[],
 	log: Log,
+	/**
+	 * The supplement-frame mount permits (`supplement-mounts.ts`). A child-frame
+	 * navigation to a byte-identical armed URL is allowed ONCE and the permit is
+	 * consumed; every later navigation of a supplement frame is denied by
+	 * `frameNavigationVerdict` exactly as it was before this feature existed.
+	 * Absent (older hosts, the pure node suite) reads as "no supplements".
+	 */
+	supplementMounts?: SupplementFrameMounts,
 ): void {
 	installNavigationVerdict(
 		contents,
-		(url, isMainFrame) =>
-			frameNavigationVerdict({ url, isMainFrame }, trustedUrls()),
+		(url, isMainFrame) => {
+			// The one-shot rule, checked before the general verdict: the mount URL is
+			// a `data:` document, which `frameNavigationVerdict` refuses by design.
+			if (!isMainFrame && supplementMounts?.consume(url)) {
+				return { allowed: true };
+			}
+			return frameNavigationVerdict({ url, isMainFrame }, trustedUrls());
+		},
 		log,
 	);
 }

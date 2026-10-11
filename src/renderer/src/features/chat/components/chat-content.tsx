@@ -76,6 +76,7 @@ import {
 } from "../ask-queue";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
+import { openFrameFacts } from "../canonical/open-frame";
 import {
 	canonicalTranscriptSpeaks,
 	canonicalTranscriptTerminal,
@@ -123,6 +124,7 @@ import { DeleteConversationDialog } from "./delete-conversation-dialog";
 import type { DirectoryWritePath } from "./directory-indicator";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
+import type { JobControls } from "./run-details/use-job-controls";
 import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
 import type { MonitorControls } from "./run-details/use-monitor-controls";
 import type { WakeControls } from "./run-details/use-wake-controls";
@@ -303,6 +305,13 @@ type ChatContentProps = {
 		 * `SessionStatusStripProps["readingsDropped"]` (task-17, U4).
 		 */
 		readingsDropped?: boolean;
+		/**
+		 * Whether the backend advertises `features.cost_channels`; forwarded to
+		 * `SessionStatusStripProps["costChannels"]`, which owns the rules. Read by
+		 * the pane (`useDesktopCapabilities`) and told to the strip for the same
+		 * reason `held` is told: the strip calls no query hooks itself.
+		 */
+		costChannels?: boolean;
 	};
 	/**
 	 * The command dispatcher the composer splices an inline command into, with
@@ -571,6 +580,13 @@ type ChatContentProps = {
 	 */
 	wakeControls: WakeControls;
 	/**
+	 * The pane's JOB write controls (`use-job-controls.ts`), threaded exactly as
+	 * the other two are: the video row family's cancel — its confirmation and the
+	 * write's in-flight window — lives in the pane body, and the write belongs to
+	 * the level that owns the session identity.
+	 */
+	jobControls: JobControls;
+	/**
 	 * What the pane knows about the chief of staff for the wakes guard
 	 * (`wake-controls-model.ts`): her resolved session id, her display name,
 	 * whether the capability negotiated, and whether the status read answered.
@@ -803,6 +819,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		mcpRemedy,
 		monitorControls,
 		wakeControls,
+		jobControls,
 		wakeAida,
 		childrenOpenable = false,
 		/*
@@ -999,6 +1016,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 */
 		const stoppingShown = stoppingTurn && canonical?.turnAlive === true;
 		const terminalPane = canonicalTerminal(canonical, gone);
+		/*
+		 * THE OPEN FRAME'S FACTS, read off the page this pane's stream holds (see
+		 * `open-frame.ts`). Memoised on the PAGE rather than derived at the JSX, so
+		 * the transcript's collapse inputs move when the facts move and not once per
+		 * render - the difference between one re-plan when the facts land and a
+		 * fresh inputs object on every keystroke in the composer beside it.
+		 *
+		 * `null` (an old backend, a `building` answer, a peer's conversation) is the
+		 * same value as "no facts" everywhere it is read, and the pane keeps today's
+		 * condensation, align walk included.
+		 */
+		const openFrameForPane = useMemo(
+			() => openFrameFacts(canonical?.view.history),
+			[canonical?.view.history],
+		);
 		const canonicalStop = useMemo(
 			() =>
 				canonical?.stopAvailable && !terminalPane
@@ -2222,6 +2254,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									<CanonicalTranscript
 										frontend={canonical.view.frontend}
 										transcript={canonical.view.transcript}
+										openFrame={openFrameForPane}
 										undelivered={undeliveredOnScreen}
 										/*
 										 * THE ONE DERIVATION, here too (agent review
@@ -2971,6 +3004,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								mcpRemedy={mcpRemedy}
 								monitorControls={monitorControls}
 								wakeControls={wakeControls}
+								jobControls={jobControls}
 								wakeAida={wakeAida}
 								sessionId={canonical?.view.frontend?.session_id ?? null}
 								pulses={pulses ?? EMPTY_PULSES}
