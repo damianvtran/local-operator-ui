@@ -211,14 +211,28 @@ export const LanguageDialog: FC = () => {
 	 * has actually mounted - which is after the loading body resolves, the
 	 * half that a plain auto-focus cannot cover.
 	 */
+
+	/*
+	 * WHICH CONTROL the first Enter should reach once one exists (round-1
+	 * D1/U3; round-3 D8): the picker when there is one, otherwise the Retry a
+	 * cold failure offers - the principle applies to the error states too,
+	 * which is where focus used to sit on the container while a control
+	 * existed. `none` while the body is loading or refused: nothing to focus,
+	 * and the effect stays out of those renders entirely.
+	 */
+	const focusTarget = setting ? "combo" : loadError ? "retry" : "none";
 	useEffect(() => {
-		if (!open || !setting) return;
+		if (!open || focusTarget === "none") return;
 		requestAnimationFrame(() => {
 			contentRef.current
-				?.querySelector<HTMLElement>('[role="combobox"]')
+				?.querySelector<HTMLElement>(
+					focusTarget === "combo"
+						? '[role="combobox"]'
+						: "[data-language-retry]",
+				)
 				?.focus();
 		});
-	}, [open, setting]);
+	}, [open, focusTarget]);
 
 	return (
 		<Dialog open={open} onOpenChange={(next) => !next && closeLanguage()}>
@@ -253,6 +267,7 @@ export const LanguageDialog: FC = () => {
 									variant="secondary"
 									size="sm"
 									className="shrink-0"
+									data-language-retry=""
 									onClick={() => {
 										/* Reachable cold: the arm retries the fault's own query. */
 										if (capabilitiesFault) void capabilities.refetch();

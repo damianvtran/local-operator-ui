@@ -82,6 +82,24 @@ let capabilitiesBehavior = { type: "ok", features: { settings: 1, i18n: 1 } };
 const setCapabilitiesBehavior = (behavior) => {
 	capabilitiesBehavior = behavior;
 };
+/*
+ * The R3-1 teardown handle: a `hang` reply is a never-settling promise, and a
+ * pending in-flight request keeps a 300 s timer alive in the bridge - the file
+ * then sits for five minutes after its last assertion and every direct run,
+ * `pnpm test:desktop` and CI pay it. The stub therefore keeps the resolver,
+ * and `mount`'s teardown settles it: the reply lands (an error, which is what
+ * a backend that stopped talking deserves) and the timer goes with it.
+ */
+let pendingCapabilitiesReply = null;
+const settlePendingCapabilities = () => {
+	if (pendingCapabilitiesReply) {
+		pendingCapabilitiesReply({
+			status: 503,
+			body: { status: 503, message: "Teardown: the stub stopped answering." },
+		});
+		pendingCapabilitiesReply = null;
+	}
+};
 /* Mutable, so a case can move the server's value the way a refetch would. */
 const settingsPayload = () =>
 	JSON.parse(
@@ -110,7 +128,9 @@ globalThis.window.api = {
 			apiCalls.push({ ...request });
 			if (request?.op === "capabilities") {
 				if (capabilitiesBehavior.type === "hang") {
-					return new Promise(() => {});
+					return new Promise((resolve) => {
+						pendingCapabilitiesReply = resolve;
+					});
 				}
 				if (capabilitiesBehavior.type === "error") {
 					return {
@@ -225,6 +245,8 @@ const mount = async (
 	document.body.append(container);
 	const root = createRoot(container);
 	t.after(async () => {
+		/* Settle a hanging capabilities stub first, so its bridge timer clears. */
+		settlePendingCapabilities();
 		try {
 			await act(async () => {
 				root.unmount();
@@ -425,6 +447,15 @@ test(
 				});
 			}
 		})();
+		/* D8: the first Enter must reach the Retry, not the container. */
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		});
+		assert.equal(
+			document.activeElement,
+			retry,
+			"focus lands on the Retry control",
+		);
 		const before = apiCalls.filter((call) => call.op === "capabilities").length;
 		await act(async () => {
 			retry.dispatchEvent(
