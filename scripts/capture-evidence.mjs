@@ -11032,6 +11032,42 @@ export const STORIES = [
 			},
 		},
 	],
+	/*
+	 * `rename-pressed` (#920): the menu's Rename conversation item is pressed on
+	 * s2, and the sidebar's half of the act is what can be photographed here -
+	 * there is no chat pane, so no picker opens (the pane's half is the consume
+	 * path in `slash-dispatch.ts` + `destination-pickers.tsx`, pinned in
+	 * `scripts/panel-presentation.test.mjs`). The readout prints the request the
+	 * press wrote to the panel-presentation store: `session.rename` FOR s2, the
+	 * ROW's conversation and not a pane's - and the fact only this item carries,
+	 * the name that row draws (`Migrate the deploy script`), sent because the
+	 * presenter holds a pane, not the row that was pointed at.
+	 *
+	 * `expectSentence` is what makes a frame filed under this name impossible to
+	 * be the state BEFORE the press: both lines exist only after the item is
+	 * clicked (before it the request reads `none`), so the shutter waits - the
+	 * claim is polled - rather than photographing the open menu under a name that
+	 * claims the press landed.
+	 */
+	[
+		"chat-sidebar-row-context-menu--rename-pressed",
+		780,
+		520,
+		{
+			hover: '[data-session-row="s2"]',
+			hoverSettleMs: 1200,
+			expectSentence: [
+				{
+					selector: "[data-readout-list]",
+					includes: "rename request: session.rename for s2",
+				},
+				{
+					selector: "[data-readout-list]",
+					includes: "name carried: Migrate the deploy script",
+				},
+			],
+		},
+	],
 	[
 		"chat-sidebar-row-context-menu--flyout-dwelled",
 		780,
