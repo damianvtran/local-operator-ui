@@ -628,12 +628,20 @@ export const AgentsApi = {
 		});
 
 		if (!response.ok) {
-			// Attempt to parse error details if available
+			/*
+			 * The refusal's own sentence is read through `publicationProse`, the one
+			 * ladder for it: a bare string (the oldest shape), the i18n envelope's
+			 * `text` (RFC §2.6), then the older object's `message`. The old arm here
+			 * interpolated `detail` whatever its shape, so an envelope reached the
+			 * user as "[object Object]" - the same defect the download side's comment
+			 * records, on the upload side.
+			 */
 			let errorDetail = `Upload agent to Radient request failed: ${response.status} ${response.statusText}`;
 			try {
-				const errorBody = await response.json();
-				if (errorBody?.detail) {
-					errorDetail = `Upload agent to Radient failed: ${errorBody.detail}`;
+				const errorBody = (await response.json()) as { detail?: unknown };
+				const prose = publicationProse({ detail: errorBody?.detail });
+				if (prose) {
+					errorDetail = `Upload agent to Radient failed: ${prose}`;
 				}
 			} catch (_) {
 				// Ignore if parsing fails, use the original error message

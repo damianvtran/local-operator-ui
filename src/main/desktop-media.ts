@@ -18,6 +18,7 @@ import {
 	DESKTOP_REFUSAL_CODE,
 	type DesktopRefusalCode,
 	desktopRefusalCodeForStatus,
+	isDesktopRefusalCode,
 } from "../shared/desktop-contract";
 
 const id = z
@@ -280,14 +281,41 @@ export async function requestDesktopMediaOutcome(
 			// Error bodies from the backend already suppress reflected secrets;
 			// still, only a short detail string is forwarded.
 			let detail = "The media request failed.";
+			let declaredCode: string | undefined;
 			if (responseType.includes("application/json")) {
 				try {
 					const parsedError = (await response.json()) as {
 						detail?: unknown;
 						message?: unknown;
 					};
-					const text = parsedError.detail ?? parsedError.message;
-					if (typeof text === "string") detail = text.slice(0, 512);
+					const raw = parsedError.detail ?? parsedError.message;
+					if (typeof raw === "string") {
+						detail = raw.slice(0, 512);
+					} else if (typeof raw === "object" && raw !== null) {
+						/*
+						 * The core's i18n envelope `{code, params, text}` (RFC §2.6): the
+						 * sentence is `text` (the newer contract, read before the older
+						 * object shape's `message`) and the DECLARED code is carried so the
+						 * renderer's media reader can treat it like any other declared
+						 * code - the precedence `desktopResult` documents.
+						 */
+						const envelope = raw as {
+							code?: unknown;
+							text?: unknown;
+							message?: unknown;
+						};
+						const sentence =
+							typeof envelope.text === "string" && envelope.text.trim()
+								? envelope.text
+								: typeof envelope.message === "string" &&
+										envelope.message.trim()
+									? envelope.message
+									: null;
+						if (sentence !== null) detail = sentence.slice(0, 512);
+						if (typeof envelope.code === "string") {
+							declaredCode = envelope.code;
+						}
+					}
 				} catch {
 					// Keep the generic detail.
 				}
@@ -297,10 +325,14 @@ export async function requestDesktopMediaOutcome(
 					status: response.status,
 					kind: "error",
 					detail,
-					// Only a path the plane has to ADMIT makes the status a pairing fact:
+					// A code the refusal DECLARED wins (its own category); otherwise only a
+					// path the plane has to ADMIT makes the status a pairing fact:
 					// `speech.create` and `agent.export` are outside `/v1/desktop/`, where a
 					// 503 is that route's own failure and not this app's pairing.
-					code: desktopRefusalCodeForStatus(target.path, response.status),
+					code:
+						declaredCode !== undefined && isDesktopRefusalCode(declaredCode)
+							? declaredCode
+							: desktopRefusalCodeForStatus(target.path, response.status),
 				},
 				answered: true,
 			};
