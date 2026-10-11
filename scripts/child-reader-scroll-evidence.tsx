@@ -59,6 +59,8 @@ const runningRow: SubagentRow = {
 	id: "job-child-0001",
 	label: "Reconcile the March invoices against the ledger",
 	role: "reviewer",
+	// A delegated child's wire word (`harness/subagent.py`'s rows are `task`).
+	jobType: "task",
 	status: "running",
 	elapsedLabel: "7m49s",
 	startSeconds: Math.round(MEASURED_AT_MS / 1000) - STARTED_SECONDS_AGO,

@@ -48,6 +48,7 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { Spinner } from "@shared/components/common/spinner";
 import { Badge, Button } from "@shared/components/ui";
 import {
 	DropdownMenu,
@@ -65,6 +66,7 @@ import {
 	PopoverTrigger,
 	Tooltip,
 } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 /*
  * THE UNION OF TWO SIDES, both of which changed this import block: the card
@@ -827,10 +829,8 @@ const BoardCard: FC<BoardCardProps> = ({
 	onDelete,
 	onMove,
 }) => {
-	const meta = listRowMeta(
-		project,
-		typeof navigator === "undefined" ? undefined : navigator.language,
-	);
+	const locale = useI18nLocale();
+	const meta = listRowMeta(project, locale);
 	/*
 	 * THE CARD'S CHECK-IN DOOR (design note §1). The capability is read per card
 	 * through the shared react-query cache (one answer for every card), and the
@@ -1063,7 +1063,20 @@ const BoardCard: FC<BoardCardProps> = ({
 							"hover:bg-sunken hover:text-ink",
 						)}
 					>
-						<MoreHorizontal className="size-4" />
+						{/*
+						 * A MOVE IN FLIGHT SAYS SO ON THE CARD (UX round 1, U2): a
+						 * held PATCH used to leave the row looking untouched for its
+						 * whole duration - no signal at the control the reader just
+						 * used, which is also what invited the overlapping second
+						 * press U1 measured. The glyph swaps to the app's spinner
+						 * for exactly this card's move (the page's per-card set), so
+						 * the signal appears within a frame of the press.
+						 */}
+						{busy ? (
+							<Spinner size="xs" />
+						) : (
+							<MoreHorizontal className="size-4" />
+						)}
 					</DropdownMenuTrigger>
 					{/*
 					 * THE DOORS' CONTENT IS STILL THE CARD'S DESCENDANT IN THE REACT

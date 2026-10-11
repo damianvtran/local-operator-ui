@@ -62,6 +62,7 @@ const {
 	widenTarget,
 	windowTopRun,
 	windowTopRunIsHeadCut,
+	runIsCondensed,
 	closingAnswerIds,
 	buildRows,
 	applyHistoryPage,
@@ -749,6 +750,119 @@ test("the pin list is one predicate, and every kind is decided by it", () => {
 			streaming: false,
 		}),
 		false,
+	);
+	/*
+	 * THE SUPPLEMENT BLOCK (turn-supplements memo §2.11/§3.3 U3): it is NOT a
+	 * pin, deliberately. The pin list is the boundary vocabulary
+	 * (`boundaryKindOf`), and the block is a STATEMENT that terminates the
+	 * turn's span instead of living inside it — the trailing-statement walk
+	 * keeps it visible from outside. Adding it here would put it inside the
+	 * span's keep list and hide the fact that the span ends at it.
+	 */
+	assert.equal(
+		staysVisibleWhileCollapsed({
+			kind: "supplement",
+			id: "x",
+			ts: TS,
+			anchor: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+			job: "3f9c1a7e5b20",
+			version: 1,
+			state: "done",
+			files: [],
+			filesMore: 0,
+			more: [],
+			components: [],
+			error: "",
+			dismissed: false,
+			live: false,
+		}),
+		false,
+		"a supplement block is a statement, not a pin inside the span",
+	);
+});
+
+/* ---------------------- the supplement block's seat (U-b) ---------------- */
+
+test("a supplement row sits outside the condensed span it follows", () => {
+	/*
+	 * The memo's fold requirement (turn-supplements §2.11, lane U-b), pinned as
+	 * the reader-visible consequence rather than as the predicate: the block is
+	 * placed AFTER the answer it belongs to, and the condensed span may not
+	 * swallow it — it reports what the turn PRODUCED. With the block last in the
+	 * turn, the collapse hides the turn's calls and nothing else.
+	 */
+	const block = row("s1", "supplement", {
+		anchor: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+		job: "3f9c1a7e5b20",
+		version: 1,
+		state: "done",
+		files: [],
+		filesMore: 0,
+		more: [],
+		components: [],
+		error: "",
+		dismissed: false,
+		live: false,
+	});
+	const plan = planOf([
+		user("u1"),
+		tool("t1", {}, "trace"),
+		answer("a1"),
+		block,
+	]);
+	assert.deepEqual(
+		plan.runs[0].hidden.map((hidden) => hidden.record.id),
+		["t1"],
+		"the calls condense; the supplement block stays on screen",
+	);
+});
+
+test("the block's condensed read flips exactly with the bar (design D1.1)", () => {
+	/*
+	 * `runIsCondensed` is the ONE reading of the collapse plan the supplement
+	 * block's one-line form may come from: a bar that RENDERS closed condenses
+	 * it, the reader's own expansion (the same `openRuns` set the bar's `open`
+	 * prop reads) restores it in the same pass, and a plan with no bars never
+	 * condenses anything.
+	 */
+	const block = row("s1", "supplement", {
+		anchor: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+		job: "3f9c1a7e5b20",
+		version: 1,
+		state: "done",
+		files: [],
+		filesMore: 0,
+		more: [],
+		components: [],
+		error: "",
+		dismissed: false,
+		live: false,
+	});
+	const plan = planOf([
+		user("u1"),
+		tool("t1", {}, "trace"),
+		answer("a1"),
+		block,
+	]);
+	const run = plan.runs[0];
+	assert.ok(
+		run.segments.length > 0,
+		"the fixture must produce a bar for this case to mean anything",
+	);
+	assert.equal(
+		runIsCondensed(run, undefined),
+		true,
+		"a closed bar condenses the block",
+	);
+	assert.equal(
+		runIsCondensed(run, new Set(run.segments.map((segment) => segment.key))),
+		false,
+		"the reader's open bar restores it",
+	);
+	assert.equal(
+		runIsCondensed({ segments: [] }, undefined),
+		false,
+		"no bars, no condensation",
 	);
 });
 

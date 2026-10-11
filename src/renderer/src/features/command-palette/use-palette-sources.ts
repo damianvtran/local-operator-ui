@@ -35,6 +35,7 @@ import {
 } from "@features/chat/chat-search";
 import type { ArchiveView } from "@features/chat/chat-search";
 import { useMeshMembership } from "@features/mesh/mesh-store";
+import { presentSetting } from "@features/settings/backend-setting-copy";
 import { DEFAULT_SETTINGS_SECTIONS } from "@features/settings/components/settings-sidebar";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type { BackendSettings } from "@shared/api/local-operator/desktop-api";
@@ -51,6 +52,7 @@ import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { useAgents } from "@shared/hooks/use-agents";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
+import { t } from "@shared/i18n";
 import {
 	LEGACY_CATALOGUE_PAGE,
 	panelSessionIdOfView,
@@ -758,7 +760,17 @@ export function usePaletteItems({
 		if (!wantsSettings) return [];
 		return [
 			...buildSettingsSectionItems(DEFAULT_SETTINGS_SECTIONS),
-			...buildSettingKeyItems(registry.data?.settings ?? []),
+			/*
+			 * PRESENTED before built (`.map(presentSetting)`), the same fold the
+			 * settings page's row list and search apply: without it the palette
+			 * showed and searched the registry's terminal copy - "Delegated
+			 * cleanup", the "↳" child idiom - so a row the page finds by
+			 * "retention" was unfindable here and the two surfaces disagreed about
+			 * a setting's own name (agent review round 1, F4).
+			 */
+			...buildSettingKeyItems(
+				(registry.data?.settings ?? []).map(presentSetting),
+			),
 		];
 	}, [registry.data, wantsSettings]);
 
@@ -1041,6 +1053,28 @@ function buildPaletteActions({
 			verb: "Connect",
 			command: "connect-provider" as const,
 			featured: true,
+		},
+		/*
+		 * The language door (i18n slice B2). NON-FEATURED on purpose: the
+		 * settings row is the canonical editor, and a browse list that
+		 * advertised a second one would read as two owners (the accepted
+		 * proposal's "doors change discovery, not ownership"). The commands
+		 * scope and a search reach it - the name keeps the word "language",
+		 * which is what a reader types.
+		 */
+		{
+			id: "change-interface-language",
+			name: t("ui.settings.language.palette_action"),
+			icon: "language" as const,
+			keywords: [
+				"language",
+				"locale",
+				"interface language",
+				"translation",
+				"i18n",
+			],
+			verb: "Change",
+			command: "change-interface-language" as const,
 		},
 		{
 			id: "create-agent",

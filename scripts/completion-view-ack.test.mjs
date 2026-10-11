@@ -135,6 +135,16 @@ const fixtures = {
 			const index = globalThis.__refCursor++;
 			return (globalThis.__refs[index] ??= { current: initial });
 		}
+		/*
+		 * The DEFAULT export. The hook's graph now reaches a zustand store, and
+		 * \`zustand\`'s React entry is written \`import React from "react"\`, so a
+		 * stand-in with only named exports fails the BUNDLE with "No matching
+		 * export in \"fixture:react\" for import \"default\"" (the same note, and
+		 * the same line, as session-load-recovery.test.mjs). It holds only the
+		 * two hooks above: nothing here subscribes to a store, and inventing a
+		 * \`useSyncExternalStore\` this file never exercises would be a claim.
+		 */
+		export default { useEffect, useRef };
 	`,
 	"canonical-store": `
 		export const useCanonicalSessionsStore = Object.assign(

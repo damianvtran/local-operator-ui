@@ -5,6 +5,65 @@ import { cn } from "@shared/lib/utils";
 import { type FC, memo, useCallback, useMemo, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { CodeEditor } from "./code-editor";
+import { useSignedStaticUrl } from "./use-signed-static-url";
+
+/**
+ * THE PREVIEW'S SANDBOX, AND WHY IT IS THIS ONE (security lane U-a; memo §4.1,
+ * §8 F6).
+ *
+ * `allow-scripts` alone. The document is agent-generated HTML served from the
+ * backend's loopback origin, and this frame used to carry `allow-scripts
+ * allow-same-origin allow-forms`:
+ *
+ * - `allow-scripts` + `allow-same-origin` is the pairing the HTML spec warns about
+ *   by name - a framed document that keeps its real origin and can run script
+ *   can reach into its own `<iframe>` element and delete the `sandbox` attribute,
+ *   lifting the sandbox entirely; and with the real backend origin it could read
+ *   every unauthenticated daemon route (`/v1/static/*` takes a filesystem path)
+ *   from the page itself, with the app's own CORS grant.
+ * - `allow-forms` let the document POST anywhere, to no preview's benefit.
+ *
+ * Without `allow-same-origin` the document gets an opaque origin: no cookies or storage
+ * of the daemon's origin, no readable cross-origin responses (its requests carry
+ * `Origin: null`), no reaching `parent`'s DOM. Deliberately NOT granted:
+ * `allow-popups` (no `window.open`, so a previewed page cannot start a native
+ * navigation), `allow-top-navigation*`, `allow-modals`, `allow-downloads`,
+ * `allow-pointer-lock`, `allow-presentation`, `allow-orientation-lock`.
+ *
+ * The sandbox is half of the contract. The other half is the response policy the
+ * main process puts on this route (`PREVIEW_CSP` in `src/main/window-guards.ts`):
+ * an opaque origin alone still lets the page `fetch()` the loopback daemon, since
+ * its CORS middleware echoes `Origin: null`. Both halves are asserted against a
+ * hostile document in a real Electron by
+ * `scripts/window-guards-electron.test.mjs`.
+ *
+ * What a previewed page loses: `localStorage`/cookies throw (it has no origin to
+ * keep them under), and a `<form>` submit does nothing. A page that merely
+ * renders - markup, CSS, inline or CDN scripts, canvas, SVG, https `fetch` -
+ * works as before.
+ *
+ * WHY THIS VIEWER KEEPS THE STATIC ROUTE, moved readers and all. The other
+ * local-file surfaces now read their bytes over the app's own bridge
+ * (`use-file-blob-url`), which serves a path regardless of the daemon's
+ * configured roots. This frame does NOT follow them, and the paragraph above is
+ * the reason: the sandbox is only half of the containment, and the route's
+ * response policy (`PREVIEW_CSP`, added by main to the served document) is the
+ * other half. A `blob:` frame is not unrestricted - a `blob:` document INHERITS
+ * its creator's policy container, here the APP's meta CSP (`script-src 'self'`,
+ * a `connect-src` that lists the loopback daemon) - but that is the WRONG policy
+ * for a preview: it would refuse the page's own inline scripts and hold it to
+ * the app's connection allowlist instead of `PREVIEW_CSP`'s. (Inheritance is the
+ * HTML spec's rule for `blob:`; it was not measured in this app, which is why
+ * this comment states the mismatch and not an exploit.) The route and its policy
+ * are one pair; giving up the route gives up the policy.
+ * Cost, stated: an HTML file outside every served root still gets the route's
+ * 403 inside the frame, whose body names the `static.roots` remedy. A titled
+ * state like the sibling viewers' would need a pre-flight of the route, and the
+ * core (#2134) no longer echoes CORS for a foreign origin, which the app's
+ * `file://` document is - so the pre-flight cannot read the status. Left as is
+ * and recorded as a follow-up rather than guessed at.
+ */
+export const PREVIEW_SANDBOX = "allow-scripts";
 
 type HtmlPreviewProps = {
 	/**
@@ -61,7 +120,11 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({
 		setIsEditMode((prev) => !prev);
 	}, []);
 
-	const htmlUrl = useMemo(
+	/*
+	 * The URL this viewer used while the route was the only source, kept byte
+	 * for byte as the signed-URL fallback.
+	 */
+	const plainUrl = useMemo(
 		() => getHtmlUrl(apiConfig.baseUrl, document.path),
 		[document.path],
 	);
@@ -77,6 +140,26 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({
 	 * freshness line moved while the pane kept showing the old document.
 	 */
 	const version = `${document.readMtimeMs ?? 0}:${document.lastAgentModified ?? 0}`;
+
+	/*
+	 * SIGNED URL (file-serving RFC § 4 Phase A): the static routes stay
+	 * credential-free in this phase, and this is what keeps the preview working
+	 * when a later core phase gates them - an `<iframe src>` GET cannot carry a
+	 * token, so the URL itself must. Every failure (old core, refused
+	 * credential, dead transport) falls back to `plainUrl`.
+	 *
+	 * The TTL is the core's default (600 s, by omitting `ttlS`): the frame loads
+	 * once per version, so the window only has to outlive that load, and a
+	 * longer life would only lengthen how long a leaked URL replays - the
+	 * shorter default is the right way round for a document that executes.
+	 */
+	const htmlUrl = useSignedStaticUrl({
+		baseUrl: apiConfig.baseUrl,
+		route: "html",
+		path: document.path,
+		version,
+		plainUrl,
+	});
 
 	return (
 		<div className={cn("flex h-full w-full flex-col")}>
@@ -99,12 +182,12 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({
 				<div className={cn("h-full", isEditMode ? null : "hidden")}>
 					<CodeEditor document={document} conversationId={conversationId} />
 				</div>
-				{isEditMode ? null : (
+				{isEditMode || htmlUrl === null ? null : (
 					<iframe
 						key={version}
 						src={htmlUrl}
 						title={`HTML Preview: ${document.title}`}
-						sandbox="allow-scripts allow-same-origin allow-forms"
+						sandbox={PREVIEW_SANDBOX}
 						className={cn("h-full w-full border-0 bg-surface")}
 					/>
 				)}

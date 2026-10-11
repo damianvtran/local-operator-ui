@@ -80,6 +80,10 @@ export const obsidian: ThemeDefinition = {
 		// measures 3.48 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
 		messageSurface: "#2b2a2e",
+		// The media slot's well: ΔE00 4.04 off the canvas, where `sunken` alone
+		// measures 2.14 - a step away from the canvas to clear the role's 4.0
+		// floor, which the tile carries because the fill IS its resting extent.
+		mediaSurface: "#17171c",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a

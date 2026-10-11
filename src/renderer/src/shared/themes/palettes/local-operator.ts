@@ -73,6 +73,10 @@ export const localOperatorDark: ThemeDefinition = {
 		// measures 2.77 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
 		messageSurface: "#2e2a21",
+		// The media slot's well: ΔE00 4.02 off the canvas, where `sunken` alone
+		// measures 2.07 - a step away from the canvas to clear the role's 4.0
+		// floor, which the tile carries because the fill IS its resting extent.
+		mediaSurface: "#191717",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -272,6 +276,10 @@ export const localOperatorLight: ThemeDefinition = {
 		// measures 2.32 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
 		messageSurface: "#fcfbf7",
+		// The media slot's well: ΔE00 4.24 off the canvas, where `sunken` alone
+		// measures 2.26 - a step away from the canvas to clear the role's 4.0
+		// floor, which the tile carries because the fill IS its resting extent.
+		mediaSurface: "#e7e1cf",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a

@@ -5,7 +5,8 @@ import { build } from "esbuild";
 
 /*
  * Coverage for the Files panel's PRODUCER — the extractor that turns a
- * transcript into the list of paths the panel shows, plus the grid's view model.
+ * transcript into the list of paths the panel shows, the grid's view model, and
+ * the probe-application step that paints availability onto the tiles.
  *
  * Why this file exists, in the shape of the incident that would need it. The
  * panel's content is inferred from prose, tool arguments, tool output and diff
@@ -27,6 +28,23 @@ import { build } from "esbuild";
  * truncated `file:///Users/x/My Docs/a.pdf` are transcribed from the
  * reconnaissance that produced the design, not invented for the test.
  */
+
+/*
+ * The probe-application cells drive the REAL canvas store, which persists
+ * through `localStorage`; node has none, so give it an in-memory one before
+ * the bundle is imported (a jsdom harness in this repo gets the same object
+ * from the DOM; the store code under test is the shipped module either way).
+ */
+const memoryStorage = new Map();
+globalThis.localStorage = {
+	getItem: (key) => (memoryStorage.has(key) ? memoryStorage.get(key) : null),
+	setItem: (key, value) => {
+		memoryStorage.set(key, String(value));
+	},
+	removeItem: (key) => {
+		memoryStorage.delete(key);
+	},
+};
 
 const bundle = await build({
 	stdin: {
@@ -55,6 +73,9 @@ const bundle = await build({
 				sizeLabel,
 			} from "./src/renderer/src/features/chat/components/canvas/file-rows";
 			export { viewerFor, READ_ENCODING } from "./src/renderer/src/features/chat/utils/viewer-routing";
+			export { applyProbeResults } from "./src/renderer/src/features/chat/canonical/use-mentioned-files";
+			export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store";
+			export { canvasDocumentForPath } from "./src/renderer/src/features/chat/utils/canvas-document";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -90,6 +111,9 @@ const {
 	sizeLabel,
 	viewerFor,
 	READ_ENCODING,
+	applyProbeResults,
+	useCanvasStore,
+	canvasDocumentForPath,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -1608,4 +1632,62 @@ test("the abbreviation trade, stated exactly: `…` anywhere, `...` as a whole s
 			`a mid-name \`...\` is admitted on the ${label} tier - the rule reads segments`,
 		);
 	}
+});
+
+/* -------------------------------------- the probe's answers land on the tiles */
+
+test("a fault answer leaves a tile unmarked; a plain miss is the only 'gone'", () => {
+	/*
+	 * QA round 1's Q1, from the measured repro: under heavy load a deadline
+	 * fault fires on files that EXIST, and mapping `exists: false` + `error`
+	 * straight to the missing receipt painted "No longer on disk" from a stat
+	 * that never happened. The mapping now reads `error` first: a fault is
+	 * UNKNOWN - the tile stays unmarked - while the retry bookkeeping in the
+	 * hook still re-asks it. A plain miss keeps the receipt, and a presence
+	 * fills the tile.
+	 */
+	useCanvasStore.setState({ conversations: {} });
+	const conversationId = "conv-probe-tiles";
+	useCanvasStore
+		.getState()
+		.addMentionedFilesBatch(conversationId, [
+			canvasDocumentForPath("/tmp/report.md"),
+		]);
+	const tile = () =>
+		useCanvasStore.getState().conversations[conversationId].mentionedFiles[0];
+	const answer = (over = {}) => ({
+		input: "/tmp/report.md",
+		resolved: "/tmp/report.md",
+		exists: false,
+		isFile: false,
+		sizeBytes: null,
+		mtimeMs: null,
+		...over,
+	});
+
+	applyProbeResults(conversationId, [
+		answer({ error: "probe timed out after 1750 ms" }),
+	]);
+	assert.equal(tile().availability, undefined, "fault: no claim on the tile");
+
+	applyProbeResults(conversationId, [answer()]);
+	assert.equal(
+		tile().availability,
+		"missing",
+		"a plain miss keeps the receipt",
+	);
+
+	applyProbeResults(conversationId, [
+		answer({ exists: true, isFile: true, sizeBytes: 6, mtimeMs: 9 }),
+	]);
+	assert.equal(tile().availability, "present");
+	assert.equal(tile().sizeBytes, 6);
+	assert.equal(tile().lastAgentModified, 9);
+
+	// The latest answer wins: a fault after a miss clears the claim again,
+	// because "cannot look" retracts nothing and asserts nothing.
+	applyProbeResults(conversationId, [
+		answer({ error: "probe timed out after 1750 ms" }),
+	]);
+	assert.equal(tile().availability, undefined);
 });

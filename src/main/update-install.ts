@@ -22,7 +22,11 @@ import {
 } from "node:path";
 import BUNDLED_RUNTIME_LAYOUT from "../shared/bundled-runtime-layout.json";
 import MACOS_ENTITLEMENT_POLICY from "../shared/macos-entitlement-policy.json";
-import { installerIsAlive } from "./update-shipit";
+import {
+	INSTALLER_FIRST_GRACE_SECONDS,
+	INSTALLER_SECOND_GRACE_SECONDS,
+	installerIsAlive,
+} from "./update-shipit";
 
 /**
  * Pure helpers behind the application update path.
@@ -104,6 +108,47 @@ export const WATCHDOG_TIMEOUT_SECONDS = 600;
  * short enough to give the user their app back in the same sitting.
  */
 export const WATCHDOG_HARD_TIMEOUT_SECONDS = 1800;
+
+/**
+ * When the watchdog first says out loud that it is waiting for the app to
+ * close (2026-10-11 incident).
+ *
+ * The gap this closes: on the incident's quit the app sat alive with no window
+ * for 26 m 49 s, this watchdog was the only process left that could speak, and
+ * it waited through its silent first step without saying a word - the operator
+ * sat in front of nothing until they killed the pid by hand. 15 s is ~4x the
+ * slowest GOOD quit measured on that machine (1.3-4 s, 7 of 8 installs that
+ * day), so the notice cannot precede a normal quit's own log lines, and it is a
+ * quarter of the installer's first grace (`INSTALLER_FIRST_GRACE_SECONDS`), so
+ * the person still has the whole grace to act before the escalator signals the
+ * app. The copy names the phase, the elapsed wait, and that no action is owed
+ * yet (round-1 UX U3: for a person who cannot see a window, "close" names no
+ * gesture they can perform, and the first actionable sentence otherwise arrives
+ * 145 s later - the escalator owns the stuck case from here); the notice is one
+ * of the message SET - the fallback hint follows at the bound below.
+ */
+export const WATCHDOG_APP_WAIT_NOTICE_SECONDS = 15;
+
+/**
+ * When the waiting message admits the escalation did not resolve it, and hands
+ * the person the action that does.
+ *
+ * DERIVATION: two full escalation ladders - 2 x (60 s + 20 s) - so an app still
+ * running here has provably survived `INSTALLER_FIRST_GRACE_SECONDS` + TERM +
+ * `INSTALLER_SECOND_GRACE_SECONDS` + KILL + settle, which is the
+ * "escalation failed" case the message set has to cover, not a slow moment. A
+ * change to either grace moves this bound with it. It is also far inside
+ * `WATCHDOG_TIMEOUT_SECONDS`, so the hint arrives while the wait still has a
+ * future rather than at its edge. THE COPY DOES NOT SAY "AND REOPEN" (round-1
+ * UX U1): reopening is the gesture this product's own copy says cancels an
+ * install (`installInFlightPayload`, the stay-closed notice), and the incident
+ * was resolved by quitting alone - the operator `kill -TERM`'d the pid and
+ * ShipIt exec'd 0.4 s later. It names the strongest affordance for a windowless
+ * instance instead (round-1 UX U2): Force Quit works when the quit path itself
+ * is what is wedged; a Dock quit routes through that same path.
+ */
+export const WATCHDOG_APP_WAIT_FALLBACK_SECONDS =
+	2 * (INSTALLER_FIRST_GRACE_SECONDS + INSTALLER_SECOND_GRACE_SECONDS);
 
 /**
  * How much later than the watchdog's hard bound a marker stops describing a
@@ -2710,6 +2755,18 @@ export function buildWatchdogPlan(input: {
 	 */
 	announceSeconds?: number;
 	/**
+	 * When the wait for the app to close first speaks, in seconds. Defaults to
+	 * `WATCHDOG_APP_WAIT_NOTICE_SECONDS`; a test drives it short to watch the
+	 * message set without sitting out the shipped moment.
+	 */
+	appWaitNoticeSeconds?: number;
+	/**
+	 * When the wait admits the escalation did not resolve it, in seconds.
+	 * Defaults to `WATCHDOG_APP_WAIT_FALLBACK_SECONDS`; a test drives it short
+	 * for the same reason as the notice above.
+	 */
+	appWaitFallbackSeconds?: number;
+	/**
 	 * The installer this app spawned itself, when it spawned one - the signal the
 	 * script waits on INSTEAD of the launchd job, because an install started this
 	 * way has no job. Null (the default) is Squirrel's own path and today's
@@ -2780,6 +2837,10 @@ export function buildWatchdogPlan(input: {
 	const settleSeconds = input.settleSeconds ?? 5;
 	const appearSeconds = input.appearSeconds ?? 30;
 	const announceSeconds = input.announceSeconds ?? 5;
+	const appWaitNoticeSeconds =
+		input.appWaitNoticeSeconds ?? WATCHDOG_APP_WAIT_NOTICE_SECONDS;
+	const appWaitFallbackSeconds =
+		input.appWaitFallbackSeconds ?? WATCHDOG_APP_WAIT_FALLBACK_SECONDS;
 	const plistTimeoutSeconds =
 		input.plistReadTimeoutSeconds ?? PLIST_READ_TIMEOUT_SECONDS;
 
@@ -2879,6 +2940,27 @@ if [ -z "$APP_PID" ] || [ -z "$BUNDLE" ]; then
 fi
 now() { date +%s; }
 app_running() { kill -0 "$APP_PID" 2>/dev/null; }
+# THE WAIT'S OWN CLOCK (2026-10-11). The script is spawned as the quit begins, so
+# its own start IS the wait's start - elapsed is measured from here rather than
+# from the marker's startedAt, which is written before the quit and would need a
+# new seam through two collaborators for a difference of seconds.
+started=$(now)
+# "waiting 15 s" / "waiting 2 min 30 s": elapsed in the units a person reads,
+# with the seconds term dropped at an exact minute ("waiting 30 min") - "30 min
+# 0 s" reads like a clock fault rather than a wait (round-1 D2).
+elapsed_text() {
+	_seconds=$(( $(now) - started ))
+	if [ "$_seconds" -lt 0 ]; then _seconds=0; fi
+	if [ "$_seconds" -ge 60 ]; then
+		if [ $((_seconds % 60)) -eq 0 ]; then
+			printf '%d min' "$((_seconds / 60))"
+		else
+			printf '%d min %d s' "$((_seconds / 60))" "$((_seconds % 60))"
+		fi
+	else
+		printf '%d s' "$_seconds"
+	fi
+}
 # Whether ANY process is this install's ShipIt, for the pid that stopped being it.
 #
 # The same two facts installerElsewhere requires of a line in its listing: this
@@ -3104,8 +3186,31 @@ decided() {
 deadline=$(( $(now) + ${timeoutSeconds} ))
 hard_deadline=$(( $(now) + ${hardTimeoutSeconds} ))
 # 1. The install only starts once the old app has exited.
+#
+#    AND THE WAIT SPEAKS, INSTEAD OF LEAVING THE PERSON IN SILENCE (2026-10-11).
+#    The incident's app sat alive with no window for 26 m 49 s; this script was
+#    the only process left that could say anything, and its first step was
+#    silent until the soft bound - the person watched nothing happen and
+#    resolved it by hand ('kill -TERM', which is what let ShipIt exec). So the
+#    wait now says what it is waiting for and for how long, well before the
+#    installer's own escalation signals the app
+#    (WATCHDOG_APP_WAIT_NOTICE_SECONDS), and after the escalation has
+#    provably failed it hands over the action that works
+#    (WATCHDOG_APP_WAIT_FALLBACK_SECONDS). Each fires at most once; the
+#    kill switch silences both like every other notice (notify's own guard).
+app_wait_notice=0
+app_wait_fallback=0
 while app_running; do
 	if [ "$(now)" -ge "$deadline" ]; then break; fi
+	_waited=$(( $(now) - started ))
+	if [ "$app_wait_notice" -eq 0 ] && [ "$_waited" -ge ${appWaitNoticeSeconds} ]; then
+		app_wait_notice=1
+		notify "Waiting for Local Operator to close so the update can install (waiting $(elapsed_text)). No action is needed yet."
+	fi
+	if [ "$app_wait_fallback" -eq 0 ] && [ "$_waited" -ge ${appWaitFallbackSeconds} ]; then
+		app_wait_fallback=1
+		notify "The update is still waiting for Local Operator to close (waiting $(elapsed_text)). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself."
+	fi
 	sleep ${intervalSeconds}
 done
 # 1b. The app is gone and an install is at work, so the window that just
@@ -3180,7 +3285,16 @@ while :; do
 	if [ "$(now)" -ge "$deadline" ]; then
 		if [ "$signal_known" -eq 1 ] && install_live; then
 			holding=1
-			notify "The update is still installing. Keep Local Operator closed; it will open again when the install finishes."
+			# THE SOFT BOUND BRANCHES TOO (round-1 UX U4): it fires while the app
+			# may still be RUNNING, where "keep it closed" describes a state the
+			# person is not in. App running -> the wait/fallback copy with a fresh
+			# elapsed reading; app gone -> the stay-closed copy, which is true there
+			# (an install this app spawned is live and the swap still needs quiet).
+			if app_running; then
+				notify "The update is still waiting for Local Operator to close (waiting $(elapsed_text)). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself."
+			else
+				notify "The update is still installing. Keep Local Operator closed; it will open again when the install finishes."
+			fi
 		fi
 		break
 	fi
@@ -3208,7 +3322,20 @@ if [ "$holding" -eq 1 ]; then
 	while :; do
 		if decided; then break; fi
 		if [ "$(now)" -ge "$hard_deadline" ]; then
-			notify "The update is taking longer than expected. Local Operator is opening again so you are not left without it — if it says the update is still installing, quit it and leave it closed until the install finishes."
+			# TRUTHFUL ON BOTH ARMS (2026-10-11). The notice that used to stand
+			# here promised "Local Operator is opening again" unconditionally, and
+			# the path below with the app STILL RUNNING ('if app_running; then
+			# exit 0') is exactly where that promise is false - the watchdog
+			# exits without launching, because launching into a running app is
+			# what aborts a swap. So the app-still-running arm now says the true
+			# thing and hands over the action that resolves it, the same fallback
+			# the wait's own notices use; the app-gone arm keeps the notice the
+			# panel's copy expects (UX U10).
+			if app_running; then
+				notify "The update is still waiting for Local Operator to close (waiting $(elapsed_text)). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself."
+			else
+				notify "The update is taking longer than expected. Local Operator is opening again so you are not left without it — if it says the update is still installing, quit it and leave it closed until the install finishes."
+			fi
 			break
 		fi
 		sleep ${intervalSeconds}

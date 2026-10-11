@@ -733,6 +733,32 @@ test("no bridge and a throwing bridge both leave the answer unknown", async () =
 	assert.equal(probeStateFor("/tmp/b.pdf"), undefined);
 });
 
+test("a fault answer is unknown too, not a cached negative", async () => {
+	resetProbeCache();
+	const asked = [];
+	const ask = async (paths) => {
+		asked.push(paths);
+		return paths.map(() => ({
+			exists: false,
+			isFile: false,
+			error: "probe timed out after 1750 ms",
+		}));
+	};
+	await probeTarget("/tmp/hung.pdf", ask);
+	/*
+	 * THE THIRD STATE, beside an answer and a throw (round 1, R1-2 + QA round 1,
+	 * Q1): a FAULT means the probe could not answer - a deadline under load -
+	 * so the spelling stays UNKNOWN rather than caching `exists: false` as a
+	 * fact. The toolbar's null state offers its full matrix instead of a "No
+	 * file at ..." strip, and the next reveal asks again rather than reading a
+	 * lie.
+	 */
+	assert.equal(probeStateFor("/tmp/hung.pdf"), undefined);
+	assert.equal(evidenceFor("/tmp/hung.pdf"), "unknown");
+	await probeTarget("/tmp/hung.pdf", ask);
+	assert.equal(asked.length, 2, "not cached: the next ask re-probes");
+});
+
 /* ------------------------------------------------- the grammar's read of the probe */
 
 test("`evidenceFor` answers the grammar's question in three states", async () => {

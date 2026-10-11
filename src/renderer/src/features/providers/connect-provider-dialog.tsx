@@ -20,7 +20,7 @@ import {
 	DialogDescription,
 	DialogTitle,
 } from "@shared/components/ui";
-import type { FC } from "react";
+import { type FC, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useConnectProviderStore } from "./connect-provider-store";
 import { ProviderGrid } from "./provider-grid";
@@ -28,6 +28,27 @@ import { ProviderGrid } from "./provider-grid";
 export const ConnectProviderDialog: FC = () => {
 	const { open, focusGroup, providerId, closeConnect } =
 		useConnectProviderStore();
+	/*
+	 * THE CONTROL THE CONNECT STARTED FROM (UX round 1, U1).
+	 *
+	 * Radix restores focus to the dialog's TRIGGER on close, and this dialog has
+	 * none — every opener reaches it through `openConnect` (the picker's row
+	 * pick, its dead-end CTA, the composer, the empty-chat card), so closing
+	 * dropped focus to the document body and a keyboard user lost their place for
+	 * a keystroke in every opening path QA measured. The element focused at OPEN
+	 * time is the initiating control on all of them, recorded where `open` flips
+	 * and restored below; `null` when nothing was focused, and a target that has
+	 * since unmounted falls back to Radix's own behaviour.
+	 */
+	const opener = useRef<HTMLElement | null>(null);
+	useEffect(() => {
+		if (open) {
+			opener.current =
+				document.activeElement instanceof HTMLElement
+					? document.activeElement
+					: null;
+		}
+	}, [open]);
 	// The receipt's Change sends the user to the settings section that owns the model
 	// (the same destination Settings' own provider panel uses).
 	const navigate = useNavigate();
@@ -41,6 +62,14 @@ export const ConnectProviderDialog: FC = () => {
 			<DialogContent
 				className="max-h-[calc(100vh-4rem)] max-w-[min(40rem,calc(100vw-4rem))] gap-4 overflow-y-auto"
 				data-connect-provider-dialog=""
+				onCloseAutoFocus={(event) => {
+					const target = opener.current;
+					opener.current = null;
+					if (target?.isConnected) {
+						event.preventDefault();
+						target.focus();
+					}
+				}}
 			>
 				<div className="flex flex-col gap-1">
 					<DialogTitle className="text-title">

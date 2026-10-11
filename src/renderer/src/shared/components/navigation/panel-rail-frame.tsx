@@ -32,9 +32,24 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 	listOnScreen = false,
 	readerChildId = null,
 	browserAttentionCount = 0,
+	/*
+	 * THE ASKS ITEM IS OPT-IN (#896), unlike the four route-gated siblings. Whether
+	 * a host offers a door is the APP's fact (`published`/`answered`), and a frame
+	 * that cannot know it must not pretend one was offered - so the default is
+	 * ABSENT, and a story that means to photograph the fifth item passes
+	 * `askOffered`. The scope defaults to `session` because the frame's own route
+	 * default has a conversation, exactly as `sessionId` does.
+	 */
+	askOffered = false,
+	askCount = 0,
+	askScope = "session",
 	consoleUnseenCount = 0,
 	consoleUnseenPulsing = false,
 	fileCount = 0,
+	codeOffered = false,
+	codeOpened = 0,
+	codeMentioned = 0,
+	codeAttention = null,
 }) => {
 	const setRightSlotRoute = useUiPreferencesStore((s) => s.setRightSlotRoute);
 	const hasRunDetails = runDetails !== null;
@@ -44,9 +59,15 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 			mounted: true,
 			runDetails: hasRunDetails,
 			session: hasSession,
+			codeReview: true,
 		});
 		return () =>
-			setRightSlotRoute({ mounted: false, runDetails: false, session: false });
+			setRightSlotRoute({
+				mounted: false,
+				runDetails: false,
+				session: false,
+				codeReview: false,
+			});
 	}, [setRightSlotRoute, hasRunDetails, hasSession]);
 	return (
 		<div
@@ -61,9 +82,16 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 				listOnScreen={listOnScreen}
 				readerChildId={readerChildId}
 				browserAttentionCount={browserAttentionCount}
+				askOffered={askOffered}
+				askCount={askCount}
+				askScope={askScope}
 				consoleUnseenCount={consoleUnseenCount}
 				consoleUnseenPulsing={consoleUnseenPulsing}
 				fileCount={fileCount}
+				codeOffered={codeOffered}
+				codeOpened={codeOpened}
+				codeMentioned={codeMentioned}
+				codeAttention={codeAttention}
 			/>
 		</div>
 	);

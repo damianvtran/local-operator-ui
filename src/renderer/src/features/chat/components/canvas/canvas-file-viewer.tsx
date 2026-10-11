@@ -3,16 +3,8 @@ import {
 	canvasDocumentForPath,
 	stripFileUrl,
 } from "@features/chat/utils/canvas-document";
-import {
-	imageExtensions,
-	videoExtensions,
-} from "@features/chat/utils/file-kind";
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
-import {
-	type LocalOperatorClient,
-	createLocalOperatorClient,
-} from "@shared/api/local-operator";
 import {
 	Button,
 	DropdownMenu,
@@ -24,7 +16,6 @@ import {
 	DropdownMenuTrigger,
 	Input,
 } from "@shared/components/ui";
-import { apiConfig } from "@shared/config";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
@@ -143,60 +134,6 @@ const KindFilterMenu: FC<{
 	);
 };
 
-/**
- * Checks if a file is an image based on its extension.
- *
- * The list lives in `utils/file-kind.ts`, shared with `getFileTypeFromPath` and
- * the viewers. It used to be spelled here as well, and the two disagreed:
- * `.tiff .ico .heic .heif .avif .jfif` were images to this grid and `"other"` to
- * the classifier, so a HEIC tile painted a thumbnail under a type that said the
- * app did not know the format.
- */
-const isImage = (path: string): boolean => {
-	const lowerPath = path.toLowerCase();
-	return imageExtensions.some((ext) => lowerPath.endsWith(`.${ext}`));
-};
-
-/**
- * Checks if a file is a video based on its extension. Shares the list above.
- */
-const isVideo = (path: string): boolean => {
-	const lowerPath = path.toLowerCase();
-	return videoExtensions.some((ext) => lowerPath.endsWith(`.${ext}`));
-};
-
-/**
- * Gets the appropriate URL for an attachment using the static API
- */
-const getAttachmentUrl = (
-	client: LocalOperatorClient,
-	path: string,
-): string => {
-	// If it's a web URL, return it as is
-	if (path.startsWith("http")) {
-		return path;
-	}
-
-	// For data URIs, return as is
-	if (path.startsWith("data:")) {
-		return path;
-	}
-
-	// For local files, normalize the path and use appropriate endpoint
-	const normalizedPath = path.startsWith("file://") ? path : `file://${path}`;
-
-	if (isImage(path)) {
-		return client.static.getImageUrl(normalizedPath);
-	}
-
-	if (isVideo(path)) {
-		return client.static.getVideoUrl(normalizedPath);
-	}
-
-	// For other file types, return the original path
-	return path;
-};
-
 const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	conversationId,
 	onSwitchToDocumentView,
@@ -260,17 +197,6 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	 * row only.
 	 */
 	const firstRowRef = useRef<HTMLButtonElement>(null);
-
-	// Create a Local Operator client using the API config
-	const client = useMemo(() => {
-		return createLocalOperatorClient(apiConfig.baseUrl);
-	}, []);
-
-	// Get the URL for an attachment
-	const getUrl = useCallback(
-		(path: string) => getAttachmentUrl(client, path),
-		[client],
-	);
 
 	const handleFileClick = useCallback(
 		async (fileDoc: CanvasDocument) => {
@@ -384,7 +310,20 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 					? ((await window.api.probeFiles([normalizedPath]))[0] ?? null)
 					: null;
 			const onDisk = Boolean(probe?.exists && probe.isFile);
-			if (fileDoc.availability === "missing" && !onDisk) {
+			/*
+			 * A probe that could not answer is UNKNOWN, not gone (remediation round 1,
+			 * R1-2; QA round 1, Q1): a deadline fault under load fires on files that
+			 * are there, so refusing the click on one would report "File no longer
+			 * exists" on the strength of a stat that never happened. Unknown falls
+			 * through to the open attempt below, which fails on its own terms if the
+			 * file really is unreadable. A `null` probe (no bridge) still refuses a
+			 * known-missing row as before.
+			 */
+			if (
+				fileDoc.availability === "missing" &&
+				!onDisk &&
+				probe?.error === undefined
+			) {
 				showErrorToast(
 					`File no longer exists at ${probe?.resolved ?? normalizedPath}`,
 					{
@@ -859,7 +798,6 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 							<FileRowItem
 								key={row.document.id}
 								row={row}
-								getUrl={getUrl}
 								current={row.document.id === selectedTabId}
 								onOpen={handleFileClick}
 								buttonRef={index === 0 ? firstRowRef : undefined}

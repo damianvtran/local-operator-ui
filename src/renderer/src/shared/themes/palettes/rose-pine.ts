@@ -72,6 +72,10 @@ export const rosePine: ThemeDefinition = {
 		// measures 3.57 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
 		messageSurface: "#332f43",
+		// The media slot's well: ΔE00 4.17 off the canvas, where `sunken` alone
+		// measures 2.65 - a step away from the canvas to clear the role's 4.0
+		// floor, which the tile carries because the fill IS its resting extent.
+		mediaSurface: "#212129",
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be

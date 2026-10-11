@@ -1039,6 +1039,136 @@ export type CanonicalEffectiveIdentity = {
 	role_of_speaker?: string;
 };
 
+/**
+ * Whether the credential the session's model needs is still usable, as the
+ * runtime states it beside `selected_model`.
+ *
+ * WHY THE SESSION HAS TO SAY IT rather than every surface deriving it: a
+ * session's model is pinned in its journal and can outlive the credential that
+ * once made it runnable — the operator's report is exactly that state, a
+ * session left on `radient/auto` with no Radient sign-in on the machine, where
+ * every frame still looks healthy. The runtime holds the one access predicate
+ * (`usable_providers`), so it is the one place that can answer this honestly.
+ *
+ * `label` is the provider's human name when the runtime has one, for the
+ * band's sentence; `provider` is the id, which is what a Connect action needs.
+ * A reader shows the state only when `state === "signed_out"` — `ok` is the
+ * happy path and its absence means an older host that does not publish the
+ * field at all, and neither may render as a nag (the same rule
+ * `radient_login`'s `unknown` carries in `use-radient-session-issue`).
+ */
+export type CanonicalModelAccess = {
+	state: "ok" | "signed_out";
+	provider: string;
+	label: string;
+};
+
+/**
+ * One aggregated row of the backend's `spend_channels` object (wire v1).
+ *
+ * The backend groups before publishing, so the rows are NOT a client-side
+ * rollup: one row per inference identity (`label` = `provider/model`) plus one
+ * per `(channel, provider, model, unit)` group. A renderer lists them; it never
+ * re-sums them, because the one arithmetic site is the backend's `combine()`
+ * and every surface reading a locally-summed figure is how surfaces came to
+ * disagree in the first place.
+ *
+ * `amount_micro` is INTEGER micro-USD, and `null` means unknown — NEVER zero.
+ * A call that could not be sized and a call that was free are different facts,
+ * and only `row.knowledge` says which reading applies (`unknown` = nothing in
+ * the group was sized; `partial` = some was).
+ *
+ * `channel` and `basis` stay plain `string`s rather than closed unions, for the
+ * reason `SessionCatalogueStatus.code` gives above: the vocabulary belongs to
+ * the backend, which grows it without this file changing, and a renderer's job
+ * with a word it does not know is to show it rather than to fail to compile.
+ * The words this build knows are in `session-cost.ts`'s channel section; the
+ * wire's `basis` spelling is underscored (`subscription_api_equivalent`).
+ */
+export type CanonicalSpendChannelRow = {
+	channel: string;
+	provider: string;
+	model: string;
+	/** The inference identity bucket key, or "" on a channel row. */
+	label: string;
+	units: number;
+	unit: string;
+	/** Integer micro-USD. `null` = unknown, never a fabricated zero. */
+	amount_micro: number | null;
+	knowledge: "unknown" | "exact" | "partial" | "floor";
+	/** Billing bases present in the group, e.g. `["billed", "not_tracked"]`. */
+	basis: string[];
+	price_versions: string[];
+};
+
+/** The subagent/forked-children contribution already inside the grand total. */
+export type CanonicalSpendChildren = {
+	/** Integer micro-USD; always a stated number (0 = stated zero). */
+	total_micro: number;
+	knowledge: "unknown" | "exact" | "partial" | "floor";
+};
+
+/**
+ * The backend-published per-channel spend (`FrontendSessionState.spend_channels`).
+ *
+ * ONE object every surface renders (the frozen wire contract is
+ * `docs/design/spend-channels.md` in the backend repo; this build types it from
+ * the golden fixture `scripts/fixtures/spend-channels-v1.json`) so that the
+ * composer strip, `/analytics` and every future surface cannot disagree about
+ * what a session cost. Present only on a backend with the channel ledger
+ * (`features.cost_channels >= 1`); absent on an old server, where the UI keeps
+ * its legacy inference-only rendering unchanged.
+ *
+ * `total_micro` is the GRAND total — inference, channel records and children —
+ * as integer micro-USD, and it is the figure surfaces show. Do NOT recompute it
+ * from the parts: the backend's `combine()` is the one arithmetic site, and
+ * re-adding locally is exactly the class of defect this object exists to
+ * remove. `children.total_micro` is already a component of the total, not an
+ * extra summand.
+ *
+ * `tracked: false` means the session's journal carries no channel `start`
+ * marker (a pre-feature conversation): the total is inference-only and every
+ * surface must SAY "channels not tracked" rather than imply $0 of channel
+ * spend. `knowledge` uses the same four rungs as `cost_knowledge`; absence of
+ * the whole object is NOT a zero — never paint $0 for it.
+ *
+ * `by_basis.not_tracked_micro` and `not_tracked_calls` are ADDITIVE on v1: an
+ * older producer omits them and a reader treats absence as 0 (UI round 2 —
+ * the strip used to SUM inference row amounts for the first of these, and the
+ * backend now publishes it so no UI ever re-sums; see the key's own note).
+ */
+export type CanonicalSpendChannels = {
+	/** Wire version. An unknown version must render its legacy view, not this. */
+	version: number;
+	tracked: boolean;
+	/** Integer micro-USD, grand total (inference + channels + children). */
+	total_micro: number;
+	knowledge: "unknown" | "exact" | "partial" | "floor";
+	/**
+	 * Money per billing basis: the three money keys are micro-USD sums,
+	 * `not_tracked_micro` is the micro-USD amount whose billing BASIS is not
+	 * tracked yet (the session's own inference pre-PR-3 plus the children
+	 * bundle — the backend publishes it so a UI never re-sums inference rows to
+	 * find it), and `not_tracked_calls` is a COUNT of records with no trackable
+	 * money basis. The three money buckets plus `not_tracked_micro` equal
+	 * `total_micro`; subscription dollars stay in their own bucket and are
+	 * never added into `billed` — a plan-funded call is not cash.
+	 *
+	 * `not_tracked_micro` is ADDITIVE: an older producer omits it and absence
+	 * reads as 0 (the composition line then says the count without money).
+	 */
+	by_basis: {
+		billed?: number;
+		subscription_api_equivalent?: number;
+		estimated?: number;
+		not_tracked_micro?: number;
+		not_tracked_calls?: number;
+		[basis: string]: number | undefined;
+	};
+	rows: CanonicalSpendChannelRow[];
+	children: CanonicalSpendChildren;
+};
+
 export type CanonicalFrontendState = {
 	attention?: CompletionAttention;
 	state_version: number;
@@ -1092,6 +1222,12 @@ export type CanonicalFrontendState = {
 	effective_identity?: CanonicalEffectiveIdentity;
 	selected_model: CanonicalModel | null;
 	effective_model: CanonicalModel | null;
+	/**
+	 * Whether the model this session runs can still authenticate (see
+	 * `CanonicalModelAccess`). Optional: an older host omits it, and absence
+	 * must not be read as "signed out".
+	 */
+	model_access?: CanonicalModelAccess | null;
 	streaming: boolean;
 	loop?: import("./desktop-control-contract").DesktopLoopState | null;
 	generation: number;
@@ -1187,6 +1323,23 @@ export type CanonicalFrontendState = {
 	 */
 	subagent_cost_knowledge?: "unknown" | "exact" | "partial" | "floor" | null;
 	cost_knowledge: "unknown" | "exact" | "partial" | "floor";
+	/**
+	 * The published per-channel spend, when the host has the channel ledger.
+	 *
+	 * ADDITIVE and optional: absent on an old backend (a reader then renders the
+	 * legacy inference-only view) and `null`/absent whenever this host cannot
+	 * publish the object (a reduced facade, an embedded host) — never a claim of
+	 * zero. ABSENT AND `null` ARE ONE CASE and the reader treats them so (the
+	 * attach frame omits rather than nulls; `spendChannelsUsable` refuses both
+	 * identically). Gated at the render edge on `features.cost_channels >= 1`,
+	 * because a backend that does not advertise the capability does not promise
+	 * the field's semantics even if an object appears.
+	 *
+	 * Read ONLY through `session-cost.ts` (`sessionCost`'s channel branch and the
+	 * breakdown helpers): that module owns the do-not-recompute rule, the
+	 * tracked=false sentence, and the one formatting ladder the strip uses.
+	 */
+	spend_channels?: CanonicalSpendChannels | null;
 	/**
 	 * The most recent turn's token usage, when the owner reported one.
 	 *
@@ -1703,6 +1856,46 @@ export type DesktopFeedFrame =
 			seq: number;
 			type: "authoring";
 			payload: { revision: number };
+	  }
+	/**
+	 * ONE SESSION's code request ledger moved: its index or fetch cache was
+	 * rewritten.
+	 *
+	 * A LEVEL, not a notification, like `catalogue` and `authoring`: it carries a
+	 * revision and no rows (a list the renderer does not hold is not dragged onto
+	 * the wire), it is idempotent, and a duplicate delivery of the same revision is
+	 * a no-op at the consumer. Unlike those two it NAMES its session, because the
+	 * ledger is per conversation - the reader is the code-review pane or chip for
+	 * exactly that session, and a frame without the id could not say whose list to
+	 * re-read.
+	 *
+	 * AN OLDER RENDERER FALLS THROUGH EVERY BRANCH of its frame loop and paints
+	 * nothing; the backend's own probe interval bounds how often one can arrive
+	 * (the catalogue probe's 1 s cadence, not the 100 ms tick).
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "code_requests";
+			session_id: CanonicalSessionId;
+			payload: { revision: number };
+	  }
+	| {
+			epoch: string;
+			seq: number;
+			type: "config";
+			/*
+			 * A `config.yml` change, projected for clients that mirror it (core PR
+			 * #2213; DESKTOP_API's "polling cadence"). No `session_id`: the change is
+			 * machine-wide, like `catalogue`.
+			 *
+			 * `changed_keys` names registry keys (sorted; they flatten to their dotted
+			 * spellings), and `language` is the RESOLVED tag - exactly what
+			 * `GET /v1/capabilities` answers, `auto` never - present on EVERY config
+			 * frame, not only language moves. A consumer watching the language filters
+			 * on `changed_keys.includes("language")`.
+			 */
+			payload: { changed_keys: string[]; language: string };
 	  }
 	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }
 	| {

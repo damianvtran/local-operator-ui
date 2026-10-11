@@ -51,7 +51,23 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
-	external: ["react", "react-dom", "sonner"],
+	/*
+	 * `react` is BUNDLED rather than left external, as in `agent-hub-queries.test.mjs`.
+	 * The bundle is evaluated from a `data:` URL, and Node cannot resolve a bare
+	 * specifier from a `data:` URL, so an external `react` here fails at import
+	 * time: `ERR_UNSUPPORTED_RESOLVE_REQUEST` / `ERR_INVALID_URL`. It was benign
+	 * until this graph grew: `desktop-api` now reaches a zustand store, whose
+	 * React entry is written `import React from "react"`, so the eval graph now
+	 * imports react. The module never renders, so a second copy of React inside
+	 * the bundle is harmless.
+	 *
+	 * `react-dom` and `sonner` stay external because the eval graph does not
+	 * reach them (measured: with `react` bundled the output carries no bare
+	 * import at all), so listing them here changes nothing - and bundling a
+	 * package nothing imports would only hide a future reach behind a resolution
+	 * this rig has no reason to perform.
+	 */
+	external: ["react-dom", "sonner"],
 });
 /*
  * A data URL rather than a scratch file: this suite runs from several

@@ -307,9 +307,9 @@ export const askChipCountClause = (view: AskQueueView): string => {
  *
  * The two contexts the design note's §4.4 names, and they are a property of the
  * ENTRY POINT rather than a setting: the composer's status-row item opens the
- * conversation's own queue, and the conversation header's asks trigger opens the
- * fleet's at the top level (and this conversation's inside one - one control, two
- * scopes, because it rides the route rather than a second door). The scope is
+ * conversation's own queue, and the panel rail's asks item opens the fleet's at
+ * the top level (and this conversation's inside one - one control, two scopes,
+ * because it rides the route rather than a second door). The scope is
  * carried by the drawer's chrome bar so a reader can always say which one
  * is on screen ("a count of 3 inside a session and 11 at the top level are both
  * correct and say different things").
@@ -317,7 +317,9 @@ export const askChipCountClause = (view: AskQueueView): string => {
  * IT IS A PROP OF THE SURFACE, not a second component: one drawer renders both, so
  * the fleet view is a data seam rather than a second idiom. The two entry points
  * that exist today are the composer's status-row item (a conversation's own queue)
- * and the header's asks trigger (this conversation's inside a session, every
+ * and the panel rail's asks item - the conversation header's trigger, which held
+ * this role until #896 moved the control onto the rail beside its four siblings
+ * (this conversation's inside a session, every
  * conversation's at the top level) - and they are the
  * reason the scope is written WITH the open flag in the store rather than chosen by
  * the surface: the surface has to paint the queue its door promised, and only the
@@ -350,9 +352,9 @@ export const ASK_DRAWER_UNREAD_LINE = "Reading the asks…";
  * copy parked a permanent `Reading the asks…` on a surface that never resolves.
  *
  * HOW IT IS REACHED, CORRECTED IN ROUND 2 (agent review R7). This docblock used to
- * justify the state as "reachable: the header door is offered at zero asks, and a
+ * justify the state as "reachable: the door is offered at zero asks, and a
  * door-opened mount is deliberately never auto-closed" - which is the wrong door.
- * The header door's gate is `published` (`chat-content.tsx`), and `published` is
+ * The door's gate is `published` (`chat-content.tsx`), and `published` is
  * FALSE for this frame, so no door in the app offers it; that sentence described the
  * live-but-EMPTY frame (`asks_open: 0`), a different state. The true path is the one
  * the `UnsupportedBackend` story's own block states: an OPEN FLAG INHERITED from a
@@ -364,7 +366,7 @@ export const ASK_DRAWER_UNREAD_LINE = "Reading the asks…";
  *
  * SO IT GETS ITS OWN STATE. The bar states the capability it lacks and the body says
  * what that means, in the drawer's own voice; the pair is the drawer's, and the chip
- * and the header trigger keep their designed zero-state offers unchanged.
+ * and the asks item keep their designed zero-state offers unchanged.
  */
 export const ASK_DRAWER_UNAVAILABLE_CLAUSE = "Asks unavailable";
 
@@ -428,17 +430,24 @@ export const askScopeLine = (scope: AskScope, view: AskQueueView): string => {
 };
 
 /**
- * THE HEADER DOOR'S OWN NAME: its verb, its scope, and - while a badge is drawn - the
- * count it stands for. The tooltip and the control's `aria-label` print this one string,
- * so the hover text and what a screen reader hears cannot disagree about any of the
- * three.
+ * THE RAIL DOOR'S OWN NAME: its verb, its scope, and - while a badge is drawn - the
+ * count it stands for. The tooltip and the control's announced name print this one
+ * string, so the hover text and what a screen reader hears cannot disagree about any
+ * of the three.
+ *
+ * WHY THE NAME SAYS "RAIL" (#896). The control it names is the panel rail's asks
+ * item; before the move it was the conversation header's trigger, and "Header" would
+ * now name a location the control left - the same rule the selector it pairs with
+ * follows (`ASK_RAIL_ITEM_SELECTOR`). The SENTENCE is unchanged and deliberately so:
+ * a user who learned it keeps it.
  *
  * WHY IT LIVES HERE (QA round 2, Q2-1). It was composed inline in `chat-header.tsx`, so
  * the one string this lane makes a promise about - "the two controls can never be one
  * string" (UX round 1, U3) - had no CI instrument: the only `Open asks` under `scripts/`
  * was a stand-in's `textContent`, and a regression would have needed a rig run. Every
  * other sentence of the lane's copy is in this module where a DOM-free rig can read it,
- * so this one is too.
+ * so this one is too. `panel-rail-model.ts`'s `askRailLabels` prints it as the rail
+ * item's tooltip rather than recomposing it (#896).
  *
  * THE SCOPE WORD STAYS AT ZERO (UX round 1's U3, as remediated). Folded in only while a
  * badge is drawn, the quiet state read the bare `Close asks` - the SAME announced name as
@@ -449,9 +458,10 @@ export const askScopeLine = (scope: AskScope, view: AskQueueView): string => {
  * "WAITING OR MOVED ON" RATHER THAN "WAITING" (agent review round 1, M1 = UX round 1,
  * U1). The number this sentence qualifies is the OUTSTANDING set, which folds a moved-on
  * ask in, so `waiting` - reserved for the subset that excludes it - would be the wrong
- * word for it. See `asksAttentionCount` for the decision to count outstanding.
+ * word for it. See the rail item's `askCount` (`panel-rail.tsx`) for the decision to
+ * count outstanding.
  */
-export const askHeaderToggleLabel = (args: {
+export const askRailToggleLabel = (args: {
 	open: boolean;
 	scope: AskScope;
 	count: number;
@@ -678,29 +688,38 @@ export const ASK_SURFACE_SELECTOR = "[data-lo-ask-surfaces]";
 export const ASK_ITEM_SELECTOR = "[data-lo-ask-item-toggle]";
 
 /**
- * The HEADER door: the conversation header's asks trigger.
+ * The RAIL door: the panel rail's asks item (#896) - the conversation header's
+ * asks trigger before the move, and the same control the tour and the driver rigs
+ * address by its tag.
  *
  * The second thing that OPENS an ask surface, and the reason it needs its own
  * selector rather than a second clause on `ASK_ITEM_SELECTOR`. The drawer's
  * entry move runs only when the mount finds focus ALREADY on the control the
  * user pressed, which is what keeps the lane's no-focus-steal promise (an ask
  * ARRIVING moves nothing). The session door is the composer chip, which carries
- * `ASK_ITEM_SELECTOR`; the header trigger is not the chip, so before this
- * existed an open from the rail left focus outside the pane, Escape had no
- * listener inside it to bubble to, and the press fell through to the interrupt
- * ladder and stopped the running turn (UX round 1, U1 / agent review round 1,
- * F1). The drawer accepts either door at entry and returns focus to the one it
- * was opened by.
+ * `ASK_ITEM_SELECTOR`; the asks item is not the chip, so before this existed an
+ * open from the header (the control this constant addressed then) left focus
+ * outside the pane, Escape had no listener inside it to bubble to, and the press
+ * fell through to the interrupt ladder and stopped the running turn (UX round 1,
+ * U1 / agent review round 1, F1). The drawer accepts either door at entry and
+ * returns focus to the one it was opened by - which after #896 is the rail item,
+ * the drawer's focus-return anchor and its Escape door.
  *
- * ONE DOOR, TWO SCOPES (operator ask, 2026-10-05). The control it names is the
- * header trigger, which opens the SESSION scope inside a conversation and the
- * FLEET scope at the top level - so the constant is named for the control rather
- * than for one of the two queues it can open. It replaced the sidebar's
- * top-level `All asks` row, which was itself a disclosure wearing a
- * destination's clothes; the anchor is still a stable `data-tour-tag`, the same
- * handle the product tour and the driver rigs address controls by.
+ * ONE DOOR, TWO SCOPES (operator ask, 2026-10-05). The control it names opens the
+ * SESSION scope inside a conversation and the FLEET scope at the top level - so
+ * the constant is named for the control rather than for one of the two queues it
+ * can open. It replaced the sidebar's top-level `All asks` row, which was itself
+ * a disclosure wearing a destination's clothes; the anchor is still a stable
+ * `data-tour-tag`, the same handle the product tour and the driver rigs address
+ * controls by - and the TAG VALUE is unchanged by the move (#896), because four
+ * harnesses, the tour and the driver attach to it.
+ *
+ * WHY IT IS NOT SPELLED `ASK_HEADER_ITEM_*` ANY MORE. That name described the
+ * control's LOCATION under #820/#835, and #896 moved the control to the panel
+ * rail; a constant that keeps naming a place the door left is how a rig ends up
+ * asserting yesterday's layout. The rename pairs with `askRailToggleLabel`'s.
  */
-export const ASK_HEADER_ITEM_SELECTOR = '[data-tour-tag="ask-pane-trigger"]';
+export const ASK_RAIL_ITEM_SELECTOR = '[data-tour-tag="ask-pane-trigger"]';
 
 /*
  * Re-exported so the claim's own contract is nameable from a rig: the composer box

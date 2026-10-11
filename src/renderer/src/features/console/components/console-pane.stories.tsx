@@ -210,6 +210,14 @@ const installFixture = (options: {
 	const stub = {
 		state: record("state"),
 		createSurface: record("createSurface"),
+		// THE BEAT'S CLOSE, ANSWERED (agent review round 1, F-1): #929's clean-exit
+		// default calls `closeSurface` ~4s after an `Ended` story mounts, and a stub
+		// without this member threw out of the timer on every open. `record` resolves
+		// `state()` without removing the row, which is what the `Ended` story needs:
+		// the banner stays frameable, and the row therefore still qualifies on the
+		// close's re-read, so the beat re-arms while the story is open — a still's
+		// fixture trait, not the app's (a successful dismissal drops the row there).
+		closeSurface: record("closeSurface"),
 		openPane: record("openPane"),
 		closePane: record("closePane"),
 		selectSurface: record("selectSurface"),
@@ -449,7 +457,14 @@ export const Unavailable: Story = {
 };
 
 /** Ended over recorded history (§7.3), with the exit code it was observed to
- * carry. */
+ * carry.
+ *
+ * #929, 2026-10-10: in the LIVE app a clean exit's row clears itself one beat
+ * (`EXIT_DISMISS_AFTER_MS`) after the pane shows it ended, so this frame is the
+ * state the beat stands on. The fixture's bridge ANSWERS that close without
+ * removing the row (the stub's own note says why, and `closeSurface` is the
+ * member that makes this sentence true — agent review round 1, F-1), so the frame
+ * holds; the clearing itself is pinned by the render suite, not by a still. */
 export const Ended: Story = {
 	render: () => (
 		<Frame
@@ -466,7 +481,11 @@ export const Ended: Story = {
 };
 
 /** A surface restored after a relaunch: nothing is running and nothing will be,
- * so the sentence says so rather than implying a dead terminal. */
+ * so the sentence says so rather than implying a dead terminal.
+ *
+ * #929, 2026-10-10: this is the case the pane's auto-clearing default must NOT
+ * take — nothing ended in this run, and the history is the point, so the row stays
+ * until the user dismisses it. */
 export const Restored: Story = {
 	render: () => (
 		<Frame

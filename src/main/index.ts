@@ -5,12 +5,14 @@ import { pathToFileURL } from "node:url";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import {
 	BrowserWindow,
+	type BrowserWindowConstructorOptions,
 	Menu,
 	app,
 	dialog,
 	globalShortcut,
 	ipcMain,
 	nativeImage,
+	session,
 	shell,
 	webContents,
 } from "electron";
@@ -23,9 +25,10 @@ import {
 } from "../shared/backend-status";
 import {
 	type DirectoryListing,
+	EXTERNAL_OPEN_REFUSED_CHANNEL,
+	type ExternalOpenOutcome,
 	type FileActionOutcome,
 	MAX_FILE_READ_BYTES,
-	MAX_PROBE_PATHS,
 	type ProbedFile,
 	type ReadFileBytesResponse,
 } from "../shared/desktop-contract";
@@ -69,7 +72,11 @@ import {
 } from "./browser/consent-click";
 import { createSessionCookieQuitHold } from "./browser/session-cookie-quit-hold";
 import { consoleCaptureUrlFor } from "./console/capture-url";
-import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
+import {
+	guardForegroundReceipts,
+	isAdmittedSender,
+	registerDesktopIPC,
+} from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import {
 	describeDevDriverArming,
@@ -80,8 +87,7 @@ import {
 import { registerDevDriverIPC } from "./dev-driver-ipc";
 import {
 	listDirectory,
-	outsideWorkspace,
-	realPathOrNull,
+	probeFiles,
 	resolveUserPath as resolveUserPathWith,
 } from "./directory-listing";
 import { type MiniViewRegistrar, createRegistrar } from "./hotkey-registration";
@@ -98,9 +104,18 @@ import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
 } from "./picker-directory";
+import {
+	createQuitExitDeadline,
+	quitExitDeadlineMs,
+} from "./quit-exit-deadline";
 import { createQuitState } from "./quit-state";
 import { createRelaunchPending } from "./relaunch-pending";
 import { createUserShellPath } from "./shell-path";
+import { SupplementFrameMounts } from "./supplement-mounts";
+import {
+	installSupplementProtocol,
+	registerSupplementScheme,
+} from "./supplement-protocol";
 import {
 	describeTelemetryLaunch,
 	resolveTelemetryLaunch,
@@ -111,6 +126,14 @@ import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
 import { attachWindowChrome, resolveLaunchWindowChrome } from "./window-chrome";
+import { openVettedExternal, popupVerdict } from "./window-guards";
+import {
+	guardDownloads,
+	guardNavigation,
+	guardPermissions,
+	guardPreviewResponses,
+	guardWindowOpen,
+} from "./window-guards-electron";
 import {
 	LAUNCHER_EXIT_DEADLINE_MS,
 	LAUNCHER_POLL_INTERVAL_MS,
@@ -242,7 +265,7 @@ for (const problem of windowLaunch.problems) {
  * lands in that window can leave that work behind. The owned backend this repo
  * actually runs (the `serve` child) is registered long before a harness drives
  * the window, which is why 10 s is chosen deliberately over the app's own
- * `QUIT_CLEANUP_FAILSAFE_MS` (~34 s): a launcher-gone run is a run nobody is
+ * `QUIT_CLEANUP_FAILSAFE_MS` (115 s, the sum of the bounds above): a launcher-gone run is a run nobody is
  * watching, and the cost of waiting is another instance of exactly the kind this
  * module exists to remove. An escalated exit is still status 0 — it is a run
  * ending because its way of being watched went away, not a failure — so a
@@ -701,6 +724,74 @@ const ownLaunchRequest = (): RaiseRequest => ({
 	trigger: "initial-present",
 });
 
+/**
+ * The ONE trusted renderer URL: the dev server while developing, the packaged
+ * document otherwise. Module scope because `createWindow` (which installs the
+ * navigation guard) lives here while `registerDesktopIPC` (which checks the same
+ * value against a sender's frame) lives inside `whenReady`; two spellings of "the
+ * trusted frame" is how one of them drifts.
+ */
+const rendererDocumentUrl = (): string =>
+	process.env.ELECTRON_RENDERER_URL ||
+	pathToFileURL(join(__dirname, "../renderer/index.html")).href;
+
+/**
+ * Every document of this app's own renderer that the main window's session may
+ * show: the app and the Quick send mini view (a second document of the same
+ * bundle with the same preload, whose composer asks for the microphone).
+ */
+const trustedRendererDocuments = (): readonly string[] => [
+	rendererDocumentUrl(),
+	miniViewUrlFor(rendererDocumentUrl()),
+];
+
+/**
+ * The single door from a renderer-reachable code path to the OS's URL handlers
+ * (`window.open` and the `open-external` IPC both land here). The scheme and
+ * shape rules are `window-guards.ts`'s; this binds them to `shell`, and the
+ * outcome travels to whoever asked (round-2 R-4).
+ */
+const openExternalVetted = (raw: unknown): Promise<ExternalOpenOutcome> =>
+	openVettedExternal(
+		raw,
+		(url) => shell.openExternal(url),
+		(message) => logger.warn(message, LogFileType.BACKEND),
+	);
+
+/**
+ * The sign-in popup's window options, supplied to `guardWindowOpen` at every
+ * install site - the main window and the mini view. ONE spelling, because the
+ * two guards must create the same window; the values are the pre-guard
+ * handler's, plus `disableDialogs` (round-2 S-7).
+ */
+const authPopupWindowOptions: BrowserWindowConstructorOptions = {
+	width: 800,
+	height: 700, // Increased height for better visibility
+	minWidth: 600,
+	minHeight: 500,
+	center: true,
+	frame: true,
+	autoHideMenuBar: false,
+	backgroundColor: "#FFFFFF",
+	webPreferences: {
+		contextIsolation: true,
+		nodeIntegration: false,
+		webSecurity: true,
+		allowRunningInsecureContent: false,
+		sandbox: true, // Enable sandbox for additional security
+		// Disable various features that aren't needed for auth
+		enableWebSQL: false,
+		navigateOnDragDrop: false,
+		spellcheck: false,
+		/*
+		 * A JS dialog in a popup must not be able to wedge it (round-2 S-7): a
+		 * renderer-reached `confirm()`/`alert()` needs no permission and blocks
+		 * every later evaluation on the page behind its modal.
+		 */
+		disableDialogs: true,
+	},
+};
+
 function createWindow(
 	initialSession: string | null = null,
 	openCatalogue = false,
@@ -966,87 +1057,37 @@ function createWindow(
 		}, 1500);
 	});
 
-	mainWindow.webContents.setWindowOpenHandler((details) => {
-		// Allow popups from authentication providers
-		const url = new URL(details.url);
-
-		// Expanded list of trusted authentication domains
-		const trustedAuthDomains = [
-			// Google auth domains
-			"accounts.google.com",
-			"oauth.googleusercontent.com",
-			"content.googleapis.com",
-			"ssl.gstatic.com",
-
-			// Microsoft auth domains
-			"login.microsoftonline.com",
-			"login.live.com",
-			"login.windows.net",
-			"login.microsoft.com",
-			"microsoftonline.com",
-			"msauth",
-			"msftauth",
-
-			// Auth relay domains
-			"storagerelay",
-
-			// Special case for initial blank page
-			"about:blank",
-		];
-
-		// Check if the URL is from a trusted authentication provider
-		const isTrustedAuthDomain =
-			// Special case for about:blank which is used by MSAL to initialize the popup
-			details.url === "about:blank" ||
-			// Check other trusted domains
-			trustedAuthDomains.some(
-				(domain) =>
-					url.hostname.includes(domain) ||
-					url.protocol.includes(domain) ||
-					// Special case for storage relay URLs
-					details.url.startsWith("storagerelay:") ||
-					details.url.includes("storagerelay"),
-			);
-
-		if (isTrustedAuthDomain) {
-			// Allow the popup for authentication with improved features.
-			//
-			// `overrideBrowserWindowOptions` is the key Electron reads here. This
-			// block used to be `features`, which is a property of the handler's
-			// ARGUMENT (the parsed `window.open()` feature string) and not of the
-			// response, so every option below — including `sandbox: true` — was
-			// silently ignored and the popup got Electron's own defaults. The
-			// options are unchanged; only the key is now the one that is honoured.
-			return {
-				action: "allow",
-				overrideBrowserWindowOptions: {
-					width: 800,
-					height: 700, // Increased height for better visibility
-					minWidth: 600,
-					minHeight: 500,
-					center: true,
-					frame: true,
-					autoHideMenuBar: false,
-					backgroundColor: "#FFFFFF",
-					webPreferences: {
-						contextIsolation: true,
-						nodeIntegration: false,
-						webSecurity: true,
-						allowRunningInsecureContent: false,
-						sandbox: true, // Enable sandbox for additional security
-						// Disable various features that aren't needed for auth
-						enableWebSQL: false,
-						navigateOnDragDrop: false,
-						spellcheck: false,
-					},
-				},
-			};
-		}
-
-		// For all other URLs, open in external browser and deny the popup
-		shell.openExternal(details.url);
-		return { action: "deny" };
-	});
+	/*
+	 * THE MAIN WINDOW'S HOST-POWER GUARDS (UI security lane U-a; the rules and
+	 * their rationale are `window-guards.ts`, the wiring is `window-guards-
+	 * electron.ts`). Navigation, `window.open` and permissions were all unguarded
+	 * for renderer-side content, which includes agent-generated HTML in the canvas
+	 * preview. Registered BEFORE the first load below so the initial navigation is
+	 * already under the rule.
+	 *
+	 * The popup branch keeps the sandboxed sign-in window exactly as it was; what
+	 * changed is WHICH urls reach it (host match, not substring) and that every
+	 * other url is scheme-gated before `shell.openExternal` instead of passed
+	 * through as a raw string.
+	 */
+	guardNavigation(
+		mainWindow.webContents,
+		trustedRendererDocuments,
+		(m) => logger.warn(m, LogFileType.BACKEND),
+		supplementMounts,
+	);
+	guardWindowOpen(
+		mainWindow.webContents,
+		popupVerdict,
+		openExternalVetted,
+		authPopupWindowOptions,
+		(m) => logger.warn(m, LogFileType.BACKEND),
+		(url, reason) =>
+			mainWindow.webContents.send(EXTERNAL_OPEN_REFUSED_CHANNEL, {
+				url,
+				reason,
+			}),
+	);
 
 	// HMR for renderer base on electron-vite cli.
 	// Load the remote URL for development or the local html file for production.
@@ -1130,6 +1171,13 @@ const backendInstaller = new BackendInstaller({
 	// (`./relaunch-pending` owns why scheduling happens only at the terminal).
 	onQuitCancelled: () => {
 		quitState.cancel();
+		/*
+		 * AND THE QUIT'S HARD DEADLINE IS RELEASED WITH IT, because this is the
+		 * quit's ONE cancellation: the process goes on running, and a deadline
+		 * left armed from the cancelled quit would later kill a healthy one
+		 * (`./quit-exit-deadline` owns why this is the only release).
+		 */
+		quitExitDeadline.release();
 		relaunchPending.clear();
 	},
 });
@@ -1322,6 +1370,30 @@ const telemetryWebPreferences = {
 // Some APIs can only be used after this event occurs.
 // Define mainWindow at a higher scope to be accessible in event handlers
 let mainWindow: BrowserWindow | null = null;
+
+/**
+ * The one-shot mount permits for supplement frames (turn-supplements memo §4.1,
+ * lane U-b). Module scope because its two halves live in two places that must
+ * agree: `createWindow` hands it to the navigation guard, and
+ * `registerDesktopIPC` hands it to the arm channel the renderer calls before
+ * mounting a frame. One instance per app — the main window and the mini view
+ * are both the app's own documents, and a permit is URL-matched, not
+ * window-matched.
+ */
+const supplementMounts = new SupplementFrameMounts();
+
+/*
+ * THE SUPPLEMENT FRAME'S DOCUMENT SCHEME, registered at module scope because
+ * Electron accepts `registerSchemesAsPrivileged` only before the app is ready
+ * (it must run while the default session's protocol registry is still being
+ * built). `installSupplementProtocol` — the handler that actually serves the
+ * stored digests — runs in `whenReady` below, beside the other desktop-plane
+ * wiring. Together they are the app path's delivery for supplement frames
+ * (memo §4.1's fixed Option 2): the renderer's own CSP is inherited by local
+ * (data:/blob:) child documents and blocks the vendored prelude, which
+ * Storybook never showed because Storybook carries no such policy.
+ */
+registerSupplementScheme();
 
 /*
  * The quick-send mini view and its registration (design D6/§G.1). Module scope
@@ -1932,6 +2004,35 @@ app
 		// Set app user model id for windows
 		electronApp.setAppUserModelId("com.local-operator");
 
+		/*
+		 * SESSION-LEVEL GUARDS, installed once before any window exists (UI
+		 * security lane U-a). The default session is shared by the main window, the
+		 * Quick send mini view and every iframe they host, so a policy set here
+		 * covers the canvas preview's frame too - and the console capture window,
+		 * which is created with NO `partition` (`console/capture.ts`), so these
+		 * handlers DO apply to it; it is not one of the trusted renderers, so any
+		 * capability it ever asked for would be refused, and nothing in that module
+		 * asks today (round-2 R-5). The driven browser uses its own partition,
+		 * where `browser/profile.ts` installs the same pair.
+		 *
+		 * - permissions: deny by default (Electron otherwise approves EVERYTHING,
+		 *   for any frame), granting only what the app's own documents use.
+		 * - the backend's static serve family gets a CSP and nosniff on its
+		 *   RESPONSE, because the daemon serves it bare and that module is another
+		 *   repository's.
+		 * - downloads: deny by default (security review S-4) - an unhandled
+		 *   `will-download` runs the save routine, so without this any script that
+		 *   reaches an app document could start a download; the app's own export
+		 *   blobs are the one class kept (they keep the ordinary save dialog).
+		 */
+		guardPermissions(session.defaultSession, trustedRendererDocuments, (m) =>
+			logger.warn(m, LogFileType.BACKEND),
+		);
+		guardPreviewResponses(session.defaultSession);
+		guardDownloads(session.defaultSession, trustedRendererDocuments, (m) =>
+			logger.warn(m, LogFileType.BACKEND),
+		);
+
 		// Smoke-test hook for the npx sanity check in CI. Reaching this point
 		// proves what the old check only assumed: the main bundle actually loaded
 		// and executed under the resolved Electron. Issue #88 shipped because the
@@ -2054,6 +2155,52 @@ app
 				process.on(signal, () => endHeadlessRun(`received ${signal}`));
 			}
 		}
+		if (windowLaunch.mode !== "headless") {
+			/*
+			 * SIGTERM DURING A QUIT IS A CONTRACT, NOT A SURPRISE (2026-10-11).
+			 *
+			 * The installer's spawner (`src/main/update-shipit.ts`) asks a wedged
+			 * app to go with SIGTERM after its first grace, and the incident's own
+			 * resolve was exactly that signal by hand: `kill -TERM 81333` and
+			 * ShipIt exec'd 0.4 s later. That signal deserves a deterministic,
+			 * logged exit rather than whatever the platform happens to do with a
+			 * windowless Electron: measured on this repo, Chromium's SIGTERM
+			 * shutdown CLOSES THE WINDOWS AND LEAVES THE PROCESS UP, which is once
+			 * more the silence this change exists to end. The exit is 0, because
+			 * the quit the user asked for is completing rather than failing - and
+			 * `scheduleReopenAtQuitTerminal` completes a recorded reopen, standing
+			 * down when the update lane's own watchdog owns the relaunch.
+			 *
+			 * GATED ON `quitState.isQuitting()`, deliberately. A TERM with NO quit
+			 * under way is not reinterpreted here: the handler removes itself and
+			 * re-raises, handing the signal back to the disposition it had before
+			 * the handler existed (Electron's own shutdown, or the process
+			 * default) - a person's `kill` keeps meaning exactly what it meant.
+			 * The headless modes keep the handlers above, which own SIGINT too;
+			 * this one is SIGTERM only because it is the escalator's signal.
+			 * `scripts/launcher-watch.test.mjs` pins the gate.
+			 */
+			const onSigtermDuringQuit = () => {
+				if (!quitState.isQuitting()) {
+					/*
+					 * Not ours: restore the previous disposition by removing this
+					 * listener and re-raising. libuv restores the saved sigaction
+					 * when the last listener for a signal goes, so the re-raise
+					 * reaches whatever handled TERM before this block did.
+					 */
+					process.removeListener("SIGTERM", onSigtermDuringQuit);
+					process.kill(process.pid, "SIGTERM");
+					return;
+				}
+				logger.info(
+					"Received SIGTERM during a quit; exiting so the quit reaches its terminal (an update installer may be waiting on this pid).",
+					LogFileType.BACKEND,
+				);
+				scheduleReopenAtQuitTerminal();
+				app.exit(0);
+			};
+			process.on("SIGTERM", onSigtermDuringQuit);
+		}
 
 		// Default open or close DevTools by F12 in development
 		// and ignore CommandOrControl + R in production.
@@ -2157,9 +2304,7 @@ app
 		// document otherwise. Named rather than inlined because a second consumer
 		// (the browser IPC namespace) checks the same value, and two spellings of
 		// "the trusted frame" is how one of them drifts.
-		const rendererUrl =
-			process.env.ELECTRON_RENDERER_URL ||
-			pathToFileURL(join(__dirname, "../renderer/index.html")).href;
+		const rendererUrl = rendererDocumentUrl();
 		/*
 		 * The capture view's own document, derived from the trusted renderer URL rather than
 		 * spelled a second time: in development it is the same dev server with a different
@@ -2345,7 +2490,7 @@ app
 			windowMode: windowLaunch.mode,
 		});
 		if (hotkeysAllowed(windowLaunch.mode) || miniViewExerciser) {
-			miniView = createMiniView({
+			const quickSend = createMiniView({
 				url: miniViewUrlFor(rendererUrl),
 				preloadPath: join(__dirname, "../preload/index.js"),
 				show: windowLaunch.show,
@@ -2367,6 +2512,35 @@ app
 				}).mode,
 				report: reportRaise,
 			});
+			miniView = quickSend;
+			/*
+			 * THE MINI VIEW IS A MAIN WINDOW TOO (security review S-3): it carries
+			 * the app preload and `sandbox: false` and received none of the guards
+			 * above, so the next content surface mounted there - not the composer
+			 * that mounts today - would inherit an unguarded window with a bridge.
+			 * Navigation and popups are per-webContents; permissions and downloads
+			 * are already covered because it shares `session.defaultSession`. The
+			 * initial load is `createMiniView`'s own `loadURL`, which Electron does
+			 * not emit navigation events for, so attaching here cannot miss it.
+			 */
+			guardNavigation(
+				quickSend.window.webContents,
+				trustedRendererDocuments,
+				(m) => logger.warn(m, LogFileType.BACKEND),
+				supplementMounts,
+			);
+			guardWindowOpen(
+				quickSend.window.webContents,
+				popupVerdict,
+				openExternalVetted,
+				authPopupWindowOptions,
+				(m) => logger.warn(m, LogFileType.BACKEND),
+				(url, reason) =>
+					quickSend.window.webContents.send(EXTERNAL_OPEN_REFUSED_CHANNEL, {
+						url,
+						reason,
+					}),
+			);
 		}
 		if (hotkeysAllowed(windowLaunch.mode)) {
 			const initial = readQuickSendValue();
@@ -2470,6 +2644,28 @@ app
 			};
 		});
 
+		/*
+		 * The `lo-supplement:` protocol handler, installed BEFORE the first window
+		 * is created so no frame can ever beat it to a handler-less scheme. Its
+		 * fetch is the same media relay every other authenticated read uses — the
+		 * bearer is added in main and never crosses to the renderer — and its
+		 * response carries the §4.1 policy beside the document's own `<meta>` copy.
+		 */
+		installSupplementProtocol(
+			async (sessionId, digest) => {
+				const response = await backendService.requestDesktopMedia(
+					{ op: "sessions.supplementDocument", sessionId, digest },
+					null,
+				);
+				if (response.kind !== "json") return { html: null };
+				const body = response.body as { html?: unknown } | null;
+				return {
+					html: body && typeof body.html === "string" ? body.html : null,
+				};
+			},
+			(m) => logger.warn(m, LogFileType.BACKEND),
+		);
+
 		registerDesktopIPC(
 			() => mainWindow,
 			rendererUrl,
@@ -2509,6 +2705,12 @@ app
 				miniView === null
 					? []
 					: [{ window: miniView.window, url: miniViewUrlFor(rendererUrl) }],
+			/*
+			 * The supplement-frame mount permits (turn-supplements memo §4.1), the
+			 * same instance `createWindow` gave the navigation guard: the arm channel
+			 * and the guard are two halves of one decision and must share one list.
+			 */
+			supplementMounts,
 		);
 
 		/*
@@ -2597,6 +2799,37 @@ app
 		);
 
 		/*
+		 * WHO MAY ASK MAIN TO LOOK AT A LOCAL FILE (`probe-files`, `read-file-bytes`).
+		 *
+		 * Previews now route AGENT-SUPPLIED paths into these two channels (message
+		 * attachments, composer tiles, Files-grid thumbnails), and their path rule
+		 * is only `~`/cwd resolution, a `stat` and the 64 MiB cap - there is no root
+		 * list, because the app is the user's own and the user may open any file
+		 * they can read. What keeps a foreign document away from them is therefore
+		 * the SENDER: the main frame of one of the app's own windows, on that
+		 * window's own trusted document - the same test the desktop plane applies
+		 * (`isAdmittedSender`). Two windows qualify and each is admitted only on its
+		 * own URL: the main window, and the Quick send mini view, whose composer
+		 * renders attachment tiles and resolves `@` mentions through these channels.
+		 * A sandboxed preview frame never gets this far (it has no `window.api`),
+		 * so this is a second lock, not the only one.
+		 */
+		const trustedLocalFileSenders = () => [
+			{ window: mainWindow, url: rendererUrl },
+			...(miniView === null
+				? []
+				: [{ window: miniView.window, url: miniViewUrlFor(rendererUrl) }]),
+		];
+		const authorizeLocalFileSender = (
+			event: Parameters<typeof isAdmittedSender>[0],
+			what: string,
+		): void => {
+			if (!isAdmittedSender(event, trustedLocalFileSenders())) {
+				throw new Error(`This window cannot ${what}.`);
+			}
+		};
+
+		/*
 		 * Existence and identity for the Files panel, in one batched call.
 		 *
 		 * The renderer cannot stat (`nodeIntegration: false`,
@@ -2611,60 +2844,26 @@ app
 		 * dropped: "the agent wrote this and it is gone" is a fact the tile states,
 		 * and silently filtering it would recreate the original complaint from the
 		 * other side.
+		 *
+		 * The probing itself — and the reason it must never be synchronous — lives
+		 * in `probeFiles` in `./directory-listing`, where
+		 * `scripts/directory-listing.test.mjs` exercises it without booting
+		 * Electron: a remote session's transcript mentions `/home/ec2-user/...`
+		 * paths, and on macOS `/home` is an autofs map whose missing-path lookups
+		 * cost a measured 266-275 ms each, so the synchronous shape this wiring
+		 * used to carry (a `statSync` per path, inside this handler) blocked the
+		 * main thread for 8.00 s on a 30-path batch and held a warm remote open at
+		 * 2.4-3.2 s before first paint. This handler is wiring only: filter the
+		 * non-strings, hand over `home`, answer.
 		 */
 		ipcMain.handle(
 			"probe-files",
-			async (_, paths: unknown, cwd?: string): Promise<ProbedFile[]> => {
+			async (event, paths: unknown, cwd?: string): Promise<ProbedFile[]> => {
+				authorizeLocalFileSender(event, "probe files");
 				const asked = Array.isArray(paths)
 					? paths.filter((path): path is string => typeof path === "string")
 					: [];
-				/*
-				 * The workspace root the containment verdict is measured against, resolved
-				 * ONCE per batch: it is the same directory for every path asked about, and
-				 * `realpath` on it per path would pay for one answer sixty-four times.
-				 * `null` when no cwd was given, which is a caller that cannot get a
-				 * verdict rather than a caller that gets "inside".
-				 */
-				const realRoot = cwd ? realPathOrNull(resolveUserPath(cwd)) : null;
-				return asked.slice(0, MAX_PROBE_PATHS).map((input) => {
-					let resolved = input;
-					try {
-						resolved = resolveUserPath(input, cwd);
-						const stat = statSync(resolved, { throwIfNoEntry: false });
-						const exists = stat !== undefined;
-						return {
-							input,
-							resolved,
-							exists,
-							isFile: stat?.isFile() ?? false,
-							sizeBytes: stat?.isFile() ? stat.size : null,
-							mtimeMs: stat?.isFile() ? stat.mtimeMs : null,
-							/*
-							 * The containment verdict, and the reason it is asked ONLY of a path
-							 * that exists: the one caller that reads it (the composer's `@` chip)
-							 * asks the question about a candidate reference, so a path that is not
-							 * there costs no second syscall — and a miss is the common case on the
-							 * keystroke path this runs on.
-							 */
-							outsideWorkspace: exists
-								? outsideWorkspace(realPathOrNull(resolved), realRoot)
-								: undefined,
-						};
-					} catch (error) {
-						// A genuine fault - permission, a stale network mount - is not the
-						// same answer as "no such file", and the difference is the whole
-						// diagnosis when a tile says the file is gone and it is there.
-						return {
-							input,
-							resolved,
-							exists: false,
-							isFile: false,
-							sizeBytes: null,
-							mtimeMs: null,
-							error: error instanceof Error ? error.message : String(error),
-						};
-					}
-				});
+				return await probeFiles(asked, cwd, app.getPath("home"));
 			},
 		);
 
@@ -2717,10 +2916,21 @@ app
 		ipcMain.handle(
 			"read-file-bytes",
 			async (
-				_,
+				event,
 				filePath: string,
 				maxBytes: number = MAX_FILE_READ_BYTES,
 			): Promise<ReadFileBytesResponse> => {
+				if (!isAdmittedSender(event, trustedLocalFileSenders())) {
+					// Answered, not thrown: every caller of this channel is a
+					// `useFileBlobUrl` that renders `unavailable` from the shape, and
+					// a refusal that threw would surface as an `unreadable` with the
+					// engine's wrapping instead of this sentence.
+					return {
+						success: false,
+						code: "unreadable",
+						error: "This window cannot read local files.",
+					};
+				}
 				const cap =
 					Number.isFinite(maxBytes) && maxBytes > 0
 						? Math.min(maxBytes, MAX_FILE_READ_BYTES)
@@ -2773,13 +2983,17 @@ app
 			},
 		);
 
-		ipcMain.handle("open-external", async (_, url) => {
-			try {
-				await shell.openExternal(url);
-			} catch (error) {
-				console.error("Error opening URL:", error);
-			}
-		});
+		/*
+		 * Vetted, not forwarded: the renderer's `window.api.openExternal` takes any
+		 * string, and `shell.openExternal` launches whatever the OS maps the scheme
+		 * to. Every caller in the renderer passes an http(s) link (or an update
+		 * remedy's page). The outcome travels back to the caller (round-2 R-4): a
+		 * refusal is what the caller's toast renders, instead of a press that
+		 * resolved quietly and looked broken. The anchor path has no caller to
+		 * answer - its refusals are pushed on `EXTERNAL_OPEN_REFUSED_CHANNEL` (see
+		 * `guardWindowOpen`'s `notifyRefused`).
+		 */
+		ipcMain.handle("open-external", async (_, url) => openExternalVetted(url));
 
 		ipcMain.handle(
 			"show-item-in-folder",
@@ -4088,7 +4302,55 @@ const scheduleReopenAtQuitTerminal = (): void => {
 	});
 };
 
+/*
+ * THE QUIT'S HARD DEADLINE, AND WHY IT LIVES BESIDE THE TERMINAL IT COMPLETES.
+ *
+ * The 2026-10-11 incident left the process alive with no window for 26 m 49 s
+ * after every logged stage of the quit had finished - the session-cookie hold
+ * released, the owned backend's generation stopped, the browser and console
+ * hosts stopped, `App is about to quit` written - and nothing between that point
+ * and `will-quit` has a terminal, a bound or a log. `will-quit` itself has all
+ * three once reached; a quit that never reaches it had none. This deadline is
+ * armed in `before-quit`'s synchronous part, is UNREF'D (it must never be a
+ * reason for the process to stay), is released ONLY by the quit's one
+ * cancellation, and on firing names the phase it found the quit stuck in before
+ * completing the exit obligations and leaving with failure.
+ *
+ * The duration is DERIVED from the bounds in front of the phase it bounds - the
+ * session-cookie hold and the quit's own cleanup failsafe - rather than stated
+ * as a number, so a future bound change moves it; `./quit-exit-deadline` owns
+ * the terms and `scripts/update-shipit.test.mjs` ties them to it numerically.
+ *
+ * `app.exit(1)` because this is a FAILED quit: the process is being abandoned
+ * mid-teardown, the same verdict the will-quit failsafe records with its own
+ * exit. `scheduleReopenAtQuitTerminal` still runs first, so a recorded reopen is
+ * completed - and it stands down, unchanged, when the update lane's watchdog
+ * owns the relaunch (that is #755's install guard, not this deadline's to
+ * restate).
+ */
+const QUIT_EXIT_DEADLINE_MS = quitExitDeadlineMs({
+	quitCleanupFailsafeMs: QUIT_CLEANUP_FAILSAFE_MS,
+});
+const quitExitDeadline = createQuitExitDeadline({
+	timeoutMs: QUIT_EXIT_DEADLINE_MS,
+	onFire: (firedInStage) => {
+		logger.error(
+			`The quit did not finish within ${QUIT_EXIT_DEADLINE_MS} ms (stalled ${firedInStage}); exiting with failure so the process cannot sit alive with no window`,
+			LogFileType.BACKEND,
+		);
+		scheduleReopenAtQuitTerminal();
+		app.exit(1);
+	},
+});
+
 app.on("will-quit", (event) => {
+	/*
+	 * The deadline's phase marker, moved to the one stage that HAS a terminal
+	 * of its own: from here the owned-cleanup guard below is what bounds the
+	 * quit, and the marker is what tells a post-mortem whether this handler was
+	 * ever reached at all.
+	 */
+	quitExitDeadline.phase("will-quit");
 	/*
 	 * The viewer record and endpoint are this branch's, and they go BEFORE the
 	 * owned-cleanup guard: that guard returns early when there is nothing owned to
@@ -4237,6 +4499,17 @@ app.on("before-quit", async (event) => {
 	 * its own cancellation (`./quit-state` owns why it is the only one).
 	 */
 	quitState.begin();
+	/*
+	 * AND THE HARD DEADLINE IS ARMED HERE, IN THE SYNCHRONOUS PART - beside the
+	 * quit's record, BEFORE the session-cookie hold can wait (the hold can spend
+	 * its whole budget while the window is already doomed, and a deadline armed
+	 * after it would miss exactly the waits the quit's contract already bounds).
+	 * The phase marker it carries is moved by this handler's own stages, so the
+	 * line the deadline writes on firing names where the quit stopped. See
+	 * `./quit-exit-deadline` for the contract; `scripts/window-mode.test.mjs`
+	 * pins these sites.
+	 */
+	quitExitDeadline.arm("before the session-cookie hold");
 
 	/*
 	 * THE WINDOW-CLOSE INTERCEPTIONS ARE STOOD DOWN HERE, IN THE SYNCHRONOUS PART
@@ -4283,6 +4556,7 @@ app.on("before-quit", async (event) => {
 	 */
 	if (await holdQuitForSessionCookieSnapshot(event)) return;
 
+	quitExitDeadline.phase("after the session-cookie hold");
 	logger.info("App is about to quit", LogFileType.BACKEND);
 
 	/*
@@ -4361,6 +4635,14 @@ app.on("before-quit", async (event) => {
 	// a process that is already gone. Not awaited: `before-quit` is synchronous,
 	// and each of these steps is also safe to lose (see `stopBrowserHost`).
 	void stopBrowserHost();
+	/*
+	 * The synchronous tail is done. What remains is the window close Electron
+	 * runs as this listener's synchronous part ends, and the `will-quit` pass
+	 * behind it - the phase that had no terminal on 2026-10-11. Marking it is
+	 * what lets the deadline's line name this stage instead of leaving a
+	 * post-mortem to infer it (tonight's could not name any stage at all).
+	 */
+	quitExitDeadline.phase("awaiting the window close");
 });
 
 // The exit event is synchronous: only the current captured handle is eligible.

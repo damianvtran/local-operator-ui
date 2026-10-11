@@ -80,6 +80,10 @@ export const alucard: ThemeDefinition = {
 		// measures 2.60 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
 		messageSurface: "#fbf8f0",
+		// The media slot's well: ΔE00 4.01 off the canvas, where `sunken` alone
+		// measures 2.31 - a step away from the canvas to clear the role's 4.0
+		// floor, which the tile carries because the fill IS its resting extent.
+		mediaSurface: "#e5dfc9",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a

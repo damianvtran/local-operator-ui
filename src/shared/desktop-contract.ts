@@ -25,6 +25,15 @@ const secret = z.string().min(1).max(32768);
 export const sessionIdPattern = /^[a-f0-9]{12}$/;
 const sessionId = z.string().regex(sessionIdPattern);
 /*
+ * A supplement JOB id (`supplements.persistence.new_job_id` mints 12 lowercase
+ * hex) and the answer ANCHOR it attaches to (a final assistant message id).
+ * Shapes are the contract's (`supplement-model.ts` states them for the
+ * renderer; this is the transport's own copy, because the route constructs a
+ * path from the job and must not accept path text).
+ */
+const supplementJob = z.string().regex(/^[a-f0-9]{12}$/);
+const supplementAnchor = z.string().min(1).max(128);
+/*
  * The folder a SESSIONLESS skills read is discovered from.
  *
  * NOT `mcpCatalogCwd`'s absolute-only regex: a draft pane's staged default is
@@ -442,6 +451,17 @@ const wakeId = z.string().min(1).max(64);
  * handle with a 422 before any handler runs, which is where the shape belongs.
  */
 const monitorId = z.string().min(1).max(64);
+
+/**
+ * A background job's id, an opaque token the runtime minted (`harness/jobs.py`'s
+ * `AsyncJob.id`).
+ *
+ * Lenient for the wakeId's own reason, and it matters here the same way: the
+ * run pane renders the id the runtime minted (`frontend.jobs[].id`), so a
+ * pattern a drawn row could fail would be a control that is drawn and cannot be
+ * pressed. Whatever shape check the route wants belongs at the route.
+ */
+const jobId = z.string().min(1).max(64);
 
 const scheduleWrite = z
 	.object({
@@ -1168,6 +1188,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			with_counts: z.boolean().optional(),
 		})
 		.strict(),
+	/*
+	 * Acknowledge the one-time delegated-cleanup notice:
+	 * `POST /v1/desktop/delegated-cleanup-notice/ack`.
+	 *
+	 * The notice rides `sessions.list` UNTIL this write lands: the GET is a
+	 * non-consuming peek (every list answer keeps carrying the field while the
+	 * store is unacknowledged, which is what lets a second window see the same
+	 * notice), and this op is the one thing that flips `notice_acknowledged` on
+	 * disk. The route is idempotent - acknowledging an acknowledged store writes
+	 * what is already there - so, like `sessions.archive`, it needs no
+	 * `requestId`: a retry cannot flip anything back.
+	 */
+	z
+		.object({ op: z.literal("delegated_cleanup_notice.ack") })
+		.strict(),
 	z
 		.object({
 			// Content search over the store: name, id, exact conversation body, and
@@ -1766,6 +1801,60 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({ op: z.literal("sessions.interrupt"), sessionId, requestId })
 		.strict(),
 	/*
+	 * The supplement block's OWN control pair (turn-supplements memo §2.7, lane
+	 * U-b): cancel the running job, steer it with an instruction, or retry a
+	 * settled one.
+	 *
+	 * THE COMPANION CORE ROUTES. These three ops address
+	 * ``POST /v1/desktop/sessions/{sid}/supplements/{job}/{cancel,steer,restart}``
+	 * and map in core to ``AttachedSession.supplement_cancel/steer/restart``
+	 * (``session/attached.py``), which already speak the runtime's own op
+	 * vocabulary over the control socket — the same rung ``sessions.interrupt``
+	 * reaches.
+	 *
+	 * THOSE ROUTES DO NOT EXIST YET, and that is verified rather than assumed:
+	 * the desktop plane on core ``origin/main`` (05e4c971b1) serves only the
+	 * document route and the events gate, the released runtime matches (UX round
+	 * 1 measured the 404s live), and no other door is reachable from this app —
+	 * the runtime control socket is a daemon↔runtime dial main has no path to,
+	 * and the relay's command route is cookie-gated for the phone surface. The
+	 * core half is a small paired PR (one route per op dispatching
+	 * ``bridge.remote.supplement_*``, the ``interrupt`` route's own shape); the
+	 * app half ships here so the pair is one core change from working. Until it
+	 * lands, a press answers 404 and the row composes THAT refusal through
+	 * ``backendLoadErrorMessage`` — the outdated-server sentence, never a raw
+	 * ``Not Found`` echoing out of the daemon (round-1 U2).
+	 *
+	 * ``job`` and ``anchor`` are the contract's own shapes (12 hex job id, the
+	 * answer's message id); ``text`` is the memo's ``supplement_steer`` bound
+	 * (≤ 500 chars, enforced again server-side).
+	 */
+	z
+		.object({
+			op: z.literal("supplements.cancel"),
+			sessionId,
+			job: supplementJob,
+			anchor: supplementAnchor,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("supplements.restart"),
+			sessionId,
+			job: supplementJob,
+			anchor: supplementAnchor,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("supplements.steer"),
+			sessionId,
+			job: supplementJob,
+			anchor: supplementAnchor,
+			text: z.string().min(1).max(500),
+		})
+		.strict(),
+	/*
 	 * A session's code memory: the names the session's own cells have left in its
 	 * eval namespace.
 	 *
@@ -2098,13 +2187,45 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z
-		.object({ op: z.literal("models.catalogue"), live: z.boolean().optional() })
+		.object({
+			op: z.literal("models.catalogue"),
+			live: z.boolean().optional(),
+			/*
+			 * Which view of the catalogue to answer with: `usable` (the rows this
+			 * machine can run, plus the session's current model) or `all`. Absent
+			 * means `all`, which is also what a backend that predates the
+			 * parameter does with it — the picker stays correct either way, because
+			 * a compile-time-correct request against an old backend is filtered
+			 * client-side by `scopeCatalogue`.
+			 */
+			scope: z.enum(["usable", "all"]).optional(),
+		})
 		.strict(),
 	z
 		.object({
 			op: z.literal("usage.get"),
 			provider: id.optional(),
 			live: z.boolean().optional(),
+			refresh: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			/*
+			 * THE PRE-EMPTIVE QUOTA READ (the sibling core PRs' route,
+			 * `GET /v1/desktop/quota-notice`).
+			 *
+			 * The provider and model are the SELECTION under review, sent so the
+			 * renderer's query key and the backend's verdict cannot disagree about
+			 * what is being checked. Both are optional because the route falls back
+			 * to the backend's own config values -- the same store the renderer's
+			 * selection was read from -- and `refresh` is the user's explicit "I
+			 * topped up" / "I verified": it bypasses the route's cache floor while
+			 * every automatic read stays cache-aware.
+			 */
+			op: z.literal("quota.notice"),
+			provider: id.optional(),
+			model: z.string().min(1).max(200).optional(),
 			refresh: z.boolean().optional(),
 		})
 		.strict(),
@@ -2381,6 +2502,32 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			monitorId,
 		})
 		.strict(),
+	/*
+	 * The job rail's one write that has a UI: cancelling a background job
+	 * (`POST /v1/desktop/sessions/{session_id}/jobs/{job_id}/cancel`).
+	 *
+	 * ONE per-item cancel, following its wake and monitor siblings — and the
+	 * only family the pane draws it on is the VIDEO job row (design spec §2.2),
+	 * because that family's stop has no other rail: the video card never offers
+	 * Cancel (a detached job cannot be interrupted in-turn, contract §4.2). The
+	 * route's semantics are the EXISTING engine path, not a second mechanism —
+	 * it reaches the owning session's `AsyncJobManager.cancel`, the same call
+	 * `jobs op='cancel'` makes — and the honesty rule every surface keeps
+	 * applies: a press is acknowledged, and only the job's own settle paints
+	 * `cancelled`.
+	 *
+	 * The response's only fact is the queue's acknowledgement; the UI reads no
+	 * field off it (the job row's next wire state is the outcome's evidence, by
+	 * the honesty rule above), so it is typed `unknown` at the call site and the
+	 * route is free to grow a receipt without a contract change here.
+	 */
+	z
+		.object({
+			op: z.literal("jobs.cancel"),
+			sessionId,
+			jobId,
+		})
+		.strict(),
 	z.object({ op: z.literal("mcp.list"), sessionId }).strict(),
 	z
 		.object({
@@ -2579,6 +2726,16 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 						"org_agents.list",
 						"org_team.get",
 						"org_teams.list",
+						/*
+						 * The verification-email resend (core PR2,
+						 * `feat/quota-notice-resend`): it maps to the upstream's JWT-only
+						 * `POST /auth/signup/resend` and needs a `request_id`, exactly like
+						 * every other mutation. Named here and in
+						 * `shared/api/radient/proxy.ts` for the reason above; an OLDER
+						 * backend answers it with a masked 422, which the quota notice
+						 * reads as "degrade to the verification-page link".
+						 */
+						"signup.resend",
 					]),
 					request_id: requestId.optional(),
 					tenant_id: id.optional(),
@@ -2857,6 +3014,17 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 					estimate_unit: z.enum(["points", "days"]).optional(),
 				})
 				.strict(),
+			/*
+			 * `force_done` is a flag about THIS CALL, not a field of the row, so it
+			 * sits at the op's top level and never inside `fields` (the strict
+			 * `fields` object above rejects it there). It is the daemon's deliberate
+			 * escape from the done-gate: close the project with milestones still
+			 * open. Sent ONLY when true (see the mapper) because a daemon that
+			 * predates the `projects_force_done` capability 422s an unknown body key
+			 * - the renderer gates the offer on that key, and an absent flag keeps
+			 * every other PATCH byte-identical to what shipped before.
+			 */
+			force_done: z.boolean().optional(),
 		})
 		.strict(),
 	z
@@ -2963,6 +3131,60 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 * user reads as a defect of their press.
 			 */
 			action: z.enum(["open", "pause", "resume", "greet", "status"]),
+		})
+		.strict(),
+	/*
+	 * THE CODE REQUEST LEDGER (the per-session PR/MR list, and its refresh).
+	 *
+	 * BOTH ROUTES SIT UNDER THE SESSION because the LEDGER is the session's: the
+	 * rows are derived from THIS conversation's transcript, so a read that did not
+	 * name the session could only be some other session's list or a fleet scan
+	 * nobody asked for. The pair follows the monitors/projects routes' pattern
+	 * (`Depends(require_desktop)` behind the desktop bearer) and the refresh is a
+	 * POST because it mutates the cache's TTL state; a GET with a side effect is
+	 * the shape the monitors routes already refused.
+	 *
+	 * `keys` narrows the refresh to named rows and `force` bypasses the TTL but
+	 * NOT a host's rate-limit window (`cooling` in the list answer says which);
+	 * both are optional because "refresh what is dirty" and "per the TTL" are the
+	 * route's defaults, which is what the pane's untouched Refresh press wants.
+	 */
+	z
+		.object({ op: z.literal("code_requests.list"), sessionId })
+		.strict(),
+	z
+		.object({
+			op: z.literal("code_requests.refresh"),
+			sessionId,
+			/*
+			 * A key is one row's `key` from the list answer; the bound mirrors the
+			 * fetch routes' own ceilings rather than inventing one here, and the
+			 * cap keeps a mis-read list from being re-sent whole.
+			 */
+			keys: z.array(z.string().min(1).max(512)).max(256).optional(),
+			force: z.boolean().optional(),
+		})
+		.strict(),
+	/*
+	 * THE PREVIEWS' SIGNED STATIC URLS (file-serving RFC § 4, Phase A adoption).
+	 * The renderer cannot read the core's serve record (no filesystem, no record
+	 * store), so the previews ask MAIN - which already holds the desktop bearer -
+	 * to mint a short-lived signed URL for one static route + path. The route is
+	 * public in Phase A; this op is what lets the previews keep working when a
+	 * later core phase gates it, and a core that predates the route answers 404,
+	 * which the previews read as their fallback signal, not an error.
+	 *
+	 * `route` is the backend's own signed-string vocabulary (the four static
+	 * family ids), held here so a route the signature cannot cover fails at this
+	 * boundary. `ttlS` stays within the backend's documented cap (600 default,
+	 * 3600 max) - a bound, not a preference.
+	 */
+	z
+		.object({
+			op: z.literal("static.sign"),
+			route: z.enum(["images", "videos", "audio", "html"]),
+			path: z.string().min(1),
+			ttlS: z.number().int().min(1).max(3600).optional(),
 		})
 		.strict(),
 ]);
@@ -3536,6 +3758,237 @@ export type DesktopMonitorWriteReceipt = {
 	reactivated: boolean;
 	receipt: string;
 	index_written: boolean;
+};
+
+/*
+ * THE PER-SESSION CODE REQUEST LEDGER (`code_requests.list`), the PR/MR list a
+ * conversation carries: what it opened, what it acted on, what it mentions.
+ *
+ * WHAT IS LOCAL AND WHAT IS REMOTE. The rows' existence, relations, mentions
+ * and `tool_output_only_count` are DERIVED locally from the session's own
+ * transcript (`GET` never blocks on a forge), so a row renders as soon as the
+ * read answers. The remote half - `summary`, `lanes`, `fetched_at`, `stale`,
+ * `refresh_error` - is a cache of one host's last successful fetch, which is why
+ * every one of those fields is optional: a session that has never refreshed (or
+ * a host this machine holds no credential for, `link_only`) renders from the
+ * local half alone and must not read an absence as a failure.
+ */
+
+/**
+ * How this session relates to one code request, in the backend's own words.
+ *
+ * A UNION rather than a plain string, because every value here drives copy the
+ * user reads (`opened`, `via subagent coder`, `unknown — possibly opened`) and
+ * the group partition; a value this app has never heard of would have no honest
+ * rendering, unlike a project STATUS which can paint raw (`DesktopProjectStatus`
+ * makes that argument). `unknown` is the backend's explicit "possibly opened by
+ * this session, not proved" and the UI must never upgrade it: a script that
+ * merely PRINTED a PR URL is indistinguishable from one that created it without
+ * the forge's own record.
+ */
+export type DesktopCodeRequestRelation =
+	| "opened"
+	| "mentioned"
+	| "unknown"
+	| "inherited";
+
+/**
+ * One lane's parsed review state (the design record's §C.5 machine).
+ *
+ * The LANE's raw name and state travel as strings for the reason
+ * `DesktopProject.status` does: a newer backend may parse a state or serve a
+ * lane this build has not seen, and the row's clause then prints the raw value
+ * with neutral treatment rather than dropping a review that happened.
+ */
+export type DesktopCodeRequestLane = {
+	lane: string;
+	/**
+	 * The round the lane's LATEST comment carries, or absent/null when no
+	 * number could be parsed. The backend omits the key in that case
+	 * (`rounds.py`'s `to_payload` writes it only when not None) - a lane with
+	 * no placeable round still draws its state word and NO segments, because
+	 * a segment count is a claim about how many rounds ran.
+	 */
+	round?: number | null;
+	/** The header's parenthetical qualifier (`delta`, `fix verification`), if any. */
+	qualifier?: string | null;
+	state: string;
+	/** The backend's own derived sentence (`remediation posted, fresh`). */
+	state_copy?: string | null;
+	freshness: string;
+	/** `findings_open` | `clean` | `terminal` | `unstated`, the parser's class. */
+	verdict_class?: string | null;
+	/** The head the lane's latest comment reviewed, when its own Scope stated one. */
+	reviewed_head?: string | null;
+	reviewer?: string | null;
+	verdict?: string | null;
+};
+
+/**
+ * The CI figures for one row's head, as the adapter normalised them.
+ *
+ * `status` is the word every host can answer (`success` | `failure` |
+ * `pending` | `unknown` | `none`); the COUNT counters are nullable because
+ * GitLab pipeline state carries no job counts at all (`adapters/gitlab.py`
+ * returns null for all four) and GitHub leaves them null when the host did
+ * not carry them. The clause is built in one place (`code-review-model.ts`),
+ * and `total === 0` with `status: "none"` is "No checks yet" rather than
+ * "0/0 passed".
+ */
+export type DesktopCodeRequestCi = {
+	status: string;
+	passed: number | null;
+	failed: number | null;
+	pending: number | null;
+	total: number | null;
+	/** The host's own raw status word, when it sent one (GitLab pipelines do). */
+	raw_status?: string | null;
+	/**
+	 * The checks page, when the host reported one. OPTIONAL for the same reason
+	 * `comments` is: the design's row sketch (§D.6) does not list it, and a
+	 * backend that omits it must not fail a parse.
+	 */
+	url?: string | null;
+};
+
+/** The fetched summary of the forge's own record, absent until first fetched. */
+export type DesktopCodeRequestSummary = {
+	state: string;
+	draft: boolean;
+	title: string;
+	head_sha: string;
+	/**
+	 * The CI half, present-and-null when the fetched entry has no ci record
+	 * yet. Nullable rather than optional because the backend writes the key
+	 * with `entry.get("ci")` - a value that can be None - and a guard on
+	 * `row.summary?.ci?.status` is what keeps one such row from throwing
+	 * inside `ChatContent`'s render.
+	 */
+	ci?: DesktopCodeRequestCi | null;
+	updated_at: number;
+	/**
+	 * How many comments the record carries, when the host reported it (§1's
+	 * comment clause, `6 comments`). null means "not reported": the clause is
+	 * omitted, never rendered as 0, and the backend sends the key with null
+	 * rather than omitting it (`service.py`'s summary projection).
+	 */
+	comments?: number | null;
+};
+
+/**
+ * How a subagent's open reached this session (`via subagent coder › reviewer`).
+ *
+ * `path` is the propagation chain (a depth-2 child shows both names); the flat
+ * fields are the child's own record. Either may be absent on an older event, so
+ * the row's tag falls back through `path` → `agent_role` → `label`.
+ */
+export type DesktopCodeRequestVia = {
+	job_id?: string;
+	label?: string;
+	agent_role?: string;
+	child_session_id?: string;
+	path?: string[];
+};
+
+/** Where and how often this session's text mentions the row. */
+export type DesktopCodeRequestMention = {
+	sources: string[];
+	count: number;
+	last_at: number | null;
+};
+
+/** One row of the ledger: the identity half is always present, the rest gated. */
+export type DesktopCodeRequestRow = {
+	key: string;
+	url: string;
+	forge: string;
+	host?: string;
+	project: string;
+	number: number;
+	relation: DesktopCodeRequestRelation;
+	/** Every relation the ref accumulated, strongest first (the audit half). */
+	relations?: string[];
+	via?: DesktopCodeRequestVia | null;
+	/** The acts this session performed on the ref (`comment`, `merge`, ...). */
+	acted: string[];
+	mention: DesktopCodeRequestMention;
+	/** No credential for this host: the row opens, and shows its remedy line. */
+	link_only: boolean;
+	/**
+	 * The backend's own remedy sentence for a link-only row (`Link only -
+	 * sign in with the gh CLI to track this one.` / `... this host isn't
+	 * tracked yet.`), per FORGE - a gitea row is not "sign in with gh".
+	 * Rendered VERBATIM instead of the client deriving a CLI from `forge`
+	 * (agent review F8 / design D8 / UX U5).
+	 */
+	link_only_hint?: string | null;
+	/**
+	 * Why the row is only a link, when there is something to say (an
+	 * unconfirmed host, a failed refresh, the scanner's note). Shown
+	 * verbatim; never a guess.
+	 */
+	reason?: string | null;
+	/**
+	 * The epoch the row's host is cooling until, when the backend skipped this
+	 * row's fetch for a rate limit (server row payload `cooling_until`, PR1b
+	 * `039476dff3`). Present beside `reason`, whose cooling sentence names the
+	 * same instant; rendered through the notice line, not read directly.
+	 */
+	cooling_until?: number | null;
+	/** The scanner's note for an undecided relation (shown verbatim). */
+	unknown_reason?: string | null;
+	inherited_from?: string | null;
+	summary?: DesktopCodeRequestSummary | null;
+	lanes?: DesktopCodeRequestLane[] | null;
+	fetched_at?: number | null;
+	stale?: boolean;
+	/** A failed refresh left the last known data in place; this is why. */
+	refresh_error?: string | null;
+};
+
+/**
+ * `code_requests.list`'s answer.
+ *
+ * `tool_output_only_count` is the collapsed group's size: mentions seen ONLY in
+ * tool output are noise (a `gh pr list` dump can carry 158 URLs) and are counted
+ * rather than listed; they do not gate the composer chip either. `cooling` is
+ * per HOST (epoch seconds until the window opens), because the quota belongs to
+ * the host and row-level repetition of one host's window would be noise.
+ */
+export type DesktopCodeRequestsList = {
+	session_id?: string;
+	revision: number;
+	rows: DesktopCodeRequestRow[];
+	tool_output_only_count: number;
+	/**
+	 * True when the collapsed count is CAPPED - the scan stops listing tool-only
+	 * refs past a bound, and the model then renders the count with a `+` rather
+	 * than presenting a truncated list as exact.
+	 */
+	tool_output_truncated?: boolean;
+	/** Per-host cooling windows: host → epoch seconds the window lifts. */
+	cooling?: Record<string, number>;
+	/**
+	 * The transcript scan's own state: `ready` when the index is current for the
+	 * journal, `refreshing` while a scan is owed or running, `missing` when
+	 * there is no journal to scan. The pane keeps its LOADING state while
+	 * `refreshing` and the rows are empty - an empty answer mid-scan is not yet
+	 * a claim that the session has no code requests (UX round 1, U2).
+	 */
+	scan_state?: string;
+	updated_at?: number | null;
+};
+
+/**
+ * `code_requests.refresh`'s 202 receipt: the scan half ran, the fetch half is
+ * queued. `note` is the backend's own sentence about both halves.
+ */
+export type DesktopCodeRequestRefreshReceipt = {
+	session_id?: string;
+	accepted: boolean;
+	keys?: string[];
+	force?: boolean;
+	note?: string;
 };
 
 /**
@@ -4183,6 +4636,10 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	// a failure is reported with a read's patience rather than a write's caution.
 	"projects.search",
 	"providers.list",
+	// The pre-emptive quota read: a cache-first verdict that changes nothing on
+	// the server. It may trigger the backend's own bounded usage fetch, but no
+	// state the user can see is written.
+	"quota.notice",
 	// A reader that changes nothing (the route's own docstring): the straggler
 	// census, and the app re-reads it rather than caching a stale count.
 	"runtimes.list",
@@ -4518,6 +4975,27 @@ export type DesktopMediaRequest =
 			sessionId: string;
 			childId: string;
 			digest: string;
+	  }
+	/*
+	 * One supplement component's assembled HTML document (turn-supplements memo
+	 * §2.7, lane U-b), as `{ html }` JSON from
+	 * `/v1/desktop/sessions/{id}/supplements/{digest}/document`.
+	 *
+	 * WHY ON THIS RELAY. The route sits under the `/v1/desktop/` bearer boundary
+	 * and the document must be fetched WITH the bearer and WITHOUT the renderer
+	 * ever seeing it; the JSON transport could carry it, but every byte this
+	 * feature serves stays on the one media path the file-serving lane already
+	 * owns. The renderer uses the answer as the frame's availability gate (a
+	 * failure paints the fallback line; success is what lets the mount effect
+	 * run), and the mount itself is the digest-addressed `lo-supplement:` URL
+	 * main serves through `supplement-protocol.ts` — a browser-only host with no
+	 * handler mounts the bytes as a `data:` URL instead. Nothing navigates a
+	 * browsing context to the route itself (§4.1).
+	 */
+	| {
+			op: "sessions.supplementDocument";
+			sessionId: string;
+			digest: string;
 	  };
 
 export type DesktopMediaResponse =
@@ -4547,6 +5025,22 @@ export type DesktopAPI = {
 		request: DesktopMediaRequest,
 		bytes: Uint8Array | null,
 	) => Promise<DesktopMediaResponse>;
+	/**
+	 * Arm ONE supplement-frame mount (turn-supplements memo §4.1, lane U-b).
+	 *
+	 * The renderer calls this with the exact mount URL it is about to set as a
+	 * supplement frame's `src`, immediately before mounting — a
+	 * `lo-supplement://s/<session>/<digest>` URL in the app, whose main-process
+	 * handler serves the stored document; a `data:` URL only in browser-only
+	 * hosts, which have no channel and no handler at all. Main records the permit
+	 * and its navigation guard allows exactly that one child-frame navigation,
+	 * byte-for-byte; every other navigation of a supplement frame — a
+	 * self-navigation, a `meta refresh`, a second load — is denied.
+	 * Electron only: absent means no permit channel, and the mount path must
+	 * keep working in browser development and Storybook, where the embedding
+	 * document's own CSP is the only control.
+	 */
+	armSupplementFrame?: (url: string) => Promise<{ ok: boolean }>;
 	/** Watch-lease heartbeat; main adds can_notify. Electron only. */
 	watchHeartbeat?: (args: {
 		sessionId: string;
@@ -4646,7 +5140,62 @@ export type DesktopCapabilities = {
 	desktop_available: boolean;
 	desktop_auth: "bearer";
 	features: Record<string, number>;
+	/**
+	 * The backend's RESOLVED locale tag (RFC §2.5): config `language` ->
+	 * `LOP_LANG` -> OS -> `en`, normalised and filtered to SHIPPED locales.
+	 * Optional like every post-contract field, and that is the pre-connection
+	 * case as well as the older-backend one: absent means the renderer keeps
+	 * the device locale (the i18n locale store's documented fallback).
+	 */
+	language?: string;
 };
+
+/**
+ * `GET /v1/desktop/quota-notice`, as the route sends it.
+ *
+ * THE RENDERER'S TWIN of the backend's `QuotaNoticeResult` (core PR1/
+ * PR2). A schema rather than a bare type because it is the WIRE'S half of the
+ * contract, not a convenience: the tests that stub this route bind their
+ * fixtures to it, so a fixture cannot drift from the shape the real route
+ * sends (its producer builds it in `server/routes/desktop_quota.py` from
+ * `providers/quota_notice.py`'s verdict).
+ *
+ * `state` is the whole vocabulary, including the "show nothing" states,
+ * because it is also the diagnostics carrier; the notice's own shown set is
+ * `quota-notice.ts`'s list. No `identity` or email ever appears here -- the
+ * route is built to leave both out. `title` is the short form and `body` the
+ * full sentence; `actions` arrive in the order the builder composed.
+ */
+export const QUOTA_NOTICE_SCHEMA = z.object({
+	state: z.enum([
+		"ok",
+		"depleted",
+		"limit_reached",
+		"unverified",
+		"unknown",
+		"not_applicable",
+	]),
+	provider: z.string(),
+	kind: z.enum(["balance", "subscription", "radient", "none"]),
+	model_free: z.boolean(),
+	title: z.string(),
+	body: z.string(),
+	actions: z.array(
+		z.object({
+			id: z.enum(["open_url", "resend_verification", "refresh"]),
+			label: z.string(),
+			url: z.string().nullable().optional(),
+		}),
+	),
+	resets_at_ms: z.number().int().nullable().optional(),
+	checked_at_ms: z.number().int(),
+	age_ms: z.number().int().nullable().optional(),
+	source: z.enum(["cached", "live"]),
+});
+
+export type QuotaNotice = z.infer<typeof QUOTA_NOTICE_SCHEMA>;
+export type QuotaNoticeAction = QuotaNotice["actions"][number];
+export type QuotaNoticeState = QuotaNotice["state"];
 
 export type ProviderMethod = {
 	/** The provider a flow acts on; `auth.start` and `auth.key` take this. */
@@ -4866,6 +5415,48 @@ export type BackendSetting = {
 	 * row (see `setting-control.tsx`).
 	 */
 	hotkey_scope?: "app" | "desktop" | null;
+	/**
+	 * A SIXTH additive field: what an `int`/`float` row COUNTS, as a plain
+	 * lowercase noun (`"hours"`), and `""` on every row that counts nothing in
+	 * particular. With `minimum`/`maximum` it is the whole contract a bounded
+	 * duration control needs, and it exists because a renderer cannot tell "this
+	 * int is hours" from its key. The stored value is ALWAYS in this unit: a
+	 * control that shows "7 days" writes 168. Absent on a server that predates it,
+	 * which is read as "no unit" and degrades to the plain number field the row
+	 * always had (the delegated-retention row has a key-keyed fallback, see
+	 * `retention-duration.ts`).
+	 */
+	unit?: string | null;
+};
+/**
+ * The one-time "delegated sessions were cleaned up" notice, as
+ * `GET /v1/desktop/sessions` carries it in the additive field
+ * `delegated_cleanup_notice` (`null` or absent when there is nothing to say).
+ *
+ * SERVED UNTIL ACKNOWLEDGED: the GET is a non-consuming PEEK - every list
+ * answer keeps carrying the field while the store's `notice_acknowledged` flag
+ * is unset (which is what lets a second window see the same notice), and the
+ * dismissal's `POST /v1/desktop/delegated-cleanup-notice/ack` is the one write
+ * that flips it. The renderer lifts the field out of every answer at the
+ * transport (`desktopResult`) into `delegated-cleanup-notice-store`, which
+ * holds it until the reader dismisses it - a notice kept only in the response
+ * that carried it would be gone with the next re-render of whatever fetched it.
+ */
+export type DelegatedCleanupNotice = {
+	/** Finished sentences, one per line; rendered verbatim, never re-worded. */
+	message: string;
+	/** Sessions removed so far. */
+	removed: number;
+	/** The window the removal used, in hours. */
+	max_age_hours: number;
+	/** True while a backlog is still draining (the message already says "so far"). */
+	in_progress: boolean;
+	/** ISO timestamp of the first removal. */
+	first_removal_at: string;
+	/** A LOWER BOUND on the bytes freed (the sizer caps its walk), or null. */
+	freed_bytes_estimate: number | null;
+	/** Where the per-removal record lives, for display. */
+	record: string;
 };
 export type BackendSettings = {
 	sections: {
@@ -5235,6 +5826,17 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		/*
+		 * The one write behind the notice's lifecycle: the dismissal's ack. The GET
+		 * above is a PEEK (`delegated_cleanup_notice` stays on every answer until
+		 * this lands), so this is the only op that stops the store serving it -
+		 * idempotent, and sent once per dismissal.
+		 */
+		case "delegated_cleanup_notice.ack":
+			return {
+				path: "/v1/desktop/delegated-cleanup-notice/ack",
+				method: "POST",
+			};
 		case "sessions.search": {
 			// `encodeURIComponent` rather than interpolation: a query is whatever
 			// the user typed, and `&`, `#` or a space in it would otherwise change
@@ -5567,6 +6169,24 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// runtime's abort receipt verbatim - see `DesktopInterruptReceipt`.
 				body: { request_id: request.requestId },
 			};
+		case "supplements.cancel":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/supplements/${request.job}/cancel`,
+				method: "POST",
+				body: { anchor: request.anchor },
+			};
+		case "supplements.restart":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/supplements/${request.job}/restart`,
+				method: "POST",
+				body: { anchor: request.anchor },
+			};
+		case "supplements.steer":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/supplements/${request.job}/steer`,
+				method: "POST",
+				body: { anchor: request.anchor, text: request.text },
+			};
 		case "sessions.variables.list":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/variables`,
@@ -5768,6 +6388,21 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/monitors/${encodeURIComponent(request.sessionId)}/${encodeURIComponent(request.monitorId)}`,
 				method: "DELETE",
 			};
+		/*
+		 * The job cancel, mapped beside its wake and monitor siblings. POST
+		 * rather than DELETE, and the difference is the resource's fate: a
+		 * cancelled wake or monitor is GONE from its listing, while a cancelled
+		 * job is a row that stays and settles — the press is an action on it,
+		 * so the route is one too. Both segments are `encodeURIComponent`ed on
+		 * the monitors' own rule (the schema is this client's check; a redirect
+		 * or a hand-built request must not be able to turn a token into a path
+		 * fragment).
+		 */
+		case "jobs.cancel":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/jobs/${encodeURIComponent(request.jobId)}/cancel`,
+				method: "POST",
+			};
 		case "legacy.jobs.list": {
 			const query = new URLSearchParams();
 			if (request.agentId) query.set("agent_id", request.agentId);
@@ -5849,11 +6484,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/command-entities?command=${encodeURIComponent(request.command)}${request.name ? `&name=${encodeURIComponent(request.name)}` : ""}`,
 				method: "GET",
 			};
-		case "models.catalogue":
+		case "models.catalogue": {
+			/*
+			 * `scope` rides the query ONLY when asked for, so the path of a request
+			 * that does not name one is byte-identical to the pre-`scope` form
+			 * (`desktop-contract.test.mjs` pins that row) and an old backend keeps
+			 * answering exactly what it answered before.
+			 */
+			const scope = request.scope ? `&scope=${request.scope}` : "";
 			return {
-				path: `/v1/desktop/models?live=${request.live ?? false}`,
+				path: `/v1/desktop/models?live=${request.live ?? false}${scope}`,
 				method: "GET",
 			};
+		}
 		case "usage.get": {
 			const query = new URLSearchParams({
 				live: String(request.live ?? false),
@@ -5861,6 +6504,14 @@ export function desktopEndpoint(request: DesktopRequest): {
 			});
 			if (request.provider) query.set("provider", request.provider);
 			return { path: `/v1/desktop/usage?${query}`, method: "GET" };
+		}
+		case "quota.notice": {
+			const query = new URLSearchParams({
+				refresh: String(request.refresh ?? false),
+			});
+			if (request.provider) query.set("provider", request.provider);
+			if (request.model) query.set("model", request.model);
+			return { path: `/v1/desktop/quota-notice?${query}`, method: "GET" };
 		}
 		case "analytics.get": {
 			const query = new URLSearchParams({ days: String(request.days ?? 30) });
@@ -6167,7 +6818,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// Exactly the keys the caller included travel, so an omitted key
 				// leaves its field alone and `""` clears a date (the route
 				// forwards `model_fields_set` into the store's edit model).
-				body: { ...request.fields },
+				body: {
+					...request.fields,
+					// Only a TRUE flag travels: `false` and absent are the same request
+					// to the route, and omitting both keeps the body valid for a daemon
+					// that does not know the key at all.
+					...(request.force_done === true ? { force_done: true } : {}),
+				},
 			};
 		case "projects.delete":
 			return {
@@ -6241,6 +6898,44 @@ export function desktopEndpoint(request: DesktopRequest): {
 				 */
 				body: { op: request.action },
 			};
+		/*
+		 * THE CODE REQUEST LEDGER, the session-scoped pair (see the union members'
+		 * comment for why both routes name the session). The GET is the read the pane
+		 * and the chip share; the POST asks the host to re-fetch, and its body
+		 * carries only the fields the CALLER set, so an untouched Refresh press is
+		 * the route's own defaults rather than this client's opinion of them.
+		 */
+		case "code_requests.list":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/code-requests`,
+				method: "GET",
+			};
+		case "code_requests.refresh":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/code-requests/refresh`,
+				method: "POST",
+				body: {
+					...(request.keys !== undefined ? { keys: request.keys } : {}),
+					...(request.force !== undefined ? { force: request.force } : {}),
+				},
+			};
+		/*
+		 * The previews' signed static URLs: NOT under `/v1/desktop/` - the core's
+		 * sign route accepts the desktop bearer OR its local access token - so an
+		 * answer here never counts as pairing evidence (`desktopAnswerProvesPairing`
+		 * reads the prefix, deliberately). `ttl_s` is omitted unless asked for, so
+		 * the core's own default (600 s) is the one number for "unspecified".
+		 */
+		case "static.sign":
+			return {
+				path: "/v1/static/sign",
+				method: "POST",
+				body: {
+					route: request.route,
+					path: request.path,
+					ttl_s: request.ttlS,
+				},
+			};
 	}
 }
 
@@ -6263,8 +6958,10 @@ export function desktopEndpoint(request: DesktopRequest): {
  * A bound rather than a guess: a stat on an unmounted network path can hang for
  * seconds, so the renderer chunks its probe requests and main refuses anything
  * larger rather than turning one call into a stall. 64 is comfortably more than
- * a panel's worth of tiles while keeping a single synchronous batch short. The
- * panel's own list is bounded by the conversation, not by this number: a
+ * a panel's worth of tiles while keeping a single batch's work short - the probe
+ * itself is asynchronous and bounded (`src/main/directory-listing.ts`,
+ * `PROBE_CONCURRENCY`), so this number bounds the request, not the event loop.
+ * The panel's own list is bounded by the conversation, not by this number: a
  * transcript with hundreds of mentions is probed in chunks of 64, and the
  * extractor no longer caps its output at all (it used to stop at 200 paths,
  * which is what made the tail of a long conversation unreachable).
@@ -6337,10 +7034,17 @@ export type ProbedFile = {
 	/** Modification time, ms since epoch, or `null`. */
 	mtimeMs: number | null;
 	/**
-	 * Present only when `stat` itself failed (permission, a broken mount) rather
-	 * than answering "no such file". Both report `exists: false`; this says
-	 * which one happened, because "deleted" and "cannot look" deserve different
-	 * words in a bug report.
+	 * Present only when the probe could not ANSWER: `stat`/`realpath` failed
+	 * (permission, a broken mount) or the probe exceeded its deadline, rather
+	 * than the filesystem reporting "no such file". Both a fault and a miss
+	 * report `exists: false`, so THIS FIELD IS THE DISCRIMINANT between them,
+	 * and consumers must branch on it: a fault is UNKNOWN - the Files panel
+	 * leaves such a path unmarked and the link surfaces keep it unanswered,
+	 * while the existing retry cadence re-asks it - and only `exists: false`
+	 * with NO `error` is the absence the "gone" receipts are painted from
+	 * (remediation round 1, R1-2; QA round 1, Q1). It says which one happened
+	 * because "deleted" and "cannot look" deserve different words in a bug
+	 * report AND different behaviour on screen.
 	 */
 	error?: string;
 	/**
@@ -6379,6 +7083,33 @@ export type FileActionOutcome = {
 	/** Why it failed, for the toast; absent when `ok`. */
 	error?: string;
 };
+
+/**
+ * What `open-external` answers with, and the channel a refusal is PUSHED on.
+ *
+ * The IPC half answers its caller directly: the link toolbar's Open awaits
+ * `window.api.openExternal`, so a refusal travels back as `ok: false` and the
+ * renderer shows it rather than a press that looks broken (round-2 R-4).
+ *
+ * A markdown ANCHOR's click has no such caller: it leaves through `window.open`
+ * and the main process's door, so the refusal is pushed to the window whose
+ * content asked - `EXTERNAL_OPEN_REFUSED_CHANNEL` with `ExternalOpenRefusedPayload`
+ * - and the renderer shows the same sentence. Before this, a refused link (a
+ * transcript link to `http://localhost:3000`, say) did nothing at all with only
+ * a main-process log line, which is not an answer a person can see.
+ */
+export type ExternalOpenOutcome = { ok: true } | { ok: false; reason: string };
+
+/** The push payload for a refused external open; mirrors the outcome's failure half. */
+export type ExternalOpenRefusedPayload = {
+	/** The URL whose open was refused, as the door saw it. */
+	url: string;
+	/** The door's own reason, for the toast's copy and for a log line. */
+	reason: string;
+};
+
+/** The channel a refused external open is pushed on (see `ExternalOpenOutcome`). */
+export const EXTERNAL_OPEN_REFUSED_CHANNEL = "external-open-refused";
 
 /**
  * Why a byte read was refused.

@@ -54,6 +54,13 @@
  *   - `Empty` / `PartialError` — a query that matches nothing, and a catalogue
  *     that came back with a per-provider failure (which keeps its rows now).
  *   - `Narrow` — the toolbar at the width where its two controls compete.
+ *   - `ShowAllWire` — a NEW backend's answer (`scope`/`hidden`): the resting
+ *     view lists only rows this machine can run, the control prints the count
+ *     the backend reported, and pressing it reveals the needs-sign-in rows.
+ *   - `ShowAllFallback` — the same gesture against an OLD backend (no `scope`,
+ *     no `hidden`): the filter happens here and the control carries no count.
+ *   - `NoUsableModels` — nothing is signed in, so the default view is empty:
+ *     the empty state is the way out (`Connect a provider`), not a dead list.
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
@@ -71,7 +78,8 @@ const SAVE_DEFAULT_FAILED = /The default was not saved/;
 const EFFORT_DEFAULT_FAILED = /The effort default was not saved/;
 const EFFORT_DEFAULT_LABEL = /default effort for new sessions/i;
 const EFFORT_DEFAULT_SUCCESS = /Default effort for new sessions: High/;
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
+import { useLayoutEffect } from "react";
 import "../../../styles/index.css";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
@@ -87,6 +95,31 @@ import {
 } from "./destination-pickers";
 
 const noop = () => {};
+
+/**
+ * Hold the shutter until the story's play has driven the scope control.
+ *
+ * The capture rig waits for `documentElement.dataset.capturePending` to clear
+ * before it photographs a story (and refuses the frame when the story's play
+ * threw, reading the console). Neither half is optional here: the resting view
+ * is USABLE rows only, so a frame taken before the play's press files the
+ * DEFAULT state under a story named for the revealed one — measured, both
+ * themes of the first capture did exactly that (the box unchecked, the count
+ * still reading "(2 need sign-in)"). The latch is set in a LAYOUT effect so it
+ * is on the document before the rig's readiness probe can see a drawn story,
+ * and the play clears it once the revealed rows are on screen; a play that
+ * throws leaves it set, which fails the run rather than shipping the wrong
+ * frame under this name.
+ */
+const HeldForPlay: FC<{ children: ReactNode }> = ({ children }) => {
+	useLayoutEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		return () => {
+			delete document.documentElement.dataset.capturePending;
+		};
+	}, []);
+	return <>{children}</>;
+};
 
 /** A real-time pause, for the plays that must wait out a layout effect. */
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -131,6 +164,7 @@ const MODEL_ACTION: NativeDesktopAction = {
 type BridgeRequest = {
 	op: string;
 	live?: boolean;
+	scope?: "usable" | "all";
 	key?: string;
 	value?: unknown;
 	command?: string;
@@ -1400,4 +1434,241 @@ export const PartialError: Story = {
 /** The same picker at the width where the toolbar's two controls compete. */
 export const Narrow: Story = {
 	render: () => <Frame bridge={catalogueOnly(catalogue())} />,
+};
+
+/* ------------------------------------------------------- access scope */
+
+/**
+ * A bridge for a NEW backend: the `scope` the request asked for decides which
+ * document answers, and the `usable` one carries the count the control prints.
+ *
+ * This is the shape the sibling backend change ships (`GET
+ * /v1/desktop/models?scope=`), and driving it here is what keeps the wire path
+ * executable rather than only described.
+ */
+const scopedCatalogueOnly =
+	(usable: DesktopModelCatalogue, all: DesktopModelCatalogue) =>
+	(request: BridgeRequest): Promise<DesktopResponse | undefined> => {
+		if (request.op === "sessions.command") return Promise.resolve(undefined);
+		if (request.op !== "models.catalogue") {
+			return Promise.resolve(refuse(400, `unexpected ${request.op}`));
+		}
+		return Promise.resolve(ok(request.scope === "all" ? all : usable));
+	};
+
+/**
+ * A second row no credential covers, so the wire count is not a coincidence of
+ * one fixture row: two rows are hidden and the control must say two.
+ */
+const UNSIGNED_ROW = row({
+	provider: "mistral",
+	model_id: "magistral-medium",
+	label: "Magistral Medium",
+	connected: false,
+	input_price: 2,
+	output_price: 5,
+});
+
+const WIRE_ALL = catalogue({
+	models: [...REGISTRY_ROWS, UNSIGNED_ROW],
+	scope: "all",
+});
+const WIRE_HIDDEN_ROWS = [...REGISTRY_ROWS, UNSIGNED_ROW].filter(
+	(single) => !single.connected,
+);
+const WIRE_USABLE = catalogue({
+	models: REGISTRY_ROWS.filter((single) => single.connected),
+	scope: "usable",
+	hidden: WIRE_HIDDEN_ROWS.length,
+});
+
+/**
+ * THE RESTING HALF, against a NEW backend: the control at rest prints the
+ * backend's count of rows it is holding back, and the list carries only what
+ * this machine can run (plus the current row). This is the frame
+ * `ShowAllWire` is the press of, and `Populated` is its counterfactual: an OLD
+ * backend answers the same request unfiltered and without a number.
+ */
+export const UsableOnlyWire: Story = {
+	render: () => <Frame bridge={scopedCatalogueOnly(WIRE_USABLE, WIRE_ALL)} />,
+};
+
+/**
+ * THE SCOPE CONTROL against a NEW backend, in the state the whole change
+ * exists for: the resting view lists only rows this machine can run, the
+ * control prints the backend's own count, and pressing it reveals the rows
+ * that need a sign-in — where a pick starts the Connect flow rather than
+ * switching the session (`scripts/picker-feedback.test.mjs` pins that half as
+ * source text, because this story's frame is the LIST state).
+ */
+export const ShowAllWire: Story = {
+	render: () => (
+		<HeldForPlay>
+			<Frame bridge={scopedCatalogueOnly(WIRE_USABLE, WIRE_ALL)} />
+		</HeldForPlay>
+	),
+	play: async () => {
+		await screen.findAllByRole("option", undefined, SLOW);
+		expect(screen.queryByText(/GLM-5\.2/)).toBeNull();
+		const control = await screen.findByRole(
+			"checkbox",
+			{ name: "Show all supported models (2 need sign-in)" },
+			SLOW,
+		);
+		await userEvent.click(control);
+		await waitFor(() => expect(screen.getByText("Needs sign-in")).toBeTruthy());
+		await waitFor(() => expect(screen.getByText(/GLM-5\.2/)).toBeTruthy());
+		await waitFor(() =>
+			expect(screen.getByText(/Magistral Medium/)).toBeTruthy(),
+		);
+		/*
+		 * Park the list on the rows the press just revealed. The group sits at the
+		 * END of a 12-row list, so at rest the frame would show the checked control
+		 * over a Signed-in group and the revealed rows would be below the fold -
+		 * the one thing this frame exists to show. The scroll is real element
+		 * state, awaited so the shutter cannot land mid-scroll.
+		 */
+		const list = screen.getByRole("listbox");
+		list.scrollTop = list.scrollHeight;
+		await waitFor(() => expect(list.scrollTop).toBeGreaterThan(0));
+		delete document.documentElement.dataset.capturePending;
+	},
+};
+
+/**
+ * THE SAME GESTURE against an OLD backend: the answer carries neither `scope`
+ * nor `hidden`, so the scope union filters here — `row.connected`, the
+ * current-model exemption, no count. The control that reveals the rows is
+ * still offered (the rows are hidden, and this is the only way back to them);
+ * it simply does not print a number it would have had to invent.
+ */
+export const ShowAllFallback: Story = {
+	render: () => (
+		<HeldForPlay>
+			<Frame bridge={catalogueOnly(catalogue())} />
+		</HeldForPlay>
+	),
+	play: async () => {
+		await screen.findAllByRole("option", undefined, SLOW);
+		expect(screen.queryByText(/GLM-5\.2/)).toBeNull();
+		const control = await screen.findByRole(
+			"checkbox",
+			{ name: "Show all supported models" },
+			SLOW,
+		);
+		await userEvent.click(control);
+		await waitFor(() => expect(screen.getByText(/GLM-5\.2/)).toBeTruthy());
+		/* Parked on the revealed row, for the reason `ShowAllWire` states. */
+		const list = screen.getByRole("listbox");
+		list.scrollTop = list.scrollHeight;
+		await waitFor(() => expect(list.scrollTop).toBeGreaterThan(0));
+		delete document.documentElement.dataset.capturePending;
+	},
+};
+
+/**
+ * NOTHING RUNS: every row needs a sign-in and the current model is not in the
+ * listing, so the scoped view is empty. The empty state is the way out — the
+ * sentence plus `Connect a provider` opening the app's one connect dialog —
+ * rather than a dead list, and the scope control stays reachable so the
+ * hidden rows are still discoverable.
+ */
+export const NoUsableModels: Story = {
+	render: () => (
+		<HeldForPlay>
+			<Frame
+				bridge={catalogueOnly(
+					catalogue({
+						models: CATALOGUE.filter(
+							(single) => single.selector !== CURRENT_SELECTOR,
+						).map((single) => ({ ...single, connected: false })),
+					}),
+				)}
+			/>
+		</HeldForPlay>
+	),
+	play: async () => {
+		await waitFor(() =>
+			expect(screen.getByText("No models are signed in yet.")).toBeTruthy(),
+		);
+		expect(
+			screen.getByRole("button", { name: "Connect a provider" }),
+		).toBeTruthy();
+		delete document.documentElement.dataset.capturePending;
+	},
+};
+
+/**
+ * THE WIRE-PATH DEAD END: a NEW backend answers the scoped read with ZERO rows
+ * and its own count of what it is holding back, so the count and the CTA stand
+ * in one composition — which no frame showed before (design round 1, D6a: the
+ * set's other dead end, `no-usable-models`, runs on the OLD-backend bridge and
+ * cannot print a count). The control stays reachable and still says how many
+ * rows are one click away.
+ */
+export const NoUsableWire: Story = {
+	render: () => (
+		<HeldForPlay>
+			<Frame
+				bridge={scopedCatalogueOnly(
+					catalogue({
+						models: [],
+						scope: "usable",
+						hidden: WIRE_HIDDEN_ROWS.length,
+					}),
+					WIRE_ALL,
+				)}
+			/>
+		</HeldForPlay>
+	),
+	play: async () => {
+		await waitFor(() =>
+			expect(screen.getByText("No models are signed in yet.")).toBeTruthy(),
+		);
+		expect(
+			screen.getByRole("button", { name: "Connect a provider" }),
+		).toBeTruthy();
+		await screen.findByRole(
+			"checkbox",
+			{
+				name: `Show all supported models (${WIRE_HIDDEN_ROWS.length} need sign-in)`,
+			},
+			SLOW,
+		);
+		delete document.documentElement.dataset.capturePending;
+	},
+};
+
+/**
+ * THE FOOTER ON A NEEDS-SIGN-IN ROW (design round 1, D2's companion frame):
+ * the reveal is pressed, the search narrows to the one hidden row, and the
+ * footer names the verb Enter will actually perform — `Enter connects zai`,
+ * not a switch the pick will not make. The row's own line says `needs sign-in`
+ * (the shared vocabulary, D5/U3) and the control keeps the wire count.
+ */
+export const ShowAllConnectFooter: Story = {
+	render: () => (
+		<HeldForPlay>
+			<Frame bridge={scopedCatalogueOnly(WIRE_USABLE, WIRE_ALL)} />
+		</HeldForPlay>
+	),
+	play: async () => {
+		await screen.findAllByRole("option", undefined, SLOW);
+		const control = await screen.findByRole(
+			"checkbox",
+			{ name: "Show all supported models (2 need sign-in)" },
+			SLOW,
+		);
+		await userEvent.click(control);
+		await waitFor(() => expect(screen.getByText(/GLM-5\.2/)).toBeTruthy());
+		/*
+		 * Narrow to the one hidden row so the keyboard's row — and therefore the
+		 * footer — is the needs-sign-in row this frame exists to show.
+		 */
+		await typeQuery("glm");
+		await waitFor(() =>
+			expect(screen.getByText(/Enter connects zai/)).toBeTruthy(),
+		);
+		delete document.documentElement.dataset.capturePending;
+	},
 };

@@ -24,8 +24,8 @@ import { renderToStaticMarkup } from "react-dom/server";
  *     states that can act on them;
  *   - the RENDER-level rules the model cannot see, against the real component
  *     server-rendered at the end of this file: the cancelling card's bar
- *     follows the tile's own predicate, and a queued card states its queue
- *     position only when one exists.
+ *     follows the tile's own predicate, and a queued card states how many
+ *     requests are ahead only when a count exists.
  *
  * The module is bundled rather than imported raw so the test runs against the
  * same TS the app compiles, the way `tool-row.test.mjs` bundles its model.
@@ -46,8 +46,11 @@ const bundle = await build({
 const {
 	IMAGE_GEN_TOOL_NAMES,
 	imageGenCardControls,
+	imageGenCardMountActions,
 	imageGenCardView,
+	imageGenMaterial,
 	isImageGenTool,
+	isVideoGenTool,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -98,17 +101,27 @@ const ALL_ACTIONS = {
 	onEditRestart: () => {},
 };
 
-test("the detection set is the one frozen tool name", () => {
-	assert.deepEqual([...IMAGE_GEN_TOOL_NAMES], ["generate_image"]);
+test("the detection set is the two frozen tool names, and the material fact derives from them", () => {
+	assert.deepEqual([...IMAGE_GEN_TOOL_NAMES].sort(), [
+		"generate_image",
+		"generate_video",
+	]);
 	assert.equal(isImageGenTool("generate_image"), true);
+	assert.equal(isImageGenTool("generate_video"), true);
 	// The image-to-image edit rides `source_image_path` on the SAME tool; the
-	// second name was frozen away before it ever had a producer.
+	// second image name was frozen away before it ever had a producer. The video
+	// phase adds exactly one member, and only one spelling of it.
 	assert.equal(isImageGenTool("generate_altered_image"), false);
 	assert.equal(isImageGenTool("bash"), false);
 	// Exact match only — a case or spelling drift must not silently detect.
 	assert.equal(isImageGenTool("Generate_Image"), false);
 	assert.equal(isImageGenTool("generate_image "), false);
 	assert.equal(isImageGenTool(""), false);
+	// The material fact is derived once, from the call's own name.
+	assert.equal(isVideoGenTool("generate_video"), true);
+	assert.equal(isVideoGenTool("generate_image"), false);
+	assert.equal(imageGenMaterial("generate_video"), "video");
+	assert.equal(imageGenMaterial("generate_image"), "image");
 });
 
 test("a dictated or waiting call maps to queued, with the byte count it has", () => {
@@ -230,6 +243,7 @@ test("the failure pair reads verbatim, the conflict is a receipt, and a plain ca
 	);
 	assert.deepEqual(failed, {
 		state: "failed",
+		material: "image",
 		message: "out of credits",
 		errorType: "insufficient_credits",
 	});
@@ -249,6 +263,7 @@ test("the failure pair reads verbatim, the conflict is a receipt, and a plain ca
 	);
 	assert.deepEqual(midWalk, {
 		state: "running",
+		material: "image",
 		startedAtMs: 3,
 		progress: { fraction: null, logs: [], queuePosition: null },
 		note: "out of credits",
@@ -279,6 +294,7 @@ test("the failure pair reads verbatim, the conflict is a receipt, and a plain ca
 	assert.deepEqual(conflict, {
 		state: "done",
 		images: [],
+		material: "image",
 		durationS: null,
 		receipt: "already-finished",
 	});
@@ -296,6 +312,7 @@ test("the failure pair reads verbatim, the conflict is a receipt, and a plain ca
 	// An error-shaped result with no canonical payload keeps the old read.
 	assert.deepEqual(imageGenCardView(tool({ isError: true, output: "boom" })), {
 		state: "failed",
+		material: "image",
 		message: "boom",
 		errorType: null,
 	});
@@ -351,6 +368,7 @@ test("a failure carries the error text verbatim, and a verdict keeps its own", (
 	);
 	assert.deepEqual(provider, {
 		state: "failed",
+		material: "image",
 		message: "This generation failed before producing output.",
 		// The frozen `error_type` lives in the record's `details` carrier; a
 		// record that states none carries null, and the read stays in this module.
@@ -360,6 +378,7 @@ test("a failure carries the error text verbatim, and a verdict keeps its own", (
 	// sentence is the card's, and nothing here invents a detail.
 	assert.deepEqual(imageGenCardView(tool({ isError: true, output: null })), {
 		state: "failed",
+		material: "image",
 		message: null,
 		errorType: null,
 	});
@@ -374,6 +393,7 @@ test("a failure carries the error text verbatim, and a verdict keeps its own", (
 	);
 	assert.deepEqual(harness, {
 		state: "failed",
+		material: "image",
 		message: "invalid arguments for generate_image: 'prompt' is required",
 		errorType: null,
 	});
@@ -521,8 +541,8 @@ try {
 }
 
 /** The card rendered the way the app renders it, absent attachment scope. */
-const markupOf = (view, actions) =>
-	renderToStaticMarkup(h(ImageGenCard, { view, scope: null, actions }));
+const markupOf = (view, actions, scope = null) =>
+	renderToStaticMarkup(h(ImageGenCard, { view, scope, actions }));
 
 /** The live-progress shape with every field negative (nothing on the wire). */
 const NO_PROGRESS = { fraction: null, logs: [], queuePosition: null };
@@ -610,14 +630,28 @@ test("the bar draws only when a fraction is carried, and only determinate (D2)",
  * fallback, and NOTHING when neither exists — absence must not become a zero
  * or a placeholder.
  */
-test("a queued card states its queue position only when one exists (Q-1)", () => {
+test("a queued card states how many are ahead only when a count exists (Q-1)", () => {
 	const withPosition = markupOf({
 		state: "queued",
 		composing: false,
 		argumentBytes: 1900,
 		queuePosition: 2,
 	});
-	assert.equal(withPosition.includes("position 2"), true);
+	// The field counts requests AHEAD, so the copy says so: "2 ahead", never
+	// "position 2" (which would read one off — the TUI's D3 ruling).
+	// Anchored on the datum span's own edges (`>` ... `<`): a bare substring
+	// would also pass for "12 ahead".
+	assert.equal(withPosition.includes(">· 2 ahead<"), true);
+	assert.equal(withPosition.includes("position"), false);
+
+	// Zero is a real reading (nothing ahead), not an absent field.
+	const nothingAhead = markupOf({
+		state: "queued",
+		composing: false,
+		argumentBytes: 1900,
+		queuePosition: 0,
+	});
+	assert.equal(nothingAhead.includes(">· 0 ahead<"), true);
 
 	const without = markupOf({
 		state: "queued",
@@ -625,7 +659,7 @@ test("a queued card states its queue position only when one exists (Q-1)", () =>
 		argumentBytes: 1900,
 		queuePosition: null,
 	});
-	assert.equal(without.includes("position"), false);
+	assert.equal(without.includes("ahead"), false);
 	assert.equal(without.includes("Queued"), true);
 
 	// The dictation half still states its byte count.
@@ -676,4 +710,246 @@ test("the mid-walk note rides under the live body, and the live affordances stay
 	assert.equal(recovered.includes("out of credits"), false);
 	assert.equal(recovered.includes("data-imagegen-tile"), true);
 	assert.equal(recovered.includes("Cancel"), true);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE VIDEO LANE (the design spec's desktop deltas, V2/V3/V4 and the player
+ * seam). The video tool rides this card's whole six-state machine; what these
+ * pins hold is that the ONLY strings that move are the three material nouns,
+ * that the material fact is derived from the record's own name rather than
+ * re-spelled anywhere, and that the mount passes a video card no Cancel (R4,
+ * contract §4.2).
+ */
+
+test("a video call maps through the same machine, with the material fact derived once", () => {
+	const video = (over = {}) => tool({ toolName: "generate_video", ...over });
+
+	// Running (V2's state): the same arm, the material fact beside the clock.
+	const running = imageGenCardView(
+		video({ phase: "running", startedAt: 1234 }),
+	);
+	assert.equal(running.state, "running");
+	assert.equal(running.material, "video");
+	assert.equal(running.startedAtMs, 1234); // unchanged by material
+
+	// Done (V3's state): the receipt arm, unchanged but for the noun.
+	const images = [
+		{
+			id: "tool:1:0",
+			data: null,
+			attachment: "a".repeat(32),
+			mimeType: "video/mp4",
+			kind: "video",
+		},
+	];
+	const done = imageGenCardView(video({ phase: "done", durationS: 8, images }));
+	assert.equal(done.state, "done");
+	assert.equal(done.material, "video");
+	assert.equal(done.durationS, 8);
+	assert.equal(done.images, images);
+
+	// Failed (V4's state): the fact rides the arm the absent-text fallback reads.
+	const failed = imageGenCardView(video({ isError: true, output: null }));
+	assert.equal(failed.state, "failed");
+	assert.equal(failed.material, "video");
+
+	// The conflict receipt is material-free ("Already finished."), but the arm
+	// still carries the fact — one derivation, every arm that can name an
+	// artifact.
+	const conflict = imageGenCardView(
+		video({
+			isError: true,
+			details: canonical({ error_type: "media_already_completed" }),
+		}),
+	);
+	assert.equal(conflict.state, "done");
+	assert.equal(conflict.material, "video");
+	assert.equal(conflict.receipt, "already-finished");
+});
+
+test("the mount passes a video card no Cancel, and an image card the pane's interrupt (R4)", () => {
+	const interrupt = () => {};
+	// Video: NO actions, even with the interrupt wired — an in-turn press
+	// cannot cancel a detached job (contract §4.2).
+	assert.equal(
+		imageGenCardMountActions("generate_video", interrupt),
+		undefined,
+	);
+	// Image: the same press it always had.
+	assert.deepEqual(imageGenCardMountActions("generate_image", interrupt), {
+		onCancel: interrupt,
+	});
+	// And a mount with no interrupt wired passes nothing either way.
+	assert.equal(
+		imageGenCardMountActions("generate_image", undefined),
+		undefined,
+	);
+});
+
+test("the material noun reaches the three strings, and only those strings move (V2/V3/V4)", () => {
+	const running = markupOf({
+		state: "running",
+		material: "video",
+		startedAtMs: null,
+		progress: NO_PROGRESS,
+	});
+	assert.equal(running.includes("Generating video…"), true);
+	assert.equal(running.includes("Generating image"), false);
+
+	const done = markupOf({
+		state: "done",
+		material: "video",
+		images: [],
+		durationS: null,
+		receipt: "generated",
+	});
+	assert.equal(done.includes("Generated video"), true);
+	assert.equal(done.includes("Generated image"), false);
+
+	const failed = markupOf({
+		state: "failed",
+		material: "video",
+		message: null,
+		errorType: null,
+	});
+	assert.equal(failed.includes("The video could not be generated."), true);
+	assert.equal(failed.includes("could not be generated."), true);
+
+	// The image rendering is byte-identical to what it always was: same views,
+	// `material: "image"`.
+	const imageRunning = markupOf({
+		state: "running",
+		material: "image",
+		startedAtMs: null,
+		progress: NO_PROGRESS,
+	});
+	assert.equal(imageRunning.includes("Generating image…"), true);
+	const imageFailed = markupOf({
+		state: "failed",
+		material: "image",
+		message: null,
+		errorType: null,
+	});
+	assert.equal(imageFailed.includes("The image could not be generated."), true);
+});
+
+test("a done card mounts a video ref through the player, never through an img", () => {
+	const scope = { sessionId: "session-1", childId: null };
+	// A LIVE ref (inline base64) resolves synchronously: the player mounts, at
+	// the image ledger's own ceiling, with an accessible name rather than a
+	// blob URL.
+	const live = {
+		id: "v1",
+		data: "AAAA",
+		attachment: null,
+		mimeType: "video/mp4",
+		kind: "video",
+		durationS: 6.5,
+		width: null,
+		height: null,
+	};
+	const ready = markupOf({
+		state: "done",
+		material: "video",
+		images: [live],
+		durationS: 6.5,
+		receipt: "generated",
+	});
+	assert.equal(ready.includes("<video"), true);
+	assert.equal(ready.includes('preload="metadata"'), true);
+	assert.equal(ready.includes('aria-label="Generated video"'), true);
+	assert.equal(ready.includes("max-h-[240px]"), true);
+	assert.equal(ready.includes("<img"), false);
+
+	// A DURABLE ref (digest) with a scope reserves the box — no spinner, no
+	// receipt — while the bytes travel; the marker is the state hook the rigs
+	// read, the same one the image path's reserved box carries.
+	const durable = { ...live, id: "v2", data: null, attachment: "b".repeat(32) };
+	const resolving = markupOf(
+		{
+			state: "done",
+			material: "video",
+			images: [durable],
+			durationS: null,
+			receipt: "generated",
+		},
+		undefined,
+		scope,
+	);
+	assert.equal(resolving.includes("data-attachment-reserved"), true);
+	assert.equal(resolving.includes("<video"), false);
+});
+
+/**
+ * THE STORY FIXTURE'S OWN BYTES. The video stories' tiny MP4 is a base64
+ * literal, and a literal that silently decodes to less than it says photographs
+ * a player that never loads: measured 2026-10-10, the first spelling wrapped it
+ * across adjacent string literals - which JavaScript does NOT concatenate (ASI
+ * ends the statement, the lines become dead expression statements) - so the
+ * `video-done` capture ran to its 60 s shutter bound with a 57-byte "mp4". No
+ * typecheck and no render-only assertion can see that; this one decodes the
+ * literal out of the story source and checks it is a real MP4.
+ */
+const TINY_MP4_LITERAL = /const TINY_MP4_B64 =\n\t"([^"]+)";/;
+
+test("the video stories' embedded MP4 decodes to a real, whole file", async () => {
+	const { readFileSync } = await import("node:fs");
+	const source = readFileSync(
+		"src/renderer/src/features/chat/canonical/image-gen-card.stories.tsx",
+		"utf8",
+	);
+	const match = source.match(TINY_MP4_LITERAL);
+	assert.ok(match, "the literal is spelled as ONE line");
+	const bytes = Buffer.from(match[1], "base64");
+	/*
+	 * WALK THE TOP-LEVEL BOX CHAIN TO THE EXACT END. The first spelling of
+	 * this pin (`ftyp` present, `>1000` bytes, first box fits) accepted a
+	 * literal truncated mid-file: a cut at, say, 1200 bytes still opens with
+	 * a whole `ftyp`, still clears 1000, and its first box still fits — while
+	 * the last box overruns or the chain stops short (agent review round 1,
+	 * F6). The walk below is the ISO BMFF contract itself: every box opens
+	 * with a 32-bit big-endian size and a four-character type; size 1 defers
+	 * to a 64-bit largesize, size 0 (a final box only) extends to EOF.
+	 */
+	let offset = 0;
+	const boxes = [];
+	while (offset < bytes.length) {
+		assert.ok(
+			offset + 8 <= bytes.length,
+			`box header at ${offset} fits the file`,
+		);
+		const size = bytes.readUInt32BE(offset);
+		const type = bytes.subarray(offset + 4, offset + 8).toString("latin1");
+		if (size === 0) {
+			boxes.push(`${type}:eof`);
+			offset = bytes.length;
+			break;
+		}
+		let end;
+		if (size === 1) {
+			assert.ok(
+				offset + 16 <= bytes.length,
+				`largesize header at ${offset} fits the file`,
+			);
+			end = offset + Number(bytes.readBigUInt64BE(offset + 8));
+		} else {
+			assert.ok(
+				size >= 8,
+				`box ${type} at ${offset} carries a size (got ${size})`,
+			);
+			end = offset + size;
+		}
+		assert.ok(end <= bytes.length, `box ${type} at ${offset} fits the file`);
+		boxes.push(type);
+		offset = end;
+	}
+	assert.equal(
+		offset,
+		bytes.length,
+		"the box chain ends exactly at the file's end",
+	);
+	assert.equal(boxes[0], "ftyp", "the bytes open with an ftyp box");
+	assert.ok(boxes.includes("moov"), "the movie box is present");
+	assert.ok(boxes.includes("mdat"), "the media payload is present");
 });

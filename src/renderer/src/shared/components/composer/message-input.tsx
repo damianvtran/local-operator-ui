@@ -84,10 +84,17 @@ import type {
 import { useInterruptSlotHold } from "@features/chat/hooks/use-interrupt-slot-hold";
 import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
 import { MOVE_UNAVAILABLE_REASON } from "@features/chat/move-session";
+import { connectProviderForSelector } from "@features/chat/pickers/model-catalogue-listing";
 import {
 	destinationNeedsSession,
 	draftStageForSource,
 } from "@features/chat/pickers/picker-registry";
+import {
+	bandYieldsToRadientIssue,
+	modelAccessReading,
+	radientCalloutOwnsTheSignIn,
+} from "@features/chat/session-status/session-model";
+import { SessionModelAccessBand } from "@features/chat/session-status/session-model-access";
 import { SessionStatusStrip } from "@features/chat/session-status/session-status-strip";
 import type { Message } from "@features/chat/types/message";
 import {
@@ -283,6 +290,12 @@ import {
 	CredentialOverlay,
 	composerTextBox,
 } from "@features/chat/components/credential-overlay";
+/*
+ * The pre-emptive quota notice (design §6): its own line beside the connect
+ * line above, on the empty band only. Imported like the connect card next
+ * door, and the module documents its own lift discipline.
+ */
+import { QuotaNoticeLine } from "@features/chat/quota-notice/quota-notice-line";
 import {
 	ConnectProviderCard,
 	NoProviderLine,
@@ -1040,6 +1053,13 @@ export type MessageInputProps = {
 		 * arrived" and "dropped", and this composer must not re-derive it.
 		 */
 		readingsDropped?: boolean;
+		/**
+		 * Whether the backend advertises `features.cost_channels`; see
+		 * `SessionStatusStripProps["costChannels"]`. Forwarded verbatim, for the
+		 * reason `held` is: the capability is the pane's read (`useDesktopCapabilities`)
+		 * and the strip calls no query hooks of its own.
+		 */
+		costChannels?: boolean;
 	};
 	/**
 	 * Run the command the composer's planner pulled out of the draft, and report
@@ -1968,6 +1988,28 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * chips wrap because `MeasuredSuggestionStack` measures what fits.
 		 */
 		const showEmptyChatPrompt = bandCentred;
+
+		/*
+		 * THE MODEL THE QUOTA NOTICE IS ABOUT (review R1-M1 / Q3): the pane's own
+		 * pick, which is what the next send will use, and only when the pane has
+		 * none does the hook fall back to the machine default.
+		 *
+		 * The pair is the CHIP'S own source (`effective_model ?? selected_model`),
+		 * read the same way `useSlashCompletion` reads it a few lines below, so
+		 * the line and the chip cannot name different models. A new-conversation
+		 * pane's pick deliberately does not write the default
+		 * (`destination-pickers.tsx`), which is exactly why the default alone was
+		 * the wrong account to check.
+		 */
+		const quotaNoticeSelection = useMemo(() => {
+			const model =
+				sessionStatus?.frontend?.effective_model ??
+				sessionStatus?.frontend?.selected_model ??
+				null;
+			return model
+				? { provider: model.provider, model_id: model.model_id }
+				: null;
+		}, [sessionStatus]);
 
 		/*
 		 * The empty chat's sample, drawn once and HELD for this composer's mount.
@@ -4321,6 +4363,47 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					return;
 				}
 				if (!runSlashCommand) return;
+				/*
+				 * A `/model` SUBMISSION NAMING A ROW THAT NEEDS A SIGN-IN IS THE CONNECT
+				 * GESTURE, NOT A SWITCH (UX round 1, U2).
+				 *
+				 * The inline `/model` list used to switch the session onto the very row it
+				 * labelled `needs sign-in` — the stranded state this feature exists to
+				 * remove — while the same row picked from the dialog started the Connect
+				 * flow. The two surfaces now read ONE rule (`rowAuthOf`'s answer, in
+				 * `model-catalogue-listing.ts`) through the spelling each route can
+				 * actually see: here the inline rows' own `connected`, which
+				 * `commands.entities` publishes resolved, so only an explicit false is a
+				 * claim about auth (`connectProviderForSelector` states that half).
+				 *
+				 * The command is NOT consumed and nothing is sent: the box keeps the text
+				 * the user wrote, the dialog opens on the row's provider, and once the
+				 * sign-in lands the same submission switches for real — the same
+				 * recovery loop the dialog's own interception leaves.
+				 *
+				 * `whole` and `splice` are the two kinds that RUN a command; the branch
+				 * sits before the generic run below so no other path had to move.
+				 */
+				if (plan.kind === "whole" || plan.kind === "splice") {
+					const spec = slash.commands.find(
+						(command) =>
+							command.name === plan.command.name ||
+							command.aliases.includes(plan.command.name),
+					);
+					const selector = pyTrim(plan.command.args ?? "");
+					if (spec?.destination === "session.model" && selector) {
+						const provider = connectProviderForSelector(
+							slash.argumentList.rows,
+							selector,
+						);
+						if (provider) {
+							useConnectProviderStore
+								.getState()
+								.openConnect({ providerId: provider });
+							return;
+						}
+					}
+				}
 				if (plan.kind === "list-open") {
 					// The roster owns the next Enter — but only while it can give a row.
 					// While the list is up with rows in it, nothing is submitted and
@@ -4484,6 +4567,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				slash.commandNames,
 				slash.open,
 				slash.matches.length,
+				// The connect interception (UX round 1, U2) reads these two: the
+				// registry row that says the command IS the model command, and the
+				// inline list's rows, whose own `connected` it asks about.
+				slash.commands,
+				slash.argumentList.rows,
 				stage,
 				// The reassembly's note carries the pane's own clause too (review F3):
 				// the promise is conditioned on this pane being able to address a
@@ -7321,6 +7409,63 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		/*
+		 * THE SESSION'S MODEL-ACCESS BAND: the runtime says the model this session
+		 * runs is not signed in (`model_access: signed_out`), so the session cannot
+		 * answer until a credential exists. It sits in the band with the other
+		 * STANDING statements rather than beside the transient send alert — the
+		 * state outlives any one send — and it renders NOTHING unless the host
+		 * published the field and it says `signed_out`: an older host's silence is
+		 * not a state (`modelAccessReading`, the one place that rule lives).
+		 *
+		 * A DRAFT is excluded, deliberately: a draft pane's snapshot is a
+		 * `sessions.preview` resolution for a session that does not exist yet, so a
+		 * `signed_out` there could only describe a model the draft would run —
+		 * which is the PICKER's question, answerable by its own scope control, not
+		 * this band's. The two actions keep their one entrance each (`/model` via
+		 * the dispatcher, Connect via the connect store), so this block cannot
+		 * become a second way to reach either.
+		 */
+		const modelAccess =
+			sessionStatus && sessionStatus.draft !== true
+				? modelAccessReading(sessionStatus.frontend)
+				: null;
+		/*
+		 * ONE MISSING SIGN-IN, ONE BLOCK (agent review round 1, R1-6; narrowed by
+		 * design round 2, D7). A `radient/auto` session whose connector verdict says
+		 * sign-in is required while `model_access` also reports `signed_out` for
+		 * radient would stack the Radient callout and the band — two entrances to one
+		 * remedy — so the band yields while the callout OWNS the sign-in. D7: the
+		 * callout only owns it while it carries the remedy itself (its `Sign in` /
+		 * `Retry`, or a flow in flight) — the `settled` refusals and `input-required`
+		 * offer no sign-in action, and there the band's `Switch model` is the only one
+		 * on screen, so those states keep it (`radientCalloutOwnsTheSignIn` states
+		 * why; any other provider cannot collide with the connector).
+		 */
+		const modelAccessBlock =
+			modelAccess &&
+			!bandYieldsToRadientIssue(
+				modelAccess,
+				radientCalloutOwnsTheSignIn(radientIssue.issue),
+			) ? (
+				<output className={cn(CHAT_MEASURE, "block pb-2")}>
+					<SessionModelAccessBand
+						access={modelAccess}
+						isSmallView={isSmallView}
+						onSwitchModel={
+							sessionStatus?.onCommand
+								? () => sessionStatus.onCommand?.({ name: "model", args: "" })
+								: undefined
+						}
+						onConnect={() =>
+							useConnectProviderStore
+								.getState()
+								.openConnect({ providerId: modelAccess.provider })
+						}
+					/>
+				</output>
+			) : null;
+
+		/*
 		 * THE ACKNOWLEDGMENT'S TWO HALVES, ON ONE PREDICATE, AND ONE OF THEM IS
 		 * LOAD-BEARING (agent review round 2 minor b, UX round 2's U7). The caption is
 		 * a SIBLING of the control, so both read this: they cannot desync into an
@@ -7421,6 +7566,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * compacted 4px (design round 1, D1).
 				 */}
 				{radientIssueBlock}
+				{/*
+				 * The session's own model-access band, beside the Radient issue for the same
+				 * reason: both are STANDING statements about the session's ability to run,
+				 * and a state of the session outlives the outcome of one send. The block
+				 * renders nothing unless the host published `model_access: signed_out`.
+				 */}
+				{modelAccessBlock}
 				{/*
 				 * THE MOVE HOLD, outboard of the box and inside the band: §2.4's strip, which
 				 * names why the runtime cannot admit anything while the handoff runs. It sits
@@ -8667,6 +8819,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										held={sessionStatus.held}
 										readingsDropped={sessionStatus.readingsDropped}
 										pendingModel={sessionStatus.pendingModel}
+										costChannels={sessionStatus.costChannels}
 										/*
 										 * The row's own third-box predicate, handed down rather than
 										 * re-derived: the strip's shed is the one thing on this row that a
@@ -9591,6 +9744,51 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						) : null}
 					</div>
 				</div>
+				{/*
+				 * THE PRE-EMPTIVE QUOTA NOTICE (design §6). One quiet line on the
+				 * band, shown BEFORE the first send rather than after the refusal: an
+				 * account with no credit left, or a spent plan window, is a fact the
+				 * backend can state, and the user can act on it without typing first.
+				 *
+				 * IT SITS ABOVE THE FOOT, NOT INSIDE THE FORM (design round 1 D1,
+				 * agent R1-M3, UX U6 — the converged major). Mounted below the box it
+				 * pushed the bottom-anchored composer UP by the line's own height
+				 * (measured: 37 px for `depleted`, 54 px for `unverified`) the moment
+				 * an async read landed, and back down when the line cleared — the
+				 * input moved under the pointer ~2 s after first paint on a cold
+				 * load. Above the foot it is a band child beside the splash, and the
+				 * splash yields its `grow` instead: the box's top edge is the same
+				 * whether the line is there or not, which is the invariant this
+				 * band's layout was built on (see the splash's own note). The pair
+				 * that proves it — `[data-lo-composer-foot]`'s top with and without
+				 * the line, on the real composer — is
+				 * `scripts/quota-notice-geometry.mjs`, recorded in
+				 * `docs/evidence/chat-quota-notice/README.md`.
+				 *
+				 * EMPTY BAND ONLY, expressed by the same `showEmptyChatPrompt` the
+				 * splash and the connect line read: the notice advises a send that
+				 * has not happened, so it has nothing to say once the conversation
+				 * has content — and the read is disabled with the mount, which is what
+				 * "enabled only on an empty session" means here.
+				 *
+				 * The SELECTION is the pane's own model pick, so the verdict is about
+				 * the account the next send would actually use; the hook falls back
+				 * to the config default only when the pane has none (its docstring
+				 * carries that reasoning).
+				 *
+				 * `mb-2` AS WELL AS `mt-2` (design D6): the line sits above the foot,
+				 * so without a bottom margin its action row is flush on the composer
+				 * box's top border (measured: line bottom == foot top == 567.4, gap 0;
+				 * the links' underlines touched the border in the frames). The
+				 * clearance comes out of the SPLASH, not the foot — the probe in
+				 * `scripts/quota-notice-geometry.mjs` re-derives both the foot's top
+				 * (still 567.4) and the new gap.
+				 */}
+				{showEmptyChatPrompt ? (
+					<div className={cn("mb-2 mt-2", CHAT_MEASURE)}>
+						<QuotaNoticeLine selection={quotaNoticeSelection} />
+					</div>
+				) : null}
 				{/*
 				 * THE FOOT: the composer's form, docked. Its node is handed to the
 				 * suggestion cap as the third term of its budget, because the chips now

@@ -21,6 +21,7 @@
 
 import type { BackendSetting } from "@shared/api/local-operator/desktop-api";
 import type { DesktopRequest } from "../../../../../shared/desktop-contract";
+import { durationSpec, validateHours } from "../retention-duration";
 
 /** The cascade editor's sentinel: no chain edit yet, so nothing to submit. */
 export const CASCADE_SENTINEL = "__cascade__";
@@ -100,6 +101,20 @@ export function editOutcome(
 			value = draft.value === "true";
 			break;
 		case "int": {
+			/*
+			 * A bounded duration is judged against the registry's own range BEFORE a
+			 * request exists, so no path (Save, Save all, Retry) can send 1 or 9999
+			 * to a server that would refuse it. The check is strict where the
+			 * generic arm below is lenient: `parseInt("12abc")` is 12, which is how
+			 * a typo becomes a stored retention window on a row that deletes data.
+			 */
+			const spec = durationSpec(setting);
+			if (spec) {
+				const verdict = validateHours(draft.value, spec);
+				if (!verdict.ok) return { ok: false, error: verdict.error };
+				value = verdict.hours;
+				break;
+			}
 			const parsed = Number.parseInt(draft.value, 10);
 			if (Number.isNaN(parsed)) {
 				return { ok: false, error: "Enter a whole number." };

@@ -298,6 +298,19 @@ export type SubagentRow = {
 	label: string;
 	/** `agent_role`, or `null` when it is absent or is the default `task`. */
 	role: string | null;
+	/**
+	 * The wire's own `type` word (`bash`/`task`/`video`), or `null` when the wire
+	 * carried none — the JOBS list's discriminator, kept on the row because the
+	 * row is the only per-row carrier the section holds.
+	 *
+	 * ONE reader branches on it: the Jobs section offers its cancel control on
+	 * the VIDEO row family only (`job-controls-model.ts`). That is the family
+	 * the post-turn cancel was designed for (contract §4.2's rail); the other
+	 * families' cancel rails are not this surface's to invent, and a row whose
+	 * type the wire did not state is treated as a non-video row — the control
+	 * is withheld rather than guessed onto it.
+	 */
+	jobType: string | null;
 	status: ChildStatus;
 	/** `7m49s`, or `null` when the job has no trustworthy launch clock. */
 	elapsedLabel: string | null;
@@ -615,6 +628,19 @@ export type WakeRow = {
 	dueLabel: string;
 	/** The recurrence interval in milliseconds, or `null` for a single shot. */
 	everyMs: number | null;
+	/**
+	 * When the schedule was planted, epoch MILLISECONDS, or `null` when the wire
+	 * did not carry it.
+	 *
+	 * THE ROW'S IDENTITY BEYOND ITS HANDLE, and the reason it is on this type: the
+	 * backend mints the LOWEST FREE id (`w{i}` for the first free slot,
+	 * `harness/wake.py`), so a wake cancelled and re-armed in the same
+	 * conversation gets the SAME `w1` back. Anything that remembers a row across
+	 * a write (the cancellation marks) has to tell the successor from the
+	 * predecessor, and `created_at` is what the wire carries for that
+	 * (`WakeState.created_at`, the schedule's own field).
+	 */
+	createdAt: number | null;
 	/** Deliveries left, or `null` when the recurrence is not limit-bounded. */
 	remaining: number | null;
 	/**
@@ -1324,6 +1350,7 @@ const deriveChild = (
 		id,
 		label,
 		role,
+		jobType: wireText(job.type) || null,
 		status,
 		// The band's word for a state this model knows; the wire's own word for one
 		// it does not (`SubagentRow.stateWord`) — sanitised, and refused when the
@@ -1758,6 +1785,7 @@ const deriveWake = (
 			: Math.max(limit - (wireNumber(record.fired_count) ?? 0), 0));
 	return {
 		id: wireText(record.id) || `wake-${index}`,
+		createdAt: wireNumber(record.created_at),
 		message,
 		nextDueAt,
 		/*
@@ -1959,20 +1987,22 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 	 * the same list inflated the tally.
 	 *
 	 * The discriminator is the row's own `type`, which the wire already stamps,
-	 * and the vocabulary is exactly two words: `JobType = Literal["bash",
-	 * "task"]` (`harness/jobs.py:216`). A delegated child's row is `task`
-	 * (`harness/subagent.py:546`), and EVERY tool row is `bash` — not the tool's
-	 * name. A background `eval` registers as `bash` deliberately, because a
-	 * settled job's completion is auto-delivered only for types in
-	 * `("task", "bash")` and a third literal would silently strip that delivery
-	 * (`tools/eval.py:938-945`); the label carries the distinction instead
-	 * (`bash: <command>`, `tools/builtin.py:2187`). And a foreground `read` never
-	 * gets a row at all: the only two register paths a tool call has are the
-	 * shell's own detach moments (`tools/builtin.py:2250`, `:2306`). So a
-	 * non-member row is always a `bash` row here, and the filter below is the one
-	 * place that has to know it. (Round 3, R3-1: this comment said "the tool's
-	 * name (`bash`, `read`, …)", which describes rows the runtime cannot
-	 * produce.)
+	 * and the vocabulary is three words as of the video phase: `JobType =
+	 * Literal["bash", "task", "video"]` (`harness/jobs.py:216`; the third
+	 * literal is the video lane's register type, contract §1.7 G1). A delegated
+	 * child's row is `task` (`harness/subagent.py:546`), and EVERY tool row is
+	 * `bash` — not the tool's name. A background `eval` registers as `bash`
+	 * deliberately, because a settled job's completion is auto-delivered only
+	 * for types in `("task", "bash")` and a third literal would silently strip
+	 * that delivery (`tools/eval.py:938-945`); the label carries the distinction
+	 * instead (`bash: <command>`, `tools/builtin.py:2187`). And a foreground
+	 * `read` never gets a row at all: the only two register paths a tool call
+	 * has are the shell's own detach moments (`tools/builtin.py:2250`, `:2306`).
+	 * The video row joins the JOBS list rather than the roster because it is the
+	 * same kind of thing a bash row is — a detached runtime job with no child
+	 * conversation to open, whose post-turn rail is this section — and NOT a
+	 * delegating child (`deriveChild` needs no second derivation for it: label,
+	 * status, `start_time` and `latest_details` are the same fields).
 	 *
 	 * Membership is therefore a filter on `type` — NOT on `agent_role`, which is a
 	 * display field whose default value `task` is suppressed, and NOT on
@@ -1987,7 +2017,7 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 	const jobWire: Array<Record<string, unknown>> = [];
 	for (const job of jobs) {
 		const type = wireText(job.type);
-		if (type === "bash") {
+		if (type === "bash" || type === "video") {
 			jobWire.push(job);
 			continue;
 		}
@@ -1998,16 +2028,20 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 		 * activity — the composer's jobs chip counts them and the pane's Jobs section
 		 * draws them (`docs/composer-activity-chips.md`).
 		 *
-		 * Three cases, and the third is written rather than left to a `filter`:
+		 * Four cases, and the last is written rather than left to a `filter`:
 		 *
 		 * - `bash` -> `jobWire`, the tool jobs.
+		 * - `video` -> `jobWire`, the video lane's detached jobs (contract §1.7
+		 *   G1). The video row family's rail — its per-job cancel — lives in this
+		 *   section (design spec §2.2), and the row renders through the same
+		 *   derivation as its bash siblings.
 		 * - `""` or `task` -> `taskWire`, the roster's candidates (the rule above:
 		 *   a row with no `type` may be a child this renderer has not been taught).
 		 * - any OTHER word -> NEITHER list. An unrecognised `type` is not evidence
 		 *   that a row is a delegating child, and it is not evidence that it is a
-		 *   shell job either; putting it in the roster would repeat round 1's
+		 *   shell or video job either; putting it in the roster would repeat round 1's
 		 *   over-reporting, and putting it under the Jobs heading would give that
-		 *   section a row its own tally does not count. `JobType` has exactly two
+		 *   section a row its own tally does not count. `JobType` has exactly three
 		 *   words today (`harness/jobs.py:216`), so this branch is unreachable on the
 		 *   wire — which is precisely why it is stated: `frontend.jobs` is a field
 		 *   whose vocabulary the RUNTIME owns, and the two lists must not both claim

@@ -14,8 +14,9 @@ import { build } from "esbuild";
  *
  * BUNDLED RATHER THAN IMPORTED (the `at-mentions.test.mjs` pattern): these are
  * TypeScript modules in the renderer tree, and the app's tsconfig does not run
- * here. The module imports its DTOs with `import type` only, so nothing of the
- * renderer or Electron crosses into the bundle.
+ * here. The modules import their DTOs with `import type` only; their one value
+ * import is the i18n locale layer (`@shared/i18n`, aliased below), so nothing
+ * of the renderer or Electron crosses into the bundle.
  */
 
 const bundle = await build({
@@ -29,6 +30,12 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	/* `project-model` reads the i18n locale layer (@shared/i18n), whose shim
+	 * reaches src/i18n by relative path — only the @shared alias is needed
+	 * (the `turn-timestamp.test.mjs` recipe). */
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+	},
 	write: false,
 });
 const { model, timeline } = await import(
@@ -1284,14 +1291,15 @@ test("a start-session toast names the target it started with", () => {
 test("the done-gate refusal is re-spoken as something this dialog can do", () => {
 	/*
 	 * The daemon's sentence verbatim (project-lifecycle's `_refuse_done_if_
-	 * incomplete`): the names and counts are the useful half and must survive;
+	 * incomplete`): the names and counts are the useful half and must survive
+	 * (unquoted since round 1's U4/D8, see `refusalCopy`'s own note);
 	 * the `force_done=true` tail is a tool-call field the desktop update body
 	 * does not carry, so it must not reach the dialog.
 	 */
 	const daemon =
 		"cannot set status 'done': 2 milestones still incomplete ('alpha', 'beta') — complete them, or pass force_done=true to close with them open";
 	const copy = refusalCopy(daemon);
-	assert.ok(copy.includes("'alpha', 'beta'"), "the incomplete names survive");
+	assert.ok(copy.includes("alpha and beta"), "the incomplete names survive");
 	assert.ok(
 		!copy.includes("force_done"),
 		"the field this dialog cannot send is gone",
@@ -1307,7 +1315,7 @@ test("the done-gate refusal is re-spoken as something this dialog can do", () =>
 	 */
 	assert.equal(
 		copy,
-		"This can't be marked done yet: 2 milestones are still incomplete ('alpha', 'beta'). Complete or remove the incomplete milestones, then mark it done.",
+		"This can't be marked done yet: 2 milestones are still incomplete (alpha and beta). Complete or remove the incomplete milestones, then mark it done.",
 	);
 	/* Every other refusal is shown as written, never silently reworded. */
 	assert.equal(

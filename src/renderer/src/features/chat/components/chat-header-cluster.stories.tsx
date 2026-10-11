@@ -1,6 +1,6 @@
 /**
- * The chat header's action cluster, as a surface of its own: the `...` menu and the
- * Asks trigger (#872).
+ * The chat header's action cluster, as a surface of its own: the `...` menu (#872,
+ * #896).
  *
  * WHY THIS FILE EXISTS. The operator reported the controls at the top right of the
  * chat header sitting slightly unevenly, and a claim about a GAP is a claim about
@@ -10,11 +10,16 @@
  * needs an agent identity, a run model and the pane actions, and Storybook is the
  * only instrument here that can supply all of them with no backend and no session.
  *
- * THE FOUR PANEL TRIGGERS LEFT THIS CLUSTER (#872) and their states - the browser
- * count at one and at the cap, the run trigger's dot, the console blip in both of
- * its inks, the canvas-open arrangement - are `panel-rail.stories.tsx` now. What is
- * left here is what the header still owns: the menu (whose four panel entries are
- * the keyboard door) and the Asks trigger in each of its states. `NoApproval` keeps
+ * THE FIVE PANEL TRIGGERS LEFT THIS CLUSTER (#872, #896) and their states - the
+ * browser count at one and at the cap, the run trigger's dot, the console blip in
+ * both of its inks, the canvas-open arrangement, and the asks item in each of its
+ * states - are `panel-rail.stories.tsx` now. THE ASKS TRIGGER was the last of the
+ * five (#896): its control moved to the rail, the menu gained an asks row
+ * (`Open asks` / `Close asks`, the scope glyph), and what is left here is what the
+ * header still owns: the menu (whose five panel entries are the keyboard door).
+ * The asks stories below are the menu row's two variant states - reachable by
+ * opening the menu (the capture recipes' press) - and the trigger's own visible
+ * states are photographed on the rail, not here. `NoApproval` keeps
  * its name because the committed capture rows and the menu frames are keyed on it;
  * it is the header with nothing to report.
  *
@@ -63,18 +68,16 @@ type Story = StoryObj;
 const Cluster = ({
 	details,
 	/*
-	 * THE ASKS TRIGGER'S OWN KNOBS (operator ask, 2026-10-05). `onToggleAsks` is
-	 * handed in for every story - the control is present whenever a host offers a
-	 * door, which is what makes the badge's absence a fact about the COUNT rather
-	 * than about a missing control - and the count/scope pair are the two readings
-	 * the operator's split names: a conversation's own asks in a session, the whole
-	 * fleet's at the top level.
+	 * THE ASKS ROW'S KNOBS (#896). `onToggleAsks` is handed in for every story - the
+	 * menu row is present whenever a host offers a door, which is what the
+	 * entry's absence would be a fact about otherwise - and the scope/open pair are
+	 * the two readings the operator's split names: the row's glyph is the scope's
+	 * (a conversation's own queue in a session, the whole fleet's at the top level)
+	 * and its label flips with `asksOpen`, like the browser row beside it.
 	 */
-	asksCount = 0,
 	asksScope = "session",
 	asksOpen = false,
 }: {
-	asksCount?: number;
 	asksScope?: "session" | "fleet";
 	asksOpen?: boolean;
 	details: ReturnType<typeof deriveRunDetails>;
@@ -97,7 +100,6 @@ const Cluster = ({
 				onOpenConsole={() => undefined}
 				runDetails={details}
 				onToggleAsks={() => undefined}
-				asksAttentionCount={asksCount}
 				asksScope={asksScope}
 				asksOpen={asksOpen}
 			/>
@@ -110,58 +112,35 @@ export const NoApproval: Story = {
 	render: () => <Cluster details={deriveRunDetails(fixtures.idle())} />,
 };
 
-/**
- * THE ASKS TRIGGER, QUIET: the control with nothing to report, which is the state
- * the operator asked to keep visible - the entry point is a door to the surface,
- * not a badge, so a conversation with no asks still offers it and the hub draws no
- * number.
+/*
+ * THE ASKS ROW, IN THE TWO STATES THAT DIFFER (#896). The trigger this file used to
+ * stage - quiet, waiting, open - moved to the panel rail (see
+ * `panel-rail.stories.tsx`'s Asks* stories for those frames); what remains here is
+ * the MENU ROW, whose only two variant readings are its scope glyph and its
+ * open/close label, so those are the two stories. Both reach the row by opening the
+ * `...` menu (the capture recipes' press), which is also why the quiet/waiting pair
+ * - identical frames now - is gone rather than kept as two mounts that photograph
+ * the same header.
  */
-export const AsksQuiet: Story = {
-	render: () => (
-		<Cluster details={deriveRunDetails(fixtures.idle())} asksCount={0} />
-	),
-};
 
 /**
- * THE ASKS TRIGGER WITH A COUNT (operator ask, 2026-10-05): the attention state
- * the operator asked to see at a glance, in a CONVERSATION context - the number is
- * this conversation's own queue, which is the `session` half of his split.
- */
-export const AsksWaiting: Story = {
-	render: () => (
-		<Cluster
-			details={deriveRunDetails(fixtures.idle())}
-			asksCount={3}
-			asksScope="session"
-		/>
-	),
-};
-
-/**
- * AND AT THE TOP LEVEL: the same control carrying the WHOLE fleet's count, which is
- * what the header resolves to on a draft (no conversation open). The count is
- * deliberately larger than `AsksWaiting`'s so the two stories cannot be confused
- * for one frame, and the tooltip/announced name state the scope in the surface's own
- * words (`All conversations`).
+ * AT THE TOP LEVEL: the row's glyph is the scope's (a stack of bubbles - the same
+ * pairing the rail item draws, `AsksScopeIcon`). The scope-legibility claim (UX
+ * round 1, U3) is assertable on the RAIL item's `data-ask-scope` (#896 moved it
+ * there); this story is the menu's half of the same pairing.
  */
 export const AsksFleet: Story = {
 	render: () => (
-		<Cluster
-			details={deriveRunDetails(fixtures.idle())}
-			asksCount={11}
-			asksScope="fleet"
-		/>
+		<Cluster details={deriveRunDetails(fixtures.idle())} asksScope="fleet" />
 	),
 };
 
-/** The trigger while its surface is up: mounted as a TOGGLE like the browser
- * trigger, so the count stays on screen (the shape the operator asked for - the
- * number must not disappear with the pane it opened). */
+/** The row while its surface is up: mounted as a TOGGLE like the browser row, so
+ * the label reads `Close asks` - the same one-string-two-directions idiom. */
 export const AsksOpen: Story = {
 	render: () => (
 		<Cluster
 			details={deriveRunDetails(fixtures.idle())}
-			asksCount={3}
 			asksScope="session"
 			asksOpen={true}
 		/>

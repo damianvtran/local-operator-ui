@@ -29,6 +29,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+const RE_REACT = /^react$/;
+
 // Bundle the batch module the same way the other rigs run shipped TypeScript:
 // in memory, from the tree under test, with the renderer's own globals.
 const bundle = await build({
@@ -50,7 +52,32 @@ const bundle = await build({
 		"@features": "./src/renderer/src/features",
 	},
 	write: false,
-	external: ["react", "react-dom"],
+	external: ["react-dom"],
+	plugins: [
+		{
+			/*
+			 * `react` used to be left external because nothing in this graph imported
+			 * it. `desktop-api` now reaches a zustand store, and `zustand`'s React
+			 * entry is written `import React from "react"`; left external, the
+			 * bundle is evaluated from a `data:` URL, which Node cannot resolve a
+			 * bare specifier from (ERR_UNSUPPORTED_RESOLVE_REQUEST). So it is
+			 * substituted, as in the sibling harnesses, with a stand-in that carries
+			 * the DEFAULT export that entry imports. Empty on purpose: the batch
+			 * logic under test never renders or subscribes, so no hook is invoked.
+			 */
+			name: "react-stand-in",
+			setup(builder) {
+				builder.onResolve({ filter: RE_REACT }, () => ({
+					path: "react",
+					namespace: "fixture",
+				}));
+				builder.onLoad({ filter: RE_REACT, namespace: "fixture" }, () => ({
+					contents: "export default {};",
+					loader: "js",
+				}));
+			},
+		},
+	],
 });
 const source = bundle.outputFiles[0].text;
 

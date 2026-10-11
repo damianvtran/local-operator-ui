@@ -63,15 +63,21 @@
  *
  * Entering is the user's own press and nothing else: the mount finds focus on one of
  * the lane's two DOORS - the status-row item (`ASK_ITEM_SELECTOR`, the session scope)
- * or the conversation header's asks trigger (`ASK_HEADER_ITEM_SELECTOR`, whichever
- * scope it opened) - or it
+ * or the panel rail's asks item (`ASK_RAIL_ITEM_SELECTOR`, whichever scope it opened;
+ * the conversation header's trigger until #896 moved it) - or it answers the `…`
+ * menu's asks row through the store's `askOpenIntent` (round-1 Q1: that row cannot
+ * leave focus on anything the mount recognises - Radix hands the keyboard back to the
+ * menu's own trigger - so its press travels as a request, and the drawer's claim
+ * survives the menu's own teardown; see `MENU_TRIGGER_SELECTOR` for the return half
+ * and the claim note above the refs) - or it
  * moves nothing, which is what keeps the lane's no-focus-steal promise (whose subject
  * is an ask ARRIVING) intact. WHERE it lands is the CARD's first control and not the
  * bar's (UX round 1, U4): the bar's leading control in DOM order is the dismiss, so
  * the old "first focusable in the drawer" put the surface's exit under the first
  * Enter - a second press closed the thing the user had just opened. The bar is still
- * reachable, one Shift+Tab up. Leaving returns focus to the door it was opened by,
- * but only when focus was actually stranded - a close from the composer leaves the
+ * reachable, one Shift+Tab up. Leaving returns focus to the door it was opened by -
+ * the chip, the rail item, or the menu trigger a request came from - but only when
+ * focus was actually stranded - a close from the composer leaves the
  * caret in the box where the user is typing, and moving it there would be the same
  * theft. A STRANDED close with NO door - the auto-opened drawer, where the policy
  * moved no keyboard in and the default first act is to dismiss what the app opened
@@ -84,8 +90,9 @@
 
 import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { PanelRightClose } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
 import type {
 	AskDraft,
@@ -96,8 +103,8 @@ import type {
 import {
 	ASK_DRAWER_UNAVAILABLE_LINE,
 	ASK_DRAWER_UNREAD_LINE,
-	ASK_HEADER_ITEM_SELECTOR,
 	ASK_ITEM_SELECTOR,
+	ASK_RAIL_ITEM_SELECTOR,
 	EMPTY_DRAFTS,
 	askQueueView,
 	askScopeLine,
@@ -150,6 +157,58 @@ const ASK_PANEL_SELECTOR = "[data-lo-ask-panel]";
  */
 const ASK_LANDING_TARGET = "[data-lo-ask-row], [data-lo-ask-settled]";
 
+/**
+ * THE MENU DOOR'S RETURN TARGET (#896 round 1, Q1): the `…` menu's asks row is
+ * the third door to this drawer, and the one that cannot signal its press
+ * through focus - Radix hands the keyboard back to the menu's own trigger when
+ * it closes, so the mount's door read finds nothing there. Its open travels as
+ * the store's `askOpenIntent` instead (see the entry effect), and a stranded
+ * close returns focus HERE: the trigger is the control that was pressed, so it
+ * is the control focus goes back to - the same rule as the chip and the rail
+ * item. The handle is the attribute the delete dialog already hands focus back
+ * to (`chat-header.tsx`), not a new one.
+ *
+ * THE TRIGGER IS TAKEN FROM FOCUS FIRST: the restore Radix performs is what the
+ * bootstrap actually sees (pinned in `panel-rail.test.mjs`'s menu-door case),
+ * and a focused element that IS the trigger states the fact most directly. The
+ * document query is the belt for a paint where the restore has not landed yet;
+ * when neither finds a trigger (a story or a rig with no header), nothing is
+ * recorded and the stranded close takes the drawer's existing no-door path -
+ * the composer hand-off - rather than guessing a control.
+ */
+const MENU_TRIGGER_SELECTOR = "[data-conversation-actions]";
+
+/** See `MENU_TRIGGER_SELECTOR`: the trigger if it is what focus holds, else the one on the page. */
+const menuReturnTarget = (active: Element): Element | null =>
+	active.matches(MENU_TRIGGER_SELECTOR)
+		? active
+		: document.querySelector(MENU_TRIGGER_SELECTOR);
+
+/**
+ * Whether the keyboard is still where the menu row's press left it, or nowhere:
+ * Radix restores focus to the trigger as the menu closes, and `<body>` is the
+ * paint on which that restore has not landed yet. Anything else means the user
+ * has claimed the keyboard since the press - the composer, a palette - and the
+ * entry move must stand down, the same way the door path stands down when its
+ * door is no longer focused (it gets this property for free by re-reading
+ * focus every commit; the request has no live focus signal by construction, so
+ * the guard is stated here instead).
+ */
+const keyboardLeftOnMenuPress = (active: Element): boolean =>
+	active === document.body || active.matches(MENU_TRIGGER_SELECTOR);
+
+/**
+ * HOW MANY TIMES the claim below may re-take the keyboard before it gives up.
+ *
+ * A BOUND, NOT A TUNING KNOB. The menu's close writes focus more than once on
+ * its way out (the trapped scope pulls a departing focus back, then the restore
+ * hands the trigger the keyboard), and every one of those writes is answered -
+ * but a menu that somehow never settles must not leave a listener fighting
+ * focus forever. Measured in `scripts/panel-rail.test.mjs`'s menu-door case:
+ * three answers complete the open.
+ */
+const MENU_CLAIM_LIMIT = 8;
+
 export type AskDrawerProps = {
 	frontend: Pick<
 		CanonicalFrontendState,
@@ -157,8 +216,8 @@ export type AskDrawerProps = {
 	> | null;
 	/**
 	 * Which queue this drawer is showing, carried by the ENTRY POINT rather than
-	 * chosen here (design note §4.4): a session's chip opens `session` and the header's
-	 * asks trigger opens `fleet` at the top level (or `session` inside one). It is read
+	 * chosen here (design note §4.4): a session's chip opens `session` and the rail's
+	 * asks item opens `fleet` at the top level (or `session` inside one). It is read
 	 * for the chrome bar's scope line, the surface's accessible name, and the per-row
 	 * conversation line (`conversationOf` below) - the three places the two contexts
 	 * differ - so the two queues share one container rather than growing a second
@@ -251,19 +310,32 @@ export const AskDrawer = ({
 	const frameUnread = view.unread;
 
 	/*
+	 * THE MENU'S OPEN REQUEST, AND ITS ANSWER (round-1 Q1). `askOpenIntent` is
+	 * written by the `…` menu's asks row - the one door that cannot announce
+	 * itself through focus (see `MENU_TRIGGER_SELECTOR`) - and the entry effect
+	 * below consumes it for the matching scope: `clearAskOpenIntent` is the
+	 * drawer's acknowledgement, called on the commit that acts on the request and
+	 * again on unmount so a request can never outlive its open.
+	 */
+	const askOpenIntent = useUiPreferencesStore((state) => state.askOpenIntent);
+	const clearAskOpenIntent = useUiPreferencesStore(
+		(state) => state.clearAskOpenIntent,
+	);
+
+	/*
 	 * THE DOOR THAT OPENED THIS MOUNT, remembered so the auto-close below can tell
 	 * the user's own press from a mount that merely inherited the open flag.
 	 *
 	 * WHY THE DISTINCTION IS THE WHOLE FINE PRINT. `isAskDrawerOpen` is a STORE flag
 	 * and deliberately survives a conversation switch - the drawer follows the user
-	 * into whatever conversation is opened next - and the FLEET trigger is offered at
+	 * into whatever conversation is opened next - and the FLEET-scoped door is offered at
 	 * ZERO outstanding asks, so a press on it opens this surface over a queue with
 	 * nothing in it ON PURPOSE. Auto-closing THAT mount would be a control that
 	 * refuses its own door. The signal is the lane's existing one, latched where it
-	 * is computed: the entry effect's `ASK_ITEM_SELECTOR` / `ASK_HEADER_ITEM_SELECTOR`
+	 * is computed: the entry effect's `ASK_ITEM_SELECTOR` / `ASK_RAIL_ITEM_SELECTOR`
 	 * read of the element that held focus. It is a LATCH, never cleared, because the
 	 * entry effect runs on every commit until its one-shot is spent and a later
-	 * commit could find focus back on the trigger with no press behind it.
+	 * commit could find focus back on the door with no press behind it.
 	 */
 	const openedByDoor = useRef(false);
 
@@ -370,40 +442,282 @@ export const AskDrawer = ({
 	/*
 	 * INTO THE DRAWER, and only for the user's own press: the mount must find focus
 	 * ALREADY on one of the lane's two doors - the composer chip (the session
-	 * scope) or the conversation header's asks trigger (either scope) - so a
+	 * scope) or the panel rail's asks item (either scope; the conversation header's
+	 * trigger until #896 moved it) - so a
 	 * programmatic open, a story pinning the flag, or a second mount moves nothing.
 	 *
-	 * BOTH DOORS, because the header door is outside the pane: with only the chip
-	 * accepted, an open from the header left the keyboard on the trigger, nothing
+	 * BOTH DOORS, because the rail door is outside the pane: with only the chip
+	 * accepted, an open from the header (the door's home until #896) left the keyboard
+	 * on the trigger, nothing
 	 * inside the pane could consume Escape, and the press reached the app's interrupt
 	 * rung and stopped the agent's turn (UX round 1, U1 / agent review round 1, F1).
 	 * The returned `Element` is remembered so the door that was pressed is the one
-	 * focus goes back to - the chip and the header trigger, either of which may be
+	 * focus goes back to - the chip and the rail item, either of which may be
 	 * unmounted on the route under the open surface.
 	 */
+	/*
+	 * WHETHER THIS MOUNT ANSWERED A REQUEST, remembered locally so the one-shot
+	 * survives the request being consumed: the store copy is cleared the moment
+	 * it is seen (so no later mount can inherit it), and this ref is what keeps
+	 * the WAIT and the entry move running for the mount it was written for. It is
+	 * per instance, so a carried drawer that remounts over another conversation
+	 * starts without it - a carried flag must move no keyboard, the oldest
+	 * promise in this file.
+	 */
+	const requestedOpen = useRef(false);
+	/*
+	 * THE MENU'S RESTORE, ANSWERED (round-1 Q1, second half).
+	 *
+	 * The menu's close does not end when its row is picked: Radix tears the menu
+	 * down asynchronously, and its teardown writes focus more than once - the
+	 * trapped scope pulls a departing focus back into the menu, then the compose
+	 * of the content's close-autofocus hands the keyboard to the `…` trigger
+	 * (through a `setTimeout` in the focus scope's cleanup). Measured in jsdom
+	 * against the real components (the pins in `scripts/panel-rail.test.mjs`'s
+	 * menu-door case): an entry move written at the mount commit is overwritten
+	 * by that teardown, so without an answer the keyboard the row promised the
+	 * drawer ends up back on the trigger.
+	 *
+	 * SO THE CLAIM IS A WAIT, NOT A RACE. While this mount's request is fresh, a
+	 * capture-phase `focusin` watcher re-takes the keyboard at the landing
+	 * whenever the menu hands it BACK - a focusin on the trigger - until the
+	 * menu is out of the document and the keyboard is inside the drawer, bounded
+	 * by `MENU_CLAIM_LIMIT`. A focusin anywhere else is the user speaking (a
+	 * palette, the composer) and disarms it, the same stand-down the entry
+	 * guard (`keyboardLeftOnMenuPress`) keeps for the commit-time move. The
+	 * menu's own internal churn (its portal furniture) is neither ours nor the
+	 * user's and is left alone.
+	 *
+	 * AND IT SETTLES ONLY ONCE THE MENU IS OUT AND THE KEYBOARD HAS STAYED IN
+	 * (round-2 M1). "One quiet macrotask after the last write" was timing-fragile:
+	 * the restore is a `setTimeout(0)` the menu's teardown queues, and on a loaded
+	 * host its delivery can land after the drawer's own beat - reproduced
+	 * deterministically (a restore deferred past the old settle put the keyboard
+	 * back on the trigger with the drawer OPEN, which is Q1's defect). The settle
+	 * therefore waits on TWO facts, and the beats are TWO-STEP:
+	 *
+	 *  - THE MENU'S REMOVAL: the content node the row lived in is captured when
+	 *    the claim arms; while it is in the document no beat may settle, and its
+	 *    removal - watched, because nothing else is guaranteed to follow it -
+	 *    opens the chain. No node found at arm (a rig mounting the drawer alone)
+	 *    means there is nothing to wait for.
+	 *  - THE TWO-STEP BEAT: the first beat after a write or a removal observation
+	 *    can never END the claim, it only opens the chain; the next beat may
+	 *    settle, and every delivered write cancels the pending beat and re-opens
+	 *    the chain. A restore still in flight arrives while the chain is open, is
+	 *    answered, and re-opens it - which a single quiet beat could have settled
+	 *    ahead of. The teardown writes more than once (two trigger writes in a
+	 *    StrictMode pass, one otherwise), and this absorbs that second write.
+	 *
+	 * WHILE ARMED a trigger focusin is answered even with the menu gone (that
+	 * late write is what this whole wait exists for); once the claim has SETTLED,
+	 * a trigger focusin is the user's and is not answered - the disarm is what
+	 * keeps a deliberate Tab to the trigger from being bounced (round-2 N2).
+	 *
+	 * THIS IS NOT AN INTERCEPTION OF `onCloseAutoFocus` (which belongs to
+	 * `chat-header`'s menu, and is deliberately not touched): it is the request
+	 * signal's other half - the press arrived by request, so the restore it
+	 * causes is the drawer's to answer.
+	 */
+	const claimRef = useRef<{
+		attempts: number;
+		handler: ((event: FocusEvent) => void) | null;
+		/** The menu content node the row lived in, captured when the claim arms. */
+		menu: Element | null;
+		/** Whether that node has left the document; the settle waits on this. */
+		menuGone: boolean;
+		/** The pending quiet beat and whether it may end the claim (see `armMenuClaim`). */
+		beat: ReturnType<typeof setTimeout> | null;
+		beatMaySettle: boolean;
+		/** Watches the captured menu out of the document (see `armMenuClaim`). */
+		observer: MutationObserver | null;
+	}>({
+		attempts: 0,
+		handler: null,
+		menu: null,
+		menuGone: false,
+		beat: null,
+		beatMaySettle: false,
+		observer: null,
+	});
+	/* Whether the claim reached a terminal state (success, a user's own focus, or
+	 * the bound); a mount that has one is never re-armed. */
+	const claimSettled = useRef(false);
+	/* The node the entry move landed on, for the claim to re-take (set at resolve). */
+	const landingRef = useRef<HTMLElement | null>(null);
+	const disarmMenuClaim = useCallback(() => {
+		const claim = claimRef.current;
+		if (claim.handler !== null) {
+			document.removeEventListener("focusin", claim.handler, true);
+			claim.handler = null;
+		}
+		if (claim.beat !== null) {
+			clearTimeout(claim.beat);
+			claim.beat = null;
+		}
+		claim.observer?.disconnect();
+		claim.observer = null;
+	}, []);
+	const armMenuClaim = useCallback(() => {
+		const claim = claimRef.current;
+		if (claim.handler !== null || claimSettled.current) return;
+		claim.attempts = 0;
+		/*
+		 * THE MENU THE ROW LIVED IN, captured here: the settle waits for THIS node
+		 * to leave the document, because a menu whose teardown is still running can
+		 * still write focus. `null` - no menu on the page, e.g. a rig that mounts
+		 * the drawer alone - means "already gone": the beats alone carry the settle.
+		 */
+		claim.menu = document.querySelector('[role="menu"]');
+		claim.menuGone = claim.menu === null || !claim.menu.isConnected;
+		const settle = () => {
+			claimSettled.current = true;
+			disarmMenuClaim();
+		};
+		const menuGone = () => claim.menu === null || !claim.menu.isConnected;
+		/**
+		 * ONE BEAT, TWO STEPS (see the note at `claimRef`): a beat that MAY settle
+		 * is always preceded by one that may not, so no single quiet stretch can
+		 * end the claim while a teardown write is still in flight. `scheduleBeat`
+		 * is idempotent - any newer reason to wait replaces the pending beat - and
+		 * a beat that finds the menu still in the document or the keyboard outside
+		 * ends nothing: the removal observer or a later write opens the chain again.
+		 */
+		const scheduleBeat = (maySettle: boolean) => {
+			if (claim.beat !== null) clearTimeout(claim.beat);
+			claim.beatMaySettle = maySettle;
+			claim.beat = setTimeout(() => {
+				claim.beat = null;
+				if (claimSettled.current) return;
+				if (!menuGone()) return;
+				if (!rootRef.current?.contains(document.activeElement)) return;
+				if (!claim.beatMaySettle) {
+					scheduleBeat(true);
+					return;
+				}
+				settle();
+			}, 0);
+		};
+		/*
+		 * THE REMOVAL, WATCHED. The settle's gate needs the menu's removal, and if
+		 * no write follows it nothing else would open the chain again - so the
+		 * observer is what turns "the menu left" into the beat that carries the
+		 * claim to its end. Guarded for a rig with no `MutationObserver` global:
+		 * the chain then depends on the writes alone, which every rig that mounts
+		 * a menu shims, and the real components always provide.
+		 */
+		if (
+			claim.menu !== null &&
+			!claim.menuGone &&
+			typeof MutationObserver !== "undefined"
+		) {
+			const observer = new MutationObserver(() => {
+				if (claimSettled.current) return;
+				if (claim.menu !== null && !claim.menu.isConnected) {
+					claim.menuGone = true;
+					observer.disconnect();
+					claim.observer = null;
+					scheduleBeat(false);
+				}
+			});
+			observer.observe(document.body, { childList: true, subtree: true });
+			claim.observer = observer;
+		}
+		const handler = (event: FocusEvent) => {
+			const target = event.target as Element | null;
+			if (target === null) return;
+			if (rootRef.current?.contains(target)) {
+				/* Where the press promised the keyboard: open the quiet chain. */
+				scheduleBeat(false);
+				return;
+			}
+			if (target.matches(MENU_TRIGGER_SELECTOR)) {
+				/* The restore the menu performs on its way out: answer it. */
+				if (claim.attempts >= MENU_CLAIM_LIMIT) {
+					settle();
+					return;
+				}
+				claim.attempts += 1;
+				const landing = landingRef.current;
+				(landing?.isConnected ? landing : rootRef.current)?.focus();
+				return;
+			}
+			if (
+				target.closest('[role="menu"]') !== null ||
+				target.closest("[data-radix-popper-content-wrapper]") !== null ||
+				target.closest("[data-radix-focus-guard]") !== null
+			) {
+				/* The menu's own machinery: neither ours nor the user's. */
+				return;
+			}
+			/* The user has taken the keyboard elsewhere: stand down, terminally. */
+			settle();
+		};
+		claim.handler = handler;
+		document.addEventListener("focusin", handler, true);
+	}, [disarmMenuClaim]);
+
 	const wasBootstrapped = useRef(false);
 	const doorRef = useRef<Element | null>(null);
 	useLayoutEffect(() => {
+		/*
+		 * THE CLAIM RE-ARMS ON EVERY COMMIT UNTIL IT SETTLES, including a commit a
+		 * StrictMode pass causes after its simulated teardown has disarmed it - so
+		 * this check sits ABOVE the bootstrap guard rather than inside the
+		 * consumption branch.
+		 */
+		if (requestedOpen.current) armMenuClaim();
 		if (wasBootstrapped.current) return;
 		const active = document.activeElement;
 		if (active === null || typeof active.matches !== "function") return;
 		/*
-		 * EITHER DOOR: the composer chip (session) or the header's asks trigger
+		 * EITHER DOOR: the composer chip (session) or the panel rail's asks item
 		 * (either scope). Both are the user's own press; nothing else moves focus.
 		 */
 		const door =
 			active.matches(ASK_ITEM_SELECTOR) ||
-			active.matches(ASK_HEADER_ITEM_SELECTOR)
+			active.matches(ASK_RAIL_ITEM_SELECTOR)
 				? active
 				: null;
+		/*
+		 * THE MENU'S REQUEST IS THE THIRD SIGNAL (round-1 Q1), consumed where it is
+		 * SEEN: the `…` menu's row cannot put focus on a door (Radix restores it to
+		 * the menu's trigger), so its open writes `askOpenIntent`, and this effect
+		 * reads the request against its OWN scope. The store copy is CLEARED IN THE
+		 * COMMIT THAT ANSWERS IT, so a remount - a conversation switch carrying the
+		 * open flag, a scope swap - can never inherit it and move a keyboard nobody
+		 * pressed; `requestedOpen` keeps the fact locally for the wait and the move
+		 * below. A request for the other queue is left alone: the drawer that was
+		 * asked for answers it.
+		 */
+		if (askOpenIntent === scope) {
+			clearAskOpenIntent(scope);
+			requestedOpen.current = true;
+			/*
+			 * THE RETURN TARGET IS RECORDED AT THE PRESS, not at the resolve: the
+			 * trigger is what the keyboard ends on once Radix's own restore lands,
+			 * and recording the fact here - rather than one or more commits later -
+			 * keeps it stable across the unread wait, in which focus may legitimately
+			 * move and a StrictMode pass tears the mount down once. See
+			 * `MENU_TRIGGER_SELECTOR`.
+			 */
+			doorRef.current = menuReturnTarget(active);
+			/* And the claim is armed for the restore that is coming (see `claimRef`). */
+			armMenuClaim();
+		}
+		const requested = door === null && requestedOpen.current;
 		/*
 		 * THE DOOR IS LATCHED AS SOON AS IT IS SEEN, before the wait below can return: the
 		 * auto-close effect reads it, and although that effect is declared ABOVE this one,
 		 * it is a PASSIVE effect while this one is a layout effect - so it always runs
 		 * after this, and the latch is set by the time it asks. (That ordering is why the
 		 * close can stay where it is rather than moving below this effect.)
+		 * THE REQUEST LATCHES THE SAME WAY, for the same reason and the same window: the
+		 * emptiest queue a serving session carries - a live, empty one - is the state
+		 * whose door must keep working, which is exactly where QA round 1 measured the
+		 * menu row as a no-op.
 		 */
-		if (door !== null) openedByDoor.current = true;
+		if (door !== null || requested) openedByDoor.current = true;
 		const root = rootRef.current;
 		/* No container yet: nothing to move focus into, and the one-shot is not spent. */
 		if (root === null) return;
@@ -412,8 +726,8 @@ export const AskDrawer = ({
 		 * and that bound is the whole of this lane's no-focus-steal promise. The only
 		 * thing there is to wait for is the read behind the pane: the fleet pane's first
 		 * commits carry `frontend === null`, and so does a session frame that has not
-		 * landed. `door !== null && frameUnread` is exactly that state, and it is the
-		 * ONLY state that retries.
+		 * landed. `(door !== null || requested) && frameUnread` is exactly that state,
+		 * and it is the ONLY state that retries.
 		 *
 		 * IT USED TO BE SPELLED `root === null`, WHICH NO LONGER NAMES IT: the container
 		 * draws its chrome on every frame now (see the gate below), so a root exists from
@@ -423,19 +737,36 @@ export const AskDrawer = ({
 		 * frame is what it reads.
 		 *
 		 * EVERY OTHER COMMIT RESOLVES THE MOVE, and it resolves it whether or not a
-		 * door is under focus. Spending the flag only on a commit that found BOTH a door
-		 * and a surface (the shape this used to have) left it false for as long as a
-		 * drawer mounted with nothing focused stayed up: the header trigger is still on
-		 * screen and still matches `ASK_HEADER_ITEM_SELECTOR`, and the ask clock re-renders once
-		 * a second, so the next Tab onto that row plus any commit moved focus into the
-		 * pane - the steal that old docblock said could not happen. Focus moves ONLY on
-		 * a commit that has both a door and a surface, so the bounded wait cannot move
-		 * anything either.
+		 * user's signal is present. Spending the flag only on a commit that found BOTH a
+		 * door and a surface (the shape this used to have) left it false for as long as a
+		 * drawer mounted with nothing focused stayed up: the rail's asks item is still on
+		 * screen and still matches `ASK_RAIL_ITEM_SELECTOR`, and the ask clock re-renders
+		 * once a second, so the next Tab onto that row plus any commit moved focus into
+		 * the pane - the steal that old docblock said could not happen. Focus moves ONLY
+		 * on a commit that carries a user's signal (the door under focus, or the request
+		 * answered here), so the bounded wait cannot move anything either.
 		 */
-		if (door !== null && frameUnread) return;
+		if ((door !== null || requested) && frameUnread) return;
 		wasBootstrapped.current = true;
-		if (door === null) return;
-		doorRef.current = door;
+		if (door === null && !requested) return;
+		/*
+		 * THE RETURN TARGET: the pressed door itself, or - for the menu's request -
+		 * the trigger Radix handed the keyboard back to (`MENU_TRIGGER_SELECTOR`).
+		 *
+		 * AND THE REQUEST'S ONE GUARD, which the door path gets for free: that path
+		 * re-reads focus every commit, so a user who moved the keyboard while the
+		 * frame was unread resolves with no door and no move. The request has no live
+		 * focus signal by construction, so the guard is stated - the move happens
+		 * while the keyboard is still where the press left it, or on `<body>` before
+		 * Radix's restore has landed - and a keyboard the user has since claimed
+		 * elsewhere (the composer, a palette) keeps their newer act. Either way the
+		 * one-shot is SPENT above, so a later Tab cannot resurrect the move.
+		 */
+		if (door !== null) doorRef.current = door;
+		/* The request's target was recorded when the request was SEEN (above); this
+		 * is the fallback for a paint that could not find one then. */
+		doorRef.current ??= menuReturnTarget(active);
+		if (door === null && !keyboardLeftOnMenuPress(active)) return;
 		/*
 		 * THE LIST'S FIRST CONTROL, not the bar's and not the filter's (UX round 1, U4;
 		 * agent review round 1, m1). The bar leads the DOM and its first focusable is
@@ -482,6 +813,7 @@ export const AskDrawer = ({
 			landingRoot ??
 			panel?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ??
 			root;
+		landingRef.current = landing;
 		landing.focus();
 		/*
 		 * NO DEPENDENCY ARRAY, and that is the whole point rather than an oversight.
@@ -502,7 +834,7 @@ export const AskDrawer = ({
 	 * typing, and moving it to a row there would be the theft this whole lane avoids.
 	 *
 	 * The remembered door, not a fresh `querySelector(ASK_ITEM_SELECTOR)`: the fleet
-	 * pane's door is the header trigger and the session chip may not even be mounted on
+	 * pane's door is the rail item and the session chip may not even be mounted on
 	 * the route beneath it, so looking the chip up would either find nothing or focus
 	 * the wrong control - the same defect UX round 1, U1 recorded from the other end.
 	 *
@@ -513,9 +845,28 @@ export const AskDrawer = ({
 	 * runs once the commit has finished, so the focused node is gone by then.
 	 * (`requestAnimationFrame` would also work in the app and does not exist in a
 	 * plain jsdom harness, which is the other half of why this is a microtask.)
+	 *
+	 * FOR THE MENU'S REQUEST the recorded door is the `…` TRIGGER
+	 * (`MENU_TRIGGER_SELECTOR`): the row was the control pressed, and the trigger is
+	 * what holds the keyboard once the menu has closed - so the rule the header
+	 * trigger's own contract states ("the door that was pressed is the one focus goes
+	 * back to") holds for all three doors.
 	 */
 	useEffect(() => {
 		return () => {
+			/* The claim watcher's life is the mount's (see `claimRef`). */
+			disarmMenuClaim();
+			/*
+			 * THE REQUEST'S LIFE ENDS WITH THE OPEN IT WAS WRITTEN FOR. A request is
+			 * normally consumed on the commit that acts on it (see the entry effect);
+			 * this is the belt for the mount that never got that far - closed while the
+			 * frame was still unread, or swapped away before it resolved - and it is
+			 * SCOPE-GUARDED, so a drawer closing cannot clear a request the other queue
+			 * is still owed. Without it a stale request would be inherited by the next
+			 * mount (a carried drawer over the next conversation) and move a keyboard
+			 * nobody pressed.
+			 */
+			clearAskOpenIntent(scope);
 			queueMicrotask(() => {
 				const active = document.activeElement;
 				if (active !== null && active !== document.body) return;
@@ -541,7 +892,14 @@ export const AskDrawer = ({
 				handCaretToComposer();
 			});
 		};
-	}, []);
+		/*
+		 * THE THREE NAMED VALUES ARE STABLE FOR THE LIFE OF THE MOUNT (a zustand
+		 * action, a `[]`-memoised callback, and the scope this instance was mounted
+		 * for), so this list is the empty one spelled out rather than a re-run
+		 * trigger: the cleanup is the MOUNT's own and must not fire mid-life - it
+		 * disarms a live claim and can hand a stranded keyboard back.
+		 */
+	}, [clearAskOpenIntent, disarmMenuClaim, scope]);
 
 	/*
 	 * THE CHROME RENDERS ON EVERY FRAME - there is no early return here any more, and that

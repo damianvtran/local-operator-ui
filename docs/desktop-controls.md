@@ -188,6 +188,11 @@ The allowlist additionally provides:
 
 - `commands.list/entities`, `models.catalogue`, `usage.get`, `analytics.get`,
   `skills.list` (optional name for details), `sessions.failovers`.
+- `quota.notice`: the pre-emptive no-quota verdict for `GET
+  /v1/desktop/quota-notice` (cache-first; `refresh=true` is the user's own
+  re-ask, floored server-side). Response carries provider/state/kind/label/
+  body/actions/links and no identity; the renderer shows it on the empty band
+  only. Gated on the `quota_notice` capability key, and a 404 is silence.
 - `info.get`, `sessions.report`: the two read-only diagnostics behind the
   `diagnostics` capability key (`/v1/desktop/info`, and
   `/v1/desktop/sessions/{id}/report?recent_limit=`). They are gated on their own
@@ -225,8 +230,12 @@ The allowlist additionally provides:
   call these directly from renderer code or reintroduce key/token synchronization.
 - `accounts.remove`: exact stored account with explicit confirmation, not all
   accounts or the user's environment credentials.
-- `radient.request`: 25 closed account/billing/usage/application/agent-catalog/
-  social/comment operations. Identifiers are not URLs; the backend allowlists
+- `radient.request`: 31 closed account/billing/usage/application/agent-catalog/
+  social/comment operations, `signup.resend` included (the verification-mail
+  resend the quota notice's `resend_verification` action drives; its refusals
+  carry `signup_resend_rate_limited` / `signup_resend_nothing_to_resend` so a
+  429 cannot be mistaken for a credential refusal).
+  Identifiers are not URLs; the backend allowlists
   query/payload keys. AuthStore performs the only refresh and stores provisioned
   keys without returning them. Do not retain the old renderer/main refresh store
   or run independent OAuth hooks alongside this path.

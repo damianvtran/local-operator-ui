@@ -1,5 +1,11 @@
 import { BrowserPane } from "@features/browser/components/browser-pane";
 import { useConversationApprovals } from "@features/browser/hooks/use-conversation-approvals";
+import {
+	attentionCause,
+	groupRows,
+} from "@features/code-review/code-review-model";
+import { CodeReviewPane } from "@features/code-review/components/code-review-pane";
+import { useCodeRequests } from "@features/code-review/hooks/use-code-requests";
 import { ConsolePane } from "@features/console/components/console-pane";
 import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attention";
 import { useProviderStatus } from "@features/providers/use-provider-status";
@@ -60,6 +66,7 @@ import {
 	goalCapability,
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
+import { DelegatedCleanupNoticeBand } from "../../settings/components/delegated-cleanup-notice";
 import { gateIsSecret } from "../ask-answer";
 import type { AskDraft, AskOutcome, AskScope } from "../ask-queue";
 import {
@@ -117,8 +124,11 @@ import { DeleteConversationDialog } from "./delete-conversation-dialog";
 import type { DirectoryWritePath } from "./directory-indicator";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
+import type { JobControls } from "./run-details/use-job-controls";
 import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
 import type { MonitorControls } from "./run-details/use-monitor-controls";
+import type { WakeControls } from "./run-details/use-wake-controls";
+import type { AidaWakeIdentity } from "./run-details/wake-controls-model";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
 import { QuestionDock } from "./trace/question-dock";
@@ -295,6 +305,13 @@ type ChatContentProps = {
 		 * `SessionStatusStripProps["readingsDropped"]` (task-17, U4).
 		 */
 		readingsDropped?: boolean;
+		/**
+		 * Whether the backend advertises `features.cost_channels`; forwarded to
+		 * `SessionStatusStripProps["costChannels"]`, which owns the rules. Read by
+		 * the pane (`useDesktopCapabilities`) and told to the strip for the same
+		 * reason `held` is told: the strip calls no query hooks itself.
+		 */
+		costChannels?: boolean;
 	};
 	/**
 	 * The command dispatcher the composer splices an inline command into, with
@@ -497,7 +514,7 @@ type ChatContentProps = {
 		askOutcomes?: Record<string, AskOutcome | undefined>;
 		/*
 		 * THE ASKS DRAWER'S LANE. `askExpanded` is the one flag the status-row chip, the
-		 * header door and the drawer all read, and the page owns it rather than the ask
+		 * asks door and the drawer all read, and the page owns it rather than the ask
 		 * surfaces so they cannot disagree about whether the drawer is open. It says
 		 * nothing about the composer: the main box is an ordinary conversation box
 		 * whether the drawer is open or not (the reversal of design §5.0, R7), so
@@ -555,6 +572,26 @@ type ChatContentProps = {
 	 * session identity.
 	 */
 	monitorControls: MonitorControls;
+	/**
+	 * The pane's wake write controls (`use-wake-controls.ts`), threaded exactly as
+	 * `monitorControls` is: the wakes' confirmation and every record an attempt
+	 * leaves live in the pane body, and the write belongs to the level that owns
+	 * the session identity.
+	 */
+	wakeControls: WakeControls;
+	/**
+	 * The pane's JOB write controls (`use-job-controls.ts`), threaded exactly as
+	 * the other two are: the video row family's cancel — its confirmation and the
+	 * write's in-flight window — lives in the pane body, and the write belongs to
+	 * the level that owns the session identity.
+	 */
+	jobControls: JobControls;
+	/**
+	 * What the pane knows about the chief of staff for the wakes guard
+	 * (`wake-controls-model.ts`): her resolved session id, her display name,
+	 * whether the capability negotiated, and whether the status read answered.
+	 */
+	wakeAida: AidaWakeIdentity;
 	/**
 	 * Whether a child's row can be opened: the `subagent_transcript` capability
 	 * (`§ 10.2`). False leaves the roster visible and quiet rather than lit and
@@ -781,6 +818,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		mcpGrantRunning = false,
 		mcpRemedy,
 		monitorControls,
+		wakeControls,
+		jobControls,
+		wakeAida,
 		childrenOpenable = false,
 		/*
 		 * The composer's `@` affordance, folded by the page that owns both halves of
@@ -862,6 +902,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const deleteEnabled = desktopFeatureEnabled(
 			capabilities.data,
 			"session_delete",
+		);
+		/*
+		 * THE CODE REVIEW SURFACE'S CAPABILITY (`features.code_requests`, the
+		 * design record §D.6's own key). Read here because this component is where
+		 * the session's identity lives and the three readers - the rail item's offer,
+		 * the pane's mount and the composer chip's own gate - must not disagree about
+		 * whether this backend serves the ledger at all. Absent ⇒ neither door nor
+		 * pane is mounted (never mounted-and-disabled), which is the pre-feature
+		 * surface exactly; the chip's query is disabled at the hook for the same
+		 * answer (a read fired before the capability arrives would 404 against an
+		 * older backend, the fail-closed rule the whole desktop plane follows).
+		 */
+		const codeReviewEnabled = desktopFeatureEnabled(
+			capabilities.data,
+			"code_requests",
 		);
 		const archived = useCanonicalSessionsStore((state) =>
 			sessionId
@@ -1256,6 +1311,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * (#677) - so the user can still reach 100 columns by dragging.
 		 */
 		const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
+		const isCodeReviewPaneOpen = useUiPreferencesStore(
+			(s) => s.isCodeReviewPaneOpen,
+		);
 		/*
 		 * THE ASKS DRAWER, the right slot's FIFTH occupant, read here for the reason the
 		 * browser pane's block above states: the store owns the flag (the composer chip
@@ -1289,6 +1347,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const sessionAsksOpen =
 			isAskDrawerOpen && askDrawerScope === "session" && Boolean(sessionId);
 		const setAskDrawerOpen = useUiPreferencesStore((s) => s.setAskDrawerOpen);
+		const requestAskOpen = useUiPreferencesStore((s) => s.requestAskOpen);
 		/*
 		 * Whether a right-slot pane occupies the window's right edge, which is what
 		 * decides whether the CHAT HEADER has to reserve the OS controls' corner (chat
@@ -1343,8 +1402,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				mounted: true,
 				runDetails: hasRunDetails,
 				session: hasSession,
+				/*
+				 * THE CAPABILITY IS A ROUTE FACT (agent review F6): the code pane's mount
+				 * reads `codeReviewEnabled`, so the slot's drawability must read the same
+				 * answer - a remembered pane on a backend that lost the feature otherwise
+				 * reserves an empty column whose rail door is absent too.
+				 */
+				codeReview: codeReviewEnabled,
 			});
-		}, [setRightSlotRoute, hasRunDetails, hasSession]);
+		}, [setRightSlotRoute, hasRunDetails, hasSession, codeReviewEnabled]);
 		/*
 		 * The unmount reset: a route with no chat surface draws none of the five.
 		 *
@@ -1360,10 +1426,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			[setRightSlotRoute],
 		);
 		/*
-		 * THE HEADER'S ASKS DOOR (operator ask, 2026-10-05): the entry point the
-		 * sidebar's `All asks` row used to be, moved into this conversation's header
-		 * because the nav column was over-subscribed and a control that OPENS a surface
-		 * belongs with the cluster that opens the window's other right panes.
+		 * THE ASKS DOOR: the entry point the sidebar's `All asks` row used to be.
+		 * #820/#835 moved it into this conversation's header, and #896 moved it again,
+		 * onto the panel rail beside the four panel doors that open the same right
+		 * slot - the rail item below and the header's `...` menu row are the two
+		 * controls these derivations describe.
 		 *
 		 * THE SCOPE IS THE OPERATOR'S OWN SPLIT: inside a conversation the door and its
 		 * count are THAT conversation's; at the top level - a draft, with no
@@ -1371,7 +1438,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * so the count and the queue the press opens can never disagree about which set
 		 * they describe, and the scope rides the SAME store seam the drawer already
 		 * reads (`setAskDrawerOpen(open, scope)`) rather than a second scope written for
-		 * the header.
+		 * the door.
 		 *
 		 * THE SESSION COUNT IS THE DRAWER'S OWN VIEW (`askQueueView`), not a second
 		 * tally: a badge counting one set over a pane drawing another is the
@@ -1435,6 +1502,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			CONSOLE_PANEL_MIN_PX,
 			rightSlotWidth === 0 ? DEFAULT_RIGHT_SLOT_WIDTH : rightSlotWidth,
 		);
+		const setCodeReviewPaneOpen = useUiPreferencesStore(
+			(s) => s.setCodeReviewPaneOpen,
+		);
+		/*
+		 * THE CODE REVIEW PANE WEARS THE RUN PANEL'S LADDER (§9: "min 320, max
+		 * 640"), deliberately: the pane draws the same kind of prose-and-figures
+		 * rows the run panel does, so one pair of numbers is one thing to keep true
+		 * rather than two that can drift. `RUN_PANEL_MIN_PX` is the width the
+		 * resolver's own `case "code"` uses, so the divider's range and the drawn
+		 * width agree by construction.
+		 */
+		const effectiveCodePanelWidth = Math.max(
+			RUN_PANEL_MIN_PX,
+			rightSlotWidth === 0 ? DEFAULT_RIGHT_SLOT_WIDTH : rightSlotWidth,
+		);
 
 		/*
 		 * How much THIS conversation's console has finished unseen, for the header's
@@ -1455,6 +1537,32 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			[consoleUnseenAll, sessionId],
 		);
 		const consoleUnseenPulsing = useConsoleBlipPulse(consoleUnseenMarks);
+
+		/*
+		 * THE CODE REQUEST LEDGER, read here for the rail item's name and its
+		 * attention dot. THE RAIL IS AMBIENT CHROME and declares itself NOT visible
+		 * to the poll gate (its counts ride the desktop-feed frame and the
+		 * window-focus refetch, §D.5); the PANE is the one surface whose presence
+		 * turns the 60 s interval on (as amended by QA round 1, Q-2: the chip is a
+		 * door, not a timer). The query is the same key every surface reads, so the
+		 * pane's mount, the chip and this read share one cache entry rather than
+		 * three.
+		 */
+		const codeRequestsQuery = useCodeRequests(sessionId ?? null, {
+			/*
+			 * THE RAIL DOES NOT POLL. It is ambient chrome whose counts ride the feed
+			 * frame and the window-focus refetch (§D.5); `sessionLive` is irrelevant
+			 * with `visible: false`, so it is stated as the false it is rather than
+			 * read from the transport - "live" now means A TURN IS RUNNING (the
+			 * amended rule QA round 1's Q-2 forced), and only the pane's timer reads
+			 * it.
+			 */
+			visible: false,
+			sessionLive: false,
+		});
+		const codeRows = codeRequestsQuery.data?.rows ?? [];
+		const codeGroups = groupRows(codeRows);
+		const codeAttentionCause = attentionCause(codeRows);
 
 		/*
 		 * How many approvals THIS conversation's agent is waiting on, for the header
@@ -1703,6 +1811,27 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			handleConsolePanelWidthChange(0);
 		}, [handleConsolePanelWidthChange]);
 
+		const codeSlotCapacity =
+			paneRowWidth > 0
+				? Math.max(0, paneRowWidth - CHAT_PANE_MIN_PX)
+				: effectiveCodePanelWidth;
+		const codeDivider = rightSlotDividerContract({
+			capacity: codeSlotCapacity,
+			min: RUN_PANEL_MIN_PX,
+			max: RUN_PANEL_MAX_PX,
+			drawn: Math.min(effectiveCodePanelWidth, codeSlotCapacity),
+		});
+		const handleCodePanelWidthChange = useCallback(
+			(width: number) => {
+				if (!codeDivider.resizable) return;
+				setRightSlotWidth(width);
+			},
+			[codeDivider.resizable, setRightSlotWidth],
+		);
+		const handleCodePanelWidthReset = useCallback(() => {
+			handleCodePanelWidthChange(0);
+		}, [handleCodePanelWidthChange]);
+
 		const handleChangeActiveDocument = useCallback(
 			(documentId: string) => setSelectedTab(conversationId, documentId),
 			[conversationId, setSelectedTab],
@@ -1821,7 +1950,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				 * paint and only its CONTENT changes when the policy opens the drawer.
 				 * The hook owns both edges (`useAskOpenPolicy`'s return): it writes one
 				 * sentence on a policy open and clears it on close; a press on the chip
-				 * or the header trigger - the reader's own act - writes neither, and a
+				 * or the asks door - the reader's own act - writes neither, and a
 				 * queue refresh is not an appearance. `sr-only`, so the visual surface
 				 * is unchanged. On a draft (no `sessionId`) the hook waits forever and
 				 * the sentence stays empty, which is correct: there is no conversation
@@ -1937,22 +2066,47 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							reserveTrailingChrome={!rightSlotOccupied}
 							/* THE PANELS' MENU DOOR: the four rail triggers moved to the panel rail
 							   (rendered below through `InPanelRailHost`), and the header's `...` menu
-							   keeps its four entries. The browser toggle is declared here for that
+							   keeps their four entries - now five, the asks row joining in #896 when
+							   its trigger left the header for the rail (the menu's own comment states
+							   why parity requires it). The browser toggle is declared here for that
 							   menu; the rail declares its own press from the same store field. */
 							onToggleBrowser={() => setBrowserPaneOpen(!isBrowserPaneOpen)}
 							/*
-							 * THE ASKS DOOR: absent where the scope's backend offers no asks, and
-							 * otherwise a toggle onto the drawer in the scope this conversation
-							 * resolves to (see the block above). The press TOGGLES rather than only
-							 * opening, so the control is the same door in both directions - the
-							 * browser trigger's own idiom beside it.
+							 * THE ASKS DOOR, AS THE HEADER CARRIES IT NOW (#896): the trigger became
+							 * the rail's item (rendered below), and this prop feeds the menu's asks
+							 * row - absent where the scope's backend offers no asks (the same
+							 * `headerAsksOffered` gate the rail's `askOffered` uses), and otherwise a
+							 * toggle onto the drawer in the scope this conversation resolves to (see
+							 * the block above). The press TOGGLES rather than only opening, so the
+							 * row is the same door in both directions - the browser row's own idiom
+							 * beside it - and its OPEN arm also writes the lane's open request
+							 * (round-1 Q1): the row cannot signal its press through focus, so the
+							 * request is what tells the drawer the open was the user's own (see the
+							 * handler below).
 							 */
 							onToggleAsks={
 								headerAsksOffered
-									? () => setAskDrawerOpen(!headerAsksOpen, headerAsksScope)
+									? () => {
+											/*
+											 * THE MENU ROW IS A TOGGLE IN THIS CONVERSATION'S SCOPE, and its
+											 * OPEN is where the request is written (round-1 Q1). The row cannot
+											 * signal its press through focus — Radix hands the keyboard back
+											 * to this menu's own trigger when it closes — so `askOpenIntent`
+											 * is what tells the drawer it was pressed, exactly as a door's
+											 * focus does for the chip and the rail item (`ask-drawer.tsx`'s
+											 * entry move). Written after the open, in the console trigger's
+											 * own order one control over: the claim is what shows the pane;
+											 * the request is what marks the open as the user's.
+											 */
+											if (headerAsksOpen) {
+												setAskDrawerOpen(false, headerAsksScope);
+												return;
+											}
+											setAskDrawerOpen(true, headerAsksScope);
+											requestAskOpen(headerAsksScope);
+										}
 									: undefined
 							}
-							asksAttentionCount={headerAsksCount}
 							asksScope={headerAsksScope}
 							asksOpen={headerAsksOpen}
 							archiveEnabled={archiveEnabled}
@@ -2001,6 +2155,24 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 */
 										undefined
 							}
+							onOpenCodeReview={
+								codeReviewEnabled && hasSession
+									? /*
+										 * THE CODE REVIEW ENTRY (agent review round 1, N1): the `...` menu is
+										 * the keyboard door every other pane has ("so nothing is unreachable
+										 * at 800"), and its absence here left the pane rail-only. The write
+										 * toggles, and the header's own label reads the same store field, so
+										 * the two cannot disagree - `getState` rather than a rendered value
+										 * because the press must see the CURRENT pane, exactly as the canvas
+										 * row's own write does. Gated on the capability and a conversation,
+										 * the same pair the pane's mount is gated on (F6).
+										 */
+										() =>
+											setCodeReviewPaneOpen(
+												!useUiPreferencesStore.getState().isCodeReviewPaneOpen,
+											)
+									: undefined
+							}
 						/>
 						{/*
 						 * WHAT THE LAST MOVE DID, directly under the header that issued it: the notice
@@ -2034,6 +2206,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 */}
 						<ChatStatusStrip />
 						<BackendCompatibilityBanner />
+						{/* The server's one-time "delegated sessions were cleaned up" news;
+						    renders nothing until it arrives and until dismissed. */}
+						<DelegatedCleanupNoticeBand />
 						{/*
 						 * The one delete confirmation, rendered here because this component owns
 						 * the conversation it asks about (`title`) and the run details whose
@@ -2768,7 +2943,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * arrive on this session's frame and its answers go to this session.
 								 * The fleet scope is the other half and lives in the SHELL
 								 * (`chat-layout.tsx`) - it spans conversations, and its entry point
-								 * (the header's asks trigger at the top level) is drawn on every route, so a
+								 * (the panel rail's asks item at the top level; the conversation header's
+								 * trigger before #896) is drawn wherever the chat surface is, so a
 								 * mount here
 								 * would leave that door opening nothing wherever the user happened to
 								 * be. One container, two homes, one flag: the scope is what picks,
@@ -2827,6 +3003,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								mcpGrantRunning={mcpGrantRunning}
 								mcpRemedy={mcpRemedy}
 								monitorControls={monitorControls}
+								wakeControls={wakeControls}
+								jobControls={jobControls}
+								wakeAida={wakeAida}
 								sessionId={canonical?.view.frontend?.session_id ?? null}
 								pulses={pulses ?? EMPTY_PULSES}
 								childrenOpenable={childrenOpenable}
@@ -2949,10 +3128,54 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					</>
 				)}
 				{/*
-				 * THE PANEL RAIL (#872), rendered here and drawn at the window's edge. This
-				 * component owns every input the four triggers need (the conversation, the
+				 * THE CODE REVIEW PANE. Mounted only where it has a SUBJECT - a
+				 * conversation - and only where the backend serves its feature
+				 * (`codeReviewEnabled`): on a draft there is no ledger to draw, and against
+				 * an older backend the routes this pane reads do not exist. The store's own
+				 * drawable check (`rightSlotPaneDrawable`) releases the slot on a draft for
+				 * the same reason, so the claimed flag and the drawn pane agree; a flag
+				 * restored on a backend that lost the feature is the one documented edge
+				 * (`isCodeReviewPaneOpen`'s note), and it clears on the next claim of any
+				 * other pane.
+				 */}
+				{isCodeReviewPaneOpen &&
+					codeReviewEnabled &&
+					sessionId !== undefined && (
+						<>
+							<ResizableDivider
+								sidebarWidth={codeDivider.value}
+								onSidebarWidthChange={handleCodePanelWidthChange}
+								minWidth={codeDivider.minWidth}
+								maxWidth={codeDivider.maxWidth}
+								side="left"
+								onDoubleClick={handleCodePanelWidthReset}
+								label="Resize code review. Double-click resets the shared pane width."
+							/>
+							<PaneSlot
+								width={effectiveCodePanelWidth}
+								tourTag="code-review-pane-slot"
+							>
+								<CodeReviewPane
+									sessionId={sessionId}
+									/*
+									 * THE POLL GATE'S "live", the Stop control's own reading (`turnAlive`, the
+									 * frontend's `streaming` flag through the held frame): a turn is RUNNING.
+									 * The transport-attached reading this replaced was true for every open
+									 * window, so an idle conversation with the pane open polled forever (QA
+									 * round 1, Q-2 / review F5).
+									 */
+									sessionLive={canonical?.turnAlive === true}
+									onClose={() => setCodeReviewPaneOpen(false)}
+								/>
+							</PaneSlot>
+						</>
+					)}
+				{/*
+				 * THE PANEL RAIL (#872, #896, #927), rendered here and drawn at the window's edge.
+				 * This component owns every input the six items need (the conversation,
 				 * run view model and its acknowledgement context, the approvals count, the
-				 * console's unseen marks, the file count), and the shell owns the element
+				 * asks door's offered rule, count and scope, the console's unseen marks, the
+				 * file count), and the shell owns the element
 				 * that sits beside the measured column; the portal joins the two without
 				 * either importing the other's tree. It renders NOTHING when no shell host
 				 * is provided, so a story that mounts this component alone is unchanged.
@@ -2969,9 +3192,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						listOnScreen={listOnScreen}
 						readerChildId={readerChildId}
 						browserAttentionCount={browserAttentionCount}
+						/* THE ASKS INPUTS (#896): the door's offered rule, count and scope, from
+						   the same `headerAsks*` derivations the header's menu entry reads - one
+						   expression per fact, so the rail item and the menu row cannot disagree
+						   about which queue a press opens or how many are outstanding. */
+						askOffered={headerAsksOffered}
+						askCount={headerAsksCount}
+						askScope={headerAsksScope}
 						consoleUnseenCount={consoleUnseenMarks.length}
 						consoleUnseenPulsing={consoleUnseenPulsing}
 						fileCount={mentionedFileCount}
+						codeOffered={codeReviewEnabled && hasSession}
+						codeOpened={codeGroups.opened.length}
+						codeMentioned={codeGroups.mentioned.length}
+						codeAttention={codeAttentionCause}
 					/>
 				</InPanelRailHost>
 			</div>

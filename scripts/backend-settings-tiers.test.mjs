@@ -224,7 +224,18 @@ test("arrival opens the core-heavy sections and nothing else", () => {
 		.filter(([, rows]) => opensOnArrival(rows))
 		.map(([section]) => section)
 		.sort();
-	assert.deepEqual(open, ["approvals", "fork", "model", "web_tools"]);
+	// `session` and `session_delegated` joined when the registry split the cleanup
+	// policy out of "Session storage": `session` kept only autosave (1 of 1 core)
+	// and the delegated class is on by default and deletes without asking each time,
+	// so both of its rows are core (2 of 2). `session_cleanup` stays closed (1 of 5).
+	assert.deepEqual(open, [
+		"approvals",
+		"fork",
+		"model",
+		"session",
+		"session_delegated",
+		"web_tools",
+	]);
 	assert.equal(opensOnArrival([]), false, "an empty section is not open");
 });
 
@@ -248,7 +259,15 @@ test("arrival opens the core-heavy sections and nothing else", () => {
  * design round runs against the live surface; this constant is the tab order.
  */
 const FILTER_BAR_CONTROLS = 5;
-const ARRIVAL_FOCUSABLE_BUDGET = 32;
+/*
+ * The sum moved again with the delegated-retention split, and deliberately: the
+ * registry gained `session_cleanup` and `session_delegated` (22 headers, up from
+ * 20) and the arrival layout gained three rows - `auto_save_conversation`, now
+ * alone in its section, and the delegated switch and window. 22 + 5 + 10 = 37.
+ * The two new sections are visible on arrival on purpose: a default-ON policy that
+ * removes data is not something to leave behind a click.
+ */
+const ARRIVAL_FOCUSABLE_BUDGET = 37;
 
 /*
  * The reader's own sequence: collapse the index, then search it.
@@ -328,7 +347,7 @@ test("the core tier is small enough to be an everyday list", () => {
 		.filter(([, tier]) => tier === "core")
 		.map(([key]) => key);
 	// The budget, not a preference: the arrival frame at 1380x900 has to hold
-	// the filter row, 19 headers and these rows inside 1,600px, and the closed
+	// the filter row, 22 headers and these rows inside 1,600px, and the closed
 	// default state has to stay inside its own budget (asserted above).
 	assert.ok(
 		core.length >= 8 && core.length <= 20,

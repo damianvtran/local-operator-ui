@@ -41,15 +41,23 @@ import {
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button } from "@shared/components/ui";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
-import { useQuery } from "@tanstack/react-query";
+import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
+import { renegotiateLanguage } from "@shared/i18n/language-writes";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	gateLabelFor,
+	presentSetting,
+	sectionTitle,
+} from "../backend-setting-copy";
 import {
 	type SettingTier,
 	allOpenTargets,
 	opensOnArrival,
 	tierFor,
 } from "../backend-settings-tiers";
+import { DELEGATED_SECTION } from "../retention-duration";
 import { BackendSettingRow, type SettingGate } from "./backend-setting-row";
 import {
 	type SettingDraft,
@@ -57,6 +65,7 @@ import {
 	editOutcome,
 	isDraftDirty,
 } from "./backend-settings-drafts";
+import { DelegatedRetentionCopy } from "./delegated-retention-copy";
 import { SettingsFilterBar } from "./settings-filter-bar";
 import { SettingsGroupHeader } from "./settings-group-header";
 
@@ -184,6 +193,27 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		staleTime: 10_000,
 	});
 
+	const queryClient = useQueryClient();
+
+	/**
+	 * A saved write to the language key renegotiates the capabilities chain.
+	 *
+	 * The caller writes the SAME backend setting every surface writes; its new
+	 * value travels back as `language` on the next capabilities answer, and
+	 * that answer is what the i18n store (and through it every formatter and
+	 * `t()`) resolves from - RFC section 2.5's one chain. Invalidated rather
+	 * than waited out: the watch cadence is up to 30 seconds, which a reader
+	 * would read as a control that did nothing. No other key renegotiates,
+	 * because no other key changes what the interface is rendered in.
+	 */
+	const renegotiateIfLanguage = useCallback(
+		(key: string) => {
+			/* The mark + invalidation live in one seam shared with the dialog. */
+			if (key === LANGUAGE_SETTING_KEY) renegotiateLanguage(queryClient);
+		},
+		[queryClient],
+	);
+
 	const settings = settingsQuery.data;
 
 	/**
@@ -272,10 +302,16 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 			}
 			if (modifiedOnly && !isModified(setting)) return false;
 			if (!needle) return true;
+			/*
+			 * Searched on the words the reader SEES: a row whose label and help the
+			 * desktop re-words (`backend-setting-copy.ts`) must be found by that
+			 * copy ("retention" is in the age row's help and nowhere in the wire's).
+			 */
+			const shown = presentSetting(setting);
 			return fold(
 				[
-					setting.label,
-					setting.help,
+					shown.label,
+					shown.help,
 					setting.key,
 					setting.section,
 					setting.warning ?? "",
@@ -392,7 +428,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 			const gate = settings.settings.find((row) => row.key === key);
 			return {
 				key,
-				label: gate?.label ?? key,
+				label: gateLabelFor(key, gate?.label ?? key),
 				// The gate is the SERVER's value: a switch that has been flipped but
 				// not saved has not enabled anything yet.
 				on: gate?.value === true || gate?.value === "true",
@@ -445,6 +481,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 			try {
 				await desktopResult(outcome.request);
 				markSaving(setting.key, false);
+				renegotiateIfLanguage(setting.key);
 				const refreshed = await settingsQuery.refetch();
 				const fresh = refreshed.data?.settings.find(
 					(candidate) => candidate.key === setting.key,
@@ -472,7 +509,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 				return false;
 			}
 		},
-		[drafts, settingsQuery, markSaving, setError],
+		[drafts, settingsQuery, markSaving, setError, renegotiateIfLanguage],
 	);
 
 	/**
@@ -489,6 +526,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 			setError(setting.key, null);
 			try {
 				await desktopResult({ op: "settings.reset", key: setting.key });
+				renegotiateIfLanguage(setting.key);
 				setDrafts((current) => ({
 					...current,
 					[setting.key]: draftFromSetting({
@@ -509,7 +547,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 				);
 			}
 		},
-		[settingsQuery, markSaving, setError],
+		[settingsQuery, markSaving, setError, renegotiateIfLanguage],
 	);
 
 	const dirtySettings = useMemo(
@@ -573,11 +611,27 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		// A filter that the destination does not match would leave the row
 		// unmounted, so the deep link wins over it: the navigation named a key,
 		// and a key that cannot be seen is not a destination.
+		//
+		// The copy folded here is the PRESENTED one (`presentSetting`), the same
+		// copy the row list and its search fold: folding the raw wire copy let a
+		// filter on a word only the registry's phrasing carries ("720" in the
+		// age row's raw help) test as a match, while the row list - which shows
+		// the desktop's wording - excluded the destination, so the reveal chased
+		// a row that never rendered (agent review round 1, F2). Warning is folded
+		// too, because the row list folds it: the two folds must admit exactly
+		// the same rows or this test contradicts the list it is about.
+		const targetShown = presentSetting(target);
 		const needle = fold(filter.trim());
 		const matchesQuery =
 			!needle ||
 			fold(
-				[target.label, target.help, target.key, target.section].join(" "),
+				[
+					targetShown.label,
+					targetShown.help,
+					target.key,
+					target.section,
+					target.warning ?? "",
+				].join(" "),
 			).includes(needle);
 		if (!matchesQuery) setFilter("");
 		setModifiedOnly(false);
@@ -610,8 +664,22 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		if (tierFor(target) === "advanced" && !showAdvanced) return false;
 		const needle = fold(filter.trim());
 		if (!needle) return true;
+		/*
+		 * The PRESENTED copy, folded exactly as `matching` and the navigation
+		 * effect above fold it - otherwise a filter that the row list DOES admit
+		 * the destination under (the desktop's wording, "retention") could read
+		 * as "not on screen yet" here and the reveal would never fire (agent
+		 * review round 1, F2).
+		 */
+		const shown = presentSetting(target);
 		return fold(
-			[target.label, target.help, target.key, target.section].join(" "),
+			[
+				shown.label,
+				shown.help,
+				target.key,
+				target.section,
+				target.warning ?? "",
+			].join(" "),
 		).includes(needle);
 	}, [focusKey, settings, filter, showAdvanced]);
 
@@ -859,7 +927,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 							 */}
 							<SettingsGroupHeader
 								key={`${section.name}:${open ? "open" : "closed"}`}
-								title={section.title}
+								title={sectionTitle(section)}
 								rowCount={rows.length}
 								advancedCount={advancedHeld}
 								scope={SCOPE_LABELS[section.scope]}
@@ -872,10 +940,16 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 								}
 							/>
 							<div hidden={!open} className="flex flex-col pb-3">
-								{section.description && (
-									<p className="px-1 pb-1 text-meta text-ink-dim">
-										{section.description}
-									</p>
+								{section.name === DELEGATED_SECTION ? (
+									// The desktop's own three-line explanation replaces the
+									// registry's single sentence for this group only.
+									<DelegatedRetentionCopy />
+								) : (
+									section.description && (
+										<p className="px-1 pb-1 text-meta text-ink-dim">
+											{section.description}
+										</p>
+									)
 								)}
 								{rows.length === 0 ? (
 									// An open section with nothing in it, said out loud

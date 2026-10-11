@@ -642,6 +642,20 @@ export type DesktopFeature =
 	 */
 	| "projects_request_update"
 	/**
+	 * `projects.update` with `force_done`: closing a project over milestones that
+	 * are still open, on purpose (`PATCH /v1/desktop/projects/{key}` with
+	 * `force_done: true`; the refusal it answers is the 422
+	 * `project_done_incomplete`).
+	 *
+	 * ITS OWN KEY rather than a bump of `projects` (which stays 2): the tab, its
+	 * CRUD and the search index all work on a daemon that cannot force a close,
+	 * and a version bump would hide that working surface. Absent means the
+	 * confirm dialog is NOT offered - the refusal is only SAID (toast on the
+	 * board, inline sentence on the detail) - because an older daemon 422s the
+	 * extra body key, which would turn a deliberate choice into a second refusal.
+	 */
+	| "projects_force_done"
+	/**
 	 * Moving a conversation between devices: `POST /v1/desktop/sessions/{id}/transfer`.
 	 *
 	 * ITS OWN KEY rather than a version of `peers`, and the split is the backend's
@@ -691,7 +705,47 @@ export type DesktopFeature =
 	 * "this backend does not serve the voicing surface" state and fires no read at
 	 * all, which is the pre-voicing behaviour rather than a degraded one.
 	 */
-	| "tts";
+	| "tts"
+	/*
+	 * THE PRE-EMPTIVE QUOTA NOTICE (`features.quota_notice`; the sibling core
+	 * PRs' `GET /v1/desktop/quota-notice`). ITS OWN KEY, on the rule every
+	 * entry here states: a backend that does not advertise it must lose
+	 * nothing else, and it must not be CALLED -- the route answers 404 on an
+	 * older backend, and the notice's contract is "show nothing", not "retry"
+	 * or "update the backend".
+	 */
+	| "quota_notice"
+	/**
+	 * THE PER-SESSION CODE REQUEST LEDGER (`features.code_requests`): the
+	 * `code_requests.list` read and its refresh, i.e. the Code review pane, the
+	 * rail item and the composer chip (design record §D.6).
+	 *
+	 * ITS OWN KEY for the reason this union states everywhere: the ledger's routes
+	 * are additive, and a backend that predates them answers a 404 whose only
+	 * honest reading is "this build made a call nothing serves". Absent ⇒ the rail
+	 * item, the composer chip and the pane are NOT MOUNTED (never
+	 * mounted-and-disabled) and the surface is exactly the pre-feature one - which
+	 * is also why the pane's own read is gated on this key rather than attempted
+	 * and failed.
+	 *
+	 * The version-1 minimum is the feature's own first release; there is no older
+	 * shape of it to negotiate.
+	 */
+	| "code_requests"
+	/**
+	 * THE PUBLISHED CHANNEL SPEND (`features.cost_channels`): the
+	 * `spend_channels` object on the canonical session state — session money
+	 * beyond inference (images, speech, search) folded by the BACKEND into one
+	 * object every surface renders.
+	 *
+	 * ITS OWN KEY rather than a bump of the state stream's shape, on the rule
+	 * this union states for every member: the wire field is additive, so an old
+	 * reader ignores it and keeps its current numbers, and an old backend is
+	 * never asked to honour semantics it does not have. Absent ⇒ the composer
+	 * strip and `/analytics` render exactly today's inference-only figures and
+	 * say nothing about channels — never a zero for spend they cannot see.
+	 */
+	| "cost_channels";
 
 /**
  * WHY a negotiated feature surface may not be offered.

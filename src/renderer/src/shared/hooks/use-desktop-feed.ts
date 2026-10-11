@@ -111,6 +111,39 @@ export type DesktopFeedConnection = {
 	 * is not an invalidation: mount already fetched the current authoring lists.
 	 */
 	authoringReconnectRevision: number;
+	/**
+	 * The last `code_requests` frame's session and revision, or null before the
+	 * first one - which is also the answer an older backend gives forever, so a
+	 * consumer guards on null and a frame that never arrives changes nothing.
+	 *
+	 * EXPOSED rather than acted on here, exactly as `authoringRevision` is: the
+	 * frame says ONE SESSION's ledger moved, and what that invalidates is that
+	 * session's query key, which belongs to its owner (the code-review hooks).
+	 * Handed the pair verbatim - the session id travels because the ledger is per
+	 * conversation and a frame without it could not say whose list to re-read -
+	 * and the CONSUMER drops a frame for a session it is not showing.
+	 */
+	codeRequestsRevision: { sessionId: string; revision: number } | null;
+	/**
+	 * The last `config` frame, or null before the first one - which is also the
+	 * answer an older backend gives forever, so a consumer guards on null and a
+	 * frame that never arrives changes nothing.
+	 *
+	 * EXPOSED rather than acted on, exactly as `catalogueRevision` and its
+	 * siblings are: what a config change invalidates belongs to the modules that
+	 * own those query keys (the i18n store's writer is the language consumer).
+	 * The pair carries the frame's own identity - `epoch` and `seq` - so the
+	 * consumer can dedupe a re-delivered frame, and `changedKeys` so it can ask
+	 * its own question ("did language move?") of a frame that may name several
+	 * keys.
+	 */
+	configChange: {
+		changedKeys: string[];
+		/** The resolved tag, on every config frame (see the contract). */
+		language: string;
+		epoch: string;
+		seq: number;
+	} | null;
 };
 
 export function useDesktopFeed(): DesktopFeedConnection {
@@ -129,6 +162,16 @@ export function useDesktopFeed(): DesktopFeedConnection {
 	);
 	const [authoringReconnectRevision, setAuthoringReconnectRevision] =
 		useState(0);
+	const [codeRequestsRevision, setCodeRequestsRevision] = useState<{
+		sessionId: string;
+		revision: number;
+	} | null>(null);
+	const [configChange, setConfigChange] = useState<{
+		changedKeys: string[];
+		language: string;
+		epoch: string;
+		seq: number;
+	} | null>(null);
 	// The feed's `open` snapshot is intentionally not enough to detect a missed
 	// authoring change: a no-subscriber baseline can retain the same revision.
 	// Track transport history instead, and only publish recovery after we have
@@ -240,6 +283,37 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			if (frame.type === "authoring") {
 				setAuthoringRevision(frame.payload.revision);
 			}
+			/*
+			 * ONE SESSION's code request ledger moved. A `code_requests` frame is
+			 * applied by EXPOSING its pair, the same shape `authoring` above takes and
+			 * for the same reason: the invalidation belongs to the session's own query
+			 * owner (`features/code-review/hooks/use-code-requests.ts`), which is also
+			 * the module that owns the key. The session id travels with the revision
+			 * because the ledger is per conversation; a frame for a session this
+			 * window is not showing is dropped by the consumer rather than by a filter
+			 * here, so the transport stays free of query knowledge.
+			 */
+			if (frame.type === "code_requests") {
+				setCodeRequestsRevision({
+					sessionId: frame.session_id,
+					revision: frame.payload.revision,
+				});
+				return;
+			}
+			/*
+			 * A `config.yml` change, exposed the same way the revisions above are:
+			 * the transport says WHAT moved; the language's own writer (locale-sync)
+			 * decides what to invalidate and whether the change is worth announcing
+			 * (slice B1).
+			 */
+			if (frame.type === "config") {
+				setConfigChange({
+					changedKeys: frame.payload.changed_keys,
+					language: frame.payload.language,
+					epoch: frame.epoch,
+					seq: frame.seq,
+				});
+			}
 			// `open`, `heartbeat` and `gap` carry no renderable authoring data. The
 			// first `open` deliberately causes no invalidation because query mounts
 			// already fetch; recovery after a previously connected transport drops is
@@ -261,5 +335,7 @@ export function useDesktopFeed(): DesktopFeedConnection {
 		activityRevision,
 		authoringRevision,
 		authoringReconnectRevision,
+		codeRequestsRevision,
+		configChange,
 	};
 }

@@ -48,6 +48,16 @@ export const SET_BUDGETS = {
 		"obsidian",
 		"radient",
 	],
+	/*
+	 * `chat-media-slot-fill` is deliberately NOT here any more (round 1's design
+	 * remediation): its states legitimately carry different palettes now - `rest`
+	 * five, `letterbox-hover` `catppuccinLatte`, `mixed-row` `catppuccinLatte` +
+	 * `localOperatorDark` - and this table's one-list-per-set, per-state-exact
+	 * shape cannot express that. That is the mixed-set class its own header names
+	 * (a single-palette state beside a sweep), and the set README documents each
+	 * state's own `--themes=` command; adding it back would be wrong until this
+	 * shape grows a per-state form.
+	 */
 	"chat-trace-fold": ["localOperatorDark", "localOperatorLight"],
 };
 

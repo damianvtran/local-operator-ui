@@ -126,6 +126,31 @@ export function staysVisibleWhileCollapsed(record: TranscriptRecord): boolean {
 }
 
 /**
+ * Whether a run currently renders CONDENSED: at least one of its bars is closed.
+ *
+ * The supplement block condenses with its turn (memo §2.8/§2.11: "one line, no
+ * frames mounted while condensed - and restores on expand"), and this is the
+ * one reading of the collapse plan that fact is allowed to come from. The
+ * block does NOT re-derive it: the caller passes this answer into the row
+ * (design round 1, D1.1).
+ *
+ * `segment.collapsed` is the plan's statement that the span renders as a bar,
+ * and it is deliberately independent of the reader's own expansion (an opened
+ * bar still renders - its children mount when `open` is set). The reader's
+ * side is the same set the bar's own `open` prop reads (`openRuns`), so a bar
+ * the reader just opened is not "closed" here and the block restores in the
+ * same commit the rows return: one state, two readers, no second owner.
+ */
+export function runIsCondensed(
+	run: RunCollapsePlan,
+	openRuns: ReadonlySet<string> | undefined,
+): boolean {
+	return run.segments.some(
+		(segment) => segment.collapsed && !openRuns?.has(segment.key),
+	);
+}
+
+/**
  * Is this tool row a genuine FAILURE?
  *
  * THE SIBLING CONTRACT (session 3d5d52c85ba2 owns interrupted-vs-failed): the

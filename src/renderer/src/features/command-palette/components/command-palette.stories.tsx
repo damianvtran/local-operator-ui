@@ -350,6 +350,18 @@ export const SettingsScope: Story = { args: { query: ",theme" } };
 export const CommandsScope: Story = { args: { query: ">" } };
 
 /**
+ * The language door (i18n slice B2). The query is the word a user types, and
+ * the frame is the palette's answer to it: the `Change interface language...`
+ * action beside the settings row that edits the same setting, which is the
+ * discovery the door adds - the settings page stays the canonical editor.
+ *
+ * Shot on the base tree for the before half by copying this file, because the
+ * story is additive and contains none of the change (the row simply does not
+ * exist there yet, and the frame shows the settings row alone).
+ */
+export const LanguageAction: Story = { args: { query: "language" } };
+
+/**
  * The chats scope with NO conversations: the empty state the switcher settles
  * into once the catalogue has answered (and the frame design round 2 asked for
  * alongside the populated one). The `# Chats` chip beside the field names the

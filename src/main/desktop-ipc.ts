@@ -13,6 +13,7 @@ import type { DesktopMediaResponse } from "./desktop-media";
 import type { DesktopNotifier } from "./desktop-notifier";
 import type { DesktopStreamRelay } from "./desktop-stream";
 import { trustedDesktopFrame } from "./desktop-transport";
+import type { SupplementFrameMounts } from "./supplement-mounts";
 
 const OPERATION_ID = /^[a-zA-Z0-9_-]{1,128}$/;
 
@@ -141,6 +142,39 @@ function relayedBytes(value: unknown): Uint8Array<ArrayBuffer> | null {
 	return new Uint8Array(buffer, byteOffset, byteLength);
 }
 
+/**
+ * Whether an IPC event came from the MAIN FRAME of one of the app's own windows,
+ * on that window's own trusted document.
+ *
+ * WHY THIS IS A FUNCTION OF ITS OWN. `registerDesktopIPC`'s gate and the local
+ * file handlers (`read-file-bytes`, `probe-files`) must agree about who "the
+ * app" is, and two spellings of that test is how one of them drifts. The file
+ * handlers need it because previews now route AGENT-SUPPLIED paths into them
+ * (message attachments), and what keeps a hostile document out of them is the
+ * sender, not the path: the handlers' only path rule is `~` expansion, a `stat`
+ * and the 64 MiB cap. A sandboxed preview frame has no `window.api` at all, so
+ * this is the second lock on a door that already has one — a frame that did
+ * acquire the bridge (a future `nodeIntegrationInSubFrames`, a navigation of the
+ * main frame to a foreign page that kept the preload) would be refused by
+ * sender and by URL.
+ *
+ * Each entry carries its OWN url, and neither window is admitted on the
+ * other's: see the `additionalWindows` note on `registerDesktopIPC`.
+ */
+export function isAdmittedSender(
+	event: Pick<IpcMainInvokeEvent, "sender" | "senderFrame">,
+	admitted: readonly { window: BrowserWindow | null; url: string }[],
+): boolean {
+	return admitted.some(
+		(candidate) =>
+			candidate.window !== null &&
+			!candidate.window.isDestroyed() &&
+			event.sender === candidate.window.webContents &&
+			event.senderFrame === candidate.window.webContents.mainFrame &&
+			trustedDesktopFrame(event.senderFrame.url, candidate.url),
+	);
+}
+
 export function registerDesktopIPC(
 	window: () => BrowserWindow | null,
 	expectedUrl: string,
@@ -187,6 +221,15 @@ export function registerDesktopIPC(
 		window: BrowserWindow | null;
 		url: string;
 	}[],
+	/**
+	 * The supplement-frame mount permits (`supplement-mounts.ts`). Present only
+	 * where the supplement surfaces can mount: the renderer arms the exact
+	 * `data:` URL it is about to set as a frame's `src`, and the main window's
+	 * navigation guard consumes that permit for the ONE child-frame navigation
+	 * it authorises (memo §4.1). Absent disables the channel (the node contract
+	 * tests pass none).
+	 */
+	supplementMounts?: SupplementFrameMounts,
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
@@ -194,15 +237,7 @@ export function registerDesktopIPC(
 			{ window: window(), url: expectedUrl },
 			...(additionalWindows?.() ?? []),
 		];
-		const owner = admitted.some(
-			(candidate) =>
-				candidate.window !== null &&
-				!candidate.window.isDestroyed() &&
-				event.sender === candidate.window.webContents &&
-				event.senderFrame === candidate.window.webContents.mainFrame &&
-				trustedDesktopFrame(event.senderFrame.url, candidate.url),
-		);
-		if (!owner) {
+		if (!isAdmittedSender(event, admitted)) {
 			throw new Error("This window cannot use desktop controls.");
 		}
 	}
@@ -232,6 +267,25 @@ export function registerDesktopIPC(
 		}
 		return outcome;
 	});
+	/*
+	 * Arm one supplement-frame mount (turn-supplements memo §4.1, lane U-b).
+	 *
+	 * WHY A CHANNEL AND NOT A RENDERER-SIDE RULE: the main window's child-frame
+	 * navigation guard runs in MAIN, so the one permitted navigation per frame
+	 * has to be known there, and this is the renderer telling main "the next
+	 * child-frame navigation to exactly this URL is mine". The sender check is
+	 * the same `authorize` every other channel here uses - the app's own main
+	 * frame on its own document - and the URL must be a `data:text/html` mount
+	 * (`isArmableMountUrl`), so a compromised renderer still cannot arm a live
+	 * URL or an arbitrary scheme. The permit moves nothing by itself: a guard
+	 * refusal is answered by whether the URL was armed at all.
+	 */
+	if (supplementMounts) {
+		ipcMain.handle("desktop-supplement-frame-arm", (event, url: unknown) => {
+			authorize(event);
+			return { ok: supplementMounts.arm(url) };
+		});
+	}
 	// `/exit`: the window closes through the ordinary close path, so macOS
 	// keep-alive behaviour applies unchanged in the shipped app. Nothing here
 	// touches the backend: a closed window detaches its viewer and every

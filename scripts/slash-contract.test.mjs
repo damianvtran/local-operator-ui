@@ -42,6 +42,11 @@ const bundle = await build({
 			   the popup's old `runs` input was a constant in that state rather than
 			   asserting the constant (review F2 / QA Q3-1). */
 			'export { caretPhase, slashArgumentContext } from "./src/renderer/src/features/chat/components/slash-token";',
+			/* The pick's own connect rule (UX round 2, U4): the resolver the
+			   submission's interception and the inline footer both read, so the
+			   connect cases below assert the line and the gesture from ONE
+			   function rather than two readings of the same fact. */
+			'export { connectProviderForSelector } from "./src/renderer/src/features/chat/pickers/model-catalogue-listing";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -63,6 +68,7 @@ const {
 	completionFor,
 	clickFooter,
 	commandRowSlot,
+	connectProviderForSelector,
 	effectiveInlineArgument,
 	enterFooter,
 	extensionFor,
@@ -871,6 +877,36 @@ test("the footer says what Enter will do, in each state", () => {
 		enterFooter({ ...base, complete: true }),
 		"Enter runs /model openai/gpt-5.",
 	);
+	/*
+	 * A NEEDS-SIGN-IN ROW'S PICK CONNECTS (UX round 2, U4): the pick opens the
+	 * Connect flow instead of running — the interception at the submit reads
+	 * `connectProviderForSelector` — so both footer lines promise the connect.
+	 * It is the same correction the dialog's footer carries (design D2) on the
+	 * inline counterpart, and the provider below comes through the ONE resolver
+	 * the interception uses, off the rows a submit reads, so the line and the
+	 * gesture cannot name two different rows.
+	 */
+	const connectRows = [
+		{ value: "anthropic/claude-opus-5", connected: true },
+		{ value: "zai/glm-5.2", connected: false },
+	];
+	const connect = connectProviderForSelector(connectRows, "zai/glm-5.2");
+	assert.equal(connect, "zai");
+	assert.equal(enterFooter({ ...base, connect }), "Enter connects zai.");
+	assert.equal(
+		enterFooter({ ...base, connect, unambiguous: false }),
+		"Enter completes; Enter again connects zai.",
+	);
+	// A connected row yields null, and the run sentences stand unchanged — the
+	// assertion right above this block is that case.
+	assert.equal(
+		connectProviderForSelector(connectRows, "anthropic/claude-opus-5"),
+		null,
+	);
+	assert.equal(
+		enterFooter({ ...base, connect: null }),
+		"Enter runs /model openai/gpt-5.",
+	);
 	// No row: the empty state's own copy carries the route.
 	assert.equal(enterFooter({ ...base, matched: false }), null);
 });
@@ -1162,6 +1198,13 @@ test("the click footer says what a click will do, in each state", () => {
 	assert.equal(
 		clickFooter({ ...base, runs: false }),
 		"Click completes this value.",
+	);
+	/* U4, the pointer's half of the block above: a click on a needs-sign-in row
+	   opens the same Connect flow, so the click line promises it too. */
+	assert.equal(clickFooter({ ...base, connect: "zai" }), "Click connects zai.");
+	assert.equal(
+		clickFooter({ ...base, connect: null }),
+		"Click runs /model openai/gpt-5.",
 	);
 	// No row: the empty list's own copy names the route, so a pointer line here
 	// would describe a gesture aimed at nothing.

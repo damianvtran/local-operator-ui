@@ -20,6 +20,7 @@
  */
 
 import { Badge, Button, Checkbox, Input, Label } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Plus, X } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
@@ -51,6 +52,9 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 }) => {
 	const [draftName, setDraftName] = useState("");
 	const [draftDate, setDraftDate] = useState("");
+	/* The reader's locale for each target date: device before a backend
+	 * answers, the backend's resolved language after (the i18n store). */
+	const locale = useI18nLocale();
 
 	/*
 	 * THE DATE IS VALIDATED HERE, in the same words the form dialog uses
@@ -70,9 +74,26 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 	};
 
 	return (
-		<section className="flex flex-col gap-3">
+		<section
+			/* The status field's "Review milestones" lands the reader here. */
+			data-project-milestones=""
+			className="flex flex-col gap-3"
+		>
 			<div className="flex items-baseline justify-between gap-3">
-				<h2 className="text-title text-ink">Milestones</h2>
+				{/*
+				 * A FOCUS TARGET, NOT A TAB STOP: the status field's "Review
+				 * milestones" lands the reader here (`tabIndex={-1}`), so the
+				 * heading is where the caret goes and where a screen reader
+				 * starts reading (design round 1, D2). It stays out of the tab
+				 * order - the sections below carry their own controls.
+				 */}
+				<h2
+					className="text-title text-ink"
+					tabIndex={-1}
+					data-project-milestones-heading=""
+				>
+					Milestones
+				</h2>
 				{summary && milestones.length > 0 && (
 					<span className="text-meta text-ink-muted tabular-nums">
 						{summary}
@@ -115,12 +136,7 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 								</span>
 								{milestone.target_date && (
 									<span className="shrink-0 text-meta text-ink-muted">
-										{formatProjectDay(
-											milestone.target_date,
-											typeof navigator === "undefined"
-												? undefined
-												: navigator.language,
-										)}
+										{formatProjectDay(milestone.target_date, locale)}
 									</span>
 								)}
 								<Badge variant={meta.variant}>{meta.label}</Badge>

@@ -1,7 +1,7 @@
 /**
  * The right slot's per-conversation memory (issue #894), as pure data.
  *
- * WHY THIS IS A MODULE OF ITS OWN. The store's four durable flags used to be the
+ * WHY THIS IS A MODULE OF ITS OWN. The store's durable flags used to be the
  * window's: one global boolean each, so a canvas opened for one conversation
  * followed the user into the next one. The inversion makes each conversation
  * remember its own occupant, and the remembering is a small algebra — put an
@@ -30,13 +30,18 @@
  */
 
 /**
- * The four DURABLE occupants of the right slot, by their short name.
+ * The FIVE DURABLE occupants of the right slot, by their short name.
  *
  * `"ask"` is deliberately NOT a member: the asks drawer is a transient overlay
  * that BORROWS the slot and gives it back (see `isAskDrawerOpen` in the store),
  * so it is never remembered and never written to a conversation's entry.
+ *
+ * `"code"` is the code review pane, appended last on the store's side too: it
+ * is a conversation's own list (the PR/MR ledger derived from that session's
+ * transcript), so it remembers per conversation exactly as its four siblings
+ * do.
  */
-export type MemoryPane = "canvas" | "run" | "browser" | "console";
+export type MemoryPane = "canvas" | "run" | "browser" | "console" | "code";
 
 /** One remembered occupant: the conversation's key, and the pane it holds. */
 export type RightSlotMemoryEntry = readonly [string, MemoryPane];
@@ -57,19 +62,21 @@ export type RightSlotMemory = ReadonlyArray<RightSlotMemoryEntry>;
 export const RIGHT_SLOT_MEMORY_CAP = 64;
 
 /**
- * The slot's precedence order — canvas, run, browser, console — as the migration
- * and the projections read it.
+ * The slot's precedence order — canvas, run, browser, console, code — as the
+ * migration and the projections read it.
  *
  * ONE SPELLING OF THE ORDER, shared with `activeRightSlotPane`'s reading of the
  * flags: two orders would be two answers to "which pane is up?" for a blob that
  * somehow carries two, which is exactly the drift the store's single derivation
- * exists to prevent.
+ * exists to prevent. `code` sits where the store's own precedence reads it:
+ * after the four that predate it, before the transient `ask`.
  */
 export const MEMORY_PANES: ReadonlyArray<MemoryPane> = [
 	"canvas",
 	"run",
 	"browser",
 	"console",
+	"code",
 ];
 
 /**
@@ -84,9 +91,10 @@ const PANE_FLAG: Record<MemoryPane, string> = {
 	run: "isRunPanelOpen",
 	browser: "isBrowserPaneOpen",
 	console: "isConsolePaneOpen",
+	code: "isCodeReviewPaneOpen",
 };
 
-/** Whether a value is one of the four remembered panes. */
+/** Whether a value is one of the remembered panes. */
 export function isMemoryPane(value: unknown): value is MemoryPane {
 	return (
 		typeof value === "string" &&
@@ -198,12 +206,13 @@ export function memoryCarry(
 	]);
 }
 
-/** The four flags a conversation's memory projects onto. */
+/** The five flags a conversation's memory projects onto. */
 export type RightSlotFlagProjection = {
 	isCanvasOpen: boolean;
 	isRunPanelOpen: boolean;
 	isBrowserPaneOpen: boolean;
 	isConsolePaneOpen: boolean;
+	isCodeReviewPaneOpen: boolean;
 };
 
 const NO_PANE_OPEN: RightSlotFlagProjection = Object.freeze({
@@ -211,14 +220,15 @@ const NO_PANE_OPEN: RightSlotFlagProjection = Object.freeze({
 	isRunPanelOpen: false,
 	isBrowserPaneOpen: false,
 	isConsolePaneOpen: false,
+	isCodeReviewPaneOpen: false,
 });
 
 /**
  * The flags the active conversation's memory means — the live projection.
  *
- * ALL FOUR FALSE while the asks drawer is open, and that is the drawer's
+ * ALL OF THEM FALSE while the asks drawer is open, and that is the drawer's
  * precedence rather than a detail of this reader: the drawer BORROWS the slot
- * (the store's `claimRightSlot` writes the same four false when it opens), so a
+ * (the store's `claimRightSlot` writes the same flags false when it opens), so a
  * switch under an open drawer must not light a durable pane the drawer is
  * covering. The memory itself is untouched — closing the drawer re-projects it
  * — which is what makes the borrow transient and the memory durable.
@@ -243,6 +253,7 @@ export function memoryProject(
 		isRunPanelOpen: pane === "run",
 		isBrowserPaneOpen: pane === "browser",
 		isConsolePaneOpen: pane === "console",
+		isCodeReviewPaneOpen: pane === "code",
 	};
 }
 
@@ -253,8 +264,8 @@ export function memoryProject(
  * a downgrade, a hand edit and a half-written blob, and the rules here are the
  * ones a value from it has to meet to become memory:
  *
- * - an entry is a two-element array, a non-empty STRING key and one of the four
- *   panes; anything else is dropped rather than coerced (a coerced key is a
+ * - an entry is a two-element array, a non-empty STRING key and one of the
+ *   remembered panes; anything else is dropped rather than coerced (a coerced key is a
  *   conversation nobody can reach, and a coerced pane is a flag the store would
  *   have to answer for);
  * - ONE entry per key, last wins (the list's own invariant, restored);
