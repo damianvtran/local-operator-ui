@@ -1,0 +1,1 @@
+SHIPIT-STUB RAN: label=com.local-operator.ShipIt state=/Users/damian/.local-operator/sessions/4f54e48234c8/scratchpad/postfix/state.plist at 2026-10-11T05:21:16Z
