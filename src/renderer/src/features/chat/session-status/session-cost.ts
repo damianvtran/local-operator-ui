@@ -91,8 +91,10 @@
 
 import type {
 	CanonicalFrontendState,
+	CanonicalSpendBreakdownEntry,
 	CanonicalSpendChannelRow,
 	CanonicalSpendChannels,
+	CanonicalSpendVocabulary,
 } from "../../../../../shared/desktop-session-contract";
 import { pyFixed } from "./fixed-point";
 
@@ -226,6 +228,29 @@ export type SpendChannelsReading = {
 	 * otherwise leave an empty table under a nonzero total (QA round 2, Q6).
 	 */
 	rowsDropped: number;
+	/**
+	 * The published breakdown, display-ready: the two reconcilable partitions
+	 * of `totalMicro` (ADDITIVE on v1). `null` = an old producer, which is not
+	 * an empty split: the strip then renders today's rows-only body.
+	 */
+	breakdown: {
+		byAgent: ChannelBreakdownEntryRow[];
+		bySource: ChannelBreakdownEntryRow[];
+	} | null;
+	/**
+	 * The published vocabulary, or `null` on an object that predates it. The
+	 * words above were spelled through it when it is present; when it is not,
+	 * they came from this module's own maps — the one boundary of "a future
+	 * channel renders with zero UI edits" (§5.2 of the design).
+	 */
+	vocabulary: CanonicalSpendVocabulary | null;
+	/**
+	 * The explanatory note lines: the `note` of every noted basis whose money
+	 * is present, once per distinct spelling (§6.2). Subscription money puts
+	 * one here; paygo-only sessions put none — nothing renders, which is the
+	 * pass an API-key user must get.
+	 */
+	notes: string[];
 };
 
 /**
@@ -254,6 +279,24 @@ export type ChannelBreakdownRow = {
 	amountMicro: number | null;
 	/** `partial`/`floor` knowledge: the row's amount is a lower bound. */
 	floor: boolean;
+};
+
+/**
+ * One breakdown entry as the strip renders it: the `ChannelBreakdownRow` shape
+ * plus the entry's markers string.
+ *
+ * The difference from a record row is where the words come from: a row's basis
+ * is spelled by this module, an entry's `markers` come from the published
+ * `vocabulary.bases[].marker` (§6.1), joined `" · "` with the first character
+ * capitalised — core names the entry's own categories, so a new basis renders
+ * without a UI edit. `basis` carries the same string so the entry renders
+ * through the same markup as a record row; `markers` is the name the strip
+ * reads. `amountMicro`/`floor` exist for the surface's own marks, never for
+ * re-summing: `combine()` is the one arithmetic site.
+ */
+export type ChannelBreakdownEntryRow = ChannelBreakdownRow & {
+	/** The entry's distinct basis markers, e.g. `Billed · Estimated`. */
+	markers: string;
 };
 
 /** Coerce a wire number, treating a non-finite or absent value as unknown. */
@@ -335,13 +378,18 @@ function microUsdText(micro: number): string {
 }
 
 /**
- * The wire's basis spellings as words, one map for the summary and the rows.
+ * The wire's basis spellings as words — the OLD-PRODUCER fallback vocabulary.
+ *
+ * These maps are consulted ONLY for objects that carry no `vocabulary` of
+ * their own (objects cut before the schema grew one): when the backend
+ * publishes its vocabulary, that is the vocabulary, and an unknown spelling
+ * echoes itself rather than borrowing a word from here — the echo cannot
+ * claim a subscription (design §5.2/§5.1).
  *
  * `subscription_api_equivalent` is the one word that MUST NOT be shortened to
  * "subscription": the number beside it is the published API price of what a
  * plan funded, and "subscription" alone would read as money charged to the
- * plan. An unknown word passes through as-is — the vocabulary belongs to the
- * backend (see the contract's `CanonicalSpendChannelRow`).
+ * plan.
  */
 const BASIS_WORDS: Record<string, string> = {
 	billed: "billed",
@@ -351,13 +399,62 @@ const BASIS_WORDS: Record<string, string> = {
 };
 
 /**
+ * The vocabulary's mid-label word for a spelling, or null when it states none.
+ *
+ * Read defensively field by field: this is a wire object, and a published
+ * entry missing its `label` must degrade rather than throw.
+ */
+function publishedBasisLabel(
+	vocabulary: CanonicalSpendVocabulary | null,
+	basis: string,
+): string | null {
+	const label = vocabulary?.bases?.[basis]?.label;
+	return typeof label === "string" && label ? label : null;
+}
+
+/** The vocabulary's compact marker for a spelling, or null when it states none. */
+function publishedBasisMarker(
+	vocabulary: CanonicalSpendVocabulary | null,
+	basis: string,
+): string | null {
+	const marker = vocabulary?.bases?.[basis]?.marker;
+	return typeof marker === "string" && marker ? marker : null;
+}
+
+/**
+ * The vocabulary's explanatory sentence for a spelling, or null.
+ *
+ * The `note` is omitted (or null) when the basis has nothing to explain, which
+ * is the paygo case: `billed` and `estimated` carry no note at all.
+ */
+function publishedBasisNote(
+	vocabulary: CanonicalSpendVocabulary | null,
+	basis: string,
+): string | null {
+	const note = vocabulary?.bases?.[basis]?.note;
+	return typeof note === "string" && note ? note : null;
+}
+
+/**
  * The wire basis spelling as its display word; an unknown word passes through.
  *
  * The mid-label spelling (`estimated`, `API-equivalent`), which the strip's row
  * suffixes and the analytics panel's columns both build on; a sentence or a
  * line that needs a capital prefixes it itself.
+ *
+ * META-FIRST: when the object publishes a vocabulary, its word wins; a
+ * spelling the vocabulary does not name echoes itself (the same fallback core
+ * applies), because guessing from this module's old map could claim a
+ * subscription core never published. Without a vocabulary the old map IS the
+ * vocabulary that applied.
  */
-export function channelBasisLabel(basis: string): string {
+export function channelBasisLabel(
+	basis: string,
+	vocabulary: CanonicalSpendVocabulary | null = null,
+): string {
+	const published = publishedBasisLabel(vocabulary, basis);
+	if (published) return published;
+	if (vocabulary) return basis;
 	return BASIS_WORDS[basis] ?? basis;
 }
 
@@ -372,12 +469,25 @@ function capitalise(word: string): string {
  * `Tts` is not a word anyone writes; the backend's own channel names are
  * `tts`/`stt` and every surface that prints them prints the acronym. Kept
  * beside `capitalise` so a future channel word with the same problem has one
- * place to land.
+ * place to land — and consulted only without a published vocabulary, like
+ * `BASIS_WORDS`: a registered channel now arrives with core's own label.
  */
 const CHANNEL_WORDS: Record<string, string> = { tts: "TTS", stt: "STT" };
 
-/** The channel's display word, for the row label. */
-export function channelWord(channel: string): string {
+/**
+ * The channel's display word, for the row label.
+ *
+ * META-FIRST like `channelBasisLabel`: a published vocabulary's label wins; a
+ * channel it does not name is capitalised (core's own fallback), and without a
+ * vocabulary the legacy acronym map applies.
+ */
+export function channelWord(
+	channel: string,
+	vocabulary: CanonicalSpendVocabulary | null = null,
+): string {
+	const published = vocabulary?.channels?.[channel]?.label;
+	if (typeof published === "string" && published) return published;
+	if (vocabulary) return capitalise(channel);
 	return CHANNEL_WORDS[channel] ?? capitalise(channel);
 }
 
@@ -409,7 +519,10 @@ export function spendChannelsUsable(
 }
 
 /** The row's own name for its money: channel plus the serving identity. */
-export function channelRowName(row: CanonicalSpendChannelRow): string {
+export function channelRowName(
+	row: CanonicalSpendChannelRow,
+	vocabulary: CanonicalSpendVocabulary | null = null,
+): string {
 	const channel =
 		typeof row.channel === "string" && row.channel ? row.channel : "other";
 	const label = typeof row.label === "string" ? row.label.trim() : "";
@@ -423,9 +536,8 @@ export function channelRowName(row: CanonicalSpendChannelRow): string {
 	 */
 	const identity =
 		label || (provider && model ? `${provider}/${model}` : provider || model);
-	return identity
-		? `${channelWord(channel)} · ${identity}`
-		: channelWord(channel);
+	const word = channelWord(channel, vocabulary);
+	return identity ? `${word} · ${identity}` : word;
 }
 
 /**
@@ -482,27 +594,35 @@ function rowAmountText(row: CanonicalSpendChannelRow): {
  * vocabulary, and the two surfaces differ only in their money ladders, which
  * the design deliberately does not unify.
  */
-export function channelBasisWords(bases: readonly string[]): string[] {
+export function channelBasisWords(
+	bases: readonly string[],
+	vocabulary: CanonicalSpendVocabulary | null = null,
+): string[] {
 	return [
 		...new Set(
 			bases
 				.filter((basis): basis is string => typeof basis === "string")
 				.filter((basis) => basis !== "not_tracked")
-				.map((basis) => capitalise(channelBasisLabel(basis))),
+				.map((basis) => capitalise(channelBasisLabel(basis, vocabulary))),
 		),
 	];
 }
 
 /** One published row as a `ChannelBreakdownRow`. */
-function channelRow(row: CanonicalSpendChannelRow): ChannelBreakdownRow {
+function channelRow(
+	row: CanonicalSpendChannelRow,
+	vocabulary: CanonicalSpendVocabulary | null = null,
+): ChannelBreakdownRow {
 	const amount = rowAmountText(row);
 	const bases = Array.isArray(row.basis)
 		? row.basis.filter((basis): basis is string => typeof basis === "string")
 		: [];
 	return {
-		name: channelRowName(row),
+		name: channelRowName(row, vocabulary),
 		amount: amount.text,
-		basis: amount.unknown ? "" : channelBasisWords(bases).join(" · "),
+		basis: amount.unknown
+			? ""
+			: channelBasisWords(bases, vocabulary).join(" · "),
 		channel:
 			typeof row.channel === "string" && row.channel ? row.channel : "other",
 		amountMicro:
@@ -511,6 +631,143 @@ function channelRow(row: CanonicalSpendChannelRow): ChannelBreakdownRow {
 				: null,
 		floor: isFloorKnowledge(rung(row.knowledge)),
 	};
+}
+
+/**
+ * One breakdown entry's markers: its distinct bases through the published
+ * `vocabulary.bases[].marker`, joined `" · "` — `Billed`, `estimated`,
+ * `API-equivalent · subscription` — with the first character capitalised.
+ *
+ * Per-entry basis honesty (§6.1): the marker is the entry's OWN basis set, so a
+ * plan-funded category says so on its own line rather than borrowing the
+ * session-level clause. `not_tracked` is suppressed when the entry carries a
+ * stated amount — the same rule the rows apply, for the same reason: beside
+ * money it means "part of this group is unsized", which the `≥` mark and the
+ * summary count already carry. It survives when nothing is stated, where "not
+ * tracked" is the honest reading of the money itself.
+ *
+ * Join-then-capitalise (not capitalise each marker): a marker is a phrase
+ * (`API-equivalent · subscription`), and re-casing inside one would split a
+ * word core published whole.
+ */
+function channelBasisMarkers(
+	bases: readonly string[],
+	vocabulary: CanonicalSpendVocabulary | null,
+	stated: boolean,
+): string {
+	const markers = [
+		...new Set(
+			bases
+				.filter((basis): basis is string => typeof basis === "string")
+				.filter((basis) => !(stated && basis === "not_tracked"))
+				.map(
+					(basis) =>
+						publishedBasisMarker(vocabulary, basis) ??
+						channelBasisLabel(basis, vocabulary),
+				),
+		),
+	];
+	return capitalise(markers.join(" · "));
+}
+
+/**
+ * One breakdown entry as a `ChannelBreakdownEntryRow`.
+ *
+ * `label` prints verbatim (the backend's display word — the same discipline as
+ * the composition line's words); the money reads through the SAME ladder as
+ * record rows, with `null` as `price unknown` and a lower-bound mark for
+ * `partial`/`floor` knowledge — never a fabricated `$0.0000`, and never a
+ * re-derivation: the amount is the published entry's own.
+ */
+function breakdownRow(
+	entry: CanonicalSpendBreakdownEntry,
+	vocabulary: CanonicalSpendVocabulary | null,
+	money: (micro: number) => string,
+): ChannelBreakdownEntryRow {
+	const amountMicro =
+		typeof entry.amount_micro === "number" &&
+		Number.isFinite(entry.amount_micro)
+			? entry.amount_micro
+			: null;
+	const floor = isFloorKnowledge(rung(entry.knowledge));
+	const markers = channelBasisMarkers(
+		Array.isArray(entry.bases) ? entry.bases : [],
+		vocabulary,
+		amountMicro !== null,
+	);
+	return {
+		name: entry.label,
+		amount:
+			amountMicro === null
+				? PRICE_UNKNOWN_TEXT
+				: `${floor ? FLOOR_MARK : ""}${money(amountMicro)}`,
+		basis: markers,
+		markers,
+		channel: entry.id,
+		amountMicro,
+		floor,
+	};
+}
+
+/**
+ * The entries of one partition that this build can render, others dropped.
+ *
+ * A non-object (the `rows: [null]` shape the wire may break into) or an entry
+ * missing the two fields its row is built from — a non-empty `id` and `label`
+ * — is dropped like a malformed row, and the rest of the body stands: an entry
+ * whose name cannot be printed must not sit in the list under a name of "".
+ * Every other field is read defensively at its use site.
+ */
+function breakdownEntries(value: unknown): CanonicalSpendBreakdownEntry[] {
+	if (!Array.isArray(value)) return [];
+	return value.filter(
+		(entry): entry is CanonicalSpendBreakdownEntry =>
+			Boolean(entry) &&
+			typeof entry === "object" &&
+			typeof (entry as CanonicalSpendBreakdownEntry).id === "string" &&
+			(entry as CanonicalSpendBreakdownEntry).id !== "" &&
+			typeof (entry as CanonicalSpendBreakdownEntry).label === "string" &&
+			(entry as CanonicalSpendBreakdownEntry).label !== "",
+	);
+}
+
+/**
+ * The explanatory note lines: one per distinct noted basis whose money is
+ * present (§6.2).
+ *
+ * "Money present" is the spelling in a nonzero `by_basis` bucket, or among an
+ * entry's bases where the entry's amount is stated and nonzero. A `null`
+ * amount is NOT money present: a subscription note over unsized records would
+ * claim a class the money cannot be checked against. Order: the by-basis
+ * buckets first (contract order), then the entries in published order —
+ * deterministic, and stable across renders.
+ */
+function noteLines(
+	vocabulary: CanonicalSpendVocabulary | null,
+	byBasis: SpendChannelsReading["byBasis"],
+	entries: CanonicalSpendBreakdownEntry[],
+): string[] {
+	if (!vocabulary) return [];
+	const notes: string[] = [];
+	const seen = new Set<string>();
+	const noteFor = (basis: string, money: boolean): void => {
+		if (!money || seen.has(basis)) return;
+		const note = publishedBasisNote(vocabulary, basis);
+		if (!note) return;
+		seen.add(basis);
+		notes.push(note);
+	};
+	for (const bucket of byBasis) noteFor(bucket.basis, bucket.micro !== 0);
+	for (const entry of entries) {
+		const money =
+			typeof entry.amount_micro === "number" &&
+			Number.isFinite(entry.amount_micro) &&
+			entry.amount_micro !== 0;
+		for (const basis of Array.isArray(entry.bases) ? entry.bases : []) {
+			if (typeof basis === "string") noteFor(basis, money);
+		}
+	}
+	return notes;
 }
 
 /**
@@ -553,6 +810,26 @@ export function channelsReading(value: unknown): SpendChannelsReading | null {
 			Boolean(row) && typeof row === "object",
 	);
 	const children = value.children;
+	/*
+	 * The ADDITIVE sections (wire v1): the vocabulary the words above were
+	 * spelled through, and the breakdown entries. Absence is an old producer —
+	 * NOT an empty split (the strip must keep rendering today's body), so the
+	 * presence of the key decides.
+	 */
+	const vocabulary =
+		value.vocabulary && typeof value.vocabulary === "object"
+			? value.vocabulary
+			: null;
+	const rawBreakdown =
+		value.breakdown && typeof value.breakdown === "object"
+			? value.breakdown
+			: null;
+	const agentEntries = rawBreakdown
+		? breakdownEntries(rawBreakdown.by_agent)
+		: [];
+	const sourceEntries = rawBreakdown
+		? breakdownEntries(rawBreakdown.by_source)
+		: [];
 	return {
 		tracked: value.tracked,
 		totalMicro: value.total_micro,
@@ -568,8 +845,20 @@ export function channelsReading(value: unknown): SpendChannelsReading | null {
 			children && typeof children === "object"
 				? rung(children.knowledge)
 				: "unknown",
-		rows: rows.map(channelRow),
+		rows: rows.map((row) => channelRow(row, vocabulary)),
 		rowsDropped: value.rows.length - rows.length,
+		breakdown: rawBreakdown
+			? {
+					byAgent: agentEntries.map((entry) =>
+						breakdownRow(entry, vocabulary, microUsdText),
+					),
+					bySource: sourceEntries.map((entry) =>
+						breakdownRow(entry, vocabulary, microUsdText),
+					),
+				}
+			: null,
+		vocabulary,
+		notes: noteLines(vocabulary, byBasis, [...agentEntries, ...sourceEntries]),
 	};
 }
 
@@ -615,7 +904,7 @@ export function channelSummaryLine(
 ): string | null {
 	const parts = reading.byBasis.map(
 		(bucket) =>
-			`${capitalise(channelBasisLabel(bucket.basis))} ${money(bucket.micro)}`,
+			`${capitalise(channelBasisLabel(bucket.basis, reading.vocabulary))} ${money(bucket.micro)}`,
 	);
 	const remainder = reading.notTrackedMicro;
 	if (remainder > 0) {
@@ -683,8 +972,19 @@ export function channelPlanClause(
 
 /** The strip-ladder breakdown the tooltip renders. */
 export type ChannelBreakdown = {
+	/**
+	 * The legacy plan-funded gloss. `null` when the object publishes a
+	 * vocabulary — the note lines take its place (§6.2/§7.4); the panel keeps
+	 * building the clause directly, so only the strip switches.
+	 */
 	planClause: string | null;
 	summary: string | null;
+	/** The compact agent block's entries (parent, subagents). */
+	byAgent: ChannelBreakdownEntryRow[];
+	/** The by-source entries, in the backend's own order (never sorted). */
+	bySource: ChannelBreakdownEntryRow[];
+	/** The explanatory note lines; empty on a paygo-only session. */
+	notes: string[];
 	rows: ChannelBreakdownRow[];
 };
 
@@ -699,8 +999,13 @@ export function channelBreakdown(
 	reading: SpendChannelsReading,
 ): ChannelBreakdown {
 	return {
-		planClause: channelPlanClause(reading, microUsdText),
+		planClause: reading.vocabulary
+			? null
+			: channelPlanClause(reading, microUsdText),
 		summary: channelSummaryLine(reading, microUsdText, floorMark),
+		byAgent: reading.breakdown?.byAgent ?? [],
+		bySource: reading.breakdown?.bySource ?? [],
+		notes: reading.notes,
 		rows: reading.rows,
 	};
 }
