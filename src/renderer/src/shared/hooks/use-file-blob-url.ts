@@ -62,6 +62,7 @@ import {
 	publish,
 	release,
 	retain,
+	revokeBlobUrl,
 } from "@shared/lib/blob-url-cache";
 import { useEffect, useState } from "react";
 import {
@@ -262,8 +263,9 @@ export function useFileBlobUrl(
 				if (!live) {
 					// The viewer closed while the read was in flight. Publishing the
 					// URL would strand an entry no unmount can release, so it dies
-					// here instead.
-					URL.revokeObjectURL(url);
+					// here instead (the cache's own revoke, so the bytes it keeps
+					// for `Copy image` go with the URL).
+					revokeBlobUrl(url);
 					return;
 				}
 				publish(key, url);

@@ -1,11 +1,15 @@
-import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { ImageLightbox } from "@shared/components/common/image-lightbox";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type FC, memo, useCallback, useRef, useState } from "react";
 import { getFileTypeFromPath } from "../../utils/file-types";
+import {
+	classifyAttachmentSource,
+	hasImageActions,
+} from "../../utils/image-actions";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
+import { ImageActionsMenu } from "../image-actions-menu";
 import {
 	ATTACHMENT_UNAVAILABLE_COPY,
 	AttachmentFrame,
@@ -123,10 +127,11 @@ const getFileName = (path: string): string => {
  * the file in the OS default application; a canonical row passed none, so
  * clicking a tool row's screenshot did nothing at all — the operator's report.
  * Expansion is now the click's one meaning here, and the old action did not go
- * away with it: the frame's hover actions (`FileActionsMenu`, rendered for any
- * on-disk path) carry it, in the same place as every other action on the file,
- * and that menu is reachable by KEYBOARD as well as by pointer (see the wrapper
- * below) — which is the bar the round-1 review held this change to.
+ * away with it: the frame's hover actions (`ImageActionsMenu`, kind-aware — a
+ * path-backed picture gets the file-shaped set, a `data:` or `blob:` one the
+ * actions its bytes allow) carry it, in the same place as every other action on
+ * the picture, and that menu is reachable by KEYBOARD as well as by pointer (see
+ * the wrapper below) — which is the bar the round-1 review held this change to.
  *
  * ## The resting affordance, decided rather than left to omission
  *
@@ -295,19 +300,34 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 			setHasError(true);
 		};
 
-		// `blob:` belongs in this guard beside `data:`. Both are in-memory handles
-		// with no path behind them, and a blob URL starts with neither of the other
-		// two prefixes — so without it every durable transcript image grew a file
-		// menu whose entries called `showItemInFolder`/`openFile` on a string that
-		// is not a path, and whose "copy file path" put a dead handle on the
-		// clipboard under a "copied" toast.
-		const isLocalFile =
-			!file.startsWith("data:") &&
-			!file.startsWith("blob:") &&
-			!file.startsWith("http");
-		const normalizedPath = file.startsWith("file://")
-			? file.substring(7)
-			: file;
+		/*
+		 * The picture's source KIND, and the two decisions that follow from it.
+		 *
+		 * This used to be `isLocalFile` — a boolean that had to grow a `blob:` arm
+		 * after every durable transcript image grew a file menu whose entries
+		 * called `showItemInFolder`/`openFile` on a string that is not a path — and
+		 * the kinds it refuses (`data:`, `blob:`, `http`) then got NO menu at all.
+		 * The kind now selects a per-kind action set (`image-actions.ts`), so the
+		 * URL-shaped pictures get the actions their bytes allow instead of the
+		 * file-shaped ones they cannot honour.
+		 */
+		const kind = classifyAttachmentSource(file);
+		/*
+		 * Whether `handleShowInCanvas` can serve this picture: it builds a document
+		 * for a path (bounded read -> doc) and for a `data:` URI (bytes in the
+		 * string), and both need a conversation for the document to belong to. A
+		 * `blob:` picture deliberately gets none — the canvas viewer is path-backed
+		 * and its documents persist, so a session-only handle would paint a dead
+		 * tab after every restart (see the `blob` row in `image-actions.ts`).
+		 */
+		const canvasKind = kind === "path" || kind === "data";
+		const canShowInCanvas = canvasKind && conversationId !== "";
+		const showMenu = hasImageActions(kind, {
+			canShowInCanvas,
+			source: src,
+		});
+		/** The picture is a file on disk — the lightbox's copy tells them apart. */
+		const isLocalFile = kind === "path";
 
 		// The picture's own name: a caller-supplied position for something with no
 		// path, the filename otherwise.
@@ -388,7 +408,7 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 				>
 					{picture}
 				</button>
-				{isLocalFile && (
+				{showMenu && (
 					/*
 					 * Pointer-only REVEAL, keyboard-reachable CONTROL. `invisible` is
 					 * `visibility: hidden`, which takes the trigger out of the tab order
@@ -432,8 +452,9 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 						 * Round 2 first keyed this on `data-state=open` and it never
 						 * fired: the only descendant of this wrapper holding `data-state`
 						 * is the trigger, and that attribute is the TOOLTIP's, not the
-						 * dropdown's — `file-actions-menu.tsx` nests
-						 * `<Tooltip><DropdownMenuTrigger asChild>` and
+						 * dropdown's — `image-actions-menu.tsx` nests
+						 * `<Tooltip><DropdownMenuTrigger asChild>` exactly as
+						 * `file-actions-menu.tsx` established and
 						 * `ui/tooltip.tsx`'s `TooltipTrigger asChild` owns it. Measured
 						 * with the menu genuinely open (`div[role="menu"][data-state=
 						 * "open"]`, four entries, focus in the portal): the trigger read
@@ -451,11 +472,11 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 						}}
 						onKeyDown={(e) => e.stopPropagation()}
 					>
-						<FileActionsMenu
-							filePath={normalizedPath}
-							tooltip="File actions"
-							aria-label="File actions"
-							onShowInCanvas={handleShowInCanvas}
+						<ImageActionsMenu
+							file={file}
+							src={src}
+							label={name}
+							onShowInCanvas={canShowInCanvas ? handleShowInCanvas : undefined}
 						/>
 					</div>
 				)}
