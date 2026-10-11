@@ -53,7 +53,7 @@
  */
 
 import { displayName, toolRowLabel } from "../components/trace/tool-row-model";
-import type { TranscriptImage } from "./transcript-reducer";
+import { type TranscriptImage, isPictureRef } from "./transcript-reducer";
 import type { Row } from "./transcript-rows";
 
 /** §E2: a run of three or more consecutive actions folds. */
@@ -794,11 +794,24 @@ export function foldRuns(
  * joining it (`foldRuns`' `isFoldable`), so no other kind of record can be
  * inside one; the test is stated anyway so the claim is checkable against the
  * record union rather than inferred from the caller's options.
+ *
+ * PICTURES ONLY — the array's consumers are all picture grammar (117px tiles,
+ * `· N images` counts, the lightbox). A video ref rides the same record media
+ * now, and this strip cannot carry it: a tile has no room for a player. The
+ * fold's own contract makes that a named deferral rather than a silent drop —
+ * expanding the group mounts the rows again, and the card that produced the
+ * video is one of them, so the artifact stays reachable one press away; a
+ * video tile in the strip is a design decision the video spec deliberately did
+ * not make ("no per-video geometry"). Audio never reaches here (the reducer
+ * does not admit it).
  */
 export const foldImages = (rows: readonly Row[]): TranscriptImage[] => {
 	const images: TranscriptImage[] = [];
 	for (const row of rows) {
-		if (row.record.kind === "tool") images.push(...row.record.images);
+		if (row.record.kind !== "tool") continue;
+		for (const image of row.record.images) {
+			if (isPictureRef(image)) images.push(image);
+		}
 	}
 	return images;
 };
