@@ -22,7 +22,20 @@
  *   panels are given numbers and format them once.
  */
 
+import { formatNumber } from "@shared/i18n";
 import { pyFixed } from "../../session-status/fixed-point";
+
+/*
+ * The analytics panels pin `en-US` THROUGH the layer (round-1 review, R1-1).
+ *
+ * Base rendered these numbers with `new Intl.NumberFormat("en-US")`; a bare
+ * layer call would follow the reader's locale instead, so the same quantity
+ * would spell differently here and in the terminal these numbers are read
+ * against — this file's premise is one spelling per quantity. The pin is part
+ * of the port, not an accident of the base, and a future deliberate analytics
+ * localisation changes it HERE, in one place.
+ */
+const PANEL_PINNED_LOCALE = "en-US";
 
 /** The unknown sentinel. One character, the same one `info/model.py` uses. */
 export const UNKNOWN = "—";
@@ -154,7 +167,7 @@ export function formatWindow(n: number): string {
  * whole of its formatting.
  */
 export function formatCount(n: number): string {
-	return new Intl.NumberFormat("en-US").format(Math.trunc(n));
+	return formatNumber(Math.trunc(n), undefined, PANEL_PINNED_LOCALE);
 }
 
 /**
@@ -195,7 +208,7 @@ const roundHalfEven = (value: number): number => {
 export function formatMs(value: number | null | undefined): string {
 	if (value === null || value === undefined) return UNKNOWN_WORD;
 	if (Math.abs(value) < 1000) {
-		return `${new Intl.NumberFormat("en-US").format(roundHalfEven(value))} ms`;
+		return `${formatNumber(roundHalfEven(value), undefined, PANEL_PINNED_LOCALE)} ms`;
 	}
 	return `${(value / 1000).toFixed(1)} s`;
 }
