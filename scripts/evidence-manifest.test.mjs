@@ -4027,6 +4027,20 @@ const BRANCH_RECORDS = [
 	 */
 	"modelPickerAccessScopeNote",
 	"modelPickerRoundOneRemediationNote",
+	/*
+	 * And this pass's own: the composer spend-breakdown round
+	 * (`feat/cost-channels-breakdown-ui`, PR #968), whose record states the
+	 * frames it re-shot (all ten channel states dark+light; `channels-tooltip`
+	 * and `channels-untracked` across the whole twelve-theme sweep, completing
+	 * what the earlier partial pass could not reach under host load), which
+	 * states are deliberately dark+light only, and why `dirtyWorkingTree`
+	 * reads `false` (every frame was captured from the committed tree). It is
+	 * registered for the list's own reason: a fold that started from main's
+	 * manifest would drop it, and with it the only statement of this pass's
+	 * coverage and of the `--allow-backend` the runs used. Its commit SHAs are
+	 * bare, so it joins this list and not `STAMP_BINDING_NOTES`.
+	 */
+	"spendBreakdownPassNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
