@@ -1082,8 +1082,10 @@ export type CanonicalModelAccess = {
  * reason `SessionCatalogueStatus.code` gives above: the vocabulary belongs to
  * the backend, which grows it without this file changing, and a renderer's job
  * with a word it does not know is to show it rather than to fail to compile.
- * The words this build knows are in `session-cost.ts`'s channel section; the
- * wire's `basis` spelling is underscored (`subscription_api_equivalent`).
+ * The backend now PUBLISHES that vocabulary beside the object (`vocabulary`
+ * below); the maps in `session-cost.ts` survive only as the fallback for
+ * objects cut before it shipped. The wire's `basis` spelling is underscored
+ * (`subscription_api_equivalent`).
  */
 export type CanonicalSpendChannelRow = {
 	channel: string;
@@ -1106,6 +1108,86 @@ export type CanonicalSpendChildren = {
 	/** Integer micro-USD; always a stated number (0 = stated zero). */
 	total_micro: number;
 	knowledge: "unknown" | "exact" | "partial" | "floor";
+};
+
+/**
+ * One entry of a published breakdown partition (`breakdown`, ADDITIVE on v1).
+ *
+ * The breakdown answers "what is the total made of" in TWO complete partitions
+ * of the SAME `total_micro`: `by_agent` (parent vs subagents) and `by_source`
+ * (inference, image, search, …). Each partition reconciles on its own — and a
+ * reader MUST NOT add the two together, because every dollar appears once in
+ * each; they are two views of one total, not two summands beside it.
+ *
+ * `amount_micro` is integer micro-USD and `null` means nothing was stated —
+ * NEVER zero (same rule as the rows above); `unstated_records` is the COUNT of
+ * the entry's records that contributed no stated amount, never a sum. `label`
+ * is the backend's display word (print it verbatim); `id` is the machine word
+ * (`parent` | `subagents`, or a contributed channel id). `bases` are the
+ * distinct billing-basis spellings in the entry — keys into
+ * `vocabulary.bases`, where the words and the marker/note come from.
+ */
+export type CanonicalSpendBreakdownEntry = {
+	/** `parent` | `subagents` (by_agent); a channel id (by_source). */
+	id: string;
+	/** The backend's display word (`Parent agent`, `Inference`, …) — verbatim. */
+	label: string;
+	/** Integer micro-USD. `null` = nothing stated, never a fabricated zero. */
+	amount_micro: number | null;
+	knowledge: "unknown" | "exact" | "partial" | "floor";
+	/** COUNT of the entry's records with no stated amount; never summed. */
+	unstated_records: number;
+	/** Distinct billing-basis spellings present, sorted. */
+	bases: string[];
+};
+
+/**
+ * The breakdown: two complete, reconcilable partitions of `total_micro`.
+ *
+ * Published order IS the render order (the backend orders `by_source`
+ * canonically); a renderer sorts nothing. Absence of the whole section means
+ * an old producer, not a zero — see `CanonicalSpendChannels`.
+ */
+export type CanonicalSpendBreakdown = {
+	by_agent: CanonicalSpendBreakdownEntry[];
+	by_source: CanonicalSpendBreakdownEntry[];
+};
+
+/**
+ * One billing basis as the backend names it (`vocabulary.bases`).
+ *
+ * `source_class` is the honest class of the MONEY, not of a provider: a
+ * plan-funded call's list price is `subscription` and must never read as cash
+ * charged, while `billed`/`estimated` are `paygo`. It is an open `string` for
+ * the same reason the channel words are: a future class (or a foreign
+ * spelling's `unknown`) must render, not fail to compile.
+ *
+ * `marker` is the compact per-entry phrase (`API-equivalent · subscription`),
+ * `label` the mid-sentence word, and `note` the ONE explanatory sentence to
+ * render when (and only when) money under this basis is present. A spelling
+ * the backend does not know echoes itself with `source_class: "unknown"` and
+ * no note — the echo never claims a subscription.
+ */
+export type CanonicalSpendBasisMeta = {
+	label: string;
+	source_class: "subscription" | "paygo" | "unknown" | string;
+	marker: string;
+	/** Omitted (or null) when the basis has nothing to explain. */
+	note?: string | null;
+};
+
+/**
+ * The backend-published display vocabulary (ADDITIVE on v1).
+ *
+ * The words every surface prints for this object's channels and bases, so a
+ * future channel or basis renders with ZERO renderer edits. It covers every id
+ * in `rows`/`breakdown` and every basis spelling they carry; derived per
+ * object, so it stays small. An object without it is an old producer, where
+ * the shipped maps in `session-cost.ts` are the vocabulary that applied.
+ */
+export type CanonicalSpendVocabulary = {
+	channels: Record<string, { label: string }>;
+	bases: Record<string, CanonicalSpendBasisMeta>;
 };
 
 /**
@@ -1167,6 +1249,17 @@ export type CanonicalSpendChannels = {
 	};
 	rows: CanonicalSpendChannelRow[];
 	children: CanonicalSpendChildren;
+	/**
+	 * The two reconcilable partitions of `total_micro` (ADDITIVE on v1; see
+	 * `CanonicalSpendBreakdown`). Absent on an old producer — a reader shows
+	 * today's rows-only body rather than treating absence as an empty split.
+	 */
+	breakdown?: CanonicalSpendBreakdown;
+	/**
+	 * The display vocabulary for this object (ADDITIVE on v1; see
+	 * `CanonicalSpendVocabulary`). Absent on an old producer.
+	 */
+	vocabulary?: CanonicalSpendVocabulary;
 };
 
 export type CanonicalFrontendState = {
