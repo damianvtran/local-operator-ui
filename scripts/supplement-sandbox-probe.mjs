@@ -18,7 +18,7 @@
  *
  * RUN: `node scripts/supplement-sandbox-probe.mjs` — prints one line per
  * attempt and exits non-zero when any attempt SUCCEEDS at what it must not.
- * Headless only, `--use-mock-keychain` (`chrome-keychain.mjs`), a scratch
+ * Headless only, the shared mock-keychain helper (`chrome-keychain.mjs`), a scratch
  * profile, no window, everything reaped by exact pid before it returns.
  *
  * WHY NOT STORYBOOK HERE: this rig measures the SEPARATE, LOWER boundary —
