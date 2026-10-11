@@ -43,6 +43,7 @@ export {
 	currentLocaleState,
 	DEFAULT_LOCALE,
 	I18N_FEATURE,
+	LANGUAGE_SETTING_KEY,
 	resolveLocale,
 	setLocale,
 	subscribeLocale,

@@ -33,6 +33,8 @@ import {
 	Switch,
 	Textarea,
 } from "@shared/components/ui";
+import { LANGUAGE_SETTING_KEY, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import {
@@ -362,6 +364,34 @@ export type SettingControlProps = {
 	helpId?: string;
 };
 
+/**
+ * What `auto` resolves to RIGHT NOW, under the language row's picker.
+ *
+ * The registry's picker offers `auto` plus the shipped locales, and `auto` is
+ * the default; the word alone leaves the reader asking which language that IS.
+ * The answer is the i18n store's own active locale - the same value every
+ * formatter and message lookup reads - subscribed here, so a language that
+ * lands (this row's saved write, the TUI's, or a config.yml edit a
+ * capabilities answer picks up) updates this line with nothing else moving.
+ *
+ * Shown in every state rather than only beside `auto`: next to an UNSAVED
+ * draft it is what says the change has not taken effect yet.
+ */
+const EffectiveLanguage = () => {
+	const locale = useI18nLocale();
+	/*
+	 * Through `t()` from the first line this string exists: the row is the
+	 * i18n core's first product consumer, and a literal here would have been
+	 * new debt the string scanner flags - it flagged this slice's first draft,
+	 * and `ui.settings.language.effective` is the key that answered it.
+	 */
+	return (
+		<span className="text-meta text-ink-dim">
+			{t("ui.settings.language.effective", { locale })}
+		</span>
+	);
+};
+
 export const SettingControl = ({
 	setting,
 	value,
@@ -433,33 +463,40 @@ export const SettingControl = ({
 			);
 		case "enum":
 			return (
-				<Select value={value} disabled={disabled} onValueChange={onValueChange}>
-					<SelectTrigger aria-label={setting.label} className="w-full">
-						<SelectValue />
-					</SelectTrigger>
-					<SelectContent>
-						{setting.choices.map((choice) => (
-							<SelectItem
-								key={serialize(choice.value)}
-								value={serialize(choice.value)}
-								/*
-								 * The registry ships a sentence for each choice (`snapcompact for
-								 * vision models, else context-full`) and 43 of the 102 settings
-								 * have one, so the listbox was four opaque words where "what does
-								 * this do" is answerable (UX round 1, U6). The sentence is the
-								 * item's `title` rather than a second line INSIDE the item: an
-								 * open listbox is a portal-rendered popper that no committed frame
-								 * can photograph, so a change to the item's anatomy would be a
-								 * visual change no design round could review. The item's own
-								 * anatomy is therefore untouched and the copy is reachable.
-								 */
-								title={choice.description || undefined}
-							>
-								{choice.label}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
+				<div className="flex w-full flex-col items-end gap-1">
+					<Select
+						value={value}
+						disabled={disabled}
+						onValueChange={onValueChange}
+					>
+						<SelectTrigger aria-label={setting.label} className="w-full">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{setting.choices.map((choice) => (
+								<SelectItem
+									key={serialize(choice.value)}
+									value={serialize(choice.value)}
+									/*
+									 * The registry ships a sentence for each choice (`snapcompact for
+									 * vision models, else context-full`) and 43 of the 102 settings
+									 * have one, so the listbox was four opaque words where "what does
+									 * this do" is answerable (UX round 1, U6). The sentence is the
+									 * item's `title` rather than a second line INSIDE the item: an
+									 * open listbox is a portal-rendered popper that no committed frame
+									 * can photograph, so a change to the item's anatomy would be a
+									 * visual change no design round could review. The item's own
+									 * anatomy is therefore untouched and the copy is reachable.
+									 */
+									title={choice.description || undefined}
+								>
+									{choice.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					{setting.key === LANGUAGE_SETTING_KEY && <EffectiveLanguage />}
+				</div>
 			);
 		case "int":
 		case "float":
