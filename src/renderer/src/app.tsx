@@ -31,6 +31,7 @@ import { PeersCatalogueSync } from "@features/mesh/peers-catalogue";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
+import { LanguageDialog } from "@features/settings/components/language-dialog";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
@@ -706,6 +707,12 @@ const App: FC = () => {
 					    through `useConnectProviderStore` (empty chat, composer line,
 					    the no-provider notice, the palette). Mounted once, here. */}
 					<ConnectProviderDialog />
+
+					{/* The one "change the interface language" dialog (i18n slice
+					    B2): the palette asks `useLanguageDialogStore`, and the
+					    settings row stays the canonical editor. Mounted once, here,
+					    like the connect dialog above and for the same reason. */}
+					<LanguageDialog />
 
 					{/*
 					 * THE ARCHIVE CONFIRMATION, mounted here and not in the chat pane (UX round
