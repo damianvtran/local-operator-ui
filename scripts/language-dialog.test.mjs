@@ -448,12 +448,8 @@ test(
 			}
 		})();
 		/* D8: the first Enter must reach the Retry, not the container. */
-		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 50));
-		});
-		assert.equal(
-			document.activeElement,
-			retry,
+		await settle(
+			() => document.activeElement === retry,
 			"focus lands on the Retry control",
 		);
 		const before = apiCalls.filter((call) => call.op === "capabilities").length;
