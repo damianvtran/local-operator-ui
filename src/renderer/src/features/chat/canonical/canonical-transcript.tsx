@@ -139,7 +139,11 @@ import { isRecordReachable } from "./failed-row-jump";
 import { FoldMedia } from "./fold-media";
 import { type FoldOpenEntry, foldOpenOf, withFoldOpen } from "./fold-open";
 import { ImageGenCard } from "./image-gen-card";
-import { imageGenCardView, isImageGenTool } from "./image-gen-card-model";
+import {
+	imageGenCardMountActions,
+	imageGenCardView,
+	isImageGenTool,
+} from "./image-gen-card-model";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
 import { forkEntryId } from "./message-actions";
@@ -186,6 +190,7 @@ import {
 	type TranscriptRecord,
 	type TranscriptState,
 	isInterruptedFault,
+	isPictureRef,
 	streamDiagnostics,
 	withRecoveredOutcome,
 } from "./transcript-reducer";
@@ -736,6 +741,15 @@ const UserRow = memo(function UserRow({
 		[record.text],
 	);
 	/*
+	 * The turn's PICTURES, by the media array's shared predicate (`isPictureRef`):
+	 * this block draws `<img>` frames only, and a video ref must not be handed to
+	 * one (it would fail decode into a false "unavailable" receipt — the
+	 * reducer's F2 rule). A user row's media are image blocks by construction
+	 * today; the filter states the seat's contract rather than relying on that.
+	 * The video player's seat is the card's done body.
+	 */
+	const pictures = record.images.filter(isPictureRef);
+	/*
 	 * Whether this turn is long enough to need D2's eight-line clamp, MEASURED
 	 * rather than guessed from a character count: the box is clamped first and
 	 * then asked whether it is hiding anything, so a `Show more` can never appear
@@ -894,15 +908,15 @@ const UserRow = memo(function UserRow({
 									{expanded ? "Show less" : "Show more"}
 								</button>
 							)}
-							{record.images.length > 0 && (
+							{pictures.length > 0 && (
 								<div className={cn("mt-2 flex flex-col gap-2")}>
-									{record.images.map((image, index) => (
+									{pictures.map((image, index) => (
 										<CanonicalImage
 											key={image.id}
 											image={image}
 											scope={scope}
 											label={
-												record.images.length === 1
+												pictures.length === 1
 													? "Attached image"
 													: `Attached image ${index + 1}`
 											}
@@ -1539,12 +1553,20 @@ const ToolRow = memo(function ToolRow({
 	 * set.
 	 */
 	if (isImageGenTool(record.toolName)) {
+		/*
+		 * The mount's action rule (R4, contract §4.2): a video call's work is a
+		 * detached job this press cannot cancel, so the mount passes no
+		 * `onCancel` for it — the panel does not draw a control whose
+		 * accessibility hint would be false — while an image call keeps the
+		 * pane's interrupt. The rule and its reasons live in
+		 * `imageGenCardMountActions`.
+		 */
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
 				<ImageGenCard
 					view={imageGenCardView(record, { stopping })}
 					scope={scope}
-					actions={onInterruptTurn ? { onCancel: onInterruptTurn } : undefined}
+					actions={imageGenCardMountActions(record.toolName, onInterruptTurn)}
 				/>
 			</MessageContainer>
 		);
@@ -1730,15 +1752,22 @@ const ToolRow = memo(function ToolRow({
 	// Screenshots sit under the row and OUTSIDE the disclosure, which is where
 	// the TUI mounts them. Hiding a picture behind a toggle is the complaint
 	// being fixed, not a smaller version of it.
+	/*
+	 * The row's PICTURES, by the media array's shared predicate (`isPictureRef`):
+	 * media rendered here are `<img>` frames, and a video ref (a future non-card
+	 * tool's artifact — today only the card's detection set produces video)
+	 * must not be handed to one. The player's seat is the card's done body.
+	 */
+	const pictures = record.images.filter(isPictureRef);
 	const media =
-		record.images.length > 0 ? (
+		pictures.length > 0 ? (
 			<div className={cn("mt-1 ml-5 flex flex-col gap-2")}>
-				{record.images.map((image, index) => (
+				{pictures.map((image, index) => (
 					<CanonicalImage
 						key={image.id}
 						image={image}
 						scope={scope}
-						label={record.images.length === 1 ? "Image" : `Image ${index + 1}`}
+						label={pictures.length === 1 ? "Image" : `Image ${index + 1}`}
 					/>
 				))}
 			</div>
