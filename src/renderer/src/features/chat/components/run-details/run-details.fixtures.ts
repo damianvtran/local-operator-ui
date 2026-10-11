@@ -296,6 +296,43 @@ export const jobsOnly = (): RunDetailsInput => ({
 	todos: [],
 });
 
+/**
+ * The VIDEO lane's row family, and the one control the section offers.
+ *
+ * A running video job sits beside a running shell job, which is the frame's
+ * whole point: the video row carries the pane's `Cancel` — its stop has no
+ * other rail (contract §4.2 forbids the in-turn interrupt for it; design spec
+ * §2.2 names the Jobs row as the rail) — while the shell row deliberately
+ * carries none, because backgrounding exists so a build survives. A SETTLED
+ * video row rides along for the section's own slice rule (`isOpenRow`), the
+ * same demonstration `jobsInFlight`'s settled shell row carries.
+ */
+export const videoJobInFlight = (): RunDetailsInput => ({
+	nowMs: FIXTURE_NOW_MS,
+	jobs: [
+		toolJob({
+			id: "job-video",
+			type: "video",
+			label: "Video generation (i2v, 8s, Radient)",
+			startedSecondsAgo: 84,
+		}),
+		toolJob({
+			id: "job-shell",
+			label: "bash: npm run build",
+			startedSecondsAgo: 40,
+		}),
+		toolJob({
+			id: "job-video-done",
+			type: "video",
+			label: "Video generation (t2v, 6s, Radient)",
+			status: "completed",
+			startedSecondsAgo: 640,
+			settledSecondsAgo: 590,
+		}),
+	],
+	todos: [],
+});
+
 /** One section: three children, no plan at all. */
 export const subagentsOnly = (): RunDetailsInput => ({
 	nowMs: FIXTURE_NOW_MS,
@@ -887,8 +924,13 @@ const LONG_BRIEF = [
 const toolJob = (spec: {
 	id: string;
 	label: string;
-	/** `JobType` — `bash` for every tool row; `task` would be a child. */
-	type?: "bash" | "task";
+	/**
+	 * `JobType` — `bash` for every tool row; `task` would be a child, and
+	 * `video` is the video lane's detached job (contract §1.7 G1): still a tool
+	 * row (no child conversation to open), the one family the Jobs section
+	 * offers its cancel control on.
+	 */
+	type?: "bash" | "task" | "video";
 	status?: string;
 	/** `start_time` in epoch seconds, for a row that is still running. */
 	startedSecondsAgo?: number;

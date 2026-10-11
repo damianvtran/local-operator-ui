@@ -59,6 +59,7 @@ import {
 import { CANCELLED_BEFORE_START, mcpGrantInFlight } from "./run-detail-model";
 import * as fixtures from "./run-details.fixtures";
 import { RunPanel } from "./run-panel";
+import type { JobControls } from "./use-job-controls";
 import type { McpRemedyControls } from "./use-mcp-remedy";
 import type { MonitorControls } from "./use-monitor-controls";
 import type { WakeControls } from "./use-wake-controls";
@@ -184,6 +185,18 @@ const wakeControls = (overrides: Partial<WakeControls> = {}): WakeControls => ({
 	...overrides,
 });
 
+/**
+ * The pane's job write controls, as `chat-page.tsx` passes them.
+ *
+ * A still cannot cancel anything, so the photographed stories answer `ok`; the
+ * frame that is ABOUT a refusal injects the engine's own sentence instead of
+ * reaching one (the monitors' and wakes' own fixture rule).
+ */
+const jobControls = (overrides: Partial<JobControls> = {}): JobControls => ({
+	cancel: async () => ({ ok: true }),
+	...overrides,
+});
+
 /** An identity that knows nothing: the ordinary row's own reading. */
 const AIDA_UNKNOWN: AidaWakeIdentity = {
 	capability: false,
@@ -220,6 +233,7 @@ const RunPane = ({
 	remedy = mcpRemedy(),
 	controls = monitorControls(),
 	wakeControls: wakeCancel = wakeControls(),
+	jobControls: jobWrite = jobControls(),
 	wakeAida = AIDA_UNKNOWN,
 	childrenOpenable = true,
 	readerChildId = null,
@@ -238,6 +252,8 @@ const RunPane = ({
 	controls?: MonitorControls;
 	/** The pane's wake write controls, one section over from `controls`. */
 	wakeControls?: WakeControls;
+	/** The pane's job write controls, one section over from `wakeControls`. */
+	jobControls?: JobControls;
 	/** What the pane knows about the chief of staff, for the wakes guard. */
 	wakeAida?: AidaWakeIdentity;
 	childrenOpenable?: boolean;
@@ -270,6 +286,7 @@ const RunPane = ({
 				mcpRemedy={remedy}
 				monitorControls={controls}
 				wakeControls={wakeCancel}
+				jobControls={jobWrite}
 				wakeAida={wakeAida}
 				sessionId={
 					(details.subagents.find((row) => row.childSessionId)
@@ -303,6 +320,7 @@ const ChatColumn = ({
 	remedy = mcpRemedy(),
 	controls = monitorControls(),
 	wakeControls: wakeCancel = wakeControls(),
+	jobControls: jobWrite = jobControls(),
 	wakeAida = AIDA_UNKNOWN,
 	childrenOpenable = true,
 	openPanel = false,
@@ -326,6 +344,8 @@ const ChatColumn = ({
 	controls?: MonitorControls;
 	/** The pane's wake write controls, one section over from `controls`. */
 	wakeControls?: WakeControls;
+	/** The pane's job write controls, one section over from `wakeControls`. */
+	jobControls?: JobControls;
 	/** What the pane knows about the chief of staff, for the wakes guard. */
 	wakeAida?: AidaWakeIdentity;
 	childrenOpenable?: boolean;
@@ -374,6 +394,7 @@ const ChatColumn = ({
 					remedy={remedy}
 					controls={controls}
 					wakeControls={wakeCancel}
+					jobControls={jobWrite}
 					wakeAida={wakeAida}
 					childrenOpenable={childrenOpenable}
 					readerChildId={readerChildId}
@@ -3385,5 +3406,153 @@ export const ReducedMotion: Story = {
 			openPanel={true}
 		/>
 	),
+	decorators: [withCanvasClosed],
+};
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE VIDEO JOB FAMILY, AND ITS CANCEL (the video phase's post-turn rail).
+ *
+ * The section's own subject is the pair: a running video row carries the
+ * pane's `Cancel` — the one control this section has, and the video family is
+ * the one it rides (contract §4.2: an in-turn press cannot cancel a detached
+ * job, so this row is the rail) — while the shell row beside it carries none,
+ * deliberately. The frames then walk the control's whole life: at rest, under
+ * the pointer and the keyboard, the placed confirmation it opens, the engine's
+ * own sentence after a refusal, and the write's in-flight hold.
+ */
+
+const VIDEO_JOB_SELECTOR = '[data-job-cancel="job-video"]';
+
+/** The family at rest: the control on the video row, none on the shell row. */
+export const VideoJobRow: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.videoJobInFlight())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/** The control under the rig's real pointer (`{ hover }` in the sweep). */
+export const VideoJobCancelHover: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.videoJobInFlight())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The same control with the keyboard's focus ring: `focus({ focusVisible: true })`
+ * rather than a bare `focus()` (the `McpRemedyFocus` rule — a programmatic focus
+ * is not treated as keyboard focus by Chromium's heuristic).
+ */
+const VideoJobCancelFocusGround = () => {
+	useEffect(() => {
+		document
+			.querySelector<HTMLButtonElement>(VIDEO_JOB_SELECTOR)
+			?.focus({ focusVisible: true });
+	}, []);
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.videoJobInFlight())}
+			openPanel={true}
+		/>
+	);
+};
+
+export const VideoJobCancelFocus: Story = {
+	render: () => <VideoJobCancelFocusGround />,
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The placed confirmation, reached by pressing the real control: the card is
+ * anchored to the pressed button's captured rect, states the act on the row
+ * ("Cancel this job?") and the honesty rule ("...the row says “Cancelled” only
+ * when the job settles."), and holds the keyboard on Keep.
+ */
+const VideoJobCancelConfirmGround = () => {
+	useClickAndWait(VIDEO_JOB_SELECTOR, "[data-job-confirm]");
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.videoJobInFlight())}
+			openPanel={true}
+		/>
+	);
+};
+
+export const VideoJobCancelConfirm: Story = {
+	render: () => <VideoJobCancelConfirmGround />,
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The card after the route refused with the frozen `not_found` phrasing: it
+ * stays OPEN with the engine's sentence in the danger ink and the keyboard
+ * handed back to Keep. The walk is the flow's two real presses — the row's
+ * control, then the card's confirm — against a refusing controls object.
+ */
+const NOT_FOUND_REFUSAL =
+	"not cancelled — the provider no longer knows the job";
+
+const VideoJobCancelRefusedGround = () => {
+	usePressFlow(
+		[
+			{ waitFor: VIDEO_JOB_SELECTOR, press: VIDEO_JOB_SELECTOR },
+			{ waitFor: "[data-job-confirm]", press: "[data-job-confirm-action]" },
+		],
+		() =>
+			document.querySelector("[data-job-confirm-refusal]")?.textContent ===
+			NOT_FOUND_REFUSAL,
+	);
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.videoJobInFlight())}
+			openPanel={true}
+			jobControls={jobControls({
+				cancel: async () => ({ ok: false, detail: NOT_FOUND_REFUSAL }),
+			})}
+		/>
+	);
+};
+
+export const VideoJobCancelRefused: Story = {
+	render: () => <VideoJobCancelRefusedGround />,
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The write in flight: the second press sent the request and the card HOLDS —
+ * both controls disabled, the action wearing its busy verb, so the refusal
+ * that may come still has a place to land. The write never resolves in this
+ * frame, which is the state a still can carry; the resolved halves are the
+ * confirm and refused frames above.
+ */
+const VideoJobCancelBusyGround = () => {
+	usePressFlow(
+		[
+			{ waitFor: VIDEO_JOB_SELECTOR, press: VIDEO_JOB_SELECTOR },
+			{ waitFor: "[data-job-confirm]", press: "[data-job-confirm-action]" },
+		],
+		() =>
+			document.querySelector("[data-job-confirm-action]")?.textContent ===
+			"Cancelling…",
+	);
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.videoJobInFlight())}
+			openPanel={true}
+			jobControls={jobControls({ cancel: () => new Promise(() => {}) })}
+		/>
+	);
+};
+
+export const VideoJobCancelBusy: Story = {
+	render: () => <VideoJobCancelBusyGround />,
 	decorators: [withCanvasClosed],
 };

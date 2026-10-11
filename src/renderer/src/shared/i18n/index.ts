@@ -39,3 +39,14 @@ export {
 	t,
 	translate,
 } from "../../../../i18n";
+
+/*
+ * The renderer-half's own module (not part of the core: it holds the query
+ * client's renegotiation and the own-write window, which are renderer
+ * concerns). Re-exported here so callers keep ONE specifier.
+ */
+export {
+	markLocalLanguageWrite,
+	renegotiateLanguage,
+	withinLocalLanguageWrite,
+} from "./language-writes";

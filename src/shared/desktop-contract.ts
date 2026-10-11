@@ -443,6 +443,17 @@ const wakeId = z.string().min(1).max(64);
  */
 const monitorId = z.string().min(1).max(64);
 
+/**
+ * A background job's id, an opaque token the runtime minted (`harness/jobs.py`'s
+ * `AsyncJob.id`).
+ *
+ * Lenient for the wakeId's own reason, and it matters here the same way: the
+ * run pane renders the id the runtime minted (`frontend.jobs[].id`), so a
+ * pattern a drawn row could fail would be a control that is drawn and cannot be
+ * pressed. Whatever shape check the route wants belongs at the route.
+ */
+const jobId = z.string().min(1).max(64);
+
 const scheduleWrite = z
 	.object({
 		is_active: z.boolean().nullish(),
@@ -2411,6 +2422,32 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			op: z.literal("monitors.cancel"),
 			sessionId,
 			monitorId,
+		})
+		.strict(),
+	/*
+	 * The job rail's one write that has a UI: cancelling a background job
+	 * (`POST /v1/desktop/sessions/{session_id}/jobs/{job_id}/cancel`).
+	 *
+	 * ONE per-item cancel, following its wake and monitor siblings — and the
+	 * only family the pane draws it on is the VIDEO job row (design spec §2.2),
+	 * because that family's stop has no other rail: the video card never offers
+	 * Cancel (a detached job cannot be interrupted in-turn, contract §4.2). The
+	 * route's semantics are the EXISTING engine path, not a second mechanism —
+	 * it reaches the owning session's `AsyncJobManager.cancel`, the same call
+	 * `jobs op='cancel'` makes — and the honesty rule every surface keeps
+	 * applies: a press is acknowledged, and only the job's own settle paints
+	 * `cancelled`.
+	 *
+	 * The response's only fact is the queue's acknowledgement; the UI reads no
+	 * field off it (the job row's next wire state is the outcome's evidence, by
+	 * the honesty rule above), so it is typed `unknown` at the call site and the
+	 * route is free to grow a receipt without a contract change here.
+	 */
+	z
+		.object({
+			op: z.literal("jobs.cancel"),
+			sessionId,
+			jobId,
 		})
 		.strict(),
 	z.object({ op: z.literal("mcp.list"), sessionId }).strict(),
@@ -6198,6 +6235,21 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/monitors/${encodeURIComponent(request.sessionId)}/${encodeURIComponent(request.monitorId)}`,
 				method: "DELETE",
+			};
+		/*
+		 * The job cancel, mapped beside its wake and monitor siblings. POST
+		 * rather than DELETE, and the difference is the resource's fate: a
+		 * cancelled wake or monitor is GONE from its listing, while a cancelled
+		 * job is a row that stays and settles — the press is an action on it,
+		 * so the route is one too. Both segments are `encodeURIComponent`ed on
+		 * the monitors' own rule (the schema is this client's check; a redirect
+		 * or a hand-built request must not be able to turn a token into a path
+		 * fragment).
+		 */
+		case "jobs.cancel":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/jobs/${encodeURIComponent(request.jobId)}/cancel`,
+				method: "POST",
 			};
 		case "legacy.jobs.list": {
 			const query = new URLSearchParams();
