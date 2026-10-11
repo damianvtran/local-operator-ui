@@ -34,6 +34,7 @@ import type {
 	BackendSettings,
 } from "@shared/api/local-operator/desktop-api";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -41,7 +42,8 @@ import {
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button } from "@shared/components/ui";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
-import { useQuery } from "@tanstack/react-query";
+import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -190,6 +192,30 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		enabled,
 		staleTime: 10_000,
 	});
+
+	const queryClient = useQueryClient();
+
+	/**
+	 * A saved write to the language key renegotiates the capabilities chain.
+	 *
+	 * The caller writes the SAME backend setting every surface writes; its new
+	 * value travels back as `language` on the next capabilities answer, and
+	 * that answer is what the i18n store (and through it every formatter and
+	 * `t()`) resolves from - RFC section 2.5's one chain. Invalidated rather
+	 * than waited out: the watch cadence is up to 30 seconds, which a reader
+	 * would read as a control that did nothing. No other key renegotiates,
+	 * because no other key changes what the interface is rendered in.
+	 */
+	const renegotiateIfLanguage = useCallback(
+		(key: string) => {
+			if (key === LANGUAGE_SETTING_KEY) {
+				void queryClient.invalidateQueries({
+					queryKey: desktopKeys.capabilities,
+				});
+			}
+		},
+		[queryClient],
+	);
 
 	const settings = settingsQuery.data;
 
@@ -458,6 +484,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 			try {
 				await desktopResult(outcome.request);
 				markSaving(setting.key, false);
+				renegotiateIfLanguage(setting.key);
 				const refreshed = await settingsQuery.refetch();
 				const fresh = refreshed.data?.settings.find(
 					(candidate) => candidate.key === setting.key,
@@ -485,7 +512,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 				return false;
 			}
 		},
-		[drafts, settingsQuery, markSaving, setError],
+		[drafts, settingsQuery, markSaving, setError, renegotiateIfLanguage],
 	);
 
 	/**
@@ -502,6 +529,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 			setError(setting.key, null);
 			try {
 				await desktopResult({ op: "settings.reset", key: setting.key });
+				renegotiateIfLanguage(setting.key);
 				setDrafts((current) => ({
 					...current,
 					[setting.key]: draftFromSetting({
@@ -522,7 +550,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 				);
 			}
 		},
-		[settingsQuery, markSaving, setError],
+		[settingsQuery, markSaving, setError, renegotiateIfLanguage],
 	);
 
 	const dirtySettings = useMemo(

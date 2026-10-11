@@ -31,6 +31,7 @@
 import { mimeTypeForPath } from "@features/chat/utils/file-kind";
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { File } from "lucide-react";
 import type { FC } from "react";
 import { Fragment } from "react";
@@ -154,8 +155,7 @@ const UpdateEntry: FC<{ update: DesktopProjectUpdate; nowMs: number }> = ({
 	update,
 	nowMs,
 }) => {
-	const locale =
-		typeof navigator === "undefined" ? undefined : navigator.language;
+	const locale = useI18nLocale();
 	const meta = updateMetaTokens(update, locale, nowMs);
 	return (
 		<article className="flex flex-col gap-2 rounded-sm px-2 py-3">
@@ -183,8 +183,7 @@ export type ProjectUpdatesProps = {
 };
 
 export const ProjectUpdates: FC<ProjectUpdatesProps> = ({ updates, nowMs }) => {
-	const locale =
-		typeof navigator === "undefined" ? undefined : navigator.language;
+	const locale = useI18nLocale();
 	const count = updatesCountLabel(updates.length);
 	const groups = groupUpdatesByDay(updates, locale, new Date(nowMs));
 	return (
