@@ -164,6 +164,7 @@ import {
 	type AidaWakeIdentity,
 	deriveRunDetails,
 	mcpErrorTexts,
+	useJobControls,
 	useMcpRemedy,
 	useMonitorControls,
 	useRunPanelMcpServers,
@@ -968,6 +969,13 @@ function SessionPanel({
 	 * the arm fail closed while her identity is unknown.
 	 */
 	const wakeControls = useWakeControls({ sessionId });
+	/*
+	 * The pane's job cancel, taken HERE beside the monitor and wake controls for
+	 * their reason: this component owns the session identity, and the Jobs
+	 * section's confirmation and refusal stay presentational props. The hook
+	 * owns the retry policy and the canonical re-read (`use-job-controls.ts`).
+	 */
+	const jobControls = useJobControls({ sessionId });
 	const wakeAidaEnabled = desktopFeatureEnabled(capabilities.data, "aida", 1);
 	const wakeAidaTarget = useAidaTarget(wakeAidaEnabled);
 	const wakeAidaName = useAidaDisplayName();
@@ -4466,6 +4474,7 @@ function SessionPanel({
 					mcpRemedy={mcpRemedy}
 					monitorControls={monitorControls}
 					wakeControls={wakeControls}
+					jobControls={jobControls}
 					wakeAida={wakeAida}
 					childrenOpenable={childrenOpenable}
 					mentionsEnabled={mentionsEnabled}

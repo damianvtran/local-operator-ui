@@ -1,12 +1,16 @@
 /**
- * Resolve one transcript image to a URL the browser can paint.
+ * Resolve one transcript attachment's bytes to a URL the browser can paint.
  *
- * Two sources, one answer. A LIVE event carried the base64 inline, so the URL
- * is a `data:` URI built synchronously — no fetch, no loading state, the
- * picture is there on the first frame. A DURABLE row carried only a digest,
- * because the transcript externalises anything over 1 KiB of base64 into
- * `<config>/attachments/<digest>.bin`, so the bytes come back over the media
- * relay as a blob.
+ * One resolver, two media kinds. The bytes question is identical for a picture
+ * and a video — a LIVE event carried the base64 inline (a `data:` URI built
+ * synchronously, no fetch, no loading state), a DURABLE row carried only a
+ * digest, because the transcript externalises anything over 1 KiB of base64
+ * into `<config>/attachments/<digest>.bin`, so the bytes come back over the
+ * media relay as a blob — and the fields it reads (`data`, `attachment`,
+ * `mimeType`) are carried by both kinds. That is why the math lives once, in
+ * `useAttachmentSource`, and both entry points below share it: the callers
+ * differ only in what they DRAW (an `<img>` frame or a `<video>` player), never
+ * in where the bytes come from.
  *
  * The legacy path does not port and it is worth saying why, because reaching
  * for it is the obvious mistake. `message-item/index.tsx` builds its URLs from
@@ -187,16 +191,34 @@ export type AttachmentSource =
 	| { state: "resolving" }
 	| { state: "missing" };
 
-export function useAttachmentUrl(
-	image: TranscriptImage,
+/**
+ * The fields the resolver reads off any attachment ref, whatever its kind.
+ *
+ * A structural type rather than `TranscriptImage` because the resolver has no
+ * business knowing what a ref IS — only where its bytes are and what they are.
+ * Both `TranscriptImage` and a video ref satisfy it, which is what lets one
+ * hook serve both components (see the header).
+ */
+export type AttachmentRef = {
+	/** Base64 payload when the event carried it inline. Live path. */
+	data: string | null;
+	/** Attachment-store digest when the row referenced it. Durable path. */
+	attachment: string | null;
+	mimeType: string;
+};
+
+/**
+ * Where one attachment's bytes come from, as of this render — the shared
+ * resolver both media components mount (the header explains why it is one).
+ */
+export function useAttachmentSource(
+	ref: AttachmentRef,
 	scope: AttachmentScope | null,
 ): AttachmentSource {
-	// An inline image needs no state at all: the URI is a pure function of the
-	// bytes already in memory, so it is correct on the very first render and
+	// An inline attachment needs no state at all: the URI is a pure function of
+	// the bytes already in memory, so it is correct on the very first render and
 	// never re-renders the row.
-	const inline = image.data
-		? `data:${image.mimeType};base64,${image.data}`
-		: null;
+	const inline = ref.data ? `data:${ref.mimeType};base64,${ref.data}` : null;
 	// A PEEK, never a retain. `retain` mutates a refcount, and a `useState`
 	// initializer that mutates is impure: under the `StrictMode` this app mounts
 	// (`main.tsx`) it is deliberately double-invoked, so retaining here added a
@@ -204,7 +226,7 @@ export function useAttachmentUrl(
 	// the window. Peeking keeps the first paint (the reason this seed exists at
 	// all) while the effect below owns every reference.
 	const [resolved, setResolved] = useState<string | null>(() =>
-		image.attachment ? peek(image.attachment) : null,
+		ref.attachment ? peek(ref.attachment) : null,
 	);
 	/**
 	 * Whether an attempt has come back EMPTY, which is the only fact that separates
@@ -228,7 +250,7 @@ export function useAttachmentUrl(
 	const scopeChildId = scope?.childId ?? null;
 
 	useEffect(() => {
-		const digest = image.attachment;
+		const digest = ref.attachment;
 		if (inline || !digest || !scopeSessionId) return;
 		let live = true;
 		const cached = retain(digest);
@@ -290,16 +312,29 @@ export function useAttachmentUrl(
 			if (joined) abandonFetch(digest);
 			release(digest);
 		};
-	}, [image.attachment, inline, scopeSessionId, scopeChildId]);
+	}, [ref.attachment, inline, scopeSessionId, scopeChildId]);
 
 	const url = inline ?? resolved;
 	if (url) return { state: "ready", url };
 	/*
-	 * No URL. An image with a digest and a scope to fetch it within is RESOLVING
-	 * until an attempt comes back empty; anything else - no digest at all, or no
-	 * scope to ask - can never produce one, and says so on the first render.
+	 * No URL. An attachment with a digest and a scope to fetch it within is
+	 * RESOLVING until an attempt comes back empty; anything else - no digest at
+	 * all, or no scope to ask - can never produce one, and says so on the first
+	 * render.
 	 */
-	return image.attachment && scopeSessionId && !failed
+	return ref.attachment && scopeSessionId && !failed
 		? { state: "resolving" }
 		: { state: "missing" };
+}
+
+/**
+ * The image entry point, as `CanonicalImage` and every earlier caller mounts
+ * it. A thin delegation to `useAttachmentSource` — one resolver, two names —
+ * kept because the image callers read better against their own noun.
+ */
+export function useAttachmentUrl(
+	image: TranscriptImage,
+	scope: AttachmentScope | null,
+): AttachmentSource {
+	return useAttachmentSource(image, scope);
 }

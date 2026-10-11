@@ -3502,7 +3502,7 @@ test("each section is the node its own request resolves to", () => {
 	assert.match(panel, /jobsSectionRef\?: Ref<HTMLElement>/);
 });
 
-test("the Jobs section draws the partition's rows, and nothing in it is pressable", () => {
+test("the Jobs section draws the partition's rows, and its only pressable is the video row's cancel", () => {
 	/*
 	 * The section the jobs chip points at, and the reason it has to exist at all: the
 	 * roster is a filter on `task`, so a chip pointing there would open a section
@@ -3518,15 +3518,38 @@ test("the Jobs section draws the partition's rows, and nothing in it is pressabl
 	 */
 	assert.match(jobs, /details\.jobs\.filter\(isOpenRow\)/);
 	/*
-	 * A QUIET row: an `li` with the shared row body and no control of any kind. A
-	 * tool row has no `session_id`, so `childOpenable` is false for every one of
-	 * them and there is no reader to open — a lit row that opens nothing is worse
-	 * than a quiet one.
+	 * A QUIET row: an `li` with the shared row body, plus the ONE control the design
+	 * adds to it. A tool row has no `session_id`, so `childOpenable` is false for
+	 * every one of them and there is no reader to open — a lit row that opens
+	 * nothing is worse than a quiet one. What a row MAY draw is the video phase's
+	 * cancel control and nothing else: the detached job family has no in-turn rail
+	 * (design spec §2.2, contract §4.2), so the pane owns its one write beside the
+	 * row.
+	 *
+	 * THIS PIN COUNTS INTERACTIONS RATHER THAN FORBIDDING THEM, and the change of
+	 * shape is the contract moving rather than a pin being relaxed: it used to read
+	 * `assert.doesNotMatch(jobs, /onClick/)` — "nothing in it is pressable" — which
+	 * was true until the video phase gave this section exactly ONE pressable, so
+	 * keeping the token-level ban would ban the feature the spec requires. The
+	 * count below is the old pin's claim with its one designed exception named:
+	 * exactly one interaction site, it is the `data-job-cancel` control, and it is
+	 * gated by the MODEL's own predicate (`jobRowCanCancel`) so "which rows offer
+	 * it" stays one rule rather than a second local condition.
 	 */
 	assert.match(jobs, /<li[\s\S]*?data-run-panel-row=\{row\.id\}/);
 	assert.match(jobs, /<SubagentRowBody row=\{row\} \/>/);
 	assert.doesNotMatch(jobs, /<button/);
-	assert.doesNotMatch(jobs, /onClick/);
+	assert.equal(
+		(jobs.match(/onClick/g) ?? []).length,
+		1,
+		"exactly one interaction site: the video row's cancel control",
+	);
+	assert.match(
+		jobs,
+		/\{jobRowCanCancel\(row\) && \(/,
+		"the control is gated by the model's predicate, not a local condition",
+	);
+	assert.match(jobs, /data-job-cancel=\{row\.id\}/);
 	assert.doesNotMatch(jobs, /childOpenable/);
 	assert.doesNotMatch(jobs, /use-child-transcript/);
 	/*
