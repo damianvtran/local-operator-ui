@@ -75,7 +75,12 @@ function installSupplementMedia(): void {
 	desktop.media = async (request: {
 		op?: string;
 		digest?: string;
-	}): Promise<{ status: number; kind: string; body?: unknown }> => {
+	}): Promise<{
+		status: number;
+		kind: string;
+		body?: unknown;
+		detail?: string;
+	}> => {
 		if (request?.op !== "sessions.supplementDocument") {
 			return { status: 404, kind: "error", detail: "not this story" };
 		}
@@ -158,6 +163,8 @@ const answer = (id: string, text: string): TranscriptRecord => ({
 	text,
 	streaming: false,
 	settledAt: TS,
+	stopReason: null,
+	error: false,
 });
 
 function transcriptOf(records: TranscriptRecord[]): TranscriptState {
@@ -532,8 +539,6 @@ export const SupplementFree: StoryObj = {
 					ts: TS - 4000,
 					text: "Summarise the run.",
 					images: [],
-					deliveries: [],
-					interrupted: false,
 				},
 				answer(
 					"m1",
