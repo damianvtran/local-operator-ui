@@ -103,6 +103,20 @@ export type TranscriptImage = {
 };
 
 /**
+ * Whether a media ref is a PICTURE: a legacy image block (no `kind`) or an
+ * image artifact.
+ *
+ * THE predicate for every seat that draws a record's media as pictures — the
+ * `<img>`-only mounts (`CanonicalImage` through the fold strip and the two
+ * media blocks). A video ref must not reach them: it would be fetched and
+ * handed to an `<img>`, which fails decode into a false "unavailable" receipt
+ * (review round 1, F2's class). The player seat (`canonical-video.tsx`) is the
+ * one mount that reads video refs instead.
+ */
+export const isPictureRef = (ref: TranscriptImage): boolean =>
+	ref.kind === undefined || ref.kind === "image";
+
+/**
  * The receipt cursor of one frame on the session stream: the owner epoch and
  * the sequence the frame was published under.
  *
@@ -1051,12 +1065,19 @@ function extractImages(
 	for (const block of content as ContentBlock[]) {
 		const kind = artifactKind(block);
 		if (kind === null && !isImageBlock(block)) continue;
-		// v1 mounts PICTURES only. A video/audio artifact in this array would be
-		// fetched by the kind-blind render path and fail `<img>` decode into a
-		// false "unavailable" receipt (review round 1, F2) — the same call the
-		// harness/TUI half makes ("contribute nothing yet"). Players extend THIS
-		// filter and the render together, not one of them.
-		if (kind !== null && kind !== "image") continue;
+		/*
+		 * PICTURES AND VIDEOS, TOGETHER (review round 1 F2's rule, walked
+		 * forward). The filter admits a video artifact because the RENDER for one
+		 * now exists: the imagegen card's done body mounts each entry by its KIND,
+		 * a video through the digest-fed player (`canonical-video.tsx`). What F2
+		 * forbade was admitting a kind no render could play — an `<img>` handed
+		 * video bytes fails decode into a false "unavailable" receipt — so the
+		 * seats that still draw pictures only (the fold strip, the two media
+		 * blocks) filter by `isPictureRef`, and the player seat is the one mount
+		 * that reads video refs. AUDIO has no seat at all and stays out: its
+		 * follow-on player is a named deferral, and nothing would render it.
+		 */
+		if (kind === "audio") continue;
 		const entry: TranscriptImage = {
 			// Position among IMAGE-ish blocks only, so a text block appearing
 			// between two pictures cannot renumber them and remount both. An

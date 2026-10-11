@@ -1235,12 +1235,15 @@ test("a live artifact frame maps the same way as the durable row", () => {
 	assert.equal(tool.images[0].sourceUrl, null);
 });
 
-test("video artifacts do not enter the view array yet", () => {
-	// The render path is kind-blind: a video entry would be fetched by the
-	// image pipeline and fail `<img>` decode into a false "unavailable"
-	// receipt (review round 1, F2). The model still carries the block — this
-	// array mounts PICTURES only until players land, the same call the
-	// harness/TUI half makes.
+test("video artifacts enter the view array, with their metadata, once a player exists", () => {
+	// The video phase walked F2's rule forward: the filter admits a video ref
+	// BECAUSE the render for one exists — the imagegen card's done body mounts
+	// each entry by its kind, a video through the digest-fed player
+	// (`canonical-video.tsx`). What the old assertion guarded (an `<img>` handed
+	// video bytes failing decode into a false "unavailable" receipt) is now the
+	// picture seats' contract, held by `isPictureRef`; this test pins the
+	// extraction half: the ref arrives, kind and figure intact, and audio —
+	// which has no seat at all — still does not.
 	const video = {
 		kind: "video",
 		content_type: "video/mp4",
@@ -1259,7 +1262,14 @@ test("video artifacts do not enter the view array yet", () => {
 					role: "tool",
 					tool_call_id: "c-vid",
 					tool_name: "generate_video",
-					content: [video],
+					content: [
+						video,
+						{
+							kind: "audio",
+							content_type: "audio/mpeg",
+							attachment: DIGEST,
+						},
+					],
 					provider_payload: { details: {} },
 				},
 			},
@@ -1268,7 +1278,12 @@ test("video artifacts do not enter the view array yet", () => {
 		cursor_missing: false,
 	});
 	const tool = state.records.find((r) => r.kind === "tool");
-	assert.equal(tool.images.length, 0);
+	assert.equal(tool.images.length, 1);
+	assert.equal(tool.images[0].kind, "video");
+	assert.equal(tool.images[0].mimeType, "video/mp4");
+	assert.equal(tool.images[0].attachment, DIGEST);
+	assert.equal(tool.images[0].durationS, 6.5);
+	assert.equal(tool.images[0].width, 1920);
 });
 
 test("a durable row's metadata lands over a bare live frame", () => {

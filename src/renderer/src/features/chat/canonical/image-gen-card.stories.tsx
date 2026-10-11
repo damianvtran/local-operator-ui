@@ -36,12 +36,13 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ReactNode } from "react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import "../../../styles/index.css";
 import { CanonicalTranscript } from "./canonical-transcript";
 import { ImageGenCard } from "./image-gen-card";
 import type {
 	ImageGenCardView,
+	ImageGenMaterial,
 	ImageGenProgress,
 } from "./image-gen-card-model";
 import type {
@@ -143,12 +144,19 @@ const Frame = ({
 	width = "100%",
 	stopping = false,
 	onInterruptTurn,
+	attachmentScope,
 }: {
 	records: TranscriptRecord[];
 	height?: number;
 	width?: string;
 	stopping?: boolean;
 	onInterruptTurn?: () => void;
+	/**
+	 * The conversation scope digest-backed refs resolve through, when a story
+	 * carries one (the video player states do; every other story's refs are
+	 * inline or absent, and `null` is the transcript's own default).
+	 */
+	attachmentScope?: { sessionId: string; childId: string | null } | null;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
@@ -160,6 +168,7 @@ const Frame = ({
 			<CanonicalTranscript
 				transcript={transcriptOf(records)}
 				frontend={null}
+				attachmentScope={attachmentScope}
 				gate={null}
 				waiting={false}
 				starting={false}
@@ -198,8 +207,13 @@ const noop = () => {};
  * year of fixture skew: `Date.now()` runs once at module load, and the card's
  * own tick continues from there.
  */
-const runningView = (progress: ImageGenProgress): ImageGenCardView => ({
+const runningView = (
+	progress: ImageGenProgress,
+	/** The material noun the line names; image unless a story says otherwise. */
+	material: ImageGenMaterial = "image",
+): ImageGenCardView => ({
 	state: "running",
+	material,
 	startedAtMs: Date.now() - 12_000,
 	progress,
 	// The interim's account slot: the `MidWalkFailure` story below carries the
@@ -537,6 +551,7 @@ export const Affordances: Story = {
 			<ImageGenCard
 				view={{
 					state: "failed",
+					material: "image",
 					message: "This generation failed before producing output.",
 					errorType: null,
 				}}
@@ -552,6 +567,7 @@ export const Affordances: Story = {
 				view={{
 					state: "done",
 					images: [],
+					material: "image",
 					durationS: null,
 					receipt: "already-finished",
 				}}
@@ -564,5 +580,329 @@ export const Affordances: Story = {
 			/>
 			<ImageGenCard view={{ state: "cancelled" }} scope={null} />
 		</CardFrame>
+	),
+};
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE VIDEO STORIES (the video phase's desktop card, V2/V3/V4).
+ *
+ * The card rides its whole six-state machine unchanged; these frames are the
+ * video variants a design round reads beside the image set, plus the three
+ * player states the digest-fed seam adds. What each frame is here to show:
+ *
+ * - `VideoRunning` wires `onInterruptTurn` and mounts an IMAGE call beside the
+ *   video one: the image card draws Cancel, the video card draws NOTHING —
+ *   the mount withholds the handler (R4, contract §4.2: an in-turn press
+ *   cannot cancel a detached job; its rail is the run-details Jobs row). The
+ *   affirmative is the point of the pair, not the absence alone.
+ * - `VideoDone` carries both arms of completion: a row with the artifact
+ *   (through the player, over the real relay seam — the bytes are answered by
+ *   `installVideoRelay`, the story-level stub whose sibling stubs the child
+ *   image relay, so what is proven is the RENDERER's half: the digest, the op,
+ *   the mime and the painted player) and a row WITHOUT one (the receipt-only
+ *   floor, which must render whether or not the bytes ever arrive).
+ * - `VideoPlayerResolving` holds the fetch open so the reserved box is a
+ *   state rather than a race; `VideoPlayerMissing` answers 404 so the receipt
+ *   copy (`could not be played. Its stored copy is not available to this
+ *   reader.`) is the other state a still can carry. The two mount the same
+ *   row and differ only in the relay's answer.
+ */
+
+/** One `generate_video` call, in every state below. */
+const videoTool = (over: Partial<ToolRecord> & { id: string }): ToolRecord =>
+	genTool({ ...over, toolName: "generate_video" });
+
+/**
+ * A real, tiny MP4 — 160x120, 1.0 s, 6 frames, H.264, 1716 bytes — encoded
+ * once with AVFoundation and spelled as a literal because it has to live in
+ * this file (the PICTURE_B64 precedent: the story imports no asset loader for
+ * video). Small enough that the literal costs a couple of kilobytes.
+ */
+const TINY_MP4_B64 =
+	"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";
+
+const TINY_MP4_BYTES = Uint8Array.from(atob(TINY_MP4_B64), (character) =>
+	character.charCodeAt(0),
+);
+
+/** The one digest the video relay answers, as a durable artifact carries it. */
+const VIDEO_DIGEST = "a1b2c3d4e5f6071829a4b5c6d7e8f901";
+
+/** A video artifact as the durable transcript carries it: digest, no bytes. */
+const VIDEO_REF: TranscriptImage = {
+	id: "tool:vd1:0",
+	data: null,
+	attachment: VIDEO_DIGEST,
+	mimeType: "video/mp4",
+	kind: "video",
+	durationS: 6.5,
+	width: 160,
+	height: 120,
+};
+
+/**
+ * Answer the card's digest fetch out of the story, the `installChildImageRelay`
+ * pattern one canonical section over: a Storybook frame has no backend, so a
+ * durable digest can only ever render the unavailable note unless the renderer's
+ * own seam — `desktopMedia` — is answered. The three modes are the three player
+ * states a still can carry: `bytes` (the player paints), `pending` (the fetch
+ * never lands, so the reserved box holds) and `missing` (a 404, so the receipt
+ * paints). ONLY the fixture's digest and the parent-scoped op are answered;
+ * anything else gets a 404, so a scope or op regression shows up as the
+ * unavailable note in the frame rather than as a player borrowed from a stub
+ * that answered everything.
+ *
+ * Installed during the decorator's RENDER rather than in an effect, and that is
+ * load-bearing: React runs a child's effects before its parent's, so an effect
+ * here would land after the reader's own fetch had already gone out. Each
+ * captured frame is a fresh document, so the stub does not outlive it.
+ */
+const installVideoRelay = (mode: "bytes" | "pending" | "missing") => {
+	const answer = () => {
+		if (mode === "pending") return new Promise(() => {});
+		if (mode === "missing")
+			return Promise.resolve({
+				status: 404,
+				kind: "error",
+				detail: "Not in this story.",
+			});
+		return Promise.resolve({
+			status: 200,
+			kind: "bytes",
+			mimeType: "video/mp4",
+			data: TINY_MP4_BYTES,
+		});
+	};
+	// biome-ignore lint/suspicious/noExplicitAny: the preload bridge is a mock here.
+	const api = (window as any).api ?? {};
+	api.desktop = {
+		...api.desktop,
+		media: async (request: { op?: string; digest?: string }) =>
+			request.op === "sessions.attachment" && request.digest === VIDEO_DIGEST
+				? answer()
+				: { status: 404, kind: "error", detail: "Not in this story." },
+	};
+	// biome-ignore lint/suspicious/noExplicitAny: the preload bridge is a mock here.
+	(window as any).api = api;
+};
+
+/**
+ * Hold the shutter until the player is really playing: the same protocol as
+ * `useWaitForPaintedImage` one element over — a blob-backed `<video>` that has
+ * decoded at least its first frame (`readyState >= HAVE_CURRENT_DATA`), not
+ * merely mounted.
+ */
+const useWaitForPaintedVideo = () => {
+	useEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		const poll = window.setInterval(() => {
+			const video = [
+				...document.querySelectorAll<HTMLVideoElement>("video"),
+			].find((element) => element.src.startsWith("blob:"));
+			if (!video || video.readyState < 2) return;
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		}, 40);
+		return () => {
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, []);
+};
+
+/** Both halves of the wait before a video call executes. */
+export const VideoQueued: Story = {
+	render: () => (
+		<Frame
+			height={220}
+			records={[
+				videoTool({ id: "tool:vq1", phase: "composing", argumentBytes: 3120 }),
+				videoTool({
+					id: "tool:vq2",
+					phase: "queued",
+					argumentBytes: 3120,
+					details: canonical({
+						tool_name: "generate_video",
+						stage: "queued",
+						queue_position: 1,
+					}),
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * The running video card beside a running image card, both mounts offered the
+ * pane's interrupt: the image row draws its Cancel, the video row draws
+ * nothing. That pair IS the R4 affirmative (see the section note).
+ */
+export const VideoRunning: Story = {
+	render: () => (
+		<Frame
+			height={540}
+			onInterruptTurn={noop}
+			records={[
+				videoTool({
+					id: "tool:vr1",
+					phase: "running",
+					startedAt: Date.now() - 42_000,
+					details: canonical({
+						tool_name: "generate_video",
+						stage: "in_progress",
+						log_lines: [
+							{
+								message: "provider: encoding segment 4/8",
+								timestamp: 1_760_000_006,
+							},
+						],
+					}),
+				}),
+				genTool({
+					id: "tool:vr2",
+					phase: "running",
+					startedAt: Date.now() - 20_000,
+				}),
+			]}
+		/>
+	),
+};
+
+/** The stop in flight: the line swaps to `Cancelling…` and no control exists. */
+export const VideoCancelling: Story = {
+	render: () => (
+		<Frame
+			height={300}
+			stopping={true}
+			onInterruptTurn={noop}
+			records={[
+				videoTool({
+					id: "tool:vc1",
+					phase: "running",
+					startedAt: Date.now() - 12_000,
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * The completion pair: the artifact through the player (real bytes over the
+ * stubbed relay seam) and the receipt-only floor with no artifact at all.
+ */
+export const VideoDone: Story = {
+	render: () => (
+		<Frame
+			height={480}
+			attachmentScope={{ sessionId: "video-story", childId: null }}
+			records={[
+				videoTool({
+					id: "tool:vd1",
+					phase: "done",
+					durationS: 6.5,
+					images: [VIDEO_REF],
+				}),
+				videoTool({ id: "tool:vd2", phase: "done", durationS: 8 }),
+			]}
+		/>
+	),
+	decorators: [
+		(Story) => {
+			installVideoRelay("bytes");
+			useWaitForPaintedVideo();
+			return <Story />;
+		},
+	],
+};
+
+/** The bytes are on their way: the reserved box holds the slot, no spinner. */
+export const VideoPlayerResolving: Story = {
+	render: () => (
+		<Frame
+			height={300}
+			attachmentScope={{ sessionId: "video-story", childId: null }}
+			records={[
+				videoTool({
+					id: "tool:vpr",
+					phase: "done",
+					durationS: 6.5,
+					images: [VIDEO_REF],
+				}),
+			]}
+		/>
+	),
+	decorators: [
+		(Story) => {
+			installVideoRelay("pending");
+			return <Story />;
+		},
+	],
+};
+
+/** The bytes never arrive: the receipt copy, in the player's own verb. */
+export const VideoPlayerMissing: Story = {
+	render: () => (
+		<Frame
+			height={300}
+			attachmentScope={{ sessionId: "video-story", childId: null }}
+			records={[
+				videoTool({
+					id: "tool:vpm",
+					phase: "done",
+					durationS: 6.5,
+					images: [VIDEO_REF],
+				}),
+			]}
+		/>
+	),
+	decorators: [
+		(Story) => {
+			installVideoRelay("missing");
+			return <Story />;
+		},
+	],
+};
+
+/** The provider's absence sentence for a video call (V4's fallback). */
+export const VideoFailed: Story = {
+	render: () => (
+		<Frame
+			height={220}
+			records={[videoTool({ id: "tool:vf1", isError: true, output: null })]}
+		/>
+	),
+};
+
+/** A stop mid-run: terminal, no artifact, the receipt line only. */
+export const VideoCancelled: Story = {
+	render: () => (
+		<Frame
+			height={220}
+			records={[videoTool({ id: "tool:vx1", stopped: true, durationS: 3.4 })]}
+		/>
+	),
+};
+
+/** The cancel conflict, material-free words: `Already finished.` */
+export const VideoConflict: Story = {
+	render: () => (
+		<Frame
+			height={220}
+			records={[
+				videoTool({
+					id: "tool:vcf",
+					isError: true,
+					output: "not cancelled — it had already completed",
+					details: canonical({
+						tool_name: "generate_video",
+						stage: "cancelled",
+						error:
+							"The generation had already completed when the cancel arrived; its result was discarded.",
+						error_type: "media_already_completed",
+					}),
+				}),
+			]}
+		/>
 	),
 };
