@@ -95,6 +95,19 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			digest: z.string().regex(/^[a-f0-9]{32}$/),
 		})
 		.strict(),
+	// One supplement component's assembled HTML document (turn-supplements
+	// memo §2.7), as `{ html }` JSON. Both identifiers are shape-constrained
+	// here for the same reason the attachment ops' are: the path is built in
+	// main, and an unvalidated digest would be renderer-controlled path text.
+	// The digest regex is the contract's own (`DIGEST_PATTERN`,
+	// `local_operator/supplements/contract.py`): 32 lowercase hex characters.
+	z
+		.object({
+			op: z.literal("sessions.supplementDocument"),
+			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
+			digest: z.string().regex(/^[a-f0-9]{32}$/),
+		})
+		.strict(),
 ]);
 
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
@@ -140,6 +153,11 @@ function endpoint(request: DesktopMediaRequest): {
 		case "subagents.attachment":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/children/${request.childId}/attachments/${request.digest}`,
+				method: "GET",
+			};
+		case "sessions.supplementDocument":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/supplements/${request.digest}/document`,
 				method: "GET",
 			};
 	}
@@ -211,7 +229,8 @@ export async function requestDesktopMediaOutcome(
 	if (
 		request.op === "agent.export" ||
 		request.op === "sessions.attachment" ||
-		request.op === "subagents.attachment"
+		request.op === "subagents.attachment" ||
+		request.op === "sessions.supplementDocument"
 	) {
 		// A GET carries no body; `fetch` rejects one outright.
 		body = undefined;
