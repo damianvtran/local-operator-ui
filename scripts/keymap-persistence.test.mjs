@@ -116,4 +116,17 @@ test("junk, unknown ids, reserved chords and duplicates are dropped at the bound
 	assert.deepEqual(merge({ "panel.browser": "cmd+i" }), {
 		"panel.browser": "primary+i",
 	});
+	/*
+	 * The explicit no-chord state survives too (U4) — for known ids only — and
+	 * it claims nothing, so the cleared action's default is genuinely freed for
+	 * another row (the state the Clear button exists to reach).
+	 */
+	assert.deepEqual(merge({ "panel.console": null }), {
+		"panel.console": null,
+	});
+	assert.deepEqual(merge({ "panel.nope": null }), {});
+	assert.deepEqual(
+		merge({ "panel.console": null, "panel.browser": "primary+j" }),
+		{ "panel.console": null, "panel.browser": "primary+j" },
+	);
 });

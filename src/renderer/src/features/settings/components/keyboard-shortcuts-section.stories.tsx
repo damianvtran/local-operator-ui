@@ -53,8 +53,18 @@ const Section: FC<{
 			?.focus({ focusVisible: true } as FocusOptions);
 	}, [focusAction]);
 	return (
-		<div className="max-w-2xl bg-canvas p-8">
-			<KeyboardShortcutsSection />
+		<div className="min-h-screen bg-canvas p-8">
+			{/*
+			 * `max-w-4xl`, the page's own content column (`settings-page.tsx`), not
+			 * the `max-w-2xl` this story mounted at until design review round 1
+			 * (D1): the page renders this section at 896px and the description's own
+			 * cap binds there, so a 608px frame under-rendered the description and
+			 * photographed a composition the app never draws. The speech story
+			 * states the rule this follows.
+			 */}
+			<div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
+				<KeyboardShortcutsSection />
+			</div>
 		</div>
 	);
 };

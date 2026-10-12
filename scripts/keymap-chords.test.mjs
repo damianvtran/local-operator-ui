@@ -191,8 +191,17 @@ test("captureRefusal: the four sentences, in precedence order", () => {
 		captureRefusal("f13", "panel.console", {}),
 		"That key cannot be bound.",
 	);
+	/*
+	 * The needs-a-modifier sentence follows the reading machine (U5): the default
+	 * is the same `linux` fallback `rendererPlatform()` documents, and macOS
+	 * keeps both spellings because `primary` collapses `meta` AND `ctrl` there.
+	 */
 	assert.equal(
 		captureRefusal("j", "panel.console", {}),
+		"A shortcut needs Ctrl.",
+	);
+	assert.equal(
+		captureRefusal("j", "panel.console", {}, "mac"),
 		"A shortcut needs ⌘ or Ctrl.",
 	);
 	// Reserved matching is canonical-form matching: the alias spelling refuses
@@ -214,6 +223,28 @@ test("captureRefusal: the four sentences, in precedence order", () => {
 	// ...and only for OTHER actions: re-pressing the row's own chord is not a
 	// conflict.
 	assert.equal(captureRefusal("primary+j", "panel.console", {}), null);
+	// ...and a CLEARED action claims nothing (U4): its default is free.
+	assert.equal(
+		captureRefusal("primary+j", "panel.browser", { "panel.console": null }),
+		null,
+	);
+	/*
+	 * The review round's four newly-reserved chords (F1 = Q1): the canvas
+	 * editors listen on `window` (the router's document listener runs first in
+	 * the bubble phase) and the pin-move returns skip `preventDefault`, so each
+	 * is refused with the sentence naming its job.
+	 */
+	for (const [chord, sentence] of [
+		["primary+s", "Reserved: saves the canvas document."],
+		["primary+o", "Reserved: opens a file in the canvas."],
+		["meta+shift+up", "Reserved: moves the focused chat up the pinned order."],
+		[
+			"ctrl+shift+down",
+			"Reserved: moves the focused chat down the pinned order.",
+		],
+	]) {
+		assert.equal(captureRefusal(chord, "panel.console", {}), sentence, chord);
+	}
 	// An override redirects the refusal to whoever now holds the chord (bindings
 	// are canonical by the time anything reads them: the write boundary and the
 	// hydrating sanitizer are `setShortcutBinding`/`sanitizeShortcutBindings`).
@@ -232,6 +263,15 @@ test("effectiveChord and buildChordMap: override ?? default, first claim wins", 
 		effectiveChord("panel.browser", { "panel.browser": "primary+i" }),
 		"primary+i",
 	);
+	/*
+	 * The explicit no-chord state (U4): a stored `null` answers "nothing", where
+	 * absence falls back to the default — the two are different states, and only
+	 * the delete-absence arm means "unchanged from the default".
+	 */
+	assert.equal(
+		effectiveChord("panel.console", { "panel.console": null }),
+		null,
+	);
 	const map = buildChordMap({
 		"panel.browser": "primary+i",
 		"panel.console": "primary+j",
@@ -240,6 +280,17 @@ test("effectiveChord and buildChordMap: override ?? default, first claim wins", 
 	assert.equal(map.get("primary+j"), "panel.console");
 	assert.equal(map.get("primary+shift+c"), "panel.canvas");
 	assert.equal(map.size, 3);
+	// A cleared action drops out of the map entirely, and its default is freed
+	// for another row to answer instead — which is the point of clearing.
+	const cleared = buildChordMap({ "panel.console": null });
+	assert.equal(cleared.get("primary+j"), undefined);
+	assert.equal(cleared.get("primary+shift+c"), "panel.canvas");
+	assert.equal(cleared.size, 1);
+	const freed = buildChordMap({
+		"panel.console": null,
+		"panel.browser": "primary+j",
+	});
+	assert.equal(freed.get("primary+j"), "panel.browser");
 });
 
 test("sanitizeShortcutBindings: junk, unknown ids, reserved chords, duplicates", () => {
@@ -286,4 +337,20 @@ test("sanitizeShortcutBindings: junk, unknown ids, reserved chords, duplicates",
 	);
 	// Non-string values are dropped like junk.
 	assert.deepEqual(sanitizeShortcutBindings({ "panel.browser": 7 }), {});
+	/*
+	 * The explicit no-chord state survives the boundary (U4) — for known ids
+	 * only — and it claims nothing, which is what frees a cleared action's
+	 * default for another row.
+	 */
+	assert.deepEqual(sanitizeShortcutBindings({ "panel.console": null }), {
+		"panel.console": null,
+	});
+	assert.deepEqual(sanitizeShortcutBindings({ "panel.nope": null }), {});
+	assert.deepEqual(
+		sanitizeShortcutBindings({
+			"panel.console": null,
+			"panel.browser": "primary+j",
+		}),
+		{ "panel.console": null, "panel.browser": "primary+j" },
+	);
 });

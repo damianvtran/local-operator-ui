@@ -147,7 +147,15 @@ export function effectiveChord(
 	bindings: ShortcutBindings | undefined,
 ): string | null {
 	const override = bindings?.[actionId];
-	if (typeof override === "string") return override;
+	/*
+	 * `undefined` AND `null` ARE DIFFERENT ANSWERS (UX round 1's U4): absent
+	 * means the user has not touched this row and the default still answers,
+	 * while a stored `null` is the explicit no-chord state the settings row's
+	 * Clear button writes — "this action is deliberately unbound", and nothing
+	 * dispatches it. Only a stored string is read as a chord (both writers keep
+	 * it canonical).
+	 */
+	if (typeof override === "string" || override === null) return override;
 	return actionById(actionId)?.defaultChord ?? null;
 }
 
@@ -172,6 +180,21 @@ export function buildChordMap(
 }
 
 /**
+ * The sentence a chord without the app modifier hears, in the register of the
+ * machine reading it (UX round 1's U5).
+ *
+ * macOS keeps BOTH spellings because both presses genuinely record there:
+ * `primary` collapses `meta` and `ctrl` (the file header), so naming only ⌘
+ * would hide a key that works. Anywhere else `primary` is Ctrl and only Ctrl is
+ * named — the old fixed sentence told Windows and Linux users about a key their
+ * keyboards do not have. The default is `linux`, the same fallback
+ * `rendererPlatform()` documents for a window that predates the chrome facts,
+ * so a caller that shows the sentence passes the platform it read.
+ */
+const needsModifierSentence = (platform: MiniViewPlatform): string =>
+	platform === "mac" ? "A shortcut needs ⌘ or Ctrl." : "A shortcut needs Ctrl.";
+
+/**
  * Why a captured chord cannot be assigned, as the sentence shown under the
  * field — or `null` when it can. Ordered so the most specific job is named:
  *
@@ -182,16 +205,20 @@ export function buildChordMap(
  *    a default counts as taken, not only a stored override.
  *
  * The action's OWN chord is not a conflict: re-pressing the chord a row already
- * shows is a no-op the row commits rather than a refusal.
+ * shows is never refused, and the ROW answers it without a store write (UX
+ * round 1's U3 — `⌘J` re-pressed on the console records nothing, and pressing a
+ * row's default while an override exists clears the override rather than
+ * storing one equal to the default).
  */
 export function captureRefusal(
 	chord: string | null,
 	actionId: ActionId,
 	bindings: ShortcutBindings | undefined,
+	platform: MiniViewPlatform = "linux",
 ): string | null {
 	const normalized = chord === null ? null : normalizeChord(chord);
 	if (normalized === null) return "That key cannot be bound.";
-	if (!chordHasPrimary(normalized)) return "A shortcut needs ⌘ or Ctrl.";
+	if (!chordHasPrimary(normalized)) return needsModifierSentence(platform);
 	const reserved = RESERVED_CHORDS.get(normalized);
 	if (reserved !== undefined) return reserved;
 	for (const action of KEYMAP_ACTIONS) {
@@ -208,12 +235,15 @@ export function captureRefusal(
  *
  * `localStorage` is not a trusted input (a hand edit, a downgrade, a
  * half-written blob), so every override is re-validated here — and the drop
- * rules are exactly the capture rules: non-strings, unknown ids (never read: the
- * loop IS the registry), unparseable or primary-less chords, reserved chords,
- * and a chord an earlier action in registry order already claimed. A dropped
- * override falls back to the action's default, which itself claims its chord —
- * so two entries fighting over one chord resolve to the first action in the
- * registry, and dispatch stays unambiguous.
+ * rules are exactly the capture rules: non-strings (except the explicit `null`
+ * the Clear button writes), unknown ids (never read: the loop IS the registry),
+ * unparseable or primary-less chords, reserved chords, and a chord an earlier
+ * action in registry order already claimed. A dropped override falls back to
+ * the action's default, which itself claims its chord — so two entries fighting
+ * over one chord resolve to the first action in the registry, and dispatch
+ * stays unambiguous. A stored `null` survives (it is the deliberate no-chord
+ * state) and claims nothing, which is what frees a cleared action's default for
+ * another row.
  */
 export function sanitizeShortcutBindings(raw: unknown): ShortcutBindings {
 	if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return {};
@@ -222,6 +252,10 @@ export function sanitizeShortcutBindings(raw: unknown): ShortcutBindings {
 	const bindings: ShortcutBindings = {};
 	for (const action of KEYMAP_ACTIONS) {
 		const stored = source[action.id];
+		if (stored === null) {
+			bindings[action.id] = null;
+			continue;
+		}
 		const normalized =
 			typeof stored === "string" ? normalizeChord(stored) : null;
 		const override =

@@ -121,10 +121,14 @@ export const actionById = (id: ActionId): KeymapAction | undefined =>
 	ACTIONS_BY_ID.get(id);
 
 /**
- * The stored overrides: only actions a user rebind appear — absent = the
- * action's default. The shape of `ui-preferences-store.shortcutBindings`.
+ * The stored overrides: only actions a user touched appear. `undefined` (key
+ * absent) = the action's default; a string = a canonical chord; `null` = the
+ * explicit no-chord state the settings row's Clear button writes (UX round 1's
+ * U4 — a defaulted action must be releasable, and absence already means "the
+ * default", so the two states need two values). The shape of
+ * `ui-preferences-store.shortcutBindings`.
  */
-export type ShortcutBindings = Partial<Record<ActionId, string>>;
+export type ShortcutBindings = Partial<Record<ActionId, string | null>>;
 
 /**
  * The chords capture refuses, each with the sentence shown under the field.
@@ -144,11 +148,21 @@ export type ShortcutBindings = Partial<Record<ActionId, string>>;
  *
  * WHAT IS DELIBERATELY ABSENT: punctuation keys are unrepresentable in the
  * canonical grammar (`normalizeChord` refuses them), so the zoom trio
- * (`⌘+`/`⌘-`/`⌘0`) cannot be captured — by construction, not by omission. And
- * the chords that ARE representable but scoped to a canvas editor or a focused
- * row's move (`⌘S`, `⌘O`, `⌘⇧↑`/`⌘⇧↓`) are left assignable: each preventDefaults
- * at its own listener before the router ever sees it, which is the same
- * carve-out the palette's `defaultPrevented` rule makes.
+ * (`⌘+`/`⌘-`/`⌘0`) cannot be captured — by construction, not by omission.
+ *
+ * WHAT IS NOT ABSENT, after review round 1's F1 = QA's Q1 (measured, not read):
+ * the canvas editors' save/open chords (`⌘S`, `⌘O`) and the focused row's move
+ * (`⌘⇧↑`/`⌘⇧↓`) ARE reserved below. They were left assignable on the claim that
+ * each `preventDefault`s at its own listener before the router sees the press —
+ * and that claim is false in the app's phase order. Their listeners sit on
+ * `window` (the canvas editors), while the router is on `document`; in the
+ * bubble phase `document` runs FIRST, so a bound action fires beside the
+ * editor's (bind `⌘O` and one press opens the file dialog AND toggles the
+ * panel). The pin-move chords call `preventDefault` only when the focused row
+ * offers the move: on the announce return and the rowId-null return the
+ * sidebar answers WITHOUT claiming, so the router fires on the same press
+ * (QA's three-path probe). Reserved with their jobs named; the palette's
+ * `defaultPrevented` carve-out does not reach any of them.
  */
 export const RESERVED_CHORDS: ReadonlyMap<string, string> = new Map([
 	// The main process's doors: the renderer never sees these presses, so a
@@ -167,6 +181,17 @@ export const RESERVED_CHORDS: ReadonlyMap<string, string> = new Map([
 	["primary+alt+up", "Reserved: walks up the chat regions."],
 	["primary+alt+down", "Reserved: walks down the chat regions."],
 	["primary+shift+a", "Reserved: archives the focused conversation."],
+	// Canvas-editor chords whose listeners are on `window` — the router's
+	// document-phase listener runs first, so a bound action would double-fire.
+	["primary+s", "Reserved: saves the canvas document."],
+	["primary+o", "Reserved: opens a file in the canvas."],
+	// The focused row's move: claimed only when the row offers it, unclaimed on
+	// the announce and rowId-null returns, so the router can see those presses.
+	["primary+shift+up", "Reserved: moves the focused chat up the pinned order."],
+	[
+		"primary+shift+down",
+		"Reserved: moves the focused chat down the pinned order.",
+	],
 	// Native text editing a focused field must keep.
 	["primary+c", "Reserved: copy."],
 	["primary+x", "Reserved: cut."],
