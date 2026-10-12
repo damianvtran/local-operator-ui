@@ -33,7 +33,9 @@ import {
 	epochMsFromSeconds,
 } from "../../../../../shared/desktop-session-contract";
 import {
+	type HubReceipt,
 	type PeerSender,
+	hubFields,
 	peerFields,
 	sameSender,
 	wakeIsCatchup,
@@ -481,6 +483,9 @@ export type TranscriptRecord =
 			id: string;
 			ts: number;
 			customType: string;
+			/** Structured hub facts survive replay without becoming a human turn. */
+			receipt?: HubReceipt;
+			images?: TranscriptImage[];
 			/** The row's rendered body, as persisted. */
 			text: string;
 			/**
@@ -2689,6 +2694,34 @@ function durableRecord(
 		// that). The envelope is parsed rather than required, because a row from an
 		// older producer may carry only it; either way no envelope reaches the
 		// view.
+		if (customType === "hub_message") {
+			const receipt = hubFields(details);
+			if (!receipt.body.trim()) return null;
+			const old = previous?.kind === "custom" ? previous.receipt : undefined;
+			if (old && sameSender(old.sender, receipt.sender))
+				receipt.sender = old.sender;
+			return {
+				kind: "custom",
+				id: entry.id,
+				ts,
+				customType,
+				text: receipt.envelope,
+				attribution: "user",
+				...customRow(customType, receipt.envelope || receipt.body, details),
+				receipt:
+					old &&
+					(Object.keys(receipt) as (keyof HubReceipt)[]).every(
+						(key) => old[key] === receipt[key],
+					)
+						? old
+						: receipt,
+				images: extractImages(
+					payload.content ? payload : details,
+					entry.id,
+					previous?.kind === "custom" ? previous.images : undefined,
+				),
+			};
+		}
 		if (customType === PEER_MESSAGE_CUSTOM_TYPE) {
 			const { body, sender } = peerFields(details);
 			return {

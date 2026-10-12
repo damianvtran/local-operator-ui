@@ -4523,6 +4523,58 @@ test("a relayed payload's headline steps over both instruction lines the channel
 	}
 });
 
+test("hub receipts preserve structured display bytes and replay identity", () => {
+	const body = "  first paragraph\n\nsecond paragraph  ";
+	const entry = custom("structured-hub", "hub_message", {
+		body,
+		text: "<parent-message>\ninstruction\n\nmodel envelope\n</parent-message>",
+		direction: "to_child",
+		expects_reply: true,
+		steer: true,
+	});
+	const page = { entries: [entry], has_more: false, cursor: null };
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+	const record = state.records[0];
+	assert.equal(record.kind, "custom");
+	assert.equal(record.receipt.body, body);
+	assert.equal(record.receipt.direction, "to_child");
+	assert.equal(record.receipt.expectsReply, true);
+	assert.equal(record.receipt.steer, true);
+	assert.equal(
+		record.receipt.sender.sessionId,
+		"",
+		"no fabricated parent session ID",
+	);
+	assert.equal(applyHistoryPage(state, page), state);
+	const live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "history_delta", messages: [{ id: entry.id, ...entry.payload }] },
+		1,
+	);
+	assert.equal(live.records[0].receipt.body, body);
+	assert.equal(
+		applyHistoryPage(live, page).records.length,
+		1,
+		"live plus durable same-ID replay paints once",
+	);
+	const child = replay([
+		custom("child", "hub_message", {
+			body,
+			text: "envelope",
+			direction: "to_parent",
+			label: "worker",
+			job_id: "job-1",
+		}),
+	])[0];
+	assert.equal(child.receipt.label, "worker");
+	assert.equal(child.receipt.jobId, "job-1");
+	assert.equal(
+		child.receipt.expectsReply,
+		null,
+		"old/missing flag remains unknown",
+	);
+});
+
 test("an empty relay paints its envelope rather than its closing tag", () => {
 	// 34 real rows in the store are this shape: the description line is empty.
 	const [row] = replay([

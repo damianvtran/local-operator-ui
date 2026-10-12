@@ -47,6 +47,127 @@
  * literal inside a function is rebuilt on every call and the peer rows of a
  * transcript are rebuilt on every reconnect (`useTopLevelRegex`).
  */
+/**
+ * Hub receipts are agent-to-agent facts, not operator questions. Keep the raw
+ * display body separate from its model envelope: reply-requested is historical
+ * intent, never a claim that a reply is still outstanding. Old envelopes remain
+ * readable without requiring fields their producer did not persist.
+ */
+export type HubReceipt = {
+	body: string;
+	envelope: string;
+	direction: string;
+	label: string;
+	jobId: string;
+	sender: PeerSender;
+	expectsReply: boolean | null;
+	steer: boolean | null;
+};
+
+// Exact producer preambles only: quoted instructions in arbitrary body text are
+// not classification. This inverse mirrors harness/comms.py's envelope builder.
+const HUB_PREAMBLES = new Map([
+	[
+		"This changes your instructions. Apply it from now on, and drop work it makes pointless.",
+		"steer",
+	],
+	[
+		"Answer it now with the `hub` tool — a short, direct reply — then carry on with what you were doing. Do not restructure your work around the question.",
+		"ask",
+	],
+	[
+		"This is a note, not a question. No reply is needed unless it changes what you should do.",
+		"note",
+	],
+]);
+const HUB_LABEL = /\blabel=(['"])(.*?)\1/;
+const HUB_JOB = /\bjob=(['"])(.*?)\1/;
+const HUB_ENVELOPE =
+	/^<(parent-message|subagent-message)\b[^>]*>\n([\s\S]*)\n<\/\1>$/;
+
+export function hubFields(details: Record<string, unknown>): HubReceipt {
+	const envelope = typeof details.text === "string" ? details.text : "";
+	const matched = HUB_ENVELOPE.exec(envelope);
+	let parsedBody = matched?.[2];
+	const separator = parsedBody?.indexOf("\n\n") ?? -1;
+	const preamble =
+		separator >= 0
+			? HUB_PREAMBLES.get((parsedBody ?? "").slice(0, separator))
+			: undefined;
+	if (matched?.[1] === "parent-message" && preamble)
+		parsedBody = (parsedBody ?? "").slice(separator + 2);
+	const direction =
+		typeof details.direction === "string"
+			? details.direction
+			: matched?.[1] === "subagent-message"
+				? "to_parent"
+				: preamble
+					? "to_child"
+					: "";
+	return {
+		body:
+			typeof details.body === "string"
+				? details.body
+				: parsedBody?.trim()
+					? parsedBody
+					: envelope,
+		envelope,
+		direction,
+		label: senderField(
+			details.label ??
+				(matched && HUB_LABEL.exec(matched[0].split("\n", 1)[0])?.[2]),
+		),
+		jobId: senderField(
+			details.job_id ??
+				(matched && HUB_JOB.exec(matched[0].split("\n", 1)[0])?.[2]),
+		),
+		sender: peerFields(details).sender,
+		expectsReply:
+			typeof details.expects_reply === "boolean"
+				? details.expects_reply
+				: preamble
+					? preamble === "ask"
+					: null,
+		steer:
+			typeof details.steer === "boolean"
+				? details.steer
+				: preamble
+					? preamble === "steer"
+					: null,
+	};
+}
+
+export function hubIdentity(receipt: HubReceipt): string {
+	const sender =
+		receipt.label ||
+		receipt.jobId ||
+		receipt.sender.conversationName ||
+		receipt.sender.sessionId ||
+		(receipt.direction === "to_child"
+			? "Parent"
+			: receipt.direction === "to_parent"
+				? "Subagent"
+				: "Hub");
+	return [
+		sender,
+		receipt.expectsReply ? "Reply requested" : "",
+		receipt.steer ? "Steered" : "",
+	]
+		.filter(Boolean)
+		.join(" · ");
+}
+
+/** Positive structural classification; arbitrary custom notices remain boundaries. */
+export function isInternalReceipt(record: {
+	kind: string;
+	customType?: string;
+}): boolean {
+	return (
+		record.kind === "peer" ||
+		(record.kind === "custom" && record.customType === "hub_message")
+	);
+}
+
 const WHITESPACE_RUN = /\s+/;
 const TRAILING_SEPARATORS = /[\\/]+$/;
 const PATH_SEPARATOR = /[\\/]/;
