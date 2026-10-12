@@ -13,6 +13,7 @@
  */
 
 import { ProviderGrid } from "@features/providers/provider-grid";
+import { t } from "@shared/i18n";
 import type { FC } from "react";
 
 type ConnectProviderStepProps = {
@@ -39,9 +40,7 @@ export const ConnectProviderStep: FC<ConnectProviderStepProps> = ({
 		 * already names it.
 		 */}
 		<p className="text-body text-ink-muted">
-			Local Operator needs an AI account to work. Radient is the easiest: one
-			browser sign-in and nothing to paste. Already pay for ChatGPT or Claude?
-			Sign in with that instead. Anything else is under More providers.
+			{t("ui.onboarding.connect.intro")}
 		</p>
 		<ProviderGrid
 			context="dialog"

@@ -51,7 +51,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 /** The shipped directory, resolved to the module loader's own (physical) URL. */
 const SCRIPTS = dirname(
@@ -167,6 +167,17 @@ function cases(root) {
 	const scriptsScope = scriptsScopeRepo(root);
 	const classifier = classifierRepo(root);
 	return [
+		{
+			// Reject the SHA before any Linux/compiler/dependency control can start.
+			// This is the diagnostic's own CLI verdict, not a blanket exemption.
+			script: "onboarding-desktop-diagnostic.mjs",
+			args: ["not-a-commit", join(root, "unused-diagnostic-output")],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout: /^$/,
+			stderr: /onboarding diagnostic: Expected a full lowercase commit SHA/,
+		},
 		{
 			// The only case that MUTATES its working directory: each spelling gets its
 			// own, or the second would be tested against the first's edit.
@@ -668,6 +679,44 @@ test("a script this file drives produces its answer, not a silent zero", () => {
 					physical.stderr !== "",
 				`${kase.script} exited 0 and said nothing, which is indistinguishable from not having run`,
 			);
+		}
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("onboarding diagnostic distinguishes driven CLI from import through physical and symlinked paths", () => {
+	const root = mkdtempSync(join(tmpdir(), "onboarding-entry-point-"));
+	try {
+		const bin = stubBin(root);
+		const kase = cases(root).find(
+			(candidate) => candidate.script === "onboarding-desktop-diagnostic.mjs",
+		);
+		assert.ok(kase, "the workflow driver must be in the real driven registry");
+		const link = join(root, "linked-scripts");
+		symlinkSync(SCRIPTS, link);
+		for (const spelling of [
+			join(SCRIPTS, kase.script),
+			join(link, kase.script),
+		]) {
+			const cli = run(spelling, kase, bin, root);
+			assert.equal(cli.status, kase.status, cli.stderr);
+			assert.match(cli.stdout, kase.stdout);
+			assert.match(cli.stderr, kase.stderr);
+			// A real importer has its OWN entry point. Supplying the same bad
+			// CLI arguments must not make an imported diagnostic run its main.
+			const importer = join(root, "importer.mjs");
+			writeFileSync(
+				importer,
+				`await import(${JSON.stringify(pathToFileURL(spelling).href)}); console.log("DIAGNOSTIC_IMPORTED");`,
+			);
+			const stdout = execFileSync(process.execPath, [importer, ...kase.args], {
+				cwd: kase.cwd,
+				env: caseEnv(bin),
+				encoding: "utf8",
+				timeout: 10_000,
+			});
+			assert.equal(stdout, "DIAGNOSTIC_IMPORTED\n");
 		}
 	} finally {
 		rmSync(root, { recursive: true, force: true });
