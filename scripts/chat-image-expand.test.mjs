@@ -2719,3 +2719,52 @@ test("the walk scrolls the current slot into view, a receipt's slot included", a
 		}
 	});
 });
+
+/* The class contract here and real-browser rects in the evidence README are
+ * complementary: jsdom has no layout and cannot prove scrollport clearance. */
+test("wide wrap reveals both endpoint slots with the 1px ring scroll-margin contract", async () => {
+	await mount(async (api) => {
+		const images = Array.from({ length: 10 }, (_, index) => ({
+			...IMAGE_ONE,
+			id: `ring-clearance:${index}`,
+		}));
+		const calls = [];
+		api.window.HTMLElement.prototype.scrollIntoView = function (options) {
+			calls.push({ slot: this.getAttribute("data-image-slot"), options });
+		};
+		try {
+			await api.render(
+				React.createElement(FoldMedia, {
+					images,
+					scope: transcriptScope,
+					onRevealMore: () => {},
+				}),
+			);
+			await api.click(
+				api.document.querySelector(
+					'[data-fold-media] button[aria-label="Expand Image 1"]',
+				),
+			);
+			await api.click(viewerControl(api.document, "Previous image"));
+			assert.equal(calls.at(-1).slot, "10", "Previous wraps to the last slot");
+			await api.click(viewerControl(api.document, "Next image"));
+			assert.equal(calls.at(-1).slot, "1", "Next wraps back to the first slot");
+			for (const index of [1, 10]) {
+				const slot = api.document.querySelector(`[data-image-slot="${index}"]`);
+				assert.ok(
+					slot.classList.contains("scroll-mx-px"),
+					"both endpoints reserve the ring's 1px inline outset during reveal",
+				);
+			}
+			assert.deepEqual(calls.at(-1).options, {
+				block: "nearest",
+				inline: "nearest",
+			});
+		} finally {
+			Reflect.deleteProperty(
+				api.window.HTMLElement.prototype,
+				"scrollIntoView",
+			);
+		}
+	});
+});

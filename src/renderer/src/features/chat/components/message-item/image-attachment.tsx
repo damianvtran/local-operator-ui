@@ -131,7 +131,7 @@ export type ImageAttachmentProps = BaseImageAttachmentProps & {
 	 *
 	 * `current` is the lightbox strip's SEMANTIC mark of the picture on screen
 	 * (WCAG's `aria-current`). Its visible half lives on the strip's SLOT — a
-	 * `ring-ink-muted` on the `li`, `image-group-lightbox.tsx` owns it — not on
+	 * `ring-ink` on the `li`, `image-group-lightbox.tsx` owns it — not on
 	 * the tile's control edge, so a slot with no control at all (the receipt for
 	 * a picture with no bytes) carries the mark too, and the edge's contrast is
 	 * measured against the scrim it is actually drawn on (design round 1's D1-1

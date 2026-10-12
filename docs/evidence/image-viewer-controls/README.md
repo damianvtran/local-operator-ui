@@ -26,7 +26,7 @@ one hundred and twenty frames — and each state answers a different question:
 | `carousel-next` | the same press, then Next | the forward walk, landing on the picture with no bytes: the store's receipt, and the current ring FOLLOWING to the receipt's own slot |
 | `carousel-leftwrap` | a press on the FIRST tile, then a real ArrowLeft | the walk WRAPS (left from the first lands on the last picture) |
 | `wide-open` | a press on a group the strip cannot fit (ten tiles) | a strip longer than its viewport, the current at the left end |
-| `wide-walk` | the same press, then nine real ArrowRights | the walk's SCROLL: the strip scrolls the current into view, so the last slot is on screen with its ring and the first slots are off it |
+| `wide-walk` | the same press, then Previous (wrap 1 -> 10; round-2 re-capture) | the walk's SCROLL: the strip scrolls the current into view, so the last slot is on screen with its ring and the first slots are off it |
 
 ## The capture
 
@@ -47,9 +47,9 @@ talks to a backend (the pictures are `data:` URIs and the story column is local
 JSX). `env -u XPC_FLAGS` because a tool child that inherits it cannot resolve DNS
 on this host (measured; it breaks `getaddrinfo` in children).
 
-The committed set is the REMEDIATION pass's frames (the agent/design/UX/QA
-round-1 remediation of 2026-10-12), re-captured whole — no frame here predates
-the fix round. What the round changed visually: the current ring's ROLE (the
+The round-1 remediation of 2026-10-12 captured the full set (120 frames).
+The current committed set retains 96 of those frames and replaces only the
+24 wide-group frames in round 2, as documented below. What the round changed visually: the current ring's ROLE (the
 slot mark moved from the tile's `border-control` edge to `ink` — design round
 1's D1-1; see the measured table for why not `ink-muted`), the OPEN FOCUS
 (D1-2/D1-3: the layer's anchor takes focus instead of the first control, so no
@@ -92,9 +92,9 @@ transition columns/rows — not read back off the CSS:
 | the switched picture (after the lane) | `carousel-open`'s portrait measures 230 columns at x525..754, rows 104..794 — the 400x1200 fixture at the box's 692px lane ceiling computes 230.7px wide, top (900-692)/2 = 104. Against the strip's tiles at y801 that leaves a 6px scrim gap: nothing of the picture is under chrome (design round 1's D1-4; the pre-fix number was 266 cols at x507..772 with its bottom 47px unrevealable) |
 | the current RING (slot 2, `carousel-open`) | `ink` painted 1px outside the slot: per theme, `localOperatorLight` (35,29,20) = **6.43:1** vs its scrim (165,160,153), `sage` 6.02:1, `iceberg` **4.70:1**, the nine dark themes 13.08-18.59:1 (`localOperatorDark` 16.72:1). The role is `ink` and not `ink-muted` because the scrim dims whatever is open under it: measured over each of the eight state grounds' composites, `ink-muted` drops to 2.78:1 (kanagawaLotus over `sunken`) while `ink` clears every composite of every palette (worst 3.37:1, everforestLight over `sunken`) — and `scripts/contrast-contract.mjs` now asserts exactly that ("the lightbox's own ground", 59x8 = 472 assertions) |
 | the current ring ON THE RECEIPT (`carousel-next`, slot 3) | the mark follows the walk onto a slot with no control: same role, same numbers — `localOperatorLight` (35,29,22) = 6.43:1, `sage` 6.09:1, `iceberg` 4.89:1, dark 13.42-18.59:1. The receipt's own border remains visible INSIDE the ring; the ring is the only cue that changes |
-| the resting state is REAL, measured, not asserted by class alone | over the cluster's glyph pixels (208 in `localOperatorDark`, 74 in `localOperatorLight`), the mean deviation from the scrim falls to **0.435x / 0.452x** of the `fit` frame's — the paint is the 0.45 floor, and the tuple separately claimed `opacity-45` at shutter |
-| the walk's SCROLL (`wide-*`) | `wide-open`'s strip content starts at x135 (scroll 0; the first slot at its natural position); `wide-walk`'s starts flush at the box's own left edge x128 — the first slots are scrolled off — with the last slot's ring painting at x~1130..1151 rows 800/880. The scroll is `scrollIntoView({block/inline: "nearest"})`, pinned in jsdom including the receipt slot |
-| the receipt | `carousel-leftwrap`'s card text paints 492x14 at +394,+443, centred — the store's sentence, at the size it is drawn, in the middle where the picture was |
+| the resting state is REAL, measured, not asserted by class alone | over the cluster's glyph pixels (208 in `localOperatorDark`, 74 in `localOperatorLight`), the mean deviation from the scrim falls to **0.435x / 0.452x** of the `fit` frame's — the paint is the 0.45 floor, and the tuple separately claimed `opacity-45` at shutter  Designer's round-2 decision: **KEEP 0.45**. Its independent stroke-core measurements were **3.41:1 dark enabled**, **1.68:1 light enabled**, disabled dark 1.42–1.48:1 (exempt). The light resting glyph is knowingly below the non-text floor: accepted as the requested scrollbar quiet-state pattern, with awake-on-open discoverability and activity restoring full strength in 0.12s. Source: [design round 2](https://github.com/damianvtran/local-operator-ui/pull/990#issuecomment-6117828097), not a new measurement claimed here. |
+| the walk's SCROLL (`wide-*`, round-2 capture at 1280x720) | The port is x128..1152. Previous-wrap reveals slot 10 at x1034..1151 (117px), leaving its 1px ring inside the port: the side strokes paint at **x1033 and x1151**, y650. Next-wrap reveals slot 1 at x129..246, with its left ring at **x128**. Both ends have **1px border-box clearance**, measured in all twelve themes; `round2-wrap-geometry.json` records the browser's actual rects. The earlier x~1130..1151 caption named only a sample near the end, not the whole ring (D2-1). `scroll-mx-px` adds the ring's outset to `scrollIntoView`'s reveal geometry without changing tile layout. |
+| the receipt | `carousel-next`'s card text paints 492x14 at +394,+443, centred — the store's sentence, at the size it is drawn, in the middle where the picture was |
 
 ## What each frame is evidence FOR, and what it cannot carry
 
@@ -130,8 +130,9 @@ transition columns/rows — not read back off the CSS:
   position is still announced (`Image 3 of 4`).
 - **The keyboard.** `carousel-leftwrap` IS a real ArrowLeft key press (the walk
   wraps, so one frame carries both "left works" and "an end is not a dead
-  end"), and `wide-walk` is nine real ArrowRights — the press that makes the
-  strip scroll. The ArrowRight path is also pressed as the Next control in
+  end"). The original `wide-walk` used nine ArrowRights; its round-2 replacement
+  uses the Previous button's wrap, the direct clipped-ring reproduction.
+  The ArrowRight path is also pressed as the Next control in
   `carousel-next`; the arrow-key binding itself is asserted in jsdom, where a
   chord can be discriminated.
 - **The story column behind the scrim** is `image-expand.stories.tsx`'s own
@@ -159,6 +160,52 @@ transition columns/rows — not read back off the CSS:
 - A one-member group and a message-attachment/tool-row group are not stageable
   in Storybook (the story files carry no such fixtures); the count-decides case
   is a jsdom case.
+
+## Round 2: endpoint clearance, browser-tool capture only
+
+Q2-1/U2-1 reproduced live on `4fb6fe46e7f`: Previous from picture 1
+revealed slot 10 with its right border at the port's right edge (1152), and
+Next back to picture 1 put its left border at the port's left edge (128).
+The 1px outset ring was clipped at both ends. The fix is `scroll-mx-px` on
+every slot; the new test pins that reveal contract, while the actual browser
+rects (not jsdom layout) prove 1px clearance at both endpoints.
+
+Only **wide-open and wide-walk** were re-captured: 24 frames, twelve themes,
+using one session-owned browser-tool tab and one owned Storybook server.
+The other 96 frames remain round-1's 1280x900 frames; no full sweep, decoder,
+app build or dependency installation ran. These 24 frames are **1280x720**
+CSS pixels (the browser host screenshots are 2560x1440, normalised to CSS
+pixels with Sharp and encoded as WebP at quality 85). They are not claimed to
+be captures by `capture-evidence.mjs`'s 900px tuples.
+
+```
+# QA's shared server had been reaped, so this pass owned its replacement.
+env -u XPC_FLAGS LOCAL_OPERATOR_UI_NO_BYTECODE=true \
+  LOCAL_OPERATOR_UI_TELEMETRY=off LOCAL_OPERATOR_NO_NOTIFICATIONS=1 \
+  pnpm storybook --port 6221 --no-open
+```
+
+For each theme, the browser tool navigated to:
+`http://localhost:6221/iframe.html?id=image-viewer-controls--group-wide&viewMode=story&args=theme:<theme>`
+and waited for the snapshot to expose `Expand Image 1` before acting:
+
+1. Click `button[aria-label="Expand Image 1"]`; screenshot -> `wide-open/<theme>.webp`.
+2. Click `button[aria-label="Previous image"]` (wrap 1 -> 10); read port and
+   slot10 rects; assert `port.right - slot10.right >= 1`; screenshot ->
+   `wide-walk/<theme>.webp`. This final capture uses the wrap button, not the
+   earlier nine ArrowRights, because wrap is the discriminating reproduction.
+3. Click `button[aria-label="Next image"]` (wrap 10 -> 1); read slot1 rect;
+   assert `slot1.x - port.x >= 1`. Both margins compute to `1px`.
+
+`round2-wrap-geometry.json` carries all twelve results. At y650 in the dark
+before screenshot, right x1152 was scrim `(15,14,12)`; after the fix right
+x1151 carries the ring `(217,214,207)`. The reverse-wrap left x128 changes
+from tile fill `(25,24,25)` to ring `(217,214,206)`. The ring's entire
+vertical stroke is visible in both after crops, not only the rounded corners.
+All 24 frames were viewed in per-state contact sheets; the endpoint before/
+after details were viewed at 3x. The tab and server/process children were
+reaped. Console contained only the already-reported placeholder PostHog
+404/401 requests; no viewer exception was observed.
 
 ## The pair
 
