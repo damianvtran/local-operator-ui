@@ -5,7 +5,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/canonical/transcript-reducer"; export * from "./src/renderer/src/features/chat/canonical/journal-order"; export * from "./src/renderer/src/features/chat/canonical/load-older"; export * from "./src/renderer/src/features/chat/canonical/journal-order-repair"; export * from "./src/shared/desktop-contract"; export * from "./src/renderer/src/features/chat/canonical/stranded-hold-order-source";',
+			'export * from "./src/renderer/src/features/chat/canonical/transcript-reducer"; export * from "./src/renderer/src/features/chat/canonical/journal-order"; export * from "./src/renderer/src/features/chat/canonical/load-older"; export * from "./src/renderer/src/features/chat/canonical/journal-order-repair"; export * from "./src/shared/desktop-contract"; export * from "./src/shared/journal-order-query"; export * from "./src/renderer/src/features/chat/canonical/stranded-hold-order-source";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -235,11 +235,10 @@ const repairDeps = (getState, setState, read) => ({
 	isCurrent: () => true,
 	read,
 	page: (response) => response,
-	commit: (response, revision) => {
+	lookupPath: "/v1/desktop/sessions/aaaaaaaaaaaa",
+	commit: (response, revision, orderRead) => {
 		if (R.currentOrderRevision(getState()) === revision)
-			setState(
-				R.applyHistoryPage(getState(), response, { authoritative: true }),
-			);
+			setState(R.applyJournalOrderMetadata(getState(), response, orderRead));
 	},
 });
 
@@ -276,10 +275,17 @@ test("more than 512 cached identities resolve in bounded same-domain batches; mi
 			},
 		),
 	);
-	assert.deepEqual(
-		calls.map((call) => call.length),
-		[512, 512, 6],
-	);
+	assert.ok(calls.length > 2);
+	for (const call of calls) {
+		const endpoint = R.desktopEndpoint({
+			op: "sessions.get",
+			sessionId: "aaaaaaaaaaaa",
+			journalOrder: true,
+			orderIds: call,
+		});
+		assert.ok(Buffer.byteLength(endpoint.path) <= R.JOURNAL_ORDER_QUERY_BYTES);
+		assert.ok(call.length <= 512);
+	}
 	assert.equal(new Set(calls.flat()).size, 1030);
 	assert.equal(
 		state.records.filter((r) => r.journalGeneration === "scope-A").length,
@@ -518,7 +524,7 @@ test("repair attempts reset with the authoritative source domain, not a prior do
 		601,
 	);
 	assert.ok(batches.every((ids) => ids.length <= 512));
-	assert.equal(calls, 4);
+	assert.ok(calls >= 4);
 });
 
 test("load older commit fence rejects a source reset after the awaited result was checked", async () => {
@@ -557,5 +563,199 @@ test("building and unsupported first reads never fabricate a source domain or co
 		assert.equal(state.journalGeneration, undefined);
 		assert.equal(state.records[0].journalSeq, undefined);
 		assert.equal(state.records[0].journalGeneration, undefined);
+	}
+});
+
+test("legal raw colon IDs heal off-tail metadata without borrowing payload, images or cursor", async () => {
+	for (const rawId of [
+		"synthetic:raw-send",
+		"tool:raw-user",
+		"supplement:raw-user",
+	]) {
+		let state = start([row("tail-before", 0)]);
+		state = R.appendPendingUser(
+			state,
+			rawId,
+			"own text",
+			[{ data: "QQ==", mimeType: "image/png" }],
+			1234,
+		);
+		state = R.applyHistoryPage(state, page([row("tail-after", 2)]));
+		const image = state.records.find((r) => r.id === rawId).images;
+		const cursor = state.oldestId;
+		const requests = [];
+		const outcome = await R.repairJournalOrder(
+			repairDeps(
+				() => state,
+				(next) => {
+					state = next;
+				},
+				async (requested) => {
+					requests.push(requested);
+					return page(
+						[
+							row(
+								"unrequested-tail",
+								100,
+								999,
+								msg("unrequested-tail", "assistant", "must not be adopted"),
+							),
+							row(
+								rawId,
+								1,
+								888,
+								msg(rawId, "user", "must not replace own text"),
+							),
+						],
+						"scope-A",
+						{ journal_ordinals: { [rawId]: 1 } },
+					);
+				},
+			),
+		);
+		assert.equal(outcome.kind, "complete");
+		assert.deepEqual(requests, [[rawId]]);
+		const record = state.records.find((r) => r.id === rawId);
+		assert.equal(record.journalSeq, 1);
+		assert.equal(record.provisional, undefined);
+		assert.equal(record.local, undefined);
+		assert.equal(record.text, "own text");
+		assert.equal(record.images, image);
+		assert.equal(state.oldestId, cursor);
+		assert.deepEqual(ids(state), ["tail-before", rawId, "tail-after"]);
+	}
+	// Kind/provenance, not a prefix, separates synthesized keys from legal IDs.
+	const base = start([row("raw:cache", undefined)]);
+	const virtual = {
+		...base,
+		records: [
+			...base.records,
+			{ kind: "tool", id: "tool:virtual" },
+			{ kind: "supplement", id: "supplement:virtual" },
+			{ kind: "tool", id: "tool:durable", sourceEntryId: "raw:tool" },
+		],
+	};
+	assert.deepEqual(R.journalLookupIds(virtual), ["raw:cache", "raw:tool"]);
+});
+
+test("obsolete ready demand before dispatch converges to fresh current authority", async () => {
+	let state = start([row("present", 0)]);
+	state = R.applyHistoryPage(state, page([row("present", 0)], "scope-B"), {
+		authoritative: true,
+	});
+	state = R.applyEvent(state, {
+		type: "journal_order_ready",
+		journal_generation: "scope-A",
+		rows: [],
+	});
+	let calls = 0;
+	const outcome = await R.repairJournalOrder(
+		repairDeps(
+			() => state,
+			(next) => {
+				state = next;
+			},
+			async () => {
+				calls++;
+				return page([], "scope-B");
+			},
+		),
+	);
+	assert.equal(calls, 1);
+	assert.equal(outcome.kind, "complete");
+	assert.equal(state.journalGeneration, "scope-B");
+	assert.equal(state.orderWantedGeneration, undefined);
+	assert.equal(state.orderNeedsReconcile, false);
+});
+
+test("same opaque demand returning during the read is a distinct wake, not predispatch debt", async () => {
+	let state = start([row("present", 0)]);
+	state = R.applyEvent(state, {
+		type: "journal_order_ready",
+		journal_generation: "obsolete",
+		rows: [],
+	});
+	let calls = 0;
+	const outcome = await R.repairJournalOrder(
+		repairDeps(
+			() => state,
+			(next) => {
+				state = next;
+			},
+			async () => {
+				calls++;
+				if (calls === 1) {
+					state = R.applyEvent(state, {
+						type: "journal_order_ready",
+						journal_generation: "other",
+						rows: [],
+					});
+					state = R.applyEvent(state, {
+						type: "journal_order_ready",
+						journal_generation: "obsolete",
+						rows: [],
+					});
+				}
+				return page([], "scope-A");
+			},
+		),
+	);
+	assert.equal(calls, 2);
+	assert.equal(outcome.kind, "complete");
+	assert.equal(state.orderNeedsReconcile, false);
+});
+
+test("UUID, max ASCII and encoded Unicode caches continue within bytes and count without losing identities", async () => {
+	for (const makeId of [
+		(i) => `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+		(i) => "a".repeat(125) + String(i).padStart(3, "0"),
+		(i) => "漢".repeat(125) + String(i).padStart(3, "0"),
+	]) {
+		const rawIds = Array.from({ length: 512 }, (_, i) => makeId(i));
+		let state = R.applyHistoryPage(R.EMPTY_TRANSCRIPT, {
+			entries: rawIds.map((id) => row(id, undefined)),
+			has_more: false,
+			cursor_missing: false,
+		});
+		const batches = [];
+		const cursor = state.oldestId;
+		const outcome = await R.repairJournalOrder(
+			repairDeps(
+				() => state,
+				(next) => {
+					state = next;
+				},
+				async (requested) => {
+					batches.push(requested);
+					const endpoint = R.desktopEndpoint({
+						op: "sessions.get",
+						sessionId: "aaaaaaaaaaaa",
+						journalOrder: true,
+						orderIds: requested,
+					});
+					assert.ok(
+						Buffer.byteLength(endpoint.path) <= R.JOURNAL_ORDER_QUERY_BYTES,
+					);
+					assert.deepEqual(
+						new URL(endpoint.path, "http://host").searchParams.getAll(
+							"order_ids",
+						),
+						requested,
+					);
+					return page([], "scope-A", {
+						journal_ordinals: Object.fromEntries(
+							requested.map((id) => [id, rawIds.indexOf(id)]),
+						),
+					});
+				},
+			),
+		);
+		assert.equal(outcome.kind, "complete");
+		assert.ok(batches.length > 1);
+		assert.equal(batches.flat().length, 512);
+		assert.equal(new Set(batches.flat()).size, 512);
+		assert.deepEqual(R.journalLookupIds(state), []);
+		assert.deepEqual(ids(state), rawIds);
+		assert.equal(state.oldestId, cursor);
 	}
 });

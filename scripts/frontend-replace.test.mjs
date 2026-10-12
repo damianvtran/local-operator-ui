@@ -751,3 +751,42 @@ test("source hook reconcile walk refuses its old-domain response after authorita
 	assert.equal(h.get().transcript.oldestId, cursor);
 	assert.ok(!ids(h.get().transcript).includes("late-reconcile-source"));
 });
+
+test("source hook settles obsolete ready A dispatched after authoritative B", async () => {
+	const h = await sourceMount();
+	deliver(sourceReady(3, "source-B"));
+	await pump();
+	assert.equal(h.get().transcript.journalGeneration, "source-B");
+	const before = requests.filter((r) => r.op === "sessions.get").length;
+	deliver(sourceReady(4, "source-A"));
+	await pump();
+	assert.equal(
+		requests.filter((r) => r.op === "sessions.get").length,
+		before + 1,
+	);
+	assert.equal(h.get().transcript.journalGeneration, "source-B");
+	assert.equal(h.get().transcript.orderNeedsReconcile, false);
+	assert.equal(h.get().transcript.orderWantedGeneration, undefined);
+	assert.deepEqual(ids(h.get().transcript), [ROW_EARLY, ROW_LATER]);
+});
+
+test("source hook preserves a distinct ready wake arriving during repair and reads it once", async () => {
+	const h = await sourceMount();
+	let resolveRead;
+	globalThis.__replaceSnapshot = () =>
+		new Promise((resolve) => {
+			resolveRead = resolve;
+		});
+	deliver(sourceReady(3, "source-B"));
+	await pump();
+	assert.ok(resolveRead);
+	deliver(sourceReady(4, "source-C"));
+	await pump();
+	globalThis.__replaceSnapshot = async () => sourceSnapshot(10, "source-C");
+	resolveRead(sourceSnapshot(9, "source-A"));
+	await pump();
+	assert.equal(h.get().transcript.journalGeneration, "source-C");
+	assert.equal(h.get().transcript.orderNeedsReconcile, false);
+	assert.equal(h.get().transcript.orderWantedGeneration, undefined);
+	assert.deepEqual(ids(h.get().transcript), [ROW_EARLY, ROW_LATER]);
+});

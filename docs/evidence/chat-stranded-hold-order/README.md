@@ -61,6 +61,68 @@ initially unmounted in-budget target1100 rows back at pane-top+24.02px after rea
 bounded reads. No arbitrary-distance/far-window success or new paging design is
 claimed. See the continuity design note for source matrix and execution boundaries.
 
+## Accepted round-2 source remediation
+
+The three source findings were reproduced before this batch: legal raw
+`synthetic:raw-send` was omitted from lookup and remained provisional; an
+obsolete ready A delivered after installed B survived three fresh B reads; and
+512 legal UUID/ASCII128/Unicode128 IDs produced HTTP431 on the production Vite
+proxy before the request reached core. The respective measured request URLs
+were 24,139 / 71,243 / 583,243 bytes. These are isolated synthetic fixtures, not
+the original user's IDs or a reconstruction of the lost native cache.
+
+Raw lookup eligibility now follows record kind/provenance, not punctuation.
+A read captures the identity of the ready demand it was dispatched to resolve:
+a fresh authoritative answer discharges that pre-existing debt, while a distinct
+wake during the read stays owed. This witness is not another revision counter;
+generation comparisons remain equality-only and caller revision/view fences
+still own whether a response may commit.
+
+All source GET/history/browser/native targets share a conservative **6 KiB
+encoded request-target budget plus the API's 512-ID count limit**, measuring
+URLSearchParams escaping and the actual path/fixed/cursor query overhead.
+Omitted cached IDs remain unresolved and continue through sequential same-domain
+metadata reads; attempted/missing IDs are tried once per sweep and attempts reset
+on a new authoritative domain. Quiet repair consumes only coordinates and
+verified ownership from the snapshot route, not its tail payload, images, reader
+cursor, planner history or frontend projection.
+
+Author verification used a private isolated production Vite proxy + FastAPI
+router/DesktopSessions/transcript-index plane, fresh synthetic sessions, existing
+worktree dependencies and no inherited CMUX/LOP/XPC variables. Shipped browser
+transport URL construction was captured at the EventSource seam and its bytes
+read by real HTTP; this is **not browser scheduling or full ChatPage evidence**.
+For 512 raw identities each, actual stream/snapshot/history requests succeeded:
+
+| IDs | Stream target bytes / carried IDs | Quiet repair reads | Final result |
+| --- | --- | --- | --- |
+| UUID36 | 6102 / 128 | 4 | 512 confirmed, 0 unresolved |
+| ASCII128 | 6063 / 43 | 11 | 512 confirmed, 0 unresolved |
+| Unicode128 (`漢`) | 5781 / 5 | 84 | 512 confirmed, 0 unresolved |
+
+Snapshot tail coordinates independently attest cached rows and reduce subsequent
+lookup demand; no cached payload or backward cursor was adopted from those tails,
+no ID was retried, and all own fixture text/ordering survived. Maximum repair
+request targets were 6112 / 6026 / 5744 bytes. The durable regression also sends
+actual native-relay fetch/SSE traffic through an 8 KiB HTTP parser, exercises
+escaped punctuation and long cursor/base-query overhead, and pins both shipped
+hook stale-before-dispatch convergence and distinct-during-read wake handling.
+A further isolated production-core execution of the actual main-process relay
+also returned HTTP200 snapshots for all three 512-ID sets. With a128-character
+epoch and receipt cursor carried too, native request targets were6128 /6091 /5948
+bytes, carrying125 /42 /5 IDs respectively. Both proof planes were reaped by
+owned process groups. Neither proves full packaged ChatPage/native IPC capability
+negotiation or the timed browser source-reset checkpoint flow.
+
+These source-only fixes change no layout or interaction. D1's terminal design
+round remains valid on the unchanged rendered surface. The previously supplied
+loading/connection-error PNGs are not twelve-page-refusal frames. The real near
+checkpoint proof is ten sequential HTTP200 100-row backward reads, cache
+100→1100, target3000 landing24.02px inside the viewport; seam-wheel paging and
+arbitrary far-window jumps remain unclaimed. Original native before-memory/image
+bytes remain unavailable. Current-head independent code/QA and whole CI gates
+remain separate from the author checks above.
+
 ## Why a story pair is the faithful capture
 
 A fresh app open of a copied session cannot show this: the disorder is born of

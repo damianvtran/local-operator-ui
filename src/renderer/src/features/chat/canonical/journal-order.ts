@@ -10,6 +10,15 @@ export type JournalPosition = {
 	sourceAdmissionAnchor?: string;
 };
 export type SourceCoordinate = { entryId: string; seq: number };
+/** A dispatch witness, not another source revision or an ordering of domains. */
+export type JournalOrderRead = {
+	revision: number;
+	demand: TranscriptState["orderDemand"];
+};
+export const journalOrderRead = (state: TranscriptState): JournalOrderRead => ({
+	revision: currentOrderRevision(state),
+	demand: state.orderDemand,
+});
 const ordinal = (value: unknown): value is number =>
 	typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 
@@ -19,14 +28,16 @@ const ordinal = (value: unknown): value is number =>
  * Missing fields (old backend/building index) do not erase proven coordinates.
  */
 export function receiveJournalOrder(
-	state: TranscriptState,
+	initialState: TranscriptState,
 	page: Pick<
 		DesktopHistoryPage,
 		"journal_generation" | "journal_order_state" | "journal_ordinals"
 	>,
 	rows: Array<Record<string, unknown>>,
 	authoritative: boolean,
+	read?: JournalOrderRead,
 ): TranscriptState {
+	let state = initialState;
 	const generation = page.journal_generation;
 	if (typeof generation !== "string" || generation.length === 0) {
 		return page.journal_order_state &&
@@ -35,6 +46,23 @@ export function receiveJournalOrder(
 			? { ...state, journalMode: true }
 			: state;
 	}
+	// A fresh authority resolves the demand present when it was dispatched,
+	// even if that demand named an obsolete domain. A different ready wake
+	// arriving DURING the read owns a different object and stays owed. Domain
+	// strings remain opaque equality tokens; no lexical freshness is inferred.
+	if (
+		authoritative &&
+		page.journal_order_state === "ready" &&
+		read &&
+		state.orderNeedsReconcile &&
+		state.orderDemand === read.demand
+	)
+		state = {
+			...state,
+			orderNeedsReconcile: false,
+			orderWantedGeneration: undefined,
+			orderDemand: undefined,
+		};
 	if (generation !== state.journalGeneration && !authoritative) {
 		return state.orderNeedsReconcile &&
 			state.orderWantedGeneration === generation
@@ -43,6 +71,7 @@ export function receiveJournalOrder(
 					...state,
 					orderNeedsReconcile: true,
 					orderWantedGeneration: generation,
+					orderDemand: { generation },
 				};
 	}
 	let next = state.journalMode ? state : { ...state, journalMode: true };
@@ -62,6 +91,10 @@ export function receiveJournalOrder(
 				state.orderWantedGeneration === generation
 					? undefined
 					: state.orderWantedGeneration,
+			orderDemand:
+				state.orderWantedGeneration === generation
+					? undefined
+					: state.orderDemand,
 		};
 	}
 	let positions = next.journalPositions ?? new Map<string, SourceCoordinate>();
@@ -96,6 +129,7 @@ export function receiveJournalOrder(
 			...next,
 			orderNeedsReconcile: false,
 			orderWantedGeneration: undefined,
+			orderDemand: undefined,
 		};
 	return next;
 }
@@ -274,7 +308,12 @@ export function journalLookupIds(state: TranscriptState): string[] {
 	);
 	const requested = [...pending, ...unresolved].map(
 		(record) =>
-			record.sourceEntryId ?? (record.id.includes(":") ? null : record.id),
+			// A raw ID may contain ':' (even 'tool:'). Only these canonical
+			// kinds synthesize keys; durable sourceEntryId always wins.
+			record.sourceEntryId ??
+			(record.kind === "tool" || record.kind === "supplement"
+				? null
+				: record.id),
 	);
 	if (!state.journalPositions?.has(state.oldestId ?? ""))
 		requested.push(state.oldestId);

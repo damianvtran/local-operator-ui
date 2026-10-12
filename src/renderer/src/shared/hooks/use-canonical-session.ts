@@ -32,8 +32,10 @@
  */
 
 import {
+	type JournalOrderRead,
 	currentOrderRevision,
 	journalLookupIds,
+	journalOrderRead,
 } from "@features/chat/canonical/journal-order";
 import { repairJournalOrder } from "@features/chat/canonical/journal-order-repair";
 import {
@@ -50,6 +52,7 @@ import {
 	appendPendingUser,
 	applyEvent,
 	applyHistoryPage,
+	applyJournalOrderMetadata,
 	applyLiveSeed,
 	clearTranscript,
 	isDurableOwnerRow,
@@ -2490,7 +2493,7 @@ export function useCanonicalSessionStream(
 	useEffect(() => {
 		if (!sessionId || !enabled) return;
 		const generation = ++generationRef.current;
-		const orderFrameRevisions = new WeakMap<object, number>();
+		const orderFrameRevisions = new WeakMap<object, JournalOrderRead>();
 		let dispose: (() => void) | null = null;
 		/*
 		 * True while WE are the reason the stream is being torn down.
@@ -3139,9 +3142,8 @@ export function useCanonicalSessionStream(
 			) {
 				requests += 1;
 				let page: DesktopHistoryPage;
-				const orderAtDispatch = currentOrderRevision(
-					viewRef.current.transcript,
-				);
+				const orderRead = journalOrderRead(viewRef.current.transcript);
+				const orderAtDispatch = orderRead.revision;
 				try {
 					page = await desktopResult<DesktopHistoryPage>({
 						op: "sessions.history",
@@ -3297,6 +3299,7 @@ export function useCanonicalSessionStream(
 						return state;
 					const transcript = applyHistoryPage(state.transcript, page, {
 						authoritative: true,
+						orderRead,
 					});
 					/*
 					 * THE IDS **THIS COMMIT** LABELLED ARE RELEASED IN THE SAME COMMIT, and
@@ -4192,7 +4195,7 @@ export function useCanonicalSessionStream(
 							const dispatched = orderFrameRevisions.get(frame);
 							if (
 								dispatched !== undefined &&
-								currentOrderRevision(next.transcript) !== dispatched
+								currentOrderRevision(next.transcript) !== dispatched.revision
 							)
 								continue;
 							const snapshot = frame.payload;
@@ -4208,6 +4211,7 @@ export function useCanonicalSessionStream(
 								performance.mark("lop:open:history:start");
 								transcript = applyHistoryPage(transcript, snapshot.history, {
 									authoritative: true,
+									orderRead: dispatched,
 								});
 								performance.mark("lop:open:history:end");
 								performance.measure(
@@ -4712,7 +4716,7 @@ export function useCanonicalSessionStream(
 		};
 
 		const connect = () => {
-			const sourceRevision = currentOrderRevision(viewRef.current.transcript);
+			const sourceRead = journalOrderRead(viewRef.current.transcript);
 			clearSnapshotTimer();
 			snapshotTimer = window.setTimeout(() => {
 				snapshotTimer = 0;
@@ -4894,7 +4898,7 @@ export function useCanonicalSessionStream(
 						if (markParse) performance.mark("lop:open:parse:start");
 						const frame = JSON.parse(raw) as DesktopSessionFrame;
 						if (frame.type === "snapshot")
-							orderFrameRevisions.set(frame, sourceRevision);
+							orderFrameRevisions.set(frame, sourceRead);
 						if (markParse) {
 							performance.mark("lop:open:parse:end");
 							performance.measure(
@@ -5573,22 +5577,22 @@ export function useCanonicalSessionStream(
 					orderIds,
 				}),
 			page: (snapshot) => snapshot.payload.history,
-			commit: (snapshot, revision) => {
+			lookupPath: `/v1/desktop/sessions/${requested}`,
+			commit: (snapshot, revision, orderRead) => {
 				commitView((current) => {
 					if (
+						sessionRef.current !== requested ||
 						currentOrderRevision(current.transcript) !== revision ||
 						current.transcript.viewEpoch !== epoch
 					)
 						return current;
 					return {
 						...current,
-						transcript: applyHistoryPage(
+						transcript: applyJournalOrderMetadata(
 							current.transcript,
 							snapshot.payload.history,
-							{ authoritative: true },
+							orderRead,
 						),
-						frontend: snapshot.payload.frontend.snapshot,
-						history: snapshot.payload.history,
 					};
 				});
 			},

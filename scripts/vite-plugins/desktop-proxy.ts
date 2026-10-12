@@ -6,6 +6,7 @@ import {
 	MAX_DESKTOP_ENVELOPE_BYTES,
 } from "../../src/shared/desktop-contract";
 import { DESKTOP_STREAM_DETAIL } from "../../src/shared/desktop-stream-notice";
+import { appendJournalOrderIds } from "../../src/shared/journal-order-query";
 
 /** Browser-only development uses the same typed vocabulary as Electron IPC.
  * The token is read by this Node process, never by Vite's client env machinery.
@@ -143,7 +144,11 @@ export function desktopProxyPlugin(): Plugin {
 					if (openFrame === "1") query.set("open_frame", "1");
 					if (journalOrder === "1") {
 						query.set("journal_order", "1");
-						for (const id of orderIds) query.append("order_ids", id);
+						appendJournalOrderIds(
+							query,
+							`/v1/desktop/sessions/${sessionId}/events`,
+							orderIds,
+						);
 					}
 					const suffix = query.size > 0 ? `?${query}` : "";
 					/*
