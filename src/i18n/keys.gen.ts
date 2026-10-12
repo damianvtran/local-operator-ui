@@ -52,6 +52,36 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
+	"ui.console.close.body": undefined;
+	"ui.console.close.busy": undefined;
+	"ui.console.close.confirm": undefined;
+	"ui.console.close.kept": undefined;
+	"ui.console.close.title": undefined;
+	"ui.console.create_failed.detail": undefined;
+	"ui.console.create_failed.retry": undefined;
+	"ui.console.create_failed.title": undefined;
+	"ui.console.empty.detail": undefined;
+	"ui.console.empty.title": undefined;
+	"ui.console.ended.exit_code": { code: string };
+	"ui.console.ended.exit_unknown": undefined;
+	"ui.console.ended.live": undefined;
+	"ui.console.ended.restored": undefined;
+	"ui.console.loading.create": undefined;
+	"ui.console.loading.read": undefined;
+	"ui.console.new": undefined;
+	"ui.console.pane.blip": undefined;
+	"ui.console.pane.close": undefined;
+	"ui.console.pane.close_refusal": undefined;
+	"ui.console.pane.label": undefined;
+	"ui.console.pane.needs_conversation.detail": undefined;
+	"ui.console.pane.needs_conversation.title": undefined;
+	"ui.console.pane.surfaces": undefined;
+	"ui.console.secure": undefined;
+	"ui.console.unavailable.disabled.detail": undefined;
+	"ui.console.unavailable.disabled.title": undefined;
+	"ui.console.unavailable.pty.detail": undefined;
+	"ui.console.unavailable.title": undefined;
+	"ui.console.unavailable.unknown.detail": undefined;
 	"ui.settings.language.dialog.description": undefined;
 	"ui.settings.language.dialog.loading": undefined;
 	"ui.settings.language.dialog.retry": undefined;
