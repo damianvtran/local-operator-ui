@@ -138,6 +138,14 @@ const bundle = await build({
 			export { MarkdownImage } from "./src/renderer/src/features/chat/components/markdown-image";
 			export { FoldMedia } from "./src/renderer/src/features/chat/canonical/fold-media";
 			export { TraceFold } from "./src/renderer/src/features/chat/components/trace/trace-fold";
+			export {
+				clampGroupIndex,
+				clampViewerPan,
+				groupPositionLabel,
+				stepZoom,
+				VIEWER_ZOOM_MAX,
+				wrapGroupIndex,
+			} from "./src/renderer/src/shared/lib/image-viewer-model";
 		`,
 		resolveDir: ROOT,
 	},
@@ -185,6 +193,12 @@ const {
 	MarkdownImage,
 	FoldMedia,
 	TraceFold,
+	clampGroupIndex,
+	clampViewerPan,
+	groupPositionLabel,
+	stepZoom,
+	VIEWER_ZOOM_MAX,
+	wrapGroupIndex,
 } = await import(pathToFileURL(bundlePath).href);
 
 /* ------------------------------------------------------------------ fixtures */
@@ -227,6 +241,54 @@ const transcriptImage = {
 	mimeType: "image/png",
 };
 const transcriptScope = { sessionId: "image-expand", childId: null };
+
+/* ------------------------------------------------- the carousel's own fixtures */
+
+/**
+ * A THIRD distinct picture, because "the picture switched" is a claim about the
+ * src the viewer paints and two fixtures can prove one switch: a 2x2 magenta
+ * square beside the 1x1 and the 2x6 portrait, so each of three tiles resolves to
+ * a different URL and position can be read off the DOM alone.
+ */
+const MAGENTA_BASE64 =
+	"iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEklEQVR4nGM4IRd1Qi6KAUIBACTGBQFVr/vpAAAAAElFTkSuQmCC";
+
+const carouselImage = (id, base64) => ({
+	id,
+	data: base64,
+	attachment: null,
+	mimeType: "image/png",
+});
+/** A picture the group references and no store can serve: `missing` on the first render. */
+const absentImage = (id) => ({
+	id,
+	data: null,
+	attachment: null,
+	mimeType: "image/png",
+});
+
+const IMAGE_ONE = carouselImage("image-expand:carousel:1", PNG_BASE64);
+const IMAGE_TWO = carouselImage("image-expand:carousel:2", PORTRAIT_BASE64);
+const IMAGE_THREE = carouselImage("image-expand:carousel:3", MAGENTA_BASE64);
+const IMAGE_ABSENT = absentImage("image-expand:carousel:absent");
+
+/** The carousel's own chrome, by the shipped attributes a reader can check. */
+const FILMSTRIP = "[data-image-filmstrip]";
+const LIVE_POSITION = '[role="dialog"] [aria-live="polite"]';
+/**
+ * The viewer's OWN picture box, which is how a case reads the painted src
+ * without picking up a filmstrip tile's: the strip's tiles are images too, and
+ * they sit after the viewer in DOM order, so the exit that says "the viewer
+ * paints no picture" needs the frame's own marker rather than the dialog's
+ * first image.
+ */
+const VIEWER_PICTURE = "[data-image-viewport] img";
+const filmstripTiles = (document) =>
+	[...document.querySelectorAll(`${FILMSTRIP} button`)].filter((button) =>
+		(button.getAttribute("aria-label") ?? "").startsWith("Show image"),
+	);
+const viewerControl = (document, name) =>
+	document.querySelector(`[role="dialog"] button[aria-label="${name}"]`);
 
 /* ----------------------------------------------------------------- selectors */
 
@@ -291,6 +353,13 @@ const UNTABBABLE_REVEAL = /\binvisible\b|group-hover:visible/;
 /** The store's own failure sentence, which the digest-backed row must say. */
 const STORE_COPY_RE =
 	/Image could not be displayed\. Its stored copy is not available to this reader\./;
+/**
+ * The SAME sentence without the leading name, for labels that compose one: a
+ * receipt's `aria-label` is `<name> <detail>`, and the name is the tile's own
+ * position ("Image 3"), so the group cases match the store's half alone.
+ */
+const UNAVAILABLE_COPY_RE =
+	/could not be displayed\. Its stored copy is not available to this reader\./;
 
 /* ------------------------------------------------------------------ harness */
 
@@ -467,6 +536,25 @@ async function mount(render) {
 				);
 				if (landed()) return;
 			}
+		},
+		/**
+		 * Any key, for the viewer's own keyboard rules (the arrow walk). Same shape
+		 * as `pressEscape` and named separately so neither claim borrows the
+		 * other's sender; `metaKey` exists so the case that must NOT switch can say
+		 * why in its own name.
+		 */
+		pressKey: async (key, { metaKey = false } = {}) => {
+			act(() => {
+				window.document.dispatchEvent(
+					new window.KeyboardEvent("keydown", {
+						key,
+						bubbles: true,
+						cancelable: true,
+						metaKey,
+					}),
+				);
+			});
+			await api.settle();
 		},
 		/** What an assertion can name without diffing two DOM trees. */
 		focused: () => {
@@ -1912,6 +2000,464 @@ test("markdown images are ADMITTED by kind: a path gets the menu, a relative src
 			api.document.querySelector("[data-markdown-image]"),
 			null,
 			"a relative src names no file this app can address — it renders as the bare <img> it always was",
+		);
+	});
+});
+
+/* ------------------------------------------------------------- the carousel */
+
+/*
+ * THE ARITHMETIC FIRST, because every case below leans on it and the DOM cases
+ * would only fail obliquely if it were wrong. These are the same functions the
+ * components call; they are imported from the bundle rather than re-stated so a
+ * copy cannot disagree with the shipped rule.
+ */
+
+test("the group walk wraps and clamps, and the position sentence is one rule", () => {
+	assert.equal(
+		wrapGroupIndex(0, 3, -1),
+		2,
+		"left from the first wraps to the last",
+	);
+	assert.equal(
+		wrapGroupIndex(2, 3, 1),
+		0,
+		"right from the last wraps to the first",
+	);
+	assert.equal(wrapGroupIndex(1, 3, 1), 2, "and the walk is one step between");
+	assert.equal(
+		wrapGroupIndex(0, 1, -1),
+		0,
+		"a group of one stays on its only picture",
+	);
+	assert.equal(
+		wrapGroupIndex(5, 0, 1),
+		0,
+		"an empty group has no position to walk to",
+	);
+
+	assert.equal(
+		clampGroupIndex(-2, 3),
+		0,
+		"a stale low index clamps to the first",
+	);
+	assert.equal(
+		clampGroupIndex(9, 3),
+		2,
+		"a stale high index clamps to the last",
+	);
+	assert.equal(
+		clampGroupIndex(1.7, 3),
+		1,
+		"a fractional index truncates rather than drifting",
+	);
+
+	assert.equal(
+		groupPositionLabel(1, 3),
+		"Image 2 of 3",
+		"one sentence, 1-based, both facts",
+	);
+
+	assert.equal(stepZoom(1, 1), 2, "a zoom step walks the ladder");
+	assert.equal(
+		stepZoom(VIEWER_ZOOM_MAX, 1),
+		VIEWER_ZOOM_MAX,
+		"and stops at its top",
+	);
+	assert.equal(stepZoom(1, -1), 1, "whereas the floor is fit itself");
+
+	const frame = { width: 400, height: 200 };
+	assert.deepEqual(
+		clampViewerPan({ x: 999, y: -999 }, frame, 2),
+		{ x: 200, y: -100 },
+		"at 2x the picture overhangs by half its size a side, and a pan past that clamps to the edge — each axis around its own centre (no gap, no rubber band)",
+	);
+	assert.deepEqual(
+		clampViewerPan({ x: 50, y: 40 }, frame, 1),
+		{ x: 0, y: 0 },
+		"at fit there is no overhang at all, which is the pan-only-when-zoomed rule as arithmetic",
+	);
+	assert.deepEqual(
+		clampViewerPan({ x: 50, y: 40 }, { width: 0, height: 0 }, 3),
+		{ x: 0, y: 0 },
+		"and an unmeasured frame clamps to centre rather than to a guess",
+	);
+});
+
+test("a group tile opens the carousel at the picture that was pressed, with the set's strip and arrows", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [IMAGE_ONE, IMAGE_TWO, IMAGE_ABSENT],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		const second = api.document.querySelector(
+			'[data-fold-media] button[aria-label="Expand Image 2"]',
+		);
+		assert.ok(second, "the strip's own second tile is the press under test");
+		await api.click(second);
+
+		assert.ok(isOpen(api.document), "the press opens the overlay");
+		const dialog = api.document.querySelector(DIALOG);
+		const mainPicture = dialog.querySelector("img");
+		assert.equal(
+			mainPicture.getAttribute("src"),
+			`data:image/png;base64,${PORTRAIT_BASE64}`,
+			"on the picture that was PRESSED, not the group's first",
+		);
+		assert.equal(
+			api.document.getElementById(dialog.getAttribute("aria-labelledby"))
+				.textContent,
+			"Image 2",
+			"and the overlay's name is that picture's own label, as the single-image case asserts",
+		);
+		assert.equal(
+			api.document.querySelector(LIVE_POSITION)?.textContent,
+			"Image 2 of 3",
+			"the position is announced in one sentence, 1-based",
+		);
+
+		const strip = api.document.querySelector(FILMSTRIP);
+		assert.ok(strip, "the group's other pictures are a strip in the layer");
+		/*
+		 * Two of the three are pressable tiles and the third is the RECEIPT — the
+		 * same shape the transcript's own strip gives a picture with no bytes
+		 * (there is no button there either), so the strip "reflects what is known"
+		 * instead of offering a press that would show the same sentence over the
+		 * scrim. The ARROWS still reach it; the walk is not bounded by the tiles.
+		 */
+		const tiles = filmstripTiles(api.document);
+		assert.deepEqual(
+			tiles.map((tile) => tile.getAttribute("aria-label")),
+			["Show image 1 of 3", "Show image 2 of 3"],
+			"every loaded picture is a tile, named by action and position",
+		);
+		assert.equal(
+			tiles[1].getAttribute("aria-current"),
+			"true",
+			"and the current one carries the mark",
+		);
+		assert.equal(
+			tiles[0].getAttribute("aria-current"),
+			null,
+			"which its neighbours do not",
+		);
+		/*
+		 * The partially-loaded case, staged the one way that is honest: the third
+		 * picture has no bytes at all, so its slot drew the receipt instead of a
+		 * picture rather than a tile that would resolve to nothing.
+		 */
+		const receipt = strip.querySelector('[role="img"]');
+		assert.match(
+			receipt?.getAttribute("aria-label") ?? "",
+			UNAVAILABLE_COPY_RE,
+			"a picture with no bytes shows the receipt the transcript's own strip shows",
+		);
+
+		assert.ok(
+			viewerControl(api.document, "Previous image"),
+			"the walk left/right is on screen",
+		);
+		assert.ok(viewerControl(api.document, "Next image"), "in both directions");
+	});
+});
+
+test("the arrows walk the whole group, wrapping at the ends, and a missing picture shows its receipt", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [IMAGE_ONE, IMAGE_TWO, IMAGE_ABSENT],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		await api.click(
+			api.document.querySelector(
+				'[data-fold-media] button[aria-label="Expand Image 1"]',
+			),
+		);
+
+		const pictureSrc = () =>
+			api.document.querySelector(VIEWER_PICTURE)?.getAttribute("src") ?? null;
+		const position = () =>
+			api.document.querySelector(LIVE_POSITION)?.textContent ?? null;
+
+		await api.click(viewerControl(api.document, "Next image"));
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${PORTRAIT_BASE64}`,
+			"Next moves to the second picture",
+		);
+		assert.equal(position(), "Image 2 of 3", "and says so");
+
+		await api.click(viewerControl(api.document, "Next image"));
+		assert.equal(
+			api.document.querySelector("[data-image-viewport]"),
+			null,
+			"the third picture has no bytes, so the viewer's frame holds no picture at all",
+		);
+		assert.match(
+			api.document.querySelector(DIALOG)?.textContent ?? "",
+			UNAVAILABLE_COPY_RE,
+			"and answers with the store's own sentence rather than a torn glyph",
+		);
+		assert.equal(position(), "Image 3 of 3", "the position still advances");
+
+		await api.click(viewerControl(api.document, "Next image"));
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${PNG_BASE64}`,
+			"Next from the last wraps to the first — the wrap is the walk's own rule",
+		);
+		assert.equal(
+			position(),
+			"Image 1 of 3",
+			"and the announcement wraps with it",
+		);
+	});
+});
+
+test("the arrow KEYS switch pictures, and a modifier chord is left to the app", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [IMAGE_ONE, IMAGE_TWO, IMAGE_THREE],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		await api.click(
+			api.document.querySelector(
+				'[data-fold-media] button[aria-label="Expand Image 1"]',
+			),
+		);
+		const pictureSrc = () =>
+			api.document.querySelector(VIEWER_PICTURE)?.getAttribute("src") ?? null;
+
+		await api.pressKey("ArrowRight");
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${PORTRAIT_BASE64}`,
+			"ArrowRight is the same walk as the button",
+		);
+		await api.pressKey("ArrowRight");
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${MAGENTA_BASE64}`,
+			"and keeps walking",
+		);
+		await api.pressKey("ArrowLeft");
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${PORTRAIT_BASE64}`,
+			"ArrowLeft steps back",
+		);
+		/*
+		 * The modifier chord is the app's: ⌘← means "back" elsewhere in this
+		 * window, and a viewer that swallowed it would take a navigation away
+		 * from a reader who asked for it.
+		 */
+		await api.pressKey("ArrowRight", { metaKey: true });
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${PORTRAIT_BASE64}`,
+			"a ⌘ chord does not step the group",
+		);
+	});
+});
+
+test("the filmstrip switches to the tile that was pressed and moves the current mark", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [IMAGE_ONE, IMAGE_TWO, IMAGE_THREE],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		await api.click(
+			api.document.querySelector(
+				'[data-fold-media] button[aria-label="Expand Image 1"]',
+			),
+		);
+		const tiles = filmstripTiles(api.document);
+		const pictureSrc = () =>
+			api.document.querySelector(VIEWER_PICTURE)?.getAttribute("src") ?? null;
+
+		await api.click(tiles[2]);
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${MAGENTA_BASE64}`,
+			"pressing a tile shows that tile's picture",
+		);
+		const after = filmstripTiles(api.document);
+		assert.equal(
+			after[2].getAttribute("aria-current"),
+			"true",
+			"and the current mark follows the press",
+		);
+		assert.equal(
+			after[0].getAttribute("aria-current"),
+			null,
+			"off the old tile",
+		);
+		assert.equal(
+			api.document.querySelector(LIVE_POSITION)?.textContent,
+			"Image 3 of 3",
+			"the announcement follows too",
+		);
+		await api.click(after[0]);
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${PNG_BASE64}`,
+			"and back is one more press, not a reopen",
+		);
+	});
+});
+
+test("one picture in a group keeps the single-picture chrome — no strip, no arrows", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [IMAGE_ONE],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		await api.click(
+			api.document.querySelector(
+				'[data-fold-media] button[aria-label="Expand Image"]',
+			),
+		);
+		assert.ok(isOpen(api.document), "the lone picture still expands");
+		assert.equal(
+			api.document.querySelector(FILMSTRIP),
+			null,
+			"with no second picture there is no set to collage",
+		);
+		assert.equal(
+			viewerControl(api.document, "Previous image"),
+			null,
+			"and no walk to offer",
+		);
+		assert.ok(
+			viewerControl(api.document, "Zoom in"),
+			"while the zoomed-state controls are there for one picture exactly as for three",
+		);
+	});
+});
+
+test("the zoomed-state controls are real buttons with names, and they step the ladder they claim", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(ImageAttachment, {
+				file: FILE_PATH,
+				src: PNG,
+				conversationId: "image-expand",
+			}),
+		);
+		await api.click(pictureButton(api.document));
+		const picture = api.document.querySelector(EXPANDED_PICTURE);
+
+		const zoomOut = viewerControl(api.document, "Zoom out");
+		const zoomIn = viewerControl(api.document, "Zoom in");
+		const reset = viewerControl(api.document, "Reset view");
+		assert.ok(zoomOut && zoomIn && reset, "the cluster is on screen");
+		assert.equal(
+			zoomOut.disabled,
+			true,
+			"at fit there is nothing to zoom out of",
+		);
+		assert.equal(reset.disabled, true, "and nothing to reset");
+		assert.equal(
+			zoomIn.disabled,
+			false,
+			"while zooming in is the live control",
+		);
+
+		await api.click(zoomIn);
+		assert.equal(
+			picture.style.transform,
+			"translate(0px, 0px) scale(2)",
+			"one press is the ladder's second step, over the fit",
+		);
+		assert.equal(zoomOut.disabled, false, "and now there is a step back");
+		assert.equal(reset.disabled, false, "and a view to reset");
+
+		await api.click(zoomIn);
+		await api.click(zoomIn);
+		assert.equal(
+			picture.style.transform,
+			`translate(0px, 0px) scale(${VIEWER_ZOOM_MAX})`,
+			"the ladder stops at its top",
+		);
+		assert.equal(zoomIn.disabled, true, "where the control says so");
+	});
+});
+
+test("reset returns the view to fit: the transform goes and the controls disable again", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(ImageAttachment, {
+				file: FILE_PATH,
+				src: PNG,
+				conversationId: "image-expand",
+			}),
+		);
+		await api.click(pictureButton(api.document));
+		await api.click(viewerControl(api.document, "Zoom in"));
+		assert.notEqual(
+			api.document.querySelector(EXPANDED_PICTURE).style.transform,
+			"",
+			"the picture is zoomed before the reset",
+		);
+
+		await api.click(viewerControl(api.document, "Reset view"));
+		assert.equal(
+			api.document.querySelector(EXPANDED_PICTURE).style.transform,
+			"",
+			"reset returns the view to fit — no transform, the picture exactly where it opened",
+		);
+		assert.equal(
+			viewerControl(api.document, "Zoom out").disabled,
+			true,
+			"and the cluster reads as fit again (zoom-out disabled)",
+		);
+		assert.equal(
+			viewerControl(api.document, "Reset view").disabled,
+			true,
+			"with nothing left to reset",
+		);
+	});
+});
+
+test("Escape closes the carousel and focus returns to the strip tile that was pressed", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [IMAGE_ONE, IMAGE_TWO],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		const second = api.document.querySelector(
+			'[data-fold-media] button[aria-label="Expand Image 2"]',
+		);
+		await api.click(second);
+		assert.ok(isOpen(api.document), "the carousel is open to be escaped from");
+		second.focus();
+
+		await api.pressEscape(
+			() => api.focused() === 'button[aria-label="Expand Image 2"]',
+		);
+
+		assert.equal(isOpen(api.document), false, "Escape closes it");
+		assert.equal(
+			api.focused(),
+			'button[aria-label="Expand Image 2"]',
+			"and focus lands on the tile the reader pressed, not on <body> — the group overlay reuses the single-image handoff",
 		);
 	});
 });
