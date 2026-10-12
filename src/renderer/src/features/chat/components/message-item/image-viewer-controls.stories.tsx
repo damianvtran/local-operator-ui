@@ -4,7 +4,11 @@
  *
  * WHY THIS FILE EXISTS BESIDE `image-expand.stories.tsx`. That set is the record
  * of the overlay's first life — one picture, one close button, the size rule —
- * and its frames are the BEFORE generation for everything here. This file is the
+ * and it remains that set's own history; the BEFORE generation for everything
+ * HERE is `docs/evidence/image-viewer-controls-before/`, captured at this
+ * branch's base (`7a392ecf943`) with the set's story trimmed to the base
+ * components (agent review round 1, R1-6: pointing a reader at `image-expand`
+ * would diff against a different base than the committed pair). This file is the
  * AFTER half: the same press, now with chrome. The two live in separate files
  * because a frame's directory is derived from the story TITLE (the capture rig
  * and the manifest both read it), so a set that pairs before/after under one
@@ -17,17 +21,24 @@
  * - `viewer` is the single picture as the transcript draws it; the rig presses
  *   it and photographs FIT (the controls at rest over the scrim), ZOOMED (2x,
  *   the centre of the picture), ZOOMED-PANNED (a real drag after the zoom, the
- *   pan clamped to the picture's own edge) and RESET (fit again after a zoom —
- *   the frame is the SEQUENCE that matters, and the transform's return to
- *   nothing is asserted in `scripts/chat-image-expand.test.mjs`, because a
- *   still of the reset state alone is a still of the fit state).
- * - `group` is a condensed group's strip — three pictures, one of them bytes
- *   the store cannot serve — and the rig presses its first tile: the carousel
- *   opens ON the pressed picture, the strip shows what is known (two tiles and
- *   a receipt), and `carousel-next` steps onto the second picture while
- *   `carousel-leftwrap` presses ArrowLeft from the first — the walk wraps, so
- *   that frame lands on the set's LAST picture and carries two facts at once:
- *   left works, and an end is not a dead end.
+ *   pan clamped to the picture's own edge), RESET (fit again after a zoom —
+ *   byte-identical to fit, which is the strongest form that claim takes as a
+ *   still) and RESTING (the reader stops touching it: the cluster dims after
+ *   `SCROLLBAR_HOLD_MS` and the frame is that quiet state — design round 1's
+ *   D1-2, reachable because focus no longer parks in the cluster at open).
+ * - `group` is a condensed group's strip — FOUR pictures, one of them bytes
+ *   the store cannot serve — and the rig presses its middle tile: the carousel
+ *   opens ON the pressed picture (which the fourth picture makes readable in
+ *   the frame itself), the strip shows what is known (three tiles and a
+ *   receipt, the receipt's SLOT carrying the current ring when the walk lands
+ *   on it), and `carousel-next` steps forward while `carousel-leftwrap` presses
+ *   ArrowLeft from the first — the walk wraps, so that frame lands on the set's
+ *   LAST picture and carries two facts at once: left works, and an end is not a
+ *   dead end.
+ * - `group-wide` is a group LONGER than the strip's viewport (ten tiles at a
+ *   1280 frame): `wide-walk` walks to the far end so the strip must scroll the
+ *   current into view (design round 1, D1-5) — the behaviour no three-tile
+ *   fixture can show.
  *
  * WHAT IS NOT COVERED, stated here rather than implied: the controls' FADE (a
  * still photographs the awake state; after `SCROLLBAR_HOLD_MS` of idle they dim
@@ -81,6 +92,34 @@ const PORTRAIT_BASE64 =
  * first render — the one "not loaded" state that is a fact rather than a race,
  * so the strip's receipt and the viewer's fallback are stable in a still.
  */
+/**
+ * The carousel's FOURTH picture: a 600x600 square of six vertical bands.
+ *
+ * It exists so each carousel frame can discriminate (agent review round 1,
+ * R1-5): with three pictures, "opens ON the pressed tile" and "walked forward
+ * from the first" land on the same picture, and a frame cannot tell the reader
+ * which happened. With a fourth, `carousel-open` presses the MIDDLE tile and
+ * every walk frame ends somewhere the others cannot reach.
+ */
+const SQUARE_BASE64 =
+	"iVBORw0KGgoAAAANSUhEUgAAAlgAAAJYBAMAAABMSIXvAAAAElBMVEU0PFRoVGiotMiwhG7e1sRgdJa8HpuLAAAACXBIWXMAAAPoAAAD6AG1e1JrAAADPElEQVR42u3Q0RQAIBAEwFVIIYVTSCF/lRj2tzeDMEnt1nbt1Ka2apElS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIlS5YsWbJkyZIl68+sB3qEwZ2WQGS2AAAAAElFTkSuQmCC";
+
+/**
+ * Eight solid plates for the WIDE story below: the smallest pictures that still
+ * fill a tile (a 1x1 would photograph the fit rule rather than the strip), one
+ * flat colour each so the strip's scroll is the only thing moving in the frame.
+ */
+const WIDE_PLATE_BASE64S = [
+	"iVBORw0KGgoAAAANSUhEUgAAAUAAAADwBAMAAACDA6BYAAAAA1BMVEVGVG6nsBinAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAPElEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPBpbwAAHhNYqoAAAAAElFTkSuQmCC",
+	"iVBORw0KGgoAAAANSUhEUgAAAUAAAADwBAMAAACDA6BYAAAAA1BMVEVufqCCWSxgAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAPElEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPBpbwAAHhNYqoAAAAAElFTkSuQmCC",
+	"iVBORw0KGgoAAAANSUhEUgAAAUAAAADwBAMAAACDA6BYAAAAA1BMVEWWpL64Vh7+AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAPElEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPBpbwAAHhNYqoAAAAAElFTkSuQmCC",
+	"iVBORw0KGgoAAAANSUhEUgAAAUAAAADwBAMAAACDA6BYAAAAA1BMVEXEzNzZ9gX7AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAPElEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPBpbwAAHhNYqoAAAAAElFTkSuQmCC",
+	"iVBORw0KGgoAAAANSUhEUgAAAUAAAADwBAMAAACDA6BYAAAAA1BMVEXOuJYJO5RRAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAPElEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPBpbwAAHhNYqoAAAAAElFTkSuQmCC",
+	"iVBORw0KGgoAAAANSUhEUgAAAUAAAADwBAMAAACDA6BYAAAAA1BMVEW4inT6M1eWAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAPElEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPBpbwAAHhNYqoAAAAAElFTkSuQmCC",
+	"iVBORw0KGgoAAAANSUhEUgAAAUAAAADwBAMAAACDA6BYAAAAA1BMVEWSYlxs+0W+AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAPElEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPBpbwAAHhNYqoAAAAAElFTkSuQmCC",
+	"iVBORw0KGgoAAAANSUhEUgAAAUAAAADwBAMAAACDA6BYAAAAA1BMVEVeSmCGfPi3AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAPElEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPBpbwAAHhNYqoAAAAAElFTkSuQmCC",
+];
+
 const groupImages = [
 	{
 		id: "viewer-controls:bands",
@@ -100,6 +139,12 @@ const groupImages = [
 		attachment: null,
 		mimeType: "image/png",
 	},
+	{
+		id: "viewer-controls:square",
+		data: SQUARE_BASE64,
+		attachment: null,
+		mimeType: "image/png",
+	},
 ];
 
 /**
@@ -110,6 +155,33 @@ const groupImages = [
  * shutter photographed a state the story had not reached.
  */
 const VIEWER_PICTURE = '[role="dialog"] [data-image-viewport] img';
+
+/**
+ * Ten pictures for `group-wide`: the two real fixtures plus the eight plates.
+ * Ten tiles need 117*10 + 8*9 + padding = ~1,254px against the strip's
+ * `max-w-[calc(100vw-256px)]` = 1,024 at the 1280 capture viewport, so the
+ * strip CANNOT fit them all and the walk has to scroll (design round 1, D1-5).
+ */
+const wideImages = [
+	{
+		id: "viewer-controls:wide-bands",
+		data: BANDS_PNG_BASE64,
+		attachment: null,
+		mimeType: "image/png",
+	},
+	{
+		id: "viewer-controls:wide-portrait",
+		data: PORTRAIT_BASE64,
+		attachment: null,
+		mimeType: "image/png",
+	},
+	...WIDE_PLATE_BASE64S.map((data, index) => ({
+		id: `viewer-controls:wide-plate-${index + 1}`,
+		data,
+		attachment: null,
+		mimeType: "image/png",
+	})),
+];
 
 /**
  * The message view's shape: the agent's prose at reading weight, then the
@@ -201,6 +273,21 @@ const GroupStrip = () => {
 	);
 };
 
+/** The same strip, with a group the strip cannot fit — see `wideImages`. */
+const WideStrip = () => {
+	useShutterLatch(carouselReady);
+	return (
+		<Column>
+			<FoldMedia
+				images={wideImages}
+				scope={null}
+				onRevealMore={() => {}}
+				indent="flush"
+			/>
+		</Column>
+	);
+};
+
 const meta: Meta = {
 	title: "Image viewer controls",
 	parameters: { layout: "fullscreen" },
@@ -225,4 +312,9 @@ export const Viewer: Story = {
 /** A condensed group's strip; the rig presses its first tile. */
 export const Group: Story = {
 	render: () => <GroupStrip />,
+};
+
+/** A group longer than the strip's viewport; the walk must scroll it. */
+export const GroupWide: Story = {
+	render: () => <WideStrip />,
 };

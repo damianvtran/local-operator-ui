@@ -70,6 +70,21 @@ const PICTURE_BOX =
 	"max-h-[min(90vh,calc(100vh-104px))] max-w-[min(90vw,calc(100vw-104px))]";
 
 /**
+ * THE STRIP LANE (design round 1, D1-4 = QA round 1's Q3). A filmstrip rides
+ * `bottom-4` and needs 104px: its 78px tiles plus `py-1` measure 86, and the
+ * inset adds 16 — the same number the close button's ring takes at the top.
+ * Without the reservation a full-height picture loses its bottom band UNDER the
+ * strip: measured on the 400x1200 portrait frame, the picture fitted to
+ * y 52-848 while the strip's tiles span y 801-879, so 47px of the picture
+ * across ~94% of its width was covered — and nothing could reveal it, because
+ * pan is clamped so the picture always covers the frame and the strip never
+ * fades. Landscape pictures are width-limited and unaffected; a portrait shrinks
+ * by the lane and never sits under chrome. `208` is both lanes: 2 x 104.
+ */
+const PICTURE_BOX_WITH_STRIP =
+	"max-h-[min(90vh,calc(100vh-208px))] max-w-[min(90vw,calc(100vw-104px))]";
+
+/**
  * The reserved box, shared by the two states that have no picture to size
  * them: `pending` (the caller's bytes are still resolving — a carousel switch
  * onto a neighbour the cache has not warmed) and the decoded-failure fallback.
@@ -78,12 +93,11 @@ const PICTURE_BOX =
  * and measured the layer at 1152x38, a strip of label text on an empty scrim.
  * `min-h-16 min-w-64` is the floor the fallback draws inside, and it is
  * `AttachmentFrame`'s own floor unit and the `sunken` ground the caller's copy
- * brings.
+ * brings. It takes the box IN FORCE (the strip lane included, when a filmstrip
+ * is up) so a receipt cannot sit under the strip either.
  */
-const RESERVED_BOX = cn(
-	PICTURE_BOX,
-	"flex min-h-16 min-w-64 items-center justify-center p-6",
-);
+const reservedBox = (box: string) =>
+	cn(box, "flex min-h-16 min-w-64 items-center justify-center p-6");
 
 /**
  * Fraction of full strength the controls rest at once the reader has been idle.
@@ -98,7 +112,16 @@ const RESERVED_BOX = cn(
  * thumb's 0.45 is a colour-mix fraction measured against the grounds, and this
  * is an opacity on a cluster of buttons. 0.45 keeps the icons findable while
  * clearly below a full-strength control; a designer round may move it, and the
- * frames in `docs/evidence/image-viewer-controls/` exist to make that call.
+ * frames in `docs/evidence/image-viewer-controls/` exist to make that call
+ * (`resting/` is that state, photographed after the hold).
+ *
+ * AND IT WAS UNREACHABLE UNTIL DESIGN ROUND 1'S D1-2 SETTLED WHERE FOCUS GOES
+ * AT OPEN. Radix's autofocus parked focus on the cluster's first control, the
+ * guard below never rests while focus is inside the cluster (a focused control
+ * must not dim), so the floor only ever appeared after the whole app lost
+ * focus - exactly when nobody is looking. The open-focus policy in the
+ * component body now anchors focus on the layer instead; the jsdom suite
+ * mounts the full cycle (dim, wake on pointer, kept awake while focused).
  *
  * It is an opacity and not a colour step because it fades FIVE controls at four
  * positions at once, including their hover fills; the "disabled changes colour,
@@ -285,6 +308,14 @@ export type ImageLightboxProps = {
 	 * because there is nothing to walk — the count decides, not the caller.
 	 */
 	group?: ImageLightboxGroup;
+	/**
+	 * The dialog's own layer element, handed out for a caller that must move
+	 * focus OFF the controls — the carousel's walk, when it lands on a picture
+	 * whose slot has no control to take focus (design round 1, D1-3). The
+	 * lightbox creates one when this is omitted, so every existing caller keeps
+	 * its behaviour.
+	 */
+	layerRef?: RefObject<HTMLDivElement>;
 };
 
 /**
@@ -322,6 +353,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	fallback,
 	pending = false,
 	group,
+	layerRef,
 }) => {
 	/*
 	 * WHICH PICTURE FAILED, rather than a boolean this component resets. The
@@ -438,6 +470,29 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	const onPrev = group?.onPrev;
 	const onNext = group?.onNext;
 	const showCarousel = group !== undefined && group.count > 1;
+	/*
+	 * The box in force: the close button's lane, plus the strip's when a
+	 * filmstrip is up (see `PICTURE_BOX_WITH_STRIP`).
+	 */
+	const box = showCarousel ? PICTURE_BOX_WITH_STRIP : PICTURE_BOX;
+	/*
+	 * WHAT TAKES FOCUS ON OPEN, and why it is not the first control.
+	 *
+	 * Radix's modal path autofocuses the first tabbable inside the dialog, which
+	 * here is a controls-cluster button (or the strip's first tile). The fade's
+	 * own guard never rests while focus is inside the cluster — by design, a
+	 * focused control must not dim — so parking focus there made the resting
+	 * state UNREACHABLE while the app had focus at all (design round 1, D1-2:
+	 * measured live, the layer sat at `opacity-100` through minutes of idling and
+	 * a 3.2s explicit hold) and left the first strip tile wearing the focus ring
+	 * and its hover-revealed actions chip while another picture was current
+	 * (D1-3). The layer's own anchor takes focus instead: the picture's frame
+	 * when there is one, else the dialog layer — both outside the cluster, so the
+	 * reader who stops touching the overlay gets the quiet state the operator
+	 * asked for, and Tab still enters the cluster at its first enabled control.
+	 */
+	const localLayerRef = useRef<HTMLDivElement>(null);
+	const layer = layerRef ?? localLayerRef;
 	useEffect(() => {
 		if (!open || !showCarousel) return;
 		const onKeyDown = (event: KeyboardEvent) => {
@@ -581,8 +636,16 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 			<div
 				ref={frameRef}
 				data-image-viewport=""
+				/*
+				 * A focus ANCHOR, not a tab stop: the open-focus policy above parks
+				 * focus here, and `outline-none` keeps that parking from painting a
+				 * ring — the reader never asked for this element, and the global
+				 * `:focus-visible` rule would otherwise draw one around the picture
+				 * the moment the open came from the keyboard.
+				 */
+				tabIndex={-1}
 				className={cn(
-					PICTURE_BOX,
+					box,
 					/*
 					 * The clipping window itself: `overflow-hidden` is what keeps a
 					 * zoomed picture inside the box the outside-click geometry was
@@ -593,7 +656,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 					 * rather than relying on the dialog's grid track to size it, so the
 					 * wrapper is the fitted size wherever a future caller mounts it.
 					 */
-					"relative h-fit w-fit overflow-hidden leading-none",
+					"relative h-fit w-fit overflow-hidden leading-none outline-none",
 					canPan && (dragging ? "cursor-grabbing" : "cursor-grab"),
 					canPan && "touch-none",
 				)}
@@ -606,7 +669,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 					src={src}
 					alt={label}
 					draggable={false}
-					className={cn(PICTURE_BOX, "block select-none object-contain")}
+					className={cn(box, "block select-none object-contain")}
 					/*
 					 * No transform at fit and origin, so the resting DOM is exactly
 					 * the one the pre-zoom frames measured; the transform appears
@@ -626,7 +689,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 			/* The bytes are on their way: an empty reserved box, `aria-hidden` because
 			   there is nothing to announce yet — the same reserved state the
 			   transcript's strip draws, and the same reason it draws no spinner. */
-			<div className={RESERVED_BOX} aria-hidden="true" />
+			<div className={reservedBox(box)} aria-hidden="true" />
 		) : (
 			/*
 			 * The caller's fallback, for both halves of unreadable: a source that
@@ -636,12 +699,23 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 			 * nothing to press — so what this catches is the press landing before the
 			 * picture decodes, and a source that dies between the press and the paint.
 			 */
-			<div className={RESERVED_BOX}>{fallback}</div>
+			<div className={reservedBox(box)}>{fallback}</div>
 		);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
+				/*
+				 * The layer ref + the open-focus policy: see `box`'s neighbour note in
+				 * the component body — the anchor takes focus so the cluster can rest
+				 * and no strip tile wears a ring the walk did not put there.
+				 */
+				ref={layer}
+				tabIndex={-1}
+				onOpenAutoFocus={(event) => {
+					event.preventDefault();
+					(frameRef.current ?? layer.current)?.focus();
+				}}
 				/*
 				 * The panel's own close button is replaced below, and this is the
 				 * primitive's supported way to say so — not a reimplementation of it:
@@ -668,10 +742,10 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 				}}
 				className={cn(
 					// Centred by auto margins, not by a transform: see the header note.
-					"inset-0 top-0 left-0 m-auto h-fit w-fit translate-none",
+					"inset-0 top-0 left-0 m-auto h-fit w-fit translate-none outline-none",
 					// The fit box, with the close button's lane taken off it: see
-					// `PICTURE_BOX`.
-					PICTURE_BOX,
+					// `PICTURE_BOX` and `PICTURE_BOX_WITH_STRIP`.
+					box,
 					// Every panel clothes the primitive puts on, removed. `p-0` is
 					// load-bearing rather than tidy: padding would enlarge the content
 					// box past the picture, and the click-outside region would grow with
@@ -742,6 +816,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 								variant="ghost"
 								size="icon-sm"
 								aria-label="Previous image"
+								title="Previous image"
 								onClick={group?.onPrev}
 								className="pointer-events-auto fixed top-0 bottom-0 left-4 my-auto"
 								data-image-viewer-prev=""
@@ -752,6 +827,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 								variant="ghost"
 								size="icon-sm"
 								aria-label="Next image"
+								title="Next image"
 								onClick={group?.onNext}
 								className="pointer-events-auto fixed top-0 right-4 bottom-0 my-auto"
 								data-image-viewer-next=""
@@ -773,6 +849,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							variant="ghost"
 							size="icon-sm"
 							aria-label="Zoom out"
+							title="Zoom out"
 							disabled={!canZoom || zoom === VIEWER_ZOOM_MIN}
 							onClick={() => applyZoom(stepZoom(zoom, -1))}
 						>
@@ -782,6 +859,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							variant="ghost"
 							size="icon-sm"
 							aria-label="Zoom in"
+							title="Zoom in"
 							disabled={!canZoom || zoom === VIEWER_ZOOM_MAX}
 							onClick={() => applyZoom(stepZoom(zoom, 1))}
 						>
@@ -791,6 +869,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							variant="ghost"
 							size="icon-sm"
 							aria-label="Reset view"
+							title="Reset view"
 							disabled={!canZoom || atFit}
 							onClick={resetView}
 						>
@@ -803,6 +882,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							size="icon-sm"
 							className={cn("pointer-events-auto fixed top-4 right-4")}
 							aria-label="Close image"
+							title="Close image"
 						>
 							<X aria-hidden="true" />
 						</Button>

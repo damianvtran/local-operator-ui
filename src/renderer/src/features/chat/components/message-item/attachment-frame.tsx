@@ -72,22 +72,6 @@ export type AttachmentFrameProps = {
 	 * state as a frame.
 	 */
 	boundary?: "hairline" | "control";
-	/**
-	 * Whether this tile IS the picture on screen right now — the lightbox
-	 * filmstrip's mark of the current one.
-	 *
-	 * It keeps the `border-control` edge the hover and keyboard-focus states
-	 * return, held at rest: the operator's ask for the strip is that "the current
-	 * one" be MARKED, and with the edge alone arriving only on hover the current
-	 * tile is indistinguishable from its neighbours the moment the pointer
-	 * leaves it. The hover arm stays stronger on the tile under the pointer (a
-	 * variant out-specifies the plain class), so the two states compose rather
-	 * than fight.
-	 *
-	 * Only meaningful for the `control` boundary; on a `hairline` frame (the
-	 * full picture) the edge is the shared decorative rule and is not a state.
-	 */
-	current?: boolean;
 } & Omit<ComponentPropsWithoutRef<"div">, "children" | "className">;
 
 /**
@@ -101,7 +85,6 @@ export const AttachmentFrame = ({
 	children,
 	className,
 	boundary = "hairline",
-	current = false,
 	...rest
 }: AttachmentFrameProps) => (
 	<div
@@ -114,9 +97,6 @@ export const AttachmentFrame = ({
 						"border border-transparent",
 						"transition-colors duration-fast ease-out-quart",
 						"group-hover/tile:border-control group-focus-visible/tile:border-control",
-						// Last, so tailwind-merge keeps it over `border-transparent` — see
-						// `current` on the props type.
-						current && "border-control",
 					]
 				: ["border border-hairline", "bg-sunken"],
 			className,

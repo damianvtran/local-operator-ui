@@ -26,10 +26,16 @@
  * layer opens (Radix unmounts dialog content while closed), so every picture the
  * strip shows begins resolving at open, in the same digest-keyed cache the
  * selected picture uses — a press onto a neighbour is served from a fetch that
- * started when the layer did, and a group larger than the strip's own viewport
- * stays lazy: nothing off the strip is fetched until the reader scrolls to it.
- * That is why there is no separate `prefetch` call: a prefetch loop would be a
- * second resolver wearing a third name.
+ * started when the layer did. The strip is NOT virtualised (agent review round
+ * 1, R1-3): every tile it holds mounts, so a group LONGER than the strip's own
+ * viewport resolves all of its pictures at open rather than on scroll — the
+ * scroll-into-view on a walk keeps the current reachable, and the cost of a
+ * very large group is stated here rather than hidden behind a "lazy" claim that
+ * only the mount-driven cache makes true. Nothing outside the strip is fetched:
+ * the strip is the boundary — a transcript with several groups resolves only
+ * the one whose overlay is open. That is also why there is no separate
+ * `prefetch` call: a prefetch loop would be a second resolver wearing a third
+ * name.
  *
  * ## The cycle, stated so a future author does not "fix" it
  *
@@ -49,7 +55,15 @@ import {
 	clampGroupIndex,
 	wrapGroupIndex,
 } from "@shared/lib/image-viewer-model";
-import { type FC, type RefObject, useState } from "react";
+import { cn } from "@shared/lib/utils";
+import {
+	type FC,
+	type RefObject,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	ATTACHMENT_UNAVAILABLE_COPY,
 	BrokenAttachment,
@@ -158,17 +172,76 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 	const label = labelFor(image, safeIndex, count);
 	const source = useAttachmentUrl(image, scope);
 
-	const onPrev = () => setSelected(wrapGroupIndex(safeIndex, count, -1));
-	const onNext = () => setSelected(wrapGroupIndex(safeIndex, count, 1));
+	/*
+	 * The strip, the layer and the walk, in one place: the refs are the two
+	 * elements a walk may have to move FOCUS between (design round 1, D1-3).
+	 */
+	const stripRef = useRef<HTMLUListElement | null>(null);
+	const layerRef = useRef<HTMLDivElement>(null);
+	/*
+	 * The strip's layer mounts a COMMIT AFTER `open` flips (Radix's presence
+	 * keeps its content out of the first open commit — measured: the scroll
+	 * effect ran with open=true and the strip not yet in the document), so an
+	 * effect keyed on `open` cannot see the strip on the open that matters.
+	 * The attach callback fires when the `ul` actually mounts, and the state
+	 * bump is what re-runs the scroll effect then.
+	 */
+	const [stripMounted, setStripMounted] = useState(false);
+	const attachStrip = useCallback((node: HTMLUListElement | null) => {
+		stripRef.current = node;
+		setStripMounted(node !== null);
+	}, []);
+	/*
+	 * WHERE FOCUS GOES WHEN THE WALK MOVES THE PICTURE. A strip tile that held
+	 * focus must not keep reading as the current one: the walk follows the picture
+	 * to the new tile's own control where one exists — every slot's label is
+	 * static, so the target can be named before the re-render — and where it does
+	 * not (a picture with no bytes draws a receipt, which has no control to take
+	 * focus) focus leaves the tiles for the layer instead, so no stale tile wears
+	 * a ring the walk did not put there. The check is `fromStrip` rather than
+	 * "always": a reader pointing at the frame keeps their focus on the frame.
+	 */
+	const focusFor = (index: number) => {
+		const tile = stripRef.current?.querySelector<HTMLButtonElement>(
+			`button[aria-label="Show image ${index + 1} of ${count}"]`,
+		);
+		if (tile) tile.focus();
+		else layerRef.current?.focus();
+	};
+	const walk = (step: number) => {
+		const next = wrapGroupIndex(safeIndex, count, step);
+		const fromStrip =
+			stripRef.current?.contains(document.activeElement) ?? false;
+		setSelected(next);
+		if (fromStrip) focusFor(next);
+	};
+	const onPrev = () => walk(-1);
+	const onNext = () => walk(1);
+	/*
+	 * The current slot is scrolled into view on every move (design round 1,
+	 * D1-5): the strip scrolls (`max-w` + `overflow-x-auto`), so a walk can move
+	 * the current off its viewport; the slot marker is on the `li` so the receipt
+	 * slot — which has no button — scrolls too. `scrollIntoView` is optional-called
+	 * because jsdom does not implement it and the suite mounts this strip.
+	 */
+	/* biome-ignore lint/correctness/useExhaustiveDependencies: `stripMounted` is the mount signal this effect exists to wait for (the strip's layer mounts a commit after `open`), and it is deliberately not read in the body - the ref is. */
+	useEffect(() => {
+		const slot =
+			stripRef.current?.querySelector(`[data-image-slot="${safeIndex + 1}"]`) ??
+			stripRef.current;
+		slot?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+	}, [stripMounted, safeIndex]);
 
 	/*
 	 * The strip's tiles are the transcript's own tiles: the same slot, the same
 	 * reserved and missing states, the same hover-and-focus edge — with the
 	 * press repointed from "expand" to "show", because in here a tile does not
 	 * open anything, it steps the carousel the reader is already in. The
-	 * `aria-current` mark is the tile that IS the picture on screen, which is
-	 * the same fact the strip's visual state carries (see the lightbox's strip
-	 * note on how the current tile is marked).
+	 * `aria-current` mark is the tile that IS the picture on screen; its VISIBLE
+	 * half lives on the SLOT (`ring-ink` on the `li`), so the mark survives
+	 * the states where a slot has no control at all - the receipt for a picture
+	 * with no bytes (design round 1's D1-1 and UX round 1's U1-1 settled it
+	 * there).
 	 */
 	const filmstrip =
 		count > 1 ? (
@@ -188,12 +261,54 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 				/* biome-ignore lint/a11y/noRedundantRoles: WebKit drops the implicit list role when `list-style: none` is set, so the explicit one is what carries the count to VoiceOver. */
 				/* biome-ignore lint/a11y/useSemanticElements: the element already IS the one the rule suggests - the explicit role is the WebKit fix above, not a substitute for `ul`. */
 				role="list"
+				ref={attachStrip}
 				aria-label={`${count} images`}
 				data-image-filmstrip=""
-				className="flex max-w-full items-center gap-2 overflow-x-auto p-1 leading-none"
+				/*
+				 * `px-2` rather than `p-1` (design round 1, D1-6): the focus ring needs
+				 * 4px of slack and `overflow-x-auto` clips at the padding box, so at
+				 * `p-1` a tile landing flush under a scroll clips its own ring's outer
+				 * edge - measured live: the ring's edge and the clip box coincided at
+				 * x=452.5. `py-1` keeps the strip's measured height.
+				 */
+				className="flex max-w-full items-center gap-2 overflow-x-auto px-2 py-1 leading-none"
 			>
 				{images.map((entry, tileIndex) => (
-					<li key={entry.id} className="flex shrink-0 leading-none">
+					<li
+						key={entry.id}
+						data-image-slot={tileIndex + 1}
+						className={cn(
+							"flex shrink-0 rounded-sm leading-none",
+							/*
+							 * THE VISIBLE CURRENT MARK, on the SLOT (design round 1's D1-1,
+							 * UX round 1's U1-1). Two findings meet here. D1-1: the mark used
+							 * to be the tile's `border-control` edge, which measures 1.52-2.36:1
+							 * on every light palette's scrim.
+							 *
+							 * U1-1: a mark living on the tile's own control vanished exactly when
+							 * the walk landed on a picture with no bytes, because a receipt has no
+							 * button - the slot carries it for every state the slot can be in.
+							 *
+							 * THE ROLE IS `ink`, and the relay that got here is worth keeping: the
+							 * first fix reached for `ink-muted` on its ratio over ONE scrim
+							 * composite (over `canvas`), where it clears 59/59 at a 3.02:1 floor
+							 * case. But the scrim dims whatever the app has OPEN under it - the
+							 * strip's lane can sit over a code block, a hovered row, a find-match -
+							 * so the ring's real ground is the scrim over each of the eight state
+							 * grounds, and `ink-muted` FAILS 3 of those 59x8 composites
+							 * (kanagawaLotus: 2.78:1 over `sunken`, 2.82 over `accentWash`). `ink`
+							 * is the one role that clears the floor over EVERY composite (worst:
+							 * everforestLight over `sunken`, 3.37:1), and
+							 * `scripts/contrast-contract.mjs` now asserts it there ("the lightbox's
+							 * own ground").
+							 *
+							 * A ring is a box-shadow, so nothing here moves layout, and the tile's
+							 * own hover/focus edge stays its control language - the CURRENT fact
+							 * out-ranks it on the slot instead of tying it.
+							 */
+							tileIndex === safeIndex && "ring-1 ring-ink",
+						)}
+					>
 						<CanonicalImage
 							image={entry}
 							scope={scope}
@@ -243,6 +358,7 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 			fallback={
 				<BrokenAttachment name={label} detail={ATTACHMENT_UNAVAILABLE_COPY} />
 			}
+			layerRef={layerRef}
 			group={{ index: safeIndex, count, onPrev, onNext, filmstrip }}
 		/>
 	);
