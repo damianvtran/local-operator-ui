@@ -1,4 +1,5 @@
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import {
 	isConsoleUnseen,
@@ -224,7 +225,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			failure instanceof Error ? failure.message : String(failure ?? "");
 		const at = raw.lastIndexOf("Error: ");
 		const detail = (at === -1 ? raw : raw.slice(at + "Error: ".length)).trim();
-		return detail === "" ? "The terminal could not be closed." : detail;
+		return detail === "" ? t("ui.console.pane.close_refusal") : detail;
 	};
 
 	/**
@@ -672,12 +673,14 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					)}
 					data-tour-tag="console-pane-header"
 				>
-					<span className={cn("shrink-0 text-meta text-ink-dim")}>Console</span>
-					<Tooltip content="Close console">
+					<span className={cn("shrink-0 text-meta text-ink-dim")}>
+						{t("ui.console.pane.label")}
+					</span>
+					<Tooltip content={t("ui.console.pane.close")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Close console"
+							aria-label={t("ui.console.pane.close")}
 							onClick={onClose}
 							data-tour-tag="console-pane-close"
 						>
@@ -686,8 +689,8 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					</Tooltip>
 				</div>
 				<ConsoleNotice
-					title="A console needs a conversation"
-					detail="A console runs in a conversation's working directory, so there is nowhere to put one yet."
+					title={t("ui.console.pane.needs_conversation.title")}
+					detail={t("ui.console.pane.needs_conversation.detail")}
 				/>
 			</div>
 		);
@@ -924,7 +927,9 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				<div className={cn("flex min-w-0 items-center gap-2")}>
 					{/* The pane's title at the slot's own title step, not louder: the pane's
 					    contents name it, which is the browser pane's measured D4. */}
-					<span className={cn("shrink-0 text-meta text-ink-dim")}>Console</span>
+					<span className={cn("shrink-0 text-meta text-ink-dim")}>
+						{t("ui.console.pane.label")}
+					</span>
 					{/* The surface's own command, which §6.5 makes load-bearing: a person
 					    looking at this bar and an agent reading `console_list` describe the
 					    same object. Truncated rather than wrapped in a 40px bar. */}
@@ -945,14 +950,14 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					<Tooltip
 						content={
 							available
-								? "New console"
-								: "The console is not available in this app"
+								? t("ui.console.new")
+								: t("ui.console.unavailable.title")
 						}
 					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="New console"
+							aria-label={t("ui.console.new")}
 							onClick={session.createSurface}
 							/* DISABLED WHEN THERE IS NOTHING TO ACT ON, which is the pane's
 							   own stated principle ("a control with nothing to act on lies"):
@@ -1004,11 +1009,11 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					    and tooltip in the same corner, because an icon-only control whose
 					    siblings all carry a label is the one that gets mistaken for
 					    something else. */}
-					<Tooltip content="Close console">
+					<Tooltip content={t("ui.console.pane.close")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Close console"
+							aria-label={t("ui.console.pane.close")}
 							onClick={onClose}
 							data-tour-tag="console-pane-close"
 						>
@@ -1043,7 +1048,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 						"flex shrink-0 items-center gap-1 overflow-x-auto border-hairline border-b bg-surface px-2 py-1",
 					)}
 					role="tablist"
-					aria-label="Console surfaces"
+					aria-label={t("ui.console.pane.surfaces")}
 					data-tour-tag="console-surface-list"
 				>
 					{surfaces.map((row, index) => {
@@ -1131,7 +1136,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 									   app's stylesheet caps it under `prefers-reduced-motion`, so a frozen
 									   dot is the reduced-motion state rather than a missing one. */
 										<span
-											aria-label="Finished since you last looked"
+											aria-label={t("ui.console.pane.blip")}
 											className={cn(
 												"size-2 shrink-0 rounded-full",
 												blipPulsing
