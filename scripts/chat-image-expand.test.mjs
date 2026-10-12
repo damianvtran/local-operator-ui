@@ -969,6 +969,123 @@ test("the image actions menu stays reachable without a pointer", async () => {
 	});
 });
 
+test("Copy image on a PNG is the byte-exact pass-through, with no canvas in the path", async () => {
+	await mount(async (api) => {
+		/*
+		 * THE CLAIM: a PNG blob skips the transcode entirely. The fix added an
+		 * encode for every non-PNG type (Chromium's sanitized clipboard write
+		 * refuses `image/jpeg` and friends; `image-actions.test.mjs` pins the
+		 * decision), and the encode half needs a real document - so what a jsdom
+		 * harness CAN answer is the half that must NOT enter it: the entry is
+		 * written under `image/png`, and the bytes in it are the resolved blob's
+		 * own, unchanged. The ENCODE branch (non-PNG decode, canvas, `toBlob`)
+		 * genuinely cannot run here - jsdom has no canvas and no image decoder -
+		 * so it is NOT faked; it is proven by the real-click `image-copy` scene
+		 * against the built app (`docs/evidence/image-copy/`).
+		 */
+		const writes = [];
+		const previousClipboardItem = Object.getOwnPropertyDescriptor(
+			globalThis,
+			"ClipboardItem",
+		);
+		const previousClipboard = Object.getOwnPropertyDescriptor(
+			globalThis.navigator,
+			"clipboard",
+		);
+		Object.defineProperty(globalThis, "ClipboardItem", {
+			configurable: true,
+			writable: true,
+			value: class {
+				constructor(items) {
+					this.items = items;
+				}
+			},
+		});
+		Object.defineProperty(globalThis.navigator, "clipboard", {
+			configurable: true,
+			value: {
+				write: async (items) => {
+					writes.push(...items);
+				},
+				writeText: async () => {},
+			},
+		});
+		try {
+			await api.render(
+				React.createElement(ImageAttachment, {
+					file: PNG,
+					src: PNG,
+					conversationId: "image-expand",
+				}),
+			);
+			const trigger = api.document.querySelector(
+				'button[aria-label^="Actions for"]',
+			);
+			assert.ok(trigger, "a `data:`-kind picture carries the menu");
+			act(() => {
+				trigger.focus();
+				trigger.dispatchEvent(
+					new window.MouseEvent("pointerdown", {
+						bubbles: true,
+						cancelable: true,
+						button: 0,
+					}),
+				);
+			});
+			await act(async () => {});
+			const item = [...api.document.querySelectorAll('[role="menuitem"]')].find(
+				(candidate) => candidate.textContent.includes("Copy image"),
+			);
+			assert.ok(item, "the menu's Copy image entry");
+			act(() => {
+				item.dispatchEvent(
+					new window.MouseEvent("pointerdown", {
+						bubbles: true,
+						cancelable: true,
+						button: 0,
+					}),
+				);
+				item.dispatchEvent(
+					new window.MouseEvent("click", { bubbles: true, cancelable: true }),
+				);
+			});
+			await api.settle(() => writes.length > 0);
+			assert.equal(writes.length, 1, "exactly one clipboard entry");
+			assert.deepEqual(
+				Object.keys(writes[0].items),
+				["image/png"],
+				"written under the clipboard's one writable image type",
+			);
+			const blob = writes[0].items["image/png"];
+			const expected = Buffer.from(PNG_BASE64, "base64");
+			assert.equal(
+				blob.size,
+				expected.length,
+				"the pass-through hands over the resolved bytes unchanged",
+			);
+			assert.deepEqual(
+				[...new Uint8Array(await blob.arrayBuffer())],
+				[...expected],
+			);
+		} finally {
+			if (previousClipboardItem)
+				Object.defineProperty(
+					globalThis,
+					"ClipboardItem",
+					previousClipboardItem,
+				);
+			else Reflect.deleteProperty(globalThis, "ClipboardItem");
+			if (previousClipboard)
+				Object.defineProperty(
+					globalThis.navigator,
+					"clipboard",
+					previousClipboard,
+				);
+			else Reflect.deleteProperty(globalThis.navigator, "clipboard");
+		}
+	});
+});
+
 test("a canonical picture with no bytes is a failure row, not an untappable picture", async () => {
 	await mount(async (api) => {
 		/*

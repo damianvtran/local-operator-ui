@@ -10010,6 +10010,16 @@
       "why": "Complete the original neighbour-on-demand requirement: partial cold strip, counted visible/wrapped-neighbour fetches and stable loaded slots. Four new brand-theme frames only; prior120 viewer frames unchanged.",
       "capturedAt": "2026-10-12T05:32:22.200041+00:00",
       "capturedAtHead": "dd4fc8b6a8107b41ef4c49d558930cb69f89fe91"
+    },
+    {
+      "path": "image-copy",
+      "frames": 6,
+      "surfaces": 3,
+      "themes": 2,
+      "source": "`scripts/renderer-driver.mjs`, scene `image-copy` (this change's own: the seeded transcript's two pictures, the `Copy image` press on each with a real pointer event, and the clipboard read back from the main process after every press), on the app built from this change's own tree on top of `origin/main` = `7a392ecf943` (HEAD `2bc40aa4026` at capture, the scene edits uncommitted) - and, for the before half, the SAME scene bytes on `origin/main` = `7a392ecf943` itself, built the same way - both in `headless` window mode with `webContents.capturePage()`, one launch per half (the scene drives the theme switch itself, so each half covers both palettes), a scratch daemon per half (the installed runtime's `local-operator serve --hosting test --model mock` in an isolated config dir, with `scripts/image-copy-fixture.mjs` writing the transcript and both attachment digests). The `.webp` files are `cwebp -q 90` conversions of the runs' `.png`s; the runs' own logs are committed beside them, force-added with `git add -f` past `.gitignore`'s `*.log`: `image-copy-after-run.log` and `image-copy-before-run.log`.",
+      "why": "THE COPY-IMAGE FIX, BOTH HALVES (operator report, 2026-10-11): every non-PNG picture in the transcript failed to copy - Chromium's sanitized clipboard write takes only `image/png` among image types, and the image actions menu passed each blob's own MIME - while PNGs copied fine. The before half reproduces the report from two real clicks (the failure toast on the frame; `NotAllowedError: Failed to execute 'write' on 'Clipboard': Type image/jpeg not supported on write.` in its log; the clipboard unchanged), and the after half shows the JPEG landing as a PNG at its own 320x200 and the PNG pass-through unbroken at 240x160. The OS round trip re-encodes the clipboard's bytes (1103 read back against the fixture's 981, one digest on both palettes), so byte-exactness is claimed by the jsdom test's `ClipboardItem` assertion and the scene claims type + dimensions - said in the scene's own note. The press-to-toast timings (~185 ms) are the transient-activation measurement the fix's comment cites.",
+      "capturedAt": "2026-10-11T22:28:40-04:00",
+      "capturedAtNote": "THE RUNS, NOT A FOLD: the six frames span 22:28:03-22:28:40 local (the after half's four, then the before half's two; the rig logs' mtimes close each run). One launch per half, each covering both palettes through the scene's own theme switch. The after half's tree is `2bc40aa4026` (this change) with the scene edits uncommitted, the before half's is `origin/main` `7a392ecf943`; no frame is carried between halves."
     }
   ],
   "remediationRecord": {
