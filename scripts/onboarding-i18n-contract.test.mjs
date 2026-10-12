@@ -33,6 +33,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
+	mkdirSync,
 	mkdtempSync,
 	readFileSync,
 	readdirSync,
@@ -390,8 +391,22 @@ test("diagnostic tracer records actual isolated workers without environment valu
 	// named fixture/environment failure. This is not a diagnosis or cure of the
 	// full Desktop job's later execution-ceiling cancellation.
 	const temporaryRoot = realpathSync(process.env.RUNNER_TEMP ?? tmpdir());
-	const scratch = mkdtempSync(join(temporaryRoot, "onboarding-diagnostic-"));
+	const scenario = mkdtempSync(join(temporaryRoot, "onboarding-diagnostic-"));
 	try {
+		// Ambient omitted/equal roots previously accepted the old allocation.
+		// Seed disjoint canonical roots for the REAL worker every time, without
+		// mutating process.env or importing a copied version of this module.
+		const osTemporaryRoot = join(scenario, "os-temp");
+		const runnerTemporaryRoot = join(scenario, "runner-temp");
+		mkdirSync(osTemporaryRoot);
+		mkdirSync(runnerTemporaryRoot);
+		const fixtureEnvironment = {
+			TMPDIR: realpathSync(osTemporaryRoot),
+			RUNNER_TEMP: realpathSync(runnerTemporaryRoot),
+		};
+		const scratch = mkdtempSync(
+			join(fixtureEnvironment.RUNNER_TEMP, "worker-"),
+		);
 		const fixture = join(scratch, "passes.test.mjs");
 		const map = join(scratch, "populated-map.json");
 		const trace = join(scratch, "trace");
@@ -403,9 +418,16 @@ test("diagnostic tracer records actual isolated workers without environment valu
 			fixture,
 			[
 				'import assert from "node:assert/strict";',
-				'import {readFileSync} from "node:fs";',
+				'import {readFileSync, realpathSync} from "node:fs";',
+				'import {tmpdir} from "node:os";',
 				'import {test} from "node:test";',
-				`test("passes", () => { const actual = readFileSync("package.json", "utf8"); assert.equal(actual, ${JSON.stringify(replacement)}); console.log("OVERLAY_BYTES=" + actual); });`,
+				`test("passes", () => {
+assert.equal(realpathSync(tmpdir()), ${JSON.stringify(fixtureEnvironment.TMPDIR)});
+assert.equal(realpathSync(process.env.RUNNER_TEMP), ${JSON.stringify(fixtureEnvironment.RUNNER_TEMP)});
+const actual = readFileSync("package.json", "utf8");
+assert.equal(actual, ${JSON.stringify(replacement)});
+console.log("OVERLAY_BYTES=" + actual);
+});`,
 			].join("\n"),
 		);
 		const env = Object.fromEntries(
@@ -417,8 +439,7 @@ test("diagnostic tracer records actual isolated workers without environment valu
 					key !== "XPC_FLAGS",
 			),
 		);
-		Object.assign(env, {
-			RUNNER_TEMP: temporaryRoot,
+		Object.assign(env, fixtureEnvironment, {
 			NODE_OPTIONS: `--import=${join(process.cwd(), "scripts/onboarding-desktop-diagnostic.mjs")}`,
 			LOCAL_OPERATOR_UI_ONBOARDING_TRACE_DIR: trace,
 			LOCAL_OPERATOR_UI_ONBOARDING_MAP: map,
@@ -472,7 +493,7 @@ test("diagnostic tracer records actual isolated workers without environment valu
 				!text.includes("DIAGNOSTIC_PRIVATE_SENTINEL"),
 		);
 	} finally {
-		rmSync(scratch, { recursive: true, force: true });
+		rmSync(scenario, { recursive: true, force: true });
 	}
 });
 
