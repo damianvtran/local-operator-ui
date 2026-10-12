@@ -306,6 +306,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 		isAskDrawerOpen && askDrawerScope === askScope,
 		askScope,
 		askCount,
+		capFor("panel.ask"),
 	);
 	const terminal = consoleRailLabels(
 		drawn === "console",

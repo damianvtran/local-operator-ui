@@ -5977,7 +5977,7 @@ export const STORIES = [
 			},
 			expectSentence: {
 				selector: '[role="tooltip"]',
-				includes: "Open browser",
+				equals: "Open browser",
 			},
 		},
 	],
@@ -14822,6 +14822,16 @@ const main = async () => {
 			 * EACH CLAIM IN A LIST GETS ITS OWN SURFACE, because the two forms are one gate:
 			 * an entry may name several sentences, and the frame is refused until every one
 			 * of them is on the screen it names.
+			 *
+			 * EQUALITY IS THE SECOND MATCHER (design review round 1's D2): `includes`
+			 * cannot refuse the state its claim exists to catch when the wanted text is a
+			 * PREFIX of the regression — "Open browser" is a substring of "Open browser
+			 * (Ctrl+B)", so a paren that appeared would keep the guard green while the
+			 * frame's whole point (an unbound action prints none) was gone. `equals`
+			 * reads the subject's WHOLE text and fails on any addition. It lives here,
+			 * not at the `expect` position, because that claim runs BEFORE the row's
+			 * `hover`: the tooltip these rows photograph is opened by the pointer move,
+			 * so an equality over it can only be read at this shutter-side phase.
 			 */
 			const declared = options?.expectSentence;
 			if (declared) {
@@ -14845,9 +14855,16 @@ const main = async () => {
 				const outstanding = async () => {
 					const unmet = [];
 					for (const claim of claims) {
-						const wanted = typeof claim === "string" ? claim : claim.includes;
+						const wanted =
+							typeof claim === "string"
+								? claim
+								: (claim.equals ?? claim.includes);
 						const painted = await paintedIn(claim);
-						if (!painted.includes(wanted)) unmet.push({ claim, wanted });
+						const matched =
+							typeof claim === "string" || claim.equals === undefined
+								? painted.includes(wanted)
+								: painted.trim() === wanted.trim();
+						if (!matched) unmet.push({ claim, wanted, painted });
 					}
 					return unmet;
 				};
@@ -14857,10 +14874,10 @@ const main = async () => {
 					unmet = await outstanding();
 				}
 				if (unmet.length > 0) {
-					const { claim, wanted } = unmet[0];
+					const { claim, wanted, painted } = unmet[0];
 					const scoped = typeof claim === "string" ? null : claim.selector;
 					throw new Error(
-						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(wanted)}${scoped ? ` in ${JSON.stringify(scoped)}` : ""}, and a frame without it is evidence for something else.`,
+						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(wanted)}${scoped ? ` in ${JSON.stringify(scoped)}` : ""}, and a frame without it is evidence for something else.${typeof claim === "string" || claim.equals === undefined ? "" : ` It reads ${JSON.stringify(painted.trim())}.`}`,
 					);
 				}
 			}

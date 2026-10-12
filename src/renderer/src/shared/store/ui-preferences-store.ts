@@ -351,6 +351,14 @@ type UiPreferencesState = {
 	setShortcutBinding: (actionId: ActionId, chord: string | null) => void;
 
 	/**
+	 * Store the explicit no-chord state for one action (UX round 1's U4): the
+	 * override value `null`, which is DIFFERENT from `setShortcutBinding`'s
+	 * delete — "deliberately unbound", not "back to the default". The action
+	 * stops claiming a chord entirely, so its default is freed for another row.
+	 */
+	clearShortcutBinding: (actionId: ActionId) => void;
+
+	/**
 	 * Which list the browser pane's strip shows (spec 7.2).
 	 *
 	 * THE SLOT'S STATE, NOT THE PANE'S, and that placement is the fix rather than a
@@ -2336,6 +2344,22 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 						...state.shortcutBindings,
 						[actionId]: normalized,
 					},
+				}));
+			},
+
+			clearShortcutBinding: (actionId) => {
+				/*
+				 * THE EXPLICIT NO-CHORD STATE (UX round 1's U4): a defaulted action
+				 * used to be un-releasable — only rows that ship unbound could stay
+				 * unbound, so `⌘J` or `⌘⇧C` could never be freed for another tool. The
+				 * state is a stored `null` (not a deleted key — that means "the
+				 * default"): `effectiveChord` reads it as nothing, `buildChordMap`
+				 * drops the action, `sanitizeShortcutBindings` keeps it across
+				 * reloads, and the default stops claiming its chord, which is what
+				 * lets another row take it.
+				 */
+				set((state) => ({
+					shortcutBindings: { ...state.shortcutBindings, [actionId]: null },
 				}));
 			},
 

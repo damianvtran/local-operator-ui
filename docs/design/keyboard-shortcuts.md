@@ -65,11 +65,37 @@ pinned library (`@xterm/xterm` 6.0.0), not of this code.
 with a sentence naming the job. **A lane that adds a fixed chord to this tree
 adds it to `RESERVED_CHORDS` in the same change.** The list was scanned from the
 tree's fixed chord inventory (`git grep 'metaKey || '` over `src/`); re-run that
-scan whenever the list is touched. Two classes are deliberately not on it:
+scan whenever the list is touched. One class is deliberately not on it:
 punctuation keys (unrepresentable in the canonical grammar — `⌘+`/`⌘-`/`⌘0`
-cannot be captured by construction), and the chords scoped to a canvas editor or
-a focused row's move (`⌘S`, `⌘O`, `⌘⇧↑`/`⌘⇧↓`) — each preventDefaults at its own
-listener before the router sees it, the same carve-out rule 1 makes.
+cannot be captured by construction).
+
+The canvas editors' save/open chords (`⌘S`, `⌘O`) and the focused row's move
+(`⌘⇧↑`/`⌘⇧↓`) ARE on it, and the reason is a phase-order fact the first draft
+got wrong (agent review round 1's F1 = QA's Q1, measured): their listeners sit
+on `window` while the router is on `document`, and in the bubble phase
+`document` runs FIRST — so a bound action fires *beside* the editor's rather
+than after a `preventDefault` the router never saw. The move chords claim a
+press only when the focused row offers it; on the announce and rowId-null
+returns they answer without `preventDefault`, so the router fires on the same
+press. A chord in that position is reserved, not explained away; a listener the
+router genuinely yields to (rule 1) is the palette's case, not this one.
+
+## The recorder, in three rules
+
+1. **Tab and Shift+Tab navigate** (UX round 1's U1). The field leaves them to
+the browser: no refusal, no `preventDefault`, focus moves as it does anywhere
+else, and one Tab reaches Reset. A recorder that swallows them makes its own
+Reset unreachable from its keyboard flow.
+2. **Escape/Enter end the recording cue, never the focus** (U2). The hint and
+any refusal clear; the field keeps focus, so the next Tab continues from the
+row rather than the top of the page, and the next captured key re-arms the
+cue. A blur to `<body>` is the defect this rule exists for.
+3. **Reset deletes, Clear stores `null`** (U4). Absence means "the default";
+the stored `null` is the explicit no-chord state — the action stops answering,
+and its default stops claiming its chord, freeing it for another row. Pressing
+the chord a row already shows changes nothing; pressing its default while an
+override exists is the override's own reset (U3). The recorder's refusal sentence
+names the platform's own modifier key (U5).
 
 ## The recipe for a seventh action
 

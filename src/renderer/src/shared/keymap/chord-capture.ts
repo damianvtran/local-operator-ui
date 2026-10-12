@@ -36,15 +36,35 @@ export const MODIFIER_ONLY_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * The keys that NAVIGATE rather than spell: presses a recorder must leave to
+ * the browser.
+ *
+ * Tab and Shift+Tab are how a keyboard user moves between the field, its Reset
+ * and the next row. A recorder that refuses them both lies about the harm (`tab`
+ * is not a bindable key in the canonical grammar, so the sentence reads as a
+ * bindability verdict) and — worse — calls `preventDefault`, which leaves focus
+ * stuck on the recording field: UX round 1's U1 measured the section's one clear
+ * affordance, Reset, unreachable one stop away, with a full page walk as the
+ * recovery route. Leaving the press to the browser moves focus as it does
+ * anywhere else in the product, and the field's own `onBlur` ends the recording
+ * exactly as Escape does. Kept beside the other capture rules so the two
+ * recorders cannot re-learn this one differently.
+ */
+export const NAVIGATION_KEYS: ReadonlySet<string> = new Set(["Tab"]);
+
+/**
  * The keys that END an edit rather than spelling a binding.
  *
  * Every key-capture UI in this product's category treats Escape as cancel (UX
  * round 1, U7: this field used to BIND it, so pressing the conventional way out
  * of a recorder rewrote the binding to `escape`, dirty, discoverable only by
  * noticing the field had changed), and Enter is a commit, not a keystroke
- * anybody means to bind while editing a row. Both recorders blur on these; the
- * extraction (issue #928) moved the rule here so the registry's recorder could
- * not re-learn it differently.
+ * anybody means to bind while editing a row. WHICH KEYS end an edit is shared
+ * here; what happens NEXT differs by recorder. The backend field blurs. The
+ * registry's recorder KEEPS focus on the field and clears its recording cue
+ * (UX round 1's U2): a blur dropped the caret to `<body>`, so the next Tab
+ * restarted at the top of the page, and refocusing the field in the same breath
+ * would merely re-arm the recording and make Escape a visible no-op.
  */
 export const END_EDIT_KEYS: ReadonlySet<string> = new Set([
 	"Escape",

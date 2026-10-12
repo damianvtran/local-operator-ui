@@ -150,6 +150,26 @@ test("the match matrix: defaults, overrides, exact modifier sets", () => {
 		null,
 	);
 	assert.equal(keymapEventAction(press({ key: "9" }), source()), null);
+	/*
+	 * The explicit no-chord state (U4) is INERT at dispatch: a cleared console
+	 * never answers ⌘J, and the freed chord can be answered by another action
+	 * instead — the whole point of clearing a defaulted action.
+	 */
+	const cleared = source({ bindings: { "panel.console": null } });
+	assert.equal(keymapEventAction(press(), cleared), null);
+	assert.equal(
+		keymapEventAction(press({ key: "c", shiftKey: true }), cleared),
+		"panel.canvas",
+	);
+	assert.equal(
+		keymapEventAction(
+			press(),
+			source({
+				bindings: { "panel.console": null, "panel.browser": "primary+j" },
+			}),
+		),
+		"panel.browser",
+	);
 });
 
 test("the bails, in the RFC's order", () => {

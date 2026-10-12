@@ -154,12 +154,14 @@ test("every reserved entry is canonical, stated in the app's voice, and explaine
 
 test("the reserved inventory is exactly the decoded list", () => {
 	/*
-	 * The RFC's reserved set, verbatim: the main process's three doors, the
-	 * renderer chords that fire app-wide, the native text-editing chords a
-	 * focused field must keep, and the application menu's own. Pinned in full so
-	 * a lane that adds a fixed chord to the tree is TOLD to add it here (the
-	 * rule `keymap-registry.ts` states), and so an accidental deletion of an
-	 * entry fails this file rather than arming a double-fire in the field.
+	 * The RFC's reserved set, verbatim, plus review round 1's four additions
+	 * (F1 = QA's Q1): `⌘S`/`⌘O` live on `window` — the router's document
+	 * listener runs first in the bubble phase, so they double-fire — and
+	 * `⌘⇧↑`/`⌘⇧↓` drop `preventDefault` on their announce and rowId-null
+	 * returns. Pinned in full so a lane that adds a fixed chord to the tree is
+	 * TOLD to add it here (the rule `keymap-registry.ts` states), and so an
+	 * accidental deletion of an entry fails this file rather than arming a
+	 * double-fire in the field.
 	 */
 	const expected = [
 		"primary+alt+down",
@@ -170,11 +172,15 @@ test("the reserved inventory is exactly the decoded list", () => {
 		"primary+k",
 		"primary+m",
 		"primary+n",
+		"primary+o",
 		"primary+p",
 		"primary+q",
+		"primary+s",
 		"primary+shift+a",
+		"primary+shift+down",
 		"primary+shift+p",
 		"primary+shift+s",
+		"primary+shift+up",
 		"primary+shift+z",
 		"primary+v",
 		"primary+w",

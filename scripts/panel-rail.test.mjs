@@ -730,6 +730,18 @@ test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows 
 			"Open asks — This conversation, 2 waiting or moved on",
 		);
 		assert.equal(api.item("ask").getAttribute("aria-pressed"), "false");
+		/*
+		 * ...and the bound cap rides the tooltip too (#928, review round 1's
+		 * F2 = design D3): the same promise the dispatcher answers, printed in the
+		 * register this host spells (linux), and gone again when the row is reset.
+		 */
+		api.store({ shortcutBindings: { "panel.ask": "primary+l" } });
+		await frames(2);
+		assert.equal(
+			tooltip(),
+			"Open asks (Ctrl+L) — This conversation, 2 waiting or moved on",
+		);
+		api.store({ shortcutBindings: {} });
 		act(() => api.item("ask").blur());
 	});
 });
@@ -782,27 +794,41 @@ test("the tooltips are the header's verbatim; the accessible names are stable no
 	 * promise restated on the rail: at ZERO it still names its scope, which is what
 	 * keeps it distinct from the drawer's own `Close asks` dismiss.
 	 */
-	assert.deepEqual(askRailLabels(false, "session", 1), {
+	assert.deepEqual(askRailLabels(false, "session", 1, null), {
 		tooltip: "Open asks — This conversation, 1 waiting or moved on",
 		aria: "Asks, This conversation, 1 waiting or moved on",
 	});
-	assert.deepEqual(askRailLabels(true, "fleet", 2), {
+	assert.deepEqual(askRailLabels(true, "fleet", 2, null), {
 		tooltip: "Close asks — All conversations, 2 waiting or moved on",
 		aria: "Asks, All conversations, 2 waiting or moved on",
 	});
-	assert.deepEqual(askRailLabels(false, "session", 0), {
+	assert.deepEqual(askRailLabels(false, "session", 0, null), {
 		tooltip: "Open asks — This conversation",
 		aria: "Asks, This conversation",
 	});
+	/*
+	 * The bound cap (#928, review round 1's F2 = design D3): the chord rides the
+	 * noun in BOTH registers, exactly where the five siblings print theirs. The
+	 * asks item used to be the one rail control whose promise the dispatcher
+	 * answered but the control never showed.
+	 */
+	assert.deepEqual(askRailLabels(false, "session", 1, "⌘A"), {
+		tooltip: "Open asks (⌘A) — This conversation, 1 waiting or moved on",
+		aria: "Asks (⌘A), This conversation, 1 waiting or moved on",
+	});
+	assert.deepEqual(askRailLabels(true, "fleet", 0, "⌘A"), {
+		tooltip: "Close asks (⌘A) — All conversations",
+		aria: "Asks (⌘A), All conversations",
+	});
 	assert.notEqual(
-		askRailLabels(true, "session", 0).tooltip,
+		askRailLabels(true, "session", 0, null).tooltip,
 		"Close asks",
 		"the rail door must never be the same string as the pane's own dismiss",
 	);
 	/* THE TOOLTIP IS THE REUSE ITSELF, not a second spelling: `askRailLabels` prints
 	   `ask-queue.ts`'s composer for the same state, so the two cannot drift. */
 	assert.equal(
-		askRailLabels(true, "session", 0).tooltip,
+		askRailLabels(true, "session", 0, null).tooltip,
 		askRailToggleLabel({ open: true, scope: "session", count: 0 }),
 		"one derivation: the rail's tooltip IS ask-queue's sentence",
 	);
@@ -887,6 +913,7 @@ test("the item caps are the BOUND chords: both registers, absent when unbound, a
 			shortcutBindings: {
 				"panel.console": "primary+u",
 				"panel.browser": "primary+i",
+				"panel.ask": "primary+l",
 			},
 		});
 		assert.equal(
@@ -896,6 +923,11 @@ test("the item caps are the BOUND chords: both registers, absent when unbound, a
 		assert.equal(
 			api.item("browser").getAttribute("aria-label"),
 			"Browser (Ctrl+I)",
+		);
+		assert.equal(
+			api.item("ask").getAttribute("aria-label"),
+			"Asks (Ctrl+L), This conversation",
+			"the asks item's cap prints too (F2 = D3): it used to be the one item whose promise was invisible on the control",
 		);
 	});
 });

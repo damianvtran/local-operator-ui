@@ -465,12 +465,23 @@ export const askRailToggleLabel = (args: {
 	open: boolean;
 	scope: AskScope;
 	count: number;
+	/**
+	 * The action's bound chord, already in display spelling (`⌘A`), or `null`
+	 * when unbound (#928, review round 1's F2 = design D3): the rail's tooltip
+	 * must print the promise its dispatcher answers, like the five sibling
+	 * items. The clause rides the noun — `Open asks (⌘A) — This conversation` —
+	 * and is absent entirely when nothing is bound, so the sentence a user
+	 * learned stays the sentence they get.
+	 */
+	cap?: string | null;
 }): string => {
 	const verb = args.open ? "Close" : "Open";
+	const chord =
+		args.cap === null || args.cap === undefined ? "" : ` (${args.cap})`;
 	const subject = askScopeSubject(args.scope);
 	return args.count > 0
-		? `${verb} asks \u2014 ${subject}, ${args.count} waiting or moved on`
-		: `${verb} asks \u2014 ${subject}`;
+		? `${verb} asks${chord} \u2014 ${subject}, ${args.count} waiting or moved on`
+		: `${verb} asks${chord} \u2014 ${subject}`;
 };
 
 /**
