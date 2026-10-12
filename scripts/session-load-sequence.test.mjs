@@ -1331,15 +1331,18 @@ test("the hide setting, last known ON: no commit paints a row the answer takes b
 test("the same page with the setting off: nothing waits, and the rows paint", async (t) => {
 	/*
 	 * THE CONTROL, and half of what makes the arm above mean anything: this page
-	 * really does paint `peer1` and `send1` when nothing hides them, and it does
-	 * so while the registry answer is STILL OWED — the default path waits for
-	 * nothing (the operator's rule for this lane). On the pre-fix tree both arms
-	 * paint the rows; on the branch exactly one does.
+	 * really does retain `peer1` and `send1` when the setting is off, while the
+	 * registry answer is STILL OWED. Incoming receipts now share a condensed
+	 * action run, so the peer's default absence from the DOM is not evidence of
+	 * filtering: its separate incoming-message count is visible immediately, and
+	 * the reader's normal disclosure makes the source row reachable before the
+	 * settings request answers. The hidden-setting arm above must still paint
+	 * no peer at any commit; this control must prove actual reachability.
 	 */
 	__resetPaintCache();
 	clearDisplayFlags();
 	const settings = heldSettings();
-	const { records, record, send } = await mountArm(
+	const { container, records, record, send } = await mountArm(
 		t,
 		"mount (answer owed)",
 		settings.network,
@@ -1350,6 +1353,18 @@ test("the same page with the setting off: nothing waits, and the rows paint", as
 	await record("open");
 	await send(crossSnapshot());
 	await record("page (answer owed)");
+
+	const incomingSummary = [
+		...container.querySelectorAll("[data-fold-summary]"),
+	].find((node) => node.textContent?.includes("1 incoming message"));
+	assert.ok(
+		incomingSummary,
+		"the receipt is counted separately before settings answer",
+	);
+	const foldButton = incomingSummary.closest("button");
+	assert.ok(foldButton, "the existing action disclosure owns the receipt");
+	await act(async () => foldButton.click());
+	await record("reader opens incoming work (answer owed)");
 
 	printSequence(records, "the setting off");
 	const painted = records.at(-1);
