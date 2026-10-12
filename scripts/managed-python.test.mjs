@@ -1997,7 +1997,7 @@ test("a seed that carries bytecode still yields a selection that stays usable", 
 	);
 });
 
-test("the reaper removes abandoned staging and superseded generations, and nothing else", (t) => {
+test("the reaper removes abandoned staging and superseded generations, and nothing else", async (t) => {
 	const support = fixture(t);
 	const opts = { support, resources: "", packaged: true, arch: "arm64" };
 	const runtimes = join(managedPythonRoot(opts), "runtimes");
@@ -2040,7 +2040,7 @@ test("the reaper removes abandoned staging and superseded generations, and nothi
 	const live = join(runtimes, ".preparing-live");
 	mkdirSync(live, { recursive: true });
 
-	const removed = reapSupersededGenerations(
+	const removed = await reapSupersededGenerations(
 		opts,
 		{ runtime: [selectedRuntime], venv: [selectedVenv] },
 		now,
