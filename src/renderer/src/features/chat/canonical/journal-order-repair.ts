@@ -11,8 +11,11 @@ import type { TranscriptState } from "./transcript-reducer";
 /**
  * Resolve cached IDs in bounded same-source batches on the existing snapshot
  * route. A 512-ID wire limit is not a limit on the cache's ordering guarantee.
- * Missing IDs are tried once per sweep; building/unsupported responses stop
- * unless a distinct ready-domain fact arrived during the read. Never poll on
+ * Missing IDs are tried once per sweep; a distinct ready fact, including a
+ * generic correction, earns a fresh sweep. Each flight services at most ONE
+ * additional wake; later facts remain owed for the caller's next admitted flight.
+ * This bounds work under a continuously changing source without token polling.
+ * Building/unsupported responses otherwise stop. Never poll on
  * tokens or guess positions for a backend that cannot attest to this source.
  */
 export async function repairJournalOrder<T>(deps: {
@@ -29,7 +32,7 @@ export async function repairJournalOrder<T>(deps: {
 > {
 	const attempted = new Set<string>();
 	let attemptedGeneration = deps.getTranscript().journalGeneration;
-	let wanted = deps.getTranscript().orderDemand;
+	let wakeRetries = 0;
 	for (;;) {
 		if (!deps.isCurrent()) return { kind: "stale" };
 		const before = deps.getTranscript();
@@ -59,22 +62,27 @@ export async function repairJournalOrder<T>(deps: {
 				attemptedGeneration = page.journal_generation;
 			}
 			for (const id of ids) attempted.add(id);
-			if (
-				latest.orderNeedsReconcile &&
-				latest.orderWantedGeneration !== undefined &&
-				latest.orderWantedGeneration !== page.journal_generation
-			) {
-				if (latest.orderDemand === wanted) return { kind: "waiting" };
-				wanted = latest.orderDemand;
+			if (latest.orderNeedsReconcile) {
+				if (latest.orderDemand === read.demand || wakeRetries === 1)
+					return { kind: "waiting" };
+				wakeRetries++;
+				// This response predates the new signal: its "missing" set cannot seal
+				// identities the correction may now attest, even in the SAME domain.
+				attempted.clear();
 				continue;
 			}
 			if (journalLookupIds(latest).some((id) => !attempted.has(id))) continue;
 			return { kind: "complete", transcript: latest };
 		}
-		// Preserve a ready notification that raced the cold response. One new
-		// equality domain earns one sequential read, not an unbounded retry.
-		if (!latest.orderNeedsReconcile || latest.orderDemand === wanted)
+		// The same dispatch-identity rule covers a notification racing a cold
+		// response; domain spelling alone is not notification provenance.
+		if (
+			!latest.orderNeedsReconcile ||
+			latest.orderDemand === read.demand ||
+			wakeRetries === 1
+		)
 			return { kind: "waiting" };
-		wanted = latest.orderDemand;
+		wakeRetries++;
+		attempted.clear();
 	}
 }

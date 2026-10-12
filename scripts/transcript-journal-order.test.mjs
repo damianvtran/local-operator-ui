@@ -117,6 +117,7 @@ test("wrong non-authoritative domain mutates no payload/cursor; authority remint
 	assert.equal(next.orderNeedsReconcile, true);
 	state = R.applyHistoryPage(next, page([row("b", 0)], "scope-B"), {
 		authoritative: true,
+		orderRead: R.journalOrderRead(next),
 	});
 	assert.equal(state.journalGeneration, "scope-B");
 	assert.ok(state.orderRevision > revision);
@@ -757,5 +758,199 @@ test("UUID, max ASCII and encoded Unicode caches continue within bytes and count
 		assert.deepEqual(R.journalLookupIds(state), []);
 		assert.deepEqual(ids(state), rawIds);
 		assert.equal(state.oldestId, cursor);
+	}
+});
+
+test("generic and same-domain named wakes during ready reads retry IDs missing from the older response", async () => {
+	for (const debt of ["none", "generic", "named"]) {
+		for (const during of ["generic", "same-domain"]) {
+			let state = start([row("before", 0)]);
+			state = R.appendPendingUser(
+				state,
+				"quiet-send",
+				"OWN",
+				[{ data: "QQ==", mimeType: "image/png" }],
+				1234,
+			);
+			if (debt !== "none")
+				state = R.applyEvent(
+					state,
+					debt === "generic"
+						? { type: "journal_order_ready", reconcile: true }
+						: {
+								type: "journal_order_ready",
+								journal_generation: "obsolete",
+								rows: [],
+							},
+				);
+			const image = state.records.find((r) => r.id === "quiet-send").images;
+			const cursor = state.oldestId;
+			const calls = [];
+			const outcome = await R.repairJournalOrder(
+				repairDeps(
+					() => state,
+					(next) => {
+						state = next;
+					},
+					async (requested) => {
+						calls.push(requested);
+						if (calls.length === 1) {
+							const prior = state.orderDemand;
+							state = R.applyEvent(
+								state,
+								during === "generic"
+									? { type: "journal_order_ready", reconcile: true }
+									: {
+											type: "journal_order_ready",
+											journal_generation: "scope-A",
+											rows: [],
+										},
+							);
+							assert.notEqual(state.orderDemand, prior);
+							return page([], "scope-A", {
+								journal_missing_ids: ["quiet-send"],
+							});
+						}
+						return page([], "scope-A", {
+							journal_ordinals: { "quiet-send": 1 },
+						});
+					},
+				),
+			);
+			assert.deepEqual(
+				calls,
+				[["quiet-send"], ["quiet-send"]],
+				`${debt}/${during}`,
+			);
+			assert.equal(outcome.kind, "complete");
+			assert.equal(state.orderNeedsReconcile, false);
+			assert.equal(state.orderDemand, undefined);
+			const send = state.records.find((r) => r.id === "quiet-send");
+			assert.equal(send.journalSeq, 1);
+			assert.equal(send.provisional, undefined);
+			assert.equal(send.text, "OWN");
+			assert.equal(send.images, image);
+			assert.equal(state.oldestId, cursor);
+		}
+	}
+});
+
+test("a continuously changing ready source is bounded per flight without sealing the later demand", async () => {
+	let state = start([row("before", 0)]);
+	state = R.appendPendingUser(state, "quiet-send", "OWN", [], 1234);
+	let calls = 0;
+	const outcome = await R.repairJournalOrder(
+		repairDeps(
+			() => state,
+			(next) => {
+				state = next;
+			},
+			async () => {
+				calls++;
+				state = R.applyEvent(state, {
+					type: "journal_order_ready",
+					reconcile: true,
+				});
+				return page([], "scope-A", { journal_missing_ids: ["quiet-send"] });
+			},
+		),
+	);
+	assert.equal(calls, 2);
+	assert.equal(outcome.kind, "waiting");
+	assert.equal(state.orderNeedsReconcile, true);
+	assert.ok(state.orderDemand);
+	assert.equal(
+		state.records.find((r) => r.id === "quiet-send").provisional,
+		true,
+	);
+	const later = await R.repairJournalOrder(
+		repairDeps(
+			() => state,
+			(next) => {
+				state = next;
+			},
+			async (requested) => {
+				calls++;
+				assert.deepEqual(requested, ["quiet-send"]);
+				return page([], "scope-A", { journal_ordinals: { "quiet-send": 1 } });
+			},
+		),
+	);
+	assert.equal(calls, 3);
+	assert.equal(later.kind, "complete");
+	assert.equal(state.orderNeedsReconcile, false);
+	assert.equal(state.records.find((r) => r.id === "quiet-send").journalSeq, 1);
+});
+
+test("a same-domain authority without a dispatch witness cannot erase newly owed debt", () => {
+	let state = start([row("before", 0)]);
+	state = R.applyEvent(state, { type: "journal_order_ready", reconcile: true });
+	const demand = state.orderDemand;
+	state = R.applyHistoryPage(state, page([], "scope-A"), {
+		authoritative: true,
+	});
+	assert.equal(state.orderDemand, demand);
+	assert.equal(state.orderNeedsReconcile, true);
+});
+
+test("metadata producer retains the established DEV deep-freeze guard and production no-op", async () => {
+	for (const DEV of [true, false]) {
+		const bundle = await build({
+			stdin: {
+				contents:
+					'export * from "./src/renderer/src/features/chat/canonical/transcript-reducer"; export * from "./src/renderer/src/features/chat/canonical/journal-order";',
+				resolveDir: process.cwd(),
+			},
+			bundle: true,
+			format: "esm",
+			platform: "node",
+			write: false,
+			define: { "import.meta.env": JSON.stringify({ DEV }) },
+		});
+		const M = await import(
+			`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+		);
+		let state = M.applyHistoryPage(
+			M.EMPTY_TRANSCRIPT,
+			page([row("before", 0)]),
+			{ authoritative: true },
+		);
+		state = M.appendPendingUser(
+			state,
+			"own-freeze-send",
+			"OWN",
+			[{ data: "QQ==", mimeType: "image/png" }],
+			1234,
+		);
+		const prior = state.records.find((r) => r.id === "own-freeze-send");
+		const unchanged = state.records.find((r) => r.id === "before");
+		state = M.applyJournalOrderMetadata(
+			state,
+			page([], "scope-A", { journal_ordinals: { "own-freeze-send": 1 } }),
+			M.journalOrderRead(state),
+		);
+		const next = state.records.find((r) => r.id === "own-freeze-send");
+		assert.equal(next.images, prior.images);
+		assert.equal(
+			state.records.find((r) => r.id === "before"),
+			unchanged,
+		);
+		assert.equal(Object.isFrozen(next), DEV);
+		assert.equal(Object.isFrozen(next.images), DEV);
+		if (DEV) {
+			assert.throws(() => {
+				next.text = "changed";
+			}, TypeError);
+			assert.throws(() => {
+				next.images.push({ data: "changed", mimeType: "image/png" });
+			}, TypeError);
+		} else {
+			assert.doesNotThrow(() => {
+				next.text = "changed";
+			});
+			assert.doesNotThrow(() => {
+				next.images.push({ data: "changed", mimeType: "image/png" });
+			});
+		}
 	}
 });

@@ -95,7 +95,7 @@ export default { useState, useEffect, useLayoutEffect, useInsertionEffect, useRe
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { useCanonicalSessionStream, paintPendingSend } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { acceptFrontendReplace } from "./src/shared/desktop-session-contract";
 		`,
@@ -141,6 +141,7 @@ const bundle = await build({
 });
 const {
 	useCanonicalSessionStream,
+	paintPendingSend,
 	useCanonicalSessionsStore,
 	acceptFrontendReplace,
 } = await import(
@@ -626,19 +627,25 @@ const sourcePage = (domain, entries = DURABLE_ROWS) => ({
 	journal_order_state: "ready",
 	journal_generation: domain,
 });
-const sourceSnapshot = (seq, domain, entries = DURABLE_ROWS) => {
+const sourceSnapshot = (
+	seq,
+	domain,
+	entries = DURABLE_ROWS,
+	sessionId = SOURCE_SESSION,
+) => {
 	const frame = snapshotFrame(seq, `/source-${domain}`);
-	frame.session_id = SOURCE_SESSION;
-	frame.payload.frontend.snapshot.session_id = SOURCE_SESSION;
+	frame.session_id = sessionId;
+	frame.payload.frontend.snapshot.session_id = sessionId;
 	frame.payload.history = sourcePage(domain, entries);
 	return frame;
 };
-async function sourceMount() {
+async function sourceMount(sessionId = SOURCE_SESSION) {
 	subscriptions.length = 0;
 	requests.length = 0;
 	rafQueue = [];
 	globalThis.__replaceHistory = async () => sourcePage("source-A");
-	globalThis.__replaceSnapshot = async () => sourceSnapshot(9, "source-B");
+	globalThis.__replaceSnapshot = async () =>
+		sourceSnapshot(9, "source-B", DURABLE_ROWS, sessionId);
 	useCanonicalSessionsStore.setState({
 		activeSessionId: null,
 		drafts: {},
@@ -647,23 +654,19 @@ async function sourceMount() {
 	const runtime = makeRuntime();
 	let handle;
 	runtime.render = () => {
-		handle = useCanonicalSessionStream(
-			SOURCE_SESSION,
-			true,
-			true,
-			SOURCE_SESSION,
-			{ journalOrder: true },
-		);
+		handle = useCanonicalSessionStream(sessionId, true, true, sessionId, {
+			journalOrder: true,
+		});
 		return handle;
 	};
 	runtime.rerender();
-	deliver({ ...openFrame(1), session_id: SOURCE_SESSION });
-	deliver(sourceSnapshot(2, "source-A"));
+	deliver({ ...openFrame(1), session_id: sessionId });
+	deliver(sourceSnapshot(2, "source-A", DURABLE_ROWS, sessionId));
 	await pump();
 	return { get: () => handle };
 }
-const sourceReady = (seq, domain) => ({
-	session_id: SOURCE_SESSION,
+const sourceReady = (seq, domain, sessionId = SOURCE_SESSION) => ({
+	session_id: sessionId,
 	epoch: BRIDGE_EPOCH,
 	seq,
 	type: "event",
@@ -789,4 +792,260 @@ test("source hook preserves a distinct ready wake arriving during repair and rea
 	assert.equal(h.get().transcript.orderNeedsReconcile, false);
 	assert.equal(h.get().transcript.orderWantedGeneration, undefined);
 	assert.deepEqual(ids(h.get().transcript), [ROW_EARLY, ROW_LATER]);
+});
+
+const genericReady = (seq, sessionId) => ({
+	session_id: sessionId,
+	epoch: BRIDGE_EPOCH,
+	seq,
+	type: "event",
+	payload: { type: "journal_order_ready", reconcile: true },
+});
+const quietSnapshot = (seq, sessionId, sendId, extra = {}) => {
+	const frame = sourceSnapshot(seq, "source-A", DURABLE_ROWS, sessionId);
+	frame.payload.history = { ...frame.payload.history, ...extra };
+	if (sendId) frame.payload.history.journal_ordinals = { [sendId]: 2 };
+	return frame;
+};
+
+test("source hook preserves generic during-read correction and retries quiet metadata", async () => {
+	const sessionId = "dddddddddd01";
+	const sendId = "own-generic-hook-send";
+	const h = await sourceMount(sessionId);
+	let resolveFirst;
+	let reads = 0;
+	globalThis.__replaceSnapshot = () => {
+		reads++;
+		if (reads === 1)
+			return new Promise((resolve) => {
+				resolveFirst = resolve;
+			});
+		return Promise.resolve(quietSnapshot(30, sessionId, sendId));
+	};
+	paintPendingSend(sessionId, {
+		id: sendId,
+		text: "OWN SEND",
+		images: [],
+		submittedAt: 999999,
+	});
+	await pump();
+	assert.ok(resolveFirst);
+	deliver(genericReady(3, sessionId));
+	await pump();
+	assert.equal(h.get().transcript.orderNeedsReconcile, true);
+	resolveFirst(
+		quietSnapshot(20, sessionId, null, { journal_missing_ids: [sendId] }),
+	);
+	await pump();
+	const send = h.get().transcript.records.find((r) => r.id === sendId);
+	assert.equal(reads, 2);
+	assert.equal(send.journalSeq, 2);
+	assert.equal(send.provisional, undefined);
+	assert.equal(send.text, "OWN SEND");
+	assert.equal(h.get().transcript.orderNeedsReconcile, false);
+	await pump();
+	assert.equal(reads, 2);
+});
+
+test("source hook admits idle X then Y when serialized fields match the waiting Y stamp", async () => {
+	const sessionId = "dddddddddd02";
+	const sendId = "own-stamp-hook-send";
+	const h = await sourceMount(sessionId);
+	const building = () =>
+		quietSnapshot(20, sessionId, null, {
+			journal_generation: undefined,
+			journal_order_state: "building",
+		});
+	let resolveFirst;
+	let reads = 0;
+	globalThis.__replaceSnapshot = () => {
+		reads++;
+		return reads === 1
+			? new Promise((resolve) => {
+					resolveFirst = resolve;
+				})
+			: Promise.resolve(building());
+	};
+	deliver(sourceReady(3, "wanted-Y", sessionId));
+	await pump();
+	assert.ok(resolveFirst);
+	paintPendingSend(sessionId, {
+		id: sendId,
+		text: "OWN STAMP SEND",
+		images: [],
+		submittedAt: 999999,
+	});
+	await pump();
+	resolveFirst(building());
+	await pump();
+	const beforeReads = reads;
+	const priorDemand = h.get().transcript.orderDemand;
+	assert.equal(beforeReads, 2);
+	assert.equal(h.get().transcript.orderWantedGeneration, "wanted-Y");
+	globalThis.__replaceSnapshot = async () => {
+		reads++;
+		return quietSnapshot(30, sessionId, sendId);
+	};
+	deliver(sourceReady(4, "wanted-X", sessionId));
+	deliver(sourceReady(5, "wanted-Y", sessionId));
+	await pump();
+	assert.equal(reads, beforeReads + 1);
+	assert.notEqual(h.get().transcript.orderDemand, priorDemand);
+	assert.equal(h.get().transcript.orderNeedsReconcile, false);
+	assert.equal(
+		h.get().transcript.records.find((r) => r.id === sendId).journalSeq,
+		2,
+	);
+	await pump();
+	assert.equal(reads, beforeReads + 1);
+});
+
+test("source hook admits repeated generic idle demand without a generation spelling change", async () => {
+	const sessionId = "dddddddddd03";
+	const sendId = "own-repeat-generic-send";
+	const h = await sourceMount(sessionId);
+	let reads = 0;
+	globalThis.__replaceSnapshot = async () => {
+		reads++;
+		return quietSnapshot(20, sessionId, null, {
+			journal_generation: undefined,
+			journal_order_state: "building",
+		});
+	};
+	paintPendingSend(sessionId, {
+		id: sendId,
+		text: "OWN SEND",
+		images: [],
+		submittedAt: 999999,
+	});
+	await pump();
+	deliver(genericReady(3, sessionId));
+	await pump();
+	const beforeReads = reads;
+	const priorDemand = h.get().transcript.orderDemand;
+	assert.equal(h.get().transcript.orderNeedsReconcile, true);
+	assert.equal(h.get().transcript.orderWantedGeneration, undefined);
+	globalThis.__replaceSnapshot = async () => {
+		reads++;
+		return quietSnapshot(30, sessionId, sendId);
+	};
+	deliver(genericReady(4, sessionId));
+	await pump();
+	assert.equal(reads, beforeReads + 1);
+	assert.notEqual(h.get().transcript.orderDemand, priorDemand);
+	assert.equal(h.get().transcript.orderNeedsReconcile, false);
+	assert.equal(
+		h.get().transcript.records.find((r) => r.id === sendId).journalSeq,
+		2,
+	);
+});
+
+test("source hook retains a further wake after the flight bound and dispatches it once", async () => {
+	const sessionId = "dddddddddd04";
+	const sendId = "own-bound-hook-send";
+	const h = await sourceMount(sessionId);
+	const releases = [];
+	let reads = 0;
+	globalThis.__replaceSnapshot = () => {
+		reads++;
+		if (reads <= 2)
+			return new Promise((resolve) => {
+				releases.push(resolve);
+			});
+		return Promise.resolve(quietSnapshot(30, sessionId, sendId));
+	};
+	paintPendingSend(sessionId, {
+		id: sendId,
+		text: "OWN SEND",
+		images: [],
+		submittedAt: 999999,
+	});
+	await pump();
+	deliver(genericReady(3, sessionId));
+	await pump();
+	releases[0](
+		quietSnapshot(20, sessionId, null, { journal_missing_ids: [sendId] }),
+	);
+	await pump();
+	assert.equal(reads, 2);
+	deliver(genericReady(4, sessionId));
+	await pump();
+	releases[1](
+		quietSnapshot(21, sessionId, null, { journal_missing_ids: [sendId] }),
+	);
+	await pump();
+	assert.equal(reads, 3);
+	assert.equal(h.get().transcript.orderNeedsReconcile, false);
+	assert.equal(
+		h.get().transcript.records.find((r) => r.id === sendId).journalSeq,
+		2,
+	);
+	await pump();
+	assert.equal(reads, 3);
+});
+
+test("source hook does not turn ordinary tokens into retries of an unchanged missing-ID seal", async () => {
+	const sessionId = "dddddddddd05";
+	const sendId = "own-missing-hook-send";
+	const streamId = "own-source-stream";
+	const h = await sourceMount(sessionId);
+	let reads = 0;
+	globalThis.__replaceSnapshot = async () => {
+		reads++;
+		return quietSnapshot(20, sessionId, null, {
+			journal_missing_ids: [sendId],
+			journal_ordinals: { [streamId]: 2 },
+		});
+	};
+	paintPendingSend(sessionId, {
+		id: sendId,
+		text: "OWN SEND",
+		images: [],
+		submittedAt: 999999,
+	});
+	await pump();
+	assert.equal(reads, 1);
+	// A completed history row correctly refuses later deltas. Exercise an
+	// actual streaming row whose source position is already independently known.
+	deliver({
+		session_id: sessionId,
+		epoch: BRIDGE_EPOCH,
+		seq: 3,
+		type: "event",
+		payload: {
+			type: "message_start",
+			message: { id: streamId, role: "assistant", content: [] },
+		},
+	});
+	await pump();
+	const before = h.get().transcript.records.find((r) => r.id === streamId);
+	deliver({
+		session_id: sessionId,
+		epoch: BRIDGE_EPOCH,
+		seq: 4,
+		type: "event",
+		payload: {
+			type: "message_update",
+			delta: "ordinary token",
+			message: {
+				id: streamId,
+				role: "assistant",
+				content: [],
+			},
+		},
+	});
+	await pump();
+	assert.notEqual(
+		h.get().transcript.records.find((r) => r.id === streamId),
+		before,
+	);
+	assert.equal(
+		h.get().transcript.records.find((r) => r.id === streamId).text,
+		"ordinary token",
+	);
+	assert.equal(reads, 1);
+	assert.equal(
+		h.get().transcript.records.find((r) => r.id === sendId).provisional,
+		true,
+	);
 });

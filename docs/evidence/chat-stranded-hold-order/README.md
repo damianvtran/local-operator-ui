@@ -123,6 +123,53 @@ arbitrary far-window jumps remain unclaimed. Original native before-memory/image
 bytes remain unavailable. Current-head independent code/QA and whole CI gates
 remain separate from the author checks above.
 
+## Accepted round-3 demand/DEV remediation
+
+The independent round3 review and QA found two direct demand-witness variants:
+a generic `journal_order_ready{reconcile:true}` during a ready read was erased
+(or coalesced when debt already existed), and idle X→Y facts ending at the same
+serialized wanted value were suppressed despite a new demand identity. Their
+exact private probes were rerun here before the fix: generic NONE/GENERIC/NAMED
+debt each took one read and left the quiet send provisional; the actual hook's
+idle collision stayed at two reads. The metadata producer also emitted an
+unfrozen DEV clone, bypassing the established immutability guard.
+
+Every source-ready fact now owns a causal demand object, including generic and
+same-current-domain facts. Only a matching dispatch witness can discharge it;
+no generation spelling fallback erases a later wake. A new fact invalidates an
+older response's missing-ID seal even in the same domain. The helper services at
+most one additional wake per flight; further facts stay owed and are admitted
+once by the hook, rather than becoming unbounded in-flight retries. Ordinary
+cache continuation remains byte/count-bounded, and unchanged missing identities
+are not retried on token renders.
+
+Hook admission, per-read sealing and flight finalization now compare demand
+references beside the existing serialized session/view/source/ID fields. A
+waiting flight records the fact actually dispatched, not a later unattempted
+fact. No new source revision, epoch, domain ordering or transport policy was
+introduced. Session/view/source fences and metadata-only payload/image/cursor/
+frontend/planner invariants remain in place. The producer applies the existing
+`freezeRecordDeep` emit guard; DEV freezes new clones and production remains a
+no-op with unchanged image/record-subtree identity.
+
+After the fix, exact failure-probe reruns give two ready reads and a healed quiet
+send for all three generic variants. The actual generic hook takes two reads;
+the idle collision now advances two→three reads and heals the send. DEV reports
+frozen-before/after and throwing writes; DEV:false remains mutable as before.
+The durable source/hook matrix also pins same-current named wake variants,
+repeated generic idle demand, further-wake handoff after the flight bound,
+actual live-token state changes without missing-ID polling, cold/named controls,
+and source reset at await/commit. These are actual returned-hook/request-state
+checks, not claims about React scheduler timing or new rendered pixels.
+
+Unchanged A1/A3 transport/native/warm-empty and design streams are not reswept.
+Independent QA round3 separately exercised full native ChatPage capability/SSE,
+actual preload/main IPC ID sweeps and legitimate warm-owner empty/loading/error/
+populated states against the installed0.70.4 daemon. Its timed browser checkpoint
+reset was BLOCKED because client B/revision2 had not been observed before old A
+was released; this is an invalid phase precondition, not a proven code failure.
+Independent QA owns the retimed case and current-head demand/DEV validation.
+
 ## Why a story pair is the faithful capture
 
 A fresh app open of a copied session cannot show this: the disorder is born of
