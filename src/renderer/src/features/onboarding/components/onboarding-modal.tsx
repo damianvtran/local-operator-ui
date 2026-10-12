@@ -32,6 +32,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { Button, Tooltip } from "@shared/components/ui";
 import { hasConnectedProvider } from "@shared/hooks/first-time-user";
+import { type MessageKey, t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import {
 	OnboardingStep,
@@ -53,16 +54,17 @@ import { ExtrasStep } from "./steps/extras-step";
  * double as the accessible names of the progress segments, so they have to
  * survive being read on their own, out of order.
  */
-const stepTitles: Record<OnboardingStep, string> = {
+const stepTitles = {
 	/*
 	 * "AI account", not "model provider" (first-run onboarding, D11/U7): the
 	 * heading the TUI's setup splash and `/login` picker share, in the words a
 	 * first-time user already has.
 	 */
-	[OnboardingStep.CONNECT_PROVIDER]: "Connect an AI account",
-	[OnboardingStep.DEFAULT_MODEL]: "Your default model",
-	[OnboardingStep.EXTRAS]: "Web search (optional)",
-};
+	[OnboardingStep.CONNECT_PROVIDER]:
+		"ui.onboarding.modal.title.connect_provider",
+	[OnboardingStep.DEFAULT_MODEL]: "ui.onboarding.modal.title.default_model",
+	[OnboardingStep.EXTRAS]: "ui.onboarding.modal.title.extras",
+} as const satisfies Record<OnboardingStep, MessageKey>;
 
 /**
  * The title a step is read under, which for the LAST step is what the step ends
@@ -79,8 +81,8 @@ const stepTitles: Record<OnboardingStep, string> = {
  */
 function stepTitle(step: OnboardingStep, aidaName: string | null): string {
 	if (step === OnboardingStep.EXTRAS && aidaName)
-		return `Web search, then meet ${aidaName}`;
-	return stepTitles[step];
+		return t("ui.onboarding.modal.title.extras_with_name", { name: aidaName });
+	return t(stepTitles[step]);
 }
 
 /**
@@ -228,7 +230,8 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		});
 	}, [currentStep]);
 
-	const dialogTitle = resolvedTitles[currentStep] ?? "First-time setup";
+	const dialogTitle =
+		resolvedTitles[currentStep] ?? t("ui.onboarding.modal.title.fallback");
 
 	/**
 	 * Leave setup and land in the chat. Used by Finish, by "Skip for now" and
@@ -274,7 +277,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				 */
 				navigate("/chat");
 				showErrorToast(
-					`${aidaName}'s conversation could not be opened, so you are in a new chat instead.`,
+					t("ui.onboarding.modal.error.aida_open_failed", { name: aidaName }),
 				);
 				return;
 			}
@@ -382,11 +385,11 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				<div>
 					{isFirst ? (
 						<Button variant="ghost" size="lg" onClick={finish}>
-							Skip for now
+							{t("ui.onboarding.modal.action.skip_for_now")}
 						</Button>
 					) : (
 						<Button variant="secondary" size="lg" onClick={handleBack}>
-							Back
+							{t("ui.onboarding.modal.action.back")}
 						</Button>
 					)}
 				</div>
@@ -398,7 +401,9 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 							onClick={finish}
 							disabled={meeting}
 						>
-							{aidaAvailable ? "Skip to chat" : "Skip"}
+							{aidaAvailable
+								? t("ui.onboarding.modal.action.skip_to_chat")
+								: t("ui.onboarding.modal.action.skip")}
 						</Button>
 					) : null}
 					{!isFirst || connected ? (
@@ -410,9 +415,9 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 						>
 							{isLast
 								? aidaAvailable
-									? `Meet ${aidaName}`
-									: "Finish"
-								: "Continue"}
+									? t("ui.onboarding.modal.action.meet", { name: aidaName })
+									: t("ui.onboarding.modal.action.finish")
+								: t("ui.onboarding.modal.action.continue")}
 						</Button>
 					) : null}
 				</div>
