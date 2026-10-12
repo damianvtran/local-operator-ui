@@ -9099,6 +9099,32 @@ export const STORIES = [
 	["chat-stale-seed-order--after-arrival", 1280, 800],
 	["chat-stale-seed-order--before-seam", 1280, 800],
 	["chat-stale-seed-order--after-seam", 1280, 800],
+	/* The END of the pane when a send ages out of the reader's window — the
+	   operator's report: the "push it to my private github" exchange (19:00)
+	   stuck at the trailing edge of a conversation, under content more than 40
+	   minutes newer, on every re-open. Both orders are built by the SHIPPED
+	   reducer from the real session's own payloads
+	   (`scripts/fixtures/stranded-send-order.json`): `Before` spells out the
+	   pre-fix tail block's ranking (the send and its exchange pinned after
+	   every placed row, which is literally what `withTimeOrder` did before
+	   `releasedEchoes` existed) and `After` is the discharge. ONE TREE's
+	   frames, not a base/head pair, and no seal (the seal only drops rows the
+	   reader can re-read; it cannot change the rank, and the reducer test
+	   covers it with the seal in place so both orders here carry every row).
+
+	   `Tail` is the reader's arrival at the conversation's end; `Slot` narrows
+	   the windows to the exchange's own neighbourhood so the rank is visible
+	   in one pane — the seam idiom. All four floor the viewport at 800: the
+	   story pins the transcript pane to the reader's own 685px and the harness
+	   floors its viewport at the document height, so the committed frames are
+	   the pane plus the caption. The disorder is born of the send and lives in
+	   the in-memory transcript state, so a fresh app open of a copied session
+	   cannot show it — the pair over this fixture through the production
+	   component IS the faithful capture, and the set's README says so. */
+	["chat-stranded-hold-order--before-tail", 1280, 800],
+	["chat-stranded-hold-order--after-tail", 1280, 800],
+	["chat-stranded-hold-order--before-slot", 1280, 800],
+	["chat-stranded-hold-order--after-slot", 1280, 800],
 	/* The phantom compose rows: the four rows the operator photographed stuck at
 	   the bottom of a conversation waiting on subagents — `hub composing 2.0 KB`
 	   and three `wait composing` rows, all of them calls the harness NEVER RAN.
