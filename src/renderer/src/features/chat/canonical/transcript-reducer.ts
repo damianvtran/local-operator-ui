@@ -2353,9 +2353,29 @@ function hubReceiptMarker(
 	const marker = (providerPayload as Record<string, unknown>).hub_receipt;
 	if (typeof marker !== "object" || marker === null) return null;
 	const record = marker as Record<string, unknown>;
+	/*
+	 * VALIDATION IS THE CONTRACT, and it mirrors the core
+	 * helper (`hub_receipts.hub_receipt_marker`, review round 3 R3-1) exactly. A valid
+	 * marker needs a KNOWN producer direction and a non-empty string body;
+	 * present flags normalise to booleans or UNKNOWN — never truthy-cast,
+	 * never guessed from the body — and non-string advisory fields drop. A
+	 * half-stamped row is not provenance, and the caller keeps its ordinary
+	 * user handling for it.
+	 */
+	const direction = record.direction;
+	if (direction !== "to_child" && direction !== "to_parent") return null;
 	const body = record.body;
 	if (typeof body !== "string" || !body.trim()) return null;
-	return { ...record };
+	const normalized: Record<string, unknown> = { ...record };
+	for (const flag of ["expects_reply", "steer"] as const) {
+		if (typeof normalized[flag] !== "boolean") normalized[flag] = null;
+	}
+	for (const advisory of ["label", "job_id"] as const) {
+		if (advisory in normalized && typeof normalized[advisory] !== "string") {
+			delete normalized[advisory];
+		}
+	}
+	return normalized;
 }
 
 function relayRow(

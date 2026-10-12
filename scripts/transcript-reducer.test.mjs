@@ -7668,6 +7668,47 @@ test("a malformed marker is not a receipt", () => {
 	}
 });
 
+test("the marker requires a known direction and normalises flags", () => {
+	// R3-1 mirror: a body alone is not provenance. Missing, null, numeric,
+	// list and unknown directions keep the ordinary user row; present flags
+	// normalise to booleans or null (never guessed); non-string advisory
+	// fields drop, matching the core helper contract.
+	for (const direction of [undefined, null, 3, "unrecognized", []]) {
+		const payload = { kind: "message", ...user("u3", "raw text") };
+		payload.provider_payload = { hub_receipt: { body: "raw text", direction } };
+		const page = {
+			entries: [{ id: "u3", ts: 14, type: "message", payload }],
+			has_more: false,
+			cursor_missing: false,
+		};
+		const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+		assert.equal(state.records[0].kind, "user", String(direction));
+	}
+
+	const payload = { kind: "message", ...user("u4", "typed?") };
+	payload.provider_payload = {
+		hub_receipt: {
+			direction: "to_parent",
+			body: "reply text",
+			expects_reply: "yes",
+			steer: 1,
+			label: 7,
+		},
+	};
+	const page = {
+		entries: [{ id: "u4", ts: 15, type: "message", payload }],
+		has_more: false,
+		cursor_missing: false,
+	};
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+	assert.equal(state.records[0].kind, "custom");
+	assert.equal(state.records[0].receipt.body, "reply text");
+	assert.equal(state.records[0].receipt.direction, "to_parent");
+	assert.equal(state.records[0].receipt.expectsReply, null);
+	assert.equal(state.records[0].receipt.steer, null);
+	assert.notEqual(state.records[0].receipt.label, "7");
+});
+
 test("the live marker arm projects the receipt under the row's own id", () => {
 	const message = markedSteer("h2", "Focus on retries");
 	const state = applyEvent(
