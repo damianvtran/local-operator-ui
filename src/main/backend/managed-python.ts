@@ -881,7 +881,7 @@ async function locked<T>(
 			} catch {
 				if (Date.now() >= deadline)
 					throw new Error(
-						"Another Local Operator instance is preparing its backend. Retry when it finishes.",
+						"Backend preparation is blocked by an existing lock record. Wait and retry.",
 					);
 				await new Promise((done) => setTimeout(done, 250));
 			}

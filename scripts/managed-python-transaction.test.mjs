@@ -8,7 +8,8 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 
-const WAIT_REFUSAL = /Another Local Operator instance/;
+const WAIT_REFUSAL =
+	/Backend preparation is blocked by an existing lock record/;
 const MISSING_LOCK = /ENOENT/;
 const UNKNOWN_LOCK = /Unrecognized preparation lock/;
 const APP_ROOT = /app/i;
