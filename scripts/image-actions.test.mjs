@@ -13,8 +13,11 @@
  * and their action sets are declared once, as data, in
  * `src/renderer/src/features/chat/utils/image-actions.ts`; this file pins that
  * table, the two admission rules around it (a relative token is a path for an
- * attachment and NOT one for a markdown image) and the byte-resolution the
- * `Copy image` entry performs.
+ * attachment and NOT one for a markdown image), the byte-resolution the
+ * `Copy image` entry performs, and the decision that sits between those bytes
+ * and the clipboard — `needsPngEncode`, the clipboard's one writable image type
+ * (2026-10-11: a JPEG written under its own MIME was refused with `Type
+ * image/jpeg not supported on write.`, so everything non-PNG is encoded first).
  *
  * WHY THERE IS NO JSDOM OR REACT HERE (agent review round 1, R3). The MOUNTED
  * half — that the menu appears on the surfaces where it was missing — needs the
@@ -60,6 +63,7 @@ const bundle = await build({
 				hasImageActions,
 				httpImageFetchable,
 				imageActions,
+				needsPngEncode,
 				resolveCopyableImage,
 			} from "./src/renderer/src/features/chat/utils/image-actions";
 			export {
@@ -97,6 +101,7 @@ const {
 	hasImageActions,
 	httpImageFetchable,
 	imageActions,
+	needsPngEncode,
 	resolveCopyableImage,
 	revokeBlobUrl,
 } = await import(pathToFileURL(bundlePath).href);
@@ -236,6 +241,42 @@ test("barePath strips the file:// spelling and nothing else", () => {
 	assert.equal(barePath("file:///tmp/a.png"), "/tmp/a.png");
 	assert.equal(barePath("/tmp/a.png"), "/tmp/a.png");
 	assert.equal(barePath("~/a.png"), "~/a.png");
+});
+
+test("only a PNG skips the clipboard transcode — the one image type the write accepts", () => {
+	/*
+	 * Chromium's sanitized async clipboard write takes `text/plain`, `text/html`
+	 * and `image/png` and nothing else image-shaped (measured in the built app,
+	 * 2026-10-11: `Type image/jpeg not supported on write.`), so every other
+	 * type has to be re-encoded before the entry is built. This is the decision
+	 * on its own; the ENCODE half (an `<img>` decoding the object URL, a canvas,
+	 * `toBlob`) needs a real document, so it is proven by the `image-copy`
+	 * scene's real-click run (`docs/evidence/image-copy/`) rather than faked in
+	 * a jsdom harness that has no canvas and no image decoder.
+	 */
+	assert.equal(needsPngEncode("image/png"), false);
+	for (const type of [
+		"image/jpeg",
+		"image/webp",
+		"image/gif",
+		"image/svg+xml",
+		"",
+		"application/octet-stream",
+	]) {
+		assert.equal(
+			needsPngEncode(type),
+			true,
+			`needsPngEncode(${JSON.stringify(type)})`,
+		);
+	}
+	/*
+	 * The comparison is on the normalized spelling: a MIME carrying case or
+	 * padding still skips the encode, because re-encoding a PNG could only lose
+	 * pixels — the pass-through is the byte-exact path and nothing should leave
+	 * it by accident.
+	 */
+	assert.equal(needsPngEncode("IMAGE/PNG"), false);
+	assert.equal(needsPngEncode(" image/png "), false);
 });
 
 test("a data: URI decodes in memory — base64 and percent-encoded alike", async () => {

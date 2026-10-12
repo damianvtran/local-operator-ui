@@ -23,6 +23,7 @@ import {
 	barePath,
 	classifyAttachmentSource,
 	imageActions,
+	pngForClipboard,
 	resolveCopyableImage,
 } from "../utils/image-actions";
 import {
@@ -122,15 +123,34 @@ export const ImageActionsMenu = ({
 		}
 	};
 
+	/**
+	 * Copy the picture's bytes, as the clipboard's ONE writable image type.
+	 *
+	 * The blob this resolves is NOT the entry that goes on the clipboard: a
+	 * JPEG/WEBP/GIF copy used to be written under its own MIME and Chromium's
+	 * sanitized write refused it (`Type image/jpeg not supported on write.` -
+	 * the operator's "Failed to copy image" on 19 JPEGs, 2026-10-11), while PNGs
+	 * went through. `pngForClipboard` encodes anything non-PNG to a PNG, so the
+	 * entry written here is always `image/png` - byte-exact for a source that
+	 * already was one. WHY THAT RULE HOLDS, and why the encode cannot move to
+	 * the store: `needsPngEncode` in `../utils/image-actions`.
+	 *
+	 * THE ACTIVATION NUANCE. `write` spends the click's TRANSIENT ACTIVATION
+	 * (it is why a copy with no gesture fails with "Write permission denied"
+	 * even in this app), and Chromium's window for it is seconds, not minutes -
+	 * so the transcode has to stay quick rather than being deferred, batched or
+	 * awaited behind anything slower. Measured on the committed fixture (a
+	 * repeated real-click run, `docs/evidence/image-copy/`): press to landed
+	 * toast is a two-figure millisecond cost, far inside the window.
+	 */
 	const copyImage = async () => {
 		try {
 			if (typeof ClipboardItem === "undefined") {
 				throw new Error("this window cannot write an image to the clipboard");
 			}
-			const blob = await resolveCopyableImage(kind, file, src);
-			await navigator.clipboard.write([
-				new ClipboardItem({ [blob.type || "image/png"]: blob }),
-			]);
+			const bytes = await resolveCopyableImage(kind, file, src);
+			const png = await pngForClipboard(bytes);
+			await navigator.clipboard.write([new ClipboardItem({ [png.type]: png })]);
 			showSuccessToast("Image copied to clipboard");
 		} catch (error) {
 			console.error("Failed to copy image: ", error);
