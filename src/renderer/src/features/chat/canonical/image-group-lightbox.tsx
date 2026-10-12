@@ -278,7 +278,14 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 						key={entry.id}
 						data-image-slot={tileIndex + 1}
 						className={cn(
-							"flex shrink-0 rounded-sm leading-none",
+							/*
+							 * scrollIntoView reveals the border box, not the ring's 1px
+							 * outset. Reserve that pixel at BOTH inline ends so walking
+							 * or wrapping onto an endpoint cannot clip the current mark
+							 * (Q2-1/U2-1: slot.right == port.right, and symmetrically left).
+							 * Scroll margin changes reveal geometry, never tile layout.
+							 */
+							"flex shrink-0 scroll-mx-px rounded-sm leading-none",
 							/*
 							 * THE VISIBLE CURRENT MARK, on the SLOT (design round 1's D1-1,
 							 * UX round 1's U1-1). Two findings meet here. D1-1: the mark used

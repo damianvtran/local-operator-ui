@@ -40,11 +40,10 @@
  *   current into view (design round 1, D1-5) — the behaviour no three-tile
  *   fixture can show.
  *
- * WHAT IS NOT COVERED, stated here rather than implied: the controls' FADE (a
- * still photographs the awake state; after `SCROLLBAR_HOLD_MS` of idle they dim
- * to 45% and return on pointer, key or focus activity, which is behaviour the
- * jsdom suite mounts and no still can carry); the pan's clamp arithmetic (a
- * jsdom unit case holds it); and a real relay fetch — the pictures here are
+ * COVERED: the controls' fade landing is photographed in `resting/`; the
+ * jsdom cases pin dim-after-hold, wake-on-pointer and held-awake-while-focused.
+ * NOT COVERED AS PIXELS: the pan's clamp arithmetic (a jsdom unit case holds
+ * it), and a real relay fetch — the pictures here are
  * inline `data:` URIs and the receipt is an image with no bytes at all, which is
  * the one not-loaded state a story can stage honestly without a backend.
  */
