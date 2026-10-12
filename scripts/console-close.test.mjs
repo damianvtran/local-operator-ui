@@ -358,13 +358,51 @@ test("the dialog asks the question with the safe answer defaulted, and the pane'
 		!dialog.includes("onOpenAutoFocus") && !dialog.includes("autoFocus"),
 		"the dialog steers initial focus itself rather than keeping the safe default",
 	);
+	/*
+	 * THE KEYED CONTRACT (the copy extraction's migration of this assertion). The
+	 * dialog used to be pinned by grepping for the literal sentences; those now live
+	 * in the catalogue, so the source half asserts the KEYS the dialog wires and the
+	 * value half asserts the catalogue still carries the committed sentences - the
+	 * byte-verbatim property the literal grep used to protect, checked where the
+	 * copy actually lives now.
+	 */
 	assert.ok(
-		dialog.includes('title="Close this terminal?"') &&
-			dialog.includes(
-				"This ends the program running here and removes its tab.",
-			) &&
-			dialog.includes('confirmText="Close terminal"'),
-		"the question's copy moved away from the contract this change committed",
+		dialog.includes('t("ui.console.close.title")') &&
+			dialog.includes('t("ui.console.close.body")') &&
+			dialog.includes('t("ui.console.close.confirm")'),
+		"the question's copy moved away from the keys this change committed",
+	);
+	const catalogue = JSON.parse(read("src/i18n/catalogues/en/ui.console.json"));
+	/*
+	 * EVERY value the source half pins by KEY, pinned by CONTENT here: a key can
+	 * be wired correctly while its sentence drifts, and `pane.close` was the one
+	 * without this half (round-2 review R2-1 / QA Q1 - it could have become
+	 * "Dismiss console" while this suite stayed green).
+	 */
+	assert.equal(
+		catalogue["ui.console.close.title"],
+		"Close this terminal?",
+		"ui.console.close.title drifted from the committed sentence",
+	);
+	assert.equal(
+		catalogue["ui.console.close.body"],
+		"This ends the program running here and removes its tab.",
+		"ui.console.close.body drifted from the committed sentence",
+	);
+	assert.equal(
+		catalogue["ui.console.close.confirm"],
+		"Close terminal",
+		"ui.console.close.confirm drifted from the committed sentence",
+	);
+	assert.equal(
+		catalogue["ui.console.close.kept"],
+		"Its output is kept.",
+		"ui.console.close.kept drifted from the committed sentence",
+	);
+	assert.equal(
+		catalogue["ui.console.pane.close"],
+		"Close console",
+		"ui.console.pane.close drifted from the committed sentence",
 	);
 	/*
 	 * THE ROUND-1 ADDITIONS TO THE SAME DIALOG: the retention reassurance is
@@ -373,7 +411,7 @@ test("the dialog asks the question with the safe answer defaulted, and the pane'
 	 */
 	assert.ok(
 		dialog.includes("keepsOutput") &&
-			dialog.includes("Its output is kept.") &&
+			dialog.includes('t("ui.console.close.kept")') &&
 			dialog.includes("{refusal !== null ?") &&
 			dialog.includes("focusCancelSignal={refusalSeq}"),
 		"the refusal or the conditional reassurance left the dialog",
@@ -391,7 +429,7 @@ test("the dialog asks the question with the safe answer defaulted, and the pane'
 	 * this out as the control the user already had).
 	 */
 	assert.ok(
-		PANE_CODE.includes('aria-label="Close console"') &&
+		PANE_CODE.includes('aria-label={t("ui.console.pane.close")}') &&
 			PANE_CODE.includes("onClick={onClose}"),
 		"the pane's own close control changed",
 	);

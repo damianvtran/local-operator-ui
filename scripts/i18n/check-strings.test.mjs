@@ -194,6 +194,25 @@ test("baseline files round-trip through save/load, and stay biome-shaped", () =>
 		const loaded = loadBaseline(path);
 		assert.deepEqual(loaded.files, { "src/a.tsx": 1, "src/b.tsx": 2 });
 		assert.deepEqual(loaded.enforced, ["src/i18n/", "scripts/i18n/"]);
+		/*
+		 * The MULTILINE form: once the enforced list is too long for the 80-column
+		 * inline line, the renderer writes one entry per line - and an earlier cut
+		 * left a trailing comma on the last one, which JSON.parse REJECTS, so the
+		 * whole baseline silently read as EMPTY (ceilings gone, prefixes beyond
+		 * the defaults gone). This case pins the multiline branch to strict JSON.
+		 */
+		saveBaseline(
+			path,
+			{ "src/a.tsx": 1 },
+			["src/i18n/", "src/renderer/src/features/console/", "scripts/i18n/"],
+			"note",
+		);
+		const multiline = loadBaseline(path);
+		assert.deepEqual(multiline.enforced, [
+			"src/i18n/",
+			"src/renderer/src/features/console/",
+			"scripts/i18n/",
+		]);
 		// A missing baseline reads as the fail-closed default, not a crash.
 		const missing = loadBaseline(join(dir, "absent.json"));
 		assert.deepEqual(missing.enforced, ["src/i18n/", "scripts/i18n/"]);
