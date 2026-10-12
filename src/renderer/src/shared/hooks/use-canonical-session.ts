@@ -5534,7 +5534,10 @@ export function useCanonicalSessionStream(
 	const olderLoader = useRef<ReturnType<typeof createOlderLoader> | null>(null);
 	if (olderLoader.current === null) olderLoader.current = createOlderLoader();
 	const orderRepairFlight = useRef(false);
-	const orderRepairStamp = useRef("");
+	const orderRepairStamp = useRef<{
+		fields: string;
+		demand: TranscriptState["orderDemand"];
+	} | null>(null);
 	const [orderRepairWake, setOrderRepairWake] = useState(0);
 	useEffect(() => {
 		const transcript = view.transcript;
@@ -5547,35 +5550,52 @@ export function useCanonicalSessionStream(
 			orderRepairFlight.current
 		)
 			return;
-		// A missing cached ID is not a token-driven polling subscription. Revisit
-		// only when the session/view/source or unresolved identities change.
-		const stamp = JSON.stringify([
-			orderRepairWake,
-			sessionId,
-			transcript.viewEpoch,
-			currentOrderRevision(transcript),
-			transcript.orderNeedsReconcile,
-			transcript.orderWantedGeneration,
-			unresolved,
-		]);
-		if (orderRepairStamp.current === stamp) return;
+		// Token renders cannot retry missing IDs. Source demand is compared by
+		// reference OUTSIDE the serialized fields: X -> Y -> X or a generic wake
+		// can leave all those fields equal while still owning a new causal fact.
+		const stampFor = (state: TranscriptState) => ({
+			fields: JSON.stringify([
+				orderRepairWake,
+				sessionId,
+				state.viewEpoch,
+				currentOrderRevision(state),
+				state.orderNeedsReconcile,
+				state.orderWantedGeneration,
+				journalLookupIds(state),
+			]),
+			demand: state.orderDemand,
+		});
+		const stamp = stampFor(transcript);
+		if (
+			orderRepairStamp.current?.fields === stamp.fields &&
+			orderRepairStamp.current.demand === stamp.demand
+		)
+			return;
 		orderRepairStamp.current = stamp;
 		const requested = sessionId;
 		const epoch = transcript.viewEpoch;
 		orderRepairFlight.current = true;
 		let completed: TranscriptState | null = null;
+		let lastDispatched = transcript;
 		void repairJournalOrder({
 			getTranscript: () => viewRef.current.transcript,
 			isCurrent: () =>
 				sessionRef.current === requested &&
 				viewRef.current.transcript.viewEpoch === epoch,
-			read: (orderIds) =>
-				desktopResult<Extract<DesktopSessionFrame, { type: "snapshot" }>>({
+			read: (orderIds) => {
+				// Seal only the fact actually dispatched, including a helper follow-up.
+				// A further wake after the flight's bound must remain unattempted debt.
+				lastDispatched = viewRef.current.transcript;
+				orderRepairStamp.current = stampFor(lastDispatched);
+				return desktopResult<
+					Extract<DesktopSessionFrame, { type: "snapshot" }>
+				>({
 					op: "sessions.get",
 					sessionId: requested,
 					journalOrder: true,
 					orderIds,
-				}),
+				});
+			},
 			page: (snapshot) => snapshot.payload.history,
 			lookupPath: `/v1/desktop/sessions/${requested}`,
 			commit: (snapshot, revision, orderRead) => {
@@ -5608,27 +5628,21 @@ export function useCanonicalSessionStream(
 				// Source carriage can leave only unknown/missing cached IDs. Seal
 				// that final set too, so the next token cannot restart the sweep.
 				const latest = viewRef.current.transcript;
-				const seal = completed ?? transcript;
+				const seal = completed ?? lastDispatched;
 				if (
 					completed &&
 					sessionRef.current === requested &&
 					latest.viewEpoch === epoch &&
 					!latest.orderNeedsReconcile
 				)
-					orderRepairStamp.current = JSON.stringify([
-						orderRepairWake,
-						requested,
-						seal.viewEpoch,
-						currentOrderRevision(seal),
-						seal.orderNeedsReconcile,
-						seal.orderWantedGeneration,
-						journalLookupIds(seal),
-					]);
+					orderRepairStamp.current = stampFor(seal);
 				if (
 					sessionRef.current !== requested ||
 					latest.viewEpoch !== epoch ||
 					currentOrderRevision(latest) !== currentOrderRevision(seal) ||
 					latest.orderWantedGeneration !== seal.orderWantedGeneration ||
+					latest.orderNeedsReconcile !== seal.orderNeedsReconcile ||
+					latest.orderDemand !== seal.orderDemand ||
 					JSON.stringify(journalLookupIds(latest)) !==
 						JSON.stringify(journalLookupIds(seal))
 				) {

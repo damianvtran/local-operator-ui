@@ -3386,10 +3386,12 @@ export function applyJournalOrderMetadata(
 	);
 	for (const entry of page.entries)
 		next = rememberJournalCalls(next, { ...entry.payload, id: entry.id });
-	const records = journalOrderedRecords(next, next.records);
-	return records === next.records
-		? next
-		: { ...next, records, index: withIndex(records) };
+	const ordered = journalOrderedRecords(next, next.records);
+	if (ordered === next.records) return next;
+	// Metadata is another canonical producer: its new record clones need the
+	// existing DEV emit guard too. Production keeps that guard's no-op semantics.
+	const records = ordered.map(freezeRecordDeep);
+	return { ...next, records, index: withIndex(records) };
 }
 
 export function applyHistoryPage(
@@ -4043,10 +4045,20 @@ export function applyEvent(
 	let state = initialState;
 	const message = event.message as Record<string, unknown> | undefined;
 	if (event.type === "journal_order_ready") {
-		if (event.reconcile === true)
-			return state.orderNeedsReconcile
-				? state
-				: { ...state, orderNeedsReconcile: true, orderDemand: {} };
+		// Each source-ready fact is a causal wake, even with generic debt already
+		// owed or the same opaque domain. Coalescing by bool/domain here loses a
+		// correction that arrives after dispatch; token events never mint this token.
+		const generation =
+			typeof event.journal_generation === "string"
+				? event.journal_generation
+				: undefined;
+		state = {
+			...state,
+			orderNeedsReconcile: true,
+			orderWantedGeneration: event.reconcile === true ? undefined : generation,
+			orderDemand: event.reconcile === true ? {} : { generation },
+		};
+		if (event.reconcile === true) return state;
 		const next = receiveJournalOrder(
 			state,
 			{
