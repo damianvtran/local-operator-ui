@@ -5262,6 +5262,54 @@ for (const { id, palette: p } of palettes) {
 		}
 	}
 
+	/*
+	 * THE LIGHTBOX'S OWN GROUND: the scrim, and the current-tile ring on it.
+	 *
+	 * WHY THIS PAIR EXISTS (PR #990, design round 1's D1-1). The scrim is in no
+	 * ground list above, so everything painted on it was unmeasured: on the
+	 * committed frames the carousel's current-tile ring read 1.52:1 on
+	 * `localOperatorLight`'s overlay and the accent focus ring about 2.1:1 -
+	 * both under the 3:1 non-text floor, with every assertion in this file
+	 * green. The ring now out-ranks that edge on the slot (`ring-ink`,
+	 * `image-group-lightbox.tsx`), and this is the floor under the choice.
+	 *
+	 * The scrim is not ONE ground, because it dims whatever the app has open
+	 * under it - the overlay can be raised over any surface the transcript
+	 * draws - so the ring is asserted against the scrim composited over each
+	 * of the eight state grounds in turn. Measured before it was written, over
+	 * all 59 palettes x 8 grounds: `ink` clears everywhere (worst:
+	 * everforestLight over `sunken`, 3.37:1) and `inkMuted` - the role the
+	 * first fix reached for, chosen on ONE composite - fails 3 composites on
+	 * kanagawaLotus (2.78 over `sunken`, 2.82 over `accentWash`, 2.96 over
+	 * `rowSelected`), which is why the ring is not drawn in it.
+	 */
+	if (typeof p.scrim === "string" && isHex(p.ink)) {
+		const scr = p.scrim.match(/rgb\((\d+)\s+(\d+)\s+(\d+)\s*\/\s*([\d.]+)\)/);
+		if (scr) {
+			const [sr, sg, sb, sa] = scr.slice(1).map(Number);
+			for (const g of GROUNDS6) {
+				if (!isHex(p[g])) continue;
+				const under = [1, 3, 5].map((i) =>
+					Number.parseInt(p[g].slice(i, i + 2), 16),
+				);
+				const composite = `#${[sr, sg, sb]
+					.map((v, i) =>
+						Math.round(v * sa + under[i] * (1 - sa))
+							.toString(16)
+							.padStart(2, "0"),
+					)
+					.join("")}`;
+				assertions++;
+				const got = ratio(p.ink, composite);
+				if (got < FLOOR.nonText) {
+					fail(
+						`${id}: the lightbox's current-tile ring has no perceivable edge over \`${g}\` — \`ink\` is ${r2(got)}:1 against the scrim composited over it (need ${FLOOR.nonText}:1). The scrim dims whatever is open under it, so the ring's role has to clear every ground the overlay can open over`,
+					);
+				}
+			}
+		}
+	}
+
 	/* Structural edges: the control's own boundary, the focus ring, and each
 	   semantic's edge, on all four grounds. */
 	for (const role of STRUCTURAL) {

@@ -136,6 +136,12 @@ const KEY_CODES = {
 	 */
 	ArrowDown: { code: "ArrowDown", keyCode: 40 },
 	/*
+	 * The viewer's walk takes BOTH arrows — the in-group carousel added
+	 * `ArrowLeft` beside `ArrowRight` above — and the set's left-wrapping frame
+	 * is a real left press rather than a mirror of the right one.
+	 */
+	ArrowLeft: { code: "ArrowLeft", keyCode: 37 },
+	/*
 	 * `ArrowRight` opens a Radix submenu (`DropdownMenuSub`), which is the only
 	 * gesture that does: a SubTrigger opens on pointermove or on this key, and NOT
 	 * on a click, so an entry that needs the submenu's own content on screen has
@@ -160,6 +166,31 @@ const IMAGE_EXPAND_PICTURE = 'button[title^="Click to expand"]';
  */
 const IMAGE_EXPAND_FILE_ACTIONS = 'button[aria-label^="Actions for"]';
 const IMAGE_ACTIONS_TRIGGER = 'button[aria-label^="Actions for"]';
+/*
+ * The image viewer's own controls (`image-viewer-controls`), named by their
+ * shipped accessible names — the same strings the jsdom suite asserts. The
+ * picture itself is `IMAGE_EXPAND_PICTURE` above: one production button, one
+ * selector, and the new set presses the same control the old one does.
+ */
+const VIEWER_FRAME = "[data-image-viewport]";
+const VIEWER_FILMSTRIP = "[data-image-filmstrip]";
+const VIEWER_ZOOM_IN = 'button[aria-label="Zoom in"]';
+const VIEWER_RESET = 'button[aria-label="Reset view"]';
+const VIEWER_NEXT = 'button[aria-label="Next image"]';
+const VIEWER_CLOSE = 'button[aria-label="Close image"]';
+const VIEWER_TILE_ONE = '[data-fold-media] button[aria-label="Expand Image 1"]';
+const VIEWER_TILE_TWO = '[data-fold-media] button[aria-label="Expand Image 2"]';
+const VIEWER_CONTROLS = "[data-image-viewer-controls]";
+/*
+ * The carousel's SECOND picture, by a signature of its own bytes: the group
+ * fixture is a 400x1200 portrait whose base64 opens with this 40-character
+ * sequence (checked unique across the story's fixtures), so `carousel-open`
+ * can claim at shutter time that the viewer holds THAT picture — the frame,
+ * not just the tuple, proves "opened ON the pressed tile" (agent review round
+ * 1, R1-5: with the first tile pressed, "pressed" and "first" were the same
+ * cell and the frame could not discriminate).
+ */
+const PORTRAIT_SRC_SIGNATURE = "iVBORw0KGgoAAAANSUhEUgAAAZAAAASw";
 const THEME_FILTER = flag("themes")?.split(",").filter(Boolean) ?? null;
 const PARTIAL = Boolean(ONLY || THEME_FILTER || DIR_FILTER);
 
@@ -4297,6 +4328,134 @@ export const STORIES = [
 	["settings-speech--backend-older", 1024, 640, { dir: "backend-older" }],
 	["settings-speech--unreadable", 1024, 640, { dir: "unreadable" }],
 	/*
+	 * Settings -> Keyboard shortcuts (issue #928): the six registry rows, the
+	 * recorder's states and the Reset affordance. Five states, because each is a
+	 * claim one frame cannot carry — the default/unbound mix, populated
+	 * overrides, the recording focus, a REAL refusal (the story's play presses
+	 * the canvas chord at the console field) and the cleared row after a REAL
+	 * Reset press. Captured at 1024x640 like the settings-speech set beside it:
+	 * the section is one settings column in its own ground, and the rig grows
+	 * the viewport to the rendered height, so 640 is a floor rather than a crop.
+	 *
+	 * THE REFUSED AND CLEARED FRAMES ARE REACHED, NOT STAGED: their sentences
+	 * come from the shipped component handling a real keydown and a real click,
+	 * and the shutter-time claims below refuse a frame where the play's outcome is
+	 * missing. The keyboard rows read `Ctrl+…` here because the harness carries
+	 * no window-chrome facts — the display tables' shared fallback, exactly as
+	 * the mini view's own stories read it.
+	 *
+	 * EVERY CLAIM BELOW POLLS FOR THE DRAWN STORY (`pollMs` 30000; precedent the
+	 * rail host's 3000, sized up because these mounts are heavier): the settings
+	 * section is a six-row form, and under the fleet's load the drawn state lands
+	 * several seconds after navigation — a bare read beat the story mount (the
+	 * design leg measured `dom_audit` scans at 0 two seconds in, 43 by eight) and
+	 * refused frames that are correct a moment later. The poll is bounded, so a
+	 * story that never draws still fails with the last reading.
+	 */
+	[
+		"settings-keyboard-shortcuts--default-mix",
+		1024,
+		640,
+		{
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const consoleField = document.querySelector('input[data-shortcut-action="panel.console"]');
+					if (!consoleField) return "the console row is not rendered";
+					if (consoleField.value !== "Ctrl+J") return "the console field reads " + JSON.stringify(consoleField.value) + ", not its shipped default";
+					const browserField = document.querySelector('input[data-shortcut-action="panel.browser"]');
+					if (!browserField) return "the browser row is not rendered";
+					if (browserField.value !== "No shortcut") return "an unbound row must read No shortcut, read " + JSON.stringify(browserField.value);
+					return true;
+				})()`,
+				message:
+					"the default/unbound mix shows the console's default chord and the unbound rows' No shortcut",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--overrides",
+		1024,
+		640,
+		{
+			expectPresent: 'button[aria-label="Reset Browser to its default"]',
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const field = document.querySelector('input[data-shortcut-action="panel.browser"]');
+					if (!field) return "the browser row is not rendered";
+					if (field.value !== "Ctrl+I") return "the overridden row reads " + JSON.stringify(field.value) + ", not the stored chord";
+					return true;
+				})()`,
+				message:
+					"a populated override is on the row and its Reset is available",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--recording",
+		1024,
+		640,
+		{
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const active = document.activeElement;
+					if (!active || active.getAttribute("data-shortcut-action") !== "panel.canvas") return "the canvas field does not hold focus, so the frame is not the recording state";
+					return true;
+				})()`,
+				message: "the recording state is the focused field",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--refused",
+		1024,
+		640,
+		{
+			/*
+			 * This row has no `expect` expression of its own, so the drawn gate is
+			 * ADDED rather than extended (rig repair, design leg 1): the poll waits for
+			 * the story AND its play, so the `expectSentence` below reads a refusal that
+			 * exists rather than racing the mount.
+			 */
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const field = document.querySelector('input[data-shortcut-action="panel.console"]');
+					if (!field) return "the console row is not rendered";
+					const refusal = document.querySelector("output");
+					if (!refusal) return "the refusal line is not rendered";
+					return true;
+				})()`,
+				message:
+					"the console row and its refusal line are drawn before the sentence is read",
+			},
+			expectSentence: {
+				selector: "output",
+				includes: "Already assigned to Open canvas.",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--cleared",
+		1024,
+		640,
+		{
+			expectGone: 'button[aria-label="Reset Browser to its default"]',
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const field = document.querySelector('input[data-shortcut-action="panel.browser"]');
+					if (!field) return "the browser row is not rendered";
+					if (field.value !== "No shortcut") return "the cleared row reads " + JSON.stringify(field.value) + ", not No shortcut";
+					return true;
+				})()`,
+				message: "the cleared row is back to No shortcut with its Reset gone",
+			},
+		},
+	],
+	/*
 	 * And the state this list deliberately does NOT carry, so the omission is a
 	 * decision rather than an oversight: `no-sessions-at-all` renders ONE line (the
 	 * section asked the roster and there is nothing to borrow), so it never clears
@@ -6039,6 +6198,66 @@ export const STORIES = [
 	["navigation-panel-rail--browser-open-focused", 132, 184],
 	["navigation-panel-rail--browser-open-at-cap", 132, 184],
 	["navigation-panel-rail--console-open-blip", 132, 184],
+	/*
+	 * THE BOUND CHORD IN THE TOOLTIP (#928), the pair: the console ships
+	 * `primary+j` and its tooltip prints it in both registers, while an action
+	 * that ships unbound prints no parens at all. The rig's own pointer opens
+	 * the tooltip — `hoverSettleMs` 500 clears the wrapper's 400ms delay — and
+	 * the frame is 360 wide because a tooltip opens LEFT of its item and the
+	 * 132px rail-only frame would clip the sentence these two frames exist for.
+	 *
+	 * THE POLL GATES THE DRAW, NOT THE TOOLTIP (rig repair, design leg 1): these
+	 * rows carried no `expect` expression, and the hover's single selector read
+	 * — like the claims themselves — could beat the story's mount under load, so
+	 * each row now polls for its item first. A story that never draws still
+	 * fails; the poll cannot turn that into a pass.
+	 */
+	[
+		"navigation-panel-rail--console-chord-tooltip",
+		360,
+		184,
+		{
+			hover: '[data-panel-rail-item="console"]',
+			hoverSettleMs: 500,
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const item = document.querySelector('[data-panel-rail-item="console"]');
+					if (!item) return "the console rail item is not rendered";
+					return true;
+				})()`,
+				message:
+					"the rail is drawn before the pointer is moved at the console item",
+			},
+			expectSentence: {
+				selector: '[role="tooltip"]',
+				includes: "Open console (Ctrl+J)",
+			},
+		},
+	],
+	[
+		"navigation-panel-rail--browser-no-chord",
+		360,
+		184,
+		{
+			hover: '[data-panel-rail-item="browser"]',
+			hoverSettleMs: 500,
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const item = document.querySelector('[data-panel-rail-item="browser"]');
+					if (!item) return "the browser rail item is not rendered";
+					return true;
+				})()`,
+				message:
+					"the rail is drawn before the pointer is moved at the browser item",
+			},
+			expectSentence: {
+				selector: '[role="tooltip"]',
+				equals: "Open browser",
+			},
+		},
+	],
 	/*
 	 * WINDOWS/LINUX CAPTION CLEARANCE - SIMULATED, NOT PHOTOGRAPHED (#872). This
 	 * host is macOS, so no frame here can show the OS buttons; these three arms set
@@ -11770,6 +11989,158 @@ export const STORIES = [
 		400,
 		{ dir: "folded-condensed-narrow" },
 	],
+	/*
+	 * THE IMAGE VIEWER'S CONTROLS AND CAROUSEL
+	 * (`image-viewer-controls.stories.tsx`), the operator's asks of 2026-10-11:
+	 * zoomed-state controls on the lightbox, and an in-group left/right walk with
+	 * a filmstrip. This set pairs with `image-viewer-controls-before` — the same
+	 * states rendered by a base-tree build, where the overlay has no controls and
+	 * the carousel does not exist — so every claim here has a reading of the tree
+	 * it replaces, and the pair is what the frames mean.
+	 *
+	 * Every frame is a real gesture through the input pipeline. `fit` presses the
+	 * picture; `zoomed` presses the picture and Zoom in; `zoomed-panned` then
+	 * DRAGS the zoomed picture to the close button's corner and HOLDS it there —
+	 * the pan is clamped at the picture's own edge, a held-and-clamped gesture
+	 * rather than a mid-drag accident (the rig's `drag` sends no release; the
+	 * README says "press-drag", not "press-drag-release" — agent review round 1,
+	 * R1-4); `reset` presses Zoom in and then Reset view; `resting` presses the
+	 * picture and then STAYS OFF IT for longer than `SCROLLBAR_HOLD_MS`, so the
+	 * shutter photographs the dimmed cluster and the tuple claims it by class
+	 * (design round 1, D1-2: the floor was unreachable while focus parked in the
+	 * cluster at open; now the layer anchors focus and the frame is that state).
+	 *
+	 * The carousel frames all open by pressing the strip's MIDDLE tile, so
+	 * "opens ON the pressed picture" is readable in the frame itself, and each
+	 * walk ends somewhere the other frames cannot reach (R1-5): `carousel-open`
+	 * shows picture 2 of 4 and claims that picture's own src signature;
+	 * `carousel-next` steps forward ONTO the receipt (which photographs the
+	 * receipt slot's current ring, UX round 1's U1-1); `carousel-leftwrap`
+	 * presses a real ArrowLeft from the first tile — which WRAPS to the fourth
+	 * picture. `wide-open`/`wide-walk` are the ten-tile group: the walk to the
+	 * far end must SCROLL the current into view (design round 1, D1-5). The
+	 * expect claims are read at shutter time: a zoom frame whose picture carries
+	 * no `scale(` in its style, a carousel frame with no strip, or a resting
+	 * frame whose cluster is not dimmed, fails the run rather than photographing
+	 * a resting state under the name of a pressed one.
+	 */
+	[
+		"image-viewer-controls--viewer",
+		1280,
+		900,
+		{
+			dir: "fit",
+			press: IMAGE_EXPAND_PICTURE,
+			expectGone: `${VIEWER_FRAME} img[style*="scale("]`,
+		},
+	],
+	[
+		"image-viewer-controls--viewer",
+		1280,
+		900,
+		{
+			dir: "resting",
+			press: IMAGE_EXPAND_PICTURE,
+			pressSettleMs: 2600,
+			expectAttribute: {
+				selector: VIEWER_CONTROLS,
+				name: "class",
+				includes: "opacity-45",
+			},
+		},
+	],
+	[
+		"image-viewer-controls--viewer",
+		1280,
+		900,
+		{
+			dir: "zoomed",
+			press: [IMAGE_EXPAND_PICTURE, VIEWER_ZOOM_IN],
+			expectPresent: `${VIEWER_FRAME} img[style*="scale(2)"]`,
+		},
+	],
+	[
+		"image-viewer-controls--viewer",
+		1280,
+		900,
+		{
+			dir: "zoomed-panned",
+			press: [IMAGE_EXPAND_PICTURE, VIEWER_ZOOM_IN],
+			drag: {
+				from: `${VIEWER_FRAME} img`,
+				to: VIEWER_CLOSE,
+				settleMs: 200,
+			},
+			expectPresent: `${VIEWER_FRAME} img[style*="scale(2)"]`,
+		},
+	],
+	[
+		"image-viewer-controls--viewer",
+		1280,
+		900,
+		{
+			dir: "reset",
+			press: [IMAGE_EXPAND_PICTURE, VIEWER_ZOOM_IN, VIEWER_RESET],
+			expectGone: `${VIEWER_FRAME} img[style*="scale("]`,
+		},
+	],
+	[
+		"image-viewer-controls--group",
+		1280,
+		900,
+		{
+			dir: "carousel-open",
+			press: VIEWER_TILE_TWO,
+			expectPresent: VIEWER_FILMSTRIP,
+			expectAttribute: {
+				selector: `${VIEWER_FRAME} img`,
+				name: "src",
+				includes: PORTRAIT_SRC_SIGNATURE,
+			},
+		},
+	],
+	[
+		"image-viewer-controls--group",
+		1280,
+		900,
+		{
+			dir: "carousel-next",
+			press: [VIEWER_TILE_TWO, VIEWER_NEXT],
+			expectPresent: VIEWER_FILMSTRIP,
+		},
+	],
+	[
+		"image-viewer-controls--group",
+		1280,
+		900,
+		{
+			dir: "carousel-leftwrap",
+			press: VIEWER_TILE_ONE,
+			keys: [{ key: "ArrowLeft", settleMs: 300 }],
+			expectPresent: VIEWER_FILMSTRIP,
+		},
+	],
+	[
+		"image-viewer-controls--group-wide",
+		1280,
+		900,
+		{
+			dir: "wide-open",
+			press: VIEWER_TILE_ONE,
+			expectPresent: VIEWER_FILMSTRIP,
+		},
+	],
+	[
+		"image-viewer-controls--group-wide",
+		1280,
+		900,
+		{
+			dir: "wide-walk",
+			press: VIEWER_TILE_ONE,
+			keys: [...Array(9)].map(() => ({ key: "ArrowRight", settleMs: 120 })),
+			expectPresent: VIEWER_FILMSTRIP,
+		},
+	],
 ];
 
 /**
@@ -15116,6 +15487,16 @@ const main = async () => {
 			 * EACH CLAIM IN A LIST GETS ITS OWN SURFACE, because the two forms are one gate:
 			 * an entry may name several sentences, and the frame is refused until every one
 			 * of them is on the screen it names.
+			 *
+			 * EQUALITY IS THE SECOND MATCHER (design review round 1's D2): `includes`
+			 * cannot refuse the state its claim exists to catch when the wanted text is a
+			 * PREFIX of the regression — "Open browser" is a substring of "Open browser
+			 * (Ctrl+B)", so a paren that appeared would keep the guard green while the
+			 * frame's whole point (an unbound action prints none) was gone. `equals`
+			 * reads the subject's WHOLE text and fails on any addition. It lives here,
+			 * not at the `expect` position, because that claim runs BEFORE the row's
+			 * `hover`: the tooltip these rows photograph is opened by the pointer move,
+			 * so an equality over it can only be read at this shutter-side phase.
 			 */
 			const declared = options?.expectSentence;
 			if (declared) {
@@ -15139,9 +15520,16 @@ const main = async () => {
 				const outstanding = async () => {
 					const unmet = [];
 					for (const claim of claims) {
-						const wanted = typeof claim === "string" ? claim : claim.includes;
+						const wanted =
+							typeof claim === "string"
+								? claim
+								: (claim.equals ?? claim.includes);
 						const painted = await paintedIn(claim);
-						if (!painted.includes(wanted)) unmet.push({ claim, wanted });
+						const matched =
+							typeof claim === "string" || claim.equals === undefined
+								? painted.includes(wanted)
+								: painted.trim() === wanted.trim();
+						if (!matched) unmet.push({ claim, wanted, painted });
 					}
 					return unmet;
 				};
@@ -15151,10 +15539,10 @@ const main = async () => {
 					unmet = await outstanding();
 				}
 				if (unmet.length > 0) {
-					const { claim, wanted } = unmet[0];
+					const { claim, wanted, painted } = unmet[0];
 					const scoped = typeof claim === "string" ? null : claim.selector;
 					throw new Error(
-						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(wanted)}${scoped ? ` in ${JSON.stringify(scoped)}` : ""}, and a frame without it is evidence for something else.`,
+						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(wanted)}${scoped ? ` in ${JSON.stringify(scoped)}` : ""}, and a frame without it is evidence for something else.${typeof claim === "string" || claim.equals === undefined ? "" : ` It reads ${JSON.stringify(painted.trim())}.`}`,
 					);
 				}
 			}
