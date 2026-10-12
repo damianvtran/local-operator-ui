@@ -448,6 +448,8 @@ export type DesktopFeature =
 	 * post-paint align walk that the facts retire.
 	 */
 	| "open_frame"
+	/** Verified journal-index order; absent keeps the explicit legacy lane. */
+	| "journal_order"
 	/**
 	 * Durable conversation pinning: the `pinned` flag on every catalogue row and
 	 * the `sessions.pin` write (`POST /v1/desktop/sessions/{id}/pin`).

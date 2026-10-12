@@ -435,12 +435,24 @@ export function registerDesktopIPC(
 				epoch?: unknown;
 				afterSeq?: unknown;
 				openFrame?: unknown;
+				journalOrder?: unknown;
+				orderIds?: unknown;
 			};
 			if (
 				typeof input?.sessionId !== "string" ||
 				(input.epoch !== undefined && typeof input.epoch !== "string") ||
 				(input.afterSeq !== undefined && typeof input.afterSeq !== "number") ||
-				(input.openFrame !== undefined && typeof input.openFrame !== "boolean")
+				(input.openFrame !== undefined &&
+					typeof input.openFrame !== "boolean") ||
+				(input.journalOrder !== undefined &&
+					typeof input.journalOrder !== "boolean") ||
+				(input.orderIds !== undefined &&
+					(!Array.isArray(input.orderIds) ||
+						input.orderIds.length > 512 ||
+						input.orderIds.some(
+							(id) =>
+								typeof id !== "string" || id.length === 0 || id.length > 128,
+						)))
 			) {
 				throw new Error("Invalid stream subscription.");
 			}
@@ -452,6 +464,8 @@ export function registerDesktopIPC(
 					epoch: input.epoch as string | undefined,
 					afterSeq: input.afterSeq as number | undefined,
 					openFrame: input.openFrame as boolean | undefined,
+					journalOrder: input.journalOrder as boolean | undefined,
+					orderIds: input.orderIds as string[] | undefined,
 				},
 				(frame) => {
 					if (sender.isDestroyed()) {

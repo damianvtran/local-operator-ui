@@ -15,6 +15,7 @@
 
 import { randomBytes } from "node:crypto";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
+import { appendJournalOrderIds } from "../shared/journal-order-query";
 
 const SESSION_ID = /^[a-f0-9]{12}$/;
 const SAFE_ID = /^[a-zA-Z0-9_-]{1,128}$/;
@@ -136,6 +137,8 @@ export type RelaySubscribeArgs = {
 	 * request exactly as it was.
 	 */
 	openFrame?: boolean;
+	journalOrder?: boolean;
+	orderIds?: string[];
 };
 
 export type RelayEvent =
@@ -259,6 +262,9 @@ export class DesktopStreamRelay {
 		 * untouched.
 		 */
 		if (args.openFrame === true) query.set("open_frame", "1");
+		if (args.journalOrder === true) {
+			query.set("journal_order", "1");
+		}
 		/*
 		 * The `supplements=1` negotiation (turn-supplements memo §2.7), the same
 		 * shape and the same reasoning as `frontend_replace` above: it says
@@ -270,6 +276,12 @@ export class DesktopStreamRelay {
 		 * unknown query parameter and never emits the events anyway.
 		 */
 		query.set("supplements", "1");
+		if (args.journalOrder === true)
+			appendJournalOrderIds(
+				query,
+				`/v1/desktop/sessions/${args.sessionId}/events`,
+				args.orderIds ?? [],
+			);
 		const suffix = query.size > 0 ? `?${query}` : "";
 		const url = new URL(
 			`/v1/desktop/sessions/${args.sessionId}/events${suffix}`,

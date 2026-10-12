@@ -89,12 +89,15 @@ export function createOlderLoader() {
 		anchorAtDispatch: string,
 	): Promise<LoadOlderOutcome> => {
 		deps.setLoading?.(true);
+		const revision = deps.getTranscript().orderRevision ?? 0;
+		const orderCurrent = () =>
+			(deps.getTranscript().orderRevision ?? 0) === revision;
 		try {
 			let anchor = anchorAtDispatch;
 			let page = await deps.readPage(anchor);
 			// A page for a conversation the reader has left is dropped before it can
 			// buy a retry, and it is not a failure of the one they are looking at.
-			if (!deps.isCurrent()) return { kind: "stale" };
+			if (!deps.isCurrent() || !orderCurrent()) return { kind: "stale" };
 			if (page.cursor_missing) {
 				/*
 				 * ONE re-anchored retry, and the choice of anchor is the fix (spec
@@ -113,7 +116,7 @@ export function createOlderLoader() {
 				if (next === null) return { kind: "failed", reason: "cursor-missing" };
 				anchor = next;
 				page = await deps.readPage(anchor);
-				if (!deps.isCurrent()) return { kind: "stale" };
+				if (!deps.isCurrent() || !orderCurrent()) return { kind: "stale" };
 				// A second miss is the honest dead end: applying the tail would report a
 				// click that loaded nothing as a success, and a third ask would loop.
 				if (page.cursor_missing)
@@ -122,6 +125,7 @@ export function createOlderLoader() {
 			let before = deps.getTranscript();
 			const after = deps.commit((current) => {
 				before = current;
+				if ((current.orderRevision ?? 0) !== revision) return current;
 				/*
 				 * `pagedBefore` is a CLAIM that the store's cursor is where this ask
 				 * started, and it is trusted only while that is true (spec R1). A
@@ -139,6 +143,15 @@ export function createOlderLoader() {
 						: undefined,
 				);
 			});
+			// A source reset can win inside the commit boundary too. Calling a
+			// refused updater "applied" would make the reveal walk treat no page
+			// as progress instead of waiting for the coalesced source repair.
+			if (
+				(after.orderRevision ?? 0) !== revision ||
+				(page.journal_generation !== undefined &&
+					page.journal_generation !== after.journalGeneration)
+			)
+				return { kind: "stale" };
 			return {
 				kind: "applied",
 				newRecords: Math.max(0, after.records.length - before.records.length),

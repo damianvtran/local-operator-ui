@@ -1582,11 +1582,17 @@ export type CanonicalContentBlock = {
 	mime_type?: string;
 };
 export type DesktopHistoryPage = {
+	/** Opaque equality domain; never publication seq or a sortable UUID. */
+	journal_generation?: string;
+	journal_order_state?: "ready" | "building" | "unavailable" | "unsupported";
+	journal_ordinals?: Record<string, number>;
+	journal_missing_ids?: string[];
 	entries: Array<{
 		id: string;
 		ts: number;
 		type: string;
 		payload: Record<string, unknown>;
+		journal_seq?: number;
 	}>;
 	has_more: boolean;
 	cursor_missing: boolean;

@@ -335,7 +335,7 @@ export const PreparingFiles: StoryObj = {
 	),
 };
 
-/** Files-only, ≤ 2 files: ONE line of contents, no header of any kind. */
+/** Small file set: compact real file actions, no header of any kind. */
 export const FilesSummary: StoryObj = {
 	render: () => (
 		<Frame
@@ -497,13 +497,46 @@ export const CancelledCold: StoryObj = {
 export const Failed: StoryObj = {
 	render: () => (
 		<Frame
-			height={237}
+			height={360}
 			records={[
 				answer("m1", "The graphics did not make it."),
 				supplement({
 					id: "s1",
 					state: "failed",
-					error: "provider quota exhausted",
+					error: "generator:ProviderError",
+					model: "openrouter/openai/gpt-6.1-sol",
+					attempts: [
+						"anthropic/claude-sonnet-5-5",
+						"openrouter/openai/gpt-6.1-sol",
+					],
+					detail: [
+						"turn 1: ProviderError status=None kind=quota",
+						"turn 2: ProviderError status=503 kind=transient",
+					],
+				}),
+			]}
+		/>
+	),
+};
+
+/** Unsupported standalone profile: honest reason, real file controls, no blank iframe. */
+export const PreparedUnsupported: StoryObj = {
+	render: () => (
+		<Frame
+			height={360}
+			records={[
+				answer("m1", "Prepared the HTML document."),
+				supplement({
+					id: "s1",
+					files: [
+						{
+							...FILES[0],
+							path: "unsupported.html",
+							name: "unsupported.html",
+							kind: "html",
+						},
+					],
+					detail: ["prepared:unsupported"],
 				}),
 			]}
 		/>
