@@ -48,7 +48,10 @@ const bundle = await build({
 			 * to assert the joined sibling (round-1 design review, D1).
 			 */
 			'export * from "./src/renderer/src/features/chat/chat-pin-order";',
-			'export * from "./src/renderer/src/features/chat/canvas-shortcut";',
+			/* The chord's new home (#928): the canvas chord is a registry default now,
+			   and the display parity lives with it. */
+			'export { chordGlyph, effectiveChord } from "./src/renderer/src/shared/keymap/keymap-chord";',
+			'export { RESERVED_CHORDS } from "./src/renderer/src/shared/keymap/keymap-registry";',
 		].join("\n"),
 		resolveDir: ROOT,
 		loader: "ts",
@@ -77,70 +80,49 @@ test("the four regions are in the spec's reading order (§C4)", () => {
 	);
 });
 
-test("the canvas chord is ⌘⇧C / ⌘+Shift+C, and the unshifted ⌘C is never claimed (U14)", () => {
+test("the canvas chord lives in the registry now, and the header's listener retired (#928)", () => {
 	/*
-	 * UX round 2, U14: the canvas control printed `⌘+Shift+C` and nothing answered
-	 * it. The predicate is the half a suite can press; the header binds it, and
-	 * `chat-header`'s own source is asserted to call it so the cap cannot be
-	 * printed by a control that never listens.
+	 * UX round 2's U14 bound this chord in the header because the cap and the
+	 * predicate shared `canvas-shortcut.ts`. Issue #928 retired that module: the
+	 * chord is `panel.canvas`'s default in the registry — the exact string the
+	 * old cap printed — and the ONE router answers it, because a user-assignable
+	 * chord cannot live in one component's effect. What this cell still guards is
+	 * the pair the drift would break: something PRINTS the chord and something
+	 * ANSWERS it, and both read one source.
 	 */
 	assert.equal(
-		mod.isCanvasTogglePress(press("c", { metaKey: true, shiftKey: true })),
-		true,
+		mod.effectiveChord("panel.canvas", undefined),
+		"primary+shift+c",
+		"the canvas default is the chord the app shipped answering",
 	);
-	// The uppercase spelling is what a shifted press produces on layouts that
-	// report the character rather than the base key.
-	assert.equal(
-		mod.isCanvasTogglePress(press("C", { metaKey: true, shiftKey: true })),
-		true,
+	assert.equal(mod.chordGlyph("primary+shift+c", "mac"), "⌘⇧C");
+	/* The unshifted ⌘C is never claimed: it stays the platform's copy gesture,
+	   on the registry's reserved list. */
+	assert.ok(mod.RESERVED_CHORDS.has("primary+c"));
+	const header = readFileSync(HEADER, "utf8");
+	assert.doesNotMatch(
+		header,
+		/isCanvasTogglePress|canvas-shortcut/,
+		"the header's canvas listener must have retired into the registry router",
 	);
-	assert.equal(
-		mod.isCanvasTogglePress(press("c", { ctrlKey: true, shiftKey: true })),
-		true,
-	);
-	// NOT the unshifted chord: ⌘C is Copy and belongs to the reader's selection.
-	assert.equal(mod.isCanvasTogglePress(press("c", { metaKey: true })), false);
-	assert.equal(mod.isCanvasTogglePress(press("c")), false);
-	assert.equal(
-		mod.isCanvasTogglePress(
-			press("c", { metaKey: true, shiftKey: true, altKey: true }),
-		),
-		false,
-	);
-	assert.equal(
-		mod.isCanvasTogglePress(press("b", { metaKey: true, shiftKey: true })),
-		false,
-	);
-
-	const header = readFileSync(
-		"src/renderer/src/features/chat/components/chat-header.tsx",
-		"utf8",
-	);
-	/* The control that PRINTS the cap moved to the panel rail (#872); the listener
-	 * that answers it did not. The cap and the predicate still share one module. */
 	const rail = readFileSync(
 		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
 		"utf8",
 	);
 	assert.match(
 		rail,
-		/canvasToggleCap\(isMac\)/,
-		"the control's printed cap no longer comes from the shared module, so what it promises and what answers it can drift",
+		/capFor\("panel\.canvas"\)/,
+		"the control's printed cap must come from the registry, so what it promises and what answers it cannot drift",
 	);
 	assert.doesNotMatch(
 		rail,
 		/addEventListener\(\s*"keydown"/,
-		"the rail adds no chord: the listener that answers the printed cap stays bound exactly once, in the header",
+		"the rail binds no listener of its own: the one router is mounted in app.tsx",
 	);
 	assert.match(
-		header,
-		/document\.addEventListener\("keydown", onKeyDown\)/,
-		"the canvas chord is printed but not bound",
-	);
-	assert.match(
-		header,
-		/isCanvasTogglePress\(event\)/,
-		"the header's key listener no longer asks the shared predicate",
+		readFileSync("src/renderer/src/app.tsx", "utf8"),
+		/useKeymapShortcuts\(\)/,
+		"the canvas chord is printed but the registry router is not mounted",
 	);
 });
 

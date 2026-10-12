@@ -4328,6 +4328,134 @@ export const STORIES = [
 	["settings-speech--backend-older", 1024, 640, { dir: "backend-older" }],
 	["settings-speech--unreadable", 1024, 640, { dir: "unreadable" }],
 	/*
+	 * Settings -> Keyboard shortcuts (issue #928): the six registry rows, the
+	 * recorder's states and the Reset affordance. Five states, because each is a
+	 * claim one frame cannot carry — the default/unbound mix, populated
+	 * overrides, the recording focus, a REAL refusal (the story's play presses
+	 * the canvas chord at the console field) and the cleared row after a REAL
+	 * Reset press. Captured at 1024x640 like the settings-speech set beside it:
+	 * the section is one settings column in its own ground, and the rig grows
+	 * the viewport to the rendered height, so 640 is a floor rather than a crop.
+	 *
+	 * THE REFUSED AND CLEARED FRAMES ARE REACHED, NOT STAGED: their sentences
+	 * come from the shipped component handling a real keydown and a real click,
+	 * and the shutter-time claims below refuse a frame where the play's outcome is
+	 * missing. The keyboard rows read `Ctrl+…` here because the harness carries
+	 * no window-chrome facts — the display tables' shared fallback, exactly as
+	 * the mini view's own stories read it.
+	 *
+	 * EVERY CLAIM BELOW POLLS FOR THE DRAWN STORY (`pollMs` 30000; precedent the
+	 * rail host's 3000, sized up because these mounts are heavier): the settings
+	 * section is a six-row form, and under the fleet's load the drawn state lands
+	 * several seconds after navigation — a bare read beat the story mount (the
+	 * design leg measured `dom_audit` scans at 0 two seconds in, 43 by eight) and
+	 * refused frames that are correct a moment later. The poll is bounded, so a
+	 * story that never draws still fails with the last reading.
+	 */
+	[
+		"settings-keyboard-shortcuts--default-mix",
+		1024,
+		640,
+		{
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const consoleField = document.querySelector('input[data-shortcut-action="panel.console"]');
+					if (!consoleField) return "the console row is not rendered";
+					if (consoleField.value !== "Ctrl+J") return "the console field reads " + JSON.stringify(consoleField.value) + ", not its shipped default";
+					const browserField = document.querySelector('input[data-shortcut-action="panel.browser"]');
+					if (!browserField) return "the browser row is not rendered";
+					if (browserField.value !== "No shortcut") return "an unbound row must read No shortcut, read " + JSON.stringify(browserField.value);
+					return true;
+				})()`,
+				message:
+					"the default/unbound mix shows the console's default chord and the unbound rows' No shortcut",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--overrides",
+		1024,
+		640,
+		{
+			expectPresent: 'button[aria-label="Reset Browser to its default"]',
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const field = document.querySelector('input[data-shortcut-action="panel.browser"]');
+					if (!field) return "the browser row is not rendered";
+					if (field.value !== "Ctrl+I") return "the overridden row reads " + JSON.stringify(field.value) + ", not the stored chord";
+					return true;
+				})()`,
+				message:
+					"a populated override is on the row and its Reset is available",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--recording",
+		1024,
+		640,
+		{
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const active = document.activeElement;
+					if (!active || active.getAttribute("data-shortcut-action") !== "panel.canvas") return "the canvas field does not hold focus, so the frame is not the recording state";
+					return true;
+				})()`,
+				message: "the recording state is the focused field",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--refused",
+		1024,
+		640,
+		{
+			/*
+			 * This row has no `expect` expression of its own, so the drawn gate is
+			 * ADDED rather than extended (rig repair, design leg 1): the poll waits for
+			 * the story AND its play, so the `expectSentence` below reads a refusal that
+			 * exists rather than racing the mount.
+			 */
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const field = document.querySelector('input[data-shortcut-action="panel.console"]');
+					if (!field) return "the console row is not rendered";
+					const refusal = document.querySelector("output");
+					if (!refusal) return "the refusal line is not rendered";
+					return true;
+				})()`,
+				message:
+					"the console row and its refusal line are drawn before the sentence is read",
+			},
+			expectSentence: {
+				selector: "output",
+				includes: "Already assigned to Open canvas.",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--cleared",
+		1024,
+		640,
+		{
+			expectGone: 'button[aria-label="Reset Browser to its default"]',
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const field = document.querySelector('input[data-shortcut-action="panel.browser"]');
+					if (!field) return "the browser row is not rendered";
+					if (field.value !== "No shortcut") return "the cleared row reads " + JSON.stringify(field.value) + ", not No shortcut";
+					return true;
+				})()`,
+				message: "the cleared row is back to No shortcut with its Reset gone",
+			},
+		},
+	],
+	/*
 	 * And the state this list deliberately does NOT carry, so the omission is a
 	 * decision rather than an oversight: `no-sessions-at-all` renders ONE line (the
 	 * section asked the roster and there is nothing to borrow), so it never clears
@@ -6070,6 +6198,66 @@ export const STORIES = [
 	["navigation-panel-rail--browser-open-focused", 132, 184],
 	["navigation-panel-rail--browser-open-at-cap", 132, 184],
 	["navigation-panel-rail--console-open-blip", 132, 184],
+	/*
+	 * THE BOUND CHORD IN THE TOOLTIP (#928), the pair: the console ships
+	 * `primary+j` and its tooltip prints it in both registers, while an action
+	 * that ships unbound prints no parens at all. The rig's own pointer opens
+	 * the tooltip — `hoverSettleMs` 500 clears the wrapper's 400ms delay — and
+	 * the frame is 360 wide because a tooltip opens LEFT of its item and the
+	 * 132px rail-only frame would clip the sentence these two frames exist for.
+	 *
+	 * THE POLL GATES THE DRAW, NOT THE TOOLTIP (rig repair, design leg 1): these
+	 * rows carried no `expect` expression, and the hover's single selector read
+	 * — like the claims themselves — could beat the story's mount under load, so
+	 * each row now polls for its item first. A story that never draws still
+	 * fails; the poll cannot turn that into a pass.
+	 */
+	[
+		"navigation-panel-rail--console-chord-tooltip",
+		360,
+		184,
+		{
+			hover: '[data-panel-rail-item="console"]',
+			hoverSettleMs: 500,
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const item = document.querySelector('[data-panel-rail-item="console"]');
+					if (!item) return "the console rail item is not rendered";
+					return true;
+				})()`,
+				message:
+					"the rail is drawn before the pointer is moved at the console item",
+			},
+			expectSentence: {
+				selector: '[role="tooltip"]',
+				includes: "Open console (Ctrl+J)",
+			},
+		},
+	],
+	[
+		"navigation-panel-rail--browser-no-chord",
+		360,
+		184,
+		{
+			hover: '[data-panel-rail-item="browser"]',
+			hoverSettleMs: 500,
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const item = document.querySelector('[data-panel-rail-item="browser"]');
+					if (!item) return "the browser rail item is not rendered";
+					return true;
+				})()`,
+				message:
+					"the rail is drawn before the pointer is moved at the browser item",
+			},
+			expectSentence: {
+				selector: '[role="tooltip"]',
+				equals: "Open browser",
+			},
+		},
+	],
 	/*
 	 * WINDOWS/LINUX CAPTION CLEARANCE - SIMULATED, NOT PHOTOGRAPHED (#872). This
 	 * host is macOS, so no frame here can show the OS buttons; these three arms set
@@ -15273,6 +15461,16 @@ const main = async () => {
 			 * EACH CLAIM IN A LIST GETS ITS OWN SURFACE, because the two forms are one gate:
 			 * an entry may name several sentences, and the frame is refused until every one
 			 * of them is on the screen it names.
+			 *
+			 * EQUALITY IS THE SECOND MATCHER (design review round 1's D2): `includes`
+			 * cannot refuse the state its claim exists to catch when the wanted text is a
+			 * PREFIX of the regression — "Open browser" is a substring of "Open browser
+			 * (Ctrl+B)", so a paren that appeared would keep the guard green while the
+			 * frame's whole point (an unbound action prints none) was gone. `equals`
+			 * reads the subject's WHOLE text and fails on any addition. It lives here,
+			 * not at the `expect` position, because that claim runs BEFORE the row's
+			 * `hover`: the tooltip these rows photograph is opened by the pointer move,
+			 * so an equality over it can only be read at this shutter-side phase.
 			 */
 			const declared = options?.expectSentence;
 			if (declared) {
@@ -15296,9 +15494,16 @@ const main = async () => {
 				const outstanding = async () => {
 					const unmet = [];
 					for (const claim of claims) {
-						const wanted = typeof claim === "string" ? claim : claim.includes;
+						const wanted =
+							typeof claim === "string"
+								? claim
+								: (claim.equals ?? claim.includes);
 						const painted = await paintedIn(claim);
-						if (!painted.includes(wanted)) unmet.push({ claim, wanted });
+						const matched =
+							typeof claim === "string" || claim.equals === undefined
+								? painted.includes(wanted)
+								: painted.trim() === wanted.trim();
+						if (!matched) unmet.push({ claim, wanted, painted });
 					}
 					return unmet;
 				};
@@ -15308,10 +15513,10 @@ const main = async () => {
 					unmet = await outstanding();
 				}
 				if (unmet.length > 0) {
-					const { claim, wanted } = unmet[0];
+					const { claim, wanted, painted } = unmet[0];
 					const scoped = typeof claim === "string" ? null : claim.selector;
 					throw new Error(
-						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(wanted)}${scoped ? ` in ${JSON.stringify(scoped)}` : ""}, and a frame without it is evidence for something else.`,
+						`${story} @ ${theme}: the frame's claimed sentence is not on the screen. This story exists to show ${JSON.stringify(wanted)}${scoped ? ` in ${JSON.stringify(scoped)}` : ""}, and a frame without it is evidence for something else.${typeof claim === "string" || claim.equals === undefined ? "" : ` It reads ${JSON.stringify(painted.trim())}.`}`,
 					);
 				}
 			}
