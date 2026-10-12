@@ -6,9 +6,35 @@ import {
 	DialogContent,
 	DialogTitle,
 } from "@shared/components/ui";
+import {
+	VIEWER_PAN_ORIGIN,
+	VIEWER_ZOOM_MAX,
+	VIEWER_ZOOM_MIN,
+	type ViewerPan,
+	clampViewerPan,
+	groupPositionLabel,
+	stepZoom,
+} from "@shared/lib/image-viewer-model";
+import { SCROLLBAR_HOLD_MS } from "@shared/lib/scrollbar-activity";
 import { cn } from "@shared/lib/utils";
-import { X } from "lucide-react";
-import { type FC, type ReactNode, type RefObject, useState } from "react";
+import {
+	ChevronLeft,
+	ChevronRight,
+	RotateCcw,
+	X,
+	ZoomIn,
+	ZoomOut,
+} from "lucide-react";
+import {
+	type FC,
+	type ReactNode,
+	type PointerEvent as ReactPointerEvent,
+	type RefObject,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 
 /**
  * The box the picture is fitted into — on the layer and on the picture alike.
@@ -31,9 +57,56 @@ import { type FC, type ReactNode, type RefObject, useState } from "react";
  * `docs/evidence/chat-image-expand/` photograph the three bands that bound it: a
  * picture at the viewport's own aspect (the case that used to collide), a
  * portrait one, and the smallest window.
+ *
+ * THE SAME BOX IS NOW THE ZOOM FRAME, which is why it is written on the wrapper
+ * as well as on the picture: the fitted box is the fixed window the picture is
+ * enlarged INSIDE (clipped by it, panned within it), so the layer's geometry —
+ * and with it the outside-click semantics the header's "Geometry" note relies
+ * on — does not move when the reader zooms. The picture's own `max-*` are kept
+ * on the `<img>` for the fit: the wrapper is the fitted size at zoom 1, and the
+ * transform scales the picture visually without touching the wrapper.
  */
 const PICTURE_BOX =
 	"max-h-[min(90vh,calc(100vh-104px))] max-w-[min(90vw,calc(100vw-104px))]";
+
+/**
+ * The reserved box, shared by the two states that have no picture to size
+ * them: `pending` (the caller's bytes are still resolving — a carousel switch
+ * onto a neighbour the cache has not warmed) and the decoded-failure fallback.
+ * The layer's content box IS the picture's box (see the header), so a source
+ * that never arrives leaves nothing to size it — QA round 1 induced the failure
+ * and measured the layer at 1152x38, a strip of label text on an empty scrim.
+ * `min-h-16 min-w-64` is the floor the fallback draws inside, and it is
+ * `AttachmentFrame`'s own floor unit and the `sunken` ground the caller's copy
+ * brings.
+ */
+const RESERVED_BOX = cn(
+	PICTURE_BOX,
+	"flex min-h-16 min-w-64 items-center justify-center p-6",
+);
+
+/**
+ * Fraction of full strength the controls rest at once the reader has been idle.
+ *
+ * THE FADE'S RESTING STATE IS NOT INVISIBLE, and that is the standing rule this
+ * lightbox is following rather than re-deciding: the scrollbar fade was amended
+ * (issue #845) so idle no longer means absent — "the thumb dims to a low-alpha
+ * resting state and still goes solid on hover and during scrolling" — because a
+ * control a reader must already know about is the discoverability defect the
+ * operator filed against this very surface ("no controls... discoverable, not
+ * hover-only-hidden"). The number is NOT `SCROLLBAR_RESTING_FLOOR` re-used: the
+ * thumb's 0.45 is a colour-mix fraction measured against the grounds, and this
+ * is an opacity on a cluster of buttons. 0.45 keeps the icons findable while
+ * clearly below a full-strength control; a designer round may move it, and the
+ * frames in `docs/evidence/image-viewer-controls/` exist to make that call.
+ *
+ * It is an opacity and not a colour step because it fades FIVE controls at four
+ * positions at once, including their hover fills; the "disabled changes colour,
+ * never opacity" rule is about disabled controls, and this is not a disabled
+ * state — every control works at rest, and the next pointer move or key press
+ * brings the cluster back to full inside `duration-fast`.
+ */
+const CONTROLS_RESTING_CLASS = "opacity-45";
 
 /**
  * One picture, expanded over the app.
@@ -65,16 +138,18 @@ const PICTURE_BOX =
  * button is `absolute top-4 right-4`, so it anchors to whatever box the content
  * has; here that box is the picture, which would put a 28px glyph on a small
  * image's corner. `fixed` anchors it to the viewport instead — the corner the
- * operator asked for — and a `fixed` child resolves against the viewport only
- * while no ancestor carries a `transform`. That is why the centring below is
- * `inset-0 m-auto w-fit h-fit` WITH `translate-none` rather than the primitive's
- * `top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2`: a no-op translate still
- * establishes a containing block (measured in this checkout, Tailwind v4 emits
- * `translate: 0px var(--tw-translate-y)` for `translate-x-0`, and the individual
- * transform properties all establish one), which would silently drag the close
- * button back onto the picture. If a future caller mounts this inside something
- * transformed, the button degrades to the picture's corner rather than breaking:
- * that is the accepted direction.
+ * reader reaches for — and it is now one member of the controls cluster below
+ * (zoom out / in / reset view / close, plus the carousel's arrows and strip),
+ * every member anchored the same way for the same reason.
+ *
+ * The `fixed` anchor has one prerequisite: no ancestor may carry a transform.
+ * A transformed ancestor makes `fixed` behave as `absolute` against it (the
+ * individual `translate` properties all establish one), which would silently
+ * drag the controls back onto the picture. `translate-none` on the content is
+ * what upholds that, and the picture's own zoom transform is applied to the
+ * `<img>` INSIDE its wrapper, never to an ancestor of the cluster. If a future
+ * caller mounts this inside something transformed, the controls degrade to the
+ * picture's corner rather than breaking: that is the accepted direction.
  *
  * ## The size rule
  *
@@ -88,16 +163,58 @@ const PICTURE_BOX =
  * nothing — but it is the design round's call to make, and the frames in
  * `docs/evidence/chat-image-expand/` exist to make it.
  *
- * ## The states, because a bare `<img>` has three and designs one
+ * ## The states, because a bare `<img>` has four once bytes come from elsewhere
  *
- * `attachment-frame.tsx` lists them for the transcript and they are the same
- * three here: decoding, decoded, unreadable. Decoding is the picture's own
- * `opacity-0` (the transcript's picture is already painted by the time the
- * press lands, so the overlay shows the fade rather than a spinner), decoded is
- * the fitted picture, and unreadable is `fallback` inside a reserved box — see
- * the branch below. The overlay is not allowed to be the ONE place a picture
- * fails to the browser's torn-page glyph, which is what a bare `<img>` would do
- * on the day the bytes do not arrive.
+ * `attachment-frame.tsx` lists three for the transcript and they are here too:
+ * decoding, decoded, unreadable. Decoding is now TWO states on this surface,
+ * and the distinction is the carousel's doing: the transcript's picture is
+ * already painted by the time a press lands on it, so the overlay shows the
+ * fade rather than a spinner — but a LEFT/RIGHT switch can land on a neighbour
+ * whose bytes the caller has not resolved yet, and that state is `pending`
+ * (the reserved box, `aria-hidden`, no spinner for the frame's own reason).
+ * Decoded is the fitted picture, and unreadable is `fallback` inside a reserved
+ * box — see the branch below. The overlay is not allowed to be the ONE place a
+ * picture fails to the browser's torn-page glyph, which is what a bare `<img>`
+ * would do on the day the bytes do not arrive.
+ *
+ * ## Zoom and pan, the model in one paragraph
+ *
+ * Zoom steps are FIT, then 2x, 3x, 4x of the fitted size (`image-viewer-model`).
+ * Zooming in/out is a discrete state change with no transition — the motion
+ * budget in `branding.md` § 5 is spent on entrances, and a viewer that animates
+ * a 4x jump is a viewer you wait for; the frames capture the states, not a
+ * tween. Pan is a pointer drag on the picture that exists ONLY while zoomed
+ * beyond fit (the clamp's range is zero at 1x, so the disable is arithmetic
+ * rather than a guard — see `clampViewerPan`), it is clamped so the picture
+ * always covers the frame (no rubber-banding, zero slack), and Reset returns to
+ * fit and recentres. Zooming is centre-anchored rather than pointer-anchored:
+ * the pointer's own position is not where a button press happened, and a
+ * centre zoom is the one the buttons can be reasoned about from — the frames
+ * carry the states a reader gets.
+ *
+ * ## The group carousel
+ *
+ * When the caller passes a `group`, the picture on screen is one of a set and
+ * the overlay grows two pieces of chrome: L/R arrows (WRAP-AROUND — the
+ * argument is in `wrapGroupIndex`) and a filmstrip of the set, drawn by the
+ * CALLER as a node because the tiles are `CanonicalImage`s: a tile that has no
+ * bytes yet shows the reserved box and one that cannot be fetched shows the
+ * receipt, the same states the transcript's strip shows, rather than a second
+ * loading UI invented for the overlay. The strip marks the current picture;
+ * clicking a tile switches; ArrowLeft/ArrowRight do the same from anywhere in
+ * the layer; Escape stays Radix's. Switching resets zoom and pan (a fitted
+ * view per picture is the one rule a reader can predict), and the position is
+ * announced through a polite live region — "Image 2 of 3" — because the
+ * `DialogTitle` (the picture's own name, for screen readers and for the test
+ * that pins it) does not change to a position when the set does.
+ *
+ * The strip and the arrows live in the same viewport-fixed cluster as the zoom
+ * controls and share its fade: at rest the whole cluster sits at
+ * `CONTROLS_RESTING_CLASS`, and the first pointer move, key press or focus
+ * brings it back to full. The cluster is a `pointer-events-none` layer so
+ * presses on the scrim still reach Radix's outside-click — each control
+ * re-enables its own pointer events — and it fades as one unit so the corner
+ * and the edges never disagree about being awake.
  *
  * ## Geometry, and why the caller must know this
  *
@@ -105,16 +222,33 @@ const PICTURE_BOX =
  * "a click on the scrim outside the picture" a genuine outside click for Radix:
  * the layer is the picture, the scrim around it belongs to `DialogOverlay`, and
  * the dismissal needs no `pointer-events` juggling that would silently stop
- * working the day somebody reordered a class. The cost is that the content is
- * only as large as the picture, which is why the close button is `fixed`.
+ * working the day somebody reordered a class. The zoom frame is the SAME box
+ * (see `PICTURE_BOX`), so a zoomed picture never paints outside the layer the
+ * press semantics were measured on. The cost is that the content is only as
+ * large as the picture, which is why the controls are `fixed`.
  *
  * Driven by state the caller owns, because the caller owns the button that opens
  * it and therefore the focus this returns to. Radix's own restore targets
  * `DialogTrigger`, and there is no trigger in this composition.
  */
 export type ImageLightboxProps = {
-	/** The picture to show, at the same URL the transcript renders it from. */
-	src: string;
+	/**
+	 * The picture to show, at the same URL the transcript renders it from.
+	 *
+	 * Optional as of the carousel: a caller whose bytes are still resolving, or
+	 * known absent, omits it and says which of the two states that is — see
+	 * `pending`. Every caller that has a URL passes one, exactly as before.
+	 */
+	src?: string;
+	/**
+	 * The caller's bytes are still on their way, and `src` is omitted for it.
+	 *
+	 * This is the reserved box, not the failure receipt: a local blob resolves in
+	 * a frame or two and a relay fetch on a cold cache is the carousel's normal
+	 * path, so painting "unavailable" while an attempt is outstanding is the
+	 * false statement `use-attachment-url`'s three states exist to end.
+	 */
+	pending?: boolean;
 	/**
 	 * What the picture is called. It names the dialog for a screen reader (Radix
 	 * warns without a `DialogTitle` and refuses to be silent about it) and is the
@@ -144,6 +278,39 @@ export type ImageLightboxProps = {
 	 * glyph, which is the failure `attachment-frame.tsx` was written to remove.
 	 */
 	fallback?: ReactNode;
+	/**
+	 * The set the picture belongs to, when the caller has one. Omitted for a
+	 * solitary picture, which is the same overlay without carousel chrome; a
+	 * one-member group (a row that held one picture) renders no chrome either,
+	 * because there is nothing to walk — the count decides, not the caller.
+	 */
+	group?: ImageLightboxGroup;
+};
+
+/**
+ * The set descriptor the carousel runs on. The caller owns the pictures (and
+ * their resolution — this component never resolves anything), so the walk is
+ * two callbacks and the chrome is a node; what lives here is only the position
+ * the reader is at and how many there are.
+ */
+export type ImageLightboxGroup = {
+	/** Zero-based position of the picture on screen. */
+	index: number;
+	/** How many the set holds. 1 renders no carousel chrome. */
+	count: number;
+	/**
+	 * The reader's left/right walk. Wrap-around is the caller's, through
+	 * `wrapGroupIndex`, so both directions and both input paths (buttons,
+	 * arrows) exercise one rule.
+	 */
+	onPrev: () => void;
+	onNext: () => void;
+	/**
+	 * The strip of the set's pictures, drawn by the caller — `CanonicalImage`
+	 * tiles in a list — because the reserved and missing states are the chat
+	 * feature's and a second loading UI here is the defect § 9 opens with.
+	 */
+	filmstrip?: ReactNode;
 };
 
 export const ImageLightbox: FC<ImageLightboxProps> = ({
@@ -153,16 +320,147 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	onOpenChange,
 	restoreFocusTo,
 	fallback,
+	pending = false,
+	group,
 }) => {
 	/*
-	 * Whether the picture failed to decode. State rather than an `onError` that
-	 * swaps the DOM itself, because the layer's box is what changes with it, and
-	 * it is deliberately NOT reset when `open` flips: the transcript's picture
-	 * failed once and the store is content-addressed, so a second open has the
-	 * same bytes to fail on, and a reset would flash the empty layer a reader has
-	 * already been told is unavailable.
+	 * WHICH PICTURE FAILED, rather than a boolean this component resets. The
+	 * transcript's picture failed once and the store is content-addressed, so a
+	 * second open has the same bytes to fail on and a reset on close would flash
+	 * the empty layer a reader has already been told is unavailable. A carousel,
+	 * though, swaps `src` under a mounted layer, and a boolean would then pin the
+	 * receipt over the NEXT picture's bytes. Keying the record to the source it
+	 * describes is both behaviours at once: same `src`, same receipt; new `src`,
+	 * a clean decode.
 	 */
-	const [failed, setFailed] = useState(false);
+	const [failedFor, setFailedFor] = useState<string | null>(null);
+	const failed = src !== undefined && failedFor === src;
+
+	/*
+	 * The zoom frame's view: one step of the ladder and one pan offset, reset
+	 * when the PICTURE changes (a carousel switch; the resolver landing; the
+	 * caller swapping in another source) rather than when the layer closes —
+	 * reopening the same picture is the same view, which is what "same bytes,
+	 * same state" means here too.
+	 *
+	 * IN A LAYOUT EFFECT, deliberately: a passive effect would let React paint
+	 * one frame of the previous picture's zoom over the new picture's first
+	 * paint — the visible pop this whole surface's comments are about — while a
+	 * layout effect's re-render lands before the browser paints.
+	 */
+	const [zoom, setZoom] = useState(VIEWER_ZOOM_MIN);
+	const [pan, setPan] = useState<ViewerPan>(VIEWER_PAN_ORIGIN);
+	const viewSource = useRef(src);
+	useLayoutEffect(() => {
+		if (viewSource.current === src) return;
+		viewSource.current = src;
+		setZoom(VIEWER_ZOOM_MIN);
+		setPan(VIEWER_PAN_ORIGIN);
+	}, [src]);
+
+	/*
+	 * Whether the controls are at full strength. One state for the whole
+	 * cluster — the arrows, the strip, the zoom cluster and the close — so the
+	 * surfaces cannot disagree about being awake, and the counter is reset
+	 * (below) by pointer movement, key presses and focus, which is the
+	 * fade-after-inactivity pattern the scrollbar fade established: a clocked
+	 * hold from the last activity, with the paint itself in CSS.
+	 */
+	const [awake, setAwake] = useState(true);
+	const controlsRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (!open) return;
+		/*
+		 * Held from the LAST activity, not from the open: a reader who is
+		 * dragging a zoomed picture or walking the strip is never left with a
+		 * cluster that faded mid-gesture, and a reader who stops touching the
+		 * layer gets the quiet state after one hold. The hold IS the scrollbar
+		 * fade's own constant, imported rather than re-declared, so a future
+		 * change to one chrome clock cannot leave the other behind.
+		 */
+		let timer: ReturnType<typeof setTimeout>;
+		const arm = () => {
+			clearTimeout(timer);
+			timer = setTimeout(() => {
+				const controls = controlsRef.current;
+				/*
+				 * Never fade out from under a reader who is ON a control: a
+				 * hovered cluster or a focused control re-arms instead. Both are
+				 * read from the DOM rather than tracked in state because the
+				 * browser owns `:hover` and `document.activeElement`, and a copy
+				 * of either here would be the stale one.
+				 */
+				if (
+					controls &&
+					(controls.matches(":hover") ||
+						controls.contains(document.activeElement))
+				) {
+					arm();
+					return;
+				}
+				setAwake(false);
+			}, SCROLLBAR_HOLD_MS);
+		};
+		const wake = () => {
+			setAwake(true);
+			arm();
+		};
+		setAwake(true);
+		arm();
+		/*
+		 * Observational and passive, like the scrollbar module's listeners and
+		 * for its reason: they decide WHEN, and nothing here reads or writes
+		 * scroll or focus state. `focusin` because a Tab onto a faded control
+		 * must bring the cluster back (the keyboard door the scrollbar fade's
+		 * own round added), and `pointerdown` beside `pointermove` so a press
+		 * that starts on a control counts as activity even when the pointer
+		 * never moved.
+		 */
+		document.addEventListener("pointermove", wake, { passive: true });
+		document.addEventListener("pointerdown", wake, { passive: true });
+		document.addEventListener("keydown", wake);
+		document.addEventListener("focusin", wake);
+		return () => {
+			clearTimeout(timer);
+			document.removeEventListener("pointermove", wake);
+			document.removeEventListener("pointerdown", wake);
+			document.removeEventListener("keydown", wake);
+			document.removeEventListener("focusin", wake);
+		};
+	}, [open]);
+
+	/*
+	 * The arrow keys, on the document because the layer is modal — wherever
+	 * focus sits inside it, the arrows are the reader's left/right. Modifier
+	 * chords are left alone (⌘← is "back" in the app's own vocabulary and must
+	 * not be swallowed here), and Escape is not handled at all: Radix owns it.
+	 */
+	const onPrev = group?.onPrev;
+	const onNext = group?.onNext;
+	const showCarousel = group !== undefined && group.count > 1;
+	useEffect(() => {
+		if (!open || !showCarousel) return;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (
+				event.defaultPrevented ||
+				event.metaKey ||
+				event.ctrlKey ||
+				event.altKey
+			) {
+				return;
+			}
+			if (event.key === "ArrowLeft") {
+				event.preventDefault();
+				onPrev?.();
+			} else if (event.key === "ArrowRight") {
+				event.preventDefault();
+				onNext?.();
+			}
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, [open, showCarousel, onPrev, onNext]);
+
 	/*
 	 * A native `WebContentsView` paints above all DOM, so an overlay opened over
 	 * the browser route is invisible unless the view is hidden. `BaseDialog` is
@@ -172,6 +470,174 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	 * without it.
 	 */
 	useSuppressBrowserView(open, "image-lightbox");
+
+	/*
+	 * The zoom frame's own element, read at gesture time rather than stored:
+	 * `clampViewerPan` needs the FITTED box, and the fitted box is whatever the
+	 * layout just made it (a window resize moves it too), so a cached rect
+	 * would be the wrong bound one resize after the cache was filled.
+	 */
+	const frameRef = useRef<HTMLDivElement>(null);
+	const canZoom = src !== undefined && !failed;
+	/*
+	 * BY VALUE, not by reference: the pan state holds a fresh object after every
+	 * drag and clamp, so `pan === VIEWER_PAN_ORIGIN` is false for a view that is
+	 * at the origin — which would leave Reset enabled (and the transform written)
+	 * on a picture that is already fitted and centred.
+	 */
+	const atFit =
+		zoom === VIEWER_ZOOM_MIN &&
+		pan.x === VIEWER_PAN_ORIGIN.x &&
+		pan.y === VIEWER_PAN_ORIGIN.y;
+	const applyZoom = (next: number) => {
+		if (!canZoom) return;
+		setZoom(next);
+		const frame = frameRef.current;
+		if (frame) {
+			setPan((current) =>
+				clampViewerPan(
+					current,
+					{ width: frame.clientWidth, height: frame.clientHeight },
+					next,
+				),
+			);
+		}
+	};
+	const resetView = () => {
+		if (!canZoom) return;
+		setZoom(VIEWER_ZOOM_MIN);
+		setPan(VIEWER_PAN_ORIGIN);
+	};
+
+	/*
+	 * The pan gesture, and the three things it is careful about.
+	 *
+	 * POINTER CAPTURE, because a drag that leaves the picture's box must keep
+	 * tracking the pointer — the frame is small when zoomed and the reader's
+	 * hand keeps moving; without capture the gesture ends at the box's edge.
+	 *
+	 * A REF rather than state for the in-flight gesture: `pointermove` fires at
+	 * pointer rate and only the final pan lands in state (the clamp is pure, so
+	 * lost frames are lost deltas, not lost state). The start pan is captured
+	 * when the gesture begins, so the drag is delta-based and re-clamping at the
+	 * walls cannot accumulate error.
+	 *
+	 * PRIMARY BUTTON ONLY, and no drag at fit: the clamp's range at zoom 1 is
+	 * zero (see `clampViewerPan`), so the guard here is the button and the
+	 * capture, not the bound.
+	 */
+	const drag = useRef<{
+		pointerId: number;
+		startX: number;
+		startY: number;
+		pan: ViewerPan;
+	} | null>(null);
+	const [dragging, setDragging] = useState(false);
+	const canPan = canZoom && zoom > VIEWER_ZOOM_MIN;
+	const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+		if (!canPan || event.button !== 0) return;
+		event.currentTarget.setPointerCapture(event.pointerId);
+		drag.current = {
+			pointerId: event.pointerId,
+			startX: event.clientX,
+			startY: event.clientY,
+			pan,
+		};
+		setDragging(true);
+	};
+	const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+		const gesture = drag.current;
+		const frame = frameRef.current;
+		if (!gesture || gesture.pointerId !== event.pointerId || !frame) return;
+		setPan(
+			clampViewerPan(
+				{
+					x: gesture.pan.x + (event.clientX - gesture.startX),
+					y: gesture.pan.y + (event.clientY - gesture.startY),
+				},
+				{ width: frame.clientWidth, height: frame.clientHeight },
+				zoom,
+			),
+		);
+	};
+	const endPan = (event: ReactPointerEvent<HTMLDivElement>) => {
+		if (drag.current?.pointerId !== event.pointerId) return;
+		drag.current = null;
+		setDragging(false);
+	};
+
+	/*
+	 * The picture, in the three states the bytes can be in (see the header):
+	 * ready is the zoom frame — a clipping wrapper holding the `<img>`, which is
+	 * what lets a scaled picture be panned inside a fixed window while the
+	 * layer's own box stays the fitted one; `pending` is the reserved box,
+	 * empty and `aria-hidden` because the picture's own button names it the
+	 * moment it arrives; anything else is the caller's fallback. The
+	 * `draggable={false}` is not decoration: a browser-native image drag would
+	 * start its own ghost during a pan and swallow the gesture.
+	 */
+	const picture =
+		src !== undefined && !failed ? (
+			<div
+				ref={frameRef}
+				data-image-viewport=""
+				className={cn(
+					PICTURE_BOX,
+					/*
+					 * The clipping window itself: `overflow-hidden` is what keeps a
+					 * zoomed picture inside the box the outside-click geometry was
+					 * measured against, and `leading-none` collapses the line box a
+					 * replaced element would otherwise sit in (the strip's own note
+					 * measured that strut at 4.7px and it would show here as margin).
+					 * `w-fit h-fit` shrink-wraps the window to the picture's fitted box
+					 * rather than relying on the dialog's grid track to size it, so the
+					 * wrapper is the fitted size wherever a future caller mounts it.
+					 */
+					"relative h-fit w-fit overflow-hidden leading-none",
+					canPan && (dragging ? "cursor-grabbing" : "cursor-grab"),
+					canPan && "touch-none",
+				)}
+				onPointerDown={onPointerDown}
+				onPointerMove={onPointerMove}
+				onPointerUp={endPan}
+				onPointerCancel={endPan}
+			>
+				<img
+					src={src}
+					alt={label}
+					draggable={false}
+					className={cn(PICTURE_BOX, "block select-none object-contain")}
+					/*
+					 * No transform at fit and origin, so the resting DOM is exactly
+					 * the one the pre-zoom frames measured; the transform appears
+					 * only once the view has something to say.
+					 */
+					style={
+						atFit
+							? undefined
+							: {
+									transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+								}
+					}
+					onError={() => setFailedFor(src)}
+				/>
+			</div>
+		) : src === undefined && pending ? (
+			/* The bytes are on their way: an empty reserved box, `aria-hidden` because
+			   there is nothing to announce yet — the same reserved state the
+			   transcript's strip draws, and the same reason it draws no spinner. */
+			<div className={RESERVED_BOX} aria-hidden="true" />
+		) : (
+			/*
+			 * The caller's fallback, for both halves of unreadable: a source that
+			 * cannot be resolved (`src` omitted, not pending) and one that failed to
+			 * decode (`onError` on the picture above). The transcript's copy of a
+			 * failed picture is not a button at all — it draws `BrokenAttachment` and
+			 * nothing to press — so what this catches is the press landing before the
+			 * picture decodes, and a source that dies between the press and the paint.
+			 */
+			<div className={RESERVED_BOX}>{fallback}</div>
+		);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -216,52 +682,132 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 				)}
 			>
 				<DialogTitle className="sr-only">{label}</DialogTitle>
-				{failed ? (
+				{showCarousel && group ? (
 					/*
-					 * The RESERVED box, which is the half of this that is not just a
-					 * swapped element. The layer's content box IS the picture's box
-					 * (see the header), so a source that never arrives leaves nothing
-					 * to size it: QA round 1 induced the failure and measured the layer
-					 * at 1152x38 — a strip of label text on an empty scrim, for a
-					 * canonical row a label like "Image 2". `min-h-16 min-w-64`
-					 * is the floor the fallback draws inside, and it is `AttachmentFrame`'s
-					 * own floor unit and the `sunken` ground the caller's copy brings.
-					 * No spinner, for the frame's own reason: the ground already says
-					 * something belongs here, and a local decode is a frame or two.
-					 *
-					 * The `onError` is on the picture below and NOT on the transcript's
-					 * copy of it, because the two failures are different events: the
-					 * transcript already answers its own with `BrokenAttachment` and no
-					 * button at all, so a picture that failed THERE cannot open this —
-					 * what this catches is the press landing before the picture decodes,
-					 * and a source that dies between the press and the paint.
+					 * Position as a polite announcement, because the title above is
+					 * the picture's NAME and stays that — it is what the dialog is
+					 * called, and the round that required it asserts the equality. A
+					 * switch changes this node alone, which is what a screen reader
+					 * hears: "Image 2 of 3", the same sentence the strip marks
+					 * visually.
 					 */
-					<div
-						className={cn(
-							PICTURE_BOX,
-							"flex min-h-16 min-w-64 items-center justify-center p-6",
-						)}
-					>
-						{fallback}
+					<div aria-live="polite" className="sr-only">
+						{groupPositionLabel(group.index, group.count)}
 					</div>
-				) : (
-					<img
-						src={src}
-						alt={label}
-						className={cn(PICTURE_BOX, "object-contain")}
-						onError={() => setFailed(true)}
-					/>
-				)}
-				<DialogClose asChild>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						className={cn("fixed top-4 right-4")}
-						aria-label="Close image"
-					>
-						<X aria-hidden="true" />
-					</Button>
-				</DialogClose>
+				) : null}
+				{picture}
+				{/*
+				 * THE CONTROLS CLUSTER. One viewport-fixed layer for four
+				 * positions — close top-right, arrows centred on each edge, the
+				 * carousel's strip bottom-centre, zoom bottom-right — because they
+				 * share one awake state and are one thing to a reader ("the chrome
+				 * over the picture"). The layer itself is `pointer-events-none`, so
+				 * every press that is not ON a control passes through to the scrim
+				 * and Radix's outside click still works; each control re-enables
+				 * its own events.
+				 */}
+				<div
+					ref={controlsRef}
+					data-image-viewer-controls=""
+					className={cn(
+						"pointer-events-none fixed inset-0 transition-opacity ease-out-quart",
+						// The two directions take their duration from the after-change
+						// style, the scrollbar fade's own split: arriving is the shorter
+						// half (`duration-fast`), leaving is the slower one.
+						awake
+							? "opacity-100 duration-fast"
+							: `${CONTROLS_RESTING_CLASS} duration-base`,
+					)}
+				>
+					{showCarousel && group?.filmstrip ? (
+						<div className="pointer-events-auto fixed inset-x-0 bottom-4 mx-auto w-fit max-w-[calc(100vw-256px)]">
+							{group.filmstrip}
+						</div>
+					) : null}
+					{showCarousel ? (
+						<>
+							{/*
+							 * The arrows NEVER disable, because the walk wraps (the
+							 * argument is in `wrapGroupIndex`): a disabled control cannot
+							 * hold focus, so an end stop would drop a keyboard reader's
+							 * focus to `<body>` the moment a press landed on it, and the
+							 * filmstrip already says where in the set the reader is.
+							 * Centred by auto margins rather than a transform, the same
+							 * reason the content is (`fixed` + `my-auto` + the button's own
+							 * height). The lane arithmetic does not move: `PICTURE_BOX`
+							 * guarantees `min(5% of the axis, 52px)` of margin, and the
+							 * arrow's ring reaches 48.
+							 */}
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label="Previous image"
+								onClick={group?.onPrev}
+								className="pointer-events-auto fixed top-0 bottom-0 left-4 my-auto"
+								data-image-viewer-prev=""
+							>
+								<ChevronLeft aria-hidden="true" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label="Next image"
+								onClick={group?.onNext}
+								className="pointer-events-auto fixed top-0 right-4 bottom-0 my-auto"
+								data-image-viewer-next=""
+							>
+								<ChevronRight aria-hidden="true" />
+							</Button>
+						</>
+					) : null}
+					<div className="pointer-events-auto fixed right-4 bottom-4 flex items-center gap-1">
+						{/*
+						 * Disabled is a COLOUR step on the shared button (see its
+						 * `ghost` variant), never an opacity, and the three disabled
+						 * states fall out of the view's own arithmetic rather than out
+						 * of a mode: no zoom-out below fit, no zoom-in past the ladder's
+						 * top, nothing for Reset when the view is already fit and
+						 * centred.
+						 */}
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Zoom out"
+							disabled={!canZoom || zoom === VIEWER_ZOOM_MIN}
+							onClick={() => applyZoom(stepZoom(zoom, -1))}
+						>
+							<ZoomOut aria-hidden="true" />
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Zoom in"
+							disabled={!canZoom || zoom === VIEWER_ZOOM_MAX}
+							onClick={() => applyZoom(stepZoom(zoom, 1))}
+						>
+							<ZoomIn aria-hidden="true" />
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Reset view"
+							disabled={!canZoom || atFit}
+							onClick={resetView}
+						>
+							<RotateCcw aria-hidden="true" />
+						</Button>
+					</div>
+					<DialogClose asChild>
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							className={cn("pointer-events-auto fixed top-4 right-4")}
+							aria-label="Close image"
+						>
+							<X aria-hidden="true" />
+						</Button>
+					</DialogClose>
+				</div>
 			</DialogContent>
 		</Dialog>
 	);

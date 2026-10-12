@@ -33,7 +33,14 @@ import {
 	BrokenAttachment,
 } from "../components/message-item/attachment-frame";
 import { ImageAttachment } from "../components/message-item/image-attachment";
-import type { ImageSize } from "../components/message-item/image-attachment";
+import type {
+	ImageAttachmentProps,
+	ImageSize,
+} from "../components/message-item/image-attachment";
+import {
+	type ImageGroupContext,
+	ImageGroupLightbox,
+} from "./image-group-lightbox";
 import type { TranscriptImage } from "./transcript-reducer";
 import { type AttachmentScope, useAttachmentUrl } from "./use-attachment-url";
 
@@ -64,6 +71,26 @@ export type CanonicalImageProps = {
 	 * click that expands it.
 	 */
 	size?: ImageSize;
+	/**
+	 * The set this picture belongs to, for the viewer's left/right walk.
+	 *
+	 * Present, the press opens the GROUP carousel: this picture fitted, its
+	 * siblings a strip below and the arrows a step away (`ImageGroupLightbox`
+	 * owns the position; the SET is this descriptor). Omitted, the press opens
+	 * the single-image overlay it always has — which is what a tile with no set
+	 * to walk (a legacy attachment, a markdown image) wants.
+	 *
+	 * The descriptor rather than a rendered overlay, so a surface says WHICH set
+	 * the tile is in and never has to build a carousel: `fold-media.tsx` and the
+	 * transcript rows pair it with `index`, and the wiring lives here.
+	 */
+	group?: ImageGroupContext;
+	/**
+	 * Repoints the press away from the overlay, for the filmstrip's SELECT tiles
+	 * (see `ImageAttachment`'s `press`): a select renders no overlay and steps
+	 * the open one instead.
+	 */
+	press?: NonNullable<ImageAttachmentProps["press"]>;
 };
 
 export const CanonicalImage = ({
@@ -71,6 +98,8 @@ export const CanonicalImage = ({
 	scope,
 	label,
 	size,
+	group,
+	press,
 }: CanonicalImageProps) => {
 	const source = useAttachmentUrl(image, scope);
 	if (source.state === "resolving") {
@@ -152,6 +181,35 @@ export const CanonicalImage = ({
 				label={label}
 				size={size}
 				conversationId={scope?.sessionId ?? ""}
+				/*
+				 * The cell the filmstrip's select tiles need: the press runs the
+				 * caller's handler and THIS component renders no overlay then (see
+				 * `ImageAttachment`). Passing it through here rather than mounting
+				 * `ImageAttachment` directly in the strip keeps one tile component.
+				 */
+				press={press}
+				/*
+				 * The group door. The overlay is built HERE, not passed rendered,
+				 * because the layer's open state and the tile's focus-restore control
+				 * belong to `ImageAttachment` and reach a caller only through this
+				 * factory: the carousel reuses both without owning either, and the
+				 * single-image default below stays the path of a tile with no set.
+				 */
+				overlay={
+					group
+						? (controls) => (
+								<ImageGroupLightbox
+									images={group.images}
+									index={group.index}
+									labelFor={group.labelFor}
+									scope={scope}
+									open={controls.open}
+									onOpenChange={controls.onOpenChange}
+									restoreFocusTo={controls.restoreFocusTo}
+								/>
+							)
+						: undefined
+				}
 			/>
 		</div>
 	);
