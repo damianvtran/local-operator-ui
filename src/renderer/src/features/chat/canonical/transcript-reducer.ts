@@ -48,6 +48,13 @@ import {
 	preferProgressDetails,
 } from "../components/trace/tool-row-model";
 import { isHarnessChromeText } from "./harness-chrome";
+import {
+	type JournalPosition,
+	type SourceCoordinate,
+	journalOrderedRecords,
+	receiveJournalOrder,
+	rememberJournalCalls,
+} from "./journal-order";
 import { freezeRecordDeep } from "./record-immutability";
 import {
 	SUPPLEMENT_CUSTOM_TYPE,
@@ -130,7 +137,7 @@ export const isPictureRef = (ref: TranscriptImage): boolean =>
 export type DeltaFrame = { epoch: string; seq: number };
 
 /** The § 7 tier a record renders at, decided once here rather than per view. */
-export type TranscriptRecord =
+type TranscriptPayloadRecord =
 	| {
 			kind: "user";
 			id: string;
@@ -704,7 +711,18 @@ export type TranscriptRecord =
 			live: boolean;
 	  };
 
+export type TranscriptRecord = TranscriptPayloadRecord & JournalPosition;
+
 export type TranscriptState = {
+	/** Order revision is independent of turn generation, view epoch and planner facts. */
+	journalMode?: boolean;
+	journalGeneration?: string;
+	journalPositions?: Map<string, SourceCoordinate>;
+	journalCallOwners?: Map<string, string>;
+	orderRevision?: number;
+	orderNeedsReconcile?: boolean;
+	/** Distinct incoming domain wakes a building-index repair once ready. */
+	orderWantedGeneration?: string;
 	/** Ordered oldest -> newest. */
 	records: TranscriptRecord[];
 	/** id -> index for O(1) coalescing; rebuilt on every structural change. */
@@ -1460,7 +1478,12 @@ function withTimeOrder(
 	 * block instead.
 	 */
 	ownerIds: ReadonlySet<string> = NO_OWNER_IDS,
+	orderState?: TranscriptState,
 ): TranscriptRecord[] {
+	// The doctrine below is the explicit OLD-backend fallback. Negotiated
+	// source positions have their own transitive policy; no ts hybrid/guess.
+	if (orderState?.journalMode)
+		return journalOrderedRecords(orderState, records).map(freezeRecordDeep);
 	/*
 	 * `provisional` is the hold; `appendPendingUser` sets it on every echo and
 	 * the owner's stamped row is what clears it — `isPendingEcho` is the one
@@ -1700,12 +1723,29 @@ function upsert(state: TranscriptState, record: TranscriptRecord) {
 		const current = state.records[position];
 		if (shallowEqual(current, record)) return state;
 		const records = state.records.slice();
-		records[position] = record;
-		return { ...state, records };
+		records[position] = state.journalMode
+			? freezeRecordDeep({
+					...record,
+					...(current.sourceEntryId
+						? { sourceEntryId: record.sourceEntryId ?? current.sourceEntryId }
+						: {}),
+					...(current.journalGeneration
+						? {
+								journalGeneration:
+									record.journalGeneration ?? current.journalGeneration,
+								journalSeq: record.journalSeq ?? current.journalSeq,
+							}
+						: {}),
+				})
+			: record;
+		if (!state.journalMode) return { ...state, records };
+		const ordered = withTimeOrder(records, NO_OWNER_IDS, state);
+		return { ...state, records: ordered, index: withIndex(ordered) };
 	}
-	const records = [...state.records, record];
-	const index = new Map(state.index);
-	index.set(record.id, records.length - 1);
+	const records = state.journalMode
+		? withTimeOrder([...state.records, record], NO_OWNER_IDS, state)
+		: [...state.records, record];
+	const index = withIndex(records);
 	return { ...state, records, index };
 }
 
@@ -3315,7 +3355,7 @@ function previousRecordForSupplement(
 }
 
 export function applyHistoryPage(
-	state: TranscriptState,
+	initialState: TranscriptState,
 	page: DesktopHistoryPage,
 	options: {
 		replace?: boolean;
@@ -3347,8 +3387,32 @@ export function applyHistoryPage(
 		 * here.
 		 */
 		statedByOwner?: boolean;
+		/** Only snapshots/reconcile may install a new source domain. */
+		authoritative?: boolean;
 	} = {},
 ): TranscriptState {
+	let state = initialState;
+	const previousOrder = state;
+	state = receiveJournalOrder(
+		state,
+		page,
+		page.entries.map((entry) => ({
+			id: entry.id,
+			journal_seq: entry.journal_seq,
+			role: entry.payload?.role,
+			tool_call_id: entry.payload?.tool_call_id,
+		})),
+		options.authoritative === true,
+	);
+	// A mismatched non-authoritative response cannot mutate payload, identity,
+	// paging or ownership. Its only effect is one authoritative repair request.
+	if (
+		page.journal_generation &&
+		page.journal_generation !== state.journalGeneration
+	)
+		return state;
+	for (const entry of page.entries)
+		state = rememberJournalCalls(state, { ...entry.payload, id: entry.id });
 	/*
 	 * A view the user has CLEARED is answered with THE PASS THE READ EXISTS FOR,
 	 * and with nothing else. Three facts make that test exact, and each was a defect
@@ -3389,7 +3453,9 @@ export function applyHistoryPage(
 					-1
 			] ??
 			previousRecordForSupplement(state, entry);
-		const record = durableRecord(entry, previous);
+		let record = durableRecord(entry, previous);
+		if (record && state.journalMode)
+			record = { ...record, sourceEntryId: entry.id };
 		if (record) incoming.push(freezeRecordDeep(record));
 	}
 	// Tool call args live on the assistant row's `tool_calls`; carry the intent
@@ -3465,7 +3531,9 @@ export function applyHistoryPage(
 		: { ...state, records: backfilled };
 	const byId = new Map(base.records.map((record) => [record.id, record]));
 	let changed =
-		options.replace || (!options.replace && backfilled !== state.records);
+		state !== previousOrder ||
+		options.replace ||
+		(!options.replace && backfilled !== state.records);
 	for (const record of incoming) {
 		const current = byId.get(record.id);
 		if (!current) {
@@ -3565,11 +3633,9 @@ export function applyHistoryPage(
 	 * reads and withholds from filtered deltas (`statedByOwner: false`); seeds
 	 * do not come through this function at all.
 	 */
-	const released = releasedEchoes(
-		base.records,
-		firstTs,
-		options.statedByOwner !== false,
-	);
+	const released = state.journalMode
+		? NO_OWNER_IDS
+		: releasedEchoes(base.records, firstTs, options.statedByOwner !== false);
 	let oldestId = base.oldestId;
 	let oldestTs = base.oldestTs;
 	let hasMore = state.hasMore;
@@ -3591,7 +3657,14 @@ export function applyHistoryPage(
 		} else {
 			hasMore = false;
 		}
-	} else if (first && firstTs > 0 && firstTs < state.oldestTs) {
+	} else if (
+		first &&
+		(state.journalMode
+			? (state.journalPositions?.get(first.id)?.seq ??
+					Number.POSITIVE_INFINITY) <
+				(state.journalPositions?.get(state.oldestId ?? "")?.seq ?? -1)
+			: firstTs > 0 && firstTs < state.oldestTs)
+	) {
 		oldestId = first.id;
 		oldestTs = firstTs;
 		hasMore = page.has_more;
@@ -3635,6 +3708,7 @@ export function applyHistoryPage(
 			options.statedByOwner === false
 				? NO_OWNER_IDS
 				: new Set(incoming.map((record) => record.id)),
+			state,
 		),
 	);
 	if (options.keepPaging) {
@@ -3743,7 +3817,9 @@ export function sealDisjointBlock(
 	oldest: { id: string; ts: number },
 	fetched: ReadonlySet<string> = NO_OWNER_IDS,
 ): TranscriptState {
-	if (oldest.ts <= 0) return state;
+	// Source positions already rank cached rows. A wall-clock disjoint seal
+	// cannot prove absence/coverage in this lane and must not delete them.
+	if (state.journalMode || oldest.ts <= 0) return state;
 	const records = state.records.filter(
 		(record) =>
 			!(
@@ -3890,7 +3966,7 @@ function liveMessageId(
  * effect is already painted returns the same state.
  */
 export function applyEvent(
-	state: TranscriptState,
+	initialState: TranscriptState,
 	event: LiveEvent,
 	now = Date.now(),
 	/**
@@ -3924,7 +4000,32 @@ export function applyEvent(
 		frame?: DeltaFrame;
 	} = {},
 ): TranscriptState {
+	let state = initialState;
 	const message = event.message as Record<string, unknown> | undefined;
+	if (event.type === "journal_order_ready") {
+		if (event.reconcile === true)
+			return state.orderNeedsReconcile
+				? state
+				: { ...state, orderNeedsReconcile: true };
+		const next = receiveJournalOrder(
+			state,
+			{
+				journal_generation:
+					typeof event.journal_generation === "string"
+						? event.journal_generation
+						: undefined,
+			},
+			Array.isArray(event.rows)
+				? (event.rows as Array<Record<string, unknown>>)
+				: [],
+			false,
+		);
+		const records = withTimeOrder(next.records, NO_OWNER_IDS, next);
+		return next === state && records === state.records
+			? state
+			: { ...next, records, index: withIndex(records) };
+	}
+	if (message) state = rememberJournalCalls(state, message);
 	const incoming = options.frame;
 	/*
 	 * The settle-only ask mode (see the option's own doc), bound once per fold
@@ -5558,7 +5659,7 @@ export function applyLiveSeed(
 	// those with an on-screen pre-echo anchor (`seededLiftable`); the rest keep
 	// the block's arrival order until a page states them. A provisional row's
 	// own durable row is still what ends its hold.
-	const records = withTimeOrder(next.records, statedIds);
+	const records = withTimeOrder(next.records, statedIds, next);
 	return { ...next, records, index: withIndex(records) };
 }
 
