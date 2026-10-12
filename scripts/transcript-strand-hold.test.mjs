@@ -24,8 +24,11 @@ import { build } from "esbuild";
  * OWNER WINDOW (a page read; never a delta, never a seed) whose OLDEST entry is
  * strictly newer than the echo's stamp — the window is journal-older than its
  * whole range, so the send cannot be "after everything here" — with
- * owner-stated rows on BOTH sides of the send in the pane, falsifies the
- * hold's ranking premise and the echo ranks by its own stamp. The window does
+ * an owner-stated row older than the echo and ANY row newer than it already
+ * in the pane, falsifies the hold's ranking premise and the echo ranks by its
+ * own stamp. The newer row may itself be another local echo, not acceptance
+ * evidence. The scan uses the PRE-merge pane: a first newer row supplied by
+ * this page qualifies only on a later page read, pinned below. The window does
  * NOT have to lie beyond everything the pane holds: the operator's own pane
  * was CURRENT — it streamed the send's replies and the rows after them while
  * they looked — and a rule keyed on the pane being behind never fired for
@@ -107,7 +110,11 @@ import { build } from "esbuild";
  *     anchor by +300..500 ms — so the reachable collision is the SAME-MS TIE
  *     (a sub-millisecond offset rounds to one instant), and ties keep the
  *     order they already had: the position the row was admitted at, which is
- *     journal order for page rows, seed rows and delta rows alike. The tests
+ *     journal order when the pair is first admitted together. These pins do
+ *     NOT cover a newer sidecar admitted by a tail page before its earlier
+ *     anchor arrives on a backward page. The architect reported a surviving
+ *     inversion in that shape; journal-ordinal handling is a separate required
+ *     follow-up, not something these replay pins prove. The tests
  *     below pin the tie stable across a page, a re-read, a seed replay and a
  *     delta;
  *   - the one shape that DOES invert a strict-earlier pair (a same-page
@@ -543,6 +550,89 @@ test("the named skew trade: a pre-send row stamped past the pane ranks by its st
 	);
 });
 
+// These are documentation pins for the existing pre-merge scan, not a heal:
+// incoming rows cannot witness their own release, and delivery is independent.
+test("the first newer page keeps the hold until a later qualifying page read", () => {
+	const now = TIE_MS;
+	const entry = (id, ts) => ({
+		id,
+		ts: ts / 1000,
+		type: "message",
+		payload: { kind: "message", ...assistant(id, "owner row") },
+	});
+	let state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf({ entries: [entry("quiet-before", now - 50_000)] }),
+	);
+	state = appendPendingUser(state, "quiet-send", "send", [], now);
+	const newer = pageOf({ entries: [entry("quiet-newer", now + 200_000)] });
+	state = applyHistoryPage(state, newer);
+	assert.equal(
+		state.records.find((r) => r.id === "quiet-send").provisional,
+		true,
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["quiet-before", "quiet-newer", "quiet-send"],
+	);
+	state = applyHistoryPage(state, newer);
+	assert.equal(
+		state.records.find((r) => r.id === "quiet-send").provisional,
+		undefined,
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["quiet-before", "quiet-send", "quiet-newer"],
+	);
+	assert.strictEqual(
+		applyHistoryPage(state, newer),
+		state,
+		"the later replay is idempotent",
+	);
+});
+
+test("another pending echo can supply the newer-side witness without proving acceptance", () => {
+	const now = TIE_MS;
+	const entry = (id, ts) => ({
+		id,
+		ts: ts / 1000,
+		type: "message",
+		payload: { kind: "message", ...assistant(id, "owner row") },
+	});
+	let state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf({ entries: [entry("two-before", now - 50_000)] }),
+	);
+	state = appendPendingUser(state, "two-first", "first send", [], now);
+	state = appendPendingUser(
+		state,
+		"two-second",
+		"second send",
+		[],
+		now + 100_000,
+	);
+	state = applyHistoryPage(
+		state,
+		pageOf({ entries: [entry("two-newer", now + 200_000)] }),
+	);
+	const first = state.records.find((r) => r.id === "two-first");
+	assert.equal(
+		first.provisional,
+		undefined,
+		"the second local echo witnesses the newer side",
+	);
+	assert.equal(first.local, true, "release is not delivery confirmation");
+	assert.equal(
+		state.records.find((r) => r.id === "two-second").provisional,
+		true,
+		"the latest echo has no pre-merge newer witness",
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["two-before", "two-first", "two-newer", "two-second"],
+	);
+});
+
 test("the window that carries the send ends the hold as it always did", () => {
 	let state = strand();
 	state = applyHistoryPage(state, pageOf(carryingPage()));
@@ -653,7 +743,7 @@ const tiedSidecar = {
 	},
 };
 
-test("a message and its same-millisecond sidecar keep journal order in every reachable merge", () => {
+test("a page-admitted message and its same-millisecond sidecar keep order through replays", () => {
 	assert.equal(
 		Math.round(tiedMessage.ts * 1000),
 		Math.round(tiedSidecar.ts * 1000),
