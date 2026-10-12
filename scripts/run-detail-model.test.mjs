@@ -1602,8 +1602,8 @@ test("the trigger's acknowledgement wiring asks the model's predicate", () => {
 	);
 	assert.match(
 		trigger,
-		/mcpProblems,\s*\}\)/,
-		"and the label must be given the problem count it is naming",
+		/mcpProblems,\s*cap: runCap,\s*\}\)/,
+		"and the label must be given the problem count it is naming, and (since #928) the action's bound chord",
 	);
 	/*
 	 * The deleted pair, asserted as absent rather than assumed gone: `§ 3.4`

@@ -27,7 +27,8 @@ import type {
  * conversation-switcher door, issue #659) and `⌘⇧S`, and no `findInPage` call
  * site exists anywhere in `src` — so this chord
  * takes nothing away from a reader, which is the test every new binding here
- * has to pass (`canvas-shortcut.ts` states it for `⌘⇧C`).
+ * has to pass (the same judgement `⌘⇧C` passed for the canvas, whose chord is
+ * now `panel.canvas`'s default in `shared/keymap/keymap-registry.ts`).
  *
  * SHIFT AND ALT ARE REFUSED rather than folded in: `⌘⇧F` and `⌥⌘F` are other
  * apps' search-in-files chords, and a binding that answered them would claim
@@ -54,7 +55,9 @@ export function isThreadSearchPress(event: {
 
 /**
  * The caption for that chord, e.g. `⌘F`, shared with whatever prints it so the
- * cap and the press cannot drift — the shape `canvasToggleCap` established.
+ * cap and the press cannot drift — the shape the panel rail's item caps carry
+ * (the rail derives them from the registry; `shared/keymap/keymap-chord.ts`
+ * owns the token tables this spelling agrees with).
  */
 export const threadSearchCap = (isMac: boolean): string =>
 	isMac ? "⌘F" : "Ctrl+F";
