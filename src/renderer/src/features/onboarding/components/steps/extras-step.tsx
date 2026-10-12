@@ -17,6 +17,7 @@
  * about where those keys live has moved.
  */
 
+import { t } from "@shared/i18n";
 import type { FC } from "react";
 import { SearchApiStep } from "./search-api-step";
 
@@ -57,7 +58,7 @@ export const ExtrasStep: FC<ExtrasStepProps> = ({
 				aria-labelledby="onboarding-extras-next"
 			>
 				<h3 id="onboarding-extras-next" className="text-heading text-ink">
-					Next: meet {aidaName}
+					{t("ui.onboarding.extras.next_meet", { name: aidaName })}
 				</h3>
 				{/*
 				 * TWO SENTENCES, ONE TRUE AT A TIME (code review round 1's contract
@@ -70,8 +71,8 @@ export const ExtrasStep: FC<ExtrasStepProps> = ({
 				 */}
 				<p className="text-body text-ink-muted">
 					{oweGreeting
-						? `${aidaName} is your chief of staff. She will say hello first, ask what to call you and what you would like help with, and show you around. You can also skip straight to a new chat.`
-						: `${aidaName} is your chief of staff. Her conversation is where you pick up with her, and it is one keystroke away in the sidebar. You can also skip straight to a new chat.`}
+						? t("ui.onboarding.extras.greeting_owed", { name: aidaName })
+						: t("ui.onboarding.extras.greeting_done", { name: aidaName })}
 				</p>
 			</section>
 		) : null}

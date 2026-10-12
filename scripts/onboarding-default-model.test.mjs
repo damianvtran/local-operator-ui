@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -39,8 +40,8 @@ const bundle = await build({
 
 const {
 	planDefaultModelWrite,
-	PICK_A_MODEL,
-	LOADING_MODELS,
+	PICK_A_MODEL_KEY,
+	LOADING_MODELS_KEY,
 	onboardingFooter,
 	OnboardingStep,
 } = await import(
@@ -54,6 +55,22 @@ const catalogue = (...providers) => ({ ready: true, providers });
 const EMPTY_CATALOGUE = { ready: false, providers: [] };
 /** A backend that ANSWERED and lists nothing for the provider in question. */
 const NO_MODELS_LISTED = { ready: true, providers: [] };
+
+test("the block keys name the committed messages (not a t() round-trip)", () => {
+	/*
+	 * R1-1: comparing plan.block to t(SAME_KEY) is self-referential - the oracle
+	 * moves with the implementation. The identities are pinned HERE, as strings,
+	 * against the key constants the plan consumes.
+	 */
+	assert.equal(
+		PICK_A_MODEL_KEY,
+		"ui.onboarding.default_model.block.pick_a_model",
+	);
+	assert.equal(
+		LOADING_MODELS_KEY,
+		"ui.onboarding.default_model.block.loading_models",
+	);
+});
 
 test("step 2 SHOWS the provider just connected, and writes nothing until it can name a model", () => {
 	/*
@@ -85,7 +102,7 @@ test("step 2 SHOWS the provider just connected, and writes nothing until it can 
 	 */
 	assert.equal(
 		plan.block,
-		LOADING_MODELS,
+		"Loading the model list\u2026",
 		"an unasked catalogue must read as loading, not as a missing one",
 	);
 	assert.equal(
@@ -166,7 +183,7 @@ test("a pick that is owed and possible is REPORTED", () => {
 		model: null,
 		catalogue: catalogue("deepseek"),
 	});
-	assert.equal(plan.block, PICK_A_MODEL);
+	assert.equal(plan.block, "Pick a model to continue.");
 	assert.equal(plan.noCatalogue, false);
 });
 
@@ -178,11 +195,11 @@ test("the footer OBEYS the block it is handed", () => {
 	 */
 	const blocked = onboardingFooter(
 		OnboardingStep.DEFAULT_MODEL,
-		PICK_A_MODEL,
+		"Pick a model to continue.",
 		false,
 	);
 	assert.equal(blocked.blocked, true);
-	assert.equal(blocked.reason, PICK_A_MODEL, "and it says why");
+	assert.equal(blocked.reason, "Pick a model to continue.", "and it says why");
 	assert.equal(blocked.primaryDisabled, true);
 
 	const ready = onboardingFooter(OnboardingStep.DEFAULT_MODEL, null, false);
@@ -218,7 +235,7 @@ test("defaults the backend already applied are written as they stand", () => {
 	});
 	assert.equal(
 		appliedWithNoModel.block,
-		PICK_A_MODEL,
+		"Pick a model to continue.",
 		"'defaults applied' with no model in them still owes the user one",
 	);
 });
@@ -272,9 +289,30 @@ test("a block belongs to step 2 alone", () => {
 	 */
 	const elsewhere = onboardingFooter(
 		OnboardingStep.EXTRAS,
-		PICK_A_MODEL,
+		"Pick a model to continue.",
 		false,
 	);
 	assert.equal(elsewhere.blocked, false);
 	assert.equal(elsewhere.primaryDisabled, false);
+});
+
+test("the onboarding catalogue carries the committed block sentences", () => {
+	/*
+	 * The keyed half above pins STRUCTURE; this pins CONTENT, the round-2
+	 * (R2-1/Q1) discipline: a key can be wired correctly while its sentence
+	 * drifts. Read from the catalogue so the copy lives in one place.
+	 */
+	const catalogue = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.onboarding.json", "utf8"),
+	);
+	assert.equal(
+		catalogue["ui.onboarding.default_model.block.pick_a_model"],
+		"Pick a model to continue.",
+		"ui.onboarding.default_model.block.pick_a_model drifted from the committed sentence",
+	);
+	assert.equal(
+		catalogue["ui.onboarding.default_model.block.loading_models"],
+		"Loading the model list\u2026",
+		"ui.onboarding.default_model.block.loading_models drifted from the committed sentence",
+	);
 });
