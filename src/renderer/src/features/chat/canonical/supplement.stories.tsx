@@ -497,13 +497,22 @@ export const CancelledCold: StoryObj = {
 export const Failed: StoryObj = {
 	render: () => (
 		<Frame
-			height={237}
+			height={360}
 			records={[
 				answer("m1", "The graphics did not make it."),
 				supplement({
 					id: "s1",
 					state: "failed",
-					error: "provider quota exhausted",
+					error: "generator:ProviderError",
+					model: "openrouter/openai/gpt-6.1-sol",
+					attempts: [
+						"anthropic/claude-sonnet-5-5",
+						"openrouter/openai/gpt-6.1-sol",
+					],
+					detail: [
+						"turn 1: ProviderError status=None kind=quota",
+						"turn 2: ProviderError status=503 kind=transient",
+					],
 				}),
 			]}
 		/>

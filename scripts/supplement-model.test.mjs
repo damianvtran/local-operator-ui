@@ -589,3 +589,46 @@ test("the mount URL contract is the builder's output, byte for byte", () => {
 		assert.equal(model.parseSupplementMountUrl(bad), null, String(bad));
 	}
 });
+
+test("typed diagnostics retain safe facts live and durable, never provider prose", () => {
+	const payload = {
+		...row("failed"),
+		model: "openrouter/openai/gpt-6.1-sol",
+		attempts: [
+			"anthropic/claude-sonnet-5-5",
+			"openrouter/openai/gpt-6.1-sol",
+			"https://private.test/token",
+		],
+		detail: [
+			"turn 1: ProviderError status=None kind=quota",
+			"secret raw provider prose /Users/private/token",
+		],
+	};
+	for (const patch of [
+		model.supplementPatchFromDetails(payload),
+		model.supplementPatchFromEvent(payload),
+	]) {
+		assert.equal(patch.model, "openrouter/openai/gpt-6.1-sol");
+		assert.equal(patch.attempts.length, 2);
+		assert.deepEqual(patch.detail, [
+			"turn 1: ProviderError status=None kind=quota",
+		]);
+		const record = model.mergeSupplement(null, patch, 1);
+		assert.ok(
+			model.failureExplanation(record).includes("model is unavailable"),
+		);
+		const next = model.mergeSupplement(
+			record,
+			{
+				anchor: record.anchor,
+				job: record.job,
+				version: record.version + 1,
+				state: "queued",
+			},
+			2,
+		);
+		assert.deepEqual(next.detail, []);
+		assert.deepEqual(next.attempts, []);
+	}
+	assert.ok(model.failureExplanation({ detail: [] }).includes("can retry"));
+});
