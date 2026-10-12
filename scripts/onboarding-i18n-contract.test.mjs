@@ -615,9 +615,52 @@ export { MemoryRouter } from 'react-router-dom';
 	],
 });
 
+// Native frames otherwise repeat this entire encoded module in React's normal
+// server warnings. Independent inert/tiny-React controls demonstrated that a
+// constant sourceURL changes stack display only, preserving warnings and markup.
+// This bounds diagnostic frame payloads; it is NOT evidence that log volume
+// caused, or that this label cures, the full Desktop execution-ceiling failure.
+const compiledSource = `${bundle.outputFiles[0].text}\n//# sourceURL=onboarding-i18n-contract.ssr.bundle.mjs\n`;
 const mod = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+	`data:text/javascript;base64,${Buffer.from(compiledSource).toString("base64")}`
 );
+// An independent literal origin pin: deriving this from the import label would
+// let a wrong-label mutation move its own oracle. Keep failure messages free of
+// the raw native stack, which is multi-megabyte when the directive is removed.
+const SSR_NATIVE_FRAME =
+	/^\s*at (?:Module\.)?DefaultModelSummary \(onboarding-i18n-contract\.ssr\.bundle\.mjs:\d+:\d+\)$/m;
+
+test("the actual compiled SSR component retains a bounded pinned native origin", () => {
+	// This shipped component is hook-free; missing choice fails at its real
+	// choice.kind access before JSX or rendering. No replacement module or fake
+	// Error source can satisfy this native frame, and ordinary SSR cases stay intact.
+	let nativeFailure;
+	const summary = mod.DefaultModelSummary;
+	try {
+		summary({});
+	} catch (error) {
+		nativeFailure = error;
+	}
+	assert.ok(
+		nativeFailure instanceof TypeError,
+		"missing choice must throw a native TypeError",
+	);
+	const stack = String(nativeFailure.stack ?? "");
+	const stackBytes = Buffer.byteLength(stack);
+	assert.ok(
+		stackBytes > 0 && stackBytes <= 8_192,
+		`compiled native stack must be bounded (bytes=${stackBytes})`,
+	);
+	assert.ok(
+		!stack.includes("data:text/javascript"),
+		"native frames must not expose the encoded carrier",
+	);
+	assert.ok(
+		SSR_NATIVE_FRAME.test(stack),
+		"DefaultModelSummary must retain the committed SSR diagnostic origin",
+	);
+});
+
 const client = new mod.QueryClient({
 	defaultOptions: { queries: { retry: false, gcTime: 0 } },
 });
