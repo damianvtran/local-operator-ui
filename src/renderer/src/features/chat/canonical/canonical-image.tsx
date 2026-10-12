@@ -103,7 +103,7 @@ export const CanonicalImage = ({
 }: CanonicalImageProps) => {
 	const source = useAttachmentUrl(image, scope);
 	if (source.state === "resolving") {
-		return (
+		const reserved = (
 			/*
 			 * A RESERVED BOX, not a receipt, while the bytes are on their way.
 			 *
@@ -120,27 +120,44 @@ export const CanonicalImage = ({
 			 * an aspect the transcript row does not carry, so a full picture still
 			 * settles to its own height, exactly as every other durable picture has.
 			 *
-			 * `aria-hidden` because there is nothing to announce yet: the picture's
-			 * own button names it the moment it arrives, and a reader told "Image 2"
-			 * twice - once for the empty box and once for the picture - is worse than
-			 * one who waits a frame.
+			 * Non-select placeholders are `aria-hidden`: announcing an empty box
+			 * and then the arriving picture repeats the same name. A filmstrip
+			 * select is different: its action/position remains meaningful before
+			 * bytes arrive, so the branch below keeps a real named select button.
 			 */
-			<div className={cn("inline-block max-w-full")} aria-hidden={true}>
-				<AttachmentFrame
-					boundary={size === "thumbnail" ? "control" : "hairline"}
-					/* The tile's own measured box, for the same reason the receipt spells
+			<AttachmentFrame
+				boundary={size === "thumbnail" ? "control" : "hairline"}
+				/* The tile's own measured box, for the same reason the receipt spells
 					   it in pixels: a reserved slot has to be the size of the picture that
 					   is coming, or the strip reflows when it lands. */
-					className={size === "thumbnail" ? "h-[78px] w-[117px]" : undefined}
-					/*
-					 * Named for the rigs the way `data-fold-media` is: the reserved box has no
-					 * picture and no text, so `scripts/chat-image-expand.test.mjs` can only
-					 * tell it from the receipt by a marker. It states which state it is rather
-					 * than which element, so the test fails when the STATE changes, not when
-					 * the markup does.
-					 */
-					data-attachment-reserved=""
-				/>
+				className={size === "thumbnail" ? "h-[78px] w-[117px]" : undefined}
+				/*
+				 * Named for the rigs the way `data-fold-media` is: the reserved box has no
+				 * picture and no text, so `scripts/chat-image-expand.test.mjs` can only
+				 * tell it from the receipt by a marker. It states which state it is rather
+				 * than which element, so the test fails when the STATE changes, not when
+				 * the markup does.
+				 */
+				data-attachment-reserved=""
+			/>
+		);
+		// A filmstrip SELECT is still an action while bytes are pending: the
+		// reader may choose this slot before its request settles. Non-select
+		// transcript placeholders keep their existing aria-hidden treatment.
+		return press ? (
+			<button
+				type="button"
+				aria-label={press.label}
+				title={press.title}
+				aria-current={press.current || undefined}
+				className="group/tile inline-block max-w-full cursor-zoom-in rounded-sm leading-none"
+				onClick={press.onPress}
+			>
+				{reserved}
+			</button>
+		) : (
+			<div className={cn("inline-block max-w-full")} aria-hidden={true}>
+				{reserved}
 			</div>
 		);
 	}

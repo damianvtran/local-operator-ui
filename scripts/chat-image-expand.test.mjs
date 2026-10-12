@@ -135,6 +135,7 @@ const bundle = await build({
 			export { ImageAttachment } from "./src/renderer/src/features/chat/components/message-item/image-attachment";
 			export { FileAttachment } from "./src/renderer/src/features/chat/components/message-item/file-attachment";
 			export { CanonicalImage } from "./src/renderer/src/features/chat/canonical/canonical-image";
+			export { ImageGroupLightbox } from "./src/renderer/src/features/chat/canonical/image-group-lightbox";
 			export { MarkdownImage } from "./src/renderer/src/features/chat/components/markdown-image";
 			export { FoldMedia } from "./src/renderer/src/features/chat/canonical/fold-media";
 			export { TraceFold } from "./src/renderer/src/features/chat/components/trace/trace-fold";
@@ -191,6 +192,7 @@ const {
 	ImageAttachment,
 	FileAttachment,
 	CanonicalImage,
+	ImageGroupLightbox,
 	MarkdownImage,
 	FoldMedia,
 	TraceFold,
@@ -2765,6 +2767,224 @@ test("wide wrap reveals both endpoint slots with the 1px ring scroll-margin cont
 				api.window.HTMLElement.prototype,
 				"scrollIntoView",
 			);
+		}
+	});
+});
+
+/* A controlled strip-root observer plus the real media bridge/resolver chain.
+ * No jsdom visibility/layout claim: deliveries below are explicit fixture input. */
+test("cold strip demand admits visible and wrapped neighbour slots, not far digests; admission resets on close/group change", async () => {
+	await mount(async (api) => {
+		const oldObserver = globalThis.IntersectionObserver;
+		const observers = [];
+		class ControlledObserver {
+			constructor(callback, options) {
+				this.callback = callback;
+				this.root = options.root;
+				this.slots = [];
+				this.disconnected = false;
+				observers.push(this);
+			}
+			observe(slot) {
+				this.slots.push(slot);
+			}
+			disconnect() {
+				this.disconnected = true;
+			}
+			deliver(index, visible = true) {
+				this.callback([
+					{ target: this.slots[index - 1], isIntersecting: visible },
+				]);
+			}
+		}
+		globalThis.IntersectionObserver = ControlledObserver;
+		const requests = [];
+		const replies = [];
+		api.window.api = {
+			desktop: {
+				media: (request) => {
+					requests.push(request.digest);
+					return new Promise((resolve) => replies.push(resolve));
+				},
+			},
+		};
+		const images = Array.from({ length: 12 }, (_, index) => ({
+			id: `demand-test:${index}`,
+			data: index === 0 || index === 5 ? PNG_BASE64 : null,
+			attachment:
+				index === 0 || index === 5
+					? null
+					: (300 + index).toString(16).padStart(32, "0"),
+			mimeType: "image/png",
+		}));
+		const draw = (open, group = images) =>
+			api.render(
+				React.createElement(ImageGroupLightbox, {
+					images: group,
+					index: 0,
+					scope: transcriptScope,
+					open,
+					onOpenChange: () => {},
+				}),
+			);
+		try {
+			await draw(true);
+			assert.deepEqual(
+				new Set(requests),
+				new Set([images[1].attachment, images[11].attachment]),
+				"open loads only wrapped neighbours; inline selected image needs no relay",
+			);
+			assert.equal(
+				observers.filter((o) => !o.disconnected).length,
+				1,
+				"ONE strip-root observer",
+			);
+			const observer = observers.at(-1);
+			assert.equal(observer.root, api.document.querySelector(FILMSTRIP));
+			assert.equal(
+				observer.slots.length,
+				12,
+				"every known slot stays in the list",
+			);
+			assert.ok(
+				api.document.querySelector('[data-image-slot="6"] img'),
+				"offscreen inline-known image is immediate",
+			);
+			const slot8 = api.document.querySelector('[data-image-slot="8"]');
+			const reserved8 = slot8.querySelector("[data-attachment-deferred]");
+			assert.ok(
+				reserved8,
+				"far cold tile is a stable reserved box, not a fetch",
+			);
+			for (const cls of SLOT_BOX) assert.ok(reserved8.classList.contains(cls));
+			await act(async () => {
+				observer.deliver(4);
+			});
+			await api.settle();
+			assert.ok(
+				requests.includes(images[3].attachment),
+				"scroll visibility loads that digest",
+			);
+			const countAfterVisible = requests.length;
+			await act(async () => {
+				observer.deliver(4, false);
+			});
+			await api.settle();
+			assert.equal(
+				requests.length,
+				countAfterVisible,
+				"leaving view does not restart resolution",
+			);
+			assert.equal(
+				api.document.querySelector(
+					'[data-image-slot="4"] [data-attachment-deferred]',
+				),
+				null,
+				"admission latches while open",
+			);
+			await api.click(
+				api.document.querySelector('button[aria-label="Show image 4 of 12"]'),
+			);
+			assert.equal(
+				api.document.querySelector(LIVE_POSITION)?.textContent,
+				"Image 4 of 12",
+				"an admitted resolving tile is selectable before its bytes arrive",
+			);
+			assert.ok(
+				slot8.firstElementChild.classList.contains("h-[79px]"),
+				"cold outer slots reserve the browser-measured settled height throughout",
+			);
+			await api.click(
+				slot8.querySelector('button[aria-label="Show image 8 of 12"]'),
+			);
+			assert.equal(
+				api.document.querySelector('[data-image-slot="8"]'),
+				slot8,
+				"selection never remounts the stable li",
+			);
+			for (const index of [6, 7, 8])
+				assert.ok(
+					requests.includes(images[index].attachment),
+					"selection admits current +/-1 before bytes arrive",
+				);
+			assert.equal(
+				api.document.querySelector(LIVE_POSITION)?.textContent,
+				"Image 8 of 12",
+			);
+			for (const cls of SLOT_BOX)
+				assert.ok(
+					slot8
+						.querySelector("[data-attachment-reserved]")
+						.classList.contains(cls),
+					"same box while resolving",
+				);
+			assert.ok(
+				!requests.includes(images[9].attachment),
+				"another far cold digest is still untouched",
+			);
+			await draw(false);
+			await draw(true);
+			assert.ok(
+				api.document.querySelector(
+					'[data-image-slot="8"] [data-attachment-deferred]',
+				),
+				"close/reopen clears latched eligibility",
+			);
+			const freshObserver = observers.at(-1);
+			await act(async () => {
+				observer.deliver(8);
+			});
+			await api.settle();
+			assert.ok(
+				api.document.querySelector(
+					'[data-image-slot="8"] [data-attachment-deferred]',
+				),
+				"retired observer cannot admit the reopened strip",
+			);
+			const other = images.map((image, index) => ({
+				...image,
+				id: `other:${index}`,
+				attachment: image.attachment
+					? (500 + index).toString(16).padStart(32, "0")
+					: null,
+			}));
+			await draw(true, other);
+			assert.ok(
+				api.document.querySelector(
+					'[data-image-slot="4"] [data-attachment-deferred]',
+				),
+				"new group cannot inherit old index admission",
+			);
+			await act(async () => {
+				freshObserver.deliver(4);
+			});
+			await api.settle();
+			assert.ok(
+				!requests.includes(other[3].attachment),
+				"old group's queued callback cannot fetch a new group's far digest",
+			);
+			await api.click(viewerControl(api.document, "Previous image"));
+			assert.equal(
+				api.document.querySelector(LIVE_POSITION)?.textContent,
+				"Image 12 of 12",
+				"wrap admits last image before bytes arrive",
+			);
+			assert.ok(
+				requests.includes(other[10].attachment),
+				"wrapped neighbour 11 loads on demand",
+			);
+		} finally {
+			// Finish synthetic attempts before changing the jsdom realm; nothing is sent to a daemon.
+			await act(async () => {
+				for (const reply of replies)
+					reply({
+						status: 404,
+						kind: "error",
+						detail: "Synthetic fixture ended",
+					});
+			});
+			if (oldObserver) globalThis.IntersectionObserver = oldObserver;
+			else Reflect.deleteProperty(globalThis, "IntersectionObserver");
 		}
 	});
 });

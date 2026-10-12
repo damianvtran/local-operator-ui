@@ -48,9 +48,12 @@
  * the one not-loaded state a story can stage honestly without a backend.
  */
 
+import { Button } from "@shared/components/ui/button";
 import type { Meta, StoryObj } from "@storybook/react";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import "../../../../styles/index.css";
+import { CanonicalImage } from "../../canonical/canonical-image";
 import { FoldMedia } from "../../canonical/fold-media";
 import { ImageAttachment } from "./image-attachment";
 
@@ -287,6 +290,124 @@ const WideStrip = () => {
 	);
 };
 
+/**
+ * A counted, delayed SYNTHETIC sessions.attachment route through the real
+ * desktopMedia -> resolver -> blob -> CanonicalImage path. It is not a daemon
+ * or production-network claim. Every cold digest is distinct; only image 1 is
+ * inline, so request counts cannot hide behind cache hits or shared digests.
+ * Responses are held until the fixture control releases them, then future
+ * requests delay 1800ms. The control lives inside the dialog's focus trap so
+ * real browser presses can inspect/release the pending state deterministically.
+ */
+const demandImages = Array.from({ length: 24 }, (_, index) => ({
+	id: `viewer-demand:${index + 1}`,
+	data: index === 0 ? BANDS_PNG_BASE64 : null,
+	attachment: index === 0 ? null : (800 + index).toString(16).padStart(32, "0"),
+	mimeType: "image/png",
+}));
+const DemandStrip = () => {
+	const [requested, setRequested] = useState<number[]>([]);
+	const [released, setReleased] = useState(false);
+	const held = useRef(true);
+	const waiting = useRef(new Map<number, () => void>());
+	const [dialog, setDialog] = useState<Element | null>(null);
+	// Match the existing image-action stories: install during parent render,
+	// before children can start their resolver effects, not in a late effect.
+	// biome-ignore lint/suspicious/noExplicitAny: this is the synthetic preload boundary, not production API construction.
+	const original = useRef((window as any).api);
+	const relay = useRef({
+		...original.current,
+		desktop: {
+			...original.current?.desktop,
+			media: async (request: {
+				op?: string;
+				sessionId?: string;
+				digest?: string;
+			}) => {
+				const index = demandImages.findIndex(
+					(image) => image.attachment === request.digest,
+				);
+				if (
+					request.op !== "sessions.attachment" ||
+					request.sessionId !== "image-viewer-demand" ||
+					index < 1
+				) {
+					return {
+						status: 404,
+						kind: "error",
+						detail: "Not in this synthetic fixture.",
+					};
+				}
+				setRequested((previous) => [...previous, index + 1]);
+				if (held.current)
+					await new Promise<void>((resolve) =>
+						waiting.current.set(index, resolve),
+					);
+				else await new Promise<void>((resolve) => setTimeout(resolve, 1800));
+				const data = Uint8Array.from(
+					atob(WIDE_PLATE_BASE64S[index % WIDE_PLATE_BASE64S.length]),
+					(character) => character.charCodeAt(0),
+				);
+				return { status: 200, kind: "bytes", mimeType: "image/png", data };
+			},
+		},
+	});
+	// biome-ignore lint/suspicious/noExplicitAny: this is the synthetic preload boundary above.
+	(window as any).api = relay.current;
+	useEffect(() => {
+		const update = () => setDialog(document.querySelector('[role="dialog"]'));
+		const observer = new MutationObserver(update);
+		observer.observe(document.body, { childList: true, subtree: true });
+		update();
+		const installed = relay.current;
+		const before = original.current;
+		return () => {
+			observer.disconnect();
+			for (const resolve of waiting.current.values()) resolve();
+			// biome-ignore lint/suspicious/noExplicitAny: restore the prior synthetic preload boundary on story teardown.
+			if ((window as any).api === installed) (window as any).api = before;
+		};
+	}, []);
+	return (
+		<>
+			<Column>
+				<CanonicalImage
+					image={demandImages[0]}
+					scope={{ sessionId: "image-viewer-demand", childId: null }}
+					label="Demand image 1"
+					group={{ images: demandImages, index: 0 }}
+				/>
+			</Column>
+			{dialog &&
+				createPortal(
+					<div
+						className="fixed top-4 left-4 max-w-md text-caption text-ink-muted"
+						data-demand-fixture=""
+					>
+						<p>Fixture route: sessions.attachment</p>
+						<output data-demand-requests="">
+							Requests ({requested.length}): {requested.join(", ") || "none"}
+						</output>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => {
+								held.current = false;
+								setReleased(true);
+								for (const resolve of waiting.current.values()) resolve();
+								waiting.current.clear();
+							}}
+							disabled={released}
+						>
+							Release fixture responses
+						</Button>
+					</div>,
+					dialog,
+				)}
+		</>
+	);
+};
+
 const meta: Meta = {
 	title: "Image viewer controls",
 	parameters: { layout: "fullscreen" },
@@ -317,3 +438,6 @@ export const Group: Story = {
 export const GroupWide: Story = {
 	render: () => <WideStrip />,
 };
+
+/** Counted cold digests with held/delayed relay responses, not inline-only evidence. */
+export const Demand: Story = { render: () => <DemandStrip /> };

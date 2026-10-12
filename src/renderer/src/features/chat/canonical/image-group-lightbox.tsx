@@ -19,23 +19,19 @@
  * second loading idiom), and the bytes are resolved by `useAttachmentUrl` —
  * the one resolver, reused for the selected picture and for every tile.
  *
- * ## The strip IS the prefetch, and that is deliberate
+ * ## Demand is a strip-viewport boundary, not a transcript-page boundary
  *
- * The network model here is mount-driven: a tile that mounts resolves its own
- * bytes, and nothing resolves bytes no tile asks for. The strip mounts when the
- * layer opens (Radix unmounts dialog content while closed), so every picture the
- * strip shows begins resolving at open, in the same digest-keyed cache the
- * selected picture uses — a press onto a neighbour is served from a fetch that
- * started when the layer did. The strip is NOT virtualised (agent review round
- * 1, R1-3): every tile it holds mounts, so a group LONGER than the strip's own
- * viewport resolves all of its pictures at open rather than on scroll — the
- * scroll-into-view on a walk keeps the current reachable, and the cost of a
- * very large group is stated here rather than hidden behind a "lazy" claim that
- * only the mount-driven cache makes true. Nothing outside the strip is fetched:
- * the strip is the boundary — a transcript with several groups resolves only
- * the one whose overlay is open. That is also why there is no separate
- * `prefetch` call: a prefetch loop would be a second resolver wearing a third
- * name.
+ * Every known image keeps its stable slot, but only visible slots, the selected
+ * picture and its wrapped neighbours mount CanonicalImage/useAttachmentUrl.
+ * Inline bytes are already known and render immediately. One observer rooted
+ * in this strip admits cold offscreen tiles when scrolling reveals them.
+ * Admission latches until close so scrolling back never drops a resolver's
+ * blob holder and starts a second request. No second resolver or pager exists.
+ *
+ * The original implementation mounted every known tile at open. R1-3 corrected
+ * its false lazy-loading comment, not the missing demand behavior; the manager
+ * caught that gap before merge. This completes the original on-demand ask.
+ * Unknown transcript pages remain the transcript loader's responsibility.
  *
  * ## The cycle, stated so a future author does not "fix" it
  *
@@ -58,6 +54,7 @@ import {
 import { cn } from "@shared/lib/utils";
 import {
 	type FC,
+	type ReactNode,
 	type RefObject,
 	useCallback,
 	useEffect,
@@ -66,6 +63,7 @@ import {
 } from "react";
 import {
 	ATTACHMENT_UNAVAILABLE_COPY,
+	AttachmentFrame,
 	BrokenAttachment,
 } from "../components/message-item/attachment-frame";
 import { CanonicalImage } from "./canonical-image";
@@ -136,6 +134,23 @@ export type ImageGroupLightboxProps = {
 	restoreFocusTo?: RefObject<HTMLElement | null>;
 	labelFor?: (image: TranscriptImage, index: number, count: number) => string;
 };
+
+/** A cold tile's outer box keeps the settled CanonicalImage layout height.
+ * Live browser measurement: reserved frame 117x78, settled wrapper 117x79
+ * (the inline baseline). Reserving 79px only for durable tiles avoids the 1px
+ * pending-to-ready row change without repainting existing inline/receipt tiles.
+ * The inner AttachmentFrame remains the existing 117x78 treatment. */
+const StableColdSlot = ({
+	cold,
+	children,
+}: { cold: boolean; children: ReactNode }) =>
+	cold ? (
+		<div className="flex h-[79px] w-[117px] items-start leading-none">
+			{children}
+		</div>
+	) : (
+		children
+	);
 
 export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 	images,
@@ -217,6 +232,89 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 	};
 	const onPrev = () => walk(-1);
 	const onNext = () => walk(1);
+
+	/* A data identity, not the array reference: callers may rebuild arrays each
+	 * render. Include scope and digests so eligibility cannot leak into a new
+	 * group that reused positions or ids. Closing starts a fresh admission set. */
+	const demandIdentity = JSON.stringify([
+		scope?.sessionId,
+		scope?.childId,
+		images.map((entry) => [entry.id, entry.attachment, entry.mimeType]),
+	]);
+	const [admission, setAdmission] = useState(() => ({
+		identity: demandIdentity,
+		open,
+		indices: new Set<number>(),
+	}));
+	if (admission.identity !== demandIdentity || admission.open !== open) {
+		setAdmission({
+			identity: demandIdentity,
+			open,
+			indices: new Set<number>(),
+		});
+	}
+	const admit = useCallback(
+		(indices: readonly number[]) => {
+			setAdmission((previous) => {
+				// A queued observer callback from the old group must not admit this one.
+				if (!open || previous.identity !== demandIdentity || !previous.open)
+					return previous;
+				if (indices.every((index) => previous.indices.has(index)))
+					return previous;
+				const next = new Set(previous.indices);
+				for (const index of indices) next.add(index);
+				return { ...previous, indices: next };
+			});
+		},
+		[demandIdentity, open],
+	);
+	const previousIndex = wrapGroupIndex(safeIndex, count, -1);
+	const nextIndex = wrapGroupIndex(safeIndex, count, 1);
+	useEffect(() => {
+		if (open) admit([safeIndex, previousIndex, nextIndex]);
+	}, [open, safeIndex, previousIndex, nextIndex, admit]);
+	useEffect(() => {
+		const strip = stripRef.current;
+		if (
+			!open ||
+			!stripMounted ||
+			!strip ||
+			typeof IntersectionObserver === "undefined"
+		)
+			return;
+		// One observer for all slots. Missing observer support keeps the safe
+		// selected/neighbour path; it never silently falls back to eager fetching.
+		let live = true;
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (!live) return;
+				admit(
+					entries
+						.filter((entry) => entry.isIntersecting)
+						.map(
+							(entry) =>
+								Number((entry.target as HTMLElement).dataset.imageSlot) - 1,
+						),
+				);
+			},
+			{ root: strip },
+		);
+		for (const slot of strip.querySelectorAll("[data-image-slot]"))
+			observer.observe(slot);
+		return () => {
+			live = false;
+			observer.disconnect();
+		};
+	}, [open, stripMounted, admit]);
+	const eligible = (entry: TranscriptImage, index: number) =>
+		Boolean(entry.data) ||
+		!entry.attachment ||
+		index === safeIndex ||
+		index === previousIndex ||
+		index === nextIndex ||
+		(admission.identity === demandIdentity &&
+			admission.open &&
+			admission.indices.has(index));
 	/*
 	 * The current slot is scrolled into view on every move (design round 1,
 	 * D1-5): the strip scrolls (`max-w` + `overflow-x-auto`), so a walk can move
@@ -316,26 +414,48 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 							tileIndex === safeIndex && "ring-1 ring-ink",
 						)}
 					>
-						<CanonicalImage
-							image={entry}
-							scope={scope}
-							size="thumbnail"
-							label={labelFor(entry, tileIndex, count)}
-							press={{
-								onPress: () => setSelected(tileIndex),
-								/*
-								 * Action and position in one name, the way the
-								 * transcript's tiles say "Expand Image 2": the
-								 * accessibility round that gave those tiles their
-								 * action-name asked for the press's meaning to reach a
-								 * reader, and "of 3" is what tells this one from its
-								 * neighbours.
-								 */
-								label: `Show image ${tileIndex + 1} of ${count}`,
-								title: `Show image ${tileIndex + 1} of ${count}`,
-								current: tileIndex === safeIndex,
-							}}
-						/>
+						<StableColdSlot cold={Boolean(entry.attachment) && !entry.data}>
+							{eligible(entry, tileIndex) ? (
+								<CanonicalImage
+									image={entry}
+									scope={scope}
+									size="thumbnail"
+									label={labelFor(entry, tileIndex, count)}
+									press={{
+										onPress: () => setSelected(tileIndex),
+										/*
+										 * Action and position in one name, the way the
+										 * transcript's tiles say "Expand Image 2": the
+										 * accessibility round that gave those tiles their
+										 * action-name asked for the press's meaning to reach a
+										 * reader, and "of 3" is what tells this one from its
+										 * neighbours.
+										 */
+										label: `Show image ${tileIndex + 1} of ${count}`,
+										title: `Show image ${tileIndex + 1} of ${count}`,
+										current: tileIndex === safeIndex,
+									}}
+								/>
+							) : (
+								<button
+									type="button"
+									aria-label={`Show image ${tileIndex + 1} of ${count}`}
+									title={`Show image ${tileIndex + 1} of ${count}`}
+									className="group/tile inline-block max-w-full cursor-zoom-in rounded-sm leading-none"
+									onClick={() => {
+										admit([tileIndex]);
+										setSelected(tileIndex);
+									}}
+								>
+									<AttachmentFrame
+										boundary="control"
+										className="h-[78px] w-[117px]"
+										data-attachment-reserved=""
+										data-attachment-deferred=""
+									/>
+								</button>
+							)}
+						</StableColdSlot>
 					</li>
 				))}
 			</ul>

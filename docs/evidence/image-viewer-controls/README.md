@@ -116,13 +116,13 @@ transition columns/rows — not read back off the CSS:
   (1x, 2x, 3x, 4x), the clamp's range, and the reset's recentring are pure
   functions (`shared/lib/image-viewer-model.ts`) asserted directly; the frames
   photograph the states those rules produce, at 2x, where the crop is legible.
-- **Partial loading is staged the one honest way available here.** The third
-  picture has NO bytes and no attachment — a fact, not a race — so its strip
-  slot and its selected state both draw the receipt. A tile that is RESOLVING
-  (bytes in flight against the media relay) is not photographable from
-  Storybook without standing up the relay; the strip's reserved-box state is
-  instead covered by `scripts/chat-image-expand.test.mjs` (the tile whose bridge
-  never settles).
+- **Partial loading:** this set's third picture has no bytes/ref and draws
+  the receipt. The new companion [image-viewer-demand](../image-viewer-demand/README.md)
+  set stages resolving cold digests through a counted, delayed synthetic media
+  bridge: visible/current/wrapped-neighbour demand, deferred distant slots,
+  pending selection and stable strip geometry. It is not a deployed relay claim.
+  Every known slot remains; only eligible cold tiles mount the existing resolver.
+  The previous eager-all-known implementation is superseded, not called lazy.
 - **The current mark on a picture with no bytes.** The ring lives on the SLOT,
   so it survives the state the old mark could not: `carousel-next` walks onto
   the receipt and the receipt's own slot carries the ring (UX round 1's U1-1).
@@ -147,10 +147,10 @@ transition columns/rows — not read back off the CSS:
 - No before frame exists for `zoomed`, `zoomed-panned` or `reset` individually:
   zoom does not exist at the base, so `image-viewer-controls-before/fit` IS the
   before of all three, and its README says so.
-- No frame exercises a real media-relay fetch, a digest-cache miss, or a
-  RESOLVING strip tile: the storybook pictures are inline `data:` URIs and the
-  relay is not stood up for the stories; the reserved-box state is jsdom's (the
-  tile whose bridge never settles).
+- These historical frames use inline data and a missing entry. The companion
+  demand set adds cold cache misses/resolving strips via a synthetic counted
+  media bridge, not an actual daemon/remote media relay. That real-network path
+  remains unverified.
 - The `wide-*` frames stage ten tiles — the largest group this set carries. A
   group whose strip overflows a whole screenful is the same code path, asserted
   in jsdom rather than framed again.
