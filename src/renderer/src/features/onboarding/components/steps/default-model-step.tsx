@@ -29,6 +29,7 @@ import { ModelSelect } from "@shared/components/hosting/model-select";
 import { Alert, Button } from "@shared/components/ui";
 import { useModels } from "@shared/hooks/use-models";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
+import { t } from "@shared/i18n";
 import { useModelsStore } from "@shared/store/models-store";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -45,23 +46,25 @@ export const DefaultModelSummary: FC<{
 	if (choice.kind === "none") {
 		return (
 			<Alert variant="neutral">
-				No provider is connected yet. Go back to connect one, or skip setup and
-				connect one later from the chat.
+				{t("ui.onboarding.default_model.none_connected")}
 			</Alert>
 		);
 	}
 	if (choice.kind === "choose") {
 		return (
 			<p className="text-body-sm text-ink-muted">
-				{brandOf(choice.provider)} is connected. Pick the model new chats should
-				use.
+				{t("ui.onboarding.default_model.connected_pick", {
+					brand: brandOf(choice.provider),
+				})}
 			</p>
 		);
 	}
 	const name =
 		choice.kind === "applied"
 			? (modelDisplayName(choice.provider, choice.model) ??
-				`${choice.provider ? brandOf(choice.provider) : choice.hosting}'s default model`)
+				t("ui.onboarding.default_model.fallback_name", {
+					brand: choice.provider ? brandOf(choice.provider) : choice.hosting,
+				}))
 			: choice.model.name;
 	const brand =
 		choice.kind === "applied"
@@ -75,12 +78,12 @@ export const DefaultModelSummary: FC<{
 			<p className="text-ink-dim text-meta">
 				{brand} ·{" "}
 				{choice.kind === "applied"
-					? "your default"
-					: "suggested for your account"}
+					? t("ui.onboarding.default_model.tag.applied")
+					: t("ui.onboarding.default_model.tag.suggested")}
 			</p>
 			<div className="pt-2">
 				<Button variant="secondary" size="sm" onClick={onChange}>
-					Change
+					{t("ui.onboarding.default_model.change")}
 				</Button>
 			</div>
 		</div>
@@ -210,7 +213,9 @@ export const DefaultModelStep: FC<DefaultModelStepProps> = ({
 		return (
 			<div className="flex items-center justify-center gap-3 py-8">
 				<Spinner size="sm" />
-				<p className="text-body-sm text-ink-muted">Loading your models</p>
+				<p className="text-body-sm text-ink-muted">
+					{t("ui.onboarding.default_model.loading")}
+				</p>
 			</div>
 		);
 	}
@@ -236,7 +241,7 @@ export const DefaultModelStep: FC<DefaultModelStepProps> = ({
 				filterByCredentials={true}
 				allowCustom={false}
 				allowDefault={false}
-				emptyHelperText="No providers are connected yet. Go back a step to connect one."
+				emptyHelperText={t("ui.onboarding.default_model.empty_helper")}
 			/>
 			<ModelSelect
 				value={modelToWrite}
@@ -259,7 +264,7 @@ export const DefaultModelStep: FC<DefaultModelStepProps> = ({
 	return (
 		<div className="flex flex-col gap-5">
 			<p className="text-body text-ink-muted">
-				New chats use this model. Every agent can pick a different one later.
+				{t("ui.onboarding.default_model.intro")}
 			</p>
 			{noCatalogue ? (
 				/*
@@ -271,10 +276,11 @@ export const DefaultModelStep: FC<DefaultModelStepProps> = ({
 				 * never reached a completion endpoint).
 				 */
 				<p className="text-ink-dim text-meta">
-					Nothing will be saved: your Local Operator can't list{" "}
-					{shownRow ? brandOf(shownRow) : "this provider's"} models yet, so
-					setup finishes without a default model. Pick one in Settings before
-					your first message.
+					{t("ui.onboarding.default_model.nothing_saved", {
+						brand: shownRow
+							? brandOf(shownRow)
+							: t("ui.onboarding.default_model.provider_fallback"),
+					})}
 				</p>
 			) : null}
 			{editing || choice.kind === "choose" ? (
