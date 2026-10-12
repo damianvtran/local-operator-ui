@@ -48,6 +48,14 @@ import {
 	preferProgressDetails,
 } from "../components/trace/tool-row-model";
 import { isHarnessChromeText } from "./harness-chrome";
+import {
+	type JournalOrderRead,
+	type JournalPosition,
+	type SourceCoordinate,
+	journalOrderedRecords,
+	receiveJournalOrder,
+	rememberJournalCalls,
+} from "./journal-order";
 import { freezeRecordDeep } from "./record-immutability";
 import {
 	SUPPLEMENT_CUSTOM_TYPE,
@@ -130,7 +138,7 @@ export const isPictureRef = (ref: TranscriptImage): boolean =>
 export type DeltaFrame = { epoch: string; seq: number };
 
 /** The § 7 tier a record renders at, decided once here rather than per view. */
-export type TranscriptRecord =
+type TranscriptPayloadRecord =
 	| {
 			kind: "user";
 			id: string;
@@ -171,7 +179,12 @@ export type TranscriptRecord =
 			 * position it was admitted at against the merges that carry rows
 			 * (`withTimeOrder`'s tail block). Cleared only when an owner-stamped
 			 * row names the same id: the durable page row replaces this record
-			 * entirely. The seed route reaches only rows the seed DATES —
+			 * entirely — or by the DISCHARGE (`releasedEchoes`), when a page
+			 * read whose OLDEST entry is strictly newer than this stamp, with the
+			 * pane's range spanning the send, falsifies the hold's ranking
+			 * premise: the row then ranks by its own stamp, still `local`, still
+			 * replaced by carriage when the owner's row arrives.
+			 * The seed route reaches only rows the seed DATES —
 			 * `statedIds` gains an id under `!next.index.has(id)`
 			 * (`applyLiveSeed`) — so a seed restating the echo's own id cannot
 			 * clear its hold: an already-painted echo is settled only by its
@@ -703,7 +716,21 @@ export type TranscriptRecord =
 			live: boolean;
 	  };
 
+export type TranscriptRecord = TranscriptPayloadRecord & JournalPosition;
+
 export type TranscriptState = {
+	/** Order revision is independent of turn generation, view epoch and planner facts. */
+	journalMode?: boolean;
+	journalGeneration?: string;
+	journalPositions?: Map<string, SourceCoordinate>;
+	journalCallOwners?: Map<string, string>;
+	orderRevision?: number;
+	orderNeedsReconcile?: boolean;
+	/** Distinct incoming domain wakes a building-index repair once ready. */
+	orderWantedGeneration?: string;
+	/** Ready-wake identity: dispatch witnesses settle old debt without erasing a
+	 * distinct wake during the read. Not a second source revision counter. */
+	orderDemand?: { generation?: string };
 	/** Ordered oldest -> newest. */
 	records: TranscriptRecord[];
 	/** id -> index for O(1) coalescing; rebuilt on every structural change. */
@@ -1341,6 +1368,20 @@ function advancedFrame(
  *     That contiguity is the premise, not a convenience: the caller asserts it
  *     at `applyHistoryPage` (`statedByOwner`), and every caller but one leaves
  *     it on.
+ *   - THE SAME WINDOW, WHEN IT PROVES THE SEND IS BEHIND THE PANE. A
+ *     contiguous window can bound the send's place without carrying it:
+ *     when its OLDEST entry is strictly newer than the echo's stamp — the
+ *     window is journal-older than its whole range — while the pane's own
+ *     range spans the send (an owner-stated row older than the stamp and ANY
+ *     row newer than it, including a streamed row or another pending echo),
+ *     the echo leaves the block to
+ *     rank by its stamp, whether the window lands beyond the pane or among
+ *     rows the pane already streamed. Carriage is unchanged and still lands
+ *     the owner's exact slot. This is the discharge (operator report,
+ *     2026-10-11 — a send that aged out of the loaded window stayed pinned at
+ *     the trailing edge across every re-open, and the operator's pane was
+ *     CURRENT when they looked); the rule, its three conjuncts and the pinned
+ *     case each conjunct answers live on `releasedEchoes`.
  *
  * NOTHING ELSE CLOSES. A `history_delta` is a FILTERED id set — "rows that
  * were never streamed here" — and a filter is not a range: it can carry the
@@ -1354,11 +1395,15 @@ function advancedFrame(
  * and a settle with no anchor row in hand are admitted at their stated time
  * but join the block while a hold stands.
  *
- * The hold ENDS by exactly one event: the echo's id observed as a DURABLE row
- * (a page row, or a delta row naming it). Not a live restating `message_start`
- * (F2 above), and not a settled send in the store: delivery is `local`'s axis
- * and position is this one, so a store that merely KNOWS the owner took the
- * message must not be asked to decide where it sits.
+ * The hold's PIN has exactly one ending: the echo's id observed as a DURABLE
+ * row (a page row, or a delta row naming it) — CARRIAGE — which replaces the
+ * record and returns it to the owner's order. Not a live restating
+ * `message_start` (F2 above), and not a settled send in the store: delivery is
+ * `local`'s axis and position is this one, so a store that merely KNOWS the
+ * owner took the message must not be asked to decide where it sits. The
+ * DISCHARGE is not a second ending of the same kind: it ends the block's
+ * RANKING of a send a window has already bounded (`releasedEchoes`), and the
+ * released record is still this app's echo until carriage replaces it.
  *
  * WHY A BLOCK AND NOT A COMPARATOR CASE: the relations are not a total order.
  * [pre-send row dated +40s, echo, live answer dated +5s] asks for
@@ -1382,6 +1427,12 @@ function advancedFrame(
  * - A row whose durable form never arrives (a settled streaming row) keeps
  *   the arrival position it was admitted at; once no provisional row remains
  *   the block dissolves and everything sorts by stamps again.
+ * - A PRE-send page row SKEWED past the pane's own span, landing while the
+ *   pane already carries a post-send row, ranks by its stamp — below the
+ *   echo — until the merges that state the send's own row land, exactly as a
+ *   replay frame above does; carriage then returns the exact slot
+ *   (`releasedEchoes` names this trade beside the rule, and
+ *   `transcript-strand-hold.test.mjs` pins it).
  *
  * Ties keep the order they already had, so this can never reshuffle two rows
  * that state the same instant while the reader is looking at them. No lookup and
@@ -1395,7 +1446,8 @@ const NO_OWNER_IDS: ReadonlySet<string> = new Set();
  * and `seededLiftable`'s anchor walk.
  *
  * `provisional` is the hold; `appendPendingUser` sets it on every echo and the
- * owner's stamped row is what clears it. `local` deliberately does NOT
+ * owner's stamped row — or the discharge (`releasedEchoes`) — is what clears
+ * it. `local` deliberately does NOT
  * participate: the live restating `message_start` clears `local` (delivery —
  * `peekLocalEcho`'s "owner" is the store's test) while the position hold must
  * survive it (review round 1, F2).
@@ -1434,7 +1486,12 @@ function withTimeOrder(
 	 * block instead.
 	 */
 	ownerIds: ReadonlySet<string> = NO_OWNER_IDS,
+	orderState?: TranscriptState,
 ): TranscriptRecord[] {
+	// The doctrine below is the explicit OLD-backend fallback. Negotiated
+	// source positions have their own transitive policy; no ts hybrid/guess.
+	if (orderState?.journalMode)
+		return journalOrderedRecords(orderState, records).map(freezeRecordDeep);
 	/*
 	 * `provisional` is the hold; `appendPendingUser` sets it on every echo and
 	 * the owner's stamped row is what clears it — `isPendingEcho` is the one
@@ -1468,6 +1525,142 @@ function withTimeOrder(
 				: a.position - b.position;
 		})
 		.map((entry) => entry.record);
+}
+
+/**
+ * THE DISCHARGE — the echoes THIS merge may release from the tail block.
+ *
+ * WHY IT EXISTS (operator report, 2026-10-11): in session `9c59d684d16b` the
+ * "push it to my private github" exchange (19:00) rendered at the TRAILING
+ * edge of the conversation, below content more than 40 minutes newer, on
+ * every re-open. The store was correctly ordered; the terminal state was the
+ * tail block's. A desktop send mints a provisional echo, and the hold
+ * discharges only by CARRIAGE — a merge carrying the echo's own durable row.
+ * A send whose rows age out of the loaded window before any such merge
+ * arrives never sees one: tail reads never reach its row, a delta excludes it
+ * (the send WAS streamed), and `sealDisjointBlock` refuses echoes while
+ * dropping the durable block around them — so the exchange stayed pinned
+ * under everything the pane ever loaded after it.
+ *
+ * THE RULE, and why the premise it falsifies is exactly the right one. The
+ * block exists because the echo's stamp and every placed row's come from
+ * different clocks, so no comparison can decide the echo's place — and it
+ * keeps the echo BELOW every placed row on the assumption that the owner may
+ * still state it after everything here. A CONTIGUOUS OWNER WINDOW (a page
+ * read; never a delta's filtered id set, never a seed) can falsify that
+ * assumption without carrying the send: when its OLDEST entry is strictly
+ * NEWER than the echo's stamp — the window is journal-older than its whole
+ * range, so the send cannot be "after everything here" — and the pane already
+ * holds an owner-stated row older than the send's stamp and ANY row newer
+ * than it (including a streamed row or another pending local echo), the
+ * reader's own copy
+ * ranks by its stamp. Carriage still lands the owner's exact slot by
+ * replacing the record; this only stops the hold from pinning the exchange
+ * under content the pane provably reached after the send went unread.
+ *
+ * WHERE THE WINDOW MAY LAND, and why the SEND is the thing falsified (manager
+ * blocker, round 1): the window does NOT have to lie beyond everything the
+ * pane holds. The operator's own pane was CURRENT — it streamed the 19:00
+ * send's replies and the rows after them while they looked (session
+ * `9c59d684d16b`) — so every later read's oldest entry was newer than the
+ * echo's stamp while the pane's own newest row stayed current too. A rule
+ * keyed on the pane being behind ("the window lies beyond every row the pane
+ * holds") therefore never fired for the operator's actual shape (measured:
+ * the manager's `replay4.mjs`). What a landing window proves is about the
+ * SEND: a contiguous range whose oldest entry is strictly newer than the
+ * echo's stamp cannot contain a row journal-older than that entry — and the
+ * echo's durable row, whatever the two clocks say, is journal-anchored at the
+ * send instant. Whether the window lands beyond the pane or among rows it
+ * already streamed is immaterial to that proof.
+ *
+ * All three conjuncts are load-bearing, and each answers a pinned case:
+ *
+ *  - `windowOldestMs > record.ts` — the headline, and the whole
+ *    falsification. A pre-send window's oldest entry is journal-older than
+ *    the send, so it fails here however its stamps SKEW ahead of the client
+ *    clock (the a1 / +2s / +40s owed-page pins).
+ *  - ANY row NEWER than the echo — no owner/delivery proof is required on
+ *    this side: a streamed row or another pending local echo qualifies too.
+ *    This is a ranking guard, not evidence the owner accepted the send; a
+ *    pane holding only the echo and its owed page keeps the hold
+ *    (`a locally stamped echo cannot be displaced…`).
+ *  - an owner-stated row OLDER than the echo (`isDurableOwnerRow`) — a pane
+ *    whose range starts at or after the echo cannot prove where the send
+ *    belongs; the old announcement path (echo over an empty transcript, a
+ *    send during first paint) stays conservative rather than releasing on a
+ *    clock it cannot compare (`a live answer arriving while the echo holds…
+ *    the page that follows keeps it there`).
+ *
+ * THE SCAN IS PRE-MERGE, deliberately conservative: `applyHistoryPage` passes
+ * `base.records`, not the rows this page is about to admit. If the page supplies
+ * the pane's FIRST newer row, this read keeps the hold and the next qualifying
+ * page read (even a replay of the same page) can release it. A live event alone
+ * does not re-run the discharge. This leaves a one-read lag in a quiet pane;
+ * it keeps the incoming window from supplying its own span witness. The
+ * regression pin names that sequencing; it is not a new healing path.
+ *
+ * WHAT THE RULE GIVES UP, named rather than discovered: an owner whose clock
+ * runs AHEAD of this renderer's can stamp a PRE-send page row past the pane's
+ * own span while the pane already carries a post-send row; the discharge then
+ * ranks that pre-send row below the echo until the merges that state the
+ * send's own row land (carriage returns the exact slot — the same visible
+ * correction `withTimeOrder`'s "WHAT THE BLOCK GIVES UP" already accepts for
+ * replay frames and unanchored seeds; the owed-page pins keep the shapes
+ * where NOTHING about the send is provable fail-safe). Pinned as a named
+ * trade-off in `transcript-strand-hold.test.mjs`.
+ *
+ * A DISCHARGED ECHO IS STILL THIS APP'S ECHO. The release clears
+ * `provisional` — the position hold — and deliberately KEEPS `local`:
+ * `isDurableOwnerRow` must go on refusing it (a later `sealDisjointBlock`
+ * would otherwise silently delete the reader's own message — the class
+ * #876's tests pin), `removeLocalRecord` must go on recognising it, and the
+ * store's delivery read (`peekLocalEcho`) must go on answering "local"
+ * until the owner's row replaces the record. Nothing about delivery moves
+ * here: only the ranking.
+ */
+function releasedEchoes(
+	records: TranscriptRecord[],
+	windowOldestMs: number,
+	contiguousWindow: boolean,
+): ReadonlySet<string> {
+	// A window states nothing without an instant, and a filtered set (a delta)
+	// is not a window: `statedByOwner: false` forfeits above-standing on
+	// exactly the argument that it can carry a post-send row while excluding
+	// the send — the discharge must never be reached through that door.
+	if (!contiguousWindow || windowOldestMs <= 0) return NO_OWNER_IDS;
+	let released: Set<string> | null = null;
+	for (const record of records) {
+		if (!isPendingEcho(record)) continue;
+		if (!(windowOldestMs > record.ts)) continue;
+		let past = false;
+		let behind = false;
+		for (const candidate of records) {
+			if (candidate.ts > record.ts) past = true;
+			else if (candidate.ts < record.ts && isDurableOwnerRow(candidate))
+				behind = true;
+			if (past && behind) break;
+		}
+		if (!(past && behind)) continue;
+		released ??= new Set<string>();
+		released.add(record.id);
+	}
+	return released ?? NO_OWNER_IDS;
+}
+
+/**
+ * One discharged echo, with `provisional` REMOVED — not set to `undefined`.
+ *
+ * The key's ABSENCE is the flag's whole spelling: `isPendingEcho` tests
+ * `=== true`, `isDurableOwnerRow` reads it beside `local`, and
+ * `shallowEqual`'s key-count comparison treats an explicit `undefined` as a
+ * different record entirely — which would report this row as changed on
+ * every following merge and re-render it each time.
+ */
+function releaseHeldPosition(record: TranscriptRecord): TranscriptRecord {
+	const { provisional: _released, ...rest } = record as TranscriptRecord & {
+		provisional?: boolean;
+	};
+	return freezeRecordDeep(rest as TranscriptRecord);
 }
 
 function shallowEqual(a: TranscriptRecord, b: TranscriptRecord) {
@@ -1538,12 +1731,29 @@ function upsert(state: TranscriptState, record: TranscriptRecord) {
 		const current = state.records[position];
 		if (shallowEqual(current, record)) return state;
 		const records = state.records.slice();
-		records[position] = record;
-		return { ...state, records };
+		records[position] = state.journalMode
+			? freezeRecordDeep({
+					...record,
+					...(current.sourceEntryId
+						? { sourceEntryId: record.sourceEntryId ?? current.sourceEntryId }
+						: {}),
+					...(current.journalGeneration
+						? {
+								journalGeneration:
+									record.journalGeneration ?? current.journalGeneration,
+								journalSeq: record.journalSeq ?? current.journalSeq,
+							}
+						: {}),
+				})
+			: record;
+		if (!state.journalMode) return { ...state, records };
+		const ordered = withTimeOrder(records, NO_OWNER_IDS, state);
+		return { ...state, records: ordered, index: withIndex(ordered) };
 	}
-	const records = [...state.records, record];
-	const index = new Map(state.index);
-	index.set(record.id, records.length - 1);
+	const records = state.journalMode
+		? withTimeOrder([...state.records, record], NO_OWNER_IDS, state)
+		: [...state.records, record];
+	const index = withIndex(records);
 	return { ...state, records, index };
 }
 
@@ -3152,8 +3362,40 @@ function previousRecordForSupplement(
 	return state.records[state.index.get(key) ?? -1];
 }
 
-export function applyHistoryPage(
+/**
+ * A cached-ID lookup uses the existing snapshot route, but its tail is NOT a
+ * paging or payload read. Repair only proven coordinates and verified owners;
+ * retain the reader's cursor, text, image references and admitted row set.
+ */
+export function applyJournalOrderMetadata(
 	state: TranscriptState,
+	page: DesktopHistoryPage,
+	orderRead: JournalOrderRead,
+): TranscriptState {
+	let next = receiveJournalOrder(
+		state,
+		page,
+		page.entries.map((entry) => ({
+			id: entry.id,
+			journal_seq: entry.journal_seq,
+			role: entry.payload?.role,
+			tool_call_id: entry.payload?.tool_call_id,
+		})),
+		true,
+		orderRead,
+	);
+	for (const entry of page.entries)
+		next = rememberJournalCalls(next, { ...entry.payload, id: entry.id });
+	const ordered = journalOrderedRecords(next, next.records);
+	if (ordered === next.records) return next;
+	// Metadata is another canonical producer: its new record clones need the
+	// existing DEV emit guard too. Production keeps that guard's no-op semantics.
+	const records = ordered.map(freezeRecordDeep);
+	return { ...next, records, index: withIndex(records) };
+}
+
+export function applyHistoryPage(
+	initialState: TranscriptState,
 	page: DesktopHistoryPage,
 	options: {
 		replace?: boolean;
@@ -3185,8 +3427,34 @@ export function applyHistoryPage(
 		 * here.
 		 */
 		statedByOwner?: boolean;
+		/** Only snapshots/reconcile may install a new source domain. */
+		authoritative?: boolean;
+		orderRead?: JournalOrderRead;
 	} = {},
 ): TranscriptState {
+	let state = initialState;
+	const previousOrder = state;
+	state = receiveJournalOrder(
+		state,
+		page,
+		page.entries.map((entry) => ({
+			id: entry.id,
+			journal_seq: entry.journal_seq,
+			role: entry.payload?.role,
+			tool_call_id: entry.payload?.tool_call_id,
+		})),
+		options.authoritative === true,
+		options.orderRead,
+	);
+	// A mismatched non-authoritative response cannot mutate payload, identity,
+	// paging or ownership. Its only effect is one authoritative repair request.
+	if (
+		page.journal_generation &&
+		page.journal_generation !== state.journalGeneration
+	)
+		return state;
+	for (const entry of page.entries)
+		state = rememberJournalCalls(state, { ...entry.payload, id: entry.id });
 	/*
 	 * A view the user has CLEARED is answered with THE PASS THE READ EXISTS FOR,
 	 * and with nothing else. Three facts make that test exact, and each was a defect
@@ -3227,7 +3495,9 @@ export function applyHistoryPage(
 					-1
 			] ??
 			previousRecordForSupplement(state, entry);
-		const record = durableRecord(entry, previous);
+		let record = durableRecord(entry, previous);
+		if (record && state.journalMode)
+			record = { ...record, sourceEntryId: entry.id };
 		if (record) incoming.push(freezeRecordDeep(record));
 	}
 	// Tool call args live on the assistant row's `tool_calls`; carry the intent
@@ -3303,7 +3573,9 @@ export function applyHistoryPage(
 		: { ...state, records: backfilled };
 	const byId = new Map(base.records.map((record) => [record.id, record]));
 	let changed =
-		options.replace || (!options.replace && backfilled !== state.records);
+		state !== previousOrder ||
+		options.replace ||
+		(!options.replace && backfilled !== state.records);
 	for (const record of incoming) {
 		const current = byId.get(record.id);
 		if (!current) {
@@ -3395,6 +3667,17 @@ export function applyHistoryPage(
 	 */
 	const first = page.entries[0];
 	const firstTs = first ? Math.round((first.ts ?? 0) * 1000) : 0;
+	/*
+	 * THE DISCHARGE (see `releasedEchoes`), computed BEFORE the no-change early
+	 * return below because releasing a hold is itself a change. A window is a
+	 * CONTIGUOUS OWNER WINDOW only when this merge is allowed to place rows on
+	 * the owner's side of a held send — the same licence the block grants page
+	 * reads and withholds from filtered deltas (`statedByOwner: false`); seeds
+	 * do not come through this function at all.
+	 */
+	const released = state.journalMode
+		? NO_OWNER_IDS
+		: releasedEchoes(base.records, firstTs, options.statedByOwner !== false);
 	let oldestId = base.oldestId;
 	let oldestTs = base.oldestTs;
 	let hasMore = state.hasMore;
@@ -3416,14 +3699,27 @@ export function applyHistoryPage(
 		} else {
 			hasMore = false;
 		}
-	} else if (first && firstTs > 0 && firstTs < state.oldestTs) {
+	} else if (
+		first &&
+		(state.journalMode
+			? (state.journalPositions?.get(first.id)?.seq ??
+					Number.POSITIVE_INFINITY) <
+				(state.journalPositions?.get(state.oldestId ?? "")?.seq ?? -1)
+			: firstTs > 0 && firstTs < state.oldestTs)
+	) {
 		oldestId = first.id;
 		oldestTs = firstTs;
 		hasMore = page.has_more;
 	}
 	const cursorMoved =
 		oldestId !== state.oldestId || oldestTs !== state.oldestTs;
-	if (!changed && !cursorMoved && state.hasMore === hasMore && !retiresPass)
+	if (
+		!changed &&
+		!cursorMoved &&
+		state.hasMore === hasMore &&
+		!retiresPass &&
+		released.size === 0
+	)
 		return state;
 
 	// Durable rows first, then this page's new rows, in TIME order with ties
@@ -3437,9 +3733,15 @@ export function applyHistoryPage(
 	 * function of that list, so a page applied twice, a `replace` re-seed and a
 	 * cold load all end at the same rows (`collapseSettledCompactions`).
 	 */
+	const merged =
+		released.size === 0
+			? [...byId.values()]
+			: [...byId.values()].map((record) =>
+					released.has(record.id) ? releaseHeldPosition(record) : record,
+				);
 	const records = collapseSettledCompactions(
 		withTimeOrder(
-			[...byId.values()],
+			merged,
 			// The rows this merge may place on the owner's side: a contiguous
 			// window's licence to stand above a held send (the assertion
 			// `statedByOwner` documents; agent review round 1, F1). A caller that
@@ -3448,6 +3750,7 @@ export function applyHistoryPage(
 			options.statedByOwner === false
 				? NO_OWNER_IDS
 				: new Set(incoming.map((record) => record.id)),
+			state,
 		),
 	);
 	if (options.keepPaging) {
@@ -3556,7 +3859,9 @@ export function sealDisjointBlock(
 	oldest: { id: string; ts: number },
 	fetched: ReadonlySet<string> = NO_OWNER_IDS,
 ): TranscriptState {
-	if (oldest.ts <= 0) return state;
+	// Source positions already rank cached rows. A wall-clock disjoint seal
+	// cannot prove absence/coverage in this lane and must not delete them.
+	if (state.journalMode || oldest.ts <= 0) return state;
 	const records = state.records.filter(
 		(record) =>
 			!(
@@ -3703,7 +4008,7 @@ function liveMessageId(
  * effect is already painted returns the same state.
  */
 export function applyEvent(
-	state: TranscriptState,
+	initialState: TranscriptState,
 	event: LiveEvent,
 	now = Date.now(),
 	/**
@@ -3737,7 +4042,42 @@ export function applyEvent(
 		frame?: DeltaFrame;
 	} = {},
 ): TranscriptState {
+	let state = initialState;
 	const message = event.message as Record<string, unknown> | undefined;
+	if (event.type === "journal_order_ready") {
+		// Each source-ready fact is a causal wake, even with generic debt already
+		// owed or the same opaque domain. Coalescing by bool/domain here loses a
+		// correction that arrives after dispatch; token events never mint this token.
+		const generation =
+			typeof event.journal_generation === "string"
+				? event.journal_generation
+				: undefined;
+		state = {
+			...state,
+			orderNeedsReconcile: true,
+			orderWantedGeneration: event.reconcile === true ? undefined : generation,
+			orderDemand: event.reconcile === true ? {} : { generation },
+		};
+		if (event.reconcile === true) return state;
+		const next = receiveJournalOrder(
+			state,
+			{
+				journal_generation:
+					typeof event.journal_generation === "string"
+						? event.journal_generation
+						: undefined,
+			},
+			Array.isArray(event.rows)
+				? (event.rows as Array<Record<string, unknown>>)
+				: [],
+			false,
+		);
+		const records = withTimeOrder(next.records, NO_OWNER_IDS, next);
+		return next === state && records === state.records
+			? state
+			: { ...next, records, index: withIndex(records) };
+	}
+	if (message) state = rememberJournalCalls(state, message);
 	const incoming = options.frame;
 	/*
 	 * The settle-only ask mode (see the option's own doc), bound once per fold
@@ -5371,7 +5711,7 @@ export function applyLiveSeed(
 	// those with an on-screen pre-echo anchor (`seededLiftable`); the rest keep
 	// the block's arrival order until a page states them. A provisional row's
 	// own durable row is still what ends its hold.
-	const records = withTimeOrder(next.records, statedIds);
+	const records = withTimeOrder(next.records, statedIds, next);
 	return { ...next, records, index: withIndex(records) };
 }
 
@@ -6146,7 +6486,9 @@ export function appendPendingUser(
 		// echo over painted rows, cached or live, faces the same unchecked
 		// clock), so the hold is admission order against the merges that
 		// carry rows (`withTimeOrder`'s tail block). `message_start` clears
-		// `local` alone; the owner's stamped row ends the hold.
+		// `local` alone; the owner's stamped row ends the hold — and a page
+		// window strictly beyond the pane releases its ranking early
+		// (`releasedEchoes`), keeping `local` for delivery's sake.
 		provisional: true,
 	});
 }

@@ -1993,3 +1993,33 @@ test("the media reader keeps every older shape: the string detail, the message-o
 	if (machine.result.kind !== "error") return;
 	assert.equal(machine.result.code, DESKTOP_REFUSAL_CODE.noCredential);
 });
+
+test("browser source stream negotiation matches IPC, legacy/off omission stays exact", async () => {
+	const transport = await loadTransport(async () => ({}));
+	const prior = globalThis.EventSource;
+	const urls = [];
+	globalThis.EventSource = class {
+		constructor(url) {
+			urls.push(new URL(url, "http://fixture"));
+		}
+		close() {}
+	};
+	globalThis.window = {};
+	try {
+		for (const extra of [
+			{},
+			{ journalOrder: false, orderIds: ["a"] },
+			{ journalOrder: true, orderIds: ["a", "b"] },
+		])
+			transport.subscribeDesktopStream(
+				{ sessionId: "aaaaaaaaaaaa", ...extra },
+				() => {},
+			)();
+		assert.equal(urls[0].searchParams.has("journal_order"), false);
+		assert.equal(urls[1].searchParams.has("order_ids"), false);
+		assert.equal(urls[2].searchParams.get("journal_order"), "1");
+		assert.deepEqual(urls[2].searchParams.getAll("order_ids"), ["a", "b"]);
+	} finally {
+		globalThis.EventSource = prior;
+	}
+});
