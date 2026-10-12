@@ -287,6 +287,10 @@ function SessionPanel({
 			 * answer is there.
 			 */
 			openFrame: desktopFeatureEnabled(panelCapabilities.data, "open_frame"),
+			journalOrder: desktopFeatureEnabled(
+				panelCapabilities.data,
+				"journal_order",
+			),
 		},
 	);
 	useDesktopWatchLease(streamId, canonical.subscriptionId);

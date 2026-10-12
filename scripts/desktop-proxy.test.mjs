@@ -60,9 +60,10 @@ const servers = [];
 after(async () => {
 	for (const server of servers) await close(server);
 	if (PREVIOUS_BACKEND_URL === undefined)
-		delete process.env.LOCAL_OPERATOR_DESKTOP_BACKEND_URL;
+		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_DESKTOP_BACKEND_URL");
 	else process.env.LOCAL_OPERATOR_DESKTOP_BACKEND_URL = PREVIOUS_BACKEND_URL;
-	if (PREVIOUS_TOKEN === undefined) delete process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
+	if (PREVIOUS_TOKEN === undefined)
+		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_DESKTOP_TOKEN");
 	else process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = PREVIOUS_TOKEN;
 });
 
@@ -87,8 +88,8 @@ async function proxy(backendUrl) {
 		 * empty, and a fix that awaited the promise instead of guarding the
 		 * headers would leave this array empty for the wrong reason.
 		 */
-		Promise.resolve(middleware[0](req, res, () => notFound(res))).catch((error) =>
-			rejections.push(error),
+		Promise.resolve(middleware[0](req, res, () => notFound(res))).catch(
+			(error) => rejections.push(error),
 		);
 	});
 	servers.push(server);
@@ -206,7 +207,7 @@ test("a stream that dies after the headers are written closes the socket instead
 
 	// The proxy is still serving: the finding's symptom was the whole process
 	// exiting, so a later request is the part a reader cares about.
-	const probe = await read(port, `/__desktop/stream?session=nope`);
+	const probe = await read(port, "/__desktop/stream?session=nope");
 	assert.equal(probe.status, 422);
 	assert.match(probe.body, /Invalid stream session\./);
 	assert.deepEqual(rejections, []);
@@ -245,5 +246,43 @@ test("an upstream nobody is listening on still reaches the reader as the shared 
 	assert.deepEqual(JSON.parse(answer.body), {
 		detail: DESKTOP_STREAM_DETAIL.serverDown,
 	});
+	assert.deepEqual(rejections, []);
+});
+
+test("source stream proxy preserves old/off/on shapes and rejects unbounded cached IDs", async () => {
+	const forwarded = [];
+	const stub = await upstream((req, res) => {
+		forwarded.push(new URL(req.url, "http://fixture"));
+		assert.equal(req.headers.authorization, `Bearer ${TOKEN}`);
+		res.writeHead(200, { "content-type": "text/event-stream" });
+		res.end('data: {"type":"journal_order_ready"}\n\n');
+	});
+	const { port, rejections } = await proxy(stub.url);
+	for (const suffix of [
+		"",
+		"&journal_order=0&order_ids=a",
+		"&journal_order=1&order_ids=a&order_ids=b",
+	])
+		assert.equal(
+			(await read(port, `/__desktop/stream?session=${SESSION}${suffix}`))
+				.status,
+			200,
+		);
+	assert.equal(forwarded[0].searchParams.has("journal_order"), false);
+	assert.equal(forwarded[1].searchParams.has("order_ids"), false);
+	assert.equal(forwarded[2].searchParams.get("journal_order"), "1");
+	assert.deepEqual(forwarded[2].searchParams.getAll("order_ids"), ["a", "b"]);
+	for (const suffix of [
+		"&journal_order=2",
+		"&journal_order=1&order_ids=",
+		`&journal_order=1&order_ids=${"a".repeat(129)}`,
+		`&journal_order=1${"&order_ids=a".repeat(513)}`,
+	])
+		assert.equal(
+			(await read(port, `/__desktop/stream?session=${SESSION}${suffix}`))
+				.status,
+			422,
+		);
+	assert.equal(forwarded.length, 3);
 	assert.deepEqual(rejections, []);
 });

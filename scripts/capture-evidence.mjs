@@ -136,6 +136,12 @@ const KEY_CODES = {
 	 */
 	ArrowDown: { code: "ArrowDown", keyCode: 40 },
 	/*
+	 * The viewer's walk takes BOTH arrows — the in-group carousel added
+	 * `ArrowLeft` beside `ArrowRight` above — and the set's left-wrapping frame
+	 * is a real left press rather than a mirror of the right one.
+	 */
+	ArrowLeft: { code: "ArrowLeft", keyCode: 37 },
+	/*
 	 * `ArrowRight` opens a Radix submenu (`DropdownMenuSub`), which is the only
 	 * gesture that does: a SubTrigger opens on pointermove or on this key, and NOT
 	 * on a click, so an entry that needs the submenu's own content on screen has
@@ -160,6 +166,31 @@ const IMAGE_EXPAND_PICTURE = 'button[title^="Click to expand"]';
  */
 const IMAGE_EXPAND_FILE_ACTIONS = 'button[aria-label^="Actions for"]';
 const IMAGE_ACTIONS_TRIGGER = 'button[aria-label^="Actions for"]';
+/*
+ * The image viewer's own controls (`image-viewer-controls`), named by their
+ * shipped accessible names — the same strings the jsdom suite asserts. The
+ * picture itself is `IMAGE_EXPAND_PICTURE` above: one production button, one
+ * selector, and the new set presses the same control the old one does.
+ */
+const VIEWER_FRAME = "[data-image-viewport]";
+const VIEWER_FILMSTRIP = "[data-image-filmstrip]";
+const VIEWER_ZOOM_IN = 'button[aria-label="Zoom in"]';
+const VIEWER_RESET = 'button[aria-label="Reset view"]';
+const VIEWER_NEXT = 'button[aria-label="Next image"]';
+const VIEWER_CLOSE = 'button[aria-label="Close image"]';
+const VIEWER_TILE_ONE = '[data-fold-media] button[aria-label="Expand Image 1"]';
+const VIEWER_TILE_TWO = '[data-fold-media] button[aria-label="Expand Image 2"]';
+const VIEWER_CONTROLS = "[data-image-viewer-controls]";
+/*
+ * The carousel's SECOND picture, by a signature of its own bytes: the group
+ * fixture is a 400x1200 portrait whose base64 opens with this 40-character
+ * sequence (checked unique across the story's fixtures), so `carousel-open`
+ * can claim at shutter time that the viewer holds THAT picture — the frame,
+ * not just the tuple, proves "opened ON the pressed tile" (agent review round
+ * 1, R1-5: with the first tile pressed, "pressed" and "first" were the same
+ * cell and the frame could not discriminate).
+ */
+const PORTRAIT_SRC_SIGNATURE = "iVBORw0KGgoAAAANSUhEUgAAAZAAAASw";
 const THEME_FILTER = flag("themes")?.split(",").filter(Boolean) ?? null;
 const PARTIAL = Boolean(ONLY || THEME_FILTER || DIR_FILTER);
 
@@ -9307,6 +9338,32 @@ export const STORIES = [
 	["chat-stale-seed-order--after-arrival", 1280, 800],
 	["chat-stale-seed-order--before-seam", 1280, 800],
 	["chat-stale-seed-order--after-seam", 1280, 800],
+	/* The END of the pane when a send ages out of the reader's window — the
+	   operator's report: the "push it to my private github" exchange (19:00)
+	   stuck at the trailing edge of a conversation, under content more than 40
+	   minutes newer, on every re-open. Both orders are built by the SHIPPED
+	   reducer from the real session's own payloads
+	   (`scripts/fixtures/stranded-send-order.json`): `Before` spells out the
+	   pre-fix tail block's ranking (the send and its exchange pinned after
+	   every placed row, which is literally what `withTimeOrder` did before
+	   `releasedEchoes` existed) and `After` is the discharge. ONE TREE's
+	   frames, not a base/head pair, and no seal (the seal only drops rows the
+	   reader can re-read; it cannot change the rank, and the reducer test
+	   covers it with the seal in place so both orders here carry every row).
+
+	   `Tail` is the reader's arrival at the conversation's end; `Slot` narrows
+	   the windows to the exchange's own neighbourhood so the rank is visible
+	   in one pane — the seam idiom. All four floor the viewport at 800: the
+	   story pins the transcript pane to the reader's own 685px and the harness
+	   floors its viewport at the document height, so the committed frames are
+	   the pane plus the caption. The disorder is born of the send and lives in
+	   the in-memory transcript state, so a fresh app open of a copied session
+	   cannot show it — the pair over this fixture through the production
+	   component IS the faithful capture, and the set's README says so. */
+	["chat-stranded-hold-order--before-tail", 1280, 800],
+	["chat-stranded-hold-order--after-tail", 1280, 800],
+	["chat-stranded-hold-order--before-slot", 1280, 800],
+	["chat-stranded-hold-order--after-slot", 1280, 800],
 	/* The phantom compose rows: the four rows the operator photographed stuck at
 	   the bottom of a conversation waiting on subagents — `hub composing 2.0 KB`
 	   and three `wait composing` rows, all of them calls the harness NEVER RAN.
@@ -11931,6 +11988,158 @@ export const STORIES = [
 		560,
 		400,
 		{ dir: "folded-condensed-narrow" },
+	],
+	/*
+	 * THE IMAGE VIEWER'S CONTROLS AND CAROUSEL
+	 * (`image-viewer-controls.stories.tsx`), the operator's asks of 2026-10-11:
+	 * zoomed-state controls on the lightbox, and an in-group left/right walk with
+	 * a filmstrip. This set pairs with `image-viewer-controls-before` — the same
+	 * states rendered by a base-tree build, where the overlay has no controls and
+	 * the carousel does not exist — so every claim here has a reading of the tree
+	 * it replaces, and the pair is what the frames mean.
+	 *
+	 * Every frame is a real gesture through the input pipeline. `fit` presses the
+	 * picture; `zoomed` presses the picture and Zoom in; `zoomed-panned` then
+	 * DRAGS the zoomed picture to the close button's corner and HOLDS it there —
+	 * the pan is clamped at the picture's own edge, a held-and-clamped gesture
+	 * rather than a mid-drag accident (the rig's `drag` sends no release; the
+	 * README says "press-drag", not "press-drag-release" — agent review round 1,
+	 * R1-4); `reset` presses Zoom in and then Reset view; `resting` presses the
+	 * picture and then STAYS OFF IT for longer than `SCROLLBAR_HOLD_MS`, so the
+	 * shutter photographs the dimmed cluster and the tuple claims it by class
+	 * (design round 1, D1-2: the floor was unreachable while focus parked in the
+	 * cluster at open; now the layer anchors focus and the frame is that state).
+	 *
+	 * The carousel frames all open by pressing the strip's MIDDLE tile, so
+	 * "opens ON the pressed picture" is readable in the frame itself, and each
+	 * walk ends somewhere the other frames cannot reach (R1-5): `carousel-open`
+	 * shows picture 2 of 4 and claims that picture's own src signature;
+	 * `carousel-next` steps forward ONTO the receipt (which photographs the
+	 * receipt slot's current ring, UX round 1's U1-1); `carousel-leftwrap`
+	 * presses a real ArrowLeft from the first tile — which WRAPS to the fourth
+	 * picture. `wide-open`/`wide-walk` are the ten-tile group: the walk to the
+	 * far end must SCROLL the current into view (design round 1, D1-5). The
+	 * expect claims are read at shutter time: a zoom frame whose picture carries
+	 * no `scale(` in its style, a carousel frame with no strip, or a resting
+	 * frame whose cluster is not dimmed, fails the run rather than photographing
+	 * a resting state under the name of a pressed one.
+	 */
+	[
+		"image-viewer-controls--viewer",
+		1280,
+		900,
+		{
+			dir: "fit",
+			press: IMAGE_EXPAND_PICTURE,
+			expectGone: `${VIEWER_FRAME} img[style*="scale("]`,
+		},
+	],
+	[
+		"image-viewer-controls--viewer",
+		1280,
+		900,
+		{
+			dir: "resting",
+			press: IMAGE_EXPAND_PICTURE,
+			pressSettleMs: 2600,
+			expectAttribute: {
+				selector: VIEWER_CONTROLS,
+				name: "class",
+				includes: "opacity-45",
+			},
+		},
+	],
+	[
+		"image-viewer-controls--viewer",
+		1280,
+		900,
+		{
+			dir: "zoomed",
+			press: [IMAGE_EXPAND_PICTURE, VIEWER_ZOOM_IN],
+			expectPresent: `${VIEWER_FRAME} img[style*="scale(2)"]`,
+		},
+	],
+	[
+		"image-viewer-controls--viewer",
+		1280,
+		900,
+		{
+			dir: "zoomed-panned",
+			press: [IMAGE_EXPAND_PICTURE, VIEWER_ZOOM_IN],
+			drag: {
+				from: `${VIEWER_FRAME} img`,
+				to: VIEWER_CLOSE,
+				settleMs: 200,
+			},
+			expectPresent: `${VIEWER_FRAME} img[style*="scale(2)"]`,
+		},
+	],
+	[
+		"image-viewer-controls--viewer",
+		1280,
+		900,
+		{
+			dir: "reset",
+			press: [IMAGE_EXPAND_PICTURE, VIEWER_ZOOM_IN, VIEWER_RESET],
+			expectGone: `${VIEWER_FRAME} img[style*="scale("]`,
+		},
+	],
+	[
+		"image-viewer-controls--group",
+		1280,
+		900,
+		{
+			dir: "carousel-open",
+			press: VIEWER_TILE_TWO,
+			expectPresent: VIEWER_FILMSTRIP,
+			expectAttribute: {
+				selector: `${VIEWER_FRAME} img`,
+				name: "src",
+				includes: PORTRAIT_SRC_SIGNATURE,
+			},
+		},
+	],
+	[
+		"image-viewer-controls--group",
+		1280,
+		900,
+		{
+			dir: "carousel-next",
+			press: [VIEWER_TILE_TWO, VIEWER_NEXT],
+			expectPresent: VIEWER_FILMSTRIP,
+		},
+	],
+	[
+		"image-viewer-controls--group",
+		1280,
+		900,
+		{
+			dir: "carousel-leftwrap",
+			press: VIEWER_TILE_ONE,
+			keys: [{ key: "ArrowLeft", settleMs: 300 }],
+			expectPresent: VIEWER_FILMSTRIP,
+		},
+	],
+	[
+		"image-viewer-controls--group-wide",
+		1280,
+		900,
+		{
+			dir: "wide-open",
+			press: VIEWER_TILE_ONE,
+			expectPresent: VIEWER_FILMSTRIP,
+		},
+	],
+	[
+		"image-viewer-controls--group-wide",
+		1280,
+		900,
+		{
+			dir: "wide-walk",
+			press: VIEWER_TILE_ONE,
+			keys: [...Array(9)].map(() => ({ key: "ArrowRight", settleMs: 120 })),
+			expectPresent: VIEWER_FILMSTRIP,
+		},
 	],
 ];
 

@@ -845,12 +845,13 @@ test(
 		const log = join(dir, "ShipIt_stderr.log");
 		const record = join(dir, "installer.json");
 		const installer = join(dir, "ShipIt");
+		const ready = join(dir, "installer-ready");
 		writeFileSync(
 			installer,
-			// The stand-in installer: its pid and argv are recorded, and its two
-			// streams are written where the spawner redirected them - which is the
-			// half of this test that says both went to Squirrel's own log.
-			`#!/bin/sh\nprintf '%s\\n' "$$" "$@" >> "${record}"\necho "installer stdout"\necho "installer stderr" >&2\n`,
+			// Creation is deliberately separate from completion: even printf can
+			// expose an empty file before writing, and logs follow the record.
+			// A signal releases the synthetic Node fixture, never a real installer.
+			`#!${process.execPath}\nconst fs = require("node:fs");\nprocess.once("SIGUSR1", () => {\n fs.writeFileSync(${JSON.stringify(record)}, [process.pid, ...process.argv.slice(2)].join("\\n") + "\\n");\n console.log("installer stdout");\n console.error("installer stderr");\n clearInterval(hold);\n});\nconst hold = setInterval(() => {}, 1000);\nfs.writeFileSync(${JSON.stringify(record)}, "");\nfs.writeFileSync(${JSON.stringify(ready)}, "ready");\n`,
 			"utf8",
 		);
 		execFileSync("/bin/chmod", ["+x", installer]);
@@ -869,7 +870,12 @@ test(
 			stdio: "ignore",
 			env: { ...process.env, ...plan.env },
 		});
+		// Register before releasing the fixture so a fast exit cannot be missed.
+		const completed = new Promise((resolve) => {
+			child.once("close", (code, signal) => resolve({ code, signal }));
+		});
 		child.unref();
+		let completionTimer;
 		try {
 			// The waiting process is ours, by the machine's own answer.
 			await new Promise((resolve) => setTimeout(resolve, 400));
@@ -893,10 +899,24 @@ test(
 
 			app.kill();
 			const deadline = Date.now() + 10_000;
-			while (!existsSync(record) && Date.now() < deadline) {
+			while (!existsSync(ready) && Date.now() < deadline) {
 				await new Promise((resolve) => setTimeout(resolve, 50));
 			}
-			assert.equal(existsSync(record), true, "the installer never ran");
+			assert.equal(existsSync(ready), true, "the installer never ran");
+			assert.equal(readFileSync(record, "utf8"), "");
+			// Release on the next microtask: reading at the old existence boundary
+			// deterministically sees the partial record, independent of CPU timing.
+			queueMicrotask(() => process.kill(child.pid, "SIGUSR1"));
+			const result = await Promise.race([
+				completed,
+				new Promise((_, reject) => {
+					completionTimer = setTimeout(
+						() => reject(new Error("the installer fixture never completed")),
+						Math.max(0, deadline - Date.now()),
+					);
+				}),
+			]);
+			assert.deepEqual(result, { code: 0, signal: null });
 			const lines = readFileSync(record, "utf8").trim().split("\n");
 			// The pid that installed is the pid the app was told about: that is what
 			// `exec` bought.
@@ -920,6 +940,7 @@ test(
 				/local-operator-update-installer: the app exited on its own \(\d+s in\)/,
 			);
 		} finally {
+			clearTimeout(completionTimer);
 			await reap(child.pid);
 			await reap(app.pid);
 		}
