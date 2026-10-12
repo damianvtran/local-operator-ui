@@ -4,6 +4,12 @@ import type {
 	DesktopUsagePeriod,
 } from "../../../../../../shared/desktop-contract";
 import {
+	PRICE_UNKNOWN_TEXT,
+	channelPlanClause,
+	channelSummaryLine,
+	channelsReading,
+} from "../../session-status/session-cost";
+import {
 	UNKNOWN,
 	formatClock,
 	formatCount,
@@ -676,3 +682,113 @@ export function sessionDepth(
 
 /** The percentage label beside a bar. */
 export const percentageOf = formatPercent;
+
+/* ---- the published channel spend (the cost-channels project) ------------- */
+
+/**
+ * One row of the By-channel table, spelled with THIS panel's formatters.
+ *
+ * The names and the basis words come from `session-cost.ts`'s ONE vocabulary
+ * (`channelRowName`, `channelBasisWords` — the same words the composer strip's
+ * tooltip uses, so the two surfaces cannot describe one row differently); the
+ * MONEY goes through this panel's ladder (`formatMicroUsd`), which is
+ * deliberately not unified with the strip's — the design defers the ladder
+ * merge, and a channel figure spelled here any other way would be a third
+ * spelling of one number.
+ */
+export type ChannelTableRow = {
+	/** Stable table key: the index disambiguates rows that share a name. */
+	key: string;
+	/** `Inference · anthropic/claude-sonnet-5-5`, or the bare channel word. */
+	name: string;
+	/**
+	 * `$0.053` / `$0.053+` / `price unknown` — never a fabricated `$0.0000`.
+	 * The words are `PRICE_UNKNOWN_TEXT`, the strip's own answer for the same
+	 * record, so one row cannot be described two ways across the surfaces.
+	 */
+	spend: string;
+	/**
+	 * `API-equivalent` / `Estimated` / `Billed` — capitalised in the shared
+	 * vocabulary — or `—` when the record has no basis to state (this panel's
+	 * convention for "nothing", which the strip's grid states by omitting the
+	 * line).
+	 */
+	basis: string;
+};
+
+export type ChannelsView = {
+	/** False = the session predates the channel ledger; the section says so. */
+	tracked: boolean;
+	/** The grand total through this panel's ladder, or `—` when unstateable. */
+	total: string;
+	rows: ChannelTableRow[];
+	/**
+	 * Non-object rows the wire sent, dropped by the shared reading. The table
+	 * says "could not be read" rather than "no rows" for this case — a dropped
+	 * row must not leave an empty table under a nonzero total (QA round 2, Q6).
+	 */
+	rowsDropped: number;
+	/**
+	 * The plan-funded gloss (`Includes $0.053 API-equivalent (covered by a
+	 * plan, not charged).`), or null — keeps plan dollars from reading as cash.
+	 */
+	planClause: string | null;
+	/** `Billed $0.053 · API-equivalent … · N records without a price`, or null. */
+	basisLine: string | null;
+};
+
+/**
+ * The published `spend_channels` object as the section's view, or `null` when
+ * it is not one this build may render (a future wire version included — the
+ * caller then renders exactly today's panel).
+ *
+ * Everything structural comes from `channelsReading` and the shared builders
+ * (`channelSummaryLine`, `channelPlanClause`), so the composition, the words
+ * and the row names cannot drift from the strip's; only the MONEY differs,
+ * through this panel's ladder — and a null ROW is refused there rather than
+ * crashing the table here (`rows: [null]` used to throw in this function while
+ * `session-cost` filtered it; review round 1, MINOR-2).
+ *
+ * `total` is the object's published grand total, never a re-sum of the rows:
+ * the backend's `combine()` is the one arithmetic site (the contract's own
+ * load-bearing rule) and `children` is already inside it.
+ */
+export function channelsView(value: unknown): ChannelsView | null {
+	const reading = channelsReading(value);
+	if (!reading) return null;
+	/*
+	 * `unknown` is "nothing stateable" and a zero with partial/floor knowledge
+	 * is "money exists that could not be sized": both render this panel's
+	 * unknown mark rather than a figure. An EXACT zero is a stated zero and
+	 * keeps a number — the panel idiom for a real zero (the Cost stat card
+	 * prints `$0.00` for one), and since round 1's Q1 the strip prints
+	 * `$0.0000` for the same object rather than disagreeing with this.
+	 */
+	const unstated =
+		reading.knowledge === "unknown" ||
+		(reading.totalMicro === 0 && reading.knowledge !== "exact");
+	const total = unstated
+		? UNKNOWN
+		: formatMicroUsd(
+				reading.totalMicro,
+				1,
+				reading.knowledge === "exact" ? 1 : 2,
+			);
+	const money = (micro: number) => formatMicroUsd(micro, 1, 1);
+	return {
+		tracked: reading.tracked,
+		total,
+		rows: reading.rows.map((row, index) => ({
+			key: `${index}:${row.name}`,
+			name: row.name,
+			spend:
+				row.amountMicro === null
+					? PRICE_UNKNOWN_TEXT
+					: formatMicroUsd(row.amountMicro, 1, row.floor ? 2 : 1),
+			basis: row.basis || UNKNOWN,
+		})),
+		rowsDropped: reading.rowsDropped,
+		planClause: channelPlanClause(reading, money),
+		basisLine: channelSummaryLine(reading, money, (text) => `${text}+`),
+	};
+}

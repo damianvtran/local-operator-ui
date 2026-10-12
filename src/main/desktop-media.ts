@@ -18,6 +18,7 @@ import {
 	DESKTOP_REFUSAL_CODE,
 	type DesktopRefusalCode,
 	desktopRefusalCodeForStatus,
+	isDesktopRefusalCode,
 } from "../shared/desktop-contract";
 
 const id = z
@@ -95,6 +96,19 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			digest: z.string().regex(/^[a-f0-9]{32}$/),
 		})
 		.strict(),
+	// One supplement component's assembled HTML document (turn-supplements
+	// memo §2.7), as `{ html }` JSON. Both identifiers are shape-constrained
+	// here for the same reason the attachment ops' are: the path is built in
+	// main, and an unvalidated digest would be renderer-controlled path text.
+	// The digest regex is the contract's own (`DIGEST_PATTERN`,
+	// `local_operator/supplements/contract.py`): 32 lowercase hex characters.
+	z
+		.object({
+			op: z.literal("sessions.supplementDocument"),
+			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
+			digest: z.string().regex(/^[a-f0-9]{32}$/),
+		})
+		.strict(),
 ]);
 
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
@@ -140,6 +154,11 @@ function endpoint(request: DesktopMediaRequest): {
 		case "subagents.attachment":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/children/${request.childId}/attachments/${request.digest}`,
+				method: "GET",
+			};
+		case "sessions.supplementDocument":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/supplements/${request.digest}/document`,
 				method: "GET",
 			};
 	}
@@ -211,7 +230,8 @@ export async function requestDesktopMediaOutcome(
 	if (
 		request.op === "agent.export" ||
 		request.op === "sessions.attachment" ||
-		request.op === "subagents.attachment"
+		request.op === "subagents.attachment" ||
+		request.op === "sessions.supplementDocument"
 	) {
 		// A GET carries no body; `fetch` rejects one outright.
 		body = undefined;
@@ -261,14 +281,41 @@ export async function requestDesktopMediaOutcome(
 			// Error bodies from the backend already suppress reflected secrets;
 			// still, only a short detail string is forwarded.
 			let detail = "The media request failed.";
+			let declaredCode: string | undefined;
 			if (responseType.includes("application/json")) {
 				try {
 					const parsedError = (await response.json()) as {
 						detail?: unknown;
 						message?: unknown;
 					};
-					const text = parsedError.detail ?? parsedError.message;
-					if (typeof text === "string") detail = text.slice(0, 512);
+					const raw = parsedError.detail ?? parsedError.message;
+					if (typeof raw === "string") {
+						detail = raw.slice(0, 512);
+					} else if (typeof raw === "object" && raw !== null) {
+						/*
+						 * The core's i18n envelope `{code, params, text}` (RFC §2.6): the
+						 * sentence is `text` (the newer contract, read before the older
+						 * object shape's `message`) and the DECLARED code is carried so the
+						 * renderer's media reader can treat it like any other declared
+						 * code - the precedence `desktopResult` documents.
+						 */
+						const envelope = raw as {
+							code?: unknown;
+							text?: unknown;
+							message?: unknown;
+						};
+						const sentence =
+							typeof envelope.text === "string" && envelope.text.trim()
+								? envelope.text
+								: typeof envelope.message === "string" &&
+										envelope.message.trim()
+									? envelope.message
+									: null;
+						if (sentence !== null) detail = sentence.slice(0, 512);
+						if (typeof envelope.code === "string") {
+							declaredCode = envelope.code;
+						}
+					}
 				} catch {
 					// Keep the generic detail.
 				}
@@ -278,10 +325,14 @@ export async function requestDesktopMediaOutcome(
 					status: response.status,
 					kind: "error",
 					detail,
-					// Only a path the plane has to ADMIT makes the status a pairing fact:
+					// A code the refusal DECLARED wins (its own category); otherwise only a
+					// path the plane has to ADMIT makes the status a pairing fact:
 					// `speech.create` and `agent.export` are outside `/v1/desktop/`, where a
 					// 503 is that route's own failure and not this app's pairing.
-					code: desktopRefusalCodeForStatus(target.path, response.status),
+					code:
+						declaredCode !== undefined && isDesktopRefusalCode(declaredCode)
+							? declaredCode
+							: desktopRefusalCodeForStatus(target.path, response.status),
 				},
 				answered: true,
 			};

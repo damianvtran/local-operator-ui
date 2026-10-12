@@ -5,6 +5,7 @@ import { cn } from "@shared/lib/utils";
 import { type FC, memo, useCallback, useMemo, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { CodeEditor } from "./code-editor";
+import { useSignedStaticUrl } from "./use-signed-static-url";
 
 /**
  * THE PREVIEW'S SANDBOX, AND WHY IT IS THIS ONE (security lane U-a; memo §4.1,
@@ -119,7 +120,11 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({
 		setIsEditMode((prev) => !prev);
 	}, []);
 
-	const htmlUrl = useMemo(
+	/*
+	 * The URL this viewer used while the route was the only source, kept byte
+	 * for byte as the signed-URL fallback.
+	 */
+	const plainUrl = useMemo(
 		() => getHtmlUrl(apiConfig.baseUrl, document.path),
 		[document.path],
 	);
@@ -135,6 +140,26 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({
 	 * freshness line moved while the pane kept showing the old document.
 	 */
 	const version = `${document.readMtimeMs ?? 0}:${document.lastAgentModified ?? 0}`;
+
+	/*
+	 * SIGNED URL (file-serving RFC § 4 Phase A): the static routes stay
+	 * credential-free in this phase, and this is what keeps the preview working
+	 * when a later core phase gates them - an `<iframe src>` GET cannot carry a
+	 * token, so the URL itself must. Every failure (old core, refused
+	 * credential, dead transport) falls back to `plainUrl`.
+	 *
+	 * The TTL is the core's default (600 s, by omitting `ttlS`): the frame loads
+	 * once per version, so the window only has to outlive that load, and a
+	 * longer life would only lengthen how long a leaked URL replays - the
+	 * shorter default is the right way round for a document that executes.
+	 */
+	const htmlUrl = useSignedStaticUrl({
+		baseUrl: apiConfig.baseUrl,
+		route: "html",
+		path: document.path,
+		version,
+		plainUrl,
+	});
 
 	return (
 		<div className={cn("flex h-full w-full flex-col")}>
@@ -157,7 +182,7 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({
 				<div className={cn("h-full", isEditMode ? null : "hidden")}>
 					<CodeEditor document={document} conversationId={conversationId} />
 				</div>
-				{isEditMode ? null : (
+				{isEditMode || htmlUrl === null ? null : (
 					<iframe
 						key={version}
 						src={htmlUrl}

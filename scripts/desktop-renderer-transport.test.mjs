@@ -242,6 +242,72 @@ test("a refusal whose sentence arrives as a string detail is not dropped", async
 	);
 });
 
+// All THREE shapes a refusal `detail` has crossed this wire in, pinned together:
+// a bare string, an object with `message`, and the core's i18n envelope
+// `{code, params, text}` (RFC §2.6) - whose `text` is exactly the sentence
+// string-only readers display. The settings surface answers with the envelope
+// from newer servers, so a `desktopResult` that read only the first two shapes
+// put the placeholder ("This server did not answer the request for its desktop
+// controls.") over the server's own sentence on every settings load, save and
+// reset - the rows this pin exists for.
+test("all three refusal detail shapes reach the error sentence", async () => {
+	const cases = [
+		{
+			shape: "a string detail",
+			body: { detail: "This answer belongs to an earlier session owner" },
+			sentence: "This answer belongs to an earlier session owner",
+			code: undefined,
+		},
+		{
+			shape: "an object with `message`",
+			body: {
+				detail: {
+					code: "unresolved_attachment",
+					message: "Choose an available profile or detach it before sending.",
+				},
+			},
+			sentence: "Choose an available profile or detach it before sending.",
+			code: "unresolved_attachment",
+		},
+		{
+			shape: "the i18n envelope's `text`",
+			body: {
+				detail: {
+					code: "wire.errors.settings.config_unreadable",
+					params: {},
+					text: "The configuration file cannot be read. Repair it before saving.",
+				},
+			},
+			sentence:
+				"The configuration file cannot be read. Repair it before saving.",
+			code: "wire.errors.settings.config_unreadable",
+		},
+	];
+	for (const { shape, body, sentence, code } of cases) {
+		const { desktopResult, DesktopControlError } = await loadTransport(
+			async () => ({ status: 409, body }),
+		);
+		const failure = await desktopResult({ op: "settings.list" }).then(
+			() => null,
+			(error) => error,
+		);
+		assert.ok(
+			failure instanceof DesktopControlError,
+			`a 409 carrying ${shape} must reject as the transport's own error`,
+		);
+		assert.equal(
+			failure.message,
+			sentence,
+			`the sentence in ${shape} must reach the error rather than a status-derived fallback`,
+		);
+		assert.equal(
+			failure.code,
+			code,
+			`the code in ${shape} must arrive unchanged (or be absent when the body declares none)`,
+		);
+	}
+});
+
 // The image ladder is renderer code with no transport of its own, but it is the
 // reason a message fits: without it, an 8.5 MB Retina screenshot fails at any
 // budget this pipe can offer. It is bundled and driven here rather than mocked,
@@ -1803,4 +1869,127 @@ test("a code main declared wins, so the app's own refusal is not read as the pla
 		userFacingMessage(caught, "fallback"),
 		"Choose an available profile or detach it before sending.",
 	);
+});
+
+// ---------------------------------------------------------------------------
+// The media transport's refusal ladder: the sibling of the JSON transport's
+// `{code,params,text}` case above. The media reader answers a DIFFERENT shape
+// (a `DesktopMediaResponse` rather than a throw) and it reaches a backend
+// through the dev proxy's `fetch` when no native bridge answers, so its cases
+// stub `fetch` and read what the reader produces. The main-process half of the
+// same reading - the path a packaged app actually takes - is driven against a
+// real loopback in `desktop-contract.test.mjs`.
+
+const MEDIA_REQUEST = {
+	op: "sessions.attachment",
+	sessionId: "123456abcdef",
+	digest: "a".repeat(32),
+};
+
+async function mediaRefusal(body, status = 422) {
+	const { desktopMedia } = await loadTransport(() => new Promise(() => {}));
+	const original = globalThis.fetch;
+	const calls = [];
+	globalThis.fetch = async (url, init) => {
+		calls.push({ url, init });
+		return new Response(JSON.stringify(body), {
+			status,
+			headers: { "content-type": "application/json" },
+		});
+	};
+	try {
+		return { result: await desktopMedia(MEDIA_REQUEST, null), calls };
+	} finally {
+		globalThis.fetch = original;
+	}
+}
+
+test("a media refusal reads the {code,params,text} envelope: text as the sentence, declared code forwarded", async () => {
+	const { result, calls } = await mediaRefusal(
+		{
+			detail: {
+				code: DESKTOP_REFUSAL_CODE.planeClosed,
+				params: {},
+				text: "The daemon's media plane is shut.",
+			},
+		},
+		503,
+	);
+	assert.equal(calls.length, 1, "the media request is attempted exactly once");
+	assert.equal(result.kind, "error");
+	assert.equal(result.detail, "The daemon's media plane is shut.");
+	assert.equal(
+		result.code,
+		DESKTOP_REFUSAL_CODE.planeClosed,
+		"a code the refusal DECLARED wins over anything the status names",
+	);
+});
+
+test("an envelope's text reaches mediaError when its code is not this app's vocabulary", async () => {
+	const { desktopMedia, mediaError } = await loadTransport(
+		() => new Promise(() => {}),
+	);
+	const original = globalThis.fetch;
+	globalThis.fetch = async () =>
+		new Response(
+			JSON.stringify({
+				detail: {
+					code: "wire.errors.media_refused",
+					params: { provider: "openai" },
+					text: "The voice provider refused the request.",
+				},
+			}),
+			{ status: 422, headers: { "content-type": "application/json" } },
+		);
+	try {
+		const result = await desktopMedia(MEDIA_REQUEST, null);
+		assert.equal(result.kind, "error");
+		if (result.kind !== "error") return;
+		assert.equal(
+			result.code,
+			undefined,
+			"a server code outside the refusal vocabulary is not forwarded as one",
+		);
+		assert.equal(
+			mediaError(result).message,
+			"The voice provider refused the request.",
+			"the envelope's sentence is what a user reads, not the generic placeholder",
+		);
+	} finally {
+		globalThis.fetch = original;
+	}
+});
+
+test("the media reader keeps every older shape: the string detail, the message-only object, and the machine-sentence fallback", async () => {
+	// The oldest shape: one prose string.
+	const legacy = await mediaRefusal({ detail: "not your token" });
+	assert.equal(legacy.result.kind, "error");
+	if (legacy.result.kind !== "error") return;
+	assert.equal(legacy.result.detail, "not your token");
+	assert.equal(legacy.result.code, undefined);
+
+	// The older object shape: `message` without `text`.
+	const older = await mediaRefusal({
+		detail: { message: "An older object sentence." },
+	});
+	assert.equal(older.result.kind, "error");
+	if (older.result.kind !== "error") return;
+	assert.equal(older.result.detail, "An older object sentence.");
+
+	// A body carrying both is the newer contract: `text` wins.
+	const both = await mediaRefusal({
+		detail: { text: "Newer sentence.", message: "Older sentence." },
+	});
+	assert.equal(both.result.kind, "error");
+	if (both.result.kind !== "error") return;
+	assert.equal(both.result.detail, "Newer sentence.");
+
+	// The machine sentence still recognises itself when no code was declared:
+	// the dev proxy forwards a refusal body without one.
+	const machine = await mediaRefusal({
+		detail: { text: DESKTOP_MACHINE_DETAIL.noCredential },
+	});
+	assert.equal(machine.result.kind, "error");
+	if (machine.result.kind !== "error") return;
+	assert.equal(machine.result.code, DESKTOP_REFUSAL_CODE.noCredential);
 });

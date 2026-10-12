@@ -64,6 +64,11 @@ import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import {
+	CARD_WIDTH,
+	cardPlacement,
+	pressTargetTakesFocus,
+} from "./cancel-card-placement";
 import type { WakeCancelPopoverProps } from "./use-wake-cancel";
 import {
 	wakeConfirmActionLabel,
@@ -71,50 +76,12 @@ import {
 	wakeConfirmTitle,
 } from "./wake-controls-model";
 
-/** The card's own width; the panel primitive's own `w-72`. */
-const CARD_WIDTH = 288;
-/** Gap between the pressed control and the card. */
-const CARD_GAP = 6;
-/** The room a card needs below the control before it flips above it. */
-const CARD_MIN_ROOM = 168;
-
-/**
- * Where the card goes, in viewport coordinates, from the frozen rect.
- *
- * One calculation, at render time, for the reason the header states: the card
- * keeps the place the press gave it. Right-aligned to the control (the pane's
- * rows put their controls at the column's right edge) and clamped into the
- * viewport so a narrow window cannot push it off-screen.
+/*
+ * The card's geometry and press classification live in
+ * `cancel-card-placement.ts` — one home for both per-item cancels (the jobs'
+ * control opens the same card shape). This component decides placement and
+ * copy, nothing else.
  */
-/** The focusable taxonomy a press default can land on, by element. */
-const PRESS_FOCUS_SELECTOR =
-	"a[href], button, input, select, textarea, [contenteditable]:not([contenteditable='false']), [tabindex]";
-
-/**
- * Whether a press on this target would land the keyboard somewhere itself —
- * the standard taxonomy, walked up from the press point. It decides only who
- * cancels what (F15 below); a target that cannot take focus keeps Q6's cancel.
- */
-const pressTargetTakesFocus = (target: EventTarget | null): boolean =>
-	target instanceof Element && target.closest(PRESS_FOCUS_SELECTOR) !== null;
-
-const cardPlacement = (
-	anchor: { left: number; top: number; bottom: number; right: number },
-	viewport: { width: number; height: number },
-) => {
-	const left = Math.min(
-		Math.max(anchor.right - CARD_WIDTH, 8),
-		Math.max(viewport.width - CARD_WIDTH - 8, 8),
-	);
-	const below = anchor.bottom + CARD_GAP;
-	if (below + CARD_MIN_ROOM <= viewport.height)
-		return { left, top: below, bottom: undefined };
-	return {
-		left,
-		top: undefined,
-		bottom: Math.max(viewport.height - anchor.top + CARD_GAP, 8),
-	};
-};
 
 export const WakeCancelPopover = ({
 	open,
