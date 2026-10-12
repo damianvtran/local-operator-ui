@@ -4606,7 +4606,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				className={GAP[group.gap][isSmallView ? 1 : 0]}
 				recordIds={group.rows.map((row) => row.record.id)}
 				summary={group.summary}
-				actionCount={group.rows.length}
+				actionCount={group.actions.length}
 				span={group.span}
 				live={group.live}
 				/*

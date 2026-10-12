@@ -90,8 +90,16 @@ export function hubFields(details: Record<string, unknown>): HubReceipt {
 	const matched = HUB_ENVELOPE.exec(envelope);
 	let parsedBody = matched?.[2];
 	const separator = parsedBody?.indexOf("\n\n") ?? -1;
+	// A child can quote these exact instructions in its own body. Only the
+	// parent wrapper, with no contradictory structural direction, is provenance
+	// for historical intent; text resemblance alone must never request a reply.
+	const parentEnvelope =
+		matched?.[1] === "parent-message" &&
+		(details.direction === undefined ||
+			details.direction === "" ||
+			details.direction === "to_child");
 	const preamble =
-		separator >= 0
+		parentEnvelope && separator >= 0
 			? HUB_PREAMBLES.get((parsedBody ?? "").slice(0, separator))
 			: undefined;
 	if (matched?.[1] === "parent-message" && preamble)
@@ -125,13 +133,13 @@ export function hubFields(details: Record<string, unknown>): HubReceipt {
 		expectsReply:
 			typeof details.expects_reply === "boolean"
 				? details.expects_reply
-				: preamble
+				: details.expects_reply === undefined && preamble
 					? preamble === "ask"
 					: null,
 		steer:
 			typeof details.steer === "boolean"
 				? details.steer
-				: preamble
+				: details.steer === undefined && preamble
 					? preamble === "steer"
 					: null,
 	};
