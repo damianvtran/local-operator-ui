@@ -136,6 +136,12 @@ const KEY_CODES = {
 	 */
 	ArrowDown: { code: "ArrowDown", keyCode: 40 },
 	/*
+	 * The viewer's walk takes BOTH arrows — the in-group carousel added
+	 * `ArrowLeft` beside `ArrowRight` above — and the set's left-wrapping frame
+	 * is a real left press rather than a mirror of the right one.
+	 */
+	ArrowLeft: { code: "ArrowLeft", keyCode: 37 },
+	/*
 	 * `ArrowRight` opens a Radix submenu (`DropdownMenuSub`), which is the only
 	 * gesture that does: a SubTrigger opens on pointermove or on this key, and NOT
 	 * on a click, so an entry that needs the submenu's own content on screen has
@@ -160,6 +166,19 @@ const IMAGE_EXPAND_PICTURE = 'button[title^="Click to expand"]';
  */
 const IMAGE_EXPAND_FILE_ACTIONS = 'button[aria-label^="Actions for"]';
 const IMAGE_ACTIONS_TRIGGER = 'button[aria-label^="Actions for"]';
+/*
+ * The image viewer's own controls (`image-viewer-controls`), named by their
+ * shipped accessible names — the same strings the jsdom suite asserts. The
+ * picture itself is `IMAGE_EXPAND_PICTURE` above: one production button, one
+ * selector, and the new set presses the same control the old one does.
+ */
+const VIEWER_FRAME = "[data-image-viewport]";
+const VIEWER_FILMSTRIP = "[data-image-filmstrip]";
+const VIEWER_ZOOM_IN = 'button[aria-label="Zoom in"]';
+const VIEWER_RESET = 'button[aria-label="Reset view"]';
+const VIEWER_NEXT = 'button[aria-label="Next image"]';
+const VIEWER_CLOSE = 'button[aria-label="Close image"]';
+const VIEWER_TILE_ONE = '[data-fold-media] button[aria-label="Expand Image 1"]';
 const THEME_FILTER = flag("themes")?.split(",").filter(Boolean) ?? null;
 const PARTIAL = Boolean(ONLY || THEME_FILTER || DIR_FILTER);
 
@@ -11743,6 +11762,104 @@ export const STORIES = [
 		560,
 		400,
 		{ dir: "folded-condensed-narrow" },
+	],
+	/*
+	 * THE IMAGE VIEWER'S CONTROLS AND CAROUSEL
+	 * (`image-viewer-controls.stories.tsx`), the operator's asks of 2026-10-11:
+	 * zoomed-state controls on the lightbox, and an in-group left/right walk with
+	 * a filmstrip. This set pairs with `image-viewer-controls-before` — the same
+	 * states rendered by a base-tree build, where the overlay has no controls and
+	 * the carousel does not exist — so every claim here has a reading of the tree
+	 * it replaces, and the pair is what the frames mean.
+	 *
+	 * Every frame is a real gesture through the input pipeline. `fit` presses the
+	 * picture; `zoomed` presses the picture and Zoom in; `zoomed-panned` then
+	 * DRAGS the zoomed picture to the close button's corner, where the pan clamps
+	 * at the picture's own edge (a held-and-clamped gesture, not a mid-drag
+	 * accident); `reset` presses Zoom in and then Reset view. The carousel frames
+	 * press the strip's first tile and then walk: `carousel-next` by the Next
+	 * control, `carousel-leftwrap` by a real ArrowLeft — which WRAPS, so that
+	 * frame lands on the set's last picture and carries the wrap and the
+	 * missing-picture receipt in one reading. The expect claims are read at
+	 * shutter time: a zoom frame whose picture carries no `scale(` in its style,
+	 * or a carousel frame with no strip, fails the run rather than photographing
+	 * a resting state under the name of a pressed one.
+	 */
+	[
+		"image-viewer-controls--viewer",
+		1280,
+		900,
+		{
+			dir: "fit",
+			press: IMAGE_EXPAND_PICTURE,
+			expectGone: `${VIEWER_FRAME} img[style*="scale("]`,
+		},
+	],
+	[
+		"image-viewer-controls--viewer",
+		1280,
+		900,
+		{
+			dir: "zoomed",
+			press: [IMAGE_EXPAND_PICTURE, VIEWER_ZOOM_IN],
+			expectPresent: `${VIEWER_FRAME} img[style*="scale(2)"]`,
+		},
+	],
+	[
+		"image-viewer-controls--viewer",
+		1280,
+		900,
+		{
+			dir: "zoomed-panned",
+			press: [IMAGE_EXPAND_PICTURE, VIEWER_ZOOM_IN],
+			drag: {
+				from: `${VIEWER_FRAME} img`,
+				to: VIEWER_CLOSE,
+				settleMs: 200,
+			},
+			expectPresent: `${VIEWER_FRAME} img[style*="scale(2)"]`,
+		},
+	],
+	[
+		"image-viewer-controls--viewer",
+		1280,
+		900,
+		{
+			dir: "reset",
+			press: [IMAGE_EXPAND_PICTURE, VIEWER_ZOOM_IN, VIEWER_RESET],
+			expectGone: `${VIEWER_FRAME} img[style*="scale("]`,
+		},
+	],
+	[
+		"image-viewer-controls--group",
+		1280,
+		900,
+		{
+			dir: "carousel-open",
+			press: VIEWER_TILE_ONE,
+			expectPresent: VIEWER_FILMSTRIP,
+		},
+	],
+	[
+		"image-viewer-controls--group",
+		1280,
+		900,
+		{
+			dir: "carousel-next",
+			press: [VIEWER_TILE_ONE, VIEWER_NEXT],
+			expectPresent: VIEWER_FILMSTRIP,
+		},
+	],
+	[
+		"image-viewer-controls--group",
+		1280,
+		900,
+		{
+			dir: "carousel-leftwrap",
+			press: VIEWER_TILE_ONE,
+			keys: [{ key: "ArrowLeft", settleMs: 300 }],
+			expectPresent: VIEWER_FILMSTRIP,
+		},
 	],
 ];
 
