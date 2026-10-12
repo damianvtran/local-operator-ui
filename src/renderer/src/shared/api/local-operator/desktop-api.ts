@@ -709,6 +709,12 @@ export function subscribeDesktopStream(
 	 * a page counted in paintable rows will be understood.
 	 */
 	if (args.openFrame === true) query.set("open_frame", "1");
+	// Browser development must negotiate the same source facts as main's relay;
+	// otherwise a real cold quiet correction is silently filtered out here.
+	if (args.journalOrder === true) {
+		query.set("journal_order", "1");
+		for (const id of args.orderIds ?? []) query.append("order_ids", id);
+	}
 	const source = new EventSource(`/__desktop/stream?${query}`);
 	source.onmessage = (message) => {
 		onEvent({ kind: "data", data: message.data });

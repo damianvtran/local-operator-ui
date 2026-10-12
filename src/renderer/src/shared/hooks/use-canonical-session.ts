@@ -35,6 +35,7 @@ import {
 	currentOrderRevision,
 	journalLookupIds,
 } from "@features/chat/canonical/journal-order";
+import { repairJournalOrder } from "@features/chat/canonical/journal-order-repair";
 import {
 	entryRecordKey,
 	openFrameCoversHeld,
@@ -3160,15 +3161,6 @@ export function useCanonicalSessionStream(
 									),
 								}
 							: {}),
-						...(journalOrderRef.current
-							? {
-									journalOrder: true,
-									orderIds: journalLookupIds(viewRef.current.transcript).slice(
-										0,
-										512,
-									),
-								}
-							: {}),
 					});
 				} catch {
 					// A cleared view has nothing left to read for: without this the
@@ -5538,80 +5530,110 @@ export function useCanonicalSessionStream(
 	const olderLoader = useRef<ReturnType<typeof createOlderLoader> | null>(null);
 	if (olderLoader.current === null) olderLoader.current = createOlderLoader();
 	const orderRepairFlight = useRef(false);
+	const orderRepairStamp = useRef("");
+	const [orderRepairWake, setOrderRepairWake] = useState(0);
 	useEffect(() => {
+		const transcript = view.transcript;
+		const unresolved = journalLookupIds(transcript);
 		if (
 			!sessionId ||
 			!journalOrder ||
-			!view.transcript.orderNeedsReconcile ||
+			(!transcript.orderNeedsReconcile &&
+				(!transcript.journalGeneration || unresolved.length === 0)) ||
 			orderRepairFlight.current
 		)
 			return;
+		// A missing cached ID is not a token-driven polling subscription. Revisit
+		// only when the session/view/source or unresolved identities change.
+		const stamp = JSON.stringify([
+			orderRepairWake,
+			sessionId,
+			transcript.viewEpoch,
+			currentOrderRevision(transcript),
+			transcript.orderNeedsReconcile,
+			transcript.orderWantedGeneration,
+			unresolved,
+		]);
+		if (orderRepairStamp.current === stamp) return;
+		orderRepairStamp.current = stamp;
 		const requested = sessionId;
-		const epoch = viewRef.current.transcript.viewEpoch;
-		let wanted = view.transcript.orderWantedGeneration;
+		const epoch = transcript.viewEpoch;
 		orderRepairFlight.current = true;
-		const repair = async () => {
-			try {
-				for (;;) {
-					const revision = currentOrderRevision(viewRef.current.transcript);
-					const snapshot = await desktopResult<
-						Extract<DesktopSessionFrame, { type: "snapshot" }>
-					>({
-						op: "sessions.get",
-						sessionId: requested,
-						journalOrder: true,
-						orderIds: journalLookupIds(viewRef.current.transcript).slice(
-							0,
-							512,
+		let completed: TranscriptState | null = null;
+		void repairJournalOrder({
+			getTranscript: () => viewRef.current.transcript,
+			isCurrent: () =>
+				sessionRef.current === requested &&
+				viewRef.current.transcript.viewEpoch === epoch,
+			read: (orderIds) =>
+				desktopResult<Extract<DesktopSessionFrame, { type: "snapshot" }>>({
+					op: "sessions.get",
+					sessionId: requested,
+					journalOrder: true,
+					orderIds,
+				}),
+			page: (snapshot) => snapshot.payload.history,
+			commit: (snapshot, revision) => {
+				commitView((current) => {
+					if (
+						currentOrderRevision(current.transcript) !== revision ||
+						current.transcript.viewEpoch !== epoch
+					)
+						return current;
+					return {
+						...current,
+						transcript: applyHistoryPage(
+							current.transcript,
+							snapshot.payload.history,
+							{ authoritative: true },
 						),
-					});
-					if (
-						sessionRef.current !== requested ||
-						currentOrderRevision(viewRef.current.transcript) !== revision ||
-						viewRef.current.transcript.viewEpoch !== epoch
-					)
-						return;
-					commitView((current) => {
-						if (
-							currentOrderRevision(current.transcript) !== revision ||
-							current.transcript.viewEpoch !== epoch
-						)
-							return current;
-						return {
-							...current,
-							transcript: applyHistoryPage(
-								current.transcript,
-								snapshot.payload.history,
-								{ authoritative: true },
-							),
-							frontend: snapshot.payload.frontend.snapshot,
-							history: snapshot.payload.history,
-						};
-					});
-					const latest = viewRef.current.transcript;
-					// A ready notification can arrive while this read says building.
-					// Re-read only for that distinct domain, not on a timer/token.
-					if (
-						!latest.orderNeedsReconcile ||
-						latest.orderWantedGeneration === wanted
-					)
-						return;
-					wanted = latest.orderWantedGeneration;
-				}
-			} catch (error: unknown) {
+						frontend: snapshot.payload.frontend.snapshot,
+						history: snapshot.payload.history,
+					};
+				});
+			},
+		})
+			.then((outcome) => {
+				completed = outcome.kind === "complete" ? outcome.transcript : null;
+			})
+			.catch((error: unknown) => {
 				console.warn("[canonical] source-order reconcile refused", error);
-			} finally {
+			})
+			.finally(() => {
 				orderRepairFlight.current = false;
-			}
-		};
-		void repair();
-	}, [
-		commitView,
-		sessionId,
-		journalOrder,
-		view.transcript.orderNeedsReconcile,
-		view.transcript.orderWantedGeneration,
-	]);
+				// Source carriage can leave only unknown/missing cached IDs. Seal
+				// that final set too, so the next token cannot restart the sweep.
+				const latest = viewRef.current.transcript;
+				const seal = completed ?? transcript;
+				if (
+					completed &&
+					sessionRef.current === requested &&
+					latest.viewEpoch === epoch &&
+					!latest.orderNeedsReconcile
+				)
+					orderRepairStamp.current = JSON.stringify([
+						orderRepairWake,
+						requested,
+						seal.viewEpoch,
+						currentOrderRevision(seal),
+						seal.orderNeedsReconcile,
+						seal.orderWantedGeneration,
+						journalLookupIds(seal),
+					]);
+				if (
+					sessionRef.current !== requested ||
+					latest.viewEpoch !== epoch ||
+					currentOrderRevision(latest) !== currentOrderRevision(seal) ||
+					latest.orderWantedGeneration !== seal.orderWantedGeneration ||
+					JSON.stringify(journalLookupIds(latest)) !==
+						JSON.stringify(journalLookupIds(seal))
+				) {
+					// The effect for this new source may have run while the old
+					// flight held the latch. Wake it once; never seal untried IDs.
+					setOrderRepairWake((wake) => wake + 1);
+				}
+			});
+	}, [commitView, sessionId, journalOrder, view.transcript, orderRepairWake]);
 
 	const loadOlderDetailed = useCallback(async (): Promise<LoadOlderOutcome> => {
 		const loader = olderLoader.current;

@@ -20,9 +20,9 @@
  *   - `Before` spells out the pre-fix tail block's ranking — the send and the
  *     exchange it held, pinned after every placed row, which is literally what
  *     `withTimeOrder` did before `releasedEchoes` existed.
- *   - `After` is the shipped reducer's discharge: the page read that lies
- *     entirely beyond the pane releases the hold, and the exchange ranks by its
- *     own instants.
+ *   - `After` uses captured complete-journal row offsets under an explicit
+ *     synthetic replay domain. Quiet ID-only correction heals the echo and
+ *     streamed rows; clocks remain metadata, never ordering authority.
  *
  * THE SEAL IS DELIBERATELY NOT APPLIED HERE. `sealDisjointBlock` runs after the
  * walk in the app, and it only drops rows the reader can re-read — it cannot
@@ -74,6 +74,12 @@ import {
 	applyEvent,
 	applyHistoryPage,
 } from "./transcript-reducer";
+
+import {
+	CAPTURED_REPLAY_DOMAIN,
+	capturedJournalOrdinals,
+	capturedOrderPage,
+} from "./stranded-hold-order-source";
 
 type Entry = DesktopHistoryPage["entries"][number];
 
@@ -176,16 +182,22 @@ const foldExchange = (
  * The shipped reducer's state for one narrowed reading of the session: the held
  * page, the send (its echo), the streamed rows (the exchange, then whatever the
  * stream carried after it), then the entirely-newer reads. This IS the `After`
- * order — the discharge fires on the first read.
+ * order. The source-primary lane additionally receives quiet durable ID facts.
  */
-const afterFold = (windows: {
-	held: Entry[];
-	exchange: Entry[];
-	stream: Entry[];
-	newer: Entry[];
-	newer2: Entry[];
-}): TranscriptState => {
-	let state = applyHistoryPage(EMPTY_TRANSCRIPT, pageOf(windows.held));
+const afterFold = (
+	windows: {
+		held: Entry[];
+		exchange: Entry[];
+		stream: Entry[];
+		newer: Entry[];
+		newer2: Entry[];
+	},
+	sourcePrimary = false,
+): TranscriptState => {
+	const sourcePage = sourcePrimary ? capturedOrderPage : pageOf;
+	let state = applyHistoryPage(EMPTY_TRANSCRIPT, sourcePage(windows.held), {
+		authoritative: sourcePrimary,
+	});
 	state = appendPendingUser(
 		state,
 		SEND_ID,
@@ -195,9 +207,29 @@ const afterFold = (windows: {
 	);
 	state = foldExchange(state, windows.exchange);
 	if (windows.stream.length) state = foldExchange(state, windows.stream);
-	state = applyHistoryPage(state, pageOf(windows.newer));
+	state = applyHistoryPage(state, sourcePage(windows.newer));
 	if (windows.newer2.length)
-		state = applyHistoryPage(state, pageOf(windows.newer2));
+		state = applyHistoryPage(state, sourcePage(windows.newer2));
+	if (sourcePrimary) {
+		// Real durable metadata heals the echo and streamed IDs without rereading
+		// their payloads. The replay's domain is explicit and synthetic.
+		const rows = [...windows.exchange, ...windows.stream];
+		const descriptors = [
+			{ id: SEND_ID, journal_seq: 400, role: "user" },
+			...rows.map((row) => ({
+				id: row.id,
+				journal_seq: capturedJournalOrdinals.get(row.id),
+				role: row.payload?.role,
+				tool_call_id: row.payload?.tool_call_id,
+			})),
+		];
+		for (let offset = 0; offset < descriptors.length; offset += 128)
+			state = applyEvent(state, {
+				type: "journal_order_ready",
+				journal_generation: CAPTURED_REPLAY_DOMAIN,
+				rows: descriptors.slice(offset, offset + 128),
+			});
+	}
 	return state;
 };
 
@@ -283,11 +315,7 @@ const Frame = ({
 		<div className="flex flex-col gap-2 bg-canvas p-6">
 			{/* A fixed caption box, two lines tall, so a pair overlays. */}
 			<p className="h-10 text-body-sm text-ink-muted">{caption}</p>
-			<div
-				className="flex min-h-0 flex-col"
-				style={{ height: PANE }}
-				ref={containerRef}
-			>
+			<div className="flex min-h-0 flex-col" style={{ height: PANE }}>
 				<CanonicalTranscript
 					transcript={transcript}
 					gate={null}
@@ -329,8 +357,8 @@ export const BeforeTail: Story = {
 export const AfterTail: Story = {
 	render: () => (
 		<Frame
-			caption="After: the same conversation, same pane. The first read whose oldest entry is newer than the send's stamp releases the hold, so the conversation ends at its newest rows — the 20:02-20:03 turn is the pane's last. The exchange ranks at its own 19:00 slot, above this window."
-			transcript={afterFold(FULL)}
+			caption="After: same captured conversation and pane, ranked by complete-journal source offsets. Quiet ID-only metadata places the send at ordinal 400; clocks remain labels only. Synthetic replay domain, not the lost original in-memory pane."
+			transcript={afterFold(FULL, true)}
 		/>
 	),
 };
@@ -349,8 +377,8 @@ export const BeforeSlot: Story = {
 export const AfterSlot: Story = {
 	render: () => (
 		<Frame
-			caption="After, the same neighbourhood: the send and its replies rank by their own instants — 19:00 send, the reply, the 19:01 alias row, then the 19:07 3D note last — the journal's own order, not the pane's tail."
-			transcript={afterFold(SLOT)}
+			caption="After, same neighbourhood: captured complete-journal offsets place the 19:00 send, its reply and 19:01 alias above the 19:07 note. Payloads and timestamps unchanged; synthetic replay domain. Missing original attachment bytes remain explicit placeholders."
+			transcript={afterFold(SLOT, true)}
 		/>
 	),
 };
