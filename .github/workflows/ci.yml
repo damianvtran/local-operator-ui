@@ -369,50 +369,6 @@ jobs:
           # its exit status and nothing else.
           bash scripts/require-report.sh "Build environment contracts" node scripts/check-build-env.mjs
 
-  # TEMPORARY #1002 opt-in evidence, NOT a replacement or cure claim. The
-  # mandatory Desktop job and its budget remain independent and unchanged.
-  # All controls share one hosted checkout/frozen dependency tree; remove
-  # this PR-scoped job after diagnosis, not after an unproven timeout cure.
-  onboarding-desktop-diagnostic:
-    name: Onboarding Desktop Diagnostic
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 1002
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout pinned PR head (not synthetic merge ref)
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Prepare diagnostic artifact directory
-        run: mkdir -p "$RUNNER_TEMP/onboarding-desktop-diagnostic"
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: '10.29.2'
-      - name: Setup Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Selected same-base comparison (not full Desktop coverage)
-        env:
-          DIAGNOSTIC_HEAD: ${{ github.event.pull_request.head.sha }}
-        run: node scripts/onboarding-desktop-diagnostic.mjs "$DIAGNOSTIC_HEAD" "$RUNNER_TEMP/onboarding-desktop-diagnostic"
-      - name: Preserve worker traces and distinction matrix even on failure
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: onboarding-desktop-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/onboarding-desktop-diagnostic
-          if-no-files-found: error
-          retention-days: 7
-
   test:
     # The desktop test suite -- the regression guards for issues 87, 92 and 93,
     # every one of which is the same defect class (a surface treating "we could

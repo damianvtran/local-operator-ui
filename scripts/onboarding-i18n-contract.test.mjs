@@ -46,6 +46,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { UNGATED_JOBS } from "./ci-scope.mjs";
 import {
 	BASE as DIAGNOSTIC_BASE,
 	classify,
@@ -358,24 +359,61 @@ test("diagnostic inputs and result classifications fail closed", () => {
 	assert.equal(classify(0, null, false, "SIGTERM", true), "interrupted");
 });
 
-test("diagnostic workflow stays opt-in with independent always-upload evidence", () => {
+test("diagnostic CI stays retired while the manual utility remains registered", () => {
 	const text = readFileSync(".github/workflows/ci.yml", "utf8");
-	const job = text.slice(
-		text.indexOf("  onboarding-desktop-diagnostic:"),
-		text.indexOf("  test:\n"),
+	// Use the tree's existing YAML parser, as the canonical CI/entry-point
+	// guards do. Comments or source substrings are not workflow jobs.
+	const require = createRequire(import.meta.url);
+	const builderRequire = createRequire(
+		require.resolve("electron-builder/package.json"),
 	);
-	assert.match(
-		job,
-		/github\.event_name == 'pull_request' && github\.event\.pull_request\.number == 1002/,
+	const appRequire = createRequire(builderRequire.resolve("app-builder-lib"));
+	const { load } = appRequire("js-yaml");
+	assert.ok(
+		!Object.hasOwn(load(text).jobs, "onboarding-desktop-diagnostic"),
+		"the temporary CI job must remain retired",
 	);
-	assert.match(job, /contents: read/);
-	assert.match(job, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
-	assert.match(job, /persist-credentials: false/);
-	assert.match(job, /node-version: '22'/);
-	assert.match(job, /pnpm install --frozen-lockfile/);
-	assert.match(job, /if: always\(\)[\s\S]*actions\/upload-artifact@v4/);
-	assert.match(job, /if-no-files-found: error/);
-	assert.ok(!job.includes("secrets.") && !job.includes("continue-on-error"));
+	assert.ok(
+		!Object.hasOwn(UNGATED_JOBS, "onboarding-desktop-diagnostic"),
+		"retirement must remove the actual CI-only inventory entry",
+	);
+
+	// The private driven registry is looked up by its existing real CLI/import
+	// case, not inferred from source comments or a blanket exemption. Run only
+	// that narrow case; dropping its registry entry or test must fail closed.
+	const manualEnvironment = Object.fromEntries(
+		Object.entries(process.env).filter(
+			([key]) =>
+				!key.startsWith("CMUX_") &&
+				!key.startsWith("LOP_") &&
+				!["XPC_FLAGS", "NODE_OPTIONS", "NODE_TEST_CONTEXT"].includes(key),
+		),
+	);
+	const manual = spawnSync(
+		process.execPath,
+		[
+			"scripts/run-desktop-tests.mjs",
+			"--test-concurrency=1",
+			"--test-reporter=tap",
+			"--test-name-pattern=^onboarding diagnostic distinguishes driven CLI from import through physical and symlinked paths$",
+			"scripts/entry-point.test.mjs",
+		],
+		{
+			encoding: "utf8",
+			env: {
+				...manualEnvironment,
+				LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB: "480",
+			},
+			timeout: 20_000,
+		},
+	);
+	assert.equal(manual.status, 0, manual.stdout + manual.stderr);
+	assert.ok(
+		/^# tests 1$/m.test(manual.stdout) &&
+			/^# pass 1$/m.test(manual.stdout) &&
+			/^# fail 0$/m.test(manual.stdout),
+		"exactly one registered manual CLI/import case must execute, not silently skip",
+	);
 	const desktop = text.slice(
 		text.indexOf("  test:\n"),
 		text.indexOf("  evidence:\n"),
