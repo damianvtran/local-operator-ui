@@ -373,13 +373,37 @@ test("the dialog asks the question with the safe answer defaulted, and the pane'
 		"the question's copy moved away from the keys this change committed",
 	);
 	const catalogue = JSON.parse(read("src/i18n/catalogues/en/ui.console.json"));
-	assert.equal(catalogue["ui.console.close.title"], "Close this terminal?");
+	/*
+	 * EVERY value the source half pins by KEY, pinned by CONTENT here: a key can
+	 * be wired correctly while its sentence drifts, and `pane.close` was the one
+	 * without this half (round-2 review R2-1 / QA Q1 - it could have become
+	 * "Dismiss console" while this suite stayed green).
+	 */
+	assert.equal(
+		catalogue["ui.console.close.title"],
+		"Close this terminal?",
+		"ui.console.close.title drifted from the committed sentence",
+	);
 	assert.equal(
 		catalogue["ui.console.close.body"],
 		"This ends the program running here and removes its tab.",
+		"ui.console.close.body drifted from the committed sentence",
 	);
-	assert.equal(catalogue["ui.console.close.confirm"], "Close terminal");
-	assert.equal(catalogue["ui.console.close.kept"], "Its output is kept.");
+	assert.equal(
+		catalogue["ui.console.close.confirm"],
+		"Close terminal",
+		"ui.console.close.confirm drifted from the committed sentence",
+	);
+	assert.equal(
+		catalogue["ui.console.close.kept"],
+		"Its output is kept.",
+		"ui.console.close.kept drifted from the committed sentence",
+	);
+	assert.equal(
+		catalogue["ui.console.pane.close"],
+		"Close console",
+		"ui.console.pane.close drifted from the committed sentence",
+	);
 	/*
 	 * THE ROUND-1 ADDITIONS TO THE SAME DIALOG: the retention reassurance is
 	 * CONDITIONAL on the row's own retain flag (U6), and the refusal is rendered
