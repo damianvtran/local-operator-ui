@@ -167,13 +167,13 @@
  *                          calls - the ledger's own tool rows - instead
  *   --copy-expect <after|before>  (with --scene image-copy) which half of the
  *                          pair this run records: `after` (the default) asserts
- *                          that BOTH seeded pictures copy - the JPEG lands on
- *                          the clipboard as a PNG at its own dimensions, the
- *                          PNG lands byte-exact - by reading the clipboard back
- *                          from main after a real click; `before` records the
- *                          base tree, where the same JPEG copy is refused by
- *                          Chromium's one-writable-image-type clipboard (the
- *                          failure toast, the clipboard unchanged)
+ *                          that BOTH seeded pictures copy - each lands on the
+ *                          clipboard as a PNG at its source's own dimensions
+ *                          - by reading the clipboard back from main after a
+ *                          real click; `before` records the base tree, where
+ *                          the same JPEG copy is refused by Chromium's
+ *                          one-writable-image-type clipboard (the failure
+ *                          toast, the clipboard unchanged)
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -628,11 +628,12 @@ const IMAGEGEN_EXPECT = argValue("--imagegen-expect", "after");
  * WHICH HALF OF THE COPY PAIR THIS RUN IS (with --scene image-copy).
  *
  * `after` (the default) asserts the fixed tree: both the JPEG and the PNG copy
- * through the clipboard. `before` records the base tree: the same JPEG copy is
- * REFUSED (Chromium's sanitized clipboard write takes only `image/png` among
- * image types) with the failure toast, and the clipboard still holds exactly
- * what it held before the press. A value the scene does not know is refused
- * rather than defaulted, like every flag above.
+ * through the clipboard, each as a PNG at its source's own dimensions.
+ * `before` records the base tree: the same JPEG copy is REFUSED (Chromium's
+ * sanitized clipboard write takes only `image/png` among image types) with the
+ * failure toast, and the clipboard still holds exactly what it held before the
+ * press. A value the scene does not know is refused rather than defaulted, like
+ * every flag above.
  */
 const COPY_EXPECT = argValue("--copy-expect", "after");
 /**
@@ -13191,10 +13192,14 @@ async function sceneImageGenCard(cdp) {
  * suppressed toast as a bug - the wait is in the run's log.
  *
  * `--copy-expect after` (the fixed tree) asserts BOTH pictures copy: the JPEG
- * lands as a PNG at the source's own dimensions, and the PNG lands BYTE-EXACT
- * (the fixture's own sha256), which is the pass-through half the fix must not
- * disturb. The press-to-toast duration is recorded - the click's transient
- * activation is what `write` spends, so a slow transcode would show up there.
+ * lands as a PNG at the source's own dimensions, and the PNG as a PNG at ITS
+ * own (240x160) - the pass-through half the fix must not disturb. The OS
+ * round trip re-encodes the bytes (measured: 1103 read back against the
+ * fixture's 981, one digest on both palettes), so byte-exactness is claimed
+ * where it is answerable - the ClipboardItem (`scripts/chat-image-expand.test.mjs`)
+ * - and the scene claims type + dimensions. The press-to-toast duration is
+ * recorded - the click's transient activation is what `write` spends, so a
+ * slow transcode would show up there.
  *
  * ## What it cannot prove, stated so no report implies otherwise
  *
@@ -13266,7 +13271,7 @@ async function sceneImageCopy(app, cdp) {
 				`image-actions-menu.tsx carries ${matches.length} literal ${fn}("...") call(s); the image-copy scene reads exactly one`,
 			);
 		}
-		return matches[1][1];
+		return matches[0][1];
 	};
 	const copiedSentence = toastSentence("showSuccessToast");
 	const failedSentence = toastSentence("showErrorToast");
@@ -13488,14 +13493,77 @@ async function sceneImageCopy(app, cdp) {
 		};
 
 		/**
+		 * Press a control with the REAL pointer once its box has STOPPED MOVING
+		 * and its own hit test reads green.
+		 *
+		 * WHY THIS EXISTS, found while building this scene (2026-10-12): pressing
+		 * the menu's item the moment the DOM first held one MISSED on the first
+		 * opening - the press landed where the item had been when it was
+		 * measured, while Radix was still moving the freshly-mounted content.
+		 * The miss is silent and then poison: no toast, the menu stays open, and
+		 * every later step in that palette photographs a page the menu's own
+		 * modal layer is eating (the next hover reads `pointer-events: none`
+		 * over the picture, so its reveal check fails and its menu never opens).
+		 * So the press waits until two consecutive measurements agree to the
+		 * pixel AND the box reports itself hit-testable - the same "settled" bar
+		 * `captureSettled` holds frames to, applied to a target - and only then
+		 * dispatches through the input pipeline, which is the trusted input the
+		 * clipboard write's transient activation needs (`clickAt`'s docstring
+		 * says why a synthetic dispatch cannot stand in for it).
+		 */
+		const pressWhenSettled = async (cdp, selector, attempts = 80) => {
+			let previous = null;
+			for (let attempt = 1; attempt <= attempts; attempt += 1) {
+				const reading = await verb(cdp, "measure", selector);
+				const settled =
+					reading.hitTest === true &&
+					reading.inViewport === true &&
+					previous !== null &&
+					Math.abs(reading.centre.x - previous.centre.x) <= 1 &&
+					Math.abs(reading.centre.y - previous.centre.y) <= 1;
+				previous = reading;
+				if (settled) {
+					const { x, y } = reading.centre;
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseMoved",
+						x,
+						y,
+						button: "none",
+						buttons: 0,
+					});
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mousePressed",
+						x,
+						y,
+						button: "left",
+						buttons: 1,
+						clickCount: 1,
+					});
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseReleased",
+						x,
+						y,
+						button: "left",
+						buttons: 0,
+						clickCount: 1,
+					});
+					return reading;
+				}
+				await wait(60);
+			}
+			throw new Error(
+				`nothing settled at ${selector} within ${attempts} measurements`,
+			);
+		};
+
+		/**
 		 * Press `Copy image` on one picture, end to end: hover the picture (the
 		 * wrapper's `group-hover` reveal needs the REAL pointer - compositor
 		 * state, not an event), press the trigger, press the item, wait for the
 		 * expected sentence, then read the clipboard back.
 		 *
-		 * Both presses go through `clickAt`: the clipboard write needs the
-		 * click's transient activation, which only events from the input
-		 * pipeline grant.
+		 * Returns the toast reading, the press-to-toast duration and the
+		 * clipboard on both sides of the press.
 		 */
 		const pressCopy = async (callId, theme) => {
 			await hoverOver(cdp, `${rowSelector(callId)} img`);
@@ -13515,7 +13583,10 @@ async function sceneImageCopy(app, cdp) {
 				`trigger not revealed after ${revealed.waitedMs}ms`,
 				"wrapper pointer-events auto, opacity 1",
 			);
-			await clickAt(cdp, `${rowSelector(callId)} .file-actions-menu button`);
+			await pressWhenSettled(
+				cdp,
+				`${rowSelector(callId)} .file-actions-menu button`,
+			);
 			const menu = await waitForCondition(
 				cdp,
 				`(() => {
@@ -13534,7 +13605,7 @@ async function sceneImageCopy(app, cdp) {
 			);
 			const clipboardBefore = await clipboardState();
 			const started = Date.now();
-			await clickAt(cdp, '[role="menuitem"]');
+			await pressWhenSettled(cdp, '[role="menuitem"]');
 			const toast = await waitForToastText(
 				after ? copiedSentence : failedSentence,
 				8_000,
@@ -13650,15 +13721,33 @@ async function sceneImageCopy(app, cdp) {
 					`"${copiedSentence}" after ${png.toast.waitedMs}ms`,
 				);
 				const state = png.clipboardAfter;
+				/*
+				 * WHAT THE CLIPBOARD CAN BE HELD TO, and the half it cannot,
+				 * measured on the first green run (2026-10-12): the read-back is
+				 * the right type at the right dimensions (240x160), but NOT the
+				 * fixture's bytes - 1103 against 981, the SAME digest on both
+				 * palettes, so the OS round trip re-encodes deterministically
+				 * rather than drifting. Byte-exactness of the pass-through is
+				 * therefore claimed where it is answerable - the ClipboardItem
+				 * the menu writes, pinned by `scripts/chat-image-expand.test.mjs`
+				 * - and the scene's claim is the pair the clipboard keeps:
+				 * `image/png`, at the source's own dimensions.
+				 */
 				check(
-					`the PNG landed BYTE-EXACT - the clipboard holds the fixture's own bytes (${theme})`,
+					`the PNG landed on the clipboard as a PNG at its own dimensions (${theme})`,
 					state.has === true &&
 						state.signature === "89504e47" &&
 						state.width === COPY_PNG_SIZE.width &&
 						state.height === COPY_PNG_SIZE.height &&
-						state.sha256 === pngSha256,
+						state.length > 0,
 					JSON.stringify(state),
-					`sha256 matches the fixture's ${pngSha256.slice(0, 12)}..., ${state.width}x${state.height}`,
+					`PNG ${state.width}x${state.height}, ${state.length} bytes, signature ${state.signature}`,
+				);
+				note(
+					"the clipboard's PNG bytes against the fixture's",
+					state.sha256 === pngSha256
+						? "byte-identical"
+						: `re-encoded by the OS round trip (${state.length} vs ${COPY_PNG_BYTES.length} bytes); type + dimensions are the clipboard-level claim, the ClipboardItem's byte-exactness is the jsdom test's`,
 				);
 				note(
 					`the press-to-toast round trip (PNG, ${theme})`,

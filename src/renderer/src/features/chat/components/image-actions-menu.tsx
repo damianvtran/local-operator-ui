@@ -139,9 +139,9 @@ export const ImageActionsMenu = ({
 	 * (it is why a copy with no gesture fails with "Write permission denied"
 	 * even in this app), and Chromium's window for it is seconds, not minutes -
 	 * so the transcode has to stay quick rather than being deferred, batched or
-	 * awaited behind anything slower. Measured on the committed fixture (a
-	 * repeated real-click run, `docs/evidence/image-copy/`): press to landed
-	 * toast is a two-figure millisecond cost, far inside the window.
+	 * awaited behind anything slower. Measured on the committed fixture (the
+	 * real-click `image-copy` scene, `docs/evidence/image-copy/`): press to
+	 * landed toast is ~270ms, two orders of magnitude inside the window.
 	 */
 	const copyImage = async () => {
 		try {
