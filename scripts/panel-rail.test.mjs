@@ -57,7 +57,7 @@ const bundle = await build({
 			export { Tooltip, TooltipProvider } from "./src/renderer/src/shared/components/ui/tooltip";
 			export { ChatLayout } from "./src/renderer/src/shared/components/common/chat-layout";
 			export { InPanelRailHost, PanelRailHostContext } from "./${NAV}/panel-rail-host";
-			export { askRailLabels, browserRailLabels, canvasRailLabels, consoleRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
+			export { askRailLabels, browserRailLabels, canvasRailLabels, codeRailLabels, consoleRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
 			export { askRailToggleLabel, askScopeSubject, ASK_RAIL_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";
 			export { useUiPreferencesStore, resolveDrawnRightSlotPane } from "./src/renderer/src/shared/store/ui-preferences-store";
 			export { deriveRunDetails } from "./${RUN}/run-detail-model";
@@ -114,6 +114,7 @@ const {
 	ASK_RAIL_ITEM_SELECTOR,
 	browserRailLabels,
 	canvasRailLabels,
+	codeRailLabels,
 	consoleRailLabels,
 	PANEL_RAIL_ORDER,
 	useUiPreferencesStore,
@@ -287,12 +288,15 @@ const DRAWABLE = {
 	 * branch requires it, so a narrative route without it would light nothing.
 	 */
 	codeReview: true,
+	/* The asks door is a route fact since #928 (the chord's door gate). */
+	asksOffered: true,
 };
 const DRAFT = {
 	mounted: true,
 	runDetails: false,
 	session: false,
 	codeReview: false,
+	asksOffered: false,
 };
 const NO_PANES = {
 	isRunPanelOpen: false,
@@ -726,43 +730,55 @@ test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows 
 			"Open asks — This conversation, 2 waiting or moved on",
 		);
 		assert.equal(api.item("ask").getAttribute("aria-pressed"), "false");
+		/*
+		 * ...and the bound cap rides the tooltip too (#928, review round 1's
+		 * F2 = design D3): the same promise the dispatcher answers, printed in the
+		 * register this host spells (linux), and gone again when the row is reset.
+		 */
+		api.store({ shortcutBindings: { "panel.ask": "primary+l" } });
+		await frames(2);
+		assert.equal(
+			tooltip(),
+			"Open asks (Ctrl+L) — This conversation, 2 waiting or moved on",
+		);
+		api.store({ shortcutBindings: {} });
 		act(() => api.item("ask").blur());
 	});
 });
 
 test("the tooltips are the header's verbatim; the accessible names are stable nouns (U2)", async () => {
 	/* The model first: it is the one derivation the tooltip and the name share. */
-	assert.deepEqual(browserRailLabels(false, 0), {
+	assert.deepEqual(browserRailLabels(false, 0, null), {
 		tooltip: "Open browser",
 		aria: "Browser",
 	});
-	assert.deepEqual(browserRailLabels(false, 1), {
+	assert.deepEqual(browserRailLabels(false, 1, null), {
 		tooltip: "Open browser — 1 approval waiting",
 		aria: "Browser, 1 waiting",
 	});
-	assert.deepEqual(browserRailLabels(false, 3), {
+	assert.deepEqual(browserRailLabels(false, 3, null), {
 		tooltip: "Open browser — 3 approvals waiting",
 		aria: "Browser, 3 waiting",
 	});
-	assert.deepEqual(browserRailLabels(true, 0), {
+	assert.deepEqual(browserRailLabels(true, 0, null), {
 		tooltip: "Close browser",
 		aria: "Browser",
 	});
-	assert.deepEqual(browserRailLabels(true, 12), {
+	assert.deepEqual(browserRailLabels(true, 12, null), {
 		tooltip: "Close browser — 12 approvals waiting",
 		aria: "Browser, 12 waiting",
 	});
-	assert.deepEqual(consoleRailLabels(false, 0), {
+	assert.deepEqual(consoleRailLabels(false, 0, null), {
 		tooltip: "Open console",
 		aria: "Console",
 	});
-	assert.deepEqual(consoleRailLabels(false, 2), {
+	assert.deepEqual(consoleRailLabels(false, 2, null), {
 		tooltip: "Open console — 2 finished since you looked",
 		aria: "Console, 2 finished since you looked",
 	});
-	assert.equal(consoleRailLabels(true, 0).aria, "Console");
+	assert.equal(consoleRailLabels(true, 0, null).aria, "Console");
 	assert.equal(
-		consoleRailLabels(true, 2).tooltip,
+		consoleRailLabels(true, 2, null).tooltip,
 		"Close console — 2 finished since you looked",
 	);
 	assert.equal(canvasRailLabels(false, 0, "⌘⇧C").aria, "Canvas (⌘⇧C)");
@@ -778,27 +794,41 @@ test("the tooltips are the header's verbatim; the accessible names are stable no
 	 * promise restated on the rail: at ZERO it still names its scope, which is what
 	 * keeps it distinct from the drawer's own `Close asks` dismiss.
 	 */
-	assert.deepEqual(askRailLabels(false, "session", 1), {
+	assert.deepEqual(askRailLabels(false, "session", 1, null), {
 		tooltip: "Open asks — This conversation, 1 waiting or moved on",
 		aria: "Asks, This conversation, 1 waiting or moved on",
 	});
-	assert.deepEqual(askRailLabels(true, "fleet", 2), {
+	assert.deepEqual(askRailLabels(true, "fleet", 2, null), {
 		tooltip: "Close asks — All conversations, 2 waiting or moved on",
 		aria: "Asks, All conversations, 2 waiting or moved on",
 	});
-	assert.deepEqual(askRailLabels(false, "session", 0), {
+	assert.deepEqual(askRailLabels(false, "session", 0, null), {
 		tooltip: "Open asks — This conversation",
 		aria: "Asks, This conversation",
 	});
+	/*
+	 * The bound cap (#928, review round 1's F2 = design D3): the chord rides the
+	 * noun in BOTH registers, exactly where the five siblings print theirs. The
+	 * asks item used to be the one rail control whose promise the dispatcher
+	 * answered but the control never showed.
+	 */
+	assert.deepEqual(askRailLabels(false, "session", 1, "⌘A"), {
+		tooltip: "Open asks (⌘A) — This conversation, 1 waiting or moved on",
+		aria: "Asks (⌘A), This conversation, 1 waiting or moved on",
+	});
+	assert.deepEqual(askRailLabels(true, "fleet", 0, "⌘A"), {
+		tooltip: "Close asks (⌘A) — All conversations",
+		aria: "Asks (⌘A), All conversations",
+	});
 	assert.notEqual(
-		askRailLabels(true, "session", 0).tooltip,
+		askRailLabels(true, "session", 0, null).tooltip,
 		"Close asks",
 		"the rail door must never be the same string as the pane's own dismiss",
 	);
 	/* THE TOOLTIP IS THE REUSE ITSELF, not a second spelling: `askRailLabels` prints
 	   `ask-queue.ts`'s composer for the same state, so the two cannot drift. */
 	assert.equal(
-		askRailLabels(true, "session", 0).tooltip,
+		askRailLabels(true, "session", 0, null).tooltip,
 		askRailToggleLabel({ open: true, scope: "session", count: 0 }),
 		"one derivation: the rail's tooltip IS ask-queue's sentence",
 	);
@@ -814,7 +844,8 @@ test("the tooltips are the header's verbatim; the accessible names are stable no
 		);
 		assert.equal(
 			api.item("console").getAttribute("aria-label"),
-			"Console, 1 finished since you looked",
+			"Console (Ctrl+J), 1 finished since you looked",
+			"the console ships bound (#928), so its name prints the cap",
 		);
 		assert.match(
 			api.item("canvas").getAttribute("aria-label"),
@@ -834,12 +865,69 @@ test("the tooltips are the header's verbatim; the accessible names are stable no
 		api.store({ isBrowserPaneOpen: false, isConsolePaneOpen: true });
 		assert.equal(
 			api.item("console").getAttribute("aria-label"),
-			"Console, 1 finished since you looked",
+			"Console (Ctrl+J), 1 finished since you looked",
 		);
 		api.store({ isConsolePaneOpen: false, isCanvasOpen: true });
 		assert.match(
 			api.item("canvas").getAttribute("aria-label"),
 			/^Canvas \(.+\), 3 files$/,
+		);
+	});
+});
+
+test("the item caps are the BOUND chords: both registers, absent when unbound, and they follow the store (#928)", async () => {
+	/* The model first: bound → parens in the tooltip AND the accessible name;
+	   unbound → no parens at all. */
+	assert.deepEqual(browserRailLabels(false, 0, "⌘B"), {
+		tooltip: "Open browser (⌘B)",
+		aria: "Browser (⌘B)",
+	});
+	assert.deepEqual(consoleRailLabels(false, 2, "⌘J"), {
+		tooltip: "Open console (⌘J) — 2 finished since you looked",
+		aria: "Console (⌘J), 2 finished since you looked",
+	});
+	assert.equal(
+		codeRailLabels(false, 2, 1, null, "⌘R").aria,
+		"Code review (⌘R), 2 opened, 1 mentioned",
+	);
+	assert.deepEqual(browserRailLabels(false, 1, null), {
+		tooltip: "Open browser — 1 approval waiting",
+		aria: "Browser, 1 waiting",
+	});
+	/*
+	 * And the DOM: the rail derives each cap from the registry's effective chord
+	 * — the console ships bound (`primary+j`, `Ctrl+J` on the test host's linux
+	 * platform) while browser/run/ask/code are unbound — and a STORE WRITE moves
+	 * the printed chord, so a rebind and the promise the control prints move
+	 * together.
+	 */
+	await mount(async (api) => {
+		reset(api);
+		await api.render(rail({ consoleUnseenCount: 1 }));
+		assert.equal(
+			api.item("console").getAttribute("aria-label"),
+			"Console (Ctrl+J), 1 finished since you looked",
+		);
+		assert.equal(api.item("browser").getAttribute("aria-label"), "Browser");
+		api.store({
+			shortcutBindings: {
+				"panel.console": "primary+u",
+				"panel.browser": "primary+i",
+				"panel.ask": "primary+l",
+			},
+		});
+		assert.equal(
+			api.item("console").getAttribute("aria-label"),
+			"Console (Ctrl+U), 1 finished since you looked",
+		);
+		assert.equal(
+			api.item("browser").getAttribute("aria-label"),
+			"Browser (Ctrl+I)",
+		);
+		assert.equal(
+			api.item("ask").getAttribute("aria-label"),
+			"Asks (Ctrl+L), This conversation",
+			"the asks item's cap prints too (F2 = D3): it used to be the one item whose promise was invisible on the control",
 		);
 	});
 });
@@ -1295,12 +1383,12 @@ test("the header no longer renders the five triggers or their shed ladder", () =
 		"the asks row sits between Run details and Open browser, mirroring the rail (#896)",
 	);
 	assert.ok(
-		header.includes("isCanvasTogglePress(event)"),
-		"the existing chord is still bound, exactly as before",
+		!header.includes("isCanvasTogglePress"),
+		"the header's canvas listener retires into the registry router (#928), so one chord cannot get two answers once a user rebinds it",
 	);
 });
 
-test("the rail is not a keyboard region and adds no chord", () => {
+test("the rail is not a keyboard region, and binds no listener of its own", () => {
 	const regions = read("src/renderer/src/features/chat/chat-regions.ts");
 	assert.ok(
 		!/panel-rail/.test(regions),
@@ -1311,7 +1399,7 @@ test("the rail is not a keyboard region and adds no chord", () => {
 	);
 	assert.ok(
 		!/document\.addEventListener/.test(railSource),
-		"the rail binds no document listener: no new chord",
+		"the rail binds no listener of its own: every assigned chord arrives through the one router (#928)",
 	);
 });
 
