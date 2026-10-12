@@ -203,17 +203,34 @@ const afterFold = (windows: {
 
 /**
  * The pre-fix ranking, spelled out: `withTimeOrder`'s tail block pinned a
- * pending echo — and every row admitted while it held, the whole stream above
- * all — BELOW every placed row. Re-ranking the shipped state with that rule is
- * exactly what the pre-discharge reducer produced; nothing else about the
- * records differs.
+ * pending echo — and every row admitted while it held THAT A MERGE DOES NOT
+ * STATE ON THE OWNER'S SIDE — BELOW every placed row, in time order. Rows a
+ * read re-states leave the block (the merge proves the owner placed them), so
+ * the block shrinks as reads land and its tail is the newest row no read has
+ * claimed yet. This is exactly what the pre-discharge reducer produced for the
+ * same folds (verified against the base tree's own reducer in the PR's probe);
+ * nothing else about the records differs.
  */
-const beforeRanking = (state: TranscriptState): TranscriptState => {
-	const pinned = new Set<string>([
-		SEND_ID,
-		...FIXTURE.exchange.rows.map(recordKeyOf),
-		...FIXTURE.stream.rows.map(recordKeyOf),
+const beforeRanking = (
+	state: TranscriptState,
+	windows: {
+		exchange: Entry[];
+		stream: Entry[];
+		newer: Entry[];
+		newer2: Entry[];
+	},
+): TranscriptState => {
+	const stated = new Set<string>([
+		...windows.newer.map(recordKeyOf),
+		...windows.newer2.map(recordKeyOf),
 	]);
+	const pinned = new Set<string>(
+		[
+			SEND_ID,
+			...windows.exchange.map(recordKeyOf),
+			...windows.stream.map(recordKeyOf),
+		].filter((key) => !stated.has(key)),
+	);
 	const held = state.records.filter((record) => pinned.has(record.id));
 	const placed = state.records.filter((record) => !pinned.has(record.id));
 	const records: TranscriptRecord[] = [...placed, ...held];
@@ -299,8 +316,8 @@ type Story = StoryObj;
 export const BeforeTail: Story = {
 	render: () => (
 		<Frame
-			caption="Before: the reader's pane at the end of the conversation, with the pre-fix tail block's ranking. The 19:00 send and everything the stream carried after it are pinned below every row the newer reads placed — the exchange sits at the tail, under 40+ minutes of newer content (20:03)."
-			transcript={beforeRanking(afterFold(FULL))}
+			caption="Before: the reader's pane at the end of the conversation, with the pre-fix tail block's ranking. The block ends the conversation at its own 7:06 PM tail — the 19:00 send and the unclaimed stream rows after it sit below every placed row, while the newer reads' content (to 20:03) continues above the block."
+			transcript={beforeRanking(afterFold(FULL), FULL)}
 		/>
 	),
 };
@@ -309,7 +326,7 @@ export const BeforeTail: Story = {
 export const AfterTail: Story = {
 	render: () => (
 		<Frame
-			caption="After: the same conversation, same pane. The first read whose oldest entry is newer than the send's stamp releases the hold, so the bottom of the conversation ends at its newest rows (20:03). The exchange ranks at its own 19:00 slot, above this window."
+			caption="After: the same conversation, same pane. The first read whose oldest entry is newer than the send's stamp releases the hold, so the conversation ends at its newest rows — the 20:02-20:03 turn is the pane's last. The exchange ranks at its own 19:00 slot, above this window."
 			transcript={afterFold(FULL)}
 		/>
 	),
@@ -319,8 +336,8 @@ export const AfterTail: Story = {
 export const BeforeSlot: Story = {
 	render: () => (
 		<Frame
-			caption="Before, narrowed to the exchange's own neighbourhood: the send and its streamed replies pinned after every placed row, so the 19:00 exchange renders below content read later in the day (19:06)."
-			transcript={beforeRanking(afterFold(SLOT))}
+			caption="Before, narrowed to the exchange's own neighbourhood: the send and its streamed replies pinned after every placed row, so a row read later in the day (the 19:07 3D note) renders ABOVE the 19:00 send — the pane's order steps back in time."
+			transcript={beforeRanking(afterFold(SLOT), SLOT)}
 		/>
 	),
 };
@@ -329,7 +346,7 @@ export const BeforeSlot: Story = {
 export const AfterSlot: Story = {
 	render: () => (
 		<Frame
-			caption="After, the same neighbourhood: the send and its replies rank by their own instants, between the held rows and the content the newer read carried (19:06) — the journal's own order, not the pane's tail."
+			caption="After, the same neighbourhood: the send and its replies rank by their own instants — 19:00 send, the reply, the 19:01 alias row, then the 19:07 3D note last — the journal's own order, not the pane's tail."
 			transcript={afterFold(SLOT)}
 		/>
 	),
