@@ -378,6 +378,11 @@ test("Clear stores the explicit no-chord state; Reset restores the default (U4)"
 		});
 		assert.deepEqual(useUiPreferencesStore.getState().shortcutBindings, {});
 		assert.equal(field.value, "Ctrl+J");
+		assert.equal(
+			api.window.document.activeElement,
+			field,
+			"Reset hands focus back too (U2): it deletes itself, so <body> must not inherit the caret",
+		);
 	});
 });
 
