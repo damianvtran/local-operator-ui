@@ -135,9 +135,19 @@ const bundle = await build({
 			export { ImageAttachment } from "./src/renderer/src/features/chat/components/message-item/image-attachment";
 			export { FileAttachment } from "./src/renderer/src/features/chat/components/message-item/file-attachment";
 			export { CanonicalImage } from "./src/renderer/src/features/chat/canonical/canonical-image";
+			export { ImageGroupLightbox } from "./src/renderer/src/features/chat/canonical/image-group-lightbox";
 			export { MarkdownImage } from "./src/renderer/src/features/chat/components/markdown-image";
 			export { FoldMedia } from "./src/renderer/src/features/chat/canonical/fold-media";
 			export { TraceFold } from "./src/renderer/src/features/chat/components/trace/trace-fold";
+			export {
+				clampGroupIndex,
+				clampViewerPan,
+				groupPositionLabel,
+				stepZoom,
+				VIEWER_ZOOM_MAX,
+				wrapGroupIndex,
+			} from "./src/renderer/src/shared/lib/image-viewer-model";
+			export { SCROLLBAR_HOLD_MS } from "./src/renderer/src/shared/lib/scrollbar-activity";
 		`,
 		resolveDir: ROOT,
 	},
@@ -182,9 +192,17 @@ const {
 	ImageAttachment,
 	FileAttachment,
 	CanonicalImage,
+	ImageGroupLightbox,
 	MarkdownImage,
 	FoldMedia,
 	TraceFold,
+	clampGroupIndex,
+	clampViewerPan,
+	groupPositionLabel,
+	stepZoom,
+	VIEWER_ZOOM_MAX,
+	wrapGroupIndex,
+	SCROLLBAR_HOLD_MS,
 } = await import(pathToFileURL(bundlePath).href);
 
 /* ------------------------------------------------------------------ fixtures */
@@ -227,6 +245,54 @@ const transcriptImage = {
 	mimeType: "image/png",
 };
 const transcriptScope = { sessionId: "image-expand", childId: null };
+
+/* ------------------------------------------------- the carousel's own fixtures */
+
+/**
+ * A THIRD distinct picture, because "the picture switched" is a claim about the
+ * src the viewer paints and two fixtures can prove one switch: a 2x2 magenta
+ * square beside the 1x1 and the 2x6 portrait, so each of three tiles resolves to
+ * a different URL and position can be read off the DOM alone.
+ */
+const MAGENTA_BASE64 =
+	"iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEklEQVR4nGM4IRd1Qi6KAUIBACTGBQFVr/vpAAAAAElFTkSuQmCC";
+
+const carouselImage = (id, base64) => ({
+	id,
+	data: base64,
+	attachment: null,
+	mimeType: "image/png",
+});
+/** A picture the group references and no store can serve: `missing` on the first render. */
+const absentImage = (id) => ({
+	id,
+	data: null,
+	attachment: null,
+	mimeType: "image/png",
+});
+
+const IMAGE_ONE = carouselImage("image-expand:carousel:1", PNG_BASE64);
+const IMAGE_TWO = carouselImage("image-expand:carousel:2", PORTRAIT_BASE64);
+const IMAGE_THREE = carouselImage("image-expand:carousel:3", MAGENTA_BASE64);
+const IMAGE_ABSENT = absentImage("image-expand:carousel:absent");
+
+/** The carousel's own chrome, by the shipped attributes a reader can check. */
+const FILMSTRIP = "[data-image-filmstrip]";
+const LIVE_POSITION = '[role="dialog"] [aria-live="polite"]';
+/**
+ * The viewer's OWN picture box, which is how a case reads the painted src
+ * without picking up a filmstrip tile's: the strip's tiles are images too, and
+ * they sit after the viewer in DOM order, so the exit that says "the viewer
+ * paints no picture" needs the frame's own marker rather than the dialog's
+ * first image.
+ */
+const VIEWER_PICTURE = "[data-image-viewport] img";
+const filmstripTiles = (document) =>
+	[...document.querySelectorAll(`${FILMSTRIP} button`)].filter((button) =>
+		(button.getAttribute("aria-label") ?? "").startsWith("Show image"),
+	);
+const viewerControl = (document, name) =>
+	document.querySelector(`[role="dialog"] button[aria-label="${name}"]`);
 
 /* ----------------------------------------------------------------- selectors */
 
@@ -291,6 +357,13 @@ const UNTABBABLE_REVEAL = /\binvisible\b|group-hover:visible/;
 /** The store's own failure sentence, which the digest-backed row must say. */
 const STORE_COPY_RE =
 	/Image could not be displayed\. Its stored copy is not available to this reader\./;
+/**
+ * The SAME sentence without the leading name, for labels that compose one: a
+ * receipt's `aria-label` is `<name> <detail>`, and the name is the tile's own
+ * position ("Image 3"), so the group cases match the store's half alone.
+ */
+const UNAVAILABLE_COPY_RE =
+	/could not be displayed\. Its stored copy is not available to this reader\./;
 
 /* ------------------------------------------------------------------ harness */
 
@@ -468,6 +541,25 @@ async function mount(render) {
 				if (landed()) return;
 			}
 		},
+		/**
+		 * Any key, for the viewer's own keyboard rules (the arrow walk). Same shape
+		 * as `pressEscape` and named separately so neither claim borrows the
+		 * other's sender; `metaKey` exists so the case that must NOT switch can say
+		 * why in its own name.
+		 */
+		pressKey: async (key, { metaKey = false } = {}) => {
+			act(() => {
+				window.document.dispatchEvent(
+					new window.KeyboardEvent("keydown", {
+						key,
+						bubbles: true,
+						cancelable: true,
+						metaKey,
+					}),
+				);
+			});
+			await api.settle();
+		},
 		/** What an assertion can name without diffing two DOM trees. */
 		focused: () => {
 			const element = window.document.activeElement;
@@ -483,6 +575,21 @@ async function mount(render) {
 	} finally {
 		act(() => root.unmount());
 		await act(async () => {});
+		/*
+		 * One timer turn BEFORE the globals are restored, because Radix's focus
+		 * scope schedules its unmount handoff in a `setTimeout(0)` (its
+		 * `AUTOFOCUS_ON_UNMOUNT` dispatch). That timer is a NODE timer -
+		 * `setTimeout` is not one of this harness's window shims, so
+		 * `window.close()` cannot cancel it - and if it fires after the shims
+		 * are restored (or after the NEXT mount installed its own), it builds
+		 * its `CustomEvent` from that realm and dispatches it onto THIS
+		 * window's container: jsdom refuses a foreign realm's event, and the
+		 * uncaught rejection lands on whichever test is running then (measured:
+		 * a stray `TypeError ... parameter 1 is not of type 'Event'` attributed
+		 * to a later case). Flushing here makes the timer fire while its own
+		 * window is still the installed one.
+		 */
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		window.close();
 		for (const [key, descriptor] of originals) {
 			if (descriptor) Object.defineProperty(globalThis, key, descriptor);
@@ -2030,5 +2137,971 @@ test("markdown images are ADMITTED by kind: a path gets the menu, a relative src
 			null,
 			"a relative src names no file this app can address — it renders as the bare <img> it always was",
 		);
+	});
+});
+
+/* ------------------------------------------------------------- the carousel */
+
+/*
+ * THE ARITHMETIC FIRST, because every case below leans on it and the DOM cases
+ * would only fail obliquely if it were wrong. These are the same functions the
+ * components call; they are imported from the bundle rather than re-stated so a
+ * copy cannot disagree with the shipped rule.
+ */
+
+test("the group walk wraps and clamps, and the position sentence is one rule", () => {
+	assert.equal(
+		wrapGroupIndex(0, 3, -1),
+		2,
+		"left from the first wraps to the last",
+	);
+	assert.equal(
+		wrapGroupIndex(2, 3, 1),
+		0,
+		"right from the last wraps to the first",
+	);
+	assert.equal(wrapGroupIndex(1, 3, 1), 2, "and the walk is one step between");
+	assert.equal(
+		wrapGroupIndex(0, 1, -1),
+		0,
+		"a group of one stays on its only picture",
+	);
+	assert.equal(
+		wrapGroupIndex(5, 0, 1),
+		0,
+		"an empty group has no position to walk to",
+	);
+
+	assert.equal(
+		clampGroupIndex(-2, 3),
+		0,
+		"a stale low index clamps to the first",
+	);
+	assert.equal(
+		clampGroupIndex(9, 3),
+		2,
+		"a stale high index clamps to the last",
+	);
+	assert.equal(
+		clampGroupIndex(1.7, 3),
+		1,
+		"a fractional index truncates rather than drifting",
+	);
+
+	assert.equal(
+		groupPositionLabel(1, 3),
+		"Image 2 of 3",
+		"one sentence, 1-based, both facts",
+	);
+
+	assert.equal(stepZoom(1, 1), 2, "a zoom step walks the ladder");
+	assert.equal(
+		stepZoom(VIEWER_ZOOM_MAX, 1),
+		VIEWER_ZOOM_MAX,
+		"and stops at its top",
+	);
+	assert.equal(stepZoom(1, -1), 1, "whereas the floor is fit itself");
+
+	const frame = { width: 400, height: 200 };
+	assert.deepEqual(
+		clampViewerPan({ x: 999, y: -999 }, frame, 2),
+		{ x: 200, y: -100 },
+		"at 2x the picture overhangs by half its size a side, and a pan past that clamps to the edge — each axis around its own centre (no gap, no rubber band)",
+	);
+	assert.deepEqual(
+		clampViewerPan({ x: 50, y: 40 }, frame, 1),
+		{ x: 0, y: 0 },
+		"at fit there is no overhang at all, which is the pan-only-when-zoomed rule as arithmetic",
+	);
+	assert.deepEqual(
+		clampViewerPan({ x: 50, y: 40 }, { width: 0, height: 0 }, 3),
+		{ x: 0, y: 0 },
+		"and an unmeasured frame clamps to centre rather than to a guess",
+	);
+});
+
+test("a group tile opens the carousel at the picture that was pressed, with the set's strip and arrows", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [IMAGE_ONE, IMAGE_TWO, IMAGE_ABSENT],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		const second = api.document.querySelector(
+			'[data-fold-media] button[aria-label="Expand Image 2"]',
+		);
+		assert.ok(second, "the strip's own second tile is the press under test");
+		await api.click(second);
+
+		assert.ok(isOpen(api.document), "the press opens the overlay");
+		const dialog = api.document.querySelector(DIALOG);
+		const mainPicture = dialog.querySelector("img");
+		assert.equal(
+			mainPicture.getAttribute("src"),
+			`data:image/png;base64,${PORTRAIT_BASE64}`,
+			"on the picture that was PRESSED, not the group's first",
+		);
+		assert.equal(
+			api.document.getElementById(dialog.getAttribute("aria-labelledby"))
+				.textContent,
+			"Image 2",
+			"and the overlay's name is that picture's own label, as the single-image case asserts",
+		);
+		assert.equal(
+			api.document.querySelector(LIVE_POSITION)?.textContent,
+			"Image 2 of 3",
+			"the position is announced in one sentence, 1-based",
+		);
+
+		const strip = api.document.querySelector(FILMSTRIP);
+		assert.ok(strip, "the group's other pictures are a strip in the layer");
+		/*
+		 * Two of the three are pressable tiles and the third is the RECEIPT — the
+		 * same shape the transcript's own strip gives a picture with no bytes
+		 * (there is no button there either), so the strip "reflects what is known"
+		 * instead of offering a press that would show the same sentence over the
+		 * scrim. The ARROWS still reach it; the walk is not bounded by the tiles.
+		 */
+		const tiles = filmstripTiles(api.document);
+		assert.deepEqual(
+			tiles.map((tile) => tile.getAttribute("aria-label")),
+			["Show image 1 of 3", "Show image 2 of 3"],
+			"every loaded picture is a tile, named by action and position",
+		);
+		assert.equal(
+			tiles[1].getAttribute("aria-current"),
+			"true",
+			"and the current one carries the mark",
+		);
+		assert.equal(
+			tiles[0].getAttribute("aria-current"),
+			null,
+			"which its neighbours do not",
+		);
+		/*
+		 * The partially-loaded case, staged the one way that is honest: the third
+		 * picture has no bytes at all, so its slot drew the receipt instead of a
+		 * picture rather than a tile that would resolve to nothing.
+		 */
+		const receipt = strip.querySelector('[role="img"]');
+		assert.match(
+			receipt?.getAttribute("aria-label") ?? "",
+			UNAVAILABLE_COPY_RE,
+			"a picture with no bytes shows the receipt the transcript's own strip shows",
+		);
+
+		assert.ok(
+			viewerControl(api.document, "Previous image"),
+			"the walk left/right is on screen",
+		);
+		assert.ok(viewerControl(api.document, "Next image"), "in both directions");
+	});
+});
+
+test("the arrows walk the whole group, wrapping at the ends, and a missing picture shows its receipt", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [IMAGE_ONE, IMAGE_TWO, IMAGE_ABSENT],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		await api.click(
+			api.document.querySelector(
+				'[data-fold-media] button[aria-label="Expand Image 1"]',
+			),
+		);
+
+		const pictureSrc = () =>
+			api.document.querySelector(VIEWER_PICTURE)?.getAttribute("src") ?? null;
+		const position = () =>
+			api.document.querySelector(LIVE_POSITION)?.textContent ?? null;
+
+		await api.click(viewerControl(api.document, "Next image"));
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${PORTRAIT_BASE64}`,
+			"Next moves to the second picture",
+		);
+		assert.equal(position(), "Image 2 of 3", "and says so");
+
+		await api.click(viewerControl(api.document, "Next image"));
+		assert.equal(
+			api.document.querySelector("[data-image-viewport]"),
+			null,
+			"the third picture has no bytes, so the viewer's frame holds no picture at all",
+		);
+		assert.match(
+			api.document.querySelector(DIALOG)?.textContent ?? "",
+			UNAVAILABLE_COPY_RE,
+			"and answers with the store's own sentence rather than a torn glyph",
+		);
+		assert.equal(position(), "Image 3 of 3", "the position still advances");
+		/*
+		 * AND THE RECEIPT SLOT IS MARKED TOO (UX round 1, U1-1): the walk onto a
+		 * picture with no bytes used to leave the strip with NO mark anywhere -
+		 * the receipt has no control to carry the tile's edge - so the reader who
+		 * walked onto it could not see which of the set was on screen. The ring
+		 * lives on the slot, which the receipt slot has just as the tiles do.
+		 */
+		assert.ok(
+			api.document
+				.querySelector('[data-image-slot="3"]')
+				.className.split(" ")
+				.includes("ring-ink"),
+			"the receipt slot carries the current ring",
+		);
+		assert.ok(
+			!api.document
+				.querySelector('[data-image-slot="1"]')
+				.className.split(" ")
+				.includes("ring-ink"),
+			"and the slot that is no longer current does not",
+		);
+
+		await api.click(viewerControl(api.document, "Next image"));
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${PNG_BASE64}`,
+			"Next from the last wraps to the first — the wrap is the walk's own rule",
+		);
+		assert.equal(
+			position(),
+			"Image 1 of 3",
+			"and the announcement wraps with it",
+		);
+	});
+});
+
+test("the arrow KEYS switch pictures, and a modifier chord is left to the app", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [IMAGE_ONE, IMAGE_TWO, IMAGE_THREE],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		await api.click(
+			api.document.querySelector(
+				'[data-fold-media] button[aria-label="Expand Image 1"]',
+			),
+		);
+		const pictureSrc = () =>
+			api.document.querySelector(VIEWER_PICTURE)?.getAttribute("src") ?? null;
+
+		await api.pressKey("ArrowRight");
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${PORTRAIT_BASE64}`,
+			"ArrowRight is the same walk as the button",
+		);
+		await api.pressKey("ArrowRight");
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${MAGENTA_BASE64}`,
+			"and keeps walking",
+		);
+		await api.pressKey("ArrowLeft");
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${PORTRAIT_BASE64}`,
+			"ArrowLeft steps back",
+		);
+		/*
+		 * The modifier chord is the app's: ⌘← means "back" elsewhere in this
+		 * window, and a viewer that swallowed it would take a navigation away
+		 * from a reader who asked for it.
+		 */
+		await api.pressKey("ArrowRight", { metaKey: true });
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${PORTRAIT_BASE64}`,
+			"a ⌘ chord does not step the group",
+		);
+	});
+});
+
+test("the filmstrip switches to the tile that was pressed and moves the current mark", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [IMAGE_ONE, IMAGE_TWO, IMAGE_THREE],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		await api.click(
+			api.document.querySelector(
+				'[data-fold-media] button[aria-label="Expand Image 1"]',
+			),
+		);
+		const tiles = filmstripTiles(api.document);
+		const pictureSrc = () =>
+			api.document.querySelector(VIEWER_PICTURE)?.getAttribute("src") ?? null;
+
+		await api.click(tiles[2]);
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${MAGENTA_BASE64}`,
+			"pressing a tile shows that tile's picture",
+		);
+		const after = filmstripTiles(api.document);
+		assert.equal(
+			after[2].getAttribute("aria-current"),
+			"true",
+			"and the current mark follows the press",
+		);
+		assert.equal(
+			after[0].getAttribute("aria-current"),
+			null,
+			"off the old tile",
+		);
+		/*
+		 * The mark's VISUAL half lives on the SLOT, which is where design round 1's
+		 * D1-1 and UX round 1's U1-1 met: the tile's own `border-control` edge
+		 * measured 1.52-2.36:1 over the light themes' scrims and vanished entirely
+		 * when the current slot had no control - the receipt - while the slot's
+		 * `ring-ink` clears the 3:1 non-text floor over every scrim composite (the
+		 * contract asserts it) and can sit on ANY slot, including one with no
+		 * button in it.
+		 */
+		const slots = [...api.document.querySelectorAll("[data-image-slot]")];
+		assert.ok(
+			slots[2].className.split(" ").includes("ring-ink"),
+			"the current slot holds the ink ring at rest",
+		);
+		assert.ok(
+			!slots[0].className.split(" ").includes("ring-ink"),
+			"and the slots it does not show carry none",
+		);
+		assert.equal(
+			api.document.querySelector(LIVE_POSITION)?.textContent,
+			"Image 3 of 3",
+			"the announcement follows too",
+		);
+		await api.click(after[0]);
+		assert.equal(
+			pictureSrc(),
+			`data:image/png;base64,${PNG_BASE64}`,
+			"and back is one more press, not a reopen",
+		);
+	});
+});
+
+test("one picture in a group keeps the single-picture chrome — no strip, no arrows", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [IMAGE_ONE],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		await api.click(
+			api.document.querySelector(
+				'[data-fold-media] button[aria-label="Expand Image"]',
+			),
+		);
+		assert.ok(isOpen(api.document), "the lone picture still expands");
+		assert.equal(
+			api.document.querySelector(FILMSTRIP),
+			null,
+			"with no second picture there is no set to collage",
+		);
+		assert.equal(
+			viewerControl(api.document, "Previous image"),
+			null,
+			"and no walk to offer",
+		);
+		assert.ok(
+			viewerControl(api.document, "Zoom in"),
+			"while the zoomed-state controls are there for one picture exactly as for three",
+		);
+	});
+});
+
+test("the zoomed-state controls are real buttons with names, and they step the ladder they claim", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(ImageAttachment, {
+				file: FILE_PATH,
+				src: PNG,
+				conversationId: "image-expand",
+			}),
+		);
+		await api.click(pictureButton(api.document));
+		const picture = api.document.querySelector(EXPANDED_PICTURE);
+
+		const zoomOut = viewerControl(api.document, "Zoom out");
+		const zoomIn = viewerControl(api.document, "Zoom in");
+		const reset = viewerControl(api.document, "Reset view");
+		assert.ok(zoomOut && zoomIn && reset, "the cluster is on screen");
+		assert.equal(
+			zoomOut.disabled,
+			true,
+			"at fit there is nothing to zoom out of",
+		);
+		assert.equal(reset.disabled, true, "and nothing to reset");
+		assert.equal(
+			zoomIn.disabled,
+			false,
+			"while zooming in is the live control",
+		);
+
+		await api.click(zoomIn);
+		assert.equal(
+			picture.style.transform,
+			"translate(0px, 0px) scale(2)",
+			"one press is the ladder's second step, over the fit",
+		);
+		assert.equal(zoomOut.disabled, false, "and now there is a step back");
+		assert.equal(reset.disabled, false, "and a view to reset");
+
+		await api.click(zoomIn);
+		await api.click(zoomIn);
+		assert.equal(
+			picture.style.transform,
+			`translate(0px, 0px) scale(${VIEWER_ZOOM_MAX})`,
+			"the ladder stops at its top",
+		);
+		assert.equal(zoomIn.disabled, true, "where the control says so");
+	});
+});
+
+test("reset returns the view to fit: the transform goes and the controls disable again", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(ImageAttachment, {
+				file: FILE_PATH,
+				src: PNG,
+				conversationId: "image-expand",
+			}),
+		);
+		await api.click(pictureButton(api.document));
+		await api.click(viewerControl(api.document, "Zoom in"));
+		assert.notEqual(
+			api.document.querySelector(EXPANDED_PICTURE).style.transform,
+			"",
+			"the picture is zoomed before the reset",
+		);
+
+		await api.click(viewerControl(api.document, "Reset view"));
+		assert.equal(
+			api.document.querySelector(EXPANDED_PICTURE).style.transform,
+			"",
+			"reset returns the view to fit — no transform, the picture exactly where it opened",
+		);
+		assert.equal(
+			viewerControl(api.document, "Zoom out").disabled,
+			true,
+			"and the cluster reads as fit again (zoom-out disabled)",
+		);
+		assert.equal(
+			viewerControl(api.document, "Reset view").disabled,
+			true,
+			"with nothing left to reset",
+		);
+	});
+});
+
+test("Escape closes the carousel and focus returns to the strip tile that was pressed", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [IMAGE_ONE, IMAGE_TWO],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		const second = api.document.querySelector(
+			'[data-fold-media] button[aria-label="Expand Image 2"]',
+		);
+		await api.click(second);
+		assert.ok(isOpen(api.document), "the carousel is open to be escaped from");
+		second.focus();
+
+		await api.pressEscape(
+			() => api.focused() === 'button[aria-label="Expand Image 2"]',
+		);
+
+		assert.equal(isOpen(api.document), false, "Escape closes it");
+		assert.equal(
+			api.focused(),
+			'button[aria-label="Expand Image 2"]',
+			"and focus lands on the tile the reader pressed, not on <body> — the group overlay reuses the single-image handoff",
+		);
+	});
+});
+
+/* ------------------------------------------------- the fade, focus and scroll */
+
+test("the controls fade to their resting floor after the hold, and activity wakes them", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(ImageAttachment, {
+				file: FILE_PATH,
+				src: PNG,
+				conversationId: "image-expand",
+			}),
+		);
+		await api.click(pictureButton(api.document));
+		const controls = api.document.querySelector("[data-image-viewer-controls]");
+		assert.ok(controls, "the cluster is on screen");
+
+		/*
+		 * FOCUS IS THE FLOOR'S PREREQUISITE (design round 1, D1-2). Radix's
+		 * modal autofocus used to land on the cluster's first control, and the
+		 * guard below re-arms while focus is inside the cluster - so the resting
+		 * state was unreachable while the app had focus at all. The open now
+		 * anchors focus on the picture's own frame instead: outside the cluster,
+		 * inside the dialog.
+		 */
+		assert.equal(
+			api.document.activeElement?.getAttribute("data-image-viewport"),
+			"",
+			"the frame takes focus at open, not a cluster control",
+		);
+		assert.ok(
+			!controls.contains(api.document.activeElement),
+			"so the guard can let the cluster rest",
+		);
+		assert.ok(
+			controls.className.split(" ").includes("opacity-100"),
+			"awake at open",
+		);
+
+		/*
+		 * The hold is `SCROLLBAR_HOLD_MS` of real time — the scrollbar fade's
+		 * own constant, imported rather than re-declared — so the case waits it
+		 * out for real rather than faking the clock the production code reads.
+		 */
+		await act(async () => {
+			await new Promise((resolve) =>
+				setTimeout(resolve, SCROLLBAR_HOLD_MS + 400),
+			);
+		});
+		assert.ok(
+			controls.className.split(" ").includes("opacity-45"),
+			"after the hold the cluster sinks to its resting floor",
+		);
+
+		/*
+		 * And ANY activity brings it back: the listener is observational, so a
+		 * bare pointermove (the shape a reader makes by reaching for a control)
+		 * is enough.
+		 */
+		await act(async () => {
+			api.window.document.dispatchEvent(
+				new api.window.Event("pointermove", { bubbles: true }),
+			);
+			await Promise.resolve();
+		});
+		await api.settle();
+		assert.ok(
+			controls.className.split(" ").includes("opacity-100"),
+			"a pointer move wakes it to full strength",
+		);
+	});
+});
+
+test("a focused control holds the cluster awake past the hold", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(ImageAttachment, {
+				file: FILE_PATH,
+				src: PNG,
+				conversationId: "image-expand",
+			}),
+		);
+		await api.click(pictureButton(api.document));
+		const controls = api.document.querySelector("[data-image-viewer-controls]");
+		const zoomIn = viewerControl(api.document, "Zoom in");
+		/*
+		 * The other half of the guard: a reader who TABBED onto a control must
+		 * not have it dim under them (the scrollbar fade's own amended rule).
+		 * Focus in the cluster re-arms the hold for as long as it stays there.
+		 */
+		act(() => {
+			zoomIn.focus();
+		});
+		await act(async () => {
+			await new Promise((resolve) =>
+				setTimeout(resolve, SCROLLBAR_HOLD_MS + 400),
+			);
+		});
+		assert.ok(
+			controls.className.split(" ").includes("opacity-100"),
+			"a focused control keeps the cluster at full strength",
+		);
+	});
+});
+
+test("a walk from a strip tile moves focus with the picture - and off the tiles onto a receipt", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [IMAGE_ONE, IMAGE_TWO, IMAGE_ABSENT],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		await api.click(
+			api.document.querySelector(
+				'[data-fold-media] button[aria-label="Expand Image 1"]',
+			),
+		);
+		const strip = api.document.querySelector(FILMSTRIP);
+		const tiles = filmstripTiles(api.document);
+
+		/*
+		 * THE STAGED CASE (design round 1, D1-3): focus is ON a strip tile - the
+		 * reader tabbed to it - and the walk moves the current. The tile that
+		 * held focus must not keep reading as the current one: focus follows the
+		 * picture to the new tile's own control.
+		 */
+		act(() => {
+			tiles[0].focus();
+		});
+		await api.pressKey("ArrowRight");
+		assert.equal(
+			api.document.activeElement?.getAttribute("aria-label"),
+			"Show image 2 of 3",
+			"focus followed the walk to the new current tile",
+		);
+
+		/*
+		 * And onto a picture that has NO control to take it: the receipt slot is
+		 * not a button, so focus leaves the tiles for the dialog's layer rather
+		 * than staying on the stale tile.
+		 */
+		await api.pressKey("ArrowRight");
+		assert.ok(
+			!strip.contains(api.document.activeElement),
+			"focus left the strip when the walk landed on the receipt",
+		);
+		assert.equal(
+			api.document.activeElement,
+			api.document.querySelector(DIALOG),
+			"and sits on the dialog's layer",
+		);
+	});
+});
+
+test("the walk scrolls the current slot into view, a receipt's slot included", async () => {
+	await mount(async (api) => {
+		const calls = [];
+		/*
+		 * jsdom does not implement `scrollIntoView`; the component optional-calls
+		 * it, so the suite can install a recorder instead of stubbing the layout.
+		 */
+		api.window.HTMLElement.prototype.scrollIntoView =
+			function scrollIntoView() {
+				calls.push(this.getAttribute("data-image-slot"));
+			};
+		try {
+			await api.render(
+				React.createElement(FoldMedia, {
+					images: [IMAGE_ONE, IMAGE_TWO, IMAGE_ABSENT],
+					scope: transcriptScope,
+					onRevealMore: () => {},
+				}),
+			);
+			await api.click(
+				api.document.querySelector(
+					'[data-fold-media] button[aria-label="Expand Image 1"]',
+				),
+			);
+			assert.equal(
+				calls.at(-1),
+				"1",
+				"opening scrolls the current slot into view (the strip may be wider than its viewport)",
+			);
+
+			await api.click(viewerControl(api.document, "Next image"));
+			assert.equal(calls.at(-1), "2", "and every walk scrolls the NEW current");
+
+			await api.click(viewerControl(api.document, "Next image"));
+			assert.equal(
+				calls.at(-1),
+				"3",
+				"including the receipt's slot, which has no button but is still a slot",
+			);
+		} finally {
+			Reflect.deleteProperty(
+				api.window.HTMLElement.prototype,
+				"scrollIntoView",
+			);
+		}
+	});
+});
+
+/* The class contract here and real-browser rects in the evidence README are
+ * complementary: jsdom has no layout and cannot prove scrollport clearance. */
+test("wide wrap reveals both endpoint slots with the 1px ring scroll-margin contract", async () => {
+	await mount(async (api) => {
+		const images = Array.from({ length: 10 }, (_, index) => ({
+			...IMAGE_ONE,
+			id: `ring-clearance:${index}`,
+		}));
+		const calls = [];
+		api.window.HTMLElement.prototype.scrollIntoView = function (options) {
+			calls.push({ slot: this.getAttribute("data-image-slot"), options });
+		};
+		try {
+			await api.render(
+				React.createElement(FoldMedia, {
+					images,
+					scope: transcriptScope,
+					onRevealMore: () => {},
+				}),
+			);
+			await api.click(
+				api.document.querySelector(
+					'[data-fold-media] button[aria-label="Expand Image 1"]',
+				),
+			);
+			await api.click(viewerControl(api.document, "Previous image"));
+			assert.equal(calls.at(-1).slot, "10", "Previous wraps to the last slot");
+			await api.click(viewerControl(api.document, "Next image"));
+			assert.equal(calls.at(-1).slot, "1", "Next wraps back to the first slot");
+			for (const index of [1, 10]) {
+				const slot = api.document.querySelector(`[data-image-slot="${index}"]`);
+				assert.ok(
+					slot.classList.contains("scroll-mx-px"),
+					"both endpoints reserve the ring's 1px inline outset during reveal",
+				);
+			}
+			assert.deepEqual(calls.at(-1).options, {
+				block: "nearest",
+				inline: "nearest",
+			});
+		} finally {
+			Reflect.deleteProperty(
+				api.window.HTMLElement.prototype,
+				"scrollIntoView",
+			);
+		}
+	});
+});
+
+/* A controlled strip-root observer plus the real media bridge/resolver chain.
+ * No jsdom visibility/layout claim: deliveries below are explicit fixture input. */
+test("cold strip demand admits visible and wrapped neighbour slots, not far digests; admission resets on close/group change", async () => {
+	await mount(async (api) => {
+		const oldObserver = globalThis.IntersectionObserver;
+		const observers = [];
+		class ControlledObserver {
+			constructor(callback, options) {
+				this.callback = callback;
+				this.root = options.root;
+				this.slots = [];
+				this.disconnected = false;
+				observers.push(this);
+			}
+			observe(slot) {
+				this.slots.push(slot);
+			}
+			disconnect() {
+				this.disconnected = true;
+			}
+			deliver(index, visible = true) {
+				this.callback([
+					{ target: this.slots[index - 1], isIntersecting: visible },
+				]);
+			}
+		}
+		globalThis.IntersectionObserver = ControlledObserver;
+		const requests = [];
+		const replies = [];
+		api.window.api = {
+			desktop: {
+				media: (request) => {
+					requests.push(request.digest);
+					return new Promise((resolve) => replies.push(resolve));
+				},
+			},
+		};
+		const images = Array.from({ length: 12 }, (_, index) => ({
+			id: `demand-test:${index}`,
+			data: index === 0 || index === 5 ? PNG_BASE64 : null,
+			attachment:
+				index === 0 || index === 5
+					? null
+					: (300 + index).toString(16).padStart(32, "0"),
+			mimeType: "image/png",
+		}));
+		const draw = (open, group = images) =>
+			api.render(
+				React.createElement(ImageGroupLightbox, {
+					images: group,
+					index: 0,
+					scope: transcriptScope,
+					open,
+					onOpenChange: () => {},
+				}),
+			);
+		try {
+			await draw(true);
+			assert.deepEqual(
+				new Set(requests),
+				new Set([images[1].attachment, images[11].attachment]),
+				"open loads only wrapped neighbours; inline selected image needs no relay",
+			);
+			assert.equal(
+				observers.filter((o) => !o.disconnected).length,
+				1,
+				"ONE strip-root observer",
+			);
+			const observer = observers.at(-1);
+			assert.equal(observer.root, api.document.querySelector(FILMSTRIP));
+			assert.equal(
+				observer.slots.length,
+				12,
+				"every known slot stays in the list",
+			);
+			assert.ok(
+				api.document.querySelector('[data-image-slot="6"] img'),
+				"offscreen inline-known image is immediate",
+			);
+			const slot8 = api.document.querySelector('[data-image-slot="8"]');
+			const reserved8 = slot8.querySelector("[data-attachment-deferred]");
+			assert.ok(
+				reserved8,
+				"far cold tile is a stable reserved box, not a fetch",
+			);
+			for (const cls of SLOT_BOX) assert.ok(reserved8.classList.contains(cls));
+			await act(async () => {
+				observer.deliver(4);
+			});
+			await api.settle();
+			assert.ok(
+				requests.includes(images[3].attachment),
+				"scroll visibility loads that digest",
+			);
+			const countAfterVisible = requests.length;
+			await act(async () => {
+				observer.deliver(4, false);
+			});
+			await api.settle();
+			assert.equal(
+				requests.length,
+				countAfterVisible,
+				"leaving view does not restart resolution",
+			);
+			assert.equal(
+				api.document.querySelector(
+					'[data-image-slot="4"] [data-attachment-deferred]',
+				),
+				null,
+				"admission latches while open",
+			);
+			await api.click(
+				api.document.querySelector('button[aria-label="Show image 4 of 12"]'),
+			);
+			assert.equal(
+				api.document.querySelector(LIVE_POSITION)?.textContent,
+				"Image 4 of 12",
+				"an admitted resolving tile is selectable before its bytes arrive",
+			);
+			assert.ok(
+				slot8.firstElementChild.classList.contains("h-[79px]"),
+				"cold outer slots reserve the browser-measured settled height throughout",
+			);
+			await api.click(
+				slot8.querySelector('button[aria-label="Show image 8 of 12"]'),
+			);
+			assert.equal(
+				api.document.querySelector('[data-image-slot="8"]'),
+				slot8,
+				"selection never remounts the stable li",
+			);
+			for (const index of [6, 7, 8])
+				assert.ok(
+					requests.includes(images[index].attachment),
+					"selection admits current +/-1 before bytes arrive",
+				);
+			assert.equal(
+				api.document.querySelector(LIVE_POSITION)?.textContent,
+				"Image 8 of 12",
+			);
+			for (const cls of SLOT_BOX)
+				assert.ok(
+					slot8
+						.querySelector("[data-attachment-reserved]")
+						.classList.contains(cls),
+					"same box while resolving",
+				);
+			assert.ok(
+				!requests.includes(images[9].attachment),
+				"another far cold digest is still untouched",
+			);
+			await draw(false);
+			await draw(true);
+			assert.ok(
+				api.document.querySelector(
+					'[data-image-slot="8"] [data-attachment-deferred]',
+				),
+				"close/reopen clears latched eligibility",
+			);
+			const freshObserver = observers.at(-1);
+			await act(async () => {
+				observer.deliver(8);
+			});
+			await api.settle();
+			assert.ok(
+				api.document.querySelector(
+					'[data-image-slot="8"] [data-attachment-deferred]',
+				),
+				"retired observer cannot admit the reopened strip",
+			);
+			const other = images.map((image, index) => ({
+				...image,
+				id: `other:${index}`,
+				attachment: image.attachment
+					? (500 + index).toString(16).padStart(32, "0")
+					: null,
+			}));
+			await draw(true, other);
+			assert.ok(
+				api.document.querySelector(
+					'[data-image-slot="4"] [data-attachment-deferred]',
+				),
+				"new group cannot inherit old index admission",
+			);
+			await act(async () => {
+				freshObserver.deliver(4);
+			});
+			await api.settle();
+			assert.ok(
+				!requests.includes(other[3].attachment),
+				"old group's queued callback cannot fetch a new group's far digest",
+			);
+			await api.click(viewerControl(api.document, "Previous image"));
+			assert.equal(
+				api.document.querySelector(LIVE_POSITION)?.textContent,
+				"Image 12 of 12",
+				"wrap admits last image before bytes arrive",
+			);
+			assert.ok(
+				requests.includes(other[10].attachment),
+				"wrapped neighbour 11 loads on demand",
+			);
+		} finally {
+			// Finish synthetic attempts before changing the jsdom realm; nothing is sent to a daemon.
+			await act(async () => {
+				for (const reply of replies)
+					reply({
+						status: 404,
+						kind: "error",
+						detail: "Synthetic fixture ended",
+					});
+			});
+			if (oldObserver) globalThis.IntersectionObserver = oldObserver;
+			else Reflect.deleteProperty(globalThis, "IntersectionObserver");
+		}
 	});
 });
