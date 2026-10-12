@@ -2303,6 +2303,22 @@ test("the filmstrip switches to the tile that was pressed and moves the current 
 			null,
 			"off the old tile",
 		);
+		/*
+		 * The mark's VISUAL half, which the operator's ask is about ("with the
+		 * current one marked"): the tile that is the picture on screen keeps the
+		 * `border-control` edge at rest — the same edge the hover and focus states
+		 * return — so the strip answers the question with no pointer anywhere near
+		 * it. `aria-current` alone would leave a sighted reader guessing.
+		 */
+		const frameOf = (tile) => tile.querySelector("div");
+		assert.ok(
+			frameOf(after[2]).className.split(" ").includes("border-control"),
+			"the current tile holds the control edge at rest",
+		);
+		assert.ok(
+			!frameOf(after[0]).className.split(" ").includes("border-control"),
+			"and the tiles it does not show carry no edge until one is pointed at or focused",
+		);
 		assert.equal(
 			api.document.querySelector(LIVE_POSITION)?.textContent,
 			"Image 3 of 3",
