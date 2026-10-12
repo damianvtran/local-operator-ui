@@ -4130,6 +4130,14 @@ export const STORIES = [
 	 * missing. The keyboard rows read `Ctrl+…` here because the harness carries
 	 * no window-chrome facts — the display tables' shared fallback, exactly as
 	 * the mini view's own stories read it.
+	 *
+	 * EVERY CLAIM BELOW POLLS FOR THE DRAWN STORY (`pollMs` 30000; precedent the
+	 * rail host's 3000, sized up because these mounts are heavier): the settings
+	 * section is a six-row form, and under the fleet's load the drawn state lands
+	 * several seconds after navigation — a bare read beat the story mount (the
+	 * design leg measured `dom_audit` scans at 0 two seconds in, 43 by eight) and
+	 * refused frames that are correct a moment later. The poll is bounded, so a
+	 * story that never draws still fails with the last reading.
 	 */
 	[
 		"settings-keyboard-shortcuts--default-mix",
@@ -4137,6 +4145,7 @@ export const STORIES = [
 		640,
 		{
 			expect: {
+				pollMs: 30000,
 				expression: `(() => {
 					const consoleField = document.querySelector('input[data-shortcut-action="panel.console"]');
 					if (!consoleField) return "the console row is not rendered";
@@ -4158,6 +4167,7 @@ export const STORIES = [
 		{
 			expectPresent: 'button[aria-label="Reset Browser to its default"]',
 			expect: {
+				pollMs: 30000,
 				expression: `(() => {
 					const field = document.querySelector('input[data-shortcut-action="panel.browser"]');
 					if (!field) return "the browser row is not rendered";
@@ -4175,6 +4185,7 @@ export const STORIES = [
 		640,
 		{
 			expect: {
+				pollMs: 30000,
 				expression: `(() => {
 					const active = document.activeElement;
 					if (!active || active.getAttribute("data-shortcut-action") !== "panel.canvas") return "the canvas field does not hold focus, so the frame is not the recording state";
@@ -4189,6 +4200,24 @@ export const STORIES = [
 		1024,
 		640,
 		{
+			/*
+			 * This row has no `expect` expression of its own, so the drawn gate is
+			 * ADDED rather than extended (rig repair, design leg 1): the poll waits for
+			 * the story AND its play, so the `expectSentence` below reads a refusal that
+			 * exists rather than racing the mount.
+			 */
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const field = document.querySelector('input[data-shortcut-action="panel.console"]');
+					if (!field) return "the console row is not rendered";
+					const refusal = document.querySelector("output");
+					if (!refusal) return "the refusal line is not rendered";
+					return true;
+				})()`,
+				message:
+					"the console row and its refusal line are drawn before the sentence is read",
+			},
 			expectSentence: {
 				selector: "output",
 				includes: "Already assigned to Open canvas.",
@@ -4202,6 +4231,7 @@ export const STORIES = [
 		{
 			expectGone: 'button[aria-label="Reset Browser to its default"]',
 			expect: {
+				pollMs: 30000,
 				expression: `(() => {
 					const field = document.querySelector('input[data-shortcut-action="panel.browser"]');
 					if (!field) return "the browser row is not rendered";
@@ -5898,6 +5928,12 @@ export const STORIES = [
 	 * the tooltip — `hoverSettleMs` 500 clears the wrapper's 400ms delay — and
 	 * the frame is 360 wide because a tooltip opens LEFT of its item and the
 	 * 132px rail-only frame would clip the sentence these two frames exist for.
+	 *
+	 * THE POLL GATES THE DRAW, NOT THE TOOLTIP (rig repair, design leg 1): these
+	 * rows carried no `expect` expression, and the hover's single selector read
+	 * — like the claims themselves — could beat the story's mount under load, so
+	 * each row now polls for its item first. A story that never draws still
+	 * fails; the poll cannot turn that into a pass.
 	 */
 	[
 		"navigation-panel-rail--console-chord-tooltip",
@@ -5906,6 +5942,16 @@ export const STORIES = [
 		{
 			hover: '[data-panel-rail-item="console"]',
 			hoverSettleMs: 500,
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const item = document.querySelector('[data-panel-rail-item="console"]');
+					if (!item) return "the console rail item is not rendered";
+					return true;
+				})()`,
+				message:
+					"the rail is drawn before the pointer is moved at the console item",
+			},
 			expectSentence: {
 				selector: '[role="tooltip"]',
 				includes: "Open console (Ctrl+J)",
@@ -5919,6 +5965,16 @@ export const STORIES = [
 		{
 			hover: '[data-panel-rail-item="browser"]',
 			hoverSettleMs: 500,
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const item = document.querySelector('[data-panel-rail-item="browser"]');
+					if (!item) return "the browser rail item is not rendered";
+					return true;
+				})()`,
+				message:
+					"the rail is drawn before the pointer is moved at the browser item",
+			},
 			expectSentence: {
 				selector: '[role="tooltip"]',
 				includes: "Open browser",
