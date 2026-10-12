@@ -7709,6 +7709,42 @@ test("the marker requires a known direction and normalises flags", () => {
 	assert.notEqual(state.records[0].receipt.label, "7");
 });
 
+test("a stamped but invalid marker is not re-guessed from its envelope", () => {
+	// R3-1 acceptance mirror: the legacy wrapper handling belongs to rows the
+	// modern producer never stamped. An INVALID marker on an envelope-looking
+	// row keeps the row a user row whose text is the raw envelope - never a
+	// hub receipt, never an extracted parent body - on the durable AND live
+	// arms.
+	const envelope =
+		"<parent-message>\nsteer preamble\n\nFocus on retries\n</parent-message>";
+	for (const marker of [
+		{ direction: "sideways", body: "Focus on retries" },
+		{ body: "Focus on retries" },
+		{ direction: "to_child" },
+	]) {
+		const payload = { kind: "message", ...user("u5", envelope) };
+		payload.provider_payload = { hub_receipt: marker };
+		const page = {
+			entries: [{ id: "u5", ts: 16, type: "message", payload }],
+			has_more: false,
+			cursor_missing: false,
+		};
+		const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+		assert.equal(state.records[0].kind, "user", JSON.stringify(marker));
+		assert.equal(state.records[0].text, envelope);
+
+		const live = applyEvent(
+			EMPTY_TRANSCRIPT,
+			{
+				type: "message_start",
+				message: { ...payload, role: "user", id: "u5" },
+			},
+			16,
+		);
+		assert.equal(live.records[0].kind, "user", JSON.stringify(marker));
+	}
+});
+
 test("the live marker arm projects the receipt under the row's own id", () => {
 	const message = markedSteer("h2", "Focus on retries");
 	const state = applyEvent(
