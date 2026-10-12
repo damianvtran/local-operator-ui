@@ -59,12 +59,21 @@ const BANDS_PNG_BASE64 =
 const bands = `data:image/png;base64,${BANDS_PNG_BASE64}`;
 
 /**
- * The strip's own portrait fixture — 2x6, the sibling set's `PORTRAIT_BASE64`,
- * kept identical so the second tile of the carousel is the same phone-aspect
- * shape every other strip frame in the evidence tree shows.
+ * The carousel's second picture: a 400x1200 phone-aspect strip of twelve
+ * horizontal bands.
+ *
+ * NOT the sibling set's 2x6 `PORTRAIT_BASE64`, and the reason is a frame that
+ * was taken and looked at: the overlay's fit rule keeps a small picture its OWN
+ * size (see `PICTURE_BOX` — "a 240x180 picture offered nearly the whole
+ * viewport stays 240x180"), so the 2x6 fixture renders in the viewer as a
+ * two-by-six-pixel speck — honest, and useless as a frame for "the carousel
+ * switched to the second picture". This fixture is the smallest shape that
+ * FILLS the box the way a real phone capture does (~265x796 fitted), so the
+ * `carousel-next` frame states its claim at a glance, and the strip's second
+ * tile shows the same picture compressed into the slot the way the first does.
  */
 const PORTRAIT_BASE64 =
-	"iVBORw0KGgoAAAANSUhEUgAAAAIAAAAGCAIAAABmRdhlAAAAEElEQVR42mMIqDgBRAyEKQCEWRLBtZF+SAAAAABJRU5ErkJggg==";
+	"iVBORw0KGgoAAAANSUhEUgAAAZAAAASwBAMAAAAnBQFuAAAAJFBMVEWYqsg0OEjG0OCWYFqwvtTe5O68lm5QSGB0VG7SxKBshLSAlr7mOirBAAAACXBIWXMAAAPoAAAD6AG1e1JrAAADr0lEQVR42u3PwQCAQAAEwFNIIYUUUkghhVNIIYUUkgth/9uMwYyjxBARERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERiZG1hIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIhIjuwlRERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERyBAAAAAAAAAAAAAAAAAAAAAAAAID/eEuIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiOTIU0JEREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREREJEfuEiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiOXKWEBERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERHJka2EiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiEiOXCVERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERHJklhARERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERyZGlhIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIhI9AHDQnxLQg4PywAAAABJRU5ErkJggg==";
 
 /**
  * The carousel's group: two pictures with bytes and one the store cannot serve.
