@@ -179,6 +179,18 @@ const VIEWER_RESET = 'button[aria-label="Reset view"]';
 const VIEWER_NEXT = 'button[aria-label="Next image"]';
 const VIEWER_CLOSE = 'button[aria-label="Close image"]';
 const VIEWER_TILE_ONE = '[data-fold-media] button[aria-label="Expand Image 1"]';
+const VIEWER_TILE_TWO = '[data-fold-media] button[aria-label="Expand Image 2"]';
+const VIEWER_CONTROLS = "[data-image-viewer-controls]";
+/*
+ * The carousel's SECOND picture, by a signature of its own bytes: the group
+ * fixture is a 400x1200 portrait whose base64 opens with this 40-character
+ * sequence (checked unique across the story's fixtures), so `carousel-open`
+ * can claim at shutter time that the viewer holds THAT picture — the frame,
+ * not just the tuple, proves "opened ON the pressed tile" (agent review round
+ * 1, R1-5: with the first tile pressed, "pressed" and "first" were the same
+ * cell and the frame could not discriminate).
+ */
+const PORTRAIT_SRC_SIGNATURE = "iVBORw0KGgoAAAANSUhEUgAAAZAAAASw";
 const THEME_FILTER = flag("themes")?.split(",").filter(Boolean) ?? null;
 const PARTIAL = Boolean(ONLY || THEME_FILTER || DIR_FILTER);
 
@@ -11774,15 +11786,28 @@ export const STORIES = [
 	 *
 	 * Every frame is a real gesture through the input pipeline. `fit` presses the
 	 * picture; `zoomed` presses the picture and Zoom in; `zoomed-panned` then
-	 * DRAGS the zoomed picture to the close button's corner, where the pan clamps
-	 * at the picture's own edge (a held-and-clamped gesture, not a mid-drag
-	 * accident); `reset` presses Zoom in and then Reset view. The carousel frames
-	 * press the strip's first tile and then walk: `carousel-next` by the Next
-	 * control, `carousel-leftwrap` by a real ArrowLeft — which WRAPS, so that
-	 * frame lands on the set's last picture and carries the wrap and the
-	 * missing-picture receipt in one reading. The expect claims are read at
-	 * shutter time: a zoom frame whose picture carries no `scale(` in its style,
-	 * or a carousel frame with no strip, fails the run rather than photographing
+	 * DRAGS the zoomed picture to the close button's corner and HOLDS it there —
+	 * the pan is clamped at the picture's own edge, a held-and-clamped gesture
+	 * rather than a mid-drag accident (the rig's `drag` sends no release; the
+	 * README says "press-drag", not "press-drag-release" — agent review round 1,
+	 * R1-4); `reset` presses Zoom in and then Reset view; `resting` presses the
+	 * picture and then STAYS OFF IT for longer than `SCROLLBAR_HOLD_MS`, so the
+	 * shutter photographs the dimmed cluster and the tuple claims it by class
+	 * (design round 1, D1-2: the floor was unreachable while focus parked in the
+	 * cluster at open; now the layer anchors focus and the frame is that state).
+	 *
+	 * The carousel frames all open by pressing the strip's MIDDLE tile, so
+	 * "opens ON the pressed picture" is readable in the frame itself, and each
+	 * walk ends somewhere the other frames cannot reach (R1-5): `carousel-open`
+	 * shows picture 2 of 4 and claims that picture's own src signature;
+	 * `carousel-next` steps forward ONTO the receipt (which photographs the
+	 * receipt slot's current ring, UX round 1's U1-1); `carousel-leftwrap`
+	 * presses a real ArrowLeft from the first tile — which WRAPS to the fourth
+	 * picture. `wide-open`/`wide-walk` are the ten-tile group: the walk to the
+	 * far end must SCROLL the current into view (design round 1, D1-5). The
+	 * expect claims are read at shutter time: a zoom frame whose picture carries
+	 * no `scale(` in its style, a carousel frame with no strip, or a resting
+	 * frame whose cluster is not dimmed, fails the run rather than photographing
 	 * a resting state under the name of a pressed one.
 	 */
 	[
@@ -11793,6 +11818,21 @@ export const STORIES = [
 			dir: "fit",
 			press: IMAGE_EXPAND_PICTURE,
 			expectGone: `${VIEWER_FRAME} img[style*="scale("]`,
+		},
+	],
+	[
+		"image-viewer-controls--viewer",
+		1280,
+		900,
+		{
+			dir: "resting",
+			press: IMAGE_EXPAND_PICTURE,
+			pressSettleMs: 2600,
+			expectAttribute: {
+				selector: VIEWER_CONTROLS,
+				name: "class",
+				includes: "opacity-45",
+			},
 		},
 	],
 	[
@@ -11836,8 +11876,13 @@ export const STORIES = [
 		900,
 		{
 			dir: "carousel-open",
-			press: VIEWER_TILE_ONE,
+			press: VIEWER_TILE_TWO,
 			expectPresent: VIEWER_FILMSTRIP,
+			expectAttribute: {
+				selector: `${VIEWER_FRAME} img`,
+				name: "src",
+				includes: PORTRAIT_SRC_SIGNATURE,
+			},
 		},
 	],
 	[
@@ -11846,7 +11891,7 @@ export const STORIES = [
 		900,
 		{
 			dir: "carousel-next",
-			press: [VIEWER_TILE_ONE, VIEWER_NEXT],
+			press: [VIEWER_TILE_TWO, VIEWER_NEXT],
 			expectPresent: VIEWER_FILMSTRIP,
 		},
 	],
@@ -11858,6 +11903,27 @@ export const STORIES = [
 			dir: "carousel-leftwrap",
 			press: VIEWER_TILE_ONE,
 			keys: [{ key: "ArrowLeft", settleMs: 300 }],
+			expectPresent: VIEWER_FILMSTRIP,
+		},
+	],
+	[
+		"image-viewer-controls--group-wide",
+		1280,
+		900,
+		{
+			dir: "wide-open",
+			press: VIEWER_TILE_ONE,
+			expectPresent: VIEWER_FILMSTRIP,
+		},
+	],
+	[
+		"image-viewer-controls--group-wide",
+		1280,
+		900,
+		{
+			dir: "wide-walk",
+			press: VIEWER_TILE_ONE,
+			keys: [...Array(9)].map(() => ({ key: "ArrowRight", settleMs: 120 })),
 			expectPresent: VIEWER_FILMSTRIP,
 		},
 	],

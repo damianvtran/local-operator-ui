@@ -12,27 +12,31 @@ The operator's report of 2026-10-11, two asks in one surface:
 > images within the same group/turn, not the whole conversation. Keyboard
 > support: arrow keys (and Esc to close). ..."
 
-These are the states that answer them. Two stories, seven states, twelve themes,
-eighty-four frames — and each state answers a different question:
+These are the states that answer them. Two stories, ten states, twelve themes,
+one hundred and twenty frames — and each state answers a different question:
 
 | state | what it is | the question it answers |
 | --- | --- | --- |
 | `fit` | the overlay after a real press on the picture, controls awake | the chrome at rest — and, against `image-viewer-controls-before/fit`, exactly what this change drew |
+| `resting` | the same press, then the reader stays off it past `SCROLLBAR_HOLD_MS` | the fade's landing state: the tuple claims the dimmed class at shutter, and the frame is the quiet state design round 1's D1-2 made reachable |
 | `zoomed` | a press, then Zoom in — 2x | the zoom model: the frame stays the fitted box, the picture scales inside it, the crop is the CENTRE |
-| `zoomed-panned` | a press, Zoom in, then a real DRAG to the close button's corner | the pan: available only while zoomed, pointer-captured, and CLAMPED at the picture's own edge |
+| `zoomed-panned` | a press, Zoom in, then a real DRAG toward the close button's corner | the pan: available only while zoomed, pointer-captured, and CLAMPED at the picture's own edge |
 | `reset` | a press, Zoom in, then Reset view | the return — byte-identical to `fit` in all twelve themes, which is the strongest form this claim takes as a still |
-| `carousel-open` | a press on a condensed strip's first tile | the group opens ON the pressed picture: arrows, filmstrip, position |
-| `carousel-next` | the same press, then Next | switching, and the current mark moving between tiles |
-| `carousel-leftwrap` | the same press, then a real ArrowLeft | the walk WRAPS (left from the first lands on the last), and the picture without bytes answers with the store's own receipt |
+| `carousel-open` | a press on a condensed strip's SECOND tile (a middle one) | the group opens ON the pressed picture — arrows, filmstrip, position — and the tuple claims the viewer's own `src` is that picture, so the frame cannot read as "opened the first" |
+| `carousel-next` | the same press, then Next | the forward walk, landing on the picture with no bytes: the store's receipt, and the current ring FOLLOWING to the receipt's own slot |
+| `carousel-leftwrap` | a press on the FIRST tile, then a real ArrowLeft | the walk WRAPS (left from the first lands on the last picture) |
+| `wide-open` | a press on a group the strip cannot fit (ten tiles) | a strip longer than its viewport, the current at the left end |
+| `wide-walk` | the same press, then nine real ArrowRights | the walk's SCROLL: the strip scrolls the current into view, so the last slot is on screen with its ring and the first slots are off it |
 
 ## The capture
 
 ```
 # Storybook walks forward when a port is taken, so read the port off the banner
-# rather than assuming it. 6190 is what this set bound, confirmed on the banner.
-env -u XPC_FLAGS LOCAL_OPERATOR_UI_NO_BYTECODE=true pnpm storybook --port 6190 --no-open
+# rather than assuming it. 6194 is what this set bound on the remediation pass
+# (and its frames record it); 6190 was the first pass's port.
+env -u XPC_FLAGS LOCAL_OPERATOR_UI_NO_BYTECODE=true pnpm storybook --port 6194 --no-open
 
-env -u XPC_FLAGS node scripts/capture-evidence.mjs http://localhost:6190 \
+env -u XPC_FLAGS node scripts/capture-evidence.mjs http://localhost:6194 \
   --only=image-viewer-controls \
   --allow-backend
 ```
@@ -43,16 +47,31 @@ talks to a backend (the pictures are `data:` URIs and the story column is local
 JSX). `env -u XPC_FLAGS` because a tool child that inherits it cannot resolve DNS
 on this host (measured; it breaks `getaddrinfo` in children).
 
-The pass was run in three pieces, and the frames on disk are the LAST of each:
-the two viewer probes (one theme each) that proved the story rendered and the
-press landed; the full 12-theme set; then a re-capture of the three `carousel-*`
-states, because the first group frames were TAKEN, LOOKED AT, and found wanting —
-the story's second picture was the sibling set's 2x6 fixture, and the overlay's
-fit rule (correctly) renders a 2x6 image as a two-by-six-pixel speck, which is
-useless as a frame for "the carousel switched". The fixture was re-drawn as a
-400x1200 phone-aspect picture and the three group states re-taken; no speck
-frame is committed. The `carousel-*` frames therefore carry the last group
-capture, and `reset` byte-identity below was verified across the final set.
+The committed set is the REMEDIATION pass's frames (the agent/design/UX/QA
+round-1 remediation of 2026-10-12), re-captured whole — no frame here predates
+the fix round. What the round changed visually: the current ring's ROLE (the
+slot mark moved from the tile's `border-control` edge to `ink` — design round
+1's D1-1; see the measured table for why not `ink-muted`), the OPEN FOCUS
+(D1-2/D1-3: the layer's anchor takes focus instead of the first control, so no
+tile wears a ring the walk did not put there and the fade is reachable), the
+strip's LANE (D1-4: a tall picture no longer sits under the strip), the strip's
+own padding (D1-6: `px-2`, whose wider box the tables below measure), and three
+new states (`resting`, from D1-2; `wide-open`/`wide-walk`, from D1-5). The
+group fixture also gained its fourth picture (agent review round 1, R1-5), so
+every carousel frame discriminates the pressed tile from the first.
+
+The capture run asserted its claims at SHUTTER time, per tuple: `resting`
+fails unless the cluster carries `opacity-45`; `carousel-open` fails unless the
+viewer's own `<img>` carries the portrait fixture's base64 signature; the zoom
+frames fail unless the picture's style carries `scale(2)`; `fit`/`reset` fail
+if any `scale(` survives; every carousel frame fails without
+`[data-image-filmstrip]` on screen. The run reported `Captured 120 frames`.
+
+The first pass (2026-10-11) had run in three pieces — two viewer probes, the
+full set, then a re-capture of the three `carousel-*` states after the frames
+were taken, looked at, and the 2x6 speck fixture replaced with a phone-aspect
+one. That narrative is superseded: the remediation pass re-shot every tuple
+from the fixed tree.
 
 ## The chrome, measured from the frames
 
@@ -63,14 +82,18 @@ transition columns/rows — not read back off the CSS:
 | claim | measurement |
 | --- | --- |
 | the fitted picture is unchanged by this change | `fit` occupies rows 234..665 (432 rows) between x=64..1215; `image-viewer-controls-before/fit` measures the SAME rows and columns |
-| the only pixels this change moves at rest | the diff between `image-viewer-controls-before/fit` and `fit` is 1,100 differing subpixels, ALL of them inside one 86x20 box at +1174,+860 — the three cluster glyphs. No pixel anywhere else in the frame differs, which is the pair's whole point: the change adds chrome and moves nothing |
+| the only pixels this change moves at rest | the diff between `image-viewer-controls-before/fit` and `fit` is 1,100 differing PIXELS (2,878 differing channel values), ALL of them inside one 86x20 box at +1174,+860 — the three cluster glyphs. No pixel anywhere else in the frame differs, which is the pair's whole point: the change adds chrome and moves nothing (QA round 1, Q-1: the earlier "subpixels" wording described the case wrong; the count was always the pixel count) |
 | the cluster's lane | those glyphs sit at bottom-right (`fixed right-4 bottom-4`): the box ends at x=1259 against the frame's 1280, y=879 against 900 — 21px of clearance on the frame edge, clear of the picture, which ends at y=665 |
 | the arrows | the chevron glyphs paint 24x20 at +24,+444 and 20x20 at +1244,+444 — vertically centred in the viewport (`top-0 bottom-0 my-auto`), which at this fixture's centring is also the picture's mid-line, and in the lane `PICTURE_BOX` reserves: the fitted picture leaves ≥64px on each side at this viewport |
-| the filmstrip | 374x88 at +454,+796, centred (its three 117x78 tiles: 3x117 + 2x8 gap + p-1 = 375), below the picture at this fixture's aspect |
+| the filmstrip | painted content x394..885 (492 wide) inside its 508px box (`px-2 py-1` since D1-6), centred; four 117x78 slots at 8px gaps — three tiles and the receipt box — with tiles at y801..878 |
 | the zoom crop | sampled along the picture's centre row (y=450): `fit` crosses all EIGHT fixture bands; `zoomed` crosses FOUR, the middle ones — the 2x crop is centred, and the box is the same one `fit` measured |
-| the pan's clamp | `panned` crosses four bands with the FIRST band flush at x=64 — the picture's own left edge seated on the frame's, which is the clamp state, arrived at by a real drag (press-drag-release through CDP input). The drag target is the close button's corner: 610px right and ~420px up, both beyond the 2x limits (576, 216), so the frame is a held clamp rather than a mid-gesture accident |
+| the pan's clamp | `panned` crosses four bands with the FIRST band flush at x=64 — the picture's own left edge seated on the frame's, which is the clamp state, arrived at by a real press-drag through CDP input, HELD at the clamp (the rig's `drag` sends no release — agent review round 1, R1-4 — so the tuple's own comment calls it a held gesture). The drag target is the close button's corner: 610px right and ~420px up, both beyond the 2x limits (576, 216), so the frame is a clamp rather than a mid-gesture accident |
 | the reset | `reset/<theme>.webp` is BYTE-IDENTICAL to `fit/<theme>.webp` — same sha256, in all twelve themes (`localOperatorDark`: `d1f16e87845736b1d544e55ed890af2c4ac5e6ac806fc86ea5c7ffdba06ec0b2`). After two presses that move the picture twice, the pixels are the fit state's, exactly |
-| the switched picture | `carousel-next`'s portrait measures 266 columns at x=507..772 with its top edge at y=52 — the 400x1200 fixture at the box's 796px ceiling computes 265.3px wide, and the ±1 column is the mask's blend edge |
+| the switched picture (after the lane) | `carousel-open`'s portrait measures 230 columns at x525..754, rows 104..794 — the 400x1200 fixture at the box's 692px lane ceiling computes 230.7px wide, top (900-692)/2 = 104. Against the strip's tiles at y801 that leaves a 6px scrim gap: nothing of the picture is under chrome (design round 1's D1-4; the pre-fix number was 266 cols at x507..772 with its bottom 47px unrevealable) |
+| the current RING (slot 2, `carousel-open`) | `ink` painted 1px outside the slot: per theme, `localOperatorLight` (35,29,20) = **6.43:1** vs its scrim (165,160,153), `sage` 6.02:1, `iceberg` **4.70:1**, the nine dark themes 13.08-18.59:1 (`localOperatorDark` 16.72:1). The role is `ink` and not `ink-muted` because the scrim dims whatever is open under it: measured over each of the eight state grounds' composites, `ink-muted` drops to 2.78:1 (kanagawaLotus over `sunken`) while `ink` clears every composite of every palette (worst 3.37:1, everforestLight over `sunken`) — and `scripts/contrast-contract.mjs` now asserts exactly that ("the lightbox's own ground", 59x8 = 472 assertions) |
+| the current ring ON THE RECEIPT (`carousel-next`, slot 3) | the mark follows the walk onto a slot with no control: same role, same numbers — `localOperatorLight` (35,29,22) = 6.43:1, `sage` 6.09:1, `iceberg` 4.89:1, dark 13.42-18.59:1. The receipt's own border remains visible INSIDE the ring; the ring is the only cue that changes |
+| the resting state is REAL, measured, not asserted by class alone | over the cluster's glyph pixels (208 in `localOperatorDark`, 74 in `localOperatorLight`), the mean deviation from the scrim falls to **0.435x / 0.452x** of the `fit` frame's — the paint is the 0.45 floor, and the tuple separately claimed `opacity-45` at shutter |
+| the walk's SCROLL (`wide-*`) | `wide-open`'s strip content starts at x135 (scroll 0; the first slot at its natural position); `wide-walk`'s starts flush at the box's own left edge x128 — the first slots are scrolled off — with the last slot's ring painting at x~1130..1151 rows 800/880. The scroll is `scrollIntoView({block/inline: "nearest"})`, pinned in jsdom including the receipt slot |
 | the receipt | `carousel-leftwrap`'s card text paints 492x14 at +394,+443, centred — the store's sentence, at the size it is drawn, in the middle where the picture was |
 
 ## What each frame is evidence FOR, and what it cannot carry
@@ -81,12 +104,14 @@ transition columns/rows — not read back off the CSS:
   the run unless the viewer's own `<img>` carries `scale(2)` in its style;
   `fit`/`reset` fail if any `scale(` survives; every carousel state fails
   without `[data-image-filmstrip]` on screen.
-- **The fade is NOT in these frames, by design.** The controls rest awake in
-  every still; after `SCROLLBAR_HOLD_MS` of idleness they dim to the resting
-  floor (`opacity-45`, the scrollbar fade's own idle state) and return on
-  pointer, key or focus activity. That is a clocked behaviour a still cannot
-  carry — the jsdom suite mounts it, the paint is CSS, and `fit` is the awake
-  half every reader compares against.
+- **The fade IS in these frames now, and the clock is still jsdom's.**
+  `resting` is the post-hold state, claimed by class at shutter (`opacity-45`
+  on the cluster), and the jsdom suite pins the cycle with committed cases:
+  dim after the hold, wake on a bare `pointermove`, held awake while a control
+  has focus. The earlier sentences here said "the jsdom suite mounts it" and
+  "the paint is CSS" — agent review round 1's R1-1 measured that no committed
+  case covered the fade at all, which is why the claim now names the case in
+  `scripts/chat-image-expand.test.mjs` rather than a mount.
 - **The zoom/pan arithmetic is jsdom's, and deliberately so.** The ladder
   (1x, 2x, 3x, 4x), the clamp's range, and the reset's recentring are pure
   functions (`shared/lib/image-viewer-model.ts`) asserted directly; the frames
@@ -98,32 +123,42 @@ transition columns/rows — not read back off the CSS:
   Storybook without standing up the relay; the strip's reserved-box state is
   instead covered by `scripts/chat-image-expand.test.mjs` (the tile whose bridge
   never settles).
-- **The current mark on a picture with no bytes.** When the walk lands on the
-  receipt, the receipt slot has no control to carry `aria-current`, so the mark
-  cannot appear there; the position is still announced (`Image 3 of 3`) and the
-  arrows still walk. The `carousel-leftwrap` frame shows exactly this, and it is
-  the one state where "the current one is marked" is satisfied by the live
-  region alone.
+- **The current mark on a picture with no bytes.** The ring lives on the SLOT,
+  so it survives the state the old mark could not: `carousel-next` walks onto
+  the receipt and the receipt's own slot carries the ring (UX round 1's U1-1).
+  `aria-current` stays a tile attribute — the receipt has no control, and the
+  position is still announced (`Image 3 of 4`).
 - **The keyboard.** `carousel-leftwrap` IS a real ArrowLeft key press (the walk
-  wraps, so one frame carries both "left works" and "an end is not a dead end").
-  The ArrowRight path is pressed as the Next control in `carousel-next`; the
-  arrow-key binding itself is asserted in jsdom, where a chord can be
-  discriminated.
+  wraps, so one frame carries both "left works" and "an end is not a dead
+  end"), and `wide-walk` is nine real ArrowRights — the press that makes the
+  strip scroll. The ArrowRight path is also pressed as the Next control in
+  `carousel-next`; the arrow-key binding itself is asserted in jsdom, where a
+  chord can be discriminated.
 - **The story column behind the scrim** is `image-expand.stories.tsx`'s own
   Column (re-stated, same 810px measure): the conversation the overlay dims.
 
 ## What is NOT covered
 
-- No frame tests the controls' fade return after inactivity (behaviour; above).
+- The focus ring's contrast over the scrim is not measured here: it remains a
+  named follow-up (the contract's scrim block asserts the CURRENT ring; a
+  focus-indicator pair over the scrim is the next row, design round 1's D1-1
+  tail).
 - No before frame exists for `zoomed`, `zoomed-panned` or `reset` individually:
   zoom does not exist at the base, so `image-viewer-controls-before/fit` IS the
   before of all three, and its README says so.
-- No frame exercises a real media-relay fetch, a digest-cache miss, or a group
-  larger than the strip's cap (the strip scrolls; the frames' three tiles do
-  not scroll).
-- `zoomed-panned` photographs one clamp corner (left-bottom of the picture
-  visible); the other three corners are the same rule by symmetry, asserted in
-  jsdom rather than framed four ways.
+- No frame exercises a real media-relay fetch, a digest-cache miss, or a
+  RESOLVING strip tile: the storybook pictures are inline `data:` URIs and the
+  relay is not stood up for the stories; the reserved-box state is jsdom's (the
+  tile whose bridge never settles).
+- The `wide-*` frames stage ten tiles — the largest group this set carries. A
+  group whose strip overflows a whole screenful is the same code path, asserted
+  in jsdom rather than framed again.
+- `zoomed-panned` photographs one clamp corner (the picture's left edge seated
+  on the frame's); the other three corners are the same rule by symmetry,
+  asserted in jsdom rather than framed four ways.
+- A one-member group and a message-attachment/tool-row group are not stageable
+  in Storybook (the story files carry no such fixtures); the count-decides case
+  is a jsdom case.
 
 ## The pair
 

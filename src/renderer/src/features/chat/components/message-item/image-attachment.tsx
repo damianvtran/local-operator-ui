@@ -129,9 +129,13 @@ export type ImageAttachmentProps = BaseImageAttachmentProps & {
 	 * all. The caller names the control, because the built-in copy ("Expand
 	 * Image 2") states the opposite of what a select does.
 	 *
-	 * `current` is the lightbox strip's mark of the picture on screen (WCAG's
-	 * `aria-current`); the visual half is the `border-control` edge the tile
-	 * already grows in the states it is a control.
+	 * `current` is the lightbox strip's SEMANTIC mark of the picture on screen
+	 * (WCAG's `aria-current`). Its visible half lives on the strip's SLOT — a
+	 * `ring-ink-muted` on the `li`, `image-group-lightbox.tsx` owns it — not on
+	 * the tile's control edge, so a slot with no control at all (the receipt for
+	 * a picture with no bytes) carries the mark too, and the edge's contrast is
+	 * measured against the scrim it is actually drawn on (design round 1's D1-1
+	 * and UX round 1's U1-1).
 	 */
 	press?: {
 		onPress: () => void;
@@ -398,15 +402,6 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 				 * illustration's backing and the picture supplies its own extent.
 				 */
 				boundary={size === "thumbnail" ? "control" : "hairline"}
-				/*
-				 * The filmstrip's SELECT tiles hold their edge while they are the
-				 * picture on screen (see `press.current`): the strip's job is to say
-				 * which of the set the layer shows, and a mark that arrives only on
-				 * hover leaves that job undone the moment the pointer moves away.
-				 * The full-ceiling picture never carries it — its frame is a
-				 * `hairline` backing, not a control edge.
-				 */
-				current={size === "thumbnail" && press?.current === true}
 			>
 				<img
 					className={cn(

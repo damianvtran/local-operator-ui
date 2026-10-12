@@ -146,6 +146,7 @@ const bundle = await build({
 				VIEWER_ZOOM_MAX,
 				wrapGroupIndex,
 			} from "./src/renderer/src/shared/lib/image-viewer-model";
+			export { SCROLLBAR_HOLD_MS } from "./src/renderer/src/shared/lib/scrollbar-activity";
 		`,
 		resolveDir: ROOT,
 	},
@@ -199,6 +200,7 @@ const {
 	stepZoom,
 	VIEWER_ZOOM_MAX,
 	wrapGroupIndex,
+	SCROLLBAR_HOLD_MS,
 } = await import(pathToFileURL(bundlePath).href);
 
 /* ------------------------------------------------------------------ fixtures */
@@ -571,6 +573,21 @@ async function mount(render) {
 	} finally {
 		act(() => root.unmount());
 		await act(async () => {});
+		/*
+		 * One timer turn BEFORE the globals are restored, because Radix's focus
+		 * scope schedules its unmount handoff in a `setTimeout(0)` (its
+		 * `AUTOFOCUS_ON_UNMOUNT` dispatch). That timer is a NODE timer -
+		 * `setTimeout` is not one of this harness's window shims, so
+		 * `window.close()` cannot cancel it - and if it fires after the shims
+		 * are restored (or after the NEXT mount installed its own), it builds
+		 * its `CustomEvent` from that realm and dispatches it onto THIS
+		 * window's container: jsdom refuses a foreign realm's event, and the
+		 * uncaught rejection lands on whichever test is running then (measured:
+		 * a stray `TypeError ... parameter 1 is not of type 'Event'` attributed
+		 * to a later case). Flushing here makes the timer fire while its own
+		 * window is still the installed one.
+		 */
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		window.close();
 		for (const [key, descriptor] of originals) {
 			if (descriptor) Object.defineProperty(globalThis, key, descriptor);
@@ -2204,6 +2221,27 @@ test("the arrows walk the whole group, wrapping at the ends, and a missing pictu
 			"and answers with the store's own sentence rather than a torn glyph",
 		);
 		assert.equal(position(), "Image 3 of 3", "the position still advances");
+		/*
+		 * AND THE RECEIPT SLOT IS MARKED TOO (UX round 1, U1-1): the walk onto a
+		 * picture with no bytes used to leave the strip with NO mark anywhere -
+		 * the receipt has no control to carry the tile's edge - so the reader who
+		 * walked onto it could not see which of the set was on screen. The ring
+		 * lives on the slot, which the receipt slot has just as the tiles do.
+		 */
+		assert.ok(
+			api.document
+				.querySelector('[data-image-slot="3"]')
+				.className.split(" ")
+				.includes("ring-ink"),
+			"the receipt slot carries the current ring",
+		);
+		assert.ok(
+			!api.document
+				.querySelector('[data-image-slot="1"]')
+				.className.split(" ")
+				.includes("ring-ink"),
+			"and the slot that is no longer current does not",
+		);
 
 		await api.click(viewerControl(api.document, "Next image"));
 		assert.equal(
@@ -2304,20 +2342,22 @@ test("the filmstrip switches to the tile that was pressed and moves the current 
 			"off the old tile",
 		);
 		/*
-		 * The mark's VISUAL half, which the operator's ask is about ("with the
-		 * current one marked"): the tile that is the picture on screen keeps the
-		 * `border-control` edge at rest — the same edge the hover and focus states
-		 * return — so the strip answers the question with no pointer anywhere near
-		 * it. `aria-current` alone would leave a sighted reader guessing.
+		 * The mark's VISUAL half lives on the SLOT, which is where design round 1's
+		 * D1-1 and UX round 1's U1-1 met: the tile's own `border-control` edge
+		 * measured 1.52-2.36:1 over the light themes' scrims and vanished entirely
+		 * when the current slot had no control - the receipt - while the slot's
+		 * `ring-ink` clears the 3:1 non-text floor over every scrim composite (the
+		 * contract asserts it) and can sit on ANY slot, including one with no
+		 * button in it.
 		 */
-		const frameOf = (tile) => tile.querySelector("div");
+		const slots = [...api.document.querySelectorAll("[data-image-slot]")];
 		assert.ok(
-			frameOf(after[2]).className.split(" ").includes("border-control"),
-			"the current tile holds the control edge at rest",
+			slots[2].className.split(" ").includes("ring-ink"),
+			"the current slot holds the ink ring at rest",
 		);
 		assert.ok(
-			!frameOf(after[0]).className.split(" ").includes("border-control"),
-			"and the tiles it does not show carry no edge until one is pointed at or focused",
+			!slots[0].className.split(" ").includes("ring-ink"),
+			"and the slots it does not show carry none",
 		);
 		assert.equal(
 			api.document.querySelector(LIVE_POSITION)?.textContent,
@@ -2475,5 +2515,207 @@ test("Escape closes the carousel and focus returns to the strip tile that was pr
 			'button[aria-label="Expand Image 2"]',
 			"and focus lands on the tile the reader pressed, not on <body> — the group overlay reuses the single-image handoff",
 		);
+	});
+});
+
+/* ------------------------------------------------- the fade, focus and scroll */
+
+test("the controls fade to their resting floor after the hold, and activity wakes them", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(ImageAttachment, {
+				file: FILE_PATH,
+				src: PNG,
+				conversationId: "image-expand",
+			}),
+		);
+		await api.click(pictureButton(api.document));
+		const controls = api.document.querySelector("[data-image-viewer-controls]");
+		assert.ok(controls, "the cluster is on screen");
+
+		/*
+		 * FOCUS IS THE FLOOR'S PREREQUISITE (design round 1, D1-2). Radix's
+		 * modal autofocus used to land on the cluster's first control, and the
+		 * guard below re-arms while focus is inside the cluster - so the resting
+		 * state was unreachable while the app had focus at all. The open now
+		 * anchors focus on the picture's own frame instead: outside the cluster,
+		 * inside the dialog.
+		 */
+		assert.equal(
+			api.document.activeElement?.getAttribute("data-image-viewport"),
+			"",
+			"the frame takes focus at open, not a cluster control",
+		);
+		assert.ok(
+			!controls.contains(api.document.activeElement),
+			"so the guard can let the cluster rest",
+		);
+		assert.ok(
+			controls.className.split(" ").includes("opacity-100"),
+			"awake at open",
+		);
+
+		/*
+		 * The hold is `SCROLLBAR_HOLD_MS` of real time — the scrollbar fade's
+		 * own constant, imported rather than re-declared — so the case waits it
+		 * out for real rather than faking the clock the production code reads.
+		 */
+		await act(async () => {
+			await new Promise((resolve) =>
+				setTimeout(resolve, SCROLLBAR_HOLD_MS + 400),
+			);
+		});
+		assert.ok(
+			controls.className.split(" ").includes("opacity-45"),
+			"after the hold the cluster sinks to its resting floor",
+		);
+
+		/*
+		 * And ANY activity brings it back: the listener is observational, so a
+		 * bare pointermove (the shape a reader makes by reaching for a control)
+		 * is enough.
+		 */
+		await act(async () => {
+			api.window.document.dispatchEvent(
+				new api.window.Event("pointermove", { bubbles: true }),
+			);
+			await Promise.resolve();
+		});
+		await api.settle();
+		assert.ok(
+			controls.className.split(" ").includes("opacity-100"),
+			"a pointer move wakes it to full strength",
+		);
+	});
+});
+
+test("a focused control holds the cluster awake past the hold", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(ImageAttachment, {
+				file: FILE_PATH,
+				src: PNG,
+				conversationId: "image-expand",
+			}),
+		);
+		await api.click(pictureButton(api.document));
+		const controls = api.document.querySelector("[data-image-viewer-controls]");
+		const zoomIn = viewerControl(api.document, "Zoom in");
+		/*
+		 * The other half of the guard: a reader who TABBED onto a control must
+		 * not have it dim under them (the scrollbar fade's own amended rule).
+		 * Focus in the cluster re-arms the hold for as long as it stays there.
+		 */
+		act(() => {
+			zoomIn.focus();
+		});
+		await act(async () => {
+			await new Promise((resolve) =>
+				setTimeout(resolve, SCROLLBAR_HOLD_MS + 400),
+			);
+		});
+		assert.ok(
+			controls.className.split(" ").includes("opacity-100"),
+			"a focused control keeps the cluster at full strength",
+		);
+	});
+});
+
+test("a walk from a strip tile moves focus with the picture - and off the tiles onto a receipt", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [IMAGE_ONE, IMAGE_TWO, IMAGE_ABSENT],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		await api.click(
+			api.document.querySelector(
+				'[data-fold-media] button[aria-label="Expand Image 1"]',
+			),
+		);
+		const strip = api.document.querySelector(FILMSTRIP);
+		const tiles = filmstripTiles(api.document);
+
+		/*
+		 * THE STAGED CASE (design round 1, D1-3): focus is ON a strip tile - the
+		 * reader tabbed to it - and the walk moves the current. The tile that
+		 * held focus must not keep reading as the current one: focus follows the
+		 * picture to the new tile's own control.
+		 */
+		act(() => {
+			tiles[0].focus();
+		});
+		await api.pressKey("ArrowRight");
+		assert.equal(
+			api.document.activeElement?.getAttribute("aria-label"),
+			"Show image 2 of 3",
+			"focus followed the walk to the new current tile",
+		);
+
+		/*
+		 * And onto a picture that has NO control to take it: the receipt slot is
+		 * not a button, so focus leaves the tiles for the dialog's layer rather
+		 * than staying on the stale tile.
+		 */
+		await api.pressKey("ArrowRight");
+		assert.ok(
+			!strip.contains(api.document.activeElement),
+			"focus left the strip when the walk landed on the receipt",
+		);
+		assert.equal(
+			api.document.activeElement,
+			api.document.querySelector(DIALOG),
+			"and sits on the dialog's layer",
+		);
+	});
+});
+
+test("the walk scrolls the current slot into view, a receipt's slot included", async () => {
+	await mount(async (api) => {
+		const calls = [];
+		/*
+		 * jsdom does not implement `scrollIntoView`; the component optional-calls
+		 * it, so the suite can install a recorder instead of stubbing the layout.
+		 */
+		api.window.HTMLElement.prototype.scrollIntoView =
+			function scrollIntoView() {
+				calls.push(this.getAttribute("data-image-slot"));
+			};
+		try {
+			await api.render(
+				React.createElement(FoldMedia, {
+					images: [IMAGE_ONE, IMAGE_TWO, IMAGE_ABSENT],
+					scope: transcriptScope,
+					onRevealMore: () => {},
+				}),
+			);
+			await api.click(
+				api.document.querySelector(
+					'[data-fold-media] button[aria-label="Expand Image 1"]',
+				),
+			);
+			assert.equal(
+				calls.at(-1),
+				"1",
+				"opening scrolls the current slot into view (the strip may be wider than its viewport)",
+			);
+
+			await api.click(viewerControl(api.document, "Next image"));
+			assert.equal(calls.at(-1), "2", "and every walk scrolls the NEW current");
+
+			await api.click(viewerControl(api.document, "Next image"));
+			assert.equal(
+				calls.at(-1),
+				"3",
+				"including the receipt's slot, which has no button but is still a slot",
+			);
+		} finally {
+			Reflect.deleteProperty(
+				api.window.HTMLElement.prototype,
+				"scrollIntoView",
+			);
+		}
 	});
 });
