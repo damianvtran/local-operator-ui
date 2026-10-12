@@ -380,12 +380,20 @@ test("diagnostic tracer records actual isolated workers without environment valu
 	const scratch = mkdtempSync(join(tmpdir(), "onboarding-diagnostic-"));
 	try {
 		const fixture = join(scratch, "passes.test.mjs");
-		const map = join(scratch, "empty-map.json");
+		const map = join(scratch, "populated-map.json");
 		const trace = join(scratch, "trace");
-		writeFileSync(map, "{}");
+		const replacement = '{"diagnostic":"nonempty-overlay"}';
+		// Empty maps never reached the broken read boundary on #1002. This
+		// fixture uses the shipped fs patch and byte oracle, not a fake reader.
+		writeFileSync(map, JSON.stringify({ "package.json": replacement }));
 		writeFileSync(
 			fixture,
-			'import {test} from "node:test"; test("passes", () => {});',
+			[
+				'import assert from "node:assert/strict";',
+				'import {readFileSync} from "node:fs";',
+				'import {test} from "node:test";',
+				`test("passes", () => { const actual = readFileSync("package.json", "utf8"); assert.equal(actual, ${JSON.stringify(replacement)}); console.log("OVERLAY_BYTES=" + actual); });`,
+			].join("\n"),
 		);
 		const env = Object.fromEntries(
 			Object.entries(process.env).filter(
@@ -401,7 +409,7 @@ test("diagnostic tracer records actual isolated workers without environment valu
 			LOCAL_OPERATOR_UI_ONBOARDING_TRACE_DIR: trace,
 			LOCAL_OPERATOR_UI_ONBOARDING_MAP: map,
 			DIAGNOSTIC_PRIVATE_SENTINEL: "operator-private-value",
-			LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB: "1500",
+			LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB: "480",
 		});
 		const result = spawnSync(
 			process.execPath,
@@ -409,6 +417,10 @@ test("diagnostic tracer records actual isolated workers without environment valu
 			{ env, encoding: "utf8", timeout: 20_000 },
 		);
 		assert.equal(result.status, 0, result.stdout + result.stderr);
+		assert.ok(
+			result.stdout.includes(`OVERLAY_BYTES=${replacement}`),
+			result.stdout,
+		);
 		const text = readdirSync(trace)
 			.filter((file) => file.endsWith(".jsonl"))
 			.map((file) => readFileSync(join(trace, file), "utf8"))
@@ -420,6 +432,13 @@ test("diagnostic tracer records actual isolated workers without environment valu
 		const worker = events.filter(
 			(event) =>
 				event.worker === true && event.argv.includes("passes.test.mjs"),
+		);
+		assert.ok(
+			worker.some(
+				(event) =>
+					event.event === "OVERLAY_READ" && event.path === "package.json",
+			),
+			text,
 		);
 		for (const kind of ["BEGIN", "END", "TEARDOWN"])
 			assert.ok(

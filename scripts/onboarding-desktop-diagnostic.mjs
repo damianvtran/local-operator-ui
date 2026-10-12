@@ -31,6 +31,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 
 export const BASE = "6734447f7f778e763fbcdf0d537650acf500cccf";
 const PRE = "683684d6c3e4d3585b1cb8401c3fec3428c12f03";
@@ -190,10 +191,14 @@ function preload() {
 	const dir = validOutput(process.env[TRACE_ENV]);
 	mkdirSync(dir, { recursive: true });
 	const traceFile = join(dir, `${process.pid}.jsonl`);
+	// Ambient test context also reaches wrappers/keepers. A worker is identified
+	// only when the loader sees the actual entry-point test module, using the
+	// same physical-file comparison as our own CLI (not an argv spelling).
+	let worker = false;
 	const trace = (event, extra = {}) =>
 		appendFileSync(
 			traceFile,
-			`${JSON.stringify({ event, at: new Date().toISOString(), pid: process.pid, ppid: process.ppid, worker: Boolean(process.env.NODE_TEST_CONTEXT) && process.argv[1]?.endsWith(".test.mjs"), argv: safeArgv([...process.execArgv, ...process.argv]), ...extra })}\n`,
+			`${JSON.stringify({ event, at: new Date().toISOString(), pid: process.pid, ppid: process.ppid, worker, argv: safeArgv([...process.execArgv, ...process.argv]), ...handles(), ...extra })}\n`,
 		);
 	const handles = () => ({
 		handles: process
@@ -233,7 +238,7 @@ function preload() {
 		if (!Object.hasOwn(map, rel)) return undefined;
 		if (!reads.has(rel)) {
 			reads.add(rel);
-			event("OVERLAY_READ", { path: rel });
+			trace("OVERLAY_READ", { path: rel });
 		}
 		return map[rel];
 	};
@@ -279,6 +284,16 @@ function preload() {
 		});
 	registerHooks({
 		load(url, context, next) {
+			if (
+				!worker &&
+				process.env.NODE_TEST_CONTEXT &&
+				url.startsWith("file:") &&
+				url.endsWith(".test.mjs") &&
+				isEntryPoint(url)
+			) {
+				worker = true;
+				trace("BEGIN", { phase: "file-entry", ...handles() });
+			}
 			const got = next(url, context);
 			if (
 				!url.startsWith("file:") ||
@@ -564,7 +579,7 @@ export async function main(head, output) {
 		: 1;
 }
 if (process.env[TRACE_ENV]) preload();
-else if (process.argv[1] && resolve(process.argv[1]) === SELF) {
+else if (isEntryPoint(import.meta.url)) {
 	try {
 		process.exitCode = await main(process.argv[2], process.argv[3]);
 	} catch (error) {
