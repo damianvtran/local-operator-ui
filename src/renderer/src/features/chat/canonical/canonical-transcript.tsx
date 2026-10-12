@@ -739,6 +739,31 @@ export type UndeliveredTurn = {
 	onEdit: () => void;
 };
 
+/**
+ * What a user row's attached picture is called, positionally — the rule this
+ * file has always labelled those tiles with, hoisted so the carousel's filmstrip
+ * and title reuse the same sentence (see `fold-media.tsx`'s twin).
+ */
+const userImageLabel = (
+	image: TranscriptImage,
+	index: number,
+	count: number,
+): string =>
+	image.name ??
+	(count === 1 ? "Attached image" : `Attached image ${index + 1}`);
+
+/**
+ * The tool row's rule, which differs from the user row's in the NOUN only: an
+ * artifact the row produced is an "Image", the same noun the condensed strip's
+ * tiles use (`fold-media.tsx`), while the wire's own name wins where one
+ * travelled (a read row's screenshot keeps its filename).
+ */
+const toolImageLabel = (
+	image: TranscriptImage,
+	index: number,
+	count: number,
+): string => image.name ?? (count === 1 ? "Image" : `Image ${index + 1}`);
+
 const UserRow = memo(function UserRow({
 	record,
 	isSmallView,
@@ -978,12 +1003,17 @@ const UserRow = memo(function UserRow({
 											key={image.id}
 											image={image}
 											scope={scope}
-											label={
-												image.name ??
-												(pictures.length === 1
-													? "Attached image"
-													: `Attached image ${index + 1}`)
-											}
+											label={userImageLabel(image, index, pictures.length)}
+											/*
+											 * THIS MESSAGE is the group: the reader's own attachments are one
+											 * set, so a press walks the pictures of the turn it belongs
+											 * to and never the conversation's other screenshots.
+											 */
+											group={{
+												images: pictures,
+												index,
+												labelFor: userImageLabel,
+											}}
 										/>
 									))}
 								</div>
@@ -1831,10 +1861,14 @@ const ToolRow = memo(function ToolRow({
 						key={image.id}
 						image={image}
 						scope={scope}
-						label={
-							image.name ??
-							(pictures.length === 1 ? "Image" : `Image ${index + 1}`)
-						}
+						label={toolImageLabel(image, index, pictures.length)}
+						/*
+						 * THIS ROW is the group: a tool call's own screenshots are one set
+						 * (the reader pressed inside it, so the walk stays inside it), the
+						 * same boundary the condensed strip draws when the row's group is
+						 * collapsed.
+						 */
+						group={{ images: pictures, index, labelFor: toolImageLabel }}
 					/>
 				))}
 			</div>

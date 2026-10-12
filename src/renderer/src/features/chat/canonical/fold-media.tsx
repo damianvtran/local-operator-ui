@@ -141,6 +141,23 @@ import { CanonicalImage } from "./canonical-image";
 import type { TranscriptImage } from "./transcript-reducer";
 import type { AttachmentScope } from "./use-attachment-url";
 
+/**
+ * What a strip tile is called, positionally — the rule this component has always
+ * labelled its tiles with, hoisted to one constant so the carousel's overlay
+ * labels the SAME picture with the SAME sentence (the tile says "Image 2" and
+ * the overlay's title must too).
+ *
+ * Deliberately without the wire's own `name` clause that the tool row's full
+ * pictures carry: this strip shows position, not filenames (the header's own
+ * "how many there are, which one is which" note), and a group whose overlay
+ * used a different rule from its tiles would be two vocabularies over one set.
+ */
+const foldMediaLabel = (
+	_image: TranscriptImage,
+	index: number,
+	count: number,
+): string => (count === 1 ? "Image" : `Image ${index + 1}`);
+
 export type FoldMediaProps = {
 	/** The run's images, in row order (`foldImages`). */
 	images: readonly TranscriptImage[];
@@ -232,7 +249,15 @@ export const FoldMedia = ({
 				image={image}
 				scope={scope}
 				size="thumbnail"
-				label={images.length === 1 ? "Image" : `Image ${index + 1}`}
+				label={foldMediaLabel(image, index, images.length)}
+				/*
+				 * THE SET, so the press can walk it: the click still expands the tile's
+				 * own picture (the label below says so and stays true), and what opens
+				 * now holds the run's OTHER pictures too — the left/right walk and the
+				 * strip inside the overlay both read THIS array, not the slice above,
+				 * so every picture the run produced is reachable from any tile.
+				 */
+				group={{ images, index, labelFor: foldMediaLabel }}
 			/>
 		</li>
 	));

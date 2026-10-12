@@ -2,7 +2,15 @@ import { ImageLightbox } from "@shared/components/common/image-lightbox";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { type FC, memo, useCallback, useRef, useState } from "react";
+import {
+	type FC,
+	type ReactNode,
+	type RefObject,
+	memo,
+	useCallback,
+	useRef,
+	useState,
+} from "react";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import {
 	classifyAttachmentSource,
@@ -100,6 +108,50 @@ const PICTURE_CLASS: Record<ImageSize, string> = {
 
 export type ImageAttachmentProps = BaseImageAttachmentProps & {
 	conversationId: string;
+	/**
+	 * The overlay a press opens, when the caller owns it — the group carousel's
+	 * door (see `canonical-image.tsx`'s `group`). Receives the layer's open
+	 * state, its dismissal and the control focus returns to, so a caller can own
+	 * an overlay this component cannot build: the group lightbox resolves ITS
+	 * pictures' URLs through the canonical resolver, which is the chat layer's
+	 * (`use-attachment-url`), not this component's.
+	 *
+	 * Omitted (every legacy caller), the press opens the single-image
+	 * `ImageLightbox` this component has always opened. That default is not a
+	 * fallback — it is the behaviour of a picture with no group, and it stays the
+	 * path `message-item`, `streaming-message` and the pasted-image branch take.
+	 */
+	overlay?: (controls: ImageAttachmentOverlay) => ReactNode;
+	/**
+	 * Replaces the press entirely, for a caller whose picture is a SELECT rather
+	 * than an expand: the lightbox filmstrip's tiles step the carousel they are
+	 * already in, so they open nothing and this component renders no overlay at
+	 * all. The caller names the control, because the built-in copy ("Expand
+	 * Image 2") states the opposite of what a select does.
+	 *
+	 * `current` is the lightbox strip's mark of the picture on screen (WCAG's
+	 * `aria-current`); the visual half is the `border-control` edge the tile
+	 * already grows in the states it is a control.
+	 */
+	press?: {
+		onPress: () => void;
+		/** The accessible name; the default expand copy is not true here. */
+		label: string;
+		/** The pointer's tooltip, the same sentence as the name. */
+		title: string;
+		current?: boolean;
+	};
+};
+
+/**
+ * What an owning caller's overlay is handed: the open state it renders from,
+ * the dismissal every exit routes through (`onOpenChange`), and the control
+ * focus returns to on close — the tile's own button, which this component owns.
+ */
+export type ImageAttachmentOverlay = {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	restoreFocusTo: RefObject<HTMLButtonElement | null>;
 };
 
 /**
@@ -159,7 +211,7 @@ const getFileName = (path: string): string => {
  * canonical surface takes the same shape through its `inline-block` wrapper.
  */
 export const ImageAttachment: FC<ImageAttachmentProps> = memo(
-	({ file, src, conversationId, label, size = "full" }) => {
+	({ file, src, conversationId, label, size = "full", overlay, press }) => {
 		const [hasError, setHasError] = useState(false);
 		const [isLoaded, setIsLoaded] = useState(false);
 		/**
@@ -394,7 +446,16 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 						 */
 						size === "thumbnail" && "group/tile rounded-sm",
 					)}
-					onClick={() => setExpanded(true)}
+					/*
+					 * ONE PRESS, TWO REPOINTINGS, and the default is the expand this
+					 * component has always opened. `press` (the filmstrip's select) wins
+					 * over `overlay` (the group carousel) because a caller that passes both
+					 * is describing two different acts for one control; the overlay door
+					 * keeps the built-in copy below, which is what makes "Expand Image 2"
+					 * remain the truth for a tile whose overlay happens to hold its
+					 * neighbours too.
+					 */
+					onClick={press ? press.onPress : () => setExpanded(true)}
 					/*
 					 * `aria-label` rather than the picture's own `alt` as the name. The
 					 * alt names the THING ("Attached image") and the action used to reach
@@ -403,8 +464,9 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 					 * for a mouse and effectively absent for a reader (UX round 1, U1-1).
 					 * The name now states what pressing it does.
 					 */
-					aria-label={`Expand ${name}`}
-					title={`Click to expand ${name}`}
+					aria-label={press ? press.label : `Expand ${name}`}
+					title={press ? press.title : `Click to expand ${name}`}
+					aria-current={press?.current ? "true" : undefined}
 				>
 					{picture}
 				</button>
@@ -480,27 +542,41 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 						/>
 					</div>
 				)}
-				<ImageLightbox
-					src={src}
-					label={name}
-					open={expanded}
-					onOpenChange={setExpanded}
-					restoreFocusTo={pictureRef}
+				{press ? null : overlay ? (
 					/*
-					 * The transcript's own failure treatment, and the sentence follows the
-					 * SOURCE: a `file` on disk can honestly have been moved, renamed or
-					 * deleted (`BrokenAttachment`'s default), while a `blob:`/`data:`
-					 * handle is a digest in the app's own store and cannot have been any
-					 * of those — the same split, with the same reason, that
-					 * `canonical-image.tsx` makes for its unavailable state.
+					 * The caller's own overlay (the group carousel), handed this
+					 * button as the control focus returns to. `press` renders nothing
+					 * here at all: a select tile opens no layer, it steps the one
+					 * already open (see the props type).
 					 */
-					fallback={
-						<BrokenAttachment
-							name={name}
-							detail={isLocalFile ? undefined : ATTACHMENT_UNAVAILABLE_COPY}
-						/>
-					}
-				/>
+					overlay({
+						open: expanded,
+						onOpenChange: setExpanded,
+						restoreFocusTo: pictureRef,
+					})
+				) : (
+					<ImageLightbox
+						src={src}
+						label={name}
+						open={expanded}
+						onOpenChange={setExpanded}
+						restoreFocusTo={pictureRef}
+						/*
+						 * The transcript's own failure treatment, and the sentence follows the
+						 * SOURCE: a `file` on disk can honestly have been moved, renamed or
+						 * deleted (`BrokenAttachment`'s default), while a `blob:`/`data:`
+						 * handle is a digest in the app's own store and cannot have been any
+						 * of those — the same split, with the same reason, that
+						 * `canonical-image.tsx` makes for its unavailable state.
+						 */
+						fallback={
+							<BrokenAttachment
+								name={name}
+								detail={isLocalFile ? undefined : ATTACHMENT_UNAVAILABLE_COPY}
+							/>
+						}
+					/>
+				)}
 			</div>
 		);
 	},
