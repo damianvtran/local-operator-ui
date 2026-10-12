@@ -31,6 +31,7 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Badge, Input, Label } from "@shared/components/ui";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useUpdateCredential } from "@shared/hooks/use-update-credential";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { ExternalLink } from "lucide-react";
 import type { FC } from "react";
@@ -132,7 +133,7 @@ const ModeOption: FC<{
 							·
 						</span>
 						<span className="shrink-0 font-medium text-ink text-meta">
-							Recommended
+							{t("ui.onboarding.search.recommended")}
 						</span>
 					</>
 				) : null}
@@ -201,8 +202,8 @@ const SearchKeyRow: FC<{
 			const message =
 				error instanceof Error && error.message
 					? error.message
-					: "The key could not be saved.";
-			setSaveError(`Not saved — ${message}`);
+					: t("ui.onboarding.search.row.save_failed");
+			setSaveError(t("ui.onboarding.search.row.not_saved", { message }));
 		} finally {
 			setIsSaving(false);
 		}
@@ -214,9 +215,18 @@ const SearchKeyRow: FC<{
 				<Label htmlFor={inputId}>{credential.name}</Label>
 				<span className="flex items-center gap-2">
 					{isSaving ? (
-						<Spinner size="sm" label={`Saving ${credential.name}`} />
+						<Spinner
+							size="sm"
+							label={t("ui.onboarding.search.row.saving", {
+								name: credential.name,
+							})}
+						/>
 					) : null}
-					{showSaved ? <Badge variant="success">Saved</Badge> : null}
+					{showSaved ? (
+						<Badge variant="success">
+							{t("ui.onboarding.search.row.saved")}
+						</Badge>
+					) : null}
 				</span>
 			</div>
 			<Input
@@ -235,7 +245,7 @@ const SearchKeyRow: FC<{
 						void handleSave();
 					}
 				}}
-				placeholder="Paste your API key"
+				placeholder={t("ui.onboarding.search.row.placeholder")}
 				disabled={isSaving}
 			/>
 			{saveError ? (
@@ -253,7 +263,7 @@ const SearchKeyRow: FC<{
 			>
 				{/* The catalogue names already end in "API key", so this reads
 				    "Get your Tavily API key" rather than "… API key key". */}
-				Get your {credential.name}
+				{t("ui.onboarding.search.row.get_your", { name: credential.name })}
 				<ExternalLink size={12} aria-hidden="true" />
 			</a>
 		</div>
@@ -291,13 +301,12 @@ export const SearchApiStep: FC<SearchApiStepProps> = ({
 	return (
 		<div className="flex flex-col gap-5">
 			<p className="text-body text-ink-muted">
-				Agents can look things up while they work — today's prices, this week's
-				news — instead of relying on what the model already knows.
+				{t("ui.onboarding.search.intro")}
 			</p>
 
 			<div className="flex flex-col gap-2">
 				<span id={MODE_GROUP_LABEL_ID} className="sr-only">
-					Search setup
+					{t("ui.onboarding.search.mode.label")}
 				</span>
 				<div
 					role="radiogroup"
@@ -306,22 +315,20 @@ export const SearchApiStep: FC<SearchApiStepProps> = ({
 				>
 					<ModeOption
 						id={FREE_RADIO_ID}
-						title="Free"
+						title={t("ui.onboarding.search.mode.free")}
 						recommended
 						checked={mode === "free"}
 						onSelect={() => setMode("free")}
 					>
-						Uses a rotating pool of free providers — DuckDuckGo, Tavily's free
-						tier, Exa and Parallel. No key needed; the pool is shared, so
-						searches can be slower at busy times.
+						{t("ui.onboarding.search.mode.free_detail")}
 					</ModeOption>
 					<ModeOption
 						id={KEYS_RADIO_ID}
-						title="Add API keys"
+						title={t("ui.onboarding.search.mode.keys")}
 						checked={mode === "keys"}
 						onSelect={() => setMode("keys")}
 					>
-						Bring your own keys for the search providers you use.
+						{t("ui.onboarding.search.mode.keys_detail")}
 					</ModeOption>
 				</div>
 			</div>
@@ -337,7 +344,7 @@ export const SearchApiStep: FC<SearchApiStepProps> = ({
 				 */
 				<div className="flex flex-col gap-5 pl-10">
 					<p className="text-ink-dim text-meta">
-						Each key is saved on your device as soon as you leave its field.
+						{t("ui.onboarding.search.each_key_saved")}
 					</p>
 					{SEARCH_CREDENTIALS.map((credential) => (
 						<SearchKeyRow
