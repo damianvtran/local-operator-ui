@@ -18,7 +18,7 @@ The fix: `pngForClipboard` in
 `src/renderer/src/features/chat/utils/image-actions.ts` passes PNG bytes through
 untouched and decodes everything else through an `<img>` object URL onto a
 canvas re-encoded as `image/png`; the menu writes the transcoded blob.
-`isClipboardImageEncoded` is the pure decision the tests share.
+`needsPngEncode` is the pure decision the tests share.
 
 ## The states
 
@@ -107,8 +107,9 @@ log says so rather than hiding the difference.
 **The before half's "unchanged" comparison is against a non-empty clipboard**:
 the after run's last write on the same machine left the 1103-byte PNG on it, so
 the refusal is shown holding a real payload byte-stable through the press, not
-shown against an empty clipboard. Both halves' JPEG copies wrote 98032 bytes at
-320x200 — the transcode is deterministic across halves and palettes.
+shown against an empty clipboard. Both palettes' JPEG presses in the after half
+wrote 98032 bytes at 320x200 — the transcode is deterministic across palettes
+(the before half's writes were refused; its log carries no such number).
 
 **The press-to-toast window is what the write spends**, and the timings above
 are the measurement the transcode's comment cites: the clipboard write needs the
@@ -137,9 +138,12 @@ faking it. The encode is this set's, end to end.
   (`scripts/image-actions.test.mjs`) covers the decision for every type; the
   decode path is shared, but only JPEG and PNG bytes are seeded in the fixture,
   so no frame shows a WEBP or SVG landing on the clipboard.
-- **A picture beyond the canvas limit** (a side over 16384 px). The function
-  throws a sentence a toast can carry rather than silently downscaling; that
-  branch has no frame.
+- **A picture beyond the canvas limits** (measured on this path in the app's
+  own Electron 44.3.0: a per-side maximum of 65,535 px and a total-area cap of
+  268,435,456 px² — 16,384x16,384 encodes, 16,385x16,384 answers null). The
+  function throws rather than silently downscaling — the menu's catch logs the
+  sentence and shows its fixed `Failed to copy image` toast — and that branch
+  has no frame.
 - **Consumers outside the app** — pasting into another program is not
   exercised; the claim is about what the app writes.
 - **The other menu actions** (`Open folder`, `Add to context`) are untouched by

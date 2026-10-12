@@ -339,6 +339,12 @@ export async function resolveCopyableImage(
  * saw six times, against PNGs that copied fine. The session that reported it
  * held 19 JPEGs.
  *
+ * AN EDGE THE EXACT MATCH DECIDES, deliberately: a parameterized spelling
+ * (`image/png;charset=utf-8`, reachable through an `http:` picture's response)
+ * is not an exact match, so it takes the encode path. The write still succeeds
+ * — the encoded entry is `image/png` — and only the byte-exact pass-through is
+ * given up, which is the conservative side of the rule.
+ *
  * PURE AND EXPORTED so the decision is testable without a DOM
  * (`scripts/image-actions.test.mjs`); `pngForClipboard` below is the one caller.
  */
@@ -369,15 +375,20 @@ export const needsPngEncode = (type: string): boolean =>
  * the picture's own URL.) The object URL is revoked in a `finally`, whoever
  * unwinds.
  *
- * THE LIMIT THAT IS NOT SILENTLY WORKED AROUND: a picture beyond Chromium's
- * canvas dimension limit (32767px on one side) cannot be drawn or encoded here —
- * `toBlob` answers null and this throws the sentence a toast can carry, rather
- * than downscaling. A clipboard entry that quietly shrank the picture the user
- * asked to copy would be the worse failure. The zero-size guard is for the same
- * shape one step smaller: no bytes is not a picture, and a write of one would
- * reject with a DOMException instead of a sentence.
+ * THE LIMITS THAT ARE NOT SILENTLY WORKED AROUND, measured on this exact path
+ * in the app's own Electron 44.3.0 (2026-10-12): a PER-SIDE maximum of 65,535
+ * px and a TOTAL-AREA cap of 268,435,456 px² (2^28 — 16,384x16,384 encodes,
+ * 16,385x16,384 answers null). Past either bound the context still comes back
+ * but drawing is silently ignored (a red fill reads back as transparent) and
+ * `toBlob` answers null, which is the throw below: the picture is REFUSED
+ * rather than downscaled, because a clipboard entry that quietly shrank the
+ * picture the user asked to copy would be the worse failure. The zero-size
+ * guard is the same shape one step smaller: no bytes is not a picture, and a
+ * write of one would reject with a DOMException instead of a sentence.
  *
- * Throws with a sentence a toast can carry; the caller decides how loud.
+ * Throws with a sentence the caller CAN surface; the menu's own catch logs it
+ * and shows its fixed "Failed to copy image" copy today, so the user sees the
+ * generic sentence while the specific one reaches the log.
  */
 export async function pngForClipboard(blob: Blob): Promise<Blob> {
 	if (blob.size === 0) throw new Error("This image has no bytes to copy");
@@ -410,7 +421,7 @@ export async function pngForClipboard(blob: Blob): Promise<Blob> {
 	}
 }
 
-/** Decode an object URL into a loaded `<img>` element, or reject with a sentence. */
+/** Decode an object URL into a loaded `<img>` element, or reject with a message. */
 function decodeImage(url: string): Promise<HTMLImageElement> {
 	return new Promise((resolve, reject) => {
 		const image = new Image();

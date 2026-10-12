@@ -141,7 +141,8 @@ export const ImageActionsMenu = ({
 	 * so the transcode has to stay quick rather than being deferred, batched or
 	 * awaited behind anything slower. Measured on the committed fixture (the
 	 * real-click `image-copy` scene, `docs/evidence/image-copy/`): press to
-	 * landed toast is ~270ms, two orders of magnitude inside the window.
+	 * landed toast is ~185 ms (180-187 across the four presses, the committed
+	 * log's own readings), well inside the ~5 s window.
 	 */
 	const copyImage = async () => {
 		try {

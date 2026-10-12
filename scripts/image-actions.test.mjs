@@ -277,6 +277,15 @@ test("only a PNG skips the clipboard transcode — the one image type the write 
 	 */
 	assert.equal(needsPngEncode("IMAGE/PNG"), false);
 	assert.equal(needsPngEncode(" image/png "), false);
+	/*
+	 * A PARAMETERIZED spelling is deliberately on the encode side: it is not
+	 * an exact match, so the bytes are re-encoded rather than written
+	 * byte-for-byte. The write still succeeds - the entry is always
+	 * `image/png` - and only byte-exactness is given up, the safe side of the
+	 * rule (see `needsPngEncode`'s comment for why the same side is taken for
+	 * case and padding).
+	 */
+	assert.equal(needsPngEncode("image/png;charset=utf-8"), true);
 });
 
 test("a data: URI decodes in memory — base64 and percent-encoded alike", async () => {
