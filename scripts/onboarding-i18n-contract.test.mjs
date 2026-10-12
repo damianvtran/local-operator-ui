@@ -11,16 +11,13 @@
  *
  *   1. VALUE PINS - all 45 committed English sentences, stated inline, never
  *      read from the catalogue as their own oracle. The key set is closed.
- *   2. AST BINDING - the repository's own TypeScript 7 surface (the same
- *      `typescript/unstable/*` API `scripts/i18n/check-strings.mjs` uses):
- *      every key must be the literal argument of a REAL `t()` call in its
- *      wiring file (comments cannot appear in an AST), plain messages take
- *      no second argument, parameterised messages bind the exact producer
- *      expressions, the greeting branches bind to the `oweGreeting`
- *      conditional's two arms, the acquisition call sits inside the element
- *      whose live `href` is `credential.url`, the modal's titles flow through
- *      the `stepTitles` table, and the plan's block reasons sit in the
- *      `catalogueHasModels` / `catalogue.ready` branches.
+ *   2. CALL-SITE BINDING lives in `scripts/i18n/check-strings.test.mjs`:
+ *      that suite holds the repository's ONE TypeScript compiler-API
+ *      consumer, and the binding contract (real `t()` call nodes, exact
+ *      producers, branch arms, live anchor) joined it there because a second
+ *      sync-API consumer in the desktop run correlates with the run's
+ *      35-minute execution-ceiling timeouts (#1002; the completing runs
+ *      carried one consumer). This file stays API-free: pins and render.
  *   3. LIVE RENDER - the shipped components, bundled with the repo's own
  *      esbuild and rendered with the real React server renderer (the pattern
  *      QA's independent probe established): the full committed sentences come
@@ -40,8 +37,6 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { SyntaxKind } from "typescript/unstable/ast";
-import { openSnapshot } from "./i18n/check-strings.mjs";
 
 const CATALOGUE = "src/i18n/catalogues/en/ui.onboarding.json";
 const BASE = "src/renderer/src/features/onboarding/components/";
@@ -292,49 +287,6 @@ const PLAN_KEYS = {
 };
 
 const value = (key) => CONTRACT.find(([k]) => k === key)[1];
-const slug = (s) => s.replace(/\s+/g, "").replace(/,}/g, "}");
-
-// ---------------------------------------------------------------------------
-// The AST surface: the repository's own TypeScript 7 parse pipeline.
-// ---------------------------------------------------------------------------
-
-const repo = process.cwd();
-const astFiles = [...new Set(CONTRACT.map(([, , file]) => file))];
-const { api, snapshot } = openSnapshot(
-	repo,
-	astFiles.map((file) => join(repo, BASE, file)),
-);
-
-const sfOf = (file) => {
-	const abs = join(repo, BASE, file);
-	return snapshot.getDefaultProjectForFile(abs)?.program.getSourceFile(abs);
-};
-
-const slice = (sf, node) => sf.text.slice(node.getStart(sf), node.getEnd());
-
-function walk(node, visit) {
-	if (!node) return;
-	visit(node);
-	node.forEachChild((child) => walk(child, visit));
-}
-
-/** Every real `t("key", …)` call in a file: `{ key, call, args }`. */
-function tCalls(sf) {
-	const calls = [];
-	walk(sf, (node) => {
-		if (
-			node.kind === SyntaxKind.CallExpression &&
-			node.expression?.kind === SyntaxKind.Identifier &&
-			node.expression.text === "t" &&
-			node.arguments?.[0]?.kind === SyntaxKind.StringLiteral
-		) {
-			calls.push({ key: node.arguments[0].text, call: node });
-		}
-	});
-	return calls;
-}
-
-test.after(() => api.close());
 
 // ---------------------------------------------------------------------------
 // 1. Value pins (preserved from R1-1; independently stated, closed set)
@@ -360,262 +312,9 @@ test("every key's committed English is byte-exact in the catalogue, and the set 
 // 2. AST binding: call sites, producers, branches, the live anchor, tables
 // ---------------------------------------------------------------------------
 
-test("every key is the literal argument of a real t() call (comments cannot satisfy this)", () => {
-	for (const file of astFiles) {
-		const sf = sfOf(file);
-		assert.ok(sf, `${file}: not parsed by the snapshot`);
-		const live = new Set(tCalls(sf).map(({ key }) => key));
-		const expected = CONTRACT.filter(
-			([key, , f]) =>
-				f === file && !(key in PLAN_KEYS) && !TABLE_KEYS.includes(key),
-		).map(([key]) => key);
-		assert.deepEqual(
-			[...live].sort(),
-			expected.slice().sort(),
-			`${file}: the live t() key set moved (a key moved into a comment, or an untracked call appeared)`,
-		);
-	}
-});
-
-test("plain messages take no second argument; parameterised messages bind exact producers", () => {
-	const byFile = new Map();
-	for (const [key, expected, file] of CONTRACT) {
-		if (key in PLAN_KEYS || TABLE_KEYS.includes(key)) continue;
-		if (!byFile.has(file)) byFile.set(file, sfOf(file));
-		const call = tCalls(byFile.get(file)).find((c) => c.key === key);
-		assert.ok(call, `${key}: no live t() call`);
-		const params = PARAM_SITES.find(([k]) => k === key);
-		if (!params) {
-			assert.equal(
-				call.call.arguments.length,
-				1,
-				`${key}: a plain message grew a second argument`,
-			);
-			assert.ok(
-				/^\{\w+\}/.test(expected) === false && !expected.includes("{"),
-				`${key}: a plain expected sentence must not carry placeholders`,
-			);
-			continue;
-		}
-		const second = call.call.arguments[1];
-		assert.ok(second, `${key}: the parameter object is missing`);
-		assert.equal(
-			second.kind,
-			SyntaxKind.ObjectLiteralExpression,
-			`${key}: the second argument is not an object literal`,
-		);
-		const sf = byFile.get(file);
-		const names = second.properties.map((p) => p.name?.text);
-		assert.deepEqual(
-			names.slice().sort(),
-			params[1].map(([name]) => name).sort(),
-			`${key}: the parameter names moved`,
-		);
-		for (const [name, expectedExpr] of params[1]) {
-			const prop = second.properties.find((p) => p.name?.text === name);
-			const actual = slug(slice(sf, prop.initializer ?? prop.name));
-			assert.equal(
-				actual,
-				slug(expectedExpr),
-				`${key}: ${name} is no longer produced by ${expectedExpr}`,
-			);
-		}
-	}
-});
-
-test("the modal's titles flow through the stepTitles table and the plan's blocks through its branches", () => {
-	// stepTitles: the table's values ARE the three committed keys.
-	const modal = sfOf("onboarding-modal.tsx");
-	let table = null;
-	walk(modal, (node) => {
-		if (
-			node.kind === SyntaxKind.VariableDeclaration &&
-			node.name?.text === "stepTitles"
-		) {
-			let init = node.initializer;
-			for (
-				let i = 0;
-				i < 3 &&
-				init &&
-				init.kind !== SyntaxKind.ObjectLiteralExpression &&
-				init.expression;
-				i += 1
-			)
-				init = init.expression;
-			table = init;
-		}
-	});
-	assert.ok(table, "the stepTitles table is gone");
-	assert.deepEqual(
-		table.properties.map((p) => p.initializer?.text).sort(),
-		TABLE_KEYS.slice().sort(),
-		"the stepTitles table no longer carries the committed keys",
-	);
-	assert.ok(
-		tCalls(modal).length >= 10,
-		"the modal's live t() calls thinned out",
-	);
-	let consumes = false;
-	walk(modal, (node) => {
-		if (
-			node.kind === SyntaxKind.CallExpression &&
-			node.expression?.kind === SyntaxKind.Identifier &&
-			node.expression.text === "t" &&
-			node.arguments?.[0]?.kind !== SyntaxKind.StringLiteral &&
-			slug(slice(modal, node.arguments?.[0] ?? node)) === "stepTitles[step]"
-		)
-			consumes = true;
-	});
-	assert.ok(
-		consumes,
-		"the modal stopped rendering titles through t(stepTitles[step])",
-	);
-
-	// The plan: constant initialisers + branch-scoped consumption.
-	const plan = sfOf("steps/default-model-plan.ts");
-	assert.ok(plan, "the plan source did not resolve in the snapshot");
-	const consts = new Map();
-	walk(plan, (node) => {
-		if (
-			node.kind !== SyntaxKind.VariableDeclaration ||
-			!node.name?.text?.endsWith("_KEY")
-		)
-			return;
-		/*
-		 * The initialisers are `"key" as const`: unwrap the assertion - the
-		 * committed identity is the STRING, and `as const` is why the value can
-		 * flow into `t()` with its literals intact.
-		 */
-		let init = node.initializer;
-		while (
-			init &&
-			(init.kind === SyntaxKind.AsExpression ||
-				init.kind === SyntaxKind.SatisfiesExpression)
-		)
-			init = init.expression;
-		if (init?.kind === SyntaxKind.StringLiteral)
-			consts.set(node.name.text, init.text);
-	});
-	for (const [key, constName] of Object.entries(PLAN_KEYS)) {
-		assert.equal(
-			consts.get(constName),
-			key,
-			`${constName} no longer names ${key}`,
-		);
-	}
-	let pickInBranch = false;
-	let loadingInBranch = false;
-	walk(plan, (node) => {
-		if (
-			node.kind === SyntaxKind.ConditionalExpression &&
-			node.condition?.kind === SyntaxKind.Identifier &&
-			node.condition.text === "catalogueHasModels"
-		) {
-			node.whenTrue &&
-				walk(node.whenTrue, (n) => {
-					if (
-						n.kind === SyntaxKind.CallExpression &&
-						n.expression?.text === "t" &&
-						n.arguments?.[0]?.kind === SyntaxKind.Identifier &&
-						n.arguments[0].text === "PICK_A_MODEL_KEY"
-					)
-						pickInBranch = true;
-				});
-			node.whenFalse &&
-				walk(node.whenFalse, (n) => {
-					if (
-						n.kind === SyntaxKind.ConditionalExpression &&
-						n.condition?.kind === SyntaxKind.PropertyAccessExpression &&
-						slug(slice(plan, n.condition)) === "catalogue.ready"
-					)
-						n.whenFalse &&
-							walk(n.whenFalse, (m) => {
-								if (
-									m.kind === SyntaxKind.CallExpression &&
-									m.expression?.text === "t" &&
-									m.arguments?.[0]?.kind === SyntaxKind.Identifier &&
-									m.arguments[0].text === "LOADING_MODELS_KEY"
-								)
-									loadingInBranch = true;
-							});
-				});
-		}
-	});
-	assert.ok(
-		pickInBranch,
-		"PICK_A_MODEL_KEY left the catalogueHasModels branch",
-	);
-	assert.ok(loadingInBranch, "LOADING_MODELS_KEY left the not-ready branch");
-
-	// The greeting branches: owed in the conditional's true arm, done in false.
-	const extras = sfOf("steps/extras-step.tsx");
-	let owedTrue = false;
-	let doneFalse = false;
-	walk(extras, (node) => {
-		if (
-			node.kind === SyntaxKind.ConditionalExpression &&
-			node.condition?.kind === SyntaxKind.Identifier &&
-			node.condition.text === "oweGreeting"
-		) {
-			owedTrue = tCallsIn(node.whenTrue).includes(
-				"ui.onboarding.extras.greeting_owed",
-			);
-			doneFalse = tCallsIn(node.whenFalse).includes(
-				"ui.onboarding.extras.greeting_done",
-			);
-		}
-	});
-	assert.ok(owedTrue, "the owed greeting left the oweGreeting true arm");
-	assert.ok(doneFalse, "the delivered greeting left the oweGreeting false arm");
-
-	// The acquisition call sits inside the element whose href is credential.url.
-	const search = sfOf("steps/search-api-step.tsx");
-	let anchorBound = false;
-	walk(search, (node) => {
-		if (
-			node.kind !== SyntaxKind.JsxElement ||
-			!node.openingElement?.attributes?.properties
-		)
-			return;
-		const href = node.openingElement.attributes.properties.find(
-			(a) => a.kind === SyntaxKind.JsxAttribute && a.name?.text === "href",
-		);
-		if (!href) return;
-		const expr = href.initializer?.expression;
-		if (!expr || slug(slice(search, expr)) !== "credential.url") return;
-		let inside = false;
-		walk(node, (n) => {
-			if (
-				n.kind === SyntaxKind.CallExpression &&
-				n.expression?.text === "t" &&
-				n.arguments?.[0]?.text === "ui.onboarding.search.row.get_your"
-			)
-				inside = true;
-		});
-		if (inside) anchorBound = true;
-	});
-	assert.ok(
-		anchorBound,
-		"the get-your call is no longer inside an element whose live href is credential.url",
-	);
-});
-
-/** The t() keys appearing within a node's subtree. */
-function tCallsIn(node) {
-	const keys = [];
-	walk(node, (n) => {
-		if (
-			n.kind === SyntaxKind.CallExpression &&
-			n.expression?.kind === SyntaxKind.Identifier &&
-			n.expression.text === "t" &&
-			n.arguments?.[0]?.kind === SyntaxKind.StringLiteral
-		)
-			keys.push(n.arguments[0].text);
-	});
-	return keys;
-}
-
 // ---------------------------------------------------------------------------
+const repo = process.cwd();
+
 // 3. Live render: the shipped components through the real React SSR.
 // ---------------------------------------------------------------------------
 
