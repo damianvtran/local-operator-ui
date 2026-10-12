@@ -36,6 +36,7 @@ import {
 	mkdtempSync,
 	readFileSync,
 	readdirSync,
+	realpathSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -330,6 +331,12 @@ test("diagnostic inputs and result classifications fail closed", () => {
 		assert.throws(() => validPath(path));
 	}
 	assert.throws(() => validOutput(process.cwd(), tmpdir()));
+	assert.throws(() =>
+		validOutput(join(process.cwd(), "diagnostic-output"), process.cwd()),
+	);
+	assert.throws(() =>
+		validOutput(join(tmpdir(), "..", "wrong-root", "trace"), tmpdir()),
+	);
 	assert.deepEqual(
 		safeArgv([
 			"/usr/bin/node",
@@ -377,7 +384,13 @@ test("diagnostic workflow stays opt-in with independent always-upload evidence",
 });
 
 test("diagnostic tracer records actual isolated workers without environment values", () => {
-	const scratch = mkdtempSync(join(tmpdir(), "onboarding-diagnostic-"));
+	// Hosted CI's OS temp directory and runner-owned temp root can be disjoint.
+	// Allocate beneath the guard's configured root, canonicalize that SAME root,
+	// and pass it explicitly to the child: changing the guard would hide this
+	// named fixture/environment failure. This is not a diagnosis or cure of the
+	// full Desktop job's later execution-ceiling cancellation.
+	const temporaryRoot = realpathSync(process.env.RUNNER_TEMP ?? tmpdir());
+	const scratch = mkdtempSync(join(temporaryRoot, "onboarding-diagnostic-"));
 	try {
 		const fixture = join(scratch, "passes.test.mjs");
 		const map = join(scratch, "populated-map.json");
@@ -405,6 +418,7 @@ test("diagnostic tracer records actual isolated workers without environment valu
 			),
 		);
 		Object.assign(env, {
+			RUNNER_TEMP: temporaryRoot,
 			NODE_OPTIONS: `--import=${join(process.cwd(), "scripts/onboarding-desktop-diagnostic.mjs")}`,
 			LOCAL_OPERATOR_UI_ONBOARDING_TRACE_DIR: trace,
 			LOCAL_OPERATOR_UI_ONBOARDING_MAP: map,
