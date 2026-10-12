@@ -136,6 +136,8 @@ export type RelaySubscribeArgs = {
 	 * request exactly as it was.
 	 */
 	openFrame?: boolean;
+	journalOrder?: boolean;
+	orderIds?: string[];
 };
 
 export type RelayEvent =
@@ -259,6 +261,10 @@ export class DesktopStreamRelay {
 		 * untouched.
 		 */
 		if (args.openFrame === true) query.set("open_frame", "1");
+		if (args.journalOrder === true) {
+			query.set("journal_order", "1");
+			for (const id of args.orderIds ?? []) query.append("order_ids", id);
+		}
 		/*
 		 * The `supplements=1` negotiation (turn-supplements memo §2.7), the same
 		 * shape and the same reasoning as `frontend_replace` above: it says

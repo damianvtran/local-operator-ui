@@ -32,6 +32,10 @@
  */
 
 import {
+	currentOrderRevision,
+	journalLookupIds,
+} from "@features/chat/canonical/journal-order";
+import {
 	entryRecordKey,
 	openFrameCoversHeld,
 } from "@features/chat/canonical/open-frame";
@@ -2176,9 +2180,13 @@ export function useCanonicalSessionStream(
 		 * `runs`. Every read AFTER that picks the flag up, so nothing stays stuck.
 		 */
 		openFrame?: boolean;
+		journalOrder?: boolean;
 	} = {},
 ): CanonicalSessionHandle {
 	const openFrame = options.openFrame === true;
+	const journalOrder = options.journalOrder === true;
+	const journalOrderRef = useRef(journalOrder);
+	journalOrderRef.current = journalOrder;
 	const openFrameRef = useRef(openFrame);
 	openFrameRef.current = openFrame;
 	const [view, setView] = useState<CanonicalSessionView>(() => {
@@ -2481,6 +2489,7 @@ export function useCanonicalSessionStream(
 	useEffect(() => {
 		if (!sessionId || !enabled) return;
 		const generation = ++generationRef.current;
+		const orderFrameRevisions = new WeakMap<object, number>();
 		let dispose: (() => void) | null = null;
 		/*
 		 * True while WE are the reason the stream is being torn down.
@@ -3129,6 +3138,9 @@ export function useCanonicalSessionStream(
 			) {
 				requests += 1;
 				let page: DesktopHistoryPage;
+				const orderAtDispatch = currentOrderRevision(
+					viewRef.current.transcript,
+				);
 				try {
 					page = await desktopResult<DesktopHistoryPage>({
 						op: "sessions.history",
@@ -3139,6 +3151,24 @@ export function useCanonicalSessionStream(
 						// would refuse to continue from.
 						limit: Math.min(limit, RECONCILE_WALK_MAX_ROWS - rows),
 						openFrame: openFrameRef.current,
+						...(journalOrderRef.current
+							? {
+									journalOrder: true,
+									orderIds: journalLookupIds(viewRef.current.transcript).slice(
+										0,
+										512,
+									),
+								}
+							: {}),
+						...(journalOrderRef.current
+							? {
+									journalOrder: true,
+									orderIds: journalLookupIds(viewRef.current.transcript).slice(
+										0,
+										512,
+									),
+								}
+							: {}),
 					});
 				} catch {
 					// A cleared view has nothing left to read for: without this the
@@ -3249,7 +3279,12 @@ export function useCanonicalSessionStream(
 					 */
 					releaseLabelPending();
 				}
-				if (generationRef.current !== generation || cleared()) return false;
+				if (
+					generationRef.current !== generation ||
+					cleared() ||
+					currentOrderRevision(viewRef.current.transcript) !== orderAtDispatch
+				)
+					return false;
 				/*
 				 * A PAGE ARRIVED, so the refusal is over: the route that refused is answering
 				 * again, and the rows it was refusing for are owed to a read once more. This
@@ -3266,7 +3301,11 @@ export function useCanonicalSessionStream(
 				forgetReplayBorn(replayBornIds.current, page.entries);
 				markPageBorn(pageBornIds.current, page.entries);
 				commitView((state) => {
-					const transcript = applyHistoryPage(state.transcript, page);
+					if (currentOrderRevision(state.transcript) !== orderAtDispatch)
+						return state;
+					const transcript = applyHistoryPage(state.transcript, page, {
+						authoritative: true,
+					});
 					/*
 					 * THE IDS **THIS COMMIT** LABELLED ARE RELEASED IN THE SAME COMMIT, and
 					 * this is the half of the hold a separate update could not get right.
@@ -4158,6 +4197,12 @@ export function useCanonicalSessionStream(
 							);
 						}
 						if (frame.type === "snapshot") {
+							const dispatched = orderFrameRevisions.get(frame);
+							if (
+								dispatched !== undefined &&
+								currentOrderRevision(next.transcript) !== dispatched
+							)
+								continue;
 							const snapshot = frame.payload;
 							// Order matters and is the contract: replayed events, then
 							// the durable page (authoritative for every id it names),
@@ -4169,7 +4214,9 @@ export function useCanonicalSessionStream(
 								// runs on the open path's critical task, and the 400-row page is
 								// where per-row cost would show.
 								performance.mark("lop:open:history:start");
-								transcript = applyHistoryPage(transcript, snapshot.history);
+								transcript = applyHistoryPage(transcript, snapshot.history, {
+									authoritative: true,
+								});
 								performance.mark("lop:open:history:end");
 								performance.measure(
 									"lop:open:history",
@@ -4673,6 +4720,7 @@ export function useCanonicalSessionStream(
 		};
 
 		const connect = () => {
+			const sourceRevision = currentOrderRevision(viewRef.current.transcript);
 			clearSnapshotTimer();
 			snapshotTimer = window.setTimeout(() => {
 				snapshotTimer = 0;
@@ -4709,6 +4757,15 @@ export function useCanonicalSessionStream(
 					epoch: reconnectRef.current.epoch,
 					afterSeq: reconnectRef.current.afterSeq,
 					openFrame: openFrameRef.current,
+					...(journalOrderRef.current
+						? {
+								journalOrder,
+								orderIds: journalLookupIds(viewRef.current.transcript).slice(
+									0,
+									512,
+								),
+							}
+						: {}),
 				},
 				(event) => {
 					if (generationRef.current !== generation) return;
@@ -4844,6 +4901,8 @@ export function useCanonicalSessionStream(
 						const markParse = raw.length >= OPEN_PARSE_MARK_MIN_BYTES;
 						if (markParse) performance.mark("lop:open:parse:start");
 						const frame = JSON.parse(raw) as DesktopSessionFrame;
+						if (frame.type === "snapshot")
+							orderFrameRevisions.set(frame, sourceRevision);
 						if (markParse) {
 							performance.mark("lop:open:parse:end");
 							performance.measure(
@@ -5024,7 +5083,7 @@ export function useCanonicalSessionStream(
 			clearSnapshotTimer();
 			pending.current = [];
 		};
-	}, [commitView, sessionId, enabled]);
+	}, [commitView, sessionId, enabled, journalOrder]);
 
 	// A different session is a different transcript; the reconnect cursor is
 	// per-session too, so both reset together.
@@ -5478,6 +5537,82 @@ export function useCanonicalSessionStream(
 	 */
 	const olderLoader = useRef<ReturnType<typeof createOlderLoader> | null>(null);
 	if (olderLoader.current === null) olderLoader.current = createOlderLoader();
+	const orderRepairFlight = useRef(false);
+	useEffect(() => {
+		if (
+			!sessionId ||
+			!journalOrder ||
+			!view.transcript.orderNeedsReconcile ||
+			orderRepairFlight.current
+		)
+			return;
+		const requested = sessionId;
+		const epoch = viewRef.current.transcript.viewEpoch;
+		let wanted = view.transcript.orderWantedGeneration;
+		orderRepairFlight.current = true;
+		const repair = async () => {
+			try {
+				for (;;) {
+					const revision = currentOrderRevision(viewRef.current.transcript);
+					const snapshot = await desktopResult<
+						Extract<DesktopSessionFrame, { type: "snapshot" }>
+					>({
+						op: "sessions.get",
+						sessionId: requested,
+						journalOrder: true,
+						orderIds: journalLookupIds(viewRef.current.transcript).slice(
+							0,
+							512,
+						),
+					});
+					if (
+						sessionRef.current !== requested ||
+						currentOrderRevision(viewRef.current.transcript) !== revision ||
+						viewRef.current.transcript.viewEpoch !== epoch
+					)
+						return;
+					commitView((current) => {
+						if (
+							currentOrderRevision(current.transcript) !== revision ||
+							current.transcript.viewEpoch !== epoch
+						)
+							return current;
+						return {
+							...current,
+							transcript: applyHistoryPage(
+								current.transcript,
+								snapshot.payload.history,
+								{ authoritative: true },
+							),
+							frontend: snapshot.payload.frontend.snapshot,
+							history: snapshot.payload.history,
+						};
+					});
+					const latest = viewRef.current.transcript;
+					// A ready notification can arrive while this read says building.
+					// Re-read only for that distinct domain, not on a timer/token.
+					if (
+						!latest.orderNeedsReconcile ||
+						latest.orderWantedGeneration === wanted
+					)
+						return;
+					wanted = latest.orderWantedGeneration;
+				}
+			} catch (error: unknown) {
+				console.warn("[canonical] source-order reconcile refused", error);
+			} finally {
+				orderRepairFlight.current = false;
+			}
+		};
+		void repair();
+	}, [
+		commitView,
+		sessionId,
+		journalOrder,
+		view.transcript.orderNeedsReconcile,
+		view.transcript.orderWantedGeneration,
+	]);
+
 	const loadOlderDetailed = useCallback(async (): Promise<LoadOlderOutcome> => {
 		const loader = olderLoader.current;
 		if (!sessionId || !loader) return { kind: "nothing-to-load" };
@@ -5511,6 +5646,15 @@ export function useCanonicalSessionStream(
 					beforeId,
 					limit: 100,
 					openFrame: openFrameRef.current,
+					...(journalOrderRef.current
+						? {
+								journalOrder: true,
+								orderIds: journalLookupIds(viewRef.current.transcript).slice(
+									0,
+									512,
+								),
+							}
+						: {}),
 				}),
 			isCurrent: () => stillHere() && notCleared(),
 			commit: (update) =>
@@ -5574,14 +5718,28 @@ export function useCanonicalSessionStream(
 			if (!sessionId || refreshingTailRef.current) return false;
 			const requested = sessionId;
 			refreshingTailRef.current = true;
+			const sourceRevision = currentOrderRevision(viewRef.current.transcript);
 			try {
 				const page = await desktopResult<DesktopHistoryPage>({
 					op: "sessions.history",
 					sessionId: requested,
 					limit: 100,
 					openFrame: openFrameRef.current,
+					...(journalOrderRef.current
+						? {
+								journalOrder: true,
+								orderIds: journalLookupIds(viewRef.current.transcript).slice(
+									0,
+									512,
+								),
+							}
+						: {}),
 				});
-				if (sessionRef.current !== requested) return false;
+				if (
+					sessionRef.current !== requested ||
+					currentOrderRevision(viewRef.current.transcript) !== sourceRevision
+				)
+					return false;
 				/*
 				 * The cleared-view guard, and it is the only reason this compares
 				 * epochs: a `/clear` is view-only, so nothing else would notice that the
@@ -5589,18 +5747,22 @@ export function useCanonicalSessionStream(
 				 * is the durable tail, i.e. exactly the rows `/clear` removed.
 				 */
 				if (viewRef.current.transcript.viewEpoch !== epoch) return false;
-				commitView((current) => ({
-					...current,
-					/*
-					 * `keepPaging`: this is a TAIL read, so its `has_more` describes the
-					 * session rather than this reader's position — letting it through put
-					 * "load earlier" back on a fully-loaded transcript and resumed the
-					 * mentioned-files scan's paging (R3-5).
-					 */
-					transcript: applyHistoryPage(current.transcript, page, {
-						keepPaging: true,
-					}),
-				}));
+				commitView((current) =>
+					currentOrderRevision(current.transcript) !== sourceRevision
+						? current
+						: {
+								...current,
+								/*
+								 * `keepPaging`: this is a TAIL read, so its `has_more` describes the
+								 * session rather than this reader's position — letting it through put
+								 * "load earlier" back on a fully-loaded transcript and resumed the
+								 * mentioned-files scan's paging (R3-5).
+								 */
+								transcript: applyHistoryPage(current.transcript, page, {
+									keepPaging: true,
+								}),
+							},
+				);
 				forgetReplayBorn(replayBornIds.current, page.entries);
 				markPageBorn(pageBornIds.current, page.entries);
 				/*

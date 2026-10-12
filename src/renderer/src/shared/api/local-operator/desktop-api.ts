@@ -666,6 +666,8 @@ export function subscribeDesktopStream(
 		 * Absent keeps today's page, byte for byte.
 		 */
 		openFrame?: boolean;
+		journalOrder?: boolean;
+		orderIds?: string[];
 	},
 	onEvent: (event: {
 		kind: "data" | "error" | "end";

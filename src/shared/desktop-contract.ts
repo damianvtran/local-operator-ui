@@ -1428,7 +1428,14 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			model: modelSelection.optional(),
 		})
 		.strict(),
-	z.object({ op: z.literal("sessions.get"), sessionId }).strict(),
+	z
+		.object({
+			op: z.literal("sessions.get"),
+			sessionId,
+			journalOrder: z.boolean().optional(),
+			orderIds: z.array(z.string().min(1).max(128)).max(512).optional(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.history"),
@@ -1450,6 +1457,10 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 * every request this app made before the capability existed - is unchanged.
 			 */
 			openFrame: z.boolean().optional(),
+			// The viewer consumes journal positions, not publication seq. These
+			// bounded raw IDs let an off-page cached send learn its exact slot.
+			journalOrder: z.boolean().optional(),
+			orderIds: z.array(z.string().min(1).max(128)).max(512).optional(),
 		})
 		.strict(),
 	/*
@@ -5105,6 +5116,8 @@ export type DesktopAPI = {
 				 * and absent means the backend answers today's page byte for byte.
 				 */
 				openFrame?: boolean;
+				journalOrder?: boolean;
+				orderIds?: string[];
 			},
 			onEvent: (event: DesktopStreamEvent) => void,
 		) => DesktopStreamSubscription;
@@ -5946,11 +5959,17 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.model ? { model: request.model } : {}),
 				},
 			};
-		case "sessions.get":
+		case "sessions.get": {
+			const query = new URLSearchParams();
+			if (request.journalOrder) {
+				query.set("journal_order", "1");
+				for (const id of request.orderIds ?? []) query.append("order_ids", id);
+			}
 			return {
-				path: `/v1/desktop/sessions/${request.sessionId}`,
+				path: `/v1/desktop/sessions/${request.sessionId}${query.size ? `?${query}` : ""}`,
 				method: "GET",
 			};
+		}
 		case "sessions.history": {
 			const query = new URLSearchParams({
 				limit: String(request.limit ?? 100),
@@ -5962,6 +5981,10 @@ export function desktopEndpoint(request: DesktopRequest): {
 			 * shape the caller does not read is worse than today's page.
 			 */
 			if (request.openFrame) query.set("open_frame", "1");
+			if (request.journalOrder) {
+				query.set("journal_order", "1");
+				for (const id of request.orderIds ?? []) query.append("order_ids", id);
+			}
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/history?${query}`,
 				method: "GET",
