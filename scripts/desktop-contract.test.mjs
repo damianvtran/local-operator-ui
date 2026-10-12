@@ -456,7 +456,7 @@ test("canonical session operations preserve identity, arguments and main-owned a
 				beforeId: "entry-1",
 				openFrame: true,
 			},
-			`/${sessionId}/history?limit=100&before_id=entry-1&open_frame=1`,
+			`/${sessionId}/history?limit=100&before_id=entry-1&open_frame=1&supplements=1`,
 			"GET",
 			undefined,
 		],
