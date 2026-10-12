@@ -731,25 +731,40 @@ const PREPARATION_LOCK_MS = 120_000;
  * outside `managedPythonRoot` is read, walked or removed. Never a machine-wide
  * sweep, never a path we did not create.
  */
-export function reapSupersededGenerations(
+type RetainedGenerations = {
+	/**
+	 * Runtime generations that must survive.
+	 *
+	 * A LIST rather than one path, because "the newest generation that is not
+	 * named" is not always the right second survivor. An update names the runtime
+	 * it reused AND the one the environment it superseded still names, since those
+	 * can be different trees; and a half-written generation left by a failed
+	 * attempt is NEWER than the rollback, so a caller that named one path would
+	 * watch the reaper keep the debris and delete the tree it promised to keep.
+	 */
+	runtime?: readonly string[];
+	/** Environment generations that must survive, on the same rule as above. */
+	venv?: readonly string[];
+};
+
+/** Standalone reclamation acquires the same whole-preparation transaction. */
+export async function reapSupersededGenerations(
 	options: ManagedPythonOptions,
-	keep: {
-		/**
-		 * Runtime generations that must survive.
-		 *
-		 * A LIST rather than one path, because "the newest generation that is not
-		 * named" is not always the right second survivor. An update names the runtime
-		 * it reused AND the one the environment it superseded still names, since those
-		 * can be different trees; and a half-written generation left by a failed
-		 * attempt is NEWER than the rollback, so a caller that named one path would
-		 * watch the reaper keep the debris and delete the tree it promised to keep.
-		 */
-		runtime?: readonly string[];
-		/** Environment generations that must survive, on the same rule as above. */
-		venv?: readonly string[];
-	},
+	keep: RetainedGenerations,
 	now = Date.now(),
+): Promise<string[]> {
+	return locked(managedPythonRoot(options), async (held) =>
+		reapOwnedGenerations(options, keep, now, held),
+	);
+}
+
+function reapOwnedGenerations(
+	options: ManagedPythonOptions,
+	keep: RetainedGenerations,
+	now: number,
+	held: PreparationTransaction,
 ): string[] {
+	assertPreparation(held, managedPythonRoot(options));
 	const removed: string[] = [];
 	for (const [root, kept] of [
 		[runtimesRoot(options), keep.runtime],
@@ -801,9 +816,47 @@ export function reapSupersededGenerations(
  * discovery or killing. macOS shlock uses atomic links and reclaims dead owners;
  * a crashed preparation leaves an unselected generation, not a retargeted venv.
  * In-process serialization also matters: two callers have the same OS PID.
+ * shlock does not attest birth identity: a reused/live unrelated PID refuses
+ * until it exits or the bounded wait expires. The token below fences root and
+ * inode ownership in this process, not kernel exclusion of noncooperators.
  */
+interface PreparationTransaction {
+	readonly root: string;
+	readonly lock: string;
+	readonly device: number;
+	readonly inode: number;
+}
+const activePreparations = new WeakSet<PreparationTransaction>();
+
+function assertPreparation(held: PreparationTransaction, root: string): void {
+	if (!activePreparations.has(held) || held.root !== fs.realpathSync(root))
+		throw new Error(
+			"Managed Python mutation requires its owned preparation transaction",
+		);
+	const current = fs.lstatSync(held.lock);
+	if (
+		current.isSymbolicLink() ||
+		current.dev !== held.device ||
+		current.ino !== held.inode ||
+		fs.readFileSync(held.lock, "utf8").trim() !== String(process.pid)
+	)
+		throw new Error(
+			"Managed Python preparation ownership changed; retry after it settles",
+		);
+}
+
 let preparation: Promise<unknown> = Promise.resolve();
-async function locked<T>(root: string, work: () => Promise<T>): Promise<T> {
+async function locked<T>(
+	root: string,
+	work: (held: PreparationTransaction) => Promise<T>,
+): Promise<T> {
+	// The managed seed/shlock authority is macOS-only. Production startup uses
+	// the existing legacy installer off Darwin; a direct API must refuse before
+	// creating a root or waiting two minutes for a native command that is absent.
+	if (process.platform !== "darwin")
+		throw new Error(
+			"Managed Python preparation requires macOS. Use this platform's existing backend installer; no changes were made.",
+		);
 	const previous = preparation;
 	let release = () => {};
 	preparation = new Promise<void>((done) => {
@@ -812,6 +865,7 @@ async function locked<T>(root: string, work: () => Promise<T>): Promise<T> {
 	await previous;
 	const path = join(root, "preparation.lock");
 	let acquired = false;
+	let held: PreparationTransaction | null = null;
 	try {
 		await mkdir(root, { recursive: true, mode: 0o700 });
 		realDirectory(root);
@@ -834,19 +888,39 @@ async function locked<T>(root: string, work: () => Promise<T>): Promise<T> {
 			} catch {
 				if (Date.now() >= deadline)
 					throw new Error(
-						"Another Local Operator instance is preparing its backend. Retry when it finishes.",
+						"Backend preparation is blocked by an existing lock record. Wait and retry.",
 					);
 				await new Promise((done) => setTimeout(done, 250));
 			}
 		}
-		return await work();
+		const owner = fs.lstatSync(path);
+		held = {
+			root: fs.realpathSync(root),
+			lock: path,
+			device: owner.dev,
+			inode: owner.ino,
+		};
+		activePreparations.add(held);
+		assertPreparation(held, root);
+		return await work(held);
 	} finally {
-		if (
-			acquired &&
-			fs.readFileSync(path, "utf8").trim() === String(process.pid)
-		)
-			fs.unlinkSync(path);
-		release();
+		try {
+			if (acquired && held && fs.existsSync(path)) {
+				const owner = fs.lstatSync(path);
+				if (
+					!owner.isSymbolicLink() &&
+					owner.dev === held.device &&
+					owner.ino === held.inode &&
+					fs.readFileSync(path, "utf8").trim() === String(process.pid)
+				)
+					fs.unlinkSync(path);
+			}
+		} finally {
+			// A disappeared/unreadable lock must not strand every subsequent
+			// caller behind the process-local promise, even when cleanup throws.
+			if (held) activePreparations.delete(held);
+			release();
+		}
 	}
 }
 
@@ -950,7 +1024,7 @@ export async function prepareManagedPython(
 	options: ManagedPythonOptions,
 	install: (venv: string, python: string) => Promise<boolean>,
 ): Promise<ManagedSelection> {
-	return locked(managedPythonRoot(options), async () => {
+	return locked(managedPythonRoot(options), async (held) => {
 		/*
 		 * The verdict, not an exception, and this is what makes a broken install
 		 * recoverable: a published selection whose runtime or environment is gone,
@@ -966,7 +1040,14 @@ export async function prepareManagedPython(
 		const superseded = state.kind === "missing" ? state.detail : null;
 		// `unprepared` has no pointer at all, so there is nothing published to keep.
 		const published = state.kind === "missing" ? state.published : null;
-		return publishGeneration(options, install, published, superseded, false);
+		return publishGeneration(
+			options,
+			install,
+			published,
+			superseded,
+			false,
+			held,
+		);
 	});
 }
 
@@ -1006,8 +1087,10 @@ async function publishGeneration(
 	 * reclaim. So it is a parameter the caller must state, not a default.
 	 */
 	keepPublished: boolean,
+	held: PreparationTransaction,
 ): Promise<ManagedSelection> {
 	const root = managedPythonRoot(options);
+	assertPreparation(held, root);
 	/*
 	 * Reclaim BEFORE the copy, which is worth ~47 MB on the disk-full path this
 	 * branch writes user copy for - and protect only what the repair can still
@@ -1028,14 +1111,19 @@ async function publishGeneration(
 	 * disk-full argument above does not apply to it - it reuses the runtime it already
 	 * has, so there is no copy to make room for.
 	 */
-	reapSupersededGenerations(options, {
-		runtime:
-			published &&
-			(keepPublished || publishedRuntimeIsReusable(options, published))
-				? [published.runtime]
-				: [],
-		venv: keepPublished && published ? [published.venv] : [],
-	});
+	reapOwnedGenerations(
+		options,
+		{
+			runtime:
+				published &&
+				(keepPublished || publishedRuntimeIsReusable(options, published))
+					? [published.runtime]
+					: [],
+			venv: keepPublished && published ? [published.venv] : [],
+		},
+		Date.now(),
+		held,
+	);
 	const { runtime, id } = await prepareRuntime(options);
 	await mkdir(environmentsRoot(options), { recursive: true, mode: 0o700 });
 	realDirectory(environmentsRoot(options));
@@ -1067,6 +1155,7 @@ async function publishGeneration(
 	await writeFile(join(venv, READY), bytes, { flag: "wx", mode: 0o600 });
 	const temporary = join(root, `.selection-${randomUUID()}.json`);
 	await writeFile(temporary, bytes, { flag: "wx", mode: 0o600 });
+	assertPreparation(held, root);
 	await rename(temporary, join(root, POINTER));
 	// Only now, with the new generation published, is it safe to reclaim what
 	// this one replaces: the pointer names the survivor. WHAT IS NAMED HERE IS BOTH
@@ -1075,11 +1164,16 @@ async function publishGeneration(
 	// leave on disk, and it is not reliably "the newest other": a failed attempt's
 	// half-written generation is newer than it, and a bad build has to have
 	// something to fall back to.
-	reapSupersededGenerations(options, {
-		runtime:
-			keepPublished && published ? [runtime, published.runtime] : [runtime],
-		venv: keepPublished && published ? [venv, published.venv] : [venv],
-	});
+	reapOwnedGenerations(
+		options,
+		{
+			runtime:
+				keepPublished && published ? [runtime, published.runtime] : [runtime],
+			venv: keepPublished && published ? [venv, published.venv] : [venv],
+		},
+		Date.now(),
+		held,
+	);
 	if (superseded)
 		console.warn(
 			`Replaced an unusable managed Python selection: ${superseded}`,
@@ -1185,7 +1279,7 @@ export async function updateManagedPython(
 		isNewer: (candidate: string, subject: string) => boolean;
 	},
 ): Promise<ManagedUpdateOutcome> {
-	return locked(managedPythonRoot(options), async () => {
+	return locked(managedPythonRoot(options), async (held) => {
 		const state = inspectManagedSelection(options);
 		const published = state.kind === "ready" ? state.selection : null;
 		if (
@@ -1201,6 +1295,7 @@ export async function updateManagedPython(
 			previous,
 			state.kind === "missing" ? state.detail : null,
 			true,
+			held,
 		);
 		return { selection, replaced: true, previous };
 	});

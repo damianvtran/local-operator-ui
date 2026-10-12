@@ -1997,73 +1997,82 @@ test("a seed that carries bytecode still yields a selection that stays usable", 
 	);
 });
 
-test("the reaper removes abandoned staging and superseded generations, and nothing else", (t) => {
-	const support = fixture(t);
-	const opts = { support, resources: "", packaged: true, arch: "arm64" };
-	const runtimes = join(managedPythonRoot(opts), "runtimes");
-	const environments = join(managedPythonRoot(opts), "environments");
-	mkdirSync(runtimes, { recursive: true });
-	mkdirSync(environments, { recursive: true });
-	const id = "a".repeat(64);
-	const generation = (root, suffix) => {
-		const path = join(root, `${id}-${suffix}`);
-		mkdirSync(path, { recursive: true });
-		return path;
-	};
-	const selectedRuntime = generation(runtimes, "11111111");
-	const previousRuntime = generation(runtimes, "22222222");
-	const olderRuntime = generation(runtimes, "33333333");
-	const selectedVenv = generation(environments, "11111111");
-	const previousVenv = generation(environments, "22222222");
-	// Order by mtime explicitly: the retention rule is "the selected one plus the
-	// most recent other one", never "whatever the directory order happened to be".
-	const now = Date.now();
-	const at = (path, secondsAgo) =>
-		utimesSync(
-			path,
-			new Date(now - secondsAgo * 1000),
-			new Date(now - secondsAgo * 1000),
-		);
-	at(selectedRuntime, 10);
-	at(previousRuntime, 20);
-	at(olderRuntime, 30);
-	at(selectedVenv, 10);
-	at(previousVenv, 20);
-	// Not ours: an operator's or a future version's directory must survive.
-	const foreignRuntime = join(runtimes, "keep-me");
-	mkdirSync(foreignRuntime, { recursive: true });
-	// An abandoned staging tree, and one that is young enough to be a live
-	// preparation (this runs inside the lock, so only the old one is abandoned).
-	const abandoned = join(runtimes, ".preparing-abandoned");
-	mkdirSync(abandoned, { recursive: true });
-	at(abandoned, 600);
-	const live = join(runtimes, ".preparing-live");
-	mkdirSync(live, { recursive: true });
+test(
+	"the reaper removes abandoned staging and superseded generations, and nothing else",
+	{
+		skip:
+			process.platform !== "darwin"
+				? "Public reap owns the macOS-native preparation lock; other platforms use the legacy installer"
+				: false,
+	},
+	async (t) => {
+		const support = fixture(t);
+		const opts = { support, resources: "", packaged: true, arch: "arm64" };
+		const runtimes = join(managedPythonRoot(opts), "runtimes");
+		const environments = join(managedPythonRoot(opts), "environments");
+		mkdirSync(runtimes, { recursive: true });
+		mkdirSync(environments, { recursive: true });
+		const id = "a".repeat(64);
+		const generation = (root, suffix) => {
+			const path = join(root, `${id}-${suffix}`);
+			mkdirSync(path, { recursive: true });
+			return path;
+		};
+		const selectedRuntime = generation(runtimes, "11111111");
+		const previousRuntime = generation(runtimes, "22222222");
+		const olderRuntime = generation(runtimes, "33333333");
+		const selectedVenv = generation(environments, "11111111");
+		const previousVenv = generation(environments, "22222222");
+		// Order by mtime explicitly: the retention rule is "the selected one plus the
+		// most recent other one", never "whatever the directory order happened to be".
+		const now = Date.now();
+		const at = (path, secondsAgo) =>
+			utimesSync(
+				path,
+				new Date(now - secondsAgo * 1000),
+				new Date(now - secondsAgo * 1000),
+			);
+		at(selectedRuntime, 10);
+		at(previousRuntime, 20);
+		at(olderRuntime, 30);
+		at(selectedVenv, 10);
+		at(previousVenv, 20);
+		// Not ours: an operator's or a future version's directory must survive.
+		const foreignRuntime = join(runtimes, "keep-me");
+		mkdirSync(foreignRuntime, { recursive: true });
+		// An abandoned staging tree, and one that is young enough to be a live
+		// preparation (this runs inside the lock, so only the old one is abandoned).
+		const abandoned = join(runtimes, ".preparing-abandoned");
+		mkdirSync(abandoned, { recursive: true });
+		at(abandoned, 600);
+		const live = join(runtimes, ".preparing-live");
+		mkdirSync(live, { recursive: true });
 
-	const removed = reapSupersededGenerations(
-		opts,
-		{ runtime: [selectedRuntime], venv: [selectedVenv] },
-		now,
-	);
-	assert.deepEqual(removed.sort(), [abandoned, olderRuntime].sort());
-	assert.ok(
-		existsSync(selectedRuntime) && existsSync(selectedVenv),
-		"the selected generation is never reaped",
-	);
-	assert.ok(
-		existsSync(previousRuntime) && existsSync(previousVenv),
-		"one previous generation survives the switch",
-	);
-	assert.ok(
-		existsSync(live),
-		"a staging tree young enough to belong to a live preparation is left alone",
-	);
-	assert.ok(
-		existsSync(foreignRuntime),
-		"a name this module did not write is never removed",
-	);
-	assert.deepEqual(
-		readdirSync(runtimes).sort(),
-		[".preparing-live", `${id}-11111111`, `${id}-22222222`, "keep-me"].sort(),
-	);
-});
+		const removed = await reapSupersededGenerations(
+			opts,
+			{ runtime: [selectedRuntime], venv: [selectedVenv] },
+			now,
+		);
+		assert.deepEqual(removed.sort(), [abandoned, olderRuntime].sort());
+		assert.ok(
+			existsSync(selectedRuntime) && existsSync(selectedVenv),
+			"the selected generation is never reaped",
+		);
+		assert.ok(
+			existsSync(previousRuntime) && existsSync(previousVenv),
+			"one previous generation survives the switch",
+		);
+		assert.ok(
+			existsSync(live),
+			"a staging tree young enough to belong to a live preparation is left alone",
+		);
+		assert.ok(
+			existsSync(foreignRuntime),
+			"a name this module did not write is never removed",
+		);
+		assert.deepEqual(
+			readdirSync(runtimes).sort(),
+			[".preparing-live", `${id}-11111111`, `${id}-22222222`, "keep-me"].sort(),
+		);
+	},
+);
