@@ -589,3 +589,72 @@ test("the mount URL contract is the builder's output, byte for byte", () => {
 		assert.equal(model.parseSupplementMountUrl(bad), null, String(bad));
 	}
 });
+
+test("typed diagnostics retain safe facts live and durable, never provider prose", () => {
+	const payload = {
+		...row("failed"),
+		error: "generator:ProviderError",
+		model: "openrouter/openai/gpt-6.1-sol",
+		attempts: [
+			"anthropic/claude-sonnet-5-5",
+			"openrouter/openai/gpt-6.1-sol",
+			"https://private.test/token",
+		],
+		detail: [
+			"turn 1: ProviderError status=None kind=quota",
+			"secret raw provider prose /Users/private/token",
+		],
+	};
+	for (const patch of [
+		model.supplementPatchFromDetails(payload),
+		model.supplementPatchFromEvent(payload),
+	]) {
+		assert.equal(patch.model, "openrouter/openai/gpt-6.1-sol");
+		assert.equal(patch.attempts.length, 2);
+		assert.deepEqual(patch.detail, [
+			"turn 1: ProviderError status=None kind=quota",
+		]);
+		const record = model.mergeSupplement(null, patch, 1);
+		assert.ok(
+			model.failureExplanation(record).includes("model is unavailable"),
+		);
+		const next = model.mergeSupplement(
+			record,
+			{
+				anchor: record.anchor,
+				job: record.job,
+				version: record.version + 1,
+				state: "queued",
+			},
+			2,
+		);
+		assert.deepEqual(next.detail, []);
+		assert.deepEqual(next.attempts, []);
+	}
+	assert.ok(model.failureExplanation({ detail: [] }).includes("can retry"));
+});
+
+test("terminal bounds override recovered quota and prepared refusal stays fixed", () => {
+	const detail = ["turn 1: ProviderError status=None kind=quota"];
+	assert.ok(
+		model
+			.failureExplanation({ error: "bound:cost", detail })
+			.includes("spending limit"),
+	);
+	assert.ok(
+		!model
+			.failureExplanation({ error: "bound:turns", detail })
+			.includes("model is unavailable"),
+	);
+	assert.equal(model.diagnosticDisplay(detail[0]), "Attempt 1: quota");
+	assert.equal(
+		model.diagnosticDisplay("turn 2: ProviderError status=503 kind=transient"),
+		"Attempt 2: transient (HTTP 503)",
+	);
+	assert.equal(model.diagnosticDisplay("raw private prose"), "");
+	const patch = model.supplementPatchFromDetails({
+		...row("done_files_only"),
+		detail: ["prepared:unsupported", "private text"],
+	});
+	assert.deepEqual(patch.detail, ["prepared:unsupported"]);
+});
