@@ -899,7 +899,8 @@ function diagnosticsFrom(
 		? value.detail
 				.filter(
 					(item): item is string =>
-						typeof item === "string" && DIAGNOSTIC_DETAIL.test(item),
+						typeof item === "string" &&
+						(DIAGNOSTIC_DETAIL.test(item) || item === "prepared:unsupported"),
 				)
 				.slice(0, 8)
 		: undefined;
@@ -910,12 +911,29 @@ function diagnosticsFrom(
 	};
 }
 
+export function diagnosticDisplay(line: string): string {
+	const match = DIAGNOSTIC_DETAIL.exec(line);
+	if (!match) return "";
+	const words = line.split(" ");
+	const attempt = words[1].replace(":", "");
+	const status = words[3].slice("status=".length);
+	const kind = words[4].slice("kind=".length);
+	return `Attempt ${attempt}: ${kind}${status === "None" ? "" : ` (HTTP ${status})`}`;
+}
+
 export function failureExplanation(record: SupplementRecord): string {
-	const typed = record.detail?.at(-1) ?? "";
+	const typed =
+		record.error === "generator:ProviderError"
+			? (record.detail?.at(-1) ?? "")
+			: "";
 	if (DIAGNOSTIC_ACCESS.test(typed))
-		return "The graphics model is unavailable right now. Your answer and files are unchanged.";
+		return "The highlights model is unavailable right now. Your answer and files are unchanged.";
 	if (DIAGNOSTIC_SERVICE.test(typed))
-		return "The graphics service did not respond. Your answer and files are unchanged.";
+		return "The highlights service did not respond. Your answer and files are unchanged.";
+	if (record.error === "bound:cost")
+		return "Highlights stopped at the spending limit or unavailable pricing. Your answer and files are unchanged.";
+	if (record.error === "bound:time")
+		return "Highlights reached the time limit. Your answer and files are unchanged.";
 	return "Your answer and files are unchanged. You can retry the highlights.";
 }
 
