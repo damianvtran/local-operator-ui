@@ -88,6 +88,7 @@ import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
 import { CHAT_REGION_LABEL } from "../chat-regions";
 import {
 	MarkdownRenderer,
+	type MarkdownStyleProps,
 	StreamingMarkdown,
 } from "../components/markdown-renderer";
 import { MessageContainer } from "../components/message-item/message-container";
@@ -251,6 +252,27 @@ import {
 
 const WINDOW = 60;
 const WINDOW_STEP = 60;
+
+/*
+ * THE ROW BODY'S STYLE, HOISTED SO IT HAS ONE IDENTITY (remote-lag close-out).
+ *
+ * `MarkdownRenderer` carries a `memo`, and on the open path that memo is
+ * load-bearing: react-markdown's parse + rehype pipeline is the single largest
+ * cost inside the first transcript commit (measured: ~150 ms of a 579 ms task
+ * on the S3 fixture, across the commits of one open). An INLINE
+ * `styleProps={{...}}` object is a fresh reference on every render, so the memo
+ * missed on EVERY commit, and every mounted message re-parsed its markdown each
+ * time. These two objects are the only spellings now; a new size belongs here as
+ * a third constant, never as an inline literal at a call site.
+ */
+const ROW_BODY_STYLE: MarkdownStyleProps = {
+	fontSize: "var(--text-body)",
+	lineHeight: 1.6,
+};
+const ROW_BODY_STYLE_SMALL: MarkdownStyleProps = {
+	fontSize: "var(--text-body-sm)",
+	lineHeight: 1.6,
+};
 
 /**
  * DEV INSTRUMENTATION (UI perf audit P1/P4; PR-6): how many times the foot map
@@ -1298,23 +1320,13 @@ const AssistantRow = memo(function AssistantRow({
 					<StreamingMarkdown
 						content={remainingContent}
 						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
-						styleProps={{
-							fontSize: isSmallView
-								? "var(--text-body-sm)"
-								: "var(--text-body)",
-							lineHeight: 1.6,
-						}}
+						styleProps={isSmallView ? ROW_BODY_STYLE_SMALL : ROW_BODY_STYLE}
 					/>
 				) : (
 					<MarkdownRenderer
 						content={remainingContent}
 						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
-						styleProps={{
-							fontSize: isSmallView
-								? "var(--text-body-sm)"
-								: "var(--text-body)",
-							lineHeight: 1.6,
-						}}
+						styleProps={isSmallView ? ROW_BODY_STYLE_SMALL : ROW_BODY_STYLE}
 						/*
 						 * Linkification is the settled row's, and the streaming half is
 						 * deliberately not handed this prop: `StreamingMarkdown` linkifies a
@@ -4063,10 +4075,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * through `collapseInputs` and are in `collapseKey`.
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: rebuilt from `visible`/`collapseInputs` only when the input signature above moves; a `visible` dependency would re-plan the whole window on every streamed token, which is the per-token cost this memo exists to remove.
-	const collapse = useMemo(
-		() => collapsePlan(visible, collapseInputs),
-		[collapseKey],
-	);
+	const collapse = useMemo(() => {
+		// The plan's own span (remote-lag close-out instrumentation): on the open
+		// path the plan re-runs over the freshly landed window, and the 440 ms task
+		// it belongs to is split by this measure plus `lop:transcript:flush` and
+		// the render mark beside them.
+		performance.mark("lop:transcript:plan:start");
+		const plan = collapsePlan(visible, collapseInputs);
+		performance.mark("lop:transcript:plan:end");
+		performance.measure(
+			"lop:transcript:plan",
+			"lop:transcript:plan:start",
+			"lop:transcript:plan:end",
+		);
+		return plan;
+	}, [collapseKey]);
 	/*
 	 * THE WALK'S CUT-RUN KEY (UI perf audit A3, corrected by review round 1 R1).
 	 * The completion walk below asks "is there a run whose bar is PAINTED and
