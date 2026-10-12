@@ -26,6 +26,7 @@
  */
 
 import type { DefaultModelChoice } from "@features/providers/default-model-choice";
+import { t } from "@shared/i18n";
 
 export type DefaultModelPlanInput = {
 	/** What `chooseDefaultModel` decided, or null while either read is loading. */
@@ -55,7 +56,8 @@ export type DefaultModelPlan = {
 };
 
 /** The reason shown under a disabled Continue on this step. */
-export const PICK_A_MODEL = "Pick a model to continue.";
+export const PICK_A_MODEL_KEY =
+	"ui.onboarding.default_model.block.pick_a_model" as const;
 
 /**
  * The reason while the catalogue is still being fetched.
@@ -66,7 +68,8 @@ export const PICK_A_MODEL = "Pick a model to continue.";
  * the list is fetched on picker mount and no picker was mounted (QA round 3 Q3-3,
  * UX round 3 U9). Waiting says what is true while we ask.
  */
-export const LOADING_MODELS = "Loading the model list…";
+export const LOADING_MODELS_KEY =
+	"ui.onboarding.default_model.block.loading_models" as const;
 
 export function planDefaultModelWrite(
 	input: DefaultModelPlanInput,
@@ -120,10 +123,10 @@ export function planDefaultModelWrite(
 		write,
 		block: needsModel
 			? catalogueHasModels
-				? PICK_A_MODEL
+				? t(PICK_A_MODEL_KEY)
 				: catalogue.ready
 					? null
-					: LOADING_MODELS
+					: t(LOADING_MODELS_KEY)
 			: null,
 		/*
 		 * Only a READY catalogue that lists nothing for this provider can say the

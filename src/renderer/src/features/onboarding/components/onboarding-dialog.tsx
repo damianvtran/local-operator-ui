@@ -12,6 +12,7 @@
  */
 
 import { Dialog, DialogContent, DialogTitle } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useRef } from "react";
 
@@ -203,7 +204,9 @@ export const OnboardingDialog = ({
 						{title ? (
 							<DialogTitle className="text-title">{title}</DialogTitle>
 						) : (
-							<DialogTitle className="sr-only">Setup</DialogTitle>
+							<DialogTitle className="sr-only">
+								{t("ui.onboarding.dialog.setup")}
+							</DialogTitle>
 						)}
 						{stepIndicators}
 					</div>
