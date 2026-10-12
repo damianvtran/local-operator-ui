@@ -2,6 +2,7 @@ import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
 import { trustedDesktopFrame } from "../desktop-transport";
 import type { WebauthnChooser } from "../webauthn";
 import type { BrowserHost, CloseTabsIntent } from "./host";
+import type { BrowserAvailability } from "./lifecycle";
 import type { ClearWhat } from "./profile";
 import type { ContentRect } from "./registry";
 
@@ -38,6 +39,7 @@ export interface RegisterBrowserIpcOptions {
 	 * `index.html` otherwise. Same value the desktop transport is given. */
 	expectedUrl: string;
 	host: () => BrowserHost | null;
+	availability?: () => BrowserAvailability;
 	/**
 	 * The passkey chooser, which is what `browser-webauthn-respond` answers.
 	 *
@@ -92,7 +94,7 @@ export const BROWSER_IPC_CHANNELS = [
 ] as const;
 
 export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
-	function authorize(event: IpcMainInvokeEvent): BrowserHost {
+	function authorizeSender(event: IpcMainInvokeEvent): void {
 		const owner = options.window();
 		if (
 			!owner ||
@@ -103,12 +105,42 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		) {
 			throw new Error("This window cannot use the browser controls.");
 		}
+	}
+	function authorize(event: IpcMainInvokeEvent): BrowserHost {
+		authorizeSender(event);
 		const host = options.host();
-		if (!host) throw new Error("The browser host is not running.");
+		if (!host)
+			throw new Error("browser_unavailable: The browser is not ready.");
 		return host;
 	}
 
-	ipcMain.handle("browser-state", (event) => authorize(event).chromeState());
+	ipcMain.handle("browser-state", (event) => {
+		// Sender authorization is independent of readiness: a loading host must
+		// not make a driven page eligible to read even an empty projection.
+		authorizeSender(event);
+		const host = options.host();
+		const availability = options.availability?.();
+		if (host)
+			return { ...host.chromeState(), ...(availability && { availability }) };
+		return {
+			tabs: [],
+			activeTabId: null,
+			url: "",
+			title: "",
+			loading: false,
+			canGoBack: false,
+			canGoForward: false,
+			pendingConsent: [],
+			approvals: [],
+			navFailure: null,
+			availability: availability ?? {
+				status: "unavailable",
+				attempt: 0,
+				maxAttempts: 3,
+				message: "The browser is not running.",
+			},
+		};
+	});
 
 	ipcMain.handle("browser-new-tab", async (event, sessionId: unknown) => {
 		const host = authorize(event);

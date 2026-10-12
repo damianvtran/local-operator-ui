@@ -469,6 +469,41 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// registration behind a dialog would restore a blank Chromium surface over it.
 	useSuppressBrowserView(navFailure !== null, "browser-load-failure");
 
+	// A reachable IPC bridge is not a ready browser. In particular, startup's
+	// empty projection must not offer New tab or claim the saved tabs are gone.
+	const availability = state?.availability;
+	if (availability && availability.status !== "ready") {
+		return (
+			<output
+				className="flex h-full flex-col items-center justify-center gap-3 bg-elevated p-6 text-center"
+				aria-live="polite"
+				aria-busy={availability.status !== "unavailable"}
+				data-tour-tag="browser-availability"
+				data-browser-status={availability.status}
+			>
+				{availability.status === "unavailable" ? (
+					<>
+						<p className="text-body font-medium text-ink">
+							Browser unavailable
+						</p>
+						<p className="max-w-sm text-body text-ink-muted">
+							{availability.message}
+						</p>
+					</>
+				) : (
+					<>
+						<Spinner size="lg" />
+						<p className="text-body text-ink-muted">
+							{availability.status === "retrying"
+								? "Retrying browser startup"
+								: "Starting browser"}
+						</p>
+					</>
+				)}
+			</output>
+		);
+	}
+
 	if (!chrome.available) {
 		return (
 			<div className="flex h-full items-center justify-center bg-elevated p-6">
