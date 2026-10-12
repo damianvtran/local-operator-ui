@@ -2333,6 +2333,31 @@ function incidentRow(
  * (U16). The comparison is on the flattened text, so it holds whether the join
  * stitched lines together or the payload was one line to begin with.
  */
+/**
+ * The typed hub facts a comms producer stamps on a persisted user-role row.
+ *
+ * A hub steer persists as an ordinary user message whose text is the
+ * model-facing envelope; re-reading that envelope is the guessing the marker
+ * programme deletes. The producer writes the same facts a `hub_message`
+ * custom carries under `provider_payload.hub_receipt`; this reads THAT,
+ * positively: a malformed or body-less marker is not a receipt, and the row
+ * keeps its ordinary user handling. Kept byte-compatible with the core
+ * helper (`hub_receipts.hub_receipt_marker`) so one row classifies the same
+ * on every surface.
+ */
+function hubReceiptMarker(
+	providerPayload: unknown,
+): Record<string, unknown> | null {
+	if (typeof providerPayload !== "object" || providerPayload === null)
+		return null;
+	const marker = (providerPayload as Record<string, unknown>).hub_receipt;
+	if (typeof marker !== "object" || marker === null) return null;
+	const record = marker as Record<string, unknown>;
+	const body = record.body;
+	if (typeof body !== "string" || !body.trim()) return null;
+	return { ...record };
+}
+
 function relayRow(
 	text: string,
 ): Pick<Extract<TranscriptRecord, { kind: "custom" }>, "headline" | "detail"> {
@@ -2838,6 +2863,51 @@ function durableRecord(
 	}
 	const role = String(payload.role ?? "");
 	if (role === "user") {
+		/*
+		 * A COMMS STEER PERSISTS AS A USER-ROLE ROW whose text is the
+		 * model-facing envelope. The producer stamps the typed facts on
+		 * `provider_payload.hub_receipt`; that positive provenance is read
+		 * BEFORE any human-row classification, so the row becomes the SAME
+		 * hub receipt the custom path paints — never a fabricated operator
+		 * turn, never the envelope. Rows without the marker keep their
+		 * existing treatment.
+		 */
+		const hub = hubReceiptMarker(payload.provider_payload);
+		if (hub) {
+			const receipt = hubFields({ ...hub, text: messageText(payload) });
+			if (receipt.body.trim()) {
+				const old = previous?.kind === "custom" ? previous.receipt : undefined;
+				if (old && sameSender(old.sender, receipt.sender))
+					receipt.sender = old.sender;
+				// Carry any images the row (or its echo) already owned, by the
+				// same reference-preserving rule the custom arm uses: a later
+				// repair must not orphan the original owner/index.
+				const prevImages =
+					previous?.kind === "custom" || previous?.kind === "user"
+						? previous.images
+						: undefined;
+				return {
+					kind: "custom",
+					id: entry.id,
+					ts,
+					customType: "hub_message",
+					text: receipt.envelope,
+					attribution: "user",
+					...customRow("hub_message", receipt.envelope || receipt.body, {
+						...hub,
+						text: messageText(payload),
+					}),
+					receipt:
+						old &&
+						(Object.keys(receipt) as (keyof HubReceipt)[]).every(
+							(key) => old[key] === receipt[key],
+						)
+							? old
+							: receipt,
+					images: extractImages(payload, entry.id, prevImages),
+				};
+			}
+		}
 		/*
 		 * A row the harness minted is dropped, not restyled.
 		 *
@@ -3871,6 +3941,45 @@ export function applyEvent(
 			}
 			const current = state.records[state.index.get(messageId) ?? -1];
 			if (message.role === "user") {
+				/*
+				 * The live twin of the durable marker arm: a stamped hub delivery
+				 * paints as the SAME receipt, under the row's own raw id, so a
+				 * hub-vs-human distinction survives the live/replay seam. The
+				 * upsert merges in place, keeping the echo's position; the
+				 * timestamp discipline below is the user arm's own.
+				 */
+				const hub = hubReceiptMarker(message.provider_payload);
+				if (hub) {
+					const receiptText = messageText(message);
+					const receipt = hubFields({ ...hub, text: receiptText });
+					if (receipt.body.trim()) {
+						const keepsHold =
+							current?.kind === "user" && current.provisional === true;
+						// No `provisional` spread: the hold belongs to a local echo,
+						// and a hub delivery is never one. The timestamp rule is kept
+						// anyway — a reconnect replays these frames before the page.
+						return upsert(state, {
+							kind: "custom",
+							id: messageId,
+							ts: keepsHold ? monotonicStamp(state, now) : now,
+							customType: "hub_message",
+							text: receipt.envelope,
+							attribution: "user",
+							...customRow("hub_message", receipt.envelope || receipt.body, {
+								...hub,
+								text: receiptText,
+							}),
+							receipt,
+							images: extractImages(
+								message,
+								messageId,
+								current?.kind === "custom" || current?.kind === "user"
+									? current.images
+									: undefined,
+							),
+						});
+					}
+				}
 				/*
 				 * The live half of the harness-chrome suppression (the durable half is in
 				 * `durableRecord`, and both are needed — see its note). The message object

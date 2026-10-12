@@ -7577,6 +7577,114 @@ test("a send's delivery state rides the row, from both the durable and the live 
 /* ---------- the dev-only immutability guard, through the emit path --------- */
 
 /*
+ * --- hub marker projection (child typed provenance) ----------------------
+ *
+ * A comms steer persists as a user-role row whose text is the model-facing
+ * envelope; the producer stamps the typed facts on
+ * `provider_payload.hub_receipt`. These pin the projection contract: the
+ * marker classifies the row as the SAME receipt the custom path paints (durable
+ * and live), no marker keeps the ordinary user treatment, and a malformed
+ * marker is not a receipt.
+ */
+
+const markedSteer = (id, body) => ({
+	role: "user",
+	content: [
+		{
+			type: "text",
+			text: `<parent-message>\nsteer preamble\n\n${body}\n</parent-message>`,
+		},
+	],
+	tool_calls: [],
+	id,
+	provider_payload: {
+		hub_receipt: {
+			direction: "to_child",
+			expects_reply: false,
+			steer: true,
+			body,
+		},
+	},
+});
+
+const markedPage = (id, body) => ({
+	entries: [
+		{
+			id,
+			ts: 11,
+			type: "message",
+			payload: { kind: "message", ...markedSteer(id, body) },
+		},
+	],
+	has_more: false,
+	cursor_missing: false,
+});
+
+test("a marked hub steer row projects as a receipt, not the operator's words", () => {
+	const page = markedPage("h1", "Focus on retries");
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+	assert.equal(state.records.length, 1);
+	const record = state.records[0];
+	assert.equal(record.kind, "custom");
+	assert.equal(record.customType, "hub_message");
+	assert.equal(record.receipt.body, "Focus on retries");
+	assert.equal(record.receipt.steer, true);
+	assert.equal(record.receipt.expectsReply, false);
+	assert.equal(record.receipt.direction, "to_child");
+	// Same page replayed keeps record identity (the equality gate).
+	assert.equal(applyHistoryPage(state, page), state);
+});
+
+test("a row without the marker keeps its ordinary user treatment", () => {
+	const page = {
+		entries: [
+			{
+				id: "u1",
+				ts: 12,
+				type: "message",
+				payload: { kind: "message", ...user("u1", "plain words") },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	};
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+	assert.equal(state.records[0].kind, "user");
+	assert.equal(state.records[0].text, "plain words");
+});
+
+test("a malformed marker is not a receipt", () => {
+	for (const marker of [null, {}, { steer: true }, { body: "" }, { body: 3 }]) {
+		const payload = { kind: "message", ...user("u2", "keeps their words") };
+		payload.provider_payload = { hub_receipt: marker };
+		const page = {
+			entries: [{ id: "u2", ts: 13, type: "message", payload }],
+			has_more: false,
+			cursor_missing: false,
+		};
+		const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+		assert.equal(state.records[0].kind, "user", JSON.stringify(marker));
+		assert.equal(state.records[0].text, "keeps their words");
+	}
+});
+
+test("the live marker arm projects the receipt under the row's own id", () => {
+	const message = markedSteer("h2", "Focus on retries");
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message },
+		10,
+	);
+	assert.equal(state.records.length, 1);
+	const record = state.records[0];
+	assert.equal(record.id, "h2");
+	assert.equal(record.kind, "custom");
+	assert.equal(record.customType, "hub_message");
+	assert.equal(record.receipt.body, "Focus on retries");
+	assert.equal(record.receipt.steer, true);
+});
+
+/*
  * `record-immutability.ts` freezes a record where the reducer EMITS it - `upsert`
  * (which every live caller, `markLiveRecordsTruncated` and `appendPendingUser`
  * funnel through) and the page/merge paths - in a DEVELOPMENT build only, so an
