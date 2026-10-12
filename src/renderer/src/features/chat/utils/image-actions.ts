@@ -324,3 +324,99 @@ export async function resolveCopyableImage(
 		type: mimeTypeForPath(path),
 	});
 }
+
+/**
+ * Whether a blob of this type has to be RE-ENCODED before the clipboard takes
+ * it, i.e. whether it is anything but a PNG.
+ *
+ * THE RULE THIS ENCODES, measured in the built app (2026-10-11, the operator's
+ * own report): Chromium's sanitized async clipboard write accepts exactly
+ * `text/plain`, `text/html` and `image/png`. The menu used to pass the blob's
+ * OWN type — `new ClipboardItem({ [blob.type || "image/png"]: blob })` — so
+ * every non-PNG image in a conversation rejected with a DOMException ("Failed
+ * to execute 'write' on 'Clipboard': Type image/jpeg not supported on write.")
+ * that the catch turned into the same "Failed to copy image" toast the operator
+ * saw six times, against PNGs that copied fine. The session that reported it
+ * held 19 JPEGs.
+ *
+ * PURE AND EXPORTED so the decision is testable without a DOM
+ * (`scripts/image-actions.test.mjs`); `pngForClipboard` below is the one caller.
+ */
+export const needsPngEncode = (type: string): boolean =>
+	type.trim().toLowerCase() !== "image/png";
+
+/**
+ * The bytes `Copy image` hands the clipboard: always a PNG, byte-exact when the
+ * source already was one.
+ *
+ * WHY TRANSCODE AT ALL, and why the write cannot keep the blob's own MIME: see
+ * `needsPngEncode` above — Chromium's sanitized write takes `image/png` and no
+ * other image type. The PNG pass-through is deliberately BYTE-EXACT (no canvas
+ * round trip): a re-encode of an already-writable picture could only lose
+ * pixels, and the canvas route is the risky half.
+ *
+ * WHAT DECODES A NON-PNG, and why an `<img>` element rather than
+ * `createImageBitmap`: the element decodes every format the transcript can
+ * paint — including SVG and GIF, which `createImageBitmap` does not decode in
+ * Chromium — and its `naturalWidth`/`naturalHeight` are the source's own size,
+ * which the canvas is drawn at (`drawImage` at natural size, never a downscale).
+ *
+ * WHY THE CANVAS IS NOT TAINTED. An object URL mints a same-document resource,
+ * so the canvas stays origin-clean and `toBlob` can read it back — the probe in
+ * the built app validated this exact decode+canvas+toBlob path writing
+ * successfully. (A URL this document did not create would taint it; that is one
+ * more reason the bytes are taken from `resolveCopyableImage` rather than from
+ * the picture's own URL.) The object URL is revoked in a `finally`, whoever
+ * unwinds.
+ *
+ * THE LIMIT THAT IS NOT SILENTLY WORKED AROUND: a picture beyond Chromium's
+ * canvas dimension limit (32767px on one side) cannot be drawn or encoded here —
+ * `toBlob` answers null and this throws the sentence a toast can carry, rather
+ * than downscaling. A clipboard entry that quietly shrank the picture the user
+ * asked to copy would be the worse failure. The zero-size guard is for the same
+ * shape one step smaller: no bytes is not a picture, and a write of one would
+ * reject with a DOMException instead of a sentence.
+ *
+ * Throws with a sentence a toast can carry; the caller decides how loud.
+ */
+export async function pngForClipboard(blob: Blob): Promise<Blob> {
+	if (blob.size === 0) throw new Error("This image has no bytes to copy");
+	if (!needsPngEncode(blob.type)) return blob;
+	const url = URL.createObjectURL(blob);
+	try {
+		const image = await decodeImage(url);
+		if (image.naturalWidth === 0 || image.naturalHeight === 0) {
+			throw new Error("This image could not be decoded for the clipboard");
+		}
+		const canvas = document.createElement("canvas");
+		canvas.width = image.naturalWidth;
+		canvas.height = image.naturalHeight;
+		const context = canvas.getContext("2d");
+		if (context === null) {
+			throw new Error(
+				"This window cannot re-encode the image for the clipboard",
+			);
+		}
+		context.drawImage(image, 0, 0);
+		const png = await new Promise<Blob | null>((resolve) => {
+			canvas.toBlob(resolve, "image/png");
+		});
+		if (png === null) {
+			throw new Error("This image could not be re-encoded for the clipboard");
+		}
+		return png;
+	} finally {
+		URL.revokeObjectURL(url);
+	}
+}
+
+/** Decode an object URL into a loaded `<img>` element, or reject with a sentence. */
+function decodeImage(url: string): Promise<HTMLImageElement> {
+	return new Promise((resolve, reject) => {
+		const image = new Image();
+		image.onload = () => resolve(image);
+		image.onerror = () =>
+			reject(new Error("This image could not be decoded for the clipboard"));
+		image.src = url;
+	});
+}
