@@ -32,6 +32,7 @@ import { remarkLinkifyTargets } from "../utils/remark-linkify-targets";
 import { remarkSoftBreaks } from "../utils/remark-soft-breaks";
 import { citationAwareAnchor } from "./credential-citation";
 import { remarkCredentialCitations } from "./credential-citation-remark";
+import { MarkdownImage } from "./markdown-image";
 // NOT `remark-math`: its single-dollar tokenizer has no adjacency rules, so
 // once math is on for a message a price's `$` and a later `$` pair up and the
 // text between them is typeset (operator report, 2026-09-27).
@@ -340,6 +341,17 @@ export const LINK_URL_TRANSFORM: UrlTransform = (url, key) => {
 const MARKDOWN_COMPONENTS: Components = {
 	a: MarkdownAnchor,
 	table: MarkdownTable,
+	/*
+	 * `img` joins the map for the operator's ask of 2026-10-11 — hovering an
+	 * image offers its actions — because a markdown image is the one picture the
+	 * chat's own components never see: without this entry an
+	 * `![shot](/tmp/a.png)` is a bare `<img>` with no way to open, copy or
+	 * reveal it. The component owns its admission (`markdown-image.tsx`): a
+	 * relative `src` renders exactly as before, and the actions a target gets
+	 * are the per-kind set `image-actions.ts` declares, with the canvas entry
+	 * riding the same pane provider the anchor uses.
+	 */
+	img: MarkdownImage,
 	code: ({ node: _node, className, children, ...rest }) => {
 		const language = LANGUAGE_REGEX.exec(className ?? "")?.[1];
 

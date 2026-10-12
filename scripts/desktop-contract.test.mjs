@@ -17,13 +17,17 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL} from "./src/shared/desktop-contract";',
+			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export * from "./src/main/supplement-mounts"; export * from "./src/shared/supplement-frame-url"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL, desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract"; export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api"; export { refusalDetail, JOB_CANCEL_NOT_FOUND_COPY } from "./src/renderer/src/features/chat/components/run-details/job-controls-model"; export { requestDesktopMediaOutcome } from "./src/main/desktop-media"; export { DESKTOP_REFUSAL_CODE } from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
 	format: "esm",
 	platform: "node",
 	write: false,
+	alias: {
+		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+		"@features": `${process.cwd()}/src/renderer/src/features`,
+	},
 	plugins: [
 		{
 			name: "electron-fixture",
@@ -51,9 +55,13 @@ const {
 	trustedDesktopFrame,
 	registerDesktopIPC,
 	isAdmittedSender,
+	SupplementFrameMounts,
+	supplementMountUrl,
 	guardForegroundReceipts,
 	rememberPickedDirectory,
 	withRememberedDirectory,
+	requestDesktopMediaOutcome,
+	DESKTOP_REFUSAL_CODE,
 	desktopRequestByteBudget,
 	desktopRequestDeadlineMs,
 	desktopRequestDeadlineDetail,
@@ -62,6 +70,14 @@ const {
 	MAX_DESKTOP_ENVELOPE_BYTES,
 	MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES,
 	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
+	desktopResult,
+	refusalDetail,
+	JOB_CANCEL_NOT_FOUND_COPY,
+	// Aliased: the session-variables bundle below binds the plain names, and a
+	// test registered before that top-level await resolves must not reach them
+	// (measured: TDZ under load when the runner starts tests early).
+	desktopEndpoint: jobsCancelEndpoint,
+	desktopRequestSchema: jobsCancelSchema,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -69,6 +85,9 @@ let server;
 let url;
 const seen = [];
 const token = "synthetic-main-process-token";
+/** The jobs cancel's path, hoisted for `useTopLevelRegex`'s reason (its siblings hold their own the same way). */
+const JOBS_CANCEL_PATH =
+	/^\/v1\/desktop\/sessions\/([a-f0-9]{12})\/jobs\/([^/]+)\/cancel$/;
 before(async () => {
 	server = createServer(async (req, res) => {
 		const chunks = [];
@@ -120,6 +139,64 @@ before(async () => {
 			const [status, code, message] = storeFailure;
 			res.writeHead(status, { "Content-Type": "application/json" });
 			res.end(JSON.stringify({ detail: { code, message } }));
+			return;
+		}
+		/*
+		 * THE JOBS CANCEL, at the same boundary. These bodies are BYTE-FOR-BYTE
+		 * what the landed core route (#2207, merged as 8f62ad4bacbf) sent this
+		 * branch's own real-path run (`cancel-driver.py` + `cancel-client.mjs`,
+		 * scratchpad; the client half used this repo's own `desktopEndpoint`
+		 * and `desktopRequestSchema`), so the refusal assertions below are
+		 * about the wire the app actually meets, not a shape invented here.
+		 * Keyed on the job id so no other case changes shape.
+		 */
+		const cancelPath = req.url?.match(JOBS_CANCEL_PATH);
+		if (cancelPath) {
+			const sessionId = cancelPath[1];
+			const jobId = cancelPath[2];
+			if (jobId === "aaaaaaaaaaaa") {
+				res.writeHead(404, { "Content-Type": "application/json" });
+				res.end(
+					JSON.stringify({
+						detail: {
+							code: "jobs_not_found",
+							message: "not cancelled — the provider no longer knows the job",
+							session_id: sessionId,
+						},
+					}),
+				);
+				return;
+			}
+			if (jobId === "job-settled") {
+				res.writeHead(409, { "Content-Type": "application/json" });
+				res.end(
+					JSON.stringify({
+						detail: {
+							code: "jobs_not_cancelled",
+							message: "job job-settled was not cancelled (status: completed)",
+							session_id: sessionId,
+						},
+					}),
+				);
+				return;
+			}
+			if (jobId === "job-bare") {
+				// A 404 whose JSON carries no `detail`: the placeholder class the
+				// frozen-sentence substitution exists for. (An UNPARSEABLE body
+				// would instead become main's own transport-failure sentence,
+				// which is a different, correct arm — not this one.)
+				res.writeHead(404, { "Content-Type": "application/json" });
+				res.end("{}");
+				return;
+			}
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(
+				JSON.stringify({
+					status: 200,
+					message: "Desktop session result.",
+					result: { job_id: jobId, cancelled: true },
+				}),
+			);
 			return;
 		}
 		res.setHeader("Content-Type", "application/json");
@@ -206,6 +283,106 @@ test("a store-failure envelope crosses this hop with its status, code and senten
 	}
 });
 
+test("the jobs cancel op pins its route, and its refusals land on the frozen sentence", async () => {
+	/*
+	 * (a) THE MAPPING, pure: the schema admits the op and refuses a missing or
+	 * extra field, and the endpoint builder emits the POST the landed core
+	 * route (#2207, merge 8f62ad4bacbf) serves — both segments encoded. This
+	 * is the client half of the chain; the server half is pinned by the
+	 * branch's real-path run, whose captured bodies the arms below serve.
+	 */
+	const parsed = jobsCancelSchema.parse({
+		op: "jobs.cancel",
+		sessionId: "0123456789ab",
+		jobId: "a/b c",
+	});
+	assert.deepEqual(jobsCancelEndpoint(parsed), {
+		path: "/v1/desktop/sessions/0123456789ab/jobs/a%2Fb%20c/cancel",
+		method: "POST",
+	});
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "jobs.cancel",
+			sessionId: "0123456789ab",
+		}),
+	);
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "jobs.cancel",
+			sessionId: "0123456789ab",
+			jobId: "job-live",
+			extra: 1,
+		}),
+	);
+
+	/*
+	 * (b)/(c) THE PRESS AND THE REFUSALS, through the renderer's OWN chain:
+	 * desktopResult -> desktopRequest -> window.api.desktop.request (main's
+	 * IPC) -> the real transport -> real loopback HTTP. The window stub is
+	 * the IPC seam, not a mock of the chain: it hands the request to the
+	 * SAME `requestDesktop` the app's main process ships.
+	 */
+	const priorWindow = globalThis.window;
+	globalThis.window = {
+		api: {
+			desktop: {
+				request: async (request) => requestDesktop(request, url, token),
+			},
+		},
+	};
+	try {
+		const receipt = await desktopResult({
+			op: "jobs.cancel",
+			sessionId: "0123456789ab",
+			jobId: "job-live",
+		});
+		assert.deepEqual(receipt, { job_id: "job-live", cancelled: true });
+		const press = seen.at(-1);
+		assert.equal(
+			press.path,
+			"/v1/desktop/sessions/0123456789ab/jobs/job-live/cancel",
+		);
+		assert.equal(press.method, "POST");
+		assert.equal(press.authorization, `Bearer ${token}`);
+		assert.equal(
+			press.body,
+			"",
+			"the press carries no body — main's own composition for this op",
+		);
+
+		const rejection = (jobId) =>
+			desktopResult({
+				op: "jobs.cancel",
+				sessionId: "0123456789ab",
+				jobId,
+			}).then(
+				() => assert.fail(`the ${jobId} refusal must reject`),
+				(error) => error,
+			);
+		/*
+		 * The unknown-job 404 carries the engine's own sentence — the same
+		 * string as the frozen fallback constant, which is exactly the
+		 * agreement the mapping exists to keep; the settled 409 renders the
+		 * tool's sentence verbatim; a 404 with nothing readable in it falls to
+		 * the frozen phrase rather than a generic error.
+		 */
+		const unknown = await rejection("aaaaaaaaaaaa");
+		assert.equal(unknown.code, "jobs_not_found", "the machine code survives");
+		assert.equal(refusalDetail(unknown), JOB_CANCEL_NOT_FOUND_COPY);
+
+		const settled = await rejection("job-settled");
+		assert.equal(
+			refusalDetail(settled),
+			"job job-settled was not cancelled (status: completed)",
+		);
+
+		const bare = await rejection("job-bare");
+		assert.equal(refusalDetail(bare), JOB_CANCEL_NOT_FOUND_COPY);
+	} finally {
+		globalThis.window = priorWindow;
+	}
+});
+
 test("arbitrary URL, injected headers, path traversal and wrong body types never reach HTTP", async () => {
 	const count = seen.length;
 	for (const request of [
@@ -256,6 +433,39 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			{ request_id: requestId, cwd: "~", peer: "d_bbox1111" },
 		],
 		[{ op: "sessions.get", sessionId }, `/${sessionId}`, "GET", undefined],
+		/*
+		 * THE OPEN-FRAME FLAG, AT THE ONE HOP THAT BUILDS THE QUERY (agent review
+		 * round 1, F6). With `open_frame=1` the backend counts `limit` in PAINTABLE
+		 * rows and strips the bytes no surface paints, so a page in that shape
+		 * handed to a caller that did not negotiate it is a page that caller reads
+		 * wrong. The row WITHOUT the flag is the byte-for-byte claim an old
+		 * renderer keeps; the rows with it are the negotiation, and a literal
+		 * `false` is not a negotiation.
+		 */
+		[
+			{ op: "sessions.history", sessionId, limit: 100 },
+			`/${sessionId}/history?limit=100`,
+			"GET",
+			undefined,
+		],
+		[
+			{
+				op: "sessions.history",
+				sessionId,
+				limit: 100,
+				beforeId: "entry-1",
+				openFrame: true,
+			},
+			`/${sessionId}/history?limit=100&before_id=entry-1&open_frame=1`,
+			"GET",
+			undefined,
+		],
+		[
+			{ op: "sessions.history", sessionId, limit: 50, openFrame: false },
+			`/${sessionId}/history?limit=50`,
+			"GET",
+			undefined,
+		],
 		[
 			{
 				op: "sessions.search",
@@ -742,7 +952,7 @@ test("every remaining gated legacy call travels the contract, not a bare fetch",
 test("control catalogues, lifecycle, MCP and Radient use closed main-owned transport", async () => {
 	const sessionId = "123456abcdef";
 	const requestId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-	for (const [operation, path, method] of [
+	for (const [operation, path, method, body] of [
 		[{ op: "legacy.models" }, "/v1/models", "GET"],
 		[
 			{ op: "legacy.agent.upload", agentId: "fixture-agent" },
@@ -890,6 +1100,25 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 			"/v1/auth/accounts/1",
 			"DELETE",
 		],
+		/*
+		 * The previews' sign op (file-serving RFC § 4, Phase A adoption): NOT
+		 * under `/v1/desktop/` - the core's sign route accepts the desktop bearer
+		 * or its own access token - and the body is the contract the renderer and
+		 * the core share: the route word, the raw path, and the TTL under the
+		 * core's own `ttl_s` spelling. The row's body also pins the CASING hop
+		 * (`ttlS` -> `ttl_s`), which is the mapping a preview breaks on silently.
+		 */
+		[
+			{
+				op: "static.sign",
+				route: "html",
+				path: "/tmp/example/report.html",
+				ttlS: 600,
+			},
+			"/v1/static/sign",
+			"POST",
+			{ route: "html", path: "/tmp/example/report.html", ttl_s: 600 },
+		],
 	]) {
 		const response = await requestDesktop(operation, url, token);
 		assert.equal(response.status, 200);
@@ -899,6 +1128,7 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 		assert.equal(actual.authorization, `Bearer ${token}`);
 		assert.ok(!actual.path.includes("fixture-secret"));
 		assert.ok(!JSON.stringify(response).includes("fixture-secret"));
+		if (body) assert.deepEqual(JSON.parse(actual.body), body);
 		if (operation.control)
 			assert.deepEqual(JSON.parse(actual.body), operation.control);
 	}
@@ -1416,6 +1646,79 @@ test("the media relay hands on ArrayBuffer-backed bytes and refuses anything els
 		await invoke(event, input, notBytes);
 		assert.equal(seen.at(-1), null, JSON.stringify(notBytes));
 	}
+});
+
+test("the supplement arm channel is sender-gated, URL-gated, and absent when unconfigured", async () => {
+	/*
+	 * The mount permit's renderer half (turn-supplements memo §4.1; round-1 R1
+	 * asked for this exact contract case): the arm channel obeys the same
+	 * sender gate as every other channel here, it answers `{ ok: false }` for
+	 * a URL that is not armarble WITHOUT arming anything, and a host with no
+	 * permit table mounts no channel at all — the shape every node suite and
+	 * any older host passes.
+	 */
+	globalThis.__desktopHandlers = new Map();
+	const frame = { url: "file:///app/index.html" };
+	const contents = { mainFrame: frame };
+	const owner = { webContents: contents, isDestroyed: () => false };
+	const mounts = new SupplementFrameMounts();
+	registerDesktopIPC(
+		() => owner,
+		"file:///app/index.html",
+		async () => ({ status: 200, body: { result: {} } }),
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		mounts,
+	);
+	const invoke = globalThis.__desktopHandlers.get(
+		"desktop-supplement-frame-arm",
+	);
+	assert.ok(invoke, "a configured host must register the arm channel");
+	const url = supplementMountUrl("5ea1face0001", "a".repeat(32));
+	assert.deepEqual(
+		await invoke({ sender: contents, senderFrame: frame }, url),
+		{ ok: true },
+	);
+	assert.equal(mounts.armedCount, 1);
+	// A live URL never arms: the permit table's own validation answers false.
+	assert.deepEqual(
+		await invoke(
+			{ sender: contents, senderFrame: frame },
+			"https://example.com/x",
+		),
+		{ ok: false },
+	);
+	assert.equal(
+		mounts.armedCount,
+		1,
+		"a refused URL must not stand as a permit",
+	);
+	// The sender gate: another frame of the same window is not the app. The
+	// handler's gate throws SYNCHRONOUSLY (the shape every other channel here
+	// has), so the assertion is `throws` over a thunk, not `rejects`.
+	assert.throws(
+		() =>
+			invoke(
+				{ sender: contents, senderFrame: { url: "file:///app/other.html" } },
+				url,
+			),
+		/desktop controls/,
+	);
+	// A host WITHOUT the permit table registers no channel at all.
+	globalThis.__desktopHandlers = new Map();
+	registerDesktopIPC(
+		() => owner,
+		"file:///app/index.html",
+		async () => ({ status: 200, body: { result: {} } }),
+	);
+	assert.equal(
+		globalThis.__desktopHandlers.has("desktop-supplement-frame-arm"),
+		false,
+	);
 });
 
 test("a picker reopens where the last one of its kind landed", () => {
@@ -2838,4 +3141,128 @@ test("only an answer the desktop plane admitted proves this app is still paired"
 		false,
 		"a request the schema refused was never sent, so it proves nothing",
 	);
+});
+
+// ---------------------------------------------------------------------------
+// The media relay's refusal ladder, main-process side. Every packaged app
+// reaches media through this module (`requestDesktopMediaOutcome`), and the
+// reading it does is what the renderer's `mediaError` sentence is built from -
+// so both the i18n envelope and the two older shapes are driven against a real
+// loopback here, not a restatement of the parsing.
+
+test("main reads a media refusal's {code,params,text} envelope: text forwarded, declared codes first", async () => {
+	const answers = [];
+	const server = createServer((_req, res) => {
+		const answer = answers.shift();
+		res.writeHead(answer.status, { "content-type": "application/json" });
+		res.end(JSON.stringify(answer.payload));
+	});
+	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+	const base = `http://127.0.0.1:${server.address().port}`;
+	try {
+		// The core's i18n envelope on a route outside the desktop plane.
+		answers.push({
+			status: 422,
+			payload: {
+				detail: {
+					code: "wire.errors.media_refused",
+					params: { provider: "openai" },
+					text: "The voice provider refused the request.",
+				},
+			},
+		});
+		const envelope = await requestDesktopMediaOutcome(
+			{ op: "speech.create", request: { text: "hello" } },
+			null,
+			base,
+			"token",
+		);
+		assert.equal(envelope.response.kind, "error");
+		if (envelope.response.kind !== "error") return;
+		assert.equal(
+			envelope.response.detail,
+			"The voice provider refused the request.",
+			"the envelope's text is what the relay forwards",
+		);
+
+		// A DECLARED code from the desktop vocabulary wins over the status.
+		answers.push({
+			status: 503,
+			payload: {
+				detail: {
+					code: "pairing.plane-closed",
+					params: {},
+					text: "Custom shut sentence.",
+				},
+			},
+		});
+		const declared = await requestDesktopMediaOutcome(
+			{
+				op: "sessions.attachment",
+				sessionId: "123456abcdef",
+				digest: "a".repeat(32),
+			},
+			null,
+			base,
+			"token",
+		);
+		assert.equal(declared.response.kind, "error");
+		if (declared.response.kind !== "error") return;
+		assert.equal(declared.response.detail, "Custom shut sentence.");
+		assert.equal(declared.response.code, DESKTOP_REFUSAL_CODE.planeClosed);
+
+		/*
+		 * The fallback half of the declared-code precedence (review round 1,
+		 * NIT-2): a declared code that is NOT this app's vocabulary must not be
+		 * echoed and must not erase the status-derived one - the route+status
+		 * that would map still does.
+		 */
+		answers.push({
+			status: 503,
+			payload: {
+				detail: {
+					code: "wire.errors.media_refused",
+					params: {},
+					text: "A refused media sentence.",
+				},
+			},
+		});
+		const nonVocabulary = await requestDesktopMediaOutcome(
+			{
+				op: "sessions.attachment",
+				sessionId: "123456abcdef",
+				digest: "a".repeat(32),
+			},
+			null,
+			base,
+			"token",
+		);
+		assert.equal(nonVocabulary.response.kind, "error");
+		if (nonVocabulary.response.kind !== "error") return;
+		assert.equal(nonVocabulary.response.detail, "A refused media sentence.");
+		assert.equal(
+			nonVocabulary.response.code,
+			DESKTOP_REFUSAL_CODE.planeClosed,
+			"a non-vocabulary declared code falls back to the status-derived one",
+		);
+
+		// The oldest shape: one prose string, code still status-derived.
+		answers.push({ status: 503, payload: { detail: "not your token" } });
+		const legacy = await requestDesktopMediaOutcome(
+			{
+				op: "sessions.attachment",
+				sessionId: "123456abcdef",
+				digest: "a".repeat(32),
+			},
+			null,
+			base,
+			"token",
+		);
+		assert.equal(legacy.response.kind, "error");
+		if (legacy.response.kind !== "error") return;
+		assert.equal(legacy.response.detail, "not your token");
+		assert.equal(legacy.response.code, DESKTOP_REFUSAL_CODE.planeClosed);
+	} finally {
+		server.close();
+	}
 });

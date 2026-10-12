@@ -30,8 +30,9 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { ciClause, laneStateClause, roundSegments, laneLines, commentClause, linkOnlyRemedy, toolOutputNote, forgeSigil, identityLabel, rowAriaLabel, attentionCause, needsAttention, rowHasPendingCi, chipClause, coolingClauses, groupRows, laneSegmentTone, refreshCaption, rowNotice } from "./src/renderer/src/features/code-review/code-review-model";',
+			'export { ciClause, laneStateClause, roundSegments, laneLines, commentClause, linkOnlyRemedy, toolOutputNote, forgeSigil, identityLabel, rowAriaLabel, attentionCause, needsAttention, rowHasPendingCi, chipClause, coolingClauses, groupRows, laneSegmentTone, refreshCaption, rowNotice, fetchStateOf, rowIsLoading, PENDING_REVEAL_MS } from "./src/renderer/src/features/code-review/code-review-model";',
 			'export { intervalFor, SCAN_POLL_MS, codeRequestsEnabled, appliedAfterFrame, chipState } from "./src/renderer/src/features/code-review/hooks/use-code-requests";',
+			'export { populatedRows, linkOnlyList, couldNotRefreshList, pendingList, staleList, rateLimitedList, viaRows } from "./src/renderer/src/features/code-review/code-review-fixtures";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
@@ -67,6 +68,9 @@ const {
 	needsAttention,
 	rowHasPendingCi,
 	rowNotice,
+	fetchStateOf,
+	rowIsLoading,
+	PENDING_REVEAL_MS,
 	chipClause,
 	coolingClauses,
 	groupRows,
@@ -76,6 +80,13 @@ const {
 	codeRequestsEnabled,
 	appliedAfterFrame,
 	chipState,
+	populatedRows,
+	linkOnlyList,
+	couldNotRefreshList,
+	pendingList,
+	staleList,
+	rateLimitedList,
+	viaRows,
 } = mod;
 
 /*
@@ -642,6 +653,11 @@ test("a row's refresh failure surfaces the backend's own sentence (U5)", () => {
 });
 
 test("the row notice follows the backend's reason over the sign-in remedy (Q-11)", () => {
+	/*
+	 * THE LEGACY PIN: these rows carry NO fetch_state, which is the branch an
+	 * older backend reaches; its expectations must survive the per-state
+	 * switch below byte-for-byte.
+	 */
 	const cooling =
 		"cooling — this host is rate-limited until 2026-10-10T00:45:41Z; nothing was fetched yet";
 	assert.equal(
@@ -684,4 +700,249 @@ test("the row notice follows the backend's reason over the sign-in remedy (Q-11)
 		"a bare reason still speaks for a tracked row",
 	);
 	assert.equal(rowNotice(row()), null, "a cleanly-read row carries no notice");
+});
+
+/* ----------------------------------- the fetch state (design §4 / §8) */
+
+const FETCH_STATES = [
+	"pending",
+	"ready",
+	"stale",
+	"unauthenticated",
+	"cooling",
+	"failed",
+	"untracked",
+];
+const SIGN_IN_REMEDY = "Link only — sign in with the gh CLI to track this one.";
+
+test("fetchStateOf: the wire's seven words pass; absent or unknown is the legacy path", () => {
+	for (const state of FETCH_STATES) {
+		assert.equal(fetchStateOf(row({ fetch_state: state })), state);
+	}
+	assert.equal(fetchStateOf(row()), null, "absent (older backend) -> legacy");
+	assert.equal(fetchStateOf(row({ fetch_state: null })), null);
+	assert.equal(fetchStateOf(row({ fetch_state: "" })), null);
+	assert.equal(
+		fetchStateOf(row({ fetch_state: "refreshing" })),
+		null,
+		"scan_state's word is not this field's",
+	);
+});
+
+test("rowIsLoading is exactly the pending state", () => {
+	assert.equal(rowIsLoading(row({ fetch_state: "pending" })), true);
+	for (const state of FETCH_STATES.filter((s) => s !== "pending")) {
+		assert.equal(rowIsLoading(row({ fetch_state: state })), false);
+	}
+	assert.equal(
+		rowIsLoading(row()),
+		false,
+		"a legacy row never shows a loading line",
+	);
+});
+
+test("PENDING_REVEAL_MS is the frozen reveal delay", () => {
+	assert.equal(typeof PENDING_REVEAL_MS, "number");
+	assert.equal(PENDING_REVEAL_MS, 500);
+});
+
+test("a pending row renders no notice - even WITH a hint on the wire (THE pin)", () => {
+	assert.equal(
+		rowNotice(
+			row({
+				fetch_state: "pending",
+				link_only: true,
+				link_only_hint: SIGN_IN_REMEDY,
+			}),
+		),
+		null,
+		"an in-flight first read must never surface a remedy",
+	);
+	assert.equal(
+		rowNotice(
+			row({
+				fetch_state: "pending",
+				link_only: true,
+				reason: "a sentence from a newer backend",
+				link_only_hint: SIGN_IN_REMEDY,
+			}),
+		),
+		null,
+	);
+});
+
+test("the stale state leads with its own words, never the bare remedy", () => {
+	assert.equal(
+		rowNotice(
+			row({
+				fetch_state: "stale",
+				refresh_error:
+					"credential rejected — sign in again with gh/glab, then refresh.",
+			}),
+		),
+		"Stale — last known, not current: credential rejected — sign in again with gh/glab, then refresh.",
+	);
+	assert.equal(
+		rowNotice(row({ fetch_state: "stale" })),
+		"Stale — last known state, not current.",
+	);
+	assert.equal(
+		rowNotice(row({ fetch_state: "stale", link_only_hint: SIGN_IN_REMEDY })),
+		"Stale — last known state, not current.",
+		"a stale row is never the sign-in remedy",
+	);
+});
+
+test("per-state notices: unauth and untracked keep the remedy; cooling and failed keep their own copy", () => {
+	assert.equal(
+		rowNotice(
+			row({
+				fetch_state: "unauthenticated",
+				link_only: true,
+				link_only_hint: SIGN_IN_REMEDY,
+			}),
+		),
+		SIGN_IN_REMEDY,
+	);
+	assert.equal(
+		rowNotice(
+			row({
+				fetch_state: "unauthenticated",
+				link_only: true,
+				reason: "credential absent — sign in with the gh CLI, then refresh.",
+			}),
+		),
+		"credential absent — sign in with the gh CLI, then refresh.",
+	);
+	assert.equal(
+		rowNotice(
+			row({
+				fetch_state: "untracked",
+				link_only: true,
+				link_only_hint: "Link only — this host isn't tracked yet.",
+			}),
+		),
+		"Link only — this host isn't tracked yet.",
+	);
+	assert.equal(
+		rowNotice(
+			row({
+				fetch_state: "untracked",
+				link_only: true,
+				reason: "the host is not confirmed by this session",
+			}),
+		),
+		"the host is not confirmed by this session",
+	);
+	assert.equal(
+		rowNotice(
+			row({
+				fetch_state: "cooling",
+				link_only: true,
+				reason:
+					"cooling — this host is rate-limited until 2026-10-09T14:00:00Z; nothing was fetched yet",
+				link_only_hint: SIGN_IN_REMEDY,
+			}),
+		),
+		"cooling — this host is rate-limited until 2026-10-09T14:00:00Z; nothing was fetched yet",
+	);
+	assert.equal(
+		rowNotice(
+			row({
+				fetch_state: "cooling",
+				link_only: true,
+				link_only_hint: SIGN_IN_REMEDY,
+			}),
+		),
+		"Cooling — this host is rate-limited; nothing was fetched yet.",
+		"cooling never falls back to the sign-in hint",
+	);
+	assert.equal(
+		rowNotice(
+			row({
+				fetch_state: "failed",
+				reason: "refresh failed (server 503); keeping the last known data",
+			}),
+		),
+		"refresh failed (server 503); keeping the last known data",
+	);
+	assert.equal(
+		rowNotice(
+			row({ fetch_state: "failed", refresh_error: "connection reset" }),
+		),
+		"Couldn't refresh: connection reset",
+	);
+	assert.equal(
+		rowNotice(row({ fetch_state: "failed" })),
+		"Couldn't fetch this pass — will retry.",
+	);
+	assert.equal(rowNotice(row({ fetch_state: "ready" })), null);
+	assert.equal(
+		rowNotice(row({ fetch_state: "ready", refresh_error: "x" })),
+		"Couldn't refresh: x",
+	);
+	assert.equal(
+		rowNotice(row({ fetch_state: "ready", reason: "note" })),
+		"note",
+	);
+});
+
+test("a pending row is announced as fetching, never with the sign-in sentence", () => {
+	const label = rowAriaLabel(
+		row({
+			fetch_state: "pending",
+			link_only: true,
+			link_only_hint: SIGN_IN_REMEDY,
+		}),
+	);
+	assert.ok(label.includes("fetching its current state"));
+	assert.ok(
+		!label.includes("sign in"),
+		"the remedy must not be announced while pending",
+	);
+	assert.ok(label.endsWith("opens in your browser"));
+	assert.ok(
+		rowAriaLabel(
+			row({
+				fetch_state: "unauthenticated",
+				link_only: true,
+				link_only_hint: SIGN_IN_REMEDY,
+			}),
+		).includes("sign in"),
+		"a resolved no-login row keeps the remedy in its name",
+	);
+});
+
+test("every fixture row carries a fetch_state, in its own set's state", () => {
+	const sets = [
+		populatedRows(),
+		linkOnlyList().rows,
+		couldNotRefreshList().rows,
+		pendingList().rows,
+		staleList().rows,
+		rateLimitedList().rows,
+		viaRows(),
+	];
+	const rows = sets.flat();
+	assert.ok(rows.length > 0);
+	for (const entry of rows) {
+		assert.ok(
+			FETCH_STATES.includes(entry.fetch_state),
+			`${entry.key} carries a known fetch_state (got ${entry.fetch_state})`,
+		);
+	}
+	assert.deepEqual(
+		pendingList().rows.map((entry) => entry.fetch_state),
+		["pending", "cooling", "failed"],
+		"the pending set is exactly the three un-resolved/un-usable states",
+	);
+	assert.equal(
+		linkOnlyList().rows.find((entry) => entry.forge === "gitea").fetch_state,
+		"untracked",
+		"the detect-and-link row is untracked, not a no-login outcome",
+	);
+	assert.ok(
+		couldNotRefreshList().rows.every((entry) => entry.fetch_state === "stale"),
+	);
+	assert.ok(populatedRows().every((entry) => entry.fetch_state === "ready"));
 });

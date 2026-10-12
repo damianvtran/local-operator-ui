@@ -237,6 +237,13 @@ const mount = async (initial) => {
 			paneWidth: 420,
 			monitorControls: { cancel: async () => ({ ok: true }) },
 			wakeControls: { cancel: props.cancel },
+			/*
+			 * The jobs cancel interaction (the video row family's rail) is inert here:
+			 * this file's subject is the WAKES' card, and the panel requires the third
+			 * per-item control the same way it requires the other two. The jobs side is
+			 * driven by `scripts/job-cancel-panel.test.mjs`.
+			 */
+			jobControls: { cancel: async () => ({ ok: true }) },
 			wakeAida: props.aida ?? UNKNOWN_AIDA,
 			sessionId: props.sessionId,
 		});

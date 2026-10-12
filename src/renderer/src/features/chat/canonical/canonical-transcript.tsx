@@ -139,12 +139,17 @@ import { isRecordReachable } from "./failed-row-jump";
 import { FoldMedia } from "./fold-media";
 import { type FoldOpenEntry, foldOpenOf, withFoldOpen } from "./fold-open";
 import { ImageGenCard } from "./image-gen-card";
-import { imageGenCardView, isImageGenTool } from "./image-gen-card-model";
+import {
+	imageGenCardMountActions,
+	imageGenCardView,
+	isImageGenTool,
+} from "./image-gen-card-model";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
 import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
+import type { OpenFrameFacts } from "./open-frame";
 import {
 	type ProviderErrorAction,
 	providerErrorGuidance,
@@ -156,6 +161,7 @@ import { QuoteToolkit } from "./quote-toolkit";
 import { RadientCreditsGuidance } from "./radient-credits-guidance";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
 import { SETTLE_MS } from "./scroll-paging";
+import { SupplementRow } from "./supplement-row";
 import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
 import { ThreadSearchOverlay } from "./thread-search-overlay";
 import {
@@ -186,6 +192,7 @@ import {
 	type TranscriptRecord,
 	type TranscriptState,
 	isInterruptedFault,
+	isPictureRef,
 	streamDiagnostics,
 	withRecoveredOutcome,
 } from "./transcript-reducer";
@@ -213,14 +220,16 @@ import {
 	collapseRowsKey,
 	initialAlignWalkState,
 	paintedRows,
+	runIsCondensed,
 	snapWindowToRunBoundary,
 	widenTarget,
 	windowTopRun,
 } from "./turn-collapse-model";
+import { isQuietTurnCall } from "./turn-segments";
 import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
 import { useCheckpoints } from "./use-checkpoints";
-import { useCrossSessionHidden } from "./use-cross-session-hidden";
+import { useCrossSessionVisibility } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
 import { useScrollPaging } from "./use-scroll-paging";
 import { useTurnAnswerRail } from "./use-turn-answer-rail";
@@ -275,6 +284,24 @@ const WINDOW_ALIGN_MAX_EXTRA = 300;
 /* (`ALIGN_WALK_MAX_PAGES`, the walk's bound, lives in `turn-collapse-model.ts`
  * beside the decision that spends it.) */
 
+const QUIET_GROUP_UNITS_PER_SECOND = 1000;
+
+/**
+ * A quiet group's receipt span, in the seconds `formatDuration` reads, or null
+ * when the group states none (a head-cut span carries null times - see
+ * `QuietGroup` - and the bar then states no duration, the end-loaded rule).
+ *
+ * The span is RECEIPT time, not worked time: `Took` would claim work the bar's
+ * own line does not count, so a group bar prints the duration bare.
+ */
+function quietGroupSpanS(group: {
+	firstTs: number | null;
+	lastTs: number | null;
+}): number | null {
+	if (group.firstTs === null || group.lastTs === null) return null;
+	return (group.lastTs - group.firstTs) / QUIET_GROUP_UNITS_PER_SECOND;
+}
+
 /**
  * What a bar's appearance says out loud (the settle announcement's sentence).
  *
@@ -286,15 +313,30 @@ const WINDOW_ALIGN_MAX_EXTRA = 300;
  */
 function condenseSentence(segment: SegmentPlan): string {
 	const parts: string[] = [];
-	if (segment.facts.durationS !== null) {
-		parts.push(`took ${formatDuration(segment.facts.durationS)}`);
-	}
-	if (segment.facts.actions > 0) {
-		parts.push(
-			segment.facts.actions === 1
-				? "1 action"
-				: `${segment.facts.actions} actions`,
-		);
+	if (segment.facts.group !== null) {
+		/*
+		 * A GROUP BAR'S SENTENCE IS THE GROUP'S OWN CLAUSES (design §5): the count
+		 * of receipts and the receipt span the line states - never the segment's
+		 * `took`/`N actions`, which a group bar does not print either (the count it
+		 * prints counts receipts). The count is BARE because the label is already
+		 * the family's noun (`Peer messages`): spelling "12 messages" after it read
+		 * the noun twice (design round 1 nit). Same rule as below: the span clause
+		 * only when the bar carries one.
+		 */
+		parts.push(`${segment.facts.group.count}`);
+		const spanS = quietGroupSpanS(segment.facts.group);
+		if (spanS !== null) parts.push(formatDuration(spanS));
+	} else {
+		if (segment.facts.durationS !== null) {
+			parts.push(`took ${formatDuration(segment.facts.durationS)}`);
+		}
+		if (segment.facts.actions > 0) {
+			parts.push(
+				segment.facts.actions === 1
+					? "1 action"
+					: `${segment.facts.actions} actions`,
+			);
+		}
 	}
 	/*
 	 * A labelled bar states its own kind first ("Wake: 8 actions."): a
@@ -474,6 +516,20 @@ export type CanonicalTranscriptProps = {
 	 * always has.
 	 */
 	olderTransportDown?: boolean;
+	/**
+	 * The open frame's facts for this pane's page (`open-frame.ts`), or nothing.
+	 *
+	 * WHAT IT REPLACES, and it is the whole point of this prop: condensation here
+	 * is a pure function of the LOADED rows, so a settled run whose head lies
+	 * above the page condenses from a fragment - a minimum count, no duration -
+	 * and this pane then spends the next several hundred milliseconds growing the
+	 * bar one `/history` page at a time (the align walk below). With the facts,
+	 * the bar states the turn's own figure on the frame it is first seen, and the
+	 * walk stands down for that run. Absent is every old backend, every
+	 * `building` answer, every peer's conversation and the child reader: today's
+	 * behaviour, exactly.
+	 */
+	openFrame?: OpenFrameFacts | null;
 	containerRef: RefObject<HTMLDivElement>;
 	isSmallView: boolean;
 
@@ -736,6 +792,15 @@ const UserRow = memo(function UserRow({
 		[record.text],
 	);
 	/*
+	 * The turn's PICTURES, by the media array's shared predicate (`isPictureRef`):
+	 * this block draws `<img>` frames only, and a video ref must not be handed to
+	 * one (it would fail decode into a false "unavailable" receipt — the
+	 * reducer's F2 rule). A user row's media are image blocks by construction
+	 * today; the filter states the seat's contract rather than relying on that.
+	 * The video player's seat is the card's done body.
+	 */
+	const pictures = record.images.filter(isPictureRef);
+	/*
 	 * Whether this turn is long enough to need D2's eight-line clamp, MEASURED
 	 * rather than guessed from a character count: the box is clamped first and
 	 * then asked whether it is hiding anything, so a `Show more` can never appear
@@ -894,17 +959,30 @@ const UserRow = memo(function UserRow({
 									{expanded ? "Show less" : "Show more"}
 								</button>
 							)}
-							{record.images.length > 0 && (
+							{pictures.length > 0 && (
 								<div className={cn("mt-2 flex flex-col gap-2")}>
-									{record.images.map((image, index) => (
+									{pictures.map((image, index) => (
+										/*
+										 * The picture's own handle when the wire carried one (an artifact's
+										 * `name`), else the per-message scheme. THE SCHEME KEEPS ITS
+										 * PER-MESSAGE SCOPE (UX round 1, U1): a conversation-wide counter
+										 * is not available to this render — rows mount and unmount with
+										 * the windowed transcript, so a number spanning it would RENUMBER
+										 * as the reader scrolls, and an unstable name is worse for a
+										 * screen reader than a repeated one. Within a message the
+										 * pictures are numbered; across messages the row grouping is the
+										 * context, and the picture's own handle discriminates wherever
+										 * one travelled with it.
+										 */
 										<CanonicalImage
 											key={image.id}
 											image={image}
 											scope={scope}
 											label={
-												record.images.length === 1
+												image.name ??
+												(pictures.length === 1
 													? "Attached image"
-													: `Attached image ${index + 1}`
+													: `Attached image ${index + 1}`)
 											}
 										/>
 									))}
@@ -1539,12 +1617,20 @@ const ToolRow = memo(function ToolRow({
 	 * set.
 	 */
 	if (isImageGenTool(record.toolName)) {
+		/*
+		 * The mount's action rule (R4, contract §4.2): a video call's work is a
+		 * detached job this press cannot cancel, so the mount passes no
+		 * `onCancel` for it — the panel does not draw a control whose
+		 * accessibility hint would be false — while an image call keeps the
+		 * pane's interrupt. The rule and its reasons live in
+		 * `imageGenCardMountActions`.
+		 */
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
 				<ImageGenCard
 					view={imageGenCardView(record, { stopping })}
 					scope={scope}
-					actions={onInterruptTurn ? { onCancel: onInterruptTurn } : undefined}
+					actions={imageGenCardMountActions(record.toolName, onInterruptTurn)}
 				/>
 			</MessageContainer>
 		);
@@ -1730,15 +1816,25 @@ const ToolRow = memo(function ToolRow({
 	// Screenshots sit under the row and OUTSIDE the disclosure, which is where
 	// the TUI mounts them. Hiding a picture behind a toggle is the complaint
 	// being fixed, not a smaller version of it.
+	/*
+	 * The row's PICTURES, by the media array's shared predicate (`isPictureRef`):
+	 * media rendered here are `<img>` frames, and a video ref (a future non-card
+	 * tool's artifact — today only the card's detection set produces video)
+	 * must not be handed to one. The player's seat is the card's done body.
+	 */
+	const pictures = record.images.filter(isPictureRef);
 	const media =
-		record.images.length > 0 ? (
+		pictures.length > 0 ? (
 			<div className={cn("mt-1 ml-5 flex flex-col gap-2")}>
-				{record.images.map((image, index) => (
+				{pictures.map((image, index) => (
 					<CanonicalImage
 						key={image.id}
 						image={image}
 						scope={scope}
-						label={record.images.length === 1 ? "Image" : `Image ${index + 1}`}
+						label={
+							image.name ??
+							(pictures.length === 1 ? "Image" : `Image ${index + 1}`)
+						}
 					/>
 				))}
 			</div>
@@ -2376,6 +2472,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	labelHoldLate = false,
 	labelMarked = false,
 	stopping = false,
+	supplementCondensed = false,
 	onInterruptTurn,
 }: {
 	row: Row;
@@ -2416,6 +2513,13 @@ const TranscriptRow = memo(function TranscriptRow({
 	 */
 	stopping?: boolean;
 	/**
+	 * Whether the supplement block's own turn currently renders condensed (one
+	 * closed bar over its run; `runIsCondensed`). Delivered to the ROW only - the
+	 * memo stays bound for every other row kind - and read by `SupplementRow`
+	 * for the one-line form (memo §2.8/§2.11, design D1).
+	 */
+	supplementCondensed?: boolean;
+	/**
 	 * The pane's interrupt press (`CanonicalTranscriptProps.onInterruptTurn`),
 	 * for the card's Cancel. Undefined means no control, by rule.
 	 */
@@ -2450,6 +2554,17 @@ const TranscriptRow = memo(function TranscriptRow({
 			);
 			break;
 		case "tool":
+			/*
+			 * THE QUIET CALL IS HIDDEN AT PAINT (design §5; §10.10). Core's S0a half
+			 * keeps the name OUT of its `HIDDEN_TOOL_NAMES` (rows.py), which is why the
+			 * row reaches this list at all; the reader never sees it, so here the
+			 * wrapper and the ledger row both go. An old build showing a small
+			 * `no_reply` tool row is the accepted degradation.
+			 */
+			if (isQuietTurnCall(record)) {
+				body = null;
+				break;
+			}
 			body = (
 				/*
 				 * The redesign's `ToolRow` takes `record`, the two layout flags and
@@ -2486,6 +2601,20 @@ const TranscriptRow = memo(function TranscriptRow({
 			break;
 		case "wake":
 			body = <WakeRow record={record} isSmallView={isSmallView} />;
+			break;
+		/*
+		 * The supplement block ("Highlights"): files and sandboxed frames under the
+		 * answer it belongs to. A STATEMENT row (`isStatementRow`), so the fold keeps
+		 * it outside the condensed span and the answer above keeps its caption.
+		 */
+		case "supplement":
+			body = (
+				<SupplementRow
+					record={record}
+					sessionId={scope?.sessionId ?? null}
+					condensed={supplementCondensed}
+				/>
+			);
 			break;
 		default:
 			body = <NoticeRow record={record} isSmallView={isSmallView} />;
@@ -2592,6 +2721,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	olderFailed,
 	onRetryHydration,
 	olderTransportDown,
+	openFrame,
 	containerRef,
 	isSmallView,
 	status,
@@ -2655,8 +2785,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * below stay RAW on purpose: they answer "does this pane hold data", not
 	 * "what does it paint", and a session whose only rows are hidden must not
 	 * flip the pane's empty state.
+	 *
+	 * THE THIRD READING IS THE HOLD (first-paint audit, F10). `pending` is the
+	 * window in which the option was LAST KNOWN ON and its answer is still in
+	 * flight - the one window in which painting the records now would paint a
+	 * peer receipt or a `send` row that the answer is about to remove. The
+	 * records are withheld for it (`holdFiltering` below, at the three sites that
+	 * paint from a conversation) and the read is filtered throughout, so the
+	 * commit that ends the hold is the page's own: rows, hidden set and reading
+	 * all correct together, nothing taken back. An operator whose option is off
+	 * never reaches this state (`displayFlagReading`), which is what keeps the
+	 * default path's first paint waiting for nothing.
 	 */
-	const hide = useCrossSessionHidden();
+	const crossSession = useCrossSessionVisibility();
+	const hide = crossSession !== "visible";
+	const holdFiltering = crossSession === "pending";
 	/*
 	 * ONE read of the rail setting for the whole transcript, handed to the rows as
 	 * a boolean prop: the elected answer is the only row that consumes it, so a
@@ -3159,7 +3302,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				row.record.kind === "tool" ? row.record.startedAt : null,
 			endedAtOf: (row) =>
 				row.record.kind === "tool" ? row.record.endedAt : null,
-			isFoldable: (row) => row.record.kind === "tool",
+			isFoldable: (row) =>
+				row.record.kind === "tool" && !isQuietTurnCall(row.record),
 		});
 		return groups.map((group) =>
 			group.kind === "run"
@@ -3218,7 +3362,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * definition, so the bars of a ladder add up to this figure (#708 D1).
 			 */
 			durationOf: workedSecondsOf,
-			isAction: (row) => row.record.kind === "tool",
+			isAction: (row) =>
+				row.record.kind === "tool" && !isQuietTurnCall(row.record),
 			opensRun: (row) => openerIds.has(row.record.id),
 		});
 	}, [rowsKey]);
@@ -3328,6 +3473,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		// `transcript-pane.ts`, which is the one authority for them.
 		missing,
 		stale,
+		/*
+		 * The filter's own hold, as the pane's sixth fact (design round 1, D1):
+		 * while the settings answer is owed the rows this flag governs are withheld
+		 * from all three paint sites, so the pane's claim has to be "loading" rather
+		 * than "nothing" - otherwise the reader is shown an empty conversation for
+		 * the length of the hold. See `transcript-pane.ts`.
+		 */
+		filterHeld: holdFiltering,
 	};
 	const holdPlaceholder = transcriptPaneHoldsPlaceholder(paneView);
 	const collapsed = transcriptPaneCollapses(paneView);
@@ -3848,8 +4001,40 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * pattern `parseSidebarView` sets one surface over).
 			 */
 			mode: parseTranscriptDisplayMode(transcriptDisplayMode),
+			/*
+			 * The server's facts (see the prop): in the SAME object the plan and its
+			 * input signature both read, so the bar's text and the memo key that
+			 * decides when it is recomputed cannot disagree about what the facts are.
+			 * `undefined` rather than an empty map for "no facts", so an absent
+			 * `openFrame` leaves the option exactly as absent as it was.
+			 */
+			runFacts: openFrame?.runs,
+			/*
+			 * THE PAGE THOSE FACTS CAME WITH (agent review round 3, B2): the identity the
+			 * plan needs to tell a row the wire's figure already counted from one that
+			 * arrived after the page was published. In the same options object as the
+			 * facts because the two are one reading of one page, and `undefined` for a
+			 * pane with no facts at all keeps the option exactly as absent as it was.
+			 */
+			factPage: openFrame?.page,
+			/*
+			 * WHETHER THIS READER HIDES CROSS-SESSION ROWS (agent review round 1, F2).
+			 * The plan's rows are already filtered by `visibleRecords(…, hide)` above;
+			 * this tells the model that the SERVER's totals count rows this reader does
+			 * not have on screen, so a fact's count cannot be taken as-is and, where it
+			 * cannot be split, must not be taken at all.
+			 */
+			hideCrossSession: hide,
 		}),
-		[focusedRecordId, gate, openRuns, transcriptDisplayMode, working],
+		[
+			focusedRecordId,
+			gate,
+			hide,
+			openFrame,
+			openRuns,
+			transcriptDisplayMode,
+			working,
+		],
 	);
 	/*
 	 * THE PLAN'S INPUT SIGNATURE (UI perf audit P1; PR-6). The rows half is the
@@ -4159,6 +4344,18 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					 * placed.
 					 */
 					afterBar?: boolean;
+					/**
+					 * The run whose collapse plan the supplement block's condensed state
+					 * reads, carried ONLY by a supplement group.
+					 *
+					 * An object rather than a boolean, deliberately: `segment.collapsed`
+					 * is reader-independent (an OPEN bar still renders), so the answer must
+					 * be read at RENDER time against the live `openRuns` - baking a boolean
+					 * into this memo would freeze the reader's expansion one commit behind.
+					 * And it is set only where it is consumed: every other group carries
+					 * nothing, so a bar opening re-renders one block, not the run.
+					 */
+					supplementRun?: RunCollapsePlan;
 			  }
 			| {
 					kind: "bar";
@@ -4266,6 +4463,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					group,
 					suppressClosingLine: footWithheld && segment === null,
 					afterBar,
+					supplementRun:
+						group.kind === "row" && group.row.record.kind === "supplement"
+							? plan
+							: undefined,
 				});
 			}
 		}
@@ -4282,6 +4483,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		group: SectionGroup,
 		suppressClosingLine: boolean,
 		soleImageGroup = false,
+		/**
+		 * The supplement block's condensed reading (see `ChatEntry.supplementRun`):
+		 * computed at RENDER time against the live `openRuns` so a bar the reader
+		 * opens restores the block in the same commit. False for every other row.
+		 */
+		supplementCondensed = false,
 	) =>
 		group.kind === "run" ? (
 			<TraceFold
@@ -4401,6 +4608,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				undelivered={undelivered}
 				answerRail={answerRail}
 				stopping={stopping === true}
+				supplementCondensed={supplementCondensed}
 				onInterruptTurn={onInterruptTurn}
 			/>
 		);
@@ -4717,25 +4925,32 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    cursor (its rows are trimmed), which the slot reads as `exhausted`
 				    and says "Start of conversation" over a transcript that may be a
 				    thousand messages in. Measured on a captured frame, not inferred.
-				    The caption above already says the view is not authoritative. */}
-						{transcript.records.length > 0 && !stale && !missing && (
-							<OlderHistorySlot
-								state={slotState}
-								// A retry cannot succeed while the transport is down, and the
-								// transcript's own notice below already explains why. The slot
-								// drops its gesture hint rather than stacking a second claim on
-								// top of that one. `olderTransportDown` is the same assertion
-								// for a caller whose rows did NOT come from this session's
-								// stream (the child reader's page): it is the caller's own
-								// status, so a pane with no stream of its own is not read as a
-								// live one by default.
-								transportDown={olderTransportDown ?? status !== "live"}
-								onLoadOlder={requestOlder}
-								/* The `unproven` arm's control: the same read the cold
-								 * open fires, re-asked by the reader's own hand. */
-								onRetryHydration={onRetryHydration}
-							/>
-						)}
+				    The caption above already says the view is not authoritative.
+				    AND NOT WHILE THE FILTER IS HELD (`holdFiltering`): the slot is the
+				    top of a conversation, and a conversation whose rows are withheld for
+				    a settings answer is not a conversation this pane has painted. The
+				    two land in the same commit, which is the whole point of the hold. */}
+						{transcript.records.length > 0 &&
+							!stale &&
+							!missing &&
+							!holdFiltering && (
+								<OlderHistorySlot
+									state={slotState}
+									// A retry cannot succeed while the transport is down, and the
+									// transcript's own notice below already explains why. The slot
+									// drops its gesture hint rather than stacking a second claim on
+									// top of that one. `olderTransportDown` is the same assertion
+									// for a caller whose rows did NOT come from this session's
+									// stream (the child reader's page): it is the caller's own
+									// status, so a pane with no stream of its own is not read as a
+									// live one by default.
+									transportDown={olderTransportDown ?? status !== "live"}
+									onLoadOlder={requestOlder}
+									/* The `unproven` arm's control: the same read the cold
+									 * open fires, re-asked by the reader's own hand. */
+									onRetryHydration={onRetryHydration}
+								/>
+							)}
 
 						{/*
 						 * THE STALE CAPTION IS NOT PAINTED IN HERE ANY MORE (design round 2,
@@ -4856,7 +5071,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    `holdPlaceholder` pane has the cached paint in state and nothing of
 				    it on screen, so the page that ends the hold brings the rows and the
 				    readings in ONE commit instead of correcting a painted guess. */}
-						{!missing && !holdPlaceholder && (
+						{!missing && !holdPlaceholder && !holdFiltering && (
 							/*
 							 * THE PANE THIS CONVERSATION'S LINKS OPEN INTO, provided once for the
 							 * whole row list rather than threaded through the rows: the anchor that
@@ -4934,6 +5149,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 											 */
 											partial={entry.segment.facts.partial}
 											title={entry.segment.facts.title}
+											/*
+											 * The quiet group's own clauses, when this bar is one (design §5):
+											 * the family word arrives as `label`, and the count/span here. The
+											 * bar prints them INSTEAD of `Took`/`N actions` - a group
+											 * counts receipts, not work - and the span is null for a
+											 * head-cut group, which states `N+` and no duration.
+											 */
+											group={
+												entry.segment.facts.group === null
+													? null
+													: {
+															count: entry.segment.facts.group.count,
+															spanS: quietGroupSpanS(entry.segment.facts.group),
+														}
+											}
 											stampTs={entry.segment.stampTs}
 											label={entry.segment.label}
 											completed={entry.segment.completed}
@@ -4994,6 +5224,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 												? atItemTierGroup(entry.group)
 												: entry.group,
 											entry.suppressClosingLine,
+											false,
+											/*
+											 * The supplement block's condensed reading, computed at RENDER
+											 * time against the live `openRuns` - see `supplementRun` on
+											 * the entry. False for every row but the block's.
+											 */
+											entry.supplementRun !== undefined &&
+												runIsCondensed(entry.supplementRun, openRuns),
 										)
 									),
 								)}
@@ -5028,31 +5266,36 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * oldest row can never shift the conversation under the reader"), and it
 						 * is withheld on the same terms: the slot belongs to a CONVERSATION, not
 						 * to a turn, and the failure surfaces replace the rows rather than sit
-						 * above them.
+						 * above them. The settings hold is the third of those terms, for the
+						 * older-history slot's reason exactly: a working line speaks for the run
+						 * above it, and this pane has not painted that run yet.
 						 */}
-						{transcript.records.length > 0 && !stale && !missing && (
-							<div
-								data-lo-transcript-foot={true}
-								className={cn(
-									// On the `item` tier, not a tier of its own: the working line is
-									// the foot of the run above it and shares that run's rhythm. It
-									// takes slightly more than `trace` because it is the one row that
-									// is not a completed action, and slightly less than a turn
-									// boundary because the turn has not ended.
-									GAP.item[isSmallView ? 1 : 0],
-									"min-h-[1lh] font-mono text-mono-sm",
-								)}
-							>
-								{working && (
-									<WorkingLine
-										activity={working.activity}
-										phase={working.phase}
-										startedAt={working.startedAt}
-										clock={working.clock}
-									/>
-								)}
-							</div>
-						)}
+						{transcript.records.length > 0 &&
+							!stale &&
+							!missing &&
+							!holdFiltering && (
+								<div
+									data-lo-transcript-foot={true}
+									className={cn(
+										// On the `item` tier, not a tier of its own: the working line is
+										// the foot of the run above it and shares that run's rhythm. It
+										// takes slightly more than `trace` because it is the one row that
+										// is not a completed action, and slightly less than a turn
+										// boundary because the turn has not ended.
+										GAP.item[isSmallView ? 1 : 0],
+										"min-h-[1lh] font-mono text-mono-sm",
+									)}
+								>
+									{working && (
+										<WorkingLine
+											activity={working.activity}
+											phase={working.phase}
+											startedAt={working.startedAt}
+											clock={working.clock}
+										/>
+									)}
+								</div>
+							)}
 
 						{/*
 						 * NO GATE HERE. The pending question used to render as this list's

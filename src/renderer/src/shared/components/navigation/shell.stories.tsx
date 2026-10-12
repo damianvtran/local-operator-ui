@@ -24,6 +24,7 @@ import {
 } from "@features/chat/components/run-details/run-detail-model";
 import * as runFixtures from "@features/chat/components/run-details/run-details.fixtures";
 import { RunPanel } from "@features/chat/components/run-details/run-panel";
+import type { JobControls } from "@features/chat/components/run-details/use-job-controls";
 import type { McpRemedyControls } from "@features/chat/components/run-details/use-mcp-remedy";
 import type { MonitorControls } from "@features/chat/components/run-details/use-monitor-controls";
 import type { WakeControls } from "@features/chat/components/run-details/use-wake-controls";
@@ -814,6 +815,11 @@ const INERT_MONITOR_CONTROLS: MonitorControls = {
 	cancel: async () => ({ ok: true }),
 };
 
+/** No-op job controls, for the same reason as the monitor pair above. */
+const INERT_JOB_CONTROLS: JobControls = {
+	cancel: async () => ({ ok: true }),
+};
+
 /**
  * No-op wake controls and an identity that knows nothing, for the same reason as
  * the monitor pair above: the Wakes section is not these frames' subject, and the
@@ -1413,6 +1419,7 @@ export const ChatDockRunPanel: Story = {
 									mcpRemedy={INERT_REMEDY}
 									monitorControls={INERT_MONITOR_CONTROLS}
 									wakeControls={INERT_WAKE_CONTROLS}
+									jobControls={INERT_JOB_CONTROLS}
 									wakeAida={INERT_WAKE_AIDA}
 									sessionId="a1b2c3d4e5f6"
 									pulses={{}}
@@ -1629,6 +1636,7 @@ export const ChatMeasureEdgesRunPanel: Story = {
 								mcpRemedy={INERT_REMEDY}
 								monitorControls={INERT_MONITOR_CONTROLS}
 								wakeControls={INERT_WAKE_CONTROLS}
+								jobControls={INERT_JOB_CONTROLS}
 								wakeAida={INERT_WAKE_AIDA}
 								sessionId="a1b2c3d4e5f6"
 								pulses={{}}

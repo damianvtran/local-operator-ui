@@ -547,6 +547,12 @@ const CHROME_LAUNCH_SITES = [
 		1,
 		"measures the quota notice's arrival above the composer - the foot's top-edge shift and the line's clearance against the box, the verdict held so the pre-line layout is still - from the live DOM, one private headless Chrome through the same helper (registered by its PR's CI catch-up: an unlisted launch site fails Desktop Tests)",
 	),
+	guarded(
+		"scripts/supplement-sandbox-probe.mjs",
+		"spawn",
+		1,
+		"runs the supplement mount's escape attempts - script execution, parent/top DOM, cookies, storage, bridge, navigation, popup, form, download, blob self-nav, clipboard, fullscreen, fetch/xhr/beacon/websocket/img/import/file - against the app's own sandbox from one private headless Chrome, its target server and profile its own and everything reaped by exact pid",
+	),
 ];
 
 const key = (row) => `${row.file}#${row.name}#${row.index}`;

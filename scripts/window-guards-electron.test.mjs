@@ -95,6 +95,9 @@ before(async () => {
 			contents: [
 				'export * from "./src/main/window-guards";',
 				'export * from "./src/main/window-guards-electron";',
+				'export * from "./src/main/supplement-mounts";',
+				'export * from "./src/main/supplement-protocol";',
+				'export * from "./src/shared/supplement-frame-url";',
 			].join("\n"),
 			resolveDir: repoRoot,
 		},
@@ -206,6 +209,62 @@ test(
 		assert.ok(
 			after.guardLog.some((m) => m.includes("?self-nav")),
 			"after: the SVG phase's self-navigation was blocked",
+		);
+
+		/*
+		 * The supplement mount (round-1 R1): the SHIPPED permit table, the SHIPPED
+		 * scheme handler, and the app's own order — arm, then set `src`.
+		 */
+		assert.ok(
+			after.guardLog.some(
+				(m) => m.includes("?supplement-self") && m.includes("blocked"),
+			),
+			"after: the supplement self-navigation was blocked",
+		);
+		assert.ok(
+			after.guardLog.some(
+				(m) => m.includes("?supplement-meta") && m.includes("blocked"),
+			),
+			"after: the supplement meta refresh was blocked",
+		);
+		/*
+		 * The sibling theft, MEASURED: A's byte-identical self-navigation spends the
+		 * SIBLING's permit (the one allowance the URL-keyed table documents) and its
+		 * reload is served; B's own mount is then denied, so B is never served — the
+		 * handler's fetch count is the ground truth for both halves. `armed: 0` is
+		 * the same fact from the table's side; `supb: 1` is the blocked
+		 * navigation's own `load` beat, the measurement the component's second-load
+		 * rule rests on (a robbed frame is torn down by its no-ready watchdog).
+		 */
+		assert.equal(
+			after.supplement.fetches,
+			2,
+			"after: exactly A's mount and A's stolen reload were served; the robbed sibling never was",
+		);
+		assert.equal(
+			after.supplement.armed,
+			0,
+			"after: no permit left standing after the theft spent the sibling's",
+		);
+		assert.deepEqual(
+			after.supplement.loads,
+			{ supa: 3, supb: 1 },
+			"after: A ran its own document (mount + two blocked attempts after the reload); B saw only the blocked navigation's load beat",
+		);
+		assert.ok(
+			after.guardLog.some(
+				(m) =>
+					m.includes("blocked child-frame navigation to lo-supplement:") &&
+					m.includes("a child frame may not navigate to lo-supplement:"),
+			),
+			"after: the robbed sibling's mount was denied by the general verdict",
+		);
+		// BEFORE: the same document's self-navigation commits (no guard sits
+		// between it and the daemon) — the difference the AFTER pass is read
+		// against. B has no before-half: there is no permit machinery to rob.
+		assert.ok(
+			before.hits.some((h) => h.includes("?supplement-self")),
+			"before: the supplement self-navigation reached the daemon",
 		);
 
 		const r = after.report;

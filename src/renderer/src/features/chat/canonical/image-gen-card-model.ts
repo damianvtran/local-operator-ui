@@ -4,9 +4,10 @@
  * ONE module owns three facts, and they live together because they move
  * together when the harness freezes its wire fields:
  *
- *   1. WHICH calls this surface renders as an image generation — the detection
- *      set (`IMAGE_GEN_TOOL_NAMES`). One exported constant per surface, so the
- *      frozen tool-name set is adjusted in one place rather than searched for.
+ *   1. WHICH calls this surface renders as a generating-media card — the
+ *      detection set (`IMAGE_GEN_TOOL_NAMES`). One exported constant per
+ *      surface, so the frozen tool-name set is adjusted in one place rather
+ *      than searched for.
  *   2. How a transcript tool record becomes the card's state
  *      (`imageGenCardView`). The record's field names stop here: the card draws
  *      an `ImageGenCardView` and knows nothing else about the transcript.
@@ -22,6 +23,20 @@
  * derives from the one state machine that owns the interrupt and clears by
  * itself when the receipt answers or the record settles — a local "pressed"
  * flag in the card would latch forever when a press found nothing to stop.
+ *
+ * ONE CARD, TWO MATERIALS (video phase, contract §5.4). `generate_video` rides
+ * this card's whole six-state machine unchanged — its live life is
+ * submit-to-receipt like the image lane's, so the same states render — and the
+ * ONLY fact video adds is the MATERIAL NOUN where a sentence names the
+ * artifact ("Generating video…", "Generated video", "The video could not be
+ * generated."). That fact is `ImageGenMaterial` below, derived from the
+ * record's tool name in `imageGenCardView` and carried on the three arms that
+ * can render a material word. Every other string renders byte-identically to
+ * the imagegen rendering (the design spec's V-delta enumeration is the
+ * complete legal list), and the card's Cancel control is deliberately NOT
+ * offered on a video call: an in-turn press cannot cancel a detached video
+ * job (contract §4.2), so the mount withholds the handler rather than drawing
+ * a control whose press would lie (`canonical-transcript.tsx`).
  *
  * FROZEN-FIELD SLOTS, NOW WIRED (harness PR #2089, 2026-10-09). The live
  * progress fields arrive in the canonical payload the record carries as
@@ -73,19 +88,51 @@ export type ImageGenToolRecord = Extract<TranscriptRecord, { kind: "tool" }>;
  *
  * Every surface that special-cases a generating call keys off a set like this
  * one, so a rename in the harness is one edit per surface and never a hunt for
- * string literals. FROZEN by the harness lane (2026-10-08): there is ONE tool,
+ * string literals. The image half is FROZEN by the harness lane (2026-10-08):
  * `generate_image` — the image-to-image edit rides the same tool as a
  * `source_image_path` argument, and `generate_altered_image` will NOT exist.
- * This set was briefly two names; the second was dropped before it ever had a
- * producer.
+ * The video phase adds the second member (contract §1.0): `generate_video`
+ * registers a detached `AsyncJob` and returns a receipt in milliseconds, so
+ * its card paints only the submit-to-receipt frames (the minutes-long motif is
+ * the run-details Jobs row and the completion row, §5.4) — but it is the same
+ * card, and THIS is the one edit that routes it there.
+ *
+ * The video member is a named constant because exactly one string may spell
+ * it: the set routes the card, and `isVideoGenTool` below is the material
+ * fact every noun branch reads. Two literals would be two edits at rename
+ * time, which is the class of drift this set exists to prevent.
  */
+export const VIDEO_GEN_TOOL_NAME = "generate_video";
+
 export const IMAGE_GEN_TOOL_NAMES: ReadonlySet<string> = new Set([
 	"generate_image",
+	VIDEO_GEN_TOOL_NAME,
 ]);
 
-/** Whether a tool call is one this surface renders as a generating image. */
+/** Whether a tool call is one this surface renders as a generating-media card. */
 export function isImageGenTool(toolName: string): boolean {
 	return IMAGE_GEN_TOOL_NAMES.has(toolName);
+}
+
+/** Whether a tool call is the video lane's generating call. */
+export function isVideoGenTool(toolName: string): boolean {
+	return toolName === VIDEO_GEN_TOOL_NAME;
+}
+
+/**
+ * Which artifact a card's sentence names when it names one.
+ *
+ * ONE fact, derived once from the record's tool name in `imageGenCardView` and
+ * carried on the arms that can render a material word — never re-derived at a
+ * call site, so the state line and the failure fallback cannot come to disagree
+ * about what an artifact is. The enumeration of strings it may steer is the
+ * design spec's V-list (§4), and nothing outside that list branches on it.
+ */
+export type ImageGenMaterial = "image" | "video";
+
+/** The material fact for one tool call. */
+export function imageGenMaterial(toolName: string): ImageGenMaterial {
+	return isVideoGenTool(toolName) ? "video" : "image";
 }
 
 /**
@@ -224,6 +271,13 @@ export type ImageGenCardView =
 	| {
 			state: "running";
 			/**
+			 * Which artifact this call produces — the one fact the state line's noun
+			 * branches on ("Generating image…" / "Generating video…"). The failure
+			 * fallback and the done sentence read the same fact, from the same
+			 * derivation.
+			 */
+			material: ImageGenMaterial;
+			/**
 			 * Wall-clock ms the call started executing, or `null` when the frame
 			 * stated none. `null` draws the state line WITHOUT a clock — the
 			 * absence is rendered, not filled in.
@@ -251,6 +305,8 @@ export type ImageGenCardView =
 	| {
 			state: "done";
 			images: readonly TranscriptImage[];
+			/** The material noun this receipt names ("Generated image" / "Generated video"). */
+			material: ImageGenMaterial;
 			/** The backend's measured duration, or `null` for a replayed row. */
 			durationS: number | null;
 			/**
@@ -263,6 +319,8 @@ export type ImageGenCardView =
 	  }
 	| {
 			state: "failed";
+			/** The material noun the absence sentence names when no text was stated. */
+			material: ImageGenMaterial;
 			/**
 			 * The error sentence VERBATIM — the frozen `error` field, or today the
 			 * tool result's own output, which is the only error text that exists —
@@ -302,6 +360,13 @@ export function imageGenCardView(
 	/* The canonical payload, read once for every arm below that branches on it. */
 	const canonical = canonicalProgress(record.details);
 	/*
+	 * The material fact, derived ONCE from the call's own tool name — the one
+	 * input every noun branch below reads (see `ImageGenMaterial`). A branch
+	 * that wants to know what artifact this call makes asks THIS value, never
+	 * the tool name again.
+	 */
+	const material = imageGenMaterial(record.toolName);
+	/*
 	 * ARM 1, the interrupts. `stopped` is the call that was running when the
 	 * turn was aborted; `skipped`/`aborted` are the harness's verdicts that the
 	 * turn itself (steering, a stop) kept the call from running. Both are the
@@ -322,7 +387,12 @@ export function imageGenCardView(
 	 * `notRunReason` key at all, and an absent key must not read as a verdict.
 	 */
 	if (record.notRunReason)
-		return { state: "failed", message: record.notRunReason, errorType: null };
+		return {
+			state: "failed",
+			material,
+			message: record.notRunReason,
+			errorType: null,
+		};
 	/*
 	 * ARM 3, the turn that died while the call was still being dictated: the
 	 * harness's `never sent` fact with no verdict at all. Nothing failed and
@@ -353,6 +423,7 @@ export function imageGenCardView(
 			return {
 				state: "done",
 				images: record.images ?? [],
+				material,
 				durationS: record.durationS ?? null,
 				receipt: "already-finished",
 			};
@@ -360,6 +431,7 @@ export function imageGenCardView(
 			return { state: "cancelled" };
 		return {
 			state: "failed",
+			material,
 			message: canonical.error ?? record.output,
 			errorType: canonical.errorType,
 		};
@@ -418,6 +490,7 @@ export function imageGenCardView(
 			 */
 			return {
 				state: "running",
+				material,
 				startedAtMs,
 				progress: progressFrom(canonical),
 				note: canonical.error,
@@ -425,13 +498,16 @@ export function imageGenCardView(
 		}
 		case "done":
 			/*
-			 * THE SETTLED SUCCESS. `images` is what the row's own media block
-			 * renders from and what `foldImages` counts, so the card and the
-			 * condensed strip cannot disagree about whether a picture exists.
+			 * THE SETTLED SUCCESS. `images` is what the row's own media block renders
+			 * from — the card mounts each entry by its KIND (a picture through
+			 * `CanonicalImage`, a video through the digest-fed player) — and what
+			 * `foldImages` counts PICTURES in, so the card and the condensed strip
+			 * cannot disagree about whether a picture exists.
 			 */
 			return {
 				state: "done",
 				images: record.images ?? [],
+				material,
 				durationS: record.durationS ?? null,
 				receipt: "generated",
 			};
@@ -495,4 +571,27 @@ export function imageGenCardControls(
 	if (actions?.onEditRestart && terminalWithoutImage)
 		controls.push({ kind: "editRestart", disabled: false });
 	return controls;
+}
+
+/**
+ * The actions a transcript mount passes to a card of this call — the ONE
+ * mount-level affordance rule, beside the state-level one it feeds.
+ *
+ * A VIDEO call gets NO action at all (R4, contract §4.2): an in-turn press
+ * cannot cancel a detached job — the card paints the submit-to-receipt frames
+ * and the job outlives the call — so a Cancel drawn there would lie in its
+ * accessibility hint and do nothing at the wire. The cancel rail for a video
+ * job is the run-details Jobs row, which addresses the job rather than the
+ * call. An IMAGE call keeps the pane's interrupt on the same press it always
+ * had, and a mount with no interrupt wired passes nothing either way — the
+ * card renders only what it is provided, so the withheld handler IS the
+ * absence, and this rule is the one place a later wiring pass would have to
+ * edit to (wrongly) re-open it.
+ */
+export function imageGenCardMountActions(
+	toolName: string,
+	onInterruptTurn: (() => void) | undefined,
+): ImageGenCardActions | undefined {
+	if (isVideoGenTool(toolName)) return undefined;
+	return onInterruptTurn ? { onCancel: onInterruptTurn } : undefined;
 }
