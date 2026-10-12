@@ -1346,9 +1346,9 @@ function advancedFrame(
  *     contiguous window can bound the send's place without carrying it:
  *     when its OLDEST entry is strictly newer than the echo's stamp — the
  *     window is journal-older than its whole range — while the pane's own
- *     range spans the send (owner-stated rows older than the stamp — the
- *     loaded range reaches behind it — and rows newer than it — the owner
- *     accepted the send and content followed), the echo leaves the block to
+ *     range spans the send (an owner-stated row older than the stamp and ANY
+ *     row newer than it, including a streamed row or another pending echo),
+ *     the echo leaves the block to
  *     rank by its stamp, whether the window lands beyond the pane or among
  *     rows the pane already streamed. Carriage is unchanged and still lands
  *     the owner's exact slot. This is the discharge (operator report,
@@ -1520,9 +1520,9 @@ function withTimeOrder(
  * assumption without carrying the send: when its OLDEST entry is strictly
  * NEWER than the echo's stamp — the window is journal-older than its whole
  * range, so the send cannot be "after everything here" — and the pane already
- * holds owner-stated rows on BOTH sides of the send (rows older than the
- * stamp — the loaded range reaches behind the send — and rows newer than it —
- * the owner accepted the send and content followed), the reader's own copy
+ * holds an owner-stated row older than the send's stamp and ANY row newer
+ * than it (including a streamed row or another pending local echo), the
+ * reader's own copy
  * ranks by its stamp. Carriage still lands the owner's exact slot by
  * replacing the record; this only stops the hold from pinning the exchange
  * under content the pane provably reached after the send went unread.
@@ -1548,15 +1548,25 @@ function withTimeOrder(
  *    falsification. A pre-send window's oldest entry is journal-older than
  *    the send, so it fails here however its stamps SKEW ahead of the client
  *    clock (the a1 / +2s / +40s owed-page pins).
- *  - a row NEWER than the echo — without it the pane has no evidence the
- *    send was ever accepted; a pane holding only the echo and its owed page
- *    keeps the hold (`a locally stamped echo cannot be displaced…`).
+ *  - ANY row NEWER than the echo — no owner/delivery proof is required on
+ *    this side: a streamed row or another pending local echo qualifies too.
+ *    This is a ranking guard, not evidence the owner accepted the send; a
+ *    pane holding only the echo and its owed page keeps the hold
+ *    (`a locally stamped echo cannot be displaced…`).
  *  - an owner-stated row OLDER than the echo (`isDurableOwnerRow`) — a pane
  *    whose range starts at or after the echo cannot prove where the send
  *    belongs; the old announcement path (echo over an empty transcript, a
  *    send during first paint) stays conservative rather than releasing on a
  *    clock it cannot compare (`a live answer arriving while the echo holds…
  *    the page that follows keeps it there`).
+ *
+ * THE SCAN IS PRE-MERGE, deliberately conservative: `applyHistoryPage` passes
+ * `base.records`, not the rows this page is about to admit. If the page supplies
+ * the pane's FIRST newer row, this read keeps the hold and the next qualifying
+ * page read (even a replay of the same page) can release it. A live event alone
+ * does not re-run the discharge. This leaves a one-read lag in a quiet pane;
+ * it keeps the incoming window from supplying its own span witness. The
+ * regression pin names that sequencing; it is not a new healing path.
  *
  * WHAT THE RULE GIVES UP, named rather than discovered: an owner whose clock
  * runs AHEAD of this renderer's can stamp a PRE-send page row past the pane's

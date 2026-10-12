@@ -208,8 +208,11 @@ const afterFold = (windows: {
  * read re-states leave the block (the merge proves the owner placed them), so
  * the block shrinks as reads land and its tail is the newest row no read has
  * claimed yet. This is exactly what the pre-discharge reducer produced for the
- * same folds (verified against the base tree's own reducer in the PR's probe);
- * nothing else about the records differs.
+ * same folds BY RECORD ORDER (verified against the base tree's own reducer
+ * in the PR's probe). The hold flag is the one field that differs: the base
+ * keeps `provisional: true`, while this partition of the discharged state has
+ * removed it. No rendered user-row consumer reads that flag, so the frames
+ * represent the same pre-fix order without pretending to be identical state.
  */
 const beforeRanking = (
 	state: TranscriptState,
