@@ -8,6 +8,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 
+const UNSUPPORTED = /requires macOS.*existing backend installer/;
 const WAIT_REFUSAL =
 	/Backend preparation is blocked by an existing lock record/;
 const MISSING_LOCK = /ENOENT/;
@@ -185,3 +186,38 @@ test(
 		assert.deepEqual(await reapSupersededGenerations(options, {}), []);
 	},
 );
+
+test("non-macOS public authority refuses before queue or root creation", async (t) => {
+	const support = fs.mkdtempSync(join(tmpdir(), "unsupported-managed-"));
+	t.after(() => fs.rmSync(support, { recursive: true, force: true }));
+	const options = {
+		support,
+		resources: "",
+		packaged: true,
+		arch: process.arch,
+	};
+	const root = managedPythonRoot(options);
+	assert.equal(fs.existsSync(root), false);
+	const descriptor = Object.getOwnPropertyDescriptor(process, "platform");
+	const nativePlatform = process.platform;
+	try {
+		if (nativePlatform === "darwin")
+			Object.defineProperty(process, "platform", {
+				...descriptor,
+				value: "linux",
+			});
+		await assert.rejects(reapSupersededGenerations(options, {}), (error) => {
+			assert.match(error.message, UNSUPPORTED);
+			console.log(
+				`ACTUAL unsupported API: ${error.message} (${nativePlatform === "darwin" ? "labelled Linux platform seam on macOS" : "native non-macOS host"})`,
+			);
+			return true;
+		});
+		// A failed unsupported call must not strand a later call in the queue.
+		await assert.rejects(reapSupersededGenerations(options, {}), UNSUPPORTED);
+	} finally {
+		if (nativePlatform === "darwin")
+			Object.defineProperty(process, "platform", descriptor);
+	}
+	assert.equal(fs.existsSync(root), false);
+});

@@ -850,6 +850,13 @@ async function locked<T>(
 	root: string,
 	work: (held: PreparationTransaction) => Promise<T>,
 ): Promise<T> {
+	// The managed seed/shlock authority is macOS-only. Production startup uses
+	// the existing legacy installer off Darwin; a direct API must refuse before
+	// creating a root or waiting two minutes for a native command that is absent.
+	if (process.platform !== "darwin")
+		throw new Error(
+			"Managed Python preparation requires macOS. Use this platform's existing backend installer; no changes were made.",
+		);
 	const previous = preparation;
 	let release = () => {};
 	preparation = new Promise<void>((done) => {
