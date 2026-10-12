@@ -398,6 +398,15 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 				 * illustration's backing and the picture supplies its own extent.
 				 */
 				boundary={size === "thumbnail" ? "control" : "hairline"}
+				/*
+				 * The filmstrip's SELECT tiles hold their edge while they are the
+				 * picture on screen (see `press.current`): the strip's job is to say
+				 * which of the set the layer shows, and a mark that arrives only on
+				 * hover leaves that job undone the moment the pointer moves away.
+				 * The full-ceiling picture never carries it — its frame is a
+				 * `hairline` backing, not a control edge.
+				 */
+				current={size === "thumbnail" && press?.current === true}
 			>
 				<img
 					className={cn(
