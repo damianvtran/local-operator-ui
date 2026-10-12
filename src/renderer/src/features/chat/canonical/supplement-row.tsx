@@ -5,8 +5,8 @@
  * NO HEADER, LABEL OR TITLE — on purpose (the 2026-10-10 amendment): the block
  * starts directly with its content and position alone carries its relationship
  * to the answer above; spacing does the seam. Files first, then components
- * (memo §0), and a files-only finish with ≤ 2 files is ONE line — the contents
- * themselves, never the bare word "Highlights".
+ * (memo §0), with compact actionable file rows even in a small files-only finish:
+ * an inert count sentence must not be the only route to a refused preview.
  *
  * THE STATE LINE is the image-gen card's state machine in miniature: the same
  * frozen vocabulary, the same copy bytes as the TUI (`Preparing highlights…`,
@@ -82,10 +82,10 @@ import {
 	type SupplementRecord,
 	condensedBlockLine,
 	condensedCountPrefix,
+	diagnosticDisplay,
 	displayText,
 	failureExplanation,
 	fileRowParts,
-	filesSummaryOf,
 	frameBudgetPx,
 	moreText,
 	planComponentMounts,
@@ -612,7 +612,7 @@ export const SupplementRow = memo(function SupplementRow({
 	}
 
 	/*
-	 * The files half first (memo §0). The ≤ 2 files one-liner applies when no
+	 * The files half first (memo §0). The small-set file actions apply when no
 	 * COMPONENT rides the row and the whole known set is two files or fewer
 	 * (the TUI's own rule, `total_files <= 2 and not components_present`), and
 	 * it serves the preparing arm's callouts too — they are the same callouts
@@ -621,17 +621,24 @@ export const SupplementRow = memo(function SupplementRow({
 	 */
 	let filesSection: JSX.Element | null = null;
 	if (files.length > 0 || moreCount > 0) {
-		if (totalFiles <= 2 && components.length === 0) {
-			const summary = filesSummaryOf(record);
-			filesSection =
-				summary === null ? null : (
-					<div
-						className="text-ink-muted text-meta"
-						data-supplement-files-summary=""
-					>
-						{summary}
-					</div>
-				);
+		if (totalFiles <= 2 && components.length === 0 && moreCount === 0) {
+			filesSection = (
+				<div className="flex flex-col gap-1" data-supplement-files-summary="">
+					{files.map((file) => {
+						const { name, path, size } = fileRowParts(file);
+						return (
+							<SupplementFileLine
+								key={file.path}
+								actionPath={file.path}
+								label={name || path}
+								suffix={path}
+								size={size}
+								pane={pane}
+							/>
+						);
+					})}
+				</div>
+			);
 		} else {
 			filesSection = (
 				<div className="flex flex-col gap-1" data-supplement-files="">
@@ -691,6 +698,12 @@ export const SupplementRow = memo(function SupplementRow({
 		<div className="flex flex-col gap-2" data-supplement-record={record.anchor}>
 			{filesSection}
 			{stateLine(null)}
+			{record.detail?.includes("prepared:unsupported") && (
+				<p className="text-meta text-ink-muted" data-supplement-refusal="">
+					Inline preview unavailable. This HTML needs unsupported resources or
+					document content. Open the file to view it.
+				</p>
+			)}
 			{(disposition === "failed_retry" ||
 				disposition === "files_failed_retry") && (
 				<div
@@ -703,7 +716,7 @@ export const SupplementRow = memo(function SupplementRow({
 						<Disclosure
 							open={detailsOpen}
 							onOpenChange={setDetailsOpen}
-							rowClassName="min-h-0 py-0"
+							rowClassName="min-h-6 py-0"
 							chevronClassName="text-ink-dim"
 							summary="Details"
 						>
@@ -711,7 +724,7 @@ export const SupplementRow = memo(function SupplementRow({
 								{record.model && <p>Model: {record.model}</p>}
 								<p>Attempts: {record.attempts?.length ?? 0}</p>
 								{record.detail?.map((line) => (
-									<p key={line}>{line}</p>
+									<p key={line}>{diagnosticDisplay(line)}</p>
 								))}
 							</div>
 						</Disclosure>
