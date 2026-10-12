@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 
+import { acquireAudioMeterStream } from "./audio-meter-stream";
 import {
 	type AudioLevelState,
 	INITIAL_AUDIO_LEVEL_STATE,
@@ -84,8 +85,6 @@ export const AudioRecordingIndicator = ({
 }: AudioRecordingIndicatorProps): JSX.Element | null => {
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const animationFrameRef = useRef<number>();
-	const mediaStreamRef = useRef<MediaStream | null>(null);
-	const audioContextRef = useRef<AudioContext | null>(null);
 	const analyserRef = useRef<AnalyserNode | null>(null);
 	/*
 	 * `getFloatTimeDomainData` takes a view over a plain `ArrayBuffer`
@@ -222,35 +221,29 @@ export const AudioRecordingIndicator = ({
 			animationFrameRef.current = requestAnimationFrame(updateLoop);
 		};
 
-		// Setup audio analysis
-		(async () => {
-			try {
-				const stream = await navigator.mediaDevices.getUserMedia({
-					audio: true,
-				});
-				mediaStreamRef.current = stream;
-				const AudioContextClass =
+		/*
+		 * THE ACQUISITION'S OWN RELEASE. The session owns everything the async
+		 * block acquires and releases it WHENEVER it arrives - including a
+		 * stream that resolves after this cleanup has run, which is the
+		 * arrangement that keeps the microphone from being stranded open when
+		 * a take ends inside the `getUserMedia` window (issue #930; the
+		 * lifecycle and its orderings live in `audio-meter-stream.ts`).
+		 */
+		const session = acquireAudioMeterStream({
+			getUserMedia: (constraints) =>
+				navigator.mediaDevices.getUserMedia(constraints),
+			createAudioContext: () =>
+				new (
 					window.AudioContext ||
 					(window as unknown as { webkitAudioContext: typeof AudioContext })
-						.webkitAudioContext;
-				const audioCtx = new AudioContextClass();
-				audioContextRef.current = audioCtx;
-				const analyser = audioCtx.createAnalyser();
-				/*
-				 * The time-domain window, `fftSize` samples (~23 ms at 44.1 kHz): long
-				 * enough that a frame's RMS reads as speech loudness rather than as
-				 * one cycle of the waveform's phase. `smoothingTimeConstant` is not
-				 * set: it shapes the FREQUENCY data's smoothing, and this pipeline
-				 * reads raw samples - the smoothing lives in the level reducer's
-				 * release now, where it is testable.
-				 */
-				analyser.fftSize = 1024;
+						.webkitAudioContext
+				)(),
+			onAnalyser: (analyser) => {
 				analyserRef.current = analyser;
-				const source = audioCtx.createMediaStreamSource(stream);
-				source.connect(analyser);
 				dataArrayRef.current = new Float32Array(analyser.fftSize);
 				updateLoop();
-			} catch (error) {
+			},
+			onError: (error) => {
 				console.warn(
 					"Could not access microphone for waveform visualization:",
 					error,
@@ -272,26 +265,14 @@ export const AudioRecordingIndicator = ({
 					animationFrameRef.current = requestAnimationFrame(randomLoop);
 				};
 				randomLoop();
-			}
-		})();
+			},
+		});
 
 		return () => {
 			if (animationFrameRef.current) {
 				cancelAnimationFrame(animationFrameRef.current);
 			}
-			if (mediaStreamRef.current) {
-				for (const track of mediaStreamRef.current.getTracks()) {
-					track.stop();
-				}
-				mediaStreamRef.current = null;
-			}
-			if (
-				audioContextRef.current &&
-				audioContextRef.current.state !== "closed"
-			) {
-				audioContextRef.current.close().catch(console.error);
-				audioContextRef.current = null;
-			}
+			session.stop();
 		};
 	}, [isRecording]);
 

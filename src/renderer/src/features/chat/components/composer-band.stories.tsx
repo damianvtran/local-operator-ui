@@ -53,6 +53,9 @@ import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
  *   would replace what the user is writing, so the chips go inert, in the
  *   disabled ink role and at the same size and position, so the band does not
  *   move under a keystroke.
+ * - `Recording` is the lane with a take live: the capability probe is granted
+ *   and the capture rig's own press on the mic control starts the take, so the
+ *   frame is the waveform mid-take rather than a resting state.
  * - `ReducedMotion` is `EmptyChat` with the media feature EMULATED by the
  *   capture rig (`{ reducedMotion: true }` in `scripts/capture-evidence.mjs`),
  *   which is the only honest way to photograph this state: the app's own cap is
@@ -83,6 +86,59 @@ window.electron = {
 				: { canceled: true, filePaths: [] },
 	},
 } as typeof window.electron;
+
+/*
+ * A SYNTHETIC MICROPHONE, so the recording lane can be photographed at all.
+ *
+ * The capture runs headless Chrome with no audio device and no permission
+ * prompt: the composer's `getUserMedia` would either never settle or refuse,
+ * and the lane this story exists for would never mount. The stub answers
+ * AUDIO-ONLY requests with a real WebAudio stream - a sawtooth carrier whose
+ * gain an LFO breathes, so the analyser sees a speech-band signal and
+ * consecutive frames read as movement rather than a held line - and every
+ * other request goes to the real implementation: overriding video capture or
+ * refusing devices would make the frame evidence about the fake rather than
+ * about the app. The contexts are kept in `syntheticMicKeep` because an
+ * unreferenced AudioContext can be collected mid-take, which would end its
+ * stream with it. Installed at MODULE SCOPE for the reason the electron shim
+ * above states: the composer reaches the device from child effects, so an
+ * install from a frame around the story arrives one commit too late.
+ */
+const syntheticMicKeep: AudioContext[] = [];
+if (navigator.mediaDevices) {
+	const realGetUserMedia = navigator.mediaDevices.getUserMedia.bind(
+		navigator.mediaDevices,
+	);
+	navigator.mediaDevices.getUserMedia = async (constraints) => {
+		if (!constraints?.audio || constraints.video) {
+			return realGetUserMedia(constraints);
+		}
+		const context = new AudioContext();
+		syntheticMicKeep.push(context);
+		// A suspended context would feed the stream silence, which reads as a flat
+		// lane; the press that starts the take is the activation it resumes under.
+		if (context.state === "suspended") {
+			await context.resume();
+		}
+		const carrier = context.createOscillator();
+		carrier.type = "sawtooth";
+		carrier.frequency.value = 180;
+		const carrierGain = context.createGain();
+		carrierGain.gain.value = 0.35;
+		const lfo = context.createOscillator();
+		lfo.frequency.value = 0.6;
+		const lfoDepth = context.createGain();
+		lfoDepth.gain.value = 0.3;
+		lfo.connect(lfoDepth);
+		lfoDepth.connect(carrierGain.gain);
+		carrier.connect(carrierGain);
+		const destination = context.createMediaStreamDestination();
+		carrierGain.connect(destination);
+		carrier.start();
+		lfo.start();
+		return destination.stream;
+	};
+}
 
 const STORY_CONVERSATION = "composer-band-story";
 
@@ -186,12 +242,29 @@ export default meta;
 
 type Story = StoryObj;
 
+/**
+ * The probe the recording story hands the composer, so its mic control is LIVE.
+ *
+ * In the app the probe is the host's own read of the credential store; a
+ * Storybook page has no store, and the composer's control is disabled without
+ * one - which would make the recording lane unreachable by the rig's press.
+ * `canUseRadientSpeech` is the capability term the control enables on;
+ * `speechBlock` only ever renders on the disabled arm, so "checking" never
+ * paints here.
+ */
+const GRANTED_RECORDING_PROBE = {
+	canUseRadientSpeech: true,
+	speechBlock: "checking",
+} as const;
+
 type BandProps = {
 	/** Which state this frame is, used to key the conversation id. */
 	story: string;
 	isSmallView?: boolean;
 	pool?: readonly string[];
 	draft?: string;
+	/** A take is live: the composer is told the capability is granted and the rig's press starts the take. */
+	recording?: boolean;
 	/** Nothing connected: the connect card replaces the chips (design section 6). */
 	noProvider?: boolean;
 };
@@ -202,6 +275,7 @@ const composerBand = ({
 	pool,
 	draft,
 	noProvider,
+	recording,
 }: BandProps) => {
 	const conversation = conversationFor(story);
 	const input = (
@@ -212,6 +286,7 @@ const composerBand = ({
 			initialSuggestions={pool ?? DEFAULT_MESSAGE_SUGGESTIONS}
 			isSmallView={isSmallView ?? false}
 			noProvider={noProvider ?? false}
+			recordingProbe={recording ? GRANTED_RECORDING_PROBE : undefined}
 			onSendMessage={async () => true}
 		/>
 	);
@@ -370,6 +445,24 @@ export const DraftHeld: Story = {
 				story: "draft-held",
 				draft: "Check the failing test in the parser and",
 			})}
+		</Column>
+	),
+};
+
+/**
+ * The recording lane, with a take live.
+ *
+ * The lane's pixels come from a running analyser, so no play function can
+ * paint this state honestly - the story renders the composer with the
+ * capability granted and NOTHING here starts the take: the capture rig's own
+ * press on the mic control does, through the same input path a user takes, and
+ * the synthetic microphone above feeds both acquisitions. The frame is the
+ * waveform lane across the composer, mid-take, at the app's default width.
+ */
+export const Recording: Story = {
+	render: () => (
+		<Column label="recording: the waveform lane across the composer while a take is live">
+			{composerBand({ story: "recording", recording: true })}
 		</Column>
 	),
 };
