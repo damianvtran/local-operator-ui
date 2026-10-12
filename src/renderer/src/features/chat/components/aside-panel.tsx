@@ -55,7 +55,10 @@ import { CHAT_MEASURE } from "../chat-measure";
  * the answer — which is also what lets the composer and the command dispatcher
  * agree with it about which aside is open.
  */
-import { MarkdownRenderer } from "../components/markdown-renderer";
+import {
+	MarkdownRenderer,
+	type MarkdownStyleProps,
+} from "../components/markdown-renderer";
 import { parseReplies } from "../utils/reply-utils";
 
 export type AsidePanelProps = {
@@ -134,17 +137,15 @@ const ASIDE_QUESTION_MIN_BOX = `var(--text-body-sm) * ${ASIDE_QUESTION_LINE_HEIG
  * one of two stable identities is what makes the memo hold; a third step
  * belongs here as a third constant.
  */
-const ASIDE_ANSWER_STYLE: { fontSize: string; lineHeight: number } = {
+const ASIDE_ANSWER_STYLE: MarkdownStyleProps = {
 	fontSize: "var(--text-body)",
 	lineHeight: ASIDE_ANSWER_LINE_HEIGHT,
 };
-const ASIDE_ANSWER_STYLE_SMALL: { fontSize: string; lineHeight: number } = {
+const ASIDE_ANSWER_STYLE_SMALL: MarkdownStyleProps = {
 	fontSize: "var(--text-body-sm)",
 	lineHeight: ASIDE_ANSWER_LINE_HEIGHT,
 };
-const asideAnswerType = (
-	isSmallView: boolean,
-): { fontSize: string; lineHeight: number } =>
+const asideAnswerType = (isSmallView: boolean): MarkdownStyleProps =>
 	isSmallView ? ASIDE_ANSWER_STYLE_SMALL : ASIDE_ANSWER_STYLE;
 
 /**
