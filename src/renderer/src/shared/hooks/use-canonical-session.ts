@@ -716,6 +716,20 @@ const HISTORY_RECONCILE_ATTEMPTS = 3;
 /** Flush cadence when no animation frame arrives (hidden window). */
 const HIDDEN_FLUSH_MS = 250;
 
+/*
+ * The frame size above which the stream's own `JSON.parse` earns a mark pair.
+ *
+ * WHY A GATE RATHER THAN A MARK PER FRAME: a live stream delivers one frame per
+ * token, each a few hundred bytes, and a mark pair per token would flood the
+ * timeline with entries that answer nothing the flush measure beside it does
+ * not already answer. The frames this lane is about are the OPEN pages — the
+ * S3 fixture's snapshot is ~130 KB in one record — so a threshold far above a
+ * token frame and far below a page keeps the marks that matter and nothing
+ * else. 32 KiB is two orders of magnitude above a token frame and a quarter of
+ * the smallest page seen on the remote lane (134 KB).
+ */
+const OPEN_PARSE_MARK_MIN_BYTES = 32 * 1024;
+
 /**
  * How many unlabelled calls the retry bookkeeping remembers.
  *
@@ -4150,7 +4164,18 @@ export function useCanonicalSessionStream(
 							// then the live seed for the turn still in flight.
 							let transcript = replayTranscript ?? next.transcript;
 							if (!snapshot.history.cursor_missing) {
+								// The open page's fold, measured on its own (remote-lag close-out
+								// instrumentation): the snapshot's page is the one reducer call that
+								// runs on the open path's critical task, and the 400-row page is
+								// where per-row cost would show.
+								performance.mark("lop:open:history:start");
 								transcript = applyHistoryPage(transcript, snapshot.history);
+								performance.mark("lop:open:history:end");
+								performance.measure(
+									"lop:open:history",
+									"lop:open:history:start",
+									"lop:open:history:end",
+								);
 								// The page names these rows, so they are journal rows now.
 								forgetReplayBorn(
 									replayBornIds.current,
@@ -4187,6 +4212,10 @@ export function useCanonicalSessionStream(
 							// reports cursor_missing. Both are the contract's "reconcile
 							// through /history" case: the authoritative tail is fetched
 							// once per snapshot and merged durable-wins.
+							// The live seed's fold, measured on its own (remote-lag close-out
+							// instrumentation), for the same reason as the page above: it is the
+							// other reducer call on the open path's critical task.
+							performance.mark("lop:open:seed:start");
 							transcript = applyLiveSeed(
 								transcript,
 								snapshot.frontend.snapshot,
@@ -4196,6 +4225,12 @@ export function useCanonicalSessionStream(
 								// position — a later replay of an older frame is then refused
 								// rather than appended (see the reducer's cursor gate).
 								{ epoch: frame.epoch, seq: frame.seq },
+							);
+							performance.mark("lop:open:seed:end");
+							performance.measure(
+								"lop:open:seed",
+								"lop:open:seed:start",
+								"lop:open:seed:end",
 							);
 							next = {
 								...next,
@@ -4798,7 +4833,25 @@ export function useCanonicalSessionStream(
 					}
 					if (event.data === undefined) return;
 					try {
-						const frame = JSON.parse(event.data) as DesktopSessionFrame;
+						/*
+						 * THE PARSE'S OWN SPAN (remote-lag close-out instrumentation, see
+						 * `OPEN_PARSE_MARK_MIN_BYTES`). The open path's one synchronous task was
+						 * measured at 440 ms; the split between this parse, the flush and the
+						 * commit is what decides where the fix goes, and it exists nowhere in
+						 * the timeline otherwise.
+						 */
+						const raw = event.data;
+						const markParse = raw.length >= OPEN_PARSE_MARK_MIN_BYTES;
+						if (markParse) performance.mark("lop:open:parse:start");
+						const frame = JSON.parse(raw) as DesktopSessionFrame;
+						if (markParse) {
+							performance.mark("lop:open:parse:end");
+							performance.measure(
+								"lop:open:parse",
+								"lop:open:parse:start",
+								"lop:open:parse:end",
+							);
+						}
 						// Reaching a snapshot is the only proof the stream really works: an
 						// authenticated `open` can still be followed by an immediate close,
 						// and resetting the budget there would let that pair retry forever.
