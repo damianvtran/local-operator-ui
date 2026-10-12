@@ -6,6 +6,7 @@ import { cn } from "@shared/lib/utils";
 import {
 	AudioLines,
 	Download,
+	Keyboard,
 	Paintbrush,
 	Plug,
 	Puzzle,
@@ -83,10 +84,11 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
 	/*
 	 * Speech voicing rides with General and Appearance because it is the same kind
 	 * of destination: how the app behaves for the reader, as opposed to what it
-	 * talks to (Account) or what its backend stores (Backend). Its document
-	 * position follows this list, per the rule below.
+	 * talks to (Account) or what its backend stores (Backend). Keyboard shortcuts
+	 * joined it for the same reason (issue #928) - and its document position
+	 * follows this list, per the rule below.
 	 */
-	{ label: "General", ids: ["general", "appearance", "speech"] },
+	{ label: "General", ids: ["general", "appearance", "speech", "keyboard"] },
 	/*
 	 * Model providers first (design audit section 2 / D13): it is the section a
 	 * new install cannot work without, and "Radient account" ahead of it read as
@@ -393,6 +395,11 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 		id: "speech",
 		label: "Speech voicing",
 		icon: AudioLines,
+	},
+	{
+		id: "keyboard",
+		label: "Keyboard shortcuts",
+		icon: Keyboard,
 	},
 	{
 		id: "providers",

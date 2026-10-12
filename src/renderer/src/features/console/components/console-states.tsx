@@ -1,4 +1,5 @@
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import {
 	AlertTriangle,
@@ -90,7 +91,9 @@ export const ConsoleNotice: FC<ConsoleNoticeProps> = ({
  * second component. */
 export const ConsoleLoading: FC<{ creating?: boolean }> = ({ creating }) => (
 	<ConsoleNotice
-		title={creating ? "Starting a console" : "Reading this session's console"}
+		title={t(
+			creating ? "ui.console.loading.create" : "ui.console.loading.read",
+		)}
 	/>
 );
 
@@ -110,30 +113,42 @@ export const ConsoleLoading: FC<{ creating?: boolean }> = ({ creating }) => (
  * bridge itself is unreachable) because that is the line a bug report quotes, and
  * because it is what distinguishes the two rows for a reader who skips the prose.
  */
-const UNAVAILABLE_COPY: Record<string, { title: string; detail: string }> = {
+/*
+ * The MESSAGE KEYS, resolved through t() at render time — keys may sit at module
+ * scope, the messages they name may not (RFC §2.1; the manager's "call-time
+ * rendering"). Two reasons carry the generic title, so it is one key.
+ */
+/*
+ * KEYED, not literal copy: the sentences resolve at RENDER time through `t()`
+ * (call-time rendering, RFC §2.3/§3.2), so a locale change re-renders the same
+ * sentence in the new language. `as const` keeps each value a literal key so
+ * the two-overload `t()` still typechecks the lookup.
+ */
+const UNAVAILABLE_KEYS = {
 	disabled: {
-		title: "The console is switched off for this run",
-		detail:
-			"LOCAL_OPERATOR_UI_CONSOLE_HOST is set to 0 in this app's environment, so no terminal is started and no surface can be created. Removing that setting turns the console back on.",
+		title: "ui.console.unavailable.disabled.title",
+		detail: "ui.console.unavailable.disabled.detail",
 	},
 	pty_unavailable: {
-		title: "The console is not available in this app",
-		detail:
-			"Terminal support did not load for this run. Updating Local Operator restores it, and the app's log names the reason.",
+		title: "ui.console.unavailable.title",
+		detail: "ui.console.unavailable.pty.detail",
 	},
 	unknown: {
-		title: "The console is not available in this app",
-		detail:
-			"This window could not reach the console, and did not say why. The app's log carries the reason.",
+		title: "ui.console.unavailable.title",
+		detail: "ui.console.unavailable.unknown.detail",
 	},
-};
+} as const;
 
 export const ConsoleUnavailable: FC<{
 	reason: string | null;
 	detail: string | null;
 	message: string | null;
 }> = ({ reason, detail, message }) => {
-	const copy = UNAVAILABLE_COPY[reason ?? ""] ?? UNAVAILABLE_COPY.unknown;
+	/* An unknown reason string falls to the generic row; the cast is the reason
+	   the lookup can take main's own word rather than a closed union. */
+	const keys =
+		UNAVAILABLE_KEYS[reason as keyof typeof UNAVAILABLE_KEYS] ??
+		UNAVAILABLE_KEYS.unknown;
 	return (
 		<ConsoleNotice
 			icon={
@@ -142,8 +157,8 @@ export const ConsoleUnavailable: FC<{
 					className={cn("size-5 text-warning")}
 				/>
 			}
-			title={copy.title}
-			detail={copy.detail}
+			title={t(keys.title)}
+			detail={t(keys.detail)}
 			machine={detail ?? message ?? undefined}
 		/>
 	);
@@ -176,8 +191,8 @@ export const ConsoleCreateFailed: FC<{
 		icon={
 			<AlertTriangle aria-hidden="true" className={cn("size-5 text-warning")} />
 		}
-		title="The console could not start in this session"
-		detail="The console host is running, and refused to start a program for this conversation — so this is one attempt failing rather than the console being switched off. Trying again is the first thing to do; if it keeps failing, the line below is the host's own reason."
+		title={t("ui.console.create_failed.title")}
+		detail={t("ui.console.create_failed.detail")}
 		machine={message ?? undefined}
 		action={
 			<Button
@@ -187,7 +202,7 @@ export const ConsoleCreateFailed: FC<{
 				data-tour-tag="console-create-retry"
 			>
 				<RefreshCw aria-hidden="true" className={cn("size-4")} />
-				Try again
+				{t("ui.console.create_failed.retry")}
 			</Button>
 		}
 	/>
@@ -206,8 +221,8 @@ export const ConsoleEmpty: FC<{ onCreate: () => void; disabled?: boolean }> = ({
 				className={cn("size-5 text-ink-dim")}
 			/>
 		}
-		title="No console in this session"
-		detail="A console runs a program in this conversation's directory and keeps its output, whether or not this pane is open."
+		title={t("ui.console.empty.title")}
+		detail={t("ui.console.empty.detail")}
 		action={
 			<Button
 				variant="outline"
@@ -217,7 +232,7 @@ export const ConsoleEmpty: FC<{ onCreate: () => void; disabled?: boolean }> = ({
 				data-tour-tag="console-empty-create"
 			>
 				<Plus aria-hidden="true" className={cn("size-4")} />
-				New console
+				{t("ui.console.new")}
 			</Button>
 		}
 	/>
@@ -253,12 +268,12 @@ export const ConsoleEndedBar: FC<{
 		data-tour-tag="console-ended"
 	>
 		<span className={cn("text-ink-muted text-meta")}>
-			{live
-				? "This terminal has ended"
-				: "This terminal has ended and its history was restored"}
+			{t(live ? "ui.console.ended.live" : "ui.console.ended.restored")}
 		</span>
 		<span className={cn("text-ink-dim text-mono-sm")}>
-			{exitCode === null ? "exit code not observed" : `exit code ${exitCode}`}
+			{exitCode === null
+				? t("ui.console.ended.exit_unknown")
+				: t("ui.console.ended.exit_code", { code: String(exitCode) })}
 		</span>
 	</div>
 );
@@ -295,8 +310,6 @@ export const ConsoleSecureBar: FC = () => (
 		data-tour-tag="console-secure"
 	>
 		<Lock aria-hidden="true" className={cn("size-3.5 shrink-0 text-accent")} />
-		<span className={cn("text-ink text-meta")}>
-			Secure input is on: what you type here is not recorded.
-		</span>
+		<span className={cn("text-ink text-meta")}>{t("ui.console.secure")}</span>
 	</div>
 );

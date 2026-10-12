@@ -1,4 +1,5 @@
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
+import { t } from "@shared/i18n";
 import type { FC } from "react";
 
 /**
@@ -58,18 +59,20 @@ export const ConsoleCloseDialog: FC<ConsoleCloseDialogProps> = ({
 }) => (
 	<ConfirmationModal
 		open={open}
-		title="Close this terminal?"
+		title={t("ui.console.close.title")}
 		message={
 			<>
-				<p>This ends the program running here and removes its tab.</p>
-				{keepsOutput ? <p className="pt-2">Its output is kept.</p> : null}
+				<p>{t("ui.console.close.body")}</p>
+				{keepsOutput ? (
+					<p className="pt-2">{t("ui.console.close.kept")}</p>
+				) : null}
 				{refusal !== null ? (
 					<p className="pt-2 text-danger">{refusal}</p>
 				) : null}
 			</>
 		}
-		confirmText="Close terminal"
-		busyText="Closing…"
+		confirmText={t("ui.console.close.confirm")}
+		busyText={t("ui.console.close.busy")}
 		busy={busy}
 		isDangerous
 		focusCancelSignal={refusalSeq}
