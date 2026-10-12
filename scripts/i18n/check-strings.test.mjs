@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
+import { SyntaxKind } from "typescript/unstable/ast";
 
 import {
 	ALLOWLIST,
@@ -305,3 +306,564 @@ test("--update lowers a ceiling, and refuses every raise", () => {
 		rmSync(dir, { recursive: true, force: true });
 	}
 });
+
+/*
+ * THE ONBOARDING COPY'S CALL-SITE BINDING (UI slice 2, rounds R1-1/R2).
+ *
+ * These checks live HERE because this repository keeps the TypeScript
+ * compiler API's footprint in one file: `check-strings.mjs`'s docstring
+ * states it, and its test already holds the one live snapshot (`fixtureApi`)
+ * that this suite reuses - a second sync-API consumer in the desktop run
+ * correlates with that run's execution-ceiling timeouts (local-operator-ui
+ * #1002: the runs that completed carried one consumer; the two runs that
+ * added a second tripped the 35-minute job ceiling), so the binding
+ * contract joins the existing consumer instead of spawning another.
+ *
+ * WHAT IT BINDS, with the counterexamples that motivated each shape: every
+ * key must be the literal argument of a REAL `t()` call in its wiring file
+ * (comments cannot appear in an AST); plain messages take no second
+ * argument; parameterised messages bind the exact producer expressions;
+ * the greeting branches bind to the `oweGreeting` conditional's two arms;
+ * the acquisition call sits inside the element whose live `href` is
+ * `credential.url`; the modal's titles flow through `stepTitles`; the plan's
+ * block reasons sit in the `catalogueHasModels` / `catalogue.ready`
+ * branches. Value pins and the live-render layer stay in
+ * `scripts/onboarding-i18n-contract.test.mjs`.
+ */
+
+const ONBOARDING_BASE = "src/renderer/src/features/onboarding/components/";
+
+/** key -> [committed English, wiring file] (the values serve the param split). */
+const BINDING = [
+	[
+		"ui.onboarding.connect.intro",
+		"Local Operator needs an AI account to work. Radient is the easiest: one browser sign-in and nothing to paste. Already pay for ChatGPT or Claude? Sign in with that instead. Anything else is under More providers.",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.default_model.block.loading_models",
+		"Loading the model list…",
+		"steps/default-model-plan.ts",
+	],
+	[
+		"ui.onboarding.default_model.block.pick_a_model",
+		"Pick a model to continue.",
+		"steps/default-model-plan.ts",
+	],
+	[
+		"ui.onboarding.default_model.change",
+		"Change",
+		"steps/default-model-step.tsx",
+	],
+	[
+		"ui.onboarding.default_model.connected_pick",
+		"{brand} is connected. Pick the model new chats should use.",
+		"steps/default-model-step.tsx",
+	],
+	[
+		"ui.onboarding.default_model.empty_helper",
+		"No providers are connected yet. Go back a step to connect one.",
+		"steps/default-model-step.tsx",
+	],
+	[
+		"ui.onboarding.default_model.fallback_name",
+		"{brand}'s default model",
+		"steps/default-model-step.tsx",
+	],
+	[
+		"ui.onboarding.default_model.intro",
+		"New chats use this model. Every agent can pick a different one later.",
+		"steps/default-model-step.tsx",
+	],
+	[
+		"ui.onboarding.default_model.loading",
+		"Loading your models",
+		"steps/default-model-step.tsx",
+	],
+	[
+		"ui.onboarding.default_model.none_connected",
+		"No provider is connected yet. Go back to connect one, or skip setup and connect one later from the chat.",
+		"steps/default-model-step.tsx",
+	],
+	[
+		"ui.onboarding.default_model.nothing_saved",
+		"Nothing will be saved: your Local Operator can't list {brand} models yet, so setup finishes without a default model. Pick one in Settings before your first message.",
+		"steps/default-model-step.tsx",
+	],
+	[
+		"ui.onboarding.default_model.provider_fallback",
+		"this provider's",
+		"steps/default-model-step.tsx",
+	],
+	[
+		"ui.onboarding.default_model.tag.applied",
+		"your default",
+		"steps/default-model-step.tsx",
+	],
+	[
+		"ui.onboarding.default_model.tag.suggested",
+		"suggested for your account",
+		"steps/default-model-step.tsx",
+	],
+	["ui.onboarding.dialog.setup", "Setup", "onboarding-dialog.tsx"],
+	[
+		"ui.onboarding.extras.greeting_done",
+		"{name} is your chief of staff. Her conversation is where you pick up with her, and it is one keystroke away in the sidebar. You can also skip straight to a new chat.",
+		"steps/extras-step.tsx",
+	],
+	[
+		"ui.onboarding.extras.greeting_owed",
+		"{name} is your chief of staff. She will say hello first, ask what to call you and what you would like help with, and show you around. You can also skip straight to a new chat.",
+		"steps/extras-step.tsx",
+	],
+	[
+		"ui.onboarding.extras.next_meet",
+		"Next: meet {name}",
+		"steps/extras-step.tsx",
+	],
+	["ui.onboarding.modal.action.back", "Back", "onboarding-modal.tsx"],
+	["ui.onboarding.modal.action.continue", "Continue", "onboarding-modal.tsx"],
+	["ui.onboarding.modal.action.finish", "Finish", "onboarding-modal.tsx"],
+	["ui.onboarding.modal.action.meet", "Meet {name}", "onboarding-modal.tsx"],
+	["ui.onboarding.modal.action.skip", "Skip", "onboarding-modal.tsx"],
+	[
+		"ui.onboarding.modal.action.skip_for_now",
+		"Skip for now",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.modal.action.skip_to_chat",
+		"Skip to chat",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.modal.error.aida_open_failed",
+		"{name}'s conversation could not be opened, so you are in a new chat instead.",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.modal.title.connect_provider",
+		"Connect an AI account",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.modal.title.default_model",
+		"Your default model",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.modal.title.extras",
+		"Web search (optional)",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.modal.title.extras_with_name",
+		"Web search, then meet {name}",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.modal.title.fallback",
+		"First-time setup",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.search.each_key_saved",
+		"Each key is saved on your device as soon as you leave its field.",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.intro",
+		"Agents can look things up while they work — today's prices, this week's news — instead of relying on what the model already knows.",
+		"steps/search-api-step.tsx",
+	],
+	["ui.onboarding.search.mode.free", "Free", "steps/search-api-step.tsx"],
+	[
+		"ui.onboarding.search.mode.free_detail",
+		"Uses a rotating pool of free providers — DuckDuckGo, Tavily's free tier, Exa and Parallel. No key needed; the pool is shared, so searches can be slower at busy times.",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.mode.keys",
+		"Add API keys",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.mode.keys_detail",
+		"Bring your own keys for the search providers you use.",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.mode.label",
+		"Search setup",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.recommended",
+		"Recommended",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.row.get_your",
+		"Get your {name}",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.row.not_saved",
+		"Not saved — {message}",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.row.placeholder",
+		"Paste your API key",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.row.save_failed",
+		"The key could not be saved.",
+		"steps/search-api-step.tsx",
+	],
+	["ui.onboarding.search.row.saved", "Saved", "steps/search-api-step.tsx"],
+	[
+		"ui.onboarding.search.row.saving",
+		"Saving {name}",
+		"steps/search-api-step.tsx",
+	],
+];
+/**
+ * key -> [[parameter name, exact producer expression source]] for the 12
+ * parameterised messages. The expressions are the committed call-site
+ * producers, compared as AST slices with whitespace normalised: a comment
+ * decoy cannot satisfy a node, and a same-shape wrong producer (a different
+ * `brandOf(...)` argument) is a different node.
+ */
+
+const PARAM_SITES = [
+	["ui.onboarding.modal.title.extras_with_name", [["name", "aidaName"]]],
+	["ui.onboarding.modal.action.meet", [["name", "aidaName"]]],
+	["ui.onboarding.modal.error.aida_open_failed", [["name", "aidaName"]]],
+	["ui.onboarding.extras.next_meet", [["name", "aidaName"]]],
+	["ui.onboarding.extras.greeting_owed", [["name", "aidaName"]]],
+	["ui.onboarding.extras.greeting_done", [["name", "aidaName"]]],
+	[
+		"ui.onboarding.default_model.connected_pick",
+		[["brand", "brandOf(choice.provider)"]],
+	],
+	[
+		"ui.onboarding.default_model.fallback_name",
+		[["brand", "choice.provider ? brandOf(choice.provider) : choice.hosting"]],
+	],
+	[
+		"ui.onboarding.default_model.nothing_saved",
+		[
+			[
+				"brand",
+				'shownRow ? brandOf(shownRow) : t("ui.onboarding.default_model.provider_fallback")',
+			],
+		],
+	],
+	["ui.onboarding.search.row.not_saved", [["message", "message"]]],
+	["ui.onboarding.search.row.saving", [["name", "credential.name"]]],
+	["ui.onboarding.search.row.get_your", [["name", "credential.name"]]],
+];
+
+/** The three titles that flow through the modal's `stepTitles` table. */
+const TABLE_KEYS = [
+	"ui.onboarding.modal.title.connect_provider",
+	"ui.onboarding.modal.title.default_model",
+	"ui.onboarding.modal.title.extras",
+];
+
+const PLAN_KEYS = {
+	"ui.onboarding.default_model.block.pick_a_model": "PICK_A_MODEL_KEY",
+	"ui.onboarding.default_model.block.loading_models": "LOADING_MODELS_KEY",
+};
+
+const astFiles = [...new Set(BINDING.map(([, , file]) => file))];
+
+const bval = (key) => BINDING.find(([k]) => k === key)[1];
+const slug = (s) => s.replace(/\s+/g, "").replace(/,}/g, "}");
+
+const bslice = (sf, node) => sf.text.slice(node.getStart(sf), node.getEnd());
+
+function bwalk(node, visit) {
+	if (!node) return;
+	visit(node);
+	node.forEachChild((child) => bwalk(child, visit));
+}
+
+function bsfOf(file) {
+	const abs = join(REPO, ONBOARDING_BASE, file);
+	return fixtureApi.snapshot
+		.getDefaultProjectForFile(abs)
+		?.program.getSourceFile(abs);
+}
+
+function btCalls(sf) {
+	const calls = [];
+	bwalk(sf, (node) => {
+		if (
+			node.kind === SyntaxKind.CallExpression &&
+			node.expression?.kind === SyntaxKind.Identifier &&
+			node.expression.text === "t" &&
+			node.arguments?.[0]?.kind === SyntaxKind.StringLiteral
+		) {
+			calls.push({ key: node.arguments[0].text, call: node });
+		}
+	});
+	return calls;
+}
+
+test("every key is the literal argument of a real t() call (comments cannot satisfy this)", () => {
+	for (const file of astFiles) {
+		const sf = bsfOf(file);
+		assert.ok(sf, `${file}: not parsed by the snapshot`);
+		const live = new Set(btCalls(sf).map(({ key }) => key));
+		const expected = BINDING.filter(
+			([key, , f]) =>
+				f === file && !(key in PLAN_KEYS) && !TABLE_KEYS.includes(key),
+		).map(([key]) => key);
+		assert.deepEqual(
+			[...live].sort(),
+			expected.slice().sort(),
+			`${file}: the live t() key set moved (a key moved into a comment, or an untracked call appeared)`,
+		);
+	}
+});
+
+test("plain messages take no second argument; parameterised messages bind exact producers", () => {
+	const byFile = new Map();
+	for (const [key, expected, file] of BINDING) {
+		if (key in PLAN_KEYS || TABLE_KEYS.includes(key)) continue;
+		if (!byFile.has(file)) byFile.set(file, bsfOf(file));
+		const call = btCalls(byFile.get(file)).find((c) => c.key === key);
+		assert.ok(call, `${key}: no live t() call`);
+		const params = PARAM_SITES.find(([k]) => k === key);
+		if (!params) {
+			assert.equal(
+				call.call.arguments.length,
+				1,
+				`${key}: a plain message grew a second argument`,
+			);
+			assert.ok(
+				/^\{\w+\}/.test(expected) === false && !expected.includes("{"),
+				`${key}: a plain expected sentence must not carry placeholders`,
+			);
+			continue;
+		}
+		const second = call.call.arguments[1];
+		assert.ok(second, `${key}: the parameter object is missing`);
+		assert.equal(
+			second.kind,
+			SyntaxKind.ObjectLiteralExpression,
+			`${key}: the second argument is not an object literal`,
+		);
+		const sf = byFile.get(file);
+		const names = second.properties.map((p) => p.name?.text);
+		assert.deepEqual(
+			names.slice().sort(),
+			params[1].map(([name]) => name).sort(),
+			`${key}: the parameter names moved`,
+		);
+		for (const [name, expectedExpr] of params[1]) {
+			const prop = second.properties.find((p) => p.name?.text === name);
+			const actual = slug(bslice(sf, prop.initializer ?? prop.name));
+			assert.equal(
+				actual,
+				slug(expectedExpr),
+				`${key}: ${name} is no longer produced by ${expectedExpr}`,
+			);
+		}
+	}
+});
+
+test("the modal's titles flow through the stepTitles table and the plan's blocks through its branches", () => {
+	// stepTitles: the table's values ARE the three committed keys.
+	const modal = bsfOf("onboarding-modal.tsx");
+	let table = null;
+	bwalk(modal, (node) => {
+		if (
+			node.kind === SyntaxKind.VariableDeclaration &&
+			node.name?.text === "stepTitles"
+		) {
+			let init = node.initializer;
+			for (
+				let i = 0;
+				i < 3 &&
+				init &&
+				init.kind !== SyntaxKind.ObjectLiteralExpression &&
+				init.expression;
+				i += 1
+			)
+				init = init.expression;
+			table = init;
+		}
+	});
+	assert.ok(table, "the stepTitles table is gone");
+	assert.deepEqual(
+		table.properties.map((p) => p.initializer?.text).sort(),
+		TABLE_KEYS.slice().sort(),
+		"the stepTitles table no longer carries the committed keys",
+	);
+	assert.ok(
+		btCalls(modal).length >= 10,
+		"the modal's live t() calls thinned out",
+	);
+	let consumes = false;
+	bwalk(modal, (node) => {
+		if (
+			node.kind === SyntaxKind.CallExpression &&
+			node.expression?.kind === SyntaxKind.Identifier &&
+			node.expression.text === "t" &&
+			node.arguments?.[0]?.kind !== SyntaxKind.StringLiteral &&
+			slug(bslice(modal, node.arguments?.[0] ?? node)) === "stepTitles[step]"
+		)
+			consumes = true;
+	});
+	assert.ok(
+		consumes,
+		"the modal stopped rendering titles through t(stepTitles[step])",
+	);
+
+	// The plan: constant initialisers + branch-scoped consumption.
+	const plan = bsfOf("steps/default-model-plan.ts");
+	assert.ok(plan, "the plan source did not resolve in the snapshot");
+	const consts = new Map();
+	bwalk(plan, (node) => {
+		if (
+			node.kind !== SyntaxKind.VariableDeclaration ||
+			!node.name?.text?.endsWith("_KEY")
+		)
+			return;
+		/*
+		 * The initialisers are `"key" as const`: unwrap the assertion - the
+		 * committed identity is the STRING, and `as const` is why the value can
+		 * flow into `t()` with its literals intact.
+		 */
+		let init = node.initializer;
+		while (
+			init &&
+			(init.kind === SyntaxKind.AsExpression ||
+				init.kind === SyntaxKind.SatisfiesExpression)
+		)
+			init = init.expression;
+		if (init?.kind === SyntaxKind.StringLiteral)
+			consts.set(node.name.text, init.text);
+	});
+	for (const [key, constName] of Object.entries(PLAN_KEYS)) {
+		assert.equal(
+			consts.get(constName),
+			key,
+			`${constName} no longer names ${key}`,
+		);
+	}
+	let pickInBranch = false;
+	let loadingInBranch = false;
+	bwalk(plan, (node) => {
+		if (
+			node.kind === SyntaxKind.ConditionalExpression &&
+			node.condition?.kind === SyntaxKind.Identifier &&
+			node.condition.text === "catalogueHasModels"
+		) {
+			node.whenTrue &&
+				bwalk(node.whenTrue, (n) => {
+					if (
+						n.kind === SyntaxKind.CallExpression &&
+						n.expression?.text === "t" &&
+						n.arguments?.[0]?.kind === SyntaxKind.Identifier &&
+						n.arguments[0].text === "PICK_A_MODEL_KEY"
+					)
+						pickInBranch = true;
+				});
+			node.whenFalse &&
+				bwalk(node.whenFalse, (n) => {
+					if (
+						n.kind === SyntaxKind.ConditionalExpression &&
+						n.condition?.kind === SyntaxKind.PropertyAccessExpression &&
+						slug(bslice(plan, n.condition)) === "catalogue.ready"
+					)
+						n.whenFalse &&
+							bwalk(n.whenFalse, (m) => {
+								if (
+									m.kind === SyntaxKind.CallExpression &&
+									m.expression?.text === "t" &&
+									m.arguments?.[0]?.kind === SyntaxKind.Identifier &&
+									m.arguments[0].text === "LOADING_MODELS_KEY"
+								)
+									loadingInBranch = true;
+							});
+				});
+		}
+	});
+	assert.ok(
+		pickInBranch,
+		"PICK_A_MODEL_KEY left the catalogueHasModels branch",
+	);
+	assert.ok(loadingInBranch, "LOADING_MODELS_KEY left the not-ready branch");
+
+	// The greeting branches: owed in the conditional's true arm, done in false.
+	const extras = bsfOf("steps/extras-step.tsx");
+	let owedTrue = false;
+	let doneFalse = false;
+	bwalk(extras, (node) => {
+		if (
+			node.kind === SyntaxKind.ConditionalExpression &&
+			node.condition?.kind === SyntaxKind.Identifier &&
+			node.condition.text === "oweGreeting"
+		) {
+			owedTrue = tCallsIn(node.whenTrue).includes(
+				"ui.onboarding.extras.greeting_owed",
+			);
+			doneFalse = tCallsIn(node.whenFalse).includes(
+				"ui.onboarding.extras.greeting_done",
+			);
+		}
+	});
+	assert.ok(owedTrue, "the owed greeting left the oweGreeting true arm");
+	assert.ok(doneFalse, "the delivered greeting left the oweGreeting false arm");
+
+	// The acquisition call sits inside the element whose href is credential.url.
+	const search = bsfOf("steps/search-api-step.tsx");
+	let anchorBound = false;
+	bwalk(search, (node) => {
+		if (
+			node.kind !== SyntaxKind.JsxElement ||
+			!node.openingElement?.attributes?.properties
+		)
+			return;
+		const href = node.openingElement.attributes.properties.find(
+			(a) => a.kind === SyntaxKind.JsxAttribute && a.name?.text === "href",
+		);
+		if (!href) return;
+		const expr = href.initializer?.expression;
+		if (!expr || slug(bslice(search, expr)) !== "credential.url") return;
+		let inside = false;
+		bwalk(node, (n) => {
+			if (
+				n.kind === SyntaxKind.CallExpression &&
+				n.expression?.text === "t" &&
+				n.arguments?.[0]?.text === "ui.onboarding.search.row.get_your"
+			)
+				inside = true;
+		});
+		if (inside) anchorBound = true;
+	});
+	assert.ok(
+		anchorBound,
+		"the get-your call is no longer inside an element whose live href is credential.url",
+	);
+});
+
+/** The t() keys appearing within a node's subtree. */
+function tCallsIn(node) {
+	const keys = [];
+	bwalk(node, (n) => {
+		if (
+			n.kind === SyntaxKind.CallExpression &&
+			n.expression?.kind === SyntaxKind.Identifier &&
+			n.expression.text === "t" &&
+			n.arguments?.[0]?.kind === SyntaxKind.StringLiteral
+		)
+			keys.push(n.arguments[0].text);
+	});
+	return keys;
+}
