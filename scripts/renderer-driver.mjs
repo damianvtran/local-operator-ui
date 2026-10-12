@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|none>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -165,6 +165,15 @@
  *                          platform sentence on the failed one; `before`
  *                          records the base tree's rendering of the SAME seeded
  *                          calls - the ledger's own tool rows - instead
+ *   --copy-expect <after|before>  (with --scene image-copy) which half of the
+ *                          pair this run records: `after` (the default) asserts
+ *                          that BOTH seeded pictures copy - each lands on the
+ *                          clipboard as a PNG at its source's own dimensions
+ *                          - by reading the clipboard back from main after a
+ *                          real click; `before` records the base tree, where
+ *                          the same JPEG copy is refused by Chromium's
+ *                          one-writable-image-type clipboard (the failure
+ *                          toast, the clipboard unchanged)
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -221,6 +230,14 @@ import { basename, join, resolve, sep } from "node:path";
 import sharp from "sharp";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { EVIDENCE_TZ } from "./evidence-tz.mjs";
+import {
+	COPY_FIXTURE_SESSION,
+	COPY_JPEG_CALL,
+	COPY_JPEG_SIZE,
+	COPY_PNG_BYTES,
+	COPY_PNG_CALL,
+	COPY_PNG_SIZE,
+} from "./image-copy-fixture.mjs";
 import {
 	IMAGEGEN_CALL_CANCELLED,
 	IMAGEGEN_CALL_DONE,
@@ -607,6 +624,18 @@ const ROW_SPACE_EXPECT = argValue("--row-space-expect", "after");
  * does not know is refused rather than defaulted, like every flag above.
  */
 const IMAGEGEN_EXPECT = argValue("--imagegen-expect", "after");
+/**
+ * WHICH HALF OF THE COPY PAIR THIS RUN IS (with --scene image-copy).
+ *
+ * `after` (the default) asserts the fixed tree: both the JPEG and the PNG copy
+ * through the clipboard, each as a PNG at its source's own dimensions.
+ * `before` records the base tree: the same JPEG copy is REFUSED (Chromium's
+ * sanitized clipboard write takes only `image/png` among image types) with the
+ * failure toast, and the clipboard still holds exactly what it held before the
+ * press. A value the scene does not know is refused rather than defaulted, like
+ * every flag above.
+ */
+const COPY_EXPECT = argValue("--copy-expect", "after");
 /**
  * WHICH HALF OF THE RECENTS PAIR THIS RUN IS (with --scene palette-recents).
  *
@@ -13130,6 +13159,619 @@ async function sceneImageGenCard(cdp) {
 		await wait(450);
 		await parkPointer(cdp);
 		await captureSettled(cdp, `imagegen-condensed-${suffix}`);
+	}
+}
+
+/**
+ * `image-copy`: `Copy image` pressed as a REAL click, with the clipboard it
+ * wrote read back from MAIN.
+ *
+ * ## What this scene is for
+ *
+ * The operator's report (2026-10-11): `Copy image` on a conversation picture
+ * raised "Failed to copy image" - `[renderer] Failed to copy image:  [object
+ * DOMException]` six times in the app log, on a session holding 19 JPEGs. The
+ * root cause is Chromium's sanitized async clipboard write accepting ONLY
+ * `text/plain`, `text/html` and `image/png`: the menu passed the blob's own
+ * MIME, so every non-PNG copy rejected with `Type image/jpeg not supported on
+ * write.` while PNGs went through. The fix encodes anything non-PNG to a PNG
+ * (`pngForClipboard`); this scene is the half no unit test can carry - the
+ * menu's item pressed with TRUSTED input (a synthetic dispatch carries no
+ * transient activation, and the write would then fail with "Write permission
+ * denied" for a reason that is not the bug), and the clipboard read back from
+ * main (`clipboard.has`/`read()`/`item.getType` - Electron 44's W3C-style
+ * surface; there is no `readImage`).
+ *
+ * ## The halves, and which claim each is in
+ *
+ * `--copy-expect before` (the base tree) asserts the JPEG copy FAILS the way
+ * the operator saw: the failure toast, and the clipboard carrying exactly what
+ * it carried before the press. That refusal's toast is the app's deduplicated
+ * error channel (`showErrorToast`: one shot of a sentence per 5s window), so
+ * the second palette's press waits the cooldown out rather than reading a
+ * suppressed toast as a bug - the wait is in the run's log.
+ *
+ * `--copy-expect after` (the fixed tree) asserts BOTH pictures copy: the JPEG
+ * lands as a PNG at the source's own dimensions, and the PNG as a PNG at ITS
+ * own (240x160) - the pass-through half the fix must not disturb. The OS
+ * round trip re-encodes the bytes (measured: 1103 read back against the
+ * fixture's 981, one digest on both palettes), so byte-exactness is claimed
+ * where it is answerable - the ClipboardItem (`scripts/chat-image-expand.test.mjs`)
+ * - and the scene claims type + dimensions. The press-to-toast duration is
+ * recorded - the click's transient activation is what `write` spends, so a
+ * slow transcode would show up there.
+ *
+ * ## What it cannot prove, stated so no report implies otherwise
+ *
+ * - The clipboard is the MACHINE's own; a run writes the operator's real
+ *   clipboard (that is what "copied" means) and restores nothing. The before
+ *   half's "unchanged" claim compares the image/png entry only - the one type
+ *   this path can write - against the state the run found.
+ * - The click is CDP input: trusted for activation, still synthetic - no frame
+ *   says "a hand finds this".
+ * - The clipboards are read, not photographed (an OS clipboard has no on-screen
+ *   surface); the frames carry the toast and the transcript.
+ *
+ * ## The command (fixture daemon, then the driver; `$RIG` is a scratch root)
+ *
+ *   node scripts/image-copy-fixture.mjs "$RIG/config"
+ *   printf 'values:\n  hosting: test\n  model_name: mock-model\n' > "$RIG/config/config.yml"
+ *   openssl rand -hex 32 > "$RIG/token"
+ *   LOCAL_OPERATOR_CONFIG_DIR="$RIG/config" LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
+ *     LOCAL_OPERATOR_NO_NOTIFICATIONS=1 \
+ *     local-operator serve --host 127.0.0.1 --port 8080 --hosting test --model mock-model &
+ *   LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
+ *     node scripts/renderer-driver.mjs --scene image-copy \
+ *     --backend "http://127.0.0.1:8080" --backend-records "$RIG/config/run/serve" \
+ *     --seed-onboarding-complete --copy-expect <after|before> --out "$RIG/frames"
+ *
+ * The renderer must have been BUILT against the same URL
+ * (`VITE_LOCAL_OPERATOR_API_URL`); the run asserts the app's own connection.
+ * The BEFORE halves run these same scene bytes against a throwaway worktree at
+ * `origin/main` carrying only this change's `scripts/` files, built with the
+ * same command.
+ *
+ * WHAT IT USES THAT IS NOT THE PRODUCT: `Emulation.setFocusEmulationEnabled`
+ * over CDP, because a never-shown window cannot be focused and Chromium refuses
+ * a clipboard write from a document that does not read as focused ("Document is
+ * not focused") - the sanctioned alternative the window-mode policy names, and
+ * the facts check below proves the window stayed hidden.
+ */
+async function sceneImageCopy(app, cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	const after = COPY_EXPECT === "after";
+	const evaluate = (expression) => cdp.evaluate(expression);
+
+	/*
+	 * The two sentences the assertions read, read from the COMPONENT that owns
+	 * them: a hardcoded copy would keep passing after a rename, and the failure
+	 * sentence is half of the before half's claim.
+	 */
+	const menuSource = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/chat/components/image-actions-menu.tsx",
+		),
+		"utf8",
+	);
+	const toastSentence = (fn) => {
+		const matches = [
+			...menuSource.matchAll(new RegExp(`${fn}\\("([^"]+)"\\)`, "g")),
+		];
+		if (matches.length !== 1) {
+			throw new Error(
+				`image-actions-menu.tsx carries ${matches.length} literal ${fn}("...") call(s); the image-copy scene reads exactly one`,
+			);
+		}
+		return matches[0][1];
+	};
+	const copiedSentence = toastSentence("showSuccessToast");
+	const failedSentence = toastSentence("showErrorToast");
+
+	/*
+	 * The error channel's own cooldown, read from the module that owns it: the
+	 * refusal is DEDUPLICATED per window (`showErrorToast`,
+	 * `DEFAULT_ERROR_COOLDOWN`), so the before half's second press must come
+	 * after it or it reads a suppressed toast as a bug. Reading the constant
+	 * rather than hardcoding keeps the wait honest if the policy is retuned.
+	 */
+	const toastManagerSource = readFileSync(
+		join(ROOT, "src/renderer/src/shared/utils/toast-manager.ts"),
+		"utf8",
+	);
+	const cooldownMs = Number(
+		/DEFAULT_ERROR_COOLDOWN = (\d+)/.exec(toastManagerSource)?.[1],
+	);
+	if (!Number.isFinite(cooldownMs) || cooldownMs <= 0) {
+		throw new Error(
+			"toast-manager.ts no longer declares DEFAULT_ERROR_COOLDOWN as an integer; the before half's spacing reads it",
+		);
+	}
+
+	/*
+	 * The expected PNG bytes, from the SAME module the fixture wrote: the
+	 * byte-exact half of the after claim is "the clipboard holds what the store
+	 * held", and hashing anything but the fixture's own buffer would be a second
+	 * source of truth.
+	 */
+	const pngSha256 = createHash("sha256").update(COPY_PNG_BYTES).digest("hex");
+
+	/*
+	 * See the scene docstring: the sanctioned alternative to focusing a window,
+	 * named in the log because the write below depends on it.
+	 */
+	await cdp.send("Emulation.setFocusEmulationEnabled", { enabled: true });
+	const emulated = await evaluate(
+		"({ hasFocus: document.hasFocus(), visibility: document.visibilityState })",
+	);
+	note(
+		"focus emulation",
+		`Emulation.setFocusEmulationEnabled is ON over CDP (the window is never shown): document.hasFocus()=${emulated.hasFocus} visibilityState=${emulated.visibility}`,
+	);
+	check(
+		"the run reads as focused through CDP focus emulation (the window is still never shown)",
+		emulated.hasFocus === true,
+		`document.hasFocus()=${emulated.hasFocus} visibilityState=${emulated.visibility}`,
+	);
+
+	/*
+	 * THE CLIPBOARD, READ FROM MAIN. `navigator.clipboard.read()` in the page
+	 * would be reading through the same permission the write needs; main's
+	 * `clipboard` module is the OS surface the operator's paste would land on.
+	 * The shape is the one measured on this Electron (44.3.0): `has("image/png")`
+	 * and `read()` -> the item whose `types` include `image/png` ->
+	 * `getType("image/png")` -> bytes; the PNG IHDR carries the dimensions, and
+	 * the sha256 is the byte-exactness instrument.
+	 */
+	const main = await CdpClient.attachNode(app.inspectPort);
+	try {
+		const clipboardState = () =>
+			main.evaluate(`(async () => {
+				const electronRequire = process.mainModule?.require ?? globalThis.require;
+				if (typeof electronRequire !== "function") {
+					return { error: "main exposes no require" };
+				}
+				const clipboard = electronRequire("electron").clipboard;
+				const crypto = electronRequire("node:crypto");
+				const out = {
+					has: null,
+					length: null,
+					sha256: null,
+					signature: null,
+					width: null,
+					height: null,
+					readError: null,
+				};
+				try {
+					out.has = await clipboard.has("image/png");
+				} catch (error) {
+					out.has = "ERR " + error.message;
+				}
+				try {
+					const items = await clipboard.read();
+					const item = Array.isArray(items)
+						? items.find(
+								(candidate) =>
+									Array.isArray(candidate.types) &&
+									candidate.types.includes("image/png"),
+							)
+						: null;
+					if (item) {
+						const blob = await item.getType("image/png");
+						const bytes = Buffer.from(await blob.arrayBuffer());
+						out.length = bytes.length;
+						out.sha256 = crypto
+							.createHash("sha256")
+							.update(bytes)
+							.digest("hex");
+						out.signature = bytes.subarray(0, 4).toString("hex");
+						out.width = bytes.readUInt32BE(16);
+						out.height = bytes.readUInt32BE(20);
+					}
+				} catch (error) {
+					out.readError = String((error && error.message) || error);
+				}
+				return out;
+			})()`);
+
+		/* ---------------------------------------------------------------- open the
+		 * fixture conversation, the way the imagegen scene opens its own. */
+		await verb(cdp, "navigate", "/chat");
+		const listed = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('[data-session-row="${COPY_FIXTURE_SESSION}"]'))`,
+			30_000,
+		);
+		check(
+			"the fixture conversation is listed by the daemon this run owns",
+			listed.ok,
+			`no row for ${COPY_FIXTURE_SESSION} after ${listed.waitedMs}ms`,
+			`row listed after ${listed.waitedMs}ms`,
+		);
+		await verb(cdp, "press", {
+			selector: `[data-session-row="${COPY_FIXTURE_SESSION}"] [data-chat-row]`,
+		});
+		const hydrated = await waitForCondition(
+			cdp,
+			`document.querySelectorAll("[data-record-id]").length > 0`,
+			30_000,
+		);
+		check(
+			"the conversation's rows hydrate from the daemon this run owns",
+			hydrated.ok,
+			`no rows after ${hydrated.waitedMs}ms`,
+			`rows mounted after ${hydrated.waitedMs}ms`,
+		);
+
+		/** The record selector both pictures are addressed by. */
+		const rowSelector = (callId) =>
+			`[data-record-id="tool:${callId}"]:not([data-turn-summary])`;
+
+		/**
+		 * Bring one call's row on screen, opening the turn's own disclosure if it
+		 * is collapsed - the imagegen scene's helper, same reasoning: a settled
+		 * turn's rows are not in the DOM until its bar is pressed.
+		 */
+		const reveal = async (callId) => {
+			const selector = rowSelector(callId);
+			const query = JSON.stringify(selector);
+			if (!(await evaluate(`Boolean(document.querySelector(${query}))`))) {
+				const pressed = await verb(cdp, "press", {
+					selector: `[data-turn-summary][data-run-ids~="tool:${callId}"] button[aria-expanded]`,
+				}).catch((error) => ({ error: String(error) }));
+				note(
+					`the condensed bar naming ${callId} was pressed to reveal its rows`,
+					JSON.stringify(pressed).slice(0, 240),
+				);
+			}
+			const visible = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector(${query}))`,
+				10_000,
+			);
+			await evaluate(
+				`(() => { const row = document.querySelector(${query}); if (row) row.scrollIntoView({ block: "center" }); return Boolean(row); })()`,
+			);
+			await wait(450);
+			return visible.ok;
+		};
+
+		/**
+		 * One picture, decoded over the attachment route at its own size. The
+		 * natural size IS the check: it says the bytes on screen are the fixture's
+		 * (320x200 for the JPEG, 240x160 for the PNG), not a placeholder.
+		 */
+		const pictureStanding = async (callId, expected, theme) => {
+			const reading = await waitForCondition(
+				cdp,
+				`(() => {
+					const row = document.querySelector(${JSON.stringify(rowSelector(callId))});
+					if (row === null) return null;
+					const img = row.querySelector("img");
+					if (img === null || !img.complete || img.naturalWidth === 0) return null;
+					return img.naturalWidth + "x" + img.naturalHeight;
+				})()`,
+				15_000,
+			);
+			check(
+				`the ${callId} picture decoded over the attachment route at its own size (${theme})`,
+				reading.ok && reading.last === `${expected.width}x${expected.height}`,
+				`no decoded picture after ${reading.waitedMs}ms: ${JSON.stringify(reading.last)}`,
+				String(reading.last),
+			);
+		};
+
+		/**
+		 * The toast on screen whose text contains `sentence`, or the last text
+		 * seen when the wait ran out.
+		 *
+		 * A bespoke poll rather than `waitForCondition` because the reading that
+		 * matters is the TEXT at the moment it arrived, not a boolean: a wrong
+		 * sentence has to fail the check as itself.
+		 */
+		const waitForToastText = async (sentence, timeoutMs) => {
+			const started = Date.now();
+			let last = null;
+			for (;;) {
+				last = await toastText(cdp).catch(() => null);
+				if (typeof last === "string" && last.includes(sentence)) {
+					return { ok: true, text: last, waitedMs: Date.now() - started };
+				}
+				if (Date.now() - started > timeoutMs) {
+					return { ok: false, text: last, waitedMs: Date.now() - started };
+				}
+				await wait(100);
+			}
+		};
+
+		/**
+		 * Press a control with the REAL pointer once its box has STOPPED MOVING
+		 * and its own hit test reads green.
+		 *
+		 * WHY THIS EXISTS, found while building this scene (2026-10-12): pressing
+		 * the menu's item the moment the DOM first held one MISSED on the first
+		 * opening - the press landed where the item had been when it was
+		 * measured, while Radix was still moving the freshly-mounted content.
+		 * The miss is silent and then poison: no toast, the menu stays open, and
+		 * every later step in that palette photographs a page the menu's own
+		 * modal layer is eating (the next hover reads `pointer-events: none`
+		 * over the picture, so its reveal check fails and its menu never opens).
+		 * So the press waits until two consecutive measurements agree to the
+		 * pixel AND the box reports itself hit-testable - the same "settled" bar
+		 * `captureSettled` holds frames to, applied to a target - and only then
+		 * dispatches through the input pipeline, which is the trusted input the
+		 * clipboard write's transient activation needs (`clickAt`'s docstring
+		 * says why a synthetic dispatch cannot stand in for it).
+		 */
+		const pressWhenSettled = async (cdp, selector, attempts = 80) => {
+			let previous = null;
+			for (let attempt = 1; attempt <= attempts; attempt += 1) {
+				const reading = await verb(cdp, "measure", selector);
+				const settled =
+					reading.hitTest === true &&
+					reading.inViewport === true &&
+					previous !== null &&
+					Math.abs(reading.centre.x - previous.centre.x) <= 1 &&
+					Math.abs(reading.centre.y - previous.centre.y) <= 1;
+				previous = reading;
+				if (settled) {
+					const { x, y } = reading.centre;
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseMoved",
+						x,
+						y,
+						button: "none",
+						buttons: 0,
+					});
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mousePressed",
+						x,
+						y,
+						button: "left",
+						buttons: 1,
+						clickCount: 1,
+					});
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseReleased",
+						x,
+						y,
+						button: "left",
+						buttons: 0,
+						clickCount: 1,
+					});
+					return reading;
+				}
+				await wait(60);
+			}
+			throw new Error(
+				`nothing settled at ${selector} within ${attempts} measurements`,
+			);
+		};
+
+		/**
+		 * Press `Copy image` on one picture, end to end: hover the picture (the
+		 * wrapper's `group-hover` reveal needs the REAL pointer - compositor
+		 * state, not an event), press the trigger, press the item, wait for the
+		 * expected sentence, then read the clipboard back.
+		 *
+		 * Returns the toast reading, the press-to-toast duration and the
+		 * clipboard on both sides of the press.
+		 */
+		const pressCopy = async (callId, theme) => {
+			await hoverOver(cdp, `${rowSelector(callId)} img`);
+			const revealed = await waitForCondition(
+				cdp,
+				`(() => {
+					const wrapper = document.querySelector(${JSON.stringify(`${rowSelector(callId)} .file-actions-menu`)});
+					if (wrapper === null) return null;
+					const style = getComputedStyle(wrapper);
+					return style.pointerEvents === "auto" && style.opacity === "1";
+				})()`,
+				5_000,
+			);
+			check(
+				`the pointer over the ${callId} picture reveals its menu (${theme})`,
+				revealed.ok,
+				`trigger not revealed after ${revealed.waitedMs}ms`,
+				"wrapper pointer-events auto, opacity 1",
+			);
+			await pressWhenSettled(
+				cdp,
+				`${rowSelector(callId)} .file-actions-menu button`,
+			);
+			const menu = await waitForCondition(
+				cdp,
+				`(() => {
+					const items = [...document.querySelectorAll('[role="menuitem"]')];
+					return items.length === 1 && items[0].textContent.includes("Copy image")
+						? items[0].textContent
+						: null;
+				})()`,
+				5_000,
+			);
+			check(
+				`the ${callId} menu is open with its one Copy image entry (${theme})`,
+				menu.ok,
+				`no single Copy image item after ${menu.waitedMs}ms`,
+				JSON.stringify(menu.last),
+			);
+			const clipboardBefore = await clipboardState();
+			const started = Date.now();
+			await pressWhenSettled(cdp, '[role="menuitem"]');
+			const toast = await waitForToastText(
+				after ? copiedSentence : failedSentence,
+				8_000,
+			);
+			const elapsedMs = Date.now() - started;
+			const clipboardAfter = await clipboardState();
+			return { toast, elapsedMs, clipboardBefore, clipboardAfter };
+		};
+
+		/*
+		 * Before the first press: a toast-free screen, so a toast this run did not
+		 * raise cannot be read as its own (the driver's other scenes' rule).
+		 */
+		const clearance = await waitForNoToasts(cdp, 20_000);
+		if (clearance.timedOut) {
+			note(
+				"a toast was on screen before the first press",
+				`the screen never went toast-free inside ${clearance.waitedMs}ms`,
+			);
+		}
+
+		let lastFailurePressAt = 0;
+		for (const theme of sceneThemes()) {
+			const suffix = theme === "localOperatorDark" ? "dark" : "light";
+			await verb(cdp, "setTheme", theme);
+			await reveal(COPY_JPEG_CALL);
+			await reveal(COPY_PNG_CALL);
+			await pictureStanding(COPY_JPEG_CALL, COPY_JPEG_SIZE, theme);
+			await pictureStanding(COPY_PNG_CALL, COPY_PNG_SIZE, theme);
+
+			if (!after) {
+				/* The refusal's dedupe window, waited out (see the cooldown read above). */
+				const gap = cooldownMs + 250 - (Date.now() - lastFailurePressAt);
+				if (gap > 0 && lastFailurePressAt > 0) {
+					note(
+						"the refusal's dedupe window",
+						`waiting ${gap}ms so the ${theme} press raises its own toast (showErrorToast suppresses the same sentence inside ${cooldownMs}ms)`,
+					);
+					await wait(gap);
+				}
+				lastFailurePressAt = Date.now();
+			}
+
+			const jpeg = await pressCopy(COPY_JPEG_CALL, theme);
+			if (after) {
+				check(
+					`the JPEG copy is accepted and says so (${theme})`,
+					jpeg.toast.ok,
+					`no success toast after ${jpeg.toast.waitedMs}ms: ${JSON.stringify(jpeg.toast.text)}`,
+					`"${copiedSentence}" after ${jpeg.toast.waitedMs}ms`,
+				);
+				const state = jpeg.clipboardAfter;
+				check(
+					`the JPEG landed on the clipboard as a PNG at its own dimensions (${theme})`,
+					state.has === true &&
+						state.signature === "89504e47" &&
+						state.width === COPY_JPEG_SIZE.width &&
+						state.height === COPY_JPEG_SIZE.height &&
+						state.length > 0,
+					JSON.stringify(state),
+					`PNG ${state.width}x${state.height}, ${state.length} bytes, signature ${state.signature}`,
+				);
+				note(
+					`the press-to-toast round trip (JPEG, ${theme})`,
+					`${jpeg.elapsedMs}ms from the item's click to the toast text - the window the write's transient activation has to cover`,
+				);
+			} else {
+				check(
+					`the JPEG copy is refused with the failure toast (${theme})`,
+					jpeg.toast.ok,
+					`no failure toast after ${jpeg.toast.waitedMs}ms: ${JSON.stringify(jpeg.toast.text)}`,
+					`"${failedSentence}" after ${jpeg.toast.waitedMs}ms`,
+				);
+				const before = jpeg.clipboardBefore;
+				const state = jpeg.clipboardAfter;
+				const unchanged =
+					state.readError === null &&
+					(before.has === true
+						? state.sha256 === before.sha256 && state.length === before.length
+						: state.has === false && state.sha256 === null);
+				check(
+					`the refused write left the clipboard as it was (${theme})`,
+					unchanged,
+					`before=${JSON.stringify(before)} after=${JSON.stringify(state)}`,
+					before.has
+						? `still the same ${before.length}-byte PNG`
+						: "still no image/png on it",
+				);
+			}
+
+			await parkPointer(cdp);
+			const label = `copy-jpeg-${after ? "copied" : "failed"}-${suffix}`;
+			const frame = await captureToastPair(cdp, label);
+			check(
+				`the ${label} frame carries the copy's sentence`,
+				typeof frame.toastText === "string" &&
+					frame.toastText.includes(after ? copiedSentence : failedSentence),
+				`toastText=${JSON.stringify(frame.toastText)}`,
+				`"${after ? copiedSentence : failedSentence}"`,
+			);
+			note(
+				`the ${label} frame's two-shot stability`,
+				`stable=${frame.stable} first=${JSON.stringify(frame.firstToastText)} second=${JSON.stringify(frame.toastText)}`,
+			);
+			await waitForNoToasts(cdp, 15_000);
+
+			if (after) {
+				const png = await pressCopy(COPY_PNG_CALL, theme);
+				check(
+					`the PNG copy is accepted and says so (${theme})`,
+					png.toast.ok,
+					`no success toast after ${png.toast.waitedMs}ms: ${JSON.stringify(png.toast.text)}`,
+					`"${copiedSentence}" after ${png.toast.waitedMs}ms`,
+				);
+				const state = png.clipboardAfter;
+				/*
+				 * WHAT THE CLIPBOARD CAN BE HELD TO, and the half it cannot,
+				 * measured on the first green run (2026-10-12): the read-back is
+				 * the right type at the right dimensions (240x160), but NOT the
+				 * fixture's bytes - 1103 against 981, the SAME digest on both
+				 * palettes, so the OS round trip re-encodes deterministically
+				 * rather than drifting. Byte-exactness of the pass-through is
+				 * therefore claimed where it is answerable - the ClipboardItem
+				 * the menu writes, pinned by `scripts/chat-image-expand.test.mjs`
+				 * - and the scene's claim is the pair the clipboard keeps:
+				 * `image/png`, at the source's own dimensions.
+				 */
+				check(
+					`the PNG landed on the clipboard as a PNG at its own dimensions (${theme})`,
+					state.has === true &&
+						state.signature === "89504e47" &&
+						state.width === COPY_PNG_SIZE.width &&
+						state.height === COPY_PNG_SIZE.height &&
+						state.length > 0,
+					JSON.stringify(state),
+					`PNG ${state.width}x${state.height}, ${state.length} bytes, signature ${state.signature}`,
+				);
+				note(
+					"the clipboard's PNG bytes against the fixture's",
+					state.sha256 === pngSha256
+						? "byte-identical"
+						: `re-encoded by the OS round trip (${state.length} vs ${COPY_PNG_BYTES.length} bytes); type + dimensions are the clipboard-level claim, the ClipboardItem's byte-exactness is the jsdom test's`,
+				);
+				note(
+					`the press-to-toast round trip (PNG, ${theme})`,
+					`${png.elapsedMs}ms from the item's click to the toast text - the pass-through path's own cost`,
+				);
+				await parkPointer(cdp);
+				const pngLabel = `copy-png-copied-${suffix}`;
+				const pngFrame = await captureToastPair(cdp, pngLabel);
+				check(
+					`the ${pngLabel} frame carries the copy's sentence`,
+					typeof pngFrame.toastText === "string" &&
+						pngFrame.toastText.includes(copiedSentence),
+					`toastText=${JSON.stringify(pngFrame.toastText)}`,
+					`"${copiedSentence}"`,
+				);
+				note(
+					`the ${pngLabel} frame's two-shot stability`,
+					`stable=${pngFrame.stable} first=${JSON.stringify(pngFrame.firstToastText)} second=${JSON.stringify(pngFrame.toastText)}`,
+				);
+				await waitForNoToasts(cdp, 15_000);
+			}
+		}
+	} finally {
+		main.close();
 	}
 }
 
@@ -41923,6 +42565,25 @@ async function main() {
 			"--scene imagegen-card needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
 		);
 	}
+	if (
+		SCENE === "image-copy" &&
+		COPY_EXPECT !== "after" &&
+		COPY_EXPECT !== "before"
+	) {
+		throw new Error(
+			`--copy-expect takes after or before (got ${JSON.stringify(COPY_EXPECT)}): the two are different claims about the same press, and a defaulted typo would silently answer the other one`,
+		);
+	}
+	if (SCENE === "image-copy" && BACKEND === null) {
+		throw new Error(
+			"--scene image-copy needs --backend: the pictures' bytes are read over the daemon's own attachment route and copied with a real click, and with no backend the chat route draws its refusal surface and no conversation opens",
+		);
+	}
+	if (SCENE === "image-copy" && BACKEND_RECORDS === null) {
+		throw new Error(
+			"--scene image-copy needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
+		);
+	}
 	if (SCENE === "route-tops" && BACKEND === null) {
 		throw new Error(
 			"--scene route-tops needs --backend: settings, agents, projects, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
@@ -42181,6 +42842,7 @@ async function main() {
 			else if (SCENE === "shell-evidence") await sceneShellEvidence(cdp);
 			else if (SCENE === "transcript-rail") await sceneTranscriptRail(cdp);
 			else if (SCENE === "imagegen-card") await sceneImageGenCard(cdp);
+			else if (SCENE === "image-copy") await sceneImageCopy(app, cdp);
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);

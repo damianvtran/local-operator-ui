@@ -60,6 +60,10 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 			runDetails: hasRunDetails,
 			session: hasSession,
 			codeReview: true,
+			/* The frame's own prop IS the offer (issue #928): a story that does not
+			   pass `askOffered` publishes a route whose ask chord is inert, exactly
+			   as the real host without a door would. */
+			asksOffered: askOffered,
 		});
 		return () =>
 			setRightSlotRoute({
@@ -67,8 +71,9 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 				runDetails: false,
 				session: false,
 				codeReview: false,
+				asksOffered: false,
 			});
-	}, [setRightSlotRoute, hasRunDetails, hasSession]);
+	}, [setRightSlotRoute, hasRunDetails, hasSession, askOffered]);
 	return (
 		<div
 			data-panel-rail-host=""

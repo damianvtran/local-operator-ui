@@ -1,0 +1,121 @@
+renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
+[build] current: assets 2026-10-12T01:40:18.807Z >= sources 2026-10-12T01:39:29.880Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080 (frame-src already lists it, media-src already lists it, img-src already lists it)
+  serve records 1 linked from /Users/damian/.local-operator/sessions/46ac4ed35242/scratchpad/imgview-copy/rig-after/config/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/imgview-copy
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-8971
+  frames        /Users/damian/.local-operator/sessions/46ac4ed35242/scratchpad/imgview-copy/rig-after/frames-after
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-8971/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown or focused
+[note] focus emulation
+        Emulation.setFocusEmulationEnabled is ON over CDP (the window is never shown): document.hasFocus()=true visibilityState=visible
+[PASS] the run reads as focused through CDP focus emulation (the window is still never shown)
+[PASS] the fixture conversation is listed by the daemon this run owns
+        row listed after 0ms
+[PASS] the conversation's rows hydrate from the daemon this run owns
+        rows mounted after 59ms
+[note] the condensed bar naming call-copy-jpeg was pressed to reveal its rows
+        {"selector":"[data-turn-summary][data-run-ids~=\"tool:call-copy-jpeg\"] button[aria-expanded]","target":"button \"2 actions·2 imagesJun 16, 4:54 AM\"","hitTest":true,"hit":"span \"2 actions·2 imagesJun 16, 4:54 AM\"","stack":["span \"2 acti
+[PASS] the call-copy-jpeg picture decoded over the attachment route at its own size (localOperatorDark)
+        320x200
+[PASS] the call-copy-png picture decoded over the attachment route at its own size (localOperatorDark)
+        240x160
+[PASS] the pointer over the call-copy-jpeg picture reveals its menu (localOperatorDark)
+        wrapper pointer-events auto, opacity 1
+[PASS] the call-copy-jpeg menu is open with its one Copy image entry (localOperatorDark)
+        "Copy image"
+[PASS] the JPEG copy is accepted and says so (localOperatorDark)
+        "Image copied to clipboard" after 113ms
+[PASS] the JPEG landed on the clipboard as a PNG at its own dimensions (localOperatorDark)
+        PNG 320x200, 98032 bytes, signature 89504e47
+[note] the press-to-toast round trip (JPEG, localOperatorDark)
+        187ms from the item's click to the toast text - the window the write's transient activation has to cover
+[PASS] copy-jpeg-copied-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 43.5 vs 32.1 own / 237.3 other
+[PASS] the copy-jpeg-copied-dark frame carries the copy's sentence
+        "Image copied to clipboard"
+[note] the copy-jpeg-copied-dark frame's two-shot stability
+        stable=true first="Image copied to clipboard" second="Image copied to clipboard"
+[PASS] the pointer over the call-copy-png picture reveals its menu (localOperatorDark)
+        wrapper pointer-events auto, opacity 1
+[PASS] the call-copy-png menu is open with its one Copy image entry (localOperatorDark)
+        "Copy image"
+[PASS] the PNG copy is accepted and says so (localOperatorDark)
+        "Image copied to clipboard" after 105ms
+[PASS] the PNG landed on the clipboard as a PNG at its own dimensions (localOperatorDark)
+        PNG 240x160, 1103 bytes, signature 89504e47
+[note] the clipboard's PNG bytes against the fixture's
+        re-encoded by the OS round trip (1103 vs 981 bytes); type + dimensions are the clipboard-level claim, the ClipboardItem's byte-exactness is the jsdom test's
+[note] the press-to-toast round trip (PNG, localOperatorDark)
+        180ms from the item's click to the toast text - the pass-through path's own cost
+[PASS] copy-png-copied-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 43.5 vs 32.1 own / 237.3 other
+[PASS] the copy-png-copied-dark frame carries the copy's sentence
+        "Image copied to clipboard"
+[note] the copy-png-copied-dark frame's two-shot stability
+        stable=true first="Image copied to clipboard" second="Image copied to clipboard"
+[PASS] the call-copy-jpeg picture decoded over the attachment route at its own size (localOperatorLight)
+        320x200
+[PASS] the call-copy-png picture decoded over the attachment route at its own size (localOperatorLight)
+        240x160
+[PASS] the pointer over the call-copy-jpeg picture reveals its menu (localOperatorLight)
+        wrapper pointer-events auto, opacity 1
+[PASS] the call-copy-jpeg menu is open with its one Copy image entry (localOperatorLight)
+        "Copy image"
+[PASS] the JPEG copy is accepted and says so (localOperatorLight)
+        "Image copied to clipboard" after 105ms
+[PASS] the JPEG landed on the clipboard as a PNG at its own dimensions (localOperatorLight)
+        PNG 320x200, 98032 bytes, signature 89504e47
+[note] the press-to-toast round trip (JPEG, localOperatorLight)
+        184ms from the item's click to the toast text - the window the write's transient activation has to cover
+[PASS] copy-jpeg-copied-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 226.0 vs 237.3 own / 32.1 other
+[PASS] the copy-jpeg-copied-light frame carries the copy's sentence
+        "Image copied to clipboard"
+[note] the copy-jpeg-copied-light frame's two-shot stability
+        stable=true first="Image copied to clipboard" second="Image copied to clipboard"
+[PASS] the pointer over the call-copy-png picture reveals its menu (localOperatorLight)
+        wrapper pointer-events auto, opacity 1
+[PASS] the call-copy-png menu is open with its one Copy image entry (localOperatorLight)
+        "Copy image"
+[PASS] the PNG copy is accepted and says so (localOperatorLight)
+        "Image copied to clipboard" after 105ms
+[PASS] the PNG landed on the clipboard as a PNG at its own dimensions (localOperatorLight)
+        PNG 240x160, 1103 bytes, signature 89504e47
+[note] the clipboard's PNG bytes against the fixture's
+        re-encoded by the OS round trip (1103 vs 981 bytes); type + dimensions are the clipboard-level claim, the ClipboardItem's byte-exactness is the jsdom test's
+[note] the press-to-toast round trip (PNG, localOperatorLight)
+        185ms from the item's click to the toast text - the pass-through path's own cost
+[PASS] copy-png-copied-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 226.0 vs 237.3 own / 32.1 other
+[PASS] the copy-png-copied-light frame carries the copy's sentence
+        "Image copied to clipboard"
+[note] the copy-png-copied-light frame's two-shot stability
+        stable=true first="Image copied to clipboard" second="Image copied to clipboard"
+[PASS] no process from this run outlived its boot
+
+frames: copy-jpeg-copied-dark.png, copy-jpeg-copied-light.png, copy-png-copied-dark.png, copy-png-copied-light.png
+frames directory: /Users/damian/.local-operator/sessions/46ac4ed35242/scratchpad/imgview-copy/rig-after/frames-after
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-8971/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED

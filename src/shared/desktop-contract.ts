@@ -5980,7 +5980,12 @@ export function desktopEndpoint(request: DesktopRequest): {
 			 * schema): the unit of `limit` changes with the flag, so a page served a
 			 * shape the caller does not read is worse than today's page.
 			 */
-			if (request.openFrame) query.set("open_frame", "1");
+			if (request.openFrame) {
+				query.set("open_frame", "1");
+				// This build renders supplements; declare it for each cold page,
+				// never infer HTTP intent from a different SSE subscriber.
+				query.set("supplements", "1");
+			}
 			if (request.journalOrder) {
 				query.set("journal_order", "1");
 				for (const id of request.orderIds ?? []) query.append("order_ids", id);

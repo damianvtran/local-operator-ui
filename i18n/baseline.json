@@ -1,7 +1,11 @@
 {
 	"schema": 1,
 	"note": "enforced = blocking scope (path prefixes or exact paths); findings elsewhere are advisory (report-only) until the area's extraction slice adds its prefix. files = per-file literal ceilings (shrink-only; new files start at 0). See scripts/i18n/check-strings.mjs.",
-	"enforced": ["src/i18n/", "scripts/i18n/"],
+	"enforced": [
+		"src/i18n/",
+		"src/renderer/src/features/console/",
+		"scripts/i18n/"
+	],
 	"files": {
 		"src/renderer/src/features/agent-hub/agent-details-page.tsx": 16,
 		"src/renderer/src/features/agent-hub/agent-hub-page.tsx": 12,
@@ -140,9 +144,6 @@
 		"src/renderer/src/features/chat/session-status/session-status-strip.tsx": 3,
 		"src/renderer/src/features/code-review/components/code-review-pane.tsx": 4,
 		"src/renderer/src/features/command-palette/components/command-palette.tsx": 12,
-		"src/renderer/src/features/console/components/console-close-dialog.tsx": 3,
-		"src/renderer/src/features/console/components/console-pane.tsx": 8,
-		"src/renderer/src/features/console/components/console-states.tsx": 5,
 		"src/renderer/src/features/installer/components/installer-panel.tsx": 6,
 		"src/renderer/src/features/mesh/mesh-actions.tsx": 22,
 		"src/renderer/src/features/mesh/mesh-approvals-tray.tsx": 7,

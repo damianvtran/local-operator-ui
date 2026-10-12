@@ -863,6 +863,9 @@ export type SupplementPatch = {
 	more?: string[];
 	components?: SupplementComponent[];
 	error?: string;
+	model?: string;
+	attempts?: string[];
+	detail?: string[];
 	dismissed?: boolean;
 	/**
 	 * Whether a NON-TERMINAL live beat has been observed for this row in this
@@ -871,6 +874,68 @@ export type SupplementPatch = {
 	 */
 	live?: boolean;
 };
+
+const DIAGNOSTIC_SELECTOR = /^[a-z][a-z0-9-]*\/[a-zA-Z0-9._:/-]{1,160}$/;
+const DIAGNOSTIC_DETAIL =
+	/^turn \d{1,2}: ProviderError status=(?:None|[1-5]\d{2}) kind=(?:auth|quota|transient|timeout|request|content|context|unknown)$/;
+const DIAGNOSTIC_ACCESS = /kind=(auth|quota)\b/;
+const DIAGNOSTIC_SERVICE = /kind=(transient|timeout)\b/;
+
+/** Only selectors and typed status/kind survive; never display arbitrary provider prose. */
+function diagnosticsFrom(
+	value: Record<string, unknown>,
+): Pick<SupplementPatch, "model" | "attempts" | "detail"> {
+	const selector = (item: unknown): string =>
+		typeof item === "string" &&
+		DIAGNOSTIC_SELECTOR.test(item) &&
+		!item.includes("://")
+			? item
+			: "";
+	const model = selector(value.model);
+	const attempts = Array.isArray(value.attempts)
+		? value.attempts.map(selector).filter(Boolean).slice(0, 8)
+		: undefined;
+	const detail = Array.isArray(value.detail)
+		? value.detail
+				.filter(
+					(item): item is string =>
+						typeof item === "string" &&
+						(DIAGNOSTIC_DETAIL.test(item) || item === "prepared:unsupported"),
+				)
+				.slice(0, 8)
+		: undefined;
+	return {
+		...(model ? { model } : {}),
+		...(attempts ? { attempts } : {}),
+		...(detail ? { detail } : {}),
+	};
+}
+
+export function diagnosticDisplay(line: string): string {
+	const match = DIAGNOSTIC_DETAIL.exec(line);
+	if (!match) return "";
+	const words = line.split(" ");
+	const attempt = words[1].replace(":", "");
+	const status = words[3].slice("status=".length);
+	const kind = words[4].slice("kind=".length);
+	return `Attempt ${attempt}: ${kind}${status === "None" ? "" : ` (HTTP ${status})`}`;
+}
+
+export function failureExplanation(record: SupplementRecord): string {
+	const typed =
+		record.error === "generator:ProviderError"
+			? (record.detail?.at(-1) ?? "")
+			: "";
+	if (DIAGNOSTIC_ACCESS.test(typed))
+		return "The highlights model is unavailable right now. Your answer and files are unchanged.";
+	if (DIAGNOSTIC_SERVICE.test(typed))
+		return "The highlights service did not respond. Your answer and files are unchanged.";
+	if (record.error === "bound:cost")
+		return "Highlights stopped at the spending limit or unavailable pricing. Your answer and files are unchanged.";
+	if (record.error === "bound:time")
+		return "Highlights reached the time limit. Your answer and files are unchanged.";
+	return "Your answer and files are unchanged. You can retry the highlights.";
+}
 
 /** One `supplement_progress` event's payload -> a patch, or null if it names no anchor. */
 export function supplementPatchFromEvent(
@@ -899,6 +964,7 @@ export function supplementPatchFromEvent(
 		...(typeof event.error === "string" && event.error
 			? { error: event.error.slice(0, ERROR_MSG_MAX_CHARS) }
 			: {}),
+		...diagnosticsFrom(event),
 		live: !isTerminalState(state),
 	};
 	return patch;
@@ -935,6 +1001,7 @@ export function supplementPatchFromDetails(
 		filesMore,
 		more,
 		components: componentsFrom(details.components),
+		...diagnosticsFrom(details),
 		...(details.dismissed === true ? { dismissed: true } : {}),
 		...(typeof details.error === "string" && details.error
 			? { error: details.error.slice(0, ERROR_MSG_MAX_CHARS) }
@@ -1092,6 +1159,9 @@ export function mergeSupplement(
 			? (previous?.components ?? [])
 			: components,
 		error,
+		model: patch.model ?? (newVersion ? "" : (previous?.model ?? "")),
+		attempts: patch.attempts ?? (newVersion ? [] : (previous?.attempts ?? [])),
+		detail: patch.detail ?? (newVersion ? [] : (previous?.detail ?? [])),
 		dismissed,
 		live,
 	};
