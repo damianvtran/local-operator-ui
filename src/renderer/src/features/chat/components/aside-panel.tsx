@@ -55,7 +55,10 @@ import { CHAT_MEASURE } from "../chat-measure";
  * the answer — which is also what lets the composer and the command dispatcher
  * agree with it about which aside is open.
  */
-import { MarkdownRenderer } from "../components/markdown-renderer";
+import {
+	MarkdownRenderer,
+	type MarkdownStyleProps,
+} from "../components/markdown-renderer";
 import { parseReplies } from "../utils/reply-utils";
 
 export type AsidePanelProps = {
@@ -124,13 +127,26 @@ const ASIDE_TURN_GAP_REM = "0.25rem";
  */
 const ASIDE_QUESTION_MIN_BOX = `var(--text-body-sm) * ${ASIDE_QUESTION_LINE_HEIGHT}`;
 
-/** The answer's size and leading, from the step it is painted at. */
-const asideAnswerType = (
-	isSmallView: boolean,
-): { fontSize: string; lineHeight: number } => ({
-	fontSize: isSmallView ? "var(--text-body-sm)" : "var(--text-body)",
+/**
+ * The answer's size and leading, from the step it is painted at.
+ *
+ * THE TWO OBJECTS ARE SHARED CONSTANTS (remote-lag close-out), not fresh
+ * literals: this value is handed to `MarkdownRenderer` as `styleProps`, that
+ * component carries a `memo`, and a fresh object on every call made the memo
+ * miss on every commit — re-parsing the aside's markdown each time. Returning
+ * one of two stable identities is what makes the memo hold; a third step
+ * belongs here as a third constant.
+ */
+const ASIDE_ANSWER_STYLE: MarkdownStyleProps = {
+	fontSize: "var(--text-body)",
 	lineHeight: ASIDE_ANSWER_LINE_HEIGHT,
-});
+};
+const ASIDE_ANSWER_STYLE_SMALL: MarkdownStyleProps = {
+	fontSize: "var(--text-body-sm)",
+	lineHeight: ASIDE_ANSWER_LINE_HEIGHT,
+};
+const asideAnswerType = (isSmallView: boolean): MarkdownStyleProps =>
+	isSmallView ? ASIDE_ANSWER_STYLE_SMALL : ASIDE_ANSWER_STYLE;
 
 /**
  * The class that keeps the answer's BLOCK SPACING on the line grid the cap cuts on.

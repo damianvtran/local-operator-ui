@@ -23,9 +23,22 @@
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { MarkdownRenderer } from "../markdown-renderer";
+import {
+	MarkdownRenderer,
+	type MarkdownStyleProps,
+} from "../markdown-renderer";
 import { formatDuration } from "./tool-row-model";
 import { TraceGlyph } from "./trace-rail";
+
+/*
+ * The reasoning block's style, hoisted for the same reason as the transcript
+ * row's (`canonical-transcript.tsx`): an inline object defeats `MarkdownRenderer`'s
+ * memo, and every commit re-parsed this block's markdown (remote-lag close-out).
+ */
+const REASONING_BODY_STYLE: MarkdownStyleProps = {
+	fontSize: "var(--text-body-sm)",
+	lineHeight: "var(--text-body-sm--line-height)",
+};
 
 export type AgentReasoningProps = {
 	/** Trigger label shown when the preference allows reasoning. */
@@ -116,10 +129,7 @@ export const AgentReasoning = ({
 				<MarkdownRenderer
 					content={content}
 					className="[--md-ink:var(--lo-ink-muted)]"
-					styleProps={{
-						fontSize: "var(--text-body-sm)",
-						lineHeight: "var(--text-body-sm--line-height)",
-					}}
+					styleProps={REASONING_BODY_STYLE}
 				/>
 			</div>
 		</Disclosure>
