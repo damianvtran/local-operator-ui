@@ -282,8 +282,8 @@ test("only a PNG skips the clipboard transcode — the one image type the write 
 	 * an exact match, so the bytes are re-encoded rather than written
 	 * byte-for-byte. The write still succeeds - the entry is always
 	 * `image/png` - and only byte-exactness is given up, the safe side of the
-	 * rule (see `needsPngEncode`'s comment for why the same side is taken for
-	 * case and padding).
+	 * rule (see `needsPngEncode`'s comment; unlike case and padding,
+	 * parameters are not normalized away).
 	 */
 	assert.equal(needsPngEncode("image/png;charset=utf-8"), true);
 });
