@@ -83,6 +83,7 @@ import {
 	condensedBlockLine,
 	condensedCountPrefix,
 	displayText,
+	failureExplanation,
 	fileRowParts,
 	filesSummaryOf,
 	frameBudgetPx,
@@ -314,6 +315,7 @@ export const SupplementRow = memo(function SupplementRow({
 }: SupplementRowProps) {
 	const pane = useCanvasPane();
 	const [expandedMore, setExpandedMore] = useState(false);
+	const [detailsOpen, setDetailsOpen] = useState(false);
 	const [showAll, setShowAll] = useState(false);
 	const [adjusting, setAdjusting] = useState(false);
 	const [draft, setDraft] = useState("");
@@ -689,6 +691,33 @@ export const SupplementRow = memo(function SupplementRow({
 		<div className="flex flex-col gap-2" data-supplement-record={record.anchor}>
 			{filesSection}
 			{stateLine(null)}
+			{(disposition === "failed_retry" ||
+				disposition === "files_failed_retry") && (
+				<div
+					className="flex flex-col gap-1 text-meta text-ink-muted"
+					data-supplement-diagnostic=""
+				>
+					<p>{failureExplanation(record)}</p>
+					{((record.attempts?.length ?? 0) > 0 ||
+						(record.detail?.length ?? 0) > 0) && (
+						<Disclosure
+							open={detailsOpen}
+							onOpenChange={setDetailsOpen}
+							rowClassName="min-h-0 py-0"
+							chevronClassName="text-ink-dim"
+							summary="Details"
+						>
+							<div className="max-h-[min(320px,40vh)] overflow-auto break-words font-mono text-ink-dim">
+								{record.model && <p>Model: {record.model}</p>}
+								<p>Attempts: {record.attempts?.length ?? 0}</p>
+								{record.detail?.map((line) => (
+									<p key={line}>{line}</p>
+								))}
+							</div>
+						</Disclosure>
+					)}
+				</div>
+			)}
 			{adjustLine}
 			{disposition === "block" && components.length > 0 && (
 				<div className="flex flex-col gap-2" data-supplement-components="">

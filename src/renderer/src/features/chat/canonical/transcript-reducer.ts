@@ -689,6 +689,10 @@ export type TranscriptRecord =
 			components: readonly SupplementComponent[];
 			/** `superseded` renders nothing; a job-level failure renders its line. */
 			error: string;
+			/** Additive typed facts; old rows keep generic failure copy. */
+			model?: string;
+			attempts?: readonly string[];
+			detail?: readonly string[];
 			dismissed: boolean;
 			/**
 			 * Whether a LIVE beat for a non-terminal state has been applied in this
