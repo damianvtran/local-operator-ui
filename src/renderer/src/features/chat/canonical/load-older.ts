@@ -143,6 +143,15 @@ export function createOlderLoader() {
 						: undefined,
 				);
 			});
+			// A source reset can win inside the commit boundary too. Calling a
+			// refused updater "applied" would make the reveal walk treat no page
+			// as progress instead of waiting for the coalesced source repair.
+			if (
+				(after.orderRevision ?? 0) !== revision ||
+				(page.journal_generation !== undefined &&
+					page.journal_generation !== after.journalGeneration)
+			)
+				return { kind: "stale" };
 			return {
 				kind: "applied",
 				newRecords: Math.max(0, after.records.length - before.records.length),

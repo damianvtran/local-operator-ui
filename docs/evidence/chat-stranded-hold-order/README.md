@@ -29,6 +29,38 @@ The operator reported watching the live stream when they looked: a rule that
 also required the pane itself to lie behind the window never fired for the shape that was reported, which is why
 the Tail pair below folds the whole stream and not just the exchange.
 
+## Source-primary follow-on (PR994 / core2274)
+
+The historical discharge mechanism and committed frames below describe the
+legacy lane, not the new source guarantee. The companion source contract adds
+all-complete-row `journal_seq` under an opaque equality-only generation.
+Supported source viewers order by that domain, with explicit provisional slots
+and causal ownership; clocks are labels only. Unsupported/omitted authority
+retains the legacy lane without claiming the journal guarantee.
+
+The source-primary after stories now derive coordinates from captured full-journal
+line windows in `transcript-strand-hold.test.mjs`, not by enumerating selected
+pages. Their 400 unique offsets305..704 include silent rows and agree across all
+captured overlaps. The generation is explicitly a synthetic replay domain, not
+the original session's current live source. Quiet ID-only metadata heals the echo
+without transferring its images or payload to another record. The before story
+remains the documented legacy ranking reconstruction; original pre-crash memory
+was lost (manager report), so no original live before frame is claimed.
+
+Fresh author browser-tool frames are private in the session scratchpad
+`source-browser/` (source-after-slot pair, source replay before, and real isolated
+TCP source paging/quiet correction). Those are production CanonicalTranscript
+pixels, not these older committed captures. Missing original image bytes remain
+explicit placeholders, not attachment-success evidence. The independent terminal
+code/QA/design rounds must read the frozen head and that new evidence.
+
+A separate synthetic real-router / production-hook checkpoint run placed an
+initially unmounted in-budget target1100 rows back at pane-top+24.02px after real
+`before_id` reads. The 4100-row first checkpoint exceeds pre-existing D7 limits:
+12pages /1200mounted rows (`reveal-record.ts`); it correctly refuses after the
+bounded reads. No arbitrary-distance/far-window success or new paging design is
+claimed. See the continuity design note for source matrix and execution boundaries.
+
 ## Why a story pair is the faithful capture
 
 A fresh app open of a copied session cannot show this: the disorder is born of

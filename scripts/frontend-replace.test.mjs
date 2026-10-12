@@ -73,6 +73,8 @@ globalThis.__replaceRequest = async (request) => {
 	if (request.op === "sessions.history") {
 		return globalThis.__replaceHistory(request);
 	}
+	if (request.op === "sessions.get" && globalThis.__replaceSnapshot)
+		return globalThis.__replaceSnapshot(request);
 	return {};
 };
 
@@ -612,4 +614,140 @@ test("a replacement in the pre-snapshot replay stays subordinate to the snapshot
 		"/authoritative",
 		"the bootstrap snapshot governs the replay window",
 	);
+});
+
+// Source revision fences run on the shipped hook, not source-text inference.
+// A unique synthetic session keeps these reads off the legacy fixtures' cache.
+const SOURCE_SESSION = "cccccccccccc";
+const sourcePage = (domain, entries = DURABLE_ROWS) => ({
+	entries: entries.map((row, index) => ({ ...row, journal_seq: index })),
+	has_more: true,
+	cursor_missing: false,
+	journal_order_state: "ready",
+	journal_generation: domain,
+});
+const sourceSnapshot = (seq, domain, entries = DURABLE_ROWS) => {
+	const frame = snapshotFrame(seq, `/source-${domain}`);
+	frame.session_id = SOURCE_SESSION;
+	frame.payload.frontend.snapshot.session_id = SOURCE_SESSION;
+	frame.payload.history = sourcePage(domain, entries);
+	return frame;
+};
+async function sourceMount() {
+	subscriptions.length = 0;
+	requests.length = 0;
+	rafQueue = [];
+	globalThis.__replaceHistory = async () => sourcePage("source-A");
+	globalThis.__replaceSnapshot = async () => sourceSnapshot(9, "source-B");
+	useCanonicalSessionsStore.setState({
+		activeSessionId: null,
+		drafts: {},
+		sessions: [],
+	});
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(
+			SOURCE_SESSION,
+			true,
+			true,
+			SOURCE_SESSION,
+			{ journalOrder: true },
+		);
+		return handle;
+	};
+	runtime.rerender();
+	deliver({ ...openFrame(1), session_id: SOURCE_SESSION });
+	deliver(sourceSnapshot(2, "source-A"));
+	await pump();
+	return { get: () => handle };
+}
+const sourceReady = (seq, domain) => ({
+	session_id: SOURCE_SESSION,
+	epoch: BRIDGE_EPOCH,
+	seq,
+	type: "event",
+	payload: {
+		type: "journal_order_ready",
+		journal_generation: domain,
+		rows: [{ id: ROW_EARLY, journal_seq: 0 }],
+	},
+});
+
+test("source hook drops a same-conversation late stream snapshot after a new authoritative domain", async () => {
+	const h = await sourceMount();
+	assert.equal(h.get().transcript.journalGeneration, "source-A");
+	deliver(sourceReady(3, "source-B"));
+	await pump();
+	assert.equal(h.get().transcript.journalGeneration, "source-B");
+	const cursor = h.get().transcript.oldestId;
+	globalThis.__replaceHistory = async () => sourcePage("source-B");
+	deliver(
+		sourceSnapshot(4, "source-A", [
+			{ ...DURABLE_ROWS[0], id: "late-old-source" },
+		]),
+	);
+	await pump();
+	assert.equal(h.get().transcript.journalGeneration, "source-B");
+	assert.equal(h.get().transcript.oldestId, cursor);
+	assert.ok(!ids(h.get().transcript).includes("late-old-source"));
+});
+
+test("source hook tail request and stable-ID older request cannot commit after domain reset", async () => {
+	const h = await sourceMount();
+	let tailReply;
+	let olderReply;
+	globalThis.__replaceHistory = (request) =>
+		new Promise((resolve) => {
+			if (request.beforeId) olderReply = resolve;
+			else tailReply = resolve;
+		});
+	const tail = h.get().refreshTail(0, h.get().transcript.viewEpoch);
+	const older = h.get().loadOlderDetailed();
+	assert.ok(tailReply);
+	assert.ok(olderReply);
+	deliver(sourceReady(3, "source-B"));
+	await pump();
+	assert.equal(h.get().transcript.journalGeneration, "source-B");
+	const cursor = h.get().transcript.oldestId;
+	const late = sourcePage("source-A", [
+		{ ...DURABLE_ROWS[0], id: "late-old-source" },
+	]);
+	tailReply(late);
+	olderReply(late);
+	assert.equal(await tail, false);
+	assert.equal((await older).kind, "stale");
+	await pump();
+	assert.equal(h.get().transcript.oldestId, cursor);
+	assert.ok(!ids(h.get().transcript).includes("late-old-source"));
+});
+
+test("source hook reconcile walk refuses its old-domain response after authoritative reset", async () => {
+	const h = await sourceMount();
+	deliver(sourceReady(3, "source-B"));
+	await pump();
+	let resolveRead;
+	globalThis.__replaceHistory = () =>
+		new Promise((resolve) => {
+			resolveRead = resolve;
+		});
+	// A new snapshot batch requests the real missed-history walk. Its frame
+	// itself is stale; the fresh read is dispatched on B, then C wins while out.
+	deliver(sourceSnapshot(4, "source-A"));
+	await pump();
+	assert.ok(resolveRead, "the actual reconciliation history request is out");
+	globalThis.__replaceSnapshot = async () => sourceSnapshot(9, "source-C");
+	deliver(sourceReady(5, "source-C"));
+	await pump();
+	assert.equal(h.get().transcript.journalGeneration, "source-C");
+	const cursor = h.get().transcript.oldestId;
+	resolveRead(
+		sourcePage("source-B", [
+			{ ...DURABLE_ROWS[0], id: "late-reconcile-source" },
+		]),
+	);
+	await pump();
+	assert.equal(h.get().transcript.journalGeneration, "source-C");
+	assert.equal(h.get().transcript.oldestId, cursor);
+	assert.ok(!ids(h.get().transcript).includes("late-reconcile-source"));
 });

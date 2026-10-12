@@ -53,7 +53,15 @@ export function receiveJournalOrder(
 			journalGeneration: generation,
 			orderRevision: (state.orderRevision ?? 0) + 1,
 			journalPositions: new Map(),
-			orderNeedsReconcile: false,
+			// A ready fact may race an authoritative read captured before it.
+			// Installing that read must not erase the distinct domain still owed.
+			orderNeedsReconcile:
+				state.orderWantedGeneration !== undefined &&
+				state.orderWantedGeneration !== generation,
+			orderWantedGeneration:
+				state.orderWantedGeneration === generation
+					? undefined
+					: state.orderWantedGeneration,
 		};
 	}
 	let positions = next.journalPositions ?? new Map<string, SourceCoordinate>();
@@ -79,7 +87,11 @@ export function receiveJournalOrder(
 	}
 	if (positions !== previousPositions)
 		next = { ...next, journalPositions: positions };
-	if (authoritative && next.orderNeedsReconcile)
+	if (
+		authoritative &&
+		next.orderNeedsReconcile &&
+		(!next.orderWantedGeneration || next.orderWantedGeneration === generation)
+	)
 		next = {
 			...next,
 			orderNeedsReconcile: false,
