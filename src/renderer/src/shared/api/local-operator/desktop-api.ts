@@ -22,6 +22,7 @@ import {
 	SESSION_IS_REMOTE_CODE,
 } from "../../../../../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../../../../../shared/desktop-stream-notice";
+import { appendJournalOrderIds } from "../../../../../shared/journal-order-query";
 import {
 	parseDelegatedCleanupNotice,
 	useDelegatedCleanupNoticeStore,
@@ -666,6 +667,8 @@ export function subscribeDesktopStream(
 		 * Absent keeps today's page, byte for byte.
 		 */
 		openFrame?: boolean;
+		journalOrder?: boolean;
+		orderIds?: string[];
 	},
 	onEvent: (event: {
 		kind: "data" | "error" | "end";
@@ -707,6 +710,12 @@ export function subscribeDesktopStream(
 	 * a page counted in paintable rows will be understood.
 	 */
 	if (args.openFrame === true) query.set("open_frame", "1");
+	// Browser development must negotiate the same source facts as main's relay;
+	// otherwise a real cold quiet correction is silently filtered out here.
+	if (args.journalOrder === true) {
+		query.set("journal_order", "1");
+		appendJournalOrderIds(query, "/__desktop/stream", args.orderIds ?? []);
+	}
 	const source = new EventSource(`/__desktop/stream?${query}`);
 	source.onmessage = (message) => {
 		onEvent({ kind: "data", data: message.data });

@@ -6,6 +6,7 @@ import {
 	MAX_DESKTOP_ENVELOPE_BYTES,
 } from "../../src/shared/desktop-contract";
 import { DESKTOP_STREAM_DETAIL } from "../../src/shared/desktop-stream-notice";
+import { appendJournalOrderIds } from "../../src/shared/journal-order-query";
 
 /** Browser-only development uses the same typed vocabulary as Electron IPC.
  * The token is read by this Node process, never by Vite's client env machinery.
@@ -73,6 +74,22 @@ export function desktopProxyPlugin(): Plugin {
 					const frontendReplace =
 						requestUrl.searchParams.get("frontend_replace") ?? "";
 					const openFrame = requestUrl.searchParams.get("open_frame") ?? "";
+					const journalOrder = requestUrl.searchParams.get("journal_order");
+					const orderIds = requestUrl.searchParams.getAll("order_ids");
+					// Same count/string bounds as strict IPC: the proxy may forward
+					// cached identities, never an unbounded index-lookup envelope.
+					if (
+						(journalOrder !== null && !["0", "1"].includes(journalOrder)) ||
+						orderIds.length > 512 ||
+						orderIds.some((id) => id.length === 0 || id.length > 128)
+					) {
+						res.statusCode = 422;
+						res.setHeader("Content-Type", "application/json");
+						res.end(
+							JSON.stringify({ detail: "Invalid stream source metadata." }),
+						);
+						return;
+					}
 					if (epoch && !/^[a-zA-Z0-9_-]{1,128}$/.test(epoch)) {
 						res.statusCode = 422;
 						res.setHeader("Content-Type", "application/json");
@@ -125,6 +142,14 @@ export function desktopProxyPlugin(): Plugin {
 					 * page shape it does not read.
 					 */
 					if (openFrame === "1") query.set("open_frame", "1");
+					if (journalOrder === "1") {
+						query.set("journal_order", "1");
+						appendJournalOrderIds(
+							query,
+							`/v1/desktop/sessions/${sessionId}/events`,
+							orderIds,
+						);
+					}
 					const suffix = query.size > 0 ? `?${query}` : "";
 					/*
 					 * THE UPSTREAM DIES WITH THE BROWSER'S SOCKET. Without this the fetch
