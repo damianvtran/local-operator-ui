@@ -1,6 +1,7 @@
 import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { BrowserAvailability } from "../../../../../shared/browser-availability";
 import {
 	browserBridge as bridge,
 	browserBridgeAvailable,
@@ -105,9 +106,7 @@ export interface ApprovalView {
 }
 
 export interface BrowserChromeState {
-	availability?: import(
-		"../../../../../shared/browser-availability",
-	).BrowserAvailability;
+	availability?: BrowserAvailability;
 	tabs: BrowserTabView[];
 	activeTabId: number | null;
 	url: string;
