@@ -49,6 +49,7 @@ import {
 } from "../components/trace/tool-row-model";
 import { isHarnessChromeText } from "./harness-chrome";
 import {
+	type JournalOrderRead,
 	type JournalPosition,
 	type SourceCoordinate,
 	journalOrderedRecords,
@@ -727,6 +728,9 @@ export type TranscriptState = {
 	orderNeedsReconcile?: boolean;
 	/** Distinct incoming domain wakes a building-index repair once ready. */
 	orderWantedGeneration?: string;
+	/** Ready-wake identity: dispatch witnesses settle old debt without erasing a
+	 * distinct wake during the read. Not a second source revision counter. */
+	orderDemand?: { generation?: string };
 	/** Ordered oldest -> newest. */
 	records: TranscriptRecord[];
 	/** id -> index for O(1) coalescing; rebuilt on every structural change. */
@@ -3358,6 +3362,36 @@ function previousRecordForSupplement(
 	return state.records[state.index.get(key) ?? -1];
 }
 
+/**
+ * A cached-ID lookup uses the existing snapshot route, but its tail is NOT a
+ * paging or payload read. Repair only proven coordinates and verified owners;
+ * retain the reader's cursor, text, image references and admitted row set.
+ */
+export function applyJournalOrderMetadata(
+	state: TranscriptState,
+	page: DesktopHistoryPage,
+	orderRead: JournalOrderRead,
+): TranscriptState {
+	let next = receiveJournalOrder(
+		state,
+		page,
+		page.entries.map((entry) => ({
+			id: entry.id,
+			journal_seq: entry.journal_seq,
+			role: entry.payload?.role,
+			tool_call_id: entry.payload?.tool_call_id,
+		})),
+		true,
+		orderRead,
+	);
+	for (const entry of page.entries)
+		next = rememberJournalCalls(next, { ...entry.payload, id: entry.id });
+	const records = journalOrderedRecords(next, next.records);
+	return records === next.records
+		? next
+		: { ...next, records, index: withIndex(records) };
+}
+
 export function applyHistoryPage(
 	initialState: TranscriptState,
 	page: DesktopHistoryPage,
@@ -3393,6 +3427,7 @@ export function applyHistoryPage(
 		statedByOwner?: boolean;
 		/** Only snapshots/reconcile may install a new source domain. */
 		authoritative?: boolean;
+		orderRead?: JournalOrderRead;
 	} = {},
 ): TranscriptState {
 	let state = initialState;
@@ -3407,6 +3442,7 @@ export function applyHistoryPage(
 			tool_call_id: entry.payload?.tool_call_id,
 		})),
 		options.authoritative === true,
+		options.orderRead,
 	);
 	// A mismatched non-authoritative response cannot mutate payload, identity,
 	// paging or ownership. Its only effect is one authoritative repair request.
@@ -4010,7 +4046,7 @@ export function applyEvent(
 		if (event.reconcile === true)
 			return state.orderNeedsReconcile
 				? state
-				: { ...state, orderNeedsReconcile: true };
+				: { ...state, orderNeedsReconcile: true, orderDemand: {} };
 		const next = receiveJournalOrder(
 			state,
 			{

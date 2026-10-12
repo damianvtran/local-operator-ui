@@ -2,6 +2,7 @@ import { z } from "zod";
 // The feed's frame family lives beside the session stream's, so the two cannot
 // drift into disagreeing about the envelope they deliberately share.
 import type { DesktopFeedFrame } from "./desktop-session-contract";
+import { appendJournalOrderIds } from "./journal-order-query";
 
 const id = z
 	.string()
@@ -5963,7 +5964,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 			const query = new URLSearchParams();
 			if (request.journalOrder) {
 				query.set("journal_order", "1");
-				for (const id of request.orderIds ?? []) query.append("order_ids", id);
+				appendJournalOrderIds(
+					query,
+					`/v1/desktop/sessions/${request.sessionId}`,
+					request.orderIds ?? [],
+				);
 			}
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}${query.size ? `?${query}` : ""}`,
@@ -5988,7 +5993,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 			}
 			if (request.journalOrder) {
 				query.set("journal_order", "1");
-				for (const id of request.orderIds ?? []) query.append("order_ids", id);
+				appendJournalOrderIds(
+					query,
+					`/v1/desktop/sessions/${request.sessionId}/history`,
+					request.orderIds ?? [],
+				);
 			}
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/history?${query}`,

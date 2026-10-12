@@ -22,6 +22,7 @@ import {
 	SESSION_IS_REMOTE_CODE,
 } from "../../../../../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../../../../../shared/desktop-stream-notice";
+import { appendJournalOrderIds } from "../../../../../shared/journal-order-query";
 import {
 	parseDelegatedCleanupNotice,
 	useDelegatedCleanupNoticeStore,
@@ -713,7 +714,7 @@ export function subscribeDesktopStream(
 	// otherwise a real cold quiet correction is silently filtered out here.
 	if (args.journalOrder === true) {
 		query.set("journal_order", "1");
-		for (const id of args.orderIds ?? []) query.append("order_ids", id);
+		appendJournalOrderIds(query, "/__desktop/stream", args.orderIds ?? []);
 	}
 	const source = new EventSource(`/__desktop/stream?${query}`);
 	source.onmessage = (message) => {

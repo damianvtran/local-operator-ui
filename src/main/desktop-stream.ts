@@ -15,6 +15,7 @@
 
 import { randomBytes } from "node:crypto";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
+import { appendJournalOrderIds } from "../shared/journal-order-query";
 
 const SESSION_ID = /^[a-f0-9]{12}$/;
 const SAFE_ID = /^[a-zA-Z0-9_-]{1,128}$/;
@@ -263,7 +264,6 @@ export class DesktopStreamRelay {
 		if (args.openFrame === true) query.set("open_frame", "1");
 		if (args.journalOrder === true) {
 			query.set("journal_order", "1");
-			for (const id of args.orderIds ?? []) query.append("order_ids", id);
 		}
 		/*
 		 * The `supplements=1` negotiation (turn-supplements memo §2.7), the same
@@ -276,6 +276,12 @@ export class DesktopStreamRelay {
 		 * unknown query parameter and never emits the events anyway.
 		 */
 		query.set("supplements", "1");
+		if (args.journalOrder === true)
+			appendJournalOrderIds(
+				query,
+				`/v1/desktop/sessions/${args.sessionId}/events`,
+				args.orderIds ?? [],
+			);
 		const suffix = query.size > 0 ? `?${query}` : "";
 		const url = new URL(
 			`/v1/desktop/sessions/${args.sessionId}/events${suffix}`,
