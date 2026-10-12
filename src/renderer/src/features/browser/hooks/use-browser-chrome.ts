@@ -105,6 +105,9 @@ export interface ApprovalView {
 }
 
 export interface BrowserChromeState {
+	availability?: import(
+		"../../../../../shared/browser-availability",
+	).BrowserAvailability;
 	tabs: BrowserTabView[];
 	activeTabId: number | null;
 	url: string;
