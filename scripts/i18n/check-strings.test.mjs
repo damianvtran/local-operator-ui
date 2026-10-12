@@ -310,14 +310,12 @@ test("--update lowers a ceiling, and refuses every raise", () => {
 /*
  * THE ONBOARDING COPY'S CALL-SITE BINDING (UI slice 2, rounds R1-1/R2).
  *
- * These checks live HERE because this repository keeps the TypeScript
- * compiler API's footprint in one file: `check-strings.mjs`'s docstring
- * states it, and its test already holds the one live snapshot (`fixtureApi`)
- * that this suite reuses - a second sync-API consumer in the desktop run
- * correlates with that run's execution-ceiling timeouts (local-operator-ui
- * #1002: the runs that completed carried one consumer; the two runs that
- * added a second tripped the 35-minute job ceiling), so the binding
- * contract joins the existing consumer instead of spawning another.
+ * These checks reuse this suite's existing `fixtureApi.snapshot` for their
+ * call-site binding; `onboarding-i18n-contract.test.mjs` remains API-free
+ * and owns the independent value pins and render assertions. That is the
+ * observable structure, NOT a demonstrated CI cure or causal diagnosis:
+ * the Linux Desktop job still exceeded its execution ceiling after this
+ * relocation (local-operator-ui #1002).
  *
  * WHAT IT BINDS, with the counterexamples that motivated each shape: every
  * key must be the literal argument of a REAL `t()` call in its wiring file

@@ -12,12 +12,11 @@
  *   1. VALUE PINS - all 45 committed English sentences, stated inline, never
  *      read from the catalogue as their own oracle. The key set is closed.
  *   2. CALL-SITE BINDING lives in `scripts/i18n/check-strings.test.mjs`:
- *      that suite holds the repository's ONE TypeScript compiler-API
- *      consumer, and the binding contract (real `t()` call nodes, exact
- *      producers, branch arms, live anchor) joined it there because a second
- *      sync-API consumer in the desktop run correlates with the run's
- *      35-minute execution-ceiling timeouts (#1002; the completing runs
- *      carried one consumer). This file stays API-free: pins and render.
+ *      the binding contract (real `t()` call nodes, exact producers, branch
+ *      arms, live anchor) reuses that suite's existing `fixtureApi.snapshot`.
+ *      This file stays API-free: pins and render. The relocation is NOT a
+ *      demonstrated CI cure or causal diagnosis: the Linux Desktop job still
+ *      exceeded its execution ceiling with this structure (#1002).
  *   3. LIVE RENDER - the shipped components, bundled with the repo's own
  *      esbuild and rendered with the real React server renderer (the pattern
  *      QA's independent probe established): the full committed sentences come
@@ -32,11 +31,27 @@
  */
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import {
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+	BASE as DIAGNOSTIC_BASE,
+	classify,
+	safeArgv,
+	validOutput,
+	validPath,
+	validSha,
+} from "./onboarding-desktop-diagnostic.mjs";
 
 const CATALOGUE = "src/i18n/catalogues/en/ui.onboarding.json";
 const BASE = "src/renderer/src/features/onboarding/components/";
@@ -287,6 +302,146 @@ const PLAN_KEYS = {
 };
 
 const value = (key) => CONTRACT.find(([k]) => k === key)[1];
+
+// Diagnostic evidence belongs to this contract, not to the product: these
+// small invariants protect its optional Linux comparison without changing any
+// copy/AST/render predicate. The selected Linux workload excludes these tests.
+test("diagnostic inputs and result classifications fail closed", () => {
+	assert.equal(validSha(DIAGNOSTIC_BASE), DIAGNOSTIC_BASE);
+	for (const sha of [
+		"HEAD",
+		"-h",
+		`${DIAGNOSTIC_BASE};echo bad`,
+		"0".repeat(39),
+	]) {
+		assert.throws(() => validSha(sha));
+	}
+	assert.equal(
+		validPath("scripts/i18n/check-strings.test.mjs"),
+		"scripts/i18n/check-strings.test.mjs",
+	);
+	for (const path of [
+		"../package.json",
+		"/absolute",
+		"--help",
+		"scripts/../secret",
+		"scripts/x\n",
+	]) {
+		assert.throws(() => validPath(path));
+	}
+	assert.throws(() => validOutput(process.cwd(), tmpdir()));
+	assert.deepEqual(
+		safeArgv([
+			"/usr/bin/node",
+			"--token=private",
+			"--test-name-pattern=secret",
+		]),
+		["node", "[redacted]", "--test-name-pattern=[selected]"],
+	);
+	assert.equal(classify(0, null, false, null, true), "completed");
+	assert.equal(classify(0, null, false, null, false), "missing-summary");
+	assert.equal(
+		classify(1, null, false, null, false),
+		"assertion-or-launch-failure",
+	);
+	assert.equal(classify(137, null, false, null, false), "unattributed-sigkill");
+	assert.equal(classify(137, null, false, null, false, true), "memory-bound");
+	assert.equal(classify(0, null, true, null, true), "wall-bound");
+	assert.equal(classify(0, null, false, "SIGTERM", true), "interrupted");
+});
+
+test("diagnostic workflow stays opt-in with independent always-upload evidence", () => {
+	const text = readFileSync(".github/workflows/ci.yml", "utf8");
+	const job = text.slice(
+		text.indexOf("  onboarding-desktop-diagnostic:"),
+		text.indexOf("  test:\n"),
+	);
+	assert.match(
+		job,
+		/github\.event_name == 'pull_request' && github\.event\.pull_request\.number == 1002/,
+	);
+	assert.match(job, /contents: read/);
+	assert.match(job, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
+	assert.match(job, /persist-credentials: false/);
+	assert.match(job, /node-version: '22'/);
+	assert.match(job, /pnpm install --frozen-lockfile/);
+	assert.match(job, /if: always\(\)[\s\S]*actions\/upload-artifact@v4/);
+	assert.match(job, /if-no-files-found: error/);
+	assert.ok(!job.includes("secrets.") && !job.includes("continue-on-error"));
+	const desktop = text.slice(
+		text.indexOf("  test:\n"),
+		text.indexOf("  evidence:\n"),
+	);
+	assert.match(desktop, /timeout-minutes: 35/);
+	assert.equal((desktop.match(/pnpm test:desktop 2>&1/g) ?? []).length, 1);
+});
+
+test("diagnostic tracer records actual isolated workers without environment values", () => {
+	const scratch = mkdtempSync(join(tmpdir(), "onboarding-diagnostic-"));
+	try {
+		const fixture = join(scratch, "passes.test.mjs");
+		const map = join(scratch, "empty-map.json");
+		const trace = join(scratch, "trace");
+		writeFileSync(map, "{}");
+		writeFileSync(
+			fixture,
+			'import {test} from "node:test"; test("passes", () => {});',
+		);
+		const env = Object.fromEntries(
+			Object.entries(process.env).filter(
+				([key]) =>
+					!key.startsWith("CMUX_") &&
+					!key.startsWith("LOP_") &&
+					key !== "NODE_OPTIONS" &&
+					key !== "XPC_FLAGS",
+			),
+		);
+		Object.assign(env, {
+			NODE_OPTIONS: `--import=${join(process.cwd(), "scripts/onboarding-desktop-diagnostic.mjs")}`,
+			LOCAL_OPERATOR_UI_ONBOARDING_TRACE_DIR: trace,
+			LOCAL_OPERATOR_UI_ONBOARDING_MAP: map,
+			DIAGNOSTIC_PRIVATE_SENTINEL: "operator-private-value",
+			LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB: "1500",
+		});
+		const result = spawnSync(
+			process.execPath,
+			["scripts/run-desktop-tests.mjs", "--test-concurrency=1", fixture],
+			{ env, encoding: "utf8", timeout: 20_000 },
+		);
+		assert.equal(result.status, 0, result.stdout + result.stderr);
+		const text = readdirSync(trace)
+			.filter((file) => file.endsWith(".jsonl"))
+			.map((file) => readFileSync(join(trace, file), "utf8"))
+			.join("");
+		const events = text
+			.trim()
+			.split("\n")
+			.map((line) => JSON.parse(line));
+		const worker = events.filter(
+			(event) =>
+				event.worker === true && event.argv.includes("passes.test.mjs"),
+		);
+		for (const kind of ["BEGIN", "END", "TEARDOWN"])
+			assert.ok(
+				worker.some((event) => event.event === kind),
+				`${kind}: ${JSON.stringify(events)}`,
+			);
+		assert.ok(
+			worker.every(
+				(event) =>
+					Number.isInteger(event.pid) &&
+					Number.isInteger(event.ppid) &&
+					event.handles.every((type) => typeof type === "string"),
+			),
+		);
+		assert.ok(
+			!text.includes("operator-private-value") &&
+				!text.includes("DIAGNOSTIC_PRIVATE_SENTINEL"),
+		);
+	} finally {
+		rmSync(scratch, { recursive: true, force: true });
+	}
+});
 
 // ---------------------------------------------------------------------------
 // 1. Value pins (preserved from R1-1; independently stated, closed set)

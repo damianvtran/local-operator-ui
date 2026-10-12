@@ -370,6 +370,10 @@ export const JOB_FLAGS = {
  * pays full price unnoticed (asserted A1).
  */
 export const UNGATED_JOBS = {
+	"onboarding-desktop-diagnostic":
+		"temporary #1002 evidence: activation is the workflow's PR1002-only opt-in, " +
+		"not a change-scope flag. It has no local command and cannot replace the " +
+		"mandatory Desktop gate; remove this declaration with the diagnostic job.",
 	changes:
 		"always runs: it IS the classifier, and every gated job `needs:` it, so an " +
 		"event condition here would collaterally skip the whole workflow on a push " +
