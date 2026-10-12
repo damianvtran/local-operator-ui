@@ -355,8 +355,19 @@ export function saveBaseline(path, files, enforced, note) {
 	if (inlineLine.length <= 80) {
 		lines.push(inlineLine);
 	} else {
+		/*
+		 * NO trailing comma on the last entry: this is strict JSON, and a trailing
+		 * comma makes JSON.parse reject the whole file - `loadBaseline` then reads
+		 * it as EMPTY, which silently drops both the ceilings and any enforced
+		 * prefix beyond the defaults. The one-prefix baseline never reached this
+		 * branch (it fit the 80-column inline form); the first slice that adds a
+		 * second prefix does, so the comma rule is load-bearing here.
+		 */
 		lines.push('\t"enforced": [');
-		for (const entry of enforced) lines.push(`\t\t${JSON.stringify(entry)},`);
+		enforced.forEach((entry, index) => {
+			const comma = index < enforced.length - 1 ? "," : "";
+			lines.push(`\t\t${JSON.stringify(entry)}${comma}`);
+		});
 		lines.push("\t],");
 	}
 	if (sorted.length === 0) {
