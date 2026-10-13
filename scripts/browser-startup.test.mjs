@@ -328,5 +328,55 @@ test("the unavailable state offers a retry that re-enters startup for the same w
 		"unavailable",
 		"the retry's own failure lands back on the unavailable state",
 	);
+	// The channel runs the SAME sender-authorization gate as the rest of the
+	// namespace. Without this assertion, deleting `authorizeSender` from the
+	// retry handler fails no test (round 2, Q-R2-1): a foreign webContents, or the
+	// right webContents with a foreign frame, must be refused before the host is
+	// touched.
+	await assert.rejects(
+		() =>
+			Promise.resolve().then(() =>
+				retry({
+					sender: { id: 999 },
+					senderFrame: f.window.webContents.mainFrame,
+				}),
+			),
+		/This window cannot use the browser controls/,
+		"a foreign sender must be refused by browser-retry",
+	);
+	await assert.rejects(
+		() =>
+			Promise.resolve().then(() =>
+				retry({
+					sender: f.window.webContents,
+					senderFrame: { ...f.window.webContents.mainFrame },
+				}),
+			),
+		/This window cannot use the browser controls/,
+		"a foreign frame must be refused by browser-retry",
+	);
+	// A doubled click needs no guard of its own: `startBrowserHost` is already
+	// single-flight for this window, so concurrent retries collapse to one
+	// startup sequence (round 2, Q-R2-2). Asserted rather than assumed.
+	const callsBeforeDouble = f.consoleCalls;
+	const boundedAttempts = f.handlers.get("browser-state")({
+		sender: f.window.webContents,
+		senderFrame: f.window.webContents.mainFrame,
+	}).availability.maxAttempts;
+	await Promise.all([
+		retry({
+			sender: f.window.webContents,
+			senderFrame: f.window.webContents.mainFrame,
+		}),
+		retry({
+			sender: f.window.webContents,
+			senderFrame: f.window.webContents.mainFrame,
+		}),
+	]);
+	assert.equal(
+		f.consoleCalls - callsBeforeDouble,
+		boundedAttempts,
+		"two concurrent retries run ONE bounded startup sequence, not two",
+	);
 	await stopBrowserHost();
 });

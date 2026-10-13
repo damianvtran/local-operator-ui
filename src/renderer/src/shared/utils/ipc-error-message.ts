@@ -31,10 +31,13 @@
  */
 export const IPC_ERROR_PREFIX = /^Error invoking remote method '[^']+':\s*/;
 
-/** A leading `<code>: ` marker the main process attaches for machine matching
- * (today only `browser_unavailable: `). It is stripped before display so the
- * code never reaches a user-facing surface; the tests that match `browser_\n * unavailable` read the raw message, not this presentation form. */
-export const ERROR_CODE_PREFIX = /^[a-z][a-z0-9_]*:\s+/;
+/** A leading `<code>: ` marker the main process attaches for machine matching.
+ * Only the intended code is stripped, not any `word:` prefix: a caller-supplied
+ * message must not be truncated because it happened to start with a colon-shaped
+ * token (round 2, NN-1). `browser_unavailable:` is the one code the browser IPC
+ * handlers attach; the tests that match `browser_unavailable` read the raw
+ * message, not this presentation form. */
+export const ERROR_CODE_PREFIX = /^browser_unavailable:\s+/;
 
 /** The message a person may be shown, with the invoke envelope removed. */
 export function unwrapIpcErrorMessage(caught: unknown): string {
