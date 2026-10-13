@@ -6272,6 +6272,23 @@ export class UpdateService {
 				{ timeout: PYPI_VERSION_READ_TIMEOUT_MS },
 				(res) => {
 					let data = "";
+					/*
+					 * A mid-body abort is its own exit (review round 3, R3-1):
+					 * the server can write a partial body and destroy the
+					 * socket, and Node then emits `aborted`/`error` on the
+					 * RESPONSE while the request emits nothing — a promise
+					 * that only settles on `end`/request-`error` hangs the
+					 * awaiting check forever and leaves the previous read's
+					 * pending verdict standing. Settle and clear here, with
+					 * the same semantics as the request-error path: a read
+					 * that never parsed a body learned nothing.
+					 */
+					const settleAborted = () => {
+						this.pendingPypiVersion = null;
+						resolve(null);
+					};
+					res.on("error", settleAborted);
+					res.on("aborted", settleAborted);
 					res.on("data", (chunk) => {
 						data += chunk;
 					});
