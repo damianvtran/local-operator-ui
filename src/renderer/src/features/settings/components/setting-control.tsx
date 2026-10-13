@@ -43,7 +43,13 @@ import {
 	composeCapturedChord,
 } from "@shared/keymap/chord-capture";
 import { cn } from "@shared/lib/utils";
-import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
+import {
+	type FC,
+	type KeyboardEvent,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 import {
 	DEFAULT_QUICK_SEND_VALUE,
 	type MiniViewRegistrationState,
@@ -320,6 +326,26 @@ export type SettingControlProps = {
 	effectiveHosting?: string;
 	/** The cascade chains, when the kind is `cascade`. */
 	chains?: Record<string, string[]>;
+	/**
+	 * The id this picker's `aria-describedby` points at, and the id the inner
+	 * note carries when it renders one. Defaults to `settingEffectiveId(key)`,
+	 * which is the General surface's spelling; a second surface that can be
+	 * co-mounted passes `settingEffectiveIdFor(key, <surface>)` so the two never
+	 * collide (see that helper).
+	 */
+	effectiveNoteId?: string;
+	/**
+	 * Suppress the row's own effective note (`EffectiveLanguage`).
+	 *
+	 * The note is the picker's OWN caption and belongs with it wherever the
+	 * control is the header of its surface. It must be suppressed where the
+	 * surface already renders its own caption for the same fact: the General
+	 * language section renders the phase-aware sentence (`In effect: <tag>` /
+	 * pending / saved / last-known / not-yet-resolved) directly under the
+	 * control, and leaving the inner note on rendered "en" TWICE in two voices
+	 * (design round 1 D1). One surface, one caption.
+	 */
+	suppressEffectiveNote?: boolean;
 	/** True while the row is saving, or gated off by another setting. */
 	disabled?: boolean;
 	onValueChange: (value: string) => void;
@@ -335,21 +361,236 @@ export type SettingControlProps = {
 	helpId?: string;
 };
 
-/**
- * What `auto` resolves to RIGHT NOW, under the language row's picker.
- *
- * The registry's picker offers `auto` plus the shipped locales, and `auto` is
- * the default; the word alone leaves the reader asking which language that IS.
- * The answer is the i18n store's own active locale - the same value every
- * formatter and message lookup reads - subscribed here, so a language that
- * lands (this row's saved write, the TUI's, or a config.yml edit a
- * capabilities answer picks up) updates this line with nothing else moving.
- *
- * Shown in every state rather than only beside `auto`: next to an UNSAVED
- * draft it is what says the change has not taken effect yet.
+/** Native names are language identifiers, not claims of translated coverage.
+ * The backend's choices decide eligibility. Flags are decorative representative
+ * artwork, never a country preference; intrinsic pigments are not UI role colors.
  */
-/** The effective-note's DOM id, the picker's describedby target (U2). */
+export const LANGUAGE_IDENTIFIERS = [
+	{ value: "en", name: "English", country: "us" },
+	{ value: "fr", name: "Français", country: "fr" },
+	{ value: "es", name: "Español", country: "es" },
+	{ value: "zh-CN", name: "简体中文", country: "cn" },
+	{ value: "ru", name: "Русский", country: "ru" },
+	{ value: "vi", name: "Tiếng Việt", country: "vn" },
+	{ value: "ur", name: "اردو", country: "pk" },
+	{ value: "hi", name: "हिन्दी", country: "in" },
+] as const;
+
+/**
+ * The tag the SERVER served, resolved to the one name table above.
+ *
+ * WHY A NORMALISER RATHER THAN A PINNED TAG. Eligibility is the backend's answer
+ * (`languageChoices` enables a value only when the server's `choices` contains
+ * it), so the identifier table must never be the thing that decides what is
+ * selectable. But the flag and autonym hang off the tag this table spells, and
+ * the core's own `SUPPORTED_LOCALES` normalises a served tag by its exact
+ * spelling (`zh-CN`). A future core that served the bare `zh` subtag - or a
+ * region variant like `zh-Hans` - would otherwise render a genuinely served
+ * locale as a disabled, unnamed option, which reads as "this backend does not
+ * have Chinese" over a backend that just answered in it.
+ *
+ * So the match is by primary language subtag with an exact hit preferred: an
+ * exact `zh-CN` wins, `zh-Hans`/`zh`/`zh-TW` fall back to the `zh-CN` entry, and
+ * anything unknown simply has no artwork (server eligibility still decides).
+ */
+export function languageIdentifierFor(value: string) {
+	const exact = LANGUAGE_IDENTIFIERS.find((item) => item.value === value);
+	if (exact) return exact;
+	const primary = value.split("-")[0]?.toLowerCase();
+	if (!primary) return undefined;
+	return LANGUAGE_IDENTIFIERS.find(
+		(item) => item.value.split("-")[0]?.toLowerCase() === primary,
+	);
+}
+
+export function languageChoices(setting: BackendSetting) {
+	const available = new Map(
+		setting.choices.map((choice) => [String(choice.value), choice]),
+	);
+	return ["auto", ...LANGUAGE_IDENTIFIERS.map((item) => item.value)].map(
+		(value) => ({
+			value,
+			enabled: available.has(value),
+			label: available.get(value)?.label ?? value,
+			description: available.get(value)?.description ?? "",
+		}),
+	);
+}
+
+const LanguageFlag: FC<{ country: string }> = ({ country }) => {
+	/*
+	 * Explicit artwork rather than generated bands: a repeated pigment (Spain's
+	 * two reds) has no natural list index to key on, so each band carries the
+	 * geometry and the key its own artwork states.
+	 */
+	const hband = (k: string, fill: string, y: number, h = 16 / 3) => (
+		<rect key={k} x="0" y={y} width="24" height={h} fill={fill} />
+	);
+	const vband = (k: string, fill: string, x: number) => (
+		<rect key={k} x={x} y="0" width="8" height="16" fill={fill} />
+	);
+	return (
+		<svg
+			viewBox="0 0 24 16"
+			className="h-4 w-6 shrink-0"
+			aria-hidden="true"
+			focusable="false"
+		>
+			{country === "fr" && (
+				<>
+					{vband("fr-left", "#002395", 0)}
+					{vband("fr-middle", "#ffffff", 8)}
+					{vband("fr-right", "#ed2939", 16)}
+				</>
+			)}
+			{country === "es" && (
+				<>
+					{hband("es-top", "#aa151b", 0)}
+					{hband("es-middle", "#f1bf00", 16 / 3)}
+					{hband("es-bottom", "#aa151b", 32 / 3)}
+				</>
+			)}
+			{country === "ru" && (
+				<>
+					{hband("ru-top", "#ffffff", 0)}
+					{hband("ru-middle", "#0039a6", 16 / 3)}
+					{hband("ru-bottom", "#d52b1e", 32 / 3)}
+				</>
+			)}
+			{country === "in" && (
+				<>
+					{hband("in-top", "#ff9933", 0)}
+					{hband("in-middle", "#ffffff", 16 / 3)}
+					{hband("in-bottom", "#138808", 32 / 3)}
+					<circle
+						cx="12"
+						cy="8"
+						r="2"
+						fill="none"
+						stroke="#000080"
+						strokeWidth="0.7"
+					/>
+				</>
+			)}
+			{country === "us" && (
+				<>
+					<rect width="24" height="16" fill="#ffffff" />
+					{[0, 2, 4, 6, 8, 10, 12].map((stripe) => (
+						<rect
+							key={stripe}
+							width="24"
+							height={16 / 13}
+							y={(stripe * 16) / 13}
+							fill="#b22234"
+						/>
+					))}
+					<rect width="10" height="9" fill="#3c3b6e" />
+					<path
+						d="M2 2h1v1H2zm3 0h1v1H5zm3 0h1v1H8zM2 5h1v1H2zm3 0h1v1H5zm3 0h1v1H8z"
+						fill="#ffffff"
+					/>
+				</>
+			)}
+			{["cn", "vn"].includes(country) && (
+				<>
+					<rect width="24" height="16" fill="#da251d" />
+					<path
+						d={
+							country === "vn"
+								? "M12 3l1.5 3.5 4 .4-3 2.6 1 3.8-3.5-2-3.5 2 1-3.8-3-2.6 4-.4z"
+								: "M5 2l1 2.4 2.5.2-2 1.6.7 2.5L5 7.3 2.8 8.7l.7-2.5-2-1.6L4 4.4z"
+						}
+						fill="#ffde00"
+					/>
+				</>
+			)}
+			{country === "pk" && (
+				<>
+					<rect width="24" height="16" fill="#01411c" />
+					<rect width="6" height="16" fill="#ffffff" />
+					<path d="M17 3a5 5 0 1 0 3 8 4.5 4.5 0 0 1-3-8z" fill="#ffffff" />
+					<path
+						d="M18 3l.5 1.3 1.5.1-1.1 1 .4 1.4-1.3-.8-1.2.8.4-1.4-1.1-1 1.4-.1z"
+						fill="#ffffff"
+					/>
+				</>
+			)}
+		</svg>
+	);
+};
+
+export const LanguageChoiceLabel: FC<{
+	value: string;
+	fallback: string;
+	/**
+	 * The option cannot be selected on this backend. Used for the flag treatment,
+	 * not for the text: the autonym stays fully legible (see the bidi note below).
+	 */
+	disabled?: boolean;
+}> = ({ value, fallback, disabled = false }) => {
+	const identity = languageIdentifierFor(value);
+	if (!identity)
+		return (
+			<>
+				{value === "auto" ? t("ui.settings.language.general.system") : fallback}
+			</>
+		);
+	return (
+		/*
+		 * `min-w-0` on the row plus `whitespace-nowrap` on each part is what keeps
+		 * this a SINGLE OPTION rather than a wrapping paragraph: without it the RTL
+		 * autonym broke to a second line while `简体中文` stayed inline (UX U2).
+		 *
+		 * `items-center` with the leading-none flag and an explicit `leading-6` on
+		 * the text is the line box a right-to-left script needs: Arabic ascenders and
+		 * descenders both exceed a Latin x-height, and at the inherited tight line
+		 * height the Arabic glyph line COLLAPSED to a sliver with a stray Latin
+		 * fragment at the left edge (design round 1 D3). The isolated `<bdi>` is the
+		 * other half: `dir="auto"` on the text itself - not merely on a wrapper -
+		 * is what stops the surrounding Latin UI from re-ordering the run.
+		 */
+		<span className="inline-flex min-w-0 items-center gap-2">
+			<span className={disabled ? "opacity-45 saturate-50" : undefined}>
+				<LanguageFlag country={identity.country} />
+			</span>
+			<bdi
+				dir="auto"
+				lang={identity.value}
+				className="whitespace-nowrap leading-6"
+			>
+				{identity.name}
+			</bdi>
+		</span>
+	);
+};
+
+/**
+ * The effective-note's DOM id on the CANONICAL surface, and the picker's
+ * `aria-describedby` target there (U2).
+ *
+ * A surface that can be co-mounted must NOT reuse this spelling - it derives its
+ * own with `settingEffectiveIdFor` below, so two live surfaces never put one id
+ * on two elements. The note this id names is documented on `EffectiveLanguage`.
+ */
 export const settingEffectiveId = (key: string) => `setting-effective-${key}`;
+
+/**
+ * The same note's id on a SECOND surface that may be co-mounted.
+ *
+ * WHY A SECOND SPELLING. `setting-effective-language` is emitted by whichever
+ * element owns the caption for the surface in view, and each picker must point
+ * at ITS OWN caption. Two surfaces that can be mounted at once — the General
+ * section and the palette dialog, co-mounted when the dialog is opened on
+ * `/settings` — would otherwise both emit the canonical id, and
+ * `getElementById` would resolve one picker's `aria-describedby` to the OTHER
+ * surface's caption (QA round 5, Q5). Distinct ids per surface is the fix that
+ * needs no proof: one id, one owner, one describedby target, at every moment.
+ */
+export const settingEffectiveIdFor = (key: string, surface: string) =>
+	`${settingEffectiveId(key)}-${surface}`;
+
+/** The palette dialog's own spelling, since it can be open beside the section. */
+export const DIALOG_EFFECTIVE_SURFACE = "dialog";
 
 /**
  * What `auto` resolves to RIGHT NOW, under the language row's picker.
@@ -384,6 +625,8 @@ export const SettingControl = ({
 	onChainsChange,
 	effectiveHosting = "",
 	helpId,
+	suppressEffectiveNote = false,
+	effectiveNoteId: effectiveNoteIdProp,
 }: SettingControlProps) => {
 	/*
 	 * The searchable combobox branch, keyed on the setting's KEY rather than on
@@ -404,9 +647,17 @@ export const SettingControl = ({
 	 * this key gets one: the note is the one piece of control-adjacent text
 	 * that changes WITHOUT the reader acting on the control (U2, round 1).
 	 */
+	/*
+	 * The picker's describedby target, and the one caption id on this surface (U2,
+	 * round 1). It is emitted WHETHER OR NOT this control renders the note itself:
+	 * where the surface owns the caption (`suppressEffectiveNote`), the id belongs
+	 * to THAT element, and the control still has to point at it — QA round 4's Q1
+	 * caught the first version making the id conditional on the note, which left
+	 * the surviving caption anonymous and the picker describing nothing.
+	 */
 	const effectiveNoteId =
 		setting.key === LANGUAGE_SETTING_KEY
-			? settingEffectiveId(setting.key)
+			? (effectiveNoteIdProp ?? settingEffectiveId(setting.key))
 			: undefined;
 	if (comboSource) {
 		return (
@@ -471,10 +722,14 @@ export const SettingControl = ({
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							{setting.choices.map((choice) => (
+							{(setting.key === LANGUAGE_SETTING_KEY
+								? languageChoices(setting)
+								: setting.choices
+							).map((choice) => (
 								<SelectItem
 									key={serialize(choice.value)}
 									value={serialize(choice.value)}
+									disabled={"enabled" in choice && !choice.enabled}
 									/*
 									 * The registry ships a sentence for each choice (`snapcompact for
 									 * vision models, else context-full`) and 43 of the 102 settings
@@ -488,12 +743,34 @@ export const SettingControl = ({
 									 */
 									title={choice.description || undefined}
 								>
-									{choice.label}
+									{setting.key === LANGUAGE_SETTING_KEY ? (
+										<>
+											<LanguageChoiceLabel
+												value={String(choice.value)}
+												fallback={choice.label}
+												disabled={"enabled" in choice && !choice.enabled}
+											/>
+											{"enabled" in choice && !choice.enabled && (
+												/*
+												 * Visibly SECONDARY to the label it qualifies (design round 1
+												 * D4): the reason is a qualifier on the option, so it is smaller
+												 * and dimmer than the autonym and never competes with it. It also
+												 * carries `whitespace-nowrap` so it cannot break the row into
+												 * two lines beside the RTL label (UX U2).
+												 */
+												<span className="shrink-0 text-caption text-ink-dim whitespace-nowrap">
+													{t("ui.settings.language.general.unavailable_choice")}
+												</span>
+											)}
+										</>
+									) : (
+										choice.label
+									)}
 								</SelectItem>
 							))}
 						</SelectContent>
 					</Select>
-					{setting.key === LANGUAGE_SETTING_KEY && (
+					{setting.key === LANGUAGE_SETTING_KEY && !suppressEffectiveNote && (
 						<EffectiveLanguage id={effectiveNoteId} />
 					)}
 				</div>

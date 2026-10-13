@@ -122,39 +122,72 @@ let capabilitiesLanguage = "en";
 const setCapabilitiesLanguage = (language) => {
 	capabilitiesLanguage = language;
 };
+
+/*
+ * The default desktop stub, installed ONCE and never overwritten in place.
+ *
+ * A case that needs its own answers does not assign to
+ * `window.api.desktop.request`; it calls `withDesktopStub` and the default is
+ * restored when the case ends. WHY THIS IS A HELPER RATHER THAN A CONVENTION:
+ * the first version of the General test assigned a whole new `request` onto the
+ * global and never put the default back, so the three tests AFTER it ran
+ * against a stub that threw on `settings.list` - each failing on `the store
+ * must be seeded` / `no Retry rendered`, none of them about the code they
+ * meant to test. Global state leaking between cases is the failure mode; the
+ * helper is what makes restoring it the default rather than a remembered step.
+ */
+const defaultDesktopRequest = async (request) => {
+	apiCalls.push({ ...request });
+	if (request?.op === "capabilities") {
+		if (capabilitiesBehavior.type === "hang") {
+			return new Promise((resolve) => {
+				pendingCapabilitiesReply = resolve;
+			});
+		}
+		if (capabilitiesBehavior.type === "error") {
+			return {
+				status: 503,
+				body: { status: 503, message: "The server is not answering." },
+			};
+		}
+		return {
+			status: 200,
+			body: {
+				result: {
+					desktop_available: true,
+					features: capabilitiesBehavior.features,
+					language: capabilitiesLanguage,
+				},
+			},
+		};
+	}
+	if (request?.op === "settings.list") {
+		return { status: 200, body: { result: settingsPayload() } };
+	}
+	return { status: 200, body: { result: {} } };
+};
+
 globalThis.window.api = {
 	desktop: {
-		request: async (request) => {
-			apiCalls.push({ ...request });
-			if (request?.op === "capabilities") {
-				if (capabilitiesBehavior.type === "hang") {
-					return new Promise((resolve) => {
-						pendingCapabilitiesReply = resolve;
-					});
-				}
-				if (capabilitiesBehavior.type === "error") {
-					return {
-						status: 503,
-						body: { status: 503, message: "The server is not answering." },
-					};
-				}
-				return {
-					status: 200,
-					body: {
-						result: {
-							desktop_available: true,
-							features: capabilitiesBehavior.features,
-							language: capabilitiesLanguage,
-						},
-					},
-				};
-			}
-			if (request?.op === "settings.list") {
-				return { status: 200, body: { result: settingsPayload() } };
-			}
-			return { status: 200, body: { result: {} } };
-		},
+		request: defaultDesktopRequest,
 	},
+};
+
+/*
+ * Run `body` with a temporary desktop stub, restoring the default afterwards
+ * even when the body throws. The stub still records into `apiCalls`, so a case
+ * that swaps in behaviour keeps the same call log the assertions read.
+ */
+const withDesktopStub = async (request, body) => {
+	window.api.desktop.request = async (incoming) => {
+		apiCalls.push({ ...incoming });
+		return request(incoming);
+	};
+	try {
+		return await body();
+	} finally {
+		window.api.desktop.request = defaultDesktopRequest;
+	}
 };
 
 const bundle = await build({
@@ -162,10 +195,11 @@ const bundle = await build({
 		contents: [
 			'import { createElement } from "react";',
 			'export { QueryClient, QueryClientProvider } from "@tanstack/react-query";',
-			'export { LanguageDialog, saveLanguageValue } from "./src/renderer/src/features/settings/components/language-dialog";',
+			'export { LanguageDialog, saveImmediateLanguageValue, saveLanguageValue, GeneralLanguageSetting } from "./src/renderer/src/features/settings/components/language-dialog";',
 			'export { useLanguageDialogStore } from "./src/renderer/src/features/settings/components/language-dialog-store";',
 			'export { useI18nLocaleSync } from "./src/renderer/src/shared/i18n/locale-sync";',
 			'export { applyCapabilities, currentLocale } from "./src/renderer/src/shared/i18n";',
+			'export { languageChoices } from "./src/renderer/src/features/settings/components/setting-control";',
 			"export { createElement };",
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -200,11 +234,14 @@ const {
 	QueryClientProvider,
 	createElement,
 	LanguageDialog,
+	saveImmediateLanguageValue,
 	saveLanguageValue,
+	GeneralLanguageSetting,
 	useLanguageDialogStore,
 	useI18nLocaleSync,
 	applyCapabilities,
 	currentLocale,
+	languageChoices,
 } = await import(bundlePath.href);
 
 /* The app mounts this once; without it nothing feeds the store. */
@@ -274,6 +311,150 @@ const mount = async (
 	return { client };
 };
 
+const mountGeneral = async (t) => {
+	applyCapabilities(null);
+	setCapabilitiesLanguage("en");
+	setCapabilitiesBehavior({ type: "ok", features: { settings: 1, i18n: 1 } });
+	apiCalls.length = 0;
+	const client = new QueryClient({
+		defaultOptions: {
+			queries: { retry: false, staleTime: Number.POSITIVE_INFINITY },
+			gcTime: 0,
+		},
+	});
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	t.after(async () => {
+		settlePendingCapabilities();
+		try {
+			await act(async () => {
+				root.unmount();
+			});
+		} finally {
+			client.clear();
+		}
+		container.remove();
+	});
+	await act(async () => {
+		root.render(
+			createElement(
+				QueryClientProvider,
+				{ client },
+				createElement(
+					React.Fragment,
+					null,
+					createElement(GeneralLanguageSetting, { focus: true }),
+					createElement(LocaleSync, null),
+				),
+			),
+		);
+	});
+	lastClient = client;
+	return { client };
+};
+
+test(
+	"the General control writes immediately, stays on committed truth and names readback uncertainty",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		const { client } = await mountGeneral(t);
+		await settle(
+			() => Boolean(document.querySelector("[data-setting-key=language]")),
+			"the General language control must render",
+		);
+		await settle(() => currentLocale() === "en", "the store must be seeded");
+		/*
+		 * Availability is the SERVER's answer, not the app's eight-name table:
+		 * this fixture ships `auto` + `en`, so the audited-but-absent locales
+		 * must come back disabled rather than offered as selectable.
+		 */
+		const choiceRow = settingsPayload().settings.find(
+			(row) => row.key === "language",
+		);
+		const offered = languageChoices(choiceRow);
+		assert.deepEqual(
+			offered.filter((choice) => choice.enabled).map((choice) => choice.value),
+			["auto", "en"],
+			"only the choices this server actually serves are selectable",
+		);
+		for (const value of ["zh-CN", "ur", "fr"]) {
+			assert.equal(
+				offered.find((choice) => choice.value === value).enabled,
+				false,
+				`${value} is offered as an unavailable option, never a selectable one`,
+			);
+		}
+		/* The status line states the BACKEND's resolved language, not the client OS guess. */
+		const status = document.querySelector("[data-setting-key=language] output");
+		assert.ok(
+			status?.textContent.includes("en"),
+			"the effective note reports the backend-resolved locale",
+		);
+		const edits = () => apiCalls.filter((call) => call.op === "settings.edit");
+		const refuseEdit = async (request) => {
+			if (request?.op === "settings.edit")
+				return { status: 422, body: { status: 422, message: "refused" } };
+			if (request?.op === "settings.list")
+				return { status: 200, body: { result: settingsPayload() } };
+			if (request?.op === "capabilities")
+				return {
+					status: 200,
+					body: {
+						result: {
+							desktop_available: true,
+							desktop_contract: 1,
+							desktop_auth: "bearer",
+							features: { settings: 1, i18n: 1 },
+							language: capabilitiesLanguage,
+						},
+					},
+				};
+			return { status: 200, body: { result: {} } };
+		};
+		await withDesktopStub(refuseEdit, async () => {
+			await act(async () => {
+				await saveImmediateLanguageValue({
+					value: "en",
+					queryClient: client,
+				}).catch(() => {});
+			});
+		});
+		/* Only a CONFIRMED value is cached; the committed row is untouched. */
+		const cached = client.getQueryData(["desktop", "settings"]);
+		assert.equal(
+			cached.settings.find((row) => row.key === "language").value,
+			"auto",
+			"a rejected write must not be presented as the committed setting",
+		);
+		await settle(
+			() => Boolean(document.querySelector('[role="combobox"]')),
+			"the server-driven choice control must render for the tested row",
+		);
+		/* A write that lands but cannot be read back is its own state. */
+		const outcome = await withDesktopStub(
+			async (request) => {
+				if (request?.op === "settings.list") throw new Error("offline");
+				return { status: 200, body: { result: {} } };
+			},
+			() =>
+				saveImmediateLanguageValue({
+					value: "en",
+					queryClient: client,
+				}),
+		);
+		assert.equal(
+			outcome,
+			"readback-unknown",
+			"a confirmed write without a readable answer is not silently a success",
+		);
+		assert.equal(
+			edits().some((call) => call.key === "language"),
+			true,
+		);
+	},
+);
+
 test(
 	"the dialog shows the row's control and note, closed until asked, Save clean",
 	{ timeout: TEST_TIMEOUT_MS },
@@ -284,8 +465,18 @@ test(
 		await act(async () => {
 			useLanguageDialogStore.getState().openLanguage();
 		});
+		/*
+		 * THE DIALOG'S OWN ID, and the identical note. QA round 5 (Q5) gave this
+		 * picker a surface-scoped id (`setting-effective-language-dialog`) because
+		 * it can be co-mounted with the General section, whose caption holds the
+		 * canonical `setting-effective-language`; two elements with one id would
+		 * make each picker's `aria-describedby` resolve to the other's caption.
+		 * The assertion below is the SAME assertion it always was — the note
+		 * renders with the same text — pointed at the id this surface now owns.
+		 */
+		const DIALOG_NOTE = "#setting-effective-language-dialog";
 		await settle(
-			() => Boolean(document.querySelector("#setting-effective-language")),
+			() => Boolean(document.querySelector(DIALOG_NOTE)),
 			"the same note as the row must render",
 		);
 		await settle(() => currentLocale() === "en", "the store must be seeded");
@@ -294,7 +485,7 @@ test(
 			"the title must render",
 		);
 		assert.equal(
-			document.querySelector("#setting-effective-language").textContent,
+			document.querySelector(DIALOG_NOTE).textContent,
 			"In effect: en",
 		);
 		const saveButton = document.querySelector("[data-language-save]");
@@ -313,11 +504,21 @@ test(
 			document.querySelector('[role="combobox"]')?.textContent ?? "";
 		const saveButton = () => document.querySelector("[data-language-save]");
 
+		/*
+		 * The label the trigger shows is the SHARED control's, so this PR moved
+		 * `auto` from the raw wire value to the reader-facing "Use system" the
+		 * General control renders (see `LanguageChoiceLabel`). The assertions
+		 * track the VALUE through that label rather than the raw token: `auto`
+		 * is "Use system", and a served `en` is "English". Asserting the old
+		 * raw `auto` here would pin copy the product deliberately reworded.
+		 */
+		const AUTO_LABEL = "Use system";
+		const EN_LABEL = "English";
 		// First open: seeds the server's value and Save stays clean.
 		await act(async () => {
 			useLanguageDialogStore.getState().openLanguage();
 		});
-		await settle(() => triggerText().includes("auto"), "first seed");
+		await settle(() => triggerText().includes(AUTO_LABEL), "first seed");
 		assert.ok(saveButton().disabled, "clean after the first seed");
 
 		/*
@@ -343,7 +544,7 @@ test(
 		await act(async () => {
 			useLanguageDialogStore.getState().openLanguage();
 		});
-		await settle(() => triggerText().includes("en"), "re-seed to en");
+		await settle(() => triggerText().includes(EN_LABEL), "re-seed to en");
 		assert.ok(
 			saveButton().disabled,
 			"no phantom dirty draft after an external change",
@@ -353,7 +554,7 @@ test(
 		await act(async () => {
 			setServerLanguageValue("auto");
 		});
-		await settle(() => triggerText().includes("auto"), "follow while open");
+		await settle(() => triggerText().includes(AUTO_LABEL), "follow while open");
 		assert.ok(saveButton().disabled, "still clean after the follow");
 	},
 );
@@ -490,5 +691,126 @@ test(
 			() => currentLocale() === "fr",
 			"the capabilities answer must move the store",
 		);
+	},
+);
+
+/**
+ * A CO-MOUNTED PAIR HAS EXACTLY ONE ELEMENT PER CAPTION ID (QA round 5, Q5).
+ *
+ * The General section and the palette dialog can be mounted at the same time —
+ * open the dialog from the palette while `/settings` is up — and each renders a
+ * picker whose `aria-describedby` must resolve to ITS OWN caption. Before this
+ * fix both emitters used the canonical `setting-effective-language`, so
+ * `getElementById` answered with whichever came first and one picker described
+ * the other surface's note.
+ *
+ * The invariant this pins is the one that cannot be satisfied by accident: at
+ * most one element carries each surface's id, and each picker's describedby
+ * points at a real element inside that picker's OWN region. Asserting the ids
+ * alone would pass for two elements sharing one; asserting only describedby
+ * would pass for a dangling reference.
+ */
+test(
+	"a co-mounted General row and palette dialog never share a caption id",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		/*
+		 * BOTH SURFACES MUST ACTUALLY BE MOUNTED. The first version of this case
+		 * used `mountGeneral`, which renders ONLY `GeneralLanguageSetting` — so
+		 * `openLanguage()` set store state that nothing rendered, `dialog` was
+		 * always 0 and every assertion below was vacuous. Sabotage-tested by
+		 * reverting the id fix, it STILL passed (code review round 6, M1). A test
+		 * that cannot fail is not a pin.
+		 *
+		 * The dialog is mounted through the SAME `mount()` helper the dialog cases
+		 * use, because a hand-rolled host raced the settings query and saw no
+		 * dialog picker at all when this file ran as a whole; the General row gets
+		 * its own root beside it. Two roots, one document: genuinely co-mounted,
+		 * each through a setup path that is known to work.
+		 */
+		await mount(t);
+		await mountGeneral(t);
+		await act(async () => {
+			useLanguageDialogStore.getState().openLanguage();
+		});
+		await settle(() => currentLocale() === "en", "the store must be seeded");
+		/*
+		 * TWO PICKERS, ONE PER SURFACE. The dialog's control does NOT carry
+		 * `data-setting-key` inside the dialog (only the General section's row
+		 * does), so the dialog's picker is found by its own region; waiting on a
+		 * `data-setting-key` INSIDE the dialog asked for an element that never
+		 * exists and is what kept this case red.
+		 */
+		await settle(
+			() =>
+				document.querySelectorAll('[role="combobox"]').length >= 2 &&
+				document.querySelector('[role="dialog"] [role="combobox"]') !== null,
+			"both surfaces' pickers must render, or this case proves nothing",
+			10_000,
+		);
+		const generalRow = document.querySelector(
+			"[data-setting-key=language]:not([role=dialog] *)",
+		);
+		const dialogRegion = document.querySelector('[role="dialog"]');
+
+		const CANON = "setting-effective-language";
+		const DIALOG_ID = "setting-effective-language-dialog";
+		const count = (id) => document.querySelectorAll(`[id="${id}"]`).length;
+		const described = (id, owner) => {
+			const target = owner?.querySelector(`[aria-describedby~="${id}"]`);
+			if (!target)
+				return { present: false, resolves: false, insideOwner: false };
+			/*
+			 * `aria-describedby` is a SPACE-SEPARATED ID LIST, not one id - the dialog
+			 * picker legitimately carries `setting-help-language` beside its caption id.
+			 * Resolving the whole attribute through `getElementById` answers null for a
+			 * correct element, which is what made this assertion fail on working code;
+			 * split the list and resolve each id.
+			 */
+			const ids = (target.getAttribute("aria-describedby") ?? "")
+				.split(/\s+/)
+				.filter(Boolean);
+			const resolved = ids
+				.map((one) => document.getElementById(one))
+				.filter((el) => el !== null);
+			const own = resolved.find((el) => owner.contains(el) && el !== target);
+			return {
+				present: true,
+				resolves: resolved.length > 0,
+				insideOwner: Boolean(own),
+				resolvedIds: ids,
+			};
+		};
+		const canon = count(CANON);
+		const dialog = count(DIALOG_ID);
+		const canonDescribed = described(CANON, generalRow);
+		const dialogDescribed = described(DIALOG_ID, dialogRegion);
+
+		/*
+		 * EXACT COUNTS, not `<= 1`. Both surfaces are mounted by construction, so
+		 * each must contribute EXACTLY one element per id — a `<= 1` bound passes
+		 * when a surface silently renders nothing, which is the vacuity this case
+		 * exists to close (code review round 6, M1).
+		 */
+		assert.equal(
+			canon,
+			1,
+			`the General section must emit its caption id exactly once; saw ${canon}`,
+		);
+		assert.equal(
+			dialog,
+			1,
+			`the palette dialog must emit its OWN caption id exactly once; saw ${dialog}`,
+		);
+		if (canonDescribed.present)
+			assert.ok(
+				canonDescribed.resolves && canonDescribed.insideOwner,
+				"the General picker must describe a caption inside its own row",
+			);
+		if (dialogDescribed.present)
+			assert.ok(
+				dialogDescribed.resolves && dialogDescribed.insideOwner,
+				"the dialog picker must describe a caption inside its own dialog",
+			);
 	},
 );
