@@ -734,15 +734,19 @@ const startupProjection = (
 });
 export const BrowserStarting: Story = {
 	render: withPane(startupProjection("starting")),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
 };
 export const BrowserRetrying: Story = {
 	render: withPane(startupProjection("retrying")),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
 };
 export const BrowserUnavailable: Story = {
 	render: withPane(startupProjection("unavailable")),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
 };
 export const BrowserUnavailableNarrow: Story = {
 	render: withPane(startupProjection("unavailable"), 390, 460),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
 };
 export const BrowserReadyEmpty: Story = {
 	render: withPane({
@@ -754,6 +758,7 @@ export const BrowserReadyEmpty: Story = {
 			message: null,
 		},
 	}),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
 };
 export const BrowserReadyPopulated: Story = {
 	render: withPane({
@@ -765,6 +770,7 @@ export const BrowserReadyPopulated: Story = {
 			message: null,
 		},
 	}),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
 };
 
 export const PaneLoading: Story = {
