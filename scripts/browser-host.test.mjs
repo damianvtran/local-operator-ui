@@ -40,6 +40,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/main/browser/registry";',
+			'export * from "./src/main/browser/lifecycle";',
 			// `session-store` is here for the capture rule alone: what a change capture
 			// contains is a property of `captureTabs`, and a restore's own capture is what
 			// round 2's B2 was about.
@@ -113,6 +114,10 @@ const mod = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 const {
+	StartupRollback,
+	startWithRetries,
+	MAX_START_ATTEMPTS,
+	INSTANCE_HEADER,
 	TabRegistry,
 	MAX_AGENT_TABS,
 	captureTabs,
@@ -153,6 +158,7 @@ const {
 	ElectronNotification,
 	ipcMain,
 	registerBrowserIpc,
+	unregisterBrowserIpc,
 	BROWSER_IPC_CHANNELS,
 	OwnershipLedger,
 	BrowserHost,
@@ -2277,6 +2283,152 @@ test("an ids intent naming a tab that is already gone closes the rest and does n
 		host.closeTabs({ mode: "ids", tabIds: [first, second, third] }),
 	);
 	assert.equal(registry.count(), 0);
+});
+
+test("browser readiness reads stay authorized before initialization and across retries", async () => {
+	const frame = { url: "http://localhost:5173/index.html" };
+	const webContents = { id: 1, mainFrame: frame };
+	const window = { isDestroyed: () => false, webContents };
+	let availability = {
+		status: "starting",
+		attempt: 1,
+		maxAttempts: 3,
+		message: null,
+	};
+	let currentHost = null;
+	ipcMain.reset();
+	registerBrowserIpc({
+		window: () => window,
+		expectedUrl: "http://localhost:5173",
+		host: () => currentHost,
+		availability: () => availability,
+		clearData: async () => {},
+		log: () => {},
+	});
+	const event = { sender: webContents, senderFrame: frame };
+	const read = ipcMain.handlers.get("browser-state");
+	const mutate = ipcMain.handlers.get("browser-new-tab");
+	try {
+		assert.equal(read(event).availability.status, "starting");
+		assert.throws(() => read({ sender: {}, senderFrame: frame }), /cannot use/);
+		assert.throws(
+			() => read({ sender: webContents, senderFrame: { ...frame } }),
+			/cannot use/,
+		);
+		await assert.rejects(() => mutate(event), /browser_unavailable/);
+		availability = { ...availability, status: "retrying", attempt: 2 };
+		assert.equal(read(event).availability.status, "retrying");
+		availability = {
+			...availability,
+			status: "unavailable",
+			message: "Saved tabs are kept.",
+		};
+		assert.deepEqual(read(event).tabs, []);
+		assert.equal(read(event).availability.status, "unavailable");
+		currentHost = makeHost().host;
+		availability = { ...availability, status: "ready", message: null };
+		assert.equal(read(event).availability.status, "ready");
+		assert.equal(
+			ipcMain.handlers.get("browser-state"),
+			read,
+			"attempts do not replace the handler",
+		);
+	} finally {
+		unregisterBrowserIpc();
+	}
+});
+
+test("browser startup rolls back all partial owners before bounded retries", async () => {
+	const events = [];
+	const states = [];
+	let live = 0;
+	let peak = 0;
+	let attempts = 0;
+	await assert.rejects(
+		startWithRetries({
+			cancelled: () => false,
+			publish: (state) => states.push(state.status),
+			log: () => {},
+			start: async () => {
+				attempts += 1;
+				const rollback = new StartupRollback();
+				live += 1;
+				peak = Math.max(peak, live);
+				rollback.add(async () => {
+					await Promise.resolve();
+					live -= 1;
+					events.push("view");
+				});
+				rollback.add(() => {
+					events.push("socket");
+					throw new Error("cleanup error");
+				});
+				await rollback.run(() => {});
+				throw new Error("injected startup failure");
+			},
+		}),
+		/injected startup failure/,
+	);
+	assert.equal(attempts, MAX_START_ATTEMPTS);
+	assert.equal(live, 0);
+	assert.equal(peak, 1);
+	assert.deepEqual(events, [
+		"socket",
+		"view",
+		"socket",
+		"view",
+		"socket",
+		"view",
+	]);
+	assert.deepEqual(states, ["starting", "retrying", "retrying", "unavailable"]);
+	let cancelled = false;
+	let calls = 0;
+	await assert.rejects(
+		startWithRetries({
+			cancelled: () => cancelled,
+			publish: () => {},
+			log: () => {},
+			start: async () => {
+				calls += 1;
+				cancelled = true;
+				throw new Error("closed window");
+			},
+		}),
+		/closed window/,
+	);
+	assert.equal(calls, 1);
+});
+
+test("modern browser generation mismatches are rejected before command dispatch", async () => {
+	let dispatched = 0;
+	const isolated = await startRpcServer({
+		key: "isolated-generation-key",
+		instanceId: "generation-A",
+		dispatch: async () => {
+			dispatched += 1;
+			return {};
+		},
+		facts: () => ({ profileDir: "", agentTabs: 0 }),
+		log: () => {},
+	});
+	const url = `http://127.0.0.1:${isolated.port}`;
+	try {
+		const health = await (await fetch(`${url}/health`)).json();
+		assert.equal(health.instance_id, "generation-A");
+		const result = await fetch(`${url}${RPC_PATH}`, {
+			method: "POST",
+			headers: {
+				[KEY_HEADER]: "isolated-generation-key",
+				[INSTANCE_HEADER]: "generation-B",
+			},
+			body: JSON.stringify({ method: "browser_open", params: {} }),
+		});
+		assert.equal(result.status, 409);
+		assert.deepEqual(await result.json(), { detail: "host instance changed" });
+		assert.equal(dispatched, 0);
+	} finally {
+		await isolated.close();
+	}
 });
 
 test("a conversation id is validated at the IPC boundary rather than trusted (R1)", async () => {

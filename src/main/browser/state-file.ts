@@ -52,6 +52,8 @@ export interface BrowserHostStateFile {
 	proto: number;
 	host: "ui";
 	app_version: string;
+	/** Process-generation identity, not an ownership proof or a secret. */
+	instance_id?: string;
 	profile_dir: string;
 	/** The wire methods this build serves (design §6.3), read by the harness BEFORE
 	 * it dispatches: a record with no `capabilities` key is an old app host, and the
@@ -144,6 +146,7 @@ export function keysMatch(presented: unknown, expected: string): boolean {
 
 export interface BrowserStateWriterOptions {
 	appVersion: string;
+	instanceId?: string;
 	now?: () => number;
 	onError?: (error: unknown) => void;
 }
@@ -176,9 +179,11 @@ export class BrowserStateWriter {
 		this.now = options.now ?? Date.now;
 		this.onError = options.onError ?? (() => {});
 		this.appVersion = options.appVersion;
+		this.instanceId = options.instanceId;
 	}
 
 	private readonly appVersion: string;
+	private readonly instanceId: string | undefined;
 
 	/** Publish the record and start the heartbeat. The heartbeat is the
 	 * difference between "the app is running and can open a tab on demand" and a
@@ -216,6 +221,7 @@ export class BrowserStateWriter {
 				proto: PROTO_VERSION,
 				host: "ui",
 				app_version: this.appVersion,
+				...(this.instanceId && { instance_id: this.instanceId }),
 				profile_dir: facts.profileDir,
 				// Advertised from the ONE list the `/health` route also reads (§6.3), so the
 				// record a session reads and the probe Python acquits a stale record with

@@ -119,6 +119,9 @@ declare global {
 				navigate: (url: string) => Promise<unknown>;
 				reload: () => Promise<unknown>;
 				stop: () => Promise<unknown>;
+				/** The recovery click on the `unavailable` state (round 1, D1a): no argument,
+				 * because the host restarts the same window's browser. */
+				retry: () => Promise<unknown>;
 				history: (direction: "back" | "forward") => Promise<unknown>;
 				setContentRect: (
 					rect: { x: number; y: number; width: number; height: number } | null,
