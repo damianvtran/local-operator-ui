@@ -60,6 +60,21 @@ globalThis.Event = bootstrapDOM.window.Event;
 globalThis.CustomEvent = bootstrapDOM.window.CustomEvent;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 /*
+ * Match connectivity-banner-notice.test.mjs: Node's navigator getter has no
+ * browser onLine value, but the connectivity hook reads that exact property.
+ * Use the actual jsdom navigator (synthetic online state), not an API mock or
+ * a suppressed query error. Restore Node's descriptor when this host exits.
+ */
+const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+Object.defineProperty(globalThis, "navigator", {
+	value: bootstrapDOM.window.navigator,
+	configurable: true,
+});
+after(() => {
+	if (previousNavigator) Object.defineProperty(globalThis, "navigator", previousNavigator);
+	else Reflect.deleteProperty(globalThis, "navigator");
+});
+/*
  * The component's refresh hook arms a `window.setInterval`; nothing here waits for
  * a refresh, and a live interval keeps the event loop open after the assertions,
  * which turns a passing file into a timeout (the hang this repository's rendered
@@ -525,6 +540,18 @@ run("canonical model IDs remain displayable and searchable without saving", asyn
 
 	// jsdom has no layout observer. This shim admits the real popup's DOM;
 	// it is not browser geometry, a screenshot, or native application proof.
+	const scrollCalls = [];
+	const originalScroll = Object.getOwnPropertyDescriptor(window.Element.prototype, "scrollIntoView");
+	// The real active-row effect requires this method; jsdom has no layout.
+	// Reuse backend-settings-collapse.test.mjs's shim, recording calls rather
+	// than claiming scrolling geometry or changing any list/filter state.
+	window.Element.prototype.scrollIntoView = function (options) {
+		scrollCalls.push({ tag: this.tagName, text: this.textContent, options });
+	};
+	t.after(() => {
+		if (originalScroll) Object.defineProperty(window.Element.prototype, "scrollIntoView", originalScroll);
+		else Reflect.deleteProperty(window.Element.prototype, "scrollIntoView");
+	});
 	const previousObserver = globalThis.ResizeObserver;
 	globalThis.ResizeObserver = class {
 		observe() {}
@@ -607,6 +634,8 @@ run("canonical model IDs remain displayable and searchable without saving", asyn
 	// there must not hide the already measured display/identity controls.
 	console.log("MODEL_SELECT_DISPLAY_CONTROLS", {
 		display, exact, exactPrefixed, foreign, nested, unknown, saves,
+		u1DisplayMatchesKnownRow: display === pretty,
+		syntheticOnline: navigator.onLine,
 	});
 
 	const search = await render("openai", "", [row(canonical)], async (input) => {
@@ -647,7 +676,7 @@ run("canonical model IDs remain displayable and searchable without saving", asyn
 		};
 	});
 	assert.deepEqual(saves, [], "normalizing display or filtering must not invoke onSave");
-	console.log("MODEL_SELECT_U1_U2_ACTUAL", { display, search, saves });
+	console.log("MODEL_SELECT_U1_U2_ACTUAL", { display, search, saves, scrollCalls });
 	assert.deepEqual({ display, knownRawId: search.known, customRawId: search.custom }, {
 		display: pretty,
 		knownRawId: true,
