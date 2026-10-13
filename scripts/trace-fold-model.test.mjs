@@ -73,6 +73,49 @@ const opening = (id, gap = "turn") => ({
 
 /* ------------------------------- the fold ------------------------------- */
 
+test("incoming receipts bridge actions without impersonating actions", () => {
+	const hub = {
+		record: { id: "h", kind: "custom", customType: "hub_message" },
+		gap: "trace",
+		closesTurn: false,
+	};
+	const options = {
+		nameOf: () => "read",
+		failedOf: () => false,
+		durationOf: () => 1,
+		isFoldable: (r) => r.record.kind === "tool",
+		isReceipt: (r) => r.record.customType === "hub_message",
+	};
+	const groups = foldRuns([row("a"), hub, row("b"), row("c")], options);
+	assert.equal(groups.length, 1);
+	assert.deepEqual(
+		groups[0].rows.map((r) => r.record.id),
+		["a", "h", "b", "c"],
+	);
+	assert.equal(groups[0].actions.length, 3);
+	assert.equal(groups[0].failedCount, 0);
+	assert.equal(
+		foldRuns([row("a"), hub, row("b")], options).length,
+		3,
+		"two tools plus receipt must not reach three-action threshold",
+	);
+	assert.equal(
+		foldRuns([hub, { ...hub, record: { ...hub.record, id: "h2" } }], options)
+			.length,
+		2,
+		"receipt-only grouping remains the upper quiet planner's contract",
+	);
+	const boundary = {
+		record: { id: "u", kind: "user" },
+		gap: "trace",
+		closesTurn: false,
+	};
+	assert.equal(
+		foldRuns([row("a"), hub, boundary, row("b"), row("c")], options).length,
+		5,
+	);
+});
+
 test("three or more consecutive actions fold; two do not", () => {
 	// The threshold is §E2's, and it is asserted as a number so the component and
 	// this test cannot disagree about what "a run" means.
@@ -795,6 +838,27 @@ test("a turn's foot counts its own actions, and names its first failure", () => 
  * A row as `foldImages` reads it: the record's kind is what decides, and the
  * image list is the record's own.
  */
+test("receipt-owned image refs survive a mixed fold in source order", () => {
+	const receipt = {
+		record: {
+			id: "h",
+			kind: "custom",
+			customType: "hub_message",
+			images: [picture("h:0")],
+		},
+		gap: "trace",
+		closesTurn: false,
+	};
+	assert.deepEqual(
+		foldImages([
+			imageRow("a", [picture("a:0")]),
+			receipt,
+			imageRow("b", [picture("b:0")]),
+		]).map((image) => image.id),
+		["a:0", "h:0", "b:0"],
+	);
+});
+
 const imageRow = (id, images) => ({
 	record: { id, kind: "tool", images },
 	gap: "trace",
