@@ -626,8 +626,16 @@ export const SettingControl = ({
 	 * this key gets one: the note is the one piece of control-adjacent text
 	 * that changes WITHOUT the reader acting on the control (U2, round 1).
 	 */
+	/*
+	 * The picker's describedby target, and the one caption id on this surface (U2,
+	 * round 1). It is emitted WHETHER OR NOT this control renders the note itself:
+	 * where the surface owns the caption (`suppressEffectiveNote`), the id belongs
+	 * to THAT element, and the control still has to point at it — QA round 4's Q1
+	 * caught the first version making the id conditional on the note, which left
+	 * the surviving caption anonymous and the picker describing nothing.
+	 */
 	const effectiveNoteId =
-		setting.key === LANGUAGE_SETTING_KEY && !suppressEffectiveNote
+		setting.key === LANGUAGE_SETTING_KEY
 			? settingEffectiveId(setting.key)
 			: undefined;
 	if (comboSource) {
@@ -730,9 +738,7 @@ export const SettingControl = ({
 												 * two lines beside the RTL label (UX U2).
 												 */
 												<span className="shrink-0 text-caption text-ink-dim whitespace-nowrap">
-													{t(
-														"ui.settings.language.general.unavailable_choice",
-													)}
+													{t("ui.settings.language.general.unavailable_choice")}
 												</span>
 											)}
 										</>
