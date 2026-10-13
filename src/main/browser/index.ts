@@ -297,9 +297,6 @@ const hostInstanceId = randomUUID();
 let starting: Promise<BrowserHostHandle> | null = null;
 let startingWindow: BrowserWindow | null = null;
 let cancelStartup = false;
-/** Guards the renderer retry click (round 1, D1a) against a doubled press in the
- * synchronous window before `startBrowserHost` records `starting`. */
-let retryInFlight = false;
 
 export function startBrowserHost(
 	options: StartBrowserHostOptions,
@@ -359,17 +356,14 @@ export function startBrowserHost(
 		// The recovery click on the `unavailable` state (round 1, D1a). It restarts
 		// THIS module's host for the same window — the same call `createWindow`
 		// makes — so the retry travels the one lifecycle path rather than a second,
-		// parallel start. `retryInFlight` makes a doubled click a no-op instead of a
-		// competing initializer (startBrowserHost is already single-flight per
-		// window, so this only guards the synchronous window before it returns).
+		// parallel start. A doubled click needs no guard of its own:
+		// `startBrowserHost` is already single-flight (a second call for the same
+		// window returns the in-flight `starting` promise), which QA's concurrent
+		// probe confirmed — three simultaneous retries produced ONE startup
+		// sequence. Adding a local guard beside that would be a second mechanism
+		// for a rule the module already owns (round 2, Q-R2-2).
 		retry: async () => {
-			if (retryInFlight) return;
-			retryInFlight = true;
-			try {
-				await startBrowserHost(options).catch(() => {});
-			} finally {
-				retryInFlight = false;
-			}
+			await startBrowserHost(options).catch(() => {});
 		},
 		log: options.log,
 	});
