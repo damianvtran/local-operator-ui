@@ -74,6 +74,14 @@ A component never names a colour. It names a role — `bg-surface`,
 
 ## 2. Colour
 
+**Settings navigation is a local exception to persistent row selection.** Its
+current and inactive destinations reveal the same `surface` ground at rest and
+share `rowHover` under the pointer. The current page uses `ink`, semibold text,
+an accent glyph and a small decorative accent dot in the existing gutter;
+`aria-current="page"` conveys that state nonvisually. The dot remains in the
+collapsed icon rail and takes no layout space. This keeps the requested
+continuous, borderless surface without weakening chat's selected-row treatment.
+
 ### The four grounds
 
 `canvas` (page) → `surface` (cards, panels, inputs) → `elevated` (menus,
@@ -343,8 +351,8 @@ placeholders) → `ink-disabled`.
 
 The **eight measured grounds** are the four elevation steps plus the four that
 carry text as a *state* or a surface: `accent-wash` (selection/hover tint,
-callouts, chips, find-match), `rowSelected` (the current row in the sidebar and
-the settings rail), `rowHover` (the row under the pointer), and `message-surface`
+callouts, chips, find-match), `rowSelected` (the selected row in the chat sidebar),
+`rowHover` (the row under the pointer), and `message-surface`
 (the user message block's own fill). SC 1.4.3 asks
 4.5:1 of every ink and nothing more, and the reason this system asks more is that
 4.5:1 at 11px is not 4.5:1 at 14px: a contrast ratio is luminance-only and says
