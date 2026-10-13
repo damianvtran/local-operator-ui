@@ -1,0 +1,90 @@
+{
+	"schema": 1,
+	"note": "Translation provenance ledger (RFC §6). One entry per (locale, namespace): the SHA-256 of the ENGLISH source as translated, the SHA-256 of the translated file as audited, and the agent/model that produced and audited it. `status` is the honest state of that pair - `audited` means an INDEPENDENT auditor (a different agent from the translator) passed it; `translated` means it has not been audited yet and must NOT be released. A shipped locale/namespace with no entry here, or with a status below `audited`, fails the release gate closed (scripts/i18n/ledger-check.mjs, which re-derives both hashes from the files at check time - an entry whose recorded hash no longer matches is stale, and staleness is a failure, not a warning). This file lives OUTSIDE src/i18n/catalogues/ so the generator never ingests it as a message namespace.",
+	"entries": [
+		{
+			"locale": "fr",
+			"namespace": "ui.settings",
+			"source_sha256": "a91901645b0dacac12fac1078e1dd658d2844adf6756f60d2b712c7a97e7001f",
+			"target_sha256": "13d0ed72c4f9d0ddccd5e2fe1805fe04b9a60f54381803f8c8b3882a934960cf",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-13"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-13",
+					"result": "clean-with-findings",
+					"note": "F1 and F2 applied by the owner; F3 (a style NIT) recorded, not churned."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-13",
+					"result": "clean",
+					"note": "Mandated second independent audit; ran without reading the first audit's findings. 34/34 keys."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.console",
+			"source_sha256": "f196b42fd79edd5dfc742e9cb6942bbe2f893b84a436f39366052479819e1d42",
+			"target_sha256": "722818b1b38d2a1024553e88a530e51e7d398f635e3a1675e489dd48e718b2c8",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-13"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-13",
+					"result": "clean-with-findings",
+					"note": "Two MAJOR idiom findings (ended.live, ended.restored) applied by the owner; the auditor then re-read all 30 current values and returned CLEAN at this hash."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-13",
+					"result": "clean",
+					"note": "Second independent full-file audit at the remediated hash; ran without reading the first audit's findings. 30/30 keys, no findings."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.onboarding",
+			"source_sha256": "92589318b54d4ad847ebbb9bcac515b8c08192c997322ee08ec259c62983c8a1",
+			"target_sha256": "d00fd0345119c748efbf92c1d352b82a5519805ecae33603e30e644fdde68f10",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-13"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-13",
+					"result": "clean",
+					"note": "45/45 keys, no findings."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-13",
+					"result": "clean",
+					"note": "Mandated second independent full-file audit; ran without reading the first audit's findings. 45/45 keys, no findings."
+				}
+			],
+			"status": "audited"
+		}
+	]
+}
