@@ -1431,6 +1431,15 @@ export const ModelPicker: FC<PickerContext> = ({
 			form={
 				selectedDetails?.provider === "meta-muse" ? (
 					<div className="grid gap-1 text-body-sm" data-model-native-details>
+						{/* Name the model these facts belong to: unlabelled, the block
+						 * floated under "Nothing matches." or beside an unrelated last
+						 * row while describing the in-force selection (design round 1
+						 * D1 / UX round 1 U2). Same label the row shows, so the two
+						 * cannot disagree. */}
+						<p className="text-ink-muted text-meta">
+							Native details —{" "}
+							{selectedDetails.label || selectedDetails.model_id}
+						</p>
 						<PickerKeyValue
 							label="Context"
 							value={
