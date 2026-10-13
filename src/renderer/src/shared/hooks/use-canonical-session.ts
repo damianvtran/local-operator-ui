@@ -52,6 +52,7 @@ import {
 	appendPendingUser,
 	applyEvent,
 	applyHistoryPage,
+	applyJournalOrderLookup,
 	applyJournalOrderMetadata,
 	applyLiveSeed,
 	clearTranscript,
@@ -89,7 +90,10 @@ import { useAsideStore } from "@shared/store/aside-store";
  * renders. `chat-page`'s `send` reaches for the same `getState()` for the same
  * reason.
  */
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	remoteOwnedId,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
 import { forgetTurnCollapseOpen } from "@shared/store/turn-collapse-open";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -2185,6 +2189,21 @@ export function useCanonicalSessionStream(
 		 */
 		openFrame?: boolean;
 		journalOrder?: boolean;
+		/**
+		 * THE COMPLETE PEER-SOURCE CAPABILITY (`features.peer_journal_source`),
+		 * read by the CALLER off the backend's capabilities like its sibling above.
+		 * What it gates: the `peer_journal_source=1` declaration on a peer
+		 * conversation's reads and its events subscription, and the facts-only
+		 * `source_read=metadata` lookup the cached-ID order repair takes for one.
+		 * FALSE is the fail-closed default: every request keeps today's bytes and
+		 * a remote conversation keeps its legacy ordering lane.
+		 *
+		 * Unlike `openFrame` there is no "unit" a late flip could mis-serve - the
+		 * declaration rides each request at the moment it is built, and each
+		 * reconnect re-evaluates it for the stream - which is why it is a plain
+		 * ref like `journalOrder` and not a state input.
+		 */
+		peerJournalSource?: boolean;
 	} = {},
 ): CanonicalSessionHandle {
 	const openFrame = options.openFrame === true;
@@ -2193,6 +2212,68 @@ export function useCanonicalSessionStream(
 	journalOrderRef.current = journalOrder;
 	const openFrameRef = useRef(openFrame);
 	openFrameRef.current = openFrame;
+	const peerJournalSource = options.peerJournalSource === true;
+	const peerJournalSourceRef = useRef(peerJournalSource);
+	peerJournalSourceRef.current = peerJournalSource;
+	/**
+	 * The CURRENT subscription's own complete-contract declaration, as sent:
+	 * `{sessionId, peer}` while a stream this hook opened is live, null
+	 * otherwise. Reads consult it because the declaration is also the permission
+	 * to answer `building`, and only a subscription that made the same
+	 * declaration receives the availability wake that settles it (see
+	 * `peerScopedNow`).
+	 */
+	const streamPeerSourceRef = useRef<{
+		sessionId: string;
+		peer: boolean;
+	} | null>(null);
+	/**
+	 * The declaration's two conversation-independent halves: the capability is
+	 * advertised AND the catalogue places this conversation on another device.
+	 * `remoteOwnedId` is the one evidence this app has for the second half (a
+	 * placement fact, or the row's own wire fields); absence is "not asked / not
+	 * answered" and is never read as remote, so a local conversation - and a
+	 * deep-linked peer the catalogue has not carried yet - stays byte-legacy.
+	 */
+	const peerDeclarable = useCallback(() => {
+		// No conversation, nothing to declare: the hook runs with an undefined id
+		// on New chat, where every request builder is already behind this flag.
+		if (!sessionId) return false;
+		if (!journalOrderRef.current || !peerJournalSourceRef.current) return false;
+		const state = useCanonicalSessionsStore.getState();
+		return remoteOwnedId(state.sessions, state.placementFacts, sessionId);
+	}, [sessionId]);
+	/**
+	 * Whether a READ of this conversation may declare the complete contract
+	 * right now: `peerDeclarable` AND this conversation's own live subscription
+	 * went out with the same declaration.
+	 *
+	 * WHY THE SUBSCRIPTION COUPLING IS LOAD-BEARING: a declared read may be
+	 * answered `building` - an honest state whose only settlement is the
+	 * availability lane's wake, delivered to subscribers that declared. A read
+	 * that declared while the stream had not would emit facts this viewer
+	 * cannot settle, which is the partial transport release the contract
+	 * forbids; and a read that stays legacy cannot mint that debt, because an
+	 * undeclared peer answer degrades to `unsupported`, which stores nothing.
+	 * A catalogue fact that lands after the connection leaves the READS legacy
+	 * until the stream's next connect re-evaluates it - the same fail-closed
+	 * direction every other negotiation here takes.
+	 *
+	 * Read at the moment each request is built, never baked into state. A
+	 * `useCallback` (as the hooks that capture it already do for `commitView`)
+	 * because it IS a reactive input of theirs: its identity moves with
+	 * `sessionId`, and its other reads are refs, which are deliberately not
+	 * declared.
+	 */
+	const peerScopedNow = useCallback(() => {
+		const stream = streamPeerSourceRef.current;
+		return (
+			peerDeclarable() &&
+			stream !== null &&
+			stream.sessionId === sessionId &&
+			stream.peer
+		);
+	}, [peerDeclarable, sessionId]);
 	const [view, setView] = useState<CanonicalSessionView>(() => {
 		const seed = enabled && sessionId ? paintSeed(sessionId) : null;
 		return {
@@ -3161,6 +3242,8 @@ export function useCanonicalSessionStream(
 										0,
 										512,
 									),
+									// Peer-scoped like the stream's own declaration; see `peerScopedNow`.
+									...(peerScopedNow() ? { peerJournalSource: true } : {}),
 								}
 							: {}),
 					});
@@ -4702,6 +4785,13 @@ export function useCanonicalSessionStream(
 		const closeStream = () => {
 			const closing = dispose;
 			dispose = null;
+			/*
+			 * THE DECLARATION DIES WITH ITS SUBSCRIPTION. Reads consult this ref to
+			 * decide whether they may declare, and a handle that no longer exists
+			 * must not authorize one - its wakes have nowhere to arrive. Cleared
+			 * before the early return so even a no-op close clears it.
+			 */
+			streamPeerSourceRef.current = null;
 			if (!closing) return;
 			closingIntentionally = true;
 			// Cleared in `finally`, not left standing: the browser transport emits its
@@ -4747,6 +4837,15 @@ export function useCanonicalSessionStream(
 					reopen();
 				}, STREAM_SNAPSHOT_RECHECK_MS);
 			}, STREAM_SNAPSHOT_DEADLINE_MS);
+			/*
+			 * THE STREAM'S OWN DECLARATION, decided here because THIS is the request
+			 * that must be able to settle what it starts: a connection that declared
+			 * is what lets later reads of this conversation declare (the availability
+			 * wake rides it), and one that did not leaves every read legacy until the
+			 * next connect re-evaluates it. `peerDeclarable` deliberately does NOT
+			 * consult the stream ref - this is the subscription creating it.
+			 */
+			const peerDeclared = peerDeclarable();
 			dispose = subscribeDesktopStream(
 				{
 					sessionId,
@@ -4760,6 +4859,7 @@ export function useCanonicalSessionStream(
 									0,
 									512,
 								),
+								...(peerDeclared ? { peerJournalSource: true } : {}),
 							}
 						: {}),
 				},
@@ -4929,6 +5029,14 @@ export function useCanonicalSessionStream(
 					}
 				},
 			);
+			/*
+			 * RECORDED ONLY NOW, once the handle exists: from here until the next
+			 * closeStream the reads that consult `peerScopedNow` may declare, and from
+			 * the moment this handle is gone they must not. The pair is the same
+			 * `peerDeclared` this subscription's args carried, never a re-derivation -
+			 * the record must equal the request that went out.
+			 */
+			streamPeerSourceRef.current = { sessionId, peer: peerDeclared };
 		};
 
 		/*
@@ -5079,7 +5187,14 @@ export function useCanonicalSessionStream(
 			clearSnapshotTimer();
 			pending.current = [];
 		};
-	}, [commitView, sessionId, enabled, journalOrder]);
+	}, [
+		commitView,
+		sessionId,
+		enabled,
+		journalOrder,
+		peerDeclarable,
+		peerScopedNow,
+	]);
 
 	// A different session is a different transcript; the reconnect cursor is
 	// per-session too, so both reset together.
@@ -5577,28 +5692,112 @@ export function useCanonicalSessionStream(
 		orderRepairFlight.current = true;
 		let completed: TranscriptState | null = null;
 		let lastDispatched = transcript;
+		/*
+		 * One sweep's response: the authoritative session GET's frame, or the
+		 * facts-only lookup's own page (the owner's answer is page-shaped - the
+		 * frozen four-key envelope plus source facts - with `entries` always
+		 * empty). The kind is carried with the bytes so `page`/`commit` route
+		 * without re-deriving it, and `commit` can hold each kind to its own
+		 * authority: only the authoritative one may install a domain or settle a
+		 * demand.
+		 */
+		type OrderRepairResponse =
+			| {
+					kind: "authority";
+					frame: Extract<DesktopSessionFrame, { type: "snapshot" }>;
+			  }
+			| { kind: "lookup"; page: DesktopHistoryPage };
 		void repairJournalOrder({
 			getTranscript: () => viewRef.current.transcript,
 			isCurrent: () =>
 				sessionRef.current === requested &&
 				viewRef.current.transcript.viewEpoch === epoch,
-			read: (orderIds) => {
+			/**
+			 * THE READ DECISION, stated once for this conversation: while it is
+			 * peer-scoped, an owed reconcile takes ONE COALESCED AUTHORITATIVE read on
+			 * the existing session GET (the contract's own settle for an unmatched
+			 * domain - "asks for one coalesced authoritative snapshot rather than
+			 * switching generations"), and every ordinary sweep takes the FACTS-ONLY
+			 * lookup (no bodies over the wire - the reason this repair was
+			 * re-pointed). `undefined` keeps the historical single authoritative
+			 * read, byte-for-byte, for everything else. The paths and fixed queries
+			 * returned here are the exact bytes each read builder emits, because the
+			 * loop sizes its batch budget against them.
+			 */
+			sweep: (state) => {
+				if (!peerScopedNow()) return undefined;
+				if (state.orderNeedsReconcile === true)
+					return {
+						kind: "authority" as const,
+						path: `/v1/desktop/sessions/${requested}`,
+						query: new URLSearchParams({
+							journal_order: "1",
+							peer_journal_source: "1",
+						}),
+					};
+				const generation = state.journalGeneration;
+				const query = new URLSearchParams({
+					limit: "100",
+					journal_order: "1",
+					peer_journal_source: "1",
+					source_read: "metadata",
+				});
+				if (typeof generation === "string" && generation.length > 0)
+					query.set("expected_journal_generation", generation);
+				return {
+					kind: "lookup" as const,
+					path: `/v1/desktop/sessions/${requested}/history`,
+					query,
+				};
+			},
+			read: async (orderIds, kind): Promise<OrderRepairResponse> => {
 				// Seal only the fact actually dispatched, including a helper follow-up.
 				// A further wake after the flight's bound must remain unattempted debt.
 				lastDispatched = viewRef.current.transcript;
 				orderRepairStamp.current = stampFor(lastDispatched);
-				return desktopResult<
+				if (kind === "lookup") {
+					/*
+					 * A lookup is only ever asked for a peer-scoped conversation (the sweep
+					 * decided it in this same tick), so the declaration here is
+					 * unconditional: a facts-only purpose without its declaration is
+					 * refused by the daemon's own boundary, and emitting refusal-shaped
+					 * requests would be the partial release the sweep exists to prevent.
+					 * `expected_journal_generation` rides whenever this view holds a
+					 * domain: the owner answers a mismatch as `unavailable` + `reconcile`
+					 * with the CURRENT generation, never ordinals for another one.
+					 */
+					const generation = viewRef.current.transcript.journalGeneration;
+					const page = await desktopResult<DesktopHistoryPage>({
+						op: "sessions.history",
+						sessionId: requested,
+						limit: 100,
+						journalOrder: true,
+						orderIds,
+						peerJournalSource: true,
+						sourceRead: "metadata",
+						...(typeof generation === "string" && generation.length > 0
+							? { expectedJournalGeneration: generation }
+							: {}),
+					});
+					return { kind: "lookup", page };
+				}
+				const frame = await desktopResult<
 					Extract<DesktopSessionFrame, { type: "snapshot" }>
 				>({
 					op: "sessions.get",
 					sessionId: requested,
 					journalOrder: true,
 					orderIds,
+					...(peerScopedNow() ? { peerJournalSource: true } : {}),
 				});
+				return { kind: "authority", frame };
 			},
-			page: (snapshot) => snapshot.payload.history,
+			page: (response) =>
+				response.kind === "authority"
+					? response.frame.payload.history
+					: response.page,
 			lookupPath: `/v1/desktop/sessions/${requested}`,
-			commit: (snapshot, revision, orderRead) => {
+			commit: (response, revision, orderRead) => {
 				commitView((current) => {
 					if (
 						sessionRef.current !== requested ||
@@ -5608,11 +5807,14 @@ export function useCanonicalSessionStream(
 						return current;
 					return {
 						...current,
-						transcript: applyJournalOrderMetadata(
-							current.transcript,
-							snapshot.payload.history,
-							orderRead,
-						),
+						transcript:
+							response.kind === "authority"
+								? applyJournalOrderMetadata(
+										current.transcript,
+										response.frame.payload.history,
+										orderRead,
+									)
+								: applyJournalOrderLookup(current.transcript, response.page),
 					};
 				});
 			},
@@ -5651,7 +5853,14 @@ export function useCanonicalSessionStream(
 					setOrderRepairWake((wake) => wake + 1);
 				}
 			});
-	}, [commitView, sessionId, journalOrder, view.transcript, orderRepairWake]);
+	}, [
+		commitView,
+		sessionId,
+		journalOrder,
+		peerScopedNow,
+		view.transcript,
+		orderRepairWake,
+	]);
 
 	const loadOlderDetailed = useCallback(async (): Promise<LoadOlderOutcome> => {
 		const loader = olderLoader.current;
@@ -5693,6 +5902,8 @@ export function useCanonicalSessionStream(
 									0,
 									512,
 								),
+								// Peer-scoped like the stream's own declaration; see `peerScopedNow`.
+								...(peerScopedNow() ? { peerJournalSource: true } : {}),
 							}
 						: {}),
 				}),
@@ -5735,7 +5946,7 @@ export function useCanonicalSessionStream(
 				);
 		}
 		return outcome;
-	}, [commitView, sessionId]);
+	}, [commitView, sessionId, peerScopedNow]);
 	const loadOlder = useCallback(
 		async (): Promise<boolean> =>
 			(await loadOlderDetailed()).kind === "applied",
@@ -5772,6 +5983,8 @@ export function useCanonicalSessionStream(
 									0,
 									512,
 								),
+								// Peer-scoped like the stream's own declaration; see `peerScopedNow`.
+								...(peerScopedNow() ? { peerJournalSource: true } : {}),
 							}
 						: {}),
 				});
@@ -5820,7 +6033,7 @@ export function useCanonicalSessionStream(
 				refreshingTailRef.current = false;
 			}
 		},
-		[commitView, sessionId],
+		[commitView, sessionId, peerScopedNow],
 	);
 
 	// Registered for as long as this pane is on screen, so the store's echo

@@ -262,6 +262,8 @@ test("source stream proxy preserves old/off/on shapes and rejects unbounded cach
 		"",
 		"&journal_order=0&order_ids=a",
 		"&journal_order=1&order_ids=a&order_ids=b",
+		"&journal_order=1&peer_journal_source=0&order_ids=a",
+		"&journal_order=1&peer_journal_source=1&order_ids=a",
 	])
 		assert.equal(
 			(await read(port, `/__desktop/stream?session=${SESSION}${suffix}`))
@@ -272,8 +274,20 @@ test("source stream proxy preserves old/off/on shapes and rejects unbounded cach
 	assert.equal(forwarded[1].searchParams.has("order_ids"), false);
 	assert.equal(forwarded[2].searchParams.get("journal_order"), "1");
 	assert.deepEqual(forwarded[2].searchParams.getAll("order_ids"), ["a", "b"]);
+	// The complete peer-source declaration: forwarded on the literal `1` only —
+	// an explicit `0` is validated and left OFF, so a legacy subscriber's
+	// request stays the shape it always was.
+	assert.equal(forwarded[3].searchParams.has("peer_journal_source"), false);
+	assert.equal(forwarded[4].searchParams.get("peer_journal_source"), "1");
+	assert.equal(forwarded[4].searchParams.get("journal_order"), "1");
+	assert.equal(
+		forwarded[4].search.indexOf("peer_journal_source") <
+			forwarded[4].search.indexOf("order_ids"),
+		true,
+	);
 	for (const suffix of [
 		"&journal_order=2",
+		"&journal_order=1&peer_journal_source=2",
 		"&journal_order=1&order_ids=",
 		`&journal_order=1&order_ids=${"a".repeat(129)}`,
 		`&journal_order=1${"&order_ids=a".repeat(513)}`,
@@ -283,6 +297,6 @@ test("source stream proxy preserves old/off/on shapes and rejects unbounded cach
 				.status,
 			422,
 		);
-	assert.equal(forwarded.length, 3);
+	assert.equal(forwarded.length, 5);
 	assert.deepEqual(rejections, []);
 });

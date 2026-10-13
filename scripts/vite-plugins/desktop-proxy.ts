@@ -75,11 +75,16 @@ export function desktopProxyPlugin(): Plugin {
 						requestUrl.searchParams.get("frontend_replace") ?? "";
 					const openFrame = requestUrl.searchParams.get("open_frame") ?? "";
 					const journalOrder = requestUrl.searchParams.get("journal_order");
+					const peerJournalSource = requestUrl.searchParams.get(
+						"peer_journal_source",
+					);
 					const orderIds = requestUrl.searchParams.getAll("order_ids");
 					// Same count/string bounds as strict IPC: the proxy may forward
 					// cached identities, never an unbounded index-lookup envelope.
 					if (
 						(journalOrder !== null && !["0", "1"].includes(journalOrder)) ||
+						(peerJournalSource !== null &&
+							!["0", "1"].includes(peerJournalSource)) ||
 						orderIds.length > 512 ||
 						orderIds.some((id) => id.length === 0 || id.length > 128)
 					) {
@@ -144,6 +149,18 @@ export function desktopProxyPlugin(): Plugin {
 					if (openFrame === "1") query.set("open_frame", "1");
 					if (journalOrder === "1") {
 						query.set("journal_order", "1");
+						/*
+						 * FORWARDED, never invented, on the same rule as `frontend_replace`
+						 * above: the declaration says the RENDERER consumes the
+						 * complete-contract wake family, so a stale bundle served through this
+						 * same dev server must not be handed wakes it cannot settle. Anything
+						 * other than the literal `1` is left off (including `0`), so an older
+						 * backend and a legacy renderer see the same request shape they
+						 * always did. Set BEFORE the ids for the budget ordering every other
+						 * transport states.
+						 */
+						if (peerJournalSource === "1")
+							query.set("peer_journal_source", "1");
 						appendJournalOrderIds(
 							query,
 							`/v1/desktop/sessions/${sessionId}/events`,

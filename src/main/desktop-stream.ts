@@ -139,6 +139,18 @@ export type RelaySubscribeArgs = {
 	openFrame?: boolean;
 	journalOrder?: boolean;
 	orderIds?: string[];
+	/**
+	 * THE COMPLETE PEER-SOURCE DECLARATION for this subscription (`peer_journal_source=1`).
+	 * FORWARDED, never invented, on the same rule as `openFrame`: it says the
+	 * RENDERER reads the complete-contract family this subscription's frames may
+	 * carry — the peer-origin wakes and the recovery delta's generation/ordinals/
+	 * entry-times keys — and this relay cannot read the renderer's bundle. The
+	 * renderer scopes it to a conversation the catalogue places on another device
+	 * whose capability is advertised; absent leaves the subscription exactly the
+	 * shape it always was, and the daemon hands an undeclared subscriber the
+	 * stripped (pre-contract) frame family.
+	 */
+	peerJournalSource?: boolean;
 };
 
 export type RelayEvent =
@@ -264,6 +276,15 @@ export class DesktopStreamRelay {
 		if (args.openFrame === true) query.set("open_frame", "1");
 		if (args.journalOrder === true) {
 			query.set("journal_order", "1");
+			/*
+			 * The peer declaration rides WITH the journal-order opt-in, before the
+			 * bounded ids so `appendJournalOrderIds` sizes their budget against it.
+			 * The pairing is the wire's own rule: the daemon can only hand the
+			 * complete-contract wake family to a subscriber that sent both, so the
+			 * one is meaningless without the other.
+			 */
+			if (args.peerJournalSource === true)
+				query.set("peer_journal_source", "1");
 		}
 		/*
 		 * The `supplements=1` negotiation (turn-supplements memo §2.7), the same

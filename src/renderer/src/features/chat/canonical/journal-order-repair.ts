@@ -17,15 +17,38 @@ import type { TranscriptState } from "./transcript-reducer";
  * This bounds work under a continuously changing source without token polling.
  * Building/unsupported responses otherwise stop. Never poll on
  * tokens or guess positions for a backend that cannot attest to this source.
+ *
+ * TWO READ KINDS, ONE LOOP. A conversation whose subscription declared the
+ * complete peer-source contract takes the FACTS-ONLY lookup (`source_read=
+ * metadata`) for its ordinary sweeps - no bodies over the wire, which is the
+ * whole point of re-pointing this repair - and the authoritative session GET
+ * for sweeps that owe a reconcile ("an unmatched non-authoritative domain asks
+ * for ONE COALESCED AUTHORITATIVE SNAPSHOT rather than switching generations").
+ * The caller supplies both through `sweep`/`read`; a local conversation (or a
+ * peer opened before the catalogue placed it) keeps the single authoritative
+ * read, byte-for-byte. The lookup commits are non-authoritative on the other
+ * side of `commit`, so neither an install nor a demand settle can ride them.
  */
 export async function repairJournalOrder<T>(deps: {
 	getTranscript: () => TranscriptState;
 	isCurrent: () => boolean;
-	read: (ids: string[]) => Promise<T>;
+	read: (ids: string[], kind: "authority" | "lookup") => Promise<T>;
 	page: (response: T) => DesktopHistoryPage;
 	commit: (response: T, revision: number, read: JournalOrderRead) => void;
 	/** Exact fixed target/query of the existing GET lookup route. */
 	lookupPath: string;
+	/**
+	 * The read THIS sweep will take, known before the batch is cut so the byte
+	 * budget measures the request actually sent (path + every fixed query field,
+	 * ids excluded). `undefined` keeps the historical single-read shape. The
+	 * caller decides the kind - the demand rule (an owed reconcile takes the
+	 * authoritative read) lives with the read builders that emit it.
+	 */
+	sweep?: (
+		state: TranscriptState,
+	) =>
+		| { kind: "authority" | "lookup"; path: string; query: URLSearchParams }
+		| undefined;
 }): Promise<
 	| { kind: "complete"; transcript: TranscriptState }
 	| { kind: "waiting" | "stale" }
@@ -38,12 +61,13 @@ export async function repairJournalOrder<T>(deps: {
 		const before = deps.getTranscript();
 		const read = journalOrderRead(before);
 		const revision = read.revision;
+		const shape = deps.sweep?.(before);
 		const ids = journalOrderIdBatch(
 			journalLookupIds(before).filter((id) => !attempted.has(id)),
-			deps.lookupPath,
-			new URLSearchParams({ journal_order: "1" }),
+			shape?.path ?? deps.lookupPath,
+			shape?.query ?? new URLSearchParams({ journal_order: "1" }),
 		);
-		const response = await deps.read(ids);
+		const response = await deps.read(ids, shape?.kind ?? "authority");
 		if (
 			!deps.isCurrent() ||
 			currentOrderRevision(deps.getTranscript()) !== revision
