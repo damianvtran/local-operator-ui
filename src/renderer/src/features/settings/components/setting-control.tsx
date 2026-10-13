@@ -565,24 +565,12 @@ export const LanguageChoiceLabel: FC<{
 };
 
 /**
- * What `auto` resolves to RIGHT NOW, under the language row's picker.
- *
- * The registry's picker offers `auto` plus the shipped locales, and `auto` is
- * the default; the word alone leaves the reader asking which language that IS.
- * The answer is the i18n store's own active locale - the same value every
- * formatter and message lookup reads - subscribed here, so a language that
- * lands (this row's saved write, the TUI's, or a config.yml edit a
- * capabilities answer picks up) updates this line with nothing else moving.
- *
- * Shown in every state rather than only beside `auto`: next to an UNSAVED
- * draft it is what says the change has not taken effect yet.
- */
-/**
  * The effective-note's DOM id on the CANONICAL surface, and the picker's
  * `aria-describedby` target there (U2).
  *
- * A second surface that can be co-mounted spells it with `settingEffectiveIdFor`
- * instead, so the two never collide (see below).
+ * A surface that can be co-mounted must NOT reuse this spelling - it derives its
+ * own with `settingEffectiveIdFor` below, so two live surfaces never put one id
+ * on two elements. The note this id names is documented on `EffectiveLanguage`.
  */
 export const settingEffectiveId = (key: string) => `setting-effective-${key}`;
 

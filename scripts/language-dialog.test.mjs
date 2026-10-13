@@ -714,48 +714,93 @@ test(
 	"a co-mounted General row and palette dialog never share a caption id",
 	{ timeout: TEST_TIMEOUT_MS },
 	async (t) => {
+		/*
+		 * BOTH SURFACES MUST ACTUALLY BE MOUNTED. The first version of this case
+		 * used `mountGeneral`, which renders ONLY `GeneralLanguageSetting` — so
+		 * `openLanguage()` set store state that nothing rendered, `dialog` was
+		 * always 0 and every assertion below was vacuous. Sabotage-tested by
+		 * reverting the id fix, it STILL passed (code review round 6, M1). A test
+		 * that cannot fail is not a pin.
+		 *
+		 * The dialog is mounted through the SAME `mount()` helper the dialog cases
+		 * use, because a hand-rolled host raced the settings query and saw no
+		 * dialog picker at all when this file ran as a whole; the General row gets
+		 * its own root beside it. Two roots, one document: genuinely co-mounted,
+		 * each through a setup path that is known to work.
+		 */
+		await mount(t);
 		await mountGeneral(t);
 		await act(async () => {
 			useLanguageDialogStore.getState().openLanguage();
 		});
 		await settle(() => currentLocale() === "en", "the store must be seeded");
+		/*
+		 * TWO PICKERS, ONE PER SURFACE. The dialog's control does NOT carry
+		 * `data-setting-key` inside the dialog (only the General section's row
+		 * does), so the dialog's picker is found by its own region; waiting on a
+		 * `data-setting-key` INSIDE the dialog asked for an element that never
+		 * exists and is what kept this case red.
+		 */
 		await settle(
 			() =>
-				document.querySelectorAll("[data-setting-key=language]").length >= 1,
-			"the language row must render on at least one surface",
+				document.querySelectorAll('[role="combobox"]').length >= 2 &&
+				document.querySelector('[role="dialog"] [role="combobox"]') !== null,
+			"both surfaces' pickers must render, or this case proves nothing",
+			10_000,
 		);
+		const generalRow = document.querySelector(
+			"[data-setting-key=language]:not([role=dialog] *)",
+		);
+		const dialogRegion = document.querySelector('[role="dialog"]');
 
 		const CANON = "setting-effective-language";
 		const DIALOG_ID = "setting-effective-language-dialog";
 		const count = (id) => document.querySelectorAll(`[id="${id}"]`).length;
-		const described = (id, surfaceSelector) => {
-			const owner = document.querySelector(surfaceSelector);
+		const described = (id, owner) => {
 			const target = owner?.querySelector(`[aria-describedby~="${id}"]`);
 			if (!target)
 				return { present: false, resolves: false, insideOwner: false };
-			const describedId = target.getAttribute("aria-describedby");
-			const el = document.getElementById(describedId);
+			/*
+			 * `aria-describedby` is a SPACE-SEPARATED ID LIST, not one id - the dialog
+			 * picker legitimately carries `setting-help-language` beside its caption id.
+			 * Resolving the whole attribute through `getElementById` answers null for a
+			 * correct element, which is what made this assertion fail on working code;
+			 * split the list and resolve each id.
+			 */
+			const ids = (target.getAttribute("aria-describedby") ?? "")
+				.split(/\s+/)
+				.filter(Boolean);
+			const resolved = ids
+				.map((one) => document.getElementById(one))
+				.filter((el) => el !== null);
+			const own = resolved.find((el) => owner.contains(el) && el !== target);
 			return {
 				present: true,
-				resolves: el !== null,
-				insideOwner: Boolean(
-					el && owner && owner.contains(el) && el !== target,
-				),
+				resolves: resolved.length > 0,
+				insideOwner: Boolean(own),
+				resolvedIds: ids,
 			};
 		};
 		const canon = count(CANON);
 		const dialog = count(DIALOG_ID);
-		const canonDescribed = described(CANON, "[data-setting-key=language]");
-		const dialogDescribed = described(DIALOG_ID, '[role="dialog"]');
+		const canonDescribed = described(CANON, generalRow);
+		const dialogDescribed = described(DIALOG_ID, dialogRegion);
 
-		assert.ok(
-			canon <= 1 && dialog <= 1,
-			`each surface may emit its caption id at most once; saw canon=${canon} dialog=${dialog}`,
-		);
-		assert.notEqual(
+		/*
+		 * EXACT COUNTS, not `<= 1`. Both surfaces are mounted by construction, so
+		 * each must contribute EXACTLY one element per id — a `<= 1` bound passes
+		 * when a surface silently renders nothing, which is the vacuity this case
+		 * exists to close (code review round 6, M1).
+		 */
+		assert.equal(
 			canon,
+			1,
+			`the General section must emit its caption id exactly once; saw ${canon}`,
+		);
+		assert.equal(
 			dialog,
-			"the two surfaces must not resolve to the same count on one id",
+			1,
+			`the palette dialog must emit its OWN caption id exactly once; saw ${dialog}`,
 		);
 		if (canonDescribed.present)
 			assert.ok(
