@@ -125,6 +125,7 @@ import {
 	type UpdateChannelStatus,
 	type UpdateCheckVerdict,
 	isReadableVersion,
+	publishedVersionFromPypi,
 	serverChannelVerdict,
 	updateCheckVerdict,
 } from "./update-check-verdict";
@@ -6235,8 +6236,15 @@ export class UpdateService {
 	}
 
 	/**
-	 * Get the latest version from PyPI
-	 * @returns Promise resolving to the latest version string or null if unable to fetch
+	 * Get the latest READY version from PyPI: the newest release whose
+	 * artifacts an installer can actually download, per
+	 * `publishedVersionFromPypi`. A version PyPI has named but whose files
+	 * have not finished uploading resolves null — the same answer as an
+	 * unreadable response, because both mean do not offer yet; the next
+	 * scheduled check re-reads. Reading only `info.version` here was the
+	 * 2026-10-12 race: the offer appeared minutes after publication and
+	 * `lop update` exited 1 against artifacts that were not on PyPI yet.
+	 * @returns Promise resolving to the latest ready version string or null if unable to fetch
 	 */
 	private getLatestPypiVersion(): Promise<string | null> {
 		return new Promise((resolve) => {
@@ -6258,8 +6266,14 @@ export class UpdateService {
 					res.on("end", () => {
 						try {
 							const packageInfo = JSON.parse(data);
-							const latestVersion = packageInfo.info?.version;
-							resolve(latestVersion || null);
+							const latestVersion = publishedVersionFromPypi(packageInfo);
+							if (!latestVersion && packageInfo?.info?.version) {
+								logger.info(
+									`PyPI names version ${packageInfo.info.version} but its release has no downloadable wheel yet; not offering it. The next check will re-read.`,
+									LogFileType.UPDATE_SERVICE,
+								);
+							}
+							resolve(latestVersion);
 						} catch (error) {
 							logger.error(
 								"Error parsing PyPI response:",

@@ -241,6 +241,72 @@ export const serverChannelVerdict = ({
 };
 
 /**
+ * One file entry in PyPI's JSON document, as the readiness rule reads it.
+ *
+ * Only the three fields that decide downloadability are named; the document
+ * carries hashes, upload times and comment text this rule has no use for.
+ */
+export type PypiFileEntry = {
+	packagetype?: unknown;
+	yanked?: unknown;
+	url?: unknown;
+};
+
+/**
+ * The published version in a PyPI JSON document, or null when the release
+ * it names is not yet downloadable.
+ *
+ * WHY THE FILE LIST, NOT THE VERSION STRING: PyPI flips `info.version`
+ * when a release is created, before its files finish uploading — the
+ * backend's publish workflow uploads the wheels and the sdist file by file.
+ * A check that reads only the version therefore offers a release the
+ * installer cannot download, which is the operator's 2026-10-12 report:
+ * the offer appeared minutes after publication and `lop update` exited 1
+ * because 0.70.13's artifacts were not on PyPI yet. The `urls` list in the
+ * SAME document is the earliest signal that agrees with the installer: a
+ * non-yanked `bdist_wheel` entry with a download URL means the artifact
+ * exists. An sdist alone does not count — this project always publishes
+ * wheels, so an sdist-only moment is a release still mid-upload, and every
+ * install path (`uv tool`, pipx, pip) is a wheel consumer first. Yanked
+ * files are refused by installers, so a yanked wheel is not readiness.
+ *
+ * `releases[version]` is the fallback for documents that omit `urls`.
+ * Returning null for "not ready" rather than a separate state is
+ * deliberate: not-ready and unreadable both mean do not offer, and the
+ * next scheduled check re-reads instead of acting on a premature verdict.
+ * The backend checker (`local_operator/update.py`) applies this same rule
+ * to the same document, so the app's offer and `lop update` cannot
+ * disagree about whether a release exists yet.
+ */
+export const publishedVersionFromPypi = (payload: unknown): string | null => {
+	if (!payload || typeof payload !== "object") return null;
+	const info = (payload as { info?: unknown }).info;
+	if (!info || typeof info !== "object") return null;
+	const version = (info as { version?: unknown }).version;
+	if (typeof version !== "string" || !version.trim()) return null;
+	const trimmed = version.trim();
+	const downloadable = (files: unknown): boolean =>
+		Array.isArray(files) &&
+		files.some((entry) => {
+			if (!entry || typeof entry !== "object") return false;
+			const file = entry as PypiFileEntry;
+			return (
+				file.packagetype === "bdist_wheel" &&
+				!file.yanked &&
+				typeof file.url === "string" &&
+				file.url.trim().length > 0
+			);
+		});
+	if (downloadable((payload as { urls?: unknown }).urls)) return trimmed;
+	const releases = (payload as { releases?: unknown }).releases;
+	if (releases && typeof releases === "object") {
+		const files = (releases as Record<string, unknown>)[trimmed];
+		if (downloadable(files)) return trimmed;
+	}
+	return null;
+};
+
+/**
  * A verdict from the two channel statuses.
  *
  * The affirmation is derived here rather than passed in, so no caller can
