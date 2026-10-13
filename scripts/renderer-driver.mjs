@@ -229,6 +229,7 @@ import { tmpdir } from "node:os";
 import { basename, join, resolve, sep } from "node:path";
 import sharp from "sharp";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
+import { isEntryPoint } from "./entry-point.mjs";
 import { EVIDENCE_TZ } from "./evidence-tz.mjs";
 import {
 	COPY_FIXTURE_SESSION,
@@ -1696,6 +1697,36 @@ function verb(cdp, name, payload) {
 		`window.__loDevDriver.call(${JSON.stringify(name)}, ${JSON.stringify(payload ?? null)})`,
 	);
 }
+
+/**
+ * ---- the importable surface --------------------------------------------------
+ *
+ * WHY THIS EXISTS, AND WHY IT IS EXACTLY THIS SMALL. The Q1 acceptance caller
+ * must drive this file's own machinery — attach to the app's CDP, call the
+ * dev-driver verbs, capture frames, and own the boot lifecycle — without
+ * re-implementing any of it and without importing this file running `main()`.
+ * Every member below is the EXISTING implementation, exported by name: nothing
+ * is copied, wrapped or given a second behaviour. It is a frozen object rather
+ * than loose named exports so the surface cannot accrete by accident — adding
+ * a fact here is a review decision, and these five are the only ones the Q1
+ * caller needs.
+ *
+ * WHAT IT DOES NOT CHANGE. The CLI is untouched: `main()` runs only when this
+ * file is the process's entry point (`scripts/entry-point.mjs`), so
+ * `node scripts/renderer-driver.mjs …` behaves exactly as before. The app tree
+ * a caller targets is chosen the same way it always was — `process.cwd()` at
+ * import (`ROOT`; Electron is resolved from there) — so importing from a
+ * caller whose cwd is another build drives that build with no new option.
+ * Import nothing else: the rest of this module is scene machinery whose
+ * contract is the CLI, not an API.
+ */
+export const rendererDriverApi = Object.freeze({
+	CdpClient,
+	launchApp,
+	verb,
+	capture,
+	reapLiveBoots,
+});
 
 /** How many RPC envelopes this run has sent, for their ids. */
 let rpcSequence = 0;
@@ -43507,16 +43538,25 @@ async function main() {
 	process.exit(failures === 0 ? 0 : 1);
 }
 
-main().catch(async (error) => {
-	say(`\n[FAIL] the run threw: ${error?.stack ?? error}`);
-	const handle = app;
-	if (handle) {
-		const log = await readAppLog(handle);
-		say("\n---- app log (tail) ----");
-		say(log.split("\n").slice(-40).join("\n"));
-	}
-	// Every boot, not just the scene's: a throw in the middle of the gate's four
-	// leaves whichever ones are still up, and the reaper is the one path that
-	// knows all of them.
-	await reapLiveBoots({ code: 1, why: "the run threw" });
-});
+/*
+ * The CLI entry, guarded so an IMPORT of this module is inert. Before this
+ * guard the footer ran `main()` unconditionally, so `import` executed a whole
+ * CLI run's worth of work. `isEntryPoint` is the house comparison
+ * (`scripts/entry-point.mjs`): a lexical `import.meta.url` string test
+ * silently no-ops through a symlinked directory, which on macOS is ordinary.
+ */
+if (isEntryPoint(import.meta.url)) {
+	main().catch(async (error) => {
+		say(`\n[FAIL] the run threw: ${error?.stack ?? error}`);
+		const handle = app;
+		if (handle) {
+			const log = await readAppLog(handle);
+			say("\n---- app log (tail) ----");
+			say(log.split("\n").slice(-40).join("\n"));
+		}
+		// Every boot, not just the scene's: a throw in the middle of the gate's four
+		// leaves whichever ones are still up, and the reaper is the one path that
+		// knows all of them.
+		await reapLiveBoots({ code: 1, why: "the run threw" });
+	});
+}
