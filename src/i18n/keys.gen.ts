@@ -155,6 +155,19 @@ export type MessageParams = {
 	"ui.settings.language.general.unavailable_choice": undefined;
 	"ui.settings.language.general.write_error": { message: string };
 	"ui.settings.language.palette_action": undefined;
+	"ui.settings.page.title": undefined;
+	"ui.settings.profile.description_anonymous": undefined;
+	"ui.settings.profile.description_authenticated": undefined;
+	"ui.settings.profile.display_name.label": undefined;
+	"ui.settings.profile.display_name.placeholder": undefined;
+	"ui.settings.profile.email.label": undefined;
+	"ui.settings.profile.email.placeholder": undefined;
+	"ui.settings.profile.title": undefined;
+	"ui.settings.section.interface_language.help": undefined;
+	"ui.settings.section.interface_language.label": undefined;
+	"ui.settings.tour.action": undefined;
+	"ui.settings.tour.description": undefined;
+	"ui.settings.tour.title": undefined;
 };
 
 export type MessageKey = keyof MessageParams;
