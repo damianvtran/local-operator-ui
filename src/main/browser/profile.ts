@@ -1,4 +1,10 @@
-import { type Session, session } from "electron";
+import {
+	type DownloadItem,
+	type Event,
+	type Session,
+	type WebContents,
+	session,
+} from "electron";
 import type { DownloadDecision } from "./downloads";
 import type { DownloadItemLike } from "./electron-types";
 
@@ -178,7 +184,7 @@ export function browserStoragePath(browserSession: Session): string | null {
 export function installBrowserSessionHandlers(
 	browserSession: Session,
 	hooks: BrowserSessionHooks = {},
-): void {
+): () => void {
 	// Set BEFORE any view exists: Electron documents that `setUserAgent` "doesn't
 	// affect existing WebContents", so a later call would silently leave the
 	// first tab presenting the default Electron UA.
@@ -228,7 +234,11 @@ export function installBrowserSessionHandlers(
 	// (design §5, §10). The decision itself lives in `downloads.ts`; this handler
 	// owns only the two Electron facts it cannot get for itself — the item, and the
 	// WebContents that started it.
-	browserSession.on("will-download", (event, item, webContents) => {
+	const onDownload = (
+		event: Event,
+		item: DownloadItem,
+		webContents: WebContents,
+	): void => {
 		const webContentsId = webContents?.id ?? -1;
 		const decision = hooks.onDownload?.(item, webContentsId) ?? {
 			cancel: true,
@@ -248,7 +258,14 @@ export function installBrowserSessionHandlers(
 			);
 		}
 		hooks.onDownloadDecided?.(outcome);
-	});
+	};
+	browserSession.on("will-download", onDownload);
+	// The persistent partition survives a host/window lifecycle. Keeping this
+	// attempt's listener would route one download through several stale owners.
+	// Remove only our listener; the permission-denying session policy stays set.
+	return () => {
+		browserSession.removeListener("will-download", onDownload);
+	};
 }
 
 /** Which of the three honest buttons was pressed (design 5.4). */

@@ -683,9 +683,10 @@ export function foldLive(actions: FoldableAction[]): FoldLive | null {
  * A run is consecutive SAME-TURN actions: a row whose `gap` is `"turn"` opens a
  * new turn and therefore a new run, which is how the boundary between two turns
  * is respected without this model knowing anything about turns. Rows the
- * transcript does not treat as trace-like (prose, notices, receipts that are not
- * calls) break a run even when they sit between two calls, because folding
- * across them would hide a statement behind a summary of actions.
+ * transcript does not treat as trace-like (prose and notices) break a run.
+ * Positively classified incoming receipts may bridge calls, but are excluded
+ * from the action threshold, work duration, failures and live execution. This
+ * preserves chronology without claiming that a received message was an action.
  */
 export function foldRuns(
 	rows: Row[],
@@ -715,34 +716,46 @@ export function foldRuns(
 		/** Ms epoch the call completed, when the row carries one. */
 		endedAtOf?: (row: Row) => number | null;
 		isFoldable: (row: Row) => boolean;
+		/** Receipts may bridge calls but never contribute action arithmetic. */
+		isReceipt?: (row: Row) => boolean;
+		receiptSummaryOf?: (rows: Row[]) => string[];
 	},
 ): FoldGroup[] {
 	const groups: FoldGroup[] = [];
 	let run: Row[] = [];
 	const flush = () => {
 		if (run.length === 0) return;
-		const actions: FoldableAction[] = run.map((row) => {
-			const action: FoldableAction = {
-				name: options.nameOf(row),
-				failed: options.failedOf(row),
-				durationS: options.durationOf ? options.durationOf(row) : null,
-				startedAtMs: options.startedAtOf ? options.startedAtOf(row) : null,
-				endedAtMs: options.endedAtOf ? options.endedAtOf(row) : null,
-			};
-			if (options.summaryOf) action.summary = options.summaryOf(row);
-			if (options.opOf) action.op = options.opOf(row);
-			if (options.runningOf) action.running = options.runningOf(row);
-			if (options.executingOf) action.executing = options.executingOf(row);
-			return action;
-		});
-		if (run.length >= FOLD_MIN_ACTIONS) {
+		const receiptRows = run.filter((row) => options.isReceipt?.(row));
+		const actions: FoldableAction[] = run
+			.filter((row) => options.isFoldable(row))
+			.map((row) => {
+				const action: FoldableAction = {
+					name: options.nameOf(row),
+					failed: options.failedOf(row),
+					durationS: options.durationOf ? options.durationOf(row) : null,
+					startedAtMs: options.startedAtOf ? options.startedAtOf(row) : null,
+					endedAtMs: options.endedAtOf ? options.endedAtOf(row) : null,
+				};
+				if (options.summaryOf) action.summary = options.summaryOf(row);
+				if (options.opOf) action.op = options.opOf(row);
+				if (options.runningOf) action.running = options.runningOf(row);
+				if (options.executingOf) action.executing = options.executingOf(row);
+				return action;
+			});
+		if (actions.length >= FOLD_MIN_ACTIONS) {
 			groups.push({
 				kind: "run",
 				id: run[0].record.id,
 				gap: run[0].gap,
 				rows: run,
 				actions,
-				summary: foldSummarySpec(actions),
+				summary: {
+					...foldSummarySpec(actions),
+					units: [
+						...foldSummarySpec(actions).units,
+						...(options.receiptSummaryOf?.(receiptRows) ?? []),
+					],
+				},
 				failedCount: actions.filter((action) => action.failed).length,
 				span: foldSpan(actions),
 				live: foldLive(actions),
@@ -768,7 +781,7 @@ export function foldRuns(
 		 */
 		const opensTurn = row.gap === "turn" || row.gap === "first";
 		if (opensTurn) flush();
-		if (options.isFoldable(row)) {
+		if (options.isFoldable(row) || options.isReceipt?.(row)) {
 			run.push(row);
 			continue;
 		}
@@ -787,13 +800,10 @@ export function foldRuns(
  * screenshot a command wrote, which is the cost condensing was supposed to
  * remove. This is which of them the condensed group has to carry instead.
  *
- * ONLY TOOL ROWS CONTRIBUTE, and that is the whole rule rather than a filter
- * that happens to be here. A run is a run of ACTIONS (§E2) and an action's
- * images are its product - the screenshot a shell command wrote, the frame a
- * browser call captured. A row that is not an action breaks a run rather than
- * joining it (`foldRuns`' `isFoldable`), so no other kind of record can be
- * inside one; the test is stated anyway so the claim is checkable against the
- * record union rather than inferred from the caller's options.
+ * Media belongs to its source row, not to an action-count slot. Tools and
+ * structured hub receipts retain existing refs in canonical member order. Hub
+ * producers currently supply text only; admitting replayed refs here preserves
+ * optional media without inventing an attachment-upload API.
  *
  * PICTURES ONLY — the array's consumers are all picture grammar (117px tiles,
  * `· N images` counts, the lightbox). A video ref rides the same record media
@@ -808,8 +818,12 @@ export function foldRuns(
 export const foldImages = (rows: readonly Row[]): TranscriptImage[] => {
 	const images: TranscriptImage[] = [];
 	for (const row of rows) {
-		if (row.record.kind !== "tool") continue;
-		for (const image of row.record.images) {
+		if (
+			row.record.kind !== "tool" &&
+			!(row.record.kind === "custom" && row.record.customType === "hub_message")
+		)
+			continue;
+		for (const image of row.record.images ?? []) {
 			if (isPictureRef(image)) images.push(image);
 		}
 	}

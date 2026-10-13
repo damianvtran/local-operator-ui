@@ -1055,6 +1055,9 @@ export const ModelPicker: FC<PickerContext> = ({
 		[catalogueDocument, scope, shownSelector],
 	);
 
+	const selectedDetails = scoped.rows.find(
+		(row) => selectorOf(row) === shownSelector,
+	);
 	const options = useMemo<PickerOption[]>(() => {
 		// `connected` is also true when the credential store could not be read,
 		// which is why every model once sat under "Connected" on a fixture with
@@ -1423,6 +1426,96 @@ export const ModelPicker: FC<PickerContext> = ({
 				) : undefined
 			}
 			searchPlaceholder="Search models"
+			// Detail stays on the selected model, not every list row. These are
+			// provider-stated facts, not a claim of entitlement or future billing.
+			form={
+				selectedDetails?.provider === "meta-muse" ? (
+					<div className="grid gap-1 text-body-sm" data-model-native-details>
+						{/* Name the model these facts belong to: unlabelled, the block
+						 * floated under "Nothing matches." or beside an unrelated last
+						 * row while describing the in-force selection (design round 1
+						 * D1 / UX round 1 U2). Same label the row shows, so the two
+						 * cannot disagree. */}
+						<p className="text-ink-muted text-meta">
+							Native details —{" "}
+							{selectedDetails.label || selectedDetails.model_id}
+						</p>
+						<PickerKeyValue
+							label="Context"
+							value={
+								selectedDetails.context_window > 0
+									? selectedDetails.context_window.toLocaleString()
+									: "Unknown"
+							}
+						/>
+						<PickerKeyValue
+							label="Output limit"
+							value={
+								selectedDetails.max_output_tokens &&
+								selectedDetails.max_output_tokens > 0
+									? selectedDetails.max_output_tokens.toLocaleString()
+									: "Unknown"
+							}
+						/>
+						{selectedDetails.family && (
+							<PickerKeyValue
+								label="Family"
+								value={selectedDetails.family}
+								mono={false}
+							/>
+						)}
+						{selectedDetails.release_date && (
+							<PickerKeyValue
+								label="Released"
+								value={selectedDetails.release_date}
+								mono={false}
+							/>
+						)}
+						{typeof selectedDetails.supports_tools === "boolean" && (
+							<PickerKeyValue
+								label="Tools"
+								value={
+									selectedDetails.supports_tools ? "Supported" : "Not supported"
+								}
+								mono={false}
+							/>
+						)}
+						{typeof selectedDetails.reasoning === "boolean" && (
+							<PickerKeyValue
+								label="Reasoning"
+								value={
+									selectedDetails.reasoning
+										? selectedDetails.reasoning_efforts?.join(", ") ||
+											"Supported"
+										: "Not supported"
+								}
+								mono={false}
+							/>
+						)}
+						{selectedDetails.reasoning_default_effort && (
+							<PickerKeyValue
+								label="Default effort"
+								value={selectedDetails.reasoning_default_effort}
+								mono={false}
+							/>
+						)}
+						{selectedDetails.modalities?.input?.length ? (
+							<PickerKeyValue
+								label="Native inputs"
+								value={selectedDetails.modalities.input.join(", ")}
+								mono={false}
+							/>
+						) : null}
+						{selectedDetails.modalities?.output?.length ? (
+							<PickerKeyValue
+								label="Native outputs"
+								value={selectedDetails.modalities.output.join(", ")}
+								mono={false}
+							/>
+						) : null}
+					</div>
+				) : undefined
+			}
 			onPick={onPick}
 			busy={draft ? draftPick.busy : command.busy || persist.busy}
 			/*

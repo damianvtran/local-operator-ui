@@ -4523,6 +4523,101 @@ test("a relayed payload's headline steps over both instruction lines the channel
 	}
 });
 
+test("child quoted parent instructions never invent reply or steer intent", () => {
+	for (const instruction of [
+		"Answer it now with the `hub` tool — a short, direct reply — then carry on with what you were doing. Do not restructure your work around the question.",
+		"This changes your instructions. Apply it from now on, and drop work it makes pointless.",
+	]) {
+		const body = `${instruction}\n\n  quoted text  `;
+		const [record] = replay([
+			custom("quoted-child", "hub_message", {
+				direction: "to_parent",
+				label: "worker",
+				job_id: "job-1",
+				body,
+				text: `<subagent-message label='worker' job='job-1'>\n${body}\n</subagent-message>`,
+			}),
+		]);
+		assert.equal(record.receipt.body, body);
+		assert.equal(record.receipt.expectsReply, null);
+		assert.equal(record.receipt.steer, null);
+	}
+	const body = "  first\n\nsecond  ";
+	const instruction =
+		"Answer it now with the `hub` tool — a short, direct reply — then carry on with what you were doing. Do not restructure your work around the question.";
+	const [parent] = replay([
+		custom("old-parent", "hub_message", {
+			text: `<parent-message>\n${instruction}\n\n${body}\n</parent-message>`,
+		}),
+	]);
+	assert.equal(parent.receipt.body, body);
+	assert.equal(parent.receipt.direction, "to_child");
+	assert.equal(parent.receipt.expectsReply, true);
+	assert.equal(parent.receipt.steer, false);
+	const [unknown] = replay([
+		custom("old-parent-unknown", "hub_message", {
+			text: `<parent-message>\n${instruction}\n\n${body}\n</parent-message>`,
+			expects_reply: null,
+			steer: "true",
+		}),
+	]);
+	assert.equal(unknown.receipt.expectsReply, null);
+	assert.equal(unknown.receipt.steer, null);
+	assert.equal(unknown.receipt.body, body);
+});
+
+test("hub receipts preserve structured display bytes and replay identity", () => {
+	const body = "  first paragraph\n\nsecond paragraph  ";
+	const entry = custom("structured-hub", "hub_message", {
+		body,
+		text: "<parent-message>\ninstruction\n\nmodel envelope\n</parent-message>",
+		direction: "to_child",
+		expects_reply: true,
+		steer: true,
+	});
+	const page = { entries: [entry], has_more: false, cursor: null };
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+	const record = state.records[0];
+	assert.equal(record.kind, "custom");
+	assert.equal(record.receipt.body, body);
+	assert.equal(record.receipt.direction, "to_child");
+	assert.equal(record.receipt.expectsReply, true);
+	assert.equal(record.receipt.steer, true);
+	assert.equal(
+		record.receipt.sender.sessionId,
+		"",
+		"no fabricated parent session ID",
+	);
+	assert.equal(applyHistoryPage(state, page), state);
+	const live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "history_delta", messages: [{ id: entry.id, ...entry.payload }] },
+		1,
+	);
+	assert.equal(live.records[0].receipt.body, body);
+	assert.equal(
+		applyHistoryPage(live, page).records.length,
+		1,
+		"live plus durable same-ID replay paints once",
+	);
+	const child = replay([
+		custom("child", "hub_message", {
+			body,
+			text: "envelope",
+			direction: "to_parent",
+			label: "worker",
+			job_id: "job-1",
+		}),
+	])[0];
+	assert.equal(child.receipt.label, "worker");
+	assert.equal(child.receipt.jobId, "job-1");
+	assert.equal(
+		child.receipt.expectsReply,
+		null,
+		"old/missing flag remains unknown",
+	);
+});
+
 test("an empty relay paints its envelope rather than its closing tag", () => {
 	// 34 real rows in the store are this shape: the description line is empty.
 	const [row] = replay([
@@ -7480,6 +7575,191 @@ test("a send's delivery state rides the row, from both the durable and the live 
 });
 
 /* ---------- the dev-only immutability guard, through the emit path --------- */
+
+/*
+ * --- hub marker projection (child typed provenance) ----------------------
+ *
+ * A comms steer persists as a user-role row whose text is the model-facing
+ * envelope; the producer stamps the typed facts on
+ * `provider_payload.hub_receipt`. These pin the projection contract: the
+ * marker classifies the row as the SAME receipt the custom path paints (durable
+ * and live), no marker keeps the ordinary user treatment, and a malformed
+ * marker is not a receipt.
+ */
+
+const markedSteer = (id, body) => ({
+	role: "user",
+	content: [
+		{
+			type: "text",
+			text: `<parent-message>\nsteer preamble\n\n${body}\n</parent-message>`,
+		},
+	],
+	tool_calls: [],
+	id,
+	provider_payload: {
+		hub_receipt: {
+			direction: "to_child",
+			expects_reply: false,
+			steer: true,
+			body,
+		},
+	},
+});
+
+const markedPage = (id, body) => ({
+	entries: [
+		{
+			id,
+			ts: 11,
+			type: "message",
+			payload: { kind: "message", ...markedSteer(id, body) },
+		},
+	],
+	has_more: false,
+	cursor_missing: false,
+});
+
+test("a marked hub steer row projects as a receipt, not the operator's words", () => {
+	const page = markedPage("h1", "Focus on retries");
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+	assert.equal(state.records.length, 1);
+	const record = state.records[0];
+	assert.equal(record.kind, "custom");
+	assert.equal(record.customType, "hub_message");
+	assert.equal(record.receipt.body, "Focus on retries");
+	assert.equal(record.receipt.steer, true);
+	assert.equal(record.receipt.expectsReply, false);
+	assert.equal(record.receipt.direction, "to_child");
+	// Same page replayed keeps record identity (the equality gate).
+	assert.equal(applyHistoryPage(state, page), state);
+});
+
+test("a row without the marker keeps its ordinary user treatment", () => {
+	const page = {
+		entries: [
+			{
+				id: "u1",
+				ts: 12,
+				type: "message",
+				payload: { kind: "message", ...user("u1", "plain words") },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	};
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+	assert.equal(state.records[0].kind, "user");
+	assert.equal(state.records[0].text, "plain words");
+});
+
+test("a malformed marker is not a receipt", () => {
+	for (const marker of [null, {}, { steer: true }, { body: "" }, { body: 3 }]) {
+		const payload = { kind: "message", ...user("u2", "keeps their words") };
+		payload.provider_payload = { hub_receipt: marker };
+		const page = {
+			entries: [{ id: "u2", ts: 13, type: "message", payload }],
+			has_more: false,
+			cursor_missing: false,
+		};
+		const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+		assert.equal(state.records[0].kind, "user", JSON.stringify(marker));
+		assert.equal(state.records[0].text, "keeps their words");
+	}
+});
+
+test("the marker requires a known direction and normalises flags", () => {
+	// R3-1 mirror: a body alone is not provenance. Missing, null, numeric,
+	// list and unknown directions keep the ordinary user row; present flags
+	// normalise to booleans or null (never guessed); non-string advisory
+	// fields drop, matching the core helper contract.
+	for (const direction of [undefined, null, 3, "unrecognized", []]) {
+		const payload = { kind: "message", ...user("u3", "raw text") };
+		payload.provider_payload = { hub_receipt: { body: "raw text", direction } };
+		const page = {
+			entries: [{ id: "u3", ts: 14, type: "message", payload }],
+			has_more: false,
+			cursor_missing: false,
+		};
+		const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+		assert.equal(state.records[0].kind, "user", String(direction));
+	}
+
+	const payload = { kind: "message", ...user("u4", "typed?") };
+	payload.provider_payload = {
+		hub_receipt: {
+			direction: "to_parent",
+			body: "reply text",
+			expects_reply: "yes",
+			steer: 1,
+			label: 7,
+		},
+	};
+	const page = {
+		entries: [{ id: "u4", ts: 15, type: "message", payload }],
+		has_more: false,
+		cursor_missing: false,
+	};
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+	assert.equal(state.records[0].kind, "custom");
+	assert.equal(state.records[0].receipt.body, "reply text");
+	assert.equal(state.records[0].receipt.direction, "to_parent");
+	assert.equal(state.records[0].receipt.expectsReply, null);
+	assert.equal(state.records[0].receipt.steer, null);
+	assert.notEqual(state.records[0].receipt.label, "7");
+});
+
+test("a stamped but invalid marker is not re-guessed from its envelope", () => {
+	// R3-1 acceptance mirror: the legacy wrapper handling belongs to rows the
+	// modern producer never stamped. An INVALID marker on an envelope-looking
+	// row keeps the row a user row whose text is the raw envelope - never a
+	// hub receipt, never an extracted parent body - on the durable AND live
+	// arms.
+	const envelope =
+		"<parent-message>\nsteer preamble\n\nFocus on retries\n</parent-message>";
+	for (const marker of [
+		{ direction: "sideways", body: "Focus on retries" },
+		{ body: "Focus on retries" },
+		{ direction: "to_child" },
+	]) {
+		const payload = { kind: "message", ...user("u5", envelope) };
+		payload.provider_payload = { hub_receipt: marker };
+		const page = {
+			entries: [{ id: "u5", ts: 16, type: "message", payload }],
+			has_more: false,
+			cursor_missing: false,
+		};
+		const state = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+		assert.equal(state.records[0].kind, "user", JSON.stringify(marker));
+		assert.equal(state.records[0].text, envelope);
+
+		const live = applyEvent(
+			EMPTY_TRANSCRIPT,
+			{
+				type: "message_start",
+				message: { ...payload, role: "user", id: "u5" },
+			},
+			16,
+		);
+		assert.equal(live.records[0].kind, "user", JSON.stringify(marker));
+	}
+});
+
+test("the live marker arm projects the receipt under the row's own id", () => {
+	const message = markedSteer("h2", "Focus on retries");
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message },
+		10,
+	);
+	assert.equal(state.records.length, 1);
+	const record = state.records[0];
+	assert.equal(record.id, "h2");
+	assert.equal(record.kind, "custom");
+	assert.equal(record.customType, "hub_message");
+	assert.equal(record.receipt.body, "Focus on retries");
+	assert.equal(record.receipt.steer, true);
+});
 
 /*
  * `record-immutability.ts` freezes a record where the reducer EMITS it - `upsert`

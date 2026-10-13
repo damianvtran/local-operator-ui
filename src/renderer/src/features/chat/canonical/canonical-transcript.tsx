@@ -96,6 +96,8 @@ import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
 import { DiffBlock, TraceLine } from "../components/trace";
 import {
+	hubIdentity,
+	isInternalReceipt,
 	peerHasDetail,
 	peerIdentityLine,
 	peerSummary,
@@ -2164,6 +2166,60 @@ const NoticeRow = memo(function NoticeRow({
  * with no prompt). An all-absent sender used to expand to `another session`: the
  * collapsed summary verbatim, at the cost of a click (design D5, UX U2).
  */
+/** A structured receipt stays agent-to-agent, including historical reply intent. */
+const HubRow = memo(function HubRow({
+	record,
+	isSmallView,
+	scope,
+}: {
+	record: Extract<TranscriptRecord, { kind: "custom" }>;
+	isSmallView: boolean;
+	scope: AttachmentScope | null;
+}) {
+	const receipt = record.receipt;
+	if (!receipt) return <NoticeRow record={record} isSmallView={isSmallView} />;
+	return (
+		<MessageContainer isUser={false} isSmallView={isSmallView}>
+			<ToolLedgerRow
+				toolName="hub"
+				verbless
+				summary={`From ${hubIdentity(receipt)}`}
+				outcome="receipt"
+				durationS={null}
+				details={
+					<div className={cn("flex flex-col gap-2 px-3")}>
+						<p className={cn("text-body-sm text-ink-muted")}>
+							{hubIdentity(receipt)}
+							{receipt.direction ? ` · ${receipt.direction}` : ""}
+							{receipt.jobId && receipt.label ? ` · Job ${receipt.jobId}` : ""}
+						</p>
+						{Object.values(receipt.sender).some(Boolean) ? (
+							<p className={cn("text-body-sm text-ink-muted")}>
+								{peerIdentityLine(receipt.sender)}
+							</p>
+						) : null}
+						<p
+							className={cn(
+								"whitespace-pre-wrap break-words text-body-sm text-ink",
+							)}
+						>
+							{receipt.body}
+						</p>
+					</div>
+				}
+			/>
+			{(record.images ?? []).filter(isPictureRef).map((image) => (
+				<CanonicalImage
+					key={image.id}
+					image={image}
+					scope={scope}
+					label={image.name ?? "Image"}
+				/>
+			))}
+		</MessageContainer>
+	);
+});
+
 const PeerRow = memo(function PeerRow({
 	record,
 	isSmallView,
@@ -2630,6 +2686,13 @@ const TranscriptRow = memo(function TranscriptRow({
 					stopping={stopping}
 					onInterruptTurn={onInterruptTurn}
 				/>
+			);
+			break;
+		case "custom":
+			body = record.receipt ? (
+				<HubRow record={record} isSmallView={isSmallView} scope={scope} />
+			) : (
+				<NoticeRow record={record} isSmallView={isSmallView} />
 			);
 			break;
 		case "peer":
@@ -3295,9 +3358,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * arithmetic over the row list that a test can ask about without rendering a
 	 * transcript: which runs fold, what a fold says, and what a turn's foot reports.
 	 *
-	 * `isFoldable` is the tool ledger alone: `peer` and `wake` rows are RECEIPTS, not
-	 * actions (§E2 folds "actions"), and a receipt hidden inside a summary of work
-	 * would be a message the reader never saw.
+	 * Action arithmetic is still the tool ledger alone. Incoming peer/hub receipts
+	 * may bridge that ledger in place, with their own message count and historical
+	 * reply/steer indication. Operator asks, prose and notices remain boundaries.
 	 */
 	const rowGroups = useMemo(() => {
 		/*
@@ -3350,6 +3413,25 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				row.record.kind === "tool" ? row.record.endedAt : null,
 			isFoldable: (row) =>
 				row.record.kind === "tool" && !isQuietTurnCall(row.record),
+			isReceipt: (row) => isInternalReceipt(row.record),
+			receiptSummaryOf: (rows) =>
+				rows.length
+					? [
+							`${rows.length} incoming ${rows.length === 1 ? "message" : "messages"}`,
+							...(rows.some(
+								({ record }) =>
+									record.kind === "custom" && record.receipt?.expectsReply,
+							)
+								? ["Reply requested"]
+								: []),
+							...(rows.some(
+								({ record }) =>
+									record.kind === "custom" && record.receipt?.steer,
+							)
+								? ["Steered"]
+								: []),
+						]
+					: [],
 		});
 		return groups.map((group) =>
 			group.kind === "run"
@@ -4558,7 +4640,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				className={GAP[group.gap][isSmallView ? 1 : 0]}
 				recordIds={group.rows.map((row) => row.record.id)}
 				summary={group.summary}
-				actionCount={group.rows.length}
+				actionCount={group.actions.length}
 				span={group.span}
 				live={group.live}
 				/*

@@ -214,6 +214,7 @@ function installBridge(state: BrowserChromeState): void {
 		navigate: noop,
 		reload: noop,
 		stop: noop,
+		retry: noop,
 		history: noop,
 		respondToConsent: noop,
 		handOver: noop,
@@ -715,6 +716,67 @@ export const DraftConversation: Story = {
 
 /** The pane before its first read lands (spec 7.4): the same `Spinner` the route
  * shows, in the surface, at the pane's width. */
+// These are the production readiness projections, not a second rendering path.
+// They prove only chrome/status composition; socket/rollback proof lives in the
+// isolated browser-startup and browser-host tests, not in these stubbed frames.
+const startupProjection = (
+	status: "starting" | "retrying" | "unavailable",
+): BrowserChromeState => ({
+	...projection([]),
+	availability: {
+		status,
+		attempt: status === "starting" ? 1 : 3,
+		maxAttempts: 3,
+		message:
+			status === "unavailable"
+				? "The browser could not start. Your saved tabs and site approvals are kept; sessions you were signed into may need signing in again."
+				: null,
+		canRetry: status === "unavailable",
+	},
+});
+export const BrowserStarting: Story = {
+	render: withPane(startupProjection("starting")),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+};
+export const BrowserRetrying: Story = {
+	render: withPane(startupProjection("retrying")),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+};
+export const BrowserUnavailable: Story = {
+	render: withPane(startupProjection("unavailable")),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+};
+export const BrowserUnavailableNarrow: Story = {
+	render: withPane(startupProjection("unavailable"), 480, 460),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+};
+export const BrowserReadyEmpty: Story = {
+	render: withPane({
+		...projection([]),
+		availability: {
+			status: "ready",
+			attempt: 1,
+			maxAttempts: 3,
+			message: null,
+			canRetry: false,
+		},
+	}),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+};
+export const BrowserReadyPopulated: Story = {
+	render: withPane({
+		...projection([AGENT_TAB]),
+		availability: {
+			status: "ready",
+			attempt: 1,
+			maxAttempts: 3,
+			message: null,
+			canRetry: false,
+		},
+	}),
+	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
+};
+
 export const PaneLoading: Story = {
 	render: () => {
 		installPendingBridge();
