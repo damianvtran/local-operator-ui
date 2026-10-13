@@ -573,16 +573,16 @@ run("canonical model IDs remain displayable and searchable without saving", asyn
 			recommended: false,
 		},
 	});
-	const render = async (hostingId, value, rows, inspect) => {
+	const render = async (hostingId, value, rows, inspect, knownProvider = true) => {
 		useModelsStore.setState({
 			isInitialized: true,
-			providers: [{
+			providers: knownProvider ? [{
 				id: hostingId,
 				name: hostingId,
 				description: "Synthetic provider",
 				url: "https://synthetic.invalid",
 				requiredCredentials: [],
-			}],
+			}] : [],
 			models: rows,
 		});
 		const container = document.createElement("div");
@@ -629,6 +629,10 @@ run("canonical model IDs remain displayable and searchable without saving", asyn
 	const unknown = await render("openai", "openai/synthetic-not-listed", [row(canonical)],
 		async (input) => input.value);
 	assert.equal(unknown, "openai/synthetic-not-listed", "genuinely unknown custom values remain raw");
+	const unknownHosting = await render("synthetic-host", `synthetic-host/${canonical}`,
+		[row(canonical, pretty, "synthetic-host")], async (input) => input.value, false);
+	assert.equal(unknownHosting, `synthetic-host/${canonical}`,
+		"a hosting ID absent from the provider catalogue must not authorize prefix matching");
 
 	// Preserve observations before opening the popup: a host setup failure
 	// there must not hide the already measured display/identity controls.
@@ -668,13 +672,36 @@ run("canonical model IDs remain displayable and searchable without saving", asyn
 		for (const option of options.filter((item) => item.dataset.comboboxRow === "typed")) {
 			assert.ok(option.textContent.includes(canonical), "setup: raw-ID query must replace the previous typed-row state");
 		}
-		return {
+		const raw = {
 			known: options.some((option) => option.dataset.comboboxRow !== "typed"
 				&& option.textContent.includes(pretty)),
 			custom: options.some((option) => option.dataset.comboboxRow === "typed"),
 			text: options.map((option) => option.textContent),
 		};
+		await type(`openai/${canonical}`);
+		assert.ok(actualOptions().some((option) => option.dataset.comboboxRow !== "typed"
+			&& option.textContent.includes(pretty)), "the current hosting's authorized selector is searchable");
+		assert.ok(!actualOptions().some((option) => option.dataset.comboboxRow === "typed"),
+			"an authorized selector is not offered as an invented custom ID");
+		return raw;
 	});
+	const collision = await render("openai", "",
+		[row(canonical), row(`openai/${canonical}`, "Exact prefixed catalogue row")],
+		async (input) => {
+			await act(async () => input.focus());
+			const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+			await act(async () => {
+				setter.call(input, `openai/${canonical}`);
+				input.dispatchEvent(new window.Event("input", { bubbles: true }));
+			});
+			return [...document.querySelectorAll('[role="option"]')]
+				.filter((option) => option.dataset.comboboxRow !== "typed")
+				.map((option) => option.textContent);
+		});
+	assert.ok(collision.some((text) => text.includes("Exact prefixed catalogue row")),
+		"an exact canonical ID remains searchable when a presentation selector collides");
+	assert.ok(!collision.some((text) => text.includes(pretty)),
+		"presentation-equivalent keywords must not shadow another row's exact canonical ID");
 	assert.deepEqual(saves, [], "normalizing display or filtering must not invoke onSave");
 	console.log("MODEL_SELECT_U1_U2_ACTUAL", { display, search, saves, scrollCalls });
 	assert.deepEqual({ display, knownRawId: search.known, customRawId: search.custom }, {
