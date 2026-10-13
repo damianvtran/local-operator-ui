@@ -52,6 +52,7 @@ import type { FC, RefObject } from "react";
 import { useLocation } from "react-router-dom";
 
 import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
+import { sectionForSettingKey } from "../promoted-setting-sections";
 import { AppUpdatesSection } from "./app-updates-section";
 import { BackendSettingsSection } from "./backend-settings-section";
 import { GeneralLanguageSetting } from "./language-dialog";
@@ -408,6 +409,12 @@ export const SettingsPage: FC = () => {
 	// A /settings deep link carries either ?section= for one of the sidebar
 	// sections or ?setting=<key> to reveal and focus one registry row inside
 	// the searchable backend settings section.
+	//
+	// A ?setting= link normally lives inside the backend settings section, but a
+	// key whose control the page has PROMOTED out of that section has to resolve
+	// to where its control actually is — see `promoted-setting-sections.ts`, the
+	// one place that decision lives (the palette's per-key hint reads the same
+	// map, so the two cannot disagree).
 	const settingFocusKey = useMemo(() => {
 		const params = new URLSearchParams(location.search);
 		return params.get("setting");
@@ -588,9 +595,12 @@ export const SettingsPage: FC = () => {
 	useEffect(() => {
 		const queryParams = new URLSearchParams(location.search);
 		const sectionFromQuery = queryParams.get("section");
-		// A ?setting= deep link lives inside the backend settings section.
-		const targetSection = queryParams.get("setting")
-			? "backend"
+		// A ?setting= deep link lives inside the backend settings section — unless
+		// the key's control has been promoted elsewhere, in which case the link
+		// follows the control (see `PROMOTED_SETTING_SECTIONS`).
+		const settingKey = queryParams.get("setting");
+		const targetSection = settingKey
+			? sectionForSettingKey(settingKey, "backend")
 			: sectionFromQuery;
 
 		const ref = targetSection ? sectionRefs[targetSection] : undefined;

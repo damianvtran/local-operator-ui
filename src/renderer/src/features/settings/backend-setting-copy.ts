@@ -29,6 +29,7 @@
  */
 
 import type { BackendSetting } from "@shared/api/local-operator/desktop-api";
+import { sectionForSettingKey } from "./promoted-setting-sections";
 import {
 	DELEGATED_ENABLED_KEY,
 	DELEGATED_MAX_AGE_KEY,
@@ -91,7 +92,16 @@ export function sectionTitle(section: { name: string; title: string }): string {
 /** The setting with the desktop's words applied, or the same object untouched. */
 export function presentSetting(setting: BackendSetting): BackendSetting {
 	const copy = ROW_COPY[setting.key];
-	return copy ? { ...setting, label: copy.label, help: copy.help } : setting;
+	/*
+	 * A PROMOTED key reports the section its control actually lives in, so the
+	 * palette's per-key row hints where its `?setting=` link lands rather than
+	 * the section it left (see `promoted-setting-sections.ts`). The row's own
+	 * label/help are unaffected; only its section is re-homed.
+	 */
+	const section = sectionForSettingKey(setting.key, setting.section);
+	if (!copy)
+		return section === setting.section ? setting : { ...setting, section };
+	return { ...setting, label: copy.label, help: copy.help, section };
 }
 
 /** The phrase a gated child's note should use for the switch `key`. */

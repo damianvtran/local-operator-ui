@@ -164,3 +164,73 @@ test("no route builds a ?section= from a variable this scan cannot see", () => {
 		"a file builds a ?section= route from an expression, which the literal route scan cannot check: either name the section literally or add the file here with the reason its source is bound to sectionRefs",
 	);
 });
+
+test("a promoted setting key names a live section, and the page reads the same map", () => {
+	/*
+	 * The third half of the same family. A `?setting=<key>` link resolves to the
+	 * Backend section by default, but a key whose control the page has PROMOTED
+	 * elsewhere must resolve to where that control actually is — otherwise the
+	 * link highlights a section that no longer contains the row (the defect this
+	 * test's change fixed for `language`, which moved into General while its
+	 * deep link still said `backend`).
+	 *
+	 * The binding is read from source rather than restated: the map is
+	 * `promoted-setting-sections.ts`'s own `PROMOTED_SETTING_SECTIONS`, its
+	 * destinations must be keys the page actually has a ref for, and the page
+	 * must resolve through `sectionForSettingKey` rather than re-deciding.
+	 */
+	const refs = sectionRefKeys();
+	const source = readFileSync(
+		"src/renderer/src/features/settings/promoted-setting-sections.ts",
+		"utf8",
+	);
+	const start = source.indexOf("export const PROMOTED_SETTING_SECTIONS");
+	assert.notEqual(start, -1, "PROMOTED_SETTING_SECTIONS not found");
+	const body = source.slice(start);
+	const end = body.indexOf("};");
+	assert.notEqual(end, -1, "PROMOTED_SETTING_SECTIONS has no closing `};`");
+	/*
+	 * The destination may be spelled as a string OR as a const the module
+	 * exports (the map's own entries use `GENERAL_SECTION`), so the scan reads
+	 * both spellings and resolves a named const against the module's own
+	 * exported value — restating the table here would defeat the point.
+	 */
+	const literalOf = (name) => {
+		const match = source.match(
+			new RegExp(`export const ${name}\\s*=\\s*"([^"]+)"`),
+		);
+		return match?.[1];
+	};
+	const entries = [
+		...body
+			.slice(0, end)
+			.matchAll(/\[([^\]]+)\]:\s*(?:"([^"]+)"|([A-Za-z_][\w]*))/g),
+	].map(([, key, literal, named]) => [key, named ? literalOf(named) : literal]);
+	assert.ok(
+		entries.length > 0,
+		"the promoted-section map parsed to no entries — the shape changed",
+	);
+	for (const [key, section] of entries) {
+		assert.ok(
+			section,
+			`promoted key ${key} has a destination this scan could not resolve to a string`,
+		);
+		assert.ok(
+			refs.has(section),
+			`promoted key ${key} resolves to section "${section}", which the settings page has no ref for — the deep link would silently land elsewhere`,
+		);
+	}
+	/*
+	 * The page must route through the shared helper. A page that re-derived the
+	 * map inline would drift the moment an entry is added, and this file would
+	 * stay green while the link went stale.
+	 */
+	const page = readFileSync(
+		"src/renderer/src/features/settings/components/settings-page.tsx",
+		"utf8",
+	);
+	assert.ok(
+		page.includes("sectionForSettingKey("),
+		"the settings page must resolve ?setting= targets through sectionForSettingKey so a promoted key needs one entry, not two edits",
+	);
+});

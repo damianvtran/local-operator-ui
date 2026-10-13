@@ -122,39 +122,72 @@ let capabilitiesLanguage = "en";
 const setCapabilitiesLanguage = (language) => {
 	capabilitiesLanguage = language;
 };
+
+/*
+ * The default desktop stub, installed ONCE and never overwritten in place.
+ *
+ * A case that needs its own answers does not assign to
+ * `window.api.desktop.request`; it calls `withDesktopStub` and the default is
+ * restored when the case ends. WHY THIS IS A HELPER RATHER THAN A CONVENTION:
+ * the first version of the General test assigned a whole new `request` onto the
+ * global and never put the default back, so the three tests AFTER it ran
+ * against a stub that threw on `settings.list` - each failing on `the store
+ * must be seeded` / `no Retry rendered`, none of them about the code they
+ * meant to test. Global state leaking between cases is the failure mode; the
+ * helper is what makes restoring it the default rather than a remembered step.
+ */
+const defaultDesktopRequest = async (request) => {
+	apiCalls.push({ ...request });
+	if (request?.op === "capabilities") {
+		if (capabilitiesBehavior.type === "hang") {
+			return new Promise((resolve) => {
+				pendingCapabilitiesReply = resolve;
+			});
+		}
+		if (capabilitiesBehavior.type === "error") {
+			return {
+				status: 503,
+				body: { status: 503, message: "The server is not answering." },
+			};
+		}
+		return {
+			status: 200,
+			body: {
+				result: {
+					desktop_available: true,
+					features: capabilitiesBehavior.features,
+					language: capabilitiesLanguage,
+				},
+			},
+		};
+	}
+	if (request?.op === "settings.list") {
+		return { status: 200, body: { result: settingsPayload() } };
+	}
+	return { status: 200, body: { result: {} } };
+};
+
 globalThis.window.api = {
 	desktop: {
-		request: async (request) => {
-			apiCalls.push({ ...request });
-			if (request?.op === "capabilities") {
-				if (capabilitiesBehavior.type === "hang") {
-					return new Promise((resolve) => {
-						pendingCapabilitiesReply = resolve;
-					});
-				}
-				if (capabilitiesBehavior.type === "error") {
-					return {
-						status: 503,
-						body: { status: 503, message: "The server is not answering." },
-					};
-				}
-				return {
-					status: 200,
-					body: {
-						result: {
-							desktop_available: true,
-							features: capabilitiesBehavior.features,
-							language: capabilitiesLanguage,
-						},
-					},
-				};
-			}
-			if (request?.op === "settings.list") {
-				return { status: 200, body: { result: settingsPayload() } };
-			}
-			return { status: 200, body: { result: {} } };
-		},
+		request: defaultDesktopRequest,
 	},
+};
+
+/*
+ * Run `body` with a temporary desktop stub, restoring the default afterwards
+ * even when the body throws. The stub still records into `apiCalls`, so a case
+ * that swaps in behaviour keeps the same call log the assertions read.
+ */
+const withDesktopStub = async (request, body) => {
+	window.api.desktop.request = async (incoming) => {
+		apiCalls.push({ ...incoming });
+		return request(incoming);
+	};
+	try {
+		return await body();
+	} finally {
+		window.api.desktop.request = defaultDesktopRequest;
+	}
 };
 
 const bundle = await build({
@@ -359,35 +392,33 @@ test(
 			"the effective note reports the backend-resolved locale",
 		);
 		const edits = () => apiCalls.filter((call) => call.op === "settings.edit");
-		const rejectEdit = () => {
-			window.api.desktop.request = async (request) => {
-				apiCalls.push({ ...request });
-				if (request?.op === "settings.edit")
-					return { status: 422, body: { status: 422, message: "refused" } };
-				if (request?.op === "settings.list")
-					return { status: 200, body: { result: settingsPayload() } };
-				if (request?.op === "capabilities")
-					return {
-						status: 200,
-						body: {
-							result: {
-								desktop_available: true,
-								desktop_contract: 1,
-								desktop_auth: "bearer",
-								features: { settings: 1, i18n: 1 },
-								language: capabilitiesLanguage,
-							},
+		const refuseEdit = async (request) => {
+			if (request?.op === "settings.edit")
+				return { status: 422, body: { status: 422, message: "refused" } };
+			if (request?.op === "settings.list")
+				return { status: 200, body: { result: settingsPayload() } };
+			if (request?.op === "capabilities")
+				return {
+					status: 200,
+					body: {
+						result: {
+							desktop_available: true,
+							desktop_contract: 1,
+							desktop_auth: "bearer",
+							features: { settings: 1, i18n: 1 },
+							language: capabilitiesLanguage,
 						},
-					};
-				return { status: 200, body: { result: {} } };
-			};
+					},
+				};
+			return { status: 200, body: { result: {} } };
 		};
-		rejectEdit();
-		await act(async () => {
-			await saveImmediateLanguageValue({
-				value: "en",
-				queryClient: client,
-			}).catch(() => {});
+		await withDesktopStub(refuseEdit, async () => {
+			await act(async () => {
+				await saveImmediateLanguageValue({
+					value: "en",
+					queryClient: client,
+				}).catch(() => {});
+			});
 		});
 		/* Only a CONFIRMED value is cached; the committed row is untouched. */
 		const cached = client.getQueryData(["desktop", "settings"]);
@@ -401,15 +432,17 @@ test(
 			"the server-driven choice control must render for the tested row",
 		);
 		/* A write that lands but cannot be read back is its own state. */
-		window.api.desktop.request = async (request) => {
-			apiCalls.push({ ...request });
-			if (request?.op === "settings.list") throw new Error("offline");
-			return { status: 200, body: { result: {} } };
-		};
-		const outcome = await saveImmediateLanguageValue({
-			value: "en",
-			queryClient: client,
-		});
+		const outcome = await withDesktopStub(
+			async (request) => {
+				if (request?.op === "settings.list") throw new Error("offline");
+				return { status: 200, body: { result: {} } };
+			},
+			() =>
+				saveImmediateLanguageValue({
+					value: "en",
+					queryClient: client,
+				}),
+		);
 		assert.equal(
 			outcome,
 			"readback-unknown",
@@ -461,11 +494,21 @@ test(
 			document.querySelector('[role="combobox"]')?.textContent ?? "";
 		const saveButton = () => document.querySelector("[data-language-save]");
 
+		/*
+		 * The label the trigger shows is the SHARED control's, so this PR moved
+		 * `auto` from the raw wire value to the reader-facing "Use system" the
+		 * General control renders (see `LanguageChoiceLabel`). The assertions
+		 * track the VALUE through that label rather than the raw token: `auto`
+		 * is "Use system", and a served `en` is "English". Asserting the old
+		 * raw `auto` here would pin copy the product deliberately reworded.
+		 */
+		const AUTO_LABEL = "Use system";
+		const EN_LABEL = "English";
 		// First open: seeds the server's value and Save stays clean.
 		await act(async () => {
 			useLanguageDialogStore.getState().openLanguage();
 		});
-		await settle(() => triggerText().includes("auto"), "first seed");
+		await settle(() => triggerText().includes(AUTO_LABEL), "first seed");
 		assert.ok(saveButton().disabled, "clean after the first seed");
 
 		/*
@@ -491,7 +534,7 @@ test(
 		await act(async () => {
 			useLanguageDialogStore.getState().openLanguage();
 		});
-		await settle(() => triggerText().includes("en"), "re-seed to en");
+		await settle(() => triggerText().includes(EN_LABEL), "re-seed to en");
 		assert.ok(
 			saveButton().disabled,
 			"no phantom dirty draft after an external change",
@@ -501,7 +544,7 @@ test(
 		await act(async () => {
 			setServerLanguageValue("auto");
 		});
-		await settle(() => triggerText().includes("auto"), "follow while open");
+		await settle(() => triggerText().includes(AUTO_LABEL), "follow while open");
 		assert.ok(saveButton().disabled, "still clean after the follow");
 	},
 );
