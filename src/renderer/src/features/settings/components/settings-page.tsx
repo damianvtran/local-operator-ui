@@ -25,6 +25,7 @@ import {
 } from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -978,16 +979,20 @@ export const SettingsPage: FC = () => {
 				 * Settings all cap the detail pane and none of them column it.
 				 */}
 				<div className="mx-auto flex w-full max-w-4xl flex-col gap-8 pb-8">
-					<PageHeader title="Settings" icon={Settings} />
+					<PageHeader title={t("ui.settings.page.title")} icon={Settings} />
 					<div className="flex flex-col gap-8">
 						<div ref={sectionRefs.general} className="flex flex-col gap-8">
 							<GeneralLanguageSetting
 								focus={settingFocusKey === LANGUAGE_SETTING_KEY}
 							/>
 							<SettingsSection
-								title="User profile"
+								title={t("ui.settings.profile.title")}
 								icon={User}
-								description={`Your user profile information displayed in the application. This information is not provided to the agents. ${isAuthenticated ? "These details are provided through your Radient account." : ""}`}
+								description={t(
+									isAuthenticated
+										? "ui.settings.profile.description_authenticated"
+										: "ui.settings.profile.description_anonymous",
+								)}
 							>
 								{/*
 								 * The status slot above the fields, in the app's one register for "this
@@ -1126,8 +1131,10 @@ export const SettingsPage: FC = () => {
 								<div className="flex flex-col gap-4">
 									<EditableField
 										value={userStore.profile.name}
-										label="Display name"
-										placeholder="Enter your name..."
+										label={t("ui.settings.profile.display_name.label")}
+										placeholder={t(
+											"ui.settings.profile.display_name.placeholder",
+										)}
 										isSaving={savingField === "user_name"}
 										onSave={async (value) => {
 											setSavingField("user_name");
@@ -1141,8 +1148,8 @@ export const SettingsPage: FC = () => {
 									/>
 									<EditableField
 										value={userStore.profile.email}
-										label="Email address"
-										placeholder="Enter your email..."
+										label={t("ui.settings.profile.email.label")}
+										placeholder={t("ui.settings.profile.email.placeholder")}
 										isSaving={savingField === "user_email"}
 										onSave={async (value) => {
 											setSavingField("user_email");
@@ -1158,8 +1165,8 @@ export const SettingsPage: FC = () => {
 							</SettingsSection>
 
 							<SettingsSection
-								title="Application tour"
-								description="Missed the application onboarding tour or want a refresher? Start it again here."
+								title={t("ui.settings.tour.title")}
+								description={t("ui.settings.tour.description")}
 							>
 								<Button
 									variant="secondary"
@@ -1168,7 +1175,7 @@ export const SettingsPage: FC = () => {
 									}}
 								>
 									<CirclePlay />
-									Take the tour
+									{t("ui.settings.tour.action")}
 								</Button>
 							</SettingsSection>
 
