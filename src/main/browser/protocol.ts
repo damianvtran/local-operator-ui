@@ -314,6 +314,7 @@ export type Response =
  * requires `extension_connected` for the same reason.
  */
 export interface HealthBody {
+	instance_id?: string;
 	host: "ui";
 	proto: number;
 	pid: number;

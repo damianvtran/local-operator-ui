@@ -57,6 +57,10 @@ export const HEALTH_PATH = "/health";
  * (`X-Bridge-Key`, `backend.py:357-361`): reusing it is what makes the Python
  * transport a drop-in rather than a fork. */
 export const KEY_HEADER = "x-bridge-key";
+/** A modern caller pins the process generation it preflighted. Checked before
+ * reading/dispatching a command so a recycled port never receives a side effect.
+ * Legacy callers omit it; the session key remains the authentication boundary. */
+export const INSTANCE_HEADER = "x-ui-browser-instance";
 
 /** Largest body accepted. The envelope is small (a method, an id, params); a
  * body past this is a mistake or an attack, and buffering it is the mistake. */
@@ -76,6 +80,7 @@ export type RpcDispatcher = (
 
 export interface RpcServerOptions {
 	key: string;
+	instanceId?: string;
 	dispatch: RpcDispatcher;
 	/** Called for anything worth putting in the app log. */
 	log?: (message: string) => void;
@@ -291,6 +296,7 @@ async function handle(
 				host: "ui",
 				proto: PROTO_VERSION,
 				pid: process.pid,
+				...(options.instanceId && { instance_id: options.instanceId }),
 				// Additive: an older reader requires `host` and `pid` and ignores the
 				// rest, and a newer one learns whether the console is up without a
 				// second probe (design 10.1). `false` when nobody reported a
@@ -320,6 +326,16 @@ async function handle(
 			// oracle (wrong length vs wrong key), and there is nothing the caller
 			// can do with the distinction.
 			send(res, 401, { detail: "unauthorized" });
+			return;
+		}
+		const expectedInstance = req.headers[INSTANCE_HEADER];
+		if (
+			expectedInstance !== undefined &&
+			expectedInstance !== options.instanceId
+		) {
+			// This status proves the dispatcher did not run. It is intentionally
+			// distinct from an ambiguous disconnect, which must never be replayed.
+			send(res, 409, { detail: "host instance changed" });
 			return;
 		}
 		let raw: unknown;
