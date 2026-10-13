@@ -53,7 +53,7 @@ import { presentSetting } from "../backend-setting-copy";
 import { backendSettingsKeys } from "./backend-settings-section";
 import { useLanguageDialogStore } from "./language-dialog-store";
 import { settingHelpId } from "./setting-combobox";
-import { SettingControl } from "./setting-control";
+import { SettingControl, settingEffectiveId } from "./setting-control";
 import { SettingsSection } from "./settings-section";
 
 /**
@@ -260,7 +260,11 @@ export const GeneralLanguageSetting: FC<{ focus?: boolean }> = ({
 						suppressEffectiveNote
 					/>
 				)}
-				<output aria-live="polite" className="text-meta text-ink-dim">
+				<output
+					id={settingEffectiveId(LANGUAGE_SETTING_KEY)}
+					aria-live="polite"
+					className="text-meta text-ink-dim"
+				>
 					{pending
 						? t("ui.settings.language.general.pending")
 						: saved
