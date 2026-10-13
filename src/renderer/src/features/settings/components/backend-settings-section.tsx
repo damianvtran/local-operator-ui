@@ -36,6 +36,7 @@ import type {
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
+	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
@@ -70,7 +71,7 @@ import { SettingsFilterBar } from "./settings-filter-bar";
 import { SettingsGroupHeader } from "./settings-group-header";
 
 export const backendSettingsKeys = {
-	all: ["desktop", "settings"] as const,
+	all: desktopKeys.settings,
 };
 
 /** Human-readable scope tags. The backend emits enum values; the words on the
@@ -91,6 +92,8 @@ const SCOPE_LABELS: Record<string, string> = {
 type BackendSettingsSectionProps = {
 	/** Key to reveal and focus, from a /settings navigation target. */
 	focusKey?: string | null;
+	/** General owns this one row; standalone registry hosts retain it. */
+	hideInterfaceLanguage?: boolean;
 	/** Initial search filter, e.g. "web-search" from /search. */
 	initialFilter?: string;
 };
@@ -123,6 +126,7 @@ const fold = (value: string) => value.toLowerCase().replace(/[-_.]/g, " ");
 
 export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	focusKey,
+	hideInterfaceLanguage = false,
 	initialFilter = "",
 }) => {
 	const capabilities = useDesktopCapabilities();
@@ -297,6 +301,8 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		const needle = fold(filter.trim());
 		const asking = needle.length > 0 || modifiedOnly;
 		return settings.settings.filter((setting) => {
+			if (hideInterfaceLanguage && setting.key === LANGUAGE_SETTING_KEY)
+				return false;
 			if (!asking && tierFor(setting) === "advanced" && !showAdvanced) {
 				return false;
 			}
@@ -318,7 +324,14 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 				].join(" "),
 			).includes(needle);
 		});
-	}, [settings, filter, showAdvanced, modifiedOnly, isModified]);
+	}, [
+		settings,
+		filter,
+		showAdvanced,
+		modifiedOnly,
+		isModified,
+		hideInterfaceLanguage,
+	]);
 
 	const filtering = filter.trim().length > 0 || modifiedOnly;
 
@@ -333,8 +346,12 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	const sections = useMemo(() => settings?.sections ?? [], [settings]);
 	const rowsForSection = useCallback(
 		(name: string) =>
-			(settings?.settings ?? []).filter((s) => s.section === name),
-		[settings],
+			(settings?.settings ?? []).filter(
+				(s) =>
+					s.section === name &&
+					!(hideInterfaceLanguage && s.key === LANGUAGE_SETTING_KEY),
+			),
+		[settings, hideInterfaceLanguage],
 	);
 	const matchingForSection = (name: string) =>
 		matching.filter((setting) => setting.section === name);

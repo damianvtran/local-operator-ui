@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|none>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -26833,6 +26833,569 @@ async function sceneSettingsFields(cdp) {
 }
 
 /**
+ * THE INTERFACE LANGUAGE ROW, in the section that owns its control.
+ *
+ * WHY A NEW SCENE, when two neighbours already photograph this page.
+ * `settings-fields` deep-links the BACKEND registry, and the language row is
+ * deliberately FILTERED OUT of that list (`hideInterfaceLanguage` in
+ * `backend-settings-section.tsx`) because its canonical editor was promoted into
+ * General — so that scene cannot reach this control at all. The General section's
+ * Storybook cell is no substitute either: it renders a FIXTURE capabilities answer,
+ * so it cannot photograph the one claim this surface makes about the BACKEND (the
+ * resolved locale under the picker), and it never opens the picker's portal — an
+ * open listbox is a portal-rendered popper that no offline capturer can photograph.
+ * The language-door frames (`docs/evidence/settings-language-door/`) are the palette
+ * ACTION and the DIALOG, both different surfaces from the General row this change
+ * moved the control into.
+ *
+ * SO THE EVIDENCE COMES FROM THE INSTRUMENT BUILT FOR THIS: the BUILT app, headless,
+ * against an ISOLATED synthetic daemon this run owns (its own scratch HOME, config
+ * root, port and bearer), photographed by the app itself with
+ * `webContents.capturePage()`.
+ *
+ * FOUR FRAMES, each a state the surface can be in:
+ *   (a) the control at rest in General, with the rail highlighting GENERAL — the
+ *       deep-link claim (`?setting=language` resolves through
+ *       `PROMOTED_SETTING_SECTIONS` to `general`, not to the registry section that
+ *       no longer renders the row);
+ *   (b) the picker OPEN, carrying every autonym and decorative flag the surface
+ *       offers, INCLUDING the entries this backend does not serve (disabled);
+ *   (c) the Urdu row — an RTL autonym inside `<bdi dir="auto">`, the marker that
+ *       keeps a right-to-left name from re-ordering the row around it;
+ *   (d) the effective-locale caption, asserted against the BACKEND's own resolved
+ *       `language` (read from this run's daemon), which is the caption's whole
+ *       point: it names the backend's answer, never the client OS.
+ *
+ * BLIND TO THE COMPONENT. Nothing here is imported from the app: the control is
+ * reached by its `data-setting-key` and driven through generic selectors and CDP
+ * verbs, so the same scene runs against a tree whose picker is built differently
+ * and the frames stay comparable.
+ *
+ *   node scripts/renderer-driver.mjs --scene settings-language --backend <url> \
+ *     --backend-records <daemon config>/run/serve --out <dir>
+ */
+
+/** The promoted row, by the registry key the backend serves for it. */
+const LANGUAGE_SETTING_ROW = `[data-setting-key="language"]`;
+/** Its picker — Radix's trigger, which carries `role="combobox"`. */
+const LANGUAGE_SETTING_TRIGGER = `${LANGUAGE_SETTING_ROW} [role="combobox"]`;
+/** The caption's DOM id, from the one place the app derives it. */
+const LANGUAGE_EFFECTIVE_ID = "setting-effective-language";
+
+/**
+ * Which rail row the page says it is on.
+ *
+ * Read off the rail's own `aria-current="page"` rather than off a class: the
+ * selected row is marked by a ground AND by that attribute (`settings-sidebar.tsx`),
+ * and a highlight claim asserted on pixels alone could not tell "this row is current"
+ * from "this row happens to be tinted".
+ */
+const SETTINGS_RAIL_STATE = `(() => {
+	const name = (row) => (row.getAttribute('aria-label') ?? row.textContent ?? '').trim();
+	const rows = [...document.querySelectorAll('nav[aria-label="Settings sections"] button')];
+	return {
+		rows: rows.length,
+		current: rows.filter((row) => row.getAttribute('aria-current') === 'page').map(name),
+		general: rows
+			.filter((row) => row.getAttribute('data-tour-tag') === 'settings-sidebar-general')
+			.map((row) => row.getAttribute('aria-current')),
+	};
+})()`;
+
+/**
+ * The row at rest: its picker, its current value, and the effective caption.
+ *
+ * The caption is read as TEXT and by its own id, because the claim is that the
+ * sentence under the picker names a locale the BACKEND resolved — so the reading has
+ * to be the sentence the reader sees, not a re-derivation from the app's store.
+ */
+const LANGUAGE_ROW_READING = `(() => {
+	const row = document.querySelector(${JSON.stringify('[data-setting-key="language"]')});
+	if (!row) return { row: false };
+	const trigger = row.querySelector('[role="combobox"]');
+	const caption = document.getElementById(${JSON.stringify("setting-effective-language")});
+	return {
+		row: true,
+		triggerLabel: trigger ? trigger.getAttribute('aria-label') : null,
+		expanded: trigger ? trigger.getAttribute('aria-expanded') : null,
+		describedBy: trigger ? trigger.getAttribute('aria-describedby') : null,
+		value: trigger ? (trigger.textContent ?? '').trim() : null,
+		listOpen: Boolean(document.querySelector('[role="listbox"]')),
+		captionId: caption ? caption.id : null,
+		caption: caption ? (caption.textContent ?? '').replace(/\\s+/g, ' ').trim() : null,
+		captionLive: caption ? caption.getAttribute('aria-live') : null,
+	};
+})()`;
+
+/**
+ * The OPEN list, as the DOM spells it: one entry per option, in render order.
+ *
+ * The autonym is read off the `<bdi>` INSIDE the option rather than off the option's
+ * whole text, because a disabled option also carries a "not available" sentence
+ * beside it and concatenating the two would make every autonym assertion a substring
+ * match. `auto` carries no `<bdi>` (it renders the localized "Use system" sentence),
+ * which is why the autonym is nullable rather than a string.
+ *
+ * `flag` is read as the decorative `<svg>`'s presence and its own `aria-hidden`, so a
+ * scene can say the artwork is there AND that it makes no claim to a screen reader.
+ */
+const LANGUAGE_LIST_READING = `(() => {
+	const list = document.querySelector('[role="listbox"]');
+	const options = list ? [...list.querySelectorAll('[role="option"]')] : [];
+	return {
+		listOpen: list !== null,
+		expanded: (document.querySelector(${JSON.stringify('[data-setting-key="language"] [role="combobox"]')}) ?? {}).getAttribute?.('aria-expanded') ?? null,
+		options: options.map((node) => {
+			const bdi = node.querySelector('bdi');
+			const flag = node.querySelector('svg');
+			return {
+				autonym: bdi ? (bdi.textContent ?? '').trim() : null,
+				dir: bdi ? bdi.getAttribute('dir') : null,
+				lang: bdi ? bdi.getAttribute('lang') : null,
+				flag: flag !== null,
+				flagHidden: flag ? flag.getAttribute('aria-hidden') : null,
+				disabled: node.getAttribute('data-disabled') === '' || node.getAttribute('aria-disabled') === 'true',
+				text: (node.textContent ?? '').replace(/\\s+/g, ' ').trim(),
+			};
+		}),
+	};
+})()`;
+
+async function sceneSettingsLanguage(cdp) {
+	const hello = await verb(cdp, "hello");
+	const facts = await factsOf(cdp);
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	check(
+		"this scene is running against a live, isolated backend",
+		Boolean(BACKEND),
+		"the row exists only where the backend serves the settings registry (features.settings), so the frames need --backend",
+	);
+	if (!BACKEND) return [];
+
+	/* ---------------------------------------------------------------- */
+	/* 1. At rest in General, with the rail's own reading of where that is */
+	/* ---------------------------------------------------------------- */
+
+	await verb(cdp, "navigate", "/settings?setting=language");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const ready = await waitForScene(
+		cdp,
+		`Boolean(document.querySelector(${JSON.stringify(LANGUAGE_SETTING_TRIGGER)}))`,
+	);
+	check(
+		"the promoted row rendered in General, with its picker",
+		ready === true,
+		`no ${LANGUAGE_SETTING_TRIGGER} appeared`,
+	);
+	if (ready !== true) return [];
+
+	const hash = await cdp.evaluate("window.location.hash");
+	check(
+		"the deep link is the one this scene asked for",
+		typeof hash === "string" && hash.includes("setting=language"),
+		`hash reads ${JSON.stringify(hash)}`,
+	);
+	const rail = await cdp.evaluate(SETTINGS_RAIL_STATE);
+	note("the settings rail", JSON.stringify(rail));
+	/*
+	 * THE DEEP-LINK FOCUS CLAIM, PINNED (review round 3, UX U4). The scene's
+	 * `settings-page` leg focuses the promoted control on a `?setting=` link, and
+	 * that focus is what makes the link keyboard-useful rather than merely a
+	 * scroll. It was previously unpinned — the frames were asserted "toast-free"
+	 * while nothing read `document.activeElement`, so a link that scrolled but did
+	 * NOT focus would have passed. Read the active element and require it to be
+	 * the picker (or inside its row), which is the claim the deep link makes.
+	 *
+	 * A frame cannot show this — a focus RING is `:focus-visible`-dependent and
+	 * the driver parks the pointer, so the DOM reading is the evidence here and
+	 * the frame is not asked to carry it.
+	 */
+	const focusReading = await cdp.evaluate(`(() => {
+		const active = document.activeElement;
+		const row = document.querySelector(${JSON.stringify(LANGUAGE_SETTING_ROW)});
+		return {
+			tag: active ? active.tagName.toLowerCase() : null,
+			role: active ? active.getAttribute('role') : null,
+			label: active ? active.getAttribute('aria-label') : null,
+			inRow: Boolean(row && active && row.contains(active)),
+		};
+	})()`);
+	note("the focused element after the deep link", JSON.stringify(focusReading));
+	check(
+		"the ?setting=language deep link FOCUSES the promoted control, not merely scrolls to it",
+		focusReading.inRow === true &&
+			(focusReading.role === "combobox" ||
+				focusReading.label === "Interface language"),
+		`activeElement=${JSON.stringify(focusReading)}`,
+	);
+	check(
+		"the rail highlights GENERAL as the current section",
+		Array.isArray(rail.general) && rail.general.includes("page"),
+		`general row aria-current=${JSON.stringify(rail.general)}; current=${JSON.stringify(rail.current)}`,
+	);
+	check(
+		"and NOT the Backend section — the row that no longer renders this control",
+		!rail.current.includes("Backend settings"),
+		`current section rows: ${JSON.stringify(rail.current)}`,
+	);
+	const rest = await cdp.evaluate(LANGUAGE_ROW_READING);
+	note("the row at rest", JSON.stringify(rest));
+	check(
+		"the picker is named for the reader rather than only by its value",
+		rest.triggerLabel === "Interface language",
+		`aria-label reads ${JSON.stringify(rest.triggerLabel)}`,
+	);
+	check(
+		"the picker is closed at rest",
+		rest.expanded === "false" && rest.listOpen === false,
+		`expanded=${rest.expanded} listOpen=${rest.listOpen}`,
+	);
+	const restFrame = await captureSettled(cdp, "settings-language-rest-dark");
+
+	/* ---------------------------------------------------------------- */
+	/* 2. The list open: every autonym, and the entries this backend does */
+	/*    not serve, offered as disabled rather than hidden                */
+	/* ---------------------------------------------------------------- */
+
+	await clickAt(cdp, LANGUAGE_SETTING_TRIGGER);
+	const opened = await waitForCondition(
+		cdp,
+		`document.querySelectorAll('[role="listbox"] [role="option"]').length > 0`,
+		10_000,
+	);
+	const open = await cdp.evaluate(LANGUAGE_LIST_READING);
+	note("the picker open", JSON.stringify(open));
+	check(
+		"clicking the picker opened a real listbox on the trigger",
+		opened.ok === true && open.listOpen === true && open.expanded === "true",
+		`after ${opened.waitedMs}ms: expanded=${open.expanded} listOpen=${open.listOpen}`,
+	);
+	/*
+	 * The identity table's own order (`LANGUAGE_IDENTIFIERS`), with `auto` first.
+	 * Asserted as the WHOLE array rather than per row, because the claim is that the
+	 * picker offers the app's identifier table and not some subset of it: a table entry
+	 * that stopped rendering would leave every per-row assertion below green.
+	 */
+	const expectedAutonyms = [
+		null, // `auto` renders the localized "Use system" sentence and no autonym
+		"English",
+		"Français",
+		"Español",
+		"简体中文",
+		"Русский",
+		"Tiếng Việt",
+		"اردو",
+		"हिन्दी",
+	];
+	check(
+		"the list is the app's whole identifier table, in its own order",
+		JSON.stringify(open.options.map((option) => option.autonym)) ===
+			JSON.stringify(expectedAutonyms),
+		JSON.stringify(open.options.map((option) => option.autonym)),
+	);
+	/*
+	 * Which entries are DISABLED is the BACKEND's answer (`languageChoices` enables a
+	 * value only when the server's `choices` contains it), so this is a reading of the
+	 * daemon's own shipped-locale set as the picker renders it. The two that matter for
+	 * the frame are the ones this run's backend does NOT serve: they must still be
+	 * LISTED (a reader has to see that Chinese and Urdu exist) and marked unavailable,
+	 * rather than filtered out of the list.
+	 */
+	const enabled = open.options
+		.filter((option) => option.autonym !== null && !option.disabled)
+		.map((option) => option.autonym);
+	const disabled = open.options
+		.filter((option) => option.autonym !== null && option.disabled)
+		.map((option) => option.autonym);
+	note(
+		"which locales this backend serves, as the picker marks them",
+		`enabled=${JSON.stringify(enabled)} disabled=${JSON.stringify(disabled)}`,
+	);
+	check(
+		"the entries this backend does not serve are still LISTED, marked unavailable",
+		open.options.length === expectedAutonyms.length &&
+			open.options.some((option) => option.disabled),
+		`${open.options.length} rows; disabled=${JSON.stringify(disabled)}`,
+	);
+	/*
+	 * The backend's own answer, read from the daemon rather than inferred from the
+	 * picker: `features.i18n` gates the resolved `language` field, and the set of
+	 * served locales is the same ledger the picker's disabled flags come from. A
+	 * disagreement between the two readings is what a scene has to be able to see.
+	 */
+	const capabilities = await fetch(`${BACKEND}/v1/capabilities`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	})
+		.then((response) => response.json())
+		.catch(() => null);
+	const resolved = capabilities?.result?.language ?? null;
+	note(
+		"the backend's own resolved locale",
+		JSON.stringify({
+			language: resolved,
+			i18n: capabilities?.result?.features?.i18n ?? null,
+		}),
+	);
+	check(
+		"the backend advertises the i18n contract and resolves a locale",
+		typeof capabilities?.result?.features?.i18n === "number" &&
+			typeof resolved === "string" &&
+			resolved.length > 0,
+		`features.i18n=${JSON.stringify(capabilities?.result?.features?.i18n)} language=${JSON.stringify(resolved)}`,
+	);
+	const openFrame = await captureSettled(cdp, "settings-language-open-dark");
+
+	/* ---------------------------------------------------------------- */
+	/* 3. The Urdu row: an RTL autonym in a bdi, and the frame that shows */
+	/*    it beside its Latin neighbours                                  */
+	/* ---------------------------------------------------------------- */
+
+	const urdu = open.options.findIndex((option) => option.autonym === "اردو");
+	check(
+		"the RTL autonym is present, in a bdi marked dir=auto",
+		urdu !== -1 &&
+			open.options[urdu].dir === "auto" &&
+			open.options[urdu].lang === "ur",
+		urdu === -1
+			? "no row with the Urdu autonym"
+			: JSON.stringify(open.options[urdu]),
+	);
+	/*
+	 * The bdi is the whole point of this state: an RTL name rendered without it
+	 * re-orders the punctuation and numbers around it, so the marker's own presence and
+	 * its `dir="auto"` are asserted on every row that carries an autonym — not only on
+	 * the Urdu one, because a regression that dropped the marker everywhere would leave
+	 * a single-row assertion green.
+	 */
+	const withoutBdi = open.options
+		.filter((option) => option.autonym !== null)
+		.filter((option) => option.dir !== "auto");
+	check(
+		"every autonym is wrapped in a bdi the browser may re-order independently",
+		withoutBdi.length === 0,
+		`rows missing dir=auto: ${JSON.stringify(withoutBdi.map((option) => option.autonym))}`,
+	);
+	const flagRows = open.options.filter((option) => option.autonym !== null);
+	check(
+		"the flags are decorative artwork, hidden from assistive tech",
+		flagRows.length > 0 &&
+			flagRows.every(
+				(option) => option.flag === true && option.flagHidden === "true",
+			),
+		flagRows
+			.map(
+				(option) =>
+					`${option.autonym}: flag=${option.flag} hidden=${option.flagHidden}`,
+			)
+			.join(" | "),
+	);
+	/*
+	 * THE URDU FRAME IS A DISTINCT, REACHABLE STATE — NOT A SECOND COPY OF THE OPEN LIST.
+	 *
+	 * A frame of the list with nothing moved is byte-identical to the open frame already
+	 * captured above, which would make it evidence of nothing. The state this frame takes
+	 * is the one a reader reaches arrowing to the RTL region: the highlight on the entry
+	 * DIRECTLY ABOVE Urdu, with the right-to-left autonym sitting immediately below it on
+	 * its own `dir=auto` line. That is where the RTL row's placement against a highlighted
+	 * Latin neighbour is legible.
+	 *
+	 * URDU ITSELF TAKES NO HIGHLIGHT ON THIS BACKEND, AND THAT IS THE HONEST READING, not
+	 * a defect in the scene. This daemon serves en/fr/es/ru/vi/hi and not ur, so the Urdu
+	 * option renders `data-disabled`, and BOTH input paths refuse to move the highlight
+	 * onto a disabled option — measured twice: an arrow walk stops on the entry before it,
+	 * and a real pointer moved onto the row's own box changes no pixel (the capture came
+	 * back identical to the open frame). The check below asserts that the row IS present
+	 * and hit-testable while disabled, which is the claim the frame can carry.
+	 */
+	const urduNeighbour = `(() => {
+		const rows = [...document.querySelectorAll('[role="listbox"] [role="option"]')];
+		return rows.map((row) => ({
+			autonym: row.querySelector('bdi')?.textContent?.trim() ?? null,
+			disabled: row.getAttribute('data-disabled') === '',
+		}));
+	})()`;
+	const beforeWalk = await cdp.evaluate(urduNeighbour);
+	const urduIndex = beforeWalk.findIndex((row) => row.autonym === "اردو");
+	check(
+		"the RTL row is present and disabled on this backend",
+		urduIndex > 0 && beforeWalk[urduIndex].disabled === true,
+		JSON.stringify(beforeWalk[urduIndex] ?? null),
+	);
+	const arrowDown = async () => {
+		for (const type of ["keyDown", "keyUp"]) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type,
+				key: "ArrowDown",
+				code: "ArrowDown",
+				windowsVirtualKeyCode: 40,
+				nativeVirtualKeyCode: 40,
+			});
+		}
+		await wait(40);
+	};
+	const highlight = `(() => {
+		const rows = [...document.querySelectorAll('[role="listbox"] [role="option"]')];
+		const active = rows.filter((row) => row.hasAttribute('data-highlighted'));
+		return {
+			count: active.length,
+			autonym: active[0]?.querySelector('bdi')?.textContent?.trim() ?? null,
+			dir: active[0]?.querySelector('bdi')?.getAttribute('dir') ?? null,
+		};
+	})()`;
+	/*
+	 * Walked DOWN to the entry immediately above Urdu, bounded by the list's own length
+	 * and stopped on the name it is looking for — not by counting keystrokes to an index,
+	 * because disabled rows are skipped and the count would drift.
+	 */
+	const neighbour = beforeWalk[urduIndex - 1]?.autonym ?? "";
+	let highlighted = await cdp.evaluate(highlight);
+	for (
+		let step = 0;
+		step < beforeWalk.length && highlighted.autonym !== neighbour;
+		step += 1
+	) {
+		await arrowDown();
+		highlighted = await cdp.evaluate(highlight);
+	}
+	note(
+		"the highlighted option after the arrow walk",
+		JSON.stringify(highlighted),
+	);
+	check(
+		"the arrow walk lands the highlight on the entry directly above the RTL row",
+		highlighted.count === 1 && highlighted.autonym === neighbour,
+		`expected ${JSON.stringify(neighbour)}; read ${JSON.stringify(highlighted)}`,
+	);
+	const urduFrame = await captureSettled(
+		cdp,
+		"settings-language-urdu-rtl-dark",
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 4. The effective caption: the backend's answer, not the client OS   */
+	/* ---------------------------------------------------------------- */
+
+	/*
+	 * The caption is read with the list CLOSED, because that is the state the reader
+	 * reads it in — the note sits under the picker, not inside the open portal. Escape
+	 * dismisses the list without committing a value (the standard Radix behaviour, and
+	 * the one the reader's own Escape takes), so the row is back at rest before the
+	 * reading.
+	 */
+	await cdp.send("Input.dispatchKeyEvent", {
+		type: "keyDown",
+		key: "Escape",
+		code: "Escape",
+		windowsVirtualKeyCode: 27,
+		nativeVirtualKeyCode: 27,
+	});
+	await cdp.send("Input.dispatchKeyEvent", {
+		type: "keyUp",
+		key: "Escape",
+		code: "Escape",
+		windowsVirtualKeyCode: 27,
+		nativeVirtualKeyCode: 27,
+	});
+	const closed = await waitForCondition(
+		cdp,
+		`document.querySelector('[role="listbox"]') === null`,
+		10_000,
+	);
+	check(
+		"Escape dismisses the list and leaves the row at rest",
+		closed.ok === true,
+		`after ${closed.waitedMs}ms: listbox still ${closed.ok ? "gone" : "present"}`,
+	);
+	const rest2 = await cdp.evaluate(LANGUAGE_ROW_READING);
+	check(
+		"the caption is the app's live note, tied to the picker by aria-describedby",
+		rest2.captionId === LANGUAGE_EFFECTIVE_ID &&
+			typeof rest2.caption === "string" &&
+			rest2.caption.length > 0,
+		`captionId=${JSON.stringify(rest2.captionId)} caption=${JSON.stringify(rest2.caption)}`,
+	);
+	check(
+		"the picker points at the caption rather than merely sitting above it",
+		typeof rest2.describedBy === "string" &&
+			rest2.describedBy.includes(LANGUAGE_EFFECTIVE_ID),
+		`aria-describedby=${JSON.stringify(rest2.describedBy)}`,
+	);
+	/*
+	 * THE CLAIM THIS FRAME EXISTS FOR, and the reason a live backend is required: the
+	 * sentence names the locale the BACKEND resolved, so the tag inside it must equal
+	 * the `language` this run's own daemon answered. A caption derived from the client
+	 * OS would read the device's tag (this machine's, not the daemon's), and this
+	 * comparison is what would catch that.
+	 *
+	 * AN EXACT TRAILING-TAG COMPARE, not `includes`. Review round 3 (R3-1): the
+	 * label is "App language in effect: en", so `caption.includes("en")` is
+	 * satisfied by the word "language" ALONE — it would pass for a caption naming
+	 * `en-CA`, `xx`, or nothing at all, which is precisely the discrimination this
+	 * assertion exists to provide. The caption's format is `<sentence>: <tag>`, so the
+	 * tag is the text after the LAST colon; comparing that exactly is what ties the
+	 * caption to the daemon's answer.
+	 */
+	const captionTag = (caption) =>
+		typeof caption === "string"
+			? caption.slice(caption.lastIndexOf(":") + 1).trim()
+			: null;
+	check(
+		"the caption names the BACKEND's resolved locale, not the client OS",
+		typeof resolved === "string" && captionTag(rest2.caption) === resolved,
+		`backend resolved ${JSON.stringify(resolved)}; caption ${JSON.stringify(rest2.caption)}; trailing tag ${JSON.stringify(captionTag(rest2.caption))}`,
+	);
+	const captionFrame = await captureSettled(
+		cdp,
+		"settings-language-caption-dark",
+	);
+
+	const frames = [restFrame, openFrame, urduFrame, captionFrame];
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map(
+				(f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
+/**
  * Settings > Appearance: the transcript display mode's row, in both of the states
  * it can be in (issue #756; design review round 1, D2 MAJOR).
  *
@@ -42810,6 +43373,13 @@ async function main() {
 				await sceneUndoToastsStacked(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
+			/*
+			 * The interface-language row in General — the one surface on this page that
+			 * needs a live backend to photograph its caption, and whose picker's open list
+			 * no offline capturer can reach. Needs `--backend`: an isolated daemon this run
+			 * owns.
+			 */ else if (SCENE === "settings-language")
+				await sceneSettingsLanguage(cdp);
 			/*
 			 * The Appearance section's transcript-display row (issue #756): the one
 			 * surface this change adds that no Storybook cell can photograph, because

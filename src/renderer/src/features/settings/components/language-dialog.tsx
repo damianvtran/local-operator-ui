@@ -47,13 +47,19 @@ import { LANGUAGE_SETTING_KEY, t } from "@shared/i18n";
 import { renegotiateLanguage } from "@shared/i18n/language-writes";
 import type { QueryClient } from "@tanstack/react-query";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check } from "lucide-react";
+import { Check, Languages } from "lucide-react";
 import { type FC, useEffect, useRef, useState } from "react";
 import { presentSetting } from "../backend-setting-copy";
 import { backendSettingsKeys } from "./backend-settings-section";
 import { useLanguageDialogStore } from "./language-dialog-store";
 import { settingHelpId } from "./setting-combobox";
-import { SettingControl } from "./setting-control";
+import {
+	DIALOG_EFFECTIVE_SURFACE,
+	SettingControl,
+	settingEffectiveId,
+	settingEffectiveIdFor,
+} from "./setting-control";
+import { SettingsSection } from "./settings-section";
 
 /**
  * The dialog's write, as a function.
@@ -76,6 +82,242 @@ export async function saveLanguageValue(options: {
 	});
 	renegotiateLanguage(options.queryClient);
 }
+
+/** Immediate General writes share the palette's API/renegotiation seam.
+ * The cache is written only AFTER the write op resolves, so a REJECTED write
+ * leaves committed truth untouched and never becomes an optimistic preference.
+ * A confirmed write followed by a failed readback is still cached as written,
+ * and is reported as `readback-unknown` to disable duplicate saves; the
+ * readback is a separate signal from the cache's own precondition.
+ */
+export async function saveImmediateLanguageValue(options: {
+	value: string;
+	queryClient: QueryClient;
+}): Promise<"confirmed" | "readback-unknown"> {
+	await saveLanguageValue(options);
+	options.queryClient.setQueryData<BackendSettings>(
+		backendSettingsKeys.all,
+		(previous) =>
+			previous
+				? {
+						...previous,
+						settings: previous.settings.map((setting) =>
+							setting.key === LANGUAGE_SETTING_KEY
+								? {
+										...setting,
+										value: options.value,
+										is_default: options.value === setting.default,
+									}
+								: setting,
+						),
+					}
+				: previous,
+	);
+	try {
+		await options.queryClient.fetchQuery({
+			queryKey: backendSettingsKeys.all,
+			queryFn: () => desktopResult<BackendSettings>({ op: "settings.list" }),
+			staleTime: 0,
+			retry: false,
+		});
+		return "confirmed";
+	} catch {
+		return "readback-unknown";
+	}
+}
+
+/** Top-General entry point. No locale-keyed remount: profile drafts and other
+ * dirty forms survive a backend locale update. The select represents confirmed
+ * state even while its next requested value is pending or was rejected.
+ */
+export const GeneralLanguageSetting: FC<{ focus?: boolean }> = ({
+	focus = false,
+}) => {
+	const queryClient = useQueryClient();
+	const capabilities = useDesktopCapabilities();
+	const enabled = desktopFeatureEnabled(capabilities.data, "settings");
+	const settings = useQuery({
+		queryKey: backendSettingsKeys.all,
+		queryFn: () => desktopResult<BackendSettings>({ op: "settings.list" }),
+		enabled,
+		retry: false,
+		refetchOnReconnect: true,
+	});
+	const setting = settings.data?.settings.find(
+		(candidate) => candidate.key === LANGUAGE_SETTING_KEY,
+	);
+	const [pending, setPending] = useState(false);
+	const [rejected, setRejected] = useState<{
+		value: string;
+		message: string;
+	} | null>(null);
+	const [readbackUnknown, setReadbackUnknown] = useState(false);
+	const [saved, setSaved] = useState(false);
+	const writing = useRef(false);
+	const container = useRef<HTMLDivElement>(null);
+	const focused = useRef(false);
+	useEffect(() => {
+		if (!focus) {
+			focused.current = false;
+			return;
+		}
+		if (!setting || focused.current) return;
+		container.current?.querySelector<HTMLElement>("[role=combobox]")?.focus();
+		focused.current = true;
+	}, [focus, setting]);
+	useEffect(() => {
+		if (settings.isSuccess && !settings.isFetching) setReadbackUnknown(false);
+	}, [settings.isFetching, settings.isSuccess]);
+
+	const save = async (value: string) => {
+		if (
+			!setting ||
+			writing.current ||
+			readbackUnknown ||
+			!setting.choices.some((choice) => choice.value === value)
+		)
+			return;
+		writing.current = true;
+		setPending(true);
+		setRejected(null);
+		setSaved(false);
+		try {
+			const outcome = await saveImmediateLanguageValue({ value, queryClient });
+			setReadbackUnknown(outcome === "readback-unknown");
+			setSaved(outcome === "confirmed");
+		} catch (cause) {
+			setRejected({
+				value,
+				message: cause instanceof Error ? cause.message : "",
+			});
+		} finally {
+			writing.current = false;
+			setPending(false);
+		}
+	};
+	const retryRead = async () => {
+		const [settingsAnswer, capabilityAnswer] = await Promise.all([
+			settings.refetch(),
+			capabilities.refetch(),
+		]);
+		if (!settingsAnswer.isError && !capabilityAnswer.isError)
+			setReadbackUnknown(false);
+	};
+	const coldError =
+		(!settings.data && settings.error) ||
+		(!capabilities.data && capabilities.error);
+	const unavailable =
+		capabilities.data && (!enabled || (settings.data && !setting));
+	const loading = !coldError && !unavailable && !setting;
+	const resolvedLanguage = capabilities.data?.features?.i18n
+		? capabilities.data.language
+		: undefined;
+	/*
+	 * Only the BACKEND's resolved locale may name the caption. An absent or
+	 * malformed answer leaves it unnamed instead of falling back to the client
+	 * OS, which would be a guess about a machine the renderer cannot see.
+	 */
+	const locale =
+		typeof resolvedLanguage === "string" && resolvedLanguage !== ""
+			? resolvedLanguage
+			: undefined;
+	return (
+		<SettingsSection
+			title={t("ui.settings.language.dialog.title")}
+			icon={Languages}
+			description={t("ui.settings.language.general.description")}
+		>
+			<div
+				ref={container}
+				data-setting-key={LANGUAGE_SETTING_KEY}
+				className="flex flex-col gap-3"
+				aria-busy={pending}
+			>
+				{loading && (
+					<output className="text-meta text-ink-dim">
+						{t("ui.settings.language.dialog.loading")}
+					</output>
+				)}
+				{unavailable && (
+					<p className="text-meta text-ink-dim">
+						{t("ui.settings.language.dialog.unavailable")}
+					</p>
+				)}
+				{setting && (
+					<SettingControl
+						setting={{
+							...presentSetting(setting),
+							label: t("ui.settings.language.dialog.title"),
+						}}
+						value={String(setting.value)}
+						onValueChange={(value) => {
+							void save(value);
+						}}
+						disabled={pending || readbackUnknown}
+						/*
+						 * The section renders the caption for this surface (the `<output>`
+						 * below, which is phase-aware: pending / saved / in-effect /
+						 * last-known / not-resolved). The picker's inner note would repeat
+						 * the same tag in a second voice directly above it, so it is
+						 * suppressed here and kept wherever this control is the header of
+						 * its own surface (design round 1 D1, confirming UX U1).
+						 */
+						suppressEffectiveNote
+					/>
+				)}
+				<output
+					id={settingEffectiveId(LANGUAGE_SETTING_KEY)}
+					aria-live="polite"
+					className="text-meta text-ink-dim"
+				>
+					{pending
+						? t("ui.settings.language.general.pending")
+						: saved
+							? t("ui.settings.language.general.saved")
+							: locale
+								? t(
+										readbackUnknown || capabilities.error
+											? "ui.settings.language.general.last_known"
+											: "ui.settings.language.general.effective",
+										{ locale },
+									)
+								: t("ui.settings.language.general.no_resolution")}
+				</output>
+				{(coldError || rejected || readbackUnknown) && (
+					<Alert variant="danger">
+						<div className="flex flex-col gap-2">
+							<p role="alert">
+								{rejected
+									? t("ui.settings.language.general.write_error", {
+											message: rejected.message,
+										})
+									: readbackUnknown
+										? t("ui.settings.language.general.readback_error")
+										: t("ui.settings.language.dialog.unavailable")}
+							</p>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={
+									pending || settings.isFetching || capabilities.isFetching
+								}
+								onClick={() => {
+									if (rejected) {
+										void save(rejected.value);
+									} else {
+										void retryRead();
+									}
+								}}
+							>
+								{t("ui.settings.language.dialog.retry")}
+							</Button>
+						</div>
+					</Alert>
+				)}
+			</div>
+		</SettingsSection>
+	);
+};
 
 export const LanguageDialog: FC = () => {
 	const open = useLanguageDialogStore((state) => state.open);
@@ -301,6 +543,17 @@ export const LanguageDialog: FC = () => {
 								value={value}
 								disabled={saving}
 								helpId={settingHelpId(LANGUAGE_SETTING_KEY)}
+								/*
+								 * THE DIALOG'S OWN SPELLING, not the canonical one. This picker can
+								 * be co-mounted with the General section (the palette dialog opened on
+								 * `/settings`), and the section's caption already holds the canonical
+								 * id — so this control describes ITS own note, whose id is derived
+								 * from the surface name (QA round 5, Q5).
+								 */
+								effectiveNoteId={settingEffectiveIdFor(
+									LANGUAGE_SETTING_KEY,
+									DIALOG_EFFECTIVE_SURFACE,
+								)}
 								onValueChange={(next) => {
 									setSaved(false);
 									setDraft(next);

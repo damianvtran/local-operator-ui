@@ -60,6 +60,9 @@ export function useI18nLocaleSync(): void {
 		if (!change.changedKeys.includes(LANGUAGE_SETTING_KEY)) return;
 		handled.current = stamp;
 		void queryClient.invalidateQueries({ queryKey: desktopKeys.capabilities });
+		// Even our own echo can contain a newer external value: quiet the toast,
+		// never discard committed settings truth or erase another form's draft.
+		void queryClient.invalidateQueries({ queryKey: desktopKeys.settings });
 		if (withinLocalLanguageWrite()) return;
 		showInfoToast(
 			t("ui.settings.language.external_notice", {
