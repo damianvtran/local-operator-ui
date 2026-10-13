@@ -39,7 +39,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { after, before, test } from "node:test";
 import { build } from "esbuild";
 import { consoleWiringDrift } from "./console-wiring.mjs";
@@ -101,6 +101,20 @@ const bundle = await build({
 		{
 			name: "console-startup-native-boundary",
 			setup(plugin) {
+				// Read-only before/after comparison: an isolated receipt may supply
+				// the exact frozen host blob without rewriting any worktree source.
+				plugin.onLoad({ filter: /console\/host\.ts$/ }, ({ path }) =>
+					process.env.CONSOLE_ROOT_BEFORE_SOURCE
+						? {
+								contents: readFileSync(
+									process.env.CONSOLE_ROOT_BEFORE_SOURCE,
+									"utf8",
+								),
+								loader: "ts",
+								resolveDir: dirname(path),
+							}
+						: undefined,
+				);
 				plugin.onLoad({ filter: /console\/pty\.ts$/ }, ({ path }) => ({
 					contents: `${readFileSync(path, "utf8").replace(
 						"export function loadNodePty(",
@@ -109,6 +123,21 @@ const bundle = await build({
 export function loadNodePty() {
  if (globalThis.__consoleRootFakeNative) return { ok: true, module: {}, helper: { healed: false } };
  return loadRealNodePty();
+}
+`,
+					loader: "ts",
+				}));
+				// Observe a genuine production xterm acquisition, not a replacement
+				// emulator. Faults below happen only AFTER that resource exists.
+				plugin.onLoad({ filter: /console\/emulator\.ts$/ }, ({ path }) => ({
+					contents: `${readFileSync(path, "utf8").replace(
+						"export function createXtermEmulator(",
+						"function createRealXtermEmulator(",
+					)}
+export function createXtermEmulator(options: Parameters<typeof createRealXtermEmulator>[0]) {
+ const emulator = createRealXtermEmulator(options);
+ globalThis.__consoleRootObserveEmulator?.(emulator);
+ return emulator;
 }
 `,
 					loader: "ts",
@@ -2755,6 +2784,193 @@ test("genuine exited agent surfaces remain live admissions and still enforce eig
 		host.dispose();
 	}
 });
+
+for (const fault of ["replay", "log", "attach-before", "attach-after"]) {
+	for (const releaseFails of [false, true]) {
+		test(`real restore acquisition remains owned across ${fault}, release retry=${releaseFails}`, async () => {
+			const { ConsoleHistory, ConsoleRegistry, ByteLog } = mod;
+			const dir = mkdtempSync(join(tmpdir(), "console-acquire-"));
+			const root = join(dir, "run/ui-console/history");
+			const history = new ConsoleHistory(root, { now: () => 1000 });
+			for (let i = 1; i <= 2; i++) {
+				const meta = {
+					surface: `con:${i}:${"a".repeat(22)}`,
+					session_id: "session-1",
+					origin: "agent",
+					command: "true",
+					argv: ["true"],
+					cwd: dir,
+					cols: 80,
+					rows: 24,
+					created_at: 900,
+					// History sorts newest first: acquisition two must be con:2,
+					// independent of filesystem enumeration or sort stability.
+					last_seen_at: 1000 - i,
+					exit_code: 0,
+					truncated: false,
+					exit_epoch: 3,
+				};
+				history.writeMeta(meta);
+				history.append(
+					meta.session_id,
+					meta.surface,
+					Buffer.from(`preserved ${i}\r\n`),
+					meta,
+				);
+			}
+			const originals = readdirSync(join(root, "session-1")).map((name) => {
+				const path = join(root, "session-1", name);
+				return { path, bytes: readFileSync(path), mode: statSync(path).mode };
+			});
+			const assertUnchanged = () => {
+				for (const file of originals) {
+					assert.deepEqual(readFileSync(file.path), file.bytes);
+					assert.equal(statSync(file.path).mode, file.mode);
+				}
+			};
+			const observations = [];
+			const attach = ConsoleRegistry.prototype.attach;
+			const append = ByteLog.prototype.append;
+			let appendCalls = 0;
+			let writeThrows = 0;
+			let bridge;
+			globalThis.__consoleRootFakeNative = true;
+			globalThis.__consoleRootObserveEmulator = (emulator) => {
+				const index = observations.length;
+				const realWrite = emulator.write.bind(emulator);
+				const realDispose = emulator.dispose.bind(emulator);
+				const observation = {
+					calls: 0,
+					released: false,
+					instrumentCleanup: 0,
+					realDispose,
+				};
+				observations.push(observation);
+				emulator.write = (bytes) => {
+					if (index === 1 && fault === "replay") {
+						writeThrows++;
+						throw new Error("labelled replay after REAL acquire");
+					}
+					return realWrite(bytes);
+				};
+				emulator.dispose = () => {
+					observation.calls++;
+					if (index === 1 && releaseFails && observation.calls === 1)
+						throw new Error("labelled exact-owner release failure");
+					realDispose();
+					observation.released = true;
+				};
+			};
+			ConsoleRegistry.prototype.attach = function (surface, runtime) {
+				const second = surface.startsWith("con:2:");
+				if (second && fault === "attach-before")
+					throw new Error("labelled attach before adoption");
+				const result = attach.call(this, surface, runtime);
+				if (second && fault === "attach-after")
+					throw new Error("labelled attach after adoption");
+				return result;
+			};
+			ByteLog.prototype.append = function (bytes) {
+				appendCalls++;
+				if (appendCalls === 2 && fault === "log")
+					throw new Error("labelled log initialization");
+				return append.call(this, bytes);
+			};
+			try {
+				// Match the existing construction fixture explicitly: no helper from
+				// another test's lexical scope, and never load/spawn a native PTY.
+				const mainFrame = { url: "http://localhost/index.html" };
+				const webContents = { mainFrame };
+				bridge = await startConsoleHost({
+					window: { isDestroyed: () => false, webContents },
+					expectedUrl: mainFrame.url,
+					appVersion: "root-acquisition-test",
+					configDir: dir,
+					spawn: () => {
+						throw new Error("history must not spawn a PTY");
+					},
+					now: () => 1000,
+					log: () => {},
+				});
+				// ConsoleStartup is a tagged ok union, not a ChromeState snapshot.
+				assert.equal(bridge.ok, false);
+				assert.equal(bridge.reason, "startup_failed");
+				assert.match(bridge.detail, /labelled/);
+				assert.equal(observations.length, 2);
+				if (fault === "replay") assert.equal(writeThrows, 1);
+				assertUnchanged();
+				// The wrapper consumes structured evidence BEFORE the assertion.
+				// rc1 alone is insufficient: a fixture ReferenceError is not the
+				// original acquisition leak, and diagnostic finally is not cleanup.
+				console.log(
+					"ROOT_ACQUISITION_RECEIPT " +
+						JSON.stringify({
+							fault,
+							releaseFails,
+							allocated: observations.length,
+							startupOk: bridge.ok,
+							reason: bridge.reason,
+							writeThrows,
+							disposeCalls: observations.map((item) => item.calls),
+							released: observations.map((item) => item.released),
+							historyUnchanged: true,
+						}),
+				);
+				assert.deepEqual(
+					observations.map((item) => item.calls),
+					[1, 1],
+					"ROOT_ACQUISITION_LEAK: both genuine allocations must have product owners",
+				);
+				assert.deepEqual(
+					observations.map((item) => item.released),
+					[true, !releaseFails],
+				);
+				await bridge.stop();
+				await bridge.stop();
+				assert.deepEqual(
+					observations.map((item) => item.calls),
+					[1, releaseFails ? 2 : 1],
+				);
+				assert.ok(
+					observations.every(
+						(item) => item.released && item.instrumentCleanup === 0,
+					),
+				);
+				assertUnchanged();
+				console.log(
+					"ROOT_ACQUISITION_COMPLETE " +
+						JSON.stringify({
+							fault,
+							releaseFails,
+							allocated: observations.length,
+							disposeCalls: observations.map((item) => item.calls),
+							allReleased: true,
+							instrumentCleanup: 0,
+							historyUnchanged: true,
+						}),
+				);
+			} finally {
+				ConsoleRegistry.prototype.attach = attach;
+				ByteLog.prototype.append = append;
+				delete globalThis.__consoleRootFakeNative;
+				delete globalThis.__consoleRootObserveEmulator;
+				// On red assertions, diagnostic release runs AFTER the verdict and
+				// never increments product counters or supplies a passing receipt.
+				for (const item of observations) {
+					if (!item.released) {
+						item.realDispose();
+						item.instrumentCleanup++;
+					}
+				}
+				try {
+					await bridge?.stop();
+				} finally {
+					rmSync(dir, { recursive: true, force: true });
+				}
+			}
+		});
+	}
+}
 
 test("optional startup rollback preserves history bytes and retries only exact failed runtime owners", async () => {
 	const root = mkdtempSync(join(tmpdir(), "console-root-rollback-"));
