@@ -245,15 +245,21 @@ const HOSTING_ROW = '[data-setting-key="hosting"]';
 
 const rowFor = (selector) => document.querySelector(selector);
 
-/** The row's own note, by its full text - the picker's value spans must not match. */
+/**
+ * The row's own note, by its stable id.
+ *
+ * BY ID, NOT BY ENGLISH PREFIX: this used to find the span whose text starts
+ * with "In effect:", which is the ENGLISH spelling of catalogue copy — so the
+ * lookup itself was an English-pinned assertion, and it silently returned null
+ * the moment the note legitimately rendered in another locale (the French
+ * `ui.settings.language.effective` is « Langue utilisée : {locale} »). The note
+ * carries `setting-effective-language` (asserted below), the stable handle; the
+ * TEXT expectations stay explicit per locale.
+ */
 const noteOf = (selector) => {
 	const row = rowFor(selector);
 	if (!row) return null;
-	return (
-		[...row.querySelectorAll("span")].find((el) =>
-			el.textContent.startsWith("In effect:"),
-		)?.textContent ?? null
-	);
+	return row.querySelector("#setting-effective-language")?.textContent ?? null;
 };
 
 /** The row's own `Use default`, the write path this harness can drive. */
@@ -373,6 +379,20 @@ const click = async (el, note) => {
  */
 const TEST_TIMEOUT_MS = 60_000;
 
+/*
+ * The effective-language note is CATALOGUE COPY, so it renders in the ACTIVE
+ * locale — and these expectations have to say so. They were written as the
+ * English sentence alone, which passed only while no French catalogue existed:
+ * the note then always fell back to English. Shipping the French catalogue made
+ * the note render « Langue utilisée : fr » at locale `fr` (the behaviour this
+ * suite's own cases are about), which is correct and falsifies an
+ * English-only expectation. Both spellings are pinned explicitly, including the
+ * narrow no-break space French requires before the colon, so a change to EITHER
+ * copy is visible here rather than silently absorbed.
+ */
+const EFFECTIVE_NOTE_EN = "In effect: en";
+const EFFECTIVE_NOTE_FR = "Langue utilisée\u202f: fr";
+
 test(
 	"the language row shows the store's active locale, and only that row does",
 	{ timeout: TEST_TIMEOUT_MS },
@@ -384,7 +404,7 @@ test(
 		// row's controls never mount.
 		await rerender(mounted, { focusKey: "language" });
 		await settle(
-			() => noteOf(LANGUAGE_ROW) === "In effect: en",
+			() => noteOf(LANGUAGE_ROW) === EFFECTIVE_NOTE_EN,
 			"the language row must show the store's locale (en, from the seeded capabilities answer)",
 		);
 		/*
@@ -415,7 +435,7 @@ test(
 			});
 		});
 		await settle(
-			() => noteOf(LANGUAGE_ROW) === "In effect: fr",
+			() => noteOf(LANGUAGE_ROW) === EFFECTIVE_NOTE_FR,
 			"a new capabilities answer must move the line to the new locale",
 		);
 		// And no other row carries the note: the enum above it in the same
@@ -469,7 +489,7 @@ test(
 			"the store must resolve to the language the new answer carries",
 		);
 		await settle(
-			() => rowFor(LANGUAGE_ROW)?.textContent.includes("In effect: fr"),
+			() => rowFor(LANGUAGE_ROW)?.textContent.includes(EFFECTIVE_NOTE_FR),
 			"the row's line must follow the store to the new locale",
 		);
 		assert.ok(
