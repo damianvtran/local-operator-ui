@@ -1228,6 +1228,23 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							if (page) void flowHandle.reopen();
 						}}
 					/>
+					{page ? (
+						/* The copy-chained handoff must not be the ONLY route to the
+						 * approval page: a refused clipboard write (permission policy,
+						 * inactive document) leaves the user holding a code they can
+						 * hand-copy with nowhere to enter it (UX round 1, U1). A plain
+						 * reopen beside it, same shape as the paste-required and waiting
+						 * panels' own; pressing it is still an explicit act, so nothing
+						 * auto-opens on arrival. */
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => void flowHandle.reopen()}
+						>
+							<ExternalLink aria-hidden="true" />
+							{flow.opened ? "Open browser again" : "Open sign-in page"}
+						</Button>
+					) : null}
 					<Button
 						variant="ghost"
 						size="sm"
