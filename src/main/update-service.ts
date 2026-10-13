@@ -125,7 +125,7 @@ import {
 	type UpdateChannelStatus,
 	type UpdateCheckVerdict,
 	isReadableVersion,
-	publishedVersionFromPypi,
+	readPypiReleaseBody,
 	serverChannelVerdict,
 	updateCheckVerdict,
 } from "./update-check-verdict";
@@ -2347,6 +2347,16 @@ export class UpdateService {
 	 * so it is kept rather than fetched again on the click (review U17).
 	 */
 	private lastPublishedBackendVersion: string | null = null;
+
+	/**
+	 * The version PyPI most recently NAMED whose files were not yet
+	 * downloadable, or null. Kept beside the published reading because the
+	 * manual check's sentence depends on the distinction (UX round 1, U1):
+	 * "a release is still publishing" and "the version could not be
+	 * determined" are different facts with different next steps, and the
+	 * gated read alone collapses them into one null.
+	 */
+	private pendingPypiVersion: string | null = null;
 
 	/** Path of the artifact this run downloaded, when the updater reported one. */
 	private downloadedArtifactPath: string | null = null;
@@ -6237,13 +6247,15 @@ export class UpdateService {
 
 	/**
 	 * Get the latest READY version from PyPI: the newest release whose
-	 * artifacts an installer can actually download, per
-	 * `publishedVersionFromPypi`. A version PyPI has named but whose files
-	 * have not finished uploading resolves null — the same answer as an
+	 * platform wheel an installer can actually download, per
+	 * `readPypiReleaseBody`. A version PyPI has named but whose files have
+	 * not finished uploading resolves null — the same answer as an
 	 * unreadable response, because both mean do not offer yet; the next
-	 * scheduled check re-reads. Reading only `info.version` here was the
-	 * 2026-10-12 race: the offer appeared minutes after publication and
-	 * `lop update` exited 1 against artifacts that were not on PyPI yet.
+	 * scheduled check re-reads. The named-but-not-ready version is kept on
+	 * `pendingPypiVersion` so the manual check can say which state it is
+	 * in. Reading only `info.version` here was the 2026-10-12 race: the
+	 * offer appeared minutes after publication and `lop update` exited 1
+	 * against artifacts that were not on PyPI yet.
 	 * @returns Promise resolving to the latest ready version string or null if unable to fetch
 	 */
 	private getLatestPypiVersion(): Promise<string | null> {
@@ -6265,15 +6277,16 @@ export class UpdateService {
 					});
 					res.on("end", () => {
 						try {
-							const packageInfo = JSON.parse(data);
-							const latestVersion = publishedVersionFromPypi(packageInfo);
-							if (!latestVersion && packageInfo?.info?.version) {
+							const reading = readPypiReleaseBody(data, process.platform);
+							this.pendingPypiVersion =
+								reading.readyVersion === null ? reading.namedVersion : null;
+							if (reading.readyVersion === null && reading.namedVersion) {
 								logger.info(
-									`PyPI names version ${packageInfo.info.version} but its release has no downloadable wheel yet; not offering it. The next check will re-read.`,
+									`PyPI names version ${reading.namedVersion} but its release has no downloadable wheel for this platform yet; not offering it. The next check will re-read.`,
 									LogFileType.UPDATE_SERVICE,
 								);
 							}
-							resolve(latestVersion);
+							resolve(reading.readyVersion);
 						} catch (error) {
 							logger.error(
 								"Error parsing PyPI response:",
@@ -7115,7 +7128,22 @@ export class UpdateService {
 				);
 				if (reportFailure) {
 					this.sendToRenderer("backend-update-error", {
-						message: "Unable to determine backend version.",
+						/*
+						 * The not-ready state earns its own sentence (UX round 1, U1):
+						 * PyPI answered and named a release whose files are still
+						 * publishing, which is a wait, not a fault — the generic
+						 * sentence below reads as an installation problem and sends
+						 * the reader to debug one. Same producer-sentence shape as
+						 * the unreadable-install branch below. No retry action is
+						 * attached: the shared classifier gives authored sentences
+						 * no control (it names its own next step), and this sentence
+						 * does — check again in a few minutes, from the same control
+						 * the reader just used.
+						 */
+						message:
+							installedVersion && this.pendingPypiVersion
+								? `A new server release (${this.pendingPypiVersion}) is still publishing, so no update was offered yet. Check again in a few minutes.`
+								: "Unable to determine backend version.",
 						phase: "check",
 						logPath: serverUpdateLogPath(),
 					});
