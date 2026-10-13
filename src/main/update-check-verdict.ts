@@ -262,7 +262,10 @@ export type PypiReleaseReading = {
 	readyVersion: string | null;
 };
 
-const SHA256_HEX = /^[0-9a-f]{64}$/i;
+// Lowercase only, matching the backend twin's digest test
+// (`_installer_wheel`): PyPI serves lowercase hex, and the two checkers
+// must not disagree about the same document over letter case.
+const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 /**
  * Whether one file entry is the wheel THIS platform's backend installer
