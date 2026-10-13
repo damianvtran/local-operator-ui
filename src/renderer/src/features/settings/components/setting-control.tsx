@@ -327,6 +327,14 @@ export type SettingControlProps = {
 	/** The cascade chains, when the kind is `cascade`. */
 	chains?: Record<string, string[]>;
 	/**
+	 * The id this picker's `aria-describedby` points at, and the id the inner
+	 * note carries when it renders one. Defaults to `settingEffectiveId(key)`,
+	 * which is the General surface's spelling; a second surface that can be
+	 * co-mounted passes `settingEffectiveIdFor(key, <surface>)` so the two never
+	 * collide (see that helper).
+	 */
+	effectiveNoteId?: string;
+	/**
 	 * Suppress the row's own effective note (`EffectiveLanguage`).
 	 *
 	 * The note is the picker's OWN caption and belongs with it wherever the
@@ -569,8 +577,32 @@ export const LanguageChoiceLabel: FC<{
  * Shown in every state rather than only beside `auto`: next to an UNSAVED
  * draft it is what says the change has not taken effect yet.
  */
-/** The effective-note's DOM id, the picker's describedby target (U2). */
+/**
+ * The effective-note's DOM id on the CANONICAL surface, and the picker's
+ * `aria-describedby` target there (U2).
+ *
+ * A second surface that can be co-mounted spells it with `settingEffectiveIdFor`
+ * instead, so the two never collide (see below).
+ */
 export const settingEffectiveId = (key: string) => `setting-effective-${key}`;
+
+/**
+ * The same note's id on a SECOND surface that may be co-mounted.
+ *
+ * WHY A SECOND SPELLING. `setting-effective-language` is emitted by whichever
+ * element owns the caption for the surface in view, and each picker must point
+ * at ITS OWN caption. Two surfaces that can be mounted at once — the General
+ * section and the palette dialog, co-mounted when the dialog is opened on
+ * `/settings` — would otherwise both emit the canonical id, and
+ * `getElementById` would resolve one picker's `aria-describedby` to the OTHER
+ * surface's caption (QA round 5, Q5). Distinct ids per surface is the fix that
+ * needs no proof: one id, one owner, one describedby target, at every moment.
+ */
+export const settingEffectiveIdFor = (key: string, surface: string) =>
+	`${settingEffectiveId(key)}-${surface}`;
+
+/** The palette dialog's own spelling, since it can be open beside the section. */
+export const DIALOG_EFFECTIVE_SURFACE = "dialog";
 
 /**
  * What `auto` resolves to RIGHT NOW, under the language row's picker.
@@ -606,6 +638,7 @@ export const SettingControl = ({
 	effectiveHosting = "",
 	helpId,
 	suppressEffectiveNote = false,
+	effectiveNoteId: effectiveNoteIdProp,
 }: SettingControlProps) => {
 	/*
 	 * The searchable combobox branch, keyed on the setting's KEY rather than on
@@ -636,7 +669,7 @@ export const SettingControl = ({
 	 */
 	const effectiveNoteId =
 		setting.key === LANGUAGE_SETTING_KEY
-			? settingEffectiveId(setting.key)
+			? (effectiveNoteIdProp ?? settingEffectiveId(setting.key))
 			: undefined;
 	if (comboSource) {
 		return (

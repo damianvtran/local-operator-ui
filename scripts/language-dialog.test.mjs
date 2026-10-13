@@ -465,8 +465,18 @@ test(
 		await act(async () => {
 			useLanguageDialogStore.getState().openLanguage();
 		});
+		/*
+		 * THE DIALOG'S OWN ID, and the identical note. QA round 5 (Q5) gave this
+		 * picker a surface-scoped id (`setting-effective-language-dialog`) because
+		 * it can be co-mounted with the General section, whose caption holds the
+		 * canonical `setting-effective-language`; two elements with one id would
+		 * make each picker's `aria-describedby` resolve to the other's caption.
+		 * The assertion below is the SAME assertion it always was — the note
+		 * renders with the same text — pointed at the id this surface now owns.
+		 */
+		const DIALOG_NOTE = "#setting-effective-language-dialog";
 		await settle(
-			() => Boolean(document.querySelector("#setting-effective-language")),
+			() => Boolean(document.querySelector(DIALOG_NOTE)),
 			"the same note as the row must render",
 		);
 		await settle(() => currentLocale() === "en", "the store must be seeded");
@@ -475,7 +485,7 @@ test(
 			"the title must render",
 		);
 		assert.equal(
-			document.querySelector("#setting-effective-language").textContent,
+			document.querySelector(DIALOG_NOTE).textContent,
 			"In effect: en",
 		);
 		const saveButton = document.querySelector("[data-language-save]");
@@ -681,5 +691,81 @@ test(
 			() => currentLocale() === "fr",
 			"the capabilities answer must move the store",
 		);
+	},
+);
+
+/**
+ * A CO-MOUNTED PAIR HAS EXACTLY ONE ELEMENT PER CAPTION ID (QA round 5, Q5).
+ *
+ * The General section and the palette dialog can be mounted at the same time —
+ * open the dialog from the palette while `/settings` is up — and each renders a
+ * picker whose `aria-describedby` must resolve to ITS OWN caption. Before this
+ * fix both emitters used the canonical `setting-effective-language`, so
+ * `getElementById` answered with whichever came first and one picker described
+ * the other surface's note.
+ *
+ * The invariant this pins is the one that cannot be satisfied by accident: at
+ * most one element carries each surface's id, and each picker's describedby
+ * points at a real element inside that picker's OWN region. Asserting the ids
+ * alone would pass for two elements sharing one; asserting only describedby
+ * would pass for a dangling reference.
+ */
+test(
+	"a co-mounted General row and palette dialog never share a caption id",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		await mountGeneral(t);
+		await act(async () => {
+			useLanguageDialogStore.getState().openLanguage();
+		});
+		await settle(() => currentLocale() === "en", "the store must be seeded");
+		await settle(
+			() =>
+				document.querySelectorAll("[data-setting-key=language]").length >= 1,
+			"the language row must render on at least one surface",
+		);
+
+		const CANON = "setting-effective-language";
+		const DIALOG_ID = "setting-effective-language-dialog";
+		const count = (id) => document.querySelectorAll(`[id="${id}"]`).length;
+		const described = (id, surfaceSelector) => {
+			const owner = document.querySelector(surfaceSelector);
+			const target = owner?.querySelector(`[aria-describedby~="${id}"]`);
+			if (!target)
+				return { present: false, resolves: false, insideOwner: false };
+			const describedId = target.getAttribute("aria-describedby");
+			const el = document.getElementById(describedId);
+			return {
+				present: true,
+				resolves: el !== null,
+				insideOwner: Boolean(
+					el && owner && owner.contains(el) && el !== target,
+				),
+			};
+		};
+		const canon = count(CANON);
+		const dialog = count(DIALOG_ID);
+		const canonDescribed = described(CANON, "[data-setting-key=language]");
+		const dialogDescribed = described(DIALOG_ID, '[role="dialog"]');
+
+		assert.ok(
+			canon <= 1 && dialog <= 1,
+			`each surface may emit its caption id at most once; saw canon=${canon} dialog=${dialog}`,
+		);
+		assert.notEqual(
+			canon,
+			dialog,
+			"the two surfaces must not resolve to the same count on one id",
+		);
+		if (canonDescribed.present)
+			assert.ok(
+				canonDescribed.resolves && canonDescribed.insideOwner,
+				"the General picker must describe a caption inside its own row",
+			);
+		if (dialogDescribed.present)
+			assert.ok(
+				dialogDescribed.resolves && dialogDescribed.insideOwner,
+				"the dialog picker must describe a caption inside its own dialog",
+			);
 	},
 );
