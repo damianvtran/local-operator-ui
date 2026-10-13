@@ -79,8 +79,11 @@ export async function saveLanguageValue(options: {
 }
 
 /** Immediate General writes share the palette's API/renegotiation seam.
- * Cache only a CONFIRMED write, never an optimistic preference. A failed
- * subsequent read is not a rejected write and must not invite duplicate saves.
+ * The cache is written only AFTER the write op resolves, so a REJECTED write
+ * leaves committed truth untouched and never becomes an optimistic preference.
+ * A confirmed write followed by a failed readback is still cached as written,
+ * and is reported as `readback-unknown` to disable duplicate saves; the
+ * readback is a separate signal from the cache's own precondition.
  */
 export async function saveImmediateLanguageValue(options: {
 	value: string;

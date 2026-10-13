@@ -43,7 +43,13 @@ import {
 	composeCapturedChord,
 } from "@shared/keymap/chord-capture";
 import { cn } from "@shared/lib/utils";
-import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
+import {
+	type FC,
+	type KeyboardEvent,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 import {
 	DEFAULT_QUICK_SEND_VALUE,
 	type MiniViewRegistrationState,
@@ -350,6 +356,33 @@ export const LANGUAGE_IDENTIFIERS = [
 	{ value: "hi", name: "हिन्दी", country: "in" },
 ] as const;
 
+/**
+ * The tag the SERVER served, resolved to the one name table above.
+ *
+ * WHY A NORMALISER RATHER THAN A PINNED TAG. Eligibility is the backend's answer
+ * (`languageChoices` enables a value only when the server's `choices` contains
+ * it), so the identifier table must never be the thing that decides what is
+ * selectable. But the flag and autonym hang off the tag this table spells, and
+ * the core's own `SUPPORTED_LOCALES` normalises a served tag by its exact
+ * spelling (`zh-CN`). A future core that served the bare `zh` subtag - or a
+ * region variant like `zh-Hans` - would otherwise render a genuinely served
+ * locale as a disabled, unnamed option, which reads as "this backend does not
+ * have Chinese" over a backend that just answered in it.
+ *
+ * So the match is by primary language subtag with an exact hit preferred: an
+ * exact `zh-CN` wins, `zh-Hans`/`zh`/`zh-TW` fall back to the `zh-CN` entry, and
+ * anything unknown simply has no artwork (server eligibility still decides).
+ */
+export function languageIdentifierFor(value: string) {
+	const exact = LANGUAGE_IDENTIFIERS.find((item) => item.value === value);
+	if (exact) return exact;
+	const primary = value.split("-")[0]?.toLowerCase();
+	if (!primary) return undefined;
+	return LANGUAGE_IDENTIFIERS.find(
+		(item) => item.value.split("-")[0]?.toLowerCase() === primary,
+	);
+}
+
 export function languageChoices(setting: BackendSetting) {
 	const available = new Map(
 		setting.choices.map((choice) => [String(choice.value), choice]),
@@ -470,7 +503,7 @@ const LanguageChoiceLabel: FC<{ value: string; fallback: string }> = ({
 	value,
 	fallback,
 }) => {
-	const identity = LANGUAGE_IDENTIFIERS.find((item) => item.value === value);
+	const identity = languageIdentifierFor(value);
 	if (!identity)
 		return (
 			<>
