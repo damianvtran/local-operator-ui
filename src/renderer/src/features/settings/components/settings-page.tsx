@@ -26,6 +26,7 @@ import {
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -279,6 +280,17 @@ const RadientSectionTitle: FC = () => (
 );
 
 export const SettingsPage: FC = () => {
+	/*
+	 * SUBSCRIBE to the i18n locale, or a language switch would not repaint this
+	 * page. `t()` is a plain function read at call time - it does not subscribe -
+	 * so a component that calls it must also read the store through
+	 * `useI18nLocale()` for React to re-render it when the locale changes (the
+	 * pattern every other t() consumer here uses). Without this line the header
+	 * and section copy would keep the OLD language until an unrelated repaint,
+	 * which is half the bug this PR fixes. The value is unused on purpose: the
+	 * subscription is the point, and the t() calls below read the store directly.
+	 */
+	useI18nLocale();
 	const laneLeadingColumn = useLaneLeadingColumn("surface");
 	const showAgentReasoning = useUiPreferencesStore(
 		(state) => state.showAgentReasoning,
