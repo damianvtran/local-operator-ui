@@ -452,6 +452,22 @@ export type DesktopFeature =
 	/** Verified journal-index order; absent keeps the explicit legacy lane. */
 	| "journal_order"
 	/**
+	 * THE COMPLETE PEER-SOURCE CONTRACT (`docs/DESKTOP_API.md`, "Complete
+	 * peer-source contract"): the `peer_journal_source=1` declaration on a peer
+	 * conversation's reads and its events subscription, plus the facts-only
+	 * `source_read=metadata` lookup the cached-ID order repair is re-pointed to.
+	 *
+	 * ITS OWN KEY, and the gate is the whole point: under the complete
+	 * declaration a peer read can answer `building` (settled by the availability
+	 * lane's wake) or `unavailable` + `reconcile` (settled by ONE coalesced
+	 * authoritative read), where the undeclared path degrades honestly to
+	 * `unsupported` — so a renderer that sent the flag without consuming those
+	 * states would hold debt nothing settles, which is the partial release the
+	 * contract forbids. Absent keeps every request byte-for-byte today's on all
+	 * three routes, and a legacy peer's ordering lane is exactly what it was.
+	 */
+	| "peer_journal_source"
+	/**
 	 * Durable conversation pinning: the `pinned` flag on every catalogue row and
 	 * the `sessions.pin` write (`POST /v1/desktop/sessions/{id}/pin`).
 	 *

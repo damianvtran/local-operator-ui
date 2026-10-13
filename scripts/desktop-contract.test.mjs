@@ -3266,3 +3266,53 @@ test("main reads a media refusal's {code,params,text} envelope: text forwarded, 
 		server.close();
 	}
 });
+
+test("the stream-subscribe IPC forwards the complete peer-source declaration, and refuses a non-boolean", async () => {
+	/*
+	 * THE IPC HALF OF THE DECLARATION, beside the three transports' cells: the
+	 * renderer hands `peerJournalSource` through the same strict gate as
+	 * `journalOrder`, and the relay it reaches must receive it as a BOOLEAN
+	 * (a coerced string would sail past this boundary and be silently dropped
+	 * by the relay's own `=== true`). The refusal arm is the same boundary's
+	 * negative control, one field over from the existing journal-order cases.
+	 */
+	globalThis.__desktopHandlers = new Map();
+	const frame = { url: "file:///app/index.html" };
+	const contents = { mainFrame: frame };
+	const owner = { webContents: contents, isDestroyed: () => false };
+	const seen = [];
+	const relay = {
+		subscribe: (args) => {
+			seen.push(args);
+			return { streamId: "stream-1" };
+		},
+		unsubscribe: () => {},
+	};
+	registerDesktopIPC(
+		() => owner,
+		"file:///app/index.html",
+		async () => ({ status: 200, body: { result: {} } }),
+		() => relay,
+	);
+	const subscribe = globalThis.__desktopHandlers.get(
+		"desktop-stream-subscribe",
+	);
+	const event = { sender: contents, senderFrame: frame };
+	assert.deepEqual(
+		await subscribe(event, {
+			sessionId: "aaaaaaaaaaaa",
+			journalOrder: true,
+			orderIds: ["a"],
+			peerJournalSource: true,
+		}),
+		{ streamId: "stream-1" },
+	);
+	assert.equal(seen[0].peerJournalSource, true);
+	assert.equal(seen[0].journalOrder, true);
+	assert.throws(
+		() =>
+			subscribe(event, { sessionId: "aaaaaaaaaaaa", peerJournalSource: "1" }),
+		/Invalid stream subscription/,
+	);
+	assert.equal(seen.length, 1, "a refused declaration never reaches the relay");
+});

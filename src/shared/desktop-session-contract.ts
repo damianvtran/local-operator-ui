@@ -1587,6 +1587,14 @@ export type DesktopHistoryPage = {
 	journal_order_state?: "ready" | "building" | "unavailable" | "unsupported";
 	journal_ordinals?: Record<string, number>;
 	journal_missing_ids?: string[];
+	/*
+	 * THE EXPLICIT RECONCILE CORRECTION: this answer deliberately carries no
+	 * joinable facts (a witness mismatch, or a lookup under a fence that no
+	 * longer holds) and a re-read is OWED. It is never an authority to install:
+	 * the consumer records the debt and lets the one coalesced authoritative
+	 * read settle it — see `receiveJournalOrder`'s reconcile branch.
+	 */
+	reconcile?: boolean;
 	entries: Array<{
 		id: string;
 		ts: number;

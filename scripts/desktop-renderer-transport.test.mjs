@@ -2010,6 +2010,8 @@ test("browser source stream negotiation matches IPC, legacy/off omission stays e
 			{},
 			{ journalOrder: false, orderIds: ["a"] },
 			{ journalOrder: true, orderIds: ["a", "b"] },
+			{ journalOrder: true, peerJournalSource: false, orderIds: ["a"] },
+			{ journalOrder: true, peerJournalSource: true, orderIds: ["a"] },
 		])
 			transport.subscribeDesktopStream(
 				{ sessionId: "aaaaaaaaaaaa", ...extra },
@@ -2019,6 +2021,17 @@ test("browser source stream negotiation matches IPC, legacy/off omission stays e
 		assert.equal(urls[1].searchParams.has("order_ids"), false);
 		assert.equal(urls[2].searchParams.get("journal_order"), "1");
 		assert.deepEqual(urls[2].searchParams.getAll("order_ids"), ["a", "b"]);
+		// The complete peer-source declaration: forwarded only on the literal
+		// `true`, set before the ids so the dev proxy's own budget sees it, and
+		// absent (byte-legacy) for everything else including an explicit false.
+		assert.equal(urls[3].searchParams.has("peer_journal_source"), false);
+		assert.equal(urls[4].searchParams.get("peer_journal_source"), "1");
+		assert.equal(urls[4].searchParams.get("journal_order"), "1");
+		assert.equal(
+			urls[4].search.indexOf("peer_journal_source") <
+				urls[4].search.indexOf("order_ids"),
+			true,
+		);
 	} finally {
 		globalThis.EventSource = prior;
 	}

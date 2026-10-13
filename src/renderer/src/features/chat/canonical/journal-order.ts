@@ -31,7 +31,10 @@ export function receiveJournalOrder(
 	initialState: TranscriptState,
 	page: Pick<
 		DesktopHistoryPage,
-		"journal_generation" | "journal_order_state" | "journal_ordinals"
+		| "journal_generation"
+		| "journal_order_state"
+		| "journal_ordinals"
+		| "reconcile"
 	>,
 	rows: Array<Record<string, unknown>>,
 	authoritative: boolean,
@@ -39,6 +42,39 @@ export function receiveJournalOrder(
 ): TranscriptState {
 	let state = initialState;
 	const generation = page.journal_generation;
+	/*
+	 * THE EXPLICIT RECONCILE CORRECTION (docs/DESKTOP_API.md, the purpose table):
+	 * an answer that carries `reconcile` deliberately carries no joinable facts,
+	 * and the contract is one-directional — "the generation rides the answer so
+	 * the client knows a re-read is owed, not as an authority to install". So
+	 * this branch records the debt and RETURNS, before the mismatch and install
+	 * blocks any answer could reach: an `unavailable` + `reconcile` + generation
+	 * answer (a lookup under a rebuilt source) must never move this transcript's
+	 * domain, and the one coalesced authoritative read the repair loop owes is
+	 * what settles it (a claimed domain becomes the wanted generation; a bare
+	 * correction stays the generic demand). The repeat guard keeps an identical
+	 * correction from minting a new demand object: demand IDENTITY is the repair
+	 * loop's wake currency ("a distinct ready fact, including a generic
+	 * correction, earns a fresh sweep") and a byte-identical repeat is not a new
+	 * fact. `journalMode` activates because the source CAN carry facts — it just
+	 * did not join this answer — which is the same reading of building/unavailable
+	 * states the no-generation branch below applies.
+	 */
+	if (page.reconcile === true) {
+		const wanted =
+			typeof generation === "string" && generation.length > 0
+				? generation
+				: undefined;
+		if (state.orderNeedsReconcile && state.orderWantedGeneration === wanted)
+			return state.journalMode ? state : { ...state, journalMode: true };
+		return {
+			...state,
+			journalMode: true,
+			orderNeedsReconcile: true,
+			orderWantedGeneration: wanted,
+			orderDemand: wanted !== undefined ? { generation: wanted } : {},
+		};
+	}
 	if (typeof generation !== "string" || generation.length === 0) {
 		return page.journal_order_state &&
 			page.journal_order_state !== "unsupported" &&

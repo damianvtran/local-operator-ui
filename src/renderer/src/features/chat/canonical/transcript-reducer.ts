@@ -3363,9 +3363,27 @@ function previousRecordForSupplement(
 }
 
 /**
- * A cached-ID lookup uses the existing snapshot route, but its tail is NOT a
- * paging or payload read. Repair only proven coordinates and verified owners;
- * retain the reader's cursor, text, image references and admitted row set.
+ * The ordered projection a fresh coordinate set demands.
+ *
+ * SHARED BY THE TWO METADATA PRODUCERS below - a verified page's coordinates
+ * and a facts-only lookup - so one re-rank/freeze rule serves both, and the
+ * DEV emit guard rides every new record clone (production keeps that guard's
+ * no-op semantics).
+ */
+function journalOrderedState(next: TranscriptState): TranscriptState {
+	const ordered = journalOrderedRecords(next, next.records);
+	if (ordered === next.records) return next;
+	const records = ordered.map(freezeRecordDeep);
+	return { ...next, records, index: withIndex(records) };
+}
+
+/**
+ * The AUTHORITATIVE metadata commit: the local cached-ID repair's snapshot
+ * read, and the session GET a peer conversation's owed reconcile settles
+ * through. Its tail is NOT a paging or payload read: repair only proven
+ * coordinates and verified owners; retain the reader's cursor, text, image
+ * references and admitted row set. Under session/view/read witnesses this is
+ * the one path that may install a different order domain.
  */
 export function applyJournalOrderMetadata(
 	state: TranscriptState,
@@ -3386,12 +3404,31 @@ export function applyJournalOrderMetadata(
 	);
 	for (const entry of page.entries)
 		next = rememberJournalCalls(next, { ...entry.payload, id: entry.id });
-	const ordered = journalOrderedRecords(next, next.records);
-	if (ordered === next.records) return next;
-	// Metadata is another canonical producer: its new record clones need the
-	// existing DEV emit guard too. Production keeps that guard's no-op semantics.
-	const records = ordered.map(freezeRecordDeep);
-	return { ...next, records, index: withIndex(records) };
+	return journalOrderedState(next);
+}
+
+/**
+ * A facts-only lookup answer (the peer `source_read=metadata` read) commits
+ * NON-authoritatively. Same-domain coordinates and the held echoes they
+ * attest are admitted through the same rules as every metadata producer, but
+ * this path never installs a domain and never settles a demand: "the
+ * generation rides the answer so the client knows a re-read is owed, not as
+ * an authority to install", and the repair loop's one coalesced authoritative
+ * read is what settles. Entries are empty by contract, so no body, cursor,
+ * causal-owner or frontend state can ride this path; a `reconcile` correction
+ * still records its debt (through `receiveJournalOrder`'s own branch).
+ */
+export function applyJournalOrderLookup(
+	state: TranscriptState,
+	page: Pick<
+		DesktopHistoryPage,
+		| "journal_generation"
+		| "journal_order_state"
+		| "journal_ordinals"
+		| "reconcile"
+	>,
+): TranscriptState {
+	return journalOrderedState(receiveJournalOrder(state, page, [], false));
 }
 
 export function applyHistoryPage(

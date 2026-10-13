@@ -291,6 +291,18 @@ function SessionPanel({
 				panelCapabilities.data,
 				"journal_order",
 			),
+			/*
+			 * The complete peer-source capability. Read here like its siblings - the
+			 * hook holds it in a ref and re-answers "may this request declare?" at
+			 * every read, because THAT answer also needs the session's locality and
+			 * its live subscription (see the hook's `peerScopedNow`). Absent or
+			 * answered late, every request stays today's bytes and a remote
+			 * conversation keeps its legacy ordering lane.
+			 */
+			peerJournalSource: desktopFeatureEnabled(
+				panelCapabilities.data,
+				"peer_journal_source",
+			),
 		},
 	);
 	useDesktopWatchLease(streamId, canonical.subscriptionId);

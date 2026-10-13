@@ -1435,6 +1435,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			sessionId,
 			journalOrder: z.boolean().optional(),
 			orderIds: z.array(z.string().min(1).max(128)).max(512).optional(),
+			/*
+			 * THE COMPLETE PEER-SOURCE DECLARATION (`peer_journal_source=1`, the
+			 * matching feature key): sent ONLY when ALL THREE hold - the capability
+			 * is advertised, the catalogue places this conversation on another
+			 * device, and the conversation's own events subscription already
+			 * declared it (see `use-canonical-session`'s `peerScopedNow`). The
+			 * authoritative snapshot is where a remote conversation's order domain
+			 * is installed (docs/DESKTOP_API.md "Complete peer-source contract" -
+			 * "the authority bootstrap uses the existing session GET"), and a
+			 * declaration whose `building` answer no wake can settle must never be
+			 * emitted, which is what the subscription coupling enforces. A local
+			 * conversation can never carry it: without any half of the four-part
+			 * gate the answer stays byte-for-byte today's.
+			 */
+			peerJournalSource: z.boolean().optional(),
 		})
 		.strict(),
 	z
@@ -1462,6 +1477,23 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			// bounded raw IDs let an off-page cached send learn its exact slot.
 			journalOrder: z.boolean().optional(),
 			orderIds: z.array(z.string().min(1).max(128)).max(512).optional(),
+			/** The peer-scoped declaration; see `sessions.get` above. */
+			peerJournalSource: z.boolean().optional(),
+			/*
+			 * THE FACTS-ONLY SOURCE PURPOSE (`source_read=metadata`, peer sessions
+			 * only). `payload` is DELIBERATELY absent from this union until its own
+			 * slice consumes bodies: a purpose IS a complete read, and emitting one
+			 * whose facts the viewer cannot settle is the partial release the
+			 * contract forbids (docs/DESKTOP_API.md, the purpose table).
+			 */
+			sourceRead: z.literal("metadata").optional(),
+			/*
+			 * The lookup's domain fence: the generation the caller's loaded records
+			 * belong to. The owner answers a mismatch as `unavailable` with the
+			 * CURRENT generation and `reconcile` - never ordinals for another
+			 * domain - so a rebuilt source cannot silently re-rank old bodies.
+			 */
+			expectedJournalGeneration: z.string().min(1).max(128).optional(),
 		})
 		.strict(),
 	/*
@@ -5964,6 +5996,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 			const query = new URLSearchParams();
 			if (request.journalOrder) {
 				query.set("journal_order", "1");
+				/*
+				 * THE PEER DECLARATION RIDES WITHIN THE `journal_order` HALF, and before
+				 * the ids so the batch's byte budget measures the request actually
+				 * sent — `appendJournalOrderIds` sizes that prefix against everything
+				 * already in `query`. The pairing is the wire's own rule: every
+				 * complete-contract field is carried only inside a `journal_order`
+				 * block, so a lone declaration could never be a declaration of
+				 * anything.
+				 */
+				if (request.peerJournalSource) query.set("peer_journal_source", "1");
 				appendJournalOrderIds(
 					query,
 					`/v1/desktop/sessions/${request.sessionId}`,
@@ -5993,6 +6035,23 @@ export function desktopEndpoint(request: DesktopRequest): {
 			}
 			if (request.journalOrder) {
 				query.set("journal_order", "1");
+				/*
+				 * THE PEER DECLARATION AND THE FACTS-ONLY PURPOSE, in the ONE order the
+				 * repair loop budgets against (`journal-order-repair`'s `sweep`):
+				 * declaration first (it gates every complete-contract field), then the
+				 * purpose, then the domain fence. `source_read` is only ever emitted
+				 * for a peer session whose subscription declared — a local daemon
+				 * refuses a purpose by name rather than answering a second dialect,
+				 * and the daemon needs `journal_order` beside the ids for the lookup
+				 * hop (the ids ARE the lookup; the opt-in is how they travel).
+				 */
+				if (request.peerJournalSource) query.set("peer_journal_source", "1");
+				if (request.sourceRead) query.set("source_read", request.sourceRead);
+				if (request.expectedJournalGeneration)
+					query.set(
+						"expected_journal_generation",
+						request.expectedJournalGeneration,
+					);
 				appendJournalOrderIds(
 					query,
 					`/v1/desktop/sessions/${request.sessionId}/history`,
