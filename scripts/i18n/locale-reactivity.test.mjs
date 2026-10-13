@@ -226,9 +226,27 @@ test("SettingsPage itself subscribes to the locale (static pin, not a render)", 
 		),
 		"utf8",
 	);
+	/*
+	 * ANCHORED ON THE STATEMENT, NOT ON ANY MENTION (review round 2). The first
+	 * version of this pin matched /useI18nLocale\(\)/ anywhere in the file — and the
+	 * file's own explanatory comment above the call contains that exact text. The
+	 * reviewer removed the REAL subscription by intercepting the filesystem and
+	 * all three reactivity cases still passed, because the comment still matched:
+	 * the pin could not fail on the regression it exists for, which is the very
+	 * defect this suite was written to avoid. The pattern below requires a LINE
+	 * that is the call as a statement, which a comment line can never be.
+	 *
+	 * A parsed AST would be the strongest form; this repository runs the native
+	 * TypeScript 7, whose programmatic surface is `typescript/unstable/*` (the
+	 * classic `ts.createSourceFile` is gone — see `check-strings.mjs`), so an AST
+	 * walk here would be code this suite cannot verify locally under the execution
+	 * stop. The anchored statement is precise for this file and fails SAFE: a
+	 * refactor that wraps the call (e.g. `const locale = useI18nLocale();`) would
+	 * fail the pin rather than silently pass it.
+	 */
 	assert.match(
 		source,
-		/useI18nLocale\(\)/,
-		"SettingsPage must call useI18nLocale(); t() alone is not reactive, so without it a language switch leaves the page in the old language",
+		/^\s*useI18nLocale\(\);/m,
+		"SettingsPage must call useI18nLocale() as a statement; t() alone is not reactive, so without it a language switch leaves the page in the old language",
 	);
 });
