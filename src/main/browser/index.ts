@@ -39,6 +39,7 @@ import {
 } from "./ipc";
 import {
 	type BrowserAvailability,
+	MAX_START_ATTEMPTS,
 	StartupRollback,
 	startWithRetries,
 } from "./lifecycle";
@@ -296,6 +297,9 @@ const hostInstanceId = randomUUID();
 let starting: Promise<BrowserHostHandle> | null = null;
 let startingWindow: BrowserWindow | null = null;
 let cancelStartup = false;
+/** Guards the renderer retry click (round 1, D1a) against a doubled press in the
+ * synchronous window before `startBrowserHost` records `starting`. */
+let retryInFlight = false;
 
 export function startBrowserHost(
 	options: StartBrowserHostOptions,
@@ -316,8 +320,9 @@ export function startBrowserHost(
 	let availability: BrowserAvailability = {
 		status: "starting",
 		attempt: 1,
-		maxAttempts: 3,
+		maxAttempts: MAX_START_ATTEMPTS,
 		message: null,
+		canRetry: false,
 	};
 	const bindings: Partial<RegisterBrowserIpcOptions> = {};
 	const notify = (): void => {
@@ -327,6 +332,14 @@ export function startBrowserHost(
 	// Install handlers synchronously, before an initializer can await anything.
 	// They belong to the window lifecycle, not to one attempt; retries replace
 	// only the ready bindings, so a renderer never sees a missing read handler.
+	// Clear any handlers a PREVIOUS invocation of this window left behind (an
+	// exhausted startup keeps them live on purpose, because the window is still
+	// open and the renderer must read the typed `unavailable` projection rather
+	// than a missing-handler error) so a later start re-registers idempotently
+	// instead of hitting Electron's "Attempted to register a second handler"
+	// throw. Synchronous, with no await between remove and register, so no read
+	// can interleave and observe the gap.
+	unregisterBrowserIpc();
 	registerBrowserIpc({
 		window: () => options.window,
 		expectedUrl: options.expectedUrl,
@@ -343,6 +356,21 @@ export function startBrowserHost(
 				throw new Error("browser_unavailable: The browser is not ready.");
 			return bindings.revealDownloads();
 		},
+		// The recovery click on the `unavailable` state (round 1, D1a). It restarts
+		// THIS module's host for the same window — the same call `createWindow`
+		// makes — so the retry travels the one lifecycle path rather than a second,
+		// parallel start. `retryInFlight` makes a doubled click a no-op instead of a
+		// competing initializer (startBrowserHost is already single-flight per
+		// window, so this only guards the synchronous window before it returns).
+		retry: async () => {
+			if (retryInFlight) return;
+			retryInFlight = true;
+			try {
+				await startBrowserHost(options).catch(() => {});
+			} finally {
+				retryInFlight = false;
+			}
+		},
 		log: options.log,
 	});
 	starting = startWithRetries({
@@ -354,7 +382,12 @@ export function startBrowserHost(
 		log: options.log,
 		start: async () => {
 			const handle = await initializeBrowserHost(options, bindings);
-			availability = { ...availability, status: "ready", message: null };
+			availability = {
+				...availability,
+				status: "ready",
+				message: null,
+				canRetry: false,
+			};
 			notify();
 			return handle;
 		},

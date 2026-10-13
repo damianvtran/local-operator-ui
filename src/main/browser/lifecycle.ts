@@ -43,6 +43,7 @@ export async function startWithRetries<T>(options: {
 			attempt,
 			maxAttempts: MAX_START_ATTEMPTS,
 			message: null,
+			canRetry: false,
 		});
 		try {
 			return await options.start();
@@ -58,7 +59,11 @@ export async function startWithRetries<T>(options: {
 		attempt: MAX_START_ATTEMPTS,
 		maxAttempts: MAX_START_ATTEMPTS,
 		message:
-			"The browser could not start. Your saved tabs and site access are kept.",
+			"The browser could not start. Your saved tabs and site approvals are kept; sessions you were signed into may need signing in again.",
+		// The window is still open and no host is running once the sequence
+		// exhausts, so the renderer may offer a retry. `startBrowserHost` is
+		// idempotent on re-registration, which is what makes the control safe.
+		canRetry: true,
 	});
 	throw failure;
 }

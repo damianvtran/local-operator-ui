@@ -2,7 +2,7 @@ import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
 import { trustedDesktopFrame } from "../desktop-transport";
 import type { WebauthnChooser } from "../webauthn";
 import type { BrowserHost, CloseTabsIntent } from "./host";
-import type { BrowserAvailability } from "./lifecycle";
+import { type BrowserAvailability, MAX_START_ATTEMPTS } from "./lifecycle";
 import type { ClearWhat } from "./profile";
 import type { ContentRect } from "./registry";
 
@@ -65,6 +65,12 @@ export interface RegisterBrowserIpcOptions {
 	 * otherwise — so a failure is shown rather than thrown: a reveal that fails is a
 	 * Finder problem, not a fault in the agent's download. */
 	revealDownloads: () => Promise<string>;
+	/** Ask the host to start again for this window (design round 1, D1a). Injected
+	 * rather than imported so this module does not reach back into `index.ts`'s
+	 * lifecycle; `index.ts` supplies the same `startBrowserHost` the app already
+	 * calls. It is authorized like every other channel and is a no-op when a host
+	 * is already running, so a stray click cannot start a second one. */
+	retry?: () => Promise<void>;
 	log: (message: string) => void;
 }
 
@@ -91,6 +97,9 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-webauthn-respond",
 	"browser-webauthn-pending",
 	"browser-reveal-downloads",
+	/** The user's own recovery click on the `unavailable` state (round 1, D1a).
+	 * Named here so the namespace stays the one place that lists its channels. */
+	"browser-retry",
 ] as const;
 
 export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
@@ -136,8 +145,11 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 			availability: availability ?? {
 				status: "unavailable",
 				attempt: 0,
-				maxAttempts: 3,
+				maxAttempts: MAX_START_ATTEMPTS,
 				message: "The browser is not running.",
+				// No host invokes this fallback (it is the pre-start projection), and
+				// there is nothing to retry before a start was asked for.
+				canRetry: false,
 			},
 		};
 	});
@@ -321,6 +333,18 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 				`[browser] could not reveal the download directory: ${message}`,
 			);
 		return { opened: message === "", message };
+	});
+
+	// The user's own recovery click on the `unavailable` state (round 1, D1a):
+	// like the reveal above, it is a human action with no argument to retarget.
+	// Authorization is the sender check only — a retry is allowed precisely while
+	// NO host is running, so `authorize` (which requires a host) would be wrong.
+	ipcMain.handle("browser-retry", async (event) => {
+		authorizeSender(event);
+		if (!options.retry)
+			throw new Error("browser_unavailable: Retry is not available.");
+		await options.retry();
+		return { retried: true };
 	});
 }
 

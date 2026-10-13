@@ -8,7 +8,7 @@ import {
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { Globe, X } from "lucide-react";
+import { AlertTriangle, Globe, X } from "lucide-react";
 import type { FC } from "react";
 import {
 	useCallback,
@@ -483,19 +483,30 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			>
 				{availability.status === "unavailable" ? (
 					<>
-						<p className="text-body font-medium text-ink">
-							Browser unavailable
-						</p>
+						<span className="flex items-center gap-2">
+							<AlertTriangle className="size-6 text-warning" />
+							<span className="text-title text-ink">Browser unavailable</span>
+						</span>
 						<p className="max-w-sm text-body text-ink-muted">
 							{availability.message}
 						</p>
+						{availability.canRetry ? (
+							<Button
+								variant="primary"
+								size="sm"
+								onClick={() => void chrome.retry()}
+								data-tour-tag="browser-availability-retry"
+							>
+								Try again
+							</Button>
+						) : null}
 					</>
 				) : (
 					<>
 						<Spinner size="lg" />
 						<p className="text-body text-ink-muted">
 							{availability.status === "retrying"
-								? "Retrying browser startup"
+								? `Retrying browser startup (attempt ${availability.attempt} of ${availability.maxAttempts})`
 								: "Starting browser"}
 						</p>
 					</>
