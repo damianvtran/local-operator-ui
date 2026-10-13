@@ -2903,18 +2903,17 @@ for (const fault of ["replay", "log", "attach-before", "attach-after"]) {
 				// rc1 alone is insufficient: a fixture ReferenceError is not the
 				// original acquisition leak, and diagnostic finally is not cleanup.
 				console.log(
-					"ROOT_ACQUISITION_RECEIPT " +
-						JSON.stringify({
-							fault,
-							releaseFails,
-							allocated: observations.length,
-							startupOk: bridge.ok,
-							reason: bridge.reason,
-							writeThrows,
-							disposeCalls: observations.map((item) => item.calls),
-							released: observations.map((item) => item.released),
-							historyUnchanged: true,
-						}),
+					`ROOT_ACQUISITION_RECEIPT ${JSON.stringify({
+						fault,
+						releaseFails,
+						allocated: observations.length,
+						startupOk: bridge.ok,
+						reason: bridge.reason,
+						writeThrows,
+						disposeCalls: observations.map((item) => item.calls),
+						released: observations.map((item) => item.released),
+						historyUnchanged: true,
+					})}`,
 				);
 				assert.deepEqual(
 					observations.map((item) => item.calls),
@@ -2938,22 +2937,21 @@ for (const fault of ["replay", "log", "attach-before", "attach-after"]) {
 				);
 				assertUnchanged();
 				console.log(
-					"ROOT_ACQUISITION_COMPLETE " +
-						JSON.stringify({
-							fault,
-							releaseFails,
-							allocated: observations.length,
-							disposeCalls: observations.map((item) => item.calls),
-							allReleased: true,
-							instrumentCleanup: 0,
-							historyUnchanged: true,
-						}),
+					`ROOT_ACQUISITION_COMPLETE ${JSON.stringify({
+						fault,
+						releaseFails,
+						allocated: observations.length,
+						disposeCalls: observations.map((item) => item.calls),
+						allReleased: true,
+						instrumentCleanup: 0,
+						historyUnchanged: true,
+					})}`,
 				);
 			} finally {
 				ConsoleRegistry.prototype.attach = attach;
 				ByteLog.prototype.append = append;
-				delete globalThis.__consoleRootFakeNative;
-				delete globalThis.__consoleRootObserveEmulator;
+				globalThis.__consoleRootFakeNative = undefined;
+				globalThis.__consoleRootObserveEmulator = undefined;
 				// On red assertions, diagnostic release runs AFTER the verdict and
 				// never increments product counters or supplies a passing receipt.
 				for (const item of observations) {
