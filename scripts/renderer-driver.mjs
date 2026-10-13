@@ -27344,8 +27344,8 @@ async function sceneSettingsLanguage(cdp) {
 	 * comparison is what would catch that.
 	 *
 	 * AN EXACT TRAILING-TAG COMPARE, not `includes`. Review round 3 (R3-1): the
-	 * label is "Backend language in effect: en", so `caption.includes("en")` is
-	 * satisfied by the word "Backend" ALONE — it would pass for a caption naming
+	 * label is "App language in effect: en", so `caption.includes("en")` is
+	 * satisfied by the word "language" ALONE — it would pass for a caption naming
 	 * `en-CA`, `xx`, or nothing at all, which is precisely the discrimination this
 	 * assertion exists to provide. The caption's format is `<label>: <tag>`, so the
 	 * tag is the text after the LAST colon; comparing that exactly is what ties the

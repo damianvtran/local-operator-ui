@@ -53,7 +53,12 @@ import { presentSetting } from "../backend-setting-copy";
 import { backendSettingsKeys } from "./backend-settings-section";
 import { useLanguageDialogStore } from "./language-dialog-store";
 import { settingHelpId } from "./setting-combobox";
-import { SettingControl, settingEffectiveId } from "./setting-control";
+import {
+	DIALOG_EFFECTIVE_SURFACE,
+	SettingControl,
+	settingEffectiveId,
+	settingEffectiveIdFor,
+} from "./setting-control";
 import { SettingsSection } from "./settings-section";
 
 /**
@@ -538,6 +543,17 @@ export const LanguageDialog: FC = () => {
 								value={value}
 								disabled={saving}
 								helpId={settingHelpId(LANGUAGE_SETTING_KEY)}
+								/*
+								 * THE DIALOG'S OWN SPELLING, not the canonical one. This picker can
+								 * be co-mounted with the General section (the palette dialog opened on
+								 * `/settings`), and the section's caption already holds the canonical
+								 * id — so this control describes ITS own note, whose id is derived
+								 * from the surface name (QA round 5, Q5).
+								 */
+								effectiveNoteId={settingEffectiveIdFor(
+									LANGUAGE_SETTING_KEY,
+									DIALOG_EFFECTIVE_SURFACE,
+								)}
 								onValueChange={(next) => {
 									setSaved(false);
 									setDraft(next);
