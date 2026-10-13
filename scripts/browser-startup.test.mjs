@@ -20,7 +20,9 @@ export const webContents = { getAllWebContents: () => [] };
 export class Notification { static isSupported() { return false; } }
 export const safeStorage = { isEncryptionAvailable: () => false };
 export const protocol = { registerSchemesAsPrivileged() {} };
-export const ipcMain = { handle: (name, fn) => f().handlers.set(name, fn), removeHandler: name => f().handlers.delete(name) };
+export const ipcMain = {
+ handle: (name, fn) => { if (f().handlers.has(name)) throw new Error("Attempted to register a second handler for '" + name + "'"); f().handlers.set(name, fn); },
+ removeHandler: name => f().handlers.delete(name) };
 export const session = { fromPartition: () => f().session };
 export class WebContentsView {
  constructor() {
@@ -249,4 +251,82 @@ test("production shared browser serves seven restored user-owned tabs even when 
 		assert.equal(f.views.size, 0);
 		assert.equal(f.session.listenerCount("will-download"), 0);
 	}
+});
+
+/** The ipcMain stub above now throws on a duplicate `handle`, exactly as
+ * Electron does. That makes this test the regression guard F1 asked for: an
+ * exhausted startup must leave the window able to start again — the handlers
+ * stay live for the open window, and a later start re-registers them
+ * idempotently instead of throwing "second handler for 'browser-state'". */
+test("a second start after an exhausted startup re-registers IPC and does not throw", async () => {
+	const f = fixture(true);
+	await assert.rejects(
+		startBrowserHost(options(f)),
+		/injected console initialization exception/,
+	);
+	// The window is still open: the renderer must still be able to read the typed
+	// projection rather than a missing handler.
+	assert.ok(
+		f.handlers.has("browser-state"),
+		"an exhausted startup keeps the window's read handler live",
+	);
+	// A later start is a fresh invocation: it re-registers cleanly (no duplicate
+	// handler throw) and reaches the same typed failure rather than crashing.
+	await assert.rejects(
+		startBrowserHost(options(f)),
+		/injected console initialization exception/,
+		"the retry start must not throw a duplicate-handler error",
+	);
+	await stopBrowserHost();
+	assert.equal(f.handlers.size, 0, "stop releases every handler");
+});
+
+/** D1a: the `unavailable` state is a dead end without a recovery control, so the
+ * typed availability carries `canRetry` and the namespace exposes a
+ * `browser-retry` channel that restarts THIS window's host through the one
+ * lifecycle path. The handler is reachable with a host absent (that is the whole
+ * point) and exercises the same failure, proving the click re-enters startup
+ * rather than throwing a missing-handler or no-op. */
+test("the unavailable state offers a retry that re-enters startup for the same window", async () => {
+	const f = fixture(true);
+	await assert.rejects(
+		startBrowserHost(options(f)),
+		/injected console initialization exception/,
+	);
+	const projection = f.handlers.get("browser-state")({
+		sender: f.window.webContents,
+		senderFrame: f.window.webContents.mainFrame,
+	});
+	assert.equal(projection.availability.status, "unavailable");
+	assert.equal(
+		projection.availability.canRetry,
+		true,
+		"an exhausted startup must offer the recovery control",
+	);
+	const retry = f.handlers.get("browser-retry");
+	assert.ok(retry, "the retry channel is registered");
+	const callsBefore = f.consoleCalls;
+	// The retry resolves `{ retried: true }` even when startup fails again: the
+	// failure is reported through the typed availability the renderer already
+	// reads, not as an IPC rejection a click handler would have to unwrap.
+	assert.deepEqual(
+		await retry({
+			sender: f.window.webContents,
+			senderFrame: f.window.webContents.mainFrame,
+		}),
+		{ retried: true },
+	);
+	assert.ok(
+		f.consoleCalls > callsBefore,
+		"the retry actually re-entered startup",
+	);
+	assert.equal(
+		f.handlers.get("browser-state")({
+			sender: f.window.webContents,
+			senderFrame: f.window.webContents.mainFrame,
+		}).availability.status,
+		"unavailable",
+		"the retry's own failure lands back on the unavailable state",
+	);
+	await stopBrowserHost();
 });

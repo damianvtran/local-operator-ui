@@ -318,6 +318,10 @@ export interface BrowserChrome {
 	navigate: (url: string) => Promise<void>;
 	reload: () => Promise<void>;
 	stop: () => Promise<void>;
+	/** Ask the host to start again after an exhausted startup (round 1, D1a).
+	 * The recovery half of the `unavailable` state, which otherwise leaves the
+	 * user with no in-product way forward. */
+	retry: () => Promise<void>;
 	history: (direction: "back" | "forward") => Promise<void>;
 	setContentRect: (rect: ContentRect | null) => void;
 	setViewVisible: (visible: boolean) => void;
@@ -590,6 +594,7 @@ export function useBrowserChrome(): BrowserChrome {
 			},
 			reload: () => runVoid(() => api?.reload()),
 			stop: () => runVoid(() => api?.stop()),
+			retry: () => runVoid(() => api?.retry()),
 			history: (direction) => runVoid(() => api?.history(direction)),
 			setContentRect,
 			setViewVisible,

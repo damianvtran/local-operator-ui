@@ -918,6 +918,10 @@ const api = {
 		 * one IT used, so no path from this side ever reaches `shell.openPath`. */
 		revealDownloads: (): Promise<unknown> =>
 			ipcRenderer.invoke("browser-reveal-downloads"),
+		/** The recovery click on the `unavailable` state (design round 1, D1a).
+		 * No argument: the host restarts the same window's browser, so there is
+		 * nothing for a caller to retarget. */
+		retry: (): Promise<unknown> => ipcRenderer.invoke("browser-retry"),
 		onStateChanged: (callback: () => void): (() => void) => {
 			const handler = () => callback();
 			ipcRenderer.on("browser-state-changed", handler);

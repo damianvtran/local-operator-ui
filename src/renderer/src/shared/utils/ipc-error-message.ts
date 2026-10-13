@@ -31,6 +31,11 @@
  */
 export const IPC_ERROR_PREFIX = /^Error invoking remote method '[^']+':\s*/;
 
+/** A leading `<code>: ` marker the main process attaches for machine matching
+ * (today only `browser_unavailable: `). It is stripped before display so the
+ * code never reaches a user-facing surface; the tests that match `browser_\n * unavailable` read the raw message, not this presentation form. */
+export const ERROR_CODE_PREFIX = /^[a-z][a-z0-9_]*:\s+/;
+
 /** The message a person may be shown, with the invoke envelope removed. */
 export function unwrapIpcErrorMessage(caught: unknown): string {
 	const raw = caught instanceof Error ? caught.message : String(caught);
@@ -38,5 +43,7 @@ export function unwrapIpcErrorMessage(caught: unknown): string {
 	while (IPC_ERROR_PREFIX.test(message)) {
 		message = message.replace(IPC_ERROR_PREFIX, "").trim();
 	}
-	return message;
+	// The code rides the wire for machine matching; strip it from the string a
+	// surface may render (review round 1, F3).
+	return message.replace(ERROR_CODE_PREFIX, "").trim();
 }

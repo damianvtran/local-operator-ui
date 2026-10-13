@@ -214,6 +214,7 @@ function installBridge(state: BrowserChromeState): void {
 		navigate: noop,
 		reload: noop,
 		stop: noop,
+		retry: noop,
 		history: noop,
 		respondToConsent: noop,
 		handOver: noop,
@@ -728,8 +729,9 @@ const startupProjection = (
 		maxAttempts: 3,
 		message:
 			status === "unavailable"
-				? "The browser could not start. Your saved tabs and site access are kept."
+				? "The browser could not start. Your saved tabs and site approvals are kept; sessions you were signed into may need signing in again."
 				: null,
+		canRetry: status === "unavailable",
 	},
 });
 export const BrowserStarting: Story = {
@@ -745,7 +747,7 @@ export const BrowserUnavailable: Story = {
 	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
 };
 export const BrowserUnavailableNarrow: Story = {
-	render: withPane(startupProjection("unavailable"), 390, 460),
+	render: withPane(startupProjection("unavailable"), 480, 460),
 	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
 };
 export const BrowserReadyEmpty: Story = {
@@ -756,6 +758,7 @@ export const BrowserReadyEmpty: Story = {
 			attempt: 1,
 			maxAttempts: 3,
 			message: null,
+			canRetry: false,
 		},
 	}),
 	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
@@ -768,6 +771,7 @@ export const BrowserReadyPopulated: Story = {
 			attempt: 1,
 			maxAttempts: 3,
 			message: null,
+			canRetry: false,
 		},
 	}),
 	args: { sessionId: THIS_CONVERSATION, onClose: () => {} },
