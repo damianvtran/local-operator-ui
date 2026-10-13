@@ -343,7 +343,11 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 
 		// Rescue only truly unlisted values. Injecting an exact custom row first
 		// shadows the real catalogue's provider-aware presentation match.
-		if (value && value.trim() !== "" && !matchModelOption(finalOptions, value, hostingId)) {
+		if (
+			value &&
+			value.trim() !== "" &&
+			!matchModelOption(finalOptions, value, hostingId)
+		) {
 			finalOptions.push({
 				id: value,
 				name: value,
