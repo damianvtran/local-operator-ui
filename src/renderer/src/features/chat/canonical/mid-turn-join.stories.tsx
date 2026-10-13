@@ -25,8 +25,9 @@
  * frames here is the mark.
  */
 
+import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import "../../../styles/index.css";
 import type {
 	CanonicalFrontendState,
@@ -300,6 +301,114 @@ const meta: Meta = {
 export default meta;
 
 type Story = StoryObj;
+
+// Closed blocks should be byte-for-byte steady through the canonical row's
+// incremental-to-whole handover. An unfinished markdown tail legitimately
+// changes formatting at settle, so it is not a no-reflow negative control.
+const HANDOVER_TEXT =
+	"## Streaming handover\n\nThe closed paragraph stays in place when the answer settles.\n\nThe trace fold keeps each row in order.\n\nThe answer is ready.";
+const handoverStart = () =>
+	applyEvent(
+		applyEvent(
+			EMPTY_TRANSCRIPT,
+			{
+				type: "message_start",
+				message: {
+					id: "handover",
+					role: "assistant",
+					content: [],
+					tool_calls: [],
+				},
+			},
+			ARRIVAL_MS,
+		),
+		{
+			type: "message_update",
+			message: {
+				id: "handover",
+				role: "assistant",
+				content: [],
+				tool_calls: [],
+			},
+			delta: HANDOVER_TEXT,
+		},
+		ARRIVAL_MS + 500,
+	);
+
+const StreamingHandoverHost = () => {
+	const [transcript, setTranscript] = useState(handoverStart);
+	const [done, setDone] = useState(false);
+	const host = useRef<HTMLDivElement>(null);
+	const [geometry, setGeometry] = useState<string[]>([]);
+	return (
+		<div ref={host}>
+			<div
+				className={cn("flex gap-4 bg-canvas px-6 pt-4 text-body-sm text-ink")}
+			>
+				<button
+					type="button"
+					disabled={done}
+					onClick={() => {
+						setTranscript((previous) =>
+							applyEvent(
+								previous,
+								{
+									type: "message_end",
+									message: {
+										id: "handover",
+										role: "assistant",
+										content: [{ type: "text", text: HANDOVER_TEXT }],
+									},
+								},
+								ARRIVAL_MS + 1_000,
+							),
+						);
+						setDone(true);
+					}}
+				>
+					Settle answer
+				</button>
+				<button
+					type="button"
+					onClick={() => {
+						const row = host.current?.querySelector<HTMLElement>(
+							'[data-record-id="handover"] .lo-markdown',
+						);
+						if (row) {
+							const rect = row.getBoundingClientRect();
+							setGeometry((previous) => [
+								...previous,
+								`${done ? "settled" : "streaming"}: x=${rect.x}; y=${rect.y}; width=${rect.width}; height=${rect.height}; scroll=${row.scrollHeight}; client=${row.clientHeight}`,
+								...Array.from(row.children).map((child) => {
+									const box = child.getBoundingClientRect();
+									const style = getComputedStyle(child);
+									return `${child.tagName}.${child.className}: y=${box.y}; h=${box.height}; margin=${style.marginTop}/${style.marginBottom}; line=${style.lineHeight}; text=${JSON.stringify(child.textContent)}`;
+								}),
+							]);
+						}
+					}}
+				>
+					Measure row
+				</button>
+			</div>
+			<Frame
+				caption="Canonical row handover: the same closed markdown blocks, first streaming and then settled."
+				transcript={transcript}
+			/>
+			<pre
+				className={cn(
+					"whitespace-pre-wrap bg-canvas px-6 text-meta text-ink-muted",
+				)}
+			>
+				{geometry.join("\n")}
+			</pre>
+		</div>
+	);
+};
+
+export const StreamingHandover: Story = {
+	render: () => <StreamingHandoverHost />,
+};
 
 /**
  * The join, pre-fix: the chunk alone, presented as the answer.

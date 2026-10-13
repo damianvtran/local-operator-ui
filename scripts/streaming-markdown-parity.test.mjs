@@ -31,10 +31,11 @@
  *      incremental path showed mid-flight, what a reader is left with is the
  *      same output the whole-message renderer has always produced.
  *
- * Plus two per-construct checks the corpus is chosen for: the in-flight TAIL is
- * exactly the source suffix (clipped only for trailing whitespace, the
- * documented `trimmedEndLength` rule), and every construct's payload text is
- * present in order in the painted DOM at every flush.
+ * Plus two per-construct checks the corpus is chosen for: the in-flight TAIL
+ * preserves literal payload text (trailing whitespace is clipped; a pending
+ * ordinary-prose blank separator becomes paragraph layout rather than an
+ * extra pre-wrap line box), and every construct's payload text is present in
+ * order in the painted DOM at every flush.
  *
  * WHAT THIS FILE CANNOT SEE. jsdom has no layout engine and no compositor, so
  * a green run here is not a frame and says nothing about frame pacing; it is
@@ -387,9 +388,9 @@ test("the split loses nothing, reorders nothing, and settles blocks for good", (
 	}
 });
 
-/* --------------------------------------- 3. the tail is exactly the suffix */
+/* -------------------------- 3. the tail preserves payload at its boundaries */
 
-test("the in-flight tail paints the source suffix, clipped only for trailing whitespace", async () => {
+test("the in-flight tail preserves literal payload, using paragraph layout only at a pending prose boundary", async () => {
 	const dom = mountDom();
 	try {
 		const container = dom.window.document.getElementById("root");
@@ -403,12 +404,27 @@ test("the in-flight tail paints the source suffix, clipped only for trailing whi
 						root.render(createElement(StreamingMarkdown, { content: prefix }));
 					});
 					const where = `${item.name} @${prefix.length}`;
-					const tail = container.querySelector(".lo-stream-tail");
+					const tails = Array.from(
+						container.querySelectorAll(".lo-stream-tail"),
+					);
 					const tailEnd =
 						scanner.blockStart +
 						trimmedEndLength(prefix.slice(scanner.blockStart));
-					const expected = prefix.slice(scanner.blockStart, tailEnd);
-					const painted = tail ? tail.textContent : "";
+					let expected = prefix.slice(scanner.blockStart, tailEnd);
+					if (tails.length === 2) {
+						// Only the scanner's pending blank separator becomes layout;
+						// every character on either side remains literal, in order.
+						const first = prefix.slice(
+							scanner.blockStart,
+							scanner.blankRunStart,
+						);
+						expected = `${first.slice(0, trimmedEndLength(first))}\n\n${prefix.slice(scanner.cursor, tailEnd)}`;
+					}
+					assert.ok(
+						tails.length <= 2,
+						`${where}: the pending boundary is the only layout split`,
+					);
+					const painted = tails.map((tail) => tail.textContent).join("\n\n");
 					assert.equal(
 						painted,
 						expected,
@@ -416,6 +432,44 @@ test("the in-flight tail paints the source suffix, clipped only for trailing whi
 					);
 				}
 			}
+		}
+		await act(async () => root.unmount());
+	} finally {
+		dom.restore();
+	}
+});
+
+test("an incomplete next prose line has settled paragraph boxes, while list/fence blanks stay literal", async () => {
+	const dom = mountDom();
+	try {
+		const container = dom.window.document.getElementById("root");
+		const root = createRoot(container);
+		for (const content of [
+			"First paragraph.\n\nSecond",
+			"First paragraph.\n\nSecond line\n",
+		]) {
+			await act(async () =>
+				root.render(createElement(StreamingMarkdown, { content })),
+			);
+			assert.deepEqual(
+				Array.from(container.querySelectorAll("p")).map(
+					(paragraph) => paragraph.textContent,
+				),
+				[
+					"First paragraph.",
+					content.includes("line") ? "Second line" : "Second",
+				],
+			);
+		}
+		for (const content of ["- first\n\n- second", "```text\nfirst\n\nsecond"]) {
+			await act(async () =>
+				root.render(createElement(StreamingMarkdown, { content })),
+			);
+			assert.equal(container.querySelectorAll(".lo-stream-tail").length, 1);
+			assert.equal(
+				container.querySelector(".lo-stream-tail").textContent,
+				content,
+			);
 		}
 		await act(async () => root.unmount());
 	} finally {

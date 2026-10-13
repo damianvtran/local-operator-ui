@@ -861,10 +861,30 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 
 	const tailEnd = blockStart + trimmedEndLength(content.slice(blockStart));
 
-	const segments: Arrival[] = [{ offset: blockStart, animate: false }];
-	for (const arrival of arrivals) {
-		if (arrival.offset >= tailEnd) break;
-		segments.push(arrival);
+	/*
+	 * A pending blank run followed by an INCOMPLETE next line is two prose
+	 * paragraphs, even though the scanner correctly waits for the complete line
+	 * before parsing the first. One pre-wrap <p> gave that blank line a full
+	 * 22.4px line box; the settled paragraphs have an 8px collapsed margin, so
+	 * the final line jumped up 14.4px at handover. Use the scanner's boundary
+	 * for layout only: both paragraphs still paint literal text, and neither
+	 * a list's loose-item blanks nor a fenced code block is split this way.
+	 * No additional markdown scan/parse is introduced on the delta path.
+	 */
+	const tailParagraphs: [number, number][] = [];
+	if (
+		scanner.kind === "other" &&
+		scanner.fence === null &&
+		scanner.blankRunStart >= blockStart &&
+		scanner.cursor < tailEnd &&
+		content.slice(scanner.cursor, tailEnd).trim().length > 0
+	) {
+		const firstEnd =
+			blockStart +
+			trimmedEndLength(content.slice(blockStart, scanner.blankRunStart));
+		tailParagraphs.push([blockStart, firstEnd], [scanner.cursor, tailEnd]);
+	} else if (tailEnd > blockStart) {
+		tailParagraphs.push([blockStart, tailEnd]);
 	}
 
 	const style = useStyleVariables(styleProps);
@@ -877,20 +897,28 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 				// biome-ignore lint/suspicious/noArrayIndexKey: append-only list, index is the identity
 				<StableBlock key={index} source={block} />
 			))}
-			{tailEnd > blockStart && (
-				<p className="lo-stream-tail">
-					{segments.map((segment, index) => {
-						const end = segments[index + 1]?.offset ?? tailEnd;
-						return (
+			{tailParagraphs.map(([start, end]) => {
+				const segments: Arrival[] = [{ offset: start, animate: false }];
+				for (const arrival of arrivals) {
+					if (arrival.offset >= end) break;
+					if (arrival.offset > start) segments.push(arrival);
+					else segments[0].animate = arrival.animate;
+				}
+				return (
+					<p className="lo-stream-tail" key={start}>
+						{segments.map((segment, index) => (
 							<ArrivedText
 								key={segment.offset}
-								text={content.slice(segment.offset, end)}
+								text={content.slice(
+									segment.offset,
+									segments[index + 1]?.offset ?? end,
+								)}
 								animate={segment.animate}
 							/>
-						);
-					})}
-				</p>
-			)}
+						))}
+					</p>
+				);
+			})}
 		</div>
 	);
 };

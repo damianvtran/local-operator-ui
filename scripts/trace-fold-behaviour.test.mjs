@@ -71,6 +71,14 @@ globalThis.document = bootstrapDOM.window.document;
 // says it is a test one (`scripts/browser-file-transfer-row.test.mjs:48`'s
 // rule); without it every act() below floods stderr (agent review R5).
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+// CSS motion is not simulated by jsdom. The query is a controllable negative
+// control: reduction must remove the exit body immediately, not after a timer.
+let reduceMotion = false;
+window.matchMedia = () => ({
+	matches: reduceMotion,
+	addEventListener() {},
+	removeEventListener() {},
+});
 const { createRoot } = await import("react-dom/client");
 after(() => {
 	bootstrapDOM.window.close();
@@ -83,6 +91,7 @@ const bundle = await build({
 		contents: `
 			import { createElement } from "react";
 			export { TraceFold } from "./src/renderer/src/features/chat/components/trace/trace-fold";
+			export { Disclosure } from "./src/renderer/src/shared/components/ui/disclosure";
 			export { foldSummary, foldSummarySpec } from "./src/renderer/src/features/chat/canonical/trace-fold-model";
 			export { createElement };
 		`,
@@ -119,9 +128,8 @@ const bundlePath = new URL(
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(() => unlink(bundlePath).catch(() => {}));
 
-const { TraceFold, createElement, foldSummary, foldSummarySpec } = await import(
-	bundlePath.href
-);
+const { TraceFold, Disclosure, createElement, foldSummary, foldSummarySpec } =
+	await import(bundlePath.href);
 
 /**
  * Controlled the way the transcript drives it, so the mount exercises the
@@ -185,7 +193,7 @@ const liveClause = (mounted) =>
 	mounted.container.querySelector("[data-fold-live]")?.textContent ?? null;
 const spanText = (mounted) =>
 	mounted.container.querySelector("[data-fold-span]")?.textContent ?? null;
-const click = async (mounted) => {
+const click = async (mounted, finish = true) => {
 	const trigger = mounted.container.querySelector("button");
 	assert.ok(trigger, "the fold's trigger exists");
 	await act(async () => {
@@ -193,6 +201,18 @@ const click = async (mounted) => {
 			new window.MouseEvent("click", { bubbles: true, cancelable: true }),
 		);
 	});
+	if (finish && trigger.getAttribute("aria-expanded") === "false") {
+		await finishExit(mounted);
+	}
+};
+
+// Dispatch the browser's completion, not an assertion about jsdom geometry.
+const finishExit = async (mounted, propertyName = "grid-template-rows") => {
+	const body = mounted.container.querySelector("[data-disclosure-body]");
+	if (!body) return;
+	const event = new window.Event("transitionend", { bubbles: true });
+	Object.defineProperty(event, "propertyName", { value: propertyName });
+	await act(async () => body.dispatchEvent(event));
 };
 
 /*
@@ -215,6 +235,86 @@ const click = async (mounted) => {
  */
 const mediaStrip = () =>
 	createElement("span", { "data-testid": "fold-media" }, "picture");
+
+test("aggregate exit retains rows only until height completes, inert immediately", async (t) => {
+	const mounted = await mount(t, { span: null, live: null });
+	await click(mounted);
+	await click(mounted, false);
+	const body = mounted.container.querySelector("[data-disclosure-body]");
+	assert.equal(rows(mounted), 1, "the exit has a body to interpolate");
+	assert.equal(body.getAttribute("aria-hidden"), "true");
+	assert.equal(body.hasAttribute("inert"), true);
+	await finishExit(mounted, "opacity");
+	assert.equal(
+		rows(mounted),
+		1,
+		"opacity must not truncate the height transition",
+	);
+	await finishExit(mounted);
+	assert.equal(rows(mounted), 0, "closed steady state retains no payload");
+});
+
+test("rapid reopen ignores a stale close completion", async (t) => {
+	const mounted = await mount(t, { span: null, live: null });
+	await click(mounted);
+	await click(mounted, false);
+	await click(mounted);
+	await finishExit(mounted);
+	const body = mounted.container.querySelector("[data-disclosure-body]");
+	assert.equal(rows(mounted), 1);
+	assert.equal(body.getAttribute("aria-hidden"), "false");
+	assert.equal(body.hasAttribute("inert"), false);
+});
+
+test("cancelled transitions cannot keep a closed payload mounted indefinitely", async (t) => {
+	const mounted = await mount(t, { span: null, live: null });
+	await click(mounted);
+	await click(mounted, false);
+	await act(async () => new Promise((resolve) => setTimeout(resolve, 260)));
+	assert.equal(
+		rows(mounted),
+		0,
+		"the bounded fallback releases a missing end event",
+	);
+});
+
+test("reduced motion closes without transient retention", async (t) => {
+	reduceMotion = true;
+	t.after(() => {
+		reduceMotion = false;
+	});
+	const mounted = await mount(t, { span: null, live: null });
+	await click(mounted);
+	await click(mounted, false);
+	assert.equal(rows(mounted), 0);
+});
+
+test("default-off disclosures retain immediate unmount and original body markup", async (t) => {
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	t.after(async () => {
+		await act(async () => root.unmount());
+		container.remove();
+	});
+	await act(async () =>
+		root.render(
+			createElement(
+				Disclosure,
+				{
+					summary: "Tool detail",
+				},
+				createElement("span", { "data-testid": "fold-row" }, "payload"),
+			),
+		),
+	);
+	const mounted = { container };
+	await click(mounted);
+	assert.equal(rows(mounted), 1);
+	assert.equal(container.querySelector("[data-disclosure-body]"), null);
+	await click(mounted, false);
+	assert.equal(rows(mounted), 0);
+});
 
 test("a condensed run keeps the pictures its rows would have drawn", async (t) => {
 	/*

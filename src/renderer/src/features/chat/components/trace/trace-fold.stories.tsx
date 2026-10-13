@@ -36,11 +36,13 @@
  * a run that is still going.
  */
 
+import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import {
 	type ComponentProps,
 	type ReactNode,
 	useEffect,
+	useRef,
 	useState,
 } from "react";
 import "../../../../styles/index.css";
@@ -365,6 +367,150 @@ export const Finished: Story = {
 		recordIds: ["s1", "s2", "s3", "s4", "s5"],
 		children: <FoldRows specs={FINISHED_ROWS} />,
 	},
+};
+
+/**
+ * Browser-tool shutter calls cannot reliably land inside 180ms. This story
+ * pauses the shipped CSS entrance at its real 90ms timeline position (no new
+ * animation implementation), and records consecutive exit geometry separately.
+ * The normal Finished story remains the uninstrumented interaction control.
+ */
+const readMotionGeometry = (host: HTMLDivElement | null, label: string) => {
+	const body = host?.querySelector<HTMLElement>("[data-disclosure-body]");
+	if (!body) return `${label}: body absent`;
+	return `${label}: height=${body.getBoundingClientRect().height.toFixed(2)}px; client=${body.clientHeight}; scroll=${body.scrollHeight}; overflowY=${getComputedStyle(body).overflowY}; duration=${getComputedStyle(body).transitionDuration}; rows=${getComputedStyle(body).gridTemplateRows}; animations=${body
+		.getAnimations()
+		.map((animation) => `${animation.playState}@${animation.currentTime}`)
+		.join(
+			",",
+		)}; reduced=${window.matchMedia("(prefers-reduced-motion: reduce)").matches}; hidden=${body.getAttribute("aria-hidden")}; inert=${body.hasAttribute("inert")}; payload=${body.textContent !== ""}`;
+};
+
+const MotionEvidenceHost = () => {
+	const [open, setOpen] = useState(false);
+	const host = useRef<HTMLDivElement>(null);
+	const pauseEntrance = useRef(false);
+	const [samples, setSamples] = useState<string[]>([]);
+	const readGeometry = (label: string) =>
+		readMotionGeometry(host.current, label);
+	useEffect(() => {
+		const element = host.current;
+		let frame = 0;
+		const onRun = (event: TransitionEvent) => {
+			const body = event.target as HTMLElement;
+			if (
+				event.propertyName !== "grid-template-rows" ||
+				!body.hasAttribute("data-disclosure-body")
+			)
+				return;
+			if (open && pauseEntrance.current) {
+				const animations = body.getAnimations();
+				if (animations.length === 0) {
+					setSamples((previous) => [
+						...previous,
+						"Pause unavailable: capture the closed frame first to materialize a hidden browser host, then remount and retry.",
+					]);
+					return;
+				}
+				setSamples((previous) => [
+					...previous,
+					readMotionGeometry(host.current, "transitionrun"),
+				]);
+				for (const animation of animations) {
+					animation.pause();
+					animation.currentTime = 90;
+				}
+				frame = requestAnimationFrame(() =>
+					setSamples((previous) => [
+						...previous,
+						readMotionGeometry(host.current, "opening @90ms paused"),
+					]),
+				);
+			} else if (!open) {
+				const start = performance.now();
+				const collected: string[] = [];
+				const sample = () => {
+					collected.push(
+						readMotionGeometry(
+							host.current,
+							`closing @${(performance.now() - start).toFixed(1)}ms`,
+						),
+					);
+					if (performance.now() - start < 260)
+						frame = requestAnimationFrame(sample);
+					else setSamples((previous) => [...previous, ...collected]);
+				};
+				frame = requestAnimationFrame(sample);
+			}
+		};
+		element?.addEventListener("transitionrun", onRun);
+		return () => {
+			element?.removeEventListener("transitionrun", onRun);
+			cancelAnimationFrame(frame);
+		};
+	}, [open]);
+	return (
+		<Sheet>
+			<div className={cn("mb-4 flex gap-3 text-body-sm")}>
+				<button
+					type="button"
+					onClick={() => {
+						pauseEntrance.current = true;
+						setSamples([readGeometry("closed")]);
+						setOpen(true);
+					}}
+				>
+					Open halfway
+				</button>
+				<button
+					type="button"
+					onClick={() => {
+						pauseEntrance.current = false;
+						for (const animation of host.current?.getAnimations({
+							subtree: true,
+						}) ?? [])
+							animation.play();
+					}}
+				>
+					Resume fold
+				</button>
+				<button
+					type="button"
+					onClick={() =>
+						setSamples((previous) => [
+							...previous,
+							readGeometry(open ? "open" : "closed"),
+						])
+					}
+				>
+					Measure settled
+				</button>
+			</div>
+			<div ref={host}>
+				<TraceFold
+					{...foldProps(FINISHED_ROWS)}
+					span={null}
+					live={null}
+					recordIds={["s1", "s2", "s3", "s4", "s5"]}
+					open={open}
+					onOpenChange={setOpen}
+				>
+					<FoldRows specs={FINISHED_ROWS} />
+				</TraceFold>
+			</div>
+			<pre
+				className={cn("mt-4 whitespace-pre-wrap text-meta text-ink-muted")}
+				data-motion-evidence
+			>
+				{samples.join("\n")}
+			</pre>
+		</Sheet>
+	);
+};
+
+export const MotionEvidence: Story = {
+	args: Finished.args,
+	render: () => <MotionEvidenceHost />,
 };
 
 const KINDS_ROWS: RowSpec[] = [

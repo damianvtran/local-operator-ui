@@ -1,0 +1,531 @@
+
+=== pnpm lint
+$ pnpm biome check src bin scripts/linux-sandbox.test.mjs
+bin/local-operator-ui.js:109:32 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    107 │ 		typeof process.argv[1] === "string" ? path.basename(process.argv[1]) : "";
+    108 │ 	// Strip a .js suffix: the shim is the extensionless name on PATH.
+  > 109 │ 	const name = fromArgv.replace(/\.[cm]?js$/, "");
+        │ 	                              ^^^^^^^^^^^^
+    110 │ 	return name === "" ? "local-operator-ui" : name;
+    111 │ })();
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:117:22 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    115 │ test("root guidance names the real cause and never enables the opt-out for the user", () => {
+    116 │ 	const lines = rootGuidance("local-operator-ui").join("\n");
+  > 117 │ 	assert.match(lines, /cannot start as root/);
+        │ 	                    ^^^^^^^^^^^^^^^^^^^^^^
+    118 │ 	// Must NOT claim a chmod fixes it: measured, root aborts with a correct 4755
+    119 │ 	// helper too, and sending the user to chmod would waste their time.
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:120:29 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    118 │ 	// Must NOT claim a chmod fixes it: measured, root aborts with a correct 4755
+    119 │ 	// helper too, and sending the user to chmod would waste their time.
+  > 120 │ 	assert.doesNotMatch(lines, /chmod 4755/);
+        │ 	                           ^^^^^^^^^^^^
+    121 │ 	assert.match(lines, /run the app as your normal desktop user/i);
+    122 │ 	// The opt-out is offered as the user's choice with its consequence stated.
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:121:22 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    119 │ 	// helper too, and sending the user to chmod would waste their time.
+    120 │ 	assert.doesNotMatch(lines, /chmod 4755/);
+  > 121 │ 	assert.match(lines, /run the app as your normal desktop user/i);
+        │ 	                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    122 │ 	// The opt-out is offered as the user's choice with its consequence stated.
+    123 │ 	assert.match(lines, /ELECTRON_DISABLE_SANDBOX=1 local-operator-ui/);
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:123:22 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    121 │ 	assert.match(lines, /run the app as your normal desktop user/i);
+    122 │ 	// The opt-out is offered as the user's choice with its consequence stated.
+  > 123 │ 	assert.match(lines, /ELECTRON_DISABLE_SANDBOX=1 local-operator-ui/);
+        │ 	                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    124 │ 	assert.match(lines, /removes a significant security boundary/);
+    125 │ });
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:124:22 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    122 │ 	// The opt-out is offered as the user's choice with its consequence stated.
+    123 │ 	assert.match(lines, /ELECTRON_DISABLE_SANDBOX=1 local-operator-ui/);
+  > 124 │ 	assert.match(lines, /removes a significant security boundary/);
+        │ 	                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    125 │ });
+    126 │
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:133:22 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    131 │ 	assert.match(lines, new RegExp(`sudo chown root:root '${state.path}'`));
+    132 │ 	assert.match(lines, new RegExp(`sudo chmod 4755 '${state.path}'`));
+  > 133 │ 	assert.match(lines, /currently\s+\d+:\d+ 0755/);
+        │ 	                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    134 │ 	assert.match(lines, /required\s+0:0 4755/);
+    135 │ });
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:134:22 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    132 │ 	assert.match(lines, new RegExp(`sudo chmod 4755 '${state.path}'`));
+    133 │ 	assert.match(lines, /currently\s+\d+:\d+ 0755/);
+  > 134 │ 	assert.match(lines, /required\s+0:0 4755/);
+        │ 	                    ^^^^^^^^^^^^^^^^^^^^^
+    135 │ });
+    136 │
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:148:29 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    146 │ 		sandboxHelperGuidance(state, "local-operator-ui").join("\n"),
+    147 │ 	]) {
+  > 148 │ 		assert.doesNotMatch(text, /local-operator-ui\s+--no-sandbox/);
+        │ 		                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    149 │ 		assert.doesNotMatch(text, /^\s*(sudo )?\S*--no-sandbox/m);
+    150 │ 	}
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:149:29 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    147 │ 	]) {
+    148 │ 		assert.doesNotMatch(text, /local-operator-ui\s+--no-sandbox/);
+  > 149 │ 		assert.doesNotMatch(text, /^\s*(sudo )?\S*--no-sandbox/m);
+        │ 		                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    150 │ 	}
+    151 │ 	const launcher = require("node:fs").readFileSync(
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:157:32 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    155 │ 	// The launcher must not put the flag in the spawn argv, nor set the opt-out
+    156 │ 	// env var itself. It may only READ the variable to honour a user's choice.
+  > 157 │ 	assert.doesNotMatch(launcher, /"--no-sandbox"/);
+        │ 	                              ^^^^^^^^^^^^^^^^
+    158 │ 	assert.doesNotMatch(launcher, /ELECTRON_DISABLE_SANDBOX\s*[=:]\s*"?1/);
+    159 │ });
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:158:32 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    156 │ 	// env var itself. It may only READ the variable to honour a user's choice.
+    157 │ 	assert.doesNotMatch(launcher, /"--no-sandbox"/);
+  > 158 │ 	assert.doesNotMatch(launcher, /ELECTRON_DISABLE_SANDBOX\s*[=:]\s*"?1/);
+        │ 	                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    159 │ });
+    160 │
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:242:3 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    240 │ 	assert.match(
+    241 │ 		result.stdout,
+  > 242 │ 		/not running as root/,
+        │ 		^^^^^^^^^^^^^^^^^^^^^
+    243 │ 		"the repair path was never entered -- this test would be vacuous",
+    244 │ 	);
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:246:37 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    244 │ 	);
+    245 │ 	// And it must NOT claim a packaging defect, which is the root-only message.
+  > 246 │ 	assert.doesNotMatch(result.stdout, /packaging defect/);
+        │ 	                                   ^^^^^^^^^^^^^^^^^^
+    247 │ 	// The helper is left exactly as found: we could not repair it.
+    248 │ 	assert.equal(statSync(helper).mode & 0o7777, 0o755);
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:282:30 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    281 │ 	assert.equal(result.status, 0, "the install must still succeed");
+  > 282 │ 	assert.match(result.stdout, /refusing to modify/);
+        │ 	                            ^^^^^^^^^^^^^^^^^^^^
+    283 │ 	assert.equal(
+    284 │ 		statSync(victim).mode & 0o7777,
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:713:22 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    711 │ 	};
+    712 │ 	const lines = sandboxHelperGuidance(state, "local-operator-ui").join("\n");
+  > 713 │ 	assert.match(lines, /'\/home\/o'\\''brien\/lib\/chrome-sandbox'/);
+        │ 	                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    714 │ });
+    715 │
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+scripts/linux-sandbox.test.mjs:868:4 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    866 │ 		assert.match(
+    867 │ 			control.stdout,
+  > 868 │ 			/not running as root/,
+        │ 			^^^^^^^^^^^^^^^^^^^^^
+    869 │ 			"control: on Linux the body must run and report it could not chown",
+    870 │ 		);
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+src/main/backend/owned-serve-launch.ts:541:36 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    539 │ 			timeoutMs: DISCOVERY_TIMEOUT_MS,
+    540 │ 		});
+  > 541 │ 		const line = stdout.trim().split(/\r?\n/)[0]?.trim();
+        │ 		                                 ^^^^^^^
+    542 │ 		return line ? line : null;
+    543 │ 	} catch {
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+src/main/backend/owned-serve-launch.ts:577:45 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    575 │ ): Promise<string[]> {
+    576 │ 	const directory = dirname(consolePath);
+  > 577 │ 	const tool = basename(consolePath).replace(/\.(exe|cmd|bat)$/i, "");
+        │ 	                                           ^^^^^^^^^^^^^^^^^^^
+    578 │ 	const candidates: string[] = [join(directory, "python.exe")];
+    579 │
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+src/main/browser/actions/upload.ts:197:9 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+
+    195 │ 			// fired. Re-raised as the typed code that already means "this selector does not
+    196 │ 			// address the thing this action needs".
+  > 197 │ 			if (!/not a file input/i.test(String(error))) throw error;
+        │ 			     ^^^^^^^^^^^^^^^^^^^
+    198 │ 			throw new BrowserHostError("element_not_found", NOT_A_FILE_INPUT, {
+    199 │ 				selector,
+
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+
+
+The number of diagnostics exceeds the number allowed by Biome.
+Diagnostics not shown: 152.
+Checked 1285 files in 442ms. No fixes applied.
+Found 168 warnings.
+=== EXIT 0
+
+=== pnpm lint:scripts
+$ node scripts/check-scripts-lint.mjs
+check-scripts-lint: checking 2 changed file(s) under scripts/ against origin/main (732f216)
+  scripts/streaming-markdown-parity.test.mjs
+  scripts/trace-fold-behaviour.test.mjs
+check-scripts-lint: 2 changed file(s) under scripts/ are lint-clean against origin/main (732f216).
+=== EXIT 0
+
+=== pnpm check-types
+$ pnpm run check-types:main && pnpm run check-types:renderer
+$ tsc --noEmit -p tsconfig.node.json
+$ tsc --noEmit -p tsconfig.app.json
+=== EXIT 0
+
+=== pnpm check-themes
+$ node scripts/generate-theme-css.mjs --check && node scripts/contrast-contract.mjs
+themes.generated.css is up to date (59 themes).
+Identity pairs: tightest `accentAlt`/`info` (the tool row's two identity inks, floor 15) is 8.58 in catppuccinMacchiato, then catppuccinMocha 8.58, catppuccinFrappe 8.6, localOperatorDark 12.57, ayuLight 13.57; 5 palette(s) pinned below it. Tightest `info`/`accent` (settled read ink vs liveness ink, floor 8) is 0 in dune, then neon 0, obsidian 0, radient 0, githubLight 5.87.
+Console terminal: 16 ANSI slots resolve to 6-7 distinct colours across 59 palettes (design 9.2's stated gap, measured); fewest in obsidian 6, alucard 7, arcade 7.
+Contrast contract holds: 34140 assertions across 59 themes, 4 consulted exception(s), 3 ΔE00 exception(s) consulted, 0 pinned ink step(s), 0 pinned control edge(s), 10 pinned identity pair(s).
+Fleet: 14 dark canvas(es) in a 1.5 L* window (max 14), 14 below L* 13.5, spread 9.95 L*; 5 sub-1.0 and 2 identical dark canvas pair(s); light 10 in a 1.5 L* window, 12 at or above L* 91.3, 1 sub-1.0 pair(s); 34 moved value(s) over the 1 degree hue pin and inside the 8-bit envelope.
+=== EXIT 0
+✔ a conversation picture is a button that expands it (59.679333ms)
+✔ a canonical image — the row that had no click at all — expands too (21.125334ms)
+✔ a pasted image expands as well (11.479ms)
+✔ Escape closes the expanded picture and focus returns to it (33.673041ms)
+✔ a press on the scrim outside the picture closes it (33.411708ms)
+✔ the close button closes it and focus returns to the picture (31.57275ms)
+✔ the picture's accessible name states the action, not only the thing (4.612375ms)
+Warning: An update to Tooltip inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Tooltip (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:69410:5)
+    at Provider (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:59474:15)
+    at TooltipProvider (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:69365:5)
+    at TooltipProvider2 (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:70610:3)
+    at Tooltip2 (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:70675:12)
+    at Provider (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:59474:15)
+    at Provider (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:59474:15)
+    at Provider (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:59474:15)
+    at Popper (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:64719:11)
+    at Menu (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:65331:11)
+    at Provider (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:59474:15)
+    at DropdownMenu (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:66180:5)
+    at ImageActionsMenu (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:93278:3)
+    at div
+    at div
+    at file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:93488:6
+✔ the image actions menu stays reachable without a pointer (17488.700334ms)
+✔ Copy image on a PNG is the byte-exact pass-through, with no canvas in the path (14573.643875ms)
+✔ a canonical picture with no bytes is a failure row, not an untappable picture (31.0075ms)
+✔ a condensed group's pictures are named, expandable thumbnails (17.0375ms)
+✔ one picture in a group is named as one picture (5.400292ms)
+✔ the count is text in the header, and a run with no pictures gets no clause (6.600041ms)
+✔ the strip is capped at one row, and says how many it is not showing (8.147042ms)
+✔ a tile whose bytes are still coming reserves its box rather than calling the picture unavailable (4.226083ms)
+✔ a tile whose bytes never came shows the receipt, bounded to the tile (23.3225ms)
+✔ the real <img> survives the live-to-settled transition without remounting (9.776625ms)
+✔ the count slot opens the fold it belongs to (U1) (8.867541ms)
+✔ the tile is borderless at rest and its edge returns on hover and on keyboard focus (6.067125ms)
+✔ hover zooms the picture INSIDE the tile, bounded by the gutter, and stands down under reduced motion (5.272375ms)
+✔ the +N control is an outlined button, not a filled pill (D3) - a resting edge at the contract's 3:1 (7.877167ms)
+✔ the compact label is a function of the count alone; the name is the sentence, singular at one (6.738958ms)
+✔ the uncapped strip is a four-column grid with no stranded tile (D5) (11.444708ms)
+✔ LEAK CHECK: the row's own (full) picture and the legacy frame keep the hairline and take no tile group (5.313875ms)
+✔ pressing +N by keyboard lands focus on the fold's trigger, not on <body> (U2) (8.796916ms)
+✔ CONTROL ARM: a caller that only opens the fold leaves focus on <body> - the defect the handoff removes (7.096667ms)
+✔ the full-ceiling picture keeps the three classes the ledger rule is made of (4.905167ms)
+✔ a blob-backed canonical picture NOW carries the menu — the gap this change closes (8.310792ms)
+✔ a live (data:) canonical picture carries the menu too (5.16125ms)
+✔ markdown images are ADMITTED by kind: a path gets the menu, a relative src does not (5.904959ms)
+✔ the group walk wraps and clamps, and the position sentence is one rule (0.240458ms)
+✔ a group tile opens the carousel at the picture that was pressed, with the set's strip and arrows (17.999667ms)
+✔ the arrows walk the whole group, wrapping at the ends, and a missing picture shows its receipt (22.493208ms)
+✔ the arrow KEYS switch pictures, and a modifier chord is left to the app (96.58375ms)
+✔ the filmstrip switches to the tile that was pressed and moves the current mark (18.453959ms)
+✔ one picture in a group keeps the single-picture chrome — no strip, no arrows (10.870083ms)
+✔ the zoomed-state controls are real buttons with names, and they step the ladder they claim (12.807959ms)
+✔ reset returns the view to fit: the transform goes and the controls disable again (11.161166ms)
+Warning: An update to ImageLightbox inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ImageLightbox (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:71726:3)
+    at ImageGroupLightbox (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:100772:3)
+    at div
+    at file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:93488:6
+    at div
+    at CanonicalImage (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:101002:3)
+    at li
+    at ul
+    at FoldMedia (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:101217:3)
+Warning: An update to ImageLightbox inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ImageLightbox (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:71726:3)
+    at ImageGroupLightbox (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:100772:3)
+    at div
+    at file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:93488:6
+    at div
+    at CanonicalImage (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:101002:3)
+    at li
+    at ul
+    at FoldMedia (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:101217:3)
+Warning: An update to ImageLightbox inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at ImageLightbox (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:71726:3)
+    at ImageGroupLightbox (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:100772:3)
+    at div
+    at file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:93488:6
+    at div
+    at CanonicalImage (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:101002:3)
+    at li
+    at ul
+    at FoldMedia (file:///Users/damian/local-operator-ui/node_modules/.cache/chat-image-expand/image-expand.mjs:101217:3)
+✔ Escape closes the carousel and focus returns to the strip tile that was pressed (34.533084ms)
+✔ the controls fade to their resting floor after the hold, and activity wakes them (2634.736917ms)
+✔ a focused control holds the cluster awake past the hold (2620.241625ms)
+✔ a walk from a strip tile moves focus with the picture - and off the tiles onto a receipt (58.563959ms)
+✔ the walk scrolls the current slot into view, a receipt's slot included (18.855542ms)
+✔ wide wrap reveals both endpoint slots with the 1px ring scroll-margin contract (34.020667ms)
+✔ cold strip demand admits visible and wrapped neighbour slots, not far digests; admission resets on close/group change (120.775875ms)
+✔ I1: the cell rules make a table cell's min-content its longest word (2.209042ms)
+✔ I1: the wrapper rule contains, scrolls and carries the margin (2.445291ms)
+✔ I9: one shared wrapper module, no hooks, no measuring (2.878875ms)
+✔ I9: both render maps wire the ONE shared component, not a copy (0.309791ms)
+✔ I1/I9: the class is named in one source file only (308.32175ms)
+✔ a table renders inside the wrapper on the transcript map (16.4505ms)
+✔ the citations map inherits the wrapper through its spread (3.108416ms)
+✔ the projects surface renders the same wrapper from the same module (2.483916ms)
+✔ the fixtures carry the shapes the edge states exist for (0.9725ms)
+✔ the capture registers the edge states, after-half only (3.6825ms)
+✔ the mixed-case fixture links a three-shas shape rather than replacing it (0.660667ms)
+✔ the code-in-cells fixture carries spans the override has to win against (0.624834ms)
+✔ the user-turn state carries the reported table in a user record (0.416917ms)
+✔ the split loses nothing, reorders nothing, and settles blocks for good (2.144084ms)
+✔ the in-flight tail preserves literal payload, using paragraph layout only at a pending prose boundary (109.816584ms)
+✔ an incomplete next prose line has settled paragraph boxes, while list/fence blanks stay literal (6.830042ms)
+✔ every construct's payload text is painted, in order, at every flush (73.14625ms)
+✔ the settled paint is byte-identical to a fresh whole-message render (58.195584ms)
+✔ a closed block is linkified and the open tail stays prose (4.05475ms)
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+✔ the transcript row renders incrementally while streaming and whole once settled, corpus-wide (129.173041ms)
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+✔ a closed block asks once per spelling; the open tail and every delta ask nothing (5.786458ms)
+✔ aggregate exit retains rows only until height completes, inert immediately (30.479666ms)
+✔ rapid reopen ignores a stale close completion (6.311542ms)
+✔ cancelled transitions cannot keep a closed payload mounted indefinitely (265.555916ms)
+✔ reduced motion closes without transient retention (4.345083ms)
+✔ default-off disclosures retain immediate unmount and original body markup (2.872ms)
+✔ a condensed run keeps the pictures its rows would have drawn (2.548625ms)
+✔ a run with no pictures is the group it was (1.351459ms)
+✔ the picture does not flicker at the settle transition (2.770084ms)
+✔ a group arrives condensed and names the running call (1.561917ms)
+✔ the reader's press opens it, and conversation updates leave it open (4.123708ms)
+✔ the reader's own press is the only close, in both directions (4.279625ms)
+✔ the section ending while the fold is open never closes it (3.088375ms)
+✔ a fold the reader opens after its section ended stays open (2.623708ms)
+✔ no stamps, no clock - and never a `0s` (2.42125ms)
+✔ a live span computes against now and keeps ticking (4.964375ms)
+✔ the painted count line is the capped one, and it may wrap (8.788125ms)
+✔ a sentence summary is painted to wrap, not held whole (0.841167ms)
+✔ incoming receipts bridge actions without impersonating actions (1.203333ms)
+✔ three or more consecutive actions fold; two do not (0.169291ms)
+✔ the fold is a view, never a reorder (0.15925ms)
+✔ a receipt, a statement or an unknown row breaks a run (0.096ms)
+✔ the summary is generated from the counts by class (0.439334ms)
+✔ the count line names the kinds in the app's own vocabulary (6.140833ms)
+✔ the count line caps its segments and folds the tail into `and N other actions` (0.368334ms)
+✔ the action classes are the ledgers' own names, case-folded (0.057958ms)
+✔ the span is last completion minus first start, gaps included (0.093375ms)
+✔ a live run keeps its span end open for the caller's clock (0.116875ms)
+✔ a run that cannot date itself reports null, never zero (0.060583ms)
+✔ the live clause names the call being watched, in the row's words (0.134958ms)
+✔ a turn's foot counts its own actions, and names its first failure (0.1575ms)
+✔ receipt-owned image refs survive a mixed fold in source order (0.101ms)
+✔ a run's images are its actions' images, in row order (0.065459ms)
+✔ a run with no pictures yields none, and a user row never contributes (0.060333ms)
+✔ the strip's slots are one row, and past the cap the last of them is the count (0.117958ms)
+✔ the uncapped strip never strands a single tile, and every row is at most one capped row wide (D5) (0.217334ms)
+✔ the header's image clause names the count, and a run with none has no clause (0.047167ms)
+ℹ tests 102
+ℹ suites 0
+ℹ pass 102
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 39801.543917
+=== SCOPED EXIT 0

@@ -58,15 +58,11 @@
  * as the reader, and a second open-state owner beside the disclosure's own is
  * exactly how the two end up disagreeing about whether the fold is open.
  *
- * WHAT THE SHARED PRIMITIVE STILL DOES NOT GIVE THIS LINE, stated rather than
- * quietly skipped: §B7's named 180ms transition. `Disclosure` UNMOUNTS its
- * children (`isOpen && children`), so the fold appears and disappears rather
- * than growing and shrinking — and making it animate means keeping children
- * mounted for every caller, including every tool row in the transcript, where
- * an unmounted body is what keeps a forty-row turn cheap to scroll. That is a
- * change to a shared primitive with a real regression surface, so it is not
- * this commit's: the two states are legible in the frames, and the transition
- * is named as deferred on the PR rather than half-done here.
+ * This aggregate line opts into §B7's 180ms fold transition. The shared
+ * primitive clips an intrinsically sized grid, retains children only during
+ * closing, and unmounts them afterward. Individual tool details still use the
+ * immediate/default path: smoothing a group must not keep every hidden tool
+ * payload mounted or change the ledger's steady-state scrolling cost.
  *
  * ## The fold never reorders anything
  *
@@ -140,8 +136,8 @@ export type TraceFoldProps = {
 	/**
 	 * Media the run produced, drawn UNDER the condensed header.
 	 *
-	 * The rows inside a collapsed fold are unmounted (`Disclosure` renders
-	 * `isOpen && children`), so a picture a call produced went with them: the
+	 * The rows inside a settled collapsed fold are unmounted (the animated
+	 * disclosure retains them only during its exit), so a picture a call produced went with them: the
 	 * reader had to expand the group to see the artifact, which is the cost
 	 * condensing exists to remove. This is the fold's own copy of the principle
 	 * #537 applied to metadata — the condensed state carries the facts the rows
@@ -271,6 +267,7 @@ export const TraceFold = ({
 			data-fold-ids={recordIds.join(" ")}
 		>
 			<Disclosure
+				animate
 				/*
 				 * CONTROLLED, because the app closes this fold as well as the reader
 				 * (`open`/`onOpenChange` above): the alternative is the reader's state
