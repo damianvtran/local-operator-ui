@@ -27011,6 +27011,37 @@ async function sceneSettingsLanguage(cdp) {
 	);
 	const rail = await cdp.evaluate(SETTINGS_RAIL_STATE);
 	note("the settings rail", JSON.stringify(rail));
+	/*
+	 * THE DEEP-LINK FOCUS CLAIM, PINNED (review round 3, UX U4). The scene's
+	 * `settings-page` leg focuses the promoted control on a `?setting=` link, and
+	 * that focus is what makes the link keyboard-useful rather than merely a
+	 * scroll. It was previously unpinned — the frames were asserted "toast-free"
+	 * while nothing read `document.activeElement`, so a link that scrolled but did
+	 * NOT focus would have passed. Read the active element and require it to be
+	 * the picker (or inside its row), which is the claim the deep link makes.
+	 *
+	 * A frame cannot show this — a focus RING is `:focus-visible`-dependent and
+	 * the driver parks the pointer, so the DOM reading is the evidence here and
+	 * the frame is not asked to carry it.
+	 */
+	const focusReading = await cdp.evaluate(`(() => {
+		const active = document.activeElement;
+		const row = document.querySelector(${JSON.stringify(LANGUAGE_SETTING_ROW)});
+		return {
+			tag: active ? active.tagName.toLowerCase() : null,
+			role: active ? active.getAttribute('role') : null,
+			label: active ? active.getAttribute('aria-label') : null,
+			inRow: Boolean(row && active && row.contains(active)),
+		};
+	})()`);
+	note("the focused element after the deep link", JSON.stringify(focusReading));
+	check(
+		"the ?setting=language deep link FOCUSES the promoted control, not merely scrolls to it",
+		focusReading.inRow === true &&
+			(focusReading.role === "combobox" ||
+				focusReading.label === "Interface language"),
+		`activeElement=${JSON.stringify(focusReading)}`,
+	);
 	check(
 		"the rail highlights GENERAL as the current section",
 		Array.isArray(rail.general) && rail.general.includes("page"),
@@ -27175,18 +27206,6 @@ async function sceneSettingsLanguage(cdp) {
 			.join(" | "),
 	);
 	/*
-	 * THE URDU FRAME IS A DISTINCT STATE, NOT A SECOND COPY OF THE OPEN LIST.
-	 *
-	 * A frame of the list with nothing moved is byte-identical to the open frame
-	 * already captured above (measured: the two came back the same 346685 bytes), which
-	 * would make it evidence of nothing. So the pointer/keyboard is walked to the RTL
-	 * entry and the frame is taken with it HIGHLIGHTED — the state a reader produces
-	 * when they arrow down to Urdu, and the one where the right-to-left autonym is on
-	 * the app's own accent ground rather than beside it. Radix's highlight is the item's
-	 * `data-highlighted` attribute (`select.tsx`'s `data-[highlighted]:bg-accent-wash`),
-	 * so it is read off the DOM rather than guessed from the pointer's position.
-	 */
-	/*
 	 * THE URDU FRAME IS A DISTINCT, REACHABLE STATE — NOT A SECOND COPY OF THE OPEN LIST.
 	 *
 	 * A frame of the list with nothing moved is byte-identical to the open frame already
@@ -27323,13 +27342,23 @@ async function sceneSettingsLanguage(cdp) {
 	 * the `language` this run's own daemon answered. A caption derived from the client
 	 * OS would read the device's tag (this machine's, not the daemon's), and this
 	 * comparison is what would catch that.
+	 *
+	 * AN EXACT TRAILING-TAG COMPARE, not `includes`. Review round 3 (R3-1): the
+	 * label is "Backend language in effect: en", so `caption.includes("en")` is
+	 * satisfied by the word "Backend" ALONE — it would pass for a caption naming
+	 * `en-CA`, `xx`, or nothing at all, which is precisely the discrimination this
+	 * assertion exists to provide. The caption's format is `<label>: <tag>`, so the
+	 * tag is the text after the LAST colon; comparing that exactly is what ties the
+	 * caption to the daemon's answer.
 	 */
+	const captionTag = (caption) =>
+		typeof caption === "string"
+			? caption.slice(caption.lastIndexOf(":") + 1).trim()
+			: null;
 	check(
 		"the caption names the BACKEND's resolved locale, not the client OS",
-		typeof resolved === "string" &&
-			typeof rest2.caption === "string" &&
-			rest2.caption.includes(resolved),
-		`backend resolved ${JSON.stringify(resolved)}; caption ${JSON.stringify(rest2.caption)}`,
+		typeof resolved === "string" && captionTag(rest2.caption) === resolved,
+		`backend resolved ${JSON.stringify(resolved)}; caption ${JSON.stringify(rest2.caption)}; trailing tag ${JSON.stringify(captionTag(rest2.caption))}`,
 	);
 	const captionFrame = await captureSettled(
 		cdp,

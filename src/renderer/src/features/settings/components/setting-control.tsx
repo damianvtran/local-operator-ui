@@ -326,6 +326,18 @@ export type SettingControlProps = {
 	effectiveHosting?: string;
 	/** The cascade chains, when the kind is `cascade`. */
 	chains?: Record<string, string[]>;
+	/**
+	 * Suppress the row's own effective note (`EffectiveLanguage`).
+	 *
+	 * The note is the picker's OWN caption and belongs with it wherever the
+	 * control is the header of its surface. It must be suppressed where the
+	 * surface already renders its own caption for the same fact: the General
+	 * language section renders the phase-aware sentence (`In effect: <tag>` /
+	 * pending / saved / last-known / not-yet-resolved) directly under the
+	 * control, and leaving the inner note on rendered "en" TWICE in two voices
+	 * (design round 1 D1). One surface, one caption.
+	 */
+	suppressEffectiveNote?: boolean;
 	/** True while the row is saving, or gated off by another setting. */
 	disabled?: boolean;
 	onValueChange: (value: string) => void;
@@ -499,10 +511,15 @@ const LanguageFlag: FC<{ country: string }> = ({ country }) => {
 	);
 };
 
-const LanguageChoiceLabel: FC<{ value: string; fallback: string }> = ({
-	value,
-	fallback,
-}) => {
+export const LanguageChoiceLabel: FC<{
+	value: string;
+	fallback: string;
+	/**
+	 * The option cannot be selected on this backend. Used for the flag treatment,
+	 * not for the text: the autonym stays fully legible (see the bidi note below).
+	 */
+	disabled?: boolean;
+}> = ({ value, fallback, disabled = false }) => {
 	const identity = languageIdentifierFor(value);
 	if (!identity)
 		return (
@@ -511,9 +528,28 @@ const LanguageChoiceLabel: FC<{ value: string; fallback: string }> = ({
 			</>
 		);
 	return (
-		<span className="inline-flex items-center gap-2">
-			<LanguageFlag country={identity.country} />
-			<bdi dir="auto" lang={identity.value}>
+		/*
+		 * `min-w-0` on the row plus `whitespace-nowrap` on each part is what keeps
+		 * this a SINGLE OPTION rather than a wrapping paragraph: without it the RTL
+		 * autonym broke to a second line while `简体中文` stayed inline (UX U2).
+		 *
+		 * `items-center` with the leading-none flag and an explicit `leading-6` on
+		 * the text is the line box a right-to-left script needs: Arabic ascenders and
+		 * descenders both exceed a Latin x-height, and at the inherited tight line
+		 * height the Arabic glyph line COLLAPSED to a sliver with a stray Latin
+		 * fragment at the left edge (design round 1 D3). The isolated `<bdi>` is the
+		 * other half: `dir="auto"` on the text itself - not merely on a wrapper -
+		 * is what stops the surrounding Latin UI from re-ordering the run.
+		 */
+		<span className="inline-flex min-w-0 items-center gap-2">
+			<span className={disabled ? "opacity-45 saturate-50" : undefined}>
+				<LanguageFlag country={identity.country} />
+			</span>
+			<bdi
+				dir="auto"
+				lang={identity.value}
+				className="whitespace-nowrap leading-6"
+			>
 				{identity.name}
 			</bdi>
 		</span>
@@ -569,6 +605,7 @@ export const SettingControl = ({
 	onChainsChange,
 	effectiveHosting = "",
 	helpId,
+	suppressEffectiveNote = false,
 }: SettingControlProps) => {
 	/*
 	 * The searchable combobox branch, keyed on the setting's KEY rather than on
@@ -590,7 +627,7 @@ export const SettingControl = ({
 	 * that changes WITHOUT the reader acting on the control (U2, round 1).
 	 */
 	const effectiveNoteId =
-		setting.key === LANGUAGE_SETTING_KEY
+		setting.key === LANGUAGE_SETTING_KEY && !suppressEffectiveNote
 			? settingEffectiveId(setting.key)
 			: undefined;
 	if (comboSource) {
@@ -682,10 +719,20 @@ export const SettingControl = ({
 											<LanguageChoiceLabel
 												value={String(choice.value)}
 												fallback={choice.label}
+												disabled={"enabled" in choice && !choice.enabled}
 											/>
 											{"enabled" in choice && !choice.enabled && (
-												<span className="text-meta text-ink-dim">
-													{t("ui.settings.language.general.unavailable_choice")}
+												/*
+												 * Visibly SECONDARY to the label it qualifies (design round 1
+												 * D4): the reason is a qualifier on the option, so it is smaller
+												 * and dimmer than the autonym and never competes with it. It also
+												 * carries `whitespace-nowrap` so it cannot break the row into
+												 * two lines beside the RTL label (UX U2).
+												 */
+												<span className="shrink-0 text-caption text-ink-dim whitespace-nowrap">
+													{t(
+														"ui.settings.language.general.unavailable_choice",
+													)}
 												</span>
 											)}
 										</>
@@ -696,7 +743,7 @@ export const SettingControl = ({
 							))}
 						</SelectContent>
 					</Select>
-					{setting.key === LANGUAGE_SETTING_KEY && (
+					{setting.key === LANGUAGE_SETTING_KEY && !suppressEffectiveNote && (
 						<EffectiveLanguage id={effectiveNoteId} />
 					)}
 				</div>

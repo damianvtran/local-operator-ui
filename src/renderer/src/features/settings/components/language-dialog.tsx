@@ -249,6 +249,15 @@ export const GeneralLanguageSetting: FC<{ focus?: boolean }> = ({
 							void save(value);
 						}}
 						disabled={pending || readbackUnknown}
+						/*
+						 * The section renders the caption for this surface (the `<output>`
+						 * below, which is phase-aware: pending / saved / in-effect /
+						 * last-known / not-resolved). The picker's inner note would repeat
+						 * the same tag in a second voice directly above it, so it is
+						 * suppressed here and kept wherever this control is the header of
+						 * its own surface (design round 1 D1, confirming UX U1).
+						 */
+						suppressEffectiveNote
 					/>
 				)}
 				<output aria-live="polite" className="text-meta text-ink-dim">
