@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -20,6 +21,8 @@ const {
 	modelAccessPresentation,
 	bandYieldsToRadientIssue,
 	modelAccessOwnsRadientStatus,
+	composerModelAccessReading,
+	modelAccessLocality,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -27,7 +30,9 @@ const {
 const inventedMode = /API key|subscription|logged in/i;
 const permissionPresent = /permission.*present/i;
 const automaticRepair = /next request.*automatically/i;
-const noAutomaticRegrant = /not.*automatically/i;
+const restoreAccess = /restore owner access or permission/i;
+const inventedCause =
+	/is unreachable|owner is reachable|not regranted automatically/i;
 const ownerName = /Work laptop/;
 const historical = /history/i;
 const noCachedPermission = /not.*permission|cannot.*reuse/i;
@@ -84,7 +89,11 @@ for (const state of [
 		);
 		const presentation = modelAccessPresentation(reading);
 		assert.ok(presentation.title && presentation.description);
-		assert.equal(presentation.canConnect, state === "absent");
+		assert.equal(
+			presentation.canConnect,
+			false,
+			"unproven native serving context must not target the generic dialog",
+		);
 		assert.equal(
 			presentation.tone,
 			state === "effective_borrow" ? "neutral" : "warning",
@@ -104,7 +113,8 @@ test("native model access: expiry retains permission; withdrawal does not promis
 	const withdrawn = modelAccessPresentation(
 		modelAccessReading(frame("withdrawn")),
 	);
-	assert.match(withdrawn.description, noAutomaticRegrant);
+	assert.match(withdrawn.description, restoreAccess);
+	assert.doesNotMatch(withdrawn.description, inventedCause);
 });
 
 test("native model access: unreachable-owner expiry is explicitly history, never cached permission", () => {
@@ -177,7 +187,7 @@ test("native model access: Radient local-login suppression cannot hide borrowed 
 	);
 	assert.equal(
 		bandYieldsToRadientIssue(
-			{ provider: "radient", effectiveState: "absent" },
+			{ provider: "radient", effectiveState: "absent", connectHere: true },
 			true,
 		),
 		true,
@@ -201,6 +211,7 @@ test("native model access: Radient local-login suppression cannot hide borrowed 
 		modelAccessOwnsRadientStatus({
 			provider: "radient",
 			effectiveState: "absent",
+			connectHere: true,
 		}),
 		false,
 	);
@@ -211,5 +222,113 @@ test("native model access: Radient local-login suppression cannot hide borrowed 
 			effectiveState: "pending",
 		}),
 		false,
+	);
+});
+
+for (const locality of ["local", "remote", undefined]) {
+	test(`composer native absence uses trusted matching source: ${locality ?? "unproven"}`, () => {
+		const frontend = frame("absent", "signed_out");
+		const before = structuredClone(frontend);
+		const rows = [
+			{ session_id: "other", locality: "local" },
+			{ session_id: "selected", locality },
+		];
+		const status = {
+			frontend,
+			servingLocality: modelAccessLocality(rows, "selected"),
+		};
+		const reading = composerModelAccessReading(status);
+		assert.equal(
+			modelAccessPresentation(reading).canConnect,
+			locality === "local",
+		);
+		assert.deepEqual(frontend, before);
+		assert.equal(composerModelAccessReading({ ...status, draft: true }), null);
+		const legacy = {
+			...frontend,
+			model_access: {
+				provider: "openai",
+				label: "OpenAI",
+				state: "signed_out",
+			},
+		};
+		assert.equal(
+			modelAccessPresentation(
+				composerModelAccessReading({ ...status, frontend: legacy }),
+			).canConnect,
+			true,
+		);
+		assert.equal(modelAccessLocality(rows, "not-listed"), undefined);
+	});
+}
+
+test("composer native remote Radient absence cannot fall through to a local signup callout", () => {
+	const frontend = frame("absent");
+	frontend.selected_model.provider = frontend.model_access.provider = "radient";
+	const remote = composerModelAccessReading({
+		frontend,
+		servingLocality: "remote",
+	});
+	assert.equal(modelAccessPresentation(remote).canConnect, false);
+	assert.equal(modelAccessOwnsRadientStatus(remote), true);
+	assert.equal(bandYieldsToRadientIssue(remote, true), false);
+	const local = composerModelAccessReading({
+		frontend,
+		servingLocality: "local",
+	});
+	assert.equal(modelAccessPresentation(local).canConnect, true);
+	assert.equal(modelAccessOwnsRadientStatus(local), false);
+	assert.equal(bandYieldsToRadientIssue(local, true), true);
+});
+
+const producerControls = JSON.parse(
+	readFileSync("scripts/fixtures/native-access-bc3d.json", "utf8"),
+);
+for (const control of producerControls.cases) {
+	test(`immutable bc3d producer ${control.cause} does not imply its guessed cause`, () => {
+		assert.equal(control.eligible, true);
+		assert.equal(
+			control.recovered_without_permission_change,
+			"effective_borrow",
+		);
+		const status = { frontend: control.frontend, servingLocality: "remote" };
+		const reading = composerModelAccessReading(status);
+		assert.equal(
+			reading.lastGrantExpiresAt,
+			control.frontend.model_access.last_grant_expires_at,
+		);
+		const display = modelAccessPresentation(reading);
+		assert.doesNotMatch(display.description, inventedCause);
+		assert.equal(display.canConnect, false);
+		assert.match(display.history, historical);
+	});
+}
+
+test("the real page/content/composer wires the tested serving context and decision", () => {
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	const content = readFileSync(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+		"utf8",
+	);
+	const composer = readFileSync(
+		"src/renderer/src/shared/components/composer/message-input.tsx",
+		"utf8",
+	);
+	assert.ok(page.includes("modelAccessLocality(state.sessions, sessionId)"));
+	assert.ok(
+		page.includes(
+			"frontend: canonical.frontend ?? canonical.heldFrontend,\n\t\t\t\t\t\tservingLocality,",
+		),
+	);
+	assert.ok(content.includes('servingLocality?: "local" | "remote"'));
+	assert.ok(content.includes("sessionStatus={sessionStatus}"));
+	assert.ok(composer.includes("composerModelAccessReading(sessionStatus)"));
+	assert.ok(
+		composer.includes(
+			"!modelAccessOwnsRadientStatus(modelAccess) && radientIssueBlock",
+		),
 	);
 });
