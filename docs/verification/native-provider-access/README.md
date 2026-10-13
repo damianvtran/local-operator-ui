@@ -1,5 +1,25 @@
 # Native provider-access component verification
 
+## Round-1 remediation delta (current)
+
+R1-1: the real page forwards the matching canonical catalogue row's `locality` through chat content to the composer. The actual composer decision permits native absent Connect **only for explicitly local serving context**; remote and unproven context suppress the generic dialog. Credential-owner labels and mesh membership cannot establish that target. Legacy Connect is preserved. Remote/unproven Radient absence also cannot fall through to its independent local signup callout.
+
+R1-2: `withdrawn` and `owner_unavailable` are writer vocabulary, **not proof of lost authorization or a network outage**. The updated copy says owner access or permission needs attention and does not rule out recovery. Immutable core `bc3d68bf` functions were executed here with synthetic eligible placement, an explicit scratch root and an unused status-client seam: `no_local_credential → withdrawn, eligible=true`; `refresh_failed → owner_unavailable, eligible=true`; a later grant heals both to `effective_borrow` without a permission change. The committed [producer controls](../../../scripts/fixtures/native-access-bc3d.json) contain only keyless contexts and source hashes, no bearer/kind/refresh material. The reachability flag is a synthetic control, not a new published wire field.
+
+Only **10 new delta frames**, five scenes at narrow-dark and desktop-light, were captured in one admitted 120-second/512MiB source host. The same production stylesheet/theme/font pipeline and actual composer decision were used. HTTP 200; column layout and app font stack verified; console errors zero. The browser was closed and exact host PID/process group reaped. **No callback was clicked** and no `/model`, Connect, composer, live owner transition or native OAuth flow is claimed.
+
+- [Known remote absent — no generic Connect](r1-absent_remote.png), compared with the historical absent cell in the round-1 sheet below.
+- [Proven local absent — Connect preserved](r1-absent_local.png).
+- [Unproven source — no generic Connect](r1-absent_unknown.png).
+- [Eligible holder with owner credential loss](r1-no_local_credential.png).
+- [Reachable owner with upstream refresh failure](r1-refresh_failed.png).
+
+Retention was checked rather than re-rendering the whole set: the actual band/Alert/styles/themes are byte-unchanged from `5e49bf3`, and pending/unverified/borrowed/expired/device-bound reader+presentation JSON is byte-identical against that immutable head. The five captured production source/fixture SHA256 stamps still matched after capture. Older affected cells and the older modern-owner after frame below are **historical baseline only**, superseded by these delta frames; unchanged frames retain their stated component-only scope.
+
+**UX U1 remains BLOCKED / deferred:** e915 normal-controller+UI busy-proof admission and the Aida scope lease are absent. A no-op component fixture cannot supply that evidence. No code workaround, native/app build, installation or merge is authorized by these frames.
+
+## Original round-1 capture (historical baseline)
+
 These are **production-component checks with synthetic keyless core frames**, not a live remote session, authenticated OAuth request, full Electron screenshot, all-theme sweep or claim of application visual parity. They are deliberately outside the canonical `docs/evidence` sweep/manifest: that dataset's capture and full-sweep claims are not made here.
 
 ## What rendered
@@ -34,7 +54,7 @@ The contact sheets crop **only actual screenshot pixels** from the 420px compone
 - [Truthful narrow after](after-narrow-dark.png)
 - [Unpublished/loading-host silence](empty-narrow-dark.png)
 
-The exact selected `openai/gpt-6.1-sol` and high effort remain unchanged in the fixture. Only absent access offers Connect; owner/convergence/refresh states do not. Effective borrow is a quiet access status, not a local-login or subscription/API-kind assertion. Expiry retains borrowing eligibility, while withdrawal does not promise automatic regrant. Historical expiry is explicitly not permission to reuse cached access.
+The exact selected `openai/gpt-6.1-sol` and high effort remain unchanged in the fixture. In the original capture, absent access offered Connect regardless of serving context; **that is the R1-1 defect corrected above**. Owner/convergence/refresh states did not offer it. Effective borrow is a quiet access status, not a local-login or subscription/API-kind assertion. Expiry retains borrowing eligibility, while the original withdrawal wording categorically ruled out recovery; **that overly specific cause claim is corrected above**. Historical expiry is explicitly not permission to reuse cached access.
 
 ## Limits
 

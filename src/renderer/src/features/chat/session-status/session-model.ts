@@ -756,10 +756,13 @@ export type ModelAccessReading = {
 	observedAt?: number;
 	lastGrantAt?: number;
 	lastGrantExpiresAt?: number;
+	/** Only an explicitly local serving catalogue row can authorize the local Connect callback. */
+	connectHere?: boolean;
 };
 
 export function modelAccessReading(
 	frontend: CanonicalFrontendState | null | undefined,
+	servingLocality?: "local" | "remote",
 ): ModelAccessReading | null {
 	const access: CanonicalModelAccess | null | undefined =
 		frontend?.model_access;
@@ -791,6 +794,9 @@ export function modelAccessReading(
 		// serving. Never rewrite that selection or hide an owner's outage behind
 		// the fallback's local login. The old-host branch below is unchanged.
 		return {
+			...(effectiveState === "absent"
+				? { connectHere: servingLocality === "local" }
+				: {}),
 			provider,
 			label: wireWords(access.label) || provider,
 			effectiveState,
@@ -823,6 +829,31 @@ export function modelAccessReading(
 	return access.state === "temporarily_unavailable"
 		? { provider, label, state: access.state }
 		: { provider, label };
+}
+
+/** Use only the matching catalogue's published locality, never peer/owner labels. */
+export function modelAccessLocality(
+	rows: readonly { session_id: string; locality?: unknown }[],
+	sessionId: string | undefined,
+): "local" | "remote" | undefined {
+	if (!sessionId) return undefined;
+	const locality = rows.find((row) => row.session_id === sessionId)?.locality;
+	return locality === "local" || locality === "remote" ? locality : undefined;
+}
+
+/** The composer decision, exercised with its real sessionStatus context contract. */
+export function composerModelAccessReading(
+	status:
+		| {
+				frontend: CanonicalFrontendState | null;
+				draft?: boolean;
+				servingLocality?: "local" | "remote";
+		  }
+		| undefined,
+): ModelAccessReading | null {
+	return status && status.draft !== true
+		? modelAccessReading(status.frontend, status.servingLocality)
+		: null;
 }
 
 function wireWords(value: unknown): string {
@@ -887,12 +918,12 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 			`The last borrowed grant expired, but borrowing permission is still present. The next request asks ${owner} for fresh access automatically.`,
 		],
 		withdrawn: [
-			`Borrowed ${label} access withdrawn`,
-			"Borrowing permission or the owner's sign-in is no longer usable. Access is not regranted automatically; choose another model.",
+			`${label} access needs attention`,
+			"The owner cannot currently provide borrowed access, or borrowing permission is unavailable. Restore owner access or permission before retrying, or choose another model.",
 		],
 		owner_unavailable: [
-			`${owner} is unavailable`,
-			`This session cannot resolve ${label} access while ${owner} is unreachable. Previous access cannot be reused; retry when the owner is reachable or choose another model.`,
+			`${owner} cannot provide access`,
+			`This session could not resolve ${label} access from ${owner}. Previous access cannot be reused. Retry after owner access is restored, or choose another model.`,
 		],
 		device_bound: [
 			`${label} needs a device sign-in`,
@@ -900,7 +931,9 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 		],
 		absent: [
 			`No ${label} access`,
-			"The serving device has no effective provider access for this session. Connect an account or choose another model.",
+			access.connectHere === true
+				? "The serving device has no effective provider access for this session. Connect an account or choose another model."
+				: "The device running this session has no effective provider access. Sign in or restore access on that device, or choose another model.",
 		],
 	};
 	const legacyUnavailable = access.state === "temporarily_unavailable";
@@ -939,7 +972,7 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 		history: context.join(" "),
 		tone: effectiveState === "effective_borrow" ? "neutral" : "warning",
 		canConnect: effectiveState
-			? effectiveState === "absent"
+			? effectiveState === "absent" && access.connectHere === true
 			: !legacyUnavailable,
 		canSwitchModel: effectiveState !== "effective_borrow",
 	};
@@ -992,17 +1025,22 @@ export function modelAccessOwnsRadientStatus(
 	return (
 		access?.provider === "radient" &&
 		access.effectiveState !== undefined &&
-		access.effectiveState !== "absent"
+		(access.effectiveState !== "absent" || access.connectHere !== true)
 	);
 }
 
 export function bandYieldsToRadientIssue(
-	access: { provider: string; effectiveState?: CanonicalEffectiveAccessState },
+	access: {
+		provider: string;
+		effectiveState?: CanonicalEffectiveAccessState;
+		connectHere?: boolean;
+	},
 	radientCalloutOwnsTheSignIn: boolean,
 ): boolean {
 	return (
 		radientCalloutOwnsTheSignIn &&
 		access.provider === "radient" &&
-		(access.effectiveState === undefined || access.effectiveState === "absent")
+		(access.effectiveState === undefined ||
+			(access.effectiveState === "absent" && access.connectHere === true))
 	);
 }
