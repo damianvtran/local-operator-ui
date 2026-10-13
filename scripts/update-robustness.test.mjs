@@ -6922,6 +6922,13 @@ const get = (url, optionsOrCallback, maybeCallback) => {
 			};
 			callback?.(res);
 			handlers.data?.(outcome.body ?? "");
+			if (outcome.responseError) {
+				// Mid-body abort: partial bytes, then the response errors and
+				// the request stays silent — Node's shape for a destroyed
+				// socket, and the exit round 3's R3-1 pins.
+				handlers.error?.(outcome.responseError);
+				return;
+			}
 			handlers.end?.();
 		});
 	}
@@ -11314,6 +11321,25 @@ test("a failed PyPI read after a not-ready read does not repeat the publishing s
 		});
 		assert.equal(await updateService.getLatestPypiVersion(), null);
 		assert.equal(updateService.pendingPypiVersion, null);
+
+		// Mid-body abort (R3-1): from a SET pending verdict, the promise
+		// must settle AND clear it — never hang, never leave it standing.
+		state.autoRespond = () => ({
+			body: JSON.stringify({ info: { version: "9.9.9" }, urls: [] }),
+		});
+		assert.equal(await updateService.getLatestPypiVersion(), null);
+		assert.equal(updateService.pendingPypiVersion, "9.9.9");
+		state.autoRespond = () => ({
+			body: '{"info": {"ver',
+			responseError: new Error("read ECONNRESET"),
+		});
+		assert.equal(await updateService.getLatestPypiVersion(), null);
+		assert.equal(updateService.pendingPypiVersion, null);
+		state.autoRespond = () => ({
+			body: JSON.stringify({ info: { version: "9.9.9" }, urls: [] }),
+		});
+		assert.equal(await updateService.getLatestPypiVersion(), null);
+		assert.equal(updateService.pendingPypiVersion, "9.9.9");
 
 		// Socket timeout: routes through destroy into the same error path.
 		state.autoRespond = () => ({
