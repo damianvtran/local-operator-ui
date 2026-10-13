@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -93,6 +95,27 @@ const mod = await import(
 const { messages, locale, useI18nLocale, React, act, createRoot } = mod;
 
 after(() => {
+	/*
+	 * RELEASE THE SCHEDULER'S MESSAGE PORTS, or this command never exits.
+	 *
+	 * React's scheduler (bundled here with the browser condition, but running on
+	 * Node's global `MessageChannel`) keeps its MessagePort handles REF'D, so the
+	 * test runner prints its summary and then the process stays alive forever.
+	 * Review round 1 (R1) measured five ref'd ports on this file and confirmed
+	 * that closing them is what lets the summary print and the process return.
+	 *
+	 * This is TEARDOWN, not a forced green: every case has already run and
+	 * reported by the time this hook executes, and no assertion is skipped or
+	 * short-circuited. It closes only MessagePorts — nothing else the runner or
+	 * jsdom owns — so a genuine failure still surfaces.
+	 */
+	for (const handle of process._getActiveHandles?.() ?? []) {
+		try {
+			if (handle?.constructor?.name === "MessagePort") handle.close();
+		} catch {
+			// A handle that refuses to close is not this suite's to force.
+		}
+	}
 	dom.window.close();
 	globalThis.window = undefined;
 	globalThis.document = undefined;
@@ -129,8 +152,10 @@ async function renderProbe(subscribed) {
 				locale.setLocale(next);
 			});
 		},
-		cleanup() {
-			root.unmount();
+		async cleanup() {
+			await act(async () => {
+				root.unmount();
+			});
 			container.remove();
 		},
 	};
@@ -150,7 +175,7 @@ test("a t() consumer WITH the locale subscription repaints on a locale change", 
 		await probe.setLocaleAndSettle("en");
 		assert.equal(probe.text(), "Settings", "and back again");
 	} finally {
-		probe.cleanup();
+		await probe.cleanup();
 	}
 });
 
@@ -171,6 +196,39 @@ test("SABOTAGE: WITHOUT the subscription the component does NOT repaint", async 
 			"an unsubscribed t() consumer keeps the OLD language — the defect this pins",
 		);
 	} finally {
-		probe.cleanup();
+		await probe.cleanup();
 	}
+});
+
+/*
+ * STATIC CONSUMER PIN (review round 1, R2). The dynamic cases above prove the
+ * MECHANISM with a probe; they cannot fail if someone deletes the subscription
+ * from the real component, because the probe carries its own. This case reads
+ * `SettingsPage`'s source and requires the subscription to be there, so
+ * dropping it fails — the same source-level assertion style
+ * `scripts/palette-search.test.mjs` already uses for its import contract. It is
+ * deliberately a static check and says so: rendering the full SettingsPage
+ * would drag in the whole query/store graph and is not a bounded test.
+ */
+test("SettingsPage itself subscribes to the locale (static pin, not a render)", () => {
+	const source = readFileSync(
+		join(
+			import.meta.dirname,
+			"..",
+			"..",
+			"src",
+			"renderer",
+			"src",
+			"features",
+			"settings",
+			"components",
+			"settings-page.tsx",
+		),
+		"utf8",
+	);
+	assert.match(
+		source,
+		/useI18nLocale\(\)/,
+		"SettingsPage must call useI18nLocale(); t() alone is not reactive, so without it a language switch leaves the page in the old language",
+	);
 });
