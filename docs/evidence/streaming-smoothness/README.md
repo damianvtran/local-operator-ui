@@ -2,11 +2,11 @@
 
 ## Scope and provenance
 
-Base: `732f2163cdc72749815a6bec52e7682467b015af` (`origin/main` at implementation start). The canonical assistant row already used `StreamingMarkdown`; this change does not rewire it. The production changes are the aggregate fold's opt-in disclosure animation and the pending-prose-tail layout fix discovered during the required settle regression.
+Base: `732f2163cdc72749815a6bec52e7682467b015af` (`origin/main` at implementation start). The canonical assistant row already used `StreamingMarkdown`; this change does not rewire it. The production changes are text-only aggregate folds' opt-in disclosure animation and the pending-prose-tail layout fix discovered during the required settle regression. Round-one remediation keeps media presentation swaps atomic and preserves live-tail node identity through a block close.
 
 Actual implementation model: `openai/gpt-6.1-sol`, a temporary fallback after Anthropic quota exhaustion. These are implementer measurements, not independent QA/design sign-off.
 
-The harness browser tool drove the shipped components in Storybook. No browser engine was installed or scripted, no window was raised, and no live conversation IDs were used. This is rendered-component evidence, not a native Electron service/backend run. The manager URLs were used, not bare top-level Storybook iframes. Fourteen PNG frames cover one theme (`localOperatorDark`), not a theme sweep.
+The harness browser tool drove the shipped components in Storybook. No browser engine was installed or scripted, no window was raised, and no live conversation IDs were used. This is rendered-component evidence, not a native Electron service/backend run. The manager URLs were used, not bare top-level Storybook iframes. The initial fourteen PNG frames plus three round-one media remediation frames cover one theme (`localOperatorDark`), not a theme sweep.
 
 ## Reproduction server
 
@@ -136,6 +136,61 @@ tests 102; pass 102; fail 0; skipped 0; duration_ms 39801.543917; EXIT 0
 [Complete final gate output](final-gates.txt). The 168 lint warnings and consulted theme exceptions are reported, not suppressed. Full CI on the final PR head remains the terminal whole-tree gate; no duplicate full local suite was run after remediation.
 
 The supplementary frame accounting was then validated with `node --test scripts/evidence-manifest.test.mjs`: 53 tests, 52 passed, 0 failed, 1 skipped (the existing shallow-history citation check). This is the fast manifest/count gate, not the full image-decode sweep; CI owns that sweep.
+
+## Round-one unified remediation
+
+Reviewed head: `b0e2eb9ceef44e7049d8b88909689f323c2293f1`. All four findings were handled in one remediation commit; no new worktree/dependency tree or full local desktop rerun.
+
+### D1: exactly one media presentation and monotonic geometry
+
+The implementer reproduced the designer's report using the **same ImageShown fixture** and the reviewed animated-media condition. The live mutation/frame observer measured close `338.6953125 → 425.6953125px` with **two images**, then `107px` with one. Opening also reproduced the `107 → 20px` dip. [Actual control output](r1-media-control-log.txt). Its final `settled` label was the old observation-end label, not proof that background-host animation scheduling had finished.
+
+The bounded remediation takes the immediate/atomic media option: when closed with a strip, `Disclosure.animate` is false. Media opening mounts directly expanded; media closing removes expanded rows and mounts the strip in the same React commit. **Media folds are deliberately immediate**, not claimed to have a 180ms animation. Text-only folds retain the unchanged 180ms path. Keeping the animated wrapper while open (`open || !condensedMedia`) also prevents a first late-arriving image from remounting tool content the reader already opened. Unit coverage pins that direct neighbor.
+
+Final same-fixture observations, with production timing untouched:
+
+```text
+Opening: 9 observations, 107 → 338.6953125px, monotonic non-decreasing;
+         every mutation/frame/end observation has exactly 1 img.
+Closing: 44 observations, 338.6953125 → 107px, monotonic non-increasing;
+         every mutation/frame/end observation has exactly 1 img.
+         first close mutation @2.7ms=107px; subsequent frames @3.4–324.1ms=107px.
+```
+
+[Complete compact tuples](r1-media-final-log.txt): `[phase, ms since toggle callback, aggregate height, img count]`. The observations establish no duplicate representation/overshoot in the recorded lifecycle; they are not compositor FPS measurements.
+
+![Media closed](round-1-media-closed/localOperatorDark.png)
+![Media expanded before close](round-1-media-open/localOperatorDark.png)
+![Media close result](round-1-media-close/localOperatorDark.png)
+
+### Review MAJOR: tail and arrival identity
+
+The added list→prose regression first failed on the reviewed implementation with `sameNode=false`. It now reuses the previous paragraph key when `blockStart` advances inside that still-live tail. A bounded one/two-paragraph overlap ledger also preserves the second paragraph's identity when a split first paragraph closes.
+
+```text
+[tail identity] list paragraphSame=true arrivalSame=true
+[tail identity] indented-code paragraphSame=true arrivalSame=true
+```
+
+The newest `lo-stream-chunk` span survives rather than remounting, so its mount-time CSS fade does not restart. This is DOM reconciliation proof, not a claim to have measured a native compositor animation timeline. [Failing control](r1-tail-repro.txt), [final gate/test output](r1-final-gates.txt).
+
+### C and Q6 nits
+
+- The fold test header now describes exit retention, height completion/240ms watchdog and steady closed unmount, with the atomic-media exception.
+- MotionEvidence now listens explicitly on `transitionstart` and labels elapsed samples **since transitionstart callback**, not CSS timeline age. Historical `motion-output.txt` has a provenance annotation instead of silently rewriting its readings. [Re-executed start-event output](r1-text-motion-start.txt) confirms duration `0.18s`, actual paused CSS timeline `90ms` at body height `100.88px`, and open height `108px`. The hidden host delivered that close callback after completion; its 0px readings are not intermediate exit proof. The production disclosure primitive is byte-unchanged in this remediation.
+
+### Remediation gates
+
+```text
+pnpm lint: Checked 1285 files in 398ms; 168 existing warnings; EXIT 0
+pnpm lint:scripts: 2 changed scripts lint-clean; EXIT 0
+pnpm check-types: main and renderer tsc --noEmit; EXIT 0
+pnpm check-themes: 59 themes up to date; 34140 contrast assertions; EXIT 0
+node --test scripts/streaming-markdown-parity.test.mjs scripts/trace-fold-behaviour.test.mjs:
+tests 29; pass 29; fail 0; skipped 0; duration_ms 2167.496875; EXIT 0
+```
+
+The isolated runs use the shared Corepack cache explicitly to avoid dependency downloads, `NODE_OPTIONS=--no-experimental-webstorage` for the already-proven Node compatibility issue, and no inherited session/CMUX environment. CI remains the full desktop gate on the new head.
 
 ## Deliberately not changed
 

@@ -477,6 +477,94 @@ test("an incomplete next prose line has settled paragraph boxes, while list/fenc
 	}
 });
 
+test("a non-split list/indented-code close retains the live tail and newest arrival node", async () => {
+	const dom = mountDom();
+	try {
+		const container = dom.window.document.getElementById("root");
+		const root = createRoot(container);
+		for (const prefix of ["- first\n\nplain te", "    code\n\nplain te"]) {
+			await act(async () =>
+				root.render(createElement(StreamingMarkdown, { content: prefix })),
+			);
+			await act(async () =>
+				root.render(
+					createElement(StreamingMarkdown, { content: `${prefix}xt` }),
+				),
+			);
+			const tail = container.querySelector(".lo-stream-tail");
+			const newest = Array.from(tail.querySelectorAll(".lo-stream-chunk")).find(
+				(span) => span.textContent === "xt",
+			);
+			assert.ok(newest, "the last delta owns the mount-time CSS fade");
+			await act(async () =>
+				root.render(
+					createElement(StreamingMarkdown, { content: `${prefix}xt\n` }),
+				),
+			);
+			const after = container.querySelector(".lo-stream-tail");
+			console.info(
+				"[tail identity]",
+				prefix.startsWith("-") ? "list" : "indented-code",
+				`paragraphSame=${after === tail}`,
+				`arrivalSame=${Array.from(after.querySelectorAll(".lo-stream-chunk")).find((span) => span.textContent === "xt") === newest}`,
+			);
+			assert.ok(
+				after === tail,
+				"closing the preceding block must not remount the live paragraph (sameNode=false)",
+			);
+			assert.ok(
+				Array.from(after.querySelectorAll(".lo-stream-chunk")).find(
+					(span) => span.textContent === "xt",
+				) === newest,
+				"the newest offset-keyed arrival must not restart its mount-time fade",
+			);
+		}
+		await act(async () => root.unmount());
+	} finally {
+		dom.restore();
+	}
+});
+
+test("the split second tail keeps its identity when the first prose paragraph closes", async () => {
+	const dom = mountDom();
+	try {
+		const container = dom.window.document.getElementById("root");
+		const root = createRoot(container);
+		const prefix = "First paragraph.\n\nSecond li";
+		await act(async () =>
+			root.render(createElement(StreamingMarkdown, { content: prefix })),
+		);
+		await act(async () =>
+			root.render(createElement(StreamingMarkdown, { content: `${prefix}ne` })),
+		);
+		const tails = container.querySelectorAll(".lo-stream-tail");
+		assert.equal(tails.length, 2);
+		const second = tails[1];
+		const newest = Array.from(second.querySelectorAll(".lo-stream-chunk")).find(
+			(span) => span.textContent === "ne",
+		);
+		assert.ok(newest, "the split paragraph owns a live arrival");
+		await act(async () =>
+			root.render(
+				createElement(StreamingMarkdown, { content: `${prefix}ne\n` }),
+			),
+		);
+		const after = container.querySelector(".lo-stream-tail");
+		assert.ok(
+			after === second,
+			"the survivor must reuse the second paragraph, not the now-closed first one",
+		);
+		assert.ok(
+			Array.from(after.querySelectorAll(".lo-stream-chunk")).find(
+				(span) => span.textContent === "ne",
+			) === newest,
+		);
+		await act(async () => root.unmount());
+	} finally {
+		dom.restore();
+	}
+});
+
 /* ------------------------------- 4. every construct's payload survives, in order */
 
 test("every construct's payload text is painted, in order, at every flush", async () => {

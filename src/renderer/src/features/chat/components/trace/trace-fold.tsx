@@ -58,11 +58,13 @@
  * as the reader, and a second open-state owner beside the disclosure's own is
  * exactly how the two end up disagreeing about whether the fold is open.
  *
- * This aggregate line opts into §B7's 180ms fold transition. The shared
+ * Text-only aggregates opt into §B7's 180ms fold transition. The shared
  * primitive clips an intrinsically sized grid, retains children only during
- * closing, and unmounts them afterward. Individual tool details still use the
- * immediate/default path: smoothing a group must not keep every hidden tool
- * payload mounted or change the ledger's steady-state scrolling cost.
+ * closing, and unmounts them afterward. Media-bearing aggregates keep an atomic
+ * swap: exit retention plus the condensed strip would paint each picture twice
+ * and add the strip's height before shrinking. Immediate replacement preserves
+ * one presentation and monotonic geometry in both directions, including a fold
+ * restored already open. Individual tool details keep the same immediate path.
  *
  * ## The fold never reorders anything
  *
@@ -267,7 +269,11 @@ export const TraceFold = ({
 			data-fold-ids={recordIds.join(" ")}
 		>
 			<Disclosure
-				animate
+				// Disable only media EXIT retention: row pictures and the strip swap
+				// in one commit. Keep the wrapper while open so a run's first picture
+				// cannot remount tool details the reader already opened. A media open
+				// mounts this wrapper expanded, hence is also an atomic replacement.
+				animate={open || !condensedMedia}
 				/*
 				 * CONTROLLED, because the app closes this fold as well as the reader
 				 * (`open`/`onOpenChange` above): the alternative is the reader's state

@@ -1,3 +1,10 @@
+Historical initial capture: the original story subscribed to transitionrun.
+The closing @...ms labels below are relative to that callback's delivery,
+not the CSS animation's timeline start. Round-one remediation now subscribes
+explicitly to transitionstart and labels elapsed time since its callback.
+See r1-text-motion-start.txt for the re-executed measurements; that hidden-host
+close callback landed after completion, so it is not intermediate-frame proof.
+
     - InlineTextBox "closed: height=0.00px; client=0; scroll=0; overflowY=hidden; duration=0.18s; rows=0px;"
     - InlineTextBox "animations=; reduced=false; hidden=true; inert=true; payload=false"
     - InlineTextBox "transitionrun: height=18.91px; client=19; scroll=19; overflowY=hidden; duration=0.18s;"

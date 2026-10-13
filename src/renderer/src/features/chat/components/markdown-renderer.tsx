@@ -1,6 +1,13 @@
 import { cn } from "@shared/lib/utils";
 import type { CSSProperties, FC, MouseEvent as ReactMouseEvent } from "react";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import {
+	memo,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import ReactMarkdown, {
 	type Components,
 	type UrlTransform,
@@ -860,6 +867,10 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 	if (firstLive > 0) arrivals.splice(0, firstLive);
 
 	const tailEnd = blockStart + trimmedEndLength(content.slice(blockStart));
+	const previousTailParagraphs = useRef<
+		{ start: number; end: number; key: number }[]
+	>([]);
+	const nextTailKey = useRef(0);
 
 	/*
 	 * A pending blank run followed by an INCOMPLETE next line is two prose
@@ -887,6 +898,31 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 		tailParagraphs.push([blockStart, tailEnd]);
 	}
 
+	/* Source offsets belong to arrival spans, not to their paragraph's identity:
+	 * closing a list/code block advances blockStart INSIDE an already-painted
+	 * tail. key={start} remounted that tail and restarted every in-flight fade.
+	 * Retain the overlapping paragraph once; a newly split second paragraph gets
+	 * a new key, and when it becomes the sole tail it keeps that same key. The
+	 * ledger is bounded to the one/two live paragraphs, never the whole message.
+	 */
+	const reused = new Set<number>();
+	const liveParagraphs = tailParagraphs.map(([start, end]) => {
+		const previous = previousTailParagraphs.current.find(
+			(paragraph) =>
+				!reused.has(paragraph.key) &&
+				paragraph.start <= start &&
+				start < paragraph.end,
+		);
+		const key = previous?.key ?? nextTailKey.current++;
+		reused.add(key);
+		return { start, end, key };
+	});
+	useLayoutEffect(() => {
+		// Compare to the actual committed DOM, not an abandoned concurrent render.
+		// This also runs before the next streamed flush can need these identities.
+		previousTailParagraphs.current = liveParagraphs;
+	});
+
 	const style = useStyleVariables(styleProps);
 
 	return (
@@ -897,7 +933,7 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 				// biome-ignore lint/suspicious/noArrayIndexKey: append-only list, index is the identity
 				<StableBlock key={index} source={block} />
 			))}
-			{tailParagraphs.map(([start, end]) => {
+			{liveParagraphs.map(({ start, end, key }) => {
 				const segments: Arrival[] = [{ offset: start, animate: false }];
 				for (const arrival of arrivals) {
 					if (arrival.offset >= end) break;
@@ -905,7 +941,7 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 					else segments[0].animate = arrival.animate;
 				}
 				return (
-					<p className="lo-stream-tail" key={start}>
+					<p className="lo-stream-tail" key={key}>
 						{segments.map((segment, index) => (
 							<ArrivedText
 								key={segment.offset}

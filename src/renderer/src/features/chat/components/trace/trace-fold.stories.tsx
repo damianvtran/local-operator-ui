@@ -257,12 +257,91 @@ const PicturesLatch = ({ whenOpen = false }: { whenOpen?: boolean }) => {
  * defined inside `render`: a component constructed per render is a new TYPE,
  * and React would remount the fold (and drop the state this exists to hold).
  */
-const FoldHost = (props: ComponentProps<typeof TraceFold>) => {
+// Opt-in evidence on ImageShown: sample the real toggle/DOM lifecycle without
+// slowing or pausing the animation. One observer/RAF chain is reaped on finish,
+// reversal and unmount; no production timing or image content is substituted.
+const recordMediaLifecycle = (host: HTMLDivElement, opening: boolean) => {
+	const samples: {
+		phase: string;
+		ms: number;
+		height: number;
+		images: number;
+	}[] = [];
+	const start = performance.now();
+	const record = (phase: string) => {
+		const fold = host.querySelector<HTMLElement>("[data-fold-ids]");
+		if (fold)
+			samples.push({
+				phase,
+				ms: performance.now() - start,
+				height: fold.getBoundingClientRect().height,
+				images: fold.querySelectorAll("img").length,
+			});
+	};
+	record("before toggle");
+	const observer = new MutationObserver(() => record("mutation"));
+	observer.observe(host, { subtree: true, childList: true, attributes: true });
+	let frame = 0;
+	const tick = () => {
+		record("frame");
+		frame = requestAnimationFrame(tick);
+	};
+	frame = requestAnimationFrame(tick);
+	const timer = setTimeout(() => {
+		record("observation end");
+		observer.disconnect();
+		cancelAnimationFrame(frame);
+		// Compact tuples keep the complete run under the browser log entry bound.
+		console.info(
+			"[media lifecycle]",
+			JSON.stringify({
+				direction: opening ? "opening" : "closing",
+				samples: samples.map(({ phase, ms, height, images }) => [
+					phase === "before toggle"
+						? "before"
+						: phase === "mutation"
+							? "mutation"
+							: phase === "frame"
+								? "frame"
+								: "end",
+					Number(ms.toFixed(1)),
+					height,
+					images,
+				]),
+			}),
+		);
+	}, 330);
+	return () => {
+		observer.disconnect();
+		cancelAnimationFrame(frame);
+		clearTimeout(timer);
+	};
+};
+
+const FoldHost = ({
+	captureMediaLifecycle = false,
+	...props
+}: ComponentProps<typeof TraceFold> & { captureMediaLifecycle?: boolean }) => {
 	const [open, setOpen] = useState(false);
+	const host = useRef<HTMLDivElement>(null);
+	const cancelCapture = useRef<(() => void) | null>(null);
+	useEffect(() => () => cancelCapture.current?.(), []);
 	// The spread's `open`/`onOpenChange` (the inert story defaults) are
 	// deliberately overridden: the host plays the registry, and the press must
 	// land in its state for the sweeps that click the trigger.
-	return <TraceFold {...props} open={open} onOpenChange={setOpen} />;
+	const fold = (
+		<TraceFold
+			{...props}
+			open={open}
+			onOpenChange={(next) => {
+				cancelCapture.current?.();
+				if (captureMediaLifecycle && host.current)
+					cancelCapture.current = recordMediaLifecycle(host.current, next);
+				setOpen(next);
+			}}
+		/>
+	);
+	return captureMediaLifecycle ? <div ref={host}>{fold}</div> : fold;
 };
 
 const meta = {
@@ -278,7 +357,12 @@ const meta = {
 	args: { open: false, onOpenChange: () => {} },
 	render: (args, context) => (
 		<Sheet>
-			<FoldHost {...args} />
+			<FoldHost
+				{...args}
+				captureMediaLifecycle={
+					context?.parameters?.mediaMotionEvidence === true
+				}
+			/>
 			<PicturesLatch whenOpen={context?.parameters?.picturesLatch === "open"} />
 		</Sheet>
 	),
@@ -396,7 +480,7 @@ const MotionEvidenceHost = () => {
 	useEffect(() => {
 		const element = host.current;
 		let frame = 0;
-		const onRun = (event: TransitionEvent) => {
+		const onStart = (event: TransitionEvent) => {
 			const body = event.target as HTMLElement;
 			if (
 				event.propertyName !== "grid-template-rows" ||
@@ -414,7 +498,7 @@ const MotionEvidenceHost = () => {
 				}
 				setSamples((previous) => [
 					...previous,
-					readMotionGeometry(host.current, "transitionrun"),
+					readMotionGeometry(host.current, "transitionstart"),
 				]);
 				for (const animation of animations) {
 					animation.pause();
@@ -433,7 +517,7 @@ const MotionEvidenceHost = () => {
 					collected.push(
 						readMotionGeometry(
 							host.current,
-							`closing @${(performance.now() - start).toFixed(1)}ms`,
+							`closing @${(performance.now() - start).toFixed(1)}ms since transitionstart callback`,
 						),
 					);
 					if (performance.now() - start < 260)
@@ -443,9 +527,9 @@ const MotionEvidenceHost = () => {
 				frame = requestAnimationFrame(sample);
 			}
 		};
-		element?.addEventListener("transitionrun", onRun);
+		element?.addEventListener("transitionstart", onStart);
 		return () => {
-			element?.removeEventListener("transitionrun", onRun);
+			element?.removeEventListener("transitionstart", onStart);
 			cancelAnimationFrame(frame);
 		};
 	}, [open]);
@@ -775,6 +859,7 @@ export const ImageHidden: Story = {
 
 /** The same finished run AFTER: the picture it produced is on screen. */
 export const ImageShown: Story = {
+	parameters: { mediaMotionEvidence: true },
 	args: {
 		...foldProps(IMAGE_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 3_000, running: false },

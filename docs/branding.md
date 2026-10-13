@@ -752,13 +752,15 @@ isolation.**
 **Motion** — durations 80 / 120 / 180 / 240ms. Nothing in this app animates for
 longer than 240ms, and only something entering the screen earns that.
 
-- **Aggregate trace folds opt into a 180ms height/opacity transition; individual
-  tool disclosures remain immediate.** The shared `Disclosure` clips an
-  intrinsically sized grid and retains children only during closing, then
-  unmounts them. A closed forty-row turn therefore does not pay for forty hidden
-  payloads. Reduced motion removes the transition and exit retention. The
-  chevron still swaps (`ChevronRight` ⇄ `ChevronDown`) rather than rotating;
-  folding hides rows in place, never reorders them.
+- **Text-only aggregate trace folds opt into a 180ms height/opacity transition;
+  media-bearing folds and individual tool disclosures remain immediate.** The
+  shared `Disclosure` clips an intrinsically sized grid and retains children
+  only during closing, then unmounts them. Media folds atomically swap expanded
+  pictures for their condensed strip: retaining both would duplicate pictures
+  and grow the fold before shrinking it. A closed forty-row turn therefore does
+  not pay for forty hidden payloads. Reduced motion removes the transition and
+  exit retention. The chevron still swaps (`ChevronRight` ⇄ `ChevronDown`)
+  rather than rotating; folding hides rows in place, never reorders them.
 - **Indeterminate liveness is exempt from the 240ms ceiling** — a shimmer or a
   spinner that must run until the machine stops cannot be capped at 240ms. One
   such element per surface, `opacity` or `background-position` only, never a
