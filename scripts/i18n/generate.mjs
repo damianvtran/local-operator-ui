@@ -228,6 +228,26 @@ export function readBundles(cataloguesDir) {
 				(name) => name.endsWith(".json") && !name.endsWith(".context.json"),
 			)
 			.sort();
+		/*
+		 * ONE KEY, ONE FILE, PER LOCALE (review round 1, R4). Two files in the same
+		 * locale defining the same key would silently shadow in the spread below
+		 * (the later file wins), which is the §2.2 collision rule the en reader
+		 * already enforces. The check is repeated here for every locale so a
+		 * translated namespace cannot re-declare a key another file owns.
+		 */
+		const owner = new Map();
+		for (const file of files) {
+			const data = JSON.parse(readFileSync(join(dir, file), "utf8"));
+			for (const key of Object.keys(data)) {
+				const previous = owner.get(key);
+				if (previous) {
+					throw new Error(
+						`${locale}/${file}: ${key} is already defined in ${locale}/${previous} — a key belongs to one namespace file`,
+					);
+				}
+				owner.set(key, file);
+			}
+		}
 		const imports = files.map((file) => {
 			const namespace = file.slice(0, -".json".length);
 			const identifier = bundleIdentifier(locale, namespace);

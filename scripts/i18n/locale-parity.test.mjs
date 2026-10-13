@@ -112,6 +112,48 @@ test("the English source is non-empty (the guard would pass vacuously otherwise)
 });
 
 for (const locale of localeDirs().filter((name) => name !== SOURCE_LOCALE)) {
+	/*
+	 * NON-EMPTY FIRST (review round 1, R3). The three checks below are per-key and
+	 * per-value, so an EMPTY locale file — or an empty locale directory — violates
+	 * none of them and passed all four tests vacuously. A shipped locale is a claim
+	 * that there are messages behind it; this is the assertion that makes the rest
+	 * non-vacuous.
+	 */
+	test(`[${locale}] ships at least one message (not an empty claim)`, () => {
+		let messages = 0;
+		for (const file of messageFiles(locale)) {
+			messages += Object.keys(readCatalogue(locale, file)).length;
+		}
+		assert.ok(
+			messages > 0,
+			`${locale} has no messages at all — an empty locale directory is not a shipped translation`,
+		);
+	});
+
+	/*
+	 * ONE KEY, ONE FILE (review round 1, R4). Two namespace files in the same
+	 * locale defining the same key silently shadow in the generated spread (the
+	 * later file wins), and the per-key checks above see only well-formed values.
+	 * The generator rejects this too; the guard states it independently so a
+	 * hand-added second file cannot slip through the runtime.
+	 */
+	test(`[${locale}] defines each key in at most one namespace file`, () => {
+		const owner = new Map();
+		const duplicates = [];
+		for (const file of messageFiles(locale)) {
+			for (const key of Object.keys(readCatalogue(locale, file))) {
+				const previous = owner.get(key);
+				if (previous) duplicates.push(`${key}: ${previous} and ${file}`);
+				else owner.set(key, file);
+			}
+		}
+		assert.deepEqual(
+			duplicates,
+			[],
+			`keys defined in more than one file in ${locale}`,
+		);
+	});
+
 	test(`[${locale}] names only keys the English source defines`, () => {
 		const unknown = [];
 		for (const file of messageFiles(locale)) {
