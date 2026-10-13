@@ -33,6 +33,8 @@ import enUiProviders from "./catalogues/en/ui.providers.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
 import enUiSettings from "./catalogues/en/ui.settings.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
+import frUiConsole from "./catalogues/fr/ui.console.json";
+import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
 import frUiSettings from "./catalogues/fr/ui.settings.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
@@ -57,6 +59,8 @@ export const bundledCatalogues: Readonly<
 > = {
 	en: bundledEnglish,
 	fr: {
+		...frUiConsole,
+		...frUiOnboarding,
 		...frUiSettings,
 	},
 };
