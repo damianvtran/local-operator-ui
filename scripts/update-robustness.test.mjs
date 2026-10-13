@@ -9858,6 +9858,78 @@ test("the server channel's rule names its four states from the readings", async 
 });
 
 /**
+ * The 2026-10-12 race, as the rule that closes it: PyPI names a version
+ * before its files finish uploading, so the published-version read must
+ * answer only once the release carries an artifact the installer can
+ * download. Driven through the pure module, because this is the rule's own
+ * case and `checkForBackendUpdates` consumes exactly its answer.
+ */
+test("a PyPI version with no downloadable wheel yet is not published", async () => {
+	const { rule, dir } = await loadVerdictRule();
+	try {
+		const wheel = {
+			filename: "local_operator-0.70.13-py3-none-any.whl",
+			packagetype: "bdist_wheel",
+			yanked: false,
+			url: "https://files.pythonhosted.org/packages/local_operator-0.70.13-py3-none-any.whl",
+		};
+		const sdist = {
+			filename: "local_operator-0.70.13.tar.gz",
+			packagetype: "sdist",
+			yanked: false,
+			url: "https://files.pythonhosted.org/packages/local_operator-0.70.13.tar.gz",
+		};
+		// The race itself: newest version named, nothing to download yet.
+		assert.equal(
+			rule.publishedVersionFromPypi({
+				info: { version: "0.70.13" },
+				urls: [],
+				releases: { "0.70.13": [] },
+			}),
+			null,
+		);
+		// Mid-upload shapes: an sdist alone, a yanked wheel, a wheel with no
+		// URL — none of them is an artifact an installer can take.
+		for (const urls of [
+			[sdist],
+			[{ ...wheel, yanked: true }],
+			[{ ...wheel, yanked: "broken metadata" }],
+			[{ ...wheel, url: "" }],
+		]) {
+			assert.equal(
+				rule.publishedVersionFromPypi({
+					info: { version: "0.70.13" },
+					urls,
+				}),
+				null,
+				JSON.stringify(urls),
+			);
+		}
+		// Ready: a downloadable wheel is named, on either file list.
+		assert.equal(
+			rule.publishedVersionFromPypi({
+				info: { version: "0.70.13" },
+				urls: [sdist, wheel],
+			}),
+			"0.70.13",
+		);
+		assert.equal(
+			rule.publishedVersionFromPypi({
+				info: { version: "0.70.13" },
+				releases: { "0.70.13": [wheel] },
+			}),
+			"0.70.13",
+		);
+		// Unreadable documents stay unreadable, not "ready at version null".
+		for (const payload of [null, {}, { info: {} }, { info: { version: "" } }]) {
+			assert.equal(rule.publishedVersionFromPypi(payload), null);
+		}
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/**
  * The other half of Q2: the fix must not reclassify anything this product
  * actually publishes. These are the comparisons the update path has always
  * made, kept as themselves so a future tightening of the grammar names the
