@@ -9872,6 +9872,12 @@ test("a PyPI version with no downloadable wheel yet is not published", async () 
 			packagetype: "bdist_wheel",
 			yanked: false,
 			url: "https://files.pythonhosted.org/packages/local_operator-0.70.13-py3-none-any.whl",
+			digests: { sha256: "a".repeat(64) },
+		};
+		const macWheel = {
+			...wheel,
+			filename: "local_operator-0.70.13-py3-none-macosx_11_0_universal2.whl",
+			url: "https://files.pythonhosted.org/packages/local_operator-0.70.13-py3-none-macosx_11_0_universal2.whl",
 		};
 		const sdist = {
 			filename: "local_operator-0.70.13.tar.gz",
@@ -9881,11 +9887,14 @@ test("a PyPI version with no downloadable wheel yet is not published", async () 
 		};
 		// The race itself: newest version named, nothing to download yet.
 		assert.equal(
-			rule.publishedVersionFromPypi({
-				info: { version: "0.70.13" },
-				urls: [],
-				releases: { "0.70.13": [] },
-			}),
+			rule.publishedVersionFromPypi(
+				{
+					info: { version: "0.70.13" },
+					urls: [],
+					releases: { "0.70.13": [] },
+				},
+				"linux",
+			),
 			null,
 		);
 		// Mid-upload shapes: an sdist alone, a yanked wheel, a wheel with no
@@ -9895,34 +9904,83 @@ test("a PyPI version with no downloadable wheel yet is not published", async () 
 			[{ ...wheel, yanked: true }],
 			[{ ...wheel, yanked: "broken metadata" }],
 			[{ ...wheel, url: "" }],
+			[{ ...wheel, digests: {} }],
 		]) {
 			assert.equal(
-				rule.publishedVersionFromPypi({
-					info: { version: "0.70.13" },
-					urls,
-				}),
+				rule.publishedVersionFromPypi(
+					{ info: { version: "0.70.13" }, urls },
+					"linux",
+				),
 				null,
 				JSON.stringify(urls),
 			);
 		}
 		// Ready: a downloadable wheel is named, on either file list.
 		assert.equal(
-			rule.publishedVersionFromPypi({
-				info: { version: "0.70.13" },
-				urls: [sdist, wheel],
-			}),
+			rule.publishedVersionFromPypi(
+				{ info: { version: "0.70.13" }, urls: [sdist, wheel] },
+				"linux",
+			),
 			"0.70.13",
 		);
 		assert.equal(
-			rule.publishedVersionFromPypi({
-				info: { version: "0.70.13" },
-				releases: { "0.70.13": [wheel] },
-			}),
+			rule.publishedVersionFromPypi(
+				{
+					info: { version: "0.70.13" },
+					releases: { "0.70.13": [wheel] },
+				},
+				"linux",
+			),
 			"0.70.13",
 		);
+		// The platform half (review round 1, U1): the inter-wheel window.
+		// On macOS the pure wheel alone does not install — the offer feeds
+		// an installer that pins the universal2 wheel — and off macOS the
+		// macOS wheel alone installs nothing.
+		assert.equal(
+			rule.publishedVersionFromPypi(
+				{ info: { version: "0.70.13" }, urls: [wheel] },
+				"darwin",
+			),
+			null,
+		);
+		assert.equal(
+			rule.publishedVersionFromPypi(
+				{ info: { version: "0.70.13" }, urls: [wheel, macWheel] },
+				"darwin",
+			),
+			"0.70.13",
+		);
+		assert.equal(
+			rule.publishedVersionFromPypi(
+				{ info: { version: "0.70.13" }, urls: [macWheel] },
+				"linux",
+			),
+			null,
+		);
+		// The body seam the service actually calls (U2): real JSON text in,
+		// named-vs-ready out; malformed text is unreadable, never a throw.
+		assert.deepEqual(
+			rule.readPypiReleaseBody(
+				JSON.stringify({ info: { version: "0.70.13" }, urls: [] }),
+				"linux",
+			),
+			{ namedVersion: "0.70.13", readyVersion: null },
+		);
+		assert.deepEqual(
+			rule.readPypiReleaseBody(
+				JSON.stringify({ info: { version: "0.70.13" }, urls: [wheel] }),
+				"linux",
+			),
+			{ namedVersion: "0.70.13", readyVersion: "0.70.13" },
+		);
+		assert.deepEqual(rule.readPypiReleaseBody("not json", "linux"), {
+			namedVersion: null,
+			readyVersion: null,
+		});
 		// Unreadable documents stay unreadable, not "ready at version null".
 		for (const payload of [null, {}, { info: {} }, { info: { version: "" } }]) {
-			assert.equal(rule.publishedVersionFromPypi(payload), null);
+			assert.equal(rule.publishedVersionFromPypi(payload, "linux"), null);
 		}
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
