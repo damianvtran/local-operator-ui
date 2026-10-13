@@ -433,6 +433,72 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Native QA on the shared development host must not require another local
+      # whole-renderer build. Reuse this existing, independently eligible job:
+      # unlike pack it does not depend on typecheck succeeding. The artifact is
+      # evidence input, NOT approval to merge a red build. No credentials/native
+      # dependencies are included; OAuth placeholders deliberately cannot log in.
+      - name: Build plain-JS bundle for isolated native QA
+        id: qa_bundle
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        timeout-minutes: 10
+        env:
+          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
+          VITE_LOCAL_OPERATOR_API_URL: 'http://127.0.0.1:8080'
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          LOCAL_OPERATOR_NO_NOTIFICATIONS: '1'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+          VITE_GOOGLE_CLIENT_ID: 'qa-not-configured'
+          VITE_GOOGLE_CLIENT_SECRET: 'qa-not-configured'
+          VITE_MICROSOFT_CLIENT_ID: '00000000-0000-0000-0000-000000000000'
+          VITE_MICROSOFT_TENANT_ID: '00000000-0000-0000-0000-000000000000'
+          QA_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          pnpm build
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          import { createHash } from 'node:crypto';
+          import { readdirSync, readFileSync, lstatSync, writeFileSync } from 'node:fs';
+          import { join } from 'node:path';
+          const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
+          const files = [];
+          const walk = (dir) => {
+            for (const name of readdirSync(dir).sort()) {
+              const path = join(dir, name);
+              const facts = lstatSync(path);
+              if (name.startsWith('.') || facts.isSymbolicLink()) throw new Error(`Unsafe QA artifact path: ${path}`);
+              if (facts.isDirectory()) walk(path);
+              else files.push({ path: path.slice(4), sha256: createHash('sha256').update(readFileSync(path)).digest('hex') });
+            }
+          };
+          walk('out');
+          for (const path of ['main/index.js', 'preload/index.js', 'renderer/index.html']) {
+            if (!files.some((file) => file.path === path)) throw new Error(`Missing QA bundle entry: ${path}`);
+          }
+          if (files.some((file) => /\.(jsc|node)$/.test(file.path))) throw new Error('QA bundle must contain no bytecode/native libraries');
+          writeFileSync('out/build-provenance.json', JSON.stringify({
+            format: 1, checkoutCommit: git('rev-parse', 'HEAD'), requestedHead: process.env.QA_REQUESTED_HEAD,
+            srcTree: git('rev-parse', 'HEAD:src'), scriptsTree: git('rev-parse', 'HEAD:scripts'),
+            workflowCommit: process.env.GITHUB_SHA, runId: process.env.GITHUB_RUN_ID,
+            packageVersion: JSON.parse(readFileSync('package.json', 'utf8')).version,
+            oauthPlaceholders: true, nativeDependenciesIncluded: false,
+            fixtureBackendUrl: process.env.VITE_LOCAL_OPERATOR_API_URL,
+            requiredRuntimeEnv: { VITE_LOCAL_OPERATOR_API_URL: process.env.VITE_LOCAL_OPERATOR_API_URL,
+              VITE_DISABLE_BACKEND_MANAGER: 'true', LOCAL_OPERATOR_NO_NOTIFICATIONS: '1',
+              LOCAL_OPERATOR_UI_TELEMETRY: 'off', LOCAL_OPERATOR_UI_WINDOW_MODE: 'headless' },
+            files,
+          }, null, 2));
+          NODE
+
+      - name: Upload isolated native QA bundle
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.qa_bundle.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-qa-bundle-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: out/
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Run the desktop suite and assert it actually ran
         # ONE run, not two. This job used to invoke `pnpm test:desktop` twice:
         # once for its exit status and again inside its own count assertions,

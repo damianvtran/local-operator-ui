@@ -184,7 +184,7 @@ export type ConsoleStartup =
 			/** `disabled` is the kill switch; `pty_unavailable` is the native
 			 * module, which the design treats as a packaging bug with a remedy the
 			 * user can report (design 15). */
-			reason: "disabled" | "pty_unavailable";
+			reason: "disabled" | "pty_unavailable" | "startup_failed";
 			detail: string;
 			stop: () => Promise<void>;
 	  };
@@ -291,158 +291,209 @@ export async function startConsoleHost(
 		);
 	}
 
-	const configDir = options.configDir ?? localOperatorConfigDir();
-	const history = new ConsoleHistory(
-		join(configDir, "run", "ui-console", "history"),
-	);
-	const registry = new ConsoleRegistry<SurfaceRuntime>();
-	/*
-	 * The completion seam (design 12): the state-change push the renderer refetches
-	 * on, and the banner when nobody is looking at the surface. Both are the host's
-	 * own callbacks rather than a poll, because the host knows the moment each
-	 * happens.
-	 *
-	 * `host` is read through a thunk: these options are handed to the constructor
-	 * that produces it.
-	 */
 	let hostRef: ConsoleHost | null = null;
-	const completion = consoleCompletionHooks({
-		host: () => hostRef,
-		registry,
-		notifier: () => options.notifier ?? null,
-		log,
-		now: options.now,
-	});
-	/*
-	 * The offscreen capture view (design 13.2's second and third rows). Built here
-	 * because this is the one place that knows the app's own URLs, and left null
-	 * when the app handed none — in which case `console_screenshot` on a surface
-	 * with no displayed pane answers the typed refusal rather than a blank frame.
-	 */
-	const capture =
-		options.consoleCaptureUrl && options.preloadPath
-			? new ConsoleCaptureView({
-					url: options.consoleCaptureUrl,
-					preload: options.preloadPath,
-					log,
-				})
-			: null;
-	const host = new ConsoleHost(registry, {
-		window: () => options.window,
-		log,
-		history,
-		now: options.now,
-		// Resolved BEFORE the host exists, so no surface can be created against the
-		// launch environment and then start behaving like the user's terminal later:
-		// a surface's PATH is decided here, once, and every surface this host makes
-		// carries the same one. Bounded by the resolver's own timeout (it never
-		// rejects and answers null when the shell cannot speak), and no part of the
-		// app's own startup waits on it: the browser host is attached to the window
-		// without being awaited, so the cost of a slow rc here is this host coming
-		// online later, not the app failing to come up.
-		env: await withUserShellPath(process.env, options.userShellPath),
-		captureOffscreen: capture
-			? (request) => capture.capture(request)
-			: undefined,
-		spawn:
-			options.spawn ??
-			((spawnOptions: SpawnOptions) =>
-				spawnPty(load.module as PtyModule, spawnOptions, (report) => {
-					// A heal is worth a line: it means the artifact or the update path
-					// delivered the wrong mode, which is the packaging defect P13 exists
-					// to catch, and a silent heal would hide the next one.
-					log(
-						`[console] restored the exec bit on ${report.path ?? "spawn-helper"}`,
-					);
-				})),
-		/*
-		 * ONE PUSHER, and it is A's. `broadcastConsoleState` was already the app's
-		 * single "the projection moved" signal when this branch arrived; the
-		 * completion seam below therefore does NOT push a second copy of the same
-		 * frame. It only raises a banner, which is the half a push cannot express —
-		 * and the host calls `onChanged` for a mark and an exit too, so the renderer
-		 * still refetches on both (see `ConsoleHostOptions.onExit`).
-		 */
-		onChanged: () => {
-			broadcastConsoleState(options.window);
-		},
-		onMark: completion.onMark,
-		onExit: completion.onExit,
-		onReveal: (request) => {
-			// The renderer's half of `reveal` (design 10.4): whether the session an
-			// agent named is the one on screen is a question only the renderer can
-			// answer, and this push never carries a request to raise the window.
-			const window = options.window;
-			if (window.isDestroyed()) return;
-			window.webContents.send("console-reveal", {
-				surface: request.surface,
-				session_id: request.sessionId,
-				mode: request.mode,
-			});
-		},
-	});
-
-	if (options.restoreHistory !== false) {
-		const retained = history
-			.list()
-			.sort((a, b) => b.meta.last_seen_at - a.meta.last_seen_at)
-			.slice(0, MAX_SURFACES_PER_APP);
-		for (const surface of retained) {
-			host.restore(surface.meta, surface.bytes);
+	let capture: ConsoleCaptureView | null = null;
+	let host: ConsoleHost | null = null;
+	let rollbackOwners: Array<() => void> = [];
+	const cleanupStartupOwners = (): void => {
+		const pending: Array<() => void> = [];
+		const failures: unknown[] = [];
+		for (const release of rollbackOwners.splice(0).reverse()) {
+			try {
+				release();
+			} catch (error) {
+				pending.unshift(release);
+				failures.push(error);
+			}
 		}
-		if (retained.length > 0) {
-			// The count and the honesty in one line: nothing restored here is running,
-			// and every one of them reads `live: false` from birth (design 7.3).
+		// Only this construction's exact owners survive a failed release. Stop
+		// can retry those callbacks; no next host or unrelated surface is touched.
+		rollbackOwners = pending;
+		if (failures.length)
+			throw new AggregateError(failures, "Partial console cleanup incomplete.");
+	};
+	try {
+		const configDir = options.configDir ?? localOperatorConfigDir();
+		const history = new ConsoleHistory(
+			join(configDir, "run", "ui-console", "history"),
+		);
+		const registry = new ConsoleRegistry<SurfaceRuntime>();
+		/*
+		 * The completion seam (design 12): the state-change push the renderer refetches
+		 * on, and the banner when nobody is looking at the surface. Both are the host's
+		 * own callbacks rather than a poll, because the host knows the moment each
+		 * happens.
+		 *
+		 * `host` is read through a thunk: these options are handed to the constructor
+		 * that produces it.
+		 */
+		const completion = consoleCompletionHooks({
+			host: () => hostRef,
+			registry,
+			notifier: () => options.notifier ?? null,
+			log,
+			now: options.now,
+		});
+		/*
+		 * The offscreen capture view (design 13.2's second and third rows). Built here
+		 * because this is the one place that knows the app's own URLs, and left null
+		 * when the app handed none — in which case `console_screenshot` on a surface
+		 * with no displayed pane answers the typed refusal rather than a blank frame.
+		 */
+		capture =
+			options.consoleCaptureUrl && options.preloadPath
+				? new ConsoleCaptureView({
+						url: options.consoleCaptureUrl,
+						preload: options.preloadPath,
+						log,
+					})
+				: null;
+		const captureView = capture;
+		if (captureView) rollbackOwners.push(() => captureView.dispose());
+		host = new ConsoleHost(registry, {
+			window: () => options.window,
+			log,
+			history,
+			now: options.now,
+			// Resolved BEFORE the host exists, so no surface can be created against the
+			// launch environment and then start behaving like the user's terminal later:
+			// a surface's PATH is decided here, once, and every surface this host makes
+			// carries the same one. Bounded by the resolver's own timeout (it never
+			// rejects and answers null when the shell cannot speak), and no part of the
+			// app's own startup waits on it: the browser host is attached to the window
+			// without being awaited, so the cost of a slow rc here is this host coming
+			// online later, not the app failing to come up.
+			env: await withUserShellPath(process.env, options.userShellPath),
+			captureOffscreen: captureView
+				? (request) => captureView.capture(request)
+				: undefined,
+			spawn:
+				options.spawn ??
+				((spawnOptions: SpawnOptions) =>
+					spawnPty(load.module as PtyModule, spawnOptions, (report) => {
+						// A heal is worth a line: it means the artifact or the update path
+						// delivered the wrong mode, which is the packaging defect P13 exists
+						// to catch, and a silent heal would hide the next one.
+						log(
+							`[console] restored the exec bit on ${report.path ?? "spawn-helper"}`,
+						);
+					})),
+			/*
+			 * ONE PUSHER, and it is A's. `broadcastConsoleState` was already the app's
+			 * single "the projection moved" signal when this branch arrived; the
+			 * completion seam below therefore does NOT push a second copy of the same
+			 * frame. It only raises a banner, which is the half a push cannot express —
+			 * and the host calls `onChanged` for a mark and an exit too, so the renderer
+			 * still refetches on both (see `ConsoleHostOptions.onExit`).
+			 */
+			onChanged: () => {
+				broadcastConsoleState(options.window);
+			},
+			onMark: completion.onMark,
+			onExit: completion.onExit,
+			onReveal: (request) => {
+				// The renderer's half of `reveal` (design 10.4): whether the session an
+				// agent named is the one on screen is a question only the renderer can
+				// answer, and this push never carries a request to raise the window.
+				const window = options.window;
+				if (window.isDestroyed()) return;
+				window.webContents.send("console-reveal", {
+					surface: request.surface,
+					session_id: request.sessionId,
+					mode: request.mode,
+				});
+			},
+		});
+
+		const ownedHost = host;
+		rollbackOwners.push(() => ownedHost.dispose(false));
+		if (options.restoreHistory !== false) {
+			const retained = history
+				.list()
+				.sort((a, b) => b.meta.last_seen_at - a.meta.last_seen_at)
+				.slice(0, MAX_SURFACES_PER_APP);
+			for (const surface of retained) {
+				host.restore(surface.meta, surface.bytes);
+			}
+			if (retained.length > 0) {
+				// The count and the honesty in one line: nothing restored here is running,
+				// and every one of them reads `live: false` from birth (design 7.3).
+				log(
+					`[console] restored ${retained.length} retained surface(s) from history; none of them is running`,
+				);
+			}
+		}
+
+		const collected = history.collect();
+		if (collected.removedSessions.length > 0) {
 			log(
-				`[console] restored ${retained.length} retained surface(s) from history; none of them is running`,
+				`[console] history GC removed ${collected.removedSurfaces} surface(s) from ${collected.removedSessions.length} session(s) older than the window`,
 			);
 		}
-	}
 
-	const collected = history.collect();
-	if (collected.removedSessions.length > 0) {
+		// Set once the host exists: the completion hooks look the host up lazily, so
+		// everything after this point can read the surface a mark or an exit names.
+		hostRef = host;
+		const readyHost = host;
+
+		registerConsoleIpc({
+			window: () => options.window,
+			expectedUrl: options.expectedUrl,
+			host: () => readyHost,
+			log,
+		});
+
 		log(
-			`[console] history GC removed ${collected.removedSurfaces} surface(s) from ${collected.removedSessions.length} session(s) older than the window`,
+			`[console] host ready on the existing endpoint: ${registry.count()} surface(s) (node-pty ${helperStatus(load.helper)})`,
 		);
+
+		return {
+			ok: true,
+			host,
+			registry,
+			counts: () => readyHost.counts(),
+			dispatch: async (method, params) => {
+				if (!isConsoleDispatchMethod(method)) {
+					// Unreachable through the RPC layer, which routes by the same predicate;
+					// a typed refusal here rather than an assertion keeps a mixed-up wiring
+					// from answering a browser method with a console result.
+					throw new Error(`not a console method: ${method}`);
+				}
+				return dispatchConsole(readyHost, method, params);
+			},
+			stop: async () => {
+				unregisterConsoleIpc();
+				// The capture view is a renderer process of its own (design 13.3), so it is
+				// released explicitly on quit rather than left to the app's teardown: an
+				// idle timer that outlives the host would keep it alive past the window.
+				capture?.dispose();
+				readyHost.dispose();
+				log("[console] host stopped");
+			},
+		};
+	} catch (error) {
+		// The browser owns the shared transport, not the console quota. A failed
+		// restore must release only this attempt's emulators/capture view and must
+		// never rewrite a partly restored history over the durable original.
+		try {
+			cleanupStartupOwners();
+		} catch (cleanupError) {
+			log(
+				`[console] partial cleanup retained for stop: ${String(cleanupError)}`,
+			);
+		}
+		hostRef = null;
+		const detail = String(error);
+		log(`[console] startup failed: ${detail}`);
+		registerRefusal("startup_failed", detail);
+		return {
+			ok: false,
+			reason: "startup_failed",
+			detail,
+			stop: async () => {
+				unregisterConsoleIpc();
+				cleanupStartupOwners();
+			},
+		};
 	}
-
-	// Set once the host exists: the completion hooks look the host up lazily, so
-	// everything after this point can read the surface a mark or an exit names.
-	hostRef = host;
-
-	registerConsoleIpc({
-		window: () => options.window,
-		expectedUrl: options.expectedUrl,
-		host: () => host,
-		log,
-	});
-
-	log(
-		`[console] host ready on the existing endpoint: ${registry.count()} surface(s) (node-pty ${helperStatus(load.helper)})`,
-	);
-
-	return {
-		ok: true,
-		host,
-		registry,
-		counts: () => host.counts(),
-		dispatch: async (method, params) => {
-			if (!isConsoleDispatchMethod(method)) {
-				// Unreachable through the RPC layer, which routes by the same predicate;
-				// a typed refusal here rather than an assertion keeps a mixed-up wiring
-				// from answering a browser method with a console result.
-				throw new Error(`not a console method: ${method}`);
-			}
-			return dispatchConsole(host, method, params);
-		},
-		stop: async () => {
-			unregisterConsoleIpc();
-			// The capture view is a renderer process of its own (design 13.3), so it is
-			// released explicitly on quit rather than left to the app's teardown: an
-			// idle timer that outlives the host would keep it alive past the window.
-			capture?.dispose();
-			host.dispose();
-			log("[console] host stopped");
-		},
-	};
 }
