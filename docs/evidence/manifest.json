@@ -10720,8 +10720,8 @@
     "note": "Two preserved records, not one, and the fields are not interchangeable. `head`/`capturedAt` name the commit and the time the capture was taken at. `srcTree`/`scriptsTree` are the tree hashes the aggregate fields carried before they were re-derived, and they never described `head`'s trees: they are `8d019993e`'s (`git rev-parse 8d019993e:src` = 6253e4196..., `:scripts` = 2fe452ad2...), the upstream commit whose stamp block wrote them, while `0f19ae5e2:src` is 5e6095c258e8.... `dirtyWorkingTree` is the branch's own `8e8660808`-era pass recording the scratch `.storybook/main.ts` docgen override that capture needed, deliberately not a current value: a re-derivation does not make an older capture clean. No frame was recaptured for this re-derivation, and these frames are not claimed to be current. What covers this branch's delta is specific: the five in `job-result-label-round5` show the job-result and statement register this branch owns, and the six under `chat-canonical-notices/session-incidents`, `session-incidents-narrow` and `notice-lengths` show the incident and notice registers - all historical captures, none of them a frame at this head, and one row of `session-incidents` and `session-incidents-narrow` paints through upstream's receipt model there instead. The rest of this branch's delta - the tooltip/selection union in `disclosure.tsx` and the scripts the gate reads - has no frame at this head, so its evidence is the PR's test and rebase rounds rather than a picture.",
     "head": "0f19ae5e271fc4cde0a4709bc8102be4dc4ff519",
     "capturedAt": "2026-09-13T11:13:12.499634Z",
-    "srcTree": "f05d5160b4b5963282465650e28a175df310ef3c",
-    "scriptsTree": "0f06ea3fc59c2e1a6a6950b90eb77a7e48195803",
+    "srcTree": "b7d9e4b9376614e8851ba615a0db2c79b5a2ca21",
+    "scriptsTree": "8091b8da5271171fb506d79df89d276cc0a8f5c2",
     "dirtyWorkingTree": true,
     "recaptured": false,
     "findingsRemediationRound1": {
