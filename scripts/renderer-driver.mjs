@@ -27347,7 +27347,7 @@ async function sceneSettingsLanguage(cdp) {
 	 * label is "App language in effect: en", so `caption.includes("en")` is
 	 * satisfied by the word "language" ALONE — it would pass for a caption naming
 	 * `en-CA`, `xx`, or nothing at all, which is precisely the discrimination this
-	 * assertion exists to provide. The caption's format is `<label>: <tag>`, so the
+	 * assertion exists to provide. The caption's format is `<sentence>: <tag>`, so the
 	 * tag is the text after the LAST colon; comparing that exactly is what ties the
 	 * caption to the daemon's answer.
 	 */
