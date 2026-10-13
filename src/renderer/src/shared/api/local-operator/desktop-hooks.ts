@@ -18,6 +18,7 @@ import { desktopResult } from "./desktop-api";
 import type { DesktopCapabilities, DesktopProvider } from "./desktop-api";
 
 export const desktopKeys = {
+	settings: ["desktop", "settings"] as const,
 	capabilities: ["desktop", "capabilities"] as const,
 	providers: ["desktop", "auth", "providers"] as const,
 	commands: ["desktop", "commands"] as const,

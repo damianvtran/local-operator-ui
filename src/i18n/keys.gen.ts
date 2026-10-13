@@ -137,6 +137,16 @@ export type MessageParams = {
 	"ui.settings.language.dialog.unavailable": undefined;
 	"ui.settings.language.effective": { locale: string };
 	"ui.settings.language.external_notice": { language: string };
+	"ui.settings.language.general.description": undefined;
+	"ui.settings.language.general.effective": { locale: string };
+	"ui.settings.language.general.last_known": { locale: string };
+	"ui.settings.language.general.no_resolution": undefined;
+	"ui.settings.language.general.pending": undefined;
+	"ui.settings.language.general.readback_error": undefined;
+	"ui.settings.language.general.saved": undefined;
+	"ui.settings.language.general.system": undefined;
+	"ui.settings.language.general.unavailable_choice": undefined;
+	"ui.settings.language.general.write_error": { message: string };
 	"ui.settings.language.palette_action": undefined;
 };
 

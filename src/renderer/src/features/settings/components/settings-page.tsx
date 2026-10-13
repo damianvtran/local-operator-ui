@@ -51,8 +51,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import { useLocation } from "react-router-dom";
 
+import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
 import { AppUpdatesSection } from "./app-updates-section";
 import { BackendSettingsSection } from "./backend-settings-section";
+import { GeneralLanguageSetting } from "./language-dialog";
 
 import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
 import { McpManagementSection } from "./mcp-management-section";
@@ -969,6 +971,9 @@ export const SettingsPage: FC = () => {
 					<PageHeader title="Settings" icon={Settings} />
 					<div className="flex flex-col gap-8">
 						<div ref={sectionRefs.general} className="flex flex-col gap-8">
+							<GeneralLanguageSetting
+								focus={settingFocusKey === LANGUAGE_SETTING_KEY}
+							/>
 							<SettingsSection
 								title="User profile"
 								icon={User}
@@ -1361,7 +1366,12 @@ export const SettingsPage: FC = () => {
 							sectionRef={sectionRefs.backend}
 						>
 							<BackendSettingsSection
-								focusKey={settingFocusKey}
+								hideInterfaceLanguage
+								focusKey={
+									settingFocusKey === LANGUAGE_SETTING_KEY
+										? null
+										: settingFocusKey
+								}
 								initialFilter={settingsSearchFilter}
 							/>
 						</SettingsSection>
