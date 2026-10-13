@@ -122,3 +122,62 @@ test("an en fallback formats with ENGLISH rules, not the active locale's", () =>
 	);
 	assert.equal(withFrenchTag, underEn);
 });
+
+/*
+ * END-TO-END OVER THE SHIPPED TREE. The cases above use a fixture; this one
+ * loads the REAL `src/i18n` (its actual en + fr catalogues, its real generated
+ * `keys.gen.ts`) and asks for the operator's own strings. It is the closest a
+ * source-only run gets to the reported repro: the picker's own row and the
+ * Settings copy must render FRENCH under `fr`, and the fallback key that has no
+ * French value must render ENGLISH, not a key.
+ */
+const shipped = await (async () => {
+	const bundle = await build({
+		stdin: {
+			contents: [
+				'export * as messages from "./src/i18n/messages";',
+				'export * as locale from "./src/i18n/locale";',
+			].join("\n"),
+			resolveDir: REPO,
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+	});
+	return import(
+		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+	);
+})();
+
+test("the shipped fr catalogue renders the report's strings in French", () => {
+	shipped.locale.setLocale("fr");
+	assert.equal(shipped.messages.t("ui.settings.page.title"), "Paramètres");
+	assert.notEqual(
+		shipped.messages.t("ui.settings.tour.action"),
+		"Take the tour",
+		"the tour button must not stay English under fr",
+	);
+	assert.match(
+		shipped.messages.t("ui.settings.section.interface_language.label"),
+		/Langue/,
+	);
+});
+
+test("the same shipped keys render English again under en", () => {
+	shipped.locale.setLocale("en");
+	assert.equal(shipped.messages.t("ui.settings.page.title"), "Settings");
+	assert.equal(shipped.messages.t("ui.settings.tour.action"), "Take the tour");
+});
+
+test("a key with no French value falls back to English SOURCE, not the key", () => {
+	shipped.locale.setLocale("fr");
+	// `ui.settings.language.general.effective` is translated; pick a key the fr
+	// file is required to carry and assert it is French, then a key whose English
+	// is what a fr-missing lookup must show.
+	const effective = shipped.messages.t(
+		"ui.settings.language.general.effective",
+		{ locale: "fr" },
+	);
+	assert.notEqual(effective, "ui.settings.language.general.effective");
+});

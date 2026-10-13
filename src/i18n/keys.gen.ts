@@ -33,6 +33,7 @@ import enUiProviders from "./catalogues/en/ui.providers.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
 import enUiSettings from "./catalogues/en/ui.settings.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
+import frUiSettings from "./catalogues/fr/ui.settings.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
@@ -55,6 +56,9 @@ export const bundledCatalogues: Readonly<
 	Record<string, Readonly<Record<string, string>>>
 > = {
 	en: bundledEnglish,
+	"fr": {
+		...frUiSettings,
+	},
 };
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
