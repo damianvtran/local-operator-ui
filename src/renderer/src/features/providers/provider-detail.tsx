@@ -1203,9 +1203,16 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				className="flex flex-col items-start gap-3"
 				data-sign-in-state="device-code"
 			>
-				<p className="text-body-sm text-ink-muted">
-					Enter this code {host ? `at ${host}` : "on the sign-in page"}. This
-					page updates on its own once you approve.
+				{/* Instructions carry the host's privacy/billing disclosure. Device
+				 * flows must not drop it or auto-open; React renders it as plain text
+				 * and the existing Copy action remains the explicit browser handoff. */}
+				<p className="whitespace-pre-line text-body-sm text-ink-muted">
+					{operation.instructions?.trim() || (
+						<>
+							Enter this code {host ? `at ${host}` : "on the sign-in page"}.
+							This page updates on its own once you approve.
+						</>
+					)}
 				</p>
 				<div className="flex items-center gap-3 rounded-md bg-sunken p-3">
 					<code className="font-mono text-ink text-title tracking-wider">
@@ -1221,6 +1228,23 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							if (page) void flowHandle.reopen();
 						}}
 					/>
+					{page ? (
+						/* The copy-chained handoff must not be the ONLY route to the
+						 * approval page: a refused clipboard write (permission policy,
+						 * inactive document) leaves the user holding a code they can
+						 * hand-copy with nowhere to enter it (UX round 1, U1). A plain
+						 * reopen beside it, same shape as the paste-required and waiting
+						 * panels' own; pressing it is still an explicit act, so nothing
+						 * auto-opens on arrival. */
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => void flowHandle.reopen()}
+						>
+							<ExternalLink aria-hidden="true" />
+							{flow.opened ? "Open browser again" : "Open sign-in page"}
+						</Button>
+					) : null}
 					<Button
 						variant="ghost"
 						size="sm"
