@@ -21,33 +21,40 @@
  * file itself to be part of the contract.
  */
 
-import uiAgents from "./catalogues/en/ui.agents.json";
-import uiBrowser from "./catalogues/en/ui.browser.json";
-import uiChat from "./catalogues/en/ui.chat.json";
-import uiConsole from "./catalogues/en/ui.console.json";
-import uiHub from "./catalogues/en/ui.hub.json";
-import uiMesh from "./catalogues/en/ui.mesh.json";
-import uiOnboarding from "./catalogues/en/ui.onboarding.json";
-import uiProjects from "./catalogues/en/ui.projects.json";
-import uiProviders from "./catalogues/en/ui.providers.json";
-import uiSchedules from "./catalogues/en/ui.schedules.json";
-import uiSettings from "./catalogues/en/ui.settings.json";
-import uiShell from "./catalogues/en/ui.shell.json";
+import enUiAgents from "./catalogues/en/ui.agents.json";
+import enUiBrowser from "./catalogues/en/ui.browser.json";
+import enUiChat from "./catalogues/en/ui.chat.json";
+import enUiConsole from "./catalogues/en/ui.console.json";
+import enUiHub from "./catalogues/en/ui.hub.json";
+import enUiMesh from "./catalogues/en/ui.mesh.json";
+import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
+import enUiProjects from "./catalogues/en/ui.projects.json";
+import enUiProviders from "./catalogues/en/ui.providers.json";
+import enUiSchedules from "./catalogues/en/ui.schedules.json";
+import enUiSettings from "./catalogues/en/ui.settings.json";
+import enUiShell from "./catalogues/en/ui.shell.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
-	...uiAgents,
-	...uiBrowser,
-	...uiChat,
-	...uiConsole,
-	...uiHub,
-	...uiMesh,
-	...uiOnboarding,
-	...uiProjects,
-	...uiProviders,
-	...uiSchedules,
-	...uiSettings,
-	...uiShell,
+	...enUiAgents,
+	...enUiBrowser,
+	...enUiChat,
+	...enUiConsole,
+	...enUiHub,
+	...enUiMesh,
+	...enUiOnboarding,
+	...enUiProjects,
+	...enUiProviders,
+	...enUiSchedules,
+	...enUiSettings,
+	...enUiShell,
+};
+
+/** The client's own messages per locale; `en` is `bundledEnglish` itself. */
+export const bundledCatalogues: Readonly<
+	Record<string, Readonly<Record<string, string>>>
+> = {
+	en: bundledEnglish,
 };
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
