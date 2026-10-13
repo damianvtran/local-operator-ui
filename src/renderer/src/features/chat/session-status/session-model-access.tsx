@@ -81,14 +81,19 @@ export const SessionModelAccessBand: FC<SessionModelAccessBandProps> = ({
 	 * (`radient-session-issue.tsx`).
 	 */
 	<Alert
-		data-lo-model-access="signed_out"
+		data-lo-model-access={access.state ?? "signed_out"}
 		variant="warning"
 		className={cn(CHAT_MEASURE, isSmallView ? "px-2 py-2" : "px-4 py-2")}
 	>
-		<AlertTitle>Not signed in to {access.label}</AlertTitle>
+		<AlertTitle>
+			{access.state === "temporarily_unavailable"
+				? `${access.label} is temporarily unavailable`
+				: `Not signed in to ${access.label}`}
+		</AlertTitle>
 		<AlertDescription>
-			This session runs {access.label} without a working sign-in, so it cannot
-			answer until you connect it.
+			{access.state === "temporarily_unavailable"
+				? "Your saved sign-in is still present. Try again later or choose another model."
+				: `This session runs ${access.label} without a working sign-in, so it cannot answer until you connect it.`}
 		</AlertDescription>
 		<div className="flex min-h-6 flex-wrap items-center gap-3">
 			{onSwitchModel && (
@@ -105,15 +110,17 @@ export const SessionModelAccessBand: FC<SessionModelAccessBandProps> = ({
 					Switch model
 				</Button>
 			)}
-			<Button
-				type="button"
-				variant="link"
-				size="sm"
-				className="cursor-pointer text-body-sm underline"
-				onClick={onConnect}
-			>
-				Connect
-			</Button>
+			{access.state !== "temporarily_unavailable" && (
+				<Button
+					type="button"
+					variant="link"
+					size="sm"
+					className="cursor-pointer text-body-sm underline"
+					onClick={onConnect}
+				>
+					Connect
+				</Button>
+			)}
 		</div>
 	</Alert>
 );

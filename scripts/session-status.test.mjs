@@ -2659,6 +2659,36 @@ test("the model-access reading exists only for `signed_out`, and never from a si
 	);
 });
 
+test("access follows the effective provider through fallback and recovery without moving primary", () => {
+	const frame = {
+		selected_model: { provider: "meta-muse", model_id: "muse-wonder-1.0" },
+		effective_model: { provider: "openai", model_id: "gpt-6.1-sol" },
+		model_access: {
+			state: "signed_out",
+			provider: "meta-muse",
+			label: "Muse Code",
+		},
+	};
+	assert.equal(modelAccessReading(frame), null);
+	assert.equal(frame.selected_model.provider, "meta-muse");
+	assert.deepEqual(
+		modelAccessReading({ ...frame, effective_model: frame.selected_model }),
+		{ provider: "meta-muse", label: "Muse Code" },
+	);
+	assert.deepEqual(
+		modelAccessReading({
+			...frame,
+			effective_model: frame.selected_model,
+			model_access: { ...frame.model_access, state: "temporarily_unavailable" },
+		}),
+		{
+			provider: "meta-muse",
+			label: "Muse Code",
+			state: "temporarily_unavailable",
+		},
+	);
+});
+
 test("the band yields to the Radient callout when both name one missing sign-in (R1-6)", () => {
 	/*
 	 * A `radient/auto` session can carry both blocks at once: the connector
