@@ -273,10 +273,18 @@ export function renderKeysModule(cataloguesDir) {
 	const localeEntries = bundles
 		.map((bundle) => {
 			if (bundle.locale === "en") return "\ten: bundledEnglish,";
-			const spread = bundle.imports
+			const body = bundle.imports
 				.map((entry) => `\t\t...${entry.identifier},`)
 				.join("\n");
-			return `\t${JSON.stringify(bundle.locale)}: {\n${spread}\n\t},`;
+			/*
+			 * An identifier-safe tag is emitted BARE (`fr: {`), a hyphenated one
+			 * quoted (`"zh-CN": {`) - which is what `biome check` leaves standing,
+			 * and the drift check compares the emitted bytes to that.
+			 */
+			const key = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(bundle.locale)
+				? bundle.locale
+				: JSON.stringify(bundle.locale);
+			return `\t${key}: {\n${body}\n\t},`;
 		})
 		.join("\n");
 
