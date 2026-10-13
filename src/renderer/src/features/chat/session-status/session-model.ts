@@ -745,6 +745,7 @@ export type ModelAccessReading = {
 	provider: string;
 	/** The provider's human name for the sentence; never empty. */
 	label: string;
+	state?: "signed_out" | "temporarily_unavailable";
 };
 
 export function modelAccessReading(
@@ -752,14 +753,26 @@ export function modelAccessReading(
 ): ModelAccessReading | null {
 	const access: CanonicalModelAccess | null | undefined =
 		frontend?.model_access;
-	if (!access || access.state !== "signed_out") return null;
+	if (
+		!access ||
+		(access.state !== "signed_out" &&
+			access.state !== "temporarily_unavailable")
+	)
+		return null;
 	const provider = typeof access.provider === "string" ? access.provider : "";
 	if (!provider) return null;
+	// A partial fallback frame can retain the primary route's older claim.
+	// Hide that obsolete accusation; this makes NO claim that the effective
+	// route is authenticated and never changes the selected primary identity.
+	const servingProvider = frontend?.effective_model?.provider;
+	if (servingProvider && servingProvider !== provider) return null;
 	const label =
 		typeof access.label === "string" && access.label.trim() !== ""
 			? access.label
 			: provider;
-	return { provider, label };
+	return access.state === "temporarily_unavailable"
+		? { provider, label, state: access.state }
+		: { provider, label };
 }
 
 /**

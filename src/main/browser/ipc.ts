@@ -2,6 +2,7 @@ import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
 import { trustedDesktopFrame } from "../desktop-transport";
 import type { WebauthnChooser } from "../webauthn";
 import type { BrowserHost, CloseTabsIntent } from "./host";
+import { type BrowserAvailability, MAX_START_ATTEMPTS } from "./lifecycle";
 import type { ClearWhat } from "./profile";
 import type { ContentRect } from "./registry";
 
@@ -38,6 +39,7 @@ export interface RegisterBrowserIpcOptions {
 	 * `index.html` otherwise. Same value the desktop transport is given. */
 	expectedUrl: string;
 	host: () => BrowserHost | null;
+	availability?: () => BrowserAvailability;
 	/**
 	 * The passkey chooser, which is what `browser-webauthn-respond` answers.
 	 *
@@ -63,6 +65,12 @@ export interface RegisterBrowserIpcOptions {
 	 * otherwise — so a failure is shown rather than thrown: a reveal that fails is a
 	 * Finder problem, not a fault in the agent's download. */
 	revealDownloads: () => Promise<string>;
+	/** Ask the host to start again for this window (design round 1, D1a). Injected
+	 * rather than imported so this module does not reach back into `index.ts`'s
+	 * lifecycle; `index.ts` supplies the same `startBrowserHost` the app already
+	 * calls. It is authorized like every other channel and is a no-op when a host
+	 * is already running, so a stray click cannot start a second one. */
+	retry?: () => Promise<void>;
 	log: (message: string) => void;
 }
 
@@ -89,10 +97,13 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-webauthn-respond",
 	"browser-webauthn-pending",
 	"browser-reveal-downloads",
+	/** The user's own recovery click on the `unavailable` state (round 1, D1a).
+	 * Named here so the namespace stays the one place that lists its channels. */
+	"browser-retry",
 ] as const;
 
 export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
-	function authorize(event: IpcMainInvokeEvent): BrowserHost {
+	function authorizeSender(event: IpcMainInvokeEvent): void {
 		const owner = options.window();
 		if (
 			!owner ||
@@ -103,12 +114,45 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		) {
 			throw new Error("This window cannot use the browser controls.");
 		}
+	}
+	function authorize(event: IpcMainInvokeEvent): BrowserHost {
+		authorizeSender(event);
 		const host = options.host();
-		if (!host) throw new Error("The browser host is not running.");
+		if (!host)
+			throw new Error("browser_unavailable: The browser is not ready.");
 		return host;
 	}
 
-	ipcMain.handle("browser-state", (event) => authorize(event).chromeState());
+	ipcMain.handle("browser-state", (event) => {
+		// Sender authorization is independent of readiness: a loading host must
+		// not make a driven page eligible to read even an empty projection.
+		authorizeSender(event);
+		const host = options.host();
+		const availability = options.availability?.();
+		if (host)
+			return { ...host.chromeState(), ...(availability && { availability }) };
+		return {
+			tabs: [],
+			activeTabId: null,
+			url: "",
+			title: "",
+			loading: false,
+			canGoBack: false,
+			canGoForward: false,
+			pendingConsent: [],
+			approvals: [],
+			navFailure: null,
+			availability: availability ?? {
+				status: "unavailable",
+				attempt: 0,
+				maxAttempts: MAX_START_ATTEMPTS,
+				message: "The browser is not running.",
+				// No host invokes this fallback (it is the pre-start projection), and
+				// there is nothing to retry before a start was asked for.
+				canRetry: false,
+			},
+		};
+	});
 
 	ipcMain.handle("browser-new-tab", async (event, sessionId: unknown) => {
 		const host = authorize(event);
@@ -289,6 +333,18 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 				`[browser] could not reveal the download directory: ${message}`,
 			);
 		return { opened: message === "", message };
+	});
+
+	// The user's own recovery click on the `unavailable` state (round 1, D1a):
+	// like the reveal above, it is a human action with no argument to retarget.
+	// Authorization is the sender check only — a retry is allowed precisely while
+	// NO host is running, so `authorize` (which requires a host) would be wrong.
+	ipcMain.handle("browser-retry", async (event) => {
+		authorizeSender(event);
+		if (!options.retry)
+			throw new Error("browser_unavailable: Retry is not available.");
+		await options.retry();
+		return { retried: true };
 	});
 }
 

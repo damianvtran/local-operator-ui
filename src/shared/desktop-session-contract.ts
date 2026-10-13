@@ -1058,7 +1058,7 @@ export type CanonicalEffectiveIdentity = {
  * `radient_login`'s `unknown` carries in `use-radient-session-issue`).
  */
 export type CanonicalModelAccess = {
-	state: "ok" | "signed_out";
+	state: "ok" | "signed_out" | "temporarily_unavailable";
 	provider: string;
 	label: string;
 };

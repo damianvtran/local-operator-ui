@@ -10,6 +10,18 @@ import { build } from "esbuild";
  * (`pnpm lint:scripts`, which compares each changed file against its baseline)
  * is the only thing that would have said so.
  */
+const RE_FOLD_ACTION_COUNT = /actionCount=\{group\.actions\.length\}/;
+const RE_FOLD_MEMBER_COUNT = /actionCount=\{group\.rows\.length\}/;
+
+test("mixed TraceFold binding counts actual actions rather than member receipts", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	assert.match(source, RE_FOLD_ACTION_COUNT);
+	assert.doesNotMatch(source, RE_FOLD_MEMBER_COUNT);
+});
+
 const RE_STATUSUNAVAILABLE_INCLUDES_LIVENESS =
 	/statusUnavailable\.includes\("liveness"\)/;
 const RE_LIVENESS_UNREAD_SENTENCE =
