@@ -91,6 +91,7 @@ import {
 } from "@features/chat/pickers/picker-registry";
 import {
 	bandYieldsToRadientIssue,
+	modelAccessOwnsRadientStatus,
 	modelAccessReading,
 	radientCalloutOwnsTheSignIn,
 } from "@features/chat/session-status/session-model";
@@ -7565,7 +7566,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * `inputContent` - the ring is why it is 8px and not the siblings'
 				 * compacted 4px (design round 1, D1).
 				 */}
-				{radientIssueBlock}
+				{/* An owner's borrowed access is not a second local Radient login.
+				 * Keep the runtime status visible without mounting another prompt. */}
+				{!modelAccessOwnsRadientStatus(modelAccess) && radientIssueBlock}
 				{/*
 				 * The session's own model-access band, beside the Radient issue for the same
 				 * reason: both are STANDING statements about the session's ability to run,

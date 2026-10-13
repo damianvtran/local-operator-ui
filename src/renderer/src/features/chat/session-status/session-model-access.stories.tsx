@@ -26,6 +26,8 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
+import type { CanonicalEffectiveAccessState } from "../../../../../shared/desktop-session-contract";
+import { modelAccessReading } from "./session-model";
 import { SessionModelAccessBand } from "./session-model-access";
 
 const noop = () => {};
@@ -62,5 +64,105 @@ export const SignedOutNarrow: Story = {
 	args: {
 		...SignedOut.args,
 		isSmallView: true,
+	},
+};
+
+/** Baseline reader: owner-outage facts used to collapse into this legacy copy. */
+export const LegacyOwnerUnavailable: Story = {
+	...SignedOut,
+	args: {
+		...SignedOut.args,
+		access: {
+			provider: "openai",
+			label: "OpenAI",
+			state: "temporarily_unavailable",
+		},
+	},
+};
+
+const nativeStates: [CanonicalEffectiveAccessState, string][] = [
+	["pending", "Waiting for access"],
+	["eligible_borrow_unverified", "Permission, not yet verified"],
+	["effective_borrow", "Borrowed access"],
+	["expired", "Refresh needed"],
+	["withdrawn", "Access withdrawn"],
+	["owner_unavailable", "Owner unavailable"],
+	["device_bound", "Device-bound login"],
+	["absent", "No access"],
+];
+
+/**
+ * Real reader + real band, synthetic keyless host frames. No provider mode is
+ * invented and no selector/effort change is dispatched while access converges.
+ * Local access and an older host's silence render no band (covered by contracts).
+ */
+export const NativeAccessMatrix: Story = {
+	parameters: { layout: "fullscreen" },
+	render: (args) => {
+		const observed = Math.floor(Date.now() / 1000);
+		return (
+			<div className="bg-canvas p-6">
+				<h1 className="mb-2 text-lg font-semibold text-ink">
+					Remote provider access
+				</h1>
+				<p className="mb-6 text-body-sm text-ink-muted">
+					Selected openai/gpt-6.1-sol · High effort · Synthetic host frames
+				</p>
+				<div
+					className={
+						args.isSmallView
+							? "grid grid-cols-1 gap-6"
+							: "grid grid-cols-1 gap-6 lg:grid-cols-2"
+					}
+				>
+					{nativeStates.map(([state, heading]) => {
+						const hasHistory = [
+							"effective_borrow",
+							"expired",
+							"owner_unavailable",
+							"withdrawn",
+						].includes(state);
+						const access = modelAccessReading({
+							selected_model: {
+								provider: "openai",
+								model_id: "gpt-6.1-sol",
+								reasoning_effort: "high",
+							},
+							model_access: {
+								provider: "openai",
+								label: "OpenAI",
+								effective_state: state,
+								state:
+									state === "effective_borrow"
+										? "ok"
+										: "temporarily_unavailable",
+								owner_device: "synthetic-owner",
+								owner_label: "Work laptop",
+								observed_at: observed,
+								last_grant_at: hasHistory ? observed - 180 : undefined,
+								last_grant_expires_at: hasHistory
+									? observed + (state === "effective_borrow" ? 600 : -120)
+									: undefined,
+							},
+						} as Parameters<typeof modelAccessReading>[0]);
+						return (
+							<section key={state}>
+								<h2 className="mb-2 text-body-sm font-medium text-ink-muted">
+									{heading}
+								</h2>
+								{access && (
+									<SessionModelAccessBand
+										access={access}
+										isSmallView={args.isSmallView}
+										onConnect={noop}
+										onSwitchModel={noop}
+									/>
+								)}
+							</section>
+						);
+					})}
+				</div>
+			</div>
+		);
 	},
 };
