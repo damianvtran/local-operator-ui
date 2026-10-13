@@ -162,10 +162,11 @@ const bundle = await build({
 		contents: [
 			'import { createElement } from "react";',
 			'export { QueryClient, QueryClientProvider } from "@tanstack/react-query";',
-			'export { LanguageDialog, saveLanguageValue } from "./src/renderer/src/features/settings/components/language-dialog";',
+			'export { LanguageDialog, saveImmediateLanguageValue, saveLanguageValue, GeneralLanguageSetting } from "./src/renderer/src/features/settings/components/language-dialog";',
 			'export { useLanguageDialogStore } from "./src/renderer/src/features/settings/components/language-dialog-store";',
 			'export { useI18nLocaleSync } from "./src/renderer/src/shared/i18n/locale-sync";',
 			'export { applyCapabilities, currentLocale } from "./src/renderer/src/shared/i18n";',
+			'export { languageChoices } from "./src/renderer/src/features/settings/components/setting-control";',
 			"export { createElement };",
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -200,11 +201,14 @@ const {
 	QueryClientProvider,
 	createElement,
 	LanguageDialog,
+	saveImmediateLanguageValue,
 	saveLanguageValue,
+	GeneralLanguageSetting,
 	useLanguageDialogStore,
 	useI18nLocaleSync,
 	applyCapabilities,
 	currentLocale,
+	languageChoices,
 } = await import(bundlePath.href);
 
 /* The app mounts this once; without it nothing feeds the store. */
@@ -273,6 +277,150 @@ const mount = async (
 	lastClient = client;
 	return { client };
 };
+
+const mountGeneral = async (t) => {
+	applyCapabilities(null);
+	setCapabilitiesLanguage("en");
+	setCapabilitiesBehavior({ type: "ok", features: { settings: 1, i18n: 1 } });
+	apiCalls.length = 0;
+	const client = new QueryClient({
+		defaultOptions: {
+			queries: { retry: false, staleTime: Number.POSITIVE_INFINITY },
+			gcTime: 0,
+		},
+	});
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	t.after(async () => {
+		settlePendingCapabilities();
+		try {
+			await act(async () => {
+				root.unmount();
+			});
+		} finally {
+			client.clear();
+		}
+		container.remove();
+	});
+	await act(async () => {
+		root.render(
+			createElement(
+				QueryClientProvider,
+				{ client },
+				createElement(
+					React.Fragment,
+					null,
+					createElement(GeneralLanguageSetting, { focus: true }),
+					createElement(LocaleSync, null),
+				),
+			),
+		);
+	});
+	lastClient = client;
+	return { client };
+};
+
+test(
+	"the General control writes immediately, stays on committed truth and names readback uncertainty",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		const { client } = await mountGeneral(t);
+		await settle(
+			() => Boolean(document.querySelector("[data-setting-key=language]")),
+			"the General language control must render",
+		);
+		await settle(() => currentLocale() === "en", "the store must be seeded");
+		/*
+		 * Availability is the SERVER's answer, not the app's eight-name table:
+		 * this fixture ships `auto` + `en`, so the audited-but-absent locales
+		 * must come back disabled rather than offered as selectable.
+		 */
+		const choiceRow = settingsPayload().settings.find(
+			(row) => row.key === "language",
+		);
+		const offered = languageChoices(choiceRow);
+		assert.deepEqual(
+			offered.filter((choice) => choice.enabled).map((choice) => choice.value),
+			["auto", "en"],
+			"only the choices this server actually serves are selectable",
+		);
+		for (const value of ["zh-CN", "ur", "fr"]) {
+			assert.equal(
+				offered.find((choice) => choice.value === value).enabled,
+				false,
+				`${value} is offered as an unavailable option, never a selectable one`,
+			);
+		}
+		/* The status line states the BACKEND's resolved language, not the client OS guess. */
+		const status = document.querySelector("[data-setting-key=language] output");
+		assert.ok(
+			status?.textContent.includes("en"),
+			"the effective note reports the backend-resolved locale",
+		);
+		const edits = () => apiCalls.filter((call) => call.op === "settings.edit");
+		const rejectEdit = () => {
+			window.api.desktop.request = async (request) => {
+				apiCalls.push({ ...request });
+				if (request?.op === "settings.edit")
+					return { status: 422, body: { status: 422, message: "refused" } };
+				if (request?.op === "settings.list")
+					return { status: 200, body: { result: settingsPayload() } };
+				if (request?.op === "capabilities")
+					return {
+						status: 200,
+						body: {
+							result: {
+								desktop_available: true,
+								desktop_contract: 1,
+								desktop_auth: "bearer",
+								features: { settings: 1, i18n: 1 },
+								language: capabilitiesLanguage,
+							},
+						},
+					};
+				return { status: 200, body: { result: {} } };
+			};
+		};
+		rejectEdit();
+		await act(async () => {
+			await saveImmediateLanguageValue({
+				value: "en",
+				queryClient: client,
+			}).catch(() => {});
+		});
+		/* Only a CONFIRMED value is cached; the committed row is untouched. */
+		const cached = client.getQueryData(["desktop", "settings"]);
+		assert.equal(
+			cached.settings.find((row) => row.key === "language").value,
+			"auto",
+			"a rejected write must not be presented as the committed setting",
+		);
+		await settle(
+			() => Boolean(document.querySelector('[role="combobox"]')),
+			"the server-driven choice control must render for the tested row",
+		);
+		/* A write that lands but cannot be read back is its own state. */
+		window.api.desktop.request = async (request) => {
+			apiCalls.push({ ...request });
+			if (request?.op === "settings.list") throw new Error("offline");
+			return { status: 200, body: { result: {} } };
+		};
+		const outcome = await saveImmediateLanguageValue({
+			value: "en",
+			queryClient: client,
+		});
+		assert.equal(
+			outcome,
+			"readback-unknown",
+			"a confirmed write without a readable answer is not silently a success",
+		);
+		assert.equal(
+			edits().some((call) => call.key === "language"),
+			true,
+		);
+	},
+);
 
 test(
 	"the dialog shows the row's control and note, closed until asked, Save clean",

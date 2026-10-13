@@ -9,5 +9,15 @@
 	"ui.settings.language.palette_action": "Change interface language",
 	"ui.settings.language.dialog.unavailable": "This backend does not serve the settings this dialog edits.",
 	"ui.settings.language.dialog.retry": "Retry",
-	"ui.settings.language.dialog.retrying": "Retrying"
+	"ui.settings.language.dialog.retrying": "Retrying",
+	"ui.settings.language.general.description": "Choose the language shared by the app and terminal. Changes save immediately; existing conversations are not rewritten.",
+	"ui.settings.language.general.system": "Use system",
+	"ui.settings.language.general.unavailable_choice": "Not available on this backend",
+	"ui.settings.language.general.pending": "Saving language…",
+	"ui.settings.language.general.saved": "Language saved.",
+	"ui.settings.language.general.write_error": "The language was not saved. Your previous setting is unchanged. {message}",
+	"ui.settings.language.general.readback_error": "The write was confirmed, but the current setting could not be checked. Reconnect or retry before changing it again.",
+	"ui.settings.language.general.effective": "Backend language in effect: {locale}",
+	"ui.settings.language.general.last_known": "Last known backend language: {locale}",
+	"ui.settings.language.general.no_resolution": "The backend language has not been resolved yet."
 }

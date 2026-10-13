@@ -335,6 +335,158 @@ export type SettingControlProps = {
 	helpId?: string;
 };
 
+/** Native names are language identifiers, not claims of translated coverage.
+ * The backend's choices decide eligibility. Flags are decorative representative
+ * artwork, never a country preference; intrinsic pigments are not UI role colors.
+ */
+export const LANGUAGE_IDENTIFIERS = [
+	{ value: "en", name: "English", country: "us" },
+	{ value: "fr", name: "Français", country: "fr" },
+	{ value: "es", name: "Español", country: "es" },
+	{ value: "zh-CN", name: "简体中文", country: "cn" },
+	{ value: "ru", name: "Русский", country: "ru" },
+	{ value: "vi", name: "Tiếng Việt", country: "vn" },
+	{ value: "ur", name: "اردو", country: "pk" },
+	{ value: "hi", name: "हिन्दी", country: "in" },
+] as const;
+
+export function languageChoices(setting: BackendSetting) {
+	const available = new Map(
+		setting.choices.map((choice) => [String(choice.value), choice]),
+	);
+	return ["auto", ...LANGUAGE_IDENTIFIERS.map((item) => item.value)].map(
+		(value) => ({
+			value,
+			enabled: available.has(value),
+			label: available.get(value)?.label ?? value,
+			description: available.get(value)?.description ?? "",
+		}),
+	);
+}
+
+const LanguageFlag: FC<{ country: string }> = ({ country }) => {
+	/*
+	 * Explicit artwork rather than generated bands: a repeated pigment (Spain's
+	 * two reds) has no natural list index to key on, so each band carries the
+	 * geometry and the key its own artwork states.
+	 */
+	const hband = (k: string, fill: string, y: number, h = 16 / 3) => (
+		<rect key={k} x="0" y={y} width="24" height={h} fill={fill} />
+	);
+	const vband = (k: string, fill: string, x: number) => (
+		<rect key={k} x={x} y="0" width="8" height="16" fill={fill} />
+	);
+	return (
+		<svg
+			viewBox="0 0 24 16"
+			className="h-4 w-6 shrink-0"
+			aria-hidden="true"
+			focusable="false"
+		>
+			{country === "fr" && (
+				<>
+					{vband("fr-left", "#002395", 0)}
+					{vband("fr-middle", "#ffffff", 8)}
+					{vband("fr-right", "#ed2939", 16)}
+				</>
+			)}
+			{country === "es" && (
+				<>
+					{hband("es-top", "#aa151b", 0)}
+					{hband("es-middle", "#f1bf00", 16 / 3)}
+					{hband("es-bottom", "#aa151b", 32 / 3)}
+				</>
+			)}
+			{country === "ru" && (
+				<>
+					{hband("ru-top", "#ffffff", 0)}
+					{hband("ru-middle", "#0039a6", 16 / 3)}
+					{hband("ru-bottom", "#d52b1e", 32 / 3)}
+				</>
+			)}
+			{country === "in" && (
+				<>
+					{hband("in-top", "#ff9933", 0)}
+					{hband("in-middle", "#ffffff", 16 / 3)}
+					{hband("in-bottom", "#138808", 32 / 3)}
+					<circle
+						cx="12"
+						cy="8"
+						r="2"
+						fill="none"
+						stroke="#000080"
+						strokeWidth="0.7"
+					/>
+				</>
+			)}
+			{country === "us" && (
+				<>
+					<rect width="24" height="16" fill="#ffffff" />
+					{[0, 2, 4, 6, 8, 10, 12].map((stripe) => (
+						<rect
+							key={stripe}
+							width="24"
+							height={16 / 13}
+							y={(stripe * 16) / 13}
+							fill="#b22234"
+						/>
+					))}
+					<rect width="10" height="9" fill="#3c3b6e" />
+					<path
+						d="M2 2h1v1H2zm3 0h1v1H5zm3 0h1v1H8zM2 5h1v1H2zm3 0h1v1H5zm3 0h1v1H8z"
+						fill="#ffffff"
+					/>
+				</>
+			)}
+			{["cn", "vn"].includes(country) && (
+				<>
+					<rect width="24" height="16" fill="#da251d" />
+					<path
+						d={
+							country === "vn"
+								? "M12 3l1.5 3.5 4 .4-3 2.6 1 3.8-3.5-2-3.5 2 1-3.8-3-2.6 4-.4z"
+								: "M5 2l1 2.4 2.5.2-2 1.6.7 2.5L5 7.3 2.8 8.7l.7-2.5-2-1.6L4 4.4z"
+						}
+						fill="#ffde00"
+					/>
+				</>
+			)}
+			{country === "pk" && (
+				<>
+					<rect width="24" height="16" fill="#01411c" />
+					<rect width="6" height="16" fill="#ffffff" />
+					<path d="M17 3a5 5 0 1 0 3 8 4.5 4.5 0 0 1-3-8z" fill="#ffffff" />
+					<path
+						d="M18 3l.5 1.3 1.5.1-1.1 1 .4 1.4-1.3-.8-1.2.8.4-1.4-1.1-1 1.4-.1z"
+						fill="#ffffff"
+					/>
+				</>
+			)}
+		</svg>
+	);
+};
+
+const LanguageChoiceLabel: FC<{ value: string; fallback: string }> = ({
+	value,
+	fallback,
+}) => {
+	const identity = LANGUAGE_IDENTIFIERS.find((item) => item.value === value);
+	if (!identity)
+		return (
+			<>
+				{value === "auto" ? t("ui.settings.language.general.system") : fallback}
+			</>
+		);
+	return (
+		<span className="inline-flex items-center gap-2">
+			<LanguageFlag country={identity.country} />
+			<bdi dir="auto" lang={identity.value}>
+				{identity.name}
+			</bdi>
+		</span>
+	);
+};
+
 /**
  * What `auto` resolves to RIGHT NOW, under the language row's picker.
  *
@@ -471,10 +623,14 @@ export const SettingControl = ({
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							{setting.choices.map((choice) => (
+							{(setting.key === LANGUAGE_SETTING_KEY
+								? languageChoices(setting)
+								: setting.choices
+							).map((choice) => (
 								<SelectItem
 									key={serialize(choice.value)}
 									value={serialize(choice.value)}
+									disabled={"enabled" in choice && !choice.enabled}
 									/*
 									 * The registry ships a sentence for each choice (`snapcompact for
 									 * vision models, else context-full`) and 43 of the 102 settings
@@ -488,7 +644,21 @@ export const SettingControl = ({
 									 */
 									title={choice.description || undefined}
 								>
-									{choice.label}
+									{setting.key === LANGUAGE_SETTING_KEY ? (
+										<>
+											<LanguageChoiceLabel
+												value={String(choice.value)}
+												fallback={choice.label}
+											/>
+											{"enabled" in choice && !choice.enabled && (
+												<span className="text-meta text-ink-dim">
+													{t("ui.settings.language.general.unavailable_choice")}
+												</span>
+											)}
+										</>
+									) : (
+										choice.label
+									)}
 								</SelectItem>
 							))}
 						</SelectContent>
