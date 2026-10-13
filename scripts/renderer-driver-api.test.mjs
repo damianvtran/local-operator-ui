@@ -24,7 +24,9 @@
  *     exit 0 — before the fix the import's own handler exited 143 first);
  *   - `prepareDriverContext` binds the caller's backend URL into the scratch
  *     `.env` and refuses a blank binding; `launchApp` refuses without any
- *     binding with a clear message instead of an ENOENT;
+ *     binding with a clear message instead of an ENOENT; a PER-CALL `apiUrl`
+ *     goes through the same non-empty-string contract before it is assigned,
+ *     and a rejected call preserves the prior binding;
  *   - a DIRECT run still reaches the CLI: run against a synthetic app tree
  *     (its own `out/` absent, then present-but-stale), it still REFUSES before
  *     spawning anything — deterministic, and independent of this repository's
@@ -314,6 +316,97 @@ test("launchApp refuses without a backend binding — a clear message, not an EN
 	assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
 	assert.match(run.stdout, /launchApp has no backend binding/);
 	assert.doesNotMatch(run.stdout, /ENOENT/);
+});
+
+test("per-call apiUrl is validated before assignment; a rejected call preserves the prior binding", () => {
+	const program = [
+		'import { createRequire } from "node:module";',
+		'import { readFileSync } from "node:fs";',
+		'import { join } from "node:path";',
+		"const require = createRequire(import.meta.url);",
+		'const cp = require("node:child_process");',
+		'const { EventEmitter } = require("node:events");',
+		"// Node built-in spawn interception, BEFORE the driver is imported: the",
+		"// driver's static named import resolves against the same core-module",
+		"// exports object, so no real process is ever started here.",
+		"const spawned = [];",
+		"const children = [];",
+		"cp.spawn = (bin, args, opts) => {",
+		"\tspawned.push({ bin, argv0: args[0], cwd: opts.cwd });",
+		"\tconst child = new EventEmitter();",
+		"\tchild.pid = 4242;",
+		"\tchild.stdout = new EventEmitter();",
+		"\tchild.stderr = new EventEmitter();",
+		"\tchild.kill = () => true;",
+		"\tchild.exitCode = null;",
+		"\tchild.signalCode = null;",
+		"\tchildren.push(child);",
+		"\treturn child;",
+		"};",
+		`const { rendererDriverApi } = await import(${JSON.stringify(DRIVER)});`,
+		"const { prepareDriverContext, launchApp } = rendererDriverApi;",
+		'const ctx = prepareDriverContext({ apiUrl: "http://127.0.0.1:9" });',
+		"const refusals = [];",
+		'for (const bad of ["", "  ", 7, null]) {',
+		"\ttry {",
+		'\t\tawait launchApp({ apiUrl: bad, logName: "bad.log", tag: "bad" });',
+		'\t\trefusals.push({ bad: String(bad), outcome: "NO-REFUSAL" });',
+		"\t} catch (error) {",
+		"\t\trefusals.push({ bad: String(bad), outcome: error.message });",
+		"\t}",
+		"}",
+		"// The rejected calls must not have touched the binding: an omitted",
+		"// apiUrl still launches against the prepared URL (fake spawn).",
+		'const kept = await launchApp({ logName: "kept.log", tag: "kept" });',
+		'const overridden = await launchApp({ apiUrl: "http://127.0.0.1:8", logName: "over.log", tag: "over" });',
+		"// Let launchApp's exit listeners clear their flush intervals so this",
+		"// process can end on its own.",
+		'for (const child of children) child.emit("exit", 0);',
+		"console.log(",
+		"\tJSON.stringify({",
+		"\t\tscratch: ctx.scratch,",
+		"\t\trefusals,",
+		"\t\tkeptApi: kept.apiUrl,",
+		"\t\toverriddenApi: overridden.apiUrl,",
+		'\t\tenvAfterOverride: readFileSync(join(ctx.appCwd, ".env"), "utf8"),',
+		"\t\tspawned,",
+		"\t}),",
+		");",
+	].join("\n");
+	const run = runChild(program);
+	assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+	const report = JSON.parse(run.stdout.trim().split("\n").pop());
+	try {
+		assert.equal(report.refusals.length, 4);
+		for (const refusal of report.refusals) {
+			assert.match(refusal.outcome, /non-empty string/, `bad=${refusal.bad}`);
+		}
+		assert.equal(
+			report.keptApi,
+			"http://127.0.0.1:9",
+			"the prior binding must survive the rejected calls",
+		);
+		assert.equal(report.overriddenApi, "http://127.0.0.1:8");
+		assert.ok(
+			report.envAfterOverride.includes(
+				"VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:8",
+			),
+			"a valid per-call URL must be the app's actual binding",
+		);
+		assert.equal(
+			report.spawned.length,
+			2,
+			"two positive launches, both intercepted",
+		);
+		for (const entry of report.spawned) {
+			assert.ok(
+				String(entry.bin).toLowerCase().includes("electron"),
+				entry.bin,
+			);
+		}
+	} finally {
+		rmSync(report.scratch, { recursive: true, force: true });
+	}
 });
 
 test("a direct CLI run still reaches main(): the pre-spawn refusal, absent and present out", () => {

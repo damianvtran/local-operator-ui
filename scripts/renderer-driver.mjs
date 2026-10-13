@@ -1245,7 +1245,22 @@ async function launchApp({
 	 * with `prepareDriverContext({ apiUrl })`, or per call through this
 	 * argument.
 	 */
-	if (apiUrl !== undefined) APP_API_URL = apiUrl;
+	/*
+	 * A PER-CALL BINDING GOES THROUGH THE SAME CONTRACT AS
+	 * `prepareDriverContext`'s, BEFORE any assignment: `""`, whitespace and a
+	 * non-string are refusals, not bindings — an empty URL would point the app
+	 * at the empty string — and a rejected call must not poison a prior valid
+	 * binding for later calls that omit the argument (measured: a `null` call
+	 * used to clear the binding a following omitted-argument call needed).
+	 */
+	if (apiUrl !== undefined) {
+		if (typeof apiUrl !== "string" || apiUrl.trim() === "") {
+			throw new Error(
+				"launchApp's apiUrl must be a non-empty string — the same contract prepareDriverContext applies, because the scratch .env points the app at exactly this URL",
+			);
+		}
+		APP_API_URL = apiUrl;
+	}
 	if (APP_API_URL === null) {
 		throw new Error(
 			"launchApp has no backend binding: call prepareDriverContext({ apiUrl }) first, or pass apiUrl — the scratch .env points the app at exactly that URL",
