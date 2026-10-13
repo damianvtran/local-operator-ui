@@ -132,6 +132,10 @@ export interface CreateSurfaceInput {
 	 * unreachable. Absent for every ordinary create, which mints one.
 	 */
 	surface?: string;
+	/** History is admitted as non-live before the quota check, not patched after
+	 * it. Its emulator still consumes the app-wide bound, but it cannot run a pty
+	 * and therefore must not consume an agent's live-process allowance. */
+	live?: boolean;
 	sessionId: string;
 	origin: SurfaceOrigin;
 	command: string;
@@ -176,10 +180,10 @@ export class ConsoleRegistry<R> {
 		return this.entries.size;
 	}
 
-	/** How many were created by that session's agent. */
+	/** How many live surfaces were created by that session's agent. */
 	agentCount(sessionId: string): number {
 		return this.list(sessionId).filter(
-			(entry) => entry.record.origin === "agent",
+			(entry) => entry.record.origin === "agent" && entry.record.live,
 		).length;
 	}
 
@@ -200,6 +204,7 @@ export class ConsoleRegistry<R> {
 			);
 		}
 		if (
+			input.live !== false &&
 			input.origin === "agent" &&
 			this.agentCount(input.sessionId) >= MAX_AGENT_SURFACES_PER_SESSION
 		) {
@@ -223,10 +228,10 @@ export class ConsoleRegistry<R> {
 			cwd: input.cwd,
 			cols: input.cols,
 			rows: input.rows,
-			running: true,
+			running: input.live !== false,
 			exitCode: null,
 			lastActivity: this.now(),
-			live: true,
+			live: input.live !== false,
 			retain: input.retain,
 			secure: false,
 			lastActor: null,

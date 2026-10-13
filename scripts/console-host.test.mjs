@@ -39,7 +39,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { after, before, test } from "node:test";
 import { build } from "esbuild";
 import { consoleWiringDrift } from "./console-wiring.mjs";
@@ -94,6 +94,57 @@ const bundle = await build({
 	// Only `console/ipc.ts` reaches Electron as a VALUE (`ipcMain`), and the stub
 	// models exactly that plus a handler registry a test can invoke. Everything else
 	// in this bundle imports Electron as types, which is erased.
+	// Only the native load boundary is faked for the startup rollback cell. The
+	// production host/history/registry/IPC run, and ordinary cells keep the real
+	// loader behavior. No engine or native PTY is launched by this opt-in seam.
+	plugins: [
+		{
+			name: "console-startup-native-boundary",
+			setup(plugin) {
+				// Read-only before/after comparison: an isolated receipt may supply
+				// the exact frozen host blob without rewriting any worktree source.
+				plugin.onLoad({ filter: /console\/host\.ts$/ }, ({ path }) =>
+					process.env.CONSOLE_ROOT_BEFORE_SOURCE
+						? {
+								contents: readFileSync(
+									process.env.CONSOLE_ROOT_BEFORE_SOURCE,
+									"utf8",
+								),
+								loader: "ts",
+								resolveDir: dirname(path),
+							}
+						: undefined,
+				);
+				plugin.onLoad({ filter: /console\/pty\.ts$/ }, ({ path }) => ({
+					contents: `${readFileSync(path, "utf8").replace(
+						"export function loadNodePty(",
+						"function loadRealNodePty(",
+					)}
+export function loadNodePty() {
+ if (globalThis.__consoleRootFakeNative) return { ok: true, module: {}, helper: { healed: false } };
+ return loadRealNodePty();
+}
+`,
+					loader: "ts",
+				}));
+				// Observe a genuine production xterm acquisition, not a replacement
+				// emulator. Faults below happen only AFTER that resource exists.
+				plugin.onLoad({ filter: /console\/emulator\.ts$/ }, ({ path }) => ({
+					contents: `${readFileSync(path, "utf8").replace(
+						"export function createXtermEmulator(",
+						"function createRealXtermEmulator(",
+					)}
+export function createXtermEmulator(options: Parameters<typeof createRealXtermEmulator>[0]) {
+ const emulator = createRealXtermEmulator(options);
+ globalThis.__consoleRootObserveEmulator?.(emulator);
+ return emulator;
+}
+`,
+					loader: "ts",
+				}));
+			},
+		},
+	],
 	alias: {
 		electron: join(process.cwd(), "scripts/browser-electron-stub.ts"),
 	},
@@ -2627,6 +2678,404 @@ test("the exit generation is bumped by the retention layer and survives a relaun
 	const legacy = { ...loaded[0].meta, exit_epoch: undefined };
 	history.writeMeta(legacy);
 	assert.equal(history.exitEpoch("session-1", created.surface), 0);
+});
+
+test("startup restores nine same-session agent histories without consuming the live quota", async () => {
+	const { host, registry, spawned } = hostWithWindow();
+	try {
+		for (let index = 1; index <= 9; index += 1) {
+			host.restore(
+				{
+					surface: `con:${index}:retainedHistory${index}`,
+					session_id: "session-1",
+					origin: "agent",
+					command: "zsh",
+					argv: [],
+					cwd: "/isolated",
+					cols: 100,
+					rows: 30,
+					created_at: 1,
+					exit_epoch: 1,
+					exit_code: 0,
+				},
+				new TextEncoder().encode(`history ${index}\r\n`),
+			);
+		}
+		assert.equal(host.list().length, 9);
+		assert.equal(
+			spawned.length,
+			0,
+			"retained histories must never launch a pty",
+		);
+		assert.equal(registry.agentCount("session-1"), 0);
+		assert.ok(
+			host.list().every((surface) => !surface.live && !surface.running),
+		);
+		assert.match(
+			(await host.read("con:9:retainedHistory9", "viewport")).text,
+			/history 9/,
+		);
+		for (let index = 0; index < MAX_AGENT_SURFACES_PER_SESSION; index += 1) {
+			await createSurface(host);
+		}
+		await assert.rejects(
+			createSurface(host),
+			(error) => error.code === "tab_limit" && error.data.scope === "session",
+		);
+		assert.equal(
+			host.list().length,
+			17,
+			"both live entries and retained histories remain listed",
+		);
+	} finally {
+		host.dispose();
+	}
+});
+
+test("retained histories still consume the app emulator bound and close releases admission", () => {
+	const registry = new ConsoleRegistry();
+	const make = (live) =>
+		registry.create(
+			{
+				sessionId: "history-bound-session",
+				origin: "agent",
+				command: "zsh",
+				argv: [],
+				cwd: "/isolated",
+				cols: 80,
+				rows: 24,
+				live,
+			},
+			() => ({}),
+		);
+	for (let index = 0; index < MAX_SURFACES_PER_APP; index += 1) make(false);
+	assert.equal(registry.agentCount("history-bound-session"), 0);
+	assert.throws(
+		() => make(false),
+		(error) => error.code === "tab_limit" && error.data.scope === "app",
+	);
+	assert.throws(
+		() => make(true),
+		(error) => error.code === "tab_limit" && error.data.scope === "app",
+	);
+	registry.remove(registry.list()[0].record.surface);
+	make(true);
+	assert.equal(registry.count(), MAX_SURFACES_PER_APP);
+	assert.equal(registry.agentCount("history-bound-session"), 1);
+});
+
+test("genuine exited agent surfaces remain live admissions and still enforce eight", async () => {
+	const { host, registry, spawned } = hostWithWindow();
+	try {
+		for (let index = 0; index < MAX_AGENT_SURFACES_PER_SESSION; index += 1)
+			await createSurface(host);
+		spawned[0].pty.exit(0);
+		assert.equal(host.list()[0].running, false);
+		assert.equal(host.list()[0].live, true);
+		assert.equal(
+			registry.agentCount("session-1"),
+			MAX_AGENT_SURFACES_PER_SESSION,
+		);
+		await assert.rejects(
+			createSurface(host),
+			(error) => error.code === "tab_limit" && error.data.scope === "session",
+		);
+	} finally {
+		host.dispose();
+	}
+});
+
+for (const fault of ["replay", "log", "attach-before", "attach-after"]) {
+	for (const releaseFails of [false, true]) {
+		test(`real restore acquisition remains owned across ${fault}, release retry=${releaseFails}`, async () => {
+			const { ConsoleHistory, ConsoleRegistry, ByteLog } = mod;
+			const dir = mkdtempSync(join(tmpdir(), "console-acquire-"));
+			const root = join(dir, "run/ui-console/history");
+			const history = new ConsoleHistory(root, { now: () => 1000 });
+			for (let i = 1; i <= 2; i++) {
+				const meta = {
+					surface: `con:${i}:${"a".repeat(22)}`,
+					session_id: "session-1",
+					origin: "agent",
+					command: "true",
+					argv: ["true"],
+					cwd: dir,
+					cols: 80,
+					rows: 24,
+					created_at: 900,
+					// History sorts newest first: acquisition two must be con:2,
+					// independent of filesystem enumeration or sort stability.
+					last_seen_at: 1000 - i,
+					exit_code: 0,
+					truncated: false,
+					exit_epoch: 3,
+				};
+				history.writeMeta(meta);
+				history.append(
+					meta.session_id,
+					meta.surface,
+					Buffer.from(`preserved ${i}\r\n`),
+					meta,
+				);
+			}
+			const originals = readdirSync(join(root, "session-1")).map((name) => {
+				const path = join(root, "session-1", name);
+				return { path, bytes: readFileSync(path), mode: statSync(path).mode };
+			});
+			const assertUnchanged = () => {
+				for (const file of originals) {
+					assert.deepEqual(readFileSync(file.path), file.bytes);
+					assert.equal(statSync(file.path).mode, file.mode);
+				}
+			};
+			const observations = [];
+			const attach = ConsoleRegistry.prototype.attach;
+			const append = ByteLog.prototype.append;
+			let appendCalls = 0;
+			let writeThrows = 0;
+			let bridge;
+			globalThis.__consoleRootFakeNative = true;
+			globalThis.__consoleRootObserveEmulator = (emulator) => {
+				const index = observations.length;
+				const realWrite = emulator.write.bind(emulator);
+				const realDispose = emulator.dispose.bind(emulator);
+				const observation = {
+					calls: 0,
+					released: false,
+					instrumentCleanup: 0,
+					realDispose,
+				};
+				observations.push(observation);
+				emulator.write = (bytes) => {
+					if (index === 1 && fault === "replay") {
+						writeThrows++;
+						throw new Error("labelled replay after REAL acquire");
+					}
+					return realWrite(bytes);
+				};
+				emulator.dispose = () => {
+					observation.calls++;
+					if (index === 1 && releaseFails && observation.calls === 1)
+						throw new Error("labelled exact-owner release failure");
+					realDispose();
+					observation.released = true;
+				};
+			};
+			ConsoleRegistry.prototype.attach = function (surface, runtime) {
+				const second = surface.startsWith("con:2:");
+				if (second && fault === "attach-before")
+					throw new Error("labelled attach before adoption");
+				const result = attach.call(this, surface, runtime);
+				if (second && fault === "attach-after")
+					throw new Error("labelled attach after adoption");
+				return result;
+			};
+			ByteLog.prototype.append = function (bytes) {
+				appendCalls++;
+				if (appendCalls === 2 && fault === "log")
+					throw new Error("labelled log initialization");
+				return append.call(this, bytes);
+			};
+			try {
+				// Match the existing construction fixture explicitly: no helper from
+				// another test's lexical scope, and never load/spawn a native PTY.
+				const mainFrame = { url: "http://localhost/index.html" };
+				const webContents = { mainFrame };
+				bridge = await startConsoleHost({
+					window: { isDestroyed: () => false, webContents },
+					expectedUrl: mainFrame.url,
+					appVersion: "root-acquisition-test",
+					configDir: dir,
+					spawn: () => {
+						throw new Error("history must not spawn a PTY");
+					},
+					now: () => 1000,
+					log: () => {},
+				});
+				// ConsoleStartup is a tagged ok union, not a ChromeState snapshot.
+				assert.equal(bridge.ok, false);
+				assert.equal(bridge.reason, "startup_failed");
+				assert.match(bridge.detail, /labelled/);
+				assert.equal(observations.length, 2);
+				if (fault === "replay") assert.equal(writeThrows, 1);
+				assertUnchanged();
+				// The wrapper consumes structured evidence BEFORE the assertion.
+				// rc1 alone is insufficient: a fixture ReferenceError is not the
+				// original acquisition leak, and diagnostic finally is not cleanup.
+				console.log(
+					`ROOT_ACQUISITION_RECEIPT ${JSON.stringify({
+						fault,
+						releaseFails,
+						allocated: observations.length,
+						startupOk: bridge.ok,
+						reason: bridge.reason,
+						writeThrows,
+						disposeCalls: observations.map((item) => item.calls),
+						released: observations.map((item) => item.released),
+						historyUnchanged: true,
+					})}`,
+				);
+				assert.deepEqual(
+					observations.map((item) => item.calls),
+					[1, 1],
+					"ROOT_ACQUISITION_LEAK: both genuine allocations must have product owners",
+				);
+				assert.deepEqual(
+					observations.map((item) => item.released),
+					[true, !releaseFails],
+				);
+				await bridge.stop();
+				await bridge.stop();
+				assert.deepEqual(
+					observations.map((item) => item.calls),
+					[1, releaseFails ? 2 : 1],
+				);
+				assert.ok(
+					observations.every(
+						(item) => item.released && item.instrumentCleanup === 0,
+					),
+				);
+				assertUnchanged();
+				console.log(
+					`ROOT_ACQUISITION_COMPLETE ${JSON.stringify({
+						fault,
+						releaseFails,
+						allocated: observations.length,
+						disposeCalls: observations.map((item) => item.calls),
+						allReleased: true,
+						instrumentCleanup: 0,
+						historyUnchanged: true,
+					})}`,
+				);
+			} finally {
+				ConsoleRegistry.prototype.attach = attach;
+				ByteLog.prototype.append = append;
+				globalThis.__consoleRootFakeNative = undefined;
+				globalThis.__consoleRootObserveEmulator = undefined;
+				// On red assertions, diagnostic release runs AFTER the verdict and
+				// never increments product counters or supplies a passing receipt.
+				for (const item of observations) {
+					if (!item.released) {
+						item.realDispose();
+						item.instrumentCleanup++;
+					}
+				}
+				try {
+					await bridge?.stop();
+				} finally {
+					rmSync(dir, { recursive: true, force: true });
+				}
+			}
+		});
+	}
+}
+
+test("optional startup rollback preserves history bytes and retries only exact failed runtime owners", async () => {
+	const root = mkdtempSync(join(tmpdir(), "console-root-rollback-"));
+	const dir = join(root, "run", "ui-console", "history");
+	const history = new ConsoleHistory(dir);
+	const records = Array.from({ length: 9 }, (_, index) => ({
+		surface: `con:${index + 1}:retainedHistory${index + 1}`,
+		session_id: "session-1",
+		origin: "agent",
+		command: "zsh",
+		argv: [],
+		cwd: "/isolated",
+		cols: 100,
+		rows: 30,
+		created_at: Date.now() / 1000,
+		last_seen_at: Date.now() / 1000,
+		exit_code: 0,
+		exit_epoch: 7,
+		truncated: false,
+	}));
+	const saved = records.flatMap((meta) => {
+		history.writeMeta(meta);
+		history.append(
+			meta.session_id,
+			meta.surface,
+			new TextEncoder().encode(`history ${meta.surface}\r\n`),
+			meta,
+		);
+		const paths = [
+			sidecarPath(dir, meta.session_id, meta.surface),
+			logPath(dir, meta.session_id, meta.surface),
+		];
+		return paths.map((path) => ({
+			path,
+			bytes: readFileSync(path),
+			mode: statSync(path).mode & 0o777,
+		}));
+	});
+	const releases = [];
+	const restore = ConsoleHost.prototype.restore;
+	let partialHost;
+	ConsoleHost.prototype.restore = function (meta, bytes) {
+		restore.call(this, meta, bytes);
+		partialHost = this;
+		const emulator = this.registry.find(meta.surface).runtime.emulator;
+		const release = emulator.dispose.bind(emulator);
+		const counter = { calls: 0 };
+		const first = releases.length === 0;
+		releases.push(counter);
+		emulator.dispose = () => {
+			counter.calls += 1;
+			if (first && counter.calls === 1)
+				throw new Error("injected exact emulator release failure");
+			release();
+		};
+	};
+	globalThis.__consoleRootFakeNative = true;
+	const mainFrame = { url: "http://localhost/index.html" };
+	const webContents = { mainFrame };
+	const owner = { isDestroyed: () => false, webContents };
+	let startup;
+	try {
+		startup = await startConsoleHost({
+			window: owner,
+			expectedUrl: mainFrame.url,
+			appVersion: "root-test",
+			configDir: root,
+			spawn: () => {
+				throw new Error("History restore must never spawn a PTY");
+			},
+			log: (message) => {
+				if (message.includes("retained surface(s) from history"))
+					throw new Error("injected restore completion failure");
+			},
+		});
+		assert.equal(startup.ok, false);
+		assert.equal(startup.reason, "startup_failed");
+		assert.equal(releases.length, 9);
+		assert.ok(
+			releases.every((owner) => owner.calls === 1),
+			"all partial owners attempted despite one failed release",
+		);
+		const state = ipcMain.handlers.get("console-state")({
+			sender: webContents,
+			senderFrame: mainFrame,
+		});
+		assert.equal(state.available, false);
+		assert.equal(state.reason, "startup_failed");
+		for (const file of saved) {
+			assert.deepEqual(readFileSync(file.path), file.bytes);
+			assert.equal(statSync(file.path).mode & 0o777, file.mode);
+		}
+		await startup.stop();
+		assert.equal(releases[0].calls, 2);
+		assert.ok(
+			releases.slice(1).every((owner) => owner.calls === 1),
+			"stop retries only the retained failed owner",
+		);
+		for (const file of saved)
+			assert.deepEqual(readFileSync(file.path), file.bytes);
+	} finally {
+		globalThis.__consoleRootFakeNative = false;
+		ConsoleHost.prototype.restore = restore;
+		partialHost?.dispose(false);
+		unregisterConsoleIpc();
+		rmSync(root, { recursive: true, force: true });
+	}
 });
 
 test("a retained surface is replayed into a fresh record, and reads as not live", async () => {

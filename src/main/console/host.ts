@@ -361,6 +361,10 @@ export interface CreateSurfaceResult {
 
 export class ConsoleHost {
 	private readonly registry: ConsoleRegistry<SurfaceRuntime>;
+	private rollbackDisposals: ConsoleRegistryEntry<SurfaceRuntime>[] = [];
+	// Acquisition precedes runtime construction/registry adoption. Keep the exact
+	// emulator until adoption succeeds; startup rollback must also own that gap.
+	private readonly unboundRestoreEmulators = new Set<ConsoleEmulator>();
 	private readonly options: ConsoleHostOptions;
 	private readonly now: () => number;
 	private readonly env: NodeJS.ProcessEnv;
@@ -543,6 +547,7 @@ export class ConsoleHost {
 			// The handle the history recorded, so a caller holding one across a relaunch
 			// finds the same surface rather than a lookalike with a new nonce.
 			surface: meta.surface,
+			live: false,
 			sessionId: meta.session_id,
 			origin: meta.origin,
 			command: meta.command,
@@ -573,10 +578,7 @@ export class ConsoleHost {
 			rows: grid.rows,
 			scrollback: SCROLLBACK_LINES,
 		});
-		// Replay, not deserialize: the headless build ships no `addon-serialize`, and
-		// the design does not need one (§5.4/§7.1). The retained window is 4 MiB, so
-		// the parse is bounded and paid once.
-		emulator.write(bytes);
+		this.unboundRestoreEmulators.add(emulator);
 		const runtime: SurfaceRuntime = {
 			// A reconstructed surface has no pty. `null` rather than a fake process:
 			// every path that would signal one checks `running` first, and the record
@@ -598,8 +600,15 @@ export class ConsoleHost {
 			exitDelivered: true,
 			exitWaiters: [],
 		};
-		runtime.log.append(bytes);
+		// Adopt BEFORE replay/log initialization, either of which may throw. If
+		// attach itself fails, the acquisition inventory still owns the emulator;
+		// rollback deduplicates the case where attach bound it before throwing.
 		this.registry.attach(entry.record.surface, runtime);
+		this.unboundRestoreEmulators.delete(emulator);
+		// Replay, not deserialize: the headless build ships no `addon-serialize`,
+		// and the retained parse is bounded to 4 MiB and paid once (§5.4/§7.1).
+		emulator.write(bytes);
+		runtime.log.append(bytes);
 		this.registry.update(entry.record.surface, {
 			running: false,
 			exitCode: meta.exit_code,
@@ -1544,25 +1553,85 @@ export class ConsoleHost {
 	}
 
 	/** Stop everything: every pty, every record, every subscriber. */
-	dispose(): void {
-		for (const entry of this.registry.clear()) {
-			const runtime = entry.runtime;
-			if (!runtime) continue;
-			if (runtime.pendingTimer) clearTimeout(runtime.pendingTimer);
-			if (runtime.persistTimer) clearTimeout(runtime.persistTimer);
-			runtime.subscribers.clear();
-			// THE LAST FLUSH IS THE POINT OF THE FLUSH: bytes still inside the pending
-			// window when the app quits are the one thing the coalescing must never
-			// lose, and this path used to write the SIDECAR only — so with a bounded
-			// flush it would have dropped the last quarter-second of every retained
-			// surface. It runs before the kill so the process's final bytes are
-			// already in the log either way (a pty that emits after this write lands
-			// nothing, which is the durability boundary §7.4 states rather than a
-			// promise this makes).
-			if (entry.record.retain) this.persist(entry, runtime);
-			if (entry.record.running) runtime.pty?.kill();
-			runtime.emulator.dispose();
-		}
+	dispose(persistHistory = true): void {
+		// A startup rollback has not read the complete history yet. Persisting its
+		// partial emulators would turn a recoverable startup error into data loss.
+		if (
+			!persistHistory ||
+			this.rollbackDisposals.length > 0 ||
+			this.unboundRestoreEmulators.size > 0
+		) {
+			const entries = [...this.rollbackDisposals, ...this.registry.clear()];
+			this.rollbackDisposals = [];
+			const failures: unknown[] = [];
+			// An attach implementation may bind then throw. Registry-owned runtimes
+			// are canonical release owners, so that emulator must not be disposed
+			// again through the pre-adoption inventory, including on failed release.
+			for (const entry of entries) {
+				if (entry.runtime)
+					this.unboundRestoreEmulators.delete(entry.runtime.emulator);
+			}
+			for (const entry of entries) {
+				const runtime = entry.runtime;
+				if (!runtime) continue;
+				let incomplete = false;
+				// Partial initialization is not a persistence event. Try every exact
+				// runtime owner even if one fails, and retain only failed owners for
+				// a subsequent stop; never write bytes or metadata during rollback.
+				for (const release of [
+					() => {
+						if (runtime.pendingTimer) clearTimeout(runtime.pendingTimer);
+						if (runtime.persistTimer) clearTimeout(runtime.persistTimer);
+						runtime.subscribers.clear();
+					},
+					() => {
+						if (entry.record.running) runtime.pty?.kill();
+					},
+					() => runtime.emulator.dispose(),
+				]) {
+					try {
+						release();
+					} catch (error) {
+						incomplete = true;
+						failures.push(error);
+					}
+				}
+				if (incomplete) this.rollbackDisposals.push(entry);
+			}
+			for (const emulator of this.unboundRestoreEmulators) {
+				try {
+					emulator.dispose();
+					this.unboundRestoreEmulators.delete(emulator);
+				} catch (error) {
+					// Keep failed acquisitions for stop's exact-object retry, without
+					// a history write, a swallowed error or a second allocation.
+					failures.push(error);
+				}
+			}
+			if (failures.length)
+				throw new AggregateError(
+					failures,
+					"Partial console runtime cleanup incomplete.",
+				);
+		} else
+			for (const entry of this.registry.clear()) {
+				const runtime = entry.runtime;
+				if (!runtime) continue;
+				if (runtime.pendingTimer) clearTimeout(runtime.pendingTimer);
+				if (runtime.persistTimer) clearTimeout(runtime.persistTimer);
+				runtime.subscribers.clear();
+				// THE LAST FLUSH IS THE POINT OF THE FLUSH: bytes still inside the pending
+				// window when the app quits are the one thing the coalescing must never
+				// lose, and this path used to write the SIDECAR only — so with a bounded
+				// flush it would have dropped the last quarter-second of every retained
+				// surface. It runs before the kill so the process's final bytes are
+				// already in the log either way (a pty that emits after this write lands
+				// nothing, which is the durability boundary §7.4 states rather than a
+				// promise this makes).
+				if (persistHistory && entry.record.retain) this.persist(entry, runtime);
+				if (entry.record.running) runtime.pty?.kill();
+				runtime.emulator.dispose();
+			}
 		this.createdAt.clear();
 		this.persistedBytes.clear();
 		this.metaSignatures.clear();
