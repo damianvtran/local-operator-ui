@@ -6896,6 +6896,35 @@ const get = (url, optionsOrCallback, maybeCallback) => {
 		handlers: {},
 	};
 	state().calls.push(record);
+	/*
+	 * Scripted delivery for cases that drive a read to an ANSWER rather than
+	 * to its timeout: the autoRespond hook on the fixture state returns a
+	 * body object to answer with, or an error object to fail the request. On a microtask, so the
+	 * shipped code has wired its handlers. Absent, the request simply never
+	 * answers, which is what the timeout case above relies on.
+	 */
+	const callback =
+		typeof optionsOrCallback === "function" ? optionsOrCallback : maybeCallback;
+	if (typeof state().autoRespond === "function") {
+		queueMicrotask(() => {
+			const outcome = state().autoRespond?.(record);
+			if (!outcome) return;
+			if (outcome.error) {
+				record.handlers.error?.(outcome.error);
+				return;
+			}
+			const handlers = {};
+			const res = {
+				on(event, handler) {
+					handlers[event] = handler;
+					return res;
+				},
+			};
+			callback?.(res);
+			handlers.data?.(outcome.body ?? "");
+			handlers.end?.();
+		});
+	}
 	const request = {
 		on(event, handler) {
 			record.handlers[event] = handler;
@@ -11229,6 +11258,77 @@ test("the PyPI and npm registry reads are bounded by their own socket timeouts",
 	} finally {
 		if (interval) clearInterval(interval);
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
+		// biome-ignore lint/performance/noDelete: same teardown rule as above.
+		delete globalThis.__loTestHttps;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(fixtureDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+	}
+});
+
+test("a failed PyPI read after a not-ready read does not repeat the publishing sentence", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-pypi-pending-"));
+	const userData = join(home, "userData");
+	const fixtureDir = join(home, "service");
+	mkdirSync(userData, { recursive: true });
+	mkdirSync(fixtureDir, { recursive: true });
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
+	const { service, serviceDir } = await loadUpdateServiceModule({
+		httpsStub: true,
+	});
+	let interval = null;
+	try {
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: { send: () => {}, isDestroyed: () => false },
+			},
+			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		);
+		interval = updateService.updateCheckInterval;
+		const state = { calls: [] };
+		globalThis.__loTestHttps = state;
+		/*
+		 * UX round 2, U2, through the shipped method itself: the readiness
+		 * read answers "named, not ready", then later reads learn nothing.
+		 * `pendingPypiVersion` is the sole input to the manual check's
+		 * publishing sentence (the branch tests `installedVersion &&
+		 * this.pendingPypiVersion`), so its state after each read IS whether
+		 * that sentence can be produced.
+		 */
+		state.autoRespond = () => ({
+			body: JSON.stringify({ info: { version: "9.9.9" }, urls: [] }),
+		});
+		assert.equal(await updateService.getLatestPypiVersion(), null);
+		assert.equal(updateService.pendingPypiVersion, "9.9.9");
+
+		// Transport failure: the read learned nothing, the verdict must go.
+		state.autoRespond = () => ({
+			error: new Error("getaddrinfo ENOTFOUND pypi.org"),
+		});
+		assert.equal(await updateService.getLatestPypiVersion(), null);
+		assert.equal(updateService.pendingPypiVersion, null);
+
+		// Socket timeout: routes through destroy into the same error path.
+		state.autoRespond = () => ({
+			body: JSON.stringify({ info: { version: "9.9.9" }, urls: [] }),
+		});
+		assert.equal(await updateService.getLatestPypiVersion(), null);
+		assert.equal(updateService.pendingPypiVersion, "9.9.9");
+		state.autoRespond = null;
+		const stalled = updateService.getLatestPypiVersion();
+		state.calls.at(-1).handlers.timeout();
+		assert.equal(await stalled, null);
+		assert.equal(updateService.pendingPypiVersion, null);
+	} finally {
+		if (interval) clearInterval(interval);
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; ABSENT is what "no override" means.
 		delete globalThis.__loTestPaths;
 		// biome-ignore lint/performance/noDelete: same teardown rule as above.
 		delete globalThis.__loTestHttps;

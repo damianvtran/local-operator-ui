@@ -6311,6 +6311,14 @@ export class UpdateService {
 				);
 			});
 			request.on("error", (error) => {
+				/*
+				 * A read that never parsed a body learned nothing about PyPI,
+				 * so it must not leave a previous read's verdict standing:
+				 * `pendingPypiVersion` only ever carries the most recent
+				 * ANSWERED read's named version (UX round 2, U2). The socket
+				 * timeout routes here too, through the destroy above.
+				 */
+				this.pendingPypiVersion = null;
 				logger.error(
 					"Error fetching from PyPI:",
 					LogFileType.UPDATE_SERVICE,
