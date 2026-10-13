@@ -56,7 +56,7 @@ export const bundledCatalogues: Readonly<
 	Record<string, Readonly<Record<string, string>>>
 > = {
 	en: bundledEnglish,
-	"fr": {
+	fr: {
 		...frUiSettings,
 	},
 };
