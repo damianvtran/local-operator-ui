@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { after, test } from "node:test";
-import { build } from "esbuild";
+import { build, stop } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
 
@@ -103,6 +103,12 @@ const localeNegativeControl =
 	process.env.I18N_TEST_DISABLE_MODEL_SUBSCRIPTION === "1";
 const staleCopyNegativeControl =
 	process.env.I18N_TEST_FREEZE_MODEL_COPY === "1";
+
+// esbuild's native compiler service is an owned subprocess, not native UI
+// evidence. Stop it even when a component assertion fails; the allocation's
+// exact-PID observer remains the final backstop for its process lineage.
+after(() => stop());
+
 const bundle = await build({
 	plugins:
 		localeNegativeControl || staleCopyNegativeControl
@@ -499,3 +505,118 @@ run(
 		);
 	},
 );
+
+run("canonical model IDs remain displayable and searchable without saving", async (t) => {
+	const canonical = "gpt-6.1-sol";
+	const pretty = "GPT 6.1 Sol";
+	const saves = [];
+	const realFetch = useModelsStore.getState().fetchModels;
+	useModelsStore.setState({ fetchModels: async () => undefined });
+	t.after(() => useModelsStore.setState({ fetchModels: realFetch }));
+
+	// jsdom has no layout observer. This shim admits the real popup's DOM;
+	// it is not browser geometry, a screenshot, or native application proof.
+	const previousObserver = globalThis.ResizeObserver;
+	globalThis.ResizeObserver = class {
+		observe() {}
+		unobserve() {}
+		disconnect() {}
+	};
+	t.after(() => {
+		globalThis.ResizeObserver = previousObserver;
+	});
+
+	const row = (id, name = pretty, provider = "openai") => ({
+		id,
+		name,
+		provider,
+		info: {
+			id,
+			name,
+			description: "Synthetic native catalogue row",
+			recommended: false,
+		},
+	});
+	const render = async (hostingId, value, rows, inspect) => {
+		useModelsStore.setState({
+			isInitialized: true,
+			providers: [{
+				id: hostingId,
+				name: hostingId,
+				description: "Synthetic provider",
+				url: "https://synthetic.invalid",
+				requiredCredentials: [],
+			}],
+			models: rows,
+		});
+		const container = document.createElement("div");
+		document.body.append(container);
+		const root = createRoot(container);
+		try {
+			await act(async () => {
+				root.render(createElement(QueryClientProvider, { client: queryClient },
+					createElement(ModelSelect, {
+						hostingId,
+						value,
+						allowDefault: false,
+						onSave: async (id) => saves.push(id),
+					}),
+				));
+			});
+			const input = container.querySelector('input[role="combobox"]');
+			assert.ok(input, "the actual ModelSelect must mount before any product assertion");
+			return await inspect(input);
+		} finally {
+			await act(async () => root.unmount());
+			container.remove();
+			queryClient.clear();
+		}
+	};
+
+	// Collect both discriminators before failing, so the first defect cannot
+	// hide the second. Exact/foreign/custom controls must pass independently.
+	const display = await render("openai", `openai/${canonical}`, [row(canonical)],
+		async (input) => input.value);
+	const exact = await render("openai", canonical, [row(canonical)],
+		async (input) => input.value);
+	assert.equal(exact, pretty, "an exact canonical catalogue ID is a known model");
+	const exactPrefixed = await render("openai", `openai/${canonical}`,
+		[row(canonical), row(`openai/${canonical}`, "Exact prefixed catalogue row")],
+		async (input) => input.value);
+	assert.equal(exactPrefixed, "Exact prefixed catalogue row", "exact ID wins over outer-prefix equivalence");
+	const foreign = await render("openrouter", `openai/${canonical}`,
+		[row(canonical, pretty, "openrouter")], async (input) => input.value);
+	assert.equal(foreign, `openai/${canonical}`, "a foreign upstream prefix must never be stripped");
+	const nested = await render("openrouter", `openai/${canonical}`,
+		[row(`openai/${canonical}`, pretty, "openrouter")], async (input) => input.value);
+	assert.equal(nested, pretty, "a nested upstream ID remains intact when the catalogue knows it");
+	const unknown = await render("openai", "openai/synthetic-not-listed", [row(canonical)],
+		async (input) => input.value);
+	assert.equal(unknown, "openai/synthetic-not-listed", "genuinely unknown custom values remain raw");
+
+	const search = await render("openai", "", [row(canonical)], async (input) => {
+		await act(async () => input.focus());
+		const setter = Object.getOwnPropertyDescriptor(
+			window.HTMLInputElement.prototype, "value",
+		).set;
+		await act(async () => {
+			setter.call(input, canonical);
+			input.dispatchEvent(new window.Event("input", { bubbles: true }));
+		});
+		assert.equal(input.getAttribute("aria-expanded"), "true", "the real combobox must be open");
+		const options = [...document.querySelectorAll('[role="option"]')];
+		return {
+			known: options.some((option) => option.dataset.comboboxRow !== "typed"
+				&& option.textContent.includes(pretty)),
+			custom: options.some((option) => option.dataset.comboboxRow === "typed"),
+			text: options.map((option) => option.textContent),
+		};
+	});
+	assert.deepEqual(saves, [], "normalizing display or filtering must not invoke onSave");
+	console.log("MODEL_SELECT_U1_U2_ACTUAL", { display, search, saves });
+	assert.deepEqual({ display, knownRawId: search.known, customRawId: search.custom }, {
+		display: pretty,
+		knownRawId: true,
+		customRawId: false,
+	}, "known hosting-prefix display and canonical raw-ID search must use the real row");
+});
