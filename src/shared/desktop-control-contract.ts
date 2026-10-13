@@ -72,6 +72,18 @@ export type DesktopModelCatalogue = {
 		listing_name?: string;
 		connected: boolean;
 		context_window: number;
+		/** Optional native detail facts; absent means unknown on older hosts. */
+		max_output_tokens?: number;
+		supports_tools?: boolean | null;
+		supports_images?: boolean | null;
+		supports_audio_input?: boolean | null;
+		reasoning?: boolean | null;
+		reasoning_efforts?: string[] | null;
+		reasoning_default_effort?: string | null;
+		family?: string | null;
+		release_date?: string | null;
+		modalities?: { input?: string[]; output?: string[] } | null;
+		variants?: Record<string, Record<string, unknown>> | null;
 		input_price: number;
 		output_price: number;
 		default_context_window: number | null;

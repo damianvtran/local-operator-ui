@@ -77,6 +77,16 @@ after(() => {
 const AUTH_URL = "https://claude.ai/oauth/authorize?state=remount";
 const opened = [];
 let polls = 0;
+let deviceFixture = false;
+const DEVICE_NOTICE =
+	"Unsupported by Meta. Muse Code subscription only. Contributor is not enabled. <img src=x onerror=unsafe>";
+const deviceSnapshot = () =>
+	snapshot("waiting", {
+		provider: "meta-muse",
+		user_code: "TEST-1234",
+		auth_url: "https://approval.example.test/",
+		instructions: DEVICE_NOTICE,
+	});
 const snapshot = (state, extra = {}) => ({
 	id: "op-1",
 	provider: "anthropic",
@@ -167,8 +177,9 @@ globalThis.window.api = {
 					ops.push({ op: "auth.key", provider: request.provider });
 					return ok(keyReply);
 				case "auth.start":
-					return ok(snapshot("starting"));
+					return ok(deviceFixture ? deviceSnapshot() : snapshot("starting"));
 				case "auth.status":
+					if (deviceFixture) return ok(deviceSnapshot());
 					polls += 1;
 					if (polls === 1) {
 						return ok(snapshot("waiting", { auth_url: AUTH_URL }));
@@ -298,6 +309,22 @@ const seedCatalogue = (providerId, models) => {
 	});
 };
 
+CENSUS.push({
+	...CENSUS.find((row) => row.id === "openai"),
+	id: "meta-muse",
+	storage_id: "meta-muse",
+	name: "Muse Code",
+	auth_methods: [
+		{
+			id: "meta-muse",
+			method_id: "meta-muse",
+			label: "Muse Code",
+			kind: "device",
+			requires_secret_input: false,
+			paste_fallback: false,
+		},
+	],
+});
 const rowFor = (id) => CENSUS.find((row) => row.id === id);
 
 const mount = async (t) => {
@@ -771,5 +798,53 @@ trackedTest(
 			"active",
 			"the new provider inherited the old provider's flow",
 		);
+	},
+);
+
+trackedTest(
+	"device approval renders the complete disclosure once as text and opens only after copy",
+	async (t) => {
+		deviceFixture = true;
+		currentProvider = "meta-muse";
+		const descriptor = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+		const copied = [];
+		Object.defineProperty(navigator, "clipboard", {
+			configurable: true,
+			value: { writeText: async (value) => copied.push(value) },
+		});
+		t.after(() => {
+			deviceFixture = false;
+			if (descriptor) Object.defineProperty(navigator, "clipboard", descriptor);
+			else Reflect.deleteProperty(navigator, "clipboard");
+		});
+		const mounted = await mount(t);
+		const before = opened.length;
+		await mounted.render("meta-muse", "device-fixture");
+		await clickButton(mounted, "Get a sign-in code");
+		await waitFor(
+			() => mounted.find('[data-sign-in-state="device-code"]'),
+			"device approval",
+		);
+		const panel = mounted.find('[data-sign-in-state="device-code"]');
+		assert.equal(panel.textContent.split("Unsupported by Meta").length - 1, 1);
+		assert.ok(panel.textContent.includes(DEVICE_NOTICE));
+		assert.equal(
+			panel.querySelector("img"),
+			null,
+			"instruction markup must be inert text",
+		);
+		assert.equal(opened.length, before, "device approval must not auto-open");
+		await clickButton(mounted, "Copy code and open page");
+		await waitFor(
+			() => opened.length === before + 1,
+			"explicit browser handoff",
+		);
+		assert.deepEqual(copied, ["TEST-1234"]);
+		await clickButton(mounted, "Cancel");
+		await waitFor(
+			() => mounted.find('[data-sign-in-state="idle"]'),
+			"cancelled approval returning to idle",
+		);
+		assert.equal(peekSignInState("meta-muse").phase, "idle");
 	},
 );
