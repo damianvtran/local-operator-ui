@@ -51,6 +51,15 @@ Object.defineProperty(globalThis, "navigator", {
 globalThis.localStorage = bootstrapDOM.window.localStorage;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 /*
+ * Modern Node already exposes Event/CustomEvent. The copy loop above keeps
+ * those Node constructors, but Radix dispatches its global CustomEvent on the
+ * jsdom document: mixing realms throws before the popup can be exercised.
+ * Pin actual DOM constructors before importing react-dom or renderer code.
+ */
+globalThis.Event = bootstrapDOM.window.Event;
+globalThis.CustomEvent = bootstrapDOM.window.CustomEvent;
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+/*
  * The component's refresh hook arms a `window.setInterval`; nothing here waits for
  * a refresh, and a live interval keeps the event loop open after the assertions,
  * which turns a passing file into a timeout (the hang this repository's rendered
@@ -594,17 +603,42 @@ run("canonical model IDs remain displayable and searchable without saving", asyn
 		async (input) => input.value);
 	assert.equal(unknown, "openai/synthetic-not-listed", "genuinely unknown custom values remain raw");
 
+	// Preserve observations before opening the popup: a host setup failure
+	// there must not hide the already measured display/identity controls.
+	console.log("MODEL_SELECT_DISPLAY_CONTROLS", {
+		display, exact, exactPrefixed, foreign, nested, unknown, saves,
+	});
+
 	const search = await render("openai", "", [row(canonical)], async (input) => {
 		await act(async () => input.focus());
+		const actualOptions = () => [...document.querySelectorAll('[role="option"]')];
+		assert.ok(actualOptions().some((option) => option.dataset.comboboxRow !== "typed"
+			&& option.textContent.includes(pretty)),
+		"setup: the actual popup must expose its genuine pretty-name row before filtering");
 		const setter = Object.getOwnPropertyDescriptor(
 			window.HTMLInputElement.prototype, "value",
 		).set;
-		await act(async () => {
-			setter.call(input, canonical);
-			input.dispatchEvent(new window.Event("input", { bubbles: true }));
-		});
+		const type = async (text) => {
+			await act(async () => {
+				setter.call(input, text);
+				input.dispatchEvent(new window.Event("input", { bubbles: true }));
+			});
+			assert.equal(input.value, text, "setup: the controlled input must reflect the typed query");
+		};
+		// A no-match query proves filtering really consumed the event, not just
+		// a physical input.value assignment leaving the old options on screen.
+		await type("synthetic-unlisted-query");
+		assert.ok(actualOptions().some((option) => option.dataset.comboboxRow === "typed"
+			&& option.textContent.includes("synthetic-unlisted-query")),
+		"setup: the real query state must produce its typed-value fallback");
+		assert.ok(!actualOptions().some((option) => option.dataset.comboboxRow !== "typed"
+			&& option.textContent.includes(pretty)), "setup: no-match filtering must hide the real row");
+		await type(canonical);
 		assert.equal(input.getAttribute("aria-expanded"), "true", "the real combobox must be open");
-		const options = [...document.querySelectorAll('[role="option"]')];
+		const options = actualOptions();
+		for (const option of options.filter((item) => item.dataset.comboboxRow === "typed")) {
+			assert.ok(option.textContent.includes(canonical), "setup: raw-ID query must replace the previous typed-row state");
+		}
 		return {
 			known: options.some((option) => option.dataset.comboboxRow !== "typed"
 				&& option.textContent.includes(pretty)),
