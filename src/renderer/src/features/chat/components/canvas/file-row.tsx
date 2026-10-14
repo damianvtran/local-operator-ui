@@ -1,11 +1,16 @@
-import { fetchAttachmentBlob } from "@features/chat/canonical/use-attachment-url";
-import { useAttachmentSource } from "@features/chat/canonical/use-attachment-url";
+import {
+	fetchAttachmentBlob,
+	useAttachmentSource,
+} from "@features/chat/canonical/use-attachment-url";
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import type {
 	CanvasDocument,
 	CanvasDocumentType,
 } from "@features/chat/types/canvas";
-import { artifactFileName } from "@features/chat/utils/artifact-identity";
+import {
+	artifactFileName,
+	artifactTooltip,
+} from "@features/chat/utils/artifact-identity";
 import { stripFileUrl } from "@features/chat/utils/canvas-document";
 import { mimeTypeForPath } from "@features/chat/utils/file-kind";
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
@@ -25,7 +30,7 @@ import {
 	Presentation,
 	ScrollText,
 } from "lucide-react";
-import { type FC, memo, useState } from "react";
+import { type FC, memo, useEffect, useState } from "react";
 import type { Ref } from "react";
 import { ImageActionsMenu } from "../image-actions-menu";
 import type { FileRow } from "./file-rows";
@@ -213,6 +218,38 @@ const ArtifactThumbnail: FC<{ row: FileRow; className: string }> = ({
 	row,
 	className,
 }) => {
+	// A failed fetch latches inside `useAttachmentSource` until the row remounts,
+	// and "the daemon was unreachable for a few seconds" is indistinguishable there
+	// from "the bytes are gone" (design D3: a 12 s outage left every thumbnail on
+	// its glyph for the visit). So a miss is retried a bounded number of times by
+	// REMOUNTING the reader under a new key - the one reset the hook offers, and
+	// the same thing a view toggle did by hand. A genuinely gone digest costs two
+	// extra 404s and then settles on the glyph.
+	const [attempt, setAttempt] = useState(0);
+	return (
+		<ArtifactThumbnailAttempt
+			key={attempt}
+			row={row}
+			className={className}
+			onMiss={
+				attempt < ARTIFACT_THUMBNAIL_RETRY_DELAYS_MS.length
+					? () => setAttempt((count) => count + 1)
+					: null
+			}
+			delayMs={ARTIFACT_THUMBNAIL_RETRY_DELAYS_MS[attempt] ?? 0}
+		/>
+	);
+};
+
+/** Waits before the 2nd and 3rd attempt: long enough to ride out a restart. */
+const ARTIFACT_THUMBNAIL_RETRY_DELAYS_MS = [2000, 6000] as const;
+
+const ArtifactThumbnailAttempt: FC<{
+	row: FileRow;
+	className: string;
+	onMiss: (() => void) | null;
+	delayMs: number;
+}> = ({ row, className, onMiss, delayMs }) => {
 	const artifact = row.artifact;
 	const source = useAttachmentSource(
 		{
@@ -222,6 +259,12 @@ const ArtifactThumbnail: FC<{ row: FileRow; className: string }> = ({
 		},
 		artifact ? { sessionId: artifact.sessionId, childId: null } : null,
 	);
+	const missing = source.state === "missing";
+	useEffect(() => {
+		if (!missing || onMiss === null) return;
+		const timer = window.setTimeout(onMiss, delayMs);
+		return () => window.clearTimeout(timer);
+	}, [missing, onMiss, delayMs]);
 	const url = source.state === "ready" ? source.url : null;
 	const [undecodableUrl, setUndecodableUrl] = useState<string | null>(null);
 	if (url !== null && url !== undecodableUrl) {
@@ -235,7 +278,7 @@ const ArtifactThumbnail: FC<{ row: FileRow; className: string }> = ({
 			/>
 		);
 	}
-	if (source.state === "resolving") {
+	if (source.state === "resolving" || (missing && onMiss !== null)) {
 		return <span className={cn("size-7 rounded-sm bg-sunken")} />;
 	}
 	return <TypeGlyph row={row} />;
@@ -312,8 +355,11 @@ const FileRowItemComponent = ({
 	 * 1, D1). A `data:` document has no path to show and keeps its name.
 	 */
 	const artifact = row.artifact;
-	const tooltip =
-		artifact || document.path.startsWith("data:")
+	// An artifact has no path to resolve a name clash or to say where it lives, so
+	// its tooltip carries the digest head and the cue instead (UX U2/U4, design D7).
+	const tooltip = artifact
+		? artifactTooltip({ ...artifact, title: document.title })
+		: document.path.startsWith("data:")
 			? document.title
 			: document.path;
 	const isLocalFile =
@@ -370,7 +416,25 @@ const FileRowItemComponent = ({
 						{row.media ? (
 							<RowThumbnail
 								row={row}
-								className={cn("size-7 rounded-sm bg-sunken object-cover")}
+								/*
+								 * `outline-1 -outline-offset-1 outline-hairline` is the thumbnail's own edge (design
+								 * D2): a picture whose pixels match the list ground (white art on the
+								 * light list is 1.09:1, a ground-coloured one 1.0:1) otherwise
+								 * disappears and leaves the name offset 36px from nothing. An OUTLINE
+								 * pulled inward rather than the `ring-inset` the review suggested: an
+								 * inset box-shadow is painted above the element's background but below
+								 * its content (CSS Backgrounds 3), and an `<img>`'s content is the
+								 * picture, so the edge would sit under the very pixels it frames. An
+								 * outline paints over them. (That is the spec's order; a ring variant
+								 * was not built and photographed here.) Measured with the outline, on
+								 * the white picture in the light palette: edge pixels (217,213,204)
+								 * between the list ground (247,245,239) and the picture (252,251,249).
+								 * The slot stays 28px so no row moves, and the hairline is a role, not
+								 * a colour.
+								 */
+								className={cn(
+									"size-7 rounded-sm bg-sunken object-cover outline-1 -outline-offset-1 outline-hairline",
+								)}
 							/>
 						) : (
 							<TypeGlyph row={row} />

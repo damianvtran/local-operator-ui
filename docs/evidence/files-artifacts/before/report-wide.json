@@ -1,10 +1,13 @@
 {
   "label": "wide",
   "session": "a1f0c0de0001",
-  "window": "1380x900",
+  "window": {
+    "width": 1380,
+    "height": 900
+  },
   "themes": {
     "dark": {
-      "frame": "<scratch>/frames/before/files-wide-dark.png",
+      "frame": "<scratch>/evidence/frames2/before/files-wide-dark.png",
       "reading": {
         "innerWidth": 1380,
         "innerHeight": 900,
@@ -39,7 +42,7 @@
       }
     },
     "light": {
-      "frame": "<scratch>/frames/before/files-wide-light.png",
+      "frame": "<scratch>/evidence/frames2/before/files-wide-light.png",
       "reading": {
         "innerWidth": 1380,
         "innerHeight": 900,
@@ -91,6 +94,6 @@
     "focused": false,
     "minimized": false,
     "frames": [],
-    "outDir": "<scratch>/frames/before"
+    "outDir": "<scratch>/evidence/frames2/before"
   }
 }

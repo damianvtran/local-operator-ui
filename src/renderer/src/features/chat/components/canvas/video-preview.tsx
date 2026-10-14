@@ -93,7 +93,9 @@ const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 	);
 	const [playbackFailed, setPlaybackFailed] = useState(false);
 	return (
-		<div className={cn("flex h-full w-full flex-col bg-elevated")}>
+		<div
+			className={cn("flex h-full min-h-0 w-full flex-1 flex-col bg-elevated")}
+		>
 			<ViewerChrome>
 				{artifact ? (
 					<ImageActionsMenu
@@ -169,7 +171,9 @@ const PathVideoPreview: FC<{ document: CanvasDocument }> = ({ document }) => {
 	   conversation's `canvas`, which would leave the pane's tone under a changed
 	   bar. */
 	return (
-		<div className={cn("flex h-full w-full flex-col bg-elevated")}>
+		<div
+			className={cn("flex h-full min-h-0 w-full flex-1 flex-col bg-elevated")}
+		>
 			<ViewerChrome path={document.path} />
 			{source === "route" ? (
 				<RouteVideo

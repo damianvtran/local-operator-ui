@@ -158,6 +158,14 @@ function fetchAttachment(
 	return record.promise;
 }
 
+/** The digest is not in the session's attachment store (the relay answered 404). */
+export class AttachmentGoneError extends Error {
+	constructor() {
+		super("This item is no longer in the session");
+		this.name = "AttachmentGoneError";
+	}
+}
+
 /**
  * One digest's bytes as a `Blob`, fetched on demand and held by nobody.
  *
@@ -188,7 +196,11 @@ export async function fetchAttachmentBlob(
 		null,
 	);
 	if (result.kind !== "bytes") {
-		throw new Error("These image bytes are not available");
+		// 404 is the store's "no such digest" (`attachment`: a hand-pruned store, an
+		// interrupted write); anything else is the relay failing, which a retry can
+		// clear. The two want different sentences, so the type says which it was.
+		if (result.status === 404) throw new AttachmentGoneError();
+		throw new Error("These bytes are not available right now");
 	}
 	return new Blob([result.data as BlobPart], { type: result.mimeType });
 }
