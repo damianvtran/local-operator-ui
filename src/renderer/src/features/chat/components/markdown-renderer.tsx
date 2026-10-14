@@ -1,13 +1,6 @@
 import { cn } from "@shared/lib/utils";
 import type { CSSProperties, FC, MouseEvent as ReactMouseEvent } from "react";
-import {
-	memo,
-	useEffect,
-	useLayoutEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown, {
 	type Components,
 	type UrlTransform,
@@ -34,6 +27,7 @@ import {
 	scanMarkdownBlocks,
 	trimmedEndLength,
 } from "../utils/markdown-blocks";
+import { closeOpenMarkdown, openFenceOf } from "../utils/markdown-remend";
 import { opensInCanvas } from "../utils/open-in-canvas";
 import { remarkLinkifyTargets } from "../utils/remark-linkify-targets";
 import { remarkSoftBreaks } from "../utils/remark-soft-breaks";
@@ -123,6 +117,16 @@ type MarkdownRendererProps = {
 };
 
 const LANGUAGE_REGEX = /language-(\w+)/;
+const WHITESPACE_RUN = /\s+/;
+/*
+ * A list or an indented-code block is only ended by a blank line when the NEXT
+ * line does not continue it, and that is normally unknowable until the line is
+ * complete (`markdown-blocks.ts`). Some partial lines already decide it: a
+ * continuation has to start with a space/tab (a hung paragraph, indented code) or
+ * a list marker/digit (`-`, `*`, `+`, `1.`), so a first character outside that
+ * set ends the block however the line goes on.
+ */
+const PARTIAL_LINE_ENDS_BLOCK = /^[^\s\d*+-]/;
 const NEWLINE_REGEX = /\n$/;
 
 /**
@@ -326,7 +330,7 @@ export const LINK_URL_TRANSFORM: UrlTransform = (url, key) => {
  * to miss, and the document is re-processed per render whatever the identity is.
  * What actually bounds that work is this repo's own `memo()` on the two
  * components that hold a `<ReactMarkdown>` (`MarkdownRenderer`, and
- * `StableBlock` below).
+ * `ParsedBlock` below).
  *
  * So why hoist? Because it costs nothing, because a module-scope array is the
  * shape a future react-markdown restoring an internal memo would read, and
@@ -544,7 +548,7 @@ const useMathPipeline = (
 	 * set `true`, i.e. a latch in front of the citation veto: an instance whose
 	 * content went math-document -> citation-document would have kept math on and
 	 * re-opened R1-1's defect. The reviewer could not reach it (the citation opt-in
-	 * only ever renders a user turn, whose text is fixed, and `StableBlock` passes
+	 * only ever renders a user turn, whose text is fixed, and `ParsedBlock` passes
 	 * `citations = false`), which is why this is a NIT and not a live path - but a
 	 * latch in front of the guard is the shape that silently re-opens it, so the
 	 * decision is re-derived from the content on every render and only the loader's
@@ -707,88 +711,143 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 MarkdownRenderer.displayName = "MarkdownRenderer";
 
 /**
- * One closed block.
+ * Render counts of the streaming path, read by
+ * `scripts/streaming-live-markdown.test.mjs` and nothing else.
  *
- * Memoised on its source, which by construction never changes once the block
- * has closed — so a block is parsed on the frame it closes and is untouched for
- * the rest of the message. This is the whole point of the block split.
- *
- * The plugin set is derived from the block's own source by the same hook the
- * completed render uses. Hardcoding GFM-only here meant a closed block holding
- * LaTeX showed its raw "$x$" source for the rest of the stream and then
- * re-rendered through KaTeX the moment the message completed and
- * `MarkdownRenderer` took over — the equation visibly jumped. Deriving it means
- * the block reaches its final layout as soon as the KaTeX stylesheet resolves,
- * and completion is a no-op for it.
- *
- * Detection is per block rather than per document on purpose: the block's
- * source is frozen, so its decision is made once and can never flip, whereas a
- * document-level scan would have to re-run on the whole message every frame and
- * would re-render every earlier block the first time math appeared anywhere.
- * The two only disagree where `containsLatex` deliberately reads a
- * digit-leading "$1.00$" as currency for the block but the completed
- * document-level render enables math because of a formula elsewhere.
+ * WHY IT IS IN THE PRODUCT CODE. "Only the tail re-renders while it grows" is
+ * the property the block split exists for, and a DOM-mutation observer cannot
+ * show it (a wasted re-render that produces the same DOM mutates nothing). A
+ * counter bumped where a block's markdown is actually (re)built is the only
+ * direct witness, and an integer increment per block render is below anything a
+ * frame can feel. `settled` counts renders of a CLOSED block, `tail` renders of
+ * the block still being written.
  */
-const StableBlock = memo(({ source }: { source: string }) => {
-	/*
-	 * `linkify` is on here even though this is a streaming view, and the
-	 * difference from `AssistantRow`'s `streaming` row is what a block IS: a
-	 * block reaches this component once it has CLOSED, so its source can never
-	 * change again and a path inside it is a finished path. The in-flight tail
-	 * below renders as literal text and is never parsed at all.
-	 *
-	 * `citations` is OFF, and that is not an oversight: nothing on this path is a
-	 * user turn - the composer's own text never streams - so a chip here could only
-	 * ever dress up text the MODEL wrote, which is the case the prop's own comment
-	 * excludes.
-	 */
-	const { remarkPlugins, rehypePlugins } = useMathPipeline(source, true, false);
-	/*
-	 * The same evidence loop the completed render runs, and the block is a good
-	 * place for it: the source is frozen when the block closes, so this asks at
-	 * most once per spelling per block and never on a delta. Memoised on
-	 * `source`, so a parent re-render that changes nothing here re-parses as it
-	 * already did and asks nothing again.
-	 */
-	useLinkEvidence(source, true);
-	return (
-		<ReactMarkdown
-			remarkPlugins={remarkPlugins}
-			rehypePlugins={rehypePlugins}
-			urlTransform={LINK_URL_TRANSFORM}
-			components={MARKDOWN_COMPONENTS}
-		>
-			{source}
-		</ReactMarkdown>
-	);
-});
-
-StableBlock.displayName = "StableBlock";
+export const streamingRenderStats = { settled: 0, tail: 0 };
 
 /**
- * One frame's worth of newly arrived characters.
+ * One block of a streaming message - closed, or still being written.
  *
- * Mounted once with its final text — the next frame's arrival becomes its own
- * span rather than extending this one — so the fade runs exactly once per
- * character and nothing already on screen re-animates.
+ * THE SAME COMPONENT, AT THE SAME KEY, FOR BOTH. A closed block's source is
+ * frozen, so `memo` (compared on `source` and `closed`) parses it on the frame it
+ * closes and never again - the whole point of the block split. The block still
+ * being written used to be painted as literal text, which is what put raw
+ * backticks and asterisks on screen for the second or two before its paragraph
+ * closed and then re-typeset them (operator report: `` `InfoList` `` read as
+ * literal backticks, then jumped to a code span). It is now parsed too, through
+ * `closeOpenMarkdown`, which appends the closers the writer has not typed yet so
+ * the parse sees a well-formed block. And because it is the same component at the
+ * same key (`blocks.length` is the open block's index, and becomes its closed
+ * index when it closes) the hand-over from "open" to "closed" is a prop change on
+ * a mounted element: the DOM the reader is looking at is the DOM that settles,
+ * with no remount, no re-layout and no flash.
+ *
+ * COST. The open block is re-parsed per frame; closed blocks never. That is
+ * bounded by the size of ONE block, not of the message (the property
+ * `markdown-blocks.ts` was written for), measured in
+ * `scripts/streaming-render-budget.mjs`. The one block whose size is unbounded in
+ * practice is an open code fence, which is why it is NOT parsed per frame: its
+ * body is painted directly into the exact `<pre><code class="language-x">` a
+ * parse would produce (`OpenFenceBody`), so a growing fence costs one text-node
+ * update per frame.
+ *
+ * LINKIFY follows `closed`: a closed block's source can never change again, so a
+ * path inside it is a finished path; the open block is never scanned
+ * (`/Users/x/opoint-renewal-2026-09-1` must not become a link to a path that does
+ * not exist). That is the one deliberate difference between the two states.
+ *
+ * The plugin set is derived from the block's own source by the same hook the
+ * completed render uses, so a block holding LaTeX reaches its final layout as
+ * soon as the KaTeX stylesheet resolves and completion is a no-op for it.
+ * `citations` is OFF: nothing on this path is a user turn, so a chip here could
+ * only dress up text the MODEL wrote.
  */
-const ArrivedText = memo(
-	({ text, animate }: { text: string; animate: boolean }) => (
-		<span className={animate ? "lo-stream-chunk" : undefined}>{text}</span>
-	),
+/**
+ * The open block's component map: the shipped map with the anchor made inert.
+ *
+ * A half-written link target is not a target: `https://example.com/pl` would
+ * autolink to a URL that does not exist, and a complete `[label](url)` is still
+ * inside a paragraph that may yet grow. The label/URL text paints in place and
+ * the anchor appears when the block closes - the guarantee the old plain-text tail
+ * gave (`a block still being written has no anchor`), kept now that the tail is
+ * parsed. A fragment, not a `<span>`, so the DOM differs from the closed form by
+ * the anchor element alone.
+ */
+const OPEN_BLOCK_COMPONENTS: Components = {
+	...MARKDOWN_COMPONENTS,
+	a: ({ children }) => <>{children}</>,
+};
+
+const ParsedBlock = memo(
+	({ source, closed }: { source: string; closed: boolean }) => {
+		if (closed) streamingRenderStats.settled += 1;
+		else streamingRenderStats.tail += 1;
+		const display = useMemo(
+			() => (closed ? source : closeOpenMarkdown(source)),
+			[closed, source],
+		);
+		const fence = useMemo(
+			() => (closed ? null : openFenceOf(source)),
+			[closed, source],
+		);
+		const { remarkPlugins, rehypePlugins } = useMathPipeline(
+			display,
+			closed,
+			false,
+		);
+		useLinkEvidence(source, closed);
+		if (fence !== null) {
+			// The paragraph in front of the fence is still markdown the parse owns.
+			const before = closeOpenMarkdown(fence.before);
+			return (
+				<>
+					{before.trim() !== "" && (
+						<ReactMarkdown
+							remarkPlugins={remarkPlugins}
+							rehypePlugins={rehypePlugins}
+							urlTransform={LINK_URL_TRANSFORM}
+							components={closed ? MARKDOWN_COMPONENTS : OPEN_BLOCK_COMPONENTS}
+						>
+							{before}
+						</ReactMarkdown>
+					)}
+					<OpenFenceBody info={fence.info} body={fence.body} />
+				</>
+			);
+		}
+		return (
+			<ReactMarkdown
+				remarkPlugins={remarkPlugins}
+				rehypePlugins={rehypePlugins}
+				urlTransform={LINK_URL_TRANSFORM}
+				components={closed ? MARKDOWN_COMPONENTS : OPEN_BLOCK_COMPONENTS}
+			>
+				{display}
+			</ReactMarkdown>
+		);
+	},
 );
 
-ArrivedText.displayName = "ArrivedText";
+ParsedBlock.displayName = "ParsedBlock";
 
-type Arrival = {
-	/** Absolute index in the source where this frame's text starts. */
-	offset: number;
-	/**
-	 * Decided once, at creation, and never recomputed. Recomputing it would
-	 * mean adding or removing the class on a live element, which either
-	 * restarts a fade or cuts one off mid-way.
-	 */
-	animate: boolean;
+/**
+ * The body of a code fence that has not closed yet, in the DOM a parse yields.
+ *
+ * `<pre><code class="language-ts">body\n</code></pre>` is what react-markdown
+ * produces for the closed fence, so the hand-over to it moves no pixel. The
+ * trailing newline is the parse's own (a code node's value ends with one) and
+ * renders as nothing inside `pre`. A `mermaid` fence is painted here too, as
+ * plain code: the parse routes a CLOSED one to the diagram, and a half-written
+ * diagram is an error card, so it stays source until it closes.
+ */
+const OpenFenceBody = ({ info, body }: { info: string; body: string }) => {
+	const language = info.split(WHITESPACE_RUN)[0];
+	return (
+		<pre>
+			<code className={language ? `language-${language}` : undefined}>
+				{body === "" ? "" : `${body}${body.endsWith("\n") ? "" : "\n"}`}
+			</code>
+		</pre>
+	);
 };
 
 type StreamingMarkdownProps = {
@@ -803,20 +862,21 @@ type StreamingMarkdownProps = {
  * Two halves, and the split is what bounds the cost:
  *
  * - Everything up to the last closed block boundary is parsed markdown, one
- *   memoised `StableBlock` per block. Each is parsed on the frame it closes.
- * - The block still being written renders as plain text, split into one span
- *   per frame of arrival, so appending text costs one DOM insertion rather than
- *   a re-parse.
+ *   memoised `ParsedBlock` per block. Each is parsed on the frame it closes.
+ * - The block still being written is parsed too, optimistically closed
+ *   (`closeOpenMarkdown`), as the SAME component at the SAME key its closed form
+ *   will have - so inline code, emphasis, lists and headings are formatted the
+ *   moment they are written, and the block settles in place.
  *
- * Per-frame work is therefore proportional to what arrived, plus one block on
- * the frames where a block closes. Neither term grows with the length of the
- * message, which is the property the naive full-document re-parse lacks.
+ * Per-frame work is therefore proportional to ONE block (the open one), never to
+ * the message: the property the naive full-document re-parse lacks.
  *
- * The trade is that the in-flight block shows its markdown source — `**bold**`
- * reads literally for the second or two before the paragraph closes. Parsing
- * the tail every frame instead would put an O(tail) parse back on the hot path
- * and, worse, rebuild the tail's DOM on every frame, which is precisely the
- * "already-painted text must not reflow" property we want.
+ * WHAT WAS GIVEN UP, and why it is acceptable: the old open block was painted as
+ * one `<span>` per arrival so each frame's text could fade in
+ * (`lo-stream-chunk`). A parsed block is a React tree whose text nodes update in
+ * place; there is no per-arrival element to animate, and wrapping the arrivals
+ * would re-introduce a second DOM structure for live text, which is exactly the
+ * live-vs-committed divergence this component now removes.
  */
 export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 	content,
@@ -829,132 +889,72 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 	}
 	const scanner = scannerRef.current;
 
-	const arrivalsRef = useRef<Arrival[]>([]);
-	const previousLengthRef = useRef(0);
-
 	// Scanning during render is safe here because it is a pure function of
 	// `content` into state that is itself derived from `content`: a re-render
 	// with the same string re-derives the same blocks and the same tail. Doing
 	// it in an effect would paint one frame of stale text per chunk.
 	scanMarkdownBlocks(scanner, content);
 
-	const previousLength = previousLengthRef.current;
-	if (content.length > previousLength) {
-		// The first content to appear is not an arrival: on mount, or after a
-		// reconnect replays the record, the text was never absent from the
-		// screen, so fading it in would announce something that did not happen.
-		if (previousLength > 0) {
-			arrivalsRef.current.push({ offset: previousLength, animate: true });
-		}
-		previousLengthRef.current = content.length;
-	} else if (content.length < previousLength) {
-		arrivalsRef.current = [];
-		previousLengthRef.current = content.length;
-	}
-
 	const { blockStart } = scanner;
-	const arrivals = arrivalsRef.current;
-
-	// Arrivals that the closed blocks have absorbed are gone from the DOM; drop
-	// them so the list stays proportional to the tail rather than the message.
-	let firstLive = 0;
-	while (
-		firstLive < arrivals.length &&
-		arrivals[firstLive].offset <= blockStart
-	) {
-		firstLive += 1;
-	}
-	if (firstLive > 0) arrivals.splice(0, firstLive);
-
 	const tailEnd = blockStart + trimmedEndLength(content.slice(blockStart));
-	const previousTailParagraphs = useRef<
-		{ start: number; end: number; key: number }[]
-	>([]);
-	const nextTailKey = useRef(0);
-
 	/*
-	 * A pending blank run followed by an INCOMPLETE next line is two prose
-	 * paragraphs, even though the scanner correctly waits for the complete line
-	 * before parsing the first. One pre-wrap <p> gave that blank line a full
-	 * 22.4px line box; the settled paragraphs have an 8px collapsed margin, so
-	 * the final line jumped up 14.4px at handover. Use the scanner's boundary
-	 * for layout only: both paragraphs still paint literal text, and neither
-	 * a list's loose-item blanks nor a fenced code block is split this way.
-	 * No additional markdown scan/parse is introduced on the delta path.
+	 * A PENDING BLANK RUN FOLLOWED BY AN INCOMPLETE NEXT LINE is two paragraphs,
+	 * though the scanner correctly waits for the complete line before closing the
+	 * first (`markdown-blocks.ts`: it has to see whether the next line continues a
+	 * list). For a block that is neither a list, indented code nor a fence a blank
+	 * line always ends it, so the first paragraph is final NOW: it is handed to a
+	 * closed `ParsedBlock` at the index the scanner will give it a frame later (the
+	 * source string is the scanner's own, so the memo holds and nothing re-renders),
+	 * and the second paragraph is the open block. Without this the whole span was
+	 * one open block that split in two when the line completed, remounting the
+	 * paragraph the reader was looking at.
 	 */
-	const tailParagraphs: [number, number][] = [];
+	let pendingClosed: string | null = null;
+	let openStart = blockStart;
 	if (
-		scanner.kind === "other" &&
+		(scanner.kind === "other" ||
+			((scanner.kind === "list" || scanner.kind === "indented-code") &&
+				PARTIAL_LINE_ENDS_BLOCK.test(content.slice(scanner.cursor)))) &&
 		scanner.fence === null &&
 		scanner.blankRunStart >= blockStart &&
 		scanner.cursor < tailEnd &&
 		content.slice(scanner.cursor, tailEnd).trim().length > 0
 	) {
-		const firstEnd =
-			blockStart +
-			trimmedEndLength(content.slice(blockStart, scanner.blankRunStart));
-		tailParagraphs.push([blockStart, firstEnd], [scanner.cursor, tailEnd]);
-	} else if (tailEnd > blockStart) {
-		tailParagraphs.push([blockStart, tailEnd]);
+		pendingClosed = content.slice(blockStart, scanner.blankRunStart);
+		openStart = scanner.cursor;
 	}
-
-	/* Source offsets belong to arrival spans, not to their paragraph's identity:
-	 * closing a list/code block advances blockStart INSIDE an already-painted
-	 * tail. key={start} remounted that tail and restarted every in-flight fade.
-	 * Retain the overlapping paragraph once; a newly split second paragraph gets
-	 * a new key, and when it becomes the sole tail it keeps that same key. The
-	 * ledger is bounded to the one/two live paragraphs, never the whole message.
-	 */
-	const reused = new Set<number>();
-	const liveParagraphs = tailParagraphs.map(([start, end]) => {
-		const previous = previousTailParagraphs.current.find(
-			(paragraph) =>
-				!reused.has(paragraph.key) &&
-				paragraph.start <= start &&
-				start < paragraph.end,
-		);
-		const key = previous?.key ?? nextTailKey.current++;
-		reused.add(key);
-		return { start, end, key };
-	});
-	useLayoutEffect(() => {
-		// Compare to the actual committed DOM, not an abandoned concurrent render.
-		// This also runs before the next streamed flush can need these identities.
-		previousTailParagraphs.current = liveParagraphs;
-	});
-
+	const tail = content.slice(openStart, tailEnd);
+	const blocks: { key: number; source: string; closed: boolean }[] =
+		scanner.blocks.map((source, key) => ({ key, source, closed: true }));
+	if (pendingClosed !== null)
+		blocks.push({
+			key: scanner.blocks.length,
+			source: pendingClosed,
+			closed: true,
+		});
+	if (tail !== "")
+		blocks.push({ key: blocks.length, source: tail, closed: false });
 	const style = useStyleVariables(styleProps);
 
 	return (
 		<div className={cn("lo-markdown", className)} style={style}>
-			{scanner.blocks.map((block, index) => (
-				// Blocks are append-only, so the index is a stable identity: block
-				// n is the same block for the life of the message.
-				// biome-ignore lint/suspicious/noArrayIndexKey: append-only list, index is the identity
-				<StableBlock key={index} source={block} />
+			{/*
+			 * ONE keyed list, closed blocks then the pending paragraph then the open
+			 * block. They used to be three sibling slots, and React identifies a child
+			 * by slot AND key: a block moving from the open slot to the pending slot
+			 * to the array was a remount each time (every block was rendered twice,
+			 * measured by `streamingRenderStats`), which is a DOM replacement under
+			 * the reader. Blocks are append-only, so the index is a stable identity:
+			 * block n is the same block for the life of the message, and the open
+			 * block's key is the index it will hold once closed.
+			 */}
+			{blocks.map((block) => (
+				<ParsedBlock
+					key={block.key}
+					source={block.source}
+					closed={block.closed}
+				/>
 			))}
-			{liveParagraphs.map(({ start, end, key }) => {
-				const segments: Arrival[] = [{ offset: start, animate: false }];
-				for (const arrival of arrivals) {
-					if (arrival.offset >= end) break;
-					if (arrival.offset > start) segments.push(arrival);
-					else segments[0].animate = arrival.animate;
-				}
-				return (
-					<p className="lo-stream-tail" key={key}>
-						{segments.map((segment, index) => (
-							<ArrivedText
-								key={segment.offset}
-								text={content.slice(
-									segment.offset,
-									segments[index + 1]?.offset ?? end,
-								)}
-								animate={segment.animate}
-							/>
-						))}
-					</p>
-				);
-			})}
 		</div>
 	);
 };

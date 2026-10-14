@@ -1,0 +1,326 @@
+✖ the reported four-frame sequence: B stays between its calls, never below sed (3.749583ms)
+✖ no wake latency, in any combination, makes a painted row hop (4.997875ms)
+✔ older backend (no journal order): arrival order, same answer (0.302917ms)
+✖ parallel calls: start order and end order differ, committed slot order wins live and after (0.297416ms)
+✖ steering mid-turn: the steer lands between the rows it arrived between (0.394ms)
+✔ interruption: a stopped call and the text around it stay where they arrived (0.144917ms)
+✖ mid-turn join: seeded live_events then live frames and late wakes keep one order (0.445375ms)
+✔ reconcile: the persisted page replaces the live rows without moving them (0.206917ms)
+✖ remote / peer-source lane: facts rank, bodies own - the same arrival chain holds (0.518667ms)
+✖ history_delta rows join at arrival, not at the top (0.236708ms)
+✔ turn end (agent_end) reorders nothing (0.171667ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 4
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 94.34425
+
+✖ failing tests:
+
+test at scripts/stream-order-live.test.mjs:240:1
+✖ the reported four-frame sequence: B stays between its calls, never below sed (3.749583ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   {
+  +     after: [
+  +       'u1',
+  +       'm1',
+  +       'tool:c1',
+  +       'tool:c2',
+  +       'm2'
+  +     ],
+  +     at: 'frame 9',
+  +     before: [
+  +       'u1',
+  +       'm1',
+  +       'tool:c1',
+  +       'm2',
+  +       'tool:c2'
+  +     ]
+  +   },
+  +   {
+  +     after: [
+  +       'u1',
+  +       'm1',
+  +       'tool:c1',
+  +       'm3',
+  +       'm2',
+  +       'tool:c2'
+  +     ],
+  +     at: 'wake m2',
+  +     before: [
+  +       'u1',
+  +       'm1',
+  +       'tool:c1',
+  +       'tool:c2',
+  +       'm2',
+  +       'm3'
+  +     ]
+  +   },
+  +   {
+  +     after: [
+  +       'u1',
+  +       'm1',
+  +       'tool:c1',
+  +       'm2',
+  +       'tool:c2',
+  +       'm3'
+  +     ],
+  +     at: 'late wake m3',
+  +     before: [
+  +       'u1',
+  +       'm1',
+  +       'tool:c1',
+  +       'm3',
+  +       'm2',
+  +       'tool:c2'
+  +     ]
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/stream-order-live-md/scripts/stream-order-live.test.mjs:243:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ { at: 'frame 9', before: [Array], after: [Array] }, { at: 'wake m2', before: [Array], after: [Array] }, { at: 'late wake m3', before: [Array], after: [Array] } ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/stream-order-live.test.mjs:247:1
+✖ no wake latency, in any combination, makes a painted row hop (4.997875ms)
+  AssertionError [ERR_ASSERTION]: {"m1":0,"r1":0,"m2":3,"r2":1,"m3":0}
+  + actual - expected
+  
+  + [
+  +   {
+  +     after: [
+  +       'u1',
+  +       'm1',
+  +       'tool:c1',
+  +       'm3',
+  +       'm2',
+  +       'tool:c2'
+  +     ],
+  +     at: 'wake m2',
+  +     before: [
+  +       'u1',
+  +       'm1',
+  +       'tool:c1',
+  +       'm2',
+  +       'tool:c2',
+  +       'm3'
+  +     ]
+  +   },
+  +   {
+  +     after: [
+  +       'u1',
+  +       'm1',
+  +       'tool:c1',
+  +       'm2',
+  +       'tool:c2',
+  +       'm3'
+  +     ],
+  +     at: 'wake m3',
+  +     before: [
+  +       'u1',
+  +       'm1',
+  +       'tool:c1',
+  +       'm3',
+  +       'm2',
+  +       'tool:c2'
+  +     ]
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/stream-order-live-md/scripts/stream-order-live.test.mjs:252:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ { at: 'wake m2', before: [Array], after: [Array] }, { at: 'wake m3', before: [Array], after: [Array] } ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/stream-order-live.test.mjs:311:1
+✖ parallel calls: start order and end order differ, committed slot order wins live and after (0.297416ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'u1',
+      'm1',
+      'tool:c1',
+  +   'tool:c3',
+      'tool:c2',
+  -   'tool:c3'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/stream-order-live-md/scripts/stream-order-live.test.mjs:340:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'u1', 'm1', 'tool:c1', 'tool:c3', 'tool:c2' ],
+    expected: [ 'u1', 'm1', 'tool:c1', 'tool:c2', 'tool:c3' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/stream-order-live.test.mjs:350:1
+✖ steering mid-turn: the steer lands between the rows it arrived between (0.394ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'u1',
+  +   'm4',
+      'm1',
+      'tool:c1',
+      'm2',
+      'tool:c2',
+      'm3',
+      'steer',
+  -   'm4'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/stream-order-live-md/scripts/stream-order-live.test.mjs:369:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [
+      'u1', 'm4',
+      'm1', 'tool:c1',
+      'm2', 'tool:c2',
+      'm3', 'steer'
+    ],
+    expected: [
+      'u1',      'm1',
+      'tool:c1', 'm2',
+      'tool:c2', 'm3',
+      'steer',   'm4'
+    ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/stream-order-live.test.mjs:402:1
+✖ mid-turn join: seeded live_events then live frames and late wakes keep one order (0.445375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'u1',
+      'm1',
+      'tool:c1',
+  +   'm3',
+      'm2',
+      'tool:c2',
+  -   'm3'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/stream-order-live-md/scripts/stream-order-live.test.mjs:452:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'u1', 'm1', 'tool:c1', 'm3', 'm2', 'tool:c2' ],
+    expected: [ 'u1', 'm1', 'tool:c1', 'm2', 'tool:c2', 'm3' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/stream-order-live.test.mjs:482:1
+✖ remote / peer-source lane: facts rank, bodies own - the same arrival chain holds (0.518667ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'u1',
+  +   'm2',
+  +   'tool:c2',
+      'm1',
+      'tool:c1',
+  -   'm2',
+  -   'tool:c2'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/stream-order-live-md/scripts/stream-order-live.test.mjs:512:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'u1', 'm2', 'tool:c2', 'm1', 'tool:c1' ],
+    expected: [ 'u1', 'm1', 'tool:c1', 'm2', 'tool:c2' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/stream-order-live.test.mjs:523:1
+✖ history_delta rows join at arrival, not at the top (0.236708ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'u1',
+  +   'm2',
+      'm1',
+      'gap',
+  -   'm2'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/stream-order-live-md/scripts/stream-order-live.test.mjs:534:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'u1', 'm2', 'm1', 'gap' ],
+    expected: [ 'u1', 'm1', 'gap', 'm2' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
