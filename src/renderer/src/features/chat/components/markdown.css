@@ -567,49 +567,6 @@
  */
 
 /*
- * The in-flight block.
- *
- * Rendered `pre-wrap` so the raw source keeps its line structure while it is
- * still plain text, and sized identically to a paragraph so that promoting it
- * to parsed markup a moment later does not move the text.
- */
-.lo-stream-tail {
-	white-space: pre-wrap;
-	margin: 0.5rem 0;
-}
-
-.lo-stream-tail:first-child {
-	margin-top: 0;
-}
-
-/*
- * Text arrival.
- *
- * One span per rendered frame, each holding exactly the characters that arrived
- * in that frame, each mounted once and never re-rendered. That is what keeps
- * already-painted text from re-animating: the animation is a mount-time
- * property of an element whose content never changes again.
- *
- * `both` is load-bearing. Under `prefers-reduced-motion` the base layer caps
- * every animation to 0.01ms, so this runs to completion instantly and the fill
- * holds the `to` frame — fully opaque. The span's resting opacity is the
- * initial value 1, so if the animation never runs at all the text is still
- * visible. There is no state in which this leaves content at `opacity: 0`.
- */
-@keyframes lo-stream-chunk-in {
-	from {
-		opacity: 0;
-	}
-	to {
-		opacity: 1;
-	}
-}
-
-.lo-stream-chunk {
-	animation: lo-stream-chunk-in var(--duration-slow) var(--ease-out-quart) both;
-}
-
-/*
  * Inline code inside a tinted callout needs no special case any more.
  *
  * This block used to strip the fill that `.lo-markdown code` applied, because

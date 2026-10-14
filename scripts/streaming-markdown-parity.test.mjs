@@ -286,7 +286,7 @@ const CORPUS = [
 	},
 	{
 		name: "links",
-		payload: ["the docs", "example.com"],
+		payload: ["the docs"],
 		text: [
 			"A link to [the docs](https://example.com/docs) and an autolink",
 			"https://example.com/plain plus a path-shaped token /tmp/report.txt.",
@@ -390,175 +390,88 @@ test("the split loses nothing, reorders nothing, and settles blocks for good", (
 
 /* -------------------------- 3. the tail preserves payload at its boundaries */
 
-test("the in-flight tail preserves literal payload, using paragraph layout only at a pending prose boundary", async () => {
+test("the open block is formatted while it is open: no raw markup flash, no anchor, no extra wrapper", async () => {
+	/*
+	 * The operator's report: `InfoList` in backticks read as literal backticks for
+	 * the second or two before its paragraph closed, then jumped to a code span.
+	 * The open block is parsed (optimistically closed) now, so the formatting is
+	 * on screen the moment the writer has typed it. Asserted at EVERY prefix of
+	 * every inline construct, so a regression is one frame, not a flaky guess.
+	 */
 	const dom = mountDom();
 	try {
 		const container = dom.window.document.getElementById("root");
 		const root = createRoot(container);
-		for (const item of CORPUS) {
-			for (const size of [3, 7]) {
-				const scanner = createBlockScanner();
-				for (const prefix of prefixes(item.text, size)) {
-					scanMarkdownBlocks(scanner, prefix);
-					await act(async () => {
-						root.render(createElement(StreamingMarkdown, { content: prefix }));
-					});
-					const where = `${item.name} @${prefix.length}`;
-					const tails = Array.from(
-						container.querySelectorAll(".lo-stream-tail"),
-					);
-					const tailEnd =
-						scanner.blockStart +
-						trimmedEndLength(prefix.slice(scanner.blockStart));
-					let expected = prefix.slice(scanner.blockStart, tailEnd);
-					if (tails.length === 2) {
-						// Only the scanner's pending blank separator becomes layout;
-						// every character on either side remains literal, in order.
-						const first = prefix.slice(
-							scanner.blockStart,
-							scanner.blankRunStart,
-						);
-						expected = `${first.slice(0, trimmedEndLength(first))}\n\n${prefix.slice(scanner.cursor, tailEnd)}`;
-					}
-					assert.ok(
-						tails.length <= 2,
-						`${where}: the pending boundary is the only layout split`,
-					);
-					const painted = tails.map((tail) => tail.textContent).join("\n\n");
-					assert.equal(
-						painted,
-						expected,
-						`${where}: the tail is not the source suffix`,
-					);
-				}
-			}
+		const render = (content) =>
+			act(async () => {
+				root.render(createElement(StreamingMarkdown, { content }));
+			});
+		const text =
+			"That's `InfoList` in the folder, **bold stuff** and *it* next";
+		for (let n = 1; n <= text.length; n++) {
+			await render(text.slice(0, n));
+			const painted = container.textContent ?? "";
+			assert.ok(
+				!painted.includes("`") && !painted.includes("*"),
+				`@${n}: raw markup is on screen: ${JSON.stringify(painted)}`,
+			);
 		}
+		await render("That's `InfoList");
+		assert.equal(
+			container.querySelector("code")?.textContent,
+			"InfoList",
+			"an unterminated code span is already a code span",
+		);
+		await render("Next **bol");
+		assert.equal(container.querySelector("strong")?.textContent, "bol");
+		// A fence still being written is a code block, not a paragraph of backticks.
+		await render("Here:\n\n```ts\nconst a = 1;");
+		assert.equal(
+			container.querySelector("pre code.language-ts")?.textContent,
+			"const a = 1;\n",
+		);
+		assert.ok(!(container.textContent ?? "").includes("```"));
+		// Lists, headings and the paragraph break are real blocks while open.
+		await render("# Title\n\n- one\n- tw");
+		assert.equal(container.querySelector("h1")?.textContent, "Title");
+		assert.deepEqual(
+			Array.from(container.querySelectorAll("li")).map((li) => li.textContent),
+			["one", "tw"],
+		);
 		await act(async () => root.unmount());
 	} finally {
 		dom.restore();
 	}
 });
 
-test("an incomplete next prose line has settled paragraph boxes, while list/fence blanks stay literal", async () => {
+test("a block keeps its DOM node from open to closed: closing it re-uses the element the reader is looking at", async () => {
 	const dom = mountDom();
 	try {
 		const container = dom.window.document.getElementById("root");
 		const root = createRoot(container);
-		for (const content of [
-			"First paragraph.\n\nSecond",
-			"First paragraph.\n\nSecond line\n",
+		const render = (content) =>
+			act(async () => {
+				root.render(createElement(StreamingMarkdown, { content }));
+			});
+		for (const [open, close] of [
+			[
+				"First paragraph.\n\nSecond li",
+				"First paragraph.\n\nSecond line\n\nThird",
+			],
+			["- first\n\nplain te", "- first\n\nplain text\n\nnext"],
+			["    code\n\nplain te", "    code\n\nplain text\n\nnext"],
 		]) {
-			await act(async () =>
-				root.render(createElement(StreamingMarkdown, { content })),
-			);
-			assert.deepEqual(
-				Array.from(container.querySelectorAll("p")).map(
-					(paragraph) => paragraph.textContent,
-				),
-				[
-					"First paragraph.",
-					content.includes("line") ? "Second line" : "Second",
-				],
-			);
-		}
-		for (const content of ["- first\n\n- second", "```text\nfirst\n\nsecond"]) {
-			await act(async () =>
-				root.render(createElement(StreamingMarkdown, { content })),
-			);
-			assert.equal(container.querySelectorAll(".lo-stream-tail").length, 1);
-			assert.equal(
-				container.querySelector(".lo-stream-tail").textContent,
-				content,
-			);
-		}
-		await act(async () => root.unmount());
-	} finally {
-		dom.restore();
-	}
-});
-
-test("a non-split list/indented-code close retains the live tail and newest arrival node", async () => {
-	const dom = mountDom();
-	try {
-		const container = dom.window.document.getElementById("root");
-		const root = createRoot(container);
-		for (const prefix of ["- first\n\nplain te", "    code\n\nplain te"]) {
-			await act(async () =>
-				root.render(createElement(StreamingMarkdown, { content: prefix })),
-			);
-			await act(async () =>
-				root.render(
-					createElement(StreamingMarkdown, { content: `${prefix}xt` }),
-				),
-			);
-			const tail = container.querySelector(".lo-stream-tail");
-			const newest = Array.from(tail.querySelectorAll(".lo-stream-chunk")).find(
-				(span) => span.textContent === "xt",
-			);
-			assert.ok(newest, "the last delta owns the mount-time CSS fade");
-			await act(async () =>
-				root.render(
-					createElement(StreamingMarkdown, { content: `${prefix}xt\n` }),
-				),
-			);
-			const after = container.querySelector(".lo-stream-tail");
-			console.info(
-				"[tail identity]",
-				prefix.startsWith("-") ? "list" : "indented-code",
-				`paragraphSame=${after === tail}`,
-				`arrivalSame=${Array.from(after.querySelectorAll(".lo-stream-chunk")).find((span) => span.textContent === "xt") === newest}`,
+			await render(open);
+			const tail = container.querySelector(".lo-markdown").lastElementChild;
+			await render(close);
+			const blocks = Array.from(
+				container.querySelector(".lo-markdown").children,
 			);
 			assert.ok(
-				after === tail,
-				"closing the preceding block must not remount the live paragraph (sameNode=false)",
-			);
-			assert.ok(
-				Array.from(after.querySelectorAll(".lo-stream-chunk")).find(
-					(span) => span.textContent === "xt",
-				) === newest,
-				"the newest offset-keyed arrival must not restart its mount-time fade",
+				blocks.includes(tail),
+				`${JSON.stringify(open)}: the element painted while open was replaced when its block closed`,
 			);
 		}
-		await act(async () => root.unmount());
-	} finally {
-		dom.restore();
-	}
-});
-
-test("the split second tail keeps its identity when the first prose paragraph closes", async () => {
-	const dom = mountDom();
-	try {
-		const container = dom.window.document.getElementById("root");
-		const root = createRoot(container);
-		const prefix = "First paragraph.\n\nSecond li";
-		await act(async () =>
-			root.render(createElement(StreamingMarkdown, { content: prefix })),
-		);
-		await act(async () =>
-			root.render(createElement(StreamingMarkdown, { content: `${prefix}ne` })),
-		);
-		const tails = container.querySelectorAll(".lo-stream-tail");
-		assert.equal(tails.length, 2);
-		const second = tails[1];
-		const newest = Array.from(second.querySelectorAll(".lo-stream-chunk")).find(
-			(span) => span.textContent === "ne",
-		);
-		assert.ok(newest, "the split paragraph owns a live arrival");
-		await act(async () =>
-			root.render(
-				createElement(StreamingMarkdown, { content: `${prefix}ne\n` }),
-			),
-		);
-		const after = container.querySelector(".lo-stream-tail");
-		assert.ok(
-			after === second,
-			"the survivor must reuse the second paragraph, not the now-closed first one",
-		);
-		assert.ok(
-			Array.from(after.querySelectorAll(".lo-stream-chunk")).find(
-				(span) => span.textContent === "ne",
-			) === newest,
-		);
 		await act(async () => root.unmount());
 	} finally {
 		dom.restore();
@@ -652,7 +565,7 @@ test("a closed block is linkified and the open tail stays prose", async () => {
 		 * guarantee where it is still true — the OPEN block is painted as text and
 		 * never scanned, so a half-written `/Users/x/opoint-renewal-2026-09-1`
 		 * cannot become a link to a path that does not exist — but a CLOSED
-		 * block's source can never change again, which is what `StableBlock`
+		 * block's source can never change again, which is what `ParsedBlock`
 		 * documents as the reason a finished path inside it is safe to link.
 		 * This pins both halves so neither is dropped by a later edit.
 		 */
@@ -664,13 +577,11 @@ test("a closed block is linkified and the open tail stays prose", async () => {
 		assert.equal(
 			container.querySelectorAll("a").length,
 			0,
-			"the open tail is prose: no anchor can exist for a block still being written",
+			"the open block has no anchor: a half-written target is not a target",
 		);
 		assert.ok(
-			(container.textContent ?? "").includes(
-				"[the docs](https://example.com/docs)",
-			),
-			"and it paints the source literally",
+			(container.textContent ?? "").includes("the docs"),
+			"but its label is painted, formatted, in place",
 		);
 		/*
 		 * A third paragraph's line closes the second block — but only once that
@@ -782,12 +693,11 @@ test("the transcript row renders incrementally while streaming and whole once se
 			});
 			const row = container.querySelector(`[data-record-id="${id}"]`);
 			assert.ok(row, `${item.name}: the streaming row is on screen`);
-			if (item.text.trim() !== "") {
-				assert.ok(
-					row.querySelector(".lo-stream-tail"),
-					`${item.name}: a streaming row is rendered by the incremental path`,
-				);
-			}
+			assert.ok(
+				row.matches("[data-lo-streaming]") ||
+					row.querySelector("[data-lo-streaming]"),
+				`${item.name}: the row is streaming`,
+			);
 			// The same inputs the row hands its settled renderer: settled content,
 			// linkify on, and the row's own style props (isSmallView is false here).
 			const reference = dom.window.document.createElement("div");
@@ -824,7 +734,8 @@ test("the transcript row renders incrementally while streaming and whole once se
 			});
 			const settledRow = container.querySelector(`[data-record-id="${id}"]`);
 			assert.ok(
-				!settledRow.querySelector(".lo-stream-tail"),
+				!settledRow.matches("[data-lo-streaming]") &&
+					!settledRow.querySelector("[data-lo-streaming]"),
 				`${item.name}: a settled row leaves the incremental path`,
 			);
 			const settledMarkdown = settledRow.querySelector(".lo-markdown");
