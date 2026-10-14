@@ -381,7 +381,7 @@ const StreamingHandoverHost = () => {
 								`${done ? "settled" : "streaming"}: x=${rect.x}; y=${rect.y}; width=${rect.width}; height=${rect.height}; scroll=${row.scrollHeight}; client=${row.clientHeight}`,
 								...Array.from(row.children).map((child) => {
 									const box = child.getBoundingClientRect();
-									const style = getComputedStyle(child);
+									const style = window.getComputedStyle(child);
 									return `${child.tagName}.${child.className}: y=${box.y}; h=${box.height}; margin=${style.marginTop}/${style.marginBottom}; line=${style.lineHeight}; text=${JSON.stringify(child.textContent)}`;
 								}),
 							]);

@@ -424,7 +424,7 @@ function Frame({
 				for (const animation of animations) animation.currentTime = time;
 				return {
 					cssTimeMs: time,
-					computedHeight: getComputedStyle(shell).height,
+					computedHeight: window.getComputedStyle(shell).height,
 					...inspect(),
 				};
 			});
@@ -603,11 +603,11 @@ function Frame({
 			cssTimeMs: time,
 			shellHeight: capture.shell.getBoundingClientRect().height,
 			payloadHeight: capture.payload.getBoundingClientRect().height,
-			opacity: getComputedStyle(
+			opacity: window.getComputedStyle(
 				((capture.animations[0]?.effect as KeyframeEffect | null)
 					?.target as HTMLElement) ?? capture.payload,
 			).opacity,
-			parentOpacity: getComputedStyle(capture.payload).opacity,
+			parentOpacity: window.getComputedStyle(capture.payload).opacity,
 			animationNames: capture.animations.map(
 				(animation) =>
 					(animation as CSSAnimation).animationName ?? "transition",

@@ -73,7 +73,7 @@ export function TranscriptEntrySlot({
 				height: rect.height,
 				gap,
 				width: rect.width,
-				font: getComputedStyle(payload).font,
+				font: window.getComputedStyle(payload).font,
 				representation,
 			});
 		};
@@ -179,7 +179,7 @@ export function TranscriptEntrySlot({
 		const target = natural.height;
 		const compatibleRegime =
 			cached?.width === natural.width &&
-			cached.font === getComputedStyle(payload).font &&
+			cached.font === window.getComputedStyle(payload).font &&
 			cached.gap === gap;
 		const knownBefore = new Set(
 			[...extents.values()].flatMap((extent) => extent.recordIds),
@@ -266,7 +266,7 @@ export function TranscriptEntrySlot({
 			height: from,
 			gap,
 			width: natural.width,
-			font: getComputedStyle(payload).font,
+			font: window.getComputedStyle(payload).font,
 			representation,
 		});
 		layout.commit(true);

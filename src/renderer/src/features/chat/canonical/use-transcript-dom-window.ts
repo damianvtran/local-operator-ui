@@ -379,7 +379,7 @@ export function useTranscriptDomWindow({
 			setRevision((value) => value + 1);
 		};
 		const regime = () => {
-			const style = getComputedStyle(area);
+			const style = window.getComputedStyle(area);
 			const typography = Array.from({ length: style.length }, (_, index) =>
 				style.item(index),
 			).filter(
@@ -389,7 +389,7 @@ export function useTranscriptDomWindow({
 					name.startsWith("--lo-display-") ||
 					name === "--spacing",
 			);
-			return `${style.font}:${getComputedStyle(document.documentElement).fontSize}:${typography.map((name) => `${name}=${style.getPropertyValue(name)}`).join(";")}`;
+			return `${style.font}:${window.getComputedStyle(document.documentElement).fontSize}:${typography.map((name) => `${name}=${style.getPropertyValue(name)}`).join(";")}`;
 		};
 		let previousRegime = regime();
 		const changedRegime = () => {

@@ -462,7 +462,7 @@ export const Finished: Story = {
 const readMotionGeometry = (host: HTMLDivElement | null, label: string) => {
 	const body = host?.querySelector<HTMLElement>("[data-disclosure-body]");
 	if (!body) return `${label}: body absent`;
-	return `${label}: height=${body.getBoundingClientRect().height.toFixed(2)}px; client=${body.clientHeight}; scroll=${body.scrollHeight}; overflowY=${getComputedStyle(body).overflowY}; duration=${getComputedStyle(body).transitionDuration}; rows=${getComputedStyle(body).gridTemplateRows}; animations=${body
+	return `${label}: height=${body.getBoundingClientRect().height.toFixed(2)}px; client=${body.clientHeight}; scroll=${body.scrollHeight}; overflowY=${window.getComputedStyle(body).overflowY}; duration=${window.getComputedStyle(body).transitionDuration}; rows=${window.getComputedStyle(body).gridTemplateRows}; animations=${body
 		.getAnimations()
 		.map((animation) => `${animation.playState}@${animation.currentTime}`)
 		.join(
