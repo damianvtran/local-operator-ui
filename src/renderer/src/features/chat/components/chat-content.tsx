@@ -36,7 +36,10 @@ import type { SendOutcome } from "@shared/hooks/use-message-input";
  * eight classes and a copy is what drifts when one of them changes.
  */
 import { cn } from "@shared/lib/utils";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	remoteOwnedId,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
 	BROWSER_PANEL_MIN_PX,
@@ -1215,6 +1218,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			[filesViewOpen, canonical],
 		);
 
+		// A capable backend owns membership: even an unsupported/error page is not
+		// permission for a local scanner to probe a remote path. Wait for negotiation.
+		const remoteFiles = useCanonicalSessionsStore((state) =>
+			sessionId
+				? remoteOwnedId(state.sessions, state.placementFacts, sessionId)
+				: false,
+		);
+		const allowLegacyFiles =
+			capabilities.data !== undefined &&
+			!desktopFeatureEnabled(capabilities.data, "session_files") &&
+			!remoteFiles;
 		const filesScan = useMentionedFiles({
 			conversationId,
 			records: canonical?.view.transcript.records ?? null,
@@ -1222,7 +1236,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			// Generated media is fetched by (session, digest); a draft has no session
 			// and so files no artifact tiles.
 			sessionId,
-			enabled: Boolean(canonical && agentId),
+			enabled: Boolean(
+				canonical?.view.frontend &&
+					!canonical.view.awaitingHydration &&
+					agentId &&
+					allowLegacyFiles,
+			),
 			scan: scanRequest,
 		});
 		const setOpenTabs = useCanvasStore((s) => s.setOpenTabs);
@@ -2865,6 +2884,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								conversationId={conversationId}
 								agentId={agentId}
 								sessionId={sessionId}
+								filesSourceReady={
+									Boolean(!sessionId || canonical?.view.frontend) &&
+									!canonical?.view.awaitingHydration
+								}
 								turnTerminal={turnTerminal}
 								currentWorkingDirectory={cwd}
 								fileCount={mentionedFileCount}

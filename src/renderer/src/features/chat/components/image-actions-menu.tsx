@@ -17,6 +17,7 @@ import {
 	FolderOpen,
 	LayoutGrid,
 	Link,
+	Maximize2,
 } from "lucide-react";
 import { AttachmentGoneError } from "../canonical/use-attachment-url";
 import {
@@ -58,6 +59,15 @@ import {
  * `supplement-row.tsx` ships for files.
  */
 export type ImageActionsMenuProps = {
+	onExpand?: () => void;
+	/** Controlled only by Finder's context/key menu; ordinary callers stay uncontrolled. */
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	triggerTabIndex?: number;
+	/** Resolves a real local path only when a path action is explicitly chosen. */
+	resolvePath?: () => Promise<string>;
+	missing?: boolean;
+
 	/**
 	 * The source string the picture came from: a path, `file://`, `data:`,
 	 * `blob:` or `http(s):`. Classified by `classifyAttachmentSource`, which is
@@ -106,6 +116,7 @@ export type ImageActionsMenuProps = {
 
 /** One icon per entry, keyed by the stable id the matrix returns. */
 const ACTION_ICONS: Record<ImageActionId, React.ReactNode> = {
+	"expand-image": <Maximize2 aria-hidden="true" />,
 	"open-file": <FileIcon aria-hidden="true" />,
 	"show-in-canvas": <LayoutGrid aria-hidden="true" />,
 	"save-as": <Download aria-hidden="true" />,
@@ -132,8 +143,14 @@ export const ImageActionsMenu = ({
 	file,
 	src,
 	label,
+	open,
+	onOpenChange,
+	triggerTabIndex,
+	resolvePath,
+	missing,
 	onShowInCanvas,
 	mediaKind,
+	onExpand,
 	saveName,
 	resolveBytes,
 	tooltip = "Image actions",
@@ -144,7 +161,13 @@ export const ImageActionsMenu = ({
 		canShowInCanvas: Boolean(onShowInCanvas),
 		source: src ?? file,
 		mediaKind,
-	}).filter((action) => action.id !== "save-as" || Boolean(saveName));
+		artifactPathActions: Boolean(resolvePath),
+		canExpand: Boolean(onExpand),
+	}).filter(
+		(action) =>
+			(action.id !== "save-as" || Boolean(saveName)) &&
+			(!missing || action.id === "copy-file-path"),
+	);
 	if (actions.length === 0) return null;
 
 	/**
@@ -218,12 +241,26 @@ export const ImageActionsMenu = ({
 		}
 	};
 
-	const perform = (action: ImageAction) => {
+	const perform = async (action: ImageAction) => {
 		// `barePath` once, here: the bridge and both OS doors speak bare paths,
 		// and a `file://` spelling is the same path (the rule `canvas-document.ts`
 		// strips by).
-		const path = barePath(file);
+		let path = barePath(file);
+		if (
+			resolvePath &&
+			["open-file", "open-folder", "copy-file-path"].includes(action.id)
+		) {
+			try {
+				path = await resolvePath();
+			} catch {
+				showErrorToast("Couldn't save the file");
+				return;
+			}
+		}
 		switch (action.id) {
+			case "expand-image":
+				onExpand?.();
+				return;
 			case "open-file":
 				void openLocalTarget(path);
 				return;
@@ -262,7 +299,7 @@ export const ImageActionsMenu = ({
 	const resolvedAriaLabel = ariaLabel ?? `Actions for ${label ?? "this image"}`;
 
 	return (
-		<DropdownMenu>
+		<DropdownMenu open={open} onOpenChange={onOpenChange}>
 			<Tooltip content={tooltip}>
 				<DropdownMenuTrigger asChild>
 					<Button
@@ -284,6 +321,7 @@ export const ImageActionsMenu = ({
 						 */
 						className="bg-accent-wash"
 						aria-label={resolvedAriaLabel}
+						tabIndex={triggerTabIndex}
 						// The trigger sits inside a clickable picture; without this the
 						// picture's own press (expansion) fires behind the menu.
 						onClick={(e) => e.stopPropagation()}

@@ -1,9 +1,10 @@
 # The canvas Files view — the list, its search, and the reachable last row
 
-Status: **implemented** on `feat/canvas-files-list`. This is the record of what
-the surface IS, written beside the code and the frames it describes, so the
-decisions a later reader would otherwise re-litigate are findable in the tree
-rather than only in a pull request's thread.
+Status: **retained design history** of `feat/canvas-files-list` and the Stage-A
+generated-artifact fix. The current presentation is `finder-files.md`: it
+supersedes the flat layout and ephemeral type-filter decisions below. Identity,
+scoped artifact bytes, shared action sets and reachable-last-row invariants are
+retained. See `session-files-parity.md` for the backend authority boundary.
 
 Read with: `docs/branding.md` (the design contract — every role named below is
 checked against it), `docs/evidence/canvas-workspace/` (the rendered frames this

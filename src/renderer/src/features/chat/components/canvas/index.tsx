@@ -16,6 +16,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import type { FC } from "react";
 import type { CanonicalGoalHistoryEntry } from "../../../../../../shared/desktop-session-contract";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
+import { useSessionFiles } from "../../canonical/use-session-files";
 import {
 	canvasShortcutAction,
 	pressLandsOnOverlay,
@@ -49,6 +50,8 @@ import { tabFollowingClose } from "./tab-selection";
 const EMPTY_GOAL_HISTORY: CanonicalGoalHistoryEntry[] = [];
 
 type CanvasProps = {
+	/** Unresolved source metadata is not permission to read cached remote paths. */
+	filesSourceReady?: boolean;
 	/**
 	 * ID of the active document
 	 */
@@ -359,6 +362,11 @@ const ViewSwitcher: FC<{
 						)}
 					>
 						<Icon aria-hidden="true" />
+						{value === "files" && (
+							<span className={cn("ml-1 text-meta")}>
+								{label} {counted}
+							</span>
+						)}
 					</button>
 				</Tooltip>
 			);
@@ -393,6 +401,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 	onCloseDocument,
 	conversationId,
 	sessionId,
+	filesSourceReady = true,
 	turnTerminal,
 	agentId,
 	currentWorkingDirectory,
@@ -403,6 +412,9 @@ const CanvasComponent: FC<CanvasProps> = ({
 	goalCapable = false,
 	goalPresent = false,
 }) => {
+	const fileIndex = useSessionFiles(sessionId, true, turnTerminal);
+	const displayedFileCount =
+		fileIndex.mode === "index" ? fileIndex.total : fileCount;
 	const [isCreateFileDialogOpen, setCreateFileDialogOpen] = useState(false);
 	const [isCreatingFile, setIsCreatingFile] = useState(false);
 	const [modifierKey, setModifierKey] = useState("Ctrl");
@@ -571,7 +583,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 	 * `fileCount` is optional because the panel is also rendered without a store
 	 * (stories, a draft), where there is nothing to count.
 	 */
-	const fileCountValue = fileCount ?? 0;
+	const fileCountValue = displayedFileCount ?? 0;
 	const hasFiles = fileCountValue > 0;
 
 	const setCurrentView = useCallback(
@@ -786,7 +798,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 					 * drift apart.
 					 */
 					views={views}
-					fileCount={fileCount}
+					fileCount={displayedFileCount}
 					goalCount={goalHistory.length}
 					/*
 					 * The Goals segment's number is what the list CARRIES, so the segment is told
@@ -971,6 +983,18 @@ const CanvasComponent: FC<CanvasProps> = ({
 				<CanvasFileViewer
 					key={conversationId}
 					conversationId={conversationId}
+					sessionId={sessionId}
+					cwd={filesSourceReady ? currentWorkingDirectory : undefined}
+					index={
+						fileIndex.mode === "fallback" && !filesSourceReady
+							? {
+									...fileIndex,
+									mode: "negotiating",
+									state: "loading",
+									localReadAllowed: false,
+								}
+							: fileIndex
+					}
 					onSwitchToDocumentView={handleSwitchToDocumentView}
 					scan={scan}
 				/>

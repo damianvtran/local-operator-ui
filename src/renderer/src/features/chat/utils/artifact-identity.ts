@@ -87,10 +87,10 @@ export function digestOfAttachmentBinPath(path: string): string | null {
  * apart.
  */
 export function fallbackArtifactName(
-	kind: "image" | "video",
+	kind: "image" | "video" | "file",
 	digest: string,
 ): string {
-	return `${kind === "video" ? "Video" : "Image"} ${digest.slice(0, 8)}`;
+	return `${kind === "video" ? "Video" : kind === "image" ? "Image" : "File"} ${digest.slice(0, 8)}`;
 }
 
 /**
@@ -108,6 +108,9 @@ const EXTENSION_FOR_TYPE: Record<string, string> = {
 	"video/mp4": "mp4",
 	"video/webm": "webm",
 	"video/quicktime": "mov",
+	"application/pdf": "pdf",
+	"audio/mpeg": "mp3",
+	"audio/wav": "wav",
 };
 
 const HAS_EXTENSION = /\.[A-Za-z0-9]{2,5}$/;
@@ -125,13 +128,17 @@ const HAS_EXTENSION = /\.[A-Za-z0-9]{2,5}$/;
  */
 export function artifactFileName(artifact: {
 	digest: string;
-	kind: "image" | "video";
+	kind: "image" | "video" | "file";
 	name?: string;
 	contentType?: string;
 }): string {
 	const extension =
 		(artifact.contentType && EXTENSION_FOR_TYPE[artifact.contentType]) ||
-		(artifact.kind === "video" ? "mp4" : "png");
+		(artifact.kind === "video"
+			? "mp4"
+			: artifact.kind === "image"
+				? "png"
+				: "bin");
 	const given = artifact.name?.replace(/[\\/]/g, "-").trim();
 	if (given && HAS_EXTENSION.test(given)) return given;
 	// The fallback name already ends in the digest head, so only a producer's
@@ -152,8 +159,10 @@ export const ARTIFACT_HEAD_LENGTH = 8;
  * disk and why `Open folder` exists. An artifact has no path, so without this the
  * shorter menu (no Open file / Open folder) is unexplained (UX U4, design D7).
  */
-export function artifactCue(kind: "image" | "video"): string {
-	return `Generated ${kind}, kept in this session`;
+export function artifactCue(kind: "image" | "video" | "file"): string {
+	return kind === "file"
+		? "File kept in this session"
+		: `Generated ${kind}, kept in this session`;
 }
 
 /**
@@ -165,7 +174,7 @@ export function artifactCue(kind: "image" | "video"): string {
  */
 export function artifactTooltip(artifact: {
 	digest: string;
-	kind: "image" | "video";
+	kind: "image" | "video" | "file";
 	title: string;
 }): string {
 	const head = artifact.digest.slice(0, ARTIFACT_HEAD_LENGTH);

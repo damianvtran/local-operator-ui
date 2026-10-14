@@ -32,14 +32,17 @@ export type CanvasDocumentType =
 export type CanvasArtifact = {
 	/** The attachment store's key: 32 lowercase hex characters. */
 	digest: string;
-	/** `image` paints in the image viewer, `video` in the player. */
-	kind: "image" | "video";
+	/** Images/videos paint by digest. An opaque file keeps its MIME/type and is
+	 * materialised only by an explicit action needing a path-backed viewer. */
+	kind: "image" | "video" | "file";
 	/**
 	 * The conversation the bytes are served through. The attachment route is
 	 * scoped to the transcript that REFERENCES a digest, so a bare digest cannot be
 	 * fetched; the session that mentioned it can.
 	 */
 	sessionId: string;
+	/** Child attachment scope supplied by the authoritative family index. */
+	childId?: string | null;
 	/** From the artifact block, when the row carried one; absent on a text-only mention. */
 	contentType?: string;
 	/** The producer's display handle ("flux-dev-01.jpg"). Never a filesystem path. */
