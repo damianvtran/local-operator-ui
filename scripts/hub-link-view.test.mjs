@@ -32,6 +32,7 @@ const {
 	teamEditorIdentity,
 	hubLinkMark,
 	hubAutoPushGate,
+	hubAutoPushLine,
 	hubPreviewMatches,
 	hubLinkView,
 	linksForLocalItem,
@@ -862,5 +863,63 @@ test("a PUBLIC no-grant link requires consent, not unavailability; every other r
 	assert.deepEqual(
 		hubAutoPushGate(wire({}, { can_auto_push: true, reason: null })),
 		{ unavailable: false, requiresConsent: false },
+	);
+});
+
+test("the auto-push line follows EFFECTIVE state: the carve-out never hides a pause", () => {
+	const wire = (on, elig = {}, over = {}) => ({
+		visibility: "public",
+		tenant_name: null,
+		remote_revision: "r1",
+		policy: { auto_push: on },
+		eligibility: {
+			can_auto_push: false,
+			reason: "unsafe-publication",
+			...elig,
+		},
+		...over,
+	});
+	// ON + public + unsafe-publication (missing/stale grant): paused WITH reason.
+	assert.equal(hubAutoPushLine(wire(true)), "paused");
+	// ON + any other refusal: paused.
+	for (const reason of [
+		"unsupported-precondition",
+		"baseline-unknown",
+		"mixed-lineage",
+	])
+		assert.equal(hubAutoPushLine(wire(true, { reason })), "paused", reason);
+	// OFF + public + unsafe-publication: consent is reachable, no unavailable line.
+	assert.equal(hubAutoPushLine(wire(false)), "none");
+	// OFF + other refusal: the control is genuinely unavailable.
+	assert.equal(
+		hubAutoPushLine(wire(false, { reason: "baseline-unknown" })),
+		"unavailable",
+	);
+	// ON + eligible: nothing to explain.
+	assert.equal(
+		hubAutoPushLine(wire(true, { can_auto_push: true, reason: null })),
+		"none",
+	);
+});
+
+test("the adapter's canEnableAutoPush is the shared gate, so a public no-grant link can start consent", () => {
+	const view = hubLinkView(
+		rawLink({
+			visibility: "public",
+			tenant_name: null,
+			remote_revision: "r1",
+			eligibility: { can_auto_push: false, reason: "unsafe-publication" },
+		}),
+	);
+	assert.equal(view.canEnableAutoPush, true);
+	assert.equal(
+		hubLinkView(
+			rawLink({
+				visibility: "public",
+				remote_revision: "r1",
+				eligibility: { can_auto_push: false, reason: "baseline-unknown" },
+			}),
+		).canEnableAutoPush,
+		false,
 	);
 });

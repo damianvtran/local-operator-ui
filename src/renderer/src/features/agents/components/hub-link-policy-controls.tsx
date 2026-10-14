@@ -18,7 +18,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useEffect, useId, useRef, useState } from "react";
 import { hubReasonText } from "../hub-link-copy";
-import { hubAutoPushGate } from "../hub-link-view";
+import { hubAutoPushGate, hubAutoPushLine } from "../hub-link-view";
 
 /** Resolve at invocation so a locale refresh does not freeze imported copy. */
 export function hubLinkSourceName(link: HubLink): string {
@@ -80,6 +80,9 @@ export function HubLinkPolicyControls({
 	// Core's own rule, shared with the guard test: a public no-grant link is
 	// "requires consent", not "unavailable" (see hubAutoPushGate).
 	const { unavailable } = hubAutoPushGate(link);
+	// The line follows EFFECTIVE state, not the carve-out: a configured-ON link the
+	// service cannot run stays "paused" even though its OFF->ON path is reachable.
+	const line = hubAutoPushLine(link);
 	const unavailableReason = link.eligibility.reason
 		? hubReasonText(link.eligibility.reason)
 		: t("ui.hub.subscriptions.unsupported");
@@ -147,9 +150,9 @@ export function HubLinkPolicyControls({
 					}}
 				/>
 			</div>
-			{unavailable && (
+			{line !== "none" && (
 				<p className="text-meta text-warning">
-					{link.policy.auto_push
+					{line === "paused"
 						? t("ui.hub.subscriptions.effective_paused", {
 								reason: unavailableReason,
 							})

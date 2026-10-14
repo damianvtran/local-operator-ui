@@ -128,6 +128,7 @@ export function hubLinkMark(link: HubLinkView): HubLinkMarkView {
  */
 export type HubAutoPushGateInput = {
 	visibility: "public" | "org";
+	policy: { auto_push: boolean };
 	tenant_name: string | null;
 	remote_revision: string | null;
 	eligibility: { can_auto_push: boolean; reason: string | null };
@@ -164,4 +165,29 @@ export function hubAutoPushGate(link: HubAutoPushGateInput): {
 		!link.remote_revision ||
 		(link.visibility === "org" && !link.tenant_name);
 	return { unavailable, requiresConsent: consentMints && !unavailable };
+}
+
+/**
+ * Which explanatory line the auto-push control shows: nothing, an EFFECTIVE pause,
+ * or the reason an OFF control cannot be turned on.
+ *
+ * WHY it is separate from `hubAutoPushGate().unavailable`: that gate only decides
+ * whether the OFF->ON switch and consent dialog may open, and it deliberately
+ * un-blocks a public no-grant link. A link that is ALREADY configured ON with a
+ * missing or stale grant reports the same `unsafe-publication`, so gating the line
+ * on `unavailable` hid a real pause: configured ON but not running, with no reason
+ * shown. Configured and effective state must stay distinct, so the pause follows
+ * the service's own `can_auto_push`, never the carve-out.
+ *
+ * CONSTRAINT: "paused" is a superset of the old behaviour - it also covers a
+ * configured-ON link that is blocked by a missing remote revision or an unnamed
+ * organization - so no pause the previous rule showed is lost.
+ */
+export function hubAutoPushLine(
+	link: HubAutoPushGateInput,
+): "none" | "paused" | "unavailable" {
+	const { unavailable } = hubAutoPushGate(link);
+	if (link.policy.auto_push)
+		return !link.eligibility.can_auto_push || unavailable ? "paused" : "none";
+	return unavailable ? "unavailable" : "none";
 }

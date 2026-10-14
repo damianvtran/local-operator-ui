@@ -3,7 +3,11 @@ import {
 	type HubLink,
 	baselineIsKnown,
 } from "@shared/api/local-operator/hub-links";
-import type { HubLinkDirectionView, HubLinkView } from "./hub-link-view";
+import {
+	type HubLinkDirectionView,
+	type HubLinkView,
+	hubAutoPushGate,
+} from "./hub-link-view";
 
 const RETRYABLE_ERRORS = new Set([
 	"provider-error",
@@ -63,10 +67,10 @@ export function hubLinkView(link: HubLink): HubLinkView {
 			autoPush: link.policy.auto_push,
 			revision: link.policy.revision,
 		},
+		// ONE rule with the policy controls (hubAutoPushGate): a public no-grant link
+		// may START the consent flow, so the old strict can_auto_push test diverged.
 		canEnableAutoPush:
-			link.eligibility.can_auto_push &&
-			!!link.remote_revision &&
-			source.visibility !== "unavailable",
+			!hubAutoPushGate(link).unavailable && source.visibility !== "unavailable",
 		autoPushUnavailableReason: link.eligibility.reason,
 		canEditPolicy: true,
 		/*
