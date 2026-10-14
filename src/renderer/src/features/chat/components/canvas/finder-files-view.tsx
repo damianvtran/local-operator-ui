@@ -37,7 +37,11 @@ import {
 	useState,
 } from "react";
 import { t } from "../../../../../../i18n";
-import { formatDate, formatDateTime } from "../../../../../../i18n/format";
+import {
+	formatDate,
+	formatDateTime,
+	formatNumber,
+} from "../../../../../../i18n/format";
 import type { FileIndexState } from "../../canonical/use-session-files";
 import type { CanvasDocument } from "../../types/canvas";
 import {
@@ -77,6 +81,28 @@ const sectionLabels: Record<string, () => string> = {
 	Other: () => t("ui.canvas.files.other"),
 	Files: () => t("ui.canvas.files.files"),
 };
+const kindLabel = (kind: string): string => {
+	switch (kind) {
+		case "images":
+			return t("ui.canvas.files.images");
+		case "video":
+			return t("ui.canvas.files.videos");
+		case "documents":
+			return t("ui.canvas.files.documents");
+		case "spreadsheets":
+			return t("ui.canvas.files.spreadsheets");
+		case "audio":
+			return t("ui.canvas.files.audio");
+		case "code":
+			return t("ui.canvas.files.code");
+		case "presentations":
+			return t("ui.canvas.files.presentations");
+		case "archives":
+			return t("ui.canvas.files.archives");
+		default:
+			return t("ui.canvas.files.other");
+	}
+};
 const REVEAL =
 	"pointer-events-none absolute top-1 right-1 flex gap-1 opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100";
 
@@ -111,8 +137,12 @@ export function FinderFilesView({
 	const prefs = useUiPreferencesStore((state) => state.finderFiles);
 	const setPrefs = useUiPreferencesStore((state) => state.setFinderFiles);
 	const [query, setQuery] = useState("");
-	const [closed, setClosed] = useState(new Set<string>());
+	const closed = useMemo(
+		() => new Set(prefs.closedSections),
+		[prefs.closedSections],
+	);
 	const [focused, setFocused] = useState<string | null>(null);
+	const rowHadFocus = useRef(false);
 	const [viewport, setViewport] = useState({ width: 400, height: 700, top: 0 });
 	const scroller = useRef<HTMLDivElement>(null);
 	const search = useRef<HTMLInputElement>(null);
@@ -124,8 +154,12 @@ export function FinderFilesView({
 		if (index.localReadAllowed === false) {
 			setSettledItems([]);
 			setLightbox(null);
-		} else if (!engaged && lightbox === null) setSettledItems(items);
-	}, [items, engaged, lightbox, index.localReadAllowed]);
+		} else if ((!engaged || settledItems.length === 0) && lightbox === null) {
+			// A pending first generation is not a reading snapshot. Never freeze
+			// that empty value just because the pointer is parked over the list.
+			setSettledItems(items);
+		}
+	}, [items, engaged, lightbox, index.localReadAllowed, settledItems.length]);
 	const [lightboxSource, setLightboxSource] = useState<string | undefined>();
 	const [lightboxFailed, setLightboxFailed] = useState(false);
 	const typeahead = useRef({ text: "", at: 0 });
@@ -151,6 +185,19 @@ export function FinderFilesView({
 		() => layoutFinder(sections, viewport.width, prefs.group),
 		[sections, viewport.width, prefs.group],
 	);
+	// Re-sorting can move a keyed tile between virtual bands, which unmounts its
+	// old button. Keep its content identity as the focus anchor, but never steal
+	// focus from an open Sort/Filter menu or search control.
+	useEffect(() => {
+		if (
+			rowHadFocus.current &&
+			focused &&
+			layout.positions.has(focused) &&
+			document.activeElement === document.body
+		) {
+			controls.current.get(focused)?.focus({ preventScroll: true });
+		}
+	}, [layout, focused]);
 	const first =
 		layout.bands.find((band) => band.items.length)?.items[0]?.row.document.id ??
 		null;
@@ -164,8 +211,13 @@ export function FinderFilesView({
 		[layout, viewport.top, viewport.height, active],
 	);
 	const images = useMemo(
-		() => narrowed.filter((item) => item.row.media === "image"),
-		[narrowed],
+		() =>
+			narrowed.filter(
+				(item) =>
+					item.row.media === "image" &&
+					layout.positions.has(item.row.document.id),
+			),
+		[narrowed, layout],
 	);
 	const selectedImage = images.find(
 		(item) => item.row.document.id === lightbox,
@@ -228,6 +280,13 @@ export function FinderFilesView({
 	);
 	const key = (event: KeyboardEvent, item: FinderItem) => {
 		if (event.target !== event.currentTarget) return;
+		if (event.key === "Escape" && (query || prefs.kinds.length)) {
+			event.preventDefault();
+			event.stopPropagation();
+			setQuery("");
+			setPrefs({ kinds: [] });
+			return;
+		}
 		if (event.key === "/") {
 			event.preventDefault();
 			search.current?.focus();
@@ -282,7 +341,10 @@ export function FinderFilesView({
 			);
 			for (let step = 1; step <= narrowed.length; step++) {
 				const candidate = narrowed[(start + step) % narrowed.length];
-				if (fold(candidate.row.name).startsWith(fold(text))) {
+				if (
+					layout.positions.has(candidate.row.document.id) &&
+					fold(candidate.row.name).startsWith(fold(text))
+				) {
 					event.preventDefault();
 					focusItem(candidate.row.document.id);
 					break;
@@ -295,12 +357,11 @@ export function FinderFilesView({
 			if (!narrowing) setPrefs({ workingOpen: !prefs.workingOpen });
 			return;
 		}
-		setClosed((old) => {
-			const next = new Set(old);
-			if (next.has(id)) next.delete(id);
-			else next.add(id);
-			return next;
-		});
+		if (narrowing) return;
+		const next = new Set(closed);
+		if (next.has(id)) next.delete(id);
+		else next.add(id);
+		setPrefs({ closedSections: [...next] });
 	};
 	const clear = () => {
 		setQuery("");
@@ -348,19 +409,23 @@ export function FinderFilesView({
 					<Input
 						ref={search}
 						value={query}
-						placeholder={t("ui.canvas.files.search")}
+						placeholder={t("ui.canvas.files.searchPlaceholder")}
 						aria-label={t("ui.canvas.files.search")}
 						className={cn("min-w-0 flex-1")}
 						onChange={(event) => setQuery(event.target.value)}
 						onKeyDown={(event) => {
 							if (
 								event.key === "ArrowDown" ||
-								(event.key === "Escape" && !query)
+								(event.key === "Escape" && !query && !prefs.kinds.length)
 							) {
 								event.preventDefault();
+								event.stopPropagation();
 								if (first) focusItem(first);
 							} else if (event.key === "Escape") {
+								event.preventDefault();
+								event.stopPropagation();
 								setQuery("");
+								setPrefs({ kinds: [] });
 							}
 						}}
 					/>
@@ -368,11 +433,11 @@ export function FinderFilesView({
 						<DropdownMenuTrigger asChild>
 							<Button
 								variant="outline"
-								size="sm"
-								aria-label={`Sort: ${sortLabels[prefs.sort]()}, ${prefs.order}`}
+								size="md"
+								aria-label={`${t("ui.canvas.files.sort")}: ${sortLabels[prefs.sort]()}, ${prefs.order === "asc" ? t("ui.canvas.files.asc") : t("ui.canvas.files.desc")}`}
 							>
 								<ArrowUpDown aria-hidden="true" />
-								<span className="hidden @min-[340px]/fileslist:inline">
+								<span className="hidden @min-[440px]/fileslist:inline">
 									{sortLabels[prefs.sort]()}
 								</span>
 								<span aria-hidden="true">
@@ -425,9 +490,9 @@ export function FinderFilesView({
 						<DropdownMenuTrigger asChild>
 							<Button
 								variant="outline"
-								size="sm"
+								size="md"
 								className={cn(prefs.kinds.length > 0 && "bg-accent-wash")}
-								aria-label={`Filter: ${prefs.kinds.join(", ") || "All types"}`}
+								aria-label={`${t("ui.canvas.files.filter")}: ${prefs.kinds.map(kindLabel).join(", ") || t("ui.canvas.files.files")}`}
 							>
 								<Funnel aria-hidden="true" />
 								{prefs.kinds.length
@@ -448,9 +513,7 @@ export function FinderFilesView({
 										})
 									}
 								>
-									{group.id === "video"
-										? t("ui.canvas.files.videos")
-										: group.label}
+									{kindLabel(group.id)}
 								</DropdownMenuCheckboxItem>
 							))}
 							<DropdownMenuSeparator />
@@ -466,14 +529,16 @@ export function FinderFilesView({
 					)}
 				>
 					<span>
-						{narrowing
-							? t("ui.canvas.files.narrowCount", {
-									shown: String(narrowed.length),
-									total: String(items.length),
-								})
-							: t("ui.canvas.files.count", {
-									count: index.mode === "index" ? index.total : items.length,
-								})}
+						{index.mode === "index" && index.state !== "ready" && !items.length
+							? ""
+							: narrowing
+								? t("ui.canvas.files.narrowCount", {
+										shown: formatNumber(narrowed.length),
+										total: formatNumber(items.length),
+									})
+								: t("ui.canvas.files.count", {
+										count: index.mode === "index" ? index.total : items.length,
+									})}
 						{index.state === "loading" && items.length > 0
 							? ` · ${t("ui.canvas.files.loading")}`
 							: index.state === "building"
@@ -497,7 +562,7 @@ export function FinderFilesView({
 					<div
 						className={cn("flex items-center gap-2 text-meta text-ink-muted")}
 					>
-						<span>{prefs.kinds.join(", ")}</span>
+						<span>{prefs.kinds.map(kindLabel).join(", ")}</span>
 						<Button
 							variant="ghost"
 							size="sm"
@@ -508,7 +573,7 @@ export function FinderFilesView({
 						</Button>
 					</div>
 				)}
-				{index.error && (
+				{index.error && narrowed.length > 0 && (
 					<output className={cn("text-body-sm text-ink-muted")}>
 						{index.error}
 						<Button variant="ghost" size="sm" onClick={index.refresh}>
@@ -523,17 +588,37 @@ export function FinderFilesView({
 				ref={scroller}
 				aria-label={t("ui.canvas.files.region")}
 				data-tour-tag="files-scroller"
-				className={cn("min-h-0 flex-1 overflow-auto bg-surface p-2")}
+				className={cn("min-h-0 flex-1 overflow-auto bg-surface px-2 pb-2")}
 				onScroll={readScroll}
+				onKeyDown={(event) => {
+					if (
+						!event.defaultPrevented &&
+						event.key === "Escape" &&
+						(query || prefs.kinds.length)
+					) {
+						event.preventDefault();
+						event.stopPropagation();
+						setQuery("");
+						setPrefs({ kinds: [] });
+					}
+				}}
 				onPointerEnter={() => setEngaged(true)}
 				onPointerLeave={() => {
 					if (!scroller.current?.contains(document.activeElement))
 						setEngaged(false);
 				}}
-				onFocusCapture={() => setEngaged(true)}
+				onFocusCapture={() => {
+					rowHadFocus.current = true;
+					setEngaged(true);
+				}}
 				onBlurCapture={(event) => {
-					if (!event.currentTarget.contains(event.relatedTarget))
+					if (
+						event.relatedTarget &&
+						!event.currentTarget.contains(event.relatedTarget)
+					) {
+						rowHadFocus.current = false;
 						setEngaged(false);
+					}
 				}}
 			>
 				{!narrowed.length ? (
@@ -544,9 +629,9 @@ export function FinderFilesView({
 					>
 						<p className={cn("text-heading text-ink")}>
 							{index.state === "error"
-								? t("ui.canvas.files.error")
+								? (index.error ?? t("ui.canvas.files.error"))
 								: index.state === "unsupported"
-									? t("ui.canvas.files.remote")
+									? (index.error ?? t("ui.canvas.files.remote"))
 									: index.state === "loading"
 										? t("ui.canvas.files.loading")
 										: index.state === "building"
@@ -555,9 +640,18 @@ export function FinderFilesView({
 												? t("ui.canvas.files.noMatch")
 												: t("ui.canvas.files.empty")}
 						</p>
-						<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-							{t("ui.canvas.files.emptyDetail")}
-						</p>
+						{index.state === "ready" && !narrowing && (
+							<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+								{t("ui.canvas.files.emptyDetail")}
+							</p>
+						)}
+						{index.error && (
+							<Button variant="outline" size="sm" onClick={index.refresh}>
+								{index.state === "building"
+									? t("ui.canvas.files.continue")
+									: t("ui.canvas.files.retry")}
+							</Button>
+						)}
 						{narrowing && (
 							<Button variant="outline" size="sm" onClick={clear}>
 								{t("ui.canvas.files.clear")}
@@ -616,10 +710,17 @@ export function FinderFilesView({
 											}
 										}}
 										aria-expanded={section.open}
-										aria-disabled={section.id === "Working files" && narrowing}
+										aria-disabled={narrowing}
 										onClick={() => toggle(section.id)}
 										className={cn(
 											"flex h-8 w-full items-center gap-2 rounded-sm px-2 text-left font-medium text-body-sm text-ink hover:bg-row-hover",
+											narrowing && "cursor-default hover:bg-surface",
+											section.id !== "Working files" &&
+												!section.highlights &&
+												sections.some(
+													(entry) => entry.id === "Working files",
+												) &&
+												"pl-4",
 										)}
 									>
 										{section.open ? (
@@ -629,10 +730,13 @@ export function FinderFilesView({
 										)}
 										{sectionLabels[section.id]?.() ?? section.label}
 										<span className={cn("text-meta text-ink-dim")}>
-											{section.items.length ||
-												(section.id === "Working files"
-													? narrowed.filter((item) => !item.highlighted).length
-													: 0)}
+											{formatNumber(
+												section.items.length ||
+													(section.id === "Working files"
+														? narrowed.filter((item) => !item.highlighted)
+																.length
+														: 0),
+											)}
 										</span>
 									</button>
 								</h3>
@@ -715,7 +819,7 @@ export function FinderFilesView({
 			</section>
 			{index.mode === "fallback" && legacyScan?.stopped && (
 				<Button variant="ghost" size="sm" onClick={legacyScan.resume}>
-					Search earlier messages
+					{t("ui.canvas.files.earlier")}
 				</Button>
 			)}
 
@@ -786,6 +890,7 @@ function FinderEntry({
 		near && item.row.media === "image" && !item.row.missing,
 	);
 	const [menuOpen, setMenuOpen] = useState(false);
+	const rowControl = useRef<HTMLButtonElement | null>(null);
 	const tiled = band.kind === "tiles" || band.kind === "video";
 	const height = tiled ? band.height - 32 : band.kind === "highlight" ? 40 : 28;
 	const tooltip = doc.artifact
@@ -824,7 +929,10 @@ function FinderEntry({
 		>
 			<button
 				type="button"
-				ref={buttonRef}
+				ref={(node) => {
+					rowControl.current = node;
+					buttonRef(node);
+				}}
 				tabIndex={tabIndex}
 				onFocus={onFocus}
 				title={tooltip}
@@ -941,11 +1049,17 @@ function FinderEntry({
 				<ImageActionsMenu
 					file={doc.path}
 					tooltip={
-						item.row.media === "image" ? "Image actions" : "File actions"
+						item.row.media === "image"
+							? t("ui.canvas.files.imageActions")
+							: t("ui.canvas.files.fileActions")
 					}
 					label={doc.title}
 					open={menuOpen}
 					onOpenChange={setMenuOpen}
+					onCloseAutoFocus={(event) => {
+						event.preventDefault();
+						rowControl.current?.focus({ preventScroll: true });
+					}}
 					triggerTabIndex={-1}
 					mediaKind={item.row.media === "image" ? "image" : "video"}
 					onShowInCanvas={

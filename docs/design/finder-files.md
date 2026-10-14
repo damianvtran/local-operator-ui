@@ -18,6 +18,11 @@ The existing desktop transport carries two operations: `sessions.files` and
 `sessions.files.materialise`. The latter is a user-selected path action, not a
 thumbnail side effect. A child attachment retains the parent URL session plus
 `session.child_id`; opening, copying and saving all use that same resolver.
+Artifact tabs use the transcript's canonical `artifact:<digest>` identity;
+`CanvasDocument.indexedFileId` retains the backend row handle for explicit
+materialisation only, so index and transcript opens do not create duplicate tabs.
+The shared inventory lives in ChatContent: the rail and open canvas read one
+count and one generation, including while the canvas is closed.
 
 ## Structure
 
@@ -38,9 +43,16 @@ retained from the journal metadata, not from an array's current paint order.
 New backend/stat membership is deferred while the pointer/focus is in the list
 or its lightbox is open. Unsupported/remote transitions override that deferral.
 
-Sort/order, group-by-kind, working-file disclosure and type filter are user-wide
-profile preferences (existing preference store v4). Individual kind folds and
-search are transient. A migration sanitises hand-edited enum/array values.
+Sort/order, group-by-kind, Working/Highlights/kind disclosure and type filter are
+user-wide profile preferences (existing preference store v4). Search is transient.
+A migration sanitises hand-edited enum/array values. Narrowing temporarily opens
+all sections with matches without overwriting those saved folds.
+
+Sorting is presentation-only over loaded rows: it cannot restart pagination.
+Same-session Retry and turn-settle refresh retain the displayed generation until
+a replacement pass is complete. Initial loading can publish progressive pages;
+subsequent backfill passes swap atomically. A new revision on a cursor-less
+building poll is legitimate progress, not a defensive-reset budget failure.
 
 ## The keyboard contract
 
@@ -55,10 +67,22 @@ but does not steal slash from editable controls. Escape clears an applied
 search/filter first; otherwise it remains the canvas family's dismissal.
 
 Lightbox/collage navigation is the shipped `ImageLightbox`, over matching images
-in their current order. It resolves an original only when explicitly expanded,
+in their current order, excluding folded-away sections. It resolves an original only when explicitly expanded,
 has a finite failure state, and restores the opening row rather than the last
 picture visited in the carousel. Menus reuse `ImageActionsMenu` and its action
-table, not a second copy of clipboard/save/location logic.
+table, not a second copy of clipboard/save/location logic. Menu dismissal restores
+the visible roving row, not the hover-only ellipsis. Path-action menus disclose
+that the action prepares a local scratchpad copy; preparation failures are not
+reported as a failed Save operation.
+
+## Remediation evidence geometry
+
+The production dock is capped at 560px (`chat-sidebar-layout.ts`,
+`CANVAS_PANE_MAX_PX` and `canvasDockWidth`). The remediation matrix measures a
+real 400px dock, narrow overlay and 560px maximum, plus a 960px window with its
+actual pane width reported. It does not invent a 960px dock or widen the global
+canvas contract. Sticky headers pin at the scroller top: vertical padding is on
+the bottom/content, not above that sticky coordinate.
 
 ## The resource boundary
 

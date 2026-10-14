@@ -68,7 +68,8 @@ const itemsOf = (records) =>
 	);
 test("child attachment ownership and backend identity survive the document projection", () => {
 	const doc = indexedDocument(record(1), "aaaaaaaaaaaa");
-	assert.equal(doc.id, "0000000000000001");
+	assert.equal(doc.id, "artifact:00000000000000000000000000000001");
+	assert.equal(doc.indexedFileId, "0000000000000001");
 	assert.equal(doc.artifact.sessionId, "aaaaaaaaaaaa");
 	assert.equal(doc.artifact.childId, "bbbbbbbbbbbb");
 	assert.equal(doc.path, "artifact:00000000000000000000000000000001");
@@ -175,6 +176,35 @@ test("unknown metrics sort last in either direction; corrupt persisted preferenc
 	});
 	assert.deepEqual(clean, { ...DEFAULT_FINDER, kinds: ["images"] });
 });
+test("narrowing opens collapsed Highlights and kind sections without erasing saved folds", () => {
+	const items = itemsOf([{ ...record(1), highlighted: true }, record(2)]);
+	const folds = new Set(["Highlights", "Images"]);
+	const sections = finderSections(items, DEFAULT_FINDER, true, folds);
+	assert.ok(sections.every((section) => section.open));
+	assert.equal(sections.flatMap((section) => section.items).length, 2);
+	assert.equal(folds.size, 2);
+});
+test("Page keys clamp at global focusable boundaries instead of dead-ending", () => {
+	const items = itemsOf(
+		Array.from({ length: 100 }, (_, i) => record(i + 1, "text")),
+	);
+	const layout = layoutFinder(
+		finderSections(items, DEFAULT_FINDER, false, new Set()),
+		400,
+		true,
+	);
+	const first = items[0].row.document.id;
+	const last = items.at(-1).row.document.id;
+	assert.equal(
+		finderNeighbor(layout, items[3].row.document.id, "PageUp", 700),
+		first,
+	);
+	assert.equal(
+		finderNeighbor(layout, items[95].row.document.id, "PageDown", 700),
+		last,
+	);
+});
+
 test("index/materialise ops are encoded routes and invalid artifact IDs are rejected", () => {
 	const sid = "aaaaaaaaaaaa";
 	const result = desktopEndpoint({

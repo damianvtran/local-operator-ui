@@ -62,6 +62,9 @@ export type CanvasDocument = {
 	 * Unique identifier for the document
 	 */
 	id: string;
+	/** Backend inventory row identity, distinct from the canonical artifact tab
+	 * digest. Only explicit materialisation may use this opaque service handle. */
+	indexedFileId?: string;
 
 	/**
 	 * Title of the document (usually the filename)

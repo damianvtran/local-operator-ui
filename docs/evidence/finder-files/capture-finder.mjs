@@ -133,10 +133,10 @@ try {
 			);
 		}
 		await until(
-			`document.querySelector('button[aria-label^="Files view"]') ? true : null`,
+			`document.querySelector('button[aria-label^="Files"][aria-pressed]') ? true : null`,
 		);
 		await cdp.evaluate(
-			`document.querySelector('button[aria-label^="Files view"]').click(); true`,
+			`document.querySelector('button[aria-label^="Files"][aria-pressed]').click(); true`,
 		);
 		// The list is settled when the row count has been the same for ~2.4 s and, for
 		// any row that is going to paint a thumbnail, the <img> has decoded or failed.
@@ -239,6 +239,17 @@ try {
 			);
 			await sleep(600);
 		}
+		if (process.argv.includes("--delta-controls")) {
+			const { finderDelta } = await import("./delta-controls.mjs");
+			report.themes[theme].delta = await finderDelta({
+				cdp,
+				capture,
+				sleep,
+				label: LABEL,
+				theme,
+				expectOld: process.argv.includes("--expect-old"),
+			});
+		}
 		console.log(
 			`[${LABEL}/${theme}] rows=${reading.rowCount} thumbs-decoded=${reading.rows.filter((r) => r.thumb?.decoded).length} dock=${JSON.stringify(reading.dock)} mode=${reading.dockMode}`,
 		);
@@ -264,7 +275,7 @@ try {
 				`([...document.querySelectorAll('[role="menuitem"]')]).find(x=>x.innerText==='Copy file path').click()`,
 			);
 			await sleep(1200);
-			report.child.materialisedPath = await cdp.evaluate(`window.__copiedPath`);
+			report.child.materialisedPath = await cdp.evaluate("window.__copiedPath");
 			if (
 				!report.child.materialisedPath?.includes(
 					"/scratchpad/generated/child-portrait",
@@ -319,7 +330,7 @@ try {
 			await key(k);
 			report.keyboard.push({
 				key: k,
-				active: await cdp.evaluate(`document.activeElement?.innerText`),
+				active: await cdp.evaluate("document.activeElement?.innerText"),
 			});
 		}
 		await key("F10", true);

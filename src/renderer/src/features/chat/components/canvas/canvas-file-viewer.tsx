@@ -10,6 +10,7 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import type { FC } from "react";
 import { memo, useCallback, useMemo } from "react";
+import { t } from "../../../../../../i18n";
 import { indexedDocument } from "../../canonical/session-files";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import type { useSessionFiles } from "../../canonical/use-session-files";
@@ -319,11 +320,11 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 		const response = await desktopRequest({
 			op: "sessions.files.materialise",
 			sessionId,
-			fileId: document.id,
+			fileId: document.indexedFileId ?? document.id,
 		});
 		const body = (response.body as { result?: { path?: string } }).result;
 		if (response.status !== 200 || !body?.path)
-			throw new Error("Couldn't save the file");
+			throw new Error(t("ui.canvas.files.saveError"));
 		return body.path;
 	};
 	return (
@@ -349,7 +350,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 								}),
 							),
 						)
-						.catch(() => showErrorToast("Couldn't save the file"));
+						.catch(() => showErrorToast(t("ui.canvas.files.saveError")));
 				} else void handleFileClick(document);
 			}}
 		/>

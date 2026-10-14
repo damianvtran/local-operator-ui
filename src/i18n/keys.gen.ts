@@ -69,24 +69,30 @@ export const bundledCatalogues: Readonly<
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
+	"ui.canvas.files.archives": undefined;
 	"ui.canvas.files.asc": undefined;
+	"ui.canvas.files.audio": undefined;
 	"ui.canvas.files.building": undefined;
 	"ui.canvas.files.clear": undefined;
+	"ui.canvas.files.code": undefined;
 	"ui.canvas.files.continue": undefined;
 	"ui.canvas.files.count": { count: number };
 	"ui.canvas.files.created": undefined;
 	"ui.canvas.files.desc": undefined;
 	"ui.canvas.files.documents": undefined;
+	"ui.canvas.files.earlier": undefined;
 	"ui.canvas.files.empty": undefined;
 	"ui.canvas.files.emptyDetail": undefined;
 	"ui.canvas.files.error": undefined;
 	"ui.canvas.files.expand": undefined;
+	"ui.canvas.files.fileActions": undefined;
 	"ui.canvas.files.files": undefined;
 	"ui.canvas.files.filter": undefined;
 	"ui.canvas.files.folder": undefined;
 	"ui.canvas.files.gone": undefined;
 	"ui.canvas.files.group": undefined;
 	"ui.canvas.files.highlights": undefined;
+	"ui.canvas.files.imageActions": undefined;
 	"ui.canvas.files.images": undefined;
 	"ui.canvas.files.inSession": undefined;
 	"ui.canvas.files.kind": undefined;
@@ -98,14 +104,19 @@ export type MessageParams = {
 	"ui.canvas.files.noMatch": undefined;
 	"ui.canvas.files.order": undefined;
 	"ui.canvas.files.other": undefined;
+	"ui.canvas.files.pathCopyNote": undefined;
 	"ui.canvas.files.play": undefined;
+	"ui.canvas.files.prepareError": undefined;
+	"ui.canvas.files.presentations": undefined;
 	"ui.canvas.files.readingStats": undefined;
 	"ui.canvas.files.recent": undefined;
 	"ui.canvas.files.region": undefined;
 	"ui.canvas.files.remote": undefined;
 	"ui.canvas.files.reset": undefined;
 	"ui.canvas.files.retry": undefined;
+	"ui.canvas.files.saveError": undefined;
 	"ui.canvas.files.search": undefined;
+	"ui.canvas.files.searchPlaceholder": undefined;
 	"ui.canvas.files.sessionOnly": undefined;
 	"ui.canvas.files.size": undefined;
 	"ui.canvas.files.sort": undefined;
