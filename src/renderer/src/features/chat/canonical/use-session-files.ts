@@ -23,6 +23,9 @@ export type FileIndexState = {
 	error: string | null;
 	coveredBytes: number;
 	totalBytes: number;
+	/** Progress of the private pass; never thumbnail-producing membership. */
+	loadedRows: number;
+	pendingTotal: number;
 };
 const EMPTY: Omit<FileIndexState, "mode"> = {
 	state: "loading",
@@ -32,6 +35,8 @@ const EMPTY: Omit<FileIndexState, "mode"> = {
 	error: null,
 	coveredBytes: 0,
 	totalBytes: 0,
+	loadedRows: 0,
+	pendingTotal: 0,
 };
 
 /**
@@ -76,8 +81,6 @@ export function useSessionFiles(
 	// frame of the previous session's absolute paths from entering the new view.
 	const snapshot =
 		ownedSnapshot.key === sourceKey ? ownedSnapshot.value : EMPTY;
-	const latestSnapshot = useRef(snapshot);
-	latestSnapshot.current = snapshot;
 	const [retry, setRetry] = useState(0);
 	const epoch = useRef(0);
 	const refresh = useCallback(() => setRetry((value) => value + 1), []);
@@ -134,7 +137,6 @@ export function useSessionFiles(
 			let revision: number | null = null;
 			let cursor: string | null = null;
 			let resets = 0;
-			let retainGeneration = latestSnapshot.current.rows.length > 0;
 			const cursors = new Set<string>();
 			try {
 				for (let poll = 0; poll < 60 && live(); ) {
@@ -194,19 +196,30 @@ export function useSessionFiles(
 					}
 					rows = mergeFilesPage(rows, page, revision);
 					revision = page.revision;
-					if (!retainGeneration || !page.next_cursor)
-						setSnapshot({
-							state:
-								page.state === "ready" && page.next_cursor
-									? "loading"
-									: page.state,
-							rows,
-							total: page.total,
-							statComplete: page.stat_complete,
-							error: null,
-							coveredBytes: page.scan?.covered_bytes ?? 0,
-							totalBytes: page.scan?.total_bytes ?? 0,
-						});
+					const complete = page.state === "ready" && !page.next_cursor;
+					// Cursor pages and backfill slices are PRIVATE assembly, including
+					// the cold first pass. Painting their changing membership remounted
+					// thumbnails on each page and snapped late Highlights above the list.
+					// Publish progress only until one complete ready generation exists;
+					// refresh keeps the former complete rows throughout that assembly.
+					// Capture the array before the loop resets it: React may apply this
+					// functional update after the next request/poll has already started.
+					const assembledRows = rows;
+					setSnapshot((previous) => ({
+						state:
+							page.state === "ready" && page.next_cursor
+								? "loading"
+								: page.state,
+						rows: complete ? assembledRows : previous.rows,
+						total:
+							complete || !previous.rows.length ? page.total : previous.total,
+						loadedRows: assembledRows.length,
+						pendingTotal: page.total,
+						statComplete: page.stat_complete,
+						error: null,
+						coveredBytes: page.scan?.covered_bytes ?? 0,
+						totalBytes: page.scan?.total_bytes ?? 0,
+					}));
 					cursor = page.next_cursor;
 					if (cursor) {
 						if (page.cursor_reset) cursors.clear();
@@ -218,7 +231,6 @@ export function useSessionFiles(
 						continue;
 					}
 					if (page.state === "ready") return;
-					retainGeneration = true;
 					resets = 0;
 					poll++;
 					cursors.clear();

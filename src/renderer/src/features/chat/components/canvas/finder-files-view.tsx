@@ -539,6 +539,11 @@ export function FinderFilesView({
 								: t("ui.canvas.files.count", {
 										count: index.mode === "index" ? index.total : items.length,
 									})}
+						{index.mode === "index" &&
+						(index.state === "loading" || index.state === "building") &&
+						index.pendingTotal > 0
+							? `${items.length ? " · " : ""}${t("ui.canvas.files.progress", { loaded: formatNumber(index.loadedRows), total: formatNumber(index.pendingTotal) })}`
+							: ""}
 						{index.state === "loading" && items.length > 0
 							? ` · ${t("ui.canvas.files.loading")}`
 							: index.state === "building"

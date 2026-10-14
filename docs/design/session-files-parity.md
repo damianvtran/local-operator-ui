@@ -9,11 +9,14 @@ negotiation and for capable error/building/unsupported answers.
 
 ## Desktop
 
-`use-session-files.ts` owns the pagination/backfill generation and cancels stale
-commits on view/session/sort changes. A revision-reset page replaces all prior
-pages; opaque cursors are never interpreted locally. Polling a building index is
-bounded and exposes Continue/Retry, not an indefinite hidden timer. A terminal
-turn invalidates the index. Rows are consumed before backfill finishes.
+`use-session-files.ts` owns pagination/backfill and cancels stale commits on
+session/authority changes or explicit refresh; client-side sort does not restart
+pagination. A revision-reset page replaces all privately assembled prior pages;
+opaque cursors are never interpreted locally. Polling a building index is bounded
+and exposes Continue/Retry, not an indefinite hidden timer. A terminal turn
+invalidates the index. Only complete ready generations become visible membership;
+initial loading shows indexed-pass progress with no thumbnails, while refresh
+keeps the former complete rows until an atomic replacement is ready.
 
 The Finder presentation has Highlights first, working-file disclosure, kind
 sections, deterministic mixed-height virtualization, and one roving button/list

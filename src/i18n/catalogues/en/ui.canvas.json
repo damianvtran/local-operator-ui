@@ -26,6 +26,7 @@
 	"ui.canvas.files.reset": "Reset filter",
 	"ui.canvas.files.folder": "Open folder",
 	"ui.canvas.files.loading": "Loading session files\u2026",
+	"ui.canvas.files.progress": "{loaded} of {total} loaded",
 	"ui.canvas.files.building": "Building the file index\u2026",
 	"ui.canvas.files.retry": "Retry",
 	"ui.canvas.files.continue": "Continue loading",

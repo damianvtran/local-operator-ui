@@ -1,5 +1,7 @@
 /** Real hook regression controls; only its IPC/authority edges are substituted. */
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { dirname, resolve } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -21,6 +23,24 @@ const { outputFiles } = await build({
 		{
 			name: "hook-edges",
 			setup(builder) {
+				// Same harness, old real hook: a discriminating negative control,
+				// not a copied publication algorithm or a second dependency tree.
+				if (process.env.SESSION_FILES_HOOK_REF)
+					builder.onLoad(
+						{ filter: /canonical\/use-session-files\.ts$/ },
+						({ path }) => ({
+							contents: execFileSync(
+								"git",
+								[
+									"show",
+									`${process.env.SESSION_FILES_HOOK_REF}:src/renderer/src/features/chat/canonical/use-session-files.ts`,
+								],
+								{ encoding: "utf8" },
+							),
+							loader: "ts",
+							resolveDir: dirname(resolve(path)),
+						}),
+					);
 				builder.onResolve({ filter: /^@shared\// }, (args) => ({
 					path: args.path,
 					namespace: "edge",
@@ -84,9 +104,15 @@ async function rig(t) {
 	const root = createRoot(document.getElementById("root"));
 	let snapshot;
 	const frames = [];
+	const observations = [];
 	function Host({ sid = "aaaaaaaaaaaa", hint = 0 }) {
 		snapshot = useSessionFiles(sid, true, hint);
 		frames.push(snapshot.rows.length);
+		observations.push({
+			state: snapshot.state,
+			count: snapshot.rows.length,
+			loaded: snapshot.loadedRows,
+		});
 		return null;
 	}
 	t.after(() => {
@@ -112,6 +138,7 @@ async function rig(t) {
 		render,
 		until,
 		frames,
+		observations,
 		get snapshot() {
 			return snapshot;
 		},
@@ -136,6 +163,12 @@ test("nine advancing building revisions converge without spending cursor reset b
 	assert.equal(calls, 10);
 	assert.equal(host.snapshot.error, null);
 	assert.equal(host.snapshot.rows.length, 3);
+	assert.ok(
+		host.observations
+			.filter((frame) => frame.state !== "ready")
+			.every((frame) => frame.count === 0),
+		"building slices must never become rendered membership",
+	);
 });
 test("same-source turn refresh retains three rows until the replacement four are ready", async (t) => {
 	let release;
@@ -188,6 +221,69 @@ test("revision restart clears the seen-cursor set before rereading page one", as
 	assert.equal(call, 4);
 	assert.equal(host.snapshot.error, null);
 	assert.equal(host.snapshot.rows.length, 2);
+});
+
+test("cold ready pagination publishes no rows before the delayed final page and late Highlight", async (t) => {
+	let calls = 0;
+	let release;
+	state.request = async () => {
+		calls++;
+		if (calls === 1) {
+			const result = page(1, 3);
+			result.body.result.next_cursor = "tail";
+			result.body.result.total = 4;
+			return result;
+		}
+		return new Promise((resolve) => {
+			release = resolve;
+		});
+	};
+	const host = await rig(t);
+	host.render({});
+	await host.until(() => calls === 2);
+	assert.equal(
+		host.snapshot.rows.length,
+		0,
+		"first page must not launch thumbnails",
+	);
+	assert.equal(host.snapshot.loadedRows, 3);
+	assert.equal(host.snapshot.pendingTotal, 4);
+	const tail = page(1, 0);
+	tail.body.result.rows = [{ ...row(3), highlighted: true }];
+	tail.body.result.total = 4;
+	await act(async () => release(tail));
+	await host.until(() => host.snapshot.state === "ready");
+	assert.equal(host.snapshot.rows.length, 4);
+	assert.equal(host.snapshot.rows[3].highlighted, true);
+	assert.ok(host.frames.every((count) => count === 0 || count === 4));
+});
+test("refresh holds the old complete generation throughout a building slice", async (t) => {
+	state.request = async () => page(1, 3);
+	const host = await rig(t);
+	host.render({ hint: 0 });
+	await host.until(() => host.snapshot.state === "ready");
+	const old = host.snapshot.rows;
+	let calls = 0;
+	let release;
+	state.request = async () => {
+		calls++;
+		if (calls === 1) return page(2, 1, "building");
+		return new Promise((resolve) => {
+			release = resolve;
+		});
+	};
+	host.render({ hint: 1 });
+	await host.until(() => host.snapshot.state === "building");
+	assert.deepEqual(
+		host.snapshot.rows,
+		old,
+		"partial building pass must not replace a complete generation",
+	);
+	assert.equal(host.snapshot.loadedRows, 1);
+	await host.until(() => Boolean(release));
+	await act(async () => release(page(3, 4)));
+	await host.until(() => host.snapshot.state === "ready");
+	assert.equal(host.snapshot.rows.length, 4);
 });
 
 test("capable draft is empty ready and issues no request", async (t) => {

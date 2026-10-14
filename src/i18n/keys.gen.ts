@@ -108,6 +108,7 @@ export type MessageParams = {
 	"ui.canvas.files.play": undefined;
 	"ui.canvas.files.prepareError": undefined;
 	"ui.canvas.files.presentations": undefined;
+	"ui.canvas.files.progress": { loaded: string; total: string };
 	"ui.canvas.files.readingStats": undefined;
 	"ui.canvas.files.recent": undefined;
 	"ui.canvas.files.region": undefined;

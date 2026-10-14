@@ -718,6 +718,70 @@ export const Narrow: Story = {
 	args: { ...base, payload: payload([anthropic, deepseek]) },
 };
 
+// Captured live Muse receipt on 2026-10-14: 0% current, 99% weekly.
+// Keep the percentages (zero is legitimate), but pin the clock and use a
+// synthetic identity so these frames never expose the operator's account.
+const museAllowance = report({
+	provider: "meta-muse",
+	identity: "subscriber@example.test",
+	fetched_at: NOW - 30_000,
+	notes: "Last response allowance; refresh does not query Muse.",
+	limits: [
+		percentLimit("meta-muse:window", "5 hour", 0, NOW + 5 * HOUR),
+		percentLimit("meta-muse:weekly", "7 day", 99, NOW + 4 * DAY),
+	],
+});
+
+export const MusePassiveCurrent: Story = {
+	args: { ...base, payload: payload([museAllowance], "live") },
+};
+
+export const MuseSignInUnknown: Story = {
+	args: {
+		...base,
+		payload: payload(
+			[
+				{
+					...museAllowance,
+					fetched_at: NOW - 2 * DAY,
+					limits: [],
+					state: "unavailable",
+					notes:
+						"Stale sign-in allowance; current usage unknown; refresh does not query Muse.",
+				},
+			],
+			"live",
+		),
+	},
+};
+
+export const MusePassiveExpired: Story = {
+	args: {
+		...base,
+		now: NOW + 6 * 60_000,
+		payload: payload([museAllowance], "live"),
+	},
+};
+
+export const MuseNoObservation: Story = {
+	args: {
+		...base,
+		payload: payload(
+			[
+				{
+					...museAllowance,
+					fetched_at: 0,
+					limits: [],
+					state: "unavailable",
+					notes:
+						"No allowance observation recorded; refresh does not query Muse.",
+				},
+			],
+			"live",
+		),
+	},
+};
+
 /** Synthetic normalized allowances, never provider funding/eligibility guesses. */
 export const IncludedExhaustedPaidCredits: Story = {
 	args: {

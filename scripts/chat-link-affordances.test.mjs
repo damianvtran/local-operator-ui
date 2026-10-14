@@ -45,7 +45,7 @@
  */
 
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { after, afterEach, beforeEach, test } from "node:test";
 import { pathToFileURL } from "node:url";
@@ -82,7 +82,14 @@ after(() => {
  */
 const EXTERNAL = /^(react|react-dom|@tanstack\/react-query)(\/.*)?$/;
 const BARE_SPECIFIER = /^[^./]/;
-const CACHE = join(ROOT, "node_modules", ".cache", "chat-link-affordances");
+// External React imports need the dependency-tree ancestry. A unique directory
+// also prevents worktrees sharing node_modules from replacing each other's bundle.
+const CACHE_ROOT = join(ROOT, "node_modules", ".cache");
+mkdirSync(CACHE_ROOT, { recursive: true });
+const CACHE = mkdtempSync(
+	join(CACHE_ROOT, `chat-link-affordances-${process.pid}-`),
+);
+after(() => rmSync(CACHE, { recursive: true, force: true }));
 const bundle = await build({
 	stdin: {
 		contents: `
@@ -1124,7 +1131,7 @@ test("the corridor between a link and its toolbar keeps the subject; the prose d
 	);
 });
 
-test("the keyboard contract: Tab enters the FOCUSED link's toolbar, and Escape hands the reader back", async () => {
+test("the keyboard contract: Tab enters the FOCUSED link's toolbar, and Escape hands the reader back", async (t) => {
 	/*
 	 * UX round 1's U1 and U2, plus round 2's U8 (code review MINOR 1). The strip is
 	 * rendered ONCE per turn, after the whole markdown body, so the DOM's own order
@@ -1149,35 +1156,32 @@ test("the keyboard contract: Tab enters the FOCUSED link's toolbar, and Escape h
 
 	/* The reader is on the first link; the pointer rests on the second. */
 	await frame.dispatch(report, "focusin");
-	await frame.dispatch(shots, "pointerover", { clientX: 200, clientY: 372 });
-	assert.match(
-		frame.document
-			.querySelector("[data-lo-link-toolbar]")
-			?.getAttribute("aria-label") ?? "",
-		/opoint_adverse_media_query_failures/,
-		"pointer entry must not bypass the shipped hover dwell",
-	);
 	/*
-	 * The shipped dwell stays 120ms; a wall-clock sleep is not proof its React
-	 * update committed. CI's loaded runner resumed the 200ms assertion before
-	 * that render. Yield outside act, then synchronously flush each observation:
-	 * an awaited act drain also waits on the toolbar's perpetual tooltip loop.
+	 * Advancing past the dwell is not enough: its callback updates React state,
+	 * which must commit before the assertion reads the subject. The same virtual
+	 * 200 ms tick outside act reproduces the stale focused-link label. Scope the
+	 * clock to this hover so keyboard focus and tooltip teardown keep real timers.
 	 */
-	const deadline = Date.now() + 4000;
-	while (Date.now() < deadline) {
-		act(() => {});
-		const label = frame.document
-			.querySelector("[data-lo-link-toolbar]")
-			?.getAttribute("aria-label");
-		if (label?.includes("Screenshot 2026-09-17")) break;
-		await new Promise((resolve) => setTimeout(resolve, 25));
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	try {
+		await frame.dispatch(shots, "pointerover", { clientX: 200, clientY: 372 });
+		assert.match(
+			frame.document
+				.querySelector("[data-lo-link-toolbar]")
+				?.getAttribute("aria-label") ?? "",
+			/opoint_adverse_media_query_failures/,
+			"pointer entry must not bypass the shipped hover dwell",
+		);
+		act(() => t.mock.timers.tick(200));
+		const pointed = frame.document.querySelector("[data-lo-link-toolbar]");
+		assert.match(
+			pointed.getAttribute("aria-label") ?? "",
+			/Screenshot 2026-09-17/,
+			"the pointer owns the strip while it rests (the dwell is 120ms)",
+		);
+	} finally {
+		t.mock.timers.reset();
 	}
-	const pointed = frame.document.querySelector("[data-lo-link-toolbar]");
-	assert.match(
-		pointed.getAttribute("aria-label") ?? "",
-		/Screenshot 2026-09-17/,
-		"the pointer owns the strip while it rests (the dwell is 120ms)",
-	);
 
 	/* Tab, from the FOCUSED link. */
 	const tab = await frame.dispatch(report, "keydown", {

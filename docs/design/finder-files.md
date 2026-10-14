@@ -49,10 +49,15 @@ A migration sanitises hand-edited enum/array values. Narrowing temporarily opens
 all sections with matches without overwriting those saved folds.
 
 Sorting is presentation-only over loaded rows: it cannot restart pagination.
-Same-session Retry and turn-settle refresh retain the displayed generation until
-a replacement pass is complete. Initial loading can publish progressive pages;
-subsequent backfill passes swap atomically. A new revision on a cursor-less
-building poll is legitimate progress, not a defensive-reset budget failure.
+All cursor pages and backfill slices are assembled privately, including the cold
+first pass. Until a complete ready generation exists, the view shows loading or
+building with indexed-pass loaded/total progress, never provisional file rows or
+thumbnails. Same-session Retry and turn-settle refresh retain the former complete
+generation until its replacement is ready, then swap atomically. This costs an
+initial full pagination wait, but prevents client sorting from remounting entire
+thumbnail viewports per page or late Highlights snapping above a partial list.
+A new revision on a cursor-less building poll is legitimate progress, not a
+defensive-reset budget failure.
 
 ## The keyboard contract
 
