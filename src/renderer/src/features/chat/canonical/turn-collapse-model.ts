@@ -470,32 +470,49 @@ function internalEpisodeOf(
 	if (!isInternalEpisodeOrigin(records[span.from])) return null;
 
 	/*
-	 * A TRANSCRIPT WHOSE ONLY ROW IS AN EPISODE ORIGIN IS NOT AN EPISODE.
+	 * AN INTERNAL EPISODE MAY COLLAPSE ONLY ON WORK THAT HAS ALREADY SETTLED.
 	 *
-	 * WHY THIS IS SEPARATE FROM `isInternalEpisodeOrigin`. A `job_result` (and a
-	 * `monitor_prompt`) is not ambient incoming chatter: it is the agent finishing
-	 * something it owns, so the cycle it opens inherits the previous cycle's class
-	 * - which is exactly why `turn-segments.ts` lists both in
-	 * `CONTINUATION_CUSTOMS` and why the delivery-family suite asserts they DO
-	 * open a condensed live episode. Making them non-origins would strand that
-	 * suite, so the origin stands.
+	 * THE RULE, in two arms - either is enough:
+	 *   (a) an ANSWER precedes the episode in this run: the episode is a
+	 *       continuation of finished work, so folding it does not take content
+	 *       away from the reader, it tidies what follows an answer they can
+	 *       still read; or
+	 *   (b) the episode holds >=2 receipt rows: it is a genuine run of
+	 *       exchanges, and a run is what the condensing was built to batch.
 	 *
-	 * WHAT THIS GUARDS. When such a row is the transcript's ENTIRE content there
-	 * is nothing to condense around it: the episode would swallow the only thing
-	 * the reader has, and its headline - the job's verdict and, with `detail`, its
-	 * supporting output - never paints. That is the regression this fixes, from
-	 * `canonical-notice.test.mjs`, which renders one lone `job_result` notice and
-	 * asserts the full headline survives. A boundary notice with no siblings is
-	 * content, not packaging.
+	 * WHY IT IS NEEDED. Eligibility alone classified the origin row and then
+	 * condensed it wherever it sat. That over-reaches in both directions QA
+	 * round 1 measured: a receipt sitting BESIDE a sibling but with no settled
+	 * work before it (`[job_result, tool]` - Q1), and a LONE receipt of any kind
+	 * (peer, wake, `subagent:` notice - Q2). In those shapes the episode IS the
+	 * run's opening content, so the bar replaces the reader's only content: a
+	 * failed background job's verdict, a peer's request, a wake's prompt.
+	 * `job_result` failures carry `level: "info"` (see
+	 * `canonical-notice.stories.tsx`), so the error-level exemption does not
+	 * cover them and the bar label does not say which way the job went.
 	 *
-	 * WHY SO NARROW. Keyed on the row standing ALONE (`records.length === 1`),
-	 * not on its `customType`: the two families are otherwise field-identical
-	 * (same `kind`, `customType`, `level: "info"`, `attribution: "system"`, and
-	 * both carry a `headline`), so any customType- or field-based rule would
-	 * either miss this case or fold a real job receipt. The row-with-siblings
-	 * case keeps condensing, pinned by the delivery-family expectations.
+	 * WHY IT IS NOT A CUSTOMTYPE EXEMPTION. `isInternalEpisodeOrigin` keeps
+	 * `job_result` and `monitor_prompt` as origins ON PURPOSE - they are the
+	 * agent finishing something it owns, which is why `turn-segments.ts` carries
+	 * both in `CONTINUATION_CUSTOMS`, and the delivery-family suite asserts each
+	 * does open a condensed live episode. An episode with >=2 receipts, or one
+	 * that follows an answer, must still fold. The two row families are
+	 * otherwise field-identical (`kind`, `customType`, `level`, `attribution`,
+	 * both carrying a headline), so any type- or field-based rule would either
+	 * miss these shapes or fold a real job receipt.
+	 *
+	 * THE CHECK IS POSITIVE AND STRUCTURAL. It reads settled answers and counted
+	 * receipts - never the row's text, and never a "which producer was this"
+	 * inference, so an unstamped old-core row is not guessed about.
 	 */
-	if (records.length === 1 && records[0].kind === "custom") return null;
+	let settledBefore = false;
+	for (let i = 0; i < span.from; i += 1) {
+		const before = records[i];
+		if (before.kind === "assistant" && before.streaming !== true) {
+			settledBefore = true;
+			break;
+		}
+	}
 	// V4/typed quiet closure was derived once for the loaded run. Neither a
 	// toolUse lead-in nor eval text can make unanswered human work internal.
 	let receipts = 0;
@@ -506,6 +523,16 @@ function internalEpisodeOf(
 		if (isQuietTurnClose(records[i])) quietClose = true;
 	}
 	if (humanPending && !quietClose) return null;
+	/*
+	 * THE RULE'S VERDICT. An episode may condense only on settled work: an
+	 * answer already precedes it, or it is a run of >=2 receipts. Without either,
+	 * this episode opens the run's content and must paint - whatever its
+	 * customType, and whatever kind of receipt opened it. This subsumes the
+	 * lone-row case (a transcript with no preceding answer has none), so the
+	 * earlier `records.length === 1 && kind === "custom"` guard is gone: it was
+	 * two narrower tests where one general one was needed.
+	 */
+	if (!settledBefore && receipts < 2) return null;
 	return { receipts, firstTs: headLoaded ? records[span.from].ts : null, live };
 }
 
