@@ -49,6 +49,7 @@ import {
 } from "@features/chat/components/run-details/wake-controls-model";
 import { Button, Tooltip } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { ArrowUpRight, SquarePen, X } from "lucide-react";
 import type { FC } from "react";
@@ -124,11 +125,11 @@ const WakeLineItem: FC<{
 		action={
 			<>
 				{managedName !== null && <WakeManagedState name={managedName} />}
-				<Tooltip content="Edit wake">
+				<Tooltip content={t("ui.schedules.wake_conversation_row.edit_wake")}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Edit wake"
+						aria-label={t("ui.schedules.wake_conversation_row.edit_wake")}
 						onClick={onEdit}
 						className={cn(
 							...ACTION_REVEAL,
@@ -140,11 +141,13 @@ const WakeLineItem: FC<{
 					</Button>
 				</Tooltip>
 				{managedName === null && (
-					<Tooltip content="Cancel wake">
+					<Tooltip
+						content={t("ui.schedules.wake_conversation_row.cancel_wake")}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Cancel wake"
+							aria-label={t("ui.schedules.wake_conversation_row.cancel_wake")}
 							onClick={onCancel}
 							className={cn(
 								...ACTION_REVEAL,
@@ -232,7 +235,9 @@ export const WakeConversationRow: FC<WakeConversationRowProps> = ({
 						   by default, which is this primitive's own rule. */
 						<Disclosure
 							summary={
-								expanded ? "Show fewer" : hiddenWakesLabel(hidden.length)
+								expanded
+									? t("ui.schedules.wake_conversation_row.show_fewer")
+									: hiddenWakesLabel(hidden.length)
 							}
 							onOpenChange={setExpanded}
 							className={cn("pl-4")}
@@ -256,11 +261,15 @@ export const WakeConversationRow: FC<WakeConversationRowProps> = ({
 				<div
 					className={cn("flex shrink-0 items-center gap-0.5", ...ACTION_REVEAL)}
 				>
-					<Tooltip content="Open conversation">
+					<Tooltip
+						content={t("ui.schedules.wake_conversation_row.open_conversation")}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Open conversation"
+							aria-label={t(
+								"ui.schedules.wake_conversation_row.open_conversation",
+							)}
 							onClick={() => onOpen(row.sessionId)}
 						>
 							<ArrowUpRight />

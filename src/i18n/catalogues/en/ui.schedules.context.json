@@ -1,0 +1,1082 @@
+{
+	"ui.schedules.count.hidden": {
+		"role": "Wake-count/remaining-run labels — show-more disclosure button",
+		"tone": "Direct imperative; preserve the action, not a new explanation.",
+		"length": "English source is 117 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"placeholders": {
+			"hidden": "Actual runtime binding in scheduled-task-model: hidden"
+		},
+		"note": "English source: Show {hidden, plural, one {{hidden, number, ::group-off} more wake} other {{hidden, number, ::group-off} more wakes}}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits. "
+	},
+	"ui.schedules.count.keep_runs": {
+		"role": "Wake-count/remaining-run labels — Ends picker option preserving remaining run budget",
+		"tone": "Value-bearing option label: retain the existing value rather than instructing a new operation.",
+		"length": "English source is 104 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"placeholders": {
+			"left": "Actual runtime binding in scheduled-task-model: left"
+		},
+		"note": "English source: Keep {left, plural, one {{left, number, ::group-off} run} other {{left, number, ::group-off} runs}} left. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits. "
+	},
+	"ui.schedules.count.ran": {
+		"role": "Wake-count/remaining-run labels — past-run count beside an armed wake line",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 103 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"placeholders": {
+			"fired": "Actual runtime binding in scheduled-task-model: fired"
+		},
+		"note": "English source: Ran {fired, plural, one {{fired, number, ::group-off} time} other {{fired, number, ::group-off} times}}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits. "
+	},
+	"ui.schedules.count.wake": {
+		"role": "Wake-count/remaining-run labels — row-header wake tally (without “armed”)",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 99 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"placeholders": {
+			"count": "Actual runtime binding in scheduled-task-model: count"
+		},
+		"note": "English source: {count, plural, one {{count, number, ::group-off} wake} other {{count, number, ::group-off} wakes}}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits. "
+	},
+	"ui.schedules.legacy.activated": {
+		"role": "Legacy agent-schedule status/cadence — derived feedback text: “Schedule activated.”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 19 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Schedule activated.. "
+	},
+	"ui.schedules.legacy.deactivated": {
+		"role": "Legacy agent-schedule status/cadence — derived feedback text: “Schedule deactivated.”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 21 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Schedule deactivated.. "
+	},
+	"ui.schedules.legacy.once": {
+		"role": "Legacy agent-schedule status/cadence — derived feedback text: “once”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 4 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "One-shot cadence for a legacy schedule without a start time. Same English vocabulary as shared formatWakeCadence; it names cadence, not a run-count limit."
+	},
+	"ui.schedules.schedule_form_dialog.active": {
+		"role": "Legacy agent-schedule create/edit dialog — field label: “Active”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 6 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Active. This is the field label in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.agent": {
+		"role": "Legacy agent-schedule create/edit dialog — field label: “Agent ”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 6 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "Required Agent field label in the legacy create sheet; followed by a separate required asterisk span. Keep trailing space and omit an asterisk from the translation."
+	},
+	"ui.schedules.schedule_form_dialog.agent_id_substring_0_8": {
+		"role": "Legacy agent-schedule create/edit dialog — derived feedback text: “Agent ID: …...”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 29 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"placeholders": {
+			"substring_0__8": "Actual runtime binding in schedule-form-dialog: substring_0__8: String(agent.id.substring(0, 8))"
+		},
+		"note": "English source: Agent ID: {substring_0__8}.... Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. "
+	},
+	"ui.schedules.schedule_form_dialog.agent_selection_is_required": {
+		"role": "Legacy agent-schedule create/edit dialog — state-dependent action/feedback label: “Agent selection is required.”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 28 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Agent selection is required.. This is the state-dependent action/feedback label in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.cancel": {
+		"role": "Legacy agent-schedule create/edit dialog — secondary dialog button: “Cancel”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 6 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Cancel. This is the secondary dialog button in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.create_schedule": {
+		"role": "Legacy agent-schedule create/edit dialog — state-dependent action/feedback label: “Create schedule”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 15 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Create schedule. This is the state-dependent action/feedback label in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.days": {
+		"role": "Legacy agent-schedule create/edit dialog — dropdown option: “Days”",
+		"tone": "Plural unit noun for the repeat-unit selector; compact, capitalized like the English option.",
+		"length": "English source is 4 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Days. This is the dropdown option in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. The selected wire unit value stays English/ASCII; only this visible option noun is translated. "
+	},
+	"ui.schedules.schedule_form_dialog.edit_schedule": {
+		"role": "Legacy agent-schedule create/edit dialog — state-dependent action/feedback label: “Edit schedule”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 13 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Edit schedule. This is the state-dependent action/feedback label in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.end_time_optional": {
+		"role": "Legacy agent-schedule create/edit dialog — date/time field label: “End time (optional)”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 19 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: End time (optional). This is the date/time field label in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.example_send_me_an_email_with_a_detailed_world_news_breakdown_wit": {
+		"role": "Legacy agent-schedule create/edit dialog — span visible text: “Example: \"Send me an email with a detailed world news breakdown with key events\"”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 80 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Example: \"Send me an email with a detailed world news breakdown with key events\". This is the span visible text in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.failed_to_load_agents": {
+		"role": "Legacy agent-schedule create/edit dialog — state-dependent action/feedback label: “Failed to load agents.”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 22 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Failed to load agents.. This is the state-dependent action/feedback label in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.failed_to_save_schedule_unknown_error": {
+		"role": "Legacy agent-schedule create/edit dialog — derived feedback text: “Failed to save schedule: …”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 40 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"placeholders": {
+			"unknown_error": "Actual runtime binding in schedule-form-dialog: unknown_error: String("
+		},
+		"note": "English source: Failed to save schedule: {unknown_error}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. "
+	},
+	"ui.schedules.schedule_form_dialog.hours": {
+		"role": "Legacy agent-schedule create/edit dialog — dropdown option: “Hours”",
+		"tone": "Plural unit noun for the repeat-unit selector; compact, capitalized like the English option.",
+		"length": "English source is 5 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Hours. This is the dropdown option in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. The selected wire unit value stays English/ASCII; only this visible option noun is translated. "
+	},
+	"ui.schedules.schedule_form_dialog.if_not_set_schedule_runs_indefinitely": {
+		"role": "Legacy agent-schedule create/edit dialog — date/time field help: “If not set, schedule runs indefinitely.”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 39 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: If not set, schedule runs indefinitely.. This is the date/time field help in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.if_not_set_starts_immediately_or_on_next_interval": {
+		"role": "Legacy agent-schedule create/edit dialog — date/time field help: “If not set, starts immediately or on next interval.”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 51 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: If not set, starts immediately or on next interval.. This is the date/time field help in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.interval": {
+		"role": "Legacy agent-schedule create/edit dialog — field label: “Interval ”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 9 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "Required numeric Interval field label; the separate asterisk stays outside the message. This interval is distinct from its Unit selector; keep trailing space."
+	},
+	"ui.schedules.schedule_form_dialog.it_is_usually_quicker_to_ask_an_agent_in_chat_send_me_an_email_wi": {
+		"role": "Legacy agent-schedule create/edit dialog — explanatory/status paragraph: “It is usually quicker to ask an agent in chat — \"send me an email with the latest news at 8am every day\" — and it will set this up for you.”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 139 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: It is usually quicker to ask an agent in chat — \"send me an email with the latest news at 8am every day\" — and it will set this up for you.. This is the explanatory/status paragraph in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.loading_agents": {
+		"role": "Legacy agent-schedule create/edit dialog — date/time field label: “Loading agents”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 14 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Loading agents. This is the date/time field label in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.minutes": {
+		"role": "Legacy agent-schedule create/edit dialog — dropdown option: “Minutes”",
+		"tone": "Plural unit noun for the repeat-unit selector; compact, capitalized like the English option.",
+		"length": "English source is 7 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Minutes. This is the dropdown option in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. The selected wire unit value stays English/ASCII; only this visible option noun is translated. "
+	},
+	"ui.schedules.schedule_form_dialog.new_schedule": {
+		"role": "Legacy agent-schedule create/edit dialog — state-dependent action/feedback label: “New schedule”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 12 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: New schedule. This is the state-dependent action/feedback label in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.no_matching_agents": {
+		"role": "Legacy agent-schedule create/edit dialog — state-dependent action/feedback label: “No matching agents”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 18 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: No matching agents. This is the state-dependent action/feedback label in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.prompt": {
+		"role": "Legacy agent-schedule create/edit dialog — field label: “Prompt ”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 7 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "Required Prompt field label in the legacy sheet; followed by a separate required asterisk span. Keep trailing space and omit an asterisk from the translation."
+	},
+	"ui.schedules.schedule_form_dialog.run_once": {
+		"role": "Legacy agent-schedule create/edit dialog — field label: “Run once”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 8 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Run once. This is the field label in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.runs_as": {
+		"role": "Legacy agent-schedule create/edit dialog — explanatory/status paragraph: “Runs as”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 7 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "Prefix in “Runs as <agent ID>. The agent cannot be changed after a schedule is created.” The shortened agent ID is a separate emphasized span; punctuation and the immutable-agent explanation follow in the companion message."
+	},
+	"ui.schedules.schedule_form_dialog.save_changes": {
+		"role": "Legacy agent-schedule create/edit dialog — state-dependent action/feedback label: “Save changes”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 12 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Save changes. This is the state-dependent action/feedback label in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.saving": {
+		"role": "Legacy agent-schedule create/edit dialog — state-dependent action/feedback label: “Saving”",
+		"tone": "Present-progressive busy button label, not a completed-state claim.",
+		"length": "English source is 6 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Saving. This is the state-dependent action/feedback label in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.search_agents": {
+		"role": "Legacy agent-schedule create/edit dialog — empty-input hint: “Search agents”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 13 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Search agents. This is the empty-input hint in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.select_agent": {
+		"role": "Legacy agent-schedule create/edit dialog — screen-reader control name: “Select agent”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 12 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Select agent. This is the screen-reader control name in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.select_unit": {
+		"role": "Legacy agent-schedule create/edit dialog — empty-input hint: “Select unit”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 11 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Select unit. This is the empty-input hint in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.send_me_an_email_with_a_detailed_world_news_breakdown": {
+		"role": "Legacy agent-schedule create/edit dialog — empty-input hint: “Send me an email with a detailed world news breakdown”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 53 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Send me an email with a detailed world news breakdown. This is the empty-input hint in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.start_time": {
+		"role": "Legacy agent-schedule create/edit dialog — date/time field label: “Start time”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 10 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Start time. This is the date/time field label in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.the_agent_cannot_be_changed_after_a_schedule_is_created": {
+		"role": "Legacy agent-schedule create/edit dialog — explanatory/status paragraph: “. The agent cannot be changed after a schedule is created.”",
+		"tone": "Quiet factual feedback; distinguish a stopped conversation from an unavailable supervisor and an uncertain index.",
+		"length": "English source is 58 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "Suffix after the highlighted agent ID in “Runs as <ID>. The agent cannot be changed after a schedule is created.” Initial period belongs after that ID; this is why the edit form has no agent selector."
+	},
+	"ui.schedules.schedule_form_dialog.this_is_the_message_that_will_be_sent_to_the_agent_on_the_schedul": {
+		"role": "Legacy agent-schedule create/edit dialog — span visible text: “This is the message that will be sent to the agent on the schedule.”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 67 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: This is the message that will be sent to the agent on the schedule.. This is the span visible text in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.unit": {
+		"role": "Legacy agent-schedule create/edit dialog — field label: “Unit ”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 5 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "Required interval Unit field label beside Interval; followed by a separate asterisk. Keep trailing space; the option wire values minutes/hours/days stay ASCII."
+	},
+	"ui.schedules.schedule_form_dialog.unknown_error": {
+		"role": "Legacy agent-schedule create/edit dialog — state-dependent action/feedback label: “Unknown error”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 13 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Unknown error. This is the state-dependent action/feedback label in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_form_dialog.unnamed_agent": {
+		"role": "Legacy agent-schedule create/edit dialog — state-dependent action/feedback label: “Unnamed agent”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 13 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Unnamed agent. This is the state-dependent action/feedback label in the legacy agent-schedule create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_list_item.agent_id": {
+		"role": "Legacy agent-schedule list row — derived feedback text: “Agent ID”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 8 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Agent ID. This is the derived feedback text in the legacy agent-schedule list row, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_list_item.delete_schedule": {
+		"role": "Legacy agent-schedule list row — content control copy: “Delete schedule”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 15 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Delete schedule. This is the content control copy in the legacy agent-schedule list row, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_list_item.edit_schedule": {
+		"role": "Legacy agent-schedule list row — content control copy: “Edit schedule”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 13 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Edit schedule. This is the content control copy in the legacy agent-schedule list row, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_list_item.pause_schedule": {
+		"role": "Legacy agent-schedule list row — state-dependent action/feedback label: “Pause schedule”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 14 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Pause schedule. This is the state-dependent action/feedback label in the legacy agent-schedule list row, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_list_item.resume_schedule": {
+		"role": "Legacy agent-schedule list row — state-dependent action/feedback label: “Resume schedule”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 15 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Resume schedule. This is the state-dependent action/feedback label in the legacy agent-schedule list row, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedule_list_item.schedule_id_id": {
+		"role": "Legacy agent-schedule list row — derived feedback text: “Schedule ID: …”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 17 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"placeholders": {
+			"id": "Actual runtime binding in schedule-list-item: id: String(schedule.id)"
+		},
+		"note": "English source: Schedule ID: {id}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. "
+	},
+	"ui.schedules.schedule_list_item.unknown_agent": {
+		"role": "Legacy agent-schedule list row — state-dependent action/feedback label: “Unknown agent”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 13 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Unknown agent. This is the state-dependent action/feedback label in the legacy agent-schedule list row, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.a_new_conversation": {
+		"role": "Conversation wake create/edit dialog — derived feedback text: “A new conversation”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 18 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: A new conversation. This is the derived feedback text in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.a_new_first_run_moves_the_next_wake_to_that_time_and_a_new_repeat": {
+		"role": "Conversation wake create/edit dialog — explanatory/status paragraph: “A new first run moves the next wake to that time, and a new repeat carries on from it. Runs already made still count, and the wake keeps its place in the conversation.”",
+		"tone": "Quiet factual feedback; distinguish a stopped conversation from an unavailable supervisor and an uncertain index.",
+		"length": "English source is 167 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: A new first run moves the next wake to that time, and a new repeat carries on from it. Runs already made still count, and the wake keeps its place in the conversation.. This is the explanatory/status paragraph in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.after_n_runs": {
+		"role": "Conversation wake create/edit dialog — dropdown option: “After N runs”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 12 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: After N runs. This is the dropdown option in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.an_existing_conversation": {
+		"role": "Conversation wake create/edit dialog — derived feedback text: “An existing conversation”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 24 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: An existing conversation. This is the derived feedback text in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.as_a_turn_in_that_conversation": {
+		"role": "Conversation wake create/edit dialog — explanatory/status paragraph: “, as a turn in that conversation.”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 33 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "Suffix in Runs in <directory>, as a turn in that conversation. Keep the leading comma and space after the external directory span; distinguish existing conversation execution from a new conversation."
+	},
+	"ui.schedules.scheduled_task_dialog.cancel": {
+		"role": "Conversation wake create/edit dialog — secondary dialog button: “Cancel”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 6 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Cancel. This is the secondary dialog button in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.conversation": {
+		"role": "Conversation wake create/edit dialog — field label: “Conversation”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 12 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Conversation. This is the field label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.could_not_create_the_scheduled_task": {
+		"role": "Conversation wake create/edit dialog — state-dependent action/feedback label: “Could not create the scheduled task”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 35 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Could not create the scheduled task. This is the state-dependent action/feedback label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.could_not_create_the_scheduled_task_491": {
+		"role": "Conversation wake create/edit dialog — state-dependent action/feedback label: “Could not create the scheduled task.”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 36 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Could not create the scheduled task.. This is the state-dependent action/feedback label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.could_not_read_your_conversations": {
+		"role": "Conversation wake create/edit dialog — explanatory/status paragraph: “Could not read your conversations: ”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 35 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "Existing-conversation picker error prefix, followed by the server Error.message in a separate expression. Keep the colon and trailing space; do not translate the appended server diagnostic."
+	},
+	"ui.schedules.scheduled_task_dialog.could_not_save_the_wake": {
+		"role": "Conversation wake create/edit dialog — state-dependent action/feedback label: “Could not save the wake”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 23 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Could not save the wake. This is the state-dependent action/feedback label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.could_not_save_the_wake_490": {
+		"role": "Conversation wake create/edit dialog — state-dependent action/feedback label: “Could not save the wake.”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 24 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Could not save the wake.. This is the state-dependent action/feedback label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.create": {
+		"role": "Conversation wake create/edit dialog — state-dependent action/feedback label: “Create”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 6 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Create. This is the state-dependent action/feedback label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.creating": {
+		"role": "Conversation wake create/edit dialog — state-dependent action/feedback label: “Creating”",
+		"tone": "Present-progressive busy button label, not a completed-state claim.",
+		"length": "English source is 8 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Creating. This is the state-dependent action/feedback label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.days": {
+		"role": "Conversation wake create/edit dialog — repeat-unit dropdown option: “Days”",
+		"tone": "Plural unit noun for the repeat-unit selector; compact, capitalized like the English option.",
+		"length": "English source is 4 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Days. This is the repeat-unit dropdown option in the conversation wake create/edit dialog, not stored prompt text or a backend token. The selected wire unit value stays English/ASCII; only this visible option noun is translated. "
+	},
+	"ui.schedules.scheduled_task_dialog.don_t_repeat": {
+		"role": "Conversation wake create/edit dialog — dropdown option: “Don't repeat”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 12 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Don't repeat. This is the dropdown option in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.edit_wake": {
+		"role": "Conversation wake create/edit dialog — state-dependent action/feedback label: “Edit wake”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 9 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Edit wake. This is the state-dependent action/feedback label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.ends": {
+		"role": "Conversation wake create/edit dialog — field label: “Ends”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 4 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Ends. This is the field label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.every": {
+		"role": "Conversation wake create/edit dialog — dropdown option: “Every”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 5 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Every. This is the dropdown option in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.first_run": {
+		"role": "Conversation wake create/edit dialog — field label: “First run”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 9 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: First run. This is the field label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.first_run_at": {
+		"role": "Conversation wake create/edit dialog — date/time field label: “First run at”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 12 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: First run at. This is the date/time field label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.hours": {
+		"role": "Conversation wake create/edit dialog — repeat-unit dropdown option: “Hours”",
+		"tone": "Plural unit noun for the repeat-unit selector; compact, capitalized like the English option.",
+		"length": "English source is 5 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Hours. This is the repeat-unit dropdown option in the conversation wake create/edit dialog, not stored prompt text or a backend token. The selected wire unit value stays English/ASCII; only this visible option noun is translated. "
+	},
+	"ui.schedules.scheduled_task_dialog.if_a_tool_needs_approval_the_wake_parks_and_waits_for_you_rather": {
+		"role": "Conversation wake create/edit dialog — explanatory/status paragraph: “If a tool needs approval, the wake parks and waits for you rather than acting on its own; a wait that runs out stops the turn without running the tool.”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 151 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: If a tool needs approval, the wake parks and waits for you rather than acting on its own; a wait that runs out stops the turn without running the tool.. This is the explanatory/status paragraph in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.in_30_minutes": {
+		"role": "Conversation wake create/edit dialog — dropdown option: “In 30 minutes”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 13 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: In 30 minutes. This is the dropdown option in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.in_an_hour": {
+		"role": "Conversation wake create/edit dialog — dropdown option: “In an hour”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 10 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: In an hour. This is the dropdown option in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.it_is_usually_quicker_to_ask_an_agent_in_chat_send_me_the_latest": {
+		"role": "Conversation wake create/edit dialog — explanatory/status paragraph: “It is usually quicker to ask an agent in chat — \"send me the latest news at 8am every day\" — and it will set this up for you.”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 125 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: It is usually quicker to ask an agent in chat — \"send me the latest news at 8am every day\" — and it will set this up for you.. This is the explanatory/status paragraph in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.last_run": {
+		"role": "Conversation wake create/edit dialog — date/time field label: “Last run”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 8 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Last run. This is the date/time field label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.loading_conversations": {
+		"role": "Conversation wake create/edit dialog — explanatory/status paragraph: “Loading conversations…”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 22 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Loading conversations…. This is the explanatory/status paragraph in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.minutes": {
+		"role": "Conversation wake create/edit dialog — repeat-unit dropdown option: “Minutes”",
+		"tone": "Plural unit noun for the repeat-unit selector; compact, capitalized like the English option.",
+		"length": "English source is 7 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Minutes. This is the repeat-unit dropdown option in the conversation wake create/edit dialog, not stored prompt text or a backend token. The selected wire unit value stays English/ASCII; only this visible option noun is translated. "
+	},
+	"ui.schedules.scheduled_task_dialog.never": {
+		"role": "Conversation wake create/edit dialog — dropdown option: “Never”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 5 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Never. This is the dropdown option in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.new_scheduled_task": {
+		"role": "Conversation wake create/edit dialog — state-dependent action/feedback label: “New scheduled task”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 18 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: New scheduled task. This is the state-dependent action/feedback label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.no_conversations_yet_start_one_in_chat_or_choose": {
+		"role": "Conversation wake create/edit dialog — explanatory/status paragraph: “No conversations yet — start one in chat, or choose”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 51 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: No conversations yet — start one in chat, or choose. This is the explanatory/status paragraph in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.number_of_runs": {
+		"role": "Conversation wake create/edit dialog — screen-reader control name: “Number of runs”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 14 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Number of runs. This is the screen-reader control name in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.of": {
+		"role": "Conversation wake create/edit dialog — explanatory/status paragraph: “ of ”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 4 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "Wake identity line: <conversation name> · wake <position> of <count>. This fragment separates two preformatted numeric counts; preserve its outer spaces and translate together with the wake fragment."
+	},
+	"ui.schedules.scheduled_task_dialog.on_a_date": {
+		"role": "Conversation wake create/edit dialog — dropdown option: “On a date…”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 10 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: On a date…. This is the dropdown option in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.pick_a_conversation": {
+		"role": "Conversation wake create/edit dialog — empty-input hint: “Pick a conversation”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 19 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Pick a conversation. This is the empty-input hint in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.pick_a_time": {
+		"role": "Conversation wake create/edit dialog — dropdown option: “Pick a time…”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 12 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Pick a time…. This is the dropdown option in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.prompt": {
+		"role": "Conversation wake create/edit dialog — field label: “Prompt ”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 7 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Prompt . This is the field label in the conversation wake create/edit dialog, not stored prompt text or a backend token. The outer spaces join adjacent JSX values/markup; keep the spaces and existing punctuation. A separate danger-colored asterisk marks the required input; do not include an extra asterisk in the translation. "
+	},
+	"ui.schedules.scheduled_task_dialog.repeat": {
+		"role": "Conversation wake create/edit dialog — field label: “Repeat”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 6 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Repeat. This is the field label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.repeat_interval": {
+		"role": "Conversation wake create/edit dialog — screen-reader control name: “Repeat interval”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 15 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Repeat interval. This is the screen-reader control name in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.repeat_unit": {
+		"role": "Conversation wake create/edit dialog — screen-reader control name: “Repeat unit”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 11 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Repeat unit. This is the screen-reader control name in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.run_in": {
+		"role": "Conversation wake create/edit dialog — legend visible text: “Run in”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 6 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Run in. This is the legend visible text in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.runs_in": {
+		"role": "Conversation wake create/edit dialog — explanatory/status paragraph: “Runs in ”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 8 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "Prefix for existing-conversation explanation: Runs in <directory>, as a turn in that conversation. Directory is a separate emphasized span; suffix follows it with punctuation. Keep trailing space."
+	},
+	"ui.schedules.scheduled_task_dialog.save": {
+		"role": "Conversation wake create/edit dialog — state-dependent action/feedback label: “Save”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 4 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Save. This is the state-dependent action/feedback label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.saving": {
+		"role": "Conversation wake create/edit dialog — state-dependent action/feedback label: “Saving”",
+		"tone": "Present-progressive busy button label, not a completed-state claim.",
+		"length": "English source is 6 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Saving. This is the state-dependent action/feedback label in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.scheduled_task_created_trim": {
+		"role": "Conversation wake create/edit dialog — derived feedback text: “Scheduled task created — …”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 31 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"placeholders": {
+			"trim": "Actual runtime binding in scheduled-task-dialog: trim: String(wakePromptHead(prompt.trim()))"
+		},
+		"note": "English source: Scheduled task created — {trim}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. The prompt head is trimmed/clipped by scheduled-task-model wakePromptHead; keep its punctuation and do not translate user prompt text. "
+	},
+	"ui.schedules.scheduled_task_dialog.scheduled_task_created_trim_the_list_may_lag_until_the_index_catc": {
+		"role": "Conversation wake create/edit dialog — derived feedback text: “Scheduled task created — …. The list may lag until the index catches up.”",
+		"tone": "Quiet factual feedback; distinguish a stopped conversation from an unavailable supervisor and an uncertain index.",
+		"length": "English source is 77 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"placeholders": {
+			"trim": "Actual runtime binding in scheduled-task-dialog: trim: String(wakePromptHead(prompt.trim()))"
+		},
+		"note": "English source: Scheduled task created — {trim}. The list may lag until the index catches up.. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. The prompt head is trimmed/clipped by scheduled-task-model wakePromptHead; keep its punctuation and do not translate user prompt text. "
+	},
+	"ui.schedules.scheduled_task_dialog.send_me_an_email_with_a_detailed_world_news_breakdown": {
+		"role": "Conversation wake create/edit dialog — empty-input hint: “Send me an email with a detailed world news breakdown”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 53 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Send me an email with a detailed world news breakdown. This is the empty-input hint in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.starts_in": {
+		"role": "Conversation wake create/edit dialog — explanatory/status paragraph: “Starts in ”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 10 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "Prefix for new-conversation explanation: Starts in <workspace name> with your default model. Workspace is a separate emphasized span; companion suffix is with_your_default_model. Keep trailing space."
+	},
+	"ui.schedules.scheduled_task_dialog.this_is_the_message_the_conversation_receives_when_it_wakes_up": {
+		"role": "Conversation wake create/edit dialog — explanatory/status paragraph: “This is the message the conversation receives when it wakes up.”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 63 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: This is the message the conversation receives when it wakes up.. This is the explanatory/status paragraph in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.tomorrow_at_9_00_am": {
+		"role": "Conversation wake create/edit dialog — dropdown option: “Tomorrow at 9:00 AM”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 19 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Tomorrow at 9:00 AM. This is the dropdown option in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.tonight_at_8_00_pm": {
+		"role": "Conversation wake create/edit dialog — dropdown option: “Tonight at 8:00 PM”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 18 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Tonight at 8:00 PM. This is the dropdown option in the conversation wake create/edit dialog, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_dialog.untitled_slice_0_8": {
+		"role": "Conversation wake create/edit dialog — derived feedback text: “Untitled …”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 21 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"placeholders": {
+			"slice_0__8": "Actual runtime binding in scheduled-task-dialog: slice_0__8: String(entry.id.slice(0, 8))"
+		},
+		"note": "English source: Untitled {slice_0__8}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. "
+	},
+	"ui.schedules.scheduled_task_dialog.value1_message": {
+		"role": "Conversation wake create/edit dialog — derived feedback text: “…: …”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 19 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"placeholders": {
+			"value1": "Actual runtime binding in scheduled-task-dialog: value1: String(",
+			"message": "Actual runtime binding in scheduled-task-dialog: message: String(error.message)"
+		},
+		"note": "English source: {value1}: {message}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. "
+	},
+	"ui.schedules.scheduled_task_dialog.wake": {
+		"role": "Conversation wake create/edit dialog — explanatory/status paragraph: “ · wake ”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 8 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "Wake identity line: <conversation name> · wake <1-based position> of <wake count>. This middle fragment includes the dot separator and spaces; the two counts are separate formatNumber(..., { useGrouping: false }) values."
+	},
+	"ui.schedules.scheduled_task_dialog.wake_updated_trim": {
+		"role": "Conversation wake create/edit dialog — derived feedback text: “Wake updated — …”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 21 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"placeholders": {
+			"trim": "Actual runtime binding in scheduled-task-dialog: trim: String(wakePromptHead(prompt.trim()))"
+		},
+		"note": "English source: Wake updated — {trim}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. The prompt head is trimmed/clipped by scheduled-task-model wakePromptHead; keep its punctuation and do not translate user prompt text. "
+	},
+	"ui.schedules.scheduled_task_dialog.weeks": {
+		"role": "Conversation wake create/edit dialog — repeat-unit dropdown option: “Weeks”",
+		"tone": "Plural unit noun for the repeat-unit selector; compact, capitalized like the English option.",
+		"length": "English source is 5 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Weeks. This is the repeat-unit dropdown option in the conversation wake create/edit dialog, not stored prompt text or a backend token. The selected wire unit value stays English/ASCII; only this visible option noun is translated. "
+	},
+	"ui.schedules.scheduled_task_dialog.with_your_default_model": {
+		"role": "Conversation wake create/edit dialog — explanatory/status paragraph: “ with your default model.”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 25 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "Suffix in Starts in <workspace name> with your default model. A separate workspace span precedes this; keep leading space and final period. This default-model statement applies only to NEW conversations."
+	},
+	"ui.schedules.scheduled_task_model.a_terminal_stop_parks_a_conversation_s_wakes_until_its_next_turn": {
+		"role": "Schedules derived row/validation model — derived feedback text: “A terminal stop parks a conversation's wakes until its next turn; stopping one from this window leaves them armed.”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 114 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: A terminal stop parks a conversation's wakes until its next turn; stopping one from this window leaves them armed.. This is the derived feedback text in the schedules derived row/validation model, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_model.cadence_starts_value2": {
+		"role": "Schedules derived row/validation model — derived feedback text: “… · starts …”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 27 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"placeholders": {
+			"cadence": "Actual runtime binding in scheduled-task-model: cadence: String(cadence)",
+			"value2": "Actual runtime binding in scheduled-task-model: value2: String(formatWakeDue(start, nowMs))"
+		},
+		"note": "English source: {cadence} · starts {value2}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. Due-time placeholder is already formatted by the existing shared chat run-detail-model formatWakeDue; do not append at/in/ago to its value. "
+	},
+	"ui.schedules.scheduled_task_model.cadence_until_value2": {
+		"role": "Schedules derived row/validation model — derived feedback text: “… · until …”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 26 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"placeholders": {
+			"cadence": "Actual runtime binding in scheduled-task-model: cadence: String(cadence)",
+			"value2": "Actual runtime binding in scheduled-task-model: value2: String(formatWakeDue(end, nowMs))"
+		},
+		"note": "English source: {cadence} · until {value2}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. Due-time placeholder is already formatted by the existing shared chat run-detail-model formatWakeDue; do not append at/in/ago to its value. "
+	},
+	"ui.schedules.scheduled_task_model.every_needs_a_positive_whole_number_how_many_minutes_hours_days_o": {
+		"role": "Schedules derived row/validation model — state-dependent action/feedback label: “Every needs a positive whole number — how many minutes, hours, days or weeks between runs.”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 90 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Every needs a positive whole number — how many minutes, hours, days or weeks between runs.. This is the state-dependent action/feedback label in the schedules derived row/validation model, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_model.keep_as_once": {
+		"role": "Schedules derived row/validation model — state-dependent action/feedback label: “Keep as once”",
+		"tone": "Value-bearing option label: retain the existing value rather than instructing a new operation.",
+		"length": "English source is 12 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Keep as once. This is the state-dependent action/feedback label in the schedules derived row/validation model, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_model.keep_ending_until_at_nowms": {
+		"role": "Schedules derived row/validation model — derived feedback text: “Keep ending …”",
+		"tone": "Value-bearing option label: retain the existing value rather than instructing a new operation.",
+		"length": "English source is 29 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"placeholders": {
+			"until_at__nowMs": "Actual runtime binding in scheduled-task-model: until_at__nowMs: String(formatWakeDue(wake.until_at, nowMs))"
+		},
+		"note": "English source: Keep ending {until_at__nowMs}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. Due-time placeholder is already formatted by the existing shared chat run-detail-model formatWakeDue; do not append at/in/ago to its value. "
+	},
+	"ui.schedules.scheduled_task_model.keep_every_ms_null": {
+		"role": "Schedules derived row/validation model — derived feedback text: “Keep …”",
+		"tone": "Value-bearing option label: retain the existing value rather than instructing a new operation.",
+		"length": "English source is 21 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"placeholders": {
+			"every_ms__null": "Actual runtime binding in scheduled-task-model: every_ms__null: String(formatWakeCadence(wake.every_ms, null))"
+		},
+		"note": "English source: Keep {every_ms__null}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. Cadence placeholder is the existing shared chat run-detail-model formatWakeCadence output (once or every plus compact duration); preserve it as one value. "
+	},
+	"ui.schedules.scheduled_task_model.keep_it_parked": {
+		"role": "Schedules derived row/validation model — derived feedback text: “Keep it parked”",
+		"tone": "Value-bearing option label: retain the existing value rather than instructing a new operation.",
+		"length": "English source is 14 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Keep it parked. This is the derived feedback text in the schedules derived row/validation model, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_model.keep_never_ending": {
+		"role": "Schedules derived row/validation model — derived feedback text: “Keep never ending”",
+		"tone": "Value-bearing option label: retain the existing value rather than instructing a new operation.",
+		"length": "English source is 17 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Keep never ending. This is the derived feedback text in the schedules derived row/validation model, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_model.keep_next_due_at_nowms": {
+		"role": "Schedules derived row/validation model — derived feedback text: “Keep …”",
+		"tone": "Value-bearing option label: retain the existing value rather than instructing a new operation.",
+		"length": "English source is 25 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"placeholders": {
+			"next_due_at__nowMs": "Actual runtime binding in scheduled-task-model: next_due_at__nowMs: String(formatWakeDue(wake.next_due_at, nowMs))"
+		},
+		"note": "English source: Keep {next_due_at__nowMs}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. Due-time placeholder is already formatted by the existing shared chat run-detail-model formatWakeDue; do not append at/in/ago to its value. "
+	},
+	"ui.schedules.scheduled_task_model.keep_the_current_time": {
+		"role": "Schedules derived row/validation model — state-dependent action/feedback label: “Keep the current time”",
+		"tone": "Value-bearing option label: retain the existing value rather than instructing a new operation.",
+		"length": "English source is 21 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Keep the current time. This is the state-dependent action/feedback label in the schedules derived row/validation model, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_model.length_next_duelabel": {
+		"role": "Schedules derived row/validation model — derived feedback text: “… · next …”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 26 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"placeholders": {
+			"length": "Actual runtime binding in scheduled-task-model: length: String(wakeCountClause(wakes.length))",
+			"dueLabel": "Actual runtime binding in scheduled-task-model: dueLabel: String(wakes[0].dueLabel)"
+		},
+		"note": "English source: {length} · next {dueLabel}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. "
+	},
+	"ui.schedules.scheduled_task_model.nothing_supervises_the_wakes_below_so_they_only_fire_while_their": {
+		"role": "Schedules derived row/validation model — derived feedback text: “Nothing supervises the wakes below, so they only fire while their conversation is running.”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 90 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Nothing supervises the wakes below, so they only fire while their conversation is running.. This is the derived feedback text in the schedules derived row/validation model, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_model.once_at_value1": {
+		"role": "Schedules derived row/validation model — derived feedback text: “once · at …”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 18 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"placeholders": {
+			"value1": "Actual runtime binding in scheduled-task-model: value1: String(formatWakeDue(start, nowMs))"
+		},
+		"note": "English source: once · at {value1}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. Due-time placeholder is already formatted by the existing shared chat run-detail-model formatWakeDue; do not append at/in/ago to its value. "
+	},
+	"ui.schedules.scheduled_task_model.parked_wakes_resume_after_its_next_turn": {
+		"role": "Schedules derived row/validation model — derived feedback text: “Parked — wakes resume after its next turn”",
+		"tone": "Quiet factual feedback; distinguish a stopped conversation from an unavailable supervisor and an uncertain index.",
+		"length": "English source is 41 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Parked — wakes resume after its next turn. This is the derived feedback text in the schedules derived row/validation model, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_model.pick_a_conversation": {
+		"role": "Schedules derived row/validation model — state-dependent action/feedback label: “Pick a conversation.”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 20 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Pick a conversation.. This is the state-dependent action/feedback label in the schedules derived row/validation model, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_model.the_list_below_is_the_last_one_that_loaded_so_it_may_be_out_of_da": {
+		"role": "Schedules derived row/validation model — derived feedback text: “The list below is the last one that loaded, so it may be out of date.”",
+		"tone": "Quiet factual feedback; distinguish a stopped conversation from an unavailable supervisor and an uncertain index.",
+		"length": "English source is 69 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: The list below is the last one that loaded, so it may be out of date.. This is the derived feedback text in the schedules derived row/validation model, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_model.the_wake_supervisor_is_installed_but_not_running_so_the_wakes_bel": {
+		"role": "Schedules derived row/validation model — derived feedback text: “The wake supervisor is installed but not running, so the wakes below will not fire.”",
+		"tone": "Quiet factual feedback; distinguish a stopped conversation from an unavailable supervisor and an uncertain index.",
+		"length": "English source is 83 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: The wake supervisor is installed but not running, so the wakes below will not fire.. This is the derived feedback text in the schedules derived row/validation model, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_model.wakes_are_not_supervised_on_this_platform_yet_so_the_wakes_below": {
+		"role": "Schedules derived row/validation model — derived feedback text: “Wakes are not supervised on this platform yet, so the wakes below only fire while a conversation is running.”",
+		"tone": "Quiet factual feedback; distinguish a stopped conversation from an unavailable supervisor and an uncertain index.",
+		"length": "English source is 108 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Wakes are not supervised on this platform yet, so the wakes below only fire while a conversation is running.. This is the derived feedback text in the schedules derived row/validation model, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_model.wakes_repeat_no_more_often_than_once_a_minute": {
+		"role": "Schedules derived row/validation model — state-dependent action/feedback label: “Wakes repeat no more often than once a minute.”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 46 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Wakes repeat no more often than once a minute.. This is the state-dependent action/feedback label in the schedules derived row/validation model, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.scheduled_task_model.your_home_folder": {
+		"role": "Schedules derived row/validation model — derived feedback text: “your home folder”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 16 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: your home folder. This is the derived feedback text in the schedules derived row/validation model, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.ask_an_agent_in_chat_to_do_something_on_a_regular_basis_send_me_t": {
+		"role": "Schedules overview page — explanatory/status paragraph: “Ask an agent in chat to do something on a regular basis — “send me the news at 8am every day” — and it will appear here. You can also set one up by hand.”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 153 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Ask an agent in chat to do something on a regular basis — “send me the news at 8am every day” — and it will appear here. You can also set one up by hand.. This is the explanatory/status paragraph in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.conversations_with_wakes": {
+		"role": "Schedules overview page — explanatory/status paragraph: “conversations with wakes.”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 25 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "Final noun phrase of Showing <visible> of <total> conversations with wakes. JSX supplies the space before this phrase; keep final period. Total exceeds the backend list cap in this branch."
+	},
+	"ui.schedules.schedules_page.could_not_cancel_the_wake": {
+		"role": "Schedules overview page — state-dependent action/feedback label: “Could not cancel the wake.”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 26 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Could not cancel the wake.. This is the state-dependent action/feedback label in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.could_not_cancel_the_wake_message": {
+		"role": "Schedules overview page — derived feedback text: “Could not cancel the wake: …”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 36 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"placeholders": {
+			"message": "Actual runtime binding in schedules-page: message: String(error.message)"
+		},
+		"note": "English source: Could not cancel the wake: {message}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. "
+	},
+	"ui.schedules.schedules_page.could_not_load_legacy_schedules": {
+		"role": "Schedules overview page — explanatory/status paragraph: “Could not load legacy schedules. ”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 33 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "Legacy-list error sentence followed by the backend diagnostic, outside the message. Keep the final period plus trailing space; the main wake-list availability is a separate state."
+	},
+	"ui.schedules.schedules_page.could_not_load_scheduled_tasks": {
+		"role": "Schedules overview page — explanatory/status paragraph: “Could not load scheduled tasks.”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 31 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Could not load scheduled tasks.. This is the explanatory/status paragraph in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.could_not_read_this_machine_s_scheduled_tasks_so_the_list_below_m": {
+		"role": "Schedules overview page — Alert visible text: “Could not read this machine's scheduled tasks, so the list below may be incomplete.”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 83 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Could not read this machine's scheduled tasks, so the list below may be incomplete.. This is the Alert visible text in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.could_not_remove_the_schedule": {
+		"role": "Schedules overview page — state-dependent action/feedback label: “Could not remove the schedule.”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 30 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Could not remove the schedule.. This is the state-dependent action/feedback label in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.could_not_remove_the_schedule_message": {
+		"role": "Schedules overview page — derived feedback text: “Could not remove the schedule: …”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 40 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"placeholders": {
+			"message": "Actual runtime binding in schedules-page: message: String(error.message)"
+		},
+		"note": "English source: Could not remove the schedule: {message}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. "
+	},
+	"ui.schedules.schedules_page.could_not_save_the_schedule": {
+		"role": "Schedules overview page — state-dependent action/feedback label: “Could not save the schedule.”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 28 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Could not save the schedule.. This is the state-dependent action/feedback label in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.could_not_save_the_schedule_message": {
+		"role": "Schedules overview page — derived feedback text: “Could not save the schedule: …”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 38 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"placeholders": {
+			"message": "Actual runtime binding in schedules-page: message: String(error.message)"
+		},
+		"note": "English source: Could not save the schedule: {message}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. "
+	},
+	"ui.schedules.schedules_page.could_not_toggle_the_schedule": {
+		"role": "Schedules overview page — state-dependent action/feedback label: “Could not toggle the schedule.”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 30 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Could not toggle the schedule.. This is the state-dependent action/feedback label in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.could_not_toggle_the_schedule_message": {
+		"role": "Schedules overview page — derived feedback text: “Could not toggle the schedule: …”",
+		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
+		"length": "English source is 40 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"placeholders": {
+			"message": "Actual runtime binding in schedules-page: message: String(error.message)"
+		},
+		"note": "English source: Could not toggle the schedule: {message}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. "
+	},
+	"ui.schedules.schedules_page.keep": {
+		"role": "Schedules overview page — cancelText control copy: “Keep”",
+		"tone": "Value-bearing option label: retain the existing value rather than instructing a new operation.",
+		"length": "English source is 4 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "Non-destructive secondary button on cancel-wake confirmation. Means retain the wake, not retain its output or save an edited schedule; compact single-word action."
+	},
+	"ui.schedules.schedules_page.legacy_schedules": {
+		"role": "Schedules overview page — h2 visible text: “Legacy schedules”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 16 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Legacy schedules. This is the h2 visible text in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.loading_scheduled_tasks": {
+		"role": "Schedules overview page — date/time field label: “Loading scheduled tasks”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 23 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Loading scheduled tasks. This is the date/time field label in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.new_scheduled_task": {
+		"role": "Schedules overview page — action button: “New scheduled task”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 18 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: New scheduled task. This is the action button in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.no_scheduled_tasks_yet": {
+		"role": "Schedules overview page — explanatory/status paragraph: “No scheduled tasks yet”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 22 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: No scheduled tasks yet. This is the explanatory/status paragraph in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.of": {
+		"role": "Schedules overview page — explanatory/status paragraph: “ of ”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 4 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "Truncated-list footnote separator: Showing <visible> of <total> conversations with wakes. Preserve spaces on both sides and translate with showing and conversations_with_wakes."
+	},
+	"ui.schedules.schedules_page.open_conversation": {
+		"role": "Schedules overview page — repeat-unit dropdown option: “Open conversation”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 17 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Open conversation. This is the repeat-unit dropdown option in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.refresh_scheduled_tasks": {
+		"role": "Schedules overview page — screen-reader control name: “Refresh scheduled tasks”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 23 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Refresh scheduled tasks. This is the screen-reader control name in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.schedule_removed": {
+		"role": "Schedules overview page — derived feedback text: “Schedule removed”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 16 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Schedule removed. This is the derived feedback text in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.schedule_updated": {
+		"role": "Schedules overview page — derived feedback text: “Schedule updated”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 16 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Schedule updated. This is the derived feedback text in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.schedules": {
+		"role": "Schedules overview page — dialog title or hover title: “Schedules”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 9 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Schedules. This is the dialog title or hover title in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.showing": {
+		"role": "Schedules overview page — explanatory/status paragraph: “Showing ”",
+		"tone": "Concise neutral label, matching English sentence case.",
+		"length": "English source is 8 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "Truncated-list footnote prefix: Showing <visible count> of <total count> conversations with wakes. Both counts are separate formatNumber(..., { useGrouping: false }) values. Keep trailing space; do not suggest this is a complete list."
+	},
+	"ui.schedules.schedules_page.these_run_on_the_older_agent_schedule_engine_new_scheduled_tasks": {
+		"role": "Schedules overview page — explanatory/status paragraph: “These run on the older agent-schedule engine. New scheduled tasks are created as wakes, in a conversation.”",
+		"tone": "Quiet factual feedback; distinguish a stopped conversation from an unavailable supervisor and an uncertain index.",
+		"length": "English source is 106 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: These run on the older agent-schedule engine. New scheduled tasks are created as wakes, in a conversation.. This is the explanatory/status paragraph in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.try_again": {
+		"role": "Schedules overview page — action button: “Try again”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 9 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Try again. This is the action button in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.wake_cancelled": {
+		"role": "Schedules overview page — derived feedback text: “Wake cancelled”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 14 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Wake cancelled. This is the derived feedback text in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.schedules_page.wakes_fire_whether_or_not_this_window_is_open": {
+		"role": "Schedules overview page — state-dependent action/feedback label: “Wakes fire whether or not this window is open. ”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 47 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "First footer clause, shown only when the supervisor actually supervises wakes. Followed by PARK_FOOTER_CLAUSE explaining which stop parks them; keep trailing space so the clauses join."
+	},
+	"ui.schedules.schedules_page.work_your_conversations_do_on_a_schedule_repeating_or_once": {
+		"role": "Schedules overview page — subtitle control copy: “Work your conversations do on a schedule, repeating or once.”",
+		"tone": "Plain explanatory prose; retain the timing, engine and consequence distinctions.",
+		"length": "English source is 60 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"note": "English source: Work your conversations do on a schedule, repeating or once.. This is the subtitle control copy in the schedules overview page, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.validation.prompt_length": {
+		"role": "Wake form inline validation — oversized prompt refusal beneath Prompt",
+		"tone": "Quiet factual feedback; distinguish a stopped conversation from an unavailable supervisor and an uncertain index.",
+		"length": "English source is 103 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"placeholders": {
+			"length": "Actual runtime binding in scheduled-task-model: length, \t\t\t\t\tmax: WAKE_MESSAGE_MAX_CHARS,",
+			"max": "Actual runtime binding in scheduled-task-model: max: WAKE_MESSAGE_MAX_CHARS"
+		},
+		"note": "English source: This prompt is {length, number} characters, and a wake holds at most {max, number}. Shorten it to save.. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. The prompt-length numbers use ICU number with grouping (English cap 2,000 from WAKE_MESSAGE_MAX_CHARS), matching the prior toLocaleString output. "
+	},
+	"ui.schedules.validation.run_budget": {
+		"role": "Wake form inline validation — Ends/run-budget refusal after the wake has already fired",
+		"tone": "Quiet factual feedback; distinguish a stopped conversation from an unavailable supervisor and an uncertain index.",
+		"length": "English source is 209 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"placeholders": {
+			"alreadyRun": "Actual runtime binding in scheduled-task-model: alreadyRun: input.alreadyRun",
+			"budget": "Actual runtime binding in scheduled-task-model: budget: input.alreadyRun + 1"
+		},
+		"note": "English source: This wake has already run {alreadyRun, plural, one {{alreadyRun, number, ::group-off} time} other {{alreadyRun, number, ::group-off} times}}, so the run budget has to be at least {budget, number, ::group-off}.. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits. "
+	},
+	"ui.schedules.validation.wake_ceiling": {
+		"role": "Wake form inline validation — conversation-at-capacity refusal when adding a wake",
+		"tone": "Quiet factual feedback; distinguish a stopped conversation from an unavailable supervisor and an uncertain index.",
+		"length": "English source is 179 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
+		"placeholders": {
+			"count": "Actual runtime binding in scheduled-task-model: count: input.existingWakeCount"
+		},
+		"note": "English source: This conversation already has {count, plural, one {{count, number, ::group-off} wake} other {{count, number, ::group-off} wakes}}, the most it can hold. Cancel one to add another.. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits. "
+	},
+	"ui.schedules.wake_conversation_row.cancel_wake": {
+		"role": "Conversation wake row — content control copy: “Cancel wake”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 11 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Cancel wake. This is the content control copy in the conversation wake row, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.wake_conversation_row.edit_wake": {
+		"role": "Conversation wake row — content control copy: “Edit wake”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 9 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Edit wake. This is the content control copy in the conversation wake row, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.wake_conversation_row.open_conversation": {
+		"role": "Conversation wake row — content control copy: “Open conversation”",
+		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
+		"length": "English source is 17 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Open conversation. This is the content control copy in the conversation wake row, not stored prompt text or a backend token. "
+	},
+	"ui.schedules.wake_conversation_row.show_fewer": {
+		"role": "Conversation wake row — state-dependent action/feedback label: “Show fewer”",
+		"tone": "Direct imperative; preserve the action, not a new explanation.",
+		"length": "English source is 10 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
+		"note": "English source: Show fewer. This is the state-dependent action/feedback label in the conversation wake row, not stored prompt text or a backend token. "
+	}
+}

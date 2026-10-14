@@ -28,6 +28,7 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { useAgents } from "@shared/hooks/use-agents";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { ChevronDown, Info, Save, SquareX } from "lucide-react";
@@ -92,7 +93,11 @@ const AgentSelect: FC<{
 
 	const selectedName =
 		selected?.name ||
-		(selected ? `Agent ID: ${selected.id.substring(0, 8)}...` : "");
+		(selected
+			? t("ui.schedules.schedule_form_dialog.agent_id_substring_0_8", {
+					substring_0__8: String(selected.id.substring(0, 8)),
+				})
+			: "");
 	const [query, setQuery] = useState(selectedName);
 	const [open, setOpen] = useState(false);
 	const [activeIndex, setActiveIndex] = useState(-1);
@@ -119,7 +124,12 @@ const AgentSelect: FC<{
 
 	const commit = (agent: AgentDetails) => {
 		setOpen(false);
-		setQuery(agent.name || `Agent ID: ${agent.id.substring(0, 8)}...`);
+		setQuery(
+			agent.name ||
+				t("ui.schedules.schedule_form_dialog.agent_id_substring_0_8", {
+					substring_0__8: String(agent.id.substring(0, 8)),
+				}),
+		);
 		onSelect(agent);
 	};
 
@@ -203,7 +213,7 @@ const AgentSelect: FC<{
 							aria-invalid={invalid || undefined}
 							autoComplete="off"
 							className="pr-8"
-							placeholder="Search agents"
+							placeholder={t("ui.schedules.schedule_form_dialog.search_agents")}
 							value={query}
 							onChange={(event) => {
 								setQuery(event.target.value);
@@ -219,7 +229,10 @@ const AgentSelect: FC<{
 						/>
 						<span className="pointer-events-none absolute top-1/2 right-2 flex -translate-y-1/2 items-center">
 							{loading ? (
-								<Spinner size="sm" label="Loading agents" />
+								<Spinner
+									size="sm"
+									label={t("ui.schedules.schedule_form_dialog.loading_agents")}
+								/>
 							) : (
 								<ChevronDown
 									className="size-4 text-ink-dim"
@@ -259,7 +272,7 @@ const AgentSelect: FC<{
 						// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 						// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the listbox role is the WAI-ARIA combobox pattern for a popup driven from a text input.
 						role="listbox"
-						aria-label="Select agent"
+						aria-label={t("ui.schedules.schedule_form_dialog.select_agent")}
 						className="max-h-72 overflow-y-auto"
 					>
 						{options.length === 0 && (
@@ -267,7 +280,9 @@ const AgentSelect: FC<{
 								role="presentation"
 								className="px-2 py-1.5 text-body-sm text-ink-dim"
 							>
-								{loading ? "Loading agents" : "No matching agents"}
+								{loading
+									? t("ui.schedules.schedule_form_dialog.loading_agents")
+									: t("ui.schedules.schedule_form_dialog.no_matching_agents")}
 							</li>
 						)}
 						{options.map((option, index) => (
@@ -292,7 +307,8 @@ const AgentSelect: FC<{
 								onClick={() => commit(option)}
 							>
 								<span className="font-medium text-body-sm text-ink">
-									{option.name || "Unnamed agent"}
+									{option.name ||
+										t("ui.schedules.schedule_form_dialog.unnamed_agent")}
 								</span>
 							</li>
 						))}
@@ -421,14 +437,25 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 		} catch (error) {
 			console.error("Failed to submit schedule:", error);
 			showErrorToast(
-				`Failed to save schedule: ${error instanceof Error ? error.message : "Unknown error"}`,
+				t(
+					"ui.schedules.schedule_form_dialog.failed_to_save_schedule_unknown_error",
+					{
+						unknown_error: String(
+							error instanceof Error
+								? error.message
+								: t("ui.schedules.schedule_form_dialog.unknown_error"),
+						),
+					},
+				),
 			);
 		} finally {
 			setIsSubmitting(false);
 		}
 	};
 
-	const dialogTitle = isEditMode ? "Edit schedule" : "New schedule";
+	const dialogTitle = isEditMode
+		? t("ui.schedules.schedule_form_dialog.edit_schedule")
+		: t("ui.schedules.schedule_form_dialog.new_schedule");
 
 	const agentInvalid =
 		isAgentsError || (!isEditMode && !formData.selectedAgentId && isSubmitting);
@@ -441,7 +468,7 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 				startIcon={<SquareX size={18} />}
 				data-tour-tag="create-schedule-dialog-cancel-button"
 			>
-				Cancel
+				{t("ui.schedules.schedule_form_dialog.cancel")}
 			</SecondaryButton>
 			<PrimaryButton
 				onClick={handleSubmit}
@@ -455,10 +482,10 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 				startIcon={isSubmitting ? <Spinner size="sm" /> : <Save size={18} />}
 			>
 				{isSubmitting
-					? "Saving"
+					? t("ui.schedules.schedule_form_dialog.saving")
 					: isEditMode
-						? "Save changes"
-						: "Create schedule"}
+						? t("ui.schedules.schedule_form_dialog.save_changes")
+						: t("ui.schedules.schedule_form_dialog.create_schedule")}
 			</PrimaryButton>
 		</>
 	);
@@ -481,16 +508,17 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 						className="mt-0.5 shrink-0 text-info"
 					/>
 					<p className="text-body-sm text-ink-muted">
-						It is usually quicker to ask an agent in chat — "send me an email
-						with the latest news at 8am every day" — and it will set this up for
-						you.
+						{t(
+							"ui.schedules.schedule_form_dialog.it_is_usually_quicker_to_ask_an_agent_in_chat_send_me_an_email_wi",
+						)}
 					</p>
 				</div>
 
 				{!isEditMode && (
 					<div className="col-span-2 flex flex-col gap-1.5">
 						<Label htmlFor="agent-select-for-schedule">
-							Agent <span className="text-danger">*</span>
+							{t("ui.schedules.schedule_form_dialog.agent")}
+							<span className="text-danger">*</span>
 						</Label>
 						<AgentSelect
 							options={agentOptions}
@@ -509,38 +537,45 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 						{agentInvalid && (
 							<p className="text-danger text-meta">
 								{isAgentsError
-									? "Failed to load agents."
-									: "Agent selection is required."}
+									? t("ui.schedules.schedule_form_dialog.failed_to_load_agents")
+									: t(
+											"ui.schedules.schedule_form_dialog.agent_selection_is_required",
+										)}
 							</p>
 						)}
 					</div>
 				)}
 				{isEditMode && initialData && (
 					<p className="col-span-2 text-body-sm text-ink-muted">
-						Runs as{" "}
+						{t("ui.schedules.schedule_form_dialog.runs_as")}{" "}
 						<span className="font-medium text-ink">
 							{selectedAgentForForm?.name ||
 								`${initialData.agent_id.substring(0, 8)}…`}
 						</span>
-						. The agent cannot be changed after a schedule is created.
+						{t(
+							"ui.schedules.schedule_form_dialog.the_agent_cannot_be_changed_after_a_schedule_is_created",
+						)}
 					</p>
 				)}
 
 				<div className="col-span-2 flex flex-col gap-1.5">
 					<Label htmlFor="prompt" className="items-center">
-						Prompt <span className="text-danger">*</span>
+						{t("ui.schedules.schedule_form_dialog.prompt")}
+						<span className="text-danger">*</span>
 						<Tooltip
 							side="top"
 							align="start"
 							content={
 								<div className="flex flex-col gap-1">
 									<span>
-										This is the message that will be sent to the agent on the
-										schedule.
+										{t(
+											"ui.schedules.schedule_form_dialog.this_is_the_message_that_will_be_sent_to_the_agent_on_the_schedul",
+										)}
 									</span>
 									<span>
-										Example: "Send me an email with a detailed world news
-										breakdown with key events"
+										{t(
+											"ui.schedules.schedule_form_dialog.example_send_me_an_email_with_a_detailed_world_news_breakdown_wit",
+										)}
 									</span>
 								</div>
 							}
@@ -558,13 +593,16 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 						required
 						rows={3}
 						disabled={isSubmitting}
-						placeholder="Send me an email with a detailed world news breakdown"
+						placeholder={t(
+							"ui.schedules.schedule_form_dialog.send_me_an_email_with_a_detailed_world_news_breakdown",
+						)}
 					/>
 				</div>
 
 				<div className="flex flex-col gap-1.5">
 					<Label htmlFor="interval">
-						Interval <span className="text-danger">*</span>
+						{t("ui.schedules.schedule_form_dialog.interval")}
+						<span className="text-danger">*</span>
 					</Label>
 					<Input
 						id="interval"
@@ -588,7 +626,8 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 
 				<div className="flex flex-col gap-1.5">
 					<Label htmlFor="unit-select">
-						Unit <span className="text-danger">*</span>
+						{t("ui.schedules.schedule_form_dialog.unit")}
+						<span className="text-danger">*</span>
 					</Label>
 					<Select
 						value={formData.unit || "hours"}
@@ -601,33 +640,45 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 						disabled={isSubmitting}
 					>
 						<SelectTrigger id="unit-select" name="unit">
-							<SelectValue placeholder="Select unit" />
+							<SelectValue
+								placeholder={t("ui.schedules.schedule_form_dialog.select_unit")}
+							/>
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="minutes">Minutes</SelectItem>
-							<SelectItem value="hours">Hours</SelectItem>
-							<SelectItem value="days">Days</SelectItem>
+							<SelectItem value="minutes">
+								{t("ui.schedules.schedule_form_dialog.minutes")}
+							</SelectItem>
+							<SelectItem value="hours">
+								{t("ui.schedules.schedule_form_dialog.hours")}
+							</SelectItem>
+							<SelectItem value="days">
+								{t("ui.schedules.schedule_form_dialog.days")}
+							</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>
 
 				<DateTimePicker
-					label="Start time"
+					label={t("ui.schedules.schedule_form_dialog.start_time")}
 					value={formData.start_time_utc ?? null}
 					onChange={(newValue) =>
 						setFormData((prev) => ({ ...prev, start_time_utc: newValue }))
 					}
 					disabled={isSubmitting}
-					helperText="If not set, starts immediately or on next interval."
+					helperText={t(
+						"ui.schedules.schedule_form_dialog.if_not_set_starts_immediately_or_on_next_interval",
+					)}
 				/>
 				<DateTimePicker
-					label="End time (optional)"
+					label={t("ui.schedules.schedule_form_dialog.end_time_optional")}
 					value={formData.end_time_utc ?? null}
 					onChange={(newValue) =>
 						setFormData((prev) => ({ ...prev, end_time_utc: newValue }))
 					}
 					disabled={isSubmitting}
-					helperText="If not set, schedule runs indefinitely."
+					helperText={t(
+						"ui.schedules.schedule_form_dialog.if_not_set_schedule_runs_indefinitely",
+					)}
 				/>
 
 				<div className="flex items-center gap-2">
@@ -639,7 +690,9 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 						}
 						disabled={isSubmitting}
 					/>
-					<Label htmlFor="is-active">Active</Label>
+					<Label htmlFor="is-active">
+						{t("ui.schedules.schedule_form_dialog.active")}
+					</Label>
 				</div>
 				<div className="flex items-center gap-2">
 					<Switch
@@ -650,7 +703,9 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 						}
 						disabled={isSubmitting}
 					/>
-					<Label htmlFor="one-time">Run once</Label>
+					<Label htmlFor="one-time">
+						{t("ui.schedules.schedule_form_dialog.run_once")}
+					</Label>
 				</div>
 			</div>
 		</BaseDialog>
