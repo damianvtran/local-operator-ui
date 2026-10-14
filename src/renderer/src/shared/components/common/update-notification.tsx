@@ -997,7 +997,10 @@ const completionSessionsLine = (
 		);
 	}
 	if (count === 0) return null;
-	return t("ui.common.updates.completion.sessions", { count });
+	return t("ui.common.updates.completion.sessions", {
+		count,
+		countText: String(count),
+	});
 };
 
 const backendVersionSentence = ({
@@ -4118,7 +4121,10 @@ export const UpdateNotification = ({
 											),
 											detail2: String(
 												runningVersion
-													? `, which still reports ${runningVersion}`
+													? t(
+															"ui.common.updates.update_notification.which_still_reports",
+															{ runningversion: String(runningVersion) },
+														)
 													: "",
 											),
 										},
@@ -4179,7 +4185,11 @@ export const UpdateNotification = ({
 														),
 												),
 												detail2: String(
-													runningVersion ? ` on ${runningVersion}` : "",
+													runningVersion
+														? t("ui.common.updates.server.on_version", {
+																version: runningVersion,
+															})
+														: "",
 												),
 											},
 										)}

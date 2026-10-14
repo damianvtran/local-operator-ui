@@ -68,13 +68,22 @@
 		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
 		"note": "Shown in update-notification.tsx. Dynamic values are composed within this message so translators can place them; never translate a supplied version, error, command or provider identifier.",
 		"placeholders": {
-			"count": "Measured sessions remaining on the old build; ICU plural cardinal."
+			"count": "Measured sessions remaining on the old build; ICU plural cardinal.",
+			"countText": "Exact existing decimal session count, separate from ICU cardinal selection; do not add grouping punctuation to English."
 		}
 	},
 	"ui.common.updates.restart.outage_bound": {
 		"role": "status explanation",
 		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
 		"note": "Shown in update-notification.tsx."
+	},
+	"ui.common.updates.server.on_version": {
+		"role": "version sentence suffix",
+		"tone": "Short existing-build qualifier.",
+		"note": "Appended to the outside-started server was left running clause only when its running version is known. Leading space joins the preceding sentence; its final period is in the outer message.",
+		"placeholders": {
+			"version": "Running backend build version, verbatim."
+		}
 	},
 	"ui.common.updates.update_error_alert.checking": {
 		"role": "button",
@@ -704,6 +713,14 @@
 		"length": "Compact single status line; wrapping allowed.",
 		"placeholders": {
 			"restartdrainbound": "Existing display value from RESTART_DRAIN_BOUND; retain verbatim, never use as a translation key."
+		}
+	},
+	"ui.common.updates.update_notification.which_still_reports": {
+		"role": "status explanation",
+		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
+		"note": "Shown in update-notification.tsx inside p. Dynamic values are composed within this message so translators can place them; never translate a supplied version, error, command or provider identifier.",
+		"placeholders": {
+			"runningversion": "Existing display value from runningVersion; retain verbatim, never use as a translation key."
 		}
 	},
 	"ui.common.updates.update_quiet_indicator.application_update": {

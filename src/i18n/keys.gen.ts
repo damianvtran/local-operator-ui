@@ -197,8 +197,9 @@ export type MessageParams = {
 	"ui.common.updates.check_for_updates_button.the_server_is_installed_outside_the_app_so_use_the_tool_you_insta": undefined;
 	"ui.common.updates.check_for_updates_button.updates_are_not_checked_in_development_mode_this_feature_is_only_": undefined;
 	"ui.common.updates.check_for_updates_button.version": { liveversion: string };
-	"ui.common.updates.completion.sessions": { count: number };
+	"ui.common.updates.completion.sessions": { count: number; countText: string };
 	"ui.common.updates.restart.outage_bound": undefined;
+	"ui.common.updates.server.on_version": { version: string };
 	"ui.common.updates.update_error_alert.checking": undefined;
 	"ui.common.updates.update_foot_icon.available": undefined;
 	"ui.common.updates.update_foot_icon.show_the_update_notice": undefined;
@@ -355,6 +356,9 @@ export type MessageParams = {
 	"ui.common.updates.update_notification.view_full_release_notes_for": undefined;
 	"ui.common.updates.update_notification.waiting_for_the_turns_running_on_this_machine_to_finish": {
 		restartdrainbound: string;
+	};
+	"ui.common.updates.update_notification.which_still_reports": {
+		runningversion: string;
 	};
 	"ui.common.updates.update_quiet_indicator.application_update": undefined;
 	"ui.common.updates.update_quiet_indicator.dismiss_update_notice": undefined;

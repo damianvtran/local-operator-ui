@@ -39,11 +39,11 @@ test("waiting durations keep the existing English units and composition", () => 
 
 test("remaining sessions agree with singular and plural pronouns", () => {
 	assert.equal(
-		t("ui.common.updates.completion.sessions", { count: 1 }),
+		t("ui.common.updates.completion.sessions", { count: 1, countText: "1" }),
 		"1 session is still running the old build; it will move onto the new build when it next stops or goes idle.",
 	);
 	assert.equal(
-		t("ui.common.updates.completion.sessions", { count: 3 }),
+		t("ui.common.updates.completion.sessions", { count: 3, countText: "3" }),
 		"3 sessions are still running the old build; they will move onto the new build when they next stop or go idle.",
 	);
 });
