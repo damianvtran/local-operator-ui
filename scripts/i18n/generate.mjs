@@ -251,10 +251,12 @@ export function readBundles(cataloguesDir) {
 		const imports = files.map((file) => {
 			const namespace = file.slice(0, -".json".length);
 			const identifier = bundleIdentifier(locale, namespace);
+			const path = `./catalogues/${locale}/${file}`;
 			return {
 				file,
 				identifier,
-				line: `import ${identifier} from "./catalogues/${locale}/${file}";`,
+				path,
+				line: `import ${identifier} from "${path}";`,
 			};
 		});
 		return { locale, imports };
@@ -273,12 +275,13 @@ export function renderKeysModule(cataloguesDir) {
 		);
 	}
 
+	// Biome orders these sibling JSON imports by module path, not identifier.
+	// Nested namespaces put ui.chat.composer.json before ui.chat.json, while
+	// their generated identifiers have the opposite order. Match the lint gate
+	// at generation time so freshness and import organization can both pass.
 	const imports = bundles
 		.flatMap((bundle) => bundle.imports)
-		.sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0))
-		.sort((a, b) =>
-			a.identifier < b.identifier ? -1 : a.identifier > b.identifier ? 1 : 0,
-		);
+		.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 
 	const enSpread = enBundle.imports
 		.map((entry) => `\t...${entry.identifier},`)
