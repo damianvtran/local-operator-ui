@@ -147,7 +147,9 @@ test("RED-1 flipped (authority): the page's fresh body is never discarded for th
 	// Only the payload body admits it, under B, with its own coordinate.
 	state = R.applyPeerSourcePayload(
 		state,
-		page([entry("seed", "seed", 0)], "scope-B", { source_present_ids: ["seed"] }),
+		page([entry("seed", "seed", 0)], "scope-B", {
+			source_present_ids: ["seed"],
+		}),
 	);
 	assert.equal(byId(state, "seed").journalGeneration, "scope-B");
 	assert.deepEqual(R.journalBodyOwedIds(state), []);
@@ -350,7 +352,12 @@ test("a ready answer retires the truthful-unavailable latch; unsupported does no
 	// commit of an unsupported answer must not invent one.
 	state = R.applyPeerSourceFacts(
 		{ ...state, journalSourceUnavailable: undefined },
-		{ entries: [], has_more: false, cursor_missing: false, journal_order_state: "unsupported" },
+		{
+			entries: [],
+			has_more: false,
+			cursor_missing: false,
+			journal_order_state: "unsupported",
+		},
 		{ authoritative: false },
 	);
 	assert.equal(state.journalSourceUnavailable, undefined);
@@ -429,9 +436,15 @@ test("the peer sweep walks facts before bodies, honours the explicit smaller-bat
 			if (typeof s.journalGeneration !== "string")
 				return shape("none", new URLSearchParams());
 			if (R.journalFactsNeeded(s).length > 0)
-				return shape("lookup", new URLSearchParams({ source_read: "metadata" }));
+				return shape(
+					"lookup",
+					new URLSearchParams({ source_read: "metadata" }),
+				);
 			if (R.journalBodyOwedIds(s).length > 0)
-				return shape("payload", new URLSearchParams({ source_read: "payload" }));
+				return shape(
+					"payload",
+					new URLSearchParams({ source_read: "payload" }),
+				);
 			return shape("none", new URLSearchParams());
 		},
 	};

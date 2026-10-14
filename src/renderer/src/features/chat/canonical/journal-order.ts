@@ -415,7 +415,9 @@ function journalOrderedPeerRecords(
 	 * lane must too, or "facts rank" would quietly stop for supplements and
 	 * reviews that sit beside a still-pending body.
 	 */
-	const factFor = (record: TranscriptRecord | undefined): SourceCoordinate | undefined =>
+	const factFor = (
+		record: TranscriptRecord | undefined,
+	): SourceCoordinate | undefined =>
 		record === undefined
 			? undefined
 			: (placement.get(record.id) ??

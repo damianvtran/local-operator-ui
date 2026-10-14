@@ -46,10 +46,7 @@ import type { TranscriptState } from "./transcript-reducer";
 export async function repairJournalOrder<T>(deps: {
 	getTranscript: () => TranscriptState;
 	isCurrent: () => boolean;
-	read: (
-		ids: string[],
-		kind: "authority" | "lookup" | "payload",
-	) => Promise<T>;
+	read: (ids: string[], kind: "authority" | "lookup" | "payload") => Promise<T>;
 	page: (response: T) => DesktopHistoryPage;
 	commit: (response: T, revision: number, read: JournalOrderRead) => void;
 	/** Exact fixed target/query of the existing GET lookup route. */
@@ -62,9 +59,7 @@ export async function repairJournalOrder<T>(deps: {
 	 * sweep has no dispatchable debt this iteration - never a dead read, and
 	 * never the authority fallback a bare `undefined` means.
 	 */
-	sweep?: (
-		state: TranscriptState,
-	) =>
+	sweep?: (state: TranscriptState) =>
 		| {
 				kind: "authority" | "lookup" | "payload" | "none";
 				path: string;
@@ -159,9 +154,7 @@ export async function repairJournalOrder<T>(deps: {
 			if (nextShape?.kind === "none")
 				return { kind: "complete", transcript: latest };
 			const nextKind = nextShape?.kind ?? "authority";
-			if (
-				idsOf(latest, nextKind).some((id) => !attemptedIds(nextKind).has(id))
-			)
+			if (idsOf(latest, nextKind).some((id) => !attemptedIds(nextKind).has(id)))
 				continue;
 			return { kind: "complete", transcript: latest };
 		}
