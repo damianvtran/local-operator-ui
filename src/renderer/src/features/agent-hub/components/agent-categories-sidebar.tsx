@@ -1,9 +1,9 @@
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { CircleEllipsis, Layers } from "lucide-react";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 import { CATEGORY_ICON_MAP, categoryEntry } from "./agent-tags-and-categories";
 
 type AgentCategoriesSidebarProps = {

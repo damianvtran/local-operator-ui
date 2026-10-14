@@ -1,4 +1,3 @@
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -21,6 +20,7 @@ import {
 	Users,
 } from "lucide-react";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * Maps stable category identifiers to icons and locale-aware labels.

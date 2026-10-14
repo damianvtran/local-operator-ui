@@ -1,9 +1,9 @@
 import { Badge } from "@shared/components/ui";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Users } from "lucide-react";
 import type React from "react";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * The org origin badge: this row came from an organization, not the public hub
