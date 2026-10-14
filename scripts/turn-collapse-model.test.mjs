@@ -47,7 +47,12 @@ const bundle = await build({
 
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`;
 const {
-	captureInternalEpisodeIdentity, retainInternalEpisodeKeys: retainInternalEpisodeKeysV2, expandedRunsOf, writeRunExpanded, forgetTurnCollapseOpen, __resetTurnCollapseOpen,
+	captureInternalEpisodeIdentity,
+	retainInternalEpisodeKeys: retainInternalEpisodeKeysV2,
+	expandedRunsOf,
+	writeRunExpanded,
+	forgetTurnCollapseOpen,
+	__resetTurnCollapseOpen,
 	ALIGN_WALK_MAX_PAGES,
 	WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 	alignWalkDecision,
@@ -3144,14 +3149,46 @@ const fact = (actions, workedSeconds, extra = {}) => ({
 test("v2 contained scope: a head-cut run's bar states the RUN's figures, not the loaded fragment (the operator's `423 actions`)", () => {
 	// The old wire-remainder assertion described absent rows as disclosure
 	// children. Keep its upstream stimulus; direct population is authoritative.
-	const rows = [tool("t1", { durationS: 20 }), tool("t2", { durationS: 30 }), answer("a1")];
-	const plan = collapsePlan(rows, { live: false, runFacts: new Map([["a1", fact(423,8639, { openingUserId: "offpage-user", closingAnswerId: "a1", crossSessionActions: 1, crossSessionWorkedSeconds: 10 })]]) });
+	const rows = [
+		tool("t1", { durationS: 20 }),
+		tool("t2", { durationS: 30 }),
+		answer("a1"),
+	];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(423, 8639, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
 	for (const run of plan.runs) {
-		assert.equal(run.factApplied, false, "no aggregate was used by a disclosure");
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
 		for (const segment of run.segments) {
-			const direct = segment.rows.filter(r => r.record.kind === "tool" && r.record.toolName !== "no_reply");
-			assert.equal(segment.facts.actions, direct.length, "counts only what expansion contains");
-			if (segment.facts.partial) assert.equal(segment.facts.durationS, null, "no parent duration on a head-cut span");
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
 		}
 	}
 });
@@ -3159,27 +3196,89 @@ test("v2 contained scope: a fact that the index could not compute exactly keeps 
 	// The old wire-remainder assertion described absent rows as disclosure
 	// children. Keep its upstream stimulus; direct population is authoritative.
 	const rows = [tool("t1", { durationS: 4 }), answer("a1")];
-	const plan = collapsePlan(rows, { live: false, runFacts: new Map([["a1", fact(9,40, { openingUserId: "offpage-user", closingAnswerId: "a1", crossSessionActions: 1, crossSessionWorkedSeconds: 10 })]]) });
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(9, 40, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
 	for (const run of plan.runs) {
-		assert.equal(run.factApplied, false, "no aggregate was used by a disclosure");
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
 		for (const segment of run.segments) {
-			const direct = segment.rows.filter(r => r.record.kind === "tool" && r.record.toolName !== "no_reply");
-			assert.equal(segment.facts.actions, direct.length, "counts only what expansion contains");
-			if (segment.facts.partial) assert.equal(segment.facts.durationS, null, "no parent duration on a head-cut span");
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
 		}
 	}
 });
 test("v2 contained scope: the bars still sum to the turn: a pinned row splitting a head-cut run, with facts (D1)", () => {
 	// The old wire-remainder assertion described absent rows as disclosure
 	// children. Keep its upstream stimulus; direct population is authoritative.
-	const rows = [tool("t1", { durationS: 20 }), row("cmp-v2", "compaction", { text: "Compacted" }), tool("t2", { durationS: 30 }), tool("t3", { durationS: 40 }), answer("a1")];
-	const plan = collapsePlan(rows, { live: false, runFacts: new Map([["a1", fact(423,1000, { openingUserId: "offpage-user", closingAnswerId: "a1", crossSessionActions: 1, crossSessionWorkedSeconds: 10 })]]) });
+	const rows = [
+		tool("t1", { durationS: 20 }),
+		row("cmp-v2", "compaction", { text: "Compacted" }),
+		tool("t2", { durationS: 30 }),
+		tool("t3", { durationS: 40 }),
+		answer("a1"),
+	];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(423, 1000, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
 	for (const run of plan.runs) {
-		assert.equal(run.factApplied, false, "no aggregate was used by a disclosure");
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
 		for (const segment of run.segments) {
-			const direct = segment.rows.filter(r => r.record.kind === "tool" && r.record.toolName !== "no_reply");
-			assert.equal(segment.facts.actions, direct.length, "counts only what expansion contains");
-			if (segment.facts.partial) assert.equal(segment.facts.durationS, null, "no parent duration on a head-cut span");
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
 		}
 	}
 });
@@ -3218,13 +3317,41 @@ test("v2 contained scope: alignWalkRunKeyConfirmed: a run whose bar TOOK the fac
 	// The old wire-remainder assertion described absent rows as disclosure
 	// children. Keep its upstream stimulus; direct population is authoritative.
 	const rows = [tool("t1", { durationS: 2 }), answer("a1")];
-	const plan = collapsePlan(rows, { live: false, runFacts: new Map([["a1", fact(99,90, { openingUserId: "offpage-user", closingAnswerId: "a1", crossSessionActions: 1, crossSessionWorkedSeconds: 10 })]]) });
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(99, 90, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
 	for (const run of plan.runs) {
-		assert.equal(run.factApplied, false, "no aggregate was used by a disclosure");
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
 		for (const segment of run.segments) {
-			const direct = segment.rows.filter(r => r.record.kind === "tool" && r.record.toolName !== "no_reply");
-			assert.equal(segment.facts.actions, direct.length, "counts only what expansion contains");
-			if (segment.facts.partial) assert.equal(segment.facts.durationS, null, "no parent duration on a head-cut span");
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
 		}
 	}
 });
@@ -3528,28 +3655,92 @@ test("openFrameCoversHeld: a held row INSIDE an attested span is covered; anythi
 test("v2 contained scope: clarity 1: a `head_cut` page whose facts cover the run is the FINAL layout, and the fact answers to any of the three ids", () => {
 	// The old wire-remainder assertion described absent rows as disclosure
 	// children. Keep its upstream stimulus; direct population is authoritative.
-	const rows = [tool("t1", { durationS: 2 }), tool("t2", { durationS: 3 }), answer("a1")];
-	const plan = collapsePlan(rows, { live: false, runFacts: new Map([["a1", fact(423,8639, { openingUserId: "offpage-user", closingAnswerId: "a1", crossSessionActions: 1, crossSessionWorkedSeconds: 10 })]]) });
+	const rows = [
+		tool("t1", { durationS: 2 }),
+		tool("t2", { durationS: 3 }),
+		answer("a1"),
+	];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(423, 8639, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
 	for (const run of plan.runs) {
-		assert.equal(run.factApplied, false, "no aggregate was used by a disclosure");
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
 		for (const segment of run.segments) {
-			const direct = segment.rows.filter(r => r.record.kind === "tool" && r.record.toolName !== "no_reply");
-			assert.equal(segment.facts.actions, direct.length, "counts only what expansion contains");
-			if (segment.facts.partial) assert.equal(segment.facts.durationS, null, "no parent duration on a head-cut span");
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
 		}
 	}
 });
 test("v2 contained scope: clarity 2: a page that begins at a STEER still states the run's whole figures", () => {
 	// The old wire-remainder assertion described absent rows as disclosure
 	// children. Keep its upstream stimulus; direct population is authoritative.
-	const rows = [user("steer-v2", { role: "steer" }), tool("t1", { durationS: 2 }), answer("a1")];
-	const plan = collapsePlan(rows, { live: false, runFacts: new Map([["a1", fact(50,3600, { openingUserId: "offpage-user", closingAnswerId: "a1", crossSessionActions: 1, crossSessionWorkedSeconds: 10 })]]) });
+	const rows = [
+		user("steer-v2", { role: "steer" }),
+		tool("t1", { durationS: 2 }),
+		answer("a1"),
+	];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(50, 3600, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
 	for (const run of plan.runs) {
-		assert.equal(run.factApplied, false, "no aggregate was used by a disclosure");
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
 		for (const segment of run.segments) {
-			const direct = segment.rows.filter(r => r.record.kind === "tool" && r.record.toolName !== "no_reply");
-			assert.equal(segment.facts.actions, direct.length, "counts only what expansion contains");
-			if (segment.facts.partial) assert.equal(segment.facts.durationS, null, "no parent duration on a head-cut span");
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
 		}
 	}
 });
@@ -3567,14 +3758,46 @@ test("v2 contained scope: clarity 2: a page that begins at a STEER still states 
 test("v2 contained scope: a fact is corrected by the rows that arrived after its page - and only those (B2)", () => {
 	// The old wire-remainder assertion described absent rows as disclosure
 	// children. Keep its upstream stimulus; direct population is authoritative.
-	const rows = [tool("t1", { durationS: 2 }), tool("tool:appended", { durationS: 3 }), answer("a1")];
-	const plan = collapsePlan(rows, { live: false, runFacts: new Map([["a1", fact(33,60, { openingUserId: "offpage-user", closingAnswerId: "a1", crossSessionActions: 1, crossSessionWorkedSeconds: 10 })]]) });
+	const rows = [
+		tool("t1", { durationS: 2 }),
+		tool("tool:appended", { durationS: 3 }),
+		answer("a1"),
+	];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(33, 60, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
 	for (const run of plan.runs) {
-		assert.equal(run.factApplied, false, "no aggregate was used by a disclosure");
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
 		for (const segment of run.segments) {
-			const direct = segment.rows.filter(r => r.record.kind === "tool" && r.record.toolName !== "no_reply");
-			assert.equal(segment.facts.actions, direct.length, "counts only what expansion contains");
-			if (segment.facts.partial) assert.equal(segment.facts.durationS, null, "no parent duration on a head-cut span");
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
 		}
 	}
 });
@@ -3582,55 +3805,182 @@ test("v2 contained scope: a SERVED page with its own facts and identity adds not
 	// The old wire-remainder assertion described absent rows as disclosure
 	// children. Keep its upstream stimulus; direct population is authoritative.
 	const rows = [tool("tool:served", { durationS: 3 }), answer("a1")];
-	const plan = collapsePlan(rows, { live: false, runFacts: new Map([["a1", fact(9,24, { openingUserId: "offpage-user", closingAnswerId: "a1", crossSessionActions: 1, crossSessionWorkedSeconds: 10 })]]) });
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(9, 24, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
 	for (const run of plan.runs) {
-		assert.equal(run.factApplied, false, "no aggregate was used by a disclosure");
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
 		for (const segment of run.segments) {
-			const direct = segment.rows.filter(r => r.record.kind === "tool" && r.record.toolName !== "no_reply");
-			assert.equal(segment.facts.actions, direct.length, "counts only what expansion contains");
-			if (segment.facts.partial) assert.equal(segment.facts.durationS, null, "no parent duration on a head-cut span");
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
 		}
 	}
 });
 test("v2 contained scope: a fact is split by the hidden cross-session work, or refused (F2)", () => {
 	// The old wire-remainder assertion described absent rows as disclosure
 	// children. Keep its upstream stimulus; direct population is authoritative.
-	const rows = [tool("t1", { durationS: 20 }), tool("t2", { durationS: 30 }), answer("a1")];
-	const plan = collapsePlan(rows, { live: false, runFacts: new Map([["a1", fact(3,70, { openingUserId: "offpage-user", closingAnswerId: "a1", crossSessionActions: 1, crossSessionWorkedSeconds: 10 })]]) });
+	const rows = [
+		tool("t1", { durationS: 20 }),
+		tool("t2", { durationS: 30 }),
+		answer("a1"),
+	];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(3, 70, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
 	for (const run of plan.runs) {
-		assert.equal(run.factApplied, false, "no aggregate was used by a disclosure");
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
 		for (const segment of run.segments) {
-			const direct = segment.rows.filter(r => r.record.kind === "tool" && r.record.toolName !== "no_reply");
-			assert.equal(segment.facts.actions, direct.length, "counts only what expansion contains");
-			if (segment.facts.partial) assert.equal(segment.facts.durationS, null, "no parent duration on a head-cut span");
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
 		}
 	}
 });
 test("v2 contained scope: a woken run states the wire's own totals, and its re-key keeps the fact (F3, B1)", () => {
 	// The old wire-remainder assertion described absent rows as disclosure
 	// children. Keep its upstream stimulus; direct population is authoritative.
-	const rows = [tool("t1", { durationS: 10 }), answer("a1"), row("w1", "wake", { text: "Synthetic wake" }), tool("t2", { durationS: 5 }), tool("t3", { durationS: 5 })];
-	const plan = collapsePlan(rows, { live: false, runFacts: new Map([["a1", fact(33,63, { openingUserId: "offpage-user", closingAnswerId: "a1", crossSessionActions: 1, crossSessionWorkedSeconds: 10 })]]) });
+	const rows = [
+		tool("t1", { durationS: 10 }),
+		answer("a1"),
+		row("w1", "wake", { text: "Synthetic wake" }),
+		tool("t2", { durationS: 5 }),
+		tool("t3", { durationS: 5 }),
+	];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(33, 63, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
 	for (const run of plan.runs) {
-		assert.equal(run.factApplied, false, "no aggregate was used by a disclosure");
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
 		for (const segment of run.segments) {
-			const direct = segment.rows.filter(r => r.record.kind === "tool" && r.record.toolName !== "no_reply");
-			assert.equal(segment.facts.actions, direct.length, "counts only what expansion contains");
-			if (segment.facts.partial) assert.equal(segment.facts.durationS, null, "no parent duration on a head-cut span");
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
 		}
 	}
 });
 test("v2 contained scope: a figure below the rows the bar itself hides keeps its `+` (M2)", () => {
 	// The old wire-remainder assertion described absent rows as disclosure
 	// children. Keep its upstream stimulus; direct population is authoritative.
-	const rows = [tool("t1", { durationS: 10 }), tool("t2", { durationS: 10 }), tool("t3", { durationS: 10 }), answer("a1")];
-	const plan = collapsePlan(rows, { live: false, runFacts: new Map([["a1", fact(1,40, { openingUserId: "offpage-user", closingAnswerId: "a1", crossSessionActions: 1, crossSessionWorkedSeconds: 10 })]]) });
+	const rows = [
+		tool("t1", { durationS: 10 }),
+		tool("t2", { durationS: 10 }),
+		tool("t3", { durationS: 10 }),
+		answer("a1"),
+	];
+	const plan = collapsePlan(rows, {
+		live: false,
+		runFacts: new Map([
+			[
+				"a1",
+				fact(1, 40, {
+					openingUserId: "offpage-user",
+					closingAnswerId: "a1",
+					crossSessionActions: 1,
+					crossSessionWorkedSeconds: 10,
+				}),
+			],
+		]),
+	});
 	for (const run of plan.runs) {
-		assert.equal(run.factApplied, false, "no aggregate was used by a disclosure");
+		assert.equal(
+			run.factApplied,
+			false,
+			"no aggregate was used by a disclosure",
+		);
 		for (const segment of run.segments) {
-			const direct = segment.rows.filter(r => r.record.kind === "tool" && r.record.toolName !== "no_reply");
-			assert.equal(segment.facts.actions, direct.length, "counts only what expansion contains");
-			if (segment.facts.partial) assert.equal(segment.facts.durationS, null, "no parent duration on a head-cut span");
+			const direct = segment.rows.filter(
+				(r) => r.record.kind === "tool" && r.record.toolName !== "no_reply",
+			);
+			assert.equal(
+				segment.facts.actions,
+				direct.length,
+				"counts only what expansion contains",
+			);
+			if (segment.facts.partial)
+				assert.equal(
+					segment.facts.durationS,
+					null,
+					"no parent duration on a head-cut span",
+				);
 		}
 	}
 });
@@ -3705,24 +4055,82 @@ test("openFrameAttestedStart finds the run the page BEGINS in, one run early or 
 	);
 });
 
-
 // Existing small-array fixtures use the public snapshot API, not a second
 // production alias policy. Large/current-authority cases below call it directly.
-const retainInternalEpisodeKeys = (previous, current) => retainInternalEpisodeKeysV2(
-	captureInternalEpisodeIdentity(previous.map(e => ({ ...e, eligible: true })), new Set(previous.map(e => e.key))),
-	current.map(e => ({ ...e, eligible: true })),
-).episodes;
+const retainInternalEpisodeKeys = (previous, current) =>
+	retainInternalEpisodeKeysV2(
+		captureInternalEpisodeIdentity(
+			previous.map((e) => ({ ...e, eligible: true })),
+			new Set(previous.map((e) => e.key)),
+		),
+		current.map((e) => ({ ...e, eligible: true })),
+	).episodes;
 
 /* Active internal episodes: SOURCE regressions, never body/code classifiers. */
-const internalOpening = () => [user("ia-user"), answer("ia-final", { stopReason: "stop" })];
-const internalSpanOf = (plan, id) => plan.runs.flatMap(r => r.segments).find(s => s.segmentIds.includes(id));
-const allCollapsedIds = plan => new Set(plan.runs.flatMap(r => r.segments.filter(s => s.collapsed).flatMap(s => s.segmentIds)));
+const internalOpening = () => [
+	user("ia-user"),
+	answer("ia-final", { stopReason: "stop" }),
+];
+const internalSpanOf = (plan, id) =>
+	plan.runs.flatMap((r) => r.segments).find((s) => s.segmentIds.includes(id));
+const allCollapsedIds = (plan) =>
+	new Set(
+		plan.runs.flatMap((r) =>
+			r.segments.filter((s) => s.collapsed).flatMap((s) => s.segmentIds),
+		),
+	);
 function assertAllAnswersVisible(plan, ids) {
 	const hidden = allCollapsedIds(plan);
-	for (const id of ids) assert.equal(hidden.has(id), false, `answer ${id} stays outside EVERY collapsed span`);
+	for (const id of ids)
+		assert.equal(
+			hidden.has(id),
+			false,
+			`answer ${id} stays outside EVERY collapsed span`,
+		);
 }
-const jobReceipt = (id, extra = {}) => row(id, "custom", { customType: "job_result", text: "Synthetic background completion", headline: "Synthetic completed result", detail: "Full synthetic output", level: "info", attribution: "system", ...extra }, "trace");
-const hubReceipt = (id, extra = {}) => row(id, "custom", { customType: "hub_message", text: "Synthetic typed incoming note", level: "info", receipt: { body: "Typed note", envelope: "Raw synthetic source", direction: "to_parent", label: "Synthetic worker", jobId: "synthetic-job", sender: { pid: "", conversationName: "", cwd: "", sessionId: "", modelLabel: "" }, expectsReply: false, steer: false, ...extra } }, "trace");
+const jobReceipt = (id, extra = {}) =>
+	row(
+		id,
+		"custom",
+		{
+			customType: "job_result",
+			text: "Synthetic background completion",
+			headline: "Synthetic completed result",
+			detail: "Full synthetic output",
+			level: "info",
+			attribution: "system",
+			...extra,
+		},
+		"trace",
+	);
+const hubReceipt = (id, extra = {}) =>
+	row(
+		id,
+		"custom",
+		{
+			customType: "hub_message",
+			text: "Synthetic typed incoming note",
+			level: "info",
+			receipt: {
+				body: "Typed note",
+				envelope: "Raw synthetic source",
+				direction: "to_parent",
+				label: "Synthetic worker",
+				jobId: "synthetic-job",
+				sender: {
+					pid: "",
+					conversationName: "",
+					cwd: "",
+					sessionId: "",
+					modelLabel: "",
+				},
+				expectsReply: false,
+				steer: false,
+				...extra,
+			},
+		},
+		"trace",
+	);
 
 test("active internal receipt compacts without settlement while ALL material answers stay visible", () => {
 	const ordinary = planOf([user("ordinary"), tool("ordinary-call", { phase: "running" })], true);
@@ -3747,76 +4155,213 @@ test("active internal receipt compacts without settlement while ALL material ans
 });
 
 test("unanswered human work remains live even when one or several receipts arrive", () => {
-	for (const prefix of [[user("pending")], [user("pending"), tool("requested")], [user("pending"), answer("lead-in", { stopReason: "toolUse" })]]) {
-		const plan = planOf([...prefix, peerRow("pending-p"), jobReceipt("pending-j"), tool("pending-t", { phase: "running" }, "trace")], true);
-		assert.equal(plan.runs.some(r => r.segments.some(s => s.collapsed)), false);
+	for (const prefix of [
+		[user("pending")],
+		[user("pending"), tool("requested")],
+		[user("pending"), answer("lead-in", { stopReason: "toolUse" })],
+	]) {
+		const plan = planOf(
+			[
+				...prefix,
+				peerRow("pending-p"),
+				jobReceipt("pending-j"),
+				tool("pending-t", { phase: "running" }, "trace"),
+			],
+			/* LIVE: unanswered human work is the turn in flight, so the pane is
+			 * live and the safety rule is asked of that state. */
+			true,
+		);
+		assert.equal(
+			plan.runs.some((r) => r.segments.some((s) => s.collapsed)),
+			false,
+		);
 	}
 });
 
 test("completed quiet work never reopens for thinking; single to mixed receipts grow the same key", () => {
-	const rows = [...internalOpening(), peerRow("grow-p"), tool("grow-t", {}, "trace"), quiet("grow-q")];
+	const rows = [
+		...internalOpening(),
+		peerRow("grow-p"),
+		tool("grow-t", {}, "trace"),
+		quiet("grow-q"),
+	];
 	const completed = internalSpanOf(planOf(rows, false), "grow-p");
 	const thinking = internalSpanOf(planOf(rows, true), "grow-p");
 	assert.equal(thinking.collapsed, true);
-	assert.equal(thinking.internal.live, false, "no new tail row means completed work stays completed");
-	const grown = internalSpanOf(planOf([...rows, jobReceipt("grow-j"), tool("grow-eval", { toolName: "eval", phase: "running" }, "trace")], true), "grow-p");
+	assert.equal(
+		thinking.internal.live,
+		false,
+		"no new tail row means completed work stays completed",
+	);
+	const grown = internalSpanOf(
+		planOf(
+			[
+				...rows,
+				jobReceipt("grow-j"),
+				tool("grow-eval", { toolName: "eval", phase: "running" }, "trace"),
+			],
+			true,
+		),
+		"grow-p",
+	);
 	assert.equal(grown.key, completed.key);
 	assert.equal(grown.collapsed, true);
 	assert.equal(grown.completed, false);
 	assert.equal(grown.internal.receipts, 2);
 	assert.equal(grown.facts.actions, 2);
-	assert.deepEqual(grown.segmentIds, ["grow-p", "grow-t", "grow-q", "grow-j", "grow-eval"]);
+	assert.deepEqual(grown.segmentIds, [
+		"grow-p",
+		"grow-t",
+		"grow-q",
+		"grow-j",
+		"grow-eval",
+	]);
 });
 
 test("all typed delivery families can open one live episode without a quiet outcome", () => {
-	const origins = [peerRow("family-p"), hubReceipt("family-h"), row("family-w", "wake", { text: "Synthetic wake" }), jobReceipt("family-j"), row("family-m", "custom", { customType: "monitor_prompt", level: "info", text: "Synthetic monitor" })];
+	const origins = [
+		peerRow("family-p"),
+		hubReceipt("family-h"),
+		row("family-w", "wake", { text: "Synthetic wake" }),
+		jobReceipt("family-j"),
+		row("family-m", "custom", {
+			customType: "monitor_prompt",
+			level: "info",
+			text: "Synthetic monitor",
+		}),
+	];
 	for (const origin of origins) {
-		const segment = internalSpanOf(planOf([...internalOpening(), origin, tool("family-t", { phase: "running" }, "trace")], true), origin.record.id);
+		const segment = internalSpanOf(
+			planOf(
+				[
+					...internalOpening(),
+					origin,
+					tool("family-t", { phase: "running" }, "trace"),
+				],
+				true,
+			),
+			origin.record.id,
+		);
 		assert.equal(segment.collapsed, true, origin.record.kind);
 		assert.equal(segment.completed, false);
 	}
 });
 
 test("mixed jobs, stream completion notices and tools roll up without body-label deduplication", () => {
-	const ended = applyEvent(EMPTY_TRANSCRIPT, { type: "subagent_end", job_id: "synthetic-job", label: "Synthetic decision", status: "completed" }, TS);
-	const completion = ended.records.find(r => r.id === "subagent:synthetic-job");
-	assert.ok(completion, "actual typed producer creates the reserved completion id");
-	const rows = [...internalOpening(), jobReceipt("physical-job-1"), jobReceipt("physical-job-2"), tool("job-tool-1", {}, "trace"), { record: completion, gap: "trace", closesTurn: false }, jobReceipt("physical-job-3"), tool("job-tool-2", {}, "trace"), jobReceipt("physical-job-4"), tool("job-read", { phase: "running" }, "trace")];
+	const ended = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "subagent_end",
+			job_id: "synthetic-job",
+			label: "Synthetic decision",
+			status: "completed",
+		},
+		TS,
+	);
+	const completion = ended.records.find(
+		(r) => r.id === "subagent:synthetic-job",
+	);
+	assert.ok(
+		completion,
+		"actual typed producer creates the reserved completion id",
+	);
+	const rows = [
+		...internalOpening(),
+		jobReceipt("physical-job-1"),
+		jobReceipt("physical-job-2"),
+		tool("job-tool-1", {}, "trace"),
+		{ record: completion, gap: "trace", closesTurn: false },
+		jobReceipt("physical-job-3"),
+		tool("job-tool-2", {}, "trace"),
+		jobReceipt("physical-job-4"),
+		tool("job-read", { phase: "running" }, "trace"),
+	];
 	const plan = planOf(rows, true);
 	const segment = internalSpanOf(plan, "physical-job-1");
 	assert.equal(segment.collapsed, true);
-	assert.deepEqual(segment.segmentIds, rows.slice(2).map(r => r.record.id));
-	assert.equal(segment.internal.receipts, 5, "four physical job receipts + typed completion, never labels");
-	assert.equal(segment.facts.group.count, 4, "shared QuietGroup golden contract still counts its own triggers");
+	assert.deepEqual(
+		segment.segmentIds,
+		rows.slice(2).map((r) => r.record.id),
+	);
+	assert.equal(
+		segment.internal.receipts,
+		5,
+		"four physical job receipts + typed completion, never labels",
+	);
+	assert.equal(
+		segment.facts.group.count,
+		4,
+		"shared QuietGroup golden contract still counts its own triggers",
+	);
 	assertAllAnswersVisible(plan, ["ia-final"]);
 });
 
 test("real progress, final, steer, ask, attention, error and ambiguous assistant rows remain boundaries", () => {
 	const boundaries = [
-		answer("material-progress", { text: "Real user progress", stopReason: "toolUse" }),
+		answer("material-progress", {
+			text: "Real user progress",
+			stopReason: "toolUse",
+		}),
 		answer("material-final", { stopReason: "stop" }),
-		answer("empty-future", { text: "", streaming: false, stopReason: undefined }),
-		answer("stream-future", { text: "", streaming: true, stopReason: undefined }),
+		answer("empty-future", {
+			text: "",
+			streaming: false,
+			stopReason: undefined,
+		}),
+		answer("stream-future", {
+			text: "",
+			streaming: true,
+			stopReason: undefined,
+		}),
 		user("genuine-steer", { text: "A real user steer" }),
 		tool("real-ask", { toolName: "ask", phase: "running" }, "trace"),
 		tool("real-error", { isError: true, phase: "done" }, "trace"),
-		row("interrupt", "notice", { complete: true, level: "error", text: "Interrupted" }),
+		row("interrupt", "notice", {
+			complete: true,
+			level: "error",
+			text: "Interrupted",
+		}),
 		hubReceipt("attention", { expectsReply: true }),
 		hubReceipt("hub-steer", { steer: true }),
-		row("generic-info", "notice", { level: "info", text: "User-facing status, not a proved internal completion" }),
+		row("generic-info", "notice", {
+			level: "info",
+			text: "User-facing status, not a proved internal completion",
+		}),
 	];
 	for (const boundary of boundaries) {
-		const rows = [...internalOpening(), peerRow("bound-p"), tool("bound-t", {}, "trace"), boundary, jobReceipt("bound-j"), tool("bound-last", { phase: "running" }, "trace")];
+		const rows = [
+			...internalOpening(),
+			peerRow("bound-p"),
+			tool("bound-t", {}, "trace"),
+			boundary,
+			jobReceipt("bound-j"),
+			tool("bound-last", { phase: "running" }, "trace"),
+		];
 		const plan = planOf(rows, true);
-		assert.equal(allCollapsedIds(plan).has(boundary.record.id), false, boundary.record.id);
-		assertAllAnswersVisible(plan, ["ia-final", ...(boundary.record.kind === "assistant" ? [boundary.record.id] : [])]);
+		assert.equal(
+			allCollapsedIds(plan).has(boundary.record.id),
+			false,
+			boundary.record.id,
+		);
+		assertAllAnswersVisible(plan, [
+			"ia-final",
+			...(boundary.record.kind === "assistant" ? [boundary.record.id] : []),
+		]);
 	}
 });
 
 test("empty streaming placeholder protects the first actual token and never remounts the prior internal key", () => {
-	const rows = [...internalOpening(), peerRow("token-p"), tool("token-t", {}, "trace")];
+	const rows = [
+		...internalOpening(),
+		peerRow("token-p"),
+		tool("token-t", {}, "trace"),
+	];
 	const initial = internalSpanOf(planOf(rows, true), "token-p");
-	for (const update of [{ text: "", streaming: true }, { text: "Real progress", streaming: true }, { text: "Real answer", streaming: false, stopReason: "stop" }]) {
+	for (const update of [
+		{ text: "", streaming: true },
+		{ text: "Real progress", streaming: true },
+		{ text: "Real answer", streaming: false, stopReason: "stop" },
+	]) {
 		const plan = planOf([...rows, answer("token-a", update)], true);
 		assertAllAnswersVisible(plan, ["ia-final", "token-a"]);
 		assert.equal(internalSpanOf(plan, "token-p").key, initial.key);
@@ -3825,30 +4370,96 @@ test("empty streaming placeholder protects the first actual token and never remo
 
 test("produced image and video rows stay inline outside internal folds", () => {
 	for (const kind of ["image", "video"]) {
-		const artifact = tool("artifact-" + kind, { images: [{ id: "asset-" + kind, attachment: "synthetic-digest", data: null, mimeType: kind === "image" ? "image/png" : "video/mp4", kind }] }, "trace");
+		const artifact = tool(
+			`artifact-${kind}`,
+			{
+				images: [
+					{
+						id: `asset-${kind}`,
+						attachment: "synthetic-digest",
+						data: null,
+						mimeType: kind === "image" ? "image/png" : "video/mp4",
+						kind,
+					},
+				],
+			},
+			"trace",
+		);
 		for (const where of ["before", "inside"]) {
-			const rows = where === "before" ? [...internalOpening(), artifact, jobReceipt("asset-j"), tool("asset-read", { phase: "running" }, "trace")] : [...internalOpening(), peerRow("asset-p"), artifact, jobReceipt("asset-j"), tool("asset-read", { phase: "running" }, "trace")];
+			const rows =
+				where === "before"
+					? [
+							...internalOpening(),
+							artifact,
+							jobReceipt("asset-j"),
+							tool("asset-read", { phase: "running" }, "trace"),
+						]
+					: [
+							...internalOpening(),
+							peerRow("asset-p"),
+							artifact,
+							jobReceipt("asset-j"),
+							tool("asset-read", { phase: "running" }, "trace"),
+						];
 			const plan = planOf(rows, true);
-			assert.equal(allCollapsedIds(plan).has(artifact.record.id), false, `${kind}/${where} is inline`);
+			assert.equal(
+				allCollapsedIds(plan).has(artifact.record.id),
+				false,
+				`${kind}/${where} is inline`,
+			);
 			assert.equal(internalSpanOf(plan, "asset-j").collapsed, true);
 		}
 	}
 });
 
 test("old unstamped hub-like users remain human; quiet failures and eval text never prove a quiet close", () => {
-	const legacyUser = user("legacy-hub", { text: "<parent-message>synthetic literal text</parent-message>" });
-	const plan = planOf([...internalOpening(), peerRow("legacy-p"), legacyUser, tool("legacy-eval", { toolName: "eval", phase: "running", output: "no_reply" }, "trace")], true);
+	const legacyUser = user("legacy-hub", {
+		text: "<parent-message>synthetic literal text</parent-message>",
+	});
+	const plan = planOf(
+		[
+			...internalOpening(),
+			peerRow("legacy-p"),
+			legacyUser,
+			tool(
+				"legacy-eval",
+				{ toolName: "eval", phase: "running", output: "no_reply" },
+				"trace",
+			),
+		],
+		true,
+	);
 	assert.equal(allCollapsedIds(plan).has(legacyUser.record.id), false);
-	for (const change of [{ isError: true }, { stopped: true }, { neverSent: true }]) {
-		const rows = [...internalOpening(), peerRow("failed-quiet-p"), quiet("failed-quiet", change)];
+	for (const change of [
+		{ isError: true },
+		{ stopped: true },
+		{ neverSent: true },
+	]) {
+		const rows = [
+			...internalOpening(),
+			peerRow("failed-quiet-p"),
+			quiet("failed-quiet", change),
+		];
 		const p = planOf(rows, true);
 		assert.equal(allCollapsedIds(p).has("failed-quiet"), false);
 	}
-	const unanchored = row("attention-ineligible", "custom", { customType: "completion_attention", text: "", level: "info", eligible: false });
-	const p = planOf([...internalOpening(), peerRow("eligible-p"), tool("eligible-e", { toolName: "eval", phase: "done" }, "trace"), unanchored], true);
+	const unanchored = row("attention-ineligible", "custom", {
+		customType: "completion_attention",
+		text: "",
+		level: "info",
+		eligible: false,
+	});
+	const p = planOf(
+		[
+			...internalOpening(),
+			peerRow("eligible-p"),
+			tool("eligible-e", { toolName: "eval", phase: "done" }, "trace"),
+			unanchored,
+		],
+		true,
+	);
 	assert.equal(internalSpanOf(p, "eligible-p").completed, false);
 });
-
 
 test("bounded internal identity and expansion survive prepend/replay but never guess after cache truncation", () => {
 	__resetTurnCollapseOpen();
@@ -3864,16 +4475,47 @@ test("bounded internal identity and expansion survive prepend/replay but never g
 	assert.equal(expandedRunsOf("synthetic-two").size, 0);
 	forgetTurnCollapseOpen("synthetic-one");
 	assert.equal(expandedRunsOf("synthetic-one").size, 0);
-	const split = [{ key: "qg:a", segmentIds: ["loaded"] }, { key: "qg:b", segmentIds: ["call"] }];
-	assert.deepEqual(retainInternalEpisodeKeys(previous, split).map(s => s.key), ["qg:a", "qg:b"]);
-	const large = [{ key: "qg:large", segmentIds: Array.from({ length: 4097 }, (_, i) => "id" + i) }];
-	assert.equal(retainInternalEpisodeKeys(large, [{ key: "qg:new", segmentIds: ["id0"] }])[0].key, "qg:new", "incomplete cache is not uniqueness proof");
-	const many = Array.from({ length: 129 }, (_, i) => ({ key: "qg:id" + i, segmentIds: ["id" + i] }));
-	assert.equal(retainInternalEpisodeKeys(many, [{ key: "qg:new", segmentIds: ["id0"] }])[0].key, "qg:id0", "owner ordinals are not the disclosure key cap");
+	const split = [
+		{ key: "qg:a", segmentIds: ["loaded"] },
+		{ key: "qg:b", segmentIds: ["call"] },
+	];
+	assert.deepEqual(
+		retainInternalEpisodeKeys(previous, split).map((s) => s.key),
+		["qg:a", "qg:b"],
+	);
+	const large = [
+		{
+			key: "qg:large",
+			segmentIds: Array.from({ length: 4097 }, (_, i) => `id${i}`),
+		},
+	];
+	assert.equal(
+		retainInternalEpisodeKeys(large, [
+			{ key: "qg:new", segmentIds: ["id0"] },
+		])[0].key,
+		"qg:new",
+		"incomplete cache is not uniqueness proof",
+	);
+	const many = Array.from({ length: 129 }, (_, i) => ({
+		key: `qg:id${i}`,
+		segmentIds: [`id${i}`],
+	}));
+	assert.equal(
+		retainInternalEpisodeKeys(many, [{ key: "qg:new", segmentIds: ["id0"] }])[0]
+			.key,
+		"qg:id0",
+		"owner ordinals are not the disclosure key cap",
+	);
 });
 
 test("head-cut receipt counts are minimum-only, with no invented whole-episode duration", () => {
-	const segment = internalSpanOf(planOf([jobReceipt("cut-job"), tool("cut-call", { phase: "running" }, "trace")], true), "cut-job");
+	const segment = internalSpanOf(
+		planOf(
+			[jobReceipt("cut-job"), tool("cut-call", { phase: "running" }, "trace")],
+			true,
+		),
+		"cut-job",
+	);
 	assert.equal(segment.collapsed, true);
 	assert.equal(segment.facts.partial, true);
 	assert.equal(segment.internal.firstTs, null);
@@ -3881,118 +4523,390 @@ test("head-cut receipt counts are minimum-only, with no invented whole-episode d
 });
 
 test("all material artifact owners stay inline, including generated loading/error and owned files", () => {
-	for (const name of ["generate_image", "generate_video"]) for (const phase of ["running", "done"]) {
-		const media = tool("owner", { toolName: name, phase, isError: phase === "done" }, "trace");
-		const p = planOf([...internalOpening(), peerRow("owner-p"), media, jobReceipt("owner-j")], true);
-		assert.equal(allCollapsedIds(p).has("owner"), false);
-	}
-	for (const state of ["decided", "queued", "running", "cancelling", "done", "failed", "cancelled", "skipped"]) {
-		const supplement = row("files-owner", "supplement", { anchor: "ia-final", job: "synthetic-files", state, version: 1, files: [{ path: "synthetic/report.pdf", name: "report.pdf", kind: "pdf", sizeBytes: 10, mtime: TS, why: "synthetic output" }], filesMore: 0, more: [], components: [], error: state === "failed" ? "Synthetic failure" : "", live: state === "running", dismissed: state === "skipped" });
-		const p = planOf([...internalOpening(), peerRow("files-p"), tool("files-t", {}, "trace"), supplement, jobReceipt("files-j")], true);
+	for (const name of ["generate_image", "generate_video"])
+		for (const phase of ["running", "done"]) {
+			const media = tool(
+				"owner",
+				{ toolName: name, phase, isError: phase === "done" },
+				"trace",
+			);
+			const p = planOf(
+				[
+					...internalOpening(),
+					peerRow("owner-p"),
+					media,
+					jobReceipt("owner-j"),
+				],
+				true,
+			);
+			assert.equal(allCollapsedIds(p).has("owner"), false);
+		}
+	for (const state of [
+		"decided",
+		"queued",
+		"running",
+		"cancelling",
+		"done",
+		"failed",
+		"cancelled",
+		"skipped",
+	]) {
+		const supplement = row("files-owner", "supplement", {
+			anchor: "ia-final",
+			job: "synthetic-files",
+			state,
+			version: 1,
+			files: [
+				{
+					path: "synthetic/report.pdf",
+					name: "report.pdf",
+					kind: "pdf",
+					sizeBytes: 10,
+					mtime: TS,
+					why: "synthetic output",
+				},
+			],
+			filesMore: 0,
+			more: [],
+			components: [],
+			error: state === "failed" ? "Synthetic failure" : "",
+			live: state === "running",
+			dismissed: state === "skipped",
+		});
+		const p = planOf(
+			[
+				...internalOpening(),
+				peerRow("files-p"),
+				tool("files-t", {}, "trace"),
+				supplement,
+				jobReceipt("files-j"),
+			],
+			true,
+		);
 		assert.equal(allCollapsedIds(p).has("files-owner"), false);
-		assert.equal(runIsCondensed(p.runs[0], new Set(), { artifactOwner: "ia-final" }), false, "an internal bar cannot close its final-owned files");
+		assert.equal(
+			runIsCondensed(p.runs[0], new Set(), { artifactOwner: "ia-final" }),
+			false,
+			"an internal bar cannot close its final-owned files",
+		);
 	}
 });
 
 /* Unified v2 count regression. Parent statistics are NOT disclosure children. */
 test("head-cut peer + spawn counts one contained action despite huge parent/job stats", () => {
-	const rows = [peerRow("count-p"), tool("count-t", { toolName: "sessions", durationS: 2.6 }), answer("count-a")];
-	const options = { live: false, runFacts: new Map([["count-a", fact(113319, 50340, { openingUserId: "offpage", closingAnswerId: "count-a" })]]), factPage: { ids: new Set(rows.map(r => r.record.id)) } };
+	const rows = [
+		peerRow("count-p"),
+		tool("count-t", { toolName: "sessions", durationS: 2.6 }),
+		answer("count-a"),
+	];
+	const options = {
+		live: false,
+		runFacts: new Map([
+			[
+				"count-a",
+				fact(113319, 50340, {
+					openingUserId: "offpage",
+					closingAnswerId: "count-a",
+				}),
+			],
+		]),
+		factPage: { ids: new Set(rows.map((r) => r.record.id)) },
+	};
 	const before = collapsePlan(rows, options);
-	const bar = before.runs.flatMap(r => r.segments).find(s => s.segmentIds.includes("count-p"));
+	const bar = before.runs
+		.flatMap((r) => r.segments)
+		.find((s) => s.segmentIds.includes("count-p"));
 	assert.deepEqual(bar.segmentIds, ["count-p", "count-t"]);
 	assert.equal(bar.facts.actions, 1);
 	assert.equal(bar.internal.receipts, 1);
 	assert.equal(bar.facts.durationS, null, "unknown head cannot borrow 13h59m");
 	assert.equal(before.runs[0].factApplied, false);
-	for (const segment of before.runs.flatMap(r => r.segments)) assert.equal(segment.segmentIds.includes("count-a"), false);
-	const after = collapsePlan(rows, { ...options, runFacts: new Map([["count-a", fact(226638, 100680, { openingUserId: "offpage", closingAnswerId: "count-a" })]]) });
-	const other = after.runs.flatMap(r => r.segments).find(s => s.segmentIds.includes("count-p"));
-	assert.deepEqual([other.key, other.facts.actions, other.segmentIds], [bar.key, 1, bar.segmentIds]);
-	const appended = collapsePlan([rows[0], rows[1], tool("count-second", { durationS: 1 }), rows[2]], options);
+	for (const segment of before.runs.flatMap((r) => r.segments))
+		assert.equal(segment.segmentIds.includes("count-a"), false);
+	const after = collapsePlan(rows, {
+		...options,
+		runFacts: new Map([
+			[
+				"count-a",
+				fact(226638, 100680, {
+					openingUserId: "offpage",
+					closingAnswerId: "count-a",
+				}),
+			],
+		]),
+	});
+	const other = after.runs
+		.flatMap((r) => r.segments)
+		.find((s) => s.segmentIds.includes("count-p"));
+	assert.deepEqual(
+		[other.key, other.facts.actions, other.segmentIds],
+		[bar.key, 1, bar.segmentIds],
+	);
+	const appended = collapsePlan(
+		[rows[0], rows[1], tool("count-second", { durationS: 1 }), rows[2]],
+		options,
+	);
 	assert.equal(appended.runs[0].segments[0].facts.actions, 2);
-	const receiptOnly = collapsePlan([peerRow("jobs-p"), row("jobs-complete", "custom", { customType: "job_result", text: "Synthetic result", level: "info", detail: "Synthetic child report", untrustedFixtureStats: { action_count: 113319, worked_seconds: 50340 } }), row("subagent:jobs-info", "notice", { text: "Synthetic status", level: "info", untrustedFixtureStats: { action_count: 113319 } }), answer("jobs-a")], { live: false });
-	assert.equal(receiptOnly.runs[0].segments[0].facts.actions, 0, "nested stats do not become inline actions");
+	const receiptOnly = collapsePlan(
+		[
+			peerRow("jobs-p"),
+			row("jobs-complete", "custom", {
+				customType: "job_result",
+				text: "Synthetic result",
+				level: "info",
+				detail: "Synthetic child report",
+				untrustedFixtureStats: { action_count: 113319, worked_seconds: 50340 },
+			}),
+			row("subagent:jobs-info", "notice", {
+				text: "Synthetic status",
+				level: "info",
+				untrustedFixtureStats: { action_count: 113319 },
+			}),
+			answer("jobs-a"),
+		],
+		{ live: false },
+	);
+	assert.equal(
+		receiptOnly.runs[0].segments[0].facts.actions,
+		0,
+		"nested stats do not become inline actions",
+	);
 });
 
 /* Architect brief twelve discriminating groups: partial bounded evidence ONLY. */
-const epV2 = (key, ids, eligible = true) => ({ key, segmentIds: ids, eligible });
-const snapshotV2 = (episodes, held = episodes.map(e => e.key), focus = null, outside = []) => captureInternalEpisodeIdentity(episodes, new Set(held), focus, outside);
-const aliasesV2 = (prior, current, extra = {}) => retainInternalEpisodeKeysV2(prior, current, extra);
+const epV2 = (key, ids, eligible = true) => ({
+	key,
+	segmentIds: ids,
+	eligible,
+});
+const snapshotV2 = (
+	episodes,
+	held = episodes.map((e) => e.key),
+	focus = null,
+	outside = [],
+) => captureInternalEpisodeIdentity(episodes, new Set(held), focus, outside);
+const aliasesV2 = (prior, current, extra = {}) =>
+	retainInternalEpisodeKeysV2(prior, current, extra);
 test("v2 alias 1: 129 complete tiny owners no longer evict one held disclosure", () => {
-	const old = Array.from({ length: 129 }, (_, i) => epV2(`qg:p${i}`, [`p${i}`]));
+	const old = Array.from({ length: 129 }, (_, i) =>
+		epV2(`qg:p${i}`, [`p${i}`]),
+	);
 	const evidence = snapshotV2(old, ["qg:p0"]);
-	assert.equal(evidence.complete, true); assert.equal(evidence.owners.size, 129); assert.equal(evidence.keys.size, 1);
-	const now = old.map((e, i) => i === 0 ? epV2("qg:head", ["head", "p0"]) : e);
+	assert.equal(evidence.complete, true);
+	assert.equal(evidence.owners.size, 129);
+	assert.equal(evidence.keys.size, 1);
+	const now = old.map((e, i) =>
+		i === 0 ? epV2("qg:head", ["head", "p0"]) : e,
+	);
 	assert.equal(aliasesV2(evidence, now).episodes[0].key, "qg:p0");
 });
 test("v2 alias 2: huge CURRENT may stream from complete prior; next prior must refuse", () => {
-	const current = [epV2("qg:new", ["new", "anchor", ...Array.from({ length: 5000 }, (_, i) => `n:${i}`)])];
+	const current = [
+		epV2("qg:new", [
+			"new",
+			"anchor",
+			...Array.from({ length: 5000 }, (_, i) => `n:${i}`),
+		]),
+	];
 	const bounded = snapshotV2([epV2("qg:anchor", ["anchor"])]);
-	assert.equal(aliasesV2(bounded, current, { currentIdsUnique: true }).episodes[0].key, "qg:anchor");
-	assert.equal(aliasesV2(bounded, current).reason, "current-uniqueness-unproved");
-	const overflow = snapshotV2(current); assert.equal(overflow.complete, false); assert.equal(overflow.owners.size, 0);
-	assert.equal(aliasesV2(overflow, [epV2("qg:later", ["later", "anchor"])]).reason, "previous-incomplete");
+	assert.equal(
+		aliasesV2(bounded, current, { currentIdsUnique: true }).episodes[0].key,
+		"qg:anchor",
+	);
+	assert.equal(
+		aliasesV2(bounded, current).reason,
+		"current-uniqueness-unproved",
+	);
+	const overflow = snapshotV2(current);
+	assert.equal(overflow.complete, false);
+	assert.equal(overflow.owners.size, 0);
+	/*
+	 * `prior-id-limit`, not a generic "previous-incomplete": the projection
+	 * propagates the CAPTURE's own reason (`if (!previous.complete) return
+	 * refuse(previous.reason ?? "incomplete-prior")`) because the precise cause is
+	 * what a reader of a refusal needs - "the prior snapshot overflowed 4096 IDs"
+	 * says what to do next, while a blanket "incomplete" does not.
+	 */
+	assert.equal(
+		aliasesV2(overflow, [epV2("qg:later", ["later", "anchor"])]).reason,
+		"prior-id-limit",
+	);
 });
 test("v2 alias 3+4: oversized previous and indistinguishable unseen splits cannot be blessed", () => {
-	const huge = epV2("qg:a", ["a", ...Array.from({ length: 4095 }, (_, i) => `inside:${i}`), "z"]);
-	assert.equal(aliasesV2(snapshotV2([huge]), [epV2("qg:head-c", ["head-c", "a", "z"]), epV2("qg:inside:2000", ["inside:2000"])]).reason, "previous-incomplete");
-	const now = [epV2("qg:head-c", ["head-c", "a", "c", "z"]), epV2("qg:b", ["b"])];
-	assert.equal(aliasesV2(snapshotV2([epV2("qg:a", ["a", "b", "c", "z"])]), now).episodes[0].key, "qg:head-c");
-	assert.equal(aliasesV2(snapshotV2([epV2("qg:a", ["a", "c", "z"])]), now).episodes[0].key, "qg:a");
+	const huge = epV2("qg:a", [
+		"a",
+		...Array.from({ length: 4095 }, (_, i) => `inside:${i}`),
+		"z",
+	]);
+	assert.equal(
+		aliasesV2(snapshotV2([huge]), [
+			epV2("qg:head-c", ["head-c", "a", "z"]),
+			epV2("qg:inside:2000", ["inside:2000"]),
+		]).reason,
+		// Same deliberate propagation as alias 2: an oversized PRIOR snapshot is
+		// discarded wholesale, and the capture's own reason is what travels.
+		"prior-id-limit",
+	);
+	const now = [
+		epV2("qg:head-c", ["head-c", "a", "c", "z"]),
+		epV2("qg:b", ["b"]),
+	];
+	assert.equal(
+		aliasesV2(snapshotV2([epV2("qg:a", ["a", "b", "c", "z"])]), now).episodes[0]
+			.key,
+		"qg:head-c",
+	);
+	assert.equal(
+		aliasesV2(snapshotV2([epV2("qg:a", ["a", "c", "z"])]), now).episodes[0].key,
+		"qg:a",
+	);
 });
 test("v2 alias 5: unheld merge, two held merge, split-three and key collisions refuse", () => {
-	const a = epV2("qg:a", ["a", "z"]), b = epV2("qg:b", ["b"]);
+	const a = epV2("qg:a", ["a", "z"]);
+	const b = epV2("qg:b", ["b"]);
 	const merged = [epV2("qg:head-c", ["head-c", "a", "b", "z"])];
-	for (const held of [["qg:a"], ["qg:a", "qg:b"]]) assert.equal(aliasesV2(snapshotV2([a, b], held), merged).episodes[0].key, "qg:head-c");
-	assert.equal(aliasesV2(snapshotV2([epV2("qg:a", ["a", "b", "z"])]), [epV2("qg:head-c", ["head-c", "a"]), epV2("qg:b", ["b"]), epV2("qg:z", ["z"])]).episodes[0].key, "qg:head-c");
+	for (const held of [["qg:a"], ["qg:a", "qg:b"]])
+		assert.equal(
+			aliasesV2(snapshotV2([a, b], held), merged).episodes[0].key,
+			"qg:head-c",
+		);
+	assert.equal(
+		aliasesV2(snapshotV2([epV2("qg:a", ["a", "b", "z"])]), [
+			epV2("qg:head-c", ["head-c", "a"]),
+			epV2("qg:b", ["b"]),
+			epV2("qg:z", ["z"]),
+		]).episodes[0].key,
+		"qg:head-c",
+	);
 	// Deliberately MALFORMED unrelated key: a generic caller must not silently
 	// alias a candidate onto an already-claimed held key (not canonical input).
-	assert.equal(aliasesV2(snapshotV2([a]), [epV2("qg:head-c", ["head-c", "a", "z"]), epV2("qg:a", ["unrelated"])]).reason, "key-collision");
+	assert.equal(
+		aliasesV2(snapshotV2([a]), [
+			epV2("qg:head-c", ["head-c", "a", "z"]),
+			epV2("qg:a", ["unrelated"]),
+		]).reason,
+		"key-collision",
+	);
 });
 test("v2 alias 6: loaded prepend, mounted head slice and true head loss remain distinct", () => {
 	const evidence = snapshotV2([epV2("qg:a", ["a", "b", "z"])]);
-	assert.equal(aliasesV2(evidence, [epV2("qg:prefix", ["prefix", "a", "b", "z"])]).episodes[0].key, "qg:a");
-	assert.equal(aliasesV2(evidence, [epV2("qg:b", ["b", "z"])]).episodes[0].key, "qg:b", "missing current anchor cannot prove source head loss or a mounted slice");
-	assert.equal(aliasesV2(evidence, [epV2("qg:b", ["b", "z"])], { outsideCurrentIds: ["a"] }).episodes[0].key, "qg:b", "anchor presence outside candidate is not same-episode proof");
+	assert.equal(
+		aliasesV2(evidence, [epV2("qg:prefix", ["prefix", "a", "b", "z"])])
+			.episodes[0].key,
+		"qg:a",
+	);
+	assert.equal(
+		aliasesV2(evidence, [epV2("qg:b", ["b", "z"])]).episodes[0].key,
+		"qg:b",
+		"missing current anchor cannot prove source head loss or a mounted slice",
+	);
+	assert.equal(
+		aliasesV2(evidence, [epV2("qg:b", ["b", "z"])], {
+			outsideCurrentIds: ["a"],
+		}).episodes[0].key,
+		"qg:b",
+		"anchor presence outside candidate is not same-episode proof",
+	);
 });
 test("v2 alias 7: duplicates, malformed keys, opaque colons and ineligible qg spans", () => {
 	const old = snapshotV2([epV2("qg:a:b", ["a:b"])]);
-	assert.equal(aliasesV2(old, [epV2("qg:new", ["new", "a:b"])]).episodes[0].key, "qg:a:b");
-	for (const now of [[epV2("qg:c", ["c", "a:b"]), epV2("qg:d", ["d", "a:b"])], [epV2("qg:c", ["c", "a:b", "new", "new"])]]) assert.equal(aliasesV2(old, now).reason, "duplicate-current-id");
-	assert.equal(aliasesV2(snapshotV2([epV2("not-qg", ["a"])]), [epV2("qg:c", ["c", "a"])]).episodes[0].key, "qg:c");
-	assert.equal(aliasesV2(old, [epV2("qg:c", ["c", "a:b"], false)]).episodes[0].key, "qg:c");
+	assert.equal(
+		aliasesV2(old, [epV2("qg:new", ["new", "a:b"])]).episodes[0].key,
+		"qg:a:b",
+	);
+	for (const now of [
+		[epV2("qg:c", ["c", "a:b"]), epV2("qg:d", ["d", "a:b"])],
+		[epV2("qg:c", ["c", "a:b", "new", "new"])],
+	])
+		assert.equal(aliasesV2(old, now).reason, "duplicate-current-id");
+	assert.equal(
+		aliasesV2(snapshotV2([epV2("not-qg", ["a"])]), [epV2("qg:c", ["c", "a"])])
+			.episodes[0].key,
+		"qg:c",
+	);
+	assert.equal(
+		aliasesV2(old, [epV2("qg:c", ["c", "a:b"], false)]).episodes[0].key,
+		"qg:c",
+	);
 });
 test("v2 alias 8: reorder/split and hydration material boundaries conservative refusal", () => {
 	const old = snapshotV2([epV2("qg:a", ["a", "b", "c"])]);
-	assert.equal(aliasesV2(old, [epV2("qg:head-c", ["head-c", "c", "b", "a"])]).episodes[0].key, "qg:head-c");
-	assert.equal(aliasesV2(old, [epV2("qg:head-c", ["head-c", "a", "c"])], { outsideCurrentIds: ["b"] }).episodes[0].key, "qg:head-c");
-	for (const kind of ["artifact", "failed", "ask"]) assert.equal(aliasesV2(old, [epV2(`qg:${kind}`, [kind, "a", "b", "c"], false)]).episodes[0].key, `qg:${kind}`);
+	assert.equal(
+		aliasesV2(old, [epV2("qg:head-c", ["head-c", "c", "b", "a"])]).episodes[0]
+			.key,
+		"qg:head-c",
+	);
+	assert.equal(
+		aliasesV2(old, [epV2("qg:head-c", ["head-c", "a", "c"])], {
+			outsideCurrentIds: ["b"],
+		}).episodes[0].key,
+		"qg:head-c",
+	);
+	for (const kind of ["artifact", "failed", "ask"])
+		assert.equal(
+			aliasesV2(old, [epV2(`qg:${kind}`, [kind, "a", "b", "c"], false)])
+				.episodes[0].key,
+			`qg:${kind}`,
+		);
 	// Same-ID field changes with unchanged candidate membership are NOT a typed
 	// transition certificate. This partial helper does not close that gate.
 });
 test("v2 alias 9: different-ID adoption and cleared/session-scoped evidence cannot infer text aliases", () => {
 	const old = snapshotV2([epV2("qg:a", ["a"])]);
-	assert.equal(aliasesV2(old, [epV2("qg:new-id", ["new-id"])]).episodes[0].key, "qg:new-id");
+	assert.equal(
+		aliasesV2(old, [epV2("qg:new-id", ["new-id"])]).episodes[0].key,
+		"qg:new-id",
+	);
 	const reset = snapshotV2([], []);
-	for (const transition of ["session", "draft", "clear", "remount"]) assert.equal(aliasesV2(reset, [epV2(`qg:${transition}`, [transition, "a"])]).episodes[0].key, `qg:${transition}`);
+	for (const transition of ["session", "draft", "clear", "remount"])
+		assert.equal(
+			aliasesV2(reset, [epV2(`qg:${transition}`, [transition, "a"])])
+				.episodes[0].key,
+			`qg:${transition}`,
+		);
 });
 test("v2 alias 10: focus-only candidate has no second disclosure boolean owner", () => {
 	const old = snapshotV2([epV2("qg:a", ["a", "focused"])], [], "focused");
 	assert.equal(old.keys.size, 1);
-	assert.equal(aliasesV2(old, [epV2("qg:prefix", ["prefix", "a", "focused"])]).episodes[0].key, "qg:a");
-	assert.equal(aliasesV2(old, [epV2("qg:c", ["c", "a"]), epV2("qg:focused", ["focused"])]).episodes[0].key, "qg:c");
+	assert.equal(
+		aliasesV2(old, [epV2("qg:prefix", ["prefix", "a", "focused"])]).episodes[0]
+			.key,
+		"qg:a",
+	);
+	assert.equal(
+		aliasesV2(old, [epV2("qg:c", ["c", "a"]), epV2("qg:focused", ["focused"])])
+			.episodes[0].key,
+		"qg:c",
+	);
 });
 test("v2 alias 11: identity capture never refreshes disclosure open/session LRU", () => {
-	__resetTurnCollapseOpen(); for (let i = 0; i < 129; i++) writeRunExpanded("alias-lru", `qg:${i}`, true);
-	const held = expandedRunsOf("alias-lru"); assert.equal(held.size, 128); assert.equal(held.has("qg:0"), false);
-	snapshotV2([epV2("qg:1", ["1"])], [...held]); assert.deepEqual(expandedRunsOf("alias-lru"), held);
-	writeRunExpanded("alias-lru", "qg:1", false); assert.equal(expandedRunsOf("alias-lru").has("qg:1"), false);
-	for (let i = 0; i < 8; i++) writeRunExpanded(`alias-session-${i}`, "qg:s", true);
-	assert.equal(expandedRunsOf("alias-lru").size, 0); __resetTurnCollapseOpen();
+	__resetTurnCollapseOpen();
+	for (let i = 0; i < 129; i++) writeRunExpanded("alias-lru", `qg:${i}`, true);
+	const held = expandedRunsOf("alias-lru");
+	assert.equal(held.size, 128);
+	assert.equal(held.has("qg:0"), false);
+	snapshotV2([epV2("qg:1", ["1"])], [...held]);
+	assert.deepEqual(expandedRunsOf("alias-lru"), held);
+	writeRunExpanded("alias-lru", "qg:1", false);
+	assert.equal(expandedRunsOf("alias-lru").has("qg:1"), false);
+	for (let i = 0; i < 8; i++)
+		writeRunExpanded(`alias-session-${i}`, "qg:s", true);
+	assert.equal(expandedRunsOf("alias-lru").size, 0);
+	__resetTurnCollapseOpen();
 });
 test("v2 alias 12: overflow never retains stale partial maps/current arrays", () => {
-	const latest = snapshotV2([epV2("qg:n0", Array.from({ length: 4097 }, (_, i) => `n${i}`))]);
-	assert.equal(latest.complete, false); assert.equal(latest.owners.size, 0); assert.equal(latest.keys.size, 0);
-	assert.equal(Object.hasOwn(latest, "episodes"), false, "no retained current full array");
+	const latest = snapshotV2([
+		epV2(
+			"qg:n0",
+			Array.from({ length: 4097 }, (_, i) => `n${i}`),
+		),
+	]);
+	assert.equal(latest.complete, false);
+	assert.equal(latest.owners.size, 0);
+	assert.equal(latest.keys.size, 0);
+	assert.equal(
+		Object.hasOwn(latest, "episodes"),
+		false,
+		"no retained current full array",
+	);
 });

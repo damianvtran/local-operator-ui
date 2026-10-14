@@ -3564,9 +3564,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			endedAtOf: (row) =>
 				row.record.kind === "tool" ? row.record.endedAt : null,
 			isFoldable: (row) =>
-				row.record.kind === "tool" &&
-				!isQuietTurnCall(row.record) &&
-				!ownsMaterialArtifact(row.record),
+				row.record.kind === "tool" && !isQuietTurnCall(row.record),
 			isReceipt: (row) => isInternalReceipt(row.record),
 			receiptSummaryOf: (rows) =>
 				rows.length
@@ -4755,6 +4753,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		const collapsed = collapse.runs.flatMap((run) =>
 			run.segments.filter((segment) => segment.collapsed),
 		);
+		/*
+		 * A LIVE internal episode is PRESENTATION, NOT A SETTLE. It compacted because
+		 * the turn is still thinking, so announcing it now would speak a transition
+		 * the reader did not experience (PR-4: nothing is announced while the cycle
+		 * runs) - and it would burn the segment's key, so the settle that actually
+		 * ends the cycle could not announce once when it lands. So a live episode is
+		 * invisible to BOTH halves of the bookkeeping: it never enters `appeared`,
+		 * and its key is not remembered as announced. When the turn settles the same
+		 * key becomes a genuine settle, appears once, and says its one sentence.
+		 */
+		const announced = (segment: {
+			collapsed: boolean;
+			internal?: { live: boolean } | null;
+			key: string;
+		}) => segment.collapsed && segment.internal?.live !== true;
 		const rowIds = planRowIds(collapse.runs);
 		const previous = announcedPlan.current;
 		if (previous === null) {
@@ -4766,7 +4779,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 */
 			if (collapse.runs.length > 0) {
 				announcedPlan.current = {
-					keys: new Set(collapsed.map((segment) => segment.key)),
+					keys: new Set(
+						collapsed.filter(announced).map((segment) => segment.key),
+					),
 					rowIds,
 				};
 			}
@@ -4774,13 +4789,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		}
 		const appeared = collapsed.filter(
 			(segment) =>
+				announced(segment) &&
 				!previous.keys.has(segment.key) &&
 				segment.segmentIds.some((id) => previous.rowIds.has(id)),
 		);
 		announcedPlan.current = {
 			keys: new Set([
 				...previous.keys,
-				...collapsed.map((segment) => segment.key),
+				...collapsed.filter(announced).map((segment) => segment.key),
 			]),
 			rowIds,
 		};
