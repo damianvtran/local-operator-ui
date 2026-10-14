@@ -824,6 +824,16 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		);
 	};
 
+	const capacity = session.snapshot.capacity;
+	// One unabridged name for the ellipsized trigger and its focus/hover tooltip.
+	const capacityDescription = capacity
+		? t("ui.console.capacity.summary", capacity) +
+			(capacity.archived > 0
+				? t("ui.console.capacity.archived", capacity)
+				: "") +
+			(capacity.live >= capacity.limit ? t("ui.console.capacity.full") : "")
+		: "";
+
 	return (
 		<div
 			/*
@@ -880,14 +890,22 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				)}
 				data-tour-tag="console-pane-header"
 			>
-				<div className={cn("flex min-w-0 items-center gap-2")}>
+				{/* Reserve three monospace cells for the command, not the summary's
+				 * translated intrinsic width. The controls take the remaining bounded
+				 * lane; only their text may ellipsize, never the action buttons. The
+				 * title and long commands yield within the left lane's 40% ceiling. */}
+				<div
+					className={cn(
+						"flex min-w-[3ch] max-w-[40%] shrink-0 items-center gap-2 font-mono",
+					)}
+				>
 					{/* The pane's title at the slot's own title step, not louder: the pane's
 					    contents name it, which is the browser pane's measured D4. It yields to
 					    the surface's command at narrow widths (D7); the command already
 					    truncates. */}
 					<span
 						className={cn(
-							"shrink-0 text-meta text-ink-dim @max-[460px]/consolepane:hidden",
+							"min-w-0 truncate font-sans text-meta text-ink-dim @max-[460px]/consolepane:hidden",
 						)}
 					>
 						{t("ui.console.pane.label")}
@@ -897,7 +915,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					    same object. Truncated rather than wrapped in a 40px bar. */}
 					{surface ? (
 						<span
-							className={cn("truncate text-ink-muted text-mono-sm")}
+							className={cn("min-w-[3ch] truncate text-ink-muted text-mono-sm")}
 							title={`${surfaceTitle(surface)}${surface.argvTail ? ` ${surface.argvTail}` : ""}`}
 							data-tour-tag="console-surface-command"
 						>
@@ -905,14 +923,16 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 						</span>
 					) : null}
 				</div>
-				<div className={cn("flex shrink-0 items-center gap-1")}>
+				<div
+					className={cn("flex min-w-0 flex-1 items-center justify-end gap-1")}
+				>
 					{session.snapshot.capacity ? (
 						<>
 							{/*
-							 * THE SUMMARY IS NOT TRUNCATED (design round 1, D1): the completed/kept
-							 * half — the only visible mention of retained history — used to be cut
-							 * mid-word by `max-w-40 truncate`. The command title to its left already
-							 * has `min-w-0`, so the summary is allowed its full width instead.
+							 * D1 originally removed truncation to reveal retained history. The FR
+							 * sweep (D7/Q2) showed that intrinsic width instead erased the command
+							 * at 276/320px. Bound the text, not the buttons: its complete live,
+							 * archived and full state remains in the accessible name AND tooltip.
 							 *
 							 * THE TRIGGER IS FOCUSABLE (D1): the explanation was hover-only on a plain
 							 * span, so a keyboard user could not reach it. A ghost button with a
@@ -922,15 +942,15 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 							<Tooltip
 								content={
 									session.snapshot.resources
-										? `${t("ui.console.capacity.summary", session.snapshot.capacity)}. ${t("ui.console.capacity.help")} ${t("ui.console.capacity.resources", { memory: Math.ceil(session.snapshot.resources.modeledBytes / 1048576), logs: Math.ceil(session.snapshot.resources.logBytes / 1048576), pending: Math.ceil(session.snapshot.resources.pendingBytes / 1048576), cells: session.snapshot.resources.cells, protected: session.snapshot.resources.protected })}`
-										: `${t("ui.console.capacity.summary", session.snapshot.capacity)}. ${t("ui.console.capacity.help")}`
+										? `${capacityDescription}. ${t("ui.console.capacity.help")} ${t("ui.console.capacity.resources", { memory: Math.ceil(session.snapshot.resources.modeledBytes / 1048576), logs: Math.ceil(session.snapshot.resources.logBytes / 1048576), pending: Math.ceil(session.snapshot.resources.pendingBytes / 1048576), cells: session.snapshot.resources.cells, protected: session.snapshot.resources.protected })}`
+										: `${capacityDescription}. ${t("ui.console.capacity.help")}`
 								}
 							>
 								<Button
 									variant="ghost"
 									size="sm"
 									className={cn(
-										"shrink-0 whitespace-nowrap px-1 text-xs",
+										"min-w-0 shrink whitespace-nowrap px-1 text-xs",
 										/* THE AT-LIMIT STATE IS VISIBLE (design round 2, D10): at
 										 * live >= limit a new terminal will be refused, so the ink
 										 * steps up to `warning` (a design role, not a hex) and the
@@ -940,6 +960,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 											? "text-warning"
 											: "text-ink-muted",
 									)}
+									aria-label={capacityDescription}
 									data-tour-tag="console-capacity"
 								>
 									{/* THE COMPACT SPELLING BELOW 420px (design round 2, D7): the full
@@ -953,38 +974,48 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 									 * to `@min-[421px]`, believing 420/420 left a gap — wrong: it would show
 									 * both spans at 420. The matched pair is correct and stays matched.
 									 *
-									 * 460px, not 420 (D18): below ~446 the surface's command name (the §6.5
-									 * load-bearing `zsh`) was clipped to 0–6px beside the full 228px summary,
-									 * so the band where a user most needs the command name was exactly where
-									 * it vanished. The compact spelling gives the command its room back.
+									 * 510px, not 460 (design round 1 on the French build, D7): the breakpoint
+									 * was 460 (and 420 before it, D18) because below ~446 the surface's command
+									 * name (the §6.5 load-bearing `zsh`) was clipped to 0-6px beside the full
+									 * 228px English summary. The French full line now keeps the app-wide scope
+									 * ("... actifs dans l'app", 273px, +45px over English) and at 460 it
+									 * measured `zsh` at 0-2px of 20, so the full spelling takes over 50px later.
+									 * THIS MOVES ENGLISH TOO: between 460 and 509 the compact spelling now shows
+									 * for English as well (measured: `zsh` intact at 460, 480 and 510).
+									 *
+									 * The compact spelling is deliberately scope-neutral, as English's is
+									 * ("128/128 · 4 kept"): it is the width-critical form, and the full line and
+									 * the tooltip carry the scope.
 									 */}
-									<span className="@min-[460px]/consolepane:hidden">
-										{session.snapshot.capacity.archived > 0
-											? t(
-													"ui.console.capacity.summary_compact",
-													session.snapshot.capacity,
-												)
-											: t(
-													"ui.console.capacity.summary_compact_bare",
-													session.snapshot.capacity,
-												)}
-									</span>
-									<span className="@max-[460px]/consolepane:hidden">
-										{t(
-											"ui.console.capacity.summary",
-											session.snapshot.capacity,
-										)}
-										{session.snapshot.capacity.archived > 0
-											? t(
-													"ui.console.capacity.archived",
-													session.snapshot.capacity,
-												)
+									<span className="min-w-0 truncate">
+										<span className="@min-[510px]/consolepane:hidden">
+											{session.snapshot.capacity.archived > 0
+												? t(
+														"ui.console.capacity.summary_compact",
+														session.snapshot.capacity,
+													)
+												: t(
+														"ui.console.capacity.summary_compact_bare",
+														session.snapshot.capacity,
+													)}
+										</span>
+										<span className="@max-[510px]/consolepane:hidden">
+											{t(
+												"ui.console.capacity.summary",
+												session.snapshot.capacity,
+											)}
+											{session.snapshot.capacity.archived > 0
+												? t(
+														"ui.console.capacity.archived",
+														session.snapshot.capacity,
+													)
+												: null}
+										</span>
+										{session.snapshot.capacity.live >=
+										session.snapshot.capacity.limit
+											? t("ui.console.capacity.full")
 											: null}
 									</span>
-									{session.snapshot.capacity.live >=
-									session.snapshot.capacity.limit
-										? t("ui.console.capacity.full")
-										: null}
 								</Button>
 							</Tooltip>
 							<Tooltip content={t("ui.console.cleanup.help")}>

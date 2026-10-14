@@ -393,7 +393,12 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 						</Button>
 					)}
 				</div>
-				<div className="flex items-center gap-3">
+				{/* `flex-wrap` (design round 1, D9): French is the first locale to expose
+				    that this three-button group had no way to break, and "Passer à la
+				    conversation" is 81px wider than "Skip to chat". Unreachable at the
+				    product's 800px minimum window; it matters only if the dialog ever
+				    hosts narrower, and costs nothing at any width where it fits. */}
+				<div className="flex flex-wrap items-center justify-end gap-3">
 					{isLast ? (
 						<Button
 							variant="ghost"
