@@ -913,6 +913,31 @@ test("danger treatment keeps Cancel first without an archive autofocus override"
 	assert.doesNotMatch(dialog, /autoFocus|onOpenAutoFocus|onKeyDown/);
 });
 
+test("the dangerous question keeps its outer label shrinkable beside a fixed icon", () => {
+	/*
+	 * The danger branch inserts an ancestor above the archive's truncating name.
+	 * Pin that actual wrapper, not the inner name: it is now the direct flex item
+	 * of BaseDialog's title, so an automatic minimum there defeats inner truncate.
+	 */
+	const title = between(
+		"src/renderer/src/shared/components/common/confirmation-modal.tsx",
+		"const dialogTitle = isDangerous ? (",
+		"const dialogActions =",
+	);
+	assert.match(
+		title,
+		/<span className="min-w-0 text-danger">\{title\}<\/span>/,
+	);
+	assert.match(
+		title,
+		/<TriangleAlert\s+size=\{19\}\s+className="shrink-0 text-danger"/,
+	);
+	assert.match(
+		code("src/renderer/src/shared/components/common/base-dialog.tsx"),
+		/<DialogTitle className="flex items-center gap-3">\{title\}<\/DialogTitle>/,
+	);
+});
+
 test("every cancel path clears the candidate and writes nothing", () => {
 	const dialog = code(ARCHIVE_DIALOG);
 	/*
