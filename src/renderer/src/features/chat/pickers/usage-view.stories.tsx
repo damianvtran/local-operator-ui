@@ -720,18 +720,44 @@ export const Narrow: Story = {
 
 /** Synthetic normalized allowances, never provider funding/eligibility guesses. */
 export const IncludedExhaustedPaidCredits: Story = {
-	args: { ...base, payload: payload([report({ provider: "openai", identity: null,
-		limits: [percentLimit("included", "Included", 100, NOW + DAY), limit({
-			id: "paid", label: "Extra credits", paid_fallback: true, available: true,
-			amount: amount({ remaining: 61899.95877, unit: "credits" }),
-		})],
-	})]) },
+	args: {
+		...base,
+		payload: payload([
+			report({
+				provider: "openai",
+				identity: null,
+				limits: [
+					percentLimit("included", "Included", 100, NOW + DAY),
+					limit({
+						id: "paid",
+						label: "Extra credits",
+						paid_fallback: true,
+						available: true,
+						amount: amount({ remaining: 61899.95877, unit: "credits" }),
+					}),
+				],
+			}),
+		]),
+	},
 };
 
 export const PaidCreditsSpendUnavailable: Story = {
-	args: { ...base, payload: payload([report({ provider: "openai", identity: null,
-		limits: [limit({ id: "paid", label: "Extra credits", paid_fallback: true, available: false,
-			amount: amount({ remaining: 61899.95877, unit: "credits" }),
-		})],
-	})]) },
+	args: {
+		...base,
+		payload: payload([
+			report({
+				provider: "openai",
+				identity: null,
+				limits: [
+					limit({
+						id: "paid",
+						label: "Extra credits",
+						paid_fallback: true,
+						available: false,
+						amount: amount({ remaining: 61899.95877, unit: "credits" }),
+					}),
+				],
+			}),
+		]),
+	},
 };
