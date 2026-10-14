@@ -1,4 +1,6 @@
 {
+	"ui.common.actions.cancel": "Cancel",
 	"ui.common.actions.close": "Close",
+	"ui.common.actions.retry": "Retry",
 	"ui.common.actions.retry_again": "Try again"
 }

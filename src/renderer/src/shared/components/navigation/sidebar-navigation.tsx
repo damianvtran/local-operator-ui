@@ -39,7 +39,7 @@ import { UserProfileSidebar } from "@shared/components/navigation/user-profile-s
 import { Badge, Button, Tooltip } from "@shared/components/ui";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { useCurrentView } from "@shared/hooks/use-route-params";
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	CATALOGUE_HEAD_PAGE,
@@ -68,6 +68,7 @@ import {
 import { useCallback, useEffect } from "react";
 import type { FC, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import { t } from "../../../../../i18n/messages";
 
 /*
  * THE ONE SIDEBAR.
@@ -271,6 +272,7 @@ const DESTINATION_ROW =
 	"flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-body-sm transition-colors duration-fast ease-out-quart";
 
 export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
+	useI18nLocale();
 	const navigate = useNavigate();
 	const currentView = useCurrentView();
 	const { expanded, mode, onCollapse } = useSidebarFrame();
@@ -509,7 +511,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			attentionTag: "nav-browser-badge",
 			attentionName: (count) =>
 				t("ui.shell.sidebar_navigation.browser_waiting", {
-					count: String(count),
+					count,
+					countText: String(count),
 				}),
 		},
 		{
@@ -546,7 +549,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						attentionTag: "nav-mesh-badge",
 						attentionName: (count: number) =>
 							t("ui.shell.sidebar_navigation.mesh_waiting", {
-								count: String(count),
+								count,
+								countText: String(count),
 							}),
 					},
 				]

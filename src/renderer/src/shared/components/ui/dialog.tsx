@@ -1,4 +1,4 @@
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
@@ -8,6 +8,7 @@ import {
 	type HTMLAttributes,
 	forwardRef,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import { Button } from "./button";
 
 /**
@@ -94,46 +95,49 @@ export const DialogContent = forwardRef<
 			...props
 		},
 		ref,
-	) => (
-		<DialogPortal>
-			<DialogOverlay className={overlayClassName} />
-			<DialogPrimitive.Content
-				ref={ref}
-				/*
-				 * NOT A DRAG SURFACE, WHEREVER IT PAINTS (see the `no-drag` rule in
-				 * `styles/index.css`): the window's draggable region is built from element
-				 * rects and never sees the top layer, so a dialog painted over the chrome
-				 * strip keeps its controls unclickable - the click starts a window drag -
-				 * unless the surface itself subtracts its rect. The value inherits, so this
-				 * one marker covers everything inside the dialog.
-				 */
-				data-titlebar-no-drag=""
-				className={cn(
-					"-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50",
-					"flex w-full max-w-lg flex-col gap-4",
-					"rounded-lg border border-hairline bg-elevated p-6 shadow-overlay",
-					// No entrance animation; see the note at the top of `tooltip.tsx`.
-					className,
-				)}
-				{...props}
-			>
-				{children}
-				{showClose ? (
-					<DialogPrimitive.Close asChild>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							className="absolute top-4 right-4"
-							aria-label={t("ui.common.actions.close")}
-							disabled={closeDisabled}
-						>
-							<X aria-hidden="true" />
-						</Button>
-					</DialogPrimitive.Close>
-				) : null}
-			</DialogPrimitive.Content>
-		</DialogPortal>
-	),
+	) => {
+		useI18nLocale();
+		return (
+			<DialogPortal>
+				<DialogOverlay className={overlayClassName} />
+				<DialogPrimitive.Content
+					ref={ref}
+					/*
+					 * NOT A DRAG SURFACE, WHEREVER IT PAINTS (see the `no-drag` rule in
+					 * `styles/index.css`): the window's draggable region is built from element
+					 * rects and never sees the top layer, so a dialog painted over the chrome
+					 * strip keeps its controls unclickable - the click starts a window drag -
+					 * unless the surface itself subtracts its rect. The value inherits, so this
+					 * one marker covers everything inside the dialog.
+					 */
+					data-titlebar-no-drag=""
+					className={cn(
+						"-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50",
+						"flex w-full max-w-lg flex-col gap-4",
+						"rounded-lg border border-hairline bg-elevated p-6 shadow-overlay",
+						// No entrance animation; see the note at the top of `tooltip.tsx`.
+						className,
+					)}
+					{...props}
+				>
+					{children}
+					{showClose ? (
+						<DialogPrimitive.Close asChild>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								className="absolute top-4 right-4"
+								aria-label={t("ui.common.actions.close")}
+								disabled={closeDisabled}
+							>
+								<X aria-hidden="true" />
+							</Button>
+						</DialogPrimitive.Close>
+					) : null}
+				</DialogPrimitive.Content>
+			</DialogPortal>
+		);
+	},
 );
 DialogContent.displayName = "DialogContent";
 

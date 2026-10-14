@@ -10,12 +10,13 @@ import {
 } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { isRadientAccountFailure } from "@shared/hooks/use-radient-user-query";
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { LogOut, RotateCw, Settings, Shield, User } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import React, { type FC } from "react";
 import { useNavigate } from "react-router-dom";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * Props for the UserProfileSidebar component
@@ -55,6 +56,7 @@ type UserProfileSidebarProps = {
  */
 export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 	({ expanded, useAuth = false }) => {
+		useI18nLocale();
 		const navigate = useNavigate();
 
 		const { user, isAuthenticated, accountRead, signOut } = useRadientAuth();

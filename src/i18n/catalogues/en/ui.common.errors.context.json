@@ -18,11 +18,5 @@
 		"role": "error explanation",
 		"tone": "Reassuring, actionable two-sentence copy.",
 		"note": "Fallback after a component crash; retry is offered first, support only if the failure persists."
-	},
-	"ui.common.errors.searchable_select.not_in_any_listing_saved_as_typed": {
-		"role": "input status hint",
-		"tone": "Factual reassurance.",
-		"note": "Free-typed value is absent from searchable listings but remains valid and is saved literally; not an error.",
-		"length": "One short line below the control."
 	}
 }

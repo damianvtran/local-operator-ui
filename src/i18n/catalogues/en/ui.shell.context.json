@@ -29,7 +29,8 @@
 		"placeholders": {
 			"name": "User-configured chief-of-staff display name, verbatim.",
 			"count": "Number of missed messages; ICU plural cardinal."
-		}
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.shell.sidebar_navigation.aida_working": {
 		"role": "navigation accessible name",
@@ -48,10 +49,12 @@
 	"ui.shell.sidebar_navigation.browser_waiting": {
 		"role": "navigation accessible name",
 		"tone": "Pending-work status, not an error.",
-		"note": "Names browser approvals waiting for the operator.",
+		"note": "Names browser approvals waiting for the operator. English waiting is count-invariant but both grammatical branches are intentional.",
 		"placeholders": {
-			"count": "Uncapped pending count rendered as an existing decimal string."
-		}
+			"count": "Uncapped pending cardinal count for grammatical number.",
+			"countText": "Existing decimal display string, without English grouping punctuation."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.shell.sidebar_navigation.close_sidebar": {
 		"role": "button accessible name",
@@ -77,10 +80,12 @@
 	"ui.shell.sidebar_navigation.mesh_waiting": {
 		"role": "navigation accessible name",
 		"tone": "Pending-work status, not an error.",
-		"note": "Names mesh requests waiting for the operator.",
+		"note": "Names mesh requests waiting for the operator. English waiting is count-invariant but both grammatical branches are intentional.",
 		"placeholders": {
-			"count": "Uncapped pending count rendered as an existing decimal string."
-		}
+			"count": "Uncapped pending cardinal count for grammatical number.",
+			"countText": "Existing decimal display string, without English grouping punctuation."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.shell.sidebar_navigation.new_chat": {
 		"role": "button label",

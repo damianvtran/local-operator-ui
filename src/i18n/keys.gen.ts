@@ -26,6 +26,7 @@ import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiCommonActions from "./catalogues/en/ui.common.actions.json";
 import enUiCommonErrors from "./catalogues/en/ui.common.errors.json";
+import enUiCommonForms from "./catalogues/en/ui.common.forms.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
 import enUiHub from "./catalogues/en/ui.hub.json";
 import enUiMesh from "./catalogues/en/ui.mesh.json";
@@ -46,6 +47,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChat,
 	...enUiCommonActions,
 	...enUiCommonErrors,
+	...enUiCommonForms,
 	...enUiConsole,
 	...enUiHub,
 	...enUiMesh,
@@ -76,13 +78,15 @@ export type MessageParams = {
 	"ui.chat.usage.eligibility_unknown": undefined;
 	"ui.chat.usage.family_caps": undefined;
 	"ui.chat.usage.unlimited": undefined;
+	"ui.common.actions.cancel": undefined;
 	"ui.common.actions.close": undefined;
+	"ui.common.actions.retry": undefined;
 	"ui.common.actions.retry_again": undefined;
 	"ui.common.errors.error_boundary.error_details": undefined;
 	"ui.common.errors.error_boundary.something_went_wrong": undefined;
 	"ui.common.errors.error_boundary.stack_trace": undefined;
 	"ui.common.errors.error_boundary.the_application_encountered_an_error_try_again_or_contact_support": undefined;
-	"ui.common.errors.searchable_select.not_in_any_listing_saved_as_typed": undefined;
+	"ui.common.forms.select.unlisted_value": undefined;
 	"ui.console.capacity.archived": { archived: number };
 	"ui.console.capacity.full": undefined;
 	"ui.console.capacity.help": undefined;
@@ -244,12 +248,18 @@ export type MessageParams = {
 	"ui.shell.sidebar_navigation.aida_missed": { name: string; count: number };
 	"ui.shell.sidebar_navigation.aida_working": { name: string };
 	"ui.shell.sidebar_navigation.browser": undefined;
-	"ui.shell.sidebar_navigation.browser_waiting": { count: string };
+	"ui.shell.sidebar_navigation.browser_waiting": {
+		count: number;
+		countText: string;
+	};
 	"ui.shell.sidebar_navigation.close_sidebar": undefined;
 	"ui.shell.sidebar_navigation.collapse_sidebar": undefined;
 	"ui.shell.sidebar_navigation.expand_sidebar": undefined;
 	"ui.shell.sidebar_navigation.mesh": undefined;
-	"ui.shell.sidebar_navigation.mesh_waiting": { count: string };
+	"ui.shell.sidebar_navigation.mesh_waiting": {
+		count: number;
+		countText: string;
+	};
 	"ui.shell.sidebar_navigation.new_chat": undefined;
 	"ui.shell.sidebar_navigation.new_chat_shortcut": { shortcut: string };
 	"ui.shell.sidebar_navigation.projects": undefined;

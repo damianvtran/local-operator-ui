@@ -1,14 +1,26 @@
 {
+	"ui.common.actions.cancel": {
+		"role": "button label or tooltip",
+		"tone": "Short abandonment verb.",
+		"note": "Abandon the pending edit/action without applying it; the caller owns whether a field, form or confirmation closes. Does not interrupt already-running work.",
+		"length": "One word."
+	},
 	"ui.common.actions.close": {
 		"role": "close button accessible name",
 		"tone": "Short dismissal verb.",
-		"note": "Shared dialog/sheet close affordance; dismisses the surface without quitting the app.",
-		"length": "One word; icon-button accessible name."
+		"note": "Dismisses a dialog, sheet or other closeable surface without quitting the application.",
+		"length": "One word."
+	},
+	"ui.common.actions.retry": {
+		"role": "button label",
+		"tone": "Direct recovery verb.",
+		"note": "Retry the same failed read or write; the attempted input is retained and no record is deleted.",
+		"length": "One word."
 	},
 	"ui.common.actions.retry_again": {
 		"role": "button label",
-		"tone": "Calm recovery action.",
-		"note": "Shared failure recovery: attempts the failed action again; not navigation or reload by definition.",
-		"length": "Two-word button."
+		"tone": "Calm two-word recovery action.",
+		"note": "Attempts the failed action again; not navigation, sign-out or reload by definition.",
+		"length": "Two words."
 	}
 }

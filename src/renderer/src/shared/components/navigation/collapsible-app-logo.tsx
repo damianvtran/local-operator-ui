@@ -1,6 +1,7 @@
 import { BrandMark } from "@shared/components/common/brand-mark";
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 
 type CollapsibleAppLogoProps = {
 	expanded: boolean;
@@ -37,20 +38,25 @@ type CollapsibleAppLogoProps = {
  */
 export const CollapsibleAppLogo: FC<CollapsibleAppLogoProps> = ({
 	expanded,
-}) => (
-	<div className="flex min-w-0 items-center gap-2">
-		{/* Named only when collapsed: expanded, the wordmark beside it already
+}) => {
+	useI18nLocale();
+	return (
+		<div className="flex min-w-0 items-center gap-2">
+			{/* Named only when collapsed: expanded, the wordmark beside it already
 		    says "Local Operator", and an alt text would announce it twice. */}
-		<BrandMark
-			className="size-6"
-			label={
-				expanded ? undefined : t("ui.shell.collapsible_app_logo.local_operator")
-			}
-		/>
-		{expanded && (
-			<span className="truncate font-semibold text-body text-ink">
-				{t("ui.shell.collapsible_app_logo.local_operator")}
-			</span>
-		)}
-	</div>
-);
+			<BrandMark
+				className="size-6"
+				label={
+					expanded
+						? undefined
+						: t("ui.shell.collapsible_app_logo.local_operator")
+				}
+			/>
+			{expanded && (
+				<span className="truncate font-semibold text-body text-ink">
+					{t("ui.shell.collapsible_app_logo.local_operator")}
+				</span>
+			)}
+		</div>
+	);
+};

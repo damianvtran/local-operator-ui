@@ -1,5 +1,5 @@
 import { Button } from "@shared/components/ui";
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { RotateCw, TriangleAlert } from "lucide-react";
 import type React from "react";
@@ -8,6 +8,7 @@ import {
 	type FallbackProps,
 	ErrorBoundary as ReactErrorBoundary,
 } from "react-error-boundary";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * Props for the ErrorBoundary component
@@ -63,45 +64,48 @@ type ErrorBoundaryProps = {
  * `sunken` — a code ground for code, which is the whole reason `sunken` exists
  * and is why the block needs no border to read as output.
  */
-const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => (
-	<div className="flex h-full flex-col items-center justify-center gap-6 p-8 text-center">
-		<TriangleAlert size={48} aria-hidden="true" className="text-danger" />
+const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
+	useI18nLocale();
+	return (
+		<div className="flex h-full flex-col items-center justify-center gap-6 p-8 text-center">
+			<TriangleAlert size={48} aria-hidden="true" className="text-danger" />
 
-		<div className="flex flex-col gap-2">
-			<h2 className="text-title text-ink">
-				{t("ui.common.errors.error_boundary.something_went_wrong")}
-			</h2>
-			<p className="max-w-150 text-body text-ink-muted">
-				{t(
-					"ui.common.errors.error_boundary.the_application_encountered_an_error_try_again_or_contact_support",
-				)}
-			</p>
-		</div>
-
-		<Button variant="primary" onClick={resetErrorBoundary}>
-			<RotateCw aria-hidden="true" />
-			{t("ui.common.actions.retry_again")}
-		</Button>
-
-		{isDevelopmentMode() && (
-			<div className="w-full max-w-200 overflow-auto rounded-md bg-sunken p-4 text-left">
-				<h3 className="mb-1 text-heading text-ink">
-					{t("ui.common.errors.error_boundary.error_details")}
-				</h3>
-				<pre className="mb-4 whitespace-pre-wrap text-ink-muted text-mono-sm">
-					{error?.message}
-				</pre>
-
-				<h3 className="mb-1 text-heading text-ink">
-					{t("ui.common.errors.error_boundary.stack_trace")}
-				</h3>
-				<pre className="whitespace-pre-wrap text-ink-muted text-mono-sm">
-					{error?.stack}
-				</pre>
+			<div className="flex flex-col gap-2">
+				<h2 className="text-title text-ink">
+					{t("ui.common.errors.error_boundary.something_went_wrong")}
+				</h2>
+				<p className="max-w-150 text-body text-ink-muted">
+					{t(
+						"ui.common.errors.error_boundary.the_application_encountered_an_error_try_again_or_contact_support",
+					)}
+				</p>
 			</div>
-		)}
-	</div>
-);
+
+			<Button variant="primary" onClick={resetErrorBoundary}>
+				<RotateCw aria-hidden="true" />
+				{t("ui.common.actions.retry_again")}
+			</Button>
+
+			{isDevelopmentMode() && (
+				<div className="w-full max-w-200 overflow-auto rounded-md bg-sunken p-4 text-left">
+					<h3 className="mb-1 text-heading text-ink">
+						{t("ui.common.errors.error_boundary.error_details")}
+					</h3>
+					<pre className="mb-4 whitespace-pre-wrap text-ink-muted text-mono-sm">
+						{error?.message}
+					</pre>
+
+					<h3 className="mb-1 text-heading text-ink">
+						{t("ui.common.errors.error_boundary.stack_trace")}
+					</h3>
+					<pre className="whitespace-pre-wrap text-ink-muted text-mono-sm">
+						{error?.stack}
+					</pre>
+				</div>
+			)}
+		</div>
+	);
+};
 
 /**
  * Error boundary component that catches JavaScript errors in its child component tree
