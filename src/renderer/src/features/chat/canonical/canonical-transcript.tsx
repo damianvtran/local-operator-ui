@@ -242,7 +242,6 @@ import {
 	collapsePlanInputKey,
 	collapseRowsKey,
 	initialAlignWalkState,
-	ownsMaterialArtifact,
 	paintedRows,
 	runIsCondensed,
 	snapWindowToRunBoundary,
