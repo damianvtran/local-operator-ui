@@ -437,6 +437,7 @@ export function registerDesktopIPC(
 				openFrame?: unknown;
 				journalOrder?: unknown;
 				orderIds?: unknown;
+				peerJournalSource?: unknown;
 			};
 			if (
 				typeof input?.sessionId !== "string" ||
@@ -446,6 +447,8 @@ export function registerDesktopIPC(
 					typeof input.openFrame !== "boolean") ||
 				(input.journalOrder !== undefined &&
 					typeof input.journalOrder !== "boolean") ||
+				(input.peerJournalSource !== undefined &&
+					typeof input.peerJournalSource !== "boolean") ||
 				(input.orderIds !== undefined &&
 					(!Array.isArray(input.orderIds) ||
 						input.orderIds.length > 512 ||
@@ -466,6 +469,7 @@ export function registerDesktopIPC(
 					openFrame: input.openFrame as boolean | undefined,
 					journalOrder: input.journalOrder as boolean | undefined,
 					orderIds: input.orderIds as string[] | undefined,
+					peerJournalSource: input.peerJournalSource as boolean | undefined,
 				},
 				(frame) => {
 					if (sender.isDestroyed()) {

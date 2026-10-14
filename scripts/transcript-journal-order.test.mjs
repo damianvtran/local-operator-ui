@@ -954,3 +954,356 @@ test("metadata producer retains the established DEV deep-freeze guard and produc
 		}
 	}
 });
+
+/* ---------------------------------------------------------------------------
+ * The complete peer-source contract's consumer half (stage S1): the
+ * facts-only lookup, its deliberate non-authority, and the ONE coalesced
+ * authoritative read an owed reconcile settles through.
+ * ------------------------------------------------------------------------ */
+
+/** An owner metadata answer: the frozen four-key envelope plus source facts. */
+const lookupPage = (generation, ordinals = {}, extra = {}) => ({
+	entries: [],
+	has_more: false,
+	cursor_missing: false,
+	journal_order_state: "ready",
+	journal_generation: generation,
+	...(Object.keys(ordinals).length ? { journal_ordinals: ordinals } : {}),
+	...extra,
+});
+/** The loop response shape the peer repair contract declares: `{kind, page}`. */
+const asResponse = (kind, pageShape) => ({ kind, page: pageShape });
+
+test("peer declarations carry the exact wire shape; undeclared requests stay byte-identical", () => {
+	const authority = R.desktopEndpoint({
+		op: "sessions.get",
+		sessionId: "aaaaaaaaaaaa",
+		journalOrder: true,
+		orderIds: ["send"],
+		peerJournalSource: true,
+	}).path;
+	assert.equal(
+		authority,
+		"/v1/desktop/sessions/aaaaaaaaaaaa?journal_order=1&peer_journal_source=1&order_ids=send",
+	);
+	// Without the declaration: the request every local conversation has always
+	// sent, one byte unchanged by the flag's existence.
+	assert.equal(
+		R.desktopEndpoint({
+			op: "sessions.get",
+			sessionId: "aaaaaaaaaaaa",
+			journalOrder: true,
+			orderIds: ["send"],
+		}).path,
+		"/v1/desktop/sessions/aaaaaaaaaaaa?journal_order=1&order_ids=send",
+	);
+	// The facts-only lookup: declaration, purpose and fence in the one order
+	// the repair loop budgets against (`journal-order-repair`'s `sweep`).
+	const lookup = R.desktopEndpoint({
+		op: "sessions.history",
+		sessionId: "aaaaaaaaaaaa",
+		limit: 100,
+		journalOrder: true,
+		orderIds: ["send"],
+		peerJournalSource: true,
+		sourceRead: "metadata",
+		expectedJournalGeneration: "scope-A",
+	}).path;
+	assert.equal(
+		lookup,
+		"/v1/desktop/sessions/aaaaaaaaaaaa/history?limit=100&journal_order=1&peer_journal_source=1&source_read=metadata&expected_journal_generation=scope-A&order_ids=send",
+	);
+	assert.ok(Buffer.byteLength(lookup) <= R.JOURNAL_ORDER_QUERY_BYTES);
+});
+
+test("a facts-only lookup admits same-domain coordinates without an install, a settle, or a body effect", () => {
+	let state = start([row("before", 0, 0.1)]);
+	state = R.appendPendingUser(
+		state,
+		"send",
+		"own send",
+		[{ data: "QQ==", mimeType: "image/png" }],
+		1000,
+	);
+	state = R.appendPendingUser(state, "unattested", "held", [], 1001);
+	const image = state.records.find((record) => record.id === "send").images;
+	const held = state.records.find((record) => record.id === "unattested");
+	const cursor = state.oldestId;
+	const revision = state.orderRevision;
+	const next = R.applyPeerSourceFacts(
+		state,
+		lookupPage("scope-A", { send: 1 }),
+		{ authoritative: false },
+	);
+	const healed = next.records.find((record) => record.id === "send");
+	/*
+	 * THE FACTS ARE NOT A BODY (complete peer contract, finding 1): the plus one
+	 * declared lookup gives the send its same-domain COORDINATE, and neither
+	 * releases the hold nor reattests anything — `provisional`/`local` STAY (only
+	 * a body-carrying commit, `applyPeerSourcePayload` or an accepted page, ends
+	 * the hold and stamps the record). This is the behaviour the architect's RED
+	 * reading flipped; the old expectation (hold released on coordinates alone)
+	 * belonged to the facts-only S1 that this commit replaces.
+	 */
+	assert.equal(healed.provisional, true);
+	assert.equal(healed.local, true);
+	assert.equal(healed.images, image);
+	assert.equal(healed.journalSeq, undefined);
+	// Same-channel facts DID land: the lookup's coordinate is in the fact map,
+	// so the sweep can rank the row without re-asking for its fact.
+	assert.equal(next.journalPositions.get("send")?.seq, 1);
+	// And the carried, unattested body is now owed for a payload read.
+	assert.ok(R.journalBodyOwedIds(next).includes("send"));
+	// The answer did not attest "unattested", so its held state is NOT
+	// stripped: same record object, hold intact.
+	assert.equal(
+		next.records.find((record) => record.id === "unattested"),
+		held,
+	);
+	assert.equal(next.oldestId, cursor);
+	assert.equal(next.orderRevision, revision);
+	assert.equal(next.orderNeedsReconcile, undefined);
+});
+
+test("a lookup under a rebuilt source records the debt and never installs; the authority read settles it", () => {
+	let state = start([row("present", 0)]);
+	state = R.appendPendingUser(state, "send", "own send", [], 1000);
+	const records = state.records;
+	state = R.applyPeerSourceFacts(
+		state,
+		{
+			entries: [],
+			has_more: false,
+			cursor_missing: false,
+			journal_order_state: "unavailable",
+			journal_generation: "scope-B",
+			reconcile: true,
+		},
+		{ authoritative: false },
+	);
+	// "the generation rides the answer so the client knows a re-read is owed,
+	// not as an authority to install": nothing moved.
+	assert.equal(state.journalGeneration, "scope-A");
+	assert.equal(state.records, records);
+	assert.equal(state.orderNeedsReconcile, true);
+	assert.equal(state.orderWantedGeneration, "scope-B");
+	// The one coalesced authoritative read answers in the wanted domain and
+	// settles the demand through its dispatch witness.
+	const read = R.journalOrderRead(state);
+	state = R.applyHistoryPage(state, page([], "scope-B"), {
+		authoritative: true,
+		orderRead: read,
+	});
+	assert.equal(state.journalGeneration, "scope-B");
+	assert.equal(state.orderNeedsReconcile, false);
+	assert.equal(state.orderWantedGeneration, undefined);
+});
+
+test("a reconcile correction with no generation records the generic debt, and never an install", () => {
+	let state = start([row("present", 0)]);
+	const records = state.records;
+	state = R.receiveJournalOrder(
+		state,
+		{ journal_order_state: "unavailable", reconcile: true },
+		[],
+		true,
+	);
+	assert.equal(state.journalMode, true);
+	assert.equal(state.orderNeedsReconcile, true);
+	assert.equal(state.orderWantedGeneration, undefined);
+	assert.notEqual(state.orderDemand, undefined);
+	assert.equal(state.journalGeneration, "scope-A");
+	assert.equal(state.records, records);
+	const demand = state.orderDemand;
+	// A byte-identical repeat is not a new fact: same state, same demand
+	// object, so the repair loop's stamp cannot mistake it for a wake.
+	const repeat = R.receiveJournalOrder(
+		state,
+		{ journal_order_state: "unavailable", reconcile: true },
+		[],
+		true,
+	);
+	assert.equal(repeat, state);
+	assert.equal(repeat.orderDemand, demand);
+});
+
+/** The loop deps a peer-scoped conversation supplies, mirroring the hook. */
+const peerDeps = (getState, setState, read) => ({
+	getTranscript: getState,
+	isCurrent: () => true,
+	read,
+	page: (response) => response.page,
+	lookupPath: "/v1/desktop/sessions/aaaaaaaaaaaa",
+	sweep: (state) => {
+		if (state.orderNeedsReconcile === true)
+			return {
+				kind: "authority",
+				path: "/v1/desktop/sessions/aaaaaaaaaaaa",
+				query: new URLSearchParams({
+					journal_order: "1",
+					peer_journal_source: "1",
+				}),
+			};
+		const generation = state.journalGeneration;
+		/*
+		 * THE THREE-KIND SWEEP (the hook's own): facts first, bodies second, one
+		 * kind per iteration. A kind that is fixed to "lookup" would never dispatch
+		 * the payload subset - the read that actually admits the body the facts
+		 * lookup owed - so the chain would settle coordinates and return, exactly
+		 * the defect this cell pins when it goes missing.
+		 */
+		if (typeof generation !== "string" || generation.length === 0)
+			return {
+				kind: "none",
+				path: "/v1/desktop/sessions/aaaaaaaaaaaa/history",
+				query: new URLSearchParams(),
+			};
+		if (R.journalFactsNeeded(state).length > 0)
+			return {
+				kind: "lookup",
+				path: "/v1/desktop/sessions/aaaaaaaaaaaa/history",
+				query: new URLSearchParams({
+					limit: "100",
+					journal_order: "1",
+					peer_journal_source: "1",
+					source_read: "metadata",
+					expected_journal_generation: generation,
+				}),
+			};
+		if (R.journalBodyOwedIds(state).length > 0)
+			return {
+				kind: "payload",
+				path: "/v1/desktop/sessions/aaaaaaaaaaaa/history",
+				query: new URLSearchParams({
+					limit: "100",
+					journal_order: "1",
+					peer_journal_source: "1",
+					source_read: "payload",
+					expected_journal_generation: generation,
+				}),
+			};
+		return {
+			kind: "none",
+			path: "/v1/desktop/sessions/aaaaaaaaaaaa/history",
+			query: new URLSearchParams(),
+		};
+	},
+	commit: (response, revision, orderRead) => {
+		if (R.currentOrderRevision(getState()) !== revision) return;
+		/*
+		 * THE HOOK'S OWN ROUTING: a peer conversation settles its owed reconcile
+		 * through the PEER authoritative commit (`applyPeerSourceFacts` with
+		 * `authoritative: true`), never the local metadata commit — the local one
+		 * now writes the lane back to local, which would drop the peer debt the
+		 * authority read just incurred and cut the chain short. Payload bodies
+		 * admit through the subset commit; an ordinary lookup is facts-only.
+		 */
+		setState(
+			response.kind === "authority"
+				? R.applyPeerSourceFacts(getState(), response.page, {
+						authoritative: true,
+						orderRead,
+					})
+				: response.kind === "payload"
+					? R.applyPeerSourcePayload(getState(), response.page, orderRead)
+					: R.applyPeerSourceFacts(getState(), response.page, {
+							authoritative: false,
+						}),
+		);
+	},
+});
+
+test("peer sweeps take the facts-only lookup; an owed reconcile takes one authority read", async () => {
+	let state = start([row("present", 0)]);
+	state = R.appendPendingUser(state, "send", "own send", [], 1000);
+	state = R.appendPendingUser(state, "other", "held", [], 1001);
+	const calls = [];
+	const outcome = await R.repairJournalOrder(
+		peerDeps(
+			() => state,
+			(next) => {
+				state = next;
+			},
+			async (orderIds, kind) => {
+				calls.push({ ids: [...orderIds], kind });
+				if (kind === "lookup") {
+					// The first lookup meets a REBUILT source; the second (after
+					// the authority read installed B) answers in B.
+					if (state.journalGeneration !== "scope-B")
+						return {
+							kind,
+							page: {
+								entries: [],
+								has_more: false,
+								cursor_missing: false,
+								journal_order_state: "unavailable",
+								journal_generation: "scope-B",
+								reconcile: true,
+							},
+						};
+					return {
+						kind,
+						page: lookupPage("scope-B", { present: 0 }),
+					};
+				}
+				if (kind === "payload")
+					return {
+						kind,
+						page: page(
+							orderIds.map((id, at) => row(id, at === 0 ? 0 : 1)),
+							"scope-B",
+							{ source_present_ids: [...orderIds] },
+						),
+					};
+				return {
+					kind,
+					page: page([], "scope-B", {
+						journal_ordinals: { send: 1, other: 2 },
+					}),
+				};
+			},
+		),
+	);
+	/*
+	 * THE CHAIN (the unified commit), and its four exact reads: the facts lookup
+	 * that meets the rebuilt source, the ONE coalesced authoritative read its owed
+	 * reconcile earns (which installs scope-B and owes every loaded body), the
+	 * re-lookup that places whatever B can attest, and the typed payload subset
+	 * that admits the owed bodies under B and settles the debt. The old
+	 * `['lookup','authority','lookup']` shape was the S1 sweep; the terminal
+	 * payload read is what makes the complete contract's body recovery real.
+	 */
+	assert.equal(outcome.kind, "complete");
+	assert.deepEqual(
+		calls.map((call) => call.kind),
+		["lookup", "authority", "lookup", "payload"],
+	);
+	// Every batch is bounded, and the lookup batch's own wire shape fits the
+	// encoded budget the loop sized it against.
+	assert.ok(calls.every((call) => call.ids.length <= R.JOURNAL_ORDER_ID_LIMIT));
+	assert.ok(
+		Buffer.byteLength(
+			R.desktopEndpoint({
+				op: "sessions.history",
+				sessionId: "aaaaaaaaaaaa",
+				limit: 100,
+				journalOrder: true,
+				orderIds: calls[0].ids,
+				peerJournalSource: true,
+				sourceRead: "metadata",
+				expectedJournalGeneration: "scope-A",
+			}).path,
+		) <= R.JOURNAL_ORDER_QUERY_BYTES,
+	);
+	assert.equal(state.journalGeneration, "scope-B");
+	assert.equal(state.orderNeedsReconcile, false);
+	assert.deepEqual(R.journalLookupIds(state), []);
+	assert.equal(
+		state.records.find((record) => record.id === "present").journalSeq,
+		0,
+	);
+	assert.equal(
+		state.records.find((record) => record.id === "send").journalSeq,
+		1,
+	);
+});

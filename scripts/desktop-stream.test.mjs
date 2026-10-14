@@ -349,3 +349,41 @@ test("the open-frame flag rides the subscribe only on the renderer's own `true` 
 		globalThis.fetch = original;
 	}
 });
+
+test("the complete peer-source declaration rides the subscribe only on the renderer's own `true`", async () => {
+	const original = globalThis.fetch;
+	const urls = [];
+	globalThis.fetch = async (url) => {
+		urls.push(String(url));
+		return new Response(null, { status: 404 });
+	};
+	try {
+		const relay = new DesktopStreamRelay("http://127.0.0.1:9/", "token");
+		for (const peerJournalSource of [true, false, undefined, "1"])
+			relay.subscribe(
+				{
+					sessionId: SESSION,
+					journalOrder: true,
+					orderIds: ["a"],
+					peerJournalSource,
+				},
+				() => {},
+			);
+		assert.deepEqual(
+			urls.map((url) => url.includes("peer_journal_source=1")),
+			[true, false, false, false],
+			"only the literal `true` declares the complete contract",
+		);
+		// Forwarded beside its journal-order opt-in (the wire carries the
+		// complete family only under both), and set BEFORE the bounded ids so
+		// the relay's own budget has seen it by the time `appendJournalOrderIds`
+		// measures what is actually sent.
+		assert.ok(urls[0].includes("journal_order=1"));
+		assert.ok(
+			urls[0].indexOf("peer_journal_source") < urls[0].indexOf("order_ids"),
+		);
+		relay.dispose();
+	} finally {
+		globalThis.fetch = original;
+	}
+});
